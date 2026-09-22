@@ -55,6 +55,8 @@ const ground: StockFloorRow = {
   establishmentId: 'e1',
   name: 'Rez-de-chaussée',
   level: 0,
+  widthMetres: null,
+  depthMetres: null,
   imageFileId: null,
   imageMetresWide: null,
   imageOpacity: 35,
@@ -355,6 +357,8 @@ describe('StockMapPage', () => {
     await settle();
     type('field-name', 'Mezzanine');
     type('field-level', '2');
+    type('field-widthMetres', '30');
+    type('field-depthMetres', '20');
     q('stock-floor-save')!.click();
     await settle();
 
@@ -362,6 +366,8 @@ describe('StockMapPage', () => {
       establishmentId: 'e1',
       name: 'Mezzanine',
       level: 2,
+      widthMetres: '30',
+      depthMetres: '20',
       imageFileId: null,
       imageMetresWide: null,
       imageOpacity: 35,
@@ -523,6 +529,9 @@ describe('StockMapPage', () => {
   });
 
   it('moves a rectangle through the DOM bindings, not only through its methods', async () => {
+    // Pointer arithmetic over the racks' own frame: the wall would widen it (walls count since findings E/H).
+    structures.set([]);
+    await settle();
     surface();
     fire(firstRect(), 'pointerdown', 100, 100);
     fire(document, 'pointermove', 200, 100);
@@ -533,6 +542,9 @@ describe('StockMapPage', () => {
   });
 
   it('moves a rectangle onto the grid and writes it into the form, sending nothing', async () => {
+    // Pointer arithmetic over the racks' own frame: the wall would widen it (walls count since findings E/H).
+    structures.set([]);
+    await settle();
     const svg = surface();
     plan().grab(at(100, 100, svg), drawn, null);
     plan().drags(at(200, 100, svg));
@@ -548,6 +560,9 @@ describe('StockMapPage', () => {
 
   /** The plan must follow the form, or a dragged rectangle stays where the API last put it. */
   it('draws the rectangle where it is being dragged, not where it was saved', async () => {
+    // Pointer arithmetic over the racks' own frame: the wall would widen it (walls count since findings E/H).
+    structures.set([]);
+    await settle();
     const svg = surface();
     plan().grab(at(100, 100, svg), drawn, null);
     plan().drags(at(200, 100, svg));
@@ -572,6 +587,9 @@ describe('StockMapPage', () => {
   });
 
   it('pulls one handle and holds the opposite corner, changing the size and not the place', async () => {
+    // Pointer arithmetic over the racks' own frame: the wall would widen it (walls count since findings E/H).
+    structures.set([]);
+    await settle();
     const svg = surface();
     plan().grab(at(100, 100, svg), drawn, { hx: 1, hy: 1 });
     plan().drags(at(200, 100, svg));
@@ -661,6 +679,9 @@ describe('StockMapPage', () => {
    * the plan into a new rack, and would have to hold `touch-action: none` over a full-width block to do it.
    */
   it('traces a box on bare floor once the tool is armed, and opens it as a new rectangle', async () => {
+    // Pointer arithmetic over the racks' own frame: the wall would widen it (walls count since findings E/H).
+    structures.set([]);
+    await settle();
     surface();
     q('stock-map-trace')?.click();
     await settle();
@@ -722,6 +743,9 @@ describe('StockMapPage', () => {
 
   /** A press that landed on a rectangle belongs to that rectangle, and it bubbles to the sheet on its way up. */
   it('moves a rectangle rather than tracing over it when the tool is armed', async () => {
+    // Pointer arithmetic over the racks' own frame: the wall would widen it (walls count since findings E/H).
+    structures.set([]);
+    await settle();
     surface();
     q('stock-map-trace')?.click();
     await settle();
@@ -766,6 +790,9 @@ describe('StockMapPage', () => {
    * a pointer: activating it poses the rectangle at the centre of the plan, selected, with its form open.
    */
   it('poses a shape of the palette at the centre of the floor, at this company’s size', async () => {
+    // Pointer arithmetic over the racks' own frame: the wall would widen it (walls count since findings E/H).
+    structures.set([]);
+    await settle();
     q('stock-shape-rack')?.click();
     await settle();
 
@@ -1095,6 +1122,48 @@ describe('StockMapPage', () => {
     expect(q('stock-map-not-saved')).toBeNull();
   });
 
+  /**
+   * Findings E and H (§ 7, 2026-09-22): the board framed whatever was saved, so every save moved everything on it,
+   * and an empty floor was a sheet with no edge. A measured floor is framed by its own size and outlined.
+   */
+  it('frames a measured floor by its own size, draws its edge, and does not move when a rack is saved', async () => {
+    floors.set([upstairs, { ...ground, widthMetres: '30.000', depthMetres: '20.000' }]);
+    drawings.set([]);
+    structures.set([]);
+    await settle();
+
+    const outline = q('stock-floor-outline') as unknown as SVGRectElement;
+    expect([outline.getAttribute('width'), outline.getAttribute('height')]).toEqual(['30', '20']);
+    expect(q('stock-floor-size')?.textContent).toContain('30 × 20 m');
+    const before = q('stock-map-svg')!.getAttribute('viewBox');
+    expect(before).toBe('-1 -1 32 22');
+
+    drawings.set([drawn]);
+    await settle();
+
+    expect(q('stock-map-svg')!.getAttribute('viewBox')).toBe(before);
+  });
+
+  it('still shows what was drawn beyond a floor’s edge', async () => {
+    floors.set([upstairs, { ...ground, widthMetres: '10.000', depthMetres: '10.000' }]);
+    structures.set([{ ...wall, x: '40.000' }]);
+    await settle();
+
+    const [x, , width] = q('stock-map-svg')!.getAttribute('viewBox')!.split(' ').map(Number);
+    expect(x! + width!).toBeGreaterThan(46.9);
+  });
+
+  it('frames a floor never measured by everything on it, the building included', async () => {
+    drawings.set([]);
+    structures.set([{ ...wall, x: '40.000' }]);
+    await settle();
+
+    expect(q('stock-floor-outline')).toBeNull();
+    const [x, , width] = q('stock-map-svg')!.getAttribute('viewBox')!.split(' ').map(Number);
+    expect(x!).toBeLessThanOrEqual(40);
+    expect(x! + width!).toBeGreaterThan(46.9);
+  });
+
   /** Finding G (§ 7, 2026-09-22): a wall kept its handles while a rack was worked on, two selections at once. */
   it('holds one selection across both layers', async () => {
     const stockHandles = () =>
@@ -1106,13 +1175,13 @@ describe('StockMapPage', () => {
       new MouseEvent('click', { bubbles: true }),
     );
     await settle();
-    expect(structureHandles()).toBe(8);
+    expect(structureHandles()).toBe(6);
 
     firstRect().dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await settle();
     expect(structureHandles()).toBe(0);
     expect(q('stock-structure-form')).toBeNull();
-    expect(stockHandles()).toBe(8);
+    expect(stockHandles()).toBe(6);
 
     (q('stock-structure-wall') as unknown as SVGRectElement).dispatchEvent(
       new MouseEvent('click', { bubbles: true }),
@@ -1221,7 +1290,11 @@ describe('StockMapPage', () => {
     expect(q('stock-drawing-form')).toBeNull();
   });
 
-  it('draws the same eight handles around the piece of building being worked on', async () => {
+  /**
+   * The same handles as a rack's, minus the middle ones of a side too short to keep its middle free: a 0,20 m wall
+   * was all handle once selected, so it could be resized but no longer taken hold of (handlesThatFit).
+   */
+  it('draws the rack’s handles around the piece of building being worked on, the corners and its ends', async () => {
     expect(
       fixture.nativeElement.querySelectorAll('[data-testid^="stock-structure-handle-"]'),
     ).toHaveLength(0);
@@ -1231,9 +1304,13 @@ describe('StockMapPage', () => {
     );
     await settle();
 
-    expect(
-      fixture.nativeElement.querySelectorAll('[data-testid^="stock-structure-handle-"]'),
-    ).toHaveLength(8);
+    const handles = [
+      ...fixture.nativeElement.querySelectorAll('[data-testid^="stock-structure-handle-"]'),
+    ].map((one) => (one as Element).getAttribute('data-testid'));
+    expect(handles).toHaveLength(6);
+    // The ends of the wall keep theirs: that is how a wall is lengthened.
+    expect(handles).toContain('stock-structure-handle-0:0.5');
+    expect(handles).toContain('stock-structure-handle-1:0.5');
   });
 
   /** The one place on this page where no permission was asked for: anyone reading could open a form moving a wall. */

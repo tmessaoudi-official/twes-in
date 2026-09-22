@@ -70,7 +70,7 @@ final class RepeatStockDrawingTest extends TestCase
         $this->locations = new ManageStockLocations(new InMemoryStockLocations(), new InMemoryStockMovements(), $establishments, $audit, $clock, $transactions);
         $this->map = new DrawStockMap($this->venue, $this->locations, $transactions);
         $this->actor = Uuid::v7();
-        $this->ground = $this->map->addFloor($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, $this->actor)->getId();
+        $this->ground = $this->map->addFloor($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, '24', '15', $this->actor)->getId();
         $this->rack = $this->locations->create($this->company, $this->establishment->getId(), null, StockLocationKind::Rack, 'R1', 'Rayonnage 1', $this->actor);
     }
 

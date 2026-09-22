@@ -2165,6 +2165,23 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   enregistré" while a save is owed. Forms in that column stack their section titles above the fields
   (`.twes-form-stacked`), leaving every other form's layout untouched.
 
+- [2026-09-22 22:10] AGREED: a floor has a width × depth in metres of its own, asked when it is added and on every
+  edit (developer ruling, findings E and H). The board frames the floor, not whatever is saved on it: an outline and a
+  one-metre grid (five metres beyond 60 m) show where the floor ends, a save no longer reframes the board, and a wall
+  outside the racks stays on it. The floors drawn before this have no size and keep the old framing until someone
+  measures them; the database keeps both sides null or both positive. Finding K (the left edge moving) is retracted:
+  measured, it was E's reframing and no defect of its own. And a side shorter than four handle radii carries no middle
+  handle (`handlesThatFit`): on a 0,20 m wall the handles covered the whole piece, so it could be resized but no longer
+  grabbed or hovered.
+
+- [2026-09-22 22:20] NOTED (not a ruling — where the map walk is picked up from): the walkthrough's findings A, B,
+  E, F, G, H and J are built and pushed with this entry; K was retracted. **Parked, in the ruled order, when the
+  developer moved to the barcode**: D (the Rayonnage/Zone tool creates its location with the drawing — inline on
+  `POST …/drawings`, parent the zone the rack is drawn inside, else the establishment's default; 409 on a taken
+  code), C (a door or dock door follows the pointer and snaps to the nearest wall, turned with it, a visible swing
+  arc; a post goes anywhere), then a minimal I (the rack's card lists what it holds). The dev database still carries
+  walkthrough data in Carthage Conseil RC (a RAYON-A drawing, one wall, its floor measured 24 × 15).
+
 ## 8. Status
 
 <!-- progress-block v1 -->

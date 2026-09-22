@@ -38,6 +38,8 @@ const floor: StockFloorRow = {
   establishmentId: 'e1',
   name: 'Rez-de-chaussée',
   level: 0,
+  widthMetres: '24.000',
+  depthMetres: '15.500',
   imageFileId: null,
   imageMetresWide: null,
   imageOpacity: 35,
@@ -97,19 +99,45 @@ describe('floorForm', () => {
     expect(floorValues(null, OPTIONS)['establishmentId']).toBe('');
   });
 
-  it('reads a floor back into its own form', () => {
+  /** Findings E and H (docs/SPEC.md § 7, 2026-09-22): the floor is asked its size, and both sides are required. */
+  it('asks the floor’s width and depth in metres', () => {
+    for (const id of ['widthMetres', 'depthMetres']) {
+      const field = fieldOf(floorForm(OPTIONS, null), id);
+      expect(field.kind).toBe('decimal');
+      expect(field.required).toBe(true);
+    }
+  });
+
+  it('reads a floor back into its own form, and a floor never measured into empty sides', () => {
     expect(floorValues(floor, OPTIONS)).toEqual({
       establishmentId: 'e1',
       name: 'Rez-de-chaussée',
       level: 0,
+      widthMetres: '24.000',
+      depthMetres: '15.500',
     });
+    const unmeasured = floorValues({ ...floor, widthMetres: null, depthMetres: null }, OPTIONS);
+    expect([unmeasured['widthMetres'], unmeasured['depthMetres']]).toEqual(['', '']);
   });
 
-  it('keeps the plan image a floor already has, which this form does not carry', () => {
-    expect(floorInput({ establishmentId: 'e1', name: 'Étage 1', level: '1' }, floor)).toEqual({
+  it('sends the size, and keeps the plan image a floor already has, which this form does not carry', () => {
+    expect(
+      floorInput(
+        {
+          establishmentId: 'e1',
+          name: 'Étage 1',
+          level: '1',
+          widthMetres: '30',
+          depthMetres: ' 12.5 ',
+        },
+        floor,
+      ),
+    ).toEqual({
       establishmentId: 'e1',
       name: 'Étage 1',
       level: 1,
+      widthMetres: '30',
+      depthMetres: '12.5',
       imageFileId: null,
       imageMetresWide: null,
       imageOpacity: 35,

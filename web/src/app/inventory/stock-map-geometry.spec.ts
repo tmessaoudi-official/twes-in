@@ -6,6 +6,7 @@ import {
   handleAt,
   movedTo,
   PLAN_HANDLES,
+  handlesThatFit,
   planBounds,
   planFrame,
   planViewBox,
@@ -246,6 +247,29 @@ describe('movedTo', () => {
     const moved = movedTo(rect({ x: 1, y: 1 }), { x: 2, y: 2 }, { x: -6, y: -6 });
 
     expect(moved).toMatchObject({ x: 0, y: 0 });
+  });
+});
+
+/**
+ * A handle is drawn at a fixed size on the screen, so on a large floor a thin rack's edge handles covered its whole
+ * middle and it could no longer be taken hold of to move it (found by the e2e on 2026-09-22, once the board framed
+ * the floor's own size). A side too short to leave its middle free loses its middle handles; the corners stay.
+ */
+describe('handlesThatFit', () => {
+  it('keeps all eight handles where the rectangle leaves its middle free', () => {
+    expect(handlesThatFit(rect({ width: 4, depth: 2 }), 0.2)).toHaveLength(8);
+  });
+
+  it('drops the middle handles of the long sides of a thin rack, keeping the corners and the ends', () => {
+    const kept = handlesThatFit(rect({ width: 3.9, depth: 0.6 }), 0.29);
+
+    expect(kept).toHaveLength(6);
+    expect(kept.some((handle) => handle.hx === 0.5)).toBe(false);
+    expect(kept.filter((handle) => handle.hx !== 0.5 && handle.hy !== 0.5)).toHaveLength(4);
+  });
+
+  it('keeps only the corners on a rectangle short both ways', () => {
+    expect(handlesThatFit(rect({ width: 0.4, depth: 0.4 }), 0.29)).toHaveLength(4);
   });
 });
 

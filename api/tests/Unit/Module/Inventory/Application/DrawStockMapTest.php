@@ -26,6 +26,7 @@ use App\Tests\Support\InMemoryVenueAreas;
 use App\Tests\Support\InMemoryVenueSpots;
 use App\Tests\Support\InMemoryVenueStructures;
 use App\Venue\Application\ArrangeVenue;
+use App\Venue\Domain\InvalidVenue;
 use App\Venue\Domain\PlanRect;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -46,6 +47,7 @@ final class DrawStockMapTest extends TestCase
     private ManageStockLocations $locations;
     private DrawStockMap $map;
     private Uuid $actor;
+    private InMemoryAuditTrail $audit;
     private StockLocation $rack;
     private StockLocation $bay;
 
@@ -53,7 +55,7 @@ final class DrawStockMapTest extends TestCase
     {
         $clock = $this->clock = new MockClock('2026-09-21 09:00:00');
         $transactions = new FakeTransactions();
-        $audit = new InMemoryAuditTrail($transactions);
+        $audit = $this->audit = new InMemoryAuditTrail($transactions);
         $this->company = new Company('Quincaillerie Ben Ali', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->establishment = Establishment::create($this->company, '000', 'Bab Saadoun', true, $clock->now());
         $establishments = $this->establishments = new InMemoryEstablishments();
@@ -134,11 +136,41 @@ final class DrawStockMapTest extends TestCase
         self::assertSame([], $this->spots->ofArea($ground));
     }
 
+    /** A floor is added with its size (docs/SPEC.md § 7, 2026-09-22, findings E and H), in the same unit of work. */
+    public function testAFloorIsAddedWithItsOwnSize(): void
+    {
+        $floor = $this->map->addFloor($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, '24', '15.5', $this->actor);
+
+        self::assertSame(['24.000', '15.500'], [$floor->getWidthMetres(), $floor->getDepthMetres()]);
+        self::assertContains(ArrangeVenue::AREA_CREATED, array_map(static fn ($entry) => $entry->action, $this->audit->entries));
+    }
+
+    public function testRevisingAFloorChangesItsSize(): void
+    {
+        $ground = $this->floor('Rez-de-chaussée', 0);
+        $before = \count($this->audit->entries);
+
+        $floor = $this->map->reviseFloor($this->company, $ground, 'Rez-de-chaussée', 0, '30', '15', null, null, 35, $this->actor);
+
+        self::assertSame(['30.000', '15.000'], [$floor->getWidthMetres(), $floor->getDepthMetres()]);
+        self::assertSame([ArrangeVenue::AREA_REVISED], array_map(static fn ($entry) => $entry->action, \array_slice($this->audit->entries, $before)));
+    }
+
+    public function testAFloorWithoutSurfaceIsRefusedOnTheSideAtFault(): void
+    {
+        try {
+            $this->map->addFloor($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, '24', '0', $this->actor);
+            self::fail('A floor of no depth was added.');
+        } catch (InvalidVenue $refused) {
+            self::assertSame('depthMetres', $refused->field);
+        }
+    }
+
     public function testALocationIsDrawnOnAFloorOfItsOwnEstablishment(): void
     {
         $other = Establishment::create($this->company, '001', 'Dépôt de Sfax', false, $this->clock->now());
         $this->establishments->save($other);
-        $elsewhere = $this->map->addFloor($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, $this->actor)->getId();
+        $elsewhere = $this->map->addFloor($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, '24', '15', $this->actor)->getId();
         $foreign = $this->locations->create($this->company, $other->getId(), null, StockLocationKind::Rack, 'R9', 'Rayonnage lointain', $this->actor);
 
         $this->expectException(InvalidStockLocation::class);
@@ -188,7 +220,7 @@ final class DrawStockMapTest extends TestCase
 
     private function floor(string $name, int $level): Uuid
     {
-        return $this->map->addFloor($this->company, $this->establishment->getId(), $name, $level, $this->actor)->getId();
+        return $this->map->addFloor($this->company, $this->establishment->getId(), $name, $level, '24', '15', $this->actor)->getId();
     }
 
     private function rect(string $x): PlanRect

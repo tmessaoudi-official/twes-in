@@ -499,6 +499,8 @@ function toFloor(raw: StockFloorStockFloorRead): StockFloorRow {
     establishmentId: raw.establishmentId ?? '',
     name: raw.name ?? '',
     level: raw.level ?? 0,
+    widthMetres: raw.widthMetres ?? null,
+    depthMetres: raw.depthMetres ?? null,
     imageFileId: raw.imageFileId ?? null,
     imageMetresWide: raw.imageMetresWide ?? null,
     imageOpacity: raw.imageOpacity ?? DEFAULT_PLAN_OPACITY,

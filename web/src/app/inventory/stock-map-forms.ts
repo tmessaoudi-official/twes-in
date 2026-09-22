@@ -70,6 +70,20 @@ export function floorForm(options: StockOptions, editing: StockFloorRow | null):
             required: true,
             hint: 'inventory.plan.level_hint',
           },
+          // The floor's own size: the board frames and outlines it, so it no longer jumps to fit whatever was last
+          // saved, and an empty floor has an edge (docs/SPEC.md § 7, 2026-09-22, findings E and H).
+          {
+            id: 'widthMetres',
+            label: `${FLOOR_FIELDS}.widthMetres`,
+            kind: 'decimal',
+            required: true,
+          },
+          {
+            id: 'depthMetres',
+            label: `${FLOOR_FIELDS}.depthMetres`,
+            kind: 'decimal',
+            required: true,
+          },
         ],
       },
     ],
@@ -83,6 +97,8 @@ export function floorValues(row: StockFloorRow | null, options: StockOptions): F
     establishmentId: row?.establishmentId ?? only,
     name: row?.name ?? '',
     level: row?.level ?? 0,
+    widthMetres: row?.widthMetres ?? '',
+    depthMetres: row?.depthMetres ?? '',
   };
 }
 
@@ -95,6 +111,8 @@ export function floorInput(values: FormValues, editing: StockFloorRow | null): S
     establishmentId: text(values['establishmentId']),
     name: text(values['name']),
     level: Math.trunc(Number(values['level'] ?? 0)) || 0,
+    widthMetres: text(values['widthMetres']),
+    depthMetres: text(values['depthMetres']),
     imageFileId: editing?.imageFileId ?? null,
     imageMetresWide: editing?.imageMetresWide ?? null,
     imageOpacity: editing?.imageOpacity ?? 35,

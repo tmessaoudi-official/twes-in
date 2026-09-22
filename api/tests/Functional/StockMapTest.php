@@ -40,16 +40,16 @@ final class StockMapTest extends ApiTestCase
         $this->signedIn(['stock.read', 'stock.write']);
         $this->locations();
 
-        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0]);
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $ground = $this->stringAt($this->json(), 'id');
         self::assertSame(['Rez-de-chaussée', 0, null, 0], [$this->json()['name'], $this->json()['level'], $this->json()['imageFileId'], $this->json()['drawingCount']]);
 
         // One floor per level: a second plan of the same storey is two truths about one place.
-        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Doublon', 'level' => 0]);
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Doublon', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15']);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
 
-        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Étage 1', 'level' => 1]);
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Étage 1', 'level' => 1, 'widthMetres' => '24', 'depthMetres' => '15']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $this->getJson($this->path('stock-floors'));
         self::assertSame(['Rez-de-chaussée', 'Étage 1'], array_column($this->jsonList(), 'name'), 'from the ground up');
@@ -83,20 +83,44 @@ final class StockMapTest extends ApiTestCase
         self::assertContains('R1', array_column($this->jsonList(), 'code'));
     }
 
+    /** A floor is asked its size (docs/SPEC.md § 7, 2026-09-22, findings E and H) and answers with it. */
+    public function testAFloorIsAddedWithItsSizeAndRefusedWithoutIt(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('widthMetres', (string) $this->client->getResponse()->getContent());
+
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '0']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('depthMetres', (string) $this->client->getResponse()->getContent());
+
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15.5']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(['24.000', '15.500'], [$this->json()['widthMetres'], $this->json()['depthMetres']]);
+        $ground = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path('stock-floors', $ground), ['name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '30', 'depthMetres' => '15.5', 'imageFileId' => null, 'imageMetresWide' => null, 'imageOpacity' => 35]);
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->path('stock-floors'));
+        self::assertSame('30.000', $this->jsonList()[0]['widthMetres']);
+    }
+
     public function testAPlanBehindTheDrawingIsPlacedWithItsWidthInMetres(): void
     {
         $this->signedIn(['stock.read', 'stock.write']);
-        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0]);
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15']);
         $ground = $this->stringAt($this->json(), 'id');
         $file = Uuid::v7()->toRfc4122();
 
-        $this->sendJson('PUT', $this->path('stock-floors', $ground), ['name' => 'Rez-de-chaussée', 'level' => 0, 'imageFileId' => $file, 'imageMetresWide' => '24', 'imageOpacity' => 40]);
+        $this->sendJson('PUT', $this->path('stock-floors', $ground), ['name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15', 'imageFileId' => $file, 'imageMetresWide' => '24', 'imageOpacity' => 40]);
 
         self::assertResponseIsSuccessful();
         self::assertSame([$file, '24.000', 40], [$this->json()['imageFileId'], $this->json()['imageMetresWide'], $this->json()['imageOpacity']]);
 
         // An image with no scale cannot sit under rectangles measured in metres, so the two travel together.
-        $this->sendJson('PUT', $this->path('stock-floors', $ground), ['name' => 'Rez-de-chaussée', 'level' => 0, 'imageFileId' => $file, 'imageMetresWide' => null, 'imageOpacity' => 40]);
+        $this->sendJson('PUT', $this->path('stock-floors', $ground), ['name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15', 'imageFileId' => $file, 'imageMetresWide' => null, 'imageOpacity' => 40]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('imageMetresWide', (string) $this->client->getResponse()->getContent());
     }
@@ -105,7 +129,7 @@ final class StockMapTest extends ApiTestCase
     {
         $this->signedIn(['stock.read', 'stock.write']);
         $this->locations();
-        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0]);
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15']);
         $ground = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path('stock-floors', $ground).'/drawings', $this->drawing(['locationId' => $this->rackId]));
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -123,7 +147,7 @@ final class StockMapTest extends ApiTestCase
     {
         $this->signedIn(['stock.read', 'stock.write']);
         $this->locations();
-        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0]);
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15']);
         $ground = $this->stringAt($this->json(), 'id');
 
         foreach ([
@@ -144,7 +168,7 @@ final class StockMapTest extends ApiTestCase
 
         // Not 403: a permission the caller does not hold answers as a company they are not in does, so what a
         // company draws cannot be probed for from outside it.
-        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0]);
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15']);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 
         $this->getJson($this->path('stock-floors'));
@@ -167,7 +191,7 @@ final class StockMapTest extends ApiTestCase
     {
         $this->signedIn(['stock.read', 'stock.write']);
         $this->locations();
-        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0]);
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15']);
         $ground = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path('stock-floors', $ground).'/drawings', $this->drawing(['locationId' => $this->rackId]));
         $drawing = $this->stringAt($this->json(), 'id');
@@ -213,7 +237,7 @@ final class StockMapTest extends ApiTestCase
     {
         $this->signedIn(['stock.read', 'stock.write']);
         $this->locations();
-        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0]);
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15']);
         $ground = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path('stock-floors', $ground).'/drawings', $this->drawing(['locationId' => $this->rackId]));
         $drawing = $this->stringAt($this->json(), 'id');
@@ -340,7 +364,7 @@ final class StockMapTest extends ApiTestCase
     /** A floor to build on, which every structure case needs and none of them is about. */
     private function floor(): string
     {
-        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0]);
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0, 'widthMetres' => '24', 'depthMetres' => '15']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 
         return $this->stringAt($this->json(), 'id');

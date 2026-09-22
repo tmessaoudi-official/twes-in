@@ -88,23 +88,29 @@ final readonly class DrawStockMap
      * @throws VenueLevelTaken
      * @throws InvalidVenue
      */
-    public function addFloor(Company $company, Uuid $establishmentId, string $name, int $level, ?Uuid $actorUserId): VenueArea
+    public function addFloor(Company $company, Uuid $establishmentId, string $name, int $level, string $widthMetres, string $depthMetres, ?Uuid $actorUserId): VenueArea
     {
-        return $this->venue->addArea($company, $establishmentId, $name, $level, $actorUserId);
+        // Asked when the floor is added (docs/SPEC.md § 7, 2026-09-22): one unit of work, so a refused size adds nothing.
+        return $this->transactions->run(function () use ($company, $establishmentId, $name, $level, $widthMetres, $depthMetres, $actorUserId): VenueArea {
+            $floor = $this->venue->addArea($company, $establishmentId, $name, $level, $actorUserId);
+
+            return $this->venue->measureArea($company, $floor->getId(), $widthMetres, $depthMetres, $actorUserId);
+        });
     }
 
     /**
-     * A floor's name, its level and the plan behind it are one form on one screen, so they are one unit of work here:
+     * A floor's name, its level, its size and the plan behind it are one form on one screen, so they are one unit of work here:
      * a save that renamed the floor and then refused its scale would leave half of what was filled in.
      *
      * @throws VenueAreaNotFound
      * @throws VenueLevelTaken
      * @throws InvalidVenue
      */
-    public function reviseFloor(Company $company, Uuid $floorId, string $name, int $level, ?Uuid $imageFileId, ?string $imageMetresWide, int $imageOpacity, ?Uuid $actorUserId): VenueArea
+    public function reviseFloor(Company $company, Uuid $floorId, string $name, int $level, string $widthMetres, string $depthMetres, ?Uuid $imageFileId, ?string $imageMetresWide, int $imageOpacity, ?Uuid $actorUserId): VenueArea
     {
-        return $this->transactions->run(function () use ($company, $floorId, $name, $level, $imageFileId, $imageMetresWide, $imageOpacity, $actorUserId): VenueArea {
+        return $this->transactions->run(function () use ($company, $floorId, $name, $level, $widthMetres, $depthMetres, $imageFileId, $imageMetresWide, $imageOpacity, $actorUserId): VenueArea {
             $this->venue->reviseArea($company, $floorId, $name, $level, $actorUserId);
+            $this->venue->measureArea($company, $floorId, $widthMetres, $depthMetres, $actorUserId);
 
             return $this->venue->showPlan($company, $floorId, $imageFileId, $imageMetresWide, $imageOpacity, $actorUserId);
         });

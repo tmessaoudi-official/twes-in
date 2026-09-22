@@ -67,6 +67,16 @@ class VenueArea implements CompanyOwned
     #[ORM\Column(type: Types::DECIMAL, precision: 9, scale: PlanRect::SCALE, nullable: true)]
     private ?string $imageMetresWide = null;
 
+    /**
+     * The floor's own size in metres, which the board frames and outlines. Null on a floor drawn before it was asked
+     * (docs/SPEC.md § 7, 2026-09-22, findings E and H): the board then frames what is drawn on it.
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 9, scale: PlanRect::SCALE, nullable: true)]
+    private ?string $widthMetres = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 9, scale: PlanRect::SCALE, nullable: true)]
+    private ?string $depthMetres = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -183,6 +193,48 @@ class VenueArea implements CompanyOwned
     public function getImageMetresWide(): ?string
     {
         return $this->imageMetresWide;
+    }
+
+    public function getWidthMetres(): ?string
+    {
+        return $this->widthMetres;
+    }
+
+    public function getDepthMetres(): ?string
+    {
+        return $this->depthMetres;
+    }
+
+    /**
+     * The floor's width and depth, set together: a floor with one side is not a surface. Measured by the rule every
+     * rectangle on it follows — more than zero, under the limit, at most three decimals — and refused on the side at
+     * fault.
+     *
+     * @return bool whether anything changed
+     *
+     * @throws InvalidVenue
+     */
+    public function measure(string $width, string $depth, \DateTimeImmutable $now): bool
+    {
+        try {
+            $size = new PlanRect('0', '0', $width, '0.001', 0, '0');
+            $width = $size->width;
+        } catch (InvalidVenue $refused) {
+            throw new InvalidVenue('widthMetres', $refused->getMessage());
+        }
+        try {
+            $depth = new PlanRect('0', '0', '0.001', $depth, 0, '0')->depth;
+        } catch (InvalidVenue $refused) {
+            throw new InvalidVenue('depthMetres', $refused->getMessage());
+        }
+        if ([$width, $depth] === [$this->widthMetres, $this->depthMetres]) {
+            return false;
+        }
+        $this->widthMetres = $width;
+        $this->depthMetres = $depth;
+        $this->updatedAt = $now;
+
+        return true;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

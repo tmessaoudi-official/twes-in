@@ -1480,7 +1480,9 @@
       "floor_fields": {
         "establishmentId": "Establishment",
         "name": "Floor name",
-        "level": "Level"
+        "level": "Level",
+        "widthMetres": "Floor width (m)",
+        "depthMetres": "Floor depth (m)"
       },
       "drawing_fields": {
         "locationId": "Location",

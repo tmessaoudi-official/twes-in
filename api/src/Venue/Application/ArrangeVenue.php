@@ -126,6 +126,25 @@ final readonly class ArrangeVenue
     }
 
     /**
+     * The floor's own width and depth in metres, which the board frames and outlines (docs/SPEC.md § 7, 2026-09-22).
+     *
+     * @throws VenueAreaNotFound
+     * @throws InvalidVenue
+     */
+    public function measureArea(Company $company, Uuid $areaId, string $widthMetres, string $depthMetres, ?Uuid $actorUserId): VenueArea
+    {
+        return $this->transactions->run(function () use ($company, $areaId, $widthMetres, $depthMetres, $actorUserId): VenueArea {
+            $area = $this->area($company, $areaId);
+            if ($area->measure($widthMetres, $depthMetres, $this->clock->now())) {
+                $this->areas->save($area);
+                $this->record(self::AREA_TYPE, $area->getId(), self::AREA_REVISED, $actorUserId, $company);
+            }
+
+            return $area;
+        });
+    }
+
+    /**
      * The plan behind the drawing, its scale and how much of it shows; a null file takes it away.
      *
      * @throws VenueAreaNotFound

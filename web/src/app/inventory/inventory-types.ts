@@ -177,6 +177,12 @@ export interface StockFloorRow {
   name: string;
   /** Which storey, the ground being 0; it orders the tabs. */
   level: number;
+  /**
+   * The floor's own size in metres, which the board frames and outlines (docs/SPEC.md § 7, 2026-09-22). Null on a
+   * floor drawn before it was asked; the board then frames what is drawn on it.
+   */
+  widthMetres: string | null;
+  depthMetres: string | null;
   imageFileId: string | null;
   /** What the whole image spans on the ground, in metres; without it the image cannot be placed. */
   imageMetresWide: string | null;
@@ -187,7 +193,11 @@ export interface StockFloorRow {
 export type StockFloorInput = Pick<
   StockFloorRow,
   'establishmentId' | 'name' | 'level' | 'imageFileId' | 'imageMetresWide' | 'imageOpacity'
->;
+> & {
+  /** Asked on every write: a floor is saved with its size. */
+  widthMetres: string;
+  depthMetres: string;
+};
 
 /**
  * One rectangle on a floor and the location it is drawn for. The measurements are decimal strings as the API holds

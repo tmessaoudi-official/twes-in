@@ -88,6 +88,18 @@ final class StockFloorResource
     #[Groups([self::READ, self::WRITE])]
     public int $level = 0;
 
+    /**
+     * The floor's own size in metres, asked when it is added and on every revision (docs/SPEC.md § 7, 2026-09-22):
+     * the board frames and outlines it. Null only on a floor drawn before it was asked.
+     */
+    #[Assert\NotBlank(groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $widthMetres = null;
+
+    #[Assert\NotBlank(groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $depthMetres = null;
+
     /** The plan shown behind the drawing, or none. */
     #[Assert\Uuid(groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
@@ -113,6 +125,8 @@ final class StockFloorResource
         $floor->establishmentId = $area->getEstablishment()->getId()->toRfc4122();
         $floor->name = $area->getName();
         $floor->level = $area->getLevel();
+        $floor->widthMetres = $area->getWidthMetres();
+        $floor->depthMetres = $area->getDepthMetres();
         $floor->imageFileId = $area->getImageFileId()?->toRfc4122();
         $floor->imageMetresWide = $area->getImageMetresWide();
         $floor->imageOpacity = $area->getImageOpacity();

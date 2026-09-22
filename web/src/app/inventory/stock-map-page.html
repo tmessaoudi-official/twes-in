@@ -640,6 +640,14 @@
               >
                 {{ 'inventory.plan.fit' | translate }}
               </button>
+              @if (floorSize(); as size) {
+                <span
+                  class="text-xs tabular-nums text-on-surface-variant"
+                  data-testid="stock-floor-size"
+                >
+                  {{ size.width }} × {{ size.depth }} m
+                </span>
+              }
               @if (owesSave()) {
                 <span
                   role="status"
@@ -670,6 +678,44 @@
               (document:pointercancel)="drops($event)"
               (document:keydown.escape)="abandon()"
             >
+              <!--
+                The floor itself, drawn first and under everything: its edge, and a grid a person can count metres on.
+                Pointer-transparent on purpose — a press on bare floor must reach the sheet, which is what arms a trace
+                and moves the view; a rectangle here catching it would silently end both (findings E and H).
+              -->
+              @if (floorSize(); as size) {
+                <g class="pointer-events-none" data-testid="stock-floor-layer">
+                  <rect
+                    x="0"
+                    y="0"
+                    [attr.width]="size.width"
+                    [attr.height]="size.depth"
+                    [attr.stroke-width]="handleRadius() / 4"
+                    class="fill-surface stroke-outline"
+                    data-testid="stock-floor-outline"
+                  />
+                  @for (x of gridLines().xs; track x) {
+                    <line
+                      [attr.x1]="x"
+                      y1="0"
+                      [attr.x2]="x"
+                      [attr.y2]="size.depth"
+                      [attr.stroke-width]="handleRadius() / 10"
+                      class="stroke-outline-variant"
+                    />
+                  }
+                  @for (y of gridLines().ys; track y) {
+                    <line
+                      x1="0"
+                      [attr.y1]="y"
+                      [attr.x2]="size.width"
+                      [attr.y2]="y"
+                      [attr.stroke-width]="handleRadius() / 10"
+                      class="stroke-outline-variant"
+                    />
+                  }
+                </g>
+              }
               <!--
                 The repeat's preview, dotted because nothing is created yet, and drawn UNDER what is already there
                 so a copy landing on an existing rack does not hide it.

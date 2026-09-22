@@ -80,6 +80,21 @@ export const PLAN_HANDLES: readonly PlanHandle[] = ([0, 0.5, 1] as const).flatMa
 );
 
 /**
+ * The handles a rectangle can carry without its middle being covered by them. A handle keeps one size on the screen,
+ * so a side of four radii or less loses its middle handle: a 0,6 m rack on a 30 m floor could otherwise not be taken
+ * hold of at all. The corners always stay, and the form keeps every measurement reachable (docs/SPEC.md § 7,
+ * 2026-09-22).
+ */
+export function handlesThatFit(rect: PlanRectangle, radius: number): PlanHandle[] {
+  const roomy = (length: number): boolean => length > radius * 4;
+
+  return PLAN_HANDLES.filter(
+    (handle) =>
+      (handle.hx !== 0.5 || roomy(rect.depth)) && (handle.hy !== 0.5 || roomy(rect.width)),
+  );
+}
+
+/**
  * A measurement on the grid. Quarters are exact in binary, so this answers a clean 2.25 rather than a floating-point
  * neighbour a person would then see written out in a field.
  */

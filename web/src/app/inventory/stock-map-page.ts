@@ -55,9 +55,9 @@ import {
   centredIn,
   fitView,
   handleAt,
+  handlesThatFit,
   movedTo,
   pannedBy,
-  PLAN_HANDLES,
   PLAN_ZOOM_MIN,
   PLAN_ZOOM_STEP,
   planFrame,
@@ -84,6 +84,9 @@ import {
 } from '../shared/settings/settings-registry';
 import { LABEL_FONT, STRUCTURE_LABEL_FONT, fitLabel, planLabel } from './stock-map-labels';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
+
+/** Above this many metres a floor's grid is drawn every five metres rather than every one. */
+const GRID_FINE_LIMIT = 60;
 
 /** How much floor is left around what is drawn, in metres, so nothing touches the frame. */
 const PLAN_PADDING = 1;
@@ -283,9 +286,48 @@ export class StockMapPage implements OnInit {
    * somewhere else the moment it was pressed [measured in CI, 2026-09-21: the frame went from 13,9 m wide to 5,9 m
    * between one step and the next]. The working margin is simply always there instead.
    */
-  protected readonly frame = computed<PlanFrame>(() =>
-    planFrame(planRectangles(this.facade.drawings()), PLAN_PADDING + EDIT_ROOM),
-  );
+  /** The floor's own size in metres, when it was measured (docs/SPEC.md § 7, 2026-09-22, findings E and H). */
+  protected readonly floorSize = computed<{ width: number; depth: number } | null>(() => {
+    const floor = this.floor();
+    const width = Number(floor?.widthMetres ?? Number.NaN);
+    const depth = Number(floor?.depthMetres ?? Number.NaN);
+
+    return width > 0 && depth > 0 ? { width, depth } : null;
+  });
+
+  /**
+   * The box the board frames. A measured floor is framed by itself, so saving a rack no longer moves everything on
+   * the board; anything drawn beyond its edge still widens it, since a plan must never hide what is on it. A floor
+   * never measured is framed by everything drawn on it, the building included — a wall outside the racks' extent
+   * used to fall off the board.
+   */
+  protected readonly frame = computed<PlanFrame>(() => {
+    const drawn = [
+      ...planRectangles(this.facade.drawings()),
+      ...structureRectangles(this.facade.structures()),
+    ];
+    const size = this.floorSize();
+    if (size === null) return planFrame(drawn, PLAN_PADDING + EDIT_ROOM);
+
+    return planFrame(
+      [...drawn, { x: 0, y: 0, width: size.width, depth: size.depth, rotation: 0, height: 0 }],
+      PLAN_PADDING,
+    );
+  });
+
+  /** A metre grid over a measured floor, five metres on a large one so the lines stay lines and not a tint. */
+  protected readonly gridLines = computed(() => {
+    const size = this.floorSize();
+    if (size === null) return { step: 0, xs: [] as number[], ys: [] as number[] };
+    const step = Math.max(size.width, size.depth) > GRID_FINE_LIMIT ? 5 : 1;
+    const along = (length: number): number[] =>
+      Array.from(
+        { length: Math.max(0, Math.ceil(length / step) - 1) },
+        (_, index) => (index + 1) * step,
+      );
+
+    return { step, xs: along(size.width), ys: along(size.depth) };
+  });
 
   /**
    * What part of the floor is being looked at: nothing while the whole of it is shown, which is where the plan
@@ -517,7 +559,7 @@ export class StockMapPage implements OnInit {
     const shape = this.shapes().find((one) => one.drawing.id === this.selectedId());
     if (shape === undefined || !this.mayDraw()) return [];
 
-    return PLAN_HANDLES.map((handle) => {
+    return handlesThatFit(shape.rect, this.handleRadius()).map((handle) => {
       const at = handleAt(shape.rect, handle);
 
       return { handle, x: at.x, y: at.y, key: `${handle.hx}:${handle.hy}` };
@@ -529,7 +571,7 @@ export class StockMapPage implements OnInit {
     const shape = this.builtShapes().find((one) => one.piece.id === this.selectedStructureId());
     if (shape === undefined || !this.mayDraw()) return [];
 
-    return PLAN_HANDLES.map((handle) => {
+    return handlesThatFit(shape.rect, this.handleRadius()).map((handle) => {
       const at = handleAt(shape.rect, handle);
 
       return { handle, x: at.x, y: at.y, key: `${handle.hx}:${handle.hy}` };

@@ -44,6 +44,39 @@ final class VenueSpotTest extends TestCase
         self::assertNull($ground->getImageFileId());
     }
 
+    /**
+     * A floor has a size of its own (docs/SPEC.md § 7, 2026-09-22, findings E and H): without one the board framed
+     * whatever was saved, jumped on every save, and showed an empty floor as a blank sheet.
+     */
+    public function testAFloorIsMeasuredInMetresAndResavingTheSameSizeIsNoChange(): void
+    {
+        $ground = VenueArea::create($this->establishment, 'Rez-de-chaussée', 0, $this->now);
+        self::assertNull($ground->getWidthMetres());
+        self::assertNull($ground->getDepthMetres());
+
+        self::assertTrue($ground->measure('24', '15.5', $this->now));
+        self::assertSame('24.000', $ground->getWidthMetres());
+        self::assertSame('15.500', $ground->getDepthMetres());
+
+        self::assertFalse($ground->measure('24.000', '15.50', $this->now));
+        self::assertTrue($ground->measure('24', '16', $this->now));
+    }
+
+    public function testAFloorWithoutSurfaceOrBeyondTheLimitIsRefusedOnTheSideAtFault(): void
+    {
+        $ground = VenueArea::create($this->establishment, 'Rez-de-chaussée', 0, $this->now);
+
+        foreach ([['0', '10', 'widthMetres'], ['10', '0', 'depthMetres'], ['-3', '10', 'widthMetres'], ['10', PlanRect::LIMIT.'1', 'depthMetres'], ['vingt', '10', 'widthMetres']] as [$width, $depth, $field]) {
+            try {
+                $ground->measure($width, $depth, $this->now);
+                self::fail(\sprintf('%s × %s was accepted.', $width, $depth));
+            } catch (InvalidVenue $refused) {
+                self::assertSame($field, $refused->field, $width.' × '.$depth);
+            }
+        }
+        self::assertNull($ground->getWidthMetres());
+    }
+
     public function testAnAreaIsRefusedWithoutANameOrBelowTheGround(): void
     {
         foreach ([

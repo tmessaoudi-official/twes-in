@@ -1480,7 +1480,9 @@
       "floor_fields": {
         "establishmentId": "Établissement",
         "name": "Nom de l'étage",
-        "level": "Niveau"
+        "level": "Niveau",
+        "widthMetres": "Largeur de l’étage (m)",
+        "depthMetres": "Profondeur de l’étage (m)"
       },
       "drawing_fields": {
         "locationId": "Emplacement",

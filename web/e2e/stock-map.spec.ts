@@ -147,6 +147,8 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('stock-floor-add').click();
       await page.getByTestId('field-name').fill(floorName);
       await page.getByTestId('field-level').fill(String(fixture.level));
+      await page.getByTestId('field-widthMetres').fill('30');
+      await page.getByTestId('field-depthMetres').fill('20');
       await page.getByTestId('stock-floor-save').click();
       await expect(toast(page)).toContainText('Étage enregistré');
 
@@ -277,9 +279,11 @@ test.describe('the drawn stock map', () => {
       expect(traced.depth, 'and 100 px deep is not nothing either').toBeGreaterThanOrEqual(0.5);
       expect(Math.round(traced.width * 4)).toBeCloseTo(traced.width * 4, 6);
       expect(Math.round(traced.depth * 4)).toBeCloseTo(traced.depth * 4, 6);
-      // One box per arming, so the sheet is something a finger can scroll past again.
-      await expect(page.getByTestId('stock-map-trace')).toHaveAttribute('aria-pressed', 'false');
+      // One box per arming, so the sheet is something a finger can scroll past again. The traced box's form stands
+      // where the tools were (finding B), so the sheet says it first, then the tool once it is back.
+      await expect(sheet).not.toHaveClass(/cursor-crosshair/);
       await page.getByTestId('stock-drawing-cancel').click();
+      await expect(page.getByTestId('stock-map-trace')).toHaveAttribute('aria-pressed', 'false');
 
       await page.goto('/stock/locations');
       await expect(page.getByTestId(`stock-location-${code}`)).toBeVisible();
@@ -318,6 +322,8 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('stock-floor-add').click();
       await page.getByTestId('field-name').fill(floorName);
       await page.getByTestId('field-level').fill(String(fixture.level));
+      await page.getByTestId('field-widthMetres').fill('30');
+      await page.getByTestId('field-depthMetres').fill('20');
       await page.getByTestId('stock-floor-save').click();
       await expect(toast(page)).toContainText('Étage enregistré');
       await page.getByRole('button', { name: floorName, exact: true }).click();
@@ -424,6 +430,8 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('stock-floor-add').click();
       await page.getByTestId('field-name').fill(floorName);
       await page.getByTestId('field-level').fill(String(fixture.level));
+      await page.getByTestId('field-widthMetres').fill('30');
+      await page.getByTestId('field-depthMetres').fill('20');
       await page.getByTestId('stock-floor-save').click();
       await expect(toast(page)).toContainText('Étage enregistré');
       await page.getByRole('button', { name: floorName, exact: true }).click();
@@ -500,6 +508,8 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('stock-floor-add').click();
       await page.getByTestId('field-name').fill(floorName);
       await page.getByTestId('field-level').fill(String(fixture.level));
+      await page.getByTestId('field-widthMetres').fill('30');
+      await page.getByTestId('field-depthMetres').fill('20');
       await page.getByTestId('stock-floor-save').click();
       await expect(toast(page)).toContainText('Étage enregistré');
       await page.getByRole('button', { name: floorName, exact: true }).click();
