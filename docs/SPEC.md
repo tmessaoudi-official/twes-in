@@ -1993,6 +1993,64 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   will point at one the same way"*, and a café without round tables is not a café. Polygons are deliberately NOT
   taken: arbitrary outlines change hit-testing, the editor and the 3D all at once, and no concrete need names them
   yet.
+- [2026-09-22 11:05] AGREED: **a product carries SEVERAL barcodes, in a table of its own**, not the single
+  `product.barcode` column shipped at `9dbb8c4`. A row is `(role, code, quantity, supplier?)` where the role is
+  `unit | pack | supplier | internal`: a `unit` row holds exactly 1, a `pack` row holds strictly more than 1 (the
+  ITF-14 on a box of 100 enters a hundred pieces in one scan), a `supplier` row is the code the supplier prints on
+  *their* carton and is tied to that supplier, and an `internal` row is one we generated and printed ourselves.
+  **Uniqueness is across the whole table within a company, all roles together** — two rows sharing a code would
+  make a scan ambiguous, which is the one thing a scan may never be. The shipped column becomes the first row of
+  the table and its check-digit rule (EAN-13, EAN-8, UPC, right-aligned mod 10) and its partial unique index move
+  with it unchanged. Taken now, while nothing yet reads the column, because taken later it costs the same
+  migration **plus** every scanning screen rewritten. Mocked on the *Un article, plusieurs codes* board.
+- [2026-09-22 11:10] AGREED: **lots, serial numbers and expiry ship in the first working version, in full.** A
+  product declares its tracking — `none | lot | serial` — and where it is not `none` the stock ceases to be a
+  number per location and becomes **a number per lot**: two drums of the same glue are no longer interchangeable
+  when one expires next month. Picking is **FEFO** (the lot nearest its expiry leaves first, whatever is most
+  reachable), an expired lot is blocked and unblocking it is an explicit, recorded act, and a `serial` line always
+  carries quantity 1. The GS1-128 application identifiers are read rather than treated as one opaque code —
+  `(01)` the GTIN, `(10)` the lot, `(17)` the use-by date, `(21)` the serial — because without that the whole
+  string matches no product and a scan that carries everything fails. Reception, picking, documents, inventory and
+  the recall search all change with it; this is the heaviest piece of the model and is taken deliberately, since
+  adding it after the stock movements exist means rewriting every movement already recorded.
+- [2026-09-22 11:15] AGREED: **a location's capacity is optional and carries the unit that measures it** —
+  `pieces | bins | linear metres | m³ | kg`, each rack choosing its own, because a rack whose real limit is
+  "24 bins" cannot honestly be written in cubic metres and nobody will convert it. The product carries **optional
+  volume and weight**, which is what makes the `m³` and `kg` units resolvable at all: shipping the unit without
+  those fields would be a feature that can never fire. The occupancy reading colours only what it can actually
+  compute and **names the rest "non mesurable" instead of inventing a percentage** — the defect the mockup was
+  built to expose. Four nullable columns, no forced data entry.
+- [2026-09-22 11:20] AGREED: **a venue structure carries a name.** Locations already hold both a `code` (the
+  store's own numbering, 32 chars, `[A-Za-z0-9._-]`) and a `name`; walls, doors, posts and docks held neither, so
+  "the quai 2 door" could not be written down. The plan also gains a **choice of what it labels** — the code, the
+  name, or the code with the name in the panel and on hover — because a dense plan cannot carry both, and the
+  code-only label shipped today is a choice nobody was offered. **Bulk renumbering** comes with it: a pattern with
+  a counter (`A{n}`, `R{nn}`), a start and a step, a full before/after preview, and a refusal naming the code
+  already taken rather than a silent partial apply. A code change keeps the stock and the history — it is the same
+  location renamed — leaves past documents on the code they carried, and requires the shelf label reprinted.
+- [2026-09-22 11:25] AGREED: **the search bar is a workbench, not a link.** A scan opens it from any screen, and
+  the found product is then acted on **without leaving the screen behind it**: add to the open document, adjust
+  stock with a reason, move between locations, change the price, print labels, show on the plan, movements,
+  traceability, reorder from the supplier, its barcodes, edit the sheet. The chosen action **opens inside the
+  palette** rather than navigating away, and every one of them has a single-key shortcut, because the hand that
+  just used a scanner is not on the mouse.
+- [2026-09-22 11:30] AGREED: **build order — the plan first, then the data foundation, then the scanning
+  screens.** (1) The plan made usable: zoom, pan, fit-to-screen, movable walls and doors, named structures, the
+  label choice — it is what the developer could not use, and putting away, picking and the picking path all rest
+  on it; the three keyboard-wedge defects in `pick-field.ts` (the 300 ms debounce, no `autoActiveFirstOption`, no
+  Enter handler) are pulled forward into this step because they are twenty lines and depend on no model. (2) The
+  **two migrations together** — the barcode table and the lot model — since both touch the same stock movement.
+  (3) Every scanning screen on top, written once. The developer's own order put the scanning screens before the
+  migrations; moved deliberately, because that order writes search, document lines and reception twice.
+- [2026-09-22 11:30] AGREED: the full model for both features is **mocked and validated before any code**, on two
+  Design canvases of thirteen interactive boards each: the plan
+  (`https://claude.ai/artifact/LCU1XwArUfwwBDDvh4WTsd` — consult, search, occupancy, sites & floors with the
+  architect's underlay, arrange, naming, picking path, 3D volume, rack elevation, cycle counting, printing &
+  permissions, tablet, phone) and the barcode
+  (`https://claude.ai/artifact/N6hRMBa7US16mYVpQkNNDg` — the field and its refusals, the code types, labels for
+  products *and locations*, search-as-workbench, document lines, supplier reception, put away, pick, count,
+  camera, lots & serials, traceability, scanner settings). Boards are a design record, not a contract: where one
+  disagrees with a later ruling, the ruling wins.
 
 ## 8. Status
 
