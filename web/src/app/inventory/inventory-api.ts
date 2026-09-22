@@ -519,6 +519,7 @@ function toStructure(raw: StockStructureStockStructureRead): StockStructureRow {
     id: raw.id ?? '',
     floorId: raw.floorId ?? '',
     kind: STRUCTURE_KINDS.find((kind) => kind === raw.kind) ?? 'wall',
+    name: raw.name ?? '',
     x: raw.x ?? '0.000',
     y: raw.y ?? '0.000',
     width: raw.width ?? '0.000',

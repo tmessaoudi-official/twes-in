@@ -119,8 +119,8 @@ final class ArrangeVenueTest extends TestCase
         $this->venue->place($this->company, $ground->getId(), new PlanRect('1', '1', '2', '1', 0, '2'), $this->actor);
         $kept = $this->venue->place($this->company, $upstairs->getId(), new PlanRect('1', '1', '2', '1', 0, '2'), $this->actor);
         // The building goes with the floor too, and is the half a cascade written for spots alone leaves orphaned.
-        $this->venue->build($this->company, $ground->getId(), StructureKind::Wall, new PlanRect('0', '0', '9', '0.2', 0, '3'), $this->actor);
-        $keptWall = $this->venue->build($this->company, $upstairs->getId(), StructureKind::Wall, new PlanRect('0', '0', '9', '0.2', 0, '3'), $this->actor);
+        $this->venue->build($this->company, $ground->getId(), StructureKind::Wall, '', new PlanRect('0', '0', '9', '0.2', 0, '3'), $this->actor);
+        $keptWall = $this->venue->build($this->company, $upstairs->getId(), StructureKind::Wall, '', new PlanRect('0', '0', '9', '0.2', 0, '3'), $this->actor);
 
         $this->venue->removeArea($this->company, $ground->getId(), $this->actor);
 
@@ -133,8 +133,8 @@ final class ArrangeVenueTest extends TestCase
     {
         $ground = $this->venue->addArea($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, $this->actor);
 
-        $wall = $this->venue->build($this->company, $ground->getId(), StructureKind::Wall, new PlanRect('0', '0', '6.9', '0.2', 0, '3'), $this->actor);
-        $this->venue->build($this->company, $ground->getId(), StructureKind::Door, new PlanRect('3', '0', '0.9', '0.2', 0, '2.1'), $this->actor);
+        $wall = $this->venue->build($this->company, $ground->getId(), StructureKind::Wall, 'Mur nord', new PlanRect('0', '0', '6.9', '0.2', 0, '3'), $this->actor);
+        $this->venue->build($this->company, $ground->getId(), StructureKind::Door, 'Porte du quai 2', new PlanRect('3', '0', '0.9', '0.2', 0, '2.1'), $this->actor);
 
         self::assertSame(
             [StructureKind::Wall, StructureKind::Door],
@@ -149,23 +149,29 @@ final class ArrangeVenueTest extends TestCase
     public function testCorrectingAPieceRecordsItAndLeavingItAloneDoesNot(): void
     {
         $ground = $this->venue->addArea($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, $this->actor);
-        $piece = $this->venue->build($this->company, $ground->getId(), StructureKind::Wall, new PlanRect('3', '0', '0.9', '0.2', 0, '2.1'), $this->actor);
+        $piece = $this->venue->build($this->company, $ground->getId(), StructureKind::Wall, 'Porte du quai 2', new PlanRect('3', '0', '0.9', '0.2', 0, '2.1'), $this->actor);
         $recorded = \count($this->audit->entries);
 
         // The same piece, in the same place, written to the same measurements: nothing to tell anyone about.
-        $this->venue->reshapeStructure($this->company, $piece->getId(), StructureKind::Wall, new PlanRect('3.000', '0', '0.900', '0.2', 0, '2.100'), $this->actor);
+        $this->venue->reshapeStructure($this->company, $piece->getId(), StructureKind::Wall, 'Porte du quai 2', new PlanRect('3.000', '0', '0.900', '0.2', 0, '2.100'), $this->actor);
         self::assertCount($recorded, $this->audit->entries, 'an unchanged piece is not a revision');
 
         // It was traced with the wall tool and is really the doorway: the rectangle is right, the kind is not.
-        $this->venue->reshapeStructure($this->company, $piece->getId(), StructureKind::Door, new PlanRect('3', '0', '0.9', '0.2', 0, '2.1'), $this->actor);
+        $this->venue->reshapeStructure($this->company, $piece->getId(), StructureKind::Door, 'Porte du quai 2', new PlanRect('3', '0', '0.9', '0.2', 0, '2.1'), $this->actor);
         self::assertCount($recorded + 1, $this->audit->entries, 'a corrected kind is');
         self::assertSame(ArrangeVenue::STRUCTURE_REVISED, $this->lastEntry()->action);
+
+        // Renaming it is a revision too, and the row is what tells every other open plan to read itself again:
+        // a rename recorded nowhere would leave the old name on every screen but the one that typed it.
+        $this->venue->reshapeStructure($this->company, $piece->getId(), StructureKind::Door, 'Porte du quai 3', new PlanRect('3', '0', '0.9', '0.2', 0, '2.1'), $this->actor);
+        self::assertCount($recorded + 2, $this->audit->entries, 'a rename is');
+        self::assertSame('Porte du quai 3', $this->venue->structuresOf($this->company, $ground->getId())[0]->getName());
     }
 
     public function testAPieceIsErasedAndAnotherCompanysIsNotFound(): void
     {
         $ground = $this->venue->addArea($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, $this->actor);
-        $post = $this->venue->build($this->company, $ground->getId(), StructureKind::Post, new PlanRect('2', '2', '0.4', '0.4', 0, '3'), $this->actor);
+        $post = $this->venue->build($this->company, $ground->getId(), StructureKind::Post, '', new PlanRect('2', '2', '0.4', '0.4', 0, '3'), $this->actor);
 
         $this->venue->removeStructure($this->company, $post->getId(), $this->actor);
 

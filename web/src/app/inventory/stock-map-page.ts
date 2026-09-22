@@ -132,12 +132,18 @@ interface PlanShape {
   labelY: number;
 }
 
-/** One piece of the building as the plan draws it. It carries no label: a wall has no code to write on it. */
+/**
+ * One piece of the building as the plan draws it, and where its name is written when it has one — which most
+ * walls do not (docs/SPEC.md § 7, 2026-09-22). A piece still carries no CODE: nothing here holds goods.
+ */
 interface StructureShape {
   piece: StockStructureRow;
   rect: PlanRectangle;
   centreX: number;
   centreY: number;
+  /** Where the name is written: inside the footprint, turned with it, exactly as a rack's code is. */
+  labelX: number;
+  labelY: number;
 }
 
 /** One row of the layers panel: what it is, and how many things are on it right now. */
@@ -151,6 +157,7 @@ const PENDING_PIECE: StockStructureRow = {
   id: PENDING_ID,
   floorId: '',
   kind: 'wall',
+  name: '',
   x: '0',
   y: '0',
   width: '0',
@@ -1182,13 +1189,16 @@ function kindOf(value: string): StructureKind {
   return STRUCTURE_KINDS.find((kind) => kind === value) ?? 'wall';
 }
 
-/** One piece of the building as the SVG needs it: where it turns about, and what it is. */
+/** One piece of the building as the SVG needs it: where it turns about, what it is, and where its name goes. */
 function builtOf(piece: StockStructureRow, rect: PlanRectangle): StructureShape {
   return {
     piece,
     rect,
     centreX: rect.x + rect.width / 2,
     centreY: rect.y + rect.depth / 2,
+    // A wall is a thin rectangle, so its name sits above the line rather than inside a 0,20 m band nothing fits in.
+    labelX: rect.x + 0.15,
+    labelY: rect.depth < 0.6 ? rect.y - 0.12 : rect.y + Math.min(0.45, rect.depth * 0.7),
   };
 }
 

@@ -322,6 +322,63 @@ describe('InventoryApi', () => {
     ]);
   });
 
+  /**
+   * The building, which the page reads through here and nowhere else. The name is the field this case exists for:
+   * every screen spec sets its rows directly, so a mapper that quietly dropped it would be invisible to all of them
+   * and would show every piece of the building unnamed (docs/SPEC.md § 7, 2026-09-22).
+   */
+  it('reads a piece of the building with the name the store gave it, and builds one with it', async () => {
+    const pending = api.structures('c1', 'f1');
+    const request = http.expectOne('/api/companies/c1/stock-floors/f1/structures');
+    expect(request.request.method).toBe('GET');
+    request.flush([
+      {
+        id: 's1',
+        floorId: 'f1',
+        kind: 'dock',
+        name: 'Porte du quai 2',
+        x: '18.000',
+        y: '0.000',
+        width: '3.000',
+        depth: '0.200',
+        rotation: 0,
+        height: '4.000',
+      },
+    ]);
+
+    expect(await pending).toEqual([
+      {
+        id: 's1',
+        floorId: 'f1',
+        kind: 'dock',
+        name: 'Porte du quai 2',
+        x: '18.000',
+        y: '0.000',
+        width: '3.000',
+        depth: '0.200',
+        rotation: 0,
+        height: '4.000',
+      },
+    ]);
+
+    // And it travels the other way: what the form typed is what the API is asked to write down.
+    const built = api.buildStructure('c1', 'f1', {
+      kind: 'wall',
+      name: 'Mur nord',
+      x: '0.000',
+      y: '0.000',
+      width: '6.900',
+      depth: '0.200',
+      rotation: 0,
+      height: '3.000',
+    });
+    const post = http.expectOne('/api/companies/c1/stock-floors/f1/structures');
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body.name).toBe('Mur nord');
+    post.flush({ id: 's2', floorId: 'f1', kind: 'wall', name: 'Mur nord' });
+    expect((await built).name).toBe('Mur nord');
+  });
+
   it('says the level is taken when another floor of the establishment already has it', async () => {
     const pending = api.createFloor('c1', {
       establishmentId: 'e1',

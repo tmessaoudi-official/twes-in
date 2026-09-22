@@ -88,6 +88,14 @@ final class StockStructureResource
     #[Groups([self::READ, self::WRITE])]
     public string $kind = '';
 
+    /**
+     * What the store already calls this piece — "Porte du quai 2". Optional, unlike a floor's name: most walls are
+     * just walls, and a name is worth having and never worth forcing (docs/SPEC.md § 7, 2026-09-22).
+     */
+    #[Assert\Length(max: VenueStructure::NAME_MAX, groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public string $name = '';
+
     /** Metres from the floor's left edge. */
     #[Groups([self::READ, self::WRITE])]
     public string $x = '0';
@@ -125,6 +133,7 @@ final class StockStructureResource
         $piece->id = $structure->getId()->toRfc4122();
         $piece->floorId = $structure->getArea()->getId()->toRfc4122();
         $piece->kind = $structure->getKind()->value;
+        $piece->name = $structure->getName();
         $piece->x = $rect->x;
         $piece->y = $rect->y;
         $piece->width = $rect->width;

@@ -579,6 +579,30 @@
                       (click)="openStructure(built.piece)"
                       [attr.data-testid]="'stock-structure-' + built.piece.kind"
                     />
+                    <!--
+                      Only where the store named it. A wall named nothing writes nothing: an empty label would put
+                      a blank box on every partition of the building, which is most of them.
+                    -->
+                    @if (built.piece.name !== '') {
+                      <text
+                        [attr.x]="built.labelX"
+                        [attr.y]="built.labelY"
+                        [attr.font-size]="0.28"
+                        [attr.transform]="
+                          'rotate(' +
+                          built.rect.rotation +
+                          ' ' +
+                          built.centreX +
+                          ' ' +
+                          built.centreY +
+                          ')'
+                        "
+                        class="pointer-events-none fill-on-surface-variant"
+                        [attr.data-testid]="'stock-structure-name-' + built.piece.id"
+                      >
+                        {{ built.piece.name }}
+                      </text>
+                    }
                   }
                   <!--
                     Drawn after every piece so they are never buried under one, and with the same radius as the

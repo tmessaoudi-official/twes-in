@@ -34,6 +34,9 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_venue_structure_area', columns: ['area_id'])]
 class VenueStructure implements CompanyOwned
 {
+    /** The same length a floor's name has: the two are read side by side on the plan and must not differ. */
+    public const int NAME_MAX = VenueArea::NAME_MAX;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -48,6 +51,19 @@ class VenueStructure implements CompanyOwned
 
     #[ORM\Column(length: 16, enumType: StructureKind::class)]
     private StructureKind $kind;
+
+    /**
+     * What the store already calls this piece — "Porte du quai 2", "Mur nord" — and the empty string where it calls
+     * it nothing, which most walls are. Unlike a floor's name it is never required: a name is worth having and
+     * never worth forcing (docs/SPEC.md § 7, 2026-09-22).
+     *
+     * The empty default is the column's, and is stated here as well: the migration needs one to add a NOT NULL
+     * column to a table that already has rows, and a mapping that does not say so reads as drift — the comparator
+     * answers `ALTER TABLE venue_structure ALTER name DROP DEFAULT` for ever after. `vat_regime` is mapped the
+     * same way for the same reason. The constructor always writes this field, so nothing relies on the default.
+     */
+    #[ORM\Column(length: self::NAME_MAX, options: ['default' => ''])]
+    private string $name;
 
     #[ORM\Column(name: 'plan_x', type: Types::DECIMAL, precision: 9, scale: PlanRect::SCALE)]
     private string $x;
@@ -73,38 +89,41 @@ class VenueStructure implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
-    private function __construct(VenueArea $area, StructureKind $kind, PlanRect $rect, \DateTimeImmutable $now)
+    private function __construct(VenueArea $area, StructureKind $kind, string $name, PlanRect $rect, \DateTimeImmutable $now)
     {
         $this->id = Uuid::v7();
         $this->company = $area->getCompany();
         $this->area = $area;
         $this->kind = $kind;
+        $this->name = self::name($name);
         $this->write($rect);
         $this->createdAt = $now;
         $this->updatedAt = $now;
     }
 
-    public static function build(VenueArea $area, StructureKind $kind, PlanRect $rect, \DateTimeImmutable $now): self
+    public static function build(VenueArea $area, StructureKind $kind, string $name, PlanRect $rect, \DateTimeImmutable $now): self
     {
-        return new self($area, $kind, $rect, $now);
+        return new self($area, $kind, $name, $rect, $now);
     }
 
     /**
      * Corrects what this piece is and where it stands. A piece never changes floor, for the reason a spot never
      * does: a floor is a floor, and the same wall one storey up is another wall.
      *
-     * The kind is part of the comparison and not only the rectangle: a gap traced with the wall tool is right in
-     * every measurement and wrong in exactly one field, and a comparison that read the rectangle alone would answer
-     * "nothing changed" and leave it a wall.
+     * The kind and the name are part of the comparison and not only the rectangle: a gap traced with the wall tool
+     * is right in every measurement and wrong in exactly one field, and a comparison that read the rectangle alone
+     * would answer "nothing changed" and leave it a wall — or leave it under the name it has just been renamed from.
      *
      * @return bool whether anything changed
      */
-    public function reshape(StructureKind $kind, PlanRect $rect, \DateTimeImmutable $now): bool
+    public function reshape(StructureKind $kind, string $name, PlanRect $rect, \DateTimeImmutable $now): bool
     {
-        if ($kind === $this->kind && $rect->equals($this->getRect())) {
+        $named = self::name($name);
+        if ($kind === $this->kind && $named === $this->name && $rect->equals($this->getRect())) {
             return false;
         }
         $this->kind = $kind;
+        $this->name = $named;
         $this->write($rect);
         $this->updatedAt = $now;
 
@@ -136,6 +155,11 @@ class VenueStructure implements CompanyOwned
         return $this->kind;
     }
 
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
@@ -144,6 +168,17 @@ class VenueStructure implements CompanyOwned
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    /** Trimmed as every other name here is, and refused past the column's length rather than cut to fit it. */
+    private static function name(string $name): string
+    {
+        $trimmed = trim($name);
+        if (mb_strlen($trimmed) > self::NAME_MAX) {
+            throw new InvalidVenue('name', \sprintf('A piece of structure is named in at most %d characters.', self::NAME_MAX));
+        }
+
+        return $trimmed;
     }
 
     private function write(PlanRect $rect): void

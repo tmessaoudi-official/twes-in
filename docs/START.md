@@ -17,6 +17,10 @@ Every command runs from the repository root unless it says `cd`. For version bum
 Ports come from `.env`. To change one, set it in your shell (`WEB_PORT=9090 make up`) or in a `.env.local` next to
 `.env`. Only `web` and `api` listen on every interface. The rest listen on `127.0.0.1` only.
 
+**The API documentation is at <http://localhost:8090/api/docs>** (or `:8091/api/docs` on the API directly). `/api`
+on its own is the entrypoint, not the documentation, and answers 401 without a session. Development only: production
+sets `enable_docs: false`, and the contract ships inside the generated TypeScript client instead.
+
 **Browse `http://localhost:8090`, not `127.0.0.1`**: passkeys are bound to `localhost` (`APP_WEBAUTHN_RP_ID`), and
 the links in the mails point to `localhost`.
 

@@ -267,9 +267,11 @@ final class StockMapTest extends ApiTestCase
         $this->locations();
         $ground = $this->floor();
 
+        // The helper sends no `name` key at all, which is the common case: most walls are just walls.
         $this->postJson($this->path('stock-floors', $ground).'/structures', $this->piece([]));
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $wall = $this->stringAt($this->json(), 'id');
+        self::assertSame('', $this->json()['name'], 'a piece nobody named is named nothing, not null');
         self::assertSame(['wall', '0.000', '0.000', '6.900', '0.200', 0, '3.000'], [
             $this->json()['kind'], $this->json()['x'], $this->json()['y'],
             $this->json()['width'], $this->json()['depth'], $this->json()['rotation'], $this->json()['height'],
@@ -283,12 +285,15 @@ final class StockMapTest extends ApiTestCase
         self::assertSame([], $this->jsonList(), 'the building is on no stock drawing');
 
         // Traced with the wall tool and really the doorway: the rectangle is right, only the kind is wrong.
-        $this->sendJson('PUT', $this->path('stock-structures', $wall), $this->piece(['kind' => 'door', 'width' => '0.9', 'height' => '2.1']));
+        // The store already calls it something, and that is written down with the correction, trimmed.
+        $this->sendJson('PUT', $this->path('stock-structures', $wall), $this->piece(['kind' => 'door', 'width' => '0.9', 'height' => '2.1', 'name' => '  Porte du quai 2  ']));
         self::assertResponseIsSuccessful();
         self::assertSame(['door', '0.900', '2.100'], [$this->json()['kind'], $this->json()['width'], $this->json()['height']]);
+        self::assertSame('Porte du quai 2', $this->json()['name']);
 
         $this->getJson($this->path('stock-floors', $ground).'/structures');
         self::assertSame(['door'], array_column($this->jsonList(), 'kind'));
+        self::assertSame(['Porte du quai 2'], array_column($this->jsonList(), 'name'), 'the name is read back with the plan');
 
         $this->sendJson('DELETE', $this->path('stock-structures', $wall));
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
@@ -308,6 +313,10 @@ final class StockMapTest extends ApiTestCase
         $this->postJson($this->path('stock-floors', $ground).'/structures', $this->piece(['depth' => '0']));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('depth', (string) $this->client->getResponse()->getContent());
+
+        // Longer than the column holds: refused at the door rather than cut to fit and read back as a different name.
+        $this->postJson($this->path('stock-floors', $ground).'/structures', $this->piece(['name' => str_repeat('m', 121)]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
 
         // A wall thinner than any rack the palette would pose is still a wall, and is accepted as measured.
         $this->postJson($this->path('stock-floors', $ground).'/structures', $this->piece(['depth' => '0.05']));

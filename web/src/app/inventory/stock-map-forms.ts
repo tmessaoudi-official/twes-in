@@ -21,6 +21,9 @@ const FLOOR_FIELDS = 'inventory.plan.floor_fields';
 const DRAWING_FIELDS = 'inventory.plan.drawing_fields';
 const STRUCTURE_FIELDS = 'inventory.plan.structure_fields';
 
+/** The length the API's column holds, so the box stops where the server would refuse rather than after it. */
+const STRUCTURE_NAME_MAX = 120;
+
 /** How many decimals a measurement crosses the wire with, as the API's columns hold them. */
 const METRE_DECIMALS = 3;
 
@@ -294,6 +297,15 @@ export function structureForm(): FormDescriptor {
               label: `inventory.plan.structure_kinds.${kind}`,
             })),
           },
+          // Never required: a store arrives having numbered its own building, and most walls are still just walls.
+          {
+            id: 'name',
+            label: `${STRUCTURE_FIELDS}.name`,
+            kind: 'text',
+            span: 2,
+            maxLength: STRUCTURE_NAME_MAX,
+            hint: 'inventory.plan.structure_name_hint',
+          },
         ],
       },
       {
@@ -334,6 +346,7 @@ export function structureValues(
   if (row !== null) {
     return {
       kind: row.kind,
+      name: row.name,
       x: row.x,
       y: row.y,
       width: row.width,
@@ -346,6 +359,7 @@ export function structureValues(
 
   return {
     kind,
+    name: '',
     x: metres(0),
     y: metres(0),
     width: metres(tool?.width ?? 0),
@@ -369,6 +383,7 @@ export function structureInput(values: FormValues): StockStructureInput {
 
   return {
     kind: STRUCTURE_KINDS.find((kind) => kind === asked) ?? 'wall',
+    name: text(values['name']),
     x: onGrid(values['x']),
     y: onGrid(values['y']),
     width: metres(Number(values['width'] ?? 0) || 0),

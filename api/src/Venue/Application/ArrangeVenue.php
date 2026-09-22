@@ -233,10 +233,10 @@ final readonly class ArrangeVenue
      * @throws VenueAreaNotFound
      * @throws InvalidVenue
      */
-    public function build(Company $company, Uuid $areaId, StructureKind $kind, PlanRect $rect, ?Uuid $actorUserId): VenueStructure
+    public function build(Company $company, Uuid $areaId, StructureKind $kind, string $name, PlanRect $rect, ?Uuid $actorUserId): VenueStructure
     {
-        return $this->transactions->run(function () use ($company, $areaId, $kind, $rect, $actorUserId): VenueStructure {
-            $structure = VenueStructure::build($this->area($company, $areaId), $kind, $rect, $this->clock->now());
+        return $this->transactions->run(function () use ($company, $areaId, $kind, $name, $rect, $actorUserId): VenueStructure {
+            $structure = VenueStructure::build($this->area($company, $areaId), $kind, $name, $rect, $this->clock->now());
             $this->structures->save($structure);
             $this->record(self::STRUCTURE_TYPE, $structure->getId(), self::STRUCTURE_CREATED, $actorUserId, $company);
 
@@ -248,12 +248,12 @@ final readonly class ArrangeVenue
      * @throws VenueStructureNotFound
      * @throws InvalidVenue
      */
-    public function reshapeStructure(Company $company, Uuid $structureId, StructureKind $kind, PlanRect $rect, ?Uuid $actorUserId): VenueStructure
+    public function reshapeStructure(Company $company, Uuid $structureId, StructureKind $kind, string $name, PlanRect $rect, ?Uuid $actorUserId): VenueStructure
     {
-        return $this->transactions->run(function () use ($company, $structureId, $kind, $rect, $actorUserId): VenueStructure {
+        return $this->transactions->run(function () use ($company, $structureId, $kind, $name, $rect, $actorUserId): VenueStructure {
             $structure = $this->structure($company, $structureId);
             // Left exactly as it stood: no row, so no other screen is told the building moved.
-            if ($structure->reshape($kind, $rect, $this->clock->now())) {
+            if ($structure->reshape($kind, $name, $rect, $this->clock->now())) {
                 $this->structures->save($structure);
                 $this->record(self::STRUCTURE_TYPE, $structure->getId(), self::STRUCTURE_REVISED, $actorUserId, $company);
             }

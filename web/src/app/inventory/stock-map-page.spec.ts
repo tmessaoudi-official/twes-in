@@ -95,6 +95,7 @@ const wall: StockStructureRow = {
   id: 's1',
   floorId: 'f1',
   kind: 'wall',
+  name: 'Mur nord',
   x: '0.000',
   y: '0.000',
   width: '6.900',
@@ -965,6 +966,21 @@ describe('StockMapPage', () => {
     expect(q('stock-drawing-s1')).toBeNull();
     expect(q('stock-map-layers')).not.toBeNull();
     expect(q('stock-layer-count-structure')?.textContent?.trim()).toBe('1');
+  });
+
+  /**
+   * A store arrives having numbered its own building, so the name it already uses is written on the plan — and
+   * only where there is one: an empty label would put a blank box on every partition, which is most of them.
+   */
+  it('writes on a piece the name the store already uses, and writes nothing on the unnamed', async () => {
+    expect(q('stock-structure-name-s1')?.textContent?.trim()).toBe('Mur nord');
+
+    structures.set([{ ...wall, name: '' }]);
+    await settle();
+
+    expect(q('stock-structure-name-s1')).toBeNull();
+    // The piece itself is still drawn: it is the label that is absent, not the wall.
+    expect(q('stock-structure-wall')).not.toBeNull();
   });
 
   /** The tool poses at THIS company's measurements — 0,80 × 0,15 × 2,00 for a door — not at a constant. */

@@ -1503,8 +1503,10 @@
       "structure_fields": {
         "kind": "Kind of piece",
         "width": "Length (m)",
-        "depth": "Thickness (m)"
+        "depth": "Thickness (m)",
+        "name": "Name"
       },
+      "structure_name_hint": "The name the store already uses, if it has one.",
       "structure_kinds": {
         "wall": "Wall",
         "door": "Door",

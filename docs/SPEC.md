@@ -2051,6 +2051,18 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   products *and locations*, search-as-workbench, document lines, supplier reception, put away, pick, count,
   camera, lots & serials, traceability, scanner settings). Boards are a design record, not a contract: where one
   disagrees with a later ruling, the ruling wins.
+- [2026-09-22 12:20] AGREED: the API documentation is reached on the application's own origin at **`/api/docs`**,
+  and every redirect nginx issues is **relative**. Two defects, both invisible to a status-code check and both
+  reported by the developer on the same page. `/api` answered a 301 to `http://localhost/api/`, dropping the port:
+  nginx answers a proxying `location` ending in `/` with its own absolute redirect, built from `server_name` and
+  the LISTEN port, which is 80 inside the container — no proxy header can reach it, so `absolute_redirect off`
+  is the fix. And the page's stylesheets and scripts live under `/bundles/`, which is not under `/api/`, so they
+  fell through to the single-page application's catch-all and came back as `index.html` with `Content-Type:
+  text/html`, which `nosniff` refused to run: 200 everywhere, Swagger rendered as unstyled text. `/bundles/` is
+  now proxied to the API. `web/e2e/api-docs.spec.ts` pins both, with a size floor on the bundle so serving the
+  wrong file under the right content type still reds. Production is unaffected: it sets `enable_docs: false`.
+  One inline style Swagger applies at runtime stays blocked by the CSP and the page is whole without it; the
+  application's `style-src` is not weakened for a development page.
 
 ## 8. Status
 

@@ -233,6 +233,11 @@ export interface StockStructureRow {
   id: string;
   floorId: string;
   kind: StructureKind;
+  /**
+   * What the store already calls this piece — "Porte du quai 2" — and the empty string where it calls it nothing,
+   * which most walls are (docs/SPEC.md § 7, 2026-09-22).
+   */
+  name: string;
   x: string;
   y: string;
   /** How long it runs: a wall's length, a door's opening, a post's side. */
@@ -245,7 +250,7 @@ export interface StockStructureRow {
 
 export type StockStructureInput = Pick<
   StockStructureRow,
-  'kind' | 'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height'
+  'kind' | 'name' | 'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height'
 >;
 
 /**

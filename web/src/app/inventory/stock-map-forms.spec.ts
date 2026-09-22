@@ -286,6 +286,7 @@ describe('the structure layer', () => {
     depth: '0.200',
     rotation: 0,
     height: '3.000',
+    name: 'Mur nord',
   };
 
   /** The tools the palette poses, at the sizes the company builds at rather than any constant here. */
@@ -298,7 +299,9 @@ describe('the structure layer', () => {
     const form = structureForm();
     const fields = form.sections.flatMap((section) => section.fields.map((field) => field.id));
 
-    expect(fields).toEqual(['kind', 'x', 'y', 'width', 'depth', 'height', 'rotation']);
+    expect(fields).toEqual(['kind', 'name', 'x', 'y', 'width', 'depth', 'height', 'rotation']);
+    // A store arrives having numbered its own building, and most walls are still just walls.
+    expect(form.sections[0]?.fields.find((field) => field.id === 'name')?.required).toBeFalsy();
     // Nothing on this layer holds goods, so no field here may ever name one.
     expect(fields).not.toContain('locationId');
     const kind = form.sections[0]?.fields[0];
@@ -308,6 +311,7 @@ describe('the structure layer', () => {
   it('opens on a piece as it was saved, byte for byte', () => {
     expect(structureValues(wall, tools)).toEqual({
       kind: 'wall',
+      name: 'Mur nord',
       x: '0.000',
       y: '0.000',
       width: '6.900',
@@ -321,6 +325,7 @@ describe('the structure layer', () => {
   it('starts a new piece at this company size for the tool chosen', () => {
     expect(structureValues(null, tools, 'door')).toEqual({
       kind: 'door',
+      name: '',
       x: '0.000',
       y: '0.000',
       width: '0.800',
@@ -335,6 +340,7 @@ describe('the structure layer', () => {
     expect(
       structureInput({
         kind: 'door',
+        name: '  Porte du quai 2  ',
         x: '2.6',
         y: '4.1',
         width: '0.9',
@@ -344,6 +350,7 @@ describe('the structure layer', () => {
       }),
     ).toEqual({
       kind: 'door',
+      name: 'Porte du quai 2',
       x: '2.500',
       y: '4.000',
       width: '0.900',

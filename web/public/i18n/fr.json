@@ -1503,8 +1503,10 @@
       "structure_fields": {
         "kind": "Type d’élément",
         "width": "Longueur (m)",
-        "depth": "Épaisseur (m)"
+        "depth": "Épaisseur (m)",
+        "name": "Nom"
       },
+      "structure_name_hint": "Le nom que le magasin utilise déjà, s'il en a un.",
       "structure_kinds": {
         "wall": "Mur",
         "door": "Porte",
