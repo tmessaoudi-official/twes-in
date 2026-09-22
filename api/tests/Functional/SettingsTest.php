@@ -39,7 +39,12 @@ final class SettingsTest extends ApiTestCase
         self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.language'], $keys);
         // Read by key and not by position: what each case below is about is one setting's own default, and an
         // ordinal makes every future presentation setting shift assertions that have nothing to do with it.
-        $row = static fn (string $key) => $rows[array_search($key, $keys, true)];
+        $row = static function (string $key) use ($rows, $keys): array {
+            $at = array_search($key, $keys, true);
+            self::assertIsInt($at, $key.' is not in the presentation chain.');
+
+            return $rows[$at];
+        };
         self::assertSame('expanded', $row('presentation.sidebar')['value']);
         // The scheme follows the device until someone chooses (docs/SPEC.md § 7, 2026-09-16 review).
         self::assertSame('auto', $row('presentation.scheme')['value']);
