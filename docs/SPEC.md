@@ -2225,6 +2225,17 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   packs, supplier and internal codes the file has no column for; blank, it changes nothing. **(5) The migration** copies
   each `product.barcode` into a `unit` row with its key worked out inside the migration, and aborts naming both
   products when two hold two spellings of one GTIN — choosing which keeps it is not a migration's to decide.
+- [2026-09-23 00:40] NOTED (decisions taken building the scan lookup, each the standard's or the codebase's own
+  answer): **(1) a GS1 scan is read, never guessed.** `Gs1Scan` reads the three shapes a scanner or a person hands
+  over (symbology prefix `]C1`/`]d2`/`]Q3`/`]e0`/`]J1` with FNC1 as ASCII 29, the separator alone, the bracketed
+  form) and keeps `(01)`, `(10)`, `(17)` and `(21)`; other identifiers are skipped by their known length, and a string
+  carrying one whose length is not known here stays a plain code, since a wrong guess would read a lot into the GTIN.
+  `(17)`'s century follows GS1's sliding window and a day `00` is the month's last. **(2) One scan names one product
+  or none**: `GET …/product-scan?code=` answers the product, the code's role, how many pieces the scan enters (a pack's
+  count) and the lot, use-by and serial it carried, or 404. A retired product is still found, so a person holding one
+  learns why it is refused. **(3) Scanning into a document line will use that lookup**, not a quantity added to the
+  three pickers' rows: the pickers answer "which products match these words", the lookup answers "what did this scan
+  mean", and a pack's count belongs only to the second. The search and the pickers read a GS1 scan by its GTIN too.
 
 ## 8. Status
 

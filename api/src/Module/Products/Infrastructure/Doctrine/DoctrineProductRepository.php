@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Products\Infrastructure\Doctrine;
 
 use App\Module\Products\Domain\Barcode;
+use App\Module\Products\Domain\Gs1Scan;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductBarcode;
 use App\Module\Products\Domain\ProductKind;
@@ -111,7 +112,8 @@ final readonly class DoctrineProductRepository implements ProductRepository
     }
 
     /**
-     * Narrows the query to what the words find, or to the product one of whose codes they spell exactly.
+     * Narrows the query to what the words find, or to the product one of whose codes they spell exactly, a GS1 scan
+     * by its GTIN.
      *
      * @return Uuid|null the product the words name by one of its codes
      */
@@ -120,7 +122,8 @@ final readonly class DoctrineProductRepository implements ProductRepository
         if ('' === $words) {
             return null;
         }
-        $code = $this->barcodeOfKeyInCompany(Barcode::keyOf($words), $companyId)?->getProduct()->getId();
+        // A GS1 scan is looked up by the GTIN of its (01): the lot and serial it carries are no part of the product.
+        $code = $this->barcodeOfKeyInCompany(Barcode::keyOf(Gs1Scan::read($words)->code()), $companyId)?->getProduct()->getId();
         $byCode = null === $code ? '' : ' OR p.id = :code';
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere('('.self::MATCHES_WORDS.$byCode.')')->setParameter('text', SearchText::escapeLike($words));

@@ -211,6 +211,11 @@ final class ProductsTest extends ApiTestCase
         // Part of a code finds nothing: a code is found whole.
         $this->getJson($this->path().'?q=1001234567');
         self::assertSame([], $this->jsonList());
+        // A GS1 scan finds the product its (01) names, the lot and serial it carried being no part of the product.
+        $this->getJson($this->path().'?q='.rawurlencode(']C10110012345678902'."10LOT-7\x1D".'21SN99'));
+        self::assertSame(['ZZZ-9'], array_column($this->jsonList(), 'reference'));
+        $this->getJson($this->companyPath().'/invoice-options/products?q='.rawurlencode('(01)10012345678902(10)B2'));
+        self::assertSame(['ZZZ-9'], array_column($this->jsonList(), 'reference'));
     }
 
     /** @param array<string, mixed> $body */
