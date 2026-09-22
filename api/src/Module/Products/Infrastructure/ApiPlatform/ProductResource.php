@@ -41,7 +41,7 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             normalizationContext: self::NORMALIZATION,
             parameters: [
-                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the reference, name or barcode, whatever their case and accents; under three characters, the exact reference only.'),
+                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the reference or name, or one of its codes spelled whole, whatever their case and accents; under three characters, the exact reference only.'),
                 'kind' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['goods', 'service']]),
                 'isActive' => new QueryParameter(schema: ['type' => 'boolean'], castToNativeType: true),
                 'order[reference]' => new QueryParameter(schema: self::DIRECTION),
@@ -129,9 +129,14 @@ final class ProductResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $categoryId = null;
 
-    #[Assert\Length(max: ProductDetails::BARCODE_MAX, groups: [self::WRITE])]
-    #[Groups([self::READ, self::WRITE])]
-    public ?string $barcode = null;
+    /**
+     * The codes it answers to (docs/SPEC.md § 7, 2026-09-22 11:05), written on their own: PUT .../barcodes.
+     *
+     * @var list<ProductBarcodeRow>
+     */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public array $barcodes = [];
 
     /** @var list<string> the ids of the company's line taxes a new line for this product starts with */
     #[Assert\Type('list', groups: [self::WRITE])]
@@ -160,7 +165,7 @@ final class ProductResource
         $resource->unitPriceNet = $details->unitPriceNet;
         $resource->costPrice = $details->costPrice;
         $resource->categoryId = $product->getCategory()?->getId()->toRfc4122();
-        $resource->barcode = $details->barcode;
+        $resource->barcodes = array_map(ProductBarcodeRow::of(...), $product->getBarcodes());
         $resource->defaultTaxComponentIds = $product->getDefaultTaxComponentIds();
         $resource->customFields = $product->getCustomFields();
         $resource->isActive = $product->isActive();
@@ -173,7 +178,7 @@ final class ProductResource
     {
         return new ProductInput(
             $this->reference,
-            new ProductDetails($this->name, $this->description, ProductKind::from($this->kind), $this->unitPriceNet, $this->costPrice, $this->barcode),
+            new ProductDetails($this->name, $this->description, ProductKind::from($this->kind), $this->unitPriceNet, $this->costPrice),
             Uuid::fromString($this->unitId),
             null === $this->categoryId ? null : Uuid::fromString($this->categoryId),
             array_map(static fn (string $id): Uuid => Uuid::fromString($id), $this->defaultTaxComponentIds),

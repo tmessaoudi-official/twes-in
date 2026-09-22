@@ -63,6 +63,21 @@
         }
       </div>
     </mat-tab>
+    @if (current(); as product) {
+      <mat-tab [label]="'products.tabs.barcodes' | translate">
+        <div class="flex flex-col gap-6 pt-4" data-testid="product-tab-barcodes">
+          <mat-card>
+            <mat-card-content>
+              <app-product-barcodes
+                [productId]="product.id"
+                [saved]="product.barcodes"
+                [readOnly]="!mayWrite()"
+              />
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+    }
     @if (homesOf(); as productId) {
       <mat-tab [label]="'products.tabs.homes' | translate">
         <div class="flex flex-col gap-6 pt-4" data-testid="product-tab-homes">

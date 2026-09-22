@@ -10,11 +10,17 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\Products\Domain;
 
 use App\Fiscal\Domain\Unit;
+use App\Module\Products\Domain\Barcode;
+use App\Module\Products\Domain\BarcodeLine;
+use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductBarcode;
 use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Vendors\Domain\Vendor;
+use App\Module\Vendors\Domain\VendorProfile;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -75,40 +81,6 @@ final class ProductTest extends TestCase
         yield 'not a number' => ['unitPriceNet', ['unitPriceNet' => '12,5']];
         yield 'leading zero' => ['unitPriceNet', ['unitPriceNet' => '012']];
         yield 'exponent' => ['costPrice', ['costPrice' => '1e3']];
-        yield 'barcode with a space' => ['barcode', ['barcode' => '3017 620422003']];
-        yield 'long barcode' => ['barcode', ['barcode' => str_repeat('1', 65)]];
-        // One digit off a real code of each GTIN length. The check digit exists to catch exactly this — a
-        // mistyped or misread digit — so each of these is the last digit of a published code, plus one.
-        yield 'EAN-13 whose check digit is wrong' => ['barcode', ['barcode' => '3017620422004']];
-        yield 'EAN-8 whose check digit is wrong' => ['barcode', ['barcode' => '96385075']];
-        yield 'UPC whose check digit is wrong' => ['barcode', ['barcode' => '036000291453']];
-    }
-
-    /**
-     * The three GTIN lengths, and everything else kept as typed (docs/SPEC.md § 7, 2026-09-17: the check digit is
-     * verified WHEN the code has that shape). The valid codes are published examples — Nutella's EAN-13, the
-     * EAN-8 and UPC-A of the standards' own documentation — and NOT this code's own output, which would only
-     * prove the rule agrees with itself.
-     *
-     * @return iterable<string, array{string}>
-     */
-    public static function keptBarcodes(): iterable
-    {
-        yield 'a real EAN-13' => ['3017620422003'];
-        yield 'a real EAN-8' => ['96385074'];
-        yield 'a real UPC' => ['036000291452'];
-        // Not a GTIN length, so no check digit is claimed and none is verified.
-        yield 'eleven digits' => ['12345678901'];
-        yield 'fourteen digits' => ['30176204220031'];
-        // Thirteen characters, but not thirteen DIGITS: an internal code, kept exactly as it was typed.
-        yield 'thirteen with a letter' => ['301762042200A'];
-        yield 'a Code 128 reference' => ['ABC-123/X'];
-    }
-
-    #[DataProvider('keptBarcodes')]
-    public function testABarcodeIsKeptAsTypedUnlessItClaimsAGtinShapeAndFailsIt(string $barcode): void
-    {
-        self::assertSame($barcode, self::details(barcode: $barcode)->barcode);
     }
 
     /** @param array<string, string> $change */
@@ -125,13 +97,12 @@ final class ProductTest extends TestCase
 
     public function testTheLargestPriceAndAnEmptyOptionalFieldAreKept(): void
     {
-        $details = self::details(description: '  ', unitPriceNet: '9999999999.9999', costPrice: null, barcode: ' ');
+        $details = self::details(description: '  ', unitPriceNet: '9999999999.9999', costPrice: null);
 
         self::assertSame('9999999999.9999', $details->unitPriceNet);
         self::assertSame('0.0000', self::details(unitPriceNet: '0')->unitPriceNet);
         self::assertNull($details->description);
         self::assertNull($details->costPrice);
-        self::assertNull($details->barcode);
     }
 
     public function testAUnitOrACategoryOfAnotherCompanyIsRefused(): void
@@ -157,8 +128,8 @@ final class ProductTest extends TestCase
 
         self::assertSame([], $product->revise('ART-001', self::details(unitPriceNet: '1250.0000'), $this->piece, null, [], true, $this->now));
         self::assertSame(
-            ['reference', 'kind', 'unitPriceNet', 'barcode', 'unitId', 'categoryId', 'defaultTaxComponentIds', 'isActive'],
-            $product->revise('SRV-001', self::details(kind: ProductKind::Service, unitPriceNet: '80', barcode: '3017620422003'), $hour, $category, [$tax], false, $this->now),
+            ['reference', 'kind', 'unitPriceNet', 'unitId', 'categoryId', 'defaultTaxComponentIds', 'isActive'],
+            $product->revise('SRV-001', self::details(kind: ProductKind::Service, unitPriceNet: '80'), $hour, $category, [$tax], false, $this->now),
         );
         self::assertSame('SRV-001', $product->getReference());
         self::assertSame($hour, $product->getUnit());
@@ -175,14 +146,107 @@ final class ProductTest extends TestCase
         self::assertSame(['warranty' => 24], $product->getCustomFields());
     }
 
+    /**
+     * A product answers to several codes (docs/SPEC.md § 7, 2026-09-22 11:05): the unit it is sold by, a pack that
+     * enters several at once, a supplier's own carton, and a code the company printed itself.
+     */
+    public function testAProductHoldsSeveralCodesEachWithItsRoleAndQuantity(): void
+    {
+        $product = Product::create($this->company, 'ART-001', self::details(), $this->piece, null, [], $this->now);
+        $vendor = Vendor::create($this->company, 'F-001', new VendorProfile('Sotupa'), $this->now);
+
+        self::assertTrue($product->replaceBarcodes([
+            new BarcodeLine(BarcodeRole::Pack, new Barcode('10012345678902'), 12),
+            new BarcodeLine(BarcodeRole::Unit, new Barcode('036000291452'), 1),
+            new BarcodeLine(BarcodeRole::Supplier, new Barcode('SOT-4471'), 6, $vendor),
+        ], $this->now));
+
+        self::assertSame(
+            [['unit', '036000291452', 1], ['pack', '10012345678902', 12], ['supplier', 'SOT-4471', 6]],
+            array_map(static fn (ProductBarcode $row): array => [$row->getRole()->value, $row->getCode(), $row->getQuantity()], $product->getBarcodes()),
+        );
+        self::assertSame($vendor, $product->getBarcodes()[2]->getSupplier());
+        self::assertSame($this->company, $product->getBarcodes()[0]->getCompany());
+    }
+
+    public function testTheSameCodesAgainAreNoChangeAndAChangedRowKeepsItsIdentity(): void
+    {
+        $product = Product::create($this->company, 'ART-001', self::details(), $this->piece, null, [], $this->now);
+        $product->replaceBarcodes([new BarcodeLine(BarcodeRole::Unit, new Barcode('036000291452'), 1)], $this->now);
+        $row = $product->getBarcodes()[0];
+
+        // The EAN-13 spelling of the same UPC is the same code: nothing changed.
+        self::assertFalse($product->replaceBarcodes([new BarcodeLine(BarcodeRole::Unit, new Barcode('036000291452'), 1)], $this->now));
+        // A row whose code stays is revised in place, never removed and added again: the unique key on the code would
+        // otherwise refuse the insert before the delete ran.
+        self::assertTrue($product->replaceBarcodes([new BarcodeLine(BarcodeRole::Internal, new Barcode('0036000291452'), 1)], $this->now));
+        self::assertSame($row, $product->getBarcodes()[0]);
+        self::assertSame(['internal', '0036000291452'], [$row->getRole()->value, $row->getCode()]);
+        self::assertTrue($product->replaceBarcodes([], $this->now));
+        self::assertSame([], $product->getBarcodes());
+    }
+
+    public function testOneCodeTwiceOnOneProductIsRefusedNamingTheSecondRow(): void
+    {
+        $product = Product::create($this->company, 'ART-001', self::details(), $this->piece, null, [], $this->now);
+
+        try {
+            $product->replaceBarcodes([
+                new BarcodeLine(BarcodeRole::Unit, new Barcode('036000291452'), 1),
+                new BarcodeLine(BarcodeRole::Pack, new Barcode('00036000291452'), 6),
+            ], $this->now);
+            self::fail('one code twice was accepted');
+        } catch (InvalidProduct $refused) {
+            self::assertSame('barcodes.1.code', $refused->field);
+        }
+        self::assertSame([], $product->getBarcodes());
+    }
+
+    /**
+     * The role fixes what a quantity may be: a unit code is one piece, a pack is several (else it is a unit code), a
+     * supplier's code names its supplier and nothing else does.
+     *
+     * @return iterable<string, array{string, BarcodeRole, int, bool}>
+     */
+    public static function refusedLines(): iterable
+    {
+        yield 'a unit of two' => ['quantity', BarcodeRole::Unit, 2, false];
+        yield 'a pack of one' => ['quantity', BarcodeRole::Pack, 1, false];
+        yield 'nothing at all' => ['quantity', BarcodeRole::Internal, 0, false];
+        yield 'beyond a million' => ['quantity', BarcodeRole::Supplier, BarcodeLine::QUANTITY_MAX + 1, true];
+        yield 'a supplier code without its supplier' => ['supplierId', BarcodeRole::Supplier, 1, false];
+        yield 'a unit code naming a supplier' => ['supplierId', BarcodeRole::Unit, 1, true];
+    }
+
+    #[DataProvider('refusedLines')]
+    public function testALineIsRefusedOnTheFieldAtFault(string $field, BarcodeRole $role, int $quantity, bool $withSupplier): void
+    {
+        $vendor = $withSupplier ? Vendor::create($this->company, 'F-001', new VendorProfile('Sotupa'), $this->now) : null;
+
+        try {
+            new BarcodeLine($role, new Barcode('036000291452'), $quantity, $vendor);
+            self::fail('accepted');
+        } catch (InvalidProduct $refused) {
+            self::assertSame($field, $refused->field);
+        }
+    }
+
+    public function testASupplierOfAnotherCompanyIsRefused(): void
+    {
+        $product = Product::create($this->company, 'ART-001', self::details(), $this->piece, null, [], $this->now);
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+
+        $this->expectExceptionObject(new InvalidProduct('barcodes.0.supplierId', 'A product\'s supplier code names a supplier of its own company.'));
+        $product->replaceBarcodes([new BarcodeLine(BarcodeRole::Supplier, new Barcode('SOT-4471'), 6, Vendor::create($globex, 'F-001', new VendorProfile('Sotupa'), $this->now))], $this->now);
+    }
+
     private static function details(
         string $name = 'Portable 14"',
         ?string $description = 'Processeur 8 cœurs',
         ProductKind $kind = ProductKind::Goods,
         string $unitPriceNet = '1250',
         ?string $costPrice = '900',
-        ?string $barcode = null,
     ): ProductDetails {
-        return new ProductDetails($name, $description, $kind, $unitPriceNet, $costPrice, $barcode);
+        return new ProductDetails($name, $description, $kind, $unitPriceNet, $costPrice);
     }
 }

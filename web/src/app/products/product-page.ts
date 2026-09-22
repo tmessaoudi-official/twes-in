@@ -20,6 +20,7 @@ import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import { ArticleDefaults } from './article-defaults';
+import { ProductBarcodesSection } from './product-barcodes';
 import { ProductHomes } from './product-homes-facade';
 import { ProductHomesSection } from './product-homes';
 import { productForm, productInput, productValues } from './product-forms';
@@ -46,6 +47,7 @@ import { MatTabsModule } from '@angular/material/tabs';
     RecordChanged,
     ArticleDefaults,
     ProductHomesSection,
+    ProductBarcodesSection,
   ],
   templateUrl: './product-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

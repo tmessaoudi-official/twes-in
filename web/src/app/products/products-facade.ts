@@ -7,6 +7,7 @@ import { SettingsApi } from '../shared/settings/settings-api';
 import type { SettingRow } from '../shared/settings/settings-types';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type {
+  ProductBarcode,
   ProductCategoryInput,
   ProductCategoryRow,
   ProductInput,
@@ -155,6 +156,12 @@ export class ProductsFacade {
     } finally {
       this.busySignal.set(false);
     }
+  }
+
+  /** The codes the codes tab just saved, written into the product this screen holds (the tab saves on its own). */
+  barcodesSaved(productId: string, barcodes: ProductBarcode[]): void {
+    const product = this.productSignal();
+    if (product?.id === productId) this.productSignal.set({ ...product, barcodes });
   }
 
   private async save(call: () => Promise<ProductRow>): Promise<ProductRow | null> {

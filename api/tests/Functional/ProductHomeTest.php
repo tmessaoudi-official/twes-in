@@ -226,7 +226,7 @@ final class ProductHomeTest extends ApiTestCase
             'unitPriceNet' => '0.45',
             'costPrice' => null,
             'categoryId' => null,
-            'barcode' => null,
+            'barcodes' => [],
             'defaultTaxComponentIds' => [],
             'customFields' => [],
             'isActive' => true,

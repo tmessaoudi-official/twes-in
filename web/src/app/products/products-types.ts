@@ -4,7 +4,13 @@ import type { CustomFieldValue } from '../shared/custom-fields/custom-fields-typ
 
 /** Why the API refused, as the products screens translate it. */
 export type ProductsError =
-  'network' | 'not_found' | 'reference_taken' | 'name_taken' | 'in_use' | 'invalid';
+  | 'network'
+  | 'not_found'
+  | 'reference_taken'
+  | 'name_taken'
+  | 'in_use'
+  | 'invalid'
+  | 'barcode_taken';
 
 export type ProductKind = 'goods' | 'service';
 export const PRODUCT_KINDS: readonly ProductKind[] = ['goods', 'service'];
@@ -20,7 +26,7 @@ export interface ProductSearch {
   /** Numbered from 1. */
   page: number;
   itemsPerPage: number;
-  /** Words found in the reference, name or barcode; empty finds all. */
+  /** Words found in the reference or name, or one of its codes spelled whole; empty finds all. */
   q: string;
   kind: ProductKind | null;
   isActive: boolean | null;
@@ -38,14 +44,43 @@ export interface ProductRow {
   unitPriceNet: string;
   costPrice: string | null;
   categoryId: string | null;
-  barcode: string | null;
+  /** The codes it answers to, unit first; written on their own (`ProductsApi.replaceBarcodes`). */
+  barcodes: ProductBarcode[];
   defaultTaxComponentIds: string[];
   isActive: boolean;
   /** Values by the company's custom field keys for products; a retired field's value stays here. */
   customFields: Record<string, CustomFieldValue>;
 }
 
-export type ProductInput = Omit<ProductRow, 'id'>;
+export type ProductInput = Omit<ProductRow, 'id' | 'barcodes'>;
+
+/**
+ * What a code stands for (docs/SPEC.md § 7, 2026-09-22 11:05): the piece it is sold by, a pack entering several at
+ * once, a supplier's own carton, a code the company printed itself.
+ */
+export type BarcodeRole = 'unit' | 'pack' | 'supplier' | 'internal';
+export const BARCODE_ROLES: readonly BarcodeRole[] = ['unit', 'pack', 'supplier', 'internal'];
+
+export interface ProductBarcode {
+  role: BarcodeRole;
+  /** As printed. */
+  code: string;
+  /** How many pieces one scan enters: 1 for a unit code, more for a pack. */
+  quantity: number;
+  /** The supplier who prints it, for a supplier's code only. */
+  supplierId: string | null;
+}
+
+/** Why a list of codes was refused, and which row of it: the one to put the message under. */
+export interface BarcodesRefusal {
+  code: ProductsError;
+  /** The row at fault, counted from 0 in the list that was sent; null when the API named none. */
+  index: number | null;
+  /** The field of that row: `code`, `role`, `quantity` or `supplierId`. */
+  field: string | null;
+  /** For `barcode_taken`, the reference of the product that already answers to the code. */
+  heldBy: string | null;
+}
 
 export interface ProductCategoryRow {
   id: string;

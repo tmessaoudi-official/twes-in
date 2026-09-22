@@ -1238,7 +1238,8 @@
     "tabs": {
       "record": "Record",
       "defaults": "Defaults",
-      "homes": "Where it lives"
+      "homes": "Where it lives",
+      "barcodes": "Barcodes"
     },
     "title": "Products",
     "add": "New product",
@@ -1272,7 +1273,6 @@
       "kind": "Kind",
       "categoryId": "Category",
       "isActive": "Active",
-      "barcode": "Barcode",
       "unitId": "Unit",
       "unit": "Unit",
       "unitPriceNet": "Net unit price",
@@ -1284,7 +1284,6 @@
       "no_category": "No category",
       "reference_hint": "Letters, digits and . _ / -, up to 32 characters, unique in the company.",
       "active_hint": "An inactive product stays on its documents but is no longer offered for new ones.",
-      "barcode_hint": "Up to 64 characters without spaces, such as an EAN-13.",
       "price_hint": "In the company's currency, with up to four decimals.",
       "cost_hint": "What one unit costs you; never printed.",
       "description_hint": "Offered as the text of a new document line."
@@ -1295,7 +1294,8 @@
       "reference_taken": "Another product already has this reference.",
       "name_taken": "Another category already has this name.",
       "in_use": "The category still holds subcategories or products.",
-      "invalid": "The change was refused. Check the unit, the prices and the taxes."
+      "invalid": "The change was refused. Check the unit, the prices and the taxes.",
+      "barcode_taken": "This code already belongs to another article."
     },
     "categories": {
       "title": "Product categories",
@@ -1347,6 +1347,35 @@
       "clear": "Remove this home location",
       "saved": "Home location saved.",
       "cleared": "Home location removed."
+    },
+    "barcodes": {
+      "intro": "The codes a scanner reads for this article: its unit code, packs that count several at once, its supplier’s carton code, a code you printed. A code belongs to one article of the company only.",
+      "none": "No code yet.",
+      "scan": "Scan or type a code, then Enter",
+      "scan_hint": "A scanner types the code and Enter by itself: scan the codes one after another.",
+      "code": "Code",
+      "role": "Role",
+      "quantity": "Quantity per scan",
+      "supplier": "Supplier",
+      "remove": "Remove this code",
+      "roles": {
+        "unit": "Unit",
+        "pack": "Pack",
+        "supplier": "Supplier code",
+        "internal": "Internal code"
+      },
+      "duplicate": "This code is already in the list, row {{row}}.",
+      "taken": "This code already belongs to article {{reference}}.",
+      "refused": "This code was refused.",
+      "saved": "Codes saved.",
+      "problems": {
+        "code_required": "Type the code.",
+        "code_shape": "A code has 1 to 64 characters, without spaces.",
+        "check_digit": "The check digit does not match: check the code (EAN, UPC or GTIN-14).",
+        "quantity_range": "One scan counts 1 to 1,000,000 pieces.",
+        "pack_many": "A pack counts more than one piece; for one piece, choose Unit.",
+        "supplier_required": "Choose the supplier who prints this code."
+      }
     }
   },
   "inventory": {

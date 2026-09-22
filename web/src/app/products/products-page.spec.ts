@@ -54,7 +54,7 @@ const laptop: ProductRow = {
   unitPriceNet: '1250.5000',
   costPrice: null,
   categoryId: 'k1',
-  barcode: null,
+  barcodes: [],
   defaultTaxComponentIds: [],
   isActive: true,
   customFields: {},

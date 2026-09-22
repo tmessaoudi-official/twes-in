@@ -2197,6 +2197,35 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   scans for itself decides whether QR pairing is built now. What the camera reads enters the same path a handheld
   scanner's keystrokes do.
 
+- [2026-09-22 22:38] AGREED: **the camera decoder is `barcode-detector` 3.2.2 over `zxing-wasm` 3.1.3, reader build
+  only**, and **`Apache-2.0 WITH LLVM-exception` is accepted as Apache-2.0** (developer ruling, licensing invariant
+  6). Both packages are MIT as read from their LICENSE files; the reader wasm compiles in zxing-cpp and its glue
+  (Apache-2.0), libzueci (BSD-3-Clause), stb_image and Emscripten with musl (MIT), and LLVM's libc++/libc++abi
+  (Apache-2.0 WITH LLVM-exception, whose exception only waives attribution for compiled-in portions). Refused: both
+  zbar builds (LGPL-2.1), quagga2 (no QR, no DataMatrix); `@zxing/library` passes on licence but is in maintenance
+  mode. Conditions: import `barcode-detector/ponyfill` or `zxing-wasm/reader` only, never the bare `zxing-wasm` (its
+  default is the full build, which carries the writer, libzint and embedded font data whose provenance was not
+  read); self-host the wasm, never the jsDelivr default; and the notices generator lists the wasm's embedded
+  components, which no lock file shows. Evidence: `var/claude/decoder-licence.md` (session scratch). With a decoder
+  that needs only WebAssembly, iPhone Safari scans for itself, so QR pairing is not built in this goal. Correcting
+  the 06:00 note: `localhost` is a secure context, so a laptop webcam works on `http://localhost:8090`; only a phone
+  on the LAN needs the development certificate.
+
+- [2026-09-22 23:42] NOTED (decisions taken building the barcode table, each the standard's or the codebase's own
+  answer): **(1) a code is matched on its GTIN-14 key.** GS1 compares GTINs right-justified on fourteen digits, so a
+  UPC-A `036000291452`, its EAN-13 `0036000291452` and its GTIN-14 are one code; the unique key is `(company_id,
+  match_key)`, the code itself is kept as typed. Anything that is not a valid 8/12/13/14-digit GTIN is its own key.
+  The check digit now covers GTIN-14 too, since a pack row is typically an ITF-14. **(2) A code is found WHOLE.** The
+  trigram index keeps the reference and the name; a code spelled exactly is found through the unique key and joins the
+  words as `OR p.id = :code` (a BitmapOr of two indexes, where a joined LIKE would read every row), and a document's
+  picker offers that product first. Part of a code finds nothing. **(3) Codes are written on their own**, `PUT
+  …/products/{id}/barcodes` as one list, like the product's homes and defaults tabs; the product's own PUT leaves them
+  alone, so its form can never wipe codes it does not show. A code another product holds answers 409 naming the row and
+  that product. **(4) The import's `barcode` column is the UNIT code**: filled, it replaces the unit row and keeps the
+  packs, supplier and internal codes the file has no column for; blank, it changes nothing. **(5) The migration** copies
+  each `product.barcode` into a `unit` row with its key worked out inside the migration, and aborts naming both
+  products when two hold two spellings of one GTIN — choosing which keeps it is not a migration's to decide.
+
 ## 8. Status
 
 <!-- progress-block v1 -->

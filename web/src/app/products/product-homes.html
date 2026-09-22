@@ -12,7 +12,9 @@
   } @else {
     <ul class="flex flex-col gap-2" data-testid="product-homes-list">
       @for (home of rows(); track home.id) {
-        <li class="flex flex-wrap items-center justify-between gap-3 rounded border p-3">
+        <li
+          class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
+        >
           <span class="flex flex-col">
             <span class="text-sm opacity-80">{{ home.establishmentName }}</span>
             <span class="font-medium">{{ home.locationCode }} — {{ home.locationName }}</span>

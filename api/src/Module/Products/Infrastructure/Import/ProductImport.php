@@ -23,13 +23,16 @@ use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowRejected;
+use App\Module\Products\Application\BarcodeInput;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductHomes;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Application\ProductReferenceTaken;
+use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductBarcode;
 use App\Module\Products\Domain\ProductCategoryRepository;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
@@ -137,7 +140,9 @@ final readonly class ProductImport implements DeclaresImport
 
             return RowImported::Updated;
         } catch (InvalidProduct $refused) {
-            [$column, $code] = self::REFUSAL_OF[$refused->field] ?? [null, 'invalid_value'];
+            // The one code a file writes is the unit code, first in the list: every refusal of a row of it is that cell's.
+            $field = str_starts_with($refused->field, 'barcodes.') ? 'barcode' : $refused->field;
+            [$column, $code] = self::REFUSAL_OF[$field] ?? [null, 'invalid_value'];
 
             throw new RowRejected($column, $refused->getMessage(), $code);
         } catch (ProductReferenceTaken) {
@@ -214,14 +219,38 @@ final readonly class ProductImport implements DeclaresImport
                 null === $kind ? ($held->kind ?? ProductKind::Goods) : (ProductKind::tryFrom(strtolower($kind)) ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))])),
                 $price ?? throw new RowRejected('unit_price_net', 'A product is sold at a price, so a new one needs one.', 'value_required'),
                 self::decimal($record->value('cost_price')) ?? $held?->costPrice,
-                $record->value('barcode') ?? $held?->barcode,
             ),
             $this->unitId($company, $record, $current),
             $this->categoryId($company, $record, $current),
             $this->taxIds($company, $record, $current),
             self::yesNo($record, 'active') ?? $current?->isActive() ?? true,
             $this->customValues($company, $record, $current),
+            self::barcodes($record, $current),
         );
+    }
+
+    /**
+     * The file's one code is the product's UNIT code (docs/SPEC.md § 7, 2026-09-22 11:05): given, it becomes the
+     * unit row, first; its packs, supplier and internal codes are kept, since the file has no column for them and a
+     * blank is not an instruction to remove them. Left blank, every code stays as it is.
+     *
+     * @return list<BarcodeInput>
+     */
+    private static function barcodes(ImportRecord $record, ?Product $current): array
+    {
+        $held = array_map(
+            static fn (ProductBarcode $row): BarcodeInput => new BarcodeInput($row->getRole()->value, $row->getCode(), $row->getQuantity(), $row->getSupplier()?->getId()),
+            $current?->getBarcodes() ?? [],
+        );
+        $unit = $record->value('barcode');
+        if (null === $unit) {
+            return $held;
+        }
+
+        return [
+            new BarcodeInput(BarcodeRole::Unit->value, $unit, 1),
+            ...array_values(array_filter($held, static fn (BarcodeInput $row): bool => BarcodeRole::Unit->value !== $row->role)),
+        ];
     }
 
     /** The unit the row names by code. A product is sold in one, so a row creating one names it. */

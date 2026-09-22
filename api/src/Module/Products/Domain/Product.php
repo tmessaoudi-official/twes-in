@@ -12,6 +12,8 @@ namespace App\Module\Products\Domain;
 use App\Fiscal\Domain\Unit;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -27,8 +29,6 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_product_unit', columns: ['unit_id'])]
 #[ORM\Index(name: 'idx_product_category', columns: ['category_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_product_company_reference', columns: ['company_id', 'reference'])]
-// Partial, because many products have no barcode: a plain unique index would let exactly one of them exist.
-#[ORM\UniqueConstraint(name: 'uniq_product_barcode', columns: ['company_id', 'barcode'], options: ['where' => '(barcode IS NOT NULL)'])]
 class Product implements CompanyOwned
 {
     public const string REFERENCE = '/^[A-Za-z0-9][A-Za-z0-9._\/-]{0,31}$/';
@@ -67,8 +67,13 @@ class Product implements CompanyOwned
     #[ORM\JoinColumn(name: 'category_id', nullable: true)]
     private ?ProductCategory $category = null;
 
-    #[ORM\Column(length: ProductDetails::BARCODE_MAX, nullable: true)]
-    private ?string $barcode = null;
+    /**
+     * The codes it answers to (docs/SPEC.md § 7, 2026-09-22 11:05), written only through `replaceBarcodes`.
+     *
+     * @var Collection<int, ProductBarcode>
+     */
+    #[ORM\OneToMany(targetEntity: ProductBarcode::class, mappedBy: 'product', cascade: ['persist', 'detach'], orphanRemoval: true)]
+    private Collection $barcodes;
 
     /** @var list<string> the company's tax components a new line for this product starts with */
     #[ORM\Column(type: Types::JSON, options: ['jsonb' => true, 'default' => '[]'])]
@@ -93,6 +98,7 @@ class Product implements CompanyOwned
         $this->company = $company;
         $this->createdAt = $now;
         $this->updatedAt = $now;
+        $this->barcodes = new ArrayCollection();
     }
 
     /**
@@ -176,9 +182,66 @@ class Product implements CompanyOwned
         return $changed;
     }
 
+    /**
+     * The codes the product answers to become exactly these (docs/SPEC.md § 7, 2026-09-22 11:05). A row whose code
+     * stays is revised IN PLACE, never removed and added again: Doctrine inserts before it deletes, so the company's
+     * unique key on the code would refuse the new row before the old one left. That a code is not held by ANOTHER
+     * product is the use case's to check, since only it sees the company's other products.
+     *
+     * @param list<BarcodeLine> $lines
+     *
+     * @return bool whether anything changed
+     *
+     * @throws InvalidProduct naming the row at fault, `barcodes.<index>.<field>`
+     */
+    public function replaceBarcodes(array $lines, \DateTimeImmutable $now): bool
+    {
+        $wanted = [];
+        foreach ($lines as $index => $line) {
+            if (isset($wanted[$line->barcode->key])) {
+                throw new InvalidProduct("barcodes.$index.code", \sprintf('The code %s is already on this product.', $line->barcode->code));
+            }
+            if (null !== $line->supplier && !$line->supplier->getCompany()->getId()->equals($this->company->getId())) {
+                throw new InvalidProduct("barcodes.$index.supplierId", 'A product\'s supplier code names a supplier of its own company.');
+            }
+            $wanted[$line->barcode->key] = $line;
+        }
+
+        $changed = false;
+        foreach ($this->barcodes as $row) {
+            if (!isset($wanted[$row->getMatchKey()])) {
+                $this->barcodes->removeElement($row);
+                $changed = true;
+            }
+        }
+        foreach ($wanted as $key => $line) {
+            $row = $this->barcodes->findFirst(static fn (int $_, ProductBarcode $held): bool => $held->getMatchKey() === (string) $key);
+            if (null === $row) {
+                $this->barcodes->add(new ProductBarcode($this, $line, $now));
+                $changed = true;
+            } elseif ($row->write($line)) {
+                $changed = true;
+            }
+        }
+        if ($changed) {
+            $this->updatedAt = $now;
+        }
+
+        return $changed;
+    }
+
+    /** @return list<ProductBarcode> by role — unit, pack, supplier, internal — then by code */
+    public function getBarcodes(): array
+    {
+        $rows = $this->barcodes->getValues();
+        usort($rows, static fn (ProductBarcode $a, ProductBarcode $b): int => [$a->getRole()->rank(), $a->getCode()] <=> [$b->getRole()->rank(), $b->getCode()]);
+
+        return $rows;
+    }
+
     public function getDetails(): ProductDetails
     {
-        return new ProductDetails($this->name, $this->description, $this->kind, $this->unitPriceNet, $this->costPrice, $this->barcode);
+        return new ProductDetails($this->name, $this->description, $this->kind, $this->unitPriceNet, $this->costPrice);
     }
 
     private function apply(ProductDetails $details): void
@@ -188,7 +251,6 @@ class Product implements CompanyOwned
         $this->kind = $details->kind;
         $this->unitPriceNet = $details->unitPriceNet;
         $this->costPrice = $details->costPrice;
-        $this->barcode = $details->barcode;
     }
 
     private function unitOfThisCompany(Unit $unit): Unit

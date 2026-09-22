@@ -48,11 +48,10 @@ interface ProductRepository
     public function ofReferenceInCompany(string $reference, Uuid $companyId): ?Product;
 
     /**
-     * The one product of the company holding this barcode, or null. Matched EXACTLY, unlike a reference: a
-     * Code 128 or Code 39 symbol carries case, so `AB12` and `ab12` are two different printed codes and a scan
-     * of one must not answer the other.
+     * The one code of the company under this match key (`Barcode::key`, `Barcode::keyOf` for a scanned string), with
+     * its product, or null. Matched EXACTLY, unlike words: a scan is a code, never part of one.
      */
-    public function ofBarcodeInCompany(string $barcode, Uuid $companyId): ?Product;
+    public function barcodeOfKeyInCompany(string $key, Uuid $companyId): ?ProductBarcode;
 
     /** How many products, active or not, the category holds directly. */
     public function countInCategory(Uuid $categoryId): int;

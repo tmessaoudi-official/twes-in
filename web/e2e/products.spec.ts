@@ -120,3 +120,130 @@ test('a product is filed in a category, priced at the currency scale and revised
     await retire(page, reference, categoryName);
   }
 });
+
+/** A GS1 code with its check digit: weights 3 and 1 alternating from the digit next to it. */
+function gtin(body: string): string {
+  const sum = [...body]
+    .reverse()
+    .reduce((total, digit, place) => total + Number(digit) * (place % 2 === 0 ? 3 : 1), 0);
+  return `${body}${(10 - (sum % 10)) % 10}`;
+}
+
+/** Creates a goods product through the API, as another screen would have; its id. */
+async function aProduct(page: Page, reference: string): Promise<string> {
+  return page.evaluate(
+    async ([csrf, productReference]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const base = `/api/companies/${me.company.id}`;
+      const options = (await (await fetch(`${base}/product-options`)).json()) as {
+        units: { id: string; code: string }[];
+      };
+      const unit = options.units.find((each) => each.code === 'C62') ?? options.units[0];
+      const created = await fetch(`${base}/products`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({
+          reference: productReference,
+          name: `Vis ${productReference}`,
+          kind: 'goods',
+          unitId: unit.id,
+          unitPriceNet: '1',
+        }),
+      });
+      if (!created.ok) throw new Error(`creating ${productReference} answered ${created.status}`);
+      return ((await created.json()) as { id: string }).id;
+    },
+    [CSRF, reference] as const,
+  );
+}
+
+/** Frees the run's codes and retires its products, so the next run can scan the same shelf. */
+async function forget(page: Page, ids: string[]): Promise<void> {
+  await page.evaluate(
+    async ([csrf, productIds]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const base = `/api/companies/${me.company.id}`;
+      for (const id of productIds) {
+        const cleared = await fetch(`${base}/products/${id}/barcodes`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify({ barcodes: [] }),
+        });
+        if (!cleared.ok) throw new Error(`clearing the codes of ${id} answered ${cleared.status}`);
+        const {
+          id: _,
+          barcodes: __,
+          ...fields
+        } = (await (await fetch(`${base}/products/${id}`)).json()) as Record<string, unknown>;
+        const retired = await fetch(`${base}/products/${id}`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify({ ...fields, isActive: false }),
+        });
+        if (!retired.ok) throw new Error(`retiring ${id} answered ${retired.status}`);
+      }
+    },
+    [CSRF, ids] as const,
+  );
+}
+
+// docs/SPEC.md § 7, 2026-09-22 11:05 and 22:26: a product answers to several codes, scanned in one after another;
+// a code is one product's only, and a code spelled whole finds its product.
+test('a product is given its codes by scanning them, and a code finds it', async ({ page }) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const unit = gtin(`200${String(Date.now() % 1_000_000_000).padStart(9, '0')}`);
+  const pack = gtin(`1${unit.slice(0, 12)}`);
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const ids: string[] = [];
+  try {
+    ids.push(await aProduct(page, `SCAN-${run}`));
+    ids.push(await aProduct(page, `SCAN2-${run}`));
+
+    await page.goto(`/products/${ids[0]}`);
+    await page.getByRole('tab', { name: 'Codes-barres' }).click();
+    const scan = page.getByTestId('product-barcode-scan');
+    // What a handheld scanner does: the code and Enter, typed into the focused field.
+    await scan.fill(unit);
+    await scan.press('Enter');
+    await scan.fill(pack);
+    await scan.press('Enter');
+    await expect(scan).toHaveValue('');
+    await expect(page.getByTestId('product-barcode-code-0')).toHaveValue(unit);
+    await expect(page.getByTestId('product-barcode-code-1')).toHaveValue(pack);
+
+    // The carton enters twelve at once: it is a pack.
+    await page.getByTestId('product-barcode-role-1').click();
+    await page.getByRole('option', { name: 'Colis' }).click();
+    await page.getByTestId('product-barcode-quantity-1').fill('12');
+    // The same code scanned again is pointed at, not listed twice.
+    await scan.fill(`0${unit}`);
+    await scan.press('Enter');
+    await expect(page.getByTestId('product-barcodes-duplicate')).toContainText('ligne 1');
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('product-barcodes-save').click();
+    await expect(toast(page)).toContainText('Codes enregistrés.');
+
+    await page.reload();
+    await page.getByRole('tab', { name: 'Codes-barres' }).click();
+    await expect(page.getByTestId('product-barcode-code-1')).toHaveValue(pack);
+    await expect(page.getByTestId('product-barcode-quantity-1')).toHaveValue('12');
+
+    // Another product cannot take the carton's code: the refusal names who holds it, under the row.
+    await page.goto(`/products/${ids[1]}`);
+    await page.getByRole('tab', { name: 'Codes-barres' }).click();
+    await page.getByTestId('product-barcode-scan').fill(pack);
+    await page.getByTestId('product-barcode-scan').press('Enter');
+    await page.getByTestId('product-barcodes-save').click();
+    await expect(page.getByTestId('product-barcode-problem-0')).toContainText(`SCAN-${run}`);
+    expect(await wcagViolations(page)).toEqual([]);
+
+    // Spelled whole in the list's search, a code finds its product.
+    await page.goto('/products');
+    await page.getByTestId('list-filter').fill(pack);
+    await expect(page.getByTestId(`product-SCAN-${run}`)).toBeVisible();
+    await expect(page.getByTestId(`product-SCAN2-${run}`)).toHaveCount(0);
+  } finally {
+    await forget(page, ids);
+  }
+});

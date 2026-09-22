@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Infrastructure\Doctrine;
 
+use App\Module\Products\Domain\Barcode;
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductBarcode;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Domain\ProductSearch;
@@ -18,13 +20,19 @@ use App\Shared\Domain\PageRequest;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrineProductRepository implements ProductRepository
 {
-    /** The words of `:text`, found through idx_product_search: the index is built on this very SEARCH_TEXT expression. */
-    public const string MATCHES_WORDS = "SEARCH_TEXT(p.reference, p.name, p.barcode) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
+    /**
+     * The words of `:text`, found through idx_product_search: the index is built on this very SEARCH_TEXT expression.
+     * A product's codes are not in it (docs/SPEC.md § 7, 2026-09-22): a code is found whole, through the company's
+     * unique key on it, and added to the words as `OR p.id = :code` — two indexes PostgreSQL combines, where a joined
+     * LIKE over the codes would read every row.
+     */
+    public const string MATCHES_WORDS = "SEARCH_TEXT(p.reference, p.name) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
     private const array SORTED_BY = ['reference' => 'p.reference', 'name' => 'p.name', 'kind' => 'p.kind', 'category' => 'c.name', 'isActive' => 'p.isActive'];
 
     public function __construct(private EntityManagerInterface $entityManager)
@@ -42,12 +50,7 @@ final readonly class DoctrineProductRepository implements ProductRepository
             ->select('p', 'c')->from(Product::class, 'p')
             ->leftJoin('p.category', 'c')
             ->where('p.company = :company')->setParameter('company', $companyId, 'uuid');
-        $words = trim($search->text ?? '');
-        if (mb_strlen($words) >= SearchText::SHORTEST) {
-            $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
-        } elseif ('' !== $words) {
-            $query->andWhere('LOWER(p.reference) = LOWER(:reference)')->setParameter('reference', $words);
-        }
+        $this->matchWords($query, $companyId, trim($search->text ?? ''));
         if (null !== $search->kind) {
             $query->andWhere('p.kind = :kind')->setParameter('kind', $search->kind->value);
         }
@@ -73,15 +76,14 @@ final readonly class DoctrineProductRepository implements ProductRepository
         if (null !== $kind) {
             $query->andWhere('p.kind = :kind')->setParameter('kind', $kind->value);
         }
-        $words = trim($words);
-        if (mb_strlen($words) >= SearchText::SHORTEST) {
-            $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
-        } elseif ('' !== $words) {
-            $query->andWhere('LOWER(p.reference) = LOWER(:reference)')->setParameter('reference', $words);
+        $code = $this->matchWords($query, $companyId, trim($words));
+        if (null !== $code) {
+            // A scan is exact, so the product it names is the first offered: that is what lets Enter take it.
+            $query->addSelect('CASE WHEN p.id = :code THEN 0 ELSE 1 END AS HIDDEN exact')->orderBy('exact', 'ASC');
         }
 
         /** @var list<Product> $products */
-        $products = $query->orderBy('p.reference', 'ASC')->setMaxResults($limit)->getQuery()->getResult();
+        $products = $query->addOrderBy('p.reference', 'ASC')->setMaxResults($limit)->getQuery()->getResult();
 
         return $products;
     }
@@ -103,9 +105,33 @@ final readonly class DoctrineProductRepository implements ProductRepository
         return $this->entityManager->getRepository(Product::class)->findOneBy(['company' => $companyId, 'reference' => $reference]);
     }
 
-    public function ofBarcodeInCompany(string $barcode, Uuid $companyId): ?Product
+    public function barcodeOfKeyInCompany(string $key, Uuid $companyId): ?ProductBarcode
     {
-        return $this->entityManager->getRepository(Product::class)->findOneBy(['company' => $companyId, 'barcode' => $barcode]);
+        return $this->entityManager->getRepository(ProductBarcode::class)->findOneBy(['company' => $companyId, 'matchKey' => $key]);
+    }
+
+    /**
+     * Narrows the query to what the words find, or to the product one of whose codes they spell exactly.
+     *
+     * @return Uuid|null the product the words name by one of its codes
+     */
+    private function matchWords(QueryBuilder $query, Uuid $companyId, string $words): ?Uuid
+    {
+        if ('' === $words) {
+            return null;
+        }
+        $code = $this->barcodeOfKeyInCompany(Barcode::keyOf($words), $companyId)?->getProduct()->getId();
+        $byCode = null === $code ? '' : ' OR p.id = :code';
+        if (mb_strlen($words) >= SearchText::SHORTEST) {
+            $query->andWhere('('.self::MATCHES_WORDS.$byCode.')')->setParameter('text', SearchText::escapeLike($words));
+        } else {
+            $query->andWhere('(LOWER(p.reference) = LOWER(:reference)'.$byCode.')')->setParameter('reference', $words);
+        }
+        if (null !== $code) {
+            $query->setParameter('code', $code, 'uuid');
+        }
+
+        return $code;
     }
 
     public function countInCategory(Uuid $categoryId): int

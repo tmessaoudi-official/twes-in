@@ -20,6 +20,9 @@ use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\TaxKind;
 use App\Fiscal\Domain\Unit;
 use App\Fiscal\Domain\UnitRepository;
+use App\Module\Products\Domain\Barcode;
+use App\Module\Products\Domain\BarcodeLine;
+use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductCategory;
@@ -27,6 +30,7 @@ use App\Module\Products\Domain\ProductCategoryRepository;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Domain\ProductSearch;
+use App\Module\Vendors\Domain\VendorRepository;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
@@ -57,6 +61,7 @@ final readonly class ManageProducts
         private CustomFieldDefinitionRepository $customFields,
         private ProductStockHistory $stockHistory,
         private Transactions $transactions,
+        private VendorRepository $vendors,
     ) {
     }
 
@@ -89,12 +94,13 @@ final readonly class ManageProducts
             if (null !== $this->products->ofReferenceInCompany(trim($input->reference), $company->getId())) {
                 throw new ProductReferenceTaken();
             }
-            $this->assertBarcodeIsFree($company, $input, null);
+            $lines = $this->barcodeLines($company, $input->barcodes ?? [], null);
             [$unit, $category] = $this->checked($company, $input, null);
             $values = $this->customFieldValues($company, $input, null);
             $now = $this->clock->now();
             $product = Product::create($company, $input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, $now);
             $product->reviseCustomFields($values, $now);
+            $product->replaceBarcodes($lines, $now);
             if (!$input->isActive) {
                 $product->revise($input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, false, $now);
             }
@@ -119,7 +125,7 @@ final readonly class ManageProducts
             if (null !== $holder && !$holder->getId()->equals($product->getId())) {
                 throw new ProductReferenceTaken();
             }
-            $this->assertBarcodeIsFree($company, $input, $product);
+            $lines = null === $input->barcodes ? null : $this->barcodeLines($company, $input->barcodes, $product);
             [$unit, $category] = $this->checked($company, $input, $product);
             $this->assertStockKeepsItsMeaning($company, $product, $unit, $input->details->kind);
             $values = $this->customFieldValues($company, $input, $product);
@@ -127,9 +133,35 @@ final readonly class ManageProducts
             $now = $this->clock->now();
             $changed = $product->revise($input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, $input->isActive, $now);
             $changed = [...$changed, ...$product->reviseCustomFields($values, $now)];
+            if (null !== $lines && $product->replaceBarcodes($lines, $now)) {
+                $changed[] = 'barcodes';
+            }
             if ([] !== $changed) {
                 $this->products->save($product);
                 $this->record($company, $product->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
+
+            return $product;
+        });
+    }
+
+    /**
+     * The codes a product answers to become exactly these (docs/SPEC.md § 7, 2026-09-22 11:05), written on their own
+     * like the product's other tabs, and audited as a revision of the product's `barcodes`.
+     *
+     * @param list<BarcodeInput> $rows
+     *
+     * @throws ProductNotFound
+     * @throws ProductBarcodeTaken
+     * @throws InvalidProduct
+     */
+    public function replaceBarcodes(Company $company, Uuid $id, array $rows, ?Uuid $actorUserId): Product
+    {
+        return $this->transactions->run(function () use ($company, $id, $rows, $actorUserId): Product {
+            $product = $this->get($company, $id);
+            if ($product->replaceBarcodes($this->barcodeLines($company, $rows, $product), $this->clock->now())) {
+                $this->products->save($product);
+                $this->record($company, $product->getId(), self::REVISED, ['fields' => ['barcodes']], $actorUserId);
             }
 
             return $product;
@@ -191,23 +223,41 @@ final readonly class ManageProducts
     }
 
     /**
-     * docs/SPEC.md § 7, 2026-09-17: a barcode is unique within the company WHEN SET. A product without one is
-     * not holding a value, so any number of them coexist — which matters, since many products have no barcode.
+     * The codes the input names, each checked as a line and against the company (docs/SPEC.md § 7, 2026-09-22 11:05):
+     * a code another product holds, in any role, is refused naming that product. The product's own codes are its to
+     * keep. A refusal names the row, `barcodes.<index>.<field>`, so a form can put it under the right line.
      *
+     * @param list<BarcodeInput> $rows
+     *
+     * @return list<BarcodeLine>
+     *
+     * @throws InvalidProduct
      * @throws ProductBarcodeTaken
      */
-    private function assertBarcodeIsFree(Company $company, ProductInput $input, ?Product $revising): void
+    private function barcodeLines(Company $company, array $rows, ?Product $revising): array
     {
-        $barcode = $input->details->barcode;
-        if (null === $barcode) {
-            return;
-        }
-        $holder = $this->products->ofBarcodeInCompany($barcode, $company->getId());
-        if (null === $holder || (null !== $revising && $holder->getId()->equals($revising->getId()))) {
-            return;
+        $lines = [];
+        foreach ($rows as $index => $row) {
+            $role = BarcodeRole::tryFrom($row->role)
+                ?? throw new InvalidProduct("barcodes.$index.role", 'A code is a unit, pack, supplier or internal code.');
+            $supplier = null;
+            if (null !== $row->supplierId) {
+                $supplier = $this->vendors->ofIdInCompany($row->supplierId, $company->getId())
+                    ?? throw new InvalidProduct("barcodes.$index.supplierId", 'No supplier of this company has this id.');
+            }
+            try {
+                $line = new BarcodeLine($role, new Barcode($row->code), $row->quantity, $supplier);
+            } catch (InvalidProduct $refused) {
+                throw new InvalidProduct("barcodes.$index.{$refused->field}", $refused->getMessage());
+            }
+            $held = $this->products->barcodeOfKeyInCompany($line->barcode->key, $company->getId());
+            if (null !== $held && !(null !== $revising && $held->getProduct()->getId()->equals($revising->getId()))) {
+                throw new ProductBarcodeTaken($held->getProduct()->getReference(), $line->barcode->code, $index);
+            }
+            $lines[] = $line;
         }
 
-        throw new ProductBarcodeTaken($holder->getReference());
+        return $lines;
     }
 
     /** @return array<string, string|int|float|bool> */

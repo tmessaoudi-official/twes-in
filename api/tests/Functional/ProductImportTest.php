@@ -21,7 +21,11 @@ use App\Module\Inventory\Domain\ProductHomeLocation;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Inventory\Domain\StockLocationRepository;
+use App\Module\Products\Domain\Barcode;
+use App\Module\Products\Domain\BarcodeLine;
+use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductBarcode;
 use App\Module\Products\Domain\ProductCategory;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
@@ -76,7 +80,7 @@ final class ProductImportTest extends ApiTestCase
         self::assertSame('Visserie', $screw->getCategory()?->getName());
         self::assertSame('0.4500', $screw->getDetails()->unitPriceNet, 'a decimal comma is read as a point');
         self::assertSame('0.2200', $screw->getDetails()->costPrice);
-        self::assertSame('6191234567897', $screw->getDetails()->barcode);
+        self::assertSame([['unit', '6191234567897', 1]], self::codes($screw));
         self::assertSame([$this->taxId('TVA19')], $screw->getDefaultTaxComponentIds());
         self::assertSame(['shelf' => 'A12'], $screw->getCustomFields());
         self::assertFalse($screw->isActive());
@@ -168,13 +172,34 @@ final class ProductImportTest extends ApiTestCase
         self::assertSame('0.4500', $updated->getDetails()->unitPriceNet, 'a blank cell keeps what is there');
         self::assertSame('Visserie', $updated->getCategory()?->getName(), 'a column the file lacks keeps what is there');
         self::assertSame(['shelf' => 'A12'], $updated->getCustomFields());
-        self::assertSame('6191234567897', $updated->getDetails()->barcode);
+        self::assertSame([['unit', '6191234567897', 1]], self::codes($updated));
     }
 
     /**
      * Where a product normally lives, named by the code of a stock location (docs/SPEC.md row 101). The
      * establishment falls out of the location, so the file never carries one.
      */
+    /**
+     * A file writes one code, the UNIT code (docs/SPEC.md § 7, 2026-09-22 11:05): a new one replaces the unit row and
+     * leaves the product's pack alone, which the file has no column for.
+     */
+    public function testAnUpsertedBarcodeReplacesTheUnitCodeAndKeepsThePacks(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->import($this->twoProducts());
+        self::assertResponseIsSuccessful();
+        $screw = $this->product('VIS-6X40');
+        $screw->replaceBarcodes([new BarcodeLine(BarcodeRole::Unit, new Barcode('6191234567897'), 1), new BarcodeLine(BarcodeRole::Pack, new Barcode('16191234567894'), 100)], new \DateTimeImmutable());
+        $this->em()->flush();
+        $this->em()->clear();
+
+        $this->import("reference,name,barcode\nVIS-6X40,,036000291452\n", mode: 'upsert');
+
+        self::assertResponseIsSuccessful();
+        $this->em()->clear();
+        self::assertSame([['unit', '036000291452', 1], ['pack', '16191234567894', 100]], self::codes($this->product('VIS-6X40')));
+    }
+
     public function testARowNamesWhereTheProductNormallyLivesByTheLocationsCode(): void
     {
         $this->aZoneCoded('Z1');
@@ -389,5 +414,11 @@ final class ProductImportTest extends ApiTestCase
         self::assertNotNull($tax);
 
         return $tax->getId()->toRfc4122();
+    }
+
+    /** @return list<array{string, string, int}> */
+    private static function codes(Product $product): array
+    {
+        return array_map(static fn (ProductBarcode $row): array => [$row->getRole()->value, $row->getCode(), $row->getQuantity()], $product->getBarcodes());
     }
 }

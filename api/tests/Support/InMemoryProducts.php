@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
+use App\Module\Products\Domain\Barcode;
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductBarcode;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Domain\ProductSearch;
@@ -36,7 +38,7 @@ final class InMemoryProducts implements ProductRepository
         $found = array_values(array_filter($this->ofCompany($companyId), static function (Product $p) use ($search): bool {
             $details = $p->getDetails();
 
-            return InMemorySearch::finds($search->text, $p->getReference(), [$details->name, $details->barcode])
+            return (InMemorySearch::finds($search->text, $p->getReference(), [$details->name]) || self::holds($p, $search->text))
                 && (null === $search->kind || $details->kind === $search->kind)
                 && (null === $search->active || $p->isActive() === $search->active);
         }));
@@ -51,9 +53,10 @@ final class InMemoryProducts implements ProductRepository
 
             return $p->isActive()
                 && (null === $kind || $details->kind === $kind)
-                && InMemorySearch::finds($words, $p->getReference(), [$details->name, $details->barcode]);
+                && (InMemorySearch::finds($words, $p->getReference(), [$details->name]) || self::holds($p, $words));
         }));
-        usort($found, static fn (Product $a, Product $b): int => $a->getReference() <=> $b->getReference());
+        // A code spelled whole comes first, as in the database.
+        usort($found, static fn (Product $a, Product $b): int => [!self::holds($a, $words), $a->getReference()] <=> [!self::holds($b, $words), $b->getReference()]);
 
         return \array_slice($found, 0, $limit);
     }
@@ -87,15 +90,24 @@ final class InMemoryProducts implements ProductRepository
         return null;
     }
 
-    public function ofBarcodeInCompany(string $barcode, Uuid $companyId): ?Product
+    public function barcodeOfKeyInCompany(string $key, Uuid $companyId): ?ProductBarcode
     {
         foreach ($this->ofCompany($companyId) as $product) {
-            if ($product->getDetails()->barcode === $barcode) {
-                return $product;
+            foreach ($product->getBarcodes() as $row) {
+                if ($row->getMatchKey() === $key) {
+                    return $row;
+                }
             }
         }
 
         return null;
+    }
+
+    private static function holds(Product $product, ?string $words): bool
+    {
+        $key = Barcode::keyOf($words ?? '');
+
+        return '' !== $key && [] !== array_filter($product->getBarcodes(), static fn (ProductBarcode $row): bool => $row->getMatchKey() === $key);
     }
 
     public function countInCategory(Uuid $categoryId): int

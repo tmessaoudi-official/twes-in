@@ -40,6 +40,7 @@ use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Application\ManagePayments;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\PaymentDetails;
+use App\Module\Products\Application\BarcodeInput;
 use App\Module\Products\Application\ManageProductCategories;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductInput;
@@ -174,8 +175,8 @@ final class DemoCompanies extends Fixture
         $this->settings->change(new SettingContext($company()), 'article.stock_tracking', SettingLevel::Company, true, $actor);
 
         $customerIds = $this->writeCustomers($demo, $company, $tax, $actor, $settle);
-        [$sellable, $goods] = $this->writeProducts($demo, $company, $unit, $tax, $actor, $settle);
         $vendors = $this->writeVendors($demo, $company, $actor);
+        [$sellable, $goods] = $this->writeProducts($demo, $company, $unit, $tax, $vendors, $actor, $settle);
 
         $this->planExpenses($demo, $timeline, $company, $vendors, $tax, $actor);
         $this->planDeliveryNotes($timeline, $company, $customerIds, $goods, $actor);
@@ -258,11 +259,12 @@ final class DemoCompanies extends Fixture
      * @param \Closure(): Company    $company
      * @param \Closure(string): Uuid $unit
      * @param \Closure(string): Uuid $tax
+     * @param list<array{id: Uuid}>  $vendors
      * @param \Closure(): void       $settle
      *
      * @return array{list<Uuid>, list<Uuid>} the active products, then the active goods among them
      */
-    private function writeProducts(DemoCompany $demo, \Closure $company, \Closure $unit, \Closure $tax, Uuid $actor, \Closure $settle): array
+    private function writeProducts(DemoCompany $demo, \Closure $company, \Closure $unit, \Closure $tax, array $vendors, Uuid $actor, \Closure $settle): array
     {
         $categoryIds = [];
         foreach ($demo->productCategories as $name => $parent) {
@@ -290,6 +292,7 @@ final class DemoCompanies extends Fixture
                 $categoryIds[$row['category']],
                 array_map($tax, $row['taxes']),
                 !isset($row['inactive']),
+                barcodes: $service ? [] : self::codes($n, $row['ref'], $vendors[$n % \count($vendors)]['id']),
             ), $actor);
             if (!isset($row['inactive'])) {
                 $sellable[] = $product->getId();
@@ -302,6 +305,38 @@ final class DemoCompanies extends Fixture
         }
 
         return [$sellable, $goods];
+    }
+
+    /**
+     * What a scanner finds a demo article by (docs/SPEC.md § 7, 2026-09-22 11:05): a unit EAN-13 under Tunisia's GS1
+     * prefix 619 for every article, a carton of twelve as a GTIN-14 on every other one, and the supplier's own code on
+     * every third, so the product sheet and a scan show each role. Invented numbers with real check digits.
+     *
+     * @return list<BarcodeInput>
+     */
+    private static function codes(int $n, string $reference, Uuid $supplier): array
+    {
+        $unit = self::withCheckDigit(\sprintf('619000%06d', $n + 1));
+        $codes = [new BarcodeInput('unit', $unit, 1)];
+        if (0 === $n % 2) {
+            $codes[] = new BarcodeInput('pack', self::withCheckDigit('1'.substr($unit, 0, 12)), 12);
+        }
+        if (0 === $n % 3) {
+            $codes[] = new BarcodeInput('supplier', 'F-'.$reference, 1, $supplier);
+        }
+
+        return $codes;
+    }
+
+    /** The GS1 check digit: weights 3 and 1 alternating from the digit next to it. */
+    private static function withCheckDigit(string $body): string
+    {
+        $sum = 0;
+        foreach (array_reverse(str_split($body)) as $place => $digit) {
+            $sum += (int) $digit * (0 === $place % 2 ? 3 : 1);
+        }
+
+        return $body.((10 - $sum % 10) % 10);
     }
 
     /**

@@ -236,14 +236,6 @@ export function productForm(
           ],
         },
         {
-          id: 'barcode',
-          label: `${FIELDS}.barcode`,
-          kind: 'text',
-          maxLength: 64,
-          pattern: '\\S{1,64}',
-          hint: 'products.form.barcode_hint',
-        },
-        {
           id: 'isActive',
           label: `${FIELDS}.isActive`,
           kind: 'checkbox',
@@ -318,7 +310,6 @@ export function productValues(
     kind: row?.kind ?? 'goods',
     name: row?.name ?? '',
     categoryId: row?.categoryId ?? '',
-    barcode: row?.barcode ?? '',
     isActive: row?.isActive ?? true,
     unitId: row?.unitId ?? unit?.id ?? '',
     unitPriceNet: row === null ? '' : atScale(row.unitPriceNet, options.currencyScale),
@@ -350,7 +341,6 @@ export function productInput(
     unitPriceNet: String(values['unitPriceNet'] ?? '').trim(),
     costPrice: text(values['costPrice']),
     categoryId: text(values['categoryId']),
-    barcode: text(values['barcode']),
     defaultTaxComponentIds: options.taxes
       .filter((tax) => values[TAX_PREFIX + tax.id] === true)
       .map((tax) => tax.id),

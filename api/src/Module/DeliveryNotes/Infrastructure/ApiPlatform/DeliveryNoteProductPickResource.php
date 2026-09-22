@@ -35,7 +35,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             parameters: [
                 'q' => new QueryParameter(
                     schema: ['type' => 'string', 'maxLength' => 100],
-                    description: 'Words found in the reference, name or barcode, whatever their case and accents; under three characters, the exact reference only. Left out, the first few by reference.',
+                    description: 'Words found in the reference or name, or one of its codes spelled whole (which is then offered first), whatever their case and accents; under three characters, the exact reference only. Left out, the first few by reference.',
                 ),
                 'ids' => new QueryParameter(
                     schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid'], 'maxItems' => 20],

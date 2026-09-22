@@ -1,0 +1,171 @@
+<section class="flex flex-col gap-4" data-testid="product-barcodes">
+  <p class="text-sm opacity-80">{{ 'products.barcodes.intro' | translate }}</p>
+
+  @if (readOnly()) {
+    @if (saved().length === 0) {
+      <p data-testid="product-barcodes-none">{{ 'products.barcodes.none' | translate }}</p>
+    } @else {
+      <ul class="flex flex-col gap-2" data-testid="product-barcodes-readonly">
+        @for (row of saved(); track row.code) {
+          <li class="flex flex-wrap items-center gap-3 rounded border border-outline-variant p-3">
+            <span class="font-mono">{{ row.code }}</span>
+            <span class="text-sm opacity-80">{{
+              'products.barcodes.roles.' + row.role | translate
+            }}</span>
+            @if (row.role !== 'unit') {
+              <span class="text-sm">× {{ row.quantity }}</span>
+            }
+          </li>
+        }
+      </ul>
+    }
+  } @else {
+    <mat-form-field class="w-full">
+      <mat-label>{{ 'products.barcodes.scan' | translate }}</mat-label>
+      <mat-icon matIconPrefix>barcode_scanner</mat-icon>
+      <input
+        matInput
+        autocomplete="off"
+        spellcheck="false"
+        data-testid="product-barcode-scan"
+        #scan
+        (keydown.enter)="$event.preventDefault(); add(scan)"
+      />
+      <mat-hint>{{ 'products.barcodes.scan_hint' | translate }}</mat-hint>
+    </mat-form-field>
+
+    @if (duplicate() !== null) {
+      <p role="alert" class="text-sm text-error" data-testid="product-barcodes-duplicate">
+        {{ 'products.barcodes.duplicate' | translate: { row: (duplicate() ?? 0) + 1 } }}
+      </p>
+    }
+
+    @if (refusal(); as refused) {
+      @if (refused.index === null) {
+        <p role="alert" class="text-error" data-testid="product-barcodes-error">
+          {{ 'products.errors.' + refused.code | translate }}
+        </p>
+      }
+    }
+
+    @if (rows().length === 0) {
+      <p data-testid="product-barcodes-none">{{ 'products.barcodes.none' | translate }}</p>
+    } @else {
+      <ol class="flex flex-col gap-3" data-testid="product-barcodes-list">
+        @for (row of rows(); track $index; let index = $index) {
+          <li
+            class="flex flex-col gap-1 rounded border p-3"
+            [class.border-outline-variant]="duplicate() !== index"
+            [class.border-primary]="duplicate() === index"
+            [attr.data-testid]="'product-barcode-row-' + index"
+          >
+            <div class="flex flex-wrap items-start gap-3">
+              <mat-form-field class="min-w-56 flex-[2]" subscriptSizing="dynamic">
+                <mat-label>{{ 'products.barcodes.code' | translate }}</mat-label>
+                <input
+                  matInput
+                  class="font-mono"
+                  autocomplete="off"
+                  spellcheck="false"
+                  [attr.data-testid]="'product-barcode-code-' + index"
+                  [value]="row.code"
+                  (input)="setCode(index, code.value)"
+                  #code
+                />
+              </mat-form-field>
+              <mat-form-field class="min-w-40 flex-1" subscriptSizing="dynamic">
+                <mat-label>{{ 'products.barcodes.role' | translate }}</mat-label>
+                <mat-select
+                  [attr.data-testid]="'product-barcode-role-' + index"
+                  [value]="row.role"
+                  (selectionChange)="setRole(index, $event.value)"
+                >
+                  @for (role of roles(); track role) {
+                    <mat-option [value]="role">{{
+                      'products.barcodes.roles.' + role | translate
+                    }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field class="w-44" subscriptSizing="dynamic">
+                <mat-label>{{ 'products.barcodes.quantity' | translate }}</mat-label>
+                <input
+                  matInput
+                  type="number"
+                  min="1"
+                  [max]="maxQuantity"
+                  step="1"
+                  [attr.data-testid]="'product-barcode-quantity-' + index"
+                  [disabled]="row.role === 'unit'"
+                  [value]="row.quantity"
+                  (input)="setQuantity(index, quantity.valueAsNumber)"
+                  #quantity
+                />
+              </mat-form-field>
+              @if (row.role === 'supplier') {
+                <mat-form-field class="min-w-56 flex-[2]" subscriptSizing="dynamic">
+                  <mat-label>{{ 'products.barcodes.supplier' | translate }}</mat-label>
+                  <mat-select
+                    [attr.data-testid]="'product-barcode-supplier-' + index"
+                    [value]="row.supplierId"
+                    (selectionChange)="setSupplier(index, $event.value)"
+                  >
+                    @for (supplier of suppliers(); track supplier.id) {
+                      <mat-option [value]="supplier.id">{{ supplier.label }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              }
+              <button
+                mat-icon-button
+                type="button"
+                class="mt-1"
+                [appLabel]="'products.barcodes.remove' | translate"
+                [attr.data-testid]="'product-barcode-remove-' + index"
+                (click)="remove(index)"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+            @if (problems()[index]; as problem) {
+              <p class="text-sm text-error" [attr.data-testid]="'product-barcode-problem-' + index">
+                {{ 'products.barcodes.problems.' + problem | translate }}
+              </p>
+            } @else if (refusal()?.index === index) {
+              <p
+                class="text-sm text-error"
+                role="alert"
+                [attr.data-testid]="'product-barcode-problem-' + index"
+              >
+                @if (refusal()?.code === 'barcode_taken') {
+                  {{
+                    'products.barcodes.taken' | translate: { reference: refusal()?.heldBy ?? '' }
+                  }}
+                } @else {
+                  {{ 'products.barcodes.refused' | translate }}
+                }
+              </p>
+            }
+          </li>
+        }
+      </ol>
+    }
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button
+        mat-flat-button
+        type="button"
+        data-testid="product-barcodes-save"
+        [disabled]="!savable()"
+        (click)="save()"
+      >
+        {{ 'form.save' | translate }}
+      </button>
+      @if (changed()) {
+        <button mat-button type="button" data-testid="product-barcodes-revert" (click)="revert()">
+          {{ 'form.revert' | translate }}
+        </button>
+      }
+    </div>
+  }
+</section>

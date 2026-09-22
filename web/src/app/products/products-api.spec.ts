@@ -24,7 +24,7 @@ const laptop: ProductInput = {
   unitPriceNet: '1250.5',
   costPrice: null,
   categoryId: 'k1',
-  barcode: null,
+
   defaultTaxComponentIds: ['t1'],
   isActive: true,
   customFields: { warranty: 24 },
@@ -86,10 +86,48 @@ describe('ProductsApi', () => {
       unitPriceNet: '10.0000',
       costPrice: null,
       categoryId: null,
-      barcode: null,
+      barcodes: [],
       defaultTaxComponentIds: [],
       isActive: false,
       customFields: {},
+    });
+  });
+
+  it('writes the codes of a product as one list and reads back what the API kept', async () => {
+    const codes = [
+      { role: 'unit' as const, code: '3017620422003', quantity: 1, supplierId: null },
+      { role: 'pack' as const, code: '13017620422000', quantity: 12, supplierId: null },
+    ];
+    const saved = api.replaceBarcodes('c1', 'p 1', codes);
+    const put = http.expectOne('/api/companies/c1/products/p%201/barcodes');
+    expect(put.request.method).toBe('PUT');
+    expect(put.request.body).toEqual({ barcodes: codes });
+    put.flush({ productId: 'p 1', barcodes: codes });
+
+    expect(await saved).toEqual(codes);
+  });
+
+  it('names the row a refusal is about, and whose code it is when another product holds it', async () => {
+    const taken = api.replaceBarcodes('c1', 'p1', []);
+    http
+      .expectOne('/api/companies/c1/products/p1/barcodes')
+      .flush(
+        { detail: 'barcodes.1.code: 03017620422003 is already a code of ART-001.' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await expect(taken).rejects.toMatchObject({
+      refusal: { code: 'barcode_taken', index: 1, field: 'code', heldBy: 'ART-001' },
+    });
+
+    const shape = api.replaceBarcodes('c1', 'p1', []);
+    http
+      .expectOne('/api/companies/c1/products/p1/barcodes')
+      .flush(
+        { violations: [{ propertyPath: 'barcodes[2].role', message: 'Choose a valid role.' }] },
+        { status: 422, statusText: 'Unprocessable' },
+      );
+    await expect(shape).rejects.toMatchObject({
+      refusal: { code: 'invalid', index: 2, field: 'role', heldBy: null },
     });
   });
 

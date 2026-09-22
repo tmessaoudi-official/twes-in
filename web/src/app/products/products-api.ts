@@ -10,13 +10,21 @@ import type {
   ProductCategoryProductCategoryWrite,
   ProductHomeProductHomeRead,
   ProductOptionsProductOptionsRead,
+  ProductBarcodeRowJsonldProductRead,
+  ProductBarcodeRowProductBarcodesRead,
+  ProductBarcodeRowProductRead,
+  ProductBarcodesProductBarcodesRead,
+  ProductBarcodesProductBarcodesWrite,
   ProductProductRead,
   ProductProductWrite,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
 import {
+  BARCODE_ROLES,
   PRODUCT_KINDS,
+  type BarcodesRefusal,
   type LineTaxFamily,
+  type ProductBarcode,
   type ProductCategoryInput,
   type ProductCategoryRow,
   type ProductHomeRow,
@@ -31,6 +39,13 @@ import {
 export class ProductsRefused extends Error {
   constructor(readonly code: ProductsError) {
     super(code);
+  }
+}
+
+/** A list of codes refused, naming the row at fault so the screen can put the message under it. */
+export class BarcodesRefused extends ProductsRefused {
+  constructor(readonly refusal: BarcodesRefusal) {
+    super(refusal.code);
   }
 }
 
@@ -97,6 +112,32 @@ export class ProductsApi {
         ),
       ),
     );
+  }
+
+  /**
+   * The product's codes become exactly these (docs/SPEC.md § 7, 2026-09-22 11:05). A code another product holds
+   * answers 409 naming the row and that product; a malformed row answers 422 naming it. Both reach the caller as a
+   * `BarcodesRefused` carrying the row.
+   */
+  async replaceBarcodes(
+    companyId: string,
+    productId: string,
+    barcodes: readonly ProductBarcode[],
+  ): Promise<ProductBarcode[]> {
+    const body: ProductBarcodesProductBarcodesWrite = {
+      barcodes: barcodes.map((row) => ({ ...row })),
+    };
+    try {
+      const saved = await firstValueFrom(
+        this.http.put<ProductBarcodesProductBarcodesRead>(
+          `${path(companyId, 'products', productId)}/barcodes`,
+          body,
+        ),
+      );
+      return (saved.barcodes ?? []).map(toBarcode);
+    } catch (error) {
+      throw new BarcodesRefused(barcodesRefusal(error));
+    }
   }
 
   async categories(companyId: string): Promise<ProductCategoryRow[]> {
@@ -262,7 +303,7 @@ function toProduct(raw: ProductProductRead | ProductJsonldProductRead): ProductR
     unitPriceNet: raw.unitPriceNet ?? '',
     costPrice: raw.costPrice ?? null,
     categoryId: raw.categoryId ?? null,
-    barcode: raw.barcode ?? null,
+    barcodes: (raw.barcodes ?? []).map(toBarcode),
     defaultTaxComponentIds: (raw.defaultTaxComponentIds ?? []).filter(
       (id): id is string => typeof id === 'string',
     ),
@@ -277,6 +318,52 @@ function toProductBody(input: ProductInput): ProductProductWrite {
     defaultTaxComponentIds: [...input.defaultTaxComponentIds],
     customFields: { ...input.customFields },
   };
+}
+
+function toBarcode(
+  raw:
+    | ProductBarcodeRowProductRead
+    | ProductBarcodeRowJsonldProductRead
+    | ProductBarcodeRowProductBarcodesRead,
+): ProductBarcode {
+  return {
+    role: BARCODE_ROLES.find((role) => role === raw.role) ?? 'unit',
+    code: raw.code ?? '',
+    quantity: raw.quantity ?? 1,
+    supplierId: raw.supplierId ?? null,
+  };
+}
+
+/**
+ * What the API said about a list of codes. Its refusals name the row the way it writes fields,
+ * `barcodes.<index>.<field>: …` (or `barcodes[<index>].<field>` for a shape the validator refused), and a code another
+ * product holds says whose: `… is already a code of <reference>.` (ProductBarcodesResource's documented contract).
+ */
+export function barcodesRefusal(error: unknown): BarcodesRefusal {
+  const none: BarcodesRefusal = { code: 'network', index: null, field: null, heldBy: null };
+  if (!(error instanceof HttpErrorResponse) || error.status === 0) return none;
+  const body: unknown = error.error;
+  const text = JSON.stringify(body ?? '');
+  const row = /barcodes(?:\.|\[)(\d+)\]?\.(code|role|quantity|supplierId)/.exec(text);
+  const index = row ? Number(row[1]) : null;
+  const field = row ? row[2] : null;
+  switch (error.status) {
+    case 404:
+      return { ...none, code: 'not_found' };
+    case 409: {
+      const detail =
+        typeof body === 'object' &&
+        body !== null &&
+        'detail' in body &&
+        typeof body.detail === 'string'
+          ? body.detail
+          : '';
+      const holder = / is already a code of (.+)\.$/.exec(detail);
+      return { code: 'barcode_taken', index, field, heldBy: holder ? holder[1] : null };
+    }
+    default:
+      return { code: 'invalid', index, field, heldBy: null };
+  }
 }
 
 function toOptions(raw: ProductOptionsProductOptionsRead): ProductOptions {

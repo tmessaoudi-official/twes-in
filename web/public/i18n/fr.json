@@ -1238,7 +1238,8 @@
     "tabs": {
       "record": "Fiche",
       "defaults": "Valeurs par défaut",
-      "homes": "Où il est rangé"
+      "homes": "Où il est rangé",
+      "barcodes": "Codes-barres"
     },
     "title": "Produits",
     "add": "Nouveau produit",
@@ -1272,7 +1273,6 @@
       "kind": "Nature",
       "categoryId": "Catégorie",
       "isActive": "Actif",
-      "barcode": "Code-barres",
       "unitId": "Unité",
       "unit": "Unité",
       "unitPriceNet": "Prix unitaire HT",
@@ -1284,7 +1284,6 @@
       "no_category": "Aucune catégorie",
       "reference_hint": "Lettres, chiffres et . _ / -, 32 caractères au plus, unique dans l’entreprise.",
       "active_hint": "Un produit inactif reste sur ses documents mais n’est plus proposé pour les nouveaux.",
-      "barcode_hint": "64 caractères au plus, sans espace, comme un EAN-13.",
       "price_hint": "Dans la devise de l’entreprise, avec quatre décimales au plus.",
       "cost_hint": "Ce qu’une unité vous coûte ; jamais imprimé.",
       "description_hint": "Proposée comme texte d’une nouvelle ligne de document."
@@ -1295,7 +1294,8 @@
       "reference_taken": "Un autre produit porte déjà cette référence.",
       "name_taken": "Une autre catégorie porte déjà ce nom.",
       "in_use": "La catégorie contient encore des sous-catégories ou des produits.",
-      "invalid": "La modification a été refusée. Vérifiez l’unité, les prix et les taxes."
+      "invalid": "La modification a été refusée. Vérifiez l’unité, les prix et les taxes.",
+      "barcode_taken": "Ce code est déjà celui d’un autre article."
     },
     "categories": {
       "title": "Catégories de produits",
@@ -1347,6 +1347,35 @@
       "clear": "Retirer cet emplacement habituel",
       "saved": "Emplacement habituel enregistré.",
       "cleared": "Emplacement habituel retiré."
+    },
+    "barcodes": {
+      "intro": "Les codes que la douchette lit pour cet article : son code à l’unité, les colis qui en comptent plusieurs d’un coup, le code du carton de son fournisseur, un code que vous avez imprimé. Un code n’appartient qu’à un seul article de l’entreprise.",
+      "none": "Aucun code pour l’instant.",
+      "scan": "Scannez ou tapez un code, puis Entrée",
+      "scan_hint": "La douchette tape le code et Entrée d’elle-même : scannez les codes l’un après l’autre.",
+      "code": "Code",
+      "role": "Rôle",
+      "quantity": "Quantité par lecture",
+      "supplier": "Fournisseur",
+      "remove": "Retirer ce code",
+      "roles": {
+        "unit": "Unité",
+        "pack": "Colis",
+        "supplier": "Code fournisseur",
+        "internal": "Code interne"
+      },
+      "duplicate": "Ce code est déjà dans la liste, ligne {{row}}.",
+      "taken": "Ce code est déjà celui de l’article {{reference}}.",
+      "refused": "Ce code a été refusé.",
+      "saved": "Codes enregistrés.",
+      "problems": {
+        "code_required": "Saisissez le code.",
+        "code_shape": "Un code a de 1 à 64 caractères, sans espace.",
+        "check_digit": "La clé de contrôle ne correspond pas : vérifiez le code (EAN, UPC ou GTIN-14).",
+        "quantity_range": "Une lecture compte de 1 à 1 000 000 pièces.",
+        "pack_many": "Un colis compte plus d’une pièce ; pour une pièce, choisissez Unité.",
+        "supplier_required": "Choisissez le fournisseur qui imprime ce code."
+      }
     }
   },
   "inventory": {

@@ -33,12 +33,11 @@ const input: ProductInput = {
   unitPriceNet: '1250',
   costPrice: null,
   categoryId: null,
-  barcode: null,
   defaultTaxComponentIds: [],
   isActive: true,
   customFields: {},
 };
-const laptop: ProductRow = { ...input, id: 'p1', unitPriceNet: '1250.0000' };
+const laptop: ProductRow = { ...input, id: 'p1', unitPriceNet: '1250.0000', barcodes: [] };
 const hardware: ProductCategoryRow = {
   id: 'k1',
   name: 'Matériel',

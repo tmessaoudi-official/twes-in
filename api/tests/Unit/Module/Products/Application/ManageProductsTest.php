@@ -15,7 +15,9 @@ use App\CustomFields\Domain\CustomFieldType;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\Unit;
+use App\Module\Products\Application\BarcodeInput;
 use App\Module\Products\Application\ManageProducts;
+use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Application\ProductNotFound;
 use App\Module\Products\Application\ProductReferenceTaken;
@@ -23,6 +25,8 @@ use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Vendors\Domain\Vendor;
+use App\Module\Vendors\Domain\VendorProfile;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
@@ -34,6 +38,7 @@ use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemoryProductStockHistory;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\InMemoryVendors;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -47,6 +52,7 @@ final class ManageProductsTest extends TestCase
     private InMemoryCustomFieldDefinitions $fields;
     private InMemoryAuditTrail $audit;
     private InMemoryProductStockHistory $stockHistory;
+    private InMemoryVendors $vendors;
     private ManageProducts $manage;
     private Company $company;
     private Company $globex;
@@ -62,7 +68,8 @@ final class ManageProductsTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->stockHistory = new InMemoryProductStockHistory();
-        $this->manage = new ManageProducts(new InMemoryProducts(), $this->categories, $this->units, $this->taxes, $this->audit, $clock, $this->fields, $this->stockHistory, $transactions);
+        $this->vendors = new InMemoryVendors();
+        $this->manage = new ManageProducts(new InMemoryProducts(), $this->categories, $this->units, $this->taxes, $this->audit, $clock, $this->fields, $this->stockHistory, $transactions, $this->vendors);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $provision->handle($this->company);
@@ -251,9 +258,64 @@ final class ManageProductsTest extends TestCase
     }
 
     /**
+     * A code is unique across the company, every role together (docs/SPEC.md § 7, 2026-09-22 11:05): a pack of one
+     * product may not carry the unit code of another, or a scan would find both.
+     */
+    public function testACodeAnotherProductHoldsInAnyRoleIsRefusedNamingThatProductAndTheRow(): void
+    {
+        $this->manage->create($this->globex, $this->input(company: $this->globex, barcodes: [new BarcodeInput('unit', '036000291452', 1)]), null);
+        $this->manage->create($this->company, $this->input(barcodes: [new BarcodeInput('unit', '036000291452', 1)]), null);
+
+        try {
+            // The same UPC spelled as an EAN-13, on a pack: still the same code.
+            $this->manage->create($this->company, $this->input(reference: 'ART-002', barcodes: [new BarcodeInput('internal', 'X-1', 1), new BarcodeInput('pack', '0036000291452', 6)]), null);
+            self::fail('a second product took a code another holds');
+        } catch (ProductBarcodeTaken $taken) {
+            self::assertSame(['ART-001', '0036000291452', 1], [$taken->heldBy, $taken->barcode, $taken->index]);
+        }
+    }
+
+    public function testARevisionKeepingItsOwnCodesGoesThroughAndIsAuditedAsBarcodes(): void
+    {
+        $product = $this->manage->create($this->company, $this->input(barcodes: [new BarcodeInput('unit', '036000291452', 1)]), null);
+
+        $this->manage->revise($this->company, $product->getId(), $this->input(barcodes: [new BarcodeInput('unit', '036000291452', 1), new BarcodeInput('pack', '10012345678902', 12)]), null);
+
+        self::assertCount(2, $product->getBarcodes());
+        self::assertSame(['fields' => ['barcodes']], $this->audit->entries[1]->changes);
+        // The same list again changes nothing and records nothing.
+        $this->manage->revise($this->company, $product->getId(), $this->input(barcodes: [new BarcodeInput('pack', '10012345678902', 12), new BarcodeInput('unit', '036000291452', 1)]), null);
+        self::assertCount(2, $this->audit->entries);
+    }
+
+    public function testASupplierCodeNamesASupplierOfTheCompanyAndARowIsRefusedByItsIndex(): void
+    {
+        $sotupa = Vendor::create($this->company, 'F-001', new VendorProfile('Sotupa'), new \DateTimeImmutable());
+        $this->vendors->save($sotupa);
+
+        $product = $this->manage->create($this->company, $this->input(barcodes: [new BarcodeInput('supplier', 'SOT-4471', 6, $sotupa->getId())]), null);
+        self::assertSame($sotupa, $product->getBarcodes()[0]->getSupplier());
+
+        foreach ([
+            'barcodes.1.supplierId' => [new BarcodeInput('unit', 'A-1', 1), new BarcodeInput('supplier', 'SOT-9', 6, Uuid::v7())],
+            'barcodes.0.code' => [new BarcodeInput('unit', '036000291453', 1)],
+            'barcodes.0.quantity' => [new BarcodeInput('pack', 'P-1', 1)],
+            'barcodes.0.role' => [new BarcodeInput('pallet', 'P-1', 1)],
+        ] as $field => $barcodes) {
+            try {
+                $this->manage->create($this->company, $this->input(reference: 'ART-009', barcodes: $barcodes), null);
+                self::fail('accepted: '.$field);
+            } catch (InvalidProduct $refused) {
+                self::assertSame($field, $refused->field);
+            }
+        }
+    }
+
+    /**
      * @param list<string>|null                    $taxes        codes of the company's taxes
      * @param list<Uuid>|null                      $taxIds       ids, when they are not the company's
      * @param array<string, string|int|float|bool> $customFields
+     * @param list<BarcodeInput>                   $barcodes
      */
     private function input(
         string $reference = 'ART-001',
@@ -268,17 +330,19 @@ final class ManageProductsTest extends TestCase
         array $customFields = [],
         ?Company $company = null,
         ProductKind $kind = ProductKind::Goods,
+        array $barcodes = [],
     ): ProductInput {
         $company ??= $this->company;
 
         return new ProductInput(
             $reference,
-            new ProductDetails($name, null, $kind, $price, null, null),
+            new ProductDetails($name, null, $kind, $price, null),
             $unitId ?? $this->unit($unit, $company)->getId(),
             $categoryId,
             $taxIds ?? array_map(fn (string $code): Uuid => $this->tax($code, $company)->getId(), $taxes ?? ['TVA19']),
             $active,
             $customFields,
+            $barcodes,
         );
     }
 
