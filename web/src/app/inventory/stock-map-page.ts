@@ -100,6 +100,11 @@ const PENDING_ID = 'pending';
 /** A gesture in progress. It holds what the rectangle was, never what it is becoming: every move recomputes. */
 interface Drag {
   pointerId: number;
+  /**
+   * Which layer the gesture is on. A wall moves exactly as a rack does — same press, same handles — but it is a
+   * different form and a different editor, so the gesture has to say which (docs/SPEC.md § 7, 2026-09-22).
+   */
+  on: 'drawing' | 'structure';
   /** The handle being pulled, or `null` when the rectangle itself is being moved. */
   handle: PlanHandle | null;
   /** The rectangle being worked on, and what it was when the gesture began — both `null` while one is traced. */
@@ -481,6 +486,18 @@ export class StockMapPage implements OnInit {
     });
   });
 
+  /** The same handles around a piece of the building, which now moves and resizes exactly as a rack does. */
+  protected readonly structureHandles = computed(() => {
+    const shape = this.builtShapes().find((one) => one.piece.id === this.selectedStructureId());
+    if (shape === undefined || !this.mayDraw()) return [];
+
+    return PLAN_HANDLES.map((handle) => {
+      const at = handleAt(shape.rect, handle);
+
+      return { handle, x: at.x, y: at.y, key: `${handle.hx}:${handle.hy}` };
+    });
+  });
+
   /** The radius a handle is drawn at, in METRES, so it stays the same size on the screen whatever the floor's size. */
   protected readonly handleRadius = computed(() => this.viewed().width / 110);
 
@@ -653,7 +670,25 @@ export class StockMapPage implements OnInit {
     const shape = this.shapes().find((one) => one.drawing.id === drawing.id);
     if (shape === undefined) return;
 
-    this.hold(event, drawing.id, shape.rect, handle);
+    this.hold(event, 'drawing', drawing.id, shape.rect, handle);
+  }
+
+  /**
+   * The same press on a piece of the building. Until now a wall only accepted a click that opened a form, while
+   * wearing a pointer cursor that promised a gesture it did not have (docs/SPEC.md § 7, 2026-09-22).
+   */
+  protected grabStructure(
+    event: PointerEvent,
+    piece: StockStructureRow,
+    handle: PlanHandle | null,
+  ): void {
+    if (!this.mayDraw() || event.button !== 0) return;
+
+    this.openStructure(piece);
+    const shape = this.builtShapes().find((one) => one.piece.id === piece.id);
+    if (shape === undefined) return;
+
+    this.hold(event, 'structure', piece.id, shape.rect, handle);
   }
 
   /**
@@ -668,7 +703,7 @@ export class StockMapPage implements OnInit {
     // The press bubbles here from whatever it landed on, so a press on a rectangle is that rectangle's, not a trace.
     if ((event.target as Element).tagName.toLowerCase() !== 'svg') return;
 
-    this.hold(event, null, null, null);
+    this.hold(event, 'drawing', null, null, null);
   }
 
   // ——— coming nearer, and moving what is shown ———
@@ -766,6 +801,7 @@ export class StockMapPage implements OnInit {
   /** What every gesture starts with: the frame and the viewport frozen, and the metre the pointer began on. */
   private hold(
     event: PointerEvent,
+    on: 'drawing' | 'structure',
     drawingId: string | null,
     origin: PlanRectangle | null,
     handle: PlanHandle | null,
@@ -778,6 +814,7 @@ export class StockMapPage implements OnInit {
     const frame = this.viewed();
     this.drag = {
       pointerId: event.pointerId,
+      on,
       handle,
       drawingId,
       origin,
@@ -813,19 +850,21 @@ export class StockMapPage implements OnInit {
       // A box being traced opens the new-rectangle editor; one just traced has that editor open already and is not
       // among what the API answered, so looking it up there would abandon the gesture before its form was kept —
       // and Échap would then give a freshly traced rectangle nothing back.
-      if (drag.drawingId === null) this.draw('new');
-      else if (drag.drawingId !== PENDING_ID) {
-        const drawing = this.facade.drawings().find((one) => one.id === drag.drawingId);
-        if (drawing === undefined) return;
-        if (this.editing() === null || this.editing() === 'new') this.draw(drawing);
+      if (drag.on === 'drawing') {
+        if (drag.drawingId === null) this.draw('new');
+        else if (drag.drawingId !== PENDING_ID) {
+          const drawing = this.facade.drawings().find((one) => one.id === drag.drawingId);
+          if (drawing === undefined) return;
+          if (this.editing() === null || this.editing() === 'new') this.draw(drawing);
+        }
       }
-      drag.before = (this.drawingFormGroup()?.getRawValue() ?? {}) as FormValues;
+      drag.before = (this.editedGroup(drag)?.getRawValue() ?? {}) as FormValues;
     }
 
     const to = pointerMetres({ x: event.clientX, y: event.clientY }, drag.frame, drag.box);
     const origin = drag.origin;
     if (origin === null) {
-      this.drawingFormGroup()?.patchValue(footprintValues(tracedTo(drag.from, to)));
+      this.editedGroup(drag)?.patchValue(footprintValues(tracedTo(drag.from, to)));
 
       return;
     }
@@ -833,7 +872,12 @@ export class StockMapPage implements OnInit {
     const next =
       drag.handle === null ? movedTo(origin, drag.from, to) : resizedTo(origin, drag.handle, to);
 
-    this.drawingFormGroup()?.patchValue(rectValues(next));
+    this.editedGroup(drag)?.patchValue(rectValues(next));
+  }
+
+  /** The form the gesture is writing into — the building's or the stock's, never both. */
+  private editedGroup(drag: Drag): DescriptorFormGroup | null {
+    return drag.on === 'structure' ? this.structureFormGroup() : this.drawingFormGroup();
   }
 
   protected drops(event: PointerEvent): void {
@@ -851,7 +895,7 @@ export class StockMapPage implements OnInit {
     this.drag = null;
     this.pan = null;
     this.tracing.set(false);
-    if (drag?.past) this.drawingFormGroup()?.patchValue(drag.before);
+    if (drag?.past) this.editedGroup(drag)?.patchValue(drag.before);
   }
 
   protected async saveDrawing(values: FormValues): Promise<void> {
@@ -902,6 +946,10 @@ export class StockMapPage implements OnInit {
 
   protected readonly editingStructure = signal<StockStructureRow | 'new' | null>(null);
   protected readonly selectedStructureId = signal<string | null>(null);
+  /** The piece of the building the handles are drawn around, which is what those handles then work on. */
+  protected readonly selectedStructure = computed(
+    () => this.facade.structures().find((piece) => piece.id === this.selectedStructureId()) ?? null,
+  );
 
   /** What the open structure form holds, so a piece follows the keyboard exactly as a rectangle of stock does. */
   private readonly structureValuesNow = signal<FormValues | null>(null);
@@ -1033,7 +1081,12 @@ export class StockMapPage implements OnInit {
     });
   }
 
+  /**
+   * The building's editor. It checked nothing before 2026-09-22, so anyone who could read the plan could open a
+   * form that moves a wall — the one place on this page where a permission was simply not asked for.
+   */
   protected openStructure(target: StockStructureRow | 'new'): void {
+    if (!this.mayDraw()) return;
     this.facade.clearError();
     this.editing.set(null);
     this.editingFloor.set(null);

@@ -567,7 +567,7 @@
                         ')'
                       "
                       [attr.stroke-width]="built.piece.id === selectedStructureId() ? 0.08 : 0.04"
-                      [class]="mayDraw() ? 'cursor-pointer' : ''"
+                      [class]="mayDraw() ? 'cursor-move touch-none' : 'cursor-pointer'"
                       class="stroke-on-surface-variant"
                       [class.fill-on-surface-variant]="
                         built.piece.kind === 'wall' || built.piece.kind === 'post'
@@ -575,8 +575,24 @@
                       [class.fill-surface]="built.piece.kind === 'door'"
                       [class.fill-surface-container-highest]="built.piece.kind === 'dock'"
                       [class.fill-secondary-container]="built.piece.id === selectedStructureId()"
+                      (pointerdown)="grabStructure($event, built.piece, null)"
                       (click)="openStructure(built.piece)"
                       [attr.data-testid]="'stock-structure-' + built.piece.kind"
+                    />
+                  }
+                  <!--
+                    Drawn after every piece so they are never buried under one, and with the same radius as the
+                    stock's: a wall is resized by its corners exactly as a rayonnage is.
+                  -->
+                  @for (grip of structureHandles(); track grip.key) {
+                    <circle
+                      [attr.cx]="grip.x"
+                      [attr.cy]="grip.y"
+                      [attr.r]="handleRadius()"
+                      [attr.stroke-width]="handleRadius() / 3"
+                      class="cursor-nwse-resize touch-none fill-surface stroke-primary"
+                      (pointerdown)="grabStructure($event, selectedStructure()!, grip.handle)"
+                      [attr.data-testid]="'stock-structure-handle-' + grip.key"
                     />
                   }
                 </g>

@@ -1009,6 +1009,57 @@ describe('StockMapPage', () => {
     );
   });
 
+  /**
+   * A wall moves exactly as a rack does. Until 2026-09-22 it accepted only a click that opened a form, while
+   * wearing a pointer cursor that promised a gesture it did not have (docs/SPEC.md § 7).
+   */
+  it('moves a wall by dragging it, exactly as it moves a rack', async () => {
+    // Called for its stubbing of the box: jsdom lays nothing out, so every rect would read 0x0.
+    surface();
+    const piece = q('stock-structure-wall') as unknown as Element;
+
+    fire(piece, 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 200, 100);
+    fire(document, 'pointerup', 200, 100);
+    await settle();
+
+    // The building's own form is what moved, and nothing was sent.
+    expect((q('field-x') as HTMLInputElement).value).not.toBe('1.000');
+    expect(facade.buildStructure).not.toHaveBeenCalled();
+    // The stock's form stayed shut: two layers, two forms, never both at once.
+    expect(q('stock-drawing-form')).toBeNull();
+  });
+
+  it('draws the same eight handles around the piece of building being worked on', async () => {
+    expect(
+      fixture.nativeElement.querySelectorAll('[data-testid^="stock-structure-handle-"]'),
+    ).toHaveLength(0);
+
+    (q('stock-structure-wall') as unknown as SVGRectElement).dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    );
+    await settle();
+
+    expect(
+      fixture.nativeElement.querySelectorAll('[data-testid^="stock-structure-handle-"]'),
+    ).toHaveLength(8);
+  });
+
+  /** The one place on this page where no permission was asked for: anyone reading could open a form moving a wall. */
+  it('refuses to open the building’s form to someone who may not draw', async () => {
+    auth.hasPermission.mockReturnValue(false);
+    // Built again: what may be written is read once, when the screen is made.
+    fixture = TestBed.createComponent(StockMapPage);
+    await settle();
+
+    (q('stock-structure-wall') as unknown as SVGRectElement).dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    );
+    await settle();
+
+    expect(q('stock-structure-form')).toBeNull();
+  });
+
   it('erases a piece of structure from its own form', async () => {
     (q('stock-structure-wall') as unknown as SVGRectElement).dispatchEvent(
       new MouseEvent('click', { bubbles: true }),
