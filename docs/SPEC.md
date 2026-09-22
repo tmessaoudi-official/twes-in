@@ -1853,6 +1853,26 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   (it changes the error payload and the OpenAPI document), so it is the next slice rather than an improvisation.
   Until it lands, the refusal is correct and its label is not.
 
+- [2026-09-22 06:00] NOTED (not a ruling — the state row 63 is picked up from): the barcode field's own rules are
+  built and pushed; **the scanner has not been started, and deliberately so**. The 2026-09-17 entry puts three
+  research gates in front of its first line of code, and two of them are one-way doors:
+  1. **The decoder's licence.** `BarcodeDetector` exists in Chrome and Android and NOT in Safari, so a library is
+     needed for the iPhone — and the popular ones are exactly the trap § "Licensing invariants" names: read the
+     real LICENSE file at the commit the lock installs, never the metadata string. `zxing-js/library` reads
+     Apache-2.0 and `zbar.wasm` LGPL-3.0; neither has been verified here, and LGPL in a bundled SPA is a
+     licensing question, not a build question — which means it STOPS and asks (invariant 6).
+  2. **Camera over HTTPS.** `getUserMedia` is a secure context only. The local stack is plain http on :8090, so a
+     scanner cannot be tried at all until that is answered — a certificate for development, or the decision that
+     it is only ever exercised in e2e against a served origin.
+  3. **iPhone Safari.** Whether the pairing half is needed at all depends on it: if Safari serves the camera to
+     the PWA acceptably, a phone scans for itself and the QR-pairing is for laptops only.
+  The pairing half is already specified in the 2026-09-17 entry (single-use token, 10 minutes, scan-only, one
+  laptop tab, over the realtime channel the tab already holds) and needs no further design before the three
+  answers above.
+  **And the slice that comes before any of it**: `products-api.ts` labelling every product 409 `reference_taken`,
+  noted in the 05:05 entry. A scanner that fills the barcode field will hit that refusal constantly, so the wrong
+  sentence stops being cosmetic the moment the scanner exists.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
