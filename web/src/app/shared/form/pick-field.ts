@@ -33,6 +33,12 @@ export interface PickOption {
 export const PICK_PAUSE_MS = 300;
 
 /**
+ * Under this many milliseconds between two characters, nobody is typing: it is a keyboard wedge emptying a whole
+ * code at once (docs/SPEC.md § 7, 2026-09-22). Above it the field waits for `PICK_PAUSE_MS` as it always has.
+ */
+export const SCAN_GAP_MS = 30;
+
+/**
  * A field that asks the API for the few things a person means, instead of being handed every one of them
  * (docs/SPEC.md § 7, 2026-09-17, ruling 3: a 300 ms pause, 20 results).
  *
@@ -63,25 +69,34 @@ export const PICK_PAUSE_MS = 300;
         [attr.data-testid]="testId()"
         [attr.aria-describedby]="hint() === '' ? null : testId() + '-hint'"
         autocomplete="off"
+        (input)="clocked()"
+        (keydown.enter)="resolve($event)"
+        (blur)="scanning.set(false)"
       />
       @if (hint() !== '') {
         <mat-hint [id]="testId() + '-hint'">{{ hint() }}</mat-hint>
       }
+      <!--
+        The first row is held ready so that Enter takes it — which is how a scanner, which presses Enter itself,
+        can pick anything at all. That is also why "none of them" is written LAST and hidden mid-burst: offered
+        first, it would be the row held ready, and every Enter would empty the field instead of filling it.
+      -->
       <mat-autocomplete
         #list="matAutocomplete"
         [displayWith]="shown"
+        [autoActiveFirstOption]="true"
         (optionSelected)="take($event)"
         [attr.data-testid]="testId() + '-options'"
       >
-        @if (clearable()) {
-          <mat-option [value]="null" [attr.data-testid]="testId() + '-none'">{{
-            noneLabel()
-          }}</mat-option>
-        }
         @for (option of offered(); track option.id) {
           <mat-option [value]="option" [attr.data-testid]="testId() + '-option-' + option.id">
             {{ option.code }} · {{ option.name }}
           </mat-option>
+        }
+        @if (clearable() && !scanning()) {
+          <mat-option [value]="null" [attr.data-testid]="testId() + '-none'">{{
+            noneLabel()
+          }}</mat-option>
         }
         @if (asked() && offered().length === 0) {
           <mat-option disabled [attr.data-testid]="testId() + '-none-found'">{{
@@ -120,6 +135,9 @@ export class PickField {
   protected readonly offered = signal<readonly PickOption[]>([]);
   /** Whether an answer has come back for what is typed, so "nothing found" is never shown before asking. */
   protected readonly asked = signal(false);
+  /** Whether the characters are arriving too fast for a hand — see `clocked` below. */
+  protected readonly scanning = signal(false);
+  private lastKeyAt = Number.NEGATIVE_INFINITY;
 
   private readonly words = toSignal(
     this.typed.valueChanges.pipe(
@@ -157,6 +175,46 @@ export class PickField {
       this.offered.set(found);
       this.asked.set(true);
     });
+  }
+
+  /**
+   * Notes how fast the characters arrive. A hand leaves tens of milliseconds between two; a wedge leaves one or
+   * two, so the pause the field waits for never elapses and, left alone, nothing is ever asked.
+   *
+   * Recognising a burst also CLEARS what was on offer: the rows below belong to what was typed before, and Enter
+   * is about to arrive. With the list empty and "none of them" hidden, there is no row held ready for it, so the
+   * answer comes from `resolve` below and never from a leftover.
+   */
+  protected clocked(): void {
+    const now = Date.now();
+    const gap = now - this.lastKeyAt;
+    this.lastKeyAt = now;
+    this.scanning.set(gap < SCAN_GAP_MS);
+    if (this.scanning()) {
+      this.offered.set([]);
+      this.asked.set(false);
+    }
+  }
+
+  /**
+   * The Enter a scanner presses itself. It is held back from the form around the field — which would read it as
+   * "save this document" — and answered here: one match is taken without asking, several are offered as a
+   * question, none leaves the code on screen to be dealt with.
+   *
+   * A person's Enter is left untouched: the list has a row held ready and Material takes it, as anywhere else.
+   */
+  protected async resolve(event: Event): Promise<void> {
+    if (!this.scanning()) return;
+    const typed = this.typed.value;
+    const words = typeof typed === 'string' ? typed.trim() : '';
+    if (words === '') return;
+
+    event.preventDefault();
+    this.scanning.set(false);
+    const found = await this.search()(words);
+    this.offered.set(found);
+    this.asked.set(true);
+    if (found.length === 1) this.picked.emit(found[0]);
   }
 
   /** What the box reads once something is picked: the same two words the list showed. */

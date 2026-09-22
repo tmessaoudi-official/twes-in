@@ -64,6 +64,38 @@ describe('PickField', () => {
   const options = (): HTMLElement[] =>
     Array.from(document.querySelectorAll('mat-option')) as HTMLElement[];
 
+  /**
+   * What a keyboard wedge does: every character at once, then Enter, with nothing moving the clock between them.
+   * The Enter is dispatched in the same synchronous block as the last character, which is what makes it a burst —
+   * a pause there would be a person typing, and the field must then behave as it always has.
+   */
+  function scan(code: string): boolean {
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+    input.dispatchEvent(new Event('focusin'));
+    for (let at = 1; at <= code.length; at += 1) {
+      input.value = code.slice(0, at);
+      input.dispatchEvent(new Event('input'));
+    }
+    const enter = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      keyCode: 13,
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(enter);
+
+    return enter.defaultPrevented;
+  }
+
+  /** Material's autocomplete reads `keyCode`, as a real browser sets it and jsdom does not. */
+  async function pressEnter(): Promise<void> {
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true, cancelable: true }),
+    );
+    await settle();
+  }
+
   beforeEach(async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     TestBed.configureTestingModule({
@@ -162,6 +194,80 @@ describe('PickField', () => {
     expect(
       (fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement).id,
     ).not.toBe('expense-form-vendorId');
+  });
+
+  /**
+   * Enter takes the row under the cursor. The trap this pins: "none of them" is an option like any other, so a
+   * list that offers it FIRST would hand Enter a null on every clearable field — a person typing a reference and
+   * pressing Enter would clear the field instead of filling it.
+   */
+  it('takes the first row on Enter, never "none of them"', async () => {
+    await type('bou');
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+    input.dispatchEvent(new Event('focusin'));
+    await settle();
+
+    await pressEnter();
+
+    expect(host.taken()).toEqual(SCREW);
+  });
+
+  /**
+   * A scanner types faster than any hand and presses Enter itself. The 300 ms pause the field waits for never
+   * elapses, so without this the search is never asked and the Enter submits the form around it.
+   */
+  it('reads a scanner burst and takes the one match on its Enter', async () => {
+    host.answer = [SCREW];
+
+    const stopped = scan('6191234567897');
+    await settle();
+    await Promise.resolve();
+    await settle();
+
+    expect(host.asked).toContain('6191234567897');
+    expect(host.taken()).toEqual(SCREW);
+    // The form around the field must not receive that Enter as a submit.
+    expect(stopped).toBe(true);
+  });
+
+  /** Several matches is a question, not a guess: the list is offered and nothing is emitted. */
+  it('offers the choice instead of guessing when a burst matches several', async () => {
+    host.answer = [SCREW, BOLT];
+
+    scan('ATL-VIS');
+    await settle();
+    await Promise.resolve();
+    await settle();
+
+    // Asked for the scanned code, not merely showing what the empty first search had left on screen.
+    expect(host.asked).toContain('ATL-VIS');
+    expect(host.taken()).toBeUndefined();
+    const shown = options().map((option) => option.textContent?.trim());
+    expect(shown).toContain('VIS-6X40 · Vis 6x40');
+    expect(shown).toContain('BOU-001 · Boulon inox');
+  });
+
+  /** Typing at a human pace is not a burst: the field keeps waiting for the pause, as it always did. */
+  it('leaves a person typing alone', async () => {
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+    for (const words of ['b', 'bo', 'bou']) {
+      input.value = words;
+      input.dispatchEvent(new Event('input'));
+      await settle();
+      vi.advanceTimersByTime(100);
+    }
+    const enter = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      keyCode: 13,
+      bubbles: true,
+      cancelable: true,
+    });
+    input.dispatchEvent(enter);
+    await settle();
+
+    // Nothing was asked ahead of the pause, and the Enter was left to the form around the field.
+    expect(host.asked).toEqual(['']);
+    expect(enter.defaultPrevented).toBe(false);
   });
 
   /** The field never looks a record up: what it shows is what the record itself says. */
