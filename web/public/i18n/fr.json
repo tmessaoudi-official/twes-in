@@ -1457,7 +1457,7 @@
       "floors": "Étages",
       "no_floor": "Aucun étage n'est encore dessiné. Créez-en un pour commencer le plan.",
       "drawn": "Dessiné sur cet étage",
-      "nothing_drawn": "Rien n'est encore dessiné sur cet étage.",
+      "nothing_drawn": "Aucun emplacement n'est encore dessiné sur cet étage.",
       "plan_of": "Plan de {{floor}} : {{count}} rectangle(s) dessiné(s)",
       "draw": "Dessiner un emplacement",
       "trace": "Tracer un rectangle",

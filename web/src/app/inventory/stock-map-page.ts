@@ -479,13 +479,18 @@ export class StockMapPage implements OnInit {
     }
   }
 
+  /** One selection across both layers: choosing a rack lets go of the wall that was chosen (finding G). */
   protected select(drawing: StockDrawingRow): void {
     this.selectedId.set(drawing.id);
+    this.selectedStructureId.set(null);
+    this.editingStructure.set(null);
   }
 
   protected draw(target: StockDrawingRow | 'new'): void {
     this.facade.clearError();
     this.editingFloor.set(null);
+    this.editingStructure.set(null);
+    this.selectedStructureId.set(null);
     if (target === 'new') this.selectedId.set(null);
     else this.select(target);
     this.editing.set(target);
@@ -1153,6 +1158,7 @@ export class StockMapPage implements OnInit {
     this.editing.set(null);
     this.editingFloor.set(null);
     this.repeating.set(false);
+    this.selectedId.set(null);
     this.editingStructure.set(target);
     this.selectedStructureId.set(target === 'new' ? null : target.id);
   }

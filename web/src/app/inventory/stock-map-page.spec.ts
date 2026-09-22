@@ -1095,6 +1095,56 @@ describe('StockMapPage', () => {
     expect(q('stock-map-not-saved')).toBeNull();
   });
 
+  /** Finding G (§ 7, 2026-09-22): a wall kept its handles while a rack was worked on, two selections at once. */
+  it('holds one selection across both layers', async () => {
+    const stockHandles = () =>
+      fixture.nativeElement.querySelectorAll('[data-testid^="stock-drawing-group-"] circle').length;
+    const structureHandles = () =>
+      fixture.nativeElement.querySelectorAll('[data-testid^="stock-structure-handle-"]').length;
+
+    (q('stock-structure-wall') as unknown as SVGRectElement).dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    );
+    await settle();
+    expect(structureHandles()).toBe(8);
+
+    firstRect().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await settle();
+    expect(structureHandles()).toBe(0);
+    expect(q('stock-structure-form')).toBeNull();
+    expect(stockHandles()).toBe(8);
+
+    (q('stock-structure-wall') as unknown as SVGRectElement).dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    );
+    await settle();
+    expect(stockHandles()).toBe(0);
+  });
+
+  it('closes the building’s form when a rectangle of stock is started', async () => {
+    (q('stock-structure-tool-door') as HTMLElement).click();
+    await settle();
+    (q('stock-structure-cancel') as HTMLElement).click();
+    await settle();
+    (q('stock-structure-wall') as unknown as SVGRectElement).dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    );
+    await settle();
+    expect(q('stock-structure-form')).not.toBeNull();
+
+    // The tools are hidden while a form is open, so the rectangle is started from the list's own path.
+    (fixture.componentInstance as unknown as { draw: (t: 'new') => void }).draw('new');
+    await settle();
+
+    expect(q('stock-structure-form')).toBeNull();
+    expect(q('stock-drawing-form')).not.toBeNull();
+  });
+
+  /** Finding F: tracing dragged across the page and selected its text. */
+  it('keeps a gesture on the board from selecting the page’s text', () => {
+    expect(q('stock-map-svg')?.classList.contains('select-none')).toBe(true);
+  });
+
   it('opens a rectangle of stock in the same place, and says so on the board', async () => {
     (q('stock-drawing-add') as HTMLElement).click();
     await settle();

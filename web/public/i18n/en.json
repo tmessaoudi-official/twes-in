@@ -1457,7 +1457,7 @@
       "floors": "Floors",
       "no_floor": "No floor is drawn yet. Create one to start the plan.",
       "drawn": "Drawn on this floor",
-      "nothing_drawn": "Nothing is drawn on this floor yet.",
+      "nothing_drawn": "No location is drawn on this floor yet.",
       "plan_of": "Plan of {{floor}}: {{count}} rectangle(s) drawn",
       "draw": "Draw a location",
       "trace": "Trace a rectangle",
