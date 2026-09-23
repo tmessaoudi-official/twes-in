@@ -10,7 +10,9 @@ export type ProductsError =
   | 'name_taken'
   | 'in_use'
   | 'invalid'
-  | 'barcode_taken';
+  | 'barcode_taken'
+  /** Stock of the product has moved, so how it is told apart stays as it moved (docs/SPEC.md § 7, 2026-09-23 02:40). */
+  | 'tracking_kept';
 
 export type ProductKind = 'goods' | 'service';
 export const PRODUCT_KINDS: readonly ProductKind[] = ['goods', 'service'];
@@ -50,7 +52,13 @@ export interface ProductRow {
   isActive: boolean;
   /** Values by the company's custom field keys for products; a retired field's value stays here. */
   customFields: Record<string, CustomFieldValue>;
+  /** How its stock is told apart; the API keeps it once stock has moved (docs/SPEC.md § 7, 2026-09-23 02:40). */
+  tracking: ProductTracking;
 }
+
+/** Not at all, by lot, or one piece at a time by its serial number (docs/SPEC.md § 7, 2026-09-22 11:10). */
+export type ProductTracking = 'none' | 'lot' | 'serial';
+export const PRODUCT_TRACKINGS: readonly ProductTracking[] = ['none', 'lot', 'serial'];
 
 export type ProductInput = Omit<ProductRow, 'id' | 'barcodes'>;
 

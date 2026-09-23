@@ -2442,6 +2442,12 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   not shown. The price check does not feed it. The first save of a new sale keeps what the display shows, though it opens
   the sale at its own address; another document on the same screen empties it. One display per counter is assumed: a
   second counter tab of the same company that leaves its sale empties the display too.
+- [2026-09-23 19:40] TAKEN OVERNIGHT (standing instruction, to confirm): slice 7a, lots on the web — the tracking
+  field. The product form asks "Suivi du stock" (sans suivi, par lot, par numéro de série) beside its kind, a new
+  product starting untracked; a service is always sent untracked, whatever the field says, since the API refuses a
+  tracked service. Once stock of the product has moved, the API keeps the tracking it moved under, and the form says so
+  in its own words (`tracking_kept`) rather than as a generic refusal. The field stays offered after the first
+  movement: which product has moved is the API's to know, and a greyed field would say "you may not" without saying why.
 
 ## 8. Status
 

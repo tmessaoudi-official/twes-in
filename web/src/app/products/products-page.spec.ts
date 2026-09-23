@@ -58,6 +58,7 @@ const laptop: ProductRow = {
   defaultTaxComponentIds: [],
   isActive: true,
   customFields: {},
+  tracking: 'none',
 };
 
 describe('ProductsPage', () => {

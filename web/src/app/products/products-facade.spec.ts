@@ -36,6 +36,7 @@ const input: ProductInput = {
   defaultTaxComponentIds: [],
   isActive: true,
   customFields: {},
+  tracking: 'none',
 };
 const laptop: ProductRow = { ...input, id: 'p1', unitPriceNet: '1250.0000', barcodes: [] };
 const hardware: ProductCategoryRow = {

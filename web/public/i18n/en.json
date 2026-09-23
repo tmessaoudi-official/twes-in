@@ -1292,7 +1292,8 @@
       "unitPriceNet": "Net unit price",
       "price": "Net unit price",
       "costPrice": "Cost price",
-      "description": "Description"
+      "description": "Description",
+      "tracking": "Stock tracking"
     },
     "form": {
       "no_category": "No category",
@@ -1300,7 +1301,8 @@
       "active_hint": "An inactive product stays on its documents but is no longer offered for new ones.",
       "price_hint": "In the company's currency, with up to four decimals.",
       "cost_hint": "What one unit costs you; never printed.",
-      "description_hint": "Offered as the text of a new document line."
+      "description_hint": "Offered as the text of a new document line.",
+      "tracking_hint": "Chosen before the first stock movement; a service is not tracked."
     },
     "errors": {
       "network": "The server could not be reached.",
@@ -1309,7 +1311,8 @@
       "name_taken": "Another category already has this name.",
       "in_use": "The category still holds subcategories or products.",
       "invalid": "The change was refused. Check the unit, the prices and the taxes.",
-      "barcode_taken": "This code already belongs to another article."
+      "barcode_taken": "This code already belongs to another article.",
+      "tracking_kept": "Stock of this article has already moved: it keeps the tracking it moved under."
     },
     "categories": {
       "title": "Product categories",
@@ -1412,6 +1415,11 @@
         "attach": "Add to a product"
       },
       "attach_label": "Product to add this code to"
+    },
+    "trackings": {
+      "none": "Not tracked",
+      "lot": "By lot",
+      "serial": "By serial number"
     }
   },
   "inventory": {

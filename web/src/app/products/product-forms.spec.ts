@@ -63,6 +63,7 @@ const laptop: ProductRow = {
   defaultTaxComponentIds: ['t-vat'],
   isActive: true,
   customFields: { warranty: 24 },
+  tracking: 'lot',
 };
 const warranty: CustomFieldDefinition = {
   id: 'f1',
@@ -266,7 +267,29 @@ describe('product forms', () => {
       defaultTaxComponentIds: ['t-fodec', 't-vat'],
       isActive: true,
       customFields: { warranty: 24 },
+      tracking: 'none',
     });
+  });
+
+  // docs/SPEC.md § 7, 2026-09-22 11:10 and 2026-09-23 slice 7: how a product's stock is told apart.
+  it('asks how the stock is told apart, a new product by none, and sends none for a service', () => {
+    const tracking = productForm(options, [laptops, hardware])
+      .sections.flatMap((section) => section.fields)
+      .find((field) => field.id === 'tracking');
+    expect(tracking?.kind).toBe('select');
+    expect(tracking?.options?.map((option) => option.value)).toEqual(['none', 'lot', 'serial']);
+
+    expect(productValues(null, options)['tracking']).toBe('none');
+    const values = productValues(laptop, options, [warranty]);
+    expect(values['tracking']).toBe('lot');
+    expect(productInput(values, options, [warranty]).tracking).toBe('lot');
+    expect(productInput({ ...values, tracking: 'serial' }, options, [warranty]).tracking).toBe(
+      'serial',
+    );
+    expect(productInput({ ...values, kind: 'service' }, options, [warranty]).tracking).toBe('none');
+    expect(productInput({ ...values, tracking: 'weird' }, options, [warranty]).tracking).toBe(
+      'none',
+    );
   });
 
   it('never offers a category as a parent of itself or of its own subcategories', () => {

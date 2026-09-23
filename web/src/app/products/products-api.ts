@@ -23,6 +23,7 @@ import type { ListPage } from '../shared/list/list-types';
 import {
   BARCODE_ROLES,
   PRODUCT_KINDS,
+  PRODUCT_TRACKINGS,
   type BarcodesRefusal,
   type LineTaxFamily,
   type ProductBarcode,
@@ -290,8 +291,13 @@ function codeOf(error: unknown, conflict: ProductsError): ProductsError {
       return 'not_found';
     case 409:
       return conflict;
-    default:
-      return 'invalid';
+    default: {
+      // The API names the field it refused first, `field: why` (the product processors' documented contract).
+      const detail = (error.error as { detail?: unknown } | null)?.detail;
+      return typeof detail === 'string' && detail.startsWith('tracking:')
+        ? 'tracking_kept'
+        : 'invalid';
+    }
   }
 }
 
@@ -340,6 +346,7 @@ function toProduct(raw: ProductProductRead | ProductJsonldProductRead): ProductR
     ),
     isActive: raw.isActive ?? true,
     customFields: { ...(raw.customFields ?? {}) },
+    tracking: PRODUCT_TRACKINGS.find((tracking) => tracking === raw.tracking) ?? 'none',
   };
 }
 

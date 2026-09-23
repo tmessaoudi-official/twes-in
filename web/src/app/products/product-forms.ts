@@ -20,6 +20,7 @@ import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { withCustomColumns } from '../shared/list/list-view';
 import {
   PRODUCT_KINDS,
+  PRODUCT_TRACKINGS,
   type ProductCategoryInput,
   type ProductCategoryRow,
   type ProductInput,
@@ -221,6 +222,17 @@ export function productForm(
           options: PRODUCT_KINDS.map((kind) => ({ value: kind, label: `products.kinds.${kind}` })),
         },
         {
+          id: 'tracking',
+          label: `${FIELDS}.tracking`,
+          kind: 'select',
+          required: true,
+          options: PRODUCT_TRACKINGS.map((tracking) => ({
+            value: tracking,
+            label: `products.trackings.${tracking}`,
+          })),
+          hint: 'products.form.tracking_hint',
+        },
+        {
           id: 'name',
           label: `${FIELDS}.name`,
           kind: 'text',
@@ -322,6 +334,7 @@ export function productValues(
     costPrice:
       row?.costPrice === null || row === null ? '' : atScale(row.costPrice, options.currencyScale),
     description: row?.description ?? '',
+    tracking: row?.tracking ?? 'none',
   };
   for (const tax of options.taxes) {
     values[TAX_PREFIX + tax.id] = row?.defaultTaxComponentIds.includes(tax.id) ?? false;
@@ -356,6 +369,11 @@ export function productInput(
       .map((tax) => tax.id),
     isActive: values['isActive'] === true,
     customFields: customFieldInput(fields, values),
+    // A service holds no stock, so it tracks nothing; the API says the same.
+    tracking:
+      kind === 'service'
+        ? 'none'
+        : (PRODUCT_TRACKINGS.find((tracking) => tracking === values['tracking']) ?? 'none'),
   };
 }
 

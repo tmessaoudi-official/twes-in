@@ -1292,7 +1292,8 @@
       "unitPriceNet": "Prix unitaire HT",
       "price": "Prix unitaire HT",
       "costPrice": "Prix de revient",
-      "description": "Description"
+      "description": "Description",
+      "tracking": "Suivi du stock"
     },
     "form": {
       "no_category": "Aucune catégorie",
@@ -1300,7 +1301,8 @@
       "active_hint": "Un produit inactif reste sur ses documents mais n’est plus proposé pour les nouveaux.",
       "price_hint": "Dans la devise de l’entreprise, avec quatre décimales au plus.",
       "cost_hint": "Ce qu’une unité vous coûte ; jamais imprimé.",
-      "description_hint": "Proposée comme texte d’une nouvelle ligne de document."
+      "description_hint": "Proposée comme texte d’une nouvelle ligne de document.",
+      "tracking_hint": "Choisi avant le premier mouvement de stock ; un service n'est pas suivi."
     },
     "errors": {
       "network": "Le serveur est injoignable.",
@@ -1309,7 +1311,8 @@
       "name_taken": "Une autre catégorie porte déjà ce nom.",
       "in_use": "La catégorie contient encore des sous-catégories ou des produits.",
       "invalid": "La modification a été refusée. Vérifiez l’unité, les prix et les taxes.",
-      "barcode_taken": "Ce code est déjà celui d’un autre article."
+      "barcode_taken": "Ce code est déjà celui d’un autre article.",
+      "tracking_kept": "Du stock de cet article a déjà bougé : la façon de le suivre reste celle sous laquelle il a bougé."
     },
     "categories": {
       "title": "Catégories de produits",
@@ -1412,6 +1415,11 @@
         "attach": "Ajouter à un article"
       },
       "attach_label": "Article auquel ajouter ce code"
+    },
+    "trackings": {
+      "none": "Sans suivi",
+      "lot": "Par lot",
+      "serial": "Par numéro de série"
     }
   },
   "inventory": {

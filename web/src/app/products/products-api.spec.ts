@@ -28,6 +28,7 @@ const laptop: ProductInput = {
   defaultTaxComponentIds: ['t1'],
   isActive: true,
   customFields: { warranty: 24 },
+  tracking: 'none',
 };
 
 describe('ProductsApi', () => {
@@ -90,7 +91,22 @@ describe('ProductsApi', () => {
       defaultTaxComponentIds: [],
       isActive: false,
       customFields: {},
+      tracking: 'none',
     });
+  });
+
+  it('reads how a product is tracked, and an unknown answer as none', async () => {
+    const serial = api.product('c1', 'p1');
+    http
+      .expectOne('/api/companies/c1/products/p1')
+      .flush({ ...laptop, id: 'p1', tracking: 'serial' });
+    expect((await serial).tracking).toBe('serial');
+
+    const odd = api.product('c1', 'p1');
+    http
+      .expectOne('/api/companies/c1/products/p1')
+      .flush({ ...laptop, id: 'p1', tracking: 'batch' });
+    expect((await odd).tracking).toBe('none');
   });
 
   it('writes the codes of a product as one list and reads back what the API kept', async () => {
@@ -222,6 +238,15 @@ describe('ProductsApi', () => {
   });
 
   it('answers each refusal with the code the screens translate', async () => {
+    const kept = api.reviseProduct('c1', 'p1', { ...laptop, tracking: 'lot' });
+    http
+      .expectOne('/api/companies/c1/products/p1')
+      .flush(
+        { detail: 'tracking: Stock of ART-001 was moved without lots, so it stays that way.' },
+        { status: 422, statusText: 'Unprocessable' },
+      );
+    await expect(kept).rejects.toEqual(new ProductsRefused('tracking_kept'));
+
     const taken = api.createProduct('c1', laptop);
     http
       .expectOne('/api/companies/c1/products')
