@@ -7,7 +7,8 @@
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
-config=$(cd "$root" && docker compose config --format json 2>&1) || { printf 'compose-log-rotation: FAIL — docker compose config failed:\n%s\n' "$config"; exit 1; }
+# Every profile on: a service behind one (lan, started by make up) is a service too.
+config=$(cd "$root" && docker compose --profile "*" config --format json 2>&1) || { printf 'compose-log-rotation: FAIL — docker compose config failed:\n%s\n' "$config"; exit 1; }
 total=$(jq '.services | length' <<<"$config")
 mapfile -t wrong < <(jq -r '.services | to_entries[]
   | select(.value.logging.driver != "json-file" or .value.logging.options["max-size"] != "10m" or .value.logging.options["max-file"] != "5")
