@@ -43,9 +43,11 @@ contribution without it silently forecloses the commercial licence for that file
 generated from the lock files (`make notices`); regenerate it in the same change that adds a dependency,
 and read the actual LICENSE file of anything whose lock entry is not a bare SPDX identifier. For anything
 we **distribute**, the permitted
-set is exactly nine identifiers (developer ruling, 2026-07-29): **MIT, Apache-2.0, BSD-2-Clause,
-BSD-3-Clause, ISC, 0BSD, MIT-0, CC0-1.0, BlueOak-1.0.0** — every one non-copyleft *and* imposing no
-obligation that could survive into a commercial sublicence. A **dev-only** dependency may additionally carry
+set is exactly ten identifiers (developer rulings, 2026-07-29 and 2026-09-23): **MIT, Apache-2.0, BSD-2-Clause,
+BSD-3-Clause, ISC, 0BSD, MIT-0, CC0-1.0, BlueOak-1.0.0, Unicode-3.0** — every one non-copyleft *and* imposing no
+obligation that could survive into a commercial sublicence. Unicode-3.0 (the Unicode License v3, OSI-approved,
+MIT-like: keep the copyright and permission notice) came with the camera's barcode decoder, which compiles in
+character tables generated from unicode.org mapping files. A **dev-only** dependency may additionally carry
 **CC-BY-4.0** or **CC-BY-3.0**, and only as build-time reference data that never reaches the shipped
 artifact; those impose attribution, which is why they are quarantined rather than added to the list above.
 

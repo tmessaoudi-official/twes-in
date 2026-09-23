@@ -15,8 +15,11 @@ require __DIR__.'/../lib/dependency-inventory.php';
  * LICENSING.md and CLAUDE.md, never a build fix. tests/dependency-licences.test.sh pins each list.
  */
 
-/** Anything we DISTRIBUTE: non-copyleft, and no obligation that survives into a commercial sublicence. */
-const DISTRIBUTED = ['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', '0BSD', 'MIT-0', 'CC0-1.0', 'BlueOak-1.0.0'];
+/**
+ * Anything we DISTRIBUTE: non-copyleft, and no obligation that survives into a commercial sublicence. Unicode-3.0 was
+ * added 2026-09-23 (developer ruling) for the Unicode character tables the camera's barcode decoder compiles in.
+ */
+const DISTRIBUTED = ['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC', '0BSD', 'MIT-0', 'CC0-1.0', 'BlueOak-1.0.0', 'Unicode-3.0'];
 
 /** Dev-only build-time DATA (caniuse-lite, spdx-exceptions): attribution licences, tolerated only where nothing ships. */
 const DEV_ONLY_DATA = ['CC-BY-4.0', 'CC-BY-3.0'];

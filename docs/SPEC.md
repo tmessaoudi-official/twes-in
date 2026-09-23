@@ -2313,6 +2313,13 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   record say something nobody decided. (4) The source key takes the lot, `NULLS NOT DISTINCT` and partial on
   `source_id IS NOT NULL`: without the predicate, two receipts of one product at one location would collide as one
   row. (5) The demo puts a lot-tracked or serial article on three of its delivery notes.
+- [2026-09-23 08:05] AGREED: `Unicode-3.0` joins the licences permitted for anything distributed, and the camera
+  scanner uses `zxing-wasm` (developer ruling, answering the 01:50 stop). The decoder compiles in character tables
+  generated from unicode.org mapping files; the Unicode License v3 is permissive and OSI-approved, asking only that its
+  copyright and permission notice travel with the tables: the lock file names the package MIT only, so the camera
+  slice teaches the notices generator to carry that notice too (the file stays generated). Chosen over
+  `@zxing/library` (Apache-2.0, maintenance-only, weaker on 1D codes from a phone camera) because zxing-wasm reads
+  angled and blurred codes better, GS1 included.
 
 ## 8. Status
 
@@ -2457,7 +2464,6 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - Should an opening-stock row also carry what the goods **cost**? A count records a quantity only, so the stock it opens has no value: a stock-valuation report would have nothing to sum. Adding a `unit_cost` column later is additive, so this is not urgent — but it is cheaper to decide before people have imported their opening balances.
 - A location code is unique per **establishment**, so a company whose two sites both use "A-12" has a file that cannot say which. The import **refuses** it (`ambiguous_location`) rather than guessing. The alternative is an optional `establishment_code` column that disambiguates. Refusal was chosen because putting goods in the wrong building is worse than asking; say if a second column is preferred.
 - Must the import screen make a person **preview** before importing, or may they import straight away? A preview is the same run rolled back, so it costs one extra upload and catches every rejection before anything is stored.
-- **The camera decoder is stopped on a licence the 22:38 ruling did not cover** (2026-09-23 01:50, licensing invariant 6). `zxing-wasm`'s reader compiles in libzueci's character-set tables, generated from unicode.org mapping files, which fall under the Unicode License v3 (`Unicode-3.0`, permissive, notice required) — not on the permitted list. Accept it for compiled-in data tables with the notice shipped beside the wasm, or choose another decoder? Nothing is installed; evidence in `var/claude/decoder-licence.md` § Addendum. Scanning with a handheld scanner (keyboard wedge) is complete without it.
 ### Needs research
 - **Tunisia's cash-register rules.** `docs/fiscal/TN.md` says nothing about cash registers, and JORT
   n° 125 has **not been read** — everything recorded about its scope, its 1 July 2026 date and its

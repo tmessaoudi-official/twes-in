@@ -89,7 +89,7 @@ d=$(fixture); rm "$d/THIRD-PARTY-NOTICES.md"
 assert_gate "missing notices fail" "$d" 1 "THIRD-PARTY-NOTICES.md is out of date"
 
 out=$(php "$GATE" --dump-rules 2>&1)
-if [[ $(echo "$out" | jq -c '.distributed') == '["MIT","Apache-2.0","BSD-2-Clause","BSD-3-Clause","ISC","0BSD","MIT-0","CC0-1.0","BlueOak-1.0.0"]' \
+if [[ $(echo "$out" | jq -c '.distributed') == '["MIT","Apache-2.0","BSD-2-Clause","BSD-3-Clause","ISC","0BSD","MIT-0","CC0-1.0","BlueOak-1.0.0","Unicode-3.0"]' \
    && $(echo "$out" | jq -c '.dev_only_data') == '["CC-BY-4.0","CC-BY-3.0"]' \
    && $(echo "$out" | jq -c '.dev_only_tooling') == '["MPL-2.0","Python-2.0"]' \
    && $(echo "$out" | jq -c '.font_assets') == '["OFL-1.1"]' \

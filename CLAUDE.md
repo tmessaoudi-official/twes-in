@@ -46,7 +46,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
    was refused at G0 because "SEE LICENSE IN LICENSE.md" turned out to be an eligibility-gated
    commercial licence with a bundled licence-key verifier. Permitted for
    anything distributed: **MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, MIT-0,
-   CC0-1.0, BlueOak-1.0.0**. Narrow dev-only exceptions: CC-BY-4.0 / CC-BY-3.0 build-time data;
+   CC0-1.0, BlueOak-1.0.0, Unicode-3.0** (the last ruled 2026-09-23, for the barcode decoder's Unicode tables). Narrow dev-only exceptions: CC-BY-4.0 / CC-BY-3.0 build-time data;
    MPL-2.0 dev-only tooling (Angular's `lightningcss`); Python-2.0 dev-only tooling (`argparse` under
    `@hey-api/openapi-ts`, ruled 2026-09-09); OFL-1.1 vendored fonts. "AGPL-compatible"
    is the wrong test: a copyleft dependency kills the commercial branch. Adding an identifier is
