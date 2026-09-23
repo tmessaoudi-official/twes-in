@@ -2209,6 +2209,21 @@
     "undone": "Scan {{code}} undone",
     "failed": "The scan could not be handled. Try again.",
     "not_editable": "This document can no longer be changed: the scan adds nothing.",
-    "retired": "{{name}} is no longer sold: it is not added."
+    "retired": "{{name}} is no longer sold: it is not added.",
+    "camera": {
+      "open": "Scan with the camera",
+      "title": "Camera",
+      "close": "Close the camera",
+      "choice": "Camera in use",
+      "unnamed": "Camera {{number}}",
+      "last_read": "Last code read:",
+      "hint": "Hold a barcode or QR code up to the camera: each item counts when it comes into view.",
+      "refused": {
+        "denied": "Camera access is refused: allow it for this site in the browser's settings.",
+        "none": "No camera is available on this device.",
+        "busy": "The camera is already in use by another application.",
+        "unsupported": "This browser cannot open the camera here."
+      }
+    }
   }
 }

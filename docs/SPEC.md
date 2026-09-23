@@ -2356,6 +2356,18 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   sold, then the chosen product's codes with the code listed), then the catalogue search. No purchase order yet: that
   module does not exist. Adding the code is never saved without the person's own save, so the role (unit, pack) is
   theirs to set.
+- [2026-09-23 11:08] TAKEN OVERNIGHT (standing instruction, to confirm): slice 3, the device camera. A camera button in the
+  top bar (shown only where the browser can open a camera: a secure page) opens a small panel in the bottom corner,
+  with no backdrop, so the screen behind stays usable. It reads a frame every 150 ms (at most 960 px wide) with
+  `zxing-wasm/reader` 3.1.3, pinned exactly and self-hosted at `/vendor/zxing-reader/` beside the licence texts of the
+  ten components it compiles in (listed in `web/src/third-party/zxing-reader/COMPONENTS.json`, which the licence gate
+  checks against the lock's exact tarball). A code counts when it comes into view, once while it stays there, and
+  again after it has been out of view 700 ms; each read beeps (1.8 kHz, 80 ms), vibrates 40 ms where the device can,
+  and goes to the scan bus as a `camera` scan, so the screen on view acts on it exactly as on a handheld scanner's. A
+  GS1 label is typed as a GS1 scanner types it (`]C1…`, `]d2…`). The screen is kept awake while the panel is open,
+  the camera facing away is the default, and the camera picked last is remembered in this browser. The CSP gains
+  `'wasm-unsafe-eval'`, which lets WebAssembly compile and still refuses `eval`. Formats read: EAN-13/8, UPC-A/E,
+  Code 128, ITF, Code 39, GS1 DataBar, DataMatrix, QR.
 
 ## 8. Status
 

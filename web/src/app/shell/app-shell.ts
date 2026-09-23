@@ -49,6 +49,8 @@ import { SchemeMenu } from '../shared/theme/scheme-menu';
 import { type SchemePreference, ThemeFacade } from '../shared/theme/theme-facade';
 import { ProductScanCard, type ProductScanCardData } from '../products/product-scan-card';
 import { PRODUCTS_MODULE } from '../products/products-nav';
+import { Camera } from '../shared/scan/camera';
+import { CameraScanPanel } from '../shared/scan/camera-scan-panel';
 import { ScanBus } from '../shared/scan/scan-bus';
 import { ScanCount } from '../shared/scan/scan-count';
 import { SCAN_GAP_MS, ScanWedge } from '../shared/scan/scan-wedge';
@@ -125,6 +127,9 @@ export class AppShell {
   private readonly screen = inject(ScreenActions);
   private paletteOpen = false;
   private shortcutsOpen = false;
+  private cameraOpen = false;
+  /** Whether this browser can open a camera here: a secure page and the media devices API. */
+  protected readonly cameraAvailable = inject(Camera).available();
   private scanOpen = false;
   private readonly wedge = new ScanWedge();
   private readonly scans = inject(ScanBus);
@@ -372,6 +377,25 @@ export class AppShell {
       })
       .afterClosed()
       .subscribe(() => (this.scanOpen = false));
+  }
+
+  /**
+   * The camera as a scanner, in a panel that leaves the page usable beside it: no backdrop, bottom corner
+   * (docs/SPEC.md § 7, 2026-09-23 09:45, slice 3). One at a time.
+   */
+  protected openCamera(): void {
+    if (this.cameraOpen) return;
+    this.cameraOpen = true;
+    this.dialog
+      .open(CameraScanPanel, {
+        hasBackdrop: false,
+        position: { bottom: '1rem', right: '1rem' },
+        width: 'min(22rem, calc(100vw - 2rem))',
+        autoFocus: '[data-testid="camera-close"]',
+        panelClass: 'camera-scan',
+      })
+      .afterClosed()
+      .subscribe(() => (this.cameraOpen = false));
   }
 
   protected openCommands(): void {

@@ -37,12 +37,19 @@ const DEV_ONLY_TOOLING = ['MPL-2.0', 'Python-2.0'];
  */
 const FONT_ASSETS = ['OFL-1.1'];
 
+/**
+ * SPDX exceptions accepted after `WITH` on a component compiled into vendored WebAssembly, the base licence still
+ * being checked: LLVM's only waives attribution for compiled-in portions of libc++ (developer ruling 2026-09-22 22:38,
+ * "Apache-2.0 WITH LLVM-exception is accepted as Apache-2.0").
+ */
+const EXCEPTIONS = ['LLVM-exception'];
+
 const OWN_LICENCE = 'AGPL-3.0-or-later';
 
 $args = parseArguments($argv);
 
 if (in_array('--dump-rules', $args['flags'], true)) {
-    echo json_encode(['distributed' => DISTRIBUTED, 'dev_only_data' => DEV_ONLY_DATA, 'dev_only_tooling' => DEV_ONLY_TOOLING, 'font_assets' => FONT_ASSETS], JSON_PRETTY_PRINT), "\n";
+    echo json_encode(['distributed' => DISTRIBUTED, 'dev_only_data' => DEV_ONLY_DATA, 'dev_only_tooling' => DEV_ONLY_TOOLING, 'font_assets' => FONT_ASSETS, 'exceptions' => EXCEPTIONS], JSON_PRETTY_PRINT), "\n";
     exit(0);
 }
 
@@ -67,7 +74,7 @@ foreach ($records as $r) {
     if (!expressionIsPermitted($r['licence'], $allowed)) {
         $violations[] = $r['dev']
             ? sprintf('%s (%s) is a DEV dependency outside the permitted dev lists', $label, $r['licence'])
-            : sprintf('%s (%s) is a RUNTIME dependency outside the nine permitted identifiers', $label, $r['licence']);
+            : sprintf('%s (%s) is a RUNTIME dependency outside the permitted identifiers', $label, $r['licence']);
     }
 }
 
@@ -82,8 +89,36 @@ foreach ($fonts as $f) {
     }
 }
 
+// What vendored WebAssembly compiles in: each manifest is the audit of the exact tarball the lock installs, every
+// component is permitted, and its licence text is there to ship beside the wasm.
+$wasm = vendoredWasm($root);
+$locked = readJson($root.'/web/package-lock.json')['packages'] ?? [];
+foreach ($wasm as $w) {
+    $entry = (array) ($locked['node_modules/'.$w['package']] ?? []);
+    $version = (string) ($entry['version'] ?? '');
+    $integrity = (string) ($entry['integrity'] ?? '');
+    if ($version !== $w['version'] || $integrity !== $w['integrity']) {
+        $violations[] = sprintf('%s/COMPONENTS.json audits %s %s (%s) but web/package-lock.json holds %s (%s): read the new wasm before shipping it', $w['dir'], $w['package'], $w['version'], $w['integrity'], '' === $version ? 'nothing' : $version, $integrity);
+    }
+    foreach ($w['components'] as $c) {
+        if (!componentIsPermitted($c['licence'])) {
+            $violations[] = sprintf('%s compiles in %s (%s), outside the permitted identifiers', $w['package'], $c['name'], $c['licence']);
+        }
+        $text = $root.'/'.$w['dir'].'/'.$c['text'];
+        if ('' === $c['text'] || !is_file($text) || '' === trim((string) file_get_contents($text))) {
+            $violations[] = sprintf('%s/%s, the licence text of %s, is missing or empty', $w['dir'], $c['text'], $c['name']);
+        }
+    }
+}
+$audited = array_map(static fn (array $w): string => $w['package'], $wasm);
+foreach (shippedWasmPackages($root) as $package) {
+    if (!in_array($package, $audited, true)) {
+        $violations[] = sprintf("web/angular.json ships %s's WebAssembly, and no web/src/third-party/*/COMPONENTS.json lists what it compiles in", $package);
+    }
+}
+
 $notices = $root.'/THIRD-PARTY-NOTICES.md';
-if (!is_file($notices) || file_get_contents($notices) !== renderNotices($records, $fonts)) {
+if (!is_file($notices) || file_get_contents($notices) !== renderNotices($records, $fonts, $wasm)) {
     $violations[] = 'THIRD-PARTY-NOTICES.md is out of date — run: php scripts/notices/generate-third-party-notices.php';
 }
 
@@ -122,4 +157,14 @@ function expressionIsPermitted(string $expression, array $allowed): bool
     }
 
     return false;
+}
+
+/** A compiled-in component's licence: a permitted expression, or a permitted identifier WITH an accepted exception. */
+function componentIsPermitted(string $licence): bool
+{
+    if (1 === preg_match('/^(\S+)\s+WITH\s+(\S+)$/', trim($licence), $m)) {
+        return in_array($m[2], EXCEPTIONS, true) && in_array($m[1], DISTRIBUTED, true);
+    }
+
+    return '' !== trim($licence) && expressionIsPermitted($licence, DISTRIBUTED);
 }

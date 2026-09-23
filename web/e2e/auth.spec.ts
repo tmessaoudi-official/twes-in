@@ -102,6 +102,9 @@ test('every page load carries a fresh CSP nonce, shared by the header and the do
   expect(second.header).not.toBe(first.header);
   expect(first.csp).not.toContain('unsafe-inline');
   expect(first.csp).toContain(`script-src 'self' 'nonce-${first.header}'`);
+  // WebAssembly may compile (the camera's decoder); JavaScript's eval stays refused.
+  expect(first.csp).toContain("'wasm-unsafe-eval'");
+  expect(first.csp).not.toContain("'unsafe-eval'");
   expect(first.csp).toContain(`style-src 'self' 'nonce-${first.header}'`);
   // A stored copy of the document would pair an old nonce with a new header.
   expect(first.cacheControl).toContain('no-store');

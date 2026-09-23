@@ -25,6 +25,9 @@ import { TranslatedPaginatorIntl } from './shared/list/translated-paginator-intl
 import { activityInterceptor } from './shared/feedback/activity-interceptor';
 import { Feedback } from './shared/feedback/feedback';
 import { MaterialFeedback } from './shared/feedback/material-feedback';
+import { BarcodeReader } from './shared/scan/barcode-reader';
+import { BrowserCamera, Camera } from './shared/scan/camera';
+import { ZxingBarcodeReader } from './shared/scan/zxing-barcode-reader';
 import { trackNavigation } from './shared/feedback/navigation-activity';
 import { LanguageFacade } from './shared/i18n/language-facade';
 import { ThemeFacade } from './shared/theme/theme-facade';
@@ -52,6 +55,9 @@ export const appConfig: ApplicationConfig = {
     { provide: SettingsFacade, useClass: ApiSettings },
     // Outcomes are said in toasts; what the application waits for, in the activity bar (docs/SPEC.md § 8 row 48).
     { provide: Feedback, useExisting: MaterialFeedback },
+    // The camera scans through two ports: this device's cameras, and the decoder that reads a frame (slice 3).
+    { provide: Camera, useClass: BrowserCamera },
+    { provide: BarcodeReader, useClass: ZxingBarcodeReader },
     BrowserStorageSettings,
     // Every paginator's labels follow the chosen language.
     { provide: MatPaginatorIntl, useClass: TranslatedPaginatorIntl },

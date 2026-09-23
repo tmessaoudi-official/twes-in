@@ -70,8 +70,18 @@ imposes nothing on our code; its Reserved Font Name clause binds only somebody w
 redistributes it under its original name, which vendoring unmodified does not do. An OFL-1.1 *code* package is
 still refused.
 
-Enforced by `scripts/gates/dependency-licences.php`, which keeps the four lists separate (distributed,
-dev-only data, dev-only tooling, font assets — `--dump-rules` prints them) and asserts a **maximum** on
+**Vendored WebAssembly** compiles in code that no lock file shows: the lock names the npm package's own licence and
+nothing it was built from. Each wasm the web build ships from a package (an `assets` entry of `web/angular.json`
+copying a `.wasm` out of `node_modules`) needs a `web/src/third-party/<name>/COMPONENTS.json`: the audit of ONE
+tarball — package, version and lock integrity — listing every component compiled in with its SPDX licence, its
+copyright line and its licence text beside the manifest, which the build copies next to the wasm. A component's
+licence must be on the distributed list; after `WITH`, only `LLVM-exception` is accepted (developer ruling
+2026-09-22 22:38: it only waives attribution for compiled-in libc++). A version or integrity that differs from the
+lock fails the gate: a new wasm is read before it ships. The first is the camera's barcode decoder, `zxing-wasm`
+3.1.3, reader build only (`docs/SPEC.md` § 7, 2026-09-22 22:38 and 2026-09-23 08:05).
+
+Enforced by `scripts/gates/dependency-licences.php`, which keeps the five lists separate (distributed,
+dev-only data, dev-only tooling, font assets, exceptions — `--dump-rules` prints them) and asserts a **maximum** on
 each — so widening any of them is a deliberate edit here and in `CLAUDE.md` § "Licensing invariants"
 invariant 3, not a build fix.
 

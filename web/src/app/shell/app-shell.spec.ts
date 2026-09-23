@@ -27,6 +27,7 @@ import { ScreenActions } from '../shared/actions/screen-actions';
 import { ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { ProductScanCard } from '../products/product-scan-card';
+import { Camera } from '../shared/scan/camera';
 import { ScanBus } from '../shared/scan/scan-bus';
 import { SCAN_GAP_MS } from '../shared/scan/scan-wedge';
 import { CommandPalette } from './command-palette';
@@ -211,6 +212,7 @@ describe('AppShell', () => {
         { provide: LanguageFacade, useValue: language },
         { provide: RequestActivity, useValue: activity },
         { provide: Feedback, useClass: RecordedFeedback },
+        { provide: Camera, useValue: { available: () => true } },
         {
           provide: NotificationsFacade,
           useValue: {

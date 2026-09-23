@@ -28,6 +28,16 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "zxing_reader.wasm",
+                "input": "node_modules/zxing-wasm/dist/reader",
+                "output": "vendor/zxing-reader"
+              },
+              {
+                "glob": "*",
+                "input": "src/third-party/zxing-reader",
+                "output": "vendor/zxing-reader"
               }
             ],
             "styles": [

@@ -93,7 +93,8 @@ if [[ $(echo "$out" | jq -c '.distributed') == '["MIT","Apache-2.0","BSD-2-Claus
    && $(echo "$out" | jq -c '.dev_only_data') == '["CC-BY-4.0","CC-BY-3.0"]' \
    && $(echo "$out" | jq -c '.dev_only_tooling') == '["MPL-2.0","Python-2.0"]' \
    && $(echo "$out" | jq -c '.font_assets') == '["OFL-1.1"]' \
-   && $(echo "$out" | jq -c 'keys') == '["dev_only_data","dev_only_tooling","distributed","font_assets"]' ]]; then ok "--dump-rules exposes exactly the four lists (maximums)"; else bad "--dump-rules lists drifted" "$out"; fi
+   && $(echo "$out" | jq -c '.exceptions') == '["LLVM-exception"]' \
+   && $(echo "$out" | jq -c 'keys') == '["dev_only_data","dev_only_tooling","distributed","exceptions","font_assets"]' ]]; then ok "--dump-rules exposes exactly the five lists (maximums)"; else bad "--dump-rules lists drifted" "$out"; fi
 
 d=$(fixture); out=$(php "$GEN" --root "$d" 2>&1); n="$d/THIRD-PARTY-NOTICES.md"
 if grep -q 'vendor/runtime-mit | 1.0.0 | MIT | runtime' "$n" && grep -q 'dev-apache | 3.0.0 | Apache-2.0 | dev' "$n" && grep -q 'GENERATED' "$n"; then ok "generator writes one row per package with tier and role"; else bad "generator output" "$(cat "$n")"; fi
@@ -119,5 +120,49 @@ assert_gate "a vendored font under another licence fails" "$d" 1 "web/public/fon
 
 d=$(fixture); vendor_font "$d" src/assets/odd ""
 assert_gate "a font file under web/src is checked too" "$d" 1 "web/src/assets/odd/demo-latin.woff2 is a vendored font with no LICENSE file beside it"
+
+# WebAssembly shipped from an npm package compiles in code no lock file shows: a COMPONENTS.json beside its licence
+# texts lists what is inside, audited against ONE exact tarball (docs/SPEC.md § 7, 2026-09-22 22:38 and 2026-09-23 08:05).
+# vendor_wasm <root> — a package in the lock, a build that ships its .wasm, and a manifest of what the wasm holds.
+vendor_wasm() {
+  mutate "$1" web/package-lock.json '$j["packages"]["node_modules/demo-wasm"]=["version"=>"1.2.3","license"=>"MIT","integrity"=>"sha512-abc"];'
+  cat > "$1/web/angular.json" <<'JSON'
+{"projects":{"web":{"architect":{"build":{"options":{"assets":[
+ {"glob":"**/*","input":"public"},
+ {"glob":"demo.wasm","input":"node_modules/demo-wasm/dist","output":"vendor/demo"},
+ {"glob":"*","input":"src/third-party/demo","output":"vendor/demo"}]}}}}}}
+JSON
+  mkdir -p "$1/web/src/third-party/demo"
+  cat > "$1/web/src/third-party/demo/COMPONENTS.json" <<'JSON'
+{"package":"demo-wasm","version":"1.2.3","integrity":"sha512-abc","file":"dist/demo.wasm","components":[
+ {"name":"core","licence":"Apache-2.0","copyright":"Copyright 2016 Core Inc.","text":"LICENSE.core"},
+ {"name":"libc++","licence":"Apache-2.0 WITH LLVM-exception","copyright":"LLVM Project contributors","text":"LICENSE.llvm"}]}
+JSON
+  printf 'Apache License\n' > "$1/web/src/third-party/demo/LICENSE.core"
+  printf 'Apache License with LLVM Exceptions\n' > "$1/web/src/third-party/demo/LICENSE.llvm"
+  php "$GEN" --root "$1" >/dev/null 2>&1
+}
+
+d=$(fixture); vendor_wasm "$d"
+assert_gate "a shipped wasm whose components are listed, licensed and texted passes" "$d" 0 "OK"
+if grep -q '| core | Apache-2.0 | Copyright 2016 Core Inc. |' "$d/THIRD-PARTY-NOTICES.md" && grep -q 'demo-wasm 1.2.3' "$d/THIRD-PARTY-NOTICES.md"; then ok "notices list what the wasm compiles in"; else bad "notices lack the wasm components" "$(cat "$d/THIRD-PARTY-NOTICES.md")"; fi
+
+d=$(fixture); vendor_wasm "$d"; mutate "$d" web/package-lock.json '$j["packages"]["node_modules/demo-wasm"]["version"]="1.2.4";'; php "$GEN" --root "$d" >/dev/null
+assert_gate "a package bumped past its audit fails: the new wasm is unread" "$d" 1 "web/src/third-party/demo/COMPONENTS.json audits demo-wasm 1.2.3 (sha512-abc) but web/package-lock.json holds 1.2.4"
+
+d=$(fixture); vendor_wasm "$d"; mutate "$d" web/package-lock.json '$j["packages"]["node_modules/demo-wasm"]["integrity"]="sha512-other";'; php "$GEN" --root "$d" >/dev/null
+assert_gate "the same version from another tarball fails too" "$d" 1 "but web/package-lock.json holds 1.2.3 (sha512-other)"
+
+d=$(fixture); vendor_wasm "$d"; mutate "$d" web/src/third-party/demo/COMPONENTS.json '$j["components"][0]["licence"]="LGPL-2.1-only";'; php "$GEN" --root "$d" >/dev/null
+assert_gate "a component under a refused licence fails, naming it" "$d" 1 "demo-wasm compiles in core (LGPL-2.1-only), outside the permitted identifiers"
+
+d=$(fixture); vendor_wasm "$d"; mutate "$d" web/src/third-party/demo/COMPONENTS.json '$j["components"][1]["licence"]="Apache-2.0 WITH Classpath-exception-2.0";'; php "$GEN" --root "$d" >/dev/null
+assert_gate "an exception other than LLVM's is refused" "$d" 1 "demo-wasm compiles in libc++ (Apache-2.0 WITH Classpath-exception-2.0)"
+
+d=$(fixture); vendor_wasm "$d"; rm "$d/web/src/third-party/demo/LICENSE.core"
+assert_gate "a component without its licence text beside it fails" "$d" 1 "web/src/third-party/demo/LICENSE.core, the licence text of core, is missing or empty"
+
+d=$(fixture); vendor_wasm "$d"; rm -r "$d/web/src/third-party/demo"; php "$GEN" --root "$d" >/dev/null
+assert_gate "a build shipping a package's wasm with no manifest fails" "$d" 1 "web/angular.json ships demo-wasm's WebAssembly, and no web/src/third-party/*/COMPONENTS.json lists what it compiles in"
 
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

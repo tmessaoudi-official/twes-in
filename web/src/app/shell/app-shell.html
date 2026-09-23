@@ -154,6 +154,17 @@
               <mat-icon aria-hidden="true">search</mat-icon>
             </button>
           }
+          @if (cameraAvailable) {
+            <button
+              mat-icon-button
+              type="button"
+              (click)="openCamera()"
+              [appLabel]="'scan.camera.open' | translate"
+              data-testid="camera-open"
+            >
+              <mat-icon aria-hidden="true">photo_camera</mat-icon>
+            </button>
+          }
           @if (scanCount(); as count) {
             <button
               mat-stroked-button

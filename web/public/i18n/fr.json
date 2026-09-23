@@ -2209,6 +2209,21 @@
     "undone": "Scan {{code}} annulé",
     "failed": "Le scan n’a pas pu être traité. Réessayez.",
     "not_editable": "Ce document n’est plus modifiable : le scan n’ajoute rien.",
-    "retired": "{{name}} est retiré de la vente : il n’est pas ajouté."
+    "retired": "{{name}} est retiré de la vente : il n’est pas ajouté.",
+    "camera": {
+      "open": "Scanner avec la caméra",
+      "title": "Caméra",
+      "close": "Fermer la caméra",
+      "choice": "Caméra utilisée",
+      "unnamed": "Caméra {{number}}",
+      "last_read": "Dernier code lu :",
+      "hint": "Présentez un code-barres ou un code QR à la caméra : chaque article compte quand il entre dans l’image.",
+      "refused": {
+        "denied": "L’accès à la caméra est refusé : autorisez-le dans les réglages du navigateur pour ce site.",
+        "none": "Aucune caméra n’est disponible sur cet appareil.",
+        "busy": "La caméra est déjà utilisée par une autre application.",
+        "unsupported": "Ce navigateur ne peut pas ouvrir la caméra ici."
+      }
+    }
   }
 }

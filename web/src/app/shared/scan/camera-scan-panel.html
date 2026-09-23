@@ -1,0 +1,58 @@
+<section class="flex flex-col gap-3 p-4" data-testid="camera-scan-panel">
+  <header class="flex items-center gap-2">
+    <mat-icon aria-hidden="true">photo_camera</mat-icon>
+    <h2 class="m-0 flex-1 text-base font-medium">{{ 'scan.camera.title' | translate }}</h2>
+    <button
+      mat-icon-button
+      type="button"
+      (click)="dialog.close()"
+      [appLabel]="'scan.camera.close' | translate"
+      data-testid="camera-close"
+    >
+      <mat-icon aria-hidden="true">close</mat-icon>
+    </button>
+  </header>
+
+  @if (refused(); as reason) {
+    <p role="alert" class="m-0 text-error" data-testid="camera-refused">
+      {{ 'scan.camera.refused.' + reason | translate }}
+    </p>
+  }
+
+  <!-- Muted and inline, which is what lets a phone play it without a tap and without going full screen. -->
+  <video
+    #video
+    class="aspect-video w-full rounded bg-surface-container-highest object-cover"
+    [class.hidden]="refused() !== null"
+    autoplay
+    muted
+    playsinline
+    aria-hidden="true"
+    data-testid="camera-video"
+  ></video>
+
+  @if (devices().length > 1) {
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ 'scan.camera.choice' | translate }}</mat-label>
+      <select
+        matNativeControl
+        (change)="choose($any($event.target).value)"
+        data-testid="camera-choice"
+      >
+        @for (device of devices(); track device.id; let index = $index) {
+          <option [value]="device.id" [selected]="device.id === chosen()">
+            {{ device.label || ('scan.camera.unnamed' | translate: { number: index + 1 }) }}
+          </option>
+        }
+      </select>
+    </mat-form-field>
+  }
+
+  <p class="m-0 text-sm" data-testid="camera-last-read">
+    @if (lastRead(); as code) {
+      {{ 'scan.camera.last_read' | translate }} <span class="font-mono">{{ code }}</span>
+    } @else {
+      {{ 'scan.camera.hint' | translate }}
+    }
+  </p>
+</section>
