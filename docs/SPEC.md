@@ -2439,7 +2439,9 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   and there is no preview of unsaved lines. A tab says nothing until one of its scans lands on a sale's lines, so
   browsing documents never shows a customer another's total; undoing a scan, leaving the sale, and closing or reloading
   the tab (`pagehide`) empty the display. A display opened mid-sale asks and is answered at once. Lines added by hand are
-  not shown. The price check does not feed it.
+  not shown. The price check does not feed it. The first save of a new sale keeps what the display shows, though it opens
+  the sale at its own address; another document on the same screen empties it. One display per counter is assumed: a
+  second counter tab of the same company that leaves its sale empties the display too.
 
 ## 8. Status
 

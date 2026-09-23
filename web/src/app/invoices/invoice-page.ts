@@ -101,6 +101,8 @@ export class InvoicePage {
   private readonly router = inject(Router);
   private readonly productScans = inject(ProductScans);
   private readonly display = inject(CustomerDisplay);
+  /** Set once the sale was created and is opened at its own address, which the customer display keeps showing. */
+  private handedOver = false;
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `invoices/new`. */
   readonly invoiceId = input<string | undefined>(undefined);
@@ -466,7 +468,18 @@ export class InvoicePage {
       const total = this.current()?.total;
       if (total !== undefined) untracked(() => this.display.total(total));
     });
-    inject(DestroyRef).onDestroy(() => this.display.clear());
+    inject(DestroyRef).onDestroy(() => {
+      if (!this.handedOver) this.display.clear();
+    });
+    // Another document on the same screen is another sale: what the display showed was the last one's.
+    let shownId: string | null | undefined;
+    effect(() => {
+      const id = this.id();
+      untracked(() => {
+        if (shownId !== undefined && shownId !== id) this.display.clear();
+        shownId = id;
+      });
+    });
     effect(() => {
       // Played once per code: the address then forgets it. Lines drawn again from scratch before that happens take
       // it again, which is right, since the lines it went onto are gone.
@@ -570,6 +583,7 @@ export class InvoicePage {
         // It exists now: going to it is not leaving unsaved work, though the form still holds what was
         // typed and the record holds what the API answered (row 45's leave guard, 2026-09-20).
         this.unsaved.savedAndLeaving();
+        this.handedOver = true;
         await this.router.navigate(['/invoices', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.revise(companyId, id, input)) !== null) {

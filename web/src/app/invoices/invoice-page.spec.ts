@@ -890,6 +890,37 @@ describe('InvoicePage', () => {
       expect(display.clear).toHaveBeenCalledTimes(2);
     });
 
+    it('keeps the customer display through the first save, which opens the sale at its own address', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      await open(undefined);
+      await pick('invoice-customer', 'CLI-2 · Méditerranée');
+      scans.named.mockResolvedValue(coffee);
+      await scanned('3017620422003');
+      await settle();
+
+      q('document-action-save')!.click();
+      await vi.waitFor(() =>
+        expect(navigate).toHaveBeenCalledWith(['/invoices', 'i9'], { replaceUrl: true }),
+      );
+      fixture.destroy();
+
+      expect(display.clear).not.toHaveBeenCalled();
+    });
+
+    it('empties the customer display when the screen goes on to another document', async () => {
+      invoice.set(draft);
+      await open('i1');
+      scans.named.mockResolvedValue(coffee);
+      await scanned('3017620422003');
+      await settle();
+      expect(display.clear).not.toHaveBeenCalled();
+
+      fixture.componentRef.setInput('invoiceId', 'i2');
+      await settle();
+
+      expect(display.clear).toHaveBeenCalledTimes(1);
+    });
+
     it('offers to open the customer display on a draft', async () => {
       invoice.set(draft);
       await open('i1');

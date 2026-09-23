@@ -682,6 +682,37 @@ describe('DeliveryNotePage', () => {
       expect(display.clear).toHaveBeenCalledTimes(2);
     });
 
+    it('keeps the customer display through the first save, which opens the note at its own address', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      await open(undefined);
+      await pick('delivery-note-customer', 'CLI-1 · Carthage');
+      scans.named.mockResolvedValue(laptop);
+      await scanned('3017620422003');
+      await settle();
+
+      q('document-action-save')!.click();
+      await vi.waitFor(() =>
+        expect(navigate).toHaveBeenCalledWith(['/delivery-notes', 'n9'], { replaceUrl: true }),
+      );
+      fixture.destroy();
+
+      expect(display.clear).not.toHaveBeenCalled();
+    });
+
+    it('empties the customer display when the screen goes on to another note', async () => {
+      note.set(draft);
+      await open('n1');
+      scans.named.mockResolvedValue(laptop);
+      await scanned('3017620422003');
+      await settle();
+      expect(display.clear).not.toHaveBeenCalled();
+
+      fixture.componentRef.setInput('deliveryNoteId', 'n2');
+      await settle();
+
+      expect(display.clear).toHaveBeenCalledTimes(1);
+    });
+
     it('offers to open the customer display on a draft', async () => {
       note.set(draft);
       await open('n1');
