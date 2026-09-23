@@ -16,7 +16,11 @@
       {{ 'products.scan.loading' | translate }}
     </p>
   } @else if (scan(); as found) {
-    <div class="flex flex-col gap-2 rounded border border-outline-variant p-4" role="status">
+    <div
+      class="flex flex-col gap-2 rounded border border-outline-variant p-4"
+      role="status"
+      data-testid="product-scan-found"
+    >
       <p class="m-0 flex flex-wrap items-baseline gap-2">
         <span class="font-mono">{{ found.reference }}</span>
         <span class="text-lg font-medium">{{ found.name }}</span>

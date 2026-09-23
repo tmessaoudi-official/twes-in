@@ -20,7 +20,10 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # panel IS before anything is created; what the repeat DID is a toast like every other outcome (2026-09-21 23:20).
 # `stock-map-not-saved` is the board's own word for the same state, put where the eye is while a piece is dragged,
 # since the form holding the count stands beside the board rather than under it (2026-09-22 20:44, finding B).
-page_states=' login-expired signup-sent activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting '
+# `product-scan-loading`, `product-scan-found` and `product-scan-none` are the scan card's whole content — looking the
+# code up, the product it names, or that none does: what the card IS, arriving after it opened, and never the outcome
+# of something the person did there (2026-09-23 01:10).
+page_states=' login-expired signup-sent activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {
