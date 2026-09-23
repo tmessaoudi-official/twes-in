@@ -754,6 +754,15 @@
           "expanded": "Déployé",
           "rail": "Icônes seules"
         },
+        "sidebar-settings": {
+          "expanded": "Déployé",
+          "rail": "Icônes seules"
+        },
+        "plan-labels": {
+          "code": "Code",
+          "name": "Nom",
+          "both": "Les deux"
+        },
         "language": {
           "fr": "Français",
           "en": "English"

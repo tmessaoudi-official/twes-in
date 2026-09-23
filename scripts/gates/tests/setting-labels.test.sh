@@ -43,6 +43,7 @@ final readonly class ShopSettings implements DeclaresSettings
     {
         yield new SettingDefinition('shop.hours', SettingType::Text, '', $c, $l, 'settings.shop.hours', 'shop');
         yield new SettingDefinition('shop.colour', SettingType::Text, '', $c, $l, 'settings.shop.colour', 'shop');
+        yield new SettingDefinition('shop.side-door', SettingType::Enum, 'open', $c, $l, 'settings.shop.side_door', 'shop', choices: ['open', 'shut']);
         yield new SettingDefinition('platform.seats', SettingType::Int, 1, $c, $l, 'settings.platform.seats', 'core');
         yield new SettingDefinition('shop.list.<id>', SettingType::Json, null, $c, $l, 'settings.shop.list', 'shop', keyPattern: self::LIST);
     }
@@ -60,12 +61,15 @@ translations() {
     DROP="$drop" python3 -c '
 import json, os, sys
 doc = {"settings": {"chains": {"parties": "Clients", "venue": "Plan"},
-                    "shop": {"hours": "Horaires", "colour": "Couleur"}}}
+                    "shop": {"hours": "Horaires", "colour": "Couleur", "side_door": "Porte"},
+                    "choices": {"shop": {"side-door": {"open": "Ouverte", "shut": "Fermée"}}}}}
 drop = os.environ["DROP"]
 if drop == "label":
     del doc["settings"]["shop"]["colour"]
 if drop == "chain":
     del doc["settings"]["chains"]["venue"]
+if drop == "choice":
+    del doc["settings"]["choices"]["shop"]["side-door"]["shut"]
 if drop == "blank":
     doc["settings"]["shop"]["colour"] = "   "
 json.dump(doc, open(sys.argv[1], "w", encoding="utf-8"), ensure_ascii=False)
@@ -75,7 +79,7 @@ json.dump(doc, open(sys.argv[1], "w", encoding="utf-8"), ensure_ascii=False)
 
 # The fixture tree declares two settings and two chains; the gate's real floors are sized for the real tree, so
 # every case but the floor cases themselves passes floors this fixture can meet.
-gate() { SETTING_LABELS_FLOOR=2 SETTING_CHAINS_FLOOR=2 bash "$GATE" "$@"; }
+gate() { SETTING_LABELS_FLOOR=2 SETTING_CHAINS_FLOOR=2 SETTING_CHOICES_FLOOR=2 bash "$GATE" "$@"; }
 
 echo "setting-labels gate"
 
@@ -83,7 +87,7 @@ d=$(repo) && translations "$d"
 out=$(gate --root "$d" 2>&1)
 code=$?
 # Two labels, because the platform setting and the key-pattern one are both deliberately left out.
-check "a fully labelled tree passes" "$code" 0 "$out" "2 settings and 2 chain headings"
+check "a fully labelled tree passes" "$code" 0 "$out" "3 settings, 2 choices and 2 chain headings"
 
 d=$(repo) && translations "$d" label
 out=$(gate --root "$d" 2>&1)
@@ -95,6 +99,29 @@ out=$(gate --root "$d" 2>&1)
 code=$?
 # The half the permissions gate learned to check: every setting labelled, the heading above them raw.
 check "an unlabelled chain heading fails" "$code" 1 "$out" "settings.chains.venue"
+
+# A choice is drawn in the page's select by its own label (settings.choices.<key>.<choice>), and was the half no
+# gate read: two presentation selects showed raw keys on the company settings page (2026-09-23).
+d=$(repo) && translations "$d" choice
+out=$(gate --root "$d" 2>&1)
+code=$?
+check "an unlabelled choice fails" "$code" 1 "$out" "settings.choices.shop.side-door.shut"
+
+# A choice list the gate cannot read is refused rather than skipped: a constant would hide every choice behind it.
+d=$(repo) && translations "$d"
+python3 - "$d" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1], 'api/src/Shop/Application/ShopSettings.php')
+p.write_text(p.read_text().replace("choices: ['open', 'shut']", 'choices: self::DOORS'))
+PY
+out=$(gate --root "$d" 2>&1)
+code=$?
+check "a choice list that is not written out fails" "$code" 1 "$out" "not a literal list"
+
+d=$(repo) && translations "$d"
+out=$(SETTING_LABELS_FLOOR=2 SETTING_CHAINS_FLOOR=2 SETTING_CHOICES_FLOOR=99 bash "$GATE" --root "$d" 2>&1)
+code=$?
+check "too few choices found is a broken pattern, not a pass" "$code" 1 "$out" "below the floor"
 
 d=$(repo) && translations "$d" blank
 out=$(gate --root "$d" 2>&1)

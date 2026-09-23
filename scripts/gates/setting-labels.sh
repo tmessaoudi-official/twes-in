@@ -12,6 +12,9 @@
 # they fail independently, so every setting of a chain can be labelled while the heading above them is a raw key.
 # Adding the `venue` chain was exactly that shape.
 #
+# And each CHOICE of an enum setting, which the page's select draws by `settings.choices.<key>.<choice>`: the third
+# independent half, found when two presentation selects showed raw keys on the company settings page (2026-09-23).
+#
 # It discovers the keys from the source rather than listing them, and carries floors so that a pattern which stops
 # matching reds instead of comparing two empty sets and passing.
 # Usage: setting-labels.sh [--root DIR]
@@ -27,6 +30,8 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # would let either block vanish silently. Other declarations 11 + palette 8 = 19, so 23 reds on losing either eight.
 floor=${SETTING_LABELS_FLOOR:-23}
 chains_floor=${SETTING_CHAINS_FLOOR:-4}
+# 16 choices on 2026-09-23 (presentation 14, document language 2): losing the document's pair or any select reds.
+choices_floor=${SETTING_CHOICES_FLOOR:-15}
 
 # One key, one language: present, a string, and not blank. The dots are nesting, as ngx-translate reads them.
 labelled() {
@@ -86,6 +91,41 @@ if ((${#chains[@]} < chains_floor)); then
   exit 1
 fi
 
+# The choice labels of every company setting: `settings.choices.<setting key>.<choice>`, one per value of a literal
+# `choices: [...]`. A list written any other way (a constant, a call) hides its values from a grep, so it is refused
+# by name instead of skipped. Platform and key-pattern settings are left out, as above.
+choice_out=$(
+  cd "$root" && python3 - "${files[@]}" <<'PY'
+import re, sys
+bad = []
+for path in sys.argv[1:]:
+    for line in open(path, encoding="utf-8"):
+        if "choices:" not in line or "keyPattern:" in line or "'settings.platform." in line:
+            continue
+        key = re.search(r"new SettingDefinition\(\s*'([^']+)'", line)
+        values = re.search(r"choices:\s*\[([^\]]*)\]", line)
+        if key is None or values is None:
+            bad.append(f"{path}: {line.strip()[:120]}")
+            continue
+        for choice in re.findall(r"'([^']+)'", values.group(1)):
+            print(f"settings.choices.{key.group(1)}.{choice}")
+for entry in bad:
+    print("BAD " + entry)
+PY
+)
+if grep -q '^BAD ' <<<"$choice_out"; then
+  printf 'setting-labels: FAIL — a choice list is not a literal list, so its labels cannot be checked:\n'
+  grep '^BAD ' <<<"$choice_out" | sed 's/^BAD /  /'
+  exit 1
+fi
+mapfile -t choices < <(grep -v '^$' <<<"$choice_out" | sort -u)
+
+if ((${#choices[@]} < choices_floor)); then
+  printf 'setting-labels: FAIL — found only %d choices, below the floor of %d; the discovery pattern is broken\n' \
+    "${#choices[@]}" "$choices_floor"
+  exit 1
+fi
+
 missing=()
 for language in fr en; do
   file="$root/web/public/i18n/$language.json"
@@ -95,6 +135,9 @@ for language in fr en; do
   for chain in "${chains[@]}"; do
     labelled "settings.chains.$chain" "$file" || missing+=("$language: settings.chains.$chain")
   done
+  for choice in "${choices[@]}"; do
+    labelled "$choice" "$file" || missing+=("$language: $choice")
+  done
 done
 
 if ((${#missing[@]})); then
@@ -103,5 +146,5 @@ if ((${#missing[@]})); then
   exit 1
 fi
 
-printf 'setting-labels: OK — %d settings and %d chain headings are labelled in fr and en\n' \
-  "${#keys[@]}" "${#chains[@]}"
+printf 'setting-labels: OK — %d settings, %d choices and %d chain headings are labelled in fr and en\n' \
+  "${#keys[@]}" "${#choices[@]}" "${#chains[@]}"

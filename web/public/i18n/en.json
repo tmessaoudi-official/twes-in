@@ -754,6 +754,15 @@
           "expanded": "Expanded",
           "rail": "Icons only"
         },
+        "sidebar-settings": {
+          "expanded": "Expanded",
+          "rail": "Icons only"
+        },
+        "plan-labels": {
+          "code": "Code",
+          "name": "Name",
+          "both": "Both"
+        },
         "language": {
           "fr": "Français",
           "en": "English"
