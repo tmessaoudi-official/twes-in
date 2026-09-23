@@ -12,10 +12,13 @@ namespace App\Tests\Functional;
 use App\CustomFields\Domain\CustomFieldDefinition;
 use App\CustomFields\Domain\CustomFieldEntity;
 use App\CustomFields\Domain\CustomFieldType;
+use App\Identity\Infrastructure\Security\SecurityUser;
 use App\ImportExport\Application\ImportCatalogue;
 use App\ImportExport\Application\ImportHeading;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 
 /**
  * What the import screen shows beside the template download: each column of this company's file, as a person reads
@@ -77,6 +80,9 @@ final class ImportColumnsTest extends ApiTestCase
     /** Every subject's columns, so a column added to any importer without its words is caught here. */
     public function testEveryColumnsHeadingAndNoteExistsInBothLanguages(): void
     {
+        // An owner, who may do everything, is offered every column: the ones some callers are not (cost_price).
+        $account = SecurityUser::of($this->createUser('owner@twes.local', 'password-1234', $this->company));
+        static::getContainer()->get(TokenStorageInterface::class)->setToken(new UsernamePasswordToken($account, 'main', $account->getRoles()));
         $catalogue = static::getContainer()->get(ImportCatalogue::class);
         self::assertInstanceOf(ImportCatalogue::class, $catalogue);
         $checked = 0;

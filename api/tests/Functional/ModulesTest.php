@@ -54,7 +54,7 @@ final class ModulesTest extends ApiTestCase
             ['key' => 'fixture_ledger', 'labelKey' => 'modules.fixture_ledger', 'dependencies' => ['customers'], 'permissions' => [], 'enabled' => true],
             ['key' => 'inventory', 'labelKey' => 'modules.inventory', 'dependencies' => ['products'], 'permissions' => ['stock.read', 'stock.write'], 'enabled' => true],
             ['key' => 'invoices', 'labelKey' => 'modules.invoices', 'dependencies' => ['customers', 'products'], 'permissions' => ['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write'], 'enabled' => true],
-            ['key' => 'products', 'labelKey' => 'modules.products', 'dependencies' => [], 'permissions' => ['product.read', 'product.write'], 'enabled' => true],
+            ['key' => 'products', 'labelKey' => 'modules.products', 'dependencies' => [], 'permissions' => ['product.read', 'product.write', 'product.cost.read'], 'enabled' => true],
             ['key' => 'vendors', 'labelKey' => 'modules.vendors', 'dependencies' => [], 'permissions' => ['vendor.read', 'vendor.write'], 'enabled' => true],
         ], $this->jsonList());
         $this->getJson('/api/auth/me');

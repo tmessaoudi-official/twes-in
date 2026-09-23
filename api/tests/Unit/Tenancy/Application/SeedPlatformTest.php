@@ -101,6 +101,13 @@ final class SeedPlatformTest extends TestCase
         self::assertNotContains('fiscal.write', SeedPlatform::BUILT_IN_ROLES[Role::MEMBER]);
     }
 
+    /** An admin reads what a product costs; a member, who may be at the till in front of a customer, does not. */
+    public function testOnlyTheAdminReadsCosts(): void
+    {
+        self::assertContains('product.cost.read', SeedPlatform::BUILT_IN_ROLES[Role::ADMIN]);
+        self::assertNotContains('product.cost.read', SeedPlatform::BUILT_IN_ROLES[Role::MEMBER]);
+    }
+
     public function testARoleThatAlreadyMatchesIsLeftAlone(): void
     {
         $this->seed->seed($this->request(password: 'secret'));

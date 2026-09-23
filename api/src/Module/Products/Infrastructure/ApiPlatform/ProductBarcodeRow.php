@@ -13,6 +13,8 @@ use ApiPlatform\Metadata\ApiProperty;
 use App\Module\Products\Application\BarcodeInput;
 use App\Module\Products\Domain\Barcode;
 use App\Module\Products\Domain\BarcodeLine;
+use App\Module\Products\Domain\BarcodeRole;
+use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductBarcode;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
@@ -55,6 +57,23 @@ final class ProductBarcodeRow
         $resource->supplierId = $row->getSupplier()?->getId()->toRfc4122();
 
         return $resource;
+    }
+
+    /**
+     * A product's codes as a caller reads them: a supplier's codes only with product.cost.read.
+     *
+     * @return list<self>
+     */
+    public static function listOf(Product $product, bool $withCosts): array
+    {
+        $rows = [];
+        foreach ($product->getBarcodes() as $row) {
+            if ($withCosts || BarcodeRole::Supplier !== $row->getRole()) {
+                $rows[] = self::of($row);
+            }
+        }
+
+        return $rows;
     }
 
     public function input(): BarcodeInput

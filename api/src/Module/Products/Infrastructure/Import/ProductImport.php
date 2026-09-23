@@ -40,6 +40,7 @@ use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -86,6 +87,7 @@ final readonly class ProductImport implements DeclaresImport
         private TaxComponentRepository $taxes,
         private EntityManagerInterface $entityManager,
         private ProductHomes $homes,
+        private CompanyGuard $guard,
     ) {
     }
 
@@ -218,7 +220,7 @@ final readonly class ProductImport implements DeclaresImport
                 $record->value('description') ?? $held?->description,
                 null === $kind ? ($held->kind ?? ProductKind::Goods) : (ProductKind::tryFrom(strtolower($kind)) ?? throw new RowRejected('kind', 'A product is "goods" or a "service".', 'not_one_of', ['choices' => implode(', ', array_column(ProductKind::cases(), 'value'))])),
                 $price ?? throw new RowRejected('unit_price_net', 'A product is sold at a price, so a new one needs one.', 'value_required'),
-                self::decimal($record->value('cost_price')) ?? $held?->costPrice,
+                ($this->guard->may($company, ProductPermission::COST_READ) ? self::decimal($record->value('cost_price')) : null) ?? $held?->costPrice,
             ),
             $this->unitId($company, $record, $current),
             $this->categoryId($company, $record, $current),
@@ -325,7 +327,9 @@ final readonly class ProductImport implements DeclaresImport
      *
      * `home_location` is offered only to a company that holds stock, since a company without it has nowhere to put a
      * product: its file is not asked for a shelf, and a file naming one is refused for the column rather than having
-     * the cell quietly dropped.
+     * the cell quietly dropped. `cost_price` is offered, the same way, only to someone who may read costs
+     * (product.cost.read, docs/SPEC.md § 7, 2026-09-23 09:45): a file from anyone else naming it is refused for the
+     * column, and every cost stays as it is.
      *
      * @return list<ImportColumn>
      */
@@ -339,7 +343,9 @@ final readonly class ProductImport implements DeclaresImport
             new ImportColumn('unit_code', 'import.products.unit_code', false, 'H87', 'import.products.unit_code_note'),
             new ImportColumn('category', 'import.products.category', false, null, 'import.products.category_note'),
             new ImportColumn('unit_price_net', 'import.products.unit_price_net', false, '0.4500', 'import.products.price_note'),
-            new ImportColumn('cost_price', 'import.products.cost_price', false, '0.2200', 'import.products.cost_note'),
+            ...$this->guard->may($company, ProductPermission::COST_READ)
+                ? [new ImportColumn('cost_price', 'import.products.cost_price', false, '0.2200', 'import.products.cost_note')]
+                : [],
             new ImportColumn('barcode', 'import.products.barcode', false, '6191234567897', 'import.products.barcode_note'),
             new ImportColumn('default_tax_codes', 'import.products.default_taxes', false, null, 'import.products.default_taxes_note'),
             new ImportColumn('active', 'import.products.active', false, 'yes', 'import.boolean_note'),

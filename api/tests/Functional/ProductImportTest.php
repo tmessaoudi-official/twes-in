@@ -56,7 +56,7 @@ final class ProductImportTest extends ApiTestCase
 
     public function testAPreviewSaysWhatWouldHappenAndStoresNothing(): void
     {
-        $this->signedIn(['product.read', 'product.write']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
 
         $this->import($this->twoProducts(), dryRun: true);
 
@@ -67,7 +67,7 @@ final class ProductImportTest extends ApiTestCase
 
     public function testAnImportCreatesEveryRowUnderTheRulesOfTheProductForm(): void
     {
-        $this->signedIn(['product.read', 'product.write']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
 
         $this->import($this->twoProducts());
 
@@ -95,7 +95,7 @@ final class ProductImportTest extends ApiTestCase
     /** Every flush walks every managed entity, so a written row must leave the unit of work (row 59, customers). */
     public function testWhatARowWroteIsNoLongerManagedOnceItIsWritten(): void
     {
-        $this->signedIn(['product.read', 'product.write']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
 
         $this->import($this->twoProducts());
 
@@ -108,7 +108,7 @@ final class ProductImportTest extends ApiTestCase
     /** A refusal reaches the person in their language through a stable code and its parameters, whichever rule made it. */
     public function testEveryRejectedRowCarriesACodeAndItsParameters(): void
     {
-        $this->signedIn(['product.read', 'product.write']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
 
         $this->import(
             "reference,name,kind,unit_code,category,unit_price_net,active\n"
@@ -140,7 +140,7 @@ final class ProductImportTest extends ApiTestCase
 
     public function testARowWithoutAUnitIsRejectedBecauseAProductIsSoldInOne(): void
     {
-        $this->signedIn(['product.read', 'product.write']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
 
         $this->import("reference,name,unit_price_net\nART-9,Sans unité,1.000\n", dryRun: true);
 
@@ -152,7 +152,7 @@ final class ProductImportTest extends ApiTestCase
 
     public function testCreateModeRefusesAKnownReferenceAndUpsertFillsInOnlyTheCellsTheRowHas(): void
     {
-        $this->signedIn(['product.read', 'product.write']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
         $this->import($this->twoProducts());
         self::assertResponseIsSuccessful();
         $second = "reference,name,unit_price_net\nVIS-6X40,Vis 6x40 inox,\n";
@@ -185,7 +185,7 @@ final class ProductImportTest extends ApiTestCase
      */
     public function testAnUpsertedBarcodeReplacesTheUnitCodeAndKeepsThePacks(): void
     {
-        $this->signedIn(['product.read', 'product.write']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
         $this->import($this->twoProducts());
         self::assertResponseIsSuccessful();
         $screw = $this->product('VIS-6X40');
@@ -203,7 +203,7 @@ final class ProductImportTest extends ApiTestCase
     public function testARowNamesWhereTheProductNormallyLivesByTheLocationsCode(): void
     {
         $this->aZoneCoded('Z1');
-        $this->signedIn(['product.read', 'product.write']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
 
         $this->import(self::HEADER.",home_location\nVIS-6X40,Vis 6x40 zinguée,goods,H87,,1.000,,,,,,Z1\n");
 
@@ -225,7 +225,7 @@ final class ProductImportTest extends ApiTestCase
     public function testEveryRowOfAFileGetsItsHome(): void
     {
         $this->aZoneCoded('Z1');
-        $this->signedIn(['product.read', 'product.write']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
 
         $this->import(
             self::HEADER.",home_location\n"
@@ -249,7 +249,7 @@ final class ProductImportTest extends ApiTestCase
     public function testAnUpsertLeavingTheHomeBlankKeepsIt(): void
     {
         $this->aZoneCoded('Z1');
-        $this->signedIn(['product.read', 'product.write']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
         $this->import(self::HEADER.",home_location\nVIS-6X40,Vis 6x40 zinguée,goods,H87,,1.000,,,,,,Z1\n");
         self::assertResponseIsSuccessful();
 
@@ -274,7 +274,7 @@ final class ProductImportTest extends ApiTestCase
         $this->em()->flush();
         $this->locations()->save(StockLocation::create($second, $this->manageLocations()->defaultOf($second), StockLocationKind::Zone, 'Z1', 'Zone froide', $now));
         $this->em()->flush();
-        $this->signedIn(['product.read', 'product.write']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
 
         $this->import(
             "reference,name,unit_code,unit_price_net,home_location\n"
@@ -311,7 +311,7 @@ final class ProductImportTest extends ApiTestCase
      */
     public function testACompanyWithoutStockIsNeverAskedWhereAProductLives(): void
     {
-        $this->signedIn(['product.read', 'product.write', 'company.read', 'company.settings']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read', 'company.read', 'company.settings']);
         $this->sendJson('PUT', $this->companyPath().'/modules/inventory', ['enabled' => false]);
         self::assertResponseIsSuccessful();
 

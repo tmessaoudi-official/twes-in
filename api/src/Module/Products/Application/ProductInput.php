@@ -21,6 +21,9 @@ final readonly class ProductInput
      * @param array<array-key, mixed> $customFields           values by the company's custom field keys, checked by the use case
      * @param list<BarcodeInput>|null $barcodes               the codes it answers to, exactly these; null keeps them
      * @param ProductTracking|null    $tracking               how its stock is told apart; null keeps it, `none` on a new one
+     * @param bool                    $seesCosts              whether the writer may read costs (product.cost.read): one who
+     *                                                        may not neither sets a cost nor a supplier's code, and keeps
+     *                                                        those stored
      */
     public function __construct(
         public string $reference,
@@ -32,6 +35,7 @@ final readonly class ProductInput
         public array $customFields = [],
         public ?array $barcodes = null,
         public ?ProductTracking $tracking = null,
+        public bool $seesCosts = true,
     ) {
     }
 }

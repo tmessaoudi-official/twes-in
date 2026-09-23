@@ -29,7 +29,7 @@ final readonly class ProductItemProvider implements ProviderInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ProductPermission::READ);
 
         try {
-            return ProductResource::of($this->manage->get($company, CompanyPath::identifier($uriVariables, 'productId')));
+            return ProductResource::of($this->manage->get($company, CompanyPath::identifier($uriVariables, 'productId')), $this->guard->may($company, ProductPermission::COST_READ));
         } catch (ProductNotFound $absent) {
             throw new NotFoundHttpException('No such product.', $absent);
         }

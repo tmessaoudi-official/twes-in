@@ -161,7 +161,10 @@
     },
     "product": {
       "read": "See products",
-      "write": "Create and edit products"
+      "write": "Create and edit products",
+      "cost": {
+        "read": "See product costs and suppliers' codes"
+      }
     },
     "stock": {
       "read": "See stock",

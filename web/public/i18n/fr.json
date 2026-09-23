@@ -161,7 +161,10 @@
     },
     "product": {
       "read": "Voir les produits",
-      "write": "Créer et modifier les produits"
+      "write": "Créer et modifier les produits",
+      "cost": {
+        "read": "Voir le coût des produits et les codes des fournisseurs"
+      }
     },
     "stock": {
       "read": "Voir le stock",

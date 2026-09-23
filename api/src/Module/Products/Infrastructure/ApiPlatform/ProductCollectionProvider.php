@@ -44,9 +44,11 @@ final readonly class ProductCollectionProvider implements ProviderInterface
             Paging::order($operation, ProductSearch::SORTS),
         );
 
+        $withCosts = $this->guard->may($company, ProductPermission::COST_READ);
+
         return $this->paging->paginator(
             $this->manage->search($company, $search, $this->paging->request($operation, $context)),
-            static fn (Product $product): ProductResource => ProductResource::of($product),
+            static fn (Product $product): ProductResource => ProductResource::of($product, $withCosts),
         );
     }
 }

@@ -87,7 +87,7 @@ final class ProductsTest extends ApiTestCase
 
     public function testWhatTheCompanyOrTheShapeRefusesAnswersUnprocessableNamingTheField(): void
     {
-        $this->signedIn(['product.read', 'product.write']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
         $absent = '0192c3a4-0000-7000-8000-000000000000';
 
         foreach ([
@@ -160,7 +160,7 @@ final class ProductsTest extends ApiTestCase
     #[DataProvider('refusedCodes')]
     public function testAMalformedCodeIsRefusedNamingItsRow(string $field, array $row): void
     {
-        $this->signedIn(['product.read', 'product.write']);
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
         $this->postJson($this->path(), $this->product());
         $id = $this->stringAt($this->json(), 'id');
 

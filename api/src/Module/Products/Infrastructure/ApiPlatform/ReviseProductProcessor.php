@@ -34,7 +34,8 @@ final readonly class ReviseProductProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ProductPermission::WRITE);
 
         try {
-            $product = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'productId'), $data->input(), $this->guard->account()->getId());
+            $seesCosts = $this->guard->may($company, ProductPermission::COST_READ);
+            $product = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'productId'), $data->input($seesCosts), $this->guard->account()->getId());
         } catch (ProductNotFound $absent) {
             throw new NotFoundHttpException('No such product.', $absent);
         } catch (ProductReferenceTaken|ProductBarcodeTaken $taken) {
@@ -43,6 +44,6 @@ final readonly class ReviseProductProcessor implements ProcessorInterface
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }
 
-        return ProductResource::of($product);
+        return ProductResource::of($product, $seesCosts);
     }
 }

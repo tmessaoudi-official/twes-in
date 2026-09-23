@@ -130,7 +130,10 @@ final class ProductResource
     #[Groups([self::READ, self::WRITE])]
     public string $unitPriceNet = '';
 
-    /** What one unit costs the company, a decimal string with at most four decimals; never printed. */
+    /**
+     * What one unit costs the company, a decimal string with at most four decimals; never printed. Null, and ignored
+     * on a write, for a caller without product.cost.read.
+     */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'pattern' => self::PRICE_SCHEMA_PATTERN])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $costPrice = null;
@@ -140,7 +143,8 @@ final class ProductResource
     public ?string $categoryId = null;
 
     /**
-     * The codes it answers to (docs/SPEC.md § 7, 2026-09-22 11:05), written on their own: PUT .../barcodes.
+     * The codes it answers to (docs/SPEC.md § 7, 2026-09-22 11:05), written on their own: PUT .../barcodes. A
+     * supplier's codes are left out for a caller without product.cost.read.
      *
      * @var list<ProductBarcodeRow>
      */
@@ -162,7 +166,7 @@ final class ProductResource
     #[Groups([self::READ, self::WRITE])]
     public bool $isActive = true;
 
-    public static function of(Product $product): self
+    public static function of(Product $product, bool $withCosts): self
     {
         $details = $product->getDetails();
         $resource = new self();
@@ -174,9 +178,9 @@ final class ProductResource
         $resource->tracking = $product->getTracking()->value;
         $resource->unitId = $product->getUnit()->getId()->toRfc4122();
         $resource->unitPriceNet = $details->unitPriceNet;
-        $resource->costPrice = $details->costPrice;
+        $resource->costPrice = $withCosts ? $details->costPrice : null;
         $resource->categoryId = $product->getCategory()?->getId()->toRfc4122();
-        $resource->barcodes = array_map(ProductBarcodeRow::of(...), $product->getBarcodes());
+        $resource->barcodes = ProductBarcodeRow::listOf($product, $withCosts);
         $resource->defaultTaxComponentIds = $product->getDefaultTaxComponentIds();
         $resource->customFields = $product->getCustomFields();
         $resource->isActive = $product->isActive();
@@ -185,17 +189,18 @@ final class ProductResource
     }
 
     /** @throws InvalidProduct */
-    public function input(): ProductInput
+    public function input(bool $seesCosts): ProductInput
     {
         return new ProductInput(
             $this->reference,
-            new ProductDetails($this->name, $this->description, ProductKind::from($this->kind), $this->unitPriceNet, $this->costPrice),
+            new ProductDetails($this->name, $this->description, ProductKind::from($this->kind), $this->unitPriceNet, $seesCosts ? $this->costPrice : null),
             Uuid::fromString($this->unitId),
             null === $this->categoryId ? null : Uuid::fromString($this->categoryId),
             array_map(static fn (string $id): Uuid => Uuid::fromString($id), $this->defaultTaxComponentIds),
             $this->isActive,
             $this->customFields,
             tracking: null === $this->tracking ? null : ProductTracking::from($this->tracking),
+            seesCosts: $seesCosts,
         );
     }
 }

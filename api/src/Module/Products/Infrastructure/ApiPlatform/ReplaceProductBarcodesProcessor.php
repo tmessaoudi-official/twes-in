@@ -33,7 +33,8 @@ final readonly class ReplaceProductBarcodesProcessor implements ProcessorInterfa
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ProductPermission::WRITE);
 
         try {
-            $product = $this->manage->replaceBarcodes($company, CompanyPath::identifier($uriVariables, 'productId'), $data->input(), $this->guard->account()->getId());
+            $seesCosts = $this->guard->may($company, ProductPermission::COST_READ);
+            $product = $this->manage->replaceBarcodes($company, CompanyPath::identifier($uriVariables, 'productId'), $data->input(), $this->guard->account()->getId(), $seesCosts);
         } catch (ProductNotFound $absent) {
             throw new NotFoundHttpException('No such product.', $absent);
         } catch (ProductBarcodeTaken $taken) {
@@ -42,6 +43,6 @@ final readonly class ReplaceProductBarcodesProcessor implements ProcessorInterfa
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }
 
-        return ProductBarcodesResource::of($product);
+        return ProductBarcodesResource::of($product, $seesCosts);
     }
 }

@@ -50,6 +50,12 @@ final readonly class ProductDetails
         $this->costPrice = '' === $costPrice ? null : self::price('costPrice', $costPrice);
     }
 
+    /** The same product at another cost: what a writer who may not read costs sends is given the stored one. */
+    public function withCostPrice(?string $costPrice): self
+    {
+        return new self($this->name, $this->description, $this->kind, $this->unitPriceNet, $costPrice);
+    }
+
     /** @return list<string> the fields whose values differ from the other's, in the order a form shows them */
     public function differencesFrom(self $other): array
     {

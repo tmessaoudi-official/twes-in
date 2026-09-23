@@ -20,6 +20,6 @@ final readonly class ProductsModule implements DeclaresModule
 
     public function manifest(): ModuleManifest
     {
-        return new ModuleManifest(self::KEY, 'modules.products', [], [ProductPermission::READ, ProductPermission::WRITE]);
+        return new ModuleManifest(self::KEY, 'modules.products', [], [ProductPermission::READ, ProductPermission::WRITE, ProductPermission::COST_READ]);
     }
 }

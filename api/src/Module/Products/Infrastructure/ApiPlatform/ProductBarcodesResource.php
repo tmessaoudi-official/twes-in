@@ -24,6 +24,9 @@ use Symfony\Component\Validator\Constraints as Assert;
  *
  * A code another product of the company holds, in any role, answers 409 naming the row and that product
  * (`barcodes.<index>.code: <code> is already a code of <reference>.`); a malformed row answers 422 naming it.
+ *
+ * A caller without product.cost.read neither reads nor writes a supplier's code (docs/SPEC.md § 7, 2026-09-23 09:45):
+ * one in what they send answers 422 on its `role`, and the ones stored are kept through their save.
  */
 #[ApiResource(
     shortName: 'ProductBarcodes',
@@ -55,11 +58,11 @@ final class ProductBarcodesResource
     #[Groups([self::READ, self::WRITE])]
     public array $barcodes = [];
 
-    public static function of(Product $product): self
+    public static function of(Product $product, bool $withCosts): self
     {
         $resource = new self();
         $resource->productId = $product->getId()->toRfc4122();
-        $resource->barcodes = array_map(ProductBarcodeRow::of(...), $product->getBarcodes());
+        $resource->barcodes = ProductBarcodeRow::listOf($product, $withCosts);
 
         return $resource;
     }

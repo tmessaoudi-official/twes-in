@@ -95,17 +95,19 @@ final readonly class ManageProducts
             if (null !== $this->products->ofReferenceInCompany(trim($input->reference), $company->getId())) {
                 throw new ProductReferenceTaken();
             }
-            $lines = $this->barcodeLines($company, $input->barcodes ?? [], null);
+            $details = $input->seesCosts ? $input->details : $input->details->withCostPrice(null);
+            $rows = $input->barcodes ?? [];
+            $lines = $this->barcodeLines($company, $input->seesCosts ? $rows : $this->unseenCodesKept($rows, null), null);
             [$unit, $category] = $this->checked($company, $input, null);
             $tracking = Product::trackingFor($input->tracking ?? ProductTracking::None, $input->details->kind);
             $values = $this->customFieldValues($company, $input, null);
             $now = $this->clock->now();
-            $product = Product::create($company, $input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, $now);
+            $product = Product::create($company, $input->reference, $details, $unit, $category, $input->defaultTaxComponentIds, $now);
             $product->track($tracking, $now);
             $product->reviseCustomFields($values, $now);
             $product->replaceBarcodes($lines, $now);
             if (!$input->isActive) {
-                $product->revise($input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, false, $now);
+                $product->revise($input->reference, $details, $unit, $category, $input->defaultTaxComponentIds, false, $now);
             }
             $this->products->save($product);
             $this->record($company, $product->getId(), self::CREATED, [], $actorUserId);
@@ -128,14 +130,16 @@ final readonly class ManageProducts
             if (null !== $holder && !$holder->getId()->equals($product->getId())) {
                 throw new ProductReferenceTaken();
             }
-            $lines = null === $input->barcodes ? null : $this->barcodeLines($company, $input->barcodes, $product);
+            $details = $input->seesCosts ? $input->details : $input->details->withCostPrice($product->getDetails()->costPrice);
+            $rows = null === $input->barcodes || $input->seesCosts ? $input->barcodes : $this->unseenCodesKept($input->barcodes, $product);
+            $lines = null === $rows ? null : $this->barcodeLines($company, $rows, $product);
             [$unit, $category] = $this->checked($company, $input, $product);
             $this->assertStockKeepsItsMeaning($company, $product, $unit, $input->details->kind);
             $tracking = $this->trackingKeptByStock($company, $product, Product::trackingFor($input->tracking ?? $product->getTracking(), $input->details->kind));
             $values = $this->customFieldValues($company, $input, $product);
 
             $now = $this->clock->now();
-            $changed = $product->revise($input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, $input->isActive, $now);
+            $changed = $product->revise($input->reference, $details, $unit, $category, $input->defaultTaxComponentIds, $input->isActive, $now);
             if ($product->track($tracking, $now)) {
                 $changed[] = 'tracking';
             }
@@ -162,10 +166,11 @@ final readonly class ManageProducts
      * @throws ProductBarcodeTaken
      * @throws InvalidProduct
      */
-    public function replaceBarcodes(Company $company, Uuid $id, array $rows, ?Uuid $actorUserId): Product
+    public function replaceBarcodes(Company $company, Uuid $id, array $rows, ?Uuid $actorUserId, bool $seesCosts = true): Product
     {
-        return $this->transactions->run(function () use ($company, $id, $rows, $actorUserId): Product {
+        return $this->transactions->run(function () use ($company, $id, $rows, $actorUserId, $seesCosts): Product {
             $product = $this->get($company, $id);
+            $rows = $seesCosts ? $rows : $this->unseenCodesKept($rows, $product);
             if ($product->replaceBarcodes($this->barcodeLines($company, $rows, $product), $this->clock->now())) {
                 $this->products->save($product);
                 $this->record($company, $product->getId(), self::REVISED, ['fields' => ['barcodes']], $actorUserId);
@@ -173,6 +178,32 @@ final readonly class ManageProducts
 
             return $product;
         });
+    }
+
+    /**
+     * The codes a writer who may not read costs sends, with the supplier's codes they were never shown kept as stored
+     * (docs/SPEC.md § 7, 2026-09-23 09:45, slice 5): a list they cannot see whole would otherwise erase them.
+     *
+     * @param list<BarcodeInput> $rows
+     *
+     * @return list<BarcodeInput>
+     *
+     * @throws InvalidProduct when a row is a supplier's code, which only one who may read costs writes
+     */
+    private function unseenCodesKept(array $rows, ?Product $held): array
+    {
+        foreach ($rows as $index => $row) {
+            if (BarcodeRole::Supplier->value === $row->role) {
+                throw new InvalidProduct("barcodes.$index.role", 'A supplier\'s code is written by someone who may read costs.');
+            }
+        }
+        foreach ($held?->getBarcodes() ?? [] as $code) {
+            if (BarcodeRole::Supplier === $code->getRole()) {
+                $rows[] = new BarcodeInput($code->getRole()->value, $code->getCode(), $code->getQuantity(), $code->getSupplier()?->getId());
+            }
+        }
+
+        return $rows;
     }
 
     /**

@@ -2387,6 +2387,22 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   pairing's phone requests at 240 per minute. A caller without the key is refused for the key before its request is
   read. The phone keeps its key in its tab's session storage, so a reload resumes without a new link. The QR code
   reuses `lean-qr` through the shared `QrCode` component (moved from `auth/` to `shared/qr/`), so no new dependency.
+- [2026-09-23 14:08] TAKEN OVERNIGHT (standing instruction, to confirm): slice 5, the server half of customer privacy.
+  `product.cost.read`, declared by the products module, is the only way to the cost. The built-in admin holds it and
+  the member does not; the owner holds it through the wildcard. A custom role in an existing database does not get it
+  until someone grants it; the alternative was granting it to every role holding `product.write`. Without it:
+  - the product's `costPrice` reads null in the item, the list and every write's answer;
+  - a supplier's codes are left out of `barcodes`, and out of the codes resource's answer;
+  - a create stores no cost, and a revision keeps the stored one, whatever the body says;
+  - a codes PUT keeps the stored supplier codes and refuses a supplier row, 422 on its `role`;
+  - the import guide has no `cost_price` column, so a file naming it is refused for the column.
+  A scan still resolves a supplier's carton and names only the scanned code and its role. Null rather than an absent
+  property keeps one generated type; the web reads the permission, not the null, to hide the field.
+- [2026-09-23 14:08] AGREED (developer): a real phone reaches the dev stack through an HTTPS entry on the LAN. A small
+  Caddy proxy with its own local certificate runs beside `make up`. The pairing link is built on the machine's LAN
+  address, which `make` detects and hands over as a setting, so the computer stays on localhost. The phone accepts
+  the certificate once, or installs its root. Chosen over opening the computer on the LAN address too, a public
+  tunnel, and two-browser testing only.
 
 ## 8. Status
 

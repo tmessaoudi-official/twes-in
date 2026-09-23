@@ -36,7 +36,7 @@ final readonly class SeedPlatform
     /** @var array<string, list<string>> the three built-in roles and their permission sets */
     public const array BUILT_IN_ROLES = [
         Role::OWNER => [Permission::WILDCARD],
-        Role::ADMIN => ['company.read', 'company.settings', 'user.read', 'user.write', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'customer.read', 'customer.write', 'product.read', 'product.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'stock.read', 'stock.write', 'vendor.read', 'vendor.write', 'expense.read', 'expense.write', 'fiscal.read', 'fiscal.write'],
+        Role::ADMIN => ['company.read', 'company.settings', 'user.read', 'user.write', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'customer.read', 'customer.write', 'product.read', 'product.write', 'product.cost.read', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'stock.read', 'stock.write', 'vendor.read', 'vendor.write', 'expense.read', 'expense.write', 'fiscal.read', 'fiscal.write'],
         Role::MEMBER => ['company.read', 'invoice.read', 'invoice.write', 'customer.read', 'customer.write', 'product.read', 'delivery_note.read', 'delivery_note.write', 'stock.read', 'vendor.read', 'expense.read', 'fiscal.read'],
     ];
 

@@ -32,13 +32,14 @@ final readonly class CreateProductProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ProductPermission::WRITE);
 
         try {
-            $product = $this->manage->create($company, $data->input(), $this->guard->account()->getId());
+            $seesCosts = $this->guard->may($company, ProductPermission::COST_READ);
+            $product = $this->manage->create($company, $data->input($seesCosts), $this->guard->account()->getId());
         } catch (ProductReferenceTaken|ProductBarcodeTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidProduct $refused) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }
 
-        return ProductResource::of($product);
+        return ProductResource::of($product, $seesCosts);
     }
 }
