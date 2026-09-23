@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { expect, type Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
-import { signIn } from './session';
+import { inACompany, signIn } from './session';
 import { toast } from './toast';
+
+const CSRF = '0123456789abcdef0123456789abcdef';
 
 // The notification centre through the whole stack (docs/SPEC.md § 7, 2026-09-13): accepting an invitation
 // publishes to the company channel, the API keeps a row for every member and pushes through Centrifugo, and the
 // operator's open page hears it over the WebSocket that nginx proxies, with no reload. The row outlives the page.
-
-async function unreadOf(page: Page): Promise<number> {
-  return Number(await page.getByTestId('notification-bell').getAttribute('data-unread'));
-}
 
 test('a member joining reaches the open page live, and stays in the centre after a reload', async ({
   page,
@@ -21,11 +19,21 @@ test('a member joining reaches the open page live, and stays in the centre after
   const name = `Joiner ${Date.now()}`;
 
   await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/');
   await page.getByTestId('nav-settings').click();
   await page.getByTestId('nav-members').click();
   await expect(page).toHaveURL(/\/members$/);
-  await expect(page.getByTestId('notification-bell')).toHaveAttribute('data-unread', /^\d+$/);
-  const before = await unreadOf(page);
+  // What the API holds, and the bell showing it: the bell reads 0 until its first answer arrives, and a count taken
+  // from it before then is short by whatever earlier scenarios left unread (CI run 35898253274: 0, then 5).
+  const before = await page.evaluate(
+    async () =>
+      ((await (await fetch('/api/me/notifications')).json()) as { unread: number }).unread,
+  );
+  await expect(page.getByTestId('notification-bell')).toHaveAttribute(
+    'data-unread',
+    String(before),
+  );
 
   await page.getByTestId('member-email').fill(invited);
   await page.getByTestId('member-add').click();
