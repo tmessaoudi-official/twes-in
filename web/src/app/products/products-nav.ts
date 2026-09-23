@@ -28,6 +28,7 @@ export const PRODUCTS_TABS: readonly PageTab[] = [
     route: '/products/categories',
     testId: 'product-categories-link',
   },
+  { labelKey: 'price_check.title', route: '/products/price-check', testId: 'price-check-link' },
 ];
 
 /** What the module adds to the command palette (Ctrl K): creating one, for whoever may. */

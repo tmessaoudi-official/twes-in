@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
@@ -58,6 +59,34 @@ final class ProductScanTest extends ApiTestCase
         self::assertArrayNotHasKey('costPrice', $this->json());
     }
 
+    /**
+     * What a customer pays, taxes included, as the company's own calculator counts them (docs/SPEC.md § 7, 2026-09-23
+     * slice 6, the price check): FODEC enters the VAT base, so 100 net is 101 before VAT and 120.190 with it; a pack
+     * of twelve is counted as twelve units on one line, not twelve rounded unit prices.
+     */
+    public function testAScanSaysWhatACustomerPaysTaxesIncludedForAUnitAndForTheCodesQuantity(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->aProductWith([['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1], ['role' => 'pack', 'code' => '13017620422000', 'quantity' => 12]], '100', ['FODEC', 'TVA19']);
+
+        $this->getJson($this->path('13017620422000'));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['120.190', '1442.280'], [$this->json()['unitPriceGross'], $this->json()['priceGross']]);
+        $this->getJson($this->path('3017620422003'));
+        self::assertSame(['120.190', '120.190'], [$this->json()['unitPriceGross'], $this->json()['priceGross']]);
+    }
+
+    public function testAProductWithoutTaxesCostsACustomerItsNetPrice(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->aProductWith([['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]);
+
+        $this->getJson($this->path('3017620422003'));
+
+        self::assertSame(['10.000', '10.000'], [$this->json()['unitPriceGross'], $this->json()['priceGross']]);
+    }
+
     public function testAGs1ScanIsReadForItsGtinLotUseByAndSerial(): void
     {
         $this->signedIn(['product.read', 'product.write']);
@@ -96,16 +125,26 @@ final class ProductScanTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
-    /** @param list<array<string, mixed>> $codes */
-    private function aProductWith(array $codes): string
+    /**
+     * @param list<array<string, mixed>> $codes
+     * @param list<string>                $taxCodes the company's line taxes the product starts its lines with
+     */
+    private function aProductWith(array $codes, string $price = '10', array $taxCodes = []): string
     {
+        $taxes = static::getContainer()->get(TaxComponentRepository::class);
+        $taxIds = array_map(function (string $code) use ($taxes): string {
+            $tax = $taxes->ofCodeInCompany($code, $this->company->getId());
+            self::assertNotNull($tax);
+
+            return $tax->getId()->toRfc4122();
+        }, $taxCodes);
         $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($unit);
         $base = '/api/companies/'.$this->company->getId()->toRfc4122().'/products';
         $this->postJson($base, [
             'reference' => 'ART-001', 'name' => 'Portable', 'description' => null, 'kind' => 'goods',
-            'unitId' => $unit->getId()->toRfc4122(), 'unitPriceNet' => '10', 'costPrice' => null, 'categoryId' => null,
-            'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true,
+            'unitId' => $unit->getId()->toRfc4122(), 'unitPriceNet' => $price, 'costPrice' => null, 'categoryId' => null,
+            'defaultTaxComponentIds' => $taxIds, 'customFields' => [], 'isActive' => true,
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $id = $this->stringAt($this->json(), 'id');

@@ -2416,6 +2416,18 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
     never erases them. What the API sends at all stays `product.cost.read`'s.
   - Alternatives: a keyboard shortcut and a palette command for the toggle; a free list setting; hiding stock levels
     too.
+- [2026-09-23 16:30] TAKEN OVERNIGHT (standing instruction, to confirm): slice 6, the price check. A screen under
+  Products (`/products/price-check`, a third tab beside the catalogue and the categories, `product.read`) answers a scan,
+  or a code typed in its field, with the product's name and what a customer pays for one unit, TAXES INCLUDED, and for
+  the pack a pack code enters, with its use-by date when the code carries one; never the cost. The API counts that price
+  (`CustomerPrice`, `unitPriceGross` and `priceGross` on the scan answer) with the calculator every document uses: the
+  quantity on one line at the net price, with the product's default line taxes, the company's currency scale and VAT
+  rounding; no document tax (a stamp) and no customer's regime: the shelf price, for anyone. The screen turns customer
+  view on while open and, on leaving, puts it back as it found it: a counter that was already on stays on. A code no
+  product answers to is said on the screen and as a refusal. On the invoice and delivery-note pages the phone's echo still names the net unit price; no
+  palette command was added (the palette's module commands are "create" commands only). The customer display (a second
+  screen facing the customer during a sale) is NOT built yet: planned as a same-browser page fed by a BroadcastChannel
+  from the invoice and delivery-note pages.
 
 ## 8. Status
 

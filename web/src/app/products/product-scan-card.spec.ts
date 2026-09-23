@@ -35,6 +35,8 @@ const pack: ProductScan = {
   useBy: '2027-05-31',
   serial: null,
   unitPriceNet: '12.500',
+  unitPriceGross: '14.875',
+  priceGross: '14.875',
 };
 
 describe('ProductScanCard', () => {

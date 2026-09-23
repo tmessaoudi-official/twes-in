@@ -1,0 +1,64 @@
+<app-page-tabs [tabs]="tabs" label="nav.products">
+  <section class="mx-auto flex max-w-2xl flex-col gap-6 p-4" data-testid="price-check">
+    <header class="flex flex-col gap-1">
+      <h1 class="m-0 text-2xl font-medium">{{ 'price_check.title' | translate }}</h1>
+      <p class="m-0 opacity-80">{{ 'price_check.hint' | translate }}</p>
+    </header>
+
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <div class="flex min-h-40 flex-col items-center justify-center gap-3 py-6 text-center">
+          @if (found(); as product) {
+            <p class="m-0 text-2xl font-medium" data-testid="price-check-name">
+              {{ product.name }}
+            </p>
+            <p class="m-0 text-5xl font-semibold" data-testid="price-check-price">
+              {{ price(product.unitPriceGross) }}
+            </p>
+            <p class="m-0 text-sm opacity-80">{{ 'price_check.taxes_included' | translate }}</p>
+            @if (product.quantity > 1) {
+              <p class="m-0 text-lg" data-testid="price-check-pack">
+                {{ 'price_check.pack' | translate: { quantity: product.quantity } }}
+                {{ price(product.priceGross) }}
+              </p>
+            }
+            @if (product.useBy !== null) {
+              <p class="m-0" data-testid="price-check-use-by">
+                {{ 'products.scan.use_by' | translate }} {{ format.day(product.useBy) }}
+              </p>
+            }
+          } @else if (unknown(); as code) {
+            <p class="m-0 text-xl text-error" data-testid="price-check-unknown">
+              {{ 'price_check.unknown' | translate: { code } }}
+            </p>
+          } @else {
+            <p class="m-0 text-xl opacity-80" data-testid="price-check-waiting">
+              {{ 'price_check.waiting' | translate }}
+            </p>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <form
+      class="flex flex-wrap items-start gap-3"
+      data-testid="price-check-form"
+      (submit)="submit($event)"
+    >
+      <mat-form-field class="min-w-0 flex-1">
+        <mat-label>{{ 'price_check.code' | translate }}</mat-label>
+        <input
+          matInput
+          name="code"
+          autocomplete="off"
+          data-testid="price-check-code"
+          [ngModel]="code()"
+          (ngModelChange)="code.set($event)"
+        />
+      </mat-form-field>
+      <button mat-flat-button type="submit" data-testid="price-check-submit">
+        {{ 'price_check.check' | translate }}
+      </button>
+    </form>
+  </section>
+</app-page-tabs>

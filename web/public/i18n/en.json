@@ -2277,5 +2277,16 @@
     "enter": "Switch to customer view",
     "leave": "Leave customer view",
     "banner": "Customer view: what the company keeps for its team is hidden on this tab."
+  },
+  "price_check": {
+    "title": "Price check",
+    "hint": "Scan an item, or type its code, to see what it costs.",
+    "waiting": "Waiting for an item…",
+    "taxes_included": "Taxes included",
+    "pack": "The pack of {{quantity}}:",
+    "unknown": "No item carries the code {{code}}.",
+    "shown": "Price shown: {{name}}",
+    "code": "Item code",
+    "check": "Check"
   }
 }

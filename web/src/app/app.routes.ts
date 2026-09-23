@@ -117,6 +117,11 @@ export const routes: Routes = [
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
       },
       {
+        path: 'products/price-check',
+        canActivate: [moduleGuard(PRODUCTS_MODULE)],
+        loadComponent: () => import('./products/price-check-page').then((m) => m.PriceCheckPage),
+      },
+      {
         path: 'products/categories',
         canActivate: [moduleGuard(PRODUCTS_MODULE)],
         loadComponent: () =>

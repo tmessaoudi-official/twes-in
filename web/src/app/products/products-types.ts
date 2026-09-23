@@ -99,6 +99,10 @@ export interface ProductScan {
   serial: string | null;
   /** What a customer pays for one unit, net; never the cost. */
   unitPriceNet: string;
+  /** What a customer pays for one unit, taxes included, as the company's documents count them. */
+  unitPriceGross: string;
+  /** What a customer pays for what this code enters (`quantity` units), taxes included. */
+  priceGross: string;
 }
 
 export interface ProductCategoryRow {

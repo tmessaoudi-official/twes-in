@@ -2277,5 +2277,16 @@
     "enter": "Passer en vue client",
     "leave": "Quitter la vue client",
     "banner": "Vue client : ce que l'entreprise réserve à l'équipe est masqué sur cet onglet."
+  },
+  "price_check": {
+    "title": "Contrôle des prix",
+    "hint": "Scannez un article, ou saisissez son code, pour voir ce qu'il coûte.",
+    "waiting": "En attente d'un article…",
+    "taxes_included": "Taxes comprises",
+    "pack": "Le lot de {{quantity}} :",
+    "unknown": "Aucun article ne porte le code {{code}}.",
+    "shown": "Prix affiché : {{name}}",
+    "code": "Code de l'article",
+    "check": "Vérifier"
   }
 }

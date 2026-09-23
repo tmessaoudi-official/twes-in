@@ -11,6 +11,7 @@ namespace App\Module\Products\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
+use App\Module\Products\Application\CustomerPrice;
 use App\Module\Products\Application\ScanProducts;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -21,8 +22,12 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 /** @implements ProviderInterface<ProductScanResource> */
 final readonly class ProductScanProvider implements ProviderInterface
 {
-    public function __construct(private ScanProducts $scans, private CompanyGuard $guard, private ClockInterface $clock)
-    {
+    public function __construct(
+        private ScanProducts $scans,
+        private CompanyGuard $guard,
+        private ClockInterface $clock,
+        private CustomerPrice $prices,
+    ) {
     }
 
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): ProductScanResource
@@ -34,6 +39,6 @@ final readonly class ProductScanProvider implements ProviderInterface
             throw new NotFoundHttpException('No product of this company answers to this code.');
         }
 
-        return ProductScanResource::of($found[0], $found[1], (int) $this->clock->now()->format('Y'));
+        return ProductScanResource::of($found[0], $found[1], (int) $this->clock->now()->format('Y'), $this->prices);
     }
 }

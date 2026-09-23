@@ -14,6 +14,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\QueryParameter;
 use App\Module\Products\Domain\Gs1Scan;
+use App\Module\Products\Application\CustomerPrice;
 use App\Module\Products\Domain\ProductBarcode;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -90,11 +91,24 @@ final class ProductScanResource
     #[Groups([self::READ])]
     public string $unitPriceNet = '0';
 
+    /**
+     * What a customer pays for one unit, taxes included, as the company's documents count them (docs/SPEC.md § 7,
+     * 2026-09-23 slice 6): the price check shows it.
+     */
+    #[ApiProperty(required: true)]
+    #[Groups([self::READ])]
+    public string $unitPriceGross = '0';
+
+    /** What a customer pays for what this code enters (`quantity` units: a pack's twelve), taxes included. */
+    #[ApiProperty(required: true)]
+    #[Groups([self::READ])]
+    public string $priceGross = '0';
+
     /** `(21)` of a GS1 scan. */
     #[Groups([self::READ])]
     public ?string $serial = null;
 
-    public static function of(ProductBarcode $held, Gs1Scan $scan, int $thisYear): self
+    public static function of(ProductBarcode $held, Gs1Scan $scan, int $thisYear, CustomerPrice $prices): self
     {
         $product = $held->getProduct();
         $resource = new self();
@@ -106,6 +120,8 @@ final class ProductScanResource
         $resource->code = $held->getCode();
         $resource->role = $held->getRole()->value;
         $resource->quantity = $held->getQuantity();
+        $resource->unitPriceGross = $prices->of($product, 1);
+        $resource->priceGross = $prices->of($product, $held->getQuantity());
         $resource->lot = $scan->lot;
         $resource->useBy = $scan->expiry($thisYear);
         $resource->serial = $scan->serial;
