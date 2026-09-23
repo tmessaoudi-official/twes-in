@@ -50,9 +50,10 @@ final class StockLevelResource
     private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
 
     /**
-     * A row is a product AND a location, so neither alone names it: the pair does, and the pair is what the list keys
-     * its rows on. Not the resource's identifier — these rows have no address of their own, and declaring one makes
-     * API Platform look for it among the collection's uri variables and answer 404.
+     * A row is a product AND a location, and a lot when the product is tracked by one, so none alone names it: together
+     * they do, and they are what the list keys its rows on. Not the resource's identifier — these rows have no address
+     * of their own, and declaring one makes API Platform look for it among the collection's uri variables and answer
+     * 404.
      */
     #[ApiProperty(identifier: false)]
     #[Groups([self::READ])]
@@ -94,4 +95,17 @@ final class StockLevelResource
     /** Signed, with three decimals: a negative stock says more left than was ever received or counted. */
     #[Groups([self::READ])]
     public string $quantity = '0.000';
+
+    /** The lot this stock is, for a product tracked by lot or serial number; null for any other (docs/SPEC.md § 7, 2026-09-23). */
+    #[ApiProperty(identifier: false)]
+    #[Groups([self::READ])]
+    public ?string $lotId = null;
+
+    #[Groups([self::READ])]
+    public ?string $lotCode = null;
+
+    /** The day the lot's goods are used by, "2027-03-31", when its label gave one. */
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
+    #[Groups([self::READ])]
+    public ?string $lotExpiresOn = null;
 }

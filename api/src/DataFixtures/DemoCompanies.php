@@ -32,6 +32,7 @@ use App\Module\Expenses\Application\ManageExpenses;
 use App\Module\Expenses\Domain\ExpenseDetails;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\ManageStockLocations;
+use App\Module\Inventory\Domain\NamedLot;
 use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Invoices\Application\InvoiceInput;
 use App\Module\Invoices\Application\InvoiceLineInput;
@@ -46,6 +47,7 @@ use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\Module\Vendors\Application\ManageVendors;
 use App\Module\Vendors\Application\VendorInput;
 use App\Module\Vendors\Domain\VendorProfile;
@@ -285,6 +287,7 @@ final class DemoCompanies extends Fixture
         $goods = [];
         foreach ($demo->products as $n => $row) {
             $service = isset($row['service']);
+            $tracking = ProductTracking::from($row['tracking'] ?? 'none');
             $product = $this->products->create($company(), new ProductInput(
                 $row['ref'],
                 new ProductDetails($row['name'], null, $service ? ProductKind::Service : ProductKind::Goods, $row['price'], $service ? null : bcmul($row['price'], '0.6', $demo->scale)),
@@ -293,18 +296,42 @@ final class DemoCompanies extends Fixture
                 array_map($tax, $row['taxes']),
                 !isset($row['inactive']),
                 barcodes: $service ? [] : self::codes($n, $row['ref'], $vendors[$n % \count($vendors)]['id']),
+                tracking: $tracking,
             ), $actor);
             if (!isset($row['inactive'])) {
                 $sellable[] = $product->getId();
             }
-            if (!isset($row['inactive']) && !$service) {
+            if (!isset($row['inactive']) && !$service && ProductTracking::None === $tracking) {
                 $goods[] = $product->getId();
                 $this->stock->receive($company(), $product->getId(), $shelf, (string) (40 + (37 * $n) % 160), $actor);
+            } elseif (!isset($row['inactive']) && !$service) {
+                // Kept out of the delivery notes until deliveries pick lots (docs/SPEC.md § 7, 2026-09-23 02:40, L2),
+                // which would otherwise leave their lines out and say so on every note.
+                $this->receiveTracked($company(), $product->getId(), $tracking, $shelf, $row['ref'], $actor);
             }
             $settle();
         }
 
         return [$sellable, $goods];
+    }
+
+    /**
+     * A tracked article's opening stock: two lots of a lot-tracked one, the first used by three weeks from the start
+     * of the story, so it has expired by its end and the stock screen shows one of each; five serial numbers of a
+     * serial-tracked one, one piece each.
+     */
+    private function receiveTracked(Company $company, Uuid $product, ProductTracking $tracking, Uuid $shelf, string $reference, Uuid $actor): void
+    {
+        $start = Clock::get()->now();
+        if (ProductTracking::Serial === $tracking) {
+            foreach (range(1, 5) as $piece) {
+                $this->stock->receive($company, $product, $shelf, '1', $actor, new NamedLot(\sprintf('SN-%s-%04d', $reference, $piece)));
+            }
+
+            return;
+        }
+        $this->stock->receive($company, $product, $shelf, '12', $actor, new NamedLot($reference.'-'.$start->format('ym').'A', $start->modify('+21 days')));
+        $this->stock->receive($company, $product, $shelf, '30', $actor, new NamedLot($reference.'-'.$start->format('ym').'B', $start->modify('+300 days')));
     }
 
     /**

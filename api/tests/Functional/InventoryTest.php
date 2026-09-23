@@ -336,7 +336,7 @@ final class InventoryTest extends ApiTestCase
         $this->sendJson('PUT', $products.'/'.$this->laptopId, [...$laptop, 'tracking' => 'batch']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
 
-        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '1']);
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '1', 'lotCode' => 'SN-0001']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $this->sendJson('PUT', $products.'/'.$this->laptopId, [...$laptop, 'tracking' => 'lot']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -345,6 +345,42 @@ final class InventoryTest extends ApiTestCase
 
         $this->sendJson('PUT', $products.'/'.$this->supportId, [...$laptop, 'reference' => 'SRV-001', 'name' => 'Assistance', 'kind' => 'service', 'unitPriceNet' => '50', 'tracking' => 'lot']);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a service tracks nothing');
+    }
+
+    public function testGoodsTrackedByLotAreReceivedUnderTheirLotAndListedPerLot(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
+        $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($piece);
+        $this->sendJson('PUT', '/api/companies/'.$this->company->getId()->toRfc4122().'/products/'.$this->laptopId, ['reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $piece->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true, 'tracking' => 'lot']);
+        self::assertResponseIsSuccessful();
+        $site = $this->defaultLocationId();
+        $receipt = ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site];
+
+        $this->postJson($this->path('stock-movements'), [...$receipt, 'quantity' => '5', 'lotCode' => 'L2609', 'lotExpiresOn' => '2027-03-31']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(['L2609', '2027-03-31'], [$this->json()['lotCode'], $this->json()['lotExpiresOn']]);
+        $this->postJson($this->path('stock-movements'), [...$receipt, 'quantity' => '2', 'lotCode' => 'L2609']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->path('stock-movements'), [...$receipt, 'quantity' => '3', 'lotCode' => 'L2610']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        foreach ([
+            'lot' => [...$receipt, 'quantity' => '1'],
+            'lotExpiresOn' => [...$receipt, 'quantity' => '1', 'lotCode' => 'L2609', 'lotExpiresOn' => '2027-04-30'],
+            'lotCode' => [...$receipt, 'quantity' => '1', 'lotCode' => 'L 2609'],
+        ] as $field => $body) {
+            $this->postJson($this->path('stock-movements'), $body);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertStringContainsString($field.':', (string) $this->client->getResponse()->getContent(), $field);
+        }
+        $this->postJson($this->path('stock-movements'), [...$receipt, 'quantity' => '1', 'lotCode' => 'L2611', 'lotExpiresOn' => '31/03/2027']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a date is a date');
+
+        $levels = array_map(static fn (array $row): array => [$row['lotCode'], $row['lotExpiresOn'], $row['quantity']], $this->levels());
+        sort($levels);
+        self::assertSame([['L2609', '2027-03-31', '7.000'], ['L2610', null, '3.000']], $levels);
+        self::assertEquals(2, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM stock_lot'), 'a refused receipt opened no lot');
     }
 
     public function testWithoutThePermissionOrForAnotherCompanyNothingIsFound(): void

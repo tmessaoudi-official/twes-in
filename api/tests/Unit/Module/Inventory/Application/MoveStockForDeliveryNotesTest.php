@@ -19,6 +19,7 @@ use App\Module\Inventory\Infrastructure\Module\InventoryModule;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\ModuleRegistry\Application\ModuleCatalog;
 use App\ModuleRegistry\Application\ModuleStates;
@@ -38,6 +39,7 @@ use App\Tests\Support\InMemoryModuleStates;
 use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStockLocations;
+use App\Tests\Support\InMemoryStockLots;
 use App\Tests\Support\InMemoryStockMovements;
 use App\Tests\Support\RecordingLiveChanges;
 use PHPUnit\Framework\TestCase;
@@ -91,7 +93,7 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         $this->settings->save(new Setting(SettingAddress::product($this->company, $this->untracked->getId()), 'article.stock_tracking', false, $now));
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings()]), $this->settings));
         $manage = new ManageStockLocations($this->locations, $this->movements, $establishments, new InMemoryAuditTrail($this->transactions), $this->clock, $this->transactions);
-        $keep = new KeepStock($this->movements, $this->locations, $products, $read, $this->transactions, $this->clock, new RecordingLiveChanges());
+        $keep = new KeepStock($this->movements, new InMemoryStockLots(), $this->locations, $products, $read, $this->transactions, $this->clock, new RecordingLiveChanges());
         $modules = new ModuleStates(new ModuleCatalog([new ProductsModule(), new InventoryModule()]), $this->states);
         $this->move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $this->transactions, $this->clock);
     }
@@ -134,6 +136,21 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         self::assertCount(2, $skipped);
         self::assertStringContainsString('ART-001', $skipped[0]);
         self::assertStringContainsString('ART-002', $skipped[1], 'a quantity that is not a number moves nothing');
+        self::assertSame([['ART-002', '001', 'out', '-1.000']], $this->written());
+    }
+
+    public function testAProductTrackedByLotOrSerialIsLeftOutAndSaidUntilDeliveriesPickLots(): void
+    {
+        $this->laptop->track(ProductTracking::Serial, $this->clock->now());
+
+        $skipped = $this->move->validated(Uuid::v7(), $this->company->getId(), $this->depot->getId(), [
+            $this->line($this->laptop, '1.000', $this->piece),
+            $this->line($this->flour, '1.000', $this->kilogram),
+        ]);
+
+        self::assertCount(1, $skipped);
+        self::assertStringContainsString('ART-001', $skipped[0]);
+        self::assertStringContainsString('serial', $skipped[0]);
         self::assertSame([['ART-002', '001', 'out', '-1.000']], $this->written());
     }
 

@@ -100,28 +100,41 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         );
     }
 
-    public function onHand(Uuid $productId, Uuid $locationId): string
+    public function onHand(Uuid $productId, Uuid $locationId, ?Uuid $lotId = null): string
     {
-        $sum = $this->entityManager->createQueryBuilder()
+        $query = $this->entityManager->createQueryBuilder()
             ->select('SUM(m.quantity)')
             ->from(StockMovement::class, 'm')
             ->where('m.product = :product')
             ->andWhere('m.location = :location')
             ->setParameter('product', $productId, 'uuid')
-            ->setParameter('location', $locationId, 'uuid')
-            ->getQuery()
-            ->getSingleScalarResult();
+            ->setParameter('location', $locationId, 'uuid');
+        if (null !== $lotId) {
+            $query->andWhere('m.lot = :lot')->setParameter('lot', $lotId, 'uuid');
+        }
 
-        return self::decimal($sum);
+        return self::decimal($query->getQuery()->getSingleScalarResult());
+    }
+
+    public function onHandOfLot(Uuid $lotId): string
+    {
+        return self::decimal($this->entityManager->createQueryBuilder()
+            ->select('SUM(m.quantity)')
+            ->from(StockMovement::class, 'm')
+            ->where('m.lot = :lot')
+            ->setParameter('lot', $lotId, 'uuid')
+            ->getQuery()
+            ->getSingleScalarResult());
     }
 
     public function levels(Uuid $companyId): array
     {
         $rows = $this->entityManager->createQueryBuilder()
-            ->select('IDENTITY(m.product) AS product', 'IDENTITY(m.location) AS location', 'SUM(m.quantity) AS quantity')
+            ->select('IDENTITY(m.product) AS product', 'IDENTITY(m.location) AS location', 'lt.id AS lot', 'lt.code AS lotCode', 'lt.expiresOn AS lotExpiresOn', 'SUM(m.quantity) AS quantity')
             ->from(StockMovement::class, 'm')
+            ->leftJoin('m.lot', 'lt')
             ->where('m.company = :company')
-            ->groupBy('m.product', 'm.location')
+            ->groupBy('m.product', 'm.location', 'lt.id')
             ->setParameter('company', $companyId, 'uuid')
             ->getQuery()
             ->getArrayResult();
@@ -129,7 +142,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         $levels = [];
         foreach ($rows as $row) {
             if (\is_array($row) && \is_string($row['product'] ?? null) && \is_string($row['location'] ?? null)) {
-                $levels[] = new StockLevel(Uuid::fromString($row['product']), Uuid::fromString($row['location']), self::decimal($row['quantity'] ?? null));
+                $levels[] = self::level(Uuid::fromString($row['product']), Uuid::fromString($row['location']), $row);
             }
         }
 
@@ -138,25 +151,26 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
 
     public function searchLevels(Uuid $companyId, StockLevelSearch $search, PageRequest $page): Page
     {
-        // Grouped on the two primary keys, so PostgreSQL lets the order read the product's and the location's other
-        // columns: they depend on a key it is already grouping by.
+        // Grouped on the three primary keys, so PostgreSQL lets the order read the product's, the location's and the
+        // lot's other columns: they depend on a key it is already grouping by. An untracked product's movements name
+        // no lot, and their NULLs group together, so its row is the one it always was.
         $rows = $this->levelsQuery($companyId, $search)
-            ->select('p.id AS product', 'l.id AS location', 'SUM(m.quantity) AS quantity')
-            ->groupBy('p.id')->addGroupBy('l.id')
+            ->select('p.id AS product', 'l.id AS location', 'lt.id AS lot', 'lt.code AS lotCode', 'lt.expiresOn AS lotExpiresOn', 'SUM(m.quantity) AS quantity')
+            ->groupBy('p.id')->addGroupBy('l.id')->addGroupBy('lt.id')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
         foreach ($search->order as $sort => $direction) {
             $rows->addOrderBy(self::SORTED_BY[$sort] ?? throw new \InvalidArgumentException("This list is not sorted by $sort."), $direction);
         }
-        // Two keys settle every tie, because one row is one pair of them.
-        $rows->addOrderBy('p.reference', 'ASC')->addOrderBy('l.code', 'ASC');
+        // Three keys settle every tie, because one row is one triple of them; a lot's code is unique within its product.
+        $rows->addOrderBy('p.reference', 'ASC')->addOrderBy('l.code', 'ASC')->addOrderBy('lt.code', 'ASC');
 
         // How many rows the list holds is how many pairs the grouping makes, which no COUNT here can say in one
         // number: PostgreSQL cannot count a pair of uuids as one value, and a paginator counting an aggregate counts
         // the movements instead. So the pairs are asked for and counted — one small row each, and they are the same
         // set this list used to hand back whole.
         $total = \count($this->levelsQuery($companyId, $search)
-            ->select('p.id AS product', 'l.id AS location')
-            ->groupBy('p.id')->addGroupBy('l.id')
+            ->select('p.id AS product', 'l.id AS location', 'lt.id AS lot')
+            ->groupBy('p.id')->addGroupBy('l.id')->addGroupBy('lt.id')
             ->getQuery()->getArrayResult());
 
         $levels = [];
@@ -167,11 +181,27 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             $product = self::identifier($row['product'] ?? null);
             $location = self::identifier($row['location'] ?? null);
             if (null !== $product && null !== $location) {
-                $levels[] = new StockLevel($product, $location, self::decimal($row['quantity'] ?? null));
+                $levels[] = self::level($product, $location, $row);
             }
         }
 
         return new Page($levels, $total, $page);
+    }
+
+    /** @param array<mixed> $row a grouped row: its lot's key, code and date, and the sum */
+    private static function level(Uuid $product, Uuid $location, array $row): StockLevel
+    {
+        $expiresOn = $row['lotExpiresOn'] ?? null;
+        $code = $row['lotCode'] ?? null;
+
+        return new StockLevel(
+            $product,
+            $location,
+            self::decimal($row['quantity'] ?? null),
+            self::identifier($row['lot'] ?? null),
+            \is_string($code) ? $code : null,
+            $expiresOn instanceof \DateTimeInterface ? $expiresOn->format('Y-m-d') : null,
+        );
     }
 
     /** A selected key comes back as the uuid type hydrates it — an object here, a string where the raw column is read. */
@@ -206,7 +236,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
     {
         $query = $this->entityManager->createQueryBuilder()
             ->from(StockMovement::class, 'm')
-            ->join('m.product', 'p')->join('m.location', 'l')
+            ->join('m.product', 'p')->join('m.location', 'l')->leftJoin('m.lot', 'lt')
             ->where('m.company = :company')->setParameter('company', $companyId, 'uuid');
         self::narrowToWords($query, $search->text);
         if (null !== $search->location) {

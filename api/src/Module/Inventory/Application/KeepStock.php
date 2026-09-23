@@ -10,16 +10,20 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Application;
 
 use App\Module\Inventory\Domain\InvalidStockMovement;
+use App\Module\Inventory\Domain\NamedLot;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationRepository;
+use App\Module\Inventory\Domain\StockLot;
+use App\Module\Inventory\Domain\StockLotRepository;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
+use App\Module\Products\Domain\ProductTracking;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\LiveChange;
@@ -42,6 +46,7 @@ final readonly class KeepStock
 {
     public function __construct(
         private StockMovementRepository $movements,
+        private StockLotRepository $lots,
         private StockLocationRepository $locations,
         private ProductRepository $products,
         private ReadSetting $settings,
@@ -61,27 +66,40 @@ final readonly class KeepStock
         return true === $this->settings->value($context, 'article.stock_tracking');
     }
 
-    /** @throws InvalidStockMovement */
-    public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId): StockMovement
+    /**
+     * Goods arriving at a location. A product tracked by lot or serial number names the lot they came in: its code
+     * opens the lot the first time it is seen, and its date fills a lot that had none (docs/SPEC.md § 7, 2026-09-23).
+     *
+     * @throws InvalidStockMovement
+     */
+    public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null): StockMovement
     {
-        return $this->transactions->run(function () use ($company, $productId, $locationId, $quantity, $actorUserId): StockMovement {
+        return $this->transactions->run(function () use ($company, $productId, $locationId, $quantity, $actorUserId, $named): StockMovement {
             [$product, $location] = $this->trackedAt($company, $productId, $locationId);
-            $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now());
-            $this->movements->save($movement);
+            $lot = $this->lotFor($product, $named, true);
+            $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now(), $lot);
+            $this->inStockOnce($movement);
+            $this->save($movement);
             $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.received', $actorUserId, $company->getId()));
 
             return $movement;
         });
     }
 
-    /** @throws InvalidStockMovement */
-    public function count(Company $company, Uuid $productId, Uuid $locationId, string $counted, ?Uuid $actorUserId): StockMovement
+    /**
+     * What a person found at a location; of one lot, for a tracked product, which a count may be the first to see.
+     *
+     * @throws InvalidStockMovement
+     */
+    public function count(Company $company, Uuid $productId, Uuid $locationId, string $counted, ?Uuid $actorUserId, ?NamedLot $named = null): StockMovement
     {
-        return $this->transactions->run(function () use ($company, $productId, $locationId, $counted, $actorUserId): StockMovement {
+        return $this->transactions->run(function () use ($company, $productId, $locationId, $counted, $actorUserId, $named): StockMovement {
             [$product, $location] = $this->trackedAt($company, $productId, $locationId);
+            $lot = $this->lotFor($product, $named, true);
             $this->movements->lockStockOf($product->getId(), $location->getId());
-            $movement = StockMovement::count($product, $location, $counted, $this->movements->onHand($productId, $locationId), $actorUserId, $this->clock->now());
-            $this->movements->save($movement);
+            $movement = StockMovement::count($product, $location, $counted, $this->movements->onHand($productId, $locationId, $lot?->getId()), $actorUserId, $this->clock->now(), $lot);
+            $this->inStockOnce($movement);
+            $this->save($movement);
             $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.counted', $actorUserId, $company->getId()));
 
             return $movement;
@@ -97,22 +115,23 @@ final readonly class KeepStock
      *
      * @throws InvalidStockMovement
      */
-    public function move(Company $company, Uuid $productId, Uuid $fromLocationId, Uuid $toLocationId, string $quantity, ?Uuid $actorUserId): array
+    public function move(Company $company, Uuid $productId, Uuid $fromLocationId, Uuid $toLocationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null): array
     {
-        return $this->transactions->run(function () use ($company, $productId, $fromLocationId, $toLocationId, $quantity, $actorUserId): array {
+        return $this->transactions->run(function () use ($company, $productId, $fromLocationId, $toLocationId, $quantity, $actorUserId, $named): array {
             [$product, $from] = $this->trackedAt($company, $productId, $fromLocationId);
             $to = $this->locations->ofIdInCompany($toLocationId, $company->getId())
                 ?? throw new InvalidStockMovement('toLocationId', 'No stock location of this company has this id.');
+            // A move carries goods that are there, so it names a lot that exists; it never opens one.
+            $lot = $this->lotFor($product, $named, false);
             $this->movements->lockStockOf($product->getId(), $from->getId());
-            [$out, $in] = StockMovement::move($product, $from, $to, $quantity, $actorUserId, $this->clock->now());
+            [$out, $in] = StockMovement::move($product, $from, $to, $quantity, $actorUserId, $this->clock->now(), $lot);
             // What arrives is the amount asked for, positive; what leaves is its negative. Read the source AFTER the
             // lock, so what is compared is what no other transaction can be taking at the same time.
-            $onHand = $this->movements->onHand($productId, $fromLocationId);
+            $onHand = $this->movements->onHand($productId, $fromLocationId, $lot?->getId());
             if (1 === new Number($in->getQuantity())->compare(new Number($onHand))) {
                 throw new InvalidStockMovement('quantity', \sprintf('Only %s is at that location.', $onHand));
             }
-            $this->movements->save($out);
-            $this->movements->save($in);
+            $this->movements->save($out, $in);
             // One move is one change: the stock of this product moved, once.
             $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.moved', $actorUserId, $company->getId()));
 
@@ -147,6 +166,63 @@ final readonly class KeepStock
     public function searchMovements(Company $company, StockMovementSearch $search, PageRequest $page): Page
     {
         return $this->movements->searchMovements($company->getId(), $search, $page);
+    }
+
+    /**
+     * The lot a movement names, found by its code under a lock on that code, and opened when it may be: a receipt or a
+     * count meets new goods, a move only carries what is there. Named for an untracked product, it is refused here
+     * rather than dropped, so a person who typed a lot learns the product keeps none.
+     *
+     * @throws InvalidStockMovement
+     */
+    private function lotFor(Product $product, ?NamedLot $named, bool $mayOpen): ?StockLot
+    {
+        if (null === $named) {
+            return null;
+        }
+        if (ProductTracking::None === $product->getTracking()) {
+            throw new InvalidStockMovement('lot', \sprintf('The product %s is not tracked by lot or serial number: its stock names no lot.', $product->getReference()));
+        }
+        $code = StockLot::code($named->code);
+        $this->lots->lock($product->getId(), $code);
+        $lot = $this->lots->ofCode($product->getId(), $code);
+        if (null !== $lot) {
+            $lot->dated($named->expiresOn);
+
+            return $lot;
+        }
+        if (!$mayOpen) {
+            throw new InvalidStockMovement('lotCode', \sprintf('%s has no lot %s: goods enter a lot by a receipt or a count.', $product->getReference(), $code));
+        }
+
+        return StockLot::open($product, $code, $named->expiresOn, $this->clock->now());
+    }
+
+    /**
+     * A serial number is one piece, so it is in stock once across the company whatever the locations say: checked
+     * under the lock on its code, which every movement naming it takes first.
+     *
+     * @throws InvalidStockMovement
+     */
+    private function inStockOnce(StockMovement $movement): void
+    {
+        $lot = $movement->getLot();
+        if (null === $lot || ProductTracking::Serial !== $movement->getProduct()->getTracking()) {
+            return;
+        }
+        if (1 === new Number($this->movements->onHandOfLot($lot->getId()))->add($movement->getQuantity())->compare(1)) {
+            throw new InvalidStockMovement('lot', \sprintf('The serial number %s of %s is already in stock.', $lot->getCode(), $movement->getProduct()->getReference()));
+        }
+    }
+
+    /** The movement, with its lot first when it names one: a lot is written with the first goods that enter it. */
+    private function save(StockMovement $movement): void
+    {
+        $lot = $movement->getLot();
+        if (null !== $lot) {
+            $this->lots->save($lot);
+        }
+        $this->movements->save($movement);
     }
 
     /** @return array{Product, StockLocation} */

@@ -20,13 +20,13 @@ use App\Tenancy\Domain\CompanyProfile;
 final readonly class DemoCompany
 {
     /**
-     * @param list<string>                                                                                                                                        $customerGroups
-     * @param list<DemoCustomer>                                                                                                                                  $customers
-     * @param array<string, string|null>                                                                                                                          $productCategories name => parent name
-     * @param list<array{ref: string, name: string, service?: true, unit: string, price: numeric-string, taxes: list<string>, category: string, inactive?: true}> $products
-     * @param array<string, string|null>                                                                                                                          $expenseCategories name => parent name
-     * @param list<array{name: string, city: string, category: string, amount: numeric-string, untaxed?: true}>                                                   $vendors
-     * @param list<array{string, string, string}>                                                                                                                 $contacts          first name, last name, role: one each for the first key accounts
+     * @param list<string>                                                                                                                                                                   $customerGroups
+     * @param list<DemoCustomer>                                                                                                                                                             $customers
+     * @param array<string, string|null>                                                                                                                                                     $productCategories name => parent name
+     * @param list<array{ref: string, name: string, service?: true, unit: string, price: numeric-string, taxes: list<string>, category: string, inactive?: true, tracking?: 'lot'|'serial'}> $products
+     * @param array<string, string|null>                                                                                                                                                     $expenseCategories name => parent name
+     * @param list<array{name: string, city: string, category: string, amount: numeric-string, untaxed?: true}>                                                                              $vendors
+     * @param list<array{string, string, string}>                                                                                                                                            $contacts          first name, last name, role: one each for the first key accounts
      */
     public function __construct(
         public string $name,

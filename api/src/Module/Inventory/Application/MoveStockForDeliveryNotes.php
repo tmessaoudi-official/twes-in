@@ -14,6 +14,7 @@ use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementKind;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Products\Domain\ProductRepository;
+use App\Module\Products\Domain\ProductTracking;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\EstablishmentRepository;
@@ -60,6 +61,12 @@ final readonly class MoveStockForDeliveryNotes
         foreach ($lines as $line) {
             $product = null === $line->productId ? null : $this->products->ofIdInCompany($line->productId, $companyId);
             if (null === $product || !$this->stock->tracked($product)) {
+                continue;
+            }
+            // Which lot leaves is the delivery's to pick, first to expire first, and that comes in its own step
+            // (docs/SPEC.md § 7, 2026-09-23 02:40, L2): until then such a line moves nothing and says so.
+            if (ProductTracking::None !== $product->getTracking()) {
+                $skipped[] = \sprintf('%s is tracked by %s, so its line moved no stock: record which one left as a move or a count', $product->getReference(), ProductTracking::Serial === $product->getTracking() ? 'serial number' : 'lot');
                 continue;
             }
             if (!$product->getUnit()->getId()->equals($line->unitId)) {

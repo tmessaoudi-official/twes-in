@@ -18,6 +18,7 @@ use App\Module\Inventory\Domain\StockLocationRepository;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
 use App\Tenancy\Domain\Company;
@@ -47,10 +48,14 @@ final class OpeningStockImportTest extends ApiTestCase
         $units = static::getContainer()->get(UnitRepository::class);
         $now = new \DateTimeImmutable();
         // A quincaillerie counts screws one by one and wire by the kilo: the unit decides how fine a count may be.
-        foreach ([['VIS-6X40', 'Vis 6x40', ProductKind::Goods, 'C62'], ['FIL-2', 'Fil de fer 2mm', ProductKind::Goods, 'KGM'], ['MO-TOUR', 'Tournage', ProductKind::Service, 'C62']] as [$reference, $name, $kind, $unitCode]) {
+        foreach ([['VIS-6X40', 'Vis 6x40', ProductKind::Goods, 'C62'], ['FIL-2', 'Fil de fer 2mm', ProductKind::Goods, 'KGM'], ['MO-TOUR', 'Tournage', ProductKind::Service, 'C62'], ['COL-01', 'Colle', ProductKind::Goods, 'C62']] as [$reference, $name, $kind, $unitCode]) {
             $unit = $units->ofCodeInCompany($unitCode, $this->company->getId());
             self::assertNotNull($unit, $unitCode);
-            $this->em()->persist(Product::create($this->company, $reference, new ProductDetails($name, null, $kind, '1.000'), $unit, null, [], $now));
+            $product = Product::create($this->company, $reference, new ProductDetails($name, null, $kind, '1.000'), $unit, null, [], $now);
+            if ('COL-01' === $reference) {
+                $product->track(ProductTracking::Lot, $now);
+            }
+            $this->em()->persist($product);
         }
         $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
         $this->em()->flush();
@@ -109,7 +114,8 @@ final class OpeningStockImportTest extends ApiTestCase
             ."\nINCONNU,000,1"
             ."\nVIS-6X40,ZZZ,1"
             ."\nMO-TOUR,000,1"
-            ."\nVIS-6X40,Z1,deux\n",
+            ."\nVIS-6X40,Z1,deux"
+            ."\nCOL-01,000,4\n",
             dryRun: true,
         );
 
@@ -122,6 +128,7 @@ final class OpeningStockImportTest extends ApiTestCase
             [6, 'location_code', 'unknown_location', ['code' => 'ZZZ']],
             [7, 'reference', 'not_stocked', []],
             [8, 'quantity', 'invalid_quantity', []],
+            [9, 'reference', 'lot_tracked', ['reference' => 'COL-01']],
         ], $this->rejected());
     }
 

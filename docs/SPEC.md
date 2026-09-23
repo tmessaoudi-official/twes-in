@@ -2288,6 +2288,21 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   the expired-lot block with its recorded release (L2); the web — the tracking field, receiving with the scan, the
   levels by lot (L3); the recall search (L4). Nothing here is written to existing movements: every product is `none`
   until someone sets it, so the history stays as recorded.
+- [2026-09-23 04:10] TAKEN OVERNIGHT, to confirm (the recommended option at each point, building on 02:40; listed in
+  `var/claude/overnight-questions.md` item 9): **how L1 treats lots at its edges.** (1) A lot code is 1 to 40 printable
+  ASCII characters without space; an accent is refused, since a scanner reads labels as ASCII and a code nobody can
+  scan back finds nothing. (2) A receipt or a count may open a lot, because either can be the first to meet its goods; a
+  move names a lot that exists and never opens one. (3) A date given for a lot without one fills it; a different date
+  for a lot that has one is refused on `lotExpiresOn`. (4) An expired lot is received like any other: goods do arrive
+  past their date, and blocking them is the delivery's job (L2). (5) A serial number is in stock once across the
+  company, checked under a lock on its code, which the movement takes before the stock's. (6) Until deliveries pick lots
+  (L2), a delivery note leaves a tracked product's line out and says so, the way it leaves out a line in another unit,
+  and the demo keeps its tracked articles off its delivery notes. (7) `uniq_stock_movement_source` keeps its columns:
+  PostgreSQL counts NULLs as distinct, so adding the nullable lot would stop it holding every untracked delivery once;
+  L2 changes it with `NULLS NOT DISTINCT`. (8) The opening-stock import refuses a tracked product's row
+  (`lot_tracked`) rather than guessing a lot. Adding a lot column there is not a column alone: the file's identity
+  (product and location) would have to take the lot, and an identity column left empty switches the duplicate check
+  off, so it waits for its own step.
 
 ## 8. Status
 

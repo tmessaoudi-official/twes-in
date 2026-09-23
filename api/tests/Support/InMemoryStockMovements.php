@@ -50,12 +50,24 @@ final class InMemoryStockMovements implements StockMovementRepository
         $this->calls[] = $this->call('lock', $productId, $locationId);
     }
 
-    public function onHand(Uuid $productId, Uuid $locationId): string
+    public function onHand(Uuid $productId, Uuid $locationId, ?Uuid $lotId = null): string
     {
         $this->calls[] = $this->call('onHand', $productId, $locationId);
         $sum = new Number('0.000');
         foreach ($this->movements as $movement) {
-            if ($movement->getProduct()->getId()->equals($productId) && $movement->getLocation()->getId()->equals($locationId)) {
+            if ($movement->getProduct()->getId()->equals($productId) && $movement->getLocation()->getId()->equals($locationId) && (null === $lotId || true === $movement->getLot()?->getId()->equals($lotId))) {
+                $sum = $sum->add($movement->getQuantity());
+            }
+        }
+
+        return $sum->value;
+    }
+
+    public function onHandOfLot(Uuid $lotId): string
+    {
+        $sum = new Number('0.000');
+        foreach ($this->movements as $movement) {
+            if (true === $movement->getLot()?->getId()->equals($lotId)) {
                 $sum = $sum->add($movement->getQuantity());
             }
         }
@@ -66,18 +78,21 @@ final class InMemoryStockMovements implements StockMovementRepository
     public function levels(Uuid $companyId): array
     {
         $sums = [];
+        $lots = [];
         foreach ($this->movements as $movement) {
             if (!$movement->getCompany()->getId()->equals($companyId)) {
                 continue;
             }
-            $key = $movement->getProduct()->getId()->toRfc4122().'|'.$movement->getLocation()->getId()->toRfc4122();
+            $key = $movement->getProduct()->getId()->toRfc4122().'|'.$movement->getLocation()->getId()->toRfc4122().'|'.$movement->getLot()?->getId()->toRfc4122();
+            $lots[$key] = $movement->getLot();
             $sums[$key] = ($sums[$key] ?? new Number('0.000'))->add($movement->getQuantity());
         }
 
-        return array_map(static function (string $key, Number $quantity): StockLevel {
+        return array_map(static function (string $key, Number $quantity) use ($lots): StockLevel {
             [$product, $location] = explode('|', $key);
+            $lot = $lots[$key];
 
-            return new StockLevel(Uuid::fromString($product), Uuid::fromString($location), $quantity->value);
+            return new StockLevel(Uuid::fromString($product), Uuid::fromString($location), $quantity->value, $lot?->getId(), $lot?->getCode(), $lot?->getExpiresOn()?->format('Y-m-d'));
         }, array_keys($sums), $sums);
     }
 

@@ -24,6 +24,7 @@ use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Infrastructure\ApiPlatform\StockPermission;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
 use App\Module\Products\Domain\ProductRepository;
+use App\Module\Products\Domain\ProductTracking;
 use App\Tenancy\Domain\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -100,6 +101,11 @@ final readonly class OpeningStockImport implements DeclaresImport
         $product = $this->products->ofReferenceInCompany($reference, $company->getId())
             ?? throw new RowRejected('reference', \sprintf('The company has no product referenced "%s". Import the products first.', $reference), 'unknown_product', ['reference' => $reference]);
         $location = $this->locationOf($company, $code);
+        // A file names no lot yet, and a tracked product's stock is always some lot's: its opening stock is counted on
+        // the stock screen, lot by lot, until the import reads lots too (docs/SPEC.md § 7, 2026-09-23).
+        if (ProductTracking::None !== $product->getTracking()) {
+            throw new RowRejected('reference', \sprintf('%s is tracked by lot or serial number: count its opening stock on the stock screen, lot by lot.', $reference), 'lot_tracked', ['reference' => $reference]);
+        }
 
         $counted = 0 !== $this->movements->countOf($product->getId(), $location->getId());
         if ($counted && ImportMode::Create === $mode) {

@@ -2174,6 +2174,7 @@
       "unknown_location": "L'entreprise n'a aucun emplacement codé « {{code}} ». Créez-le d'abord dans Stock.",
       "ambiguous_location": "Plusieurs établissements ont un emplacement codé « {{code}} » : renommez-en un, ou importez un établissement à la fois.",
       "not_stocked": "Aucun stock n'est tenu pour ce produit : seules les marchandises suivies le sont.",
+      "lot_tracked": "« {{reference}} » est suivi par lot ou par numéro de série : comptez son stock d'ouverture dans Stock, lot par lot.",
       "invalid_quantity": "Quantité refusée : un nombre, dans les décimales de l'unité.",
       "invalid_location": "Emplacement refusé.",
       "invalid_name": "Nom refusé.",

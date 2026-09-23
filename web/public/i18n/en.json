@@ -2174,6 +2174,7 @@
       "unknown_location": "The company has no stock location coded “{{code}}”. Create it first, under Stock.",
       "ambiguous_location": "Several establishments have a location coded “{{code}}”: rename one of them, or import one establishment at a time.",
       "not_stocked": "No stock is kept of this product: only goods whose stock is tracked are.",
+      "lot_tracked": "“{{reference}}” is tracked by lot or serial number: count its opening stock under Stock, lot by lot.",
       "invalid_quantity": "Quantity refused: a number, within the unit's decimals.",
       "invalid_location": "Location refused.",
       "invalid_name": "Name refused.",

@@ -29,13 +29,20 @@ interface StockMovementRepository
     public function lockStockOf(Uuid $productId, Uuid $locationId): void;
 
     /**
-     * The stock of a product at a location, "0.000" when nothing ever moved there.
+     * The stock of a product at a location, "0.000" when nothing ever moved there; of one of its lots when one is named.
      *
      * @return numeric-string
      */
-    public function onHand(Uuid $productId, Uuid $locationId): string;
+    public function onHand(Uuid $productId, Uuid $locationId, ?Uuid $lotId = null): string;
 
-    /** @return list<StockLevel> every product and location of the company something moved in */
+    /**
+     * The stock of a lot wherever it is in its company: how a serial number is known to be in stock once.
+     *
+     * @return numeric-string
+     */
+    public function onHandOfLot(Uuid $lotId): string;
+
+    /** @return list<StockLevel> every product, location and lot of the company something moved in */
     public function levels(Uuid $companyId): array;
 
     /**

@@ -13,11 +13,13 @@ use App\Fiscal\Domain\Unit;
 use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationKind;
+use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementKind;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -43,6 +45,75 @@ final class StockMovementTest extends TestCase
         $this->laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '1250'), $piece, null, [], $this->now);
         $this->flour = Product::create($this->company, 'ART-002', new ProductDetails('Farine', null, ProductKind::Goods, '2'), $kilogram, null, [], $this->now);
         $this->support = Product::create($this->company, 'SRV-001', new ProductDetails('Assistance', null, ProductKind::Service, '50'), $piece, null, [], $this->now);
+    }
+
+    public function testEveryMovementOfATrackedProductNamesItsLotAndOfAnUntrackedOneNone(): void
+    {
+        $this->laptop->track(ProductTracking::Lot, $this->now);
+        $lot = StockLot::open($this->laptop, 'L1', null, $this->now);
+        $shelf = StockLocation::create($this->site->getEstablishment(), $this->site, StockLocationKind::Zone, 'Z1', 'Zone', $this->now);
+
+        self::assertSame($lot, StockMovement::receipt($this->laptop, $this->site, '2', null, $this->now, $lot)->getLot());
+        self::assertSame($lot, StockMovement::count($this->laptop, $this->site, '1', '2.000', null, $this->now, $lot)->getLot());
+        [$out, $in] = StockMovement::move($this->laptop, $this->site, $shelf, '1', null, $this->now, $lot);
+        self::assertSame([$lot, $lot], [$out->getLot(), $in->getLot()]);
+        self::assertNull(StockMovement::receipt($this->flour, $this->site, '2', null, $this->now)->getLot());
+
+        $flourLot = StockLot::open(self::tracked($this->flour, $this->now), 'F1', null, $this->now);
+        $this->flour->track(ProductTracking::None, $this->now);
+        foreach ([
+            'a tracked product without its lot' => fn () => StockMovement::receipt($this->laptop, $this->site, '1', null, $this->now),
+            'a count of it without its lot' => fn () => StockMovement::count($this->laptop, $this->site, '1', '0', null, $this->now),
+            'a move of it without its lot' => fn () => StockMovement::move($this->laptop, $this->site, $shelf, '1', null, $this->now),
+            'a delivery of it without its lot' => fn () => StockMovement::delivery($this->laptop, $this->site, '1', Uuid::v7(), $this->now),
+            'an untracked product with a lot' => fn () => StockMovement::receipt($this->flour, $this->site, '1', null, $this->now, $flourLot),
+            'another product\'s lot' => fn () => StockMovement::receipt($this->laptop, $this->site, '1', null, $this->now, $flourLot),
+        ] as $case => $movement) {
+            try {
+                $movement();
+                self::fail(\sprintf('%s was accepted.', $case));
+            } catch (InvalidStockMovement $refused) {
+                self::assertSame('lot', $refused->field, $case);
+            }
+        }
+    }
+
+    public function testASerialNumberMovesOnePieceAtATime(): void
+    {
+        $this->laptop->track(ProductTracking::Serial, $this->now);
+        $serial = StockLot::open($this->laptop, 'SN-0001', null, $this->now);
+        $shelf = StockLocation::create($this->site->getEstablishment(), $this->site, StockLocationKind::Zone, 'Z1', 'Zone', $this->now);
+
+        self::assertSame('1.000', StockMovement::receipt($this->laptop, $this->site, '1', null, $this->now, $serial)->getQuantity());
+        self::assertSame('-1.000', StockMovement::count($this->laptop, $this->site, '0', '1.000', null, $this->now, $serial)->getQuantity());
+        self::assertSame('1.000', StockMovement::move($this->laptop, $this->site, $shelf, '1', null, $this->now, $serial)[1]->getQuantity());
+        foreach ([
+            'two pieces received' => fn () => StockMovement::receipt($this->laptop, $this->site, '2', null, $this->now, $serial),
+            'two pieces counted' => fn () => StockMovement::count($this->laptop, $this->site, '2', '1.000', null, $this->now, $serial),
+            'two pieces moved' => fn () => StockMovement::move($this->laptop, $this->site, $shelf, '2', null, $this->now, $serial),
+        ] as $case => $movement) {
+            try {
+                $movement();
+                self::fail(\sprintf('%s was accepted.', $case));
+            } catch (InvalidStockMovement $refused) {
+                self::assertSame('quantity', $refused->field, $case);
+            }
+        }
+    }
+
+    public function testADeliveryReturnedGoesBackToTheLotItCameFrom(): void
+    {
+        $this->laptop->track(ProductTracking::Lot, $this->now);
+        $lot = StockLot::open($this->laptop, 'L1', null, $this->now);
+
+        self::assertSame($lot, StockMovement::returnOf(StockMovement::delivery($this->laptop, $this->site, '1', Uuid::v7(), $this->now, $lot), $this->now)->getLot());
+    }
+
+    private static function tracked(Product $product, \DateTimeImmutable $now): Product
+    {
+        $product->track(ProductTracking::Lot, $now);
+
+        return $product;
     }
 
     public function testAReceiptAddsGoodsInTheProductsUnitRecordingWhoReceivedThem(): void

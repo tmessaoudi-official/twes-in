@@ -85,6 +85,15 @@ final class DemoFixturesTest extends ApiTestCase
             // Through the use cases, not around them: every write left its audit row.
             self::assertGreaterThan(100, $this->numberOf('SELECT COUNT(*) FROM audit_log WHERE company_id = ?', [$id]), "$name was written through the audited use cases");
         }
+        // Stock by lot and by serial number, there to be seen: a lot already past its date, a lot still good, and serial
+        // numbers one piece each, all named by their movements.
+        self::assertSame(
+            ['lot', 'serial'],
+            $this->column('SELECT DISTINCT p.tracking FROM stock_movement m JOIN product p ON p.id = m.product_id WHERE m.lot_id IS NOT NULL ORDER BY p.tracking', []),
+        );
+        self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM stock_lot WHERE expires_on < CURRENT_DATE', []), 'a lot has expired by the end of the story');
+        self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM stock_lot WHERE expires_on > CURRENT_DATE', []), 'a lot is still good');
+        self::assertSame(0, $this->numberOf("SELECT COUNT(*) FROM stock_movement m JOIN product p ON p.id = m.product_id WHERE (p.tracking = 'none') <> (m.lot_id IS NULL)", []), 'a movement names a lot exactly when its product tracks one');
         self::assertInstanceOf(NativeClock::class, Clock::get(), 'the clock the load moved is given back');
     }
 

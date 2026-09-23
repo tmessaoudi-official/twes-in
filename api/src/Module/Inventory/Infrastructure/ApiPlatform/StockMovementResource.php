@@ -14,6 +14,8 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\QueryParameter;
+use App\Module\Inventory\Domain\NamedLot;
+use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockMovement;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -100,6 +102,20 @@ final class StockMovementResource
     public ?string $toLocationId = null;
 
     /**
+     * The lot the goods belong to, for a product tracked by lot or serial number, and none otherwise (docs/SPEC.md
+     * § 7, 2026-09-23 02:40): a receipt or a count opens it the first time its code is seen, a move names one there.
+     */
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'maxLength' => StockLot::CODE_MAX])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $lotCode = null;
+
+    /** The date the lot's goods are used by, as its label says; given once, and filled in if the lot had none. */
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
+    #[Assert\Date(groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $lotExpiresOn = null;
+
+    /**
      * What the movement moved, named here rather than looked up elsewhere: a product or a location the company has
      * since stopped offering still has its movements, and a list of them has to say whose they are.
      */
@@ -158,6 +174,12 @@ final class StockMovementResource
     #[Groups([self::READ])]
     public string $at = '';
 
+    /** The lot the write names, or none. */
+    public function lot(): ?NamedLot
+    {
+        return null === $this->lotCode ? null : new NamedLot($this->lotCode, null === $this->lotExpiresOn ? null : new \DateTimeImmutable($this->lotExpiresOn));
+    }
+
     public static function of(StockMovement $movement): self
     {
         $resource = new self();
@@ -170,6 +192,8 @@ final class StockMovementResource
         $resource->locationId = $movement->getLocation()->getId()->toRfc4122();
         $resource->locationCode = $movement->getLocation()->getCode();
         $resource->locationName = $movement->getLocation()->getName();
+        $resource->lotCode = $movement->getLot()?->getCode();
+        $resource->lotExpiresOn = $movement->getLot()?->getExpiresOn()?->format('Y-m-d');
         $resource->kind = $movement->getKind()->value;
         $resource->quantity = $movement->getQuantity();
         $resource->sourceType = $movement->getSourceType();

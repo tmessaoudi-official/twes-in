@@ -13,9 +13,11 @@ use App\Fiscal\Domain\Unit;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Domain\InvalidStockMovement;
+use App\Module\Inventory\Domain\NamedLot;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationKind;
+use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementKind;
 use App\Module\Inventory\Domain\StockMovementSearch;
@@ -23,6 +25,7 @@ use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
@@ -40,6 +43,7 @@ use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStockLocations;
+use App\Tests\Support\InMemoryStockLots;
 use App\Tests\Support\InMemoryStockMovements;
 use App\Tests\Support\RecordingLiveChanges;
 use PHPUnit\Framework\TestCase;
@@ -52,6 +56,7 @@ final class KeepStockTest extends TestCase
 
     private MockClock $clock;
     private InMemoryStockMovements $movements;
+    private InMemoryStockLots $lots;
     private InMemoryProducts $products;
     private InMemorySettings $settings;
     private FakeTransactions $transactions;
@@ -74,6 +79,8 @@ final class KeepStockTest extends TestCase
         $this->settings = new InMemorySettings();
         $this->transactions = new FakeTransactions();
         $this->movements->transactions = $this->transactions;
+        $this->lots = new InMemoryStockLots();
+        $this->lots->transactions = $this->transactions;
         $locations = $this->locations = new InMemoryStockLocations();
         $establishments = new InMemoryEstablishments();
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
@@ -90,7 +97,7 @@ final class KeepStockTest extends TestCase
         }
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings()]), $this->settings));
         $this->liveChanges = new RecordingLiveChanges($this->transactions);
-        $this->keep = new KeepStock($this->movements, $locations, $this->products, $read, $this->transactions, $this->clock, $this->liveChanges);
+        $this->keep = new KeepStock($this->movements, $this->lots, $locations, $this->products, $read, $this->transactions, $this->clock, $this->liveChanges);
     }
 
     public function testOnlyGoodsWhoseStockTrackingResolvesOnAreTracked(): void
@@ -279,5 +286,89 @@ final class KeepStockTest extends TestCase
             array_map(static fn (LiveChange $change) => [$change->kind, $change->id?->toRfc4122(), $change->action], $this->liveChanges->staged),
             'one move is one change, not two',
         );
+    }
+
+    public function testAReceiptOpensALotUnderItsCodeAndStockIsKeptPerLot(): void
+    {
+        $this->track(SettingAddress::company($this->company), true);
+        $this->laptop->track(ProductTracking::Lot, $this->clock->now());
+        $rack = $this->rack();
+
+        $first = $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '5', null, new NamedLot(' L1 ', new \DateTimeImmutable('2027-01-31')));
+        $again = $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '2', null, new NamedLot('L1'));
+        $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '4', null, new NamedLot('L2'));
+
+        self::assertNotNull($first->getLot());
+        self::assertSame($first->getLot(), $again->getLot(), 'a code seen before is the same lot');
+        self::assertSame(['L1', 'L2'], array_map(static fn (StockLot $lot) => $lot->getCode(), $this->lots->lots));
+        self::assertSame('2027-01-31', $first->getLot()->getExpiresOn()?->format('Y-m-d'));
+
+        $counted = $this->keep->count($this->company, $this->laptop->getId(), $this->site->getId(), '6', null, new NamedLot('L1'));
+        self::assertSame('-1.000', $counted->getQuantity(), 'a count compares with the stock of ITS lot');
+        try {
+            $this->keep->move($this->company, $this->laptop->getId(), $this->site->getId(), $rack->getId(), '5', null, new NamedLot('L2'));
+            self::fail('More of a lot than it holds there was moved.');
+        } catch (InvalidStockMovement $refused) {
+            self::assertSame('quantity', $refused->field);
+        }
+        [, $in] = $this->keep->move($this->company, $this->laptop->getId(), $this->site->getId(), $rack->getId(), '4', null, new NamedLot('L2'));
+        self::assertSame('L2', $in->getLot()?->getCode());
+
+        $levels = array_map(static fn (StockLevel $level) => [$level->locationId->toRfc4122(), $level->lotCode, $level->lotExpiresOn, $level->quantity], $this->keep->levels($this->company));
+        sort($levels);
+        $site = $this->site->getId()->toRfc4122();
+        $expected = [[$rack->getId()->toRfc4122(), 'L2', null, '4.000'], [$site, 'L1', '2027-01-31', '6.000'], [$site, 'L2', null, '0.000']];
+        sort($expected);
+        self::assertSame($expected, $levels);
+    }
+
+    public function testALotIsRequiredOfATrackedProductRefusedOfAnUntrackedOneAndNeverInventedByAMove(): void
+    {
+        $this->track(SettingAddress::company($this->company), true);
+        $this->laptop->track(ProductTracking::Lot, $this->clock->now());
+        $rack = $this->rack();
+
+        foreach ([
+            'lot' => fn () => $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '1', null),
+            'lot ' => fn () => $this->keep->receive($this->company, $this->cable->getId(), $this->site->getId(), '1', null, new NamedLot('L1')),
+            'lotCode' => fn () => $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '1', null, new NamedLot('L 1')),
+            'lotCode ' => fn () => $this->keep->move($this->company, $this->laptop->getId(), $this->site->getId(), $rack->getId(), '1', null, new NamedLot('NEVER-SEEN')),
+        ] as $field => $refusedCall) {
+            try {
+                $refusedCall();
+                self::fail(\sprintf('Accepted where %s is refused.', trim($field)));
+            } catch (InvalidStockMovement $refused) {
+                self::assertSame(trim($field), $refused->field);
+            }
+        }
+        self::assertSame([], $this->movements->movements);
+        self::assertSame([], $this->lots->lots, 'a refused movement opens no lot');
+    }
+
+    public function testASerialNumberIsInStockOnceAcrossTheCompany(): void
+    {
+        $this->track(SettingAddress::company($this->company), true);
+        $this->laptop->track(ProductTracking::Serial, $this->clock->now());
+        $rack = $this->rack();
+        $serial = new NamedLot('SN-0001');
+
+        $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '1', null, $serial);
+        foreach ([
+            'received again' => fn () => $this->keep->receive($this->company, $this->laptop->getId(), $rack->getId(), '1', null, $serial),
+            'counted elsewhere' => fn () => $this->keep->count($this->company, $this->laptop->getId(), $rack->getId(), '1', null, $serial),
+        ] as $case => $refusedCall) {
+            try {
+                $refusedCall();
+                self::fail(\sprintf('A serial number in stock was %s.', $case));
+            } catch (InvalidStockMovement $refused) {
+                self::assertSame('lot', $refused->field, $case);
+                self::assertStringContainsString('SN-0001', $refused->getMessage());
+            }
+        }
+        self::assertSame(['lock-lot '.$this->laptop->getId()->toRfc4122().' SN-0001 in transaction'], array_values(array_unique($this->lots->calls)));
+
+        $this->keep->count($this->company, $this->laptop->getId(), $this->site->getId(), '0', null, $serial);
+        $this->keep->receive($this->company, $this->laptop->getId(), $rack->getId(), '1', null, $serial);
+        self::assertSame('1.000', $this->movements->onHandOfLot($this->lots->lots[0]->getId()), 'gone, then back: once again');
     }
 }
