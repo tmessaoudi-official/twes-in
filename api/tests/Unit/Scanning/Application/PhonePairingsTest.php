@@ -134,6 +134,9 @@ final class PhonePairingsTest extends TestCase
             } catch (\InvalidArgumentException) {
             }
         }
+        // Without the key, even a malformed scan is refused for the key: its shape is nobody else's to learn.
+        $this->refused('key', fn () => $this->phones()->scan($id, 'not-the-key', '', 'not-a-uuid'));
+        $this->refused('key', fn () => $this->phones()->choose($id, 'not-the-key', 'not-a-uuid', 'Not A Choice'));
         $this->expectException(\InvalidArgumentException::class);
         $this->phones()->scan($id, $key, '3017620422003', 'not-a-uuid');
     }

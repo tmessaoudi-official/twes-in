@@ -30,6 +30,8 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         '^/api/auth/mfa/verify$',
         '^/api/auth/mfa/passkey-login(/options)?$',
         '^/api/signup',
+        '^/api/scan-pairings/claim$',
+        '^/api/scan-pairings/[0-9a-f-]{36}/(scans|choices|realtime-token)$',
     ];
 
     /** A value each path placeholder accepts, so a request reaches the firewall rather than a 404 from the router. */

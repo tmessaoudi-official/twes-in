@@ -105,22 +105,25 @@ final readonly class PhonePairings
         }
     }
 
+    /** The key first: a caller without it learns nothing, not even what a well-formed scan looks like. */
     public function scan(Uuid $id, string $key, string $code, string $scanId): void
     {
+        $pairing = $this->authorised($id, $key);
         if ('' === $code || \strlen($code) > self::CODE_MAX || 1 === preg_match('/[\x00-\x1c\x1e\x1f\x7f]/', $code)) {
             throw new \InvalidArgumentException(\sprintf('code: 1 to %d printable characters; the GS1 separator is the one control character a scanner types.', self::CODE_MAX));
         }
         self::uuid($scanId, 'scan');
-        $this->toTheTab($this->authorised($id, $key), ['event' => 'scan', 'scan' => $scanId, 'code' => $code]);
+        $this->toTheTab($pairing, ['event' => 'scan', 'scan' => $scanId, 'code' => $code]);
     }
 
     public function choose(Uuid $id, string $key, string $echoId, string $choice): void
     {
+        $pairing = $this->authorised($id, $key);
         self::uuid($echoId, 'echo');
         if (!PairingEcho::isChoice($choice)) {
             throw new \InvalidArgumentException('choice: one of the ids the echo offered.');
         }
-        $this->toTheTab($this->authorised($id, $key), ['event' => 'choice', 'echo' => $echoId, 'choice' => $choice]);
+        $this->toTheTab($pairing, ['event' => 'choice', 'echo' => $echoId, 'choice' => $choice]);
     }
 
     public function echo(Uuid $userId, Uuid $id, PairingEcho $echo): void

@@ -69,10 +69,8 @@ final readonly class PairedPhoneController
         return $this->asThePhone($id, $request, function (Uuid $pairing, string $key) use ($body): Response {
             $code = $body['code'] ?? null;
             $scan = $body['scan'] ?? null;
-            if (!\is_string($code) || !\is_string($scan)) {
-                return PairingErrors::invalid('A scan is a code and the scan id the phone gave it.');
-            }
-            $this->pairings->scan($pairing, $key, $code, $scan);
+            // Anything that is not text is refused as malformed, once the key has been checked.
+            $this->pairings->scan($pairing, $key, \is_string($code) ? $code : '', \is_string($scan) ? $scan : '');
 
             return new Response(null, Response::HTTP_ACCEPTED);
         });
@@ -86,10 +84,7 @@ final readonly class PairedPhoneController
         return $this->asThePhone($id, $request, function (Uuid $pairing, string $key) use ($body): Response {
             $echo = $body['echo'] ?? null;
             $choice = $body['choice'] ?? null;
-            if (!\is_string($echo) || !\is_string($choice)) {
-                return PairingErrors::invalid('A choice names the echo it answers and one of its choices.');
-            }
-            $this->pairings->choose($pairing, $key, $echo, $choice);
+            $this->pairings->choose($pairing, $key, \is_string($echo) ? $echo : '', \is_string($choice) ? $choice : '');
 
             return new Response(null, Response::HTTP_ACCEPTED);
         });
