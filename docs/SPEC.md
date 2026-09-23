@@ -2452,6 +2452,12 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   list gains two columns after the location, "Lot" and "À utiliser avant" (the lot's use-by day, as ISO like the
   other dates of the lists), empty for an untracked product; a tracked product has one row per location and lot, as the
   API answers it. No colour marks an expired lot yet: the list does not know whether a person released it.
+- [2026-09-23 20:45] TAKEN OVERNIGHT (standing instruction, to confirm): slice 7c, a movement names its lot. The stock
+  picker says how each product is tracked (`tracking` on `stock-options/products`). Choosing a tracked product in a
+  receipt, a count or a move adds "Lot" (or "Numéro de série") to the form, required, as a scanner can read it back:
+  printable ASCII without a space, at most 40; a receipt or a count also offers "À utiliser avant", optional, since
+  either may be the first to meet the lot, while a move names a lot that exists and never says its date again. The form
+  is rebuilt for the product chosen and keeps what was already typed. An untracked product's form is as it was.
 
 ## 8. Status
 

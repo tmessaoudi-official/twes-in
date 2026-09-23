@@ -98,6 +98,7 @@ const products: StockProductOption[] = [
     unitCode: 'C62',
     unitDecimals: 0,
     homeLocationId: 'l2',
+    tracking: 'none',
   },
   {
     id: 'p2',
@@ -106,6 +107,17 @@ const products: StockProductOption[] = [
     unitCode: 'C62',
     unitDecimals: 0,
     homeLocationId: null,
+    tracking: 'none',
+  },
+  // ART-3 is a glue kept by lot: its receipt asks which lot, and the day the lot is used by.
+  {
+    id: 'p3',
+    reference: 'ART-3',
+    name: 'Colle',
+    unitCode: 'C62',
+    unitDecimals: 0,
+    homeLocationId: null,
+    tracking: 'lot',
   },
 ];
 
@@ -231,6 +243,30 @@ describe('StockPage', () => {
     });
     expect(successToasts()).toContain('inventory.stock.recorded');
     expect(q('stock-movement-save')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-23 slice 7: a tracked product's movement names its lot.
+  it('asks a lot of a product kept by lot, keeping what was typed, and records the goods into it', async () => {
+    q('stock-receive')!.click();
+    await settle();
+    expect(q('field-lotCode')).toBeNull();
+    type('field-quantity', '4');
+    await pick('field-productId', 'ART-3 · Colle');
+
+    expect(q('field-lotCode')).not.toBeNull();
+    expect(q('field-lotExpiresOn')).not.toBeNull();
+    expect((q('field-quantity') as HTMLInputElement).value).toBe('4');
+    type('field-lotCode', 'L-07');
+    q('stock-movement-save')!.click();
+    await settle();
+
+    expect(facade.record).toHaveBeenCalledWith('c1', {
+      operation: 'receive',
+      productId: 'p3',
+      locationId: 'l1',
+      quantity: '4',
+      lotCode: 'L-07',
+    });
   });
 
   it('records what a count found, and keeps the form when it is refused', async () => {

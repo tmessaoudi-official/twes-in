@@ -148,6 +148,10 @@ export interface StockMovementInput {
   /** Where a move puts them; absent for anything else. */
   toLocationId?: string;
   quantity: string;
+  /** The lot or serial number of a tracked product; a receipt or a count opens it the first time it is met. */
+  lotCode?: string;
+  /** The day the lot is used by (ISO), on a receipt or a count only: a move takes the lot's own. */
+  lotExpiresOn?: string;
 }
 
 /** One stocked product as the picker answers it. */
@@ -163,6 +167,8 @@ export interface StockProductOption {
    * goods are arriving at, and a wrong shelf proposed is worse than none because it is accepted without being read.
    */
   homeLocationId: string | null;
+  /** How its stock is told apart, so a movement asks for the lot of a tracked product (2026-09-23 slice 7). */
+  tracking: 'none' | 'lot' | 'serial';
 }
 
 export interface StockEstablishmentOption {

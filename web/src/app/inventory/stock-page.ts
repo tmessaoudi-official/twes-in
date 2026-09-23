@@ -93,9 +93,14 @@ export class StockPage implements OnInit {
     `stock-${row.productReference}-${row.locationCode}`;
 
   protected readonly operation = signal<StockOperation | null>(null);
+  /**
+   * The movement form, for the product chosen: a tracked one also asks its lot (docs/SPEC.md § 7, 2026-09-23 slice 7).
+   * Choosing it rebuilds the form over what was typed, as a location arriving does.
+   */
   protected readonly descriptor = computed(() => {
     const operation = this.operation();
-    return operation === null ? null : movementForm(operation, this.facade.locations());
+    const tracking = this.product()?.tracking ?? 'none';
+    return operation === null ? null : movementForm(operation, this.facade.locations(), tracking);
   });
 
   /**

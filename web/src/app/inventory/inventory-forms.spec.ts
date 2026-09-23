@@ -301,12 +301,16 @@ describe('the movement form', () => {
       locationId: 'l1',
       toLocationId: '',
       quantity: '',
+      lotCode: '',
+      lotExpiresOn: '',
     });
     expect(movementValues([])).toEqual({
       productId: '',
       locationId: '',
       toLocationId: '',
       quantity: '',
+      lotCode: '',
+      lotExpiresOn: '',
     });
     expect(
       movementInput('receive', { productId: 'p2', locationId: 'l2', quantity: ' 1.5 ' }),
@@ -316,6 +320,64 @@ describe('the movement form', () => {
       locationId: 'l2',
       quantity: '1.5',
     });
+  });
+
+  // docs/SPEC.md § 7, 2026-09-22 11:10 and 2026-09-23 slice 7: a tracked product's stock is a number per lot.
+  it('asks a tracked product its lot, and its use-by day where goods arrive or are counted', () => {
+    const shape = (form: ReturnType<typeof movementForm>) =>
+      fieldsOf(form).map((field) => [field.id, field.kind, field.required ?? false]);
+
+    expect(shape(movementForm('receive', [site], 'lot'))).toEqual([
+      ['productId', 'pick', true],
+      ['locationId', 'select', true],
+      ['lotCode', 'text', true],
+      ['lotExpiresOn', 'date', false],
+      ['quantity', 'decimal', true],
+    ]);
+    expect(shape(movementForm('count', [site], 'lot')).map(([id]) => id)).toContain('lotExpiresOn');
+    // A move takes goods of a lot that exists; its date is the lot's own, never said again.
+    expect(shape(movementForm('move', [site], 'lot')).map(([id]) => id)).toEqual([
+      'productId',
+      'locationId',
+      'toLocationId',
+      'lotCode',
+      'quantity',
+    ]);
+    expect(shape(movementForm('receive', [site], 'none')).map(([id]) => id)).not.toContain(
+      'lotCode',
+    );
+
+    const lot = fieldsOf(movementForm('receive', [site], 'lot')).find((f) => f.id === 'lotCode');
+    const serial = fieldsOf(movementForm('receive', [site], 'serial')).find(
+      (f) => f.id === 'lotCode',
+    );
+    expect([lot?.label, serial?.label]).toEqual([
+      'inventory.stock.fields.lot',
+      'inventory.stock.fields.serial',
+    ]);
+    // What a scanner can read back: printable ASCII, no space, at most 40.
+    const code = new RegExp(`^(?:${lot?.pattern})$`);
+    expect(['L-07', 'A'.repeat(40)].every((value) => code.test(value))).toBe(true);
+    expect(['L 07', 'Lé', 'A'.repeat(41)].some((value) => code.test(value))).toBe(false);
+  });
+
+  it('sends the lot a person named, and nothing of a lot nobody named', () => {
+    const base = { productId: 'p2', locationId: 'l2', quantity: '2' };
+    expect(
+      movementInput('receive', { ...base, lotCode: ' L-07 ', lotExpiresOn: '2027-05-31' }),
+    ).toEqual({ operation: 'receive', ...base, lotCode: 'L-07', lotExpiresOn: '2027-05-31' });
+    expect(movementInput('receive', { ...base, lotCode: '', lotExpiresOn: '' })).toEqual({
+      operation: 'receive',
+      ...base,
+    });
+    expect(
+      movementInput('move', {
+        ...base,
+        toLocationId: 'l1',
+        lotCode: 'L-07',
+        lotExpiresOn: '2027-05-31',
+      }),
+    ).toEqual({ operation: 'move', ...base, toLocationId: 'l1', lotCode: 'L-07' });
   });
 
   it('asks a move where the goods go, and offers every location for it', () => {

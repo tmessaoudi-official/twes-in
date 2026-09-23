@@ -1458,7 +1458,8 @@
         "kind": "Kind",
         "source": "Source",
         "lot": "Lot",
-        "useBy": "Use by"
+        "useBy": "Use by",
+        "serial": "Serial number"
       },
       "no_product_found": "No product found.",
       "product_hint": "Type the reference or the name; only products whose stock is kept are offered.",
@@ -1472,7 +1473,12 @@
         "receive": "The quantity received, in the product’s unit.",
         "count": "The quantity found; the difference from the stock is recorded, even when nil.",
         "move": "How much to move; it cannot be more than what is at the location it leaves."
-      }
+      },
+      "lot_hint": {
+        "lot": "As printed on the label; an unknown lot is opened on receipt.",
+        "serial": "One piece per number; it is in stock only once across the company."
+      },
+      "use_by_hint": "If the label carries one; a date other than the lot's own is refused."
     },
     "movements": {
       "title": "Stock movements",

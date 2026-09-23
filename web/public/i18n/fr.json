@@ -1458,7 +1458,8 @@
         "kind": "Nature",
         "source": "Origine",
         "lot": "Lot",
-        "useBy": "À utiliser avant"
+        "useBy": "À utiliser avant",
+        "serial": "Numéro de série"
       },
       "no_product_found": "Aucun produit trouvé.",
       "product_hint": "Tapez la référence ou le nom ; seuls les produits dont le stock est suivi sont proposés.",
@@ -1472,7 +1473,12 @@
         "receive": "La quantité reçue, dans l’unité du produit.",
         "count": "La quantité trouvée ; l’écart avec le stock est enregistré, même nul.",
         "move": "La quantité à déplacer ; elle ne peut pas dépasser ce qui se trouve à l’emplacement d’origine."
-      }
+      },
+      "lot_hint": {
+        "lot": "Tel qu'il est imprimé sur l'étiquette ; un lot inconnu est ouvert à la réception.",
+        "serial": "Une pièce par numéro ; il est en stock une seule fois dans l'entreprise."
+      },
+      "use_by_hint": "Si l'étiquette en porte une ; une date différente de celle du lot est refusée."
     },
     "movements": {
       "title": "Mouvements de stock",

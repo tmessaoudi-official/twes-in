@@ -92,6 +92,7 @@ export class InventoryApi {
         unitCode: product.unitCode,
         unitDecimals: product.unitDecimals,
         homeLocationId: product.homeLocationId ?? null,
+        tracking: product.tracking ?? 'none',
       }));
     });
   }

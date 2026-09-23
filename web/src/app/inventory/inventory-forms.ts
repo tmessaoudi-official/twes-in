@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { FieldValue, FormDescriptor, FormValues } from '../shared/form/form-types';
+import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
   STOCK_LOCATION_KINDS,
@@ -16,6 +16,7 @@ import {
   type StockMovementSortKey,
   type StockOperation,
   type StockOptions,
+  type StockProductOption,
   type StockSearch,
   type StockSortKey,
   type StockSourceType,
@@ -469,6 +470,7 @@ export function locationInput(values: FormValues): StockLocationInput {
 export function movementForm(
   operation: StockOperation,
   locations: readonly StockLocationRow[],
+  tracking: StockProductOption['tracking'] = 'none',
 ): FormDescriptor {
   return {
     id: `stock-${operation}`,
@@ -508,6 +510,7 @@ export function movementForm(
                 },
               ]
             : []),
+          ...lotFields(operation, tracking),
           {
             id: 'quantity',
             label: `${STOCK_FIELDS}.quantity`,
@@ -531,7 +534,47 @@ export function movementValues(locations: readonly StockLocationRow[]): FormValu
   const first = [...locationLabels(locations).keys()].find((id) => byId.get(id)?.isDefault);
   // Where a move goes is left empty on purpose: a default that happens to be where the goods already are would be
   // refused, and any other guess would be this screen choosing a destination nobody asked for.
-  return { productId: '', locationId: first ?? '', toLocationId: '', quantity: '' };
+  return {
+    productId: '',
+    locationId: first ?? '',
+    toLocationId: '',
+    quantity: '',
+    lotCode: '',
+    lotExpiresOn: '',
+  };
+}
+
+/**
+ * What a tracked product's movement names besides (docs/SPEC.md § 7, 2026-09-22 11:10): its lot, or its serial number,
+ * as a scanner can read it back — printable ASCII without a space, at most 40 (2026-09-23 04:10). A receipt or a count
+ * may be the first to meet a lot, so it may give its use-by day; a move takes goods of a lot that exists.
+ */
+function lotFields(
+  operation: StockOperation,
+  tracking: StockProductOption['tracking'],
+): FormField[] {
+  if (tracking === 'none') return [];
+  return [
+    {
+      id: 'lotCode',
+      label: `${STOCK_FIELDS}.${tracking}`,
+      kind: 'text',
+      required: true,
+      maxLength: 40,
+      pattern: '[!-~]{1,40}',
+      hint: `inventory.movement.lot_hint.${tracking}`,
+    },
+    ...(operation === 'move'
+      ? []
+      : [
+          {
+            id: 'lotExpiresOn',
+            label: `${STOCK_FIELDS}.useBy`,
+            kind: 'date',
+            hint: 'inventory.movement.use_by_hint',
+          } satisfies FormField,
+        ]),
+  ];
 }
 
 export function movementInput(operation: StockOperation, values: FormValues): StockMovementInput {
@@ -542,6 +585,11 @@ export function movementInput(operation: StockOperation, values: FormValues): St
     // Named only by a move: an empty one on a receipt is a claim about a location nobody chose, answered 422.
     ...(operation === 'move' ? { toLocationId: text(values['toLocationId']) } : {}),
     quantity: text(values['quantity']),
+    // Named only for a tracked product, whose form asked; a move never says a lot's date again.
+    ...(text(values['lotCode']) === '' ? {} : { lotCode: text(values['lotCode']) }),
+    ...(operation === 'move' || text(values['lotExpiresOn']) === ''
+      ? {}
+      : { lotExpiresOn: text(values['lotExpiresOn']) }),
   };
 }
 

@@ -218,7 +218,8 @@ final class InventoryTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $picks = $this->jsonList();
-        self::assertSame(['id', 'reference', 'name', 'unitCode', 'unitDecimals', 'homeLocationId'], array_keys($picks[0]));
+        self::assertSame(['id', 'reference', 'name', 'unitCode', 'unitDecimals', 'homeLocationId', 'tracking'], array_keys($picks[0]));
+        self::assertSame(['none'], array_column($picks, 'tracking'));
         self::assertSame(['ART-001'], array_column($picks, 'reference'), 'neither a service nor untracked goods');
         self::assertSame([['C62'], [0]], [array_column($picks, 'unitCode'), array_column($picks, 'unitDecimals')]);
 
@@ -236,6 +237,15 @@ final class InventoryTest extends ApiTestCase
             self::assertResponseIsSuccessful();
             self::assertCount(1, $this->jsonList(), 'what a movement names is answered whatever is kept of it now');
         }
+
+        // A receipt of a tracked product asks for its lot, so the picker says how the product is tracked.
+        $laptop = $this->em()->find(Product::class, $this->laptopId);
+        self::assertNotNull($laptop);
+        $laptop->track(ProductTracking::Lot, new \DateTimeImmutable());
+        $this->em()->flush();
+        $this->getJson($this->path('stock-options/products').'?ids[]='.$this->laptopId);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['lot'], array_column($this->jsonList(), 'tracking'));
     }
 
     public function testSomebodyWithoutTheStockPermissionDoesNotPickAProduct(): void

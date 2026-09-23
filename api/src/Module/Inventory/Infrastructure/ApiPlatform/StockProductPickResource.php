@@ -83,6 +83,14 @@ final class StockProductPickResource
     #[Groups([self::READ])]
     public ?string $homeLocationId = null;
 
+    /**
+     * How its stock is told apart (docs/SPEC.md § 7, 2026-09-22 11:10), so a receipt, a count or a move asks for the
+     * lot of a tracked product and nothing of an untracked one (2026-09-23 slice 7).
+     */
+    #[ApiProperty(schema: ['type' => 'string', 'enum' => ['none', 'lot', 'serial']])]
+    #[Groups([self::READ])]
+    public string $tracking = 'none';
+
     public static function of(Product $product, ?Uuid $homeLocationId = null): self
     {
         $resource = new self();
@@ -92,6 +100,7 @@ final class StockProductPickResource
         $resource->unitCode = $product->getUnit()->getCode();
         $resource->unitDecimals = $product->getUnit()->getDecimals();
         $resource->homeLocationId = $homeLocationId?->toRfc4122();
+        $resource->tracking = $product->getTracking()->value;
 
         return $resource;
     }
