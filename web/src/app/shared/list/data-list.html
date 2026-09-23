@@ -342,6 +342,7 @@
               *matCellDef="let row"
               class="truncate"
               [class]="column.align === 'end' ? '!text-end tabular-nums' : ''"
+              [attr.data-column]="column.id"
             >
               <!-- A real link, so a middle click, a copied address and a screen reader's list of links all work; an
                  (click) on the row gives none of those (design review finding 1). It WRAPS the cell rather than

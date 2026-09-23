@@ -241,7 +241,8 @@ async function retire(
 }
 
 /** The quantity column of a stock row: reference, product, location, quantity, unit. */
-const quantity = (row: Locator): Locator => row.getByRole('cell').nth(3);
+// By its column, not its position: a column added before it (the lot, 2026-09-23) moved every position after it.
+const quantity = (row: Locator): Locator => row.locator('[data-column="quantity"]');
 
 test('stock received at a location leaves with a validated delivery note and returns when it is cancelled', async ({
   page,

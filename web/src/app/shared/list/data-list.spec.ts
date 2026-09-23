@@ -318,6 +318,13 @@ describe('DataList', () => {
     expect(q('customers-table')).not.toBeNull();
     expect(headers()).toEqual(['name', 'city', 'balance', 'status']);
     expect(rowIds()).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
+    // Each cell names its column, so a reader finds a value by what it is rather than where it stands.
+    const cells = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll(
+        'tbody tr:first-child td[data-column]',
+      ),
+    ).map((cell) => cell.getAttribute('data-column'));
+    expect(cells).toEqual(['name', 'city', 'balance', 'status']);
   });
 
   it('renders a cell through the template the screen gave, and gives a list without actions no trailing column', () => {
