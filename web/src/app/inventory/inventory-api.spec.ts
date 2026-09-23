@@ -132,6 +132,7 @@ describe('InventoryApi', () => {
         unitCode: 'C62',
         unitDecimals: 0,
         homeLocationId: 'l2',
+        tracking: 'lot',
       },
     ]);
     // A product at home nowhere in particular — or in two places at once — comes without the field at all, and
@@ -144,6 +145,8 @@ describe('InventoryApi', () => {
         unitCode: 'C62',
         unitDecimals: 0,
         homeLocationId: null,
+        // An API that does not say how a product is tracked reads as untracked.
+        tracking: 'none',
       },
       {
         id: 'p2',
@@ -152,6 +155,7 @@ describe('InventoryApi', () => {
         unitCode: 'C62',
         unitDecimals: 0,
         homeLocationId: 'l2',
+        tracking: 'lot',
       },
     ]);
 
