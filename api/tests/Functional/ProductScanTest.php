@@ -127,7 +127,7 @@ final class ProductScanTest extends ApiTestCase
 
     /**
      * @param list<array<string, mixed>> $codes
-     * @param list<string>                $taxCodes the company's line taxes the product starts its lines with
+     * @param list<string>               $taxCodes the company's line taxes the product starts its lines with
      */
     private function aProductWith(array $codes, string $price = '10', array $taxCodes = []): string
     {

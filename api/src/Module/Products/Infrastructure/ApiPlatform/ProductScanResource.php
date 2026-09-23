@@ -13,8 +13,8 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\QueryParameter;
-use App\Module\Products\Domain\Gs1Scan;
 use App\Module\Products\Application\CustomerPrice;
+use App\Module\Products\Domain\Gs1Scan;
 use App\Module\Products\Domain\ProductBarcode;
 use Symfony\Component\Serializer\Attribute\Groups;
 
