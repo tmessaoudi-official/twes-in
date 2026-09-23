@@ -175,4 +175,40 @@ describe('ProductBarcodesSection', () => {
     expect(q('product-barcodes-save')).toBeNull();
     expect(q('product-barcodes-readonly')?.textContent).toContain('3017620422003');
   });
+
+  it('lists a code a scan card sent here as a row waiting to be saved, and only once', async () => {
+    fixture = TestBed.createComponent(ProductBarcodesSection);
+    fixture.componentRef.setInput('productId', 'p1');
+    fixture.componentRef.setInput('saved', [unit]);
+    fixture.componentRef.setInput('adding', '5449000000996');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(codes()).toEqual(['3017620422003', '5449000000996']);
+    expect(facade.save).not.toHaveBeenCalled();
+    expect((q('product-barcodes-save') as HTMLButtonElement).disabled).toBe(false);
+
+    // A code the product already holds is pointed at, not listed twice.
+    fixture.componentRef.setInput('adding', '03017620422003');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(codes()).toEqual(['3017620422003']);
+  });
+
+  it('adds nothing sent here for somebody who may only read the codes', async () => {
+    fixture = TestBed.createComponent(ProductBarcodesSection);
+    fixture.componentRef.setInput('productId', 'p1');
+    fixture.componentRef.setInput('saved', [unit]);
+    fixture.componentRef.setInput('readOnly', true);
+    fixture.componentRef.setInput('adding', '5449000000996');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const shown = fixture.nativeElement.textContent as string;
+    expect(shown).toContain('3017620422003');
+    expect(shown).not.toContain('5449000000996');
+  });
 });

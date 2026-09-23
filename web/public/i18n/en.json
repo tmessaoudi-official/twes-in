@@ -1391,8 +1391,13 @@
         "sheet": "Record",
         "codes": "Barcodes",
         "movements": "Movements",
-        "search": "Search the catalogue"
-      }
+        "search": "Search the catalogue",
+        "invoice": "New invoice",
+        "delivery_note": "New delivery note",
+        "create": "Create the product",
+        "attach": "Add to a product"
+      },
+      "attach_label": "Product to add this code to"
     }
   },
   "inventory": {

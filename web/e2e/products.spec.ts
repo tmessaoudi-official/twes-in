@@ -265,6 +265,37 @@ test('a product is given its codes by scanning them, and a code finds it', async
     );
     await expect(page.getByTestId('product-barcode-code-1')).toHaveValue(pack);
 
+    // From the card, one key starts an invoice with the product scanned: the carton enters its twelve on the first line.
+    await page.goto('/products');
+    await expect(page.getByTestId('list-filter')).toBeVisible();
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await scanned(page, pack);
+    await expect(page.getByTestId('product-scan-action-invoice')).toBeVisible();
+    await page.keyboard.press('i');
+    await expect(page).toHaveURL(/\/invoices\/new$/);
+    await expect(page.getByTestId('line-0-description')).toHaveValue(`Vis SCAN-${run}`);
+    await expect(page.getByTestId('line-0-quantity')).toHaveValue('12');
+    await expect(page.getByTestId('line-1')).toHaveCount(0);
+
+    // A code nobody holds: Enter creates the product it names, which then lists the code, waiting to be saved.
+    const fresh = `NEW-${run}`;
+    await page.goto('/products');
+    await expect(page.getByTestId('list-filter')).toBeVisible();
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await scanned(page, fresh);
+    await expect(page.getByTestId('product-scan-none')).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(new RegExp(`/products/new\\?barcode=${fresh}$`));
+    await page.getByTestId('field-reference').fill(fresh);
+    await page.getByTestId('field-name').fill(`Vis ${fresh}`);
+    await page.getByTestId('field-unitPriceNet').fill('1');
+    await page.getByTestId('record-save').click();
+    await expect(page).toHaveURL(new RegExp(`/products/[^/?]+\\?tab=codes&add=${fresh}$`));
+    ids.push(new URL(page.url()).pathname.split('/').at(-1)!);
+    await expect(page.getByTestId('product-barcode-code-0')).toHaveValue(fresh);
+    await page.getByTestId('product-barcodes-save').click();
+    await expect(toast(page)).toContainText('Codes enregistrés.');
+
     // Scanned into an invoice line, the carton puts its product on the line and enters the twelve it holds; scanned
     // over, a line takes the other product, as a person correcting a wrong scan does.
     await page.goto('/invoices/new');

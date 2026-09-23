@@ -80,4 +80,13 @@
     </div>
     <p class="m-0 text-xs opacity-80">{{ 'products.scan.hint' | translate }}</p>
   }
+
+  @if (attaching()) {
+    <app-pick-field
+      testId="product-scan-attach"
+      [label]="'products.scan.attach_label' | translate"
+      [search]="searchProducts"
+      (picked)="attachTo($event)"
+    />
+  }
 </section>

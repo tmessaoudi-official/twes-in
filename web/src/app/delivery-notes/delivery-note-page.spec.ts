@@ -600,6 +600,32 @@ describe('DeliveryNotePage', () => {
 
     beforeEach(() => granted.add('product.read'));
 
+    it('starts a new document with the product a scan card sent here, once', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      scans.named.mockResolvedValue(laptop);
+      fixture = TestBed.createComponent(DeliveryNotePage);
+      fixture.componentRef.setInput('scan', '3017620422003');
+      await settle();
+      await vi.waitFor(() => expect(scans.named).toHaveBeenCalledWith('3017620422003'));
+      await settle();
+
+      expect((q('line-0-description') as HTMLInputElement).value).toBe('Portable 14"');
+      expect(q('line-1')).toBeNull();
+      // The address forgets the scan, so a reload does not add it again.
+      expect(navigate).toHaveBeenCalledWith(
+        [],
+        expect.objectContaining({ queryParams: { scan: null } }),
+      );
+      await settle();
+      expect(scans.named).toHaveBeenCalledTimes(1);
+
+      // Another code sent to the same page is played too.
+      fixture.componentRef.setInput('scan', undefined);
+      await settle();
+      fixture.componentRef.setInput('scan', '5449000000996');
+      await vi.waitFor(() => expect(scans.named).toHaveBeenLastCalledWith('5449000000996'));
+    });
+
     it('counts a product already on a draft line, and starts a line for another', async () => {
       note.set(draft);
       await open('n1');

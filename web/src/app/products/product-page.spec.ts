@@ -181,6 +181,27 @@ describe('ProductPage', () => {
     expect(q('product-title')?.getAttribute('aria-hidden')).toBeNull();
   });
 
+  it('creates the product a scanned code names, then opens its codes with that code listed', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture = TestBed.createComponent(ProductPage);
+    fixture.componentRef.setInput('barcode', '5449000000996');
+    await settle();
+
+    type('field-reference', 'ART-010');
+    type('field-name', 'Soda');
+    type('field-unitPriceNet', '2');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith(['/products', 'p9'], {
+        replaceUrl: true,
+        queryParams: { tab: 'codes', add: '5449000000996' },
+      }),
+    );
+  });
+
   it('creates a product in the preselected unit, then opens it by its identifier', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);

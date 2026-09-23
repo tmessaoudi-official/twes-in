@@ -66,6 +66,10 @@ export class ProductPage {
   readonly productId = input<string | undefined>(undefined);
   /** `?tab=codes` opens the product on its codes: where a scan's card sends a person. */
   readonly tab = input<string | undefined>(undefined);
+  /** `?barcode=` on a new product: the code a scan card found nobody holding, listed on its codes once it exists. */
+  readonly barcode = input<string | undefined>(undefined);
+  /** `?add=` on a product: a code a scan card sent to be added, listed on its codes waiting to be saved. */
+  readonly add = input<string | undefined>(undefined);
 
   protected readonly id = computed(() => this.productId() ?? null);
   protected readonly busy = this.facade.busy;
@@ -241,7 +245,13 @@ export class ProductPage {
         // It exists now: going to it is not leaving unsaved work, though the form still holds what was
         // typed and the record holds what the API answered (row 45's leave guard, 2026-09-20).
         this.unsaved.savedAndLeaving();
-        await this.router.navigate(['/products', created.id], { replaceUrl: true });
+        const barcode = this.barcode();
+        await this.router.navigate(
+          ['/products', created.id],
+          barcode === undefined
+            ? { replaceUrl: true }
+            : { replaceUrl: true, queryParams: { tab: 'codes', add: barcode } },
+        );
       }
     } else if ((await this.facade.reviseProduct(companyId, id, input)) !== null) {
       const form = this.form();

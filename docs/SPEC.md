@@ -2348,6 +2348,14 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   forgets it. A scan that changed a document says so in a toast with "Annuler" for eight seconds, and Ctrl Z outside a
   field takes back the latest scan still standing; the undo leaves a quantity somebody retyped since alone. The last
   twenty scans are kept in memory for the log panel, which comes later.
+- [2026-09-23 10:42] TAKEN OVERNIGHT (standing instruction, to confirm): slice 2, the generic actions. The card of a
+  known product still sold adds "Nouvelle facture" (I) and "Nouveau bon de livraison" (L), for somebody who may write
+  them: the new document plays the scan itself (`?scan=`), so a pack enters its count by the till's rule. A code nobody
+  holds offers, to somebody who may write the products, "Créer l'article" first (Enter; after saving, the product opens
+  on its codes with the code listed, waiting to be saved) and "Ajouter à un article" (A: a picker of the products still
+  sold, then the chosen product's codes with the code listed), then the catalogue search. No purchase order yet: that
+  module does not exist. Adding the code is never saved without the person's own save, so the role (unit, pack) is
+  theirs to set.
 
 ## 8. Status
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { provideRouter, Router } from '@angular/router';
 import {
@@ -37,6 +38,7 @@ const pack: ProductScan = {
 describe('ProductScanCard', () => {
   const close = vi.fn();
   const scan = vi.fn();
+  const products = vi.fn();
   const modules = new Set(['products', 'inventory']);
   const permissions = new Set(['product.read', 'stock.read']);
   const auth = {
@@ -67,6 +69,7 @@ describe('ProductScanCard', () => {
   beforeEach(() => {
     close.mockReset();
     scan.mockReset().mockResolvedValue(pack);
+    products.mockReset().mockResolvedValue({ rows: [], total: 0 });
     modules.clear();
     ['products', 'inventory'].forEach((module) => modules.add(module));
     permissions.clear();
@@ -79,8 +82,9 @@ describe('ProductScanCard', () => {
         provideTranslateLoader(StaticLoader),
         { provide: MAT_DIALOG_DATA, useValue: { code: '' } },
         { provide: MatDialogRef, useValue: { close } },
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: AuthFacade, useValue: auth },
-        { provide: ProductsApi, useValue: { scan } },
+        { provide: ProductsApi, useValue: { scan, products } },
         { provide: FormatFacade, useValue: { day: (value: string) => value } },
       ],
     });
@@ -145,5 +149,79 @@ describe('ProductScanCard', () => {
 
     expect(q('product-scan-failed')?.textContent).toContain('products.errors.network');
     expect(q('product-scan-none')).toBeNull();
+  });
+
+  it('starts an invoice or a delivery note with the product scanned, for somebody who may write them', async () => {
+    ['invoices', 'delivery_notes'].forEach((module) => modules.add(module));
+    ['invoice.write', 'delivery_note.write'].forEach((permission) => permissions.add(permission));
+    await open();
+
+    press('i');
+    expect(navigate).toHaveBeenLastCalledWith('/invoices/new?scan=%5DC10113017620422000');
+    press('l');
+    expect(navigate).toHaveBeenLastCalledWith('/delivery-notes/new?scan=%5DC10113017620422000');
+  });
+
+  it('offers no new document without its module or the right to write it', async () => {
+    modules.add('invoices');
+    permissions.add('delivery_note.write');
+    await open();
+
+    expect(q('product-scan-action-invoice')).toBeNull();
+    expect(q('product-scan-action-delivery_note')).toBeNull();
+  });
+
+  it('offers no new document for a product no longer sold', async () => {
+    modules.add('invoices');
+    permissions.add('invoice.write');
+    scan.mockResolvedValue({ ...pack, isActive: false });
+    await open();
+
+    expect(q('product-scan-action-invoice')).toBeNull();
+    expect(q('product-scan-action-sheet')).not.toBeNull();
+  });
+
+  it('offers to create the product a code nobody holds names, first, or to add the code to one', async () => {
+    permissions.add('product.write');
+    scan.mockResolvedValue(null);
+    products.mockResolvedValue({
+      rows: [{ id: 'p9', reference: 'VIS-6', name: 'Vis 6x40' }],
+      total: 1,
+    });
+    await open('ABC 12');
+
+    press('Enter');
+    expect(navigate).toHaveBeenLastCalledWith('/products/new?barcode=ABC%2012');
+
+    press('a');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const input = q('product-scan-attach') as HTMLInputElement;
+    expect(input).not.toBeNull();
+    // The picker takes the keyboard at once: the next keys are the product's words.
+    expect(document.activeElement).toBe(input);
+    // Letters typed into the picker are the search, not the card's keys.
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'r', bubbles: true }));
+    expect(navigate).toHaveBeenCalledTimes(1);
+    input.dispatchEvent(new Event('focusin'));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const option = Array.from(document.body.querySelectorAll<HTMLElement>('mat-option')).find(
+      (each) => each.textContent?.includes('Vis 6x40'),
+    );
+    option!.click();
+    await fixture.whenStable();
+
+    expect(products).toHaveBeenCalledWith('c1', expect.objectContaining({ isActive: true }));
+    expect(navigate).toHaveBeenLastCalledWith('/products/p9?tab=codes&add=ABC%2012');
+  });
+
+  it('offers neither to create nor to add a code to somebody who may not write the products', async () => {
+    scan.mockResolvedValue(null);
+    await open('ABC 12');
+
+    expect(q('product-scan-action-create')).toBeNull();
+    expect(q('product-scan-action-attach')).toBeNull();
+    expect(q('product-scan-action-search')).not.toBeNull();
   });
 });

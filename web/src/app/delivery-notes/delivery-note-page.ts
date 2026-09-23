@@ -94,6 +94,11 @@ export class DeliveryNotePage {
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `delivery-notes/new`. */
   readonly deliveryNoteId = input<string | undefined>(undefined);
+  /**
+   * `?scan=` on a new document: a code a scan card sent here, played once as a scan of this page, so the product lands
+   * on the first line by the same rule as any scan — a pack enters its count (docs/SPEC.md § 7, 2026-09-23, slice 2).
+   */
+  readonly scan = input<string | undefined>(undefined);
 
   protected readonly id = computed(() => this.deliveryNoteId() ?? null);
   protected readonly scale = computed(() => this.options()?.currencyScale ?? null);
@@ -361,7 +366,23 @@ export class DeliveryNotePage {
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45): one
     // declaration, so an action cannot be offered in one of them and missing from another.
     inject(ScreenActions).declare(this.actions);
-    inject(ScanBus).handle((scan) => this.scanned(scan));
+    const scans = inject(ScanBus);
+    scans.handle((scan) => this.scanned(scan));
+    effect(() => {
+      // Played once per code: the address then forgets it. Lines drawn again from scratch before that happens take
+      // it again, which is right, since the lines it went onto are gone.
+      const code = this.scan();
+      if (code === undefined || this.id() !== null || this.lines() === null) return;
+      untracked(() => {
+        void scans.receive(code, 'wedge');
+        // The address forgets it, so a reload does not add the product a second time.
+        void this.router.navigate([], {
+          queryParams: { scan: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+      });
+    });
     effect(() => {
       const companyId = this.company()?.id;
       const id = this.id();

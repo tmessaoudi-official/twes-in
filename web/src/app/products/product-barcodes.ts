@@ -53,6 +53,8 @@ export class ProductBarcodesSection implements OnInit {
   /** What the API holds for the product. */
   readonly saved = input.required<readonly ProductBarcode[]>();
   readonly readOnly = input(false);
+  /** A code a scan card sent here to be added (`?add=`), listed as a new row the person saves like any other. */
+  readonly adding = input<string | undefined>(undefined);
 
   protected readonly busy = this.facade.busy;
   protected readonly suppliers = this.facade.suppliers;
@@ -64,10 +66,18 @@ export class ProductBarcodesSection implements OnInit {
    * What the saved list SAYS, so a reload answering the same codes as new objects keeps what is being typed
    * (CLAUDE.md lesson, 2026-09-14): only another product or a different saved list starts the rows again.
    */
-  private readonly savedKey = computed(() => `${this.productId()}|${JSON.stringify(this.saved())}`);
+  private readonly savedKey = computed(
+    () => `${this.productId()}|${JSON.stringify(this.saved())}|${this.adding() ?? ''}`,
+  );
   protected readonly rows = linkedSignal<string, ProductBarcode[]>({
     source: this.savedKey,
-    computation: () => untracked(() => this.saved().map((row) => ({ ...row }))),
+    computation: () =>
+      untracked(() => {
+        const saved = this.saved().map((row) => ({ ...row }));
+        const adding = this.adding();
+        // Read-only, the section shows what is saved and never these rows.
+        return adding === undefined ? saved : addScanned(saved, adding).rows;
+      }),
   });
 
   /** The supplier's role is offered only where there is somebody to name. */

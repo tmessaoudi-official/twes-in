@@ -1391,8 +1391,13 @@
         "sheet": "Fiche",
         "codes": "Codes-barres",
         "movements": "Mouvements",
-        "search": "Chercher dans le catalogue"
-      }
+        "search": "Chercher dans le catalogue",
+        "invoice": "Nouvelle facture",
+        "delivery_note": "Nouveau bon de livraison",
+        "create": "Créer l’article",
+        "attach": "Ajouter à un article"
+      },
+      "attach_label": "Article auquel ajouter ce code"
     }
   },
   "inventory": {
