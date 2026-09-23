@@ -23,6 +23,7 @@ import {
 import { DeliveryNotePage } from './delivery-note-page';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 import { ProductScans } from '../products/product-scans';
+import { ScanBus } from '../shared/scan/scan-bus';
 import type {
   CustomerOption,
   DeliveryNoteOptions,
@@ -141,7 +142,7 @@ describe('DeliveryNotePage', () => {
     pdfUrl: (companyId: string, id: string) =>
       `/api/companies/${companyId}/delivery-notes/${id}/pdf`,
   };
-  const scans = { piecesPerScan: vi.fn() };
+  const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
   const granted = new Set<string>();
   const modules = new Set<string>(['delivery_notes', 'invoices']);
   const auth = {
@@ -205,6 +206,7 @@ describe('DeliveryNotePage', () => {
 
   beforeEach(() => {
     scans.piecesPerScan.mockReset().mockResolvedValue(null);
+    scans.named.mockReset().mockResolvedValue(null);
     error.set(null);
     note.set(null);
     granted.clear();
@@ -577,5 +579,63 @@ describe('DeliveryNotePage', () => {
     granted.delete('invoice.write');
     await open('n1');
     expect(q('document-action-invoice')).toBeNull();
+  });
+
+  describe('a scan on the screen', () => {
+    const laptop = {
+      productId: 'p1',
+      reference: 'ART-1',
+      name: 'Portable 14"',
+      isActive: true,
+      code: '3017620422003',
+      role: 'unit' as const,
+      quantity: 1,
+      lot: null,
+      useBy: null,
+      serial: null,
+    };
+    const scanned = (code: string) => TestBed.inject(ScanBus).receive(code, 'wedge');
+    const quantityOf = (line: number) =>
+      (q(`line-${line}-quantity`) as HTMLInputElement | null)?.value ?? null;
+
+    beforeEach(() => granted.add('product.read'));
+
+    it('counts a product already on a draft line, and starts a line for another', async () => {
+      note.set(draft);
+      await open('n1');
+      scans.named.mockResolvedValueOnce(laptop);
+
+      expect(await scanned('3017620422003')).toMatchObject({
+        kind: 'done',
+        key: 'scan.incremented',
+      });
+      await settle();
+      expect(quantityOf(0)).toBe('3');
+
+      scans.named.mockResolvedValueOnce({ ...laptop, productId: 'p2', name: 'Souris' });
+      facade.pickProducts.mockResolvedValueOnce([
+        {
+          id: 'p2',
+          reference: 'SOU-1',
+          name: 'Souris',
+          unitId: 'u1',
+          unitPriceNet: '30.0000',
+          defaultTaxComponentIds: [],
+        },
+      ]);
+      expect(await scanned('5449000000996')).toMatchObject({ kind: 'done', key: 'scan.added' });
+      await settle();
+      expect(quantityOf(1)).toBe('1');
+      expect((q('line-1-description') as HTMLInputElement).value).toBe('Souris');
+    });
+
+    it('leaves a scan to the card once the note is validated', async () => {
+      note.set(validated);
+      await open('n1');
+      scans.named.mockResolvedValue(laptop);
+
+      expect(await scanned('3017620422003')).toEqual({ kind: 'unclaimed' });
+      expect(scans.named).not.toHaveBeenCalled();
+    });
   });
 });

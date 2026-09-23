@@ -6,11 +6,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MAT_SNACK_BAR_DATA, MatSnackBarRef } from '@angular/material/snack-bar';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../a11y/label';
+import type { FeedbackAction } from './feedback';
 
 export interface ToastData {
   readonly kind: 'success' | 'notice' | 'failure';
   readonly key: string;
   readonly params: Record<string, unknown>;
+  readonly action?: FeedbackAction;
 }
 
 /** One outcome, said in a line: its icon, its message and a way to close it. */
@@ -23,6 +25,11 @@ export interface ToastData {
         data.kind === 'success' ? 'check_circle' : data.kind === 'notice' ? 'sync' : 'error'
       }}</mat-icon>
       <span class="twes-toast-message">{{ data.key | translate: data.params }}</span>
+      @if (data.action; as action) {
+        <button mat-button type="button" (click)="act(action)" data-testid="toast-action">
+          {{ action.key | translate }}
+        </button>
+      }
       <button
         mat-icon-button
         type="button"
@@ -39,4 +46,9 @@ export interface ToastData {
 export class Toast {
   protected readonly data = inject<ToastData>(MAT_SNACK_BAR_DATA);
   protected readonly ref = inject(MatSnackBarRef);
+
+  protected act(action: FeedbackAction): void {
+    action.run();
+    this.ref.dismiss();
+  }
 }

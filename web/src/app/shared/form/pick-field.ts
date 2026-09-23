@@ -64,7 +64,7 @@ export const PICK_PAUSE_MS = 300;
         [attr.data-testid]="testId()"
         [attr.aria-describedby]="hint() === '' ? null : testId() + '-hint'"
         autocomplete="off"
-        (input)="clocked()"
+        (input)="clocked($event)"
         (keydown.enter)="resolve($event)"
         (blur)="scanning.set(false)"
       />
@@ -197,8 +197,10 @@ export class PickField {
    * is about to arrive. With the list empty and "none of them" hidden, there is no row held ready for it, so the
    * answer comes from `resolve` below and never from a leftover.
    */
-  protected clocked(): void {
-    const now = Date.now();
+  protected clocked(event: Event): void {
+    // When the key was typed, not when this ran: a page busy for a moment delivers a scanner's keys late and together,
+    // and reading the clock here would split one burst into two at that moment.
+    const now = event.timeStamp;
     const gap = now - this.lastKeyAt;
     this.lastKeyAt = now;
     this.scanning.set(gap < SCAN_GAP_MS);

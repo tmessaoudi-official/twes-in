@@ -29,8 +29,14 @@ import {
   deliveryNoteInput,
   deliveryNoteValues,
   linesArray,
+  type LineGroup,
+  lineGroup,
+  applyProduct,
   pickedCustomer,
 } from './delivery-note-forms';
+import { ProductScans } from '../products/product-scans';
+import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
+import { placedOutcome, scanIntoLines } from '../shared/scan/scan-lines';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { DeliveryNoteLines } from './delivery-note-lines';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
@@ -84,6 +90,7 @@ export class DeliveryNotePage {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
+  private readonly productScans = inject(ProductScans);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `delivery-notes/new`. */
   readonly deliveryNoteId = input<string | undefined>(undefined);
@@ -308,10 +315,53 @@ export class DeliveryNotePage {
     return (status === 'draft' || status === 'validated') && this.mayValidate();
   });
 
+  /**
+   * A scan on a draft puts its product on the lines as a till does (docs/SPEC.md § 7, 2026-09-23 09:30), the same
+   * rule the invoice follows. Anywhere else the card of what it names takes the scan.
+   */
+  private async scanned(scan: Scan): Promise<ScanOutcome> {
+    const lines = this.lines();
+    const options = this.options();
+    const companyId = this.company()?.id;
+    if (
+      !this.editable() ||
+      !this.auth.hasPermission('product.read') ||
+      lines === null ||
+      options === null ||
+      !companyId
+    ) {
+      return { kind: 'unclaimed' };
+    }
+    const named = await this.productScans.named(scan.code);
+    if (named === null) return { kind: 'unclaimed' };
+    if (!named.isActive)
+      return { kind: 'refused', key: 'scan.retired', params: { name: named.name } };
+    const [product] = await this.facade.pickProducts(companyId, { ids: [named.productId] });
+    if (product === undefined) return { kind: 'unclaimed' };
+
+    const excluded = this.excludedFamilies();
+    const placed = scanIntoLines<LineGroup>(
+      lines,
+      (line) => line.controls,
+      {
+        productId: product.id,
+        unitId: product.unitId,
+        count: Math.max(named.quantity, 1) * scan.times,
+      },
+      () => {
+        const line = lineGroup(null, options);
+        applyProduct(line, product, options, excluded);
+        return line;
+      },
+    );
+    return placedOutcome(placed, product.name);
+  }
+
   constructor() {
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45): one
     // declaration, so an action cannot be offered in one of them and missing from another.
     inject(ScreenActions).declare(this.actions);
+    inject(ScanBus).handle((scan) => this.scanned(scan));
     effect(() => {
       const companyId = this.company()?.id;
       const id = this.id();

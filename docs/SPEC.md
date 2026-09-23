@@ -2339,6 +2339,15 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   price-check screen and a customer display; (7) lots on the web; (8) a stock count mode, location labels and printed
   product labels; (9) QR codes on our own documents; (10) the lot and serial recall search; (11) weighed-item barcodes
   and customer card scans. Purchase orders stay their own module.
+- [2026-09-23 10:15] TAKEN OVERNIGHT (standing instruction, to confirm): slice 1's edges. Every scan, whatever read it,
+  goes through one queue, one at a time in arrival order, to the screen on view when it acts on scans and otherwise to
+  the product card. A draft invoice or delivery note acts on it; an issued document, somebody without `product.read`
+  or a code no product holds leaves it to the card (not refused: the card is the useful answer there); a retired
+  product is refused, said in a toast. A scan into a focused field stays the field's. A count is digits typed by hand
+  then `*`, `x` or `×`, 1 to 9999, within two seconds; a chip shows it until the scan takes it, Escape or a click
+  forgets it. A scan that changed a document says so in a toast with "Annuler" for eight seconds, and Ctrl Z outside a
+  field takes back the latest scan still standing; the undo leaves a quantity somebody retyped since alone. The last
+  twenty scans are kept in memory for the log panel, which comes later.
 
 ## 8. Status
 

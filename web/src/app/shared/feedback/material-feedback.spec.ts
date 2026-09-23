@@ -8,7 +8,12 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
-import { MaterialFeedback, NOTICE_DURATION_MS, SUCCESS_DURATION_MS } from './material-feedback';
+import {
+  ACTION_DURATION_MS,
+  MaterialFeedback,
+  NOTICE_DURATION_MS,
+  SUCCESS_DURATION_MS,
+} from './material-feedback';
 import { Toast } from './toast';
 
 class StaticLoader implements TranslateLoader {
@@ -17,6 +22,7 @@ class StaticLoader implements TranslateLoader {
       saved: 'Client enregistré : {{name}}',
       refused: 'Suppression impossible',
       feedback: { close: 'Fermer' },
+      undo: 'Annuler',
     });
   }
 }
@@ -68,6 +74,21 @@ describe('MaterialFeedback', () => {
     expect(NOTICE_DURATION_MS).toBeGreaterThan(SUCCESS_DURATION_MS);
     expect(config?.data).toEqual({ kind: 'notice', key: 'saved', params: { name: 'Acme' } });
     expect(config?.panelClass).toContain('twes-toast-notice');
+  });
+
+  it('offers a success its one follow-up, runs it once and closes', async () => {
+    const run = vi.fn();
+    TestBed.inject(MaterialFeedback).success('saved', { name: 'Acme' }, { key: 'undo', run });
+    await vi.waitFor(() =>
+      expect(document.querySelector('[data-testid="toast-action"]')).not.toBeNull(),
+    );
+    const button = document.querySelector<HTMLButtonElement>('[data-testid="toast-action"]');
+
+    expect(button?.textContent?.trim()).toBe('Annuler');
+    expect(ACTION_DURATION_MS).toBeGreaterThan(SUCCESS_DURATION_MS);
+    button?.click();
+    expect(run).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(document.querySelector('[data-testid="toast"]')).toBeNull());
   });
 
   it('shows the translated message with a named way to close it', async () => {

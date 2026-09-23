@@ -49,6 +49,8 @@ import { SchemeMenu } from '../shared/theme/scheme-menu';
 import { type SchemePreference, ThemeFacade } from '../shared/theme/theme-facade';
 import { ProductScanCard, type ProductScanCardData } from '../products/product-scan-card';
 import { PRODUCTS_MODULE } from '../products/products-nav';
+import { ScanBus } from '../shared/scan/scan-bus';
+import { ScanCount } from '../shared/scan/scan-count';
 import { SCAN_GAP_MS, ScanWedge } from '../shared/scan/scan-wedge';
 import { CommandPalette, type CommandPaletteData } from './command-palette';
 import { type Command, MODULE_COMMANDS, navCommands, screenCommands } from './commands';
@@ -125,6 +127,10 @@ export class AppShell {
   private shortcutsOpen = false;
   private scanOpen = false;
   private readonly wedge = new ScanWedge();
+  private readonly scans = inject(ScanBus);
+  private readonly count = new ScanCount();
+  /** The count typed for the next scan ("5×"), shown until that scan takes it. */
+  protected readonly scanCount = this.scans.multiplier;
   /** A screen shortcut waiting out the scan gap before it runs; see `onKeydown`. */
   private heldShortcut: ReturnType<typeof setTimeout> | null = null;
   private readonly activity = inject(RequestActivity);
@@ -200,6 +206,8 @@ export class AppShell {
   constructor() {
     // A shortcut still held when the shell goes (signing out) belongs to a screen that is gone with it.
     inject(DestroyRef).onDestroy(() => this.dropHeldShortcut());
+    // A scan no screen acts on opens the card of what it names.
+    this.scans.fallback((scan) => this.openScan(scan.code));
     // A session that ended while the page was open (expired, or ended from another device) sends the person back to
     // sign in with a word of why, instead of leaving every screen failing one request at a time. A refusal that landed
     // after the last redirect, while no shell was open, belongs to that ended session and must not eject a new one.
@@ -253,14 +261,44 @@ export class AppShell {
     if (reading.code !== null || reading.claimed) {
       // The key before this one was the first of a scanned code, not a shortcut: what it would have run never runs.
       this.dropHeldShortcut();
+      this.count.reset();
       event.preventDefault();
-      if (reading.code !== null) this.openScan(reading.code);
+      // The screen on view acts on it when it can (an invoice adds a line); otherwise the card opens.
+      if (reading.code !== null) void this.scans.receive(reading.code, 'wedge');
       return;
     }
 
     // Everything below is a bare character, so it is a letter wherever a person is writing and while an overlay
     // owns the keyboard. One check, before the keys themselves, rather than one per key.
-    if (isTypingTarget(event.target)) return;
+    if (isTypingTarget(event.target)) {
+      this.count.reset();
+      return;
+    }
+
+    // Ctrl Z outside a field takes back the latest scan, as a till's correction key does.
+    if (
+      event.key.toLowerCase() === 'z' &&
+      !event.defaultPrevented &&
+      (event.metaKey || (event.ctrlKey && !event.altKey)) &&
+      this.scans.undoLast()
+    ) {
+      event.preventDefault();
+      return;
+    }
+
+    // "5×" typed before a scan makes it count five (docs/SPEC.md § 7, 2026-09-23 09:30); Escape forgets the count.
+    if (isBareKeystroke(event)) {
+      const count = this.count.read(event.key, event.timeStamp);
+      if (count !== null) {
+        event.preventDefault();
+        this.scans.multiplier.set(count);
+        return;
+      }
+    }
+    if (event.key === 'Escape' && this.scans.multiplier() !== null) {
+      this.scans.multiplier.set(null);
+      return;
+    }
 
     if (matchesShortcut(event, '?')) {
       event.preventDefault();
@@ -308,6 +346,10 @@ export class AppShell {
       .open(ShortcutsSheet, { width: 'min(32rem, calc(100vw - 2rem))', autoFocus: 'dialog' })
       .afterClosed()
       .subscribe(() => (this.shortcutsOpen = false));
+  }
+
+  protected clearScanCount(): void {
+    this.scans.multiplier.set(null);
   }
 
   /** The card of what a scan names, for somebody who may read the products; one at a time. */

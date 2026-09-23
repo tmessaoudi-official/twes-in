@@ -244,6 +244,35 @@ describe('PickField', () => {
   });
 
   /**
+   * A page busy for a moment (rendering a list) delivers a scanner's keys late and together. They are timed by when
+   * they were typed, which each event carries, not by when the field got to them: read the second way, the moment the
+   * page was busy splits one scan into two and the Enter lands as a person's.
+   */
+  it('reads a burst the page delivered late as one scan, by when its keys were typed', async () => {
+    host.answer = [SCREW];
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+    input.dispatchEvent(new Event('focusin'));
+    const typedAt = performance.now();
+    const code = '6191234567897';
+    for (let at = 1; at <= code.length; at += 1) {
+      // The page was busy for 100 ms before the last key: the gap the field decides on.
+      if (at === code.length) vi.advanceTimersByTime(100);
+      input.value = code.slice(0, at);
+      const typed = new Event('input');
+      Object.defineProperty(typed, 'timeStamp', { value: typedAt + at });
+      input.dispatchEvent(typed);
+    }
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, cancelable: true });
+    input.dispatchEvent(enter);
+    await settle();
+    await Promise.resolve();
+    await settle();
+
+    expect(enter.defaultPrevented).toBe(true);
+    expect(host.scans).toEqual([code]);
+  });
+
+  /**
    * A scan right after the field is focused: the question the focus asked (no words) answers in the middle of the
    * burst. Its rows belong to before the scan, and the Enter must not take the first of them.
    */

@@ -24,6 +24,7 @@ import {
 import { InvoicePage } from './invoice-page';
 import { InvoicesFacade } from './invoices-facade';
 import { ProductScans } from '../products/product-scans';
+import { ScanBus } from '../shared/scan/scan-bus';
 import type {
   CustomerOption,
   InvoiceOptions,
@@ -226,7 +227,7 @@ describe('InvoicePage', () => {
     clearError: vi.fn(),
     pdfUrl: (companyId: string, id: string) => `/api/companies/${companyId}/invoices/${id}/pdf`,
   };
-  const scans = { piecesPerScan: vi.fn() };
+  const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
   const granted = new Set<string>();
   const auth = {
     me: () => ({
@@ -304,6 +305,7 @@ describe('InvoicePage', () => {
     facade.pickCustomers.mockClear();
     facade.pickProducts.mockClear();
     scans.piecesPerScan.mockReset().mockResolvedValue(null);
+    scans.named.mockReset().mockResolvedValue(null);
     facade.create.mockReset().mockResolvedValue({ ...draft, id: 'i9' });
     facade.revise.mockReset().mockResolvedValue(draft);
     facade.reviseAndIssue.mockReset().mockResolvedValue(issued);
@@ -745,5 +747,107 @@ describe('InvoicePage', () => {
     invoice.set(draft);
     await open('i1');
     expect(text('invoice-error')).toContain('Refusé.');
+  });
+
+  describe('a scan on the screen', () => {
+    const coffee = {
+      productId: 'p1',
+      reference: 'ART-1',
+      name: 'Conception',
+      isActive: true,
+      code: '3017620422003',
+      role: 'unit' as const,
+      quantity: 1,
+      lot: null,
+      useBy: null,
+      serial: null,
+    };
+
+    const scanned = (code: string) => TestBed.inject(ScanBus).receive(code, 'wedge');
+    const quantityOf = (line: number) =>
+      (q(`line-${line}-quantity`) as HTMLInputElement | null)?.value ?? null;
+
+    beforeEach(() => granted.add('product.read'));
+
+    it('counts a product already on a draft line like a till, and takes the count back on undo', async () => {
+      invoice.set(draft);
+      await open('i1');
+      scans.named.mockResolvedValue(coffee);
+
+      await scanned('3017620422003');
+      const outcome = await scanned('3017620422003');
+      await settle();
+
+      expect(outcome).toMatchObject({ kind: 'done', key: 'scan.incremented' });
+      expect(quantityOf(0)).toBe('3');
+      expect(q('line-1')).toBeNull();
+
+      TestBed.inject(ScanBus).undoLast();
+      await settle();
+      expect(quantityOf(0)).toBe('2');
+    });
+
+    it('adds a line for another product, filled from the product, a pack entering its pieces', async () => {
+      invoice.set(draft);
+      await open('i1');
+      scans.named.mockResolvedValue({
+        ...coffee,
+        productId: 'p2',
+        name: 'Papier',
+        role: 'pack',
+        quantity: 12,
+      });
+      facade.pickProducts.mockResolvedValueOnce([
+        {
+          id: 'p2',
+          reference: 'PAP-1',
+          name: 'Papier',
+          unitId: 'u1',
+          unitPriceNet: '4.5000',
+          defaultTaxComponentIds: ['t1'],
+        },
+      ]);
+
+      TestBed.inject(ScanBus).multiplier.set(2);
+      const outcome = await scanned('13017620422000');
+      await settle();
+
+      expect(outcome).toMatchObject({
+        kind: 'done',
+        key: 'scan.added',
+        params: { name: 'Papier' },
+      });
+      expect(facade.pickProducts).toHaveBeenCalledWith('c1', { ids: ['p2'] });
+      expect(quantityOf(1)).toBe('24');
+      expect((q('line-1-description') as HTMLInputElement).value).toBe('Papier');
+      expect((q('line-1-price') as HTMLInputElement).value).toContain('4');
+    });
+
+    it('refuses a product no longer sold, and leaves a code nobody holds to the card', async () => {
+      invoice.set(draft);
+      await open('i1');
+
+      scans.named.mockResolvedValueOnce({ ...coffee, isActive: false });
+      expect(await scanned('3017620422003')).toMatchObject({
+        kind: 'refused',
+        key: 'scan.retired',
+      });
+      scans.named.mockResolvedValueOnce(null);
+      expect(await scanned('999999')).toEqual({ kind: 'unclaimed' });
+      expect(quantityOf(0)).toBe('1');
+    });
+
+    it('leaves a scan to the card on an issued invoice, or for somebody who may not read the products', async () => {
+      invoice.set(issued);
+      await open('i1');
+      scans.named.mockResolvedValue(coffee);
+      expect(await scanned('3017620422003')).toEqual({ kind: 'unclaimed' });
+
+      invoice.set(draft);
+      granted.delete('product.read');
+      await settle();
+      expect(await scanned('3017620422003')).toEqual({ kind: 'unclaimed' });
+      expect(scans.named).not.toHaveBeenCalled();
+    });
   });
 });

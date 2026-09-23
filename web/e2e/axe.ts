@@ -13,13 +13,16 @@ export async function wcagViolations(page: Page): Promise<string[]> {
   // A tooltip is waited for too: clicking a control parks the pointer on it, `appLabel` shows its tooltip, and axe
   // reads colours through the fade — reporting a contrast nobody ever sees, since at rest the surface is 12:1. The
   // fade is on an ancestor, so the surface's own opacity is already 1 while it runs: ask the animations, not the
-  // computed style (2026-09-17, CI run 35272397610 on a commit that changed one Markdown file).
+  // computed style (2026-09-17, CI run 35272397610 on a commit that changed one Markdown file). The same holds for
+  // every overlay, not tooltips alone: a dialog read while it fades in failed on its filter chips (2026-09-23, CI run
+  // 35833959425, the notification centre). An endless animation (a spinner) never finishes, and is not a fade.
   await expect
     .poll(
       () =>
         page.evaluate(() =>
-          [...document.querySelectorAll('.mat-mdc-tooltip-panel')]
-            .flatMap((panel) => panel.getAnimations({ subtree: true }))
+          [...document.querySelectorAll('.cdk-overlay-container')]
+            .flatMap((overlays) => overlays.getAnimations({ subtree: true }))
+            .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
             .every((animation) => 'running' !== animation.playState),
         ),
       // Real fades take 150 ms; the margin is for a scan taken while one is deliberately slowed, and for a loaded CI

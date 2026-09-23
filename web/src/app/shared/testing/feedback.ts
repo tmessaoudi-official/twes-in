@@ -2,7 +2,7 @@
 
 import { type Provider, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Feedback } from '../feedback/feedback';
+import { Feedback, type FeedbackAction } from '../feedback/feedback';
 import { RequestActivity } from '../feedback/request-activity';
 
 /** A Feedback a spec can read back: every toast it was asked for, in order. */
@@ -11,10 +11,11 @@ export class RecordedFeedback extends Feedback {
     kind: 'success' | 'notice' | 'failure';
     key: string;
     params?: Record<string, unknown>;
+    action?: FeedbackAction;
   }[] = [];
 
-  success(key: string, params?: Record<string, unknown>): void {
-    this.said.push({ kind: 'success', key, params });
+  success(key: string, params?: Record<string, unknown>, action?: FeedbackAction): void {
+    this.said.push({ kind: 'success', key, params, ...(action === undefined ? {} : { action }) });
   }
 
   notice(key: string, params?: Record<string, unknown>): void {

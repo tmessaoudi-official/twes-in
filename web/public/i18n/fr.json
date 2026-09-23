@@ -2195,5 +2195,15 @@
       "identifier_checksum": "Ce numéro d'immatriculation est mal formé : la clé de contrôle ne tombe pas juste."
     },
     "action": "Importer"
+  },
+  "scan": {
+    "count": "Prochain scan ×{{count}}",
+    "added": "{{name}} ajouté",
+    "incremented": "{{name}} : quantité {{quantity}}",
+    "undo": "Annuler",
+    "undone": "Scan {{code}} annulé",
+    "failed": "Le scan n’a pas pu être traité. Réessayez.",
+    "not_editable": "Ce document n’est plus modifiable : le scan n’ajoute rien.",
+    "retired": "{{name}} est retiré de la vente : il n’est pas ajouté."
   }
 }

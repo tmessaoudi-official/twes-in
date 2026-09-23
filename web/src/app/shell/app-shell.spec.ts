@@ -16,7 +16,9 @@ import { Session } from '../shared/session/session';
 import type { SignedInState } from '../auth/auth-types';
 import { CompanyFacade } from '../company/company-facade';
 import { NotificationsFacade } from '../notifications/notifications-facade';
+import { Feedback } from '../shared/feedback/feedback';
 import { RequestActivity } from '../shared/feedback/request-activity';
+import { RecordedFeedback } from '../shared/testing/feedback';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { AppShell } from './app-shell';
@@ -25,6 +27,7 @@ import { ScreenActions } from '../shared/actions/screen-actions';
 import { ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { ProductScanCard } from '../products/product-scan-card';
+import { ScanBus } from '../shared/scan/scan-bus';
 import { SCAN_GAP_MS } from '../shared/scan/scan-wedge';
 import { CommandPalette } from './command-palette';
 import type { Command } from './commands';
@@ -120,15 +123,18 @@ class CountingPage {
   }
 }
 
-/**
- * Declares actions the way a screen does — a signal, from an injection context — so the shell reads them through
- * the real registry rather than a stand-in that could agree with a broken one.
- */
+/** Lets every queued scan be worked through. */
+const settled = () => new Promise((resolve) => setTimeout(resolve));
+
 /** Longer than the gap between two keys of a scan, which a shortcut waits out before it runs. */
 function pause(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, SCAN_GAP_MS + 10));
 }
 
+/**
+ * Declares actions the way a screen does — a signal, from an injection context — so the shell reads them through
+ * the real registry rather than a stand-in that could agree with a broken one.
+ */
 function declareScreenActions(actions: readonly ScreenAction[]): void {
   const source = signal(actions);
   TestBed.runInInjectionContext(() => TestBed.inject(ScreenActions).declare(source));
@@ -204,6 +210,7 @@ describe('AppShell', () => {
         { provide: ThemeFacade, useValue: theme },
         { provide: LanguageFacade, useValue: language },
         { provide: RequestActivity, useValue: activity },
+        { provide: Feedback, useClass: RecordedFeedback },
         {
           provide: NotificationsFacade,
           useValue: {
@@ -761,7 +768,7 @@ describe('AppShell', () => {
 
     scan(document.body, '0s123');
 
-    expect(open).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(open).toHaveBeenCalledTimes(1));
     const [component, config] = open.mock.calls[0] as [unknown, { data: { code: string } }];
     expect(component).toBe(ProductScanCard);
     expect(config.data.code).toBe('0s123');
@@ -773,6 +780,7 @@ describe('AppShell', () => {
     el.appendChild(input);
     scan(input, '3017620422003');
     input.remove();
+    await settled();
     expect(open).toHaveBeenCalledTimes(1);
   });
 
@@ -796,7 +804,7 @@ describe('AppShell', () => {
       ),
     );
 
-    expect(open).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(open).toHaveBeenCalledTimes(1));
     expect((open.mock.calls[0] as [unknown, { data: { code: string } }])[1].data.code).toBe(
       ']C10113017620422000',
     );
@@ -816,7 +824,42 @@ describe('AppShell', () => {
       ),
     );
 
+    await settled();
     expect(open).not.toHaveBeenCalled();
+  });
+
+  it('gives a scan to the screen that acts on it, counted as typed before it, and Ctrl Z takes it back', async () => {
+    const { fixture } = await render();
+    const seen: number[] = [];
+    let undone = 0;
+    TestBed.runInInjectionContext(() =>
+      TestBed.inject(ScanBus).handle((scan) => {
+        seen.push(scan.times);
+        return Promise.resolve({ kind: 'done', key: 'scan.added', undo: () => (undone += 1) });
+      }),
+    );
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open');
+    const press = (key: string, init: KeyboardEventInit = {}) =>
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }),
+      );
+
+    // Typed by hand: the keys are far apart, as a person's are.
+    press('5');
+    await pause();
+    press('x');
+    fixture.detectChanges();
+    expect(TestBed.inject(ScanBus).multiplier()).toBe(5);
+    expect(fixture.nativeElement.querySelector('[data-testid="scan-count"]')).not.toBeNull();
+
+    [...'3017620422003', 'Enter'].forEach((key) => press(key));
+    await vi.waitFor(() => expect(seen).toEqual([5]));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="scan-count"]')).toBeNull();
+    expect(open).not.toHaveBeenCalled();
+
+    press('z', { ctrlKey: true });
+    expect(undone).toBe(1);
   });
 
   it('asks before a declared key runs something destructive, exactly as its button would', async () => {

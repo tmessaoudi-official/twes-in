@@ -53,4 +53,14 @@ describe('ProductScans', () => {
     scan.mockRejectedValueOnce(new ProductsRefused('network'));
     expect(await service.piecesPerScan('13017620422000', 'p1')).toBeNull();
   });
+
+  it('names what a scan reads for a document line, and lets a failed lookup fail rather than read as unknown', async () => {
+    const service = scans();
+    scan.mockResolvedValueOnce(pack);
+    expect(await service.named('13017620422000')).toBe(pack);
+    scan.mockResolvedValueOnce(null);
+    expect(await service.named('999')).toBeNull();
+    scan.mockRejectedValueOnce(new ProductsRefused('network'));
+    await expect(service.named('13017620422000')).rejects.toBeInstanceOf(ProductsRefused);
+  });
 });

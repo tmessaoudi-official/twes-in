@@ -2,11 +2,13 @@
 
 import { inject, Injectable } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Feedback } from './feedback';
+import { Feedback, type FeedbackAction } from './feedback';
 import { Toast, type ToastData } from './toast';
 
 export const SUCCESS_DURATION_MS = 4_000;
 export const NOTICE_DURATION_MS = 6_000;
+/** A success with a follow-up stays long enough to reach its button. */
+export const ACTION_DURATION_MS = 8_000;
 
 /**
  * Feedback as Material snack bars, one at a time, at the top of the window: the phone's navigation bar holds the
@@ -17,11 +19,14 @@ export const NOTICE_DURATION_MS = 6_000;
 export class MaterialFeedback extends Feedback {
   private readonly snackBar = inject(MatSnackBar);
 
-  success(key: string, params: Record<string, unknown> = {}): void {
+  success(key: string, params: Record<string, unknown> = {}, action?: FeedbackAction): void {
     this.snackBar.openFromComponent<Toast, ToastData>(Toast, {
-      data: { kind: 'success', key, params },
+      data:
+        action === undefined
+          ? { kind: 'success', key, params }
+          : { kind: 'success', key, params, action },
       politeness: 'polite',
-      duration: SUCCESS_DURATION_MS,
+      duration: action === undefined ? SUCCESS_DURATION_MS : ACTION_DURATION_MS,
       verticalPosition: 'top',
       horizontalPosition: 'center',
       panelClass: ['twes-toast-panel', 'twes-toast-success'],

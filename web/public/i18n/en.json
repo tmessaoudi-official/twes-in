@@ -2195,5 +2195,15 @@
       "identifier_checksum": "This registration number is misshapen: its check digit does not come out."
     },
     "action": "Import"
+  },
+  "scan": {
+    "count": "Next scan ×{{count}}",
+    "added": "{{name}} added",
+    "incremented": "{{name}}: quantity {{quantity}}",
+    "undo": "Undo",
+    "undone": "Scan {{code}} undone",
+    "failed": "The scan could not be handled. Try again.",
+    "not_editable": "This document can no longer be changed: the scan adds nothing.",
+    "retired": "{{name}} is no longer sold: it is not added."
   }
 }

@@ -277,6 +277,25 @@ test('a product is given its codes by scanning them, and a code finds it', async
     await line.press('ControlOrMeta+a');
     await scanned(page, `SCAN2-${run}`);
     await expect(page.getByTestId('line-0-description')).toHaveValue(`Vis SCAN2-${run}`);
+
+    // With no field focused the draft counts scans as a till does (docs/SPEC.md § 7, 2026-09-23 09:30): another
+    // product starts a line, the same one adds to it, "3×" typed before the carton makes it three cartons, and
+    // Ctrl Z takes the last scan back.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await scanned(page, unit);
+    await expect(page.getByTestId('line-1-description')).toHaveValue(`Vis SCAN-${run}`);
+    await expect(page.getByTestId('line-1-quantity')).toHaveValue('1');
+    await scanned(page, unit);
+    await expect(page.getByTestId('line-1-quantity')).toHaveValue('2');
+    await expect(page.getByTestId('line-2')).toHaveCount(0);
+    // Typed by hand, far slower than a scanner, so the shell reads it as a count rather than a code.
+    await page.keyboard.type('3*', { delay: 120 });
+    await expect(page.getByTestId('scan-count')).toContainText('3');
+    await scanned(page, pack);
+    await expect(page.getByTestId('line-1-quantity')).toHaveValue('38');
+    await expect(page.getByTestId('scan-count')).toHaveCount(0);
+    await page.keyboard.press('ControlOrMeta+z');
+    await expect(page.getByTestId('line-1-quantity')).toHaveValue('2');
   } finally {
     await forget(page, ids);
   }

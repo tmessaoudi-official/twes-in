@@ -154,6 +154,17 @@
               <mat-icon aria-hidden="true">search</mat-icon>
             </button>
           }
+          @if (scanCount(); as count) {
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="clearScanCount()"
+              data-testid="scan-count"
+            >
+              <mat-icon aria-hidden="true">close</mat-icon>
+              {{ 'scan.count' | translate: { count } }}
+            </button>
+          }
           <app-notification-bell />
           @if (!handset()) {
             <app-language-menu />
