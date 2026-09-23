@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { wcagViolations } from './axe';
-import { aProduct, forget, gtin, withCodes } from './catalogue';
+import { aProduct, forget, gtin, stockKept, withCodes } from './catalogue';
 import { scan } from './scan';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
@@ -9,28 +9,6 @@ import { toast } from './toast';
 // docs/SPEC.md § 7, 2026-09-23 slice 7: lots on the web. A product set to be kept by lot asks its lot when goods of
 // it are received, and the stock list names the lot the goods went into.
 const CSRF = '0123456789abcdef0123456789abcdef';
-
-/** Keeps stock of the product, or stops keeping it, through the product's own setting. */
-async function stockKept(page: Page, productId: string, kept: boolean): Promise<void> {
-  await page.evaluate(
-    async ([csrf, id, on]) => {
-      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      const base = `/api/companies/${me.company.id}/settings/article.stock_tracking`;
-      const response = on
-        ? await fetch(base, {
-            method: 'PUT',
-            headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-            body: JSON.stringify({ level: 'product', value: true, productId: id }),
-          })
-        : await fetch(`${base}?level=product&productId=${id}`, {
-            method: 'DELETE',
-            headers: { 'csrf-token': csrf },
-          });
-      if (!response.ok) throw new Error(`the stock setting answered ${response.status}`);
-    },
-    [CSRF, productId, kept] as const,
-  );
-}
 
 test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and the stock list names it', async ({
   page,

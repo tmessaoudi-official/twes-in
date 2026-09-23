@@ -27,7 +27,7 @@ const STOCK_FIELDS = 'inventory.stock.fields';
 /** The API's shape of a location code. */
 const CODE_PATTERN = '[A-Za-z0-9._\\-]{1,32}';
 /** A quantity as the decimal field hands it over: at most eleven digits, then at most three decimals. */
-const QUANTITY_PATTERN = '(0|[1-9][0-9]{0,10})([.][0-9]{1,3})?';
+export const QUANTITY_PATTERN = '(0|[1-9][0-9]{0,10})([.][0-9]{1,3})?';
 
 /** Each location's path of codes from its establishment's default, then its name, ordered by that path. */
 export function locationLabels(locations: readonly StockLocationRow[]): Map<string, string> {

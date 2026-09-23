@@ -1,0 +1,111 @@
+<app-page-tabs [tabs]="tabs" label="nav.stock">
+  <section class="flex flex-col gap-6" data-testid="stock-count">
+    <header class="flex flex-col gap-1">
+      <h1 class="m-0 text-3xl font-semibold">{{ 'inventory.count.title' | translate }}</h1>
+      <p class="m-0 max-w-prose">{{ 'inventory.count.intro' | translate }}</p>
+    </header>
+
+    @if (error(); as code) {
+      <p role="alert" data-testid="stock-count-error" class="text-error">
+        {{ 'inventory.errors.' + code | translate }}
+      </p>
+    }
+
+    <div class="flex flex-wrap items-start gap-3">
+      <mat-form-field class="min-w-64">
+        <mat-label>{{ 'inventory.count.location' | translate }}</mat-label>
+        <mat-select
+          data-testid="stock-count-location"
+          [value]="locationId()"
+          (valueChange)="locationId.set($event)"
+        >
+          @for (location of locations(); track location[0]) {
+            <mat-option [value]="location[0]">{{ location[1] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <form class="flex flex-wrap items-start gap-3" (submit)="submit($event)">
+        <mat-form-field>
+          <mat-label>{{ 'inventory.count.code' | translate }}</mat-label>
+          <input
+            matInput
+            name="code"
+            autocomplete="off"
+            data-testid="stock-count-code"
+            [ngModel]="code()"
+            (ngModelChange)="code.set($event)"
+          />
+        </mat-form-field>
+        <button mat-stroked-button type="submit" data-testid="stock-count-add">
+          {{ 'inventory.count.add' | translate }}
+        </button>
+      </form>
+    </div>
+
+    @if (lines().length === 0) {
+      <p class="opacity-80" data-testid="stock-count-empty">
+        {{ 'inventory.count.empty' | translate }}
+      </p>
+    } @else {
+      <ol class="m-0 flex list-none flex-col gap-2 p-0" data-testid="stock-count-lines">
+        @for (line of lines(); track $index; let i = $index) {
+          <li class="flex flex-wrap items-start gap-3" [attr.data-testid]="'stock-count-' + i">
+            <div class="flex min-w-48 flex-1 flex-col pt-3">
+              <span class="font-medium">{{ line.name }}</span>
+              <span class="text-sm opacity-80">{{ line.reference }}</span>
+            </div>
+            @if (line.tracking !== 'none') {
+              <mat-form-field>
+                <mat-label>{{ 'inventory.stock.fields.' + line.tracking | translate }}</mat-label>
+                <input
+                  matInput
+                  autocomplete="off"
+                  required
+                  [attr.data-testid]="'stock-count-' + i + '-lot'"
+                  [ngModel]="line.lotCode"
+                  (ngModelChange)="setLot(i, $event)"
+                />
+              </mat-form-field>
+            }
+            <mat-form-field class="w-36">
+              <mat-label>{{ 'inventory.count.counted' | translate }}</mat-label>
+              <input
+                matInput
+                appDecimal
+                required
+                [attr.data-testid]="'stock-count-' + i + '-counted'"
+                [ngModel]="line.counted"
+                (ngModelChange)="setCounted(i, $event)"
+              />
+            </mat-form-field>
+            <button
+              mat-icon-button
+              type="button"
+              class="mt-2"
+              [appLabel]="'inventory.count.remove' | translate"
+              [attr.data-testid]="'stock-count-' + i + '-remove'"
+              (click)="remove(i)"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </li>
+        }
+      </ol>
+    }
+
+    @if (mayWrite()) {
+      <div class="flex justify-end">
+        <button
+          mat-flat-button
+          type="button"
+          data-testid="stock-count-record"
+          [disabled]="busy()"
+          (click)="record()"
+        >
+          {{ 'inventory.count.record' | translate }}
+        </button>
+      </div>
+    }
+  </section>
+</app-page-tabs>

@@ -181,6 +181,12 @@ export const routes: Routes = [
         loadComponent: () => import('./inventory/stock-page').then((m) => m.StockPage),
       },
       {
+        // Count mode (docs/SPEC.md § 7, 2026-09-23 slice 8): a scanner walking the shelves.
+        path: 'stock/count',
+        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        loadComponent: () => import('./inventory/stock-count-page').then((m) => m.StockCountPage),
+      },
+      {
         path: 'stock/movements',
         canActivate: [moduleGuard(INVENTORY_MODULE)],
         loadComponent: () =>

@@ -2466,6 +2466,16 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   catalogue and could miss it, so whether stock is kept of the product is the API's to say when the movement is saved
   (a refusal the screen shows as it shows any). With no movement open, the card takes the scan as before; a person who
   may not read the products leaves it to the card too.
+- [2026-09-23 21:55] TAKEN OVERNIGHT (standing instruction, to confirm): slice 8a, count mode. "Comptage" is a tab of the
+  stock screens (`/stock/count`, the inventory module, `stock.write` to count). It counts at the company's default
+  location until another is chosen or its label is scanned — the address a location's label carries
+  (`…/stock/locations/<id>`, slice 8b) or its code exactly as the store numbers it; a location's code is looked for
+  before a product's. Each product scanned is a line, a GS1 label's lot or serial number making a line of its own; the
+  same product and lot counts on, a pack its pieces, and "5×" five times. A line is corrected by hand or removed; a
+  tracked product whose label named no lot asks it before recording. Recording writes one count per line, setting the
+  location's stock of it to what was counted; nothing is written of what was not scanned, so a product missing from
+  the shelf is not set to zero by this screen. A line the API refuses stays on the sheet, the others go. The sheet
+  lives in the page: leaving it forgets what was not recorded.
 
 ## 8. Status
 

@@ -484,7 +484,8 @@
     "expenses": "Expenses",
     "expense_categories": "Expense categories",
     "company_security": "Security",
-    "subscription": "Subscription"
+    "subscription": "Subscription",
+    "stock_count": "Count"
   },
   "shell": {
     "skip": "Skip to content",
@@ -1651,6 +1652,21 @@
     },
     "scan": {
       "filled": "{{name}}: article, lot and quantity filled in"
+    },
+    "count": {
+      "title": "Count",
+      "intro": "Choose the location, or scan its label, then scan what is there. Each line can be corrected by hand; recording sets the location's stock to what was counted, for what was scanned only.",
+      "location": "Location counted",
+      "code": "Code",
+      "add": "Add",
+      "empty": "Nothing counted here yet.",
+      "counted": "Counted",
+      "remove": "Remove the line",
+      "record": "Record the count",
+      "incomplete": "Every line needs a quantity, and a tracked article its lot.",
+      "recorded": "Count recorded: {{count}} line(s).",
+      "at_location": "Counting at: {{name}}",
+      "tallied": "{{name}}: {{quantity}} counted"
     }
   },
   "vendors": {

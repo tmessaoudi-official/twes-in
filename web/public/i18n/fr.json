@@ -484,7 +484,8 @@
     "expenses": "Dépenses",
     "expense_categories": "Catégories de dépenses",
     "company_security": "Sécurité",
-    "subscription": "Abonnement"
+    "subscription": "Abonnement",
+    "stock_count": "Comptage"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -1651,6 +1652,21 @@
     },
     "scan": {
       "filled": "{{name}} : article, lot et quantité remplis"
+    },
+    "count": {
+      "title": "Comptage",
+      "intro": "Choisissez l'emplacement, ou scannez son étiquette, puis scannez ce qui s'y trouve. Chaque ligne se corrige à la main ; l'enregistrement fixe le stock de l'emplacement à ce qui a été compté, pour ce qui a été scanné seulement.",
+      "location": "Emplacement compté",
+      "code": "Code",
+      "add": "Ajouter",
+      "empty": "Rien n'est encore compté ici.",
+      "counted": "Compté",
+      "remove": "Retirer la ligne",
+      "record": "Enregistrer le comptage",
+      "incomplete": "Chaque ligne a besoin d'une quantité, et d'un lot pour un article suivi.",
+      "recorded": "Comptage enregistré : {{count}} ligne(s).",
+      "at_location": "Comptage à : {{name}}",
+      "tallied": "{{name}} : {{quantity}} compté(s)"
     }
   },
   "vendors": {

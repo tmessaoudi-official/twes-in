@@ -92,3 +92,25 @@ export async function withCodes(page: Page, id: string, codes: readonly string[]
     [CSRF, id, codes] as const,
   );
 }
+
+/** Keeps stock of the product, or stops keeping it, through the product's own setting. */
+export async function stockKept(page: Page, productId: string, kept: boolean): Promise<void> {
+  await page.evaluate(
+    async ([csrf, id, on]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const base = `/api/companies/${me.company.id}/settings/article.stock_tracking`;
+      const response = on
+        ? await fetch(base, {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+            body: JSON.stringify({ level: 'product', value: true, productId: id }),
+          })
+        : await fetch(`${base}?level=product&productId=${id}`, {
+            method: 'DELETE',
+            headers: { 'csrf-token': csrf },
+          });
+      if (!response.ok) throw new Error(`the stock setting answered ${response.status}`);
+    },
+    [CSRF, productId, kept] as const,
+  );
+}
