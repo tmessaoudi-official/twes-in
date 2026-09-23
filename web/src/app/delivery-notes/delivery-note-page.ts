@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   input,
@@ -37,6 +38,7 @@ import {
 import { ProductScans } from '../products/product-scans';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { placedOutcome, scanIntoLines } from '../shared/scan/scan-lines';
+import { CustomerDisplay } from '../shared/customer-display/customer-display';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { DeliveryNoteLines } from './delivery-note-lines';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
@@ -91,6 +93,7 @@ export class DeliveryNotePage {
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly productScans = inject(ProductScans);
+  private readonly display = inject(CustomerDisplay);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `delivery-notes/new`. */
   readonly deliveryNoteId = input<string | undefined>(undefined);
@@ -278,6 +281,14 @@ export class DeliveryNotePage {
         shown: this.pdfUrl() !== null,
       },
       {
+        id: 'customer-display',
+        label: 'customer_display.open',
+        icon: 'connected_tv',
+        rare: true,
+        run: () => this.display.openWindow(),
+        shown: this.editable(),
+      },
+      {
         id: 'cancel',
         label: 'delivery_notes.actions.cancel',
         icon: 'block',
@@ -359,7 +370,22 @@ export class DeliveryNotePage {
         return line;
       },
     );
-    return placedOutcome(placed, { name: product.name, unitPrice: product.unitPriceNet });
+    // The customer sees the line the scan went onto, at the price they pay for one (docs/SPEC.md § 7, slice 6).
+    this.display.show({
+      name: product.name,
+      quantity: placed.quantity,
+      unitPrice: named.unitPriceGross,
+    });
+    return placedOutcome(
+      {
+        ...placed,
+        undo: () => {
+          placed.undo();
+          this.display.clear();
+        },
+      },
+      { name: product.name, unitPrice: product.unitPriceNet },
+    );
   }
 
   constructor() {
@@ -368,6 +394,7 @@ export class DeliveryNotePage {
     inject(ScreenActions).declare(this.actions);
     const scans = inject(ScanBus);
     scans.handle((scan) => this.scanned(scan));
+    inject(DestroyRef).onDestroy(() => this.display.clear());
     effect(() => {
       // Played once per code: the address then forgets it. Lines drawn again from scratch before that happens take
       // it again, which is right, since the lines it went onto are gone.

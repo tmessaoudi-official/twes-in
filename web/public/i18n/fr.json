@@ -2288,5 +2288,12 @@
     "shown": "Prix affiché : {{name}}",
     "code": "Code de l'article",
     "check": "Vérifier"
+  },
+  "customer_display": {
+    "title": "Affichage client",
+    "welcome": "Bienvenue",
+    "taxes_included": "Prix unitaire TTC",
+    "total": "Total :",
+    "open": "Ouvrir l'affichage client"
   }
 }

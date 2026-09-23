@@ -2428,6 +2428,18 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   palette command was added (the palette's module commands are "create" commands only). The customer display (a second
   screen facing the customer during a sale) is NOT built yet: planned as a same-browser page fed by a BroadcastChannel
   from the invoice and delivery-note pages.
+- [2026-09-23 18:55] TAKEN OVERNIGHT (standing instruction, to confirm): slice 6, the customer display.
+  `/customer-display` is a window of the same signed-in browser, outside the shell (no menu, no scan card), turned
+  towards the customer and opened from "Ouvrir l'affichage client" in the "⋮" of an editable invoice or delivery note.
+  The counter's tab speaks to it over a BroadcastChannel named for the company (`shared/customer-display/`), so nothing
+  leaves the browser and a second browser or device never receives it. It shows the line the last scan went onto: the
+  product, how many the line holds, and one's price TAXES INCLUDED as the price check counts it (the shelf price: a
+  customer discount or regime on the document is not in it); on an invoice it adds the total once the sale is read as
+  saved, and any new scan takes that total away until the next save, because the API alone works a draft's figures out
+  and there is no preview of unsaved lines. A tab says nothing until one of its scans lands on a sale's lines, so
+  browsing documents never shows a customer another's total; undoing a scan, leaving the sale, and closing or reloading
+  the tab (`pagehide`) empty the display. A display opened mid-sale asks and is answered at once. Lines added by hand are
+  not shown. The price check does not feed it.
 
 ## 8. Status
 

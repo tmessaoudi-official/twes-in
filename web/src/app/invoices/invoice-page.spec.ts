@@ -25,6 +25,8 @@ import { InvoicePage } from './invoice-page';
 import { InvoicesFacade } from './invoices-facade';
 import { ProductScans } from '../products/product-scans';
 import { ScanBus } from '../shared/scan/scan-bus';
+import { ScreenActions } from '../shared/actions/screen-actions';
+import { CustomerDisplay } from '../shared/customer-display/customer-display';
 import type {
   CustomerOption,
   InvoiceOptions,
@@ -228,6 +230,7 @@ describe('InvoicePage', () => {
     pdfUrl: (companyId: string, id: string) => `/api/companies/${companyId}/invoices/${id}/pdf`,
   };
   const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
+  const display = { show: vi.fn(), total: vi.fn(), clear: vi.fn(), openWindow: vi.fn() };
   const granted = new Set<string>();
   const auth = {
     me: () => ({
@@ -306,6 +309,7 @@ describe('InvoicePage', () => {
     facade.pickProducts.mockClear();
     scans.piecesPerScan.mockReset().mockResolvedValue(null);
     scans.named.mockReset().mockResolvedValue(null);
+    Object.values(display).forEach((each) => each.mockReset());
     facade.create.mockReset().mockResolvedValue({ ...draft, id: 'i9' });
     facade.revise.mockReset().mockResolvedValue(draft);
     facade.reviseAndIssue.mockReset().mockResolvedValue(issued);
@@ -329,6 +333,7 @@ describe('InvoicePage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: InvoicesFacade, useValue: facade },
         { provide: ProductScans, useValue: scans },
+        { provide: CustomerDisplay, useValue: display },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -761,6 +766,9 @@ describe('InvoicePage', () => {
       lot: null,
       useBy: null,
       serial: null,
+      unitPriceNet: '1.0000',
+      unitPriceGross: '1.190',
+      priceGross: '1.190',
     };
 
     const scanned = (code: string) => TestBed.inject(ScanBus).receive(code, 'wedge');
@@ -847,6 +855,49 @@ describe('InvoicePage', () => {
       expect(quantityOf(1)).toBe('24');
       expect((q('line-1-description') as HTMLInputElement).value).toBe('Papier');
       expect((q('line-1-price') as HTMLInputElement).value).toContain('4');
+    });
+
+    // docs/SPEC.md § 7, 2026-09-23 slice 6: the customer display.
+    it('shows the customer display the line a scan went onto, priced taxes included, then the total once saved', async () => {
+      invoice.set(draft);
+      await open('i1');
+      scans.named.mockResolvedValue(coffee);
+
+      await scanned('3017620422003');
+      await settle();
+
+      expect(display.show).toHaveBeenLastCalledWith({
+        name: 'Conception',
+        quantity: '2',
+        unitPrice: '1.190',
+      });
+
+      invoice.set({ ...draft, total: '2.380' });
+      await settle();
+      expect(display.total).toHaveBeenLastCalledWith('2.380');
+    });
+
+    it('empties the customer display when a scan is taken back, and when the sale leaves the screen', async () => {
+      invoice.set(draft);
+      await open('i1');
+      scans.named.mockResolvedValue(coffee);
+      await scanned('3017620422003');
+
+      TestBed.inject(ScanBus).undoLast();
+      expect(display.clear).toHaveBeenCalledTimes(1);
+
+      fixture.destroy();
+      expect(display.clear).toHaveBeenCalledTimes(2);
+    });
+
+    it('offers to open the customer display on a draft', async () => {
+      invoice.set(draft);
+      await open('i1');
+      const actions = TestBed.inject(ScreenActions).actions();
+      const action = actions.find((each) => each.id === 'customer-display');
+      expect(action?.shown).not.toBe(false);
+      action?.run?.();
+      expect(display.openWindow).toHaveBeenCalled();
     });
 
     it('refuses a product no longer sold, and leaves a code nobody holds to the card', async () => {

@@ -2288,5 +2288,12 @@
     "shown": "Price shown: {{name}}",
     "code": "Item code",
     "check": "Check"
+  },
+  "customer_display": {
+    "title": "Customer display",
+    "welcome": "Welcome",
+    "taxes_included": "Unit price, taxes included",
+    "total": "Total:",
+    "open": "Open the customer display"
   }
 }

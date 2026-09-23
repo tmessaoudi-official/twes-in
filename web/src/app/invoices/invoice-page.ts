@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   input,
@@ -43,6 +44,7 @@ import { InvoiceLines } from './invoice-lines';
 import { ProductScans } from '../products/product-scans';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { placedOutcome, scanIntoLines } from '../shared/scan/scan-lines';
+import { CustomerDisplay } from '../shared/customer-display/customer-display';
 import { liveRecord } from '../shared/form/live-record';
 import { PartConflict } from '../shared/form/part-conflict';
 import { RecordChanged } from '../shared/form/record-changed';
@@ -98,6 +100,7 @@ export class InvoicePage {
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly productScans = inject(ProductScans);
+  private readonly display = inject(CustomerDisplay);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `invoices/new`. */
   readonly invoiceId = input<string | undefined>(undefined);
@@ -321,6 +324,14 @@ export class InvoicePage {
         shown: this.canDuplicate(),
       },
       {
+        id: 'customer-display',
+        label: 'customer_display.open',
+        icon: 'connected_tv',
+        rare: true,
+        run: () => this.display.openWindow(),
+        shown: this.editable(),
+      },
+      {
         id: 'credit-note',
         label: 'invoices.actions.credit_note',
         icon: 'undo',
@@ -426,7 +437,22 @@ export class InvoicePage {
         return line;
       },
     );
-    return placedOutcome(placed, { name: product.name, unitPrice: product.unitPriceNet });
+    // The customer sees the line the scan went onto, at the price they pay for one (docs/SPEC.md § 7, slice 6).
+    this.display.show({
+      name: product.name,
+      quantity: placed.quantity,
+      unitPrice: named.unitPriceGross,
+    });
+    return placedOutcome(
+      {
+        ...placed,
+        undo: () => {
+          placed.undo();
+          this.display.clear();
+        },
+      },
+      { name: product.name, unitPrice: product.unitPriceNet },
+    );
   }
 
   constructor() {
@@ -435,6 +461,12 @@ export class InvoicePage {
     inject(ScreenActions).declare(this.actions);
     const scans = inject(ScanBus);
     scans.handle((scan) => this.scanned(scan));
+    // What the sale comes to, each time it is read as saved; the display shows it only after a scan of this tab's.
+    effect(() => {
+      const total = this.current()?.total;
+      if (total !== undefined) untracked(() => this.display.total(total));
+    });
+    inject(DestroyRef).onDestroy(() => this.display.clear());
     effect(() => {
       // Played once per code: the address then forgets it. Lines drawn again from scratch before that happens take
       // it again, which is right, since the lines it went onto are gone.

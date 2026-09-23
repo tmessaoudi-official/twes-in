@@ -1,0 +1,30 @@
+<main
+  class="flex min-h-dvh flex-col items-center justify-center gap-10 p-8 text-center"
+  data-testid="customer-display"
+>
+  <h1 class="sr-only">{{ 'customer_display.title' | translate }}</h1>
+  @if (shown(); as state) {
+    @if (state.item; as item) {
+      <section class="flex flex-col items-center gap-4" aria-live="polite">
+        <p class="m-0 text-5xl font-medium" data-testid="customer-display-name">{{ item.name }}</p>
+        <p class="m-0 text-4xl" data-testid="customer-display-line">
+          {{ item.quantity }} × {{ price(item.unitPrice, state.currency) }}
+        </p>
+        <p class="m-0 text-lg opacity-80">{{ 'customer_display.taxes_included' | translate }}</p>
+      </section>
+      @if (state.total; as total) {
+        <p class="m-0 text-6xl font-semibold" data-testid="customer-display-total">
+          {{ 'customer_display.total' | translate }} {{ price(total, state.currency) }}
+        </p>
+      }
+    } @else {
+      <p class="m-0 text-4xl opacity-80" data-testid="customer-display-waiting">
+        {{ 'customer_display.welcome' | translate }}
+      </p>
+    }
+  } @else {
+    <p class="m-0 text-4xl opacity-80" data-testid="customer-display-waiting">
+      {{ 'customer_display.welcome' | translate }}
+    </p>
+  }
+</main>

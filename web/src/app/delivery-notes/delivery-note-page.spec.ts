@@ -24,6 +24,8 @@ import { DeliveryNotePage } from './delivery-note-page';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 import { ProductScans } from '../products/product-scans';
 import { ScanBus } from '../shared/scan/scan-bus';
+import { ScreenActions } from '../shared/actions/screen-actions';
+import { CustomerDisplay } from '../shared/customer-display/customer-display';
 import type {
   CustomerOption,
   DeliveryNoteOptions,
@@ -143,6 +145,7 @@ describe('DeliveryNotePage', () => {
       `/api/companies/${companyId}/delivery-notes/${id}/pdf`,
   };
   const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
+  const display = { show: vi.fn(), total: vi.fn(), clear: vi.fn(), openWindow: vi.fn() };
   const granted = new Set<string>();
   const modules = new Set<string>(['delivery_notes', 'invoices']);
   const auth = {
@@ -207,6 +210,7 @@ describe('DeliveryNotePage', () => {
   beforeEach(() => {
     scans.piecesPerScan.mockReset().mockResolvedValue(null);
     scans.named.mockReset().mockResolvedValue(null);
+    Object.values(display).forEach((each) => each.mockReset());
     error.set(null);
     note.set(null);
     granted.clear();
@@ -240,6 +244,7 @@ describe('DeliveryNotePage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: DeliveryNotesFacade, useValue: facade },
         { provide: ProductScans, useValue: scans },
+        { provide: CustomerDisplay, useValue: display },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -593,6 +598,9 @@ describe('DeliveryNotePage', () => {
       lot: null,
       useBy: null,
       serial: null,
+      unitPriceNet: '1000.0000',
+      unitPriceGross: '1190.000',
+      priceGross: '1190.000',
     };
     const scanned = (code: string) => TestBed.inject(ScanBus).receive(code, 'wedge');
     const quantityOf = (line: number) =>
@@ -653,6 +661,36 @@ describe('DeliveryNotePage', () => {
       await settle();
       expect(quantityOf(1)).toBe('1');
       expect((q('line-1-description') as HTMLInputElement).value).toBe('Souris');
+    });
+
+    // docs/SPEC.md § 7, 2026-09-23 slice 6: the customer display.
+    it('shows the customer display the line a scan went onto, and empties it on undo and on leaving', async () => {
+      note.set(draft);
+      await open('n1');
+      scans.named.mockResolvedValue(laptop);
+
+      await scanned('3017620422003');
+      expect(display.show).toHaveBeenLastCalledWith({
+        name: 'Portable 14"',
+        quantity: '3',
+        unitPrice: '1190.000',
+      });
+
+      TestBed.inject(ScanBus).undoLast();
+      expect(display.clear).toHaveBeenCalledTimes(1);
+      fixture.destroy();
+      expect(display.clear).toHaveBeenCalledTimes(2);
+    });
+
+    it('offers to open the customer display on a draft', async () => {
+      note.set(draft);
+      await open('n1');
+      const action = TestBed.inject(ScreenActions)
+        .actions()
+        .find((each) => each.id === 'customer-display');
+      expect(action).toBeDefined();
+      action?.run?.();
+      expect(display.openWindow).toHaveBeenCalled();
     });
 
     it('leaves a scan to the card once the note is validated', async () => {

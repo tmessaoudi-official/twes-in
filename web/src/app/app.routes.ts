@@ -45,6 +45,14 @@ export const routes: Routes = [
     loadComponent: () => import('./pairing/phone-scanner-page').then((m) => m.PhoneScannerPage),
   },
   {
+    // The customer display (docs/SPEC.md § 7, 2026-09-23 slice 6): a second window of a signed-in browser, turned
+    // towards the customer. Outside the shell, so it shows no menu and no scan card opens on it.
+    path: 'customer-display',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./customer-display/customer-display-page').then((m) => m.CustomerDisplayPage),
+  },
+  {
     // Asking for a signup link is for somebody not signed in.
     path: 'signup',
     canActivate: [anonymousGuard],
