@@ -1648,6 +1648,10 @@
       "fit": "Ajuster",
       "not_saved": "Pas encore enregistré — Enregistrer est à gauche",
       "view_hint": "Molette pour approcher, glisser pour déplacer"
+    },
+    "scan": {
+      "filled": "{{name}} : article, lot et quantité remplis",
+      "not_kept": "Aucun stock n'est tenu de {{name}}."
     }
   },
   "vendors": {

@@ -40,6 +40,9 @@ import {
 import { INVENTORY_TABS } from './inventory-nav';
 import type { StockOperation, StockProductOption, StockSearch } from './inventory-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { ProductScans } from '../products/product-scans';
+import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
+import { addCount } from '../shared/scan/scan-lines';
 
 /** What is on hand of each product whose stock is kept, per location, with goods received and counts recorded here. */
 @Component({
@@ -66,6 +69,7 @@ export class StockPage implements OnInit {
   private readonly facade = inject(InventoryFacade);
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
+  private readonly productScans = inject(ProductScans);
 
   /** Where a line's quantity came from: an address, so it is a real link rather than a button that navigates. */
   protected readonly list = computed<ListDescriptor<StockListRow>>(() => ({
@@ -151,6 +155,7 @@ export class StockPage implements OnInit {
   });
 
   constructor() {
+    inject(ScanBus).handle((scan) => this.scanned(scan));
     // The picker shows what the form names: the form carries the id, and only this page knows how that id reads.
     effect((onCleanup) => {
       const form = this.form();
@@ -183,6 +188,57 @@ export class StockPage implements OnInit {
     if (!this.facade.locations().some((location) => location.id === home)) return;
     control.setValue(home);
     control.markAsPristine();
+  }
+
+  /**
+   * A scan on an open movement fills it (docs/SPEC.md § 7, 2026-09-23 slice 7): the product, and from a GS1 label its
+   * lot or serial number and the day it is used by, and the pieces the code enters — counting on, as a till does,
+   * while the same lot is scanned again. With no movement open the card takes the scan. A product no stock is kept of
+   * is refused here rather than on saving: the picker is searched, as a person would, never answered by id.
+   */
+  private async scanned(scan: Scan): Promise<ScanOutcome> {
+    const companyId = this.company()?.id;
+    const form = this.form();
+    if (!companyId || form === null || !this.auth.hasPermission('product.read')) {
+      return { kind: 'unclaimed' };
+    }
+    const named = await this.productScans.named(scan.code);
+    if (named === null) return { kind: 'unclaimed' };
+    if (!named.isActive) {
+      return { kind: 'refused', key: 'scan.retired', params: { name: named.name } };
+    }
+    const found = await this.facade.pickProducts(companyId, { words: named.reference });
+    const product = found.find((each) => each.id === named.productId);
+    if (product === undefined) {
+      return { kind: 'refused', key: 'inventory.scan.not_kept', params: { name: named.name } };
+    }
+
+    const before = form.getRawValue();
+    const chosenBefore = this.product();
+    const lotCode = named.lot ?? named.serial ?? '';
+    const pieces = Math.max(named.quantity, 1) * scan.times;
+    const same = before['productId'] === product.id && (before['lotCode'] ?? '') === lotCode;
+    this.known.set(product.id, product);
+    this.product.set(product);
+    // Read again: a tracked product's form is another form, rebuilt over what was typed.
+    const filled = this.form() ?? form;
+    filled.patchValue({
+      productId: product.id,
+      lotCode,
+      lotExpiresOn: named.useBy ?? (same ? (before['lotExpiresOn'] ?? '') : ''),
+      quantity: same ? addCount(String(before['quantity'] ?? ''), pieces) : String(pieces),
+    });
+    this.proposeHome(filled, product);
+    return {
+      kind: 'done',
+      key: 'inventory.scan.filled',
+      params: { name: product.name },
+      product: { name: named.name, unitPrice: named.unitPriceGross },
+      undo: () => {
+        this.product.set(chosenBefore);
+        this.form()?.patchValue(before);
+      },
+    };
   }
 
   /** What the list last asked the API for; the page is not read until the list has said what it wants. */

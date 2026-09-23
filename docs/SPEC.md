@@ -2458,6 +2458,13 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   printable ASCII without a space, at most 40; a receipt or a count also offers "À utiliser avant", optional, since
   either may be the first to meet the lot, while a move names a lot that exists and never says its date again. The form
   is rebuilt for the product chosen and keeps what was already typed. An untracked product's form is as it was.
+- [2026-09-23 21:10] TAKEN OVERNIGHT (standing instruction, to confirm): slice 7c, a scan fills a movement. On the stock
+  screen with a receipt, count or move open, a scan fills the product and, from a GS1 label, its lot — or its serial
+  number, which is the lot of a product kept by serial — and its use-by day, with the pieces the code enters; the same
+  product and lot scanned again counts on, as a till does, and another lot starts again from its own pieces. Undo puts
+  the form back as it was. A product no stock is kept of is refused at the scan ("Aucun stock n'est tenu de …"), found
+  through the picker's search as a person would, since the picker answers an id whatever is kept of it. With no
+  movement open, the card takes the scan as before; a person who may not read the products leaves it to the card too.
 
 ## 8. Status
 

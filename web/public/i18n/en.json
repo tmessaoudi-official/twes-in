@@ -1648,6 +1648,10 @@
       "fit": "Fit",
       "not_saved": "Not saved yet — Save is on the left",
       "view_hint": "Wheel to come nearer, drag to move"
+    },
+    "scan": {
+      "filled": "{{name}}: article, lot and quantity filled in",
+      "not_kept": "No stock is kept of {{name}}."
     }
   },
   "vendors": {

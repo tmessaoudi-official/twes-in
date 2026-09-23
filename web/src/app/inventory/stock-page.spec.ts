@@ -31,6 +31,8 @@ import type {
   StockProductOption,
 } from './inventory-types';
 import { StockPage } from './stock-page';
+import { ProductScans } from '../products/product-scans';
+import { ScanBus } from '../shared/scan/scan-bus';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
@@ -138,6 +140,7 @@ describe('StockPage', () => {
     record: vi.fn(),
     clearError: vi.fn(),
   };
+  const scans = { named: vi.fn(), piecesPerScan: vi.fn() };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
@@ -179,6 +182,7 @@ describe('StockPage', () => {
     facade.loadStockContext.mockReset().mockResolvedValue(undefined);
     facade.loadStock.mockReset().mockResolvedValue(undefined);
     facade.record.mockReset().mockResolvedValue(true);
+    scans.named.mockReset().mockResolvedValue(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [StockPage],
@@ -194,6 +198,7 @@ describe('StockPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: InventoryFacade, useValue: facade },
+        { provide: ProductScans, useValue: scans },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -266,6 +271,89 @@ describe('StockPage', () => {
       locationId: 'l1',
       quantity: '4',
       lotCode: 'L-07',
+    });
+  });
+
+  describe('a scan on the screen', () => {
+    /** A GS1 label of the glue: a pack of twelve, its lot and the day it is used by (docs/SPEC.md § 7, slice 7). */
+    const glue = {
+      productId: 'p3',
+      reference: 'ART-3',
+      name: 'Colle',
+      isActive: true,
+      code: '0113017620422000',
+      role: 'pack' as const,
+      quantity: 12,
+      lot: 'L-09',
+      useBy: '2027-05-31',
+      serial: null,
+      unitPriceNet: '1.0000',
+      unitPriceGross: '1.190',
+      priceGross: '14.280',
+    };
+    const scanned = (code: string) => TestBed.inject(ScanBus).receive(code, 'wedge');
+    const values = () => form().getRawValue() as Record<string, unknown>;
+
+    it('fills an open receipt from a GS1 label: the product, its lot, its use-by day and the pieces', async () => {
+      q('stock-receive')!.click();
+      await settle();
+      scans.named.mockResolvedValue(glue);
+
+      const outcome = await scanned(glue.code);
+      await settle();
+
+      expect(outcome).toMatchObject({ kind: 'done', key: 'inventory.scan.filled' });
+      expect(values()).toMatchObject({
+        productId: 'p3',
+        lotCode: 'L-09',
+        lotExpiresOn: '2027-05-31',
+        quantity: '12',
+      });
+      expect(q('field-lotCode')).not.toBeNull();
+
+      // The same lot again counts on, as a till does; another lot starts again from its own pieces.
+      await scanned(glue.code);
+      expect(values()['quantity']).toBe('24');
+      scans.named.mockResolvedValueOnce({ ...glue, lot: 'L-10' });
+      await scanned(glue.code);
+      expect(values()).toMatchObject({ lotCode: 'L-10', quantity: '12' });
+
+      TestBed.inject(ScanBus).undoLast();
+      expect(values()).toMatchObject({ lotCode: 'L-09', quantity: '24' });
+    });
+
+    it('takes a serial number as the lot of a product kept by serial', async () => {
+      q('stock-receive')!.click();
+      await settle();
+      scans.named.mockResolvedValue({
+        ...glue,
+        role: 'unit',
+        quantity: 1,
+        lot: null,
+        useBy: null,
+        serial: 'SN-1',
+      });
+
+      await scanned(glue.code);
+
+      expect(values()).toMatchObject({ productId: 'p3', lotCode: 'SN-1', quantity: '1' });
+    });
+
+    it('leaves a scan to the card with no movement open, and refuses what no stock is kept of', async () => {
+      scans.named.mockResolvedValue(glue);
+      expect(await scanned(glue.code)).toEqual({ kind: 'unclaimed' });
+      expect(scans.named).not.toHaveBeenCalled();
+
+      q('stock-receive')!.click();
+      await settle();
+      scans.named.mockResolvedValue({ ...glue, productId: 'p-service', name: 'Pose' });
+      expect(await scanned(glue.code)).toMatchObject({
+        kind: 'refused',
+        key: 'inventory.scan.not_kept',
+        params: { name: 'Pose' },
+      });
+      scans.named.mockResolvedValue(null);
+      expect(await scanned('999')).toEqual({ kind: 'unclaimed' });
     });
   });
 

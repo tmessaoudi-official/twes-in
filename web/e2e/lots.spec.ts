@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test, type Page } from '@playwright/test';
 import { wcagViolations } from './axe';
-import { aProduct, forget } from './catalogue';
+import { aProduct, forget, gtin, withCodes } from './catalogue';
+import { scan } from './scan';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
 
@@ -31,18 +32,21 @@ async function stockKept(page: Page, productId: string, kept: boolean): Promise<
   );
 }
 
-test('a product kept by lot asks its lot on receipt, and the stock list names it', async ({
+test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and the stock list names it', async ({
   page,
 }) => {
   const run = Date.now().toString(36).toUpperCase();
   const reference = `LOT-${run}`;
   const lot = `L-${run}`;
+  const scannedLot = `S-${run}`;
+  const code = gtin(`203${String(Date.now() % 1_000_000_000).padStart(9, '0')}`);
   await signIn(page);
   await inACompany(page, CSRF);
   const ids: string[] = [];
   try {
     ids.push(await aProduct(page, reference));
     await stockKept(page, ids[0], true);
+    await withCodes(page, ids[0], [code]);
 
     await page.goto(`/products/${ids[0]}`);
     await page.getByTestId('field-tracking').click();
@@ -66,6 +70,16 @@ test('a product kept by lot asks its lot on receipt, and the stock list names it
     await expect(row).toHaveCount(1);
     await expect(row).toContainText(reference);
     expect(await wcagViolations(page)).toEqual([]);
+
+    // A GS1 label scanned on an open receipt fills the product, its lot and the day it is used by.
+    await page.getByTestId('stock-receive').click();
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await scan(page, `]C1010${code}1727053110${scannedLot}`);
+    await expect(page.getByTestId('field-lotCode')).toHaveValue(scannedLot);
+    await expect(page.getByTestId('field-lotExpiresOn')).toHaveValue('2027-05-31');
+    await expect(page.getByTestId('field-quantity')).toHaveValue('1');
+    await page.getByTestId('stock-movement-save').click();
+    await expect(page.getByRole('row').filter({ hasText: scannedLot })).toContainText('2027-05-31');
   } finally {
     if (ids.length > 0) await stockKept(page, ids[0], false);
     await forget(page, ids);
