@@ -23,8 +23,8 @@ use Symfony\Component\Uid\Uuid;
  * Goods moving in or out of a location (docs/SPEC.md § 4 stock_movement), never changed once written: the stock of a
  * product at a location is the sum of its movements. The quantity is signed, in the product's unit, kept with three
  * decimals and never finer than the unit counts. A movement says where it came from: a receipt or a count someone
- * recorded, or a delivery note. A delivery note moves a product from a location at most once each way, which the
- * unique source key holds even if its event arrives twice.
+ * recorded, or a delivery note. A delivery note moves a product from a location at most once each way and lot, which
+ * the unique source key holds even if its event arrives twice.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'stock_movement')]
@@ -32,7 +32,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_stock_movement_product', columns: ['product_id'])]
 #[ORM\Index(name: 'idx_stock_movement_location', columns: ['location_id'])]
 #[ORM\Index(name: 'idx_stock_movement_lot', columns: ['lot_id'])]
-#[ORM\UniqueConstraint(name: 'uniq_stock_movement_source', columns: ['source_type', 'source_id', 'product_id', 'location_id', 'kind'])]
+#[ORM\UniqueConstraint(name: 'uniq_stock_movement_source', columns: ['source_type', 'source_id', 'product_id', 'location_id', 'kind', 'lot_id'], options: ['where' => '(source_id IS NOT NULL)'])]
 class StockMovement implements CompanyOwned
 {
     public const string SOURCE_RECEIPT = 'receipt';

@@ -14,6 +14,7 @@ use App\Module\DeliveryNotes\Domain\DeliveredQuantity;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
+use App\Module\Inventory\Domain\NamedLot;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
 use App\Module\Products\Domain\Product;
@@ -55,6 +56,8 @@ final class MoveStockForDeliveryNotesTest extends TestCase
     private InMemoryModuleStates $states;
     private FakeTransactions $transactions;
     private MoveStockForDeliveryNotes $move;
+    private KeepStock $keep;
+    private ManageStockLocations $manage;
     private Company $company;
     private Establishment $depot;
     private Unit $piece;
@@ -93,7 +96,8 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         $this->settings->save(new Setting(SettingAddress::product($this->company, $this->untracked->getId()), 'article.stock_tracking', false, $now));
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings()]), $this->settings));
         $manage = new ManageStockLocations($this->locations, $this->movements, $establishments, new InMemoryAuditTrail($this->transactions), $this->clock, $this->transactions);
-        $keep = new KeepStock($this->movements, new InMemoryStockLots(), $this->locations, $products, $read, $this->transactions, $this->clock, new RecordingLiveChanges());
+        $keep = $this->keep = new KeepStock($this->movements, new InMemoryStockLots(), $this->locations, $products, $read, $this->transactions, $this->clock, new RecordingLiveChanges());
+        $this->manage = $manage;
         $modules = new ModuleStates(new ModuleCatalog([new ProductsModule(), new InventoryModule()]), $this->states);
         $this->move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $this->transactions, $this->clock);
     }
@@ -139,19 +143,34 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         self::assertSame([['ART-002', '001', 'out', '-1.000']], $this->written());
     }
 
-    public function testAProductTrackedByLotOrSerialIsLeftOutAndSaidUntilDeliveriesPickLots(): void
+    public function testATrackedProductLeavesFromItsFirstLotsToExpireAndComesBackToThemOnCancel(): void
     {
-        $this->laptop->track(ProductTracking::Serial, $this->clock->now());
+        $this->laptop->track(ProductTracking::Lot, $this->clock->now());
+        $depot = $this->manage->defaultOf($this->depot)->getId();
+        foreach ([['NOVEMBER', '2026-11-01', '5'], ['OCTOBER', '2026-10-01', '2'], ['AUGUST', '2026-08-31', '3']] as [$code, $date, $quantity]) {
+            $this->keep->receive($this->company, $this->laptop->getId(), $depot, $quantity, null, new NamedLot($code, new \DateTimeImmutable($date)));
+        }
+        $received = \count($this->movements->movements);
+        $first = Uuid::v7();
 
-        $skipped = $this->move->validated(Uuid::v7(), $this->company->getId(), $this->depot->getId(), [
-            $this->line($this->laptop, '1.000', $this->piece),
-            $this->line($this->flour, '1.000', $this->kilogram),
-        ]);
+        $skipped = $this->move->validated($first, $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '4.000', $this->piece)]);
 
+        self::assertSame([], $skipped);
+        self::assertSame([['OCTOBER', '-2.000'], ['NOVEMBER', '-2.000']], $this->lotsWritten($received), 'the expired August lot stays');
+
+        $skipped = $this->move->validated(Uuid::v7(), $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '6.000', $this->piece)]);
+        self::assertSame([['OCTOBER', '-2.000'], ['NOVEMBER', '-2.000'], ['NOVEMBER', '-3.000']], $this->lotsWritten($received));
         self::assertCount(1, $skipped);
-        self::assertStringContainsString('ART-001', $skipped[0]);
-        self::assertStringContainsString('serial', $skipped[0]);
-        self::assertSame([['ART-002', '001', 'out', '-1.000']], $this->written());
+        self::assertStringContainsString('3.000 of ART-001', $skipped[0]);
+
+        $this->move->cancelled($first, $this->company->getId());
+        self::assertSame([['OCTOBER', '2.000'], ['NOVEMBER', '2.000']], \array_slice($this->lotsWritten($received), 3), 'each lot gets back what left it');
+    }
+
+    /** @return list<array{string, string}> the lot and quantity of each movement written after the first $from */
+    private function lotsWritten(int $from): array
+    {
+        return array_map(static fn (StockMovement $m) => [(string) $m->getLot()?->getCode(), $m->getQuantity()], \array_slice($this->movements->movements, $from));
     }
 
     public function testNothingMovesWhileTheCompanyHasInventoryOff(): void

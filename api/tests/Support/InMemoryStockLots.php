@@ -31,6 +31,17 @@ final class InMemoryStockLots implements StockLotRepository
         }
     }
 
+    public function ofIdInCompany(Uuid $id, Uuid $companyId): ?StockLot
+    {
+        foreach ($this->lots as $lot) {
+            if ($lot->getId()->equals($id) && $lot->getCompany()->getId()->equals($companyId)) {
+                return $lot;
+            }
+        }
+
+        return null;
+    }
+
     public function ofCode(Uuid $productId, string $code): ?StockLot
     {
         foreach ($this->lots as $lot) {

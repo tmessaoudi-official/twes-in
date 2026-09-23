@@ -26,6 +26,11 @@ final readonly class DoctrineStockLotRepository implements StockLotRepository
         $this->entityManager->flush();
     }
 
+    public function ofIdInCompany(Uuid $id, Uuid $companyId): ?StockLot
+    {
+        return $this->entityManager->getRepository(StockLot::class)->findOneBy(['id' => $id, 'company' => $companyId]);
+    }
+
     public function ofCode(Uuid $productId, string $code): ?StockLot
     {
         return $this->entityManager->getRepository(StockLot::class)->findOneBy(['product' => $productId, 'code' => $code]);

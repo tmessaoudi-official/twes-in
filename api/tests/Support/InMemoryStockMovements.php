@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
+use App\Module\Inventory\Domain\LotOnHand;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockMovement;
@@ -73,6 +74,22 @@ final class InMemoryStockMovements implements StockMovementRepository
         }
 
         return $sum->value;
+    }
+
+    public function lotsAt(Uuid $productId, Uuid $locationId): array
+    {
+        $sums = [];
+        $lots = [];
+        foreach ($this->movements as $movement) {
+            $lot = $movement->getLot();
+            if (null !== $lot && $movement->getProduct()->getId()->equals($productId) && $movement->getLocation()->getId()->equals($locationId)) {
+                $key = $lot->getId()->toRfc4122();
+                $lots[$key] = $lot;
+                $sums[$key] = ($sums[$key] ?? new Number('0.000'))->add($movement->getQuantity());
+            }
+        }
+
+        return array_map(static fn (string $key): LotOnHand => new LotOnHand($lots[$key], $sums[$key]->value), array_keys($sums));
     }
 
     public function levels(Uuid $companyId): array

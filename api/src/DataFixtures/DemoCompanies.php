@@ -178,10 +178,10 @@ final class DemoCompanies extends Fixture
 
         $customerIds = $this->writeCustomers($demo, $company, $tax, $actor, $settle);
         $vendors = $this->writeVendors($demo, $company, $actor);
-        [$sellable, $goods] = $this->writeProducts($demo, $company, $unit, $tax, $vendors, $actor, $settle);
+        [$sellable, $goods, $tracked] = $this->writeProducts($demo, $company, $unit, $tax, $vendors, $actor, $settle);
 
         $this->planExpenses($demo, $timeline, $company, $vendors, $tax, $actor);
-        $this->planDeliveryNotes($timeline, $company, $customerIds, $goods, $actor);
+        $this->planDeliveryNotes($timeline, $company, $customerIds, $goods, $tracked, $actor);
         $this->planInvoices($demo, $timeline, $company, $customerIds, $sellable, $actor);
         $timeline->run();
     }
@@ -264,7 +264,8 @@ final class DemoCompanies extends Fixture
      * @param list<array{id: Uuid}>  $vendors
      * @param \Closure(): void       $settle
      *
-     * @return array{list<Uuid>, list<Uuid>} the active products, then the active goods among them
+     * @return array{list<Uuid>, list<Uuid>, list<Uuid>} the active products, then the active goods among them that
+     *                                                   track nothing, then those tracked by lot or serial number
      */
     private function writeProducts(DemoCompany $demo, \Closure $company, \Closure $unit, \Closure $tax, array $vendors, Uuid $actor, \Closure $settle): array
     {
@@ -285,6 +286,7 @@ final class DemoCompanies extends Fixture
 
         $sellable = [];
         $goods = [];
+        $tracked = [];
         foreach ($demo->products as $n => $row) {
             $service = isset($row['service']);
             $tracking = ProductTracking::from($row['tracking'] ?? 'none');
@@ -305,14 +307,13 @@ final class DemoCompanies extends Fixture
                 $goods[] = $product->getId();
                 $this->stock->receive($company(), $product->getId(), $shelf, (string) (40 + (37 * $n) % 160), $actor);
             } elseif (!isset($row['inactive']) && !$service) {
-                // Kept out of the delivery notes until deliveries pick lots (docs/SPEC.md § 7, 2026-09-23 02:40, L2),
-                // which would otherwise leave their lines out and say so on every note.
+                $tracked[] = $product->getId();
                 $this->receiveTracked($company(), $product->getId(), $tracking, $shelf, $row['ref'], $actor);
             }
             $settle();
         }
 
-        return [$sellable, $goods];
+        return [$sellable, $goods, $tracked];
     }
 
     /**
@@ -432,8 +433,10 @@ final class DemoCompanies extends Fixture
      * @param \Closure(): Company $company
      * @param list<Uuid>          $customerIds
      * @param list<Uuid>          $goods
+     * @param list<Uuid>          $tracked     goods tracked by lot or serial number: a few notes carry two of one, which
+     *                                         leave from its lots, the first to expire first
      */
-    private function planDeliveryNotes(Timeline $timeline, \Closure $company, array $customerIds, array $goods, Uuid $actor): void
+    private function planDeliveryNotes(Timeline $timeline, \Closure $company, array $customerIds, array $goods, array $tracked, Uuid $actor): void
     {
         /** @var list<array{customer: int, day: int, validate: bool, deliver?: int, cancel?: int, invoice?: int}> $plan */
         $plan = [
@@ -452,6 +455,9 @@ final class DemoCompanies extends Fixture
                 new DeliveryNoteLineInput($goods[(3 * $n) % \count($goods)], null, (string) (2 + $n)),
                 new DeliveryNoteLineInput($goods[(3 * $n + 5) % \count($goods)], null, (string) (1 + $n % 3)),
             ];
+            if ([] !== $tracked && \in_array($n, [0, 3, 4], true)) {
+                $lines[] = new DeliveryNoteLineInput($tracked[$n % \count($tracked)], null, '2');
+            }
             $timeline->at($note['day'], function () use (&$ids, $n, $company, $customerId, $lines, $note, $actor): void {
                 $ids[$n] = $this->deliveryNotes->create($company(), new DeliveryNoteInput($customerId, null, new DeliveryNoteHeader(), $lines), $actor)->getId();
                 if ($note['validate']) {

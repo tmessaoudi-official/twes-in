@@ -42,6 +42,9 @@ interface StockMovementRepository
      */
     public function onHandOfLot(Uuid $lotId): string;
 
+    /** @return list<LotOnHand> each lot of the product something moved at the location, with its stock there */
+    public function lotsAt(Uuid $productId, Uuid $locationId): array;
+
     /** @return list<StockLevel> every product, location and lot of the company something moved in */
     public function levels(Uuid $companyId): array;
 

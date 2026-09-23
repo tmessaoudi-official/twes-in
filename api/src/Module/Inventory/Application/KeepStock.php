@@ -139,6 +139,26 @@ final readonly class KeepStock
         });
     }
 
+    /**
+     * Lets an expired lot leave after all (docs/SPEC.md § 7, 2026-09-23 02:40): a person looked at the goods and
+     * decided, and the lot keeps who and when. Its day is the company's.
+     *
+     * @throws StockLotNotFound
+     * @throws InvalidStockMovement
+     */
+    public function release(Company $company, Uuid $lotId, Uuid $actorUserId): StockLot
+    {
+        return $this->transactions->run(function () use ($company, $lotId, $actorUserId): StockLot {
+            $lot = $this->lots->ofIdInCompany($lotId, $company->getId()) ?? throw new StockLotNotFound();
+            if ($lot->release($actorUserId, $this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone())))) {
+                $this->lots->save($lot);
+                $this->liveChanges->stage(new LiveChange('stock', $lot->getProduct()->getId(), 'stock.lot_released', $actorUserId, $company->getId()));
+            }
+
+            return $lot;
+        });
+    }
+
     /** @return list<StockLevel> */
     public function levels(Company $company): array
     {

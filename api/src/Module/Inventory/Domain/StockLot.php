@@ -58,6 +58,13 @@ class StockLot implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
+    /** When someone let the lot leave after its date, and who: a decision, so it is recorded rather than implied. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $releasedAt = null;
+
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $releasedBy = null;
+
     private function __construct(Product $product, string $code, ?\DateTimeImmutable $expiresOn, \DateTimeImmutable $now)
     {
         $this->id = Uuid::v7();
@@ -115,6 +122,37 @@ class StockLot implements CompanyOwned
         return true;
     }
 
+    /**
+     * Whether its goods may leave on that day, the company's day: through the day they are used by, and after it only
+     * once released (docs/SPEC.md § 7, 2026-09-23 02:40). A lot without a date never expires.
+     */
+    public function deliverableOn(\DateTimeImmutable $day): bool
+    {
+        return null === $this->expiresOn || null !== $this->releasedAt || $day->format('Y-m-d') <= $this->expiresOn->format('Y-m-d');
+    }
+
+    /**
+     * Lets an expired lot leave after all: a person looked at the goods and decided. Only an expired lot is released,
+     * and once: the first decision is the one on record.
+     *
+     * @return bool whether this released it
+     *
+     * @throws InvalidStockMovement
+     */
+    public function release(Uuid $actor, \DateTimeImmutable $now): bool
+    {
+        if (null !== $this->releasedAt) {
+            return false;
+        }
+        if (null === $this->expiresOn || $now->format('Y-m-d') <= $this->expiresOn->format('Y-m-d')) {
+            throw new InvalidStockMovement('lot', \sprintf('The lot %s of %s is still in date: only an expired lot is released.', $this->code, $this->product->getReference()));
+        }
+        $this->releasedAt = $now;
+        $this->releasedBy = $actor;
+
+        return true;
+    }
+
     private static function day(?\DateTimeImmutable $date): ?\DateTimeImmutable
     {
         return $date?->setTime(0, 0);
@@ -148,5 +186,15 @@ class StockLot implements CompanyOwned
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getReleasedAt(): ?\DateTimeImmutable
+    {
+        return $this->releasedAt;
+    }
+
+    public function getReleasedBy(): ?Uuid
+    {
+        return $this->releasedBy;
     }
 }

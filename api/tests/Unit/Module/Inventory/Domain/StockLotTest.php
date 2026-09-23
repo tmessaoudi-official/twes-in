@@ -19,6 +19,7 @@ use App\Module\Products\Domain\ProductTracking;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 final class StockLotTest extends TestCase
 {
@@ -91,5 +92,30 @@ final class StockLotTest extends TestCase
             self::assertStringContainsString('2027-01-31', $refused->getMessage());
         }
         self::assertSame('2027-01-31', $undated->getExpiresOn()->format('Y-m-d'));
+    }
+
+    public function testAnExpiredLotLeavesOnlyOnceSomeoneReleasesIt(): void
+    {
+        $lot = StockLot::open($this->glue, 'L1', new \DateTimeImmutable('2026-09-20'), $this->now);
+        $actor = Uuid::v7();
+
+        self::assertTrue($lot->deliverableOn(new \DateTimeImmutable('2026-09-20')), 'used by the 20th: good through the 20th');
+        self::assertFalse($lot->deliverableOn(new \DateTimeImmutable('2026-09-21')));
+        self::assertTrue(StockLot::open($this->glue, 'L2', null, $this->now)->deliverableOn(new \DateTimeImmutable('2099-01-01')), 'a lot without a date never expires');
+
+        self::assertTrue($lot->release($actor, new \DateTimeImmutable('2026-09-23')));
+        self::assertTrue($lot->deliverableOn(new \DateTimeImmutable('2026-09-23')));
+        self::assertSame([$actor, '2026-09-23'], [$lot->getReleasedBy(), $lot->getReleasedAt()?->format('Y-m-d')]);
+        self::assertFalse($lot->release(Uuid::v7(), new \DateTimeImmutable('2026-09-24')), 'released once, by whoever did');
+        self::assertSame($actor, $lot->getReleasedBy());
+
+        $good = StockLot::open($this->glue, 'L3', new \DateTimeImmutable('2027-01-31'), $this->now);
+        try {
+            $good->release($actor, new \DateTimeImmutable('2026-09-23'));
+            self::fail('A lot still in date was released.');
+        } catch (InvalidStockMovement $refused) {
+            self::assertSame('lot', $refused->field);
+        }
+        self::assertNull($good->getReleasedAt());
     }
 }

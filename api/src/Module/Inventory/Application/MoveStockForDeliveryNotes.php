@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Application;
 
 use App\Module\DeliveryNotes\Domain\DeliveredQuantity;
+use App\Module\Inventory\Domain\LotPicking;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementKind;
 use App\Module\Inventory\Domain\StockMovementRepository;
@@ -26,8 +27,11 @@ use Symfony\Component\Uid\Uuid;
  * What a delivery note does to stock (docs/SPEC.md § 7, 2026-09-14: the goods leave with validation). A validated note
  * takes each product it delivers out of its establishment's default location, once per product, while the company has
  * inventory on and keeps stock of that product; a line counted in another unit than its product moves nothing and is
- * said, because no unit converts into another. A cancelled note returns exactly what its validation took out, whatever
- * the tracking or the module say since. Both are idempotent: an event handled twice moves nothing the second time.
+ * said, because no unit converts into another. A product tracked by lot or serial number leaves from its lots, the first
+ * to expire first, and never from an expired lot nobody released; what no lot in date holds is said and not moved
+ * (docs/SPEC.md § 7, 2026-09-23 02:40). A cancelled note returns exactly what its validation took out, to the lots it
+ * took it from, whatever the tracking or the module say since. Both are idempotent: an event handled twice moves
+ * nothing the second time.
  */
 final readonly class MoveStockForDeliveryNotes
 {
@@ -63,12 +67,6 @@ final readonly class MoveStockForDeliveryNotes
             if (null === $product || !$this->stock->tracked($product)) {
                 continue;
             }
-            // Which lot leaves is the delivery's to pick, first to expire first, and that comes in its own step
-            // (docs/SPEC.md § 7, 2026-09-23 02:40, L2): until then such a line moves nothing and says so.
-            if (ProductTracking::None !== $product->getTracking()) {
-                $skipped[] = \sprintf('%s is tracked by %s, so its line moved no stock: record which one left as a move or a count', $product->getReference(), ProductTracking::Serial === $product->getTracking() ? 'serial number' : 'lot');
-                continue;
-            }
             if (!$product->getUnit()->getId()->equals($line->unitId)) {
                 $skipped[] = \sprintf('a line of %s is counted in another unit than its stock, so it moved no stock', $product->getReference());
                 continue;
@@ -90,18 +88,35 @@ final readonly class MoveStockForDeliveryNotes
 
         $now = $this->clock->now();
         ksort($out);
-        $this->transactions->run(function () use ($establishment, $out, $deliveryNoteId, $now): void {
+        // The company's day decides which lots have expired: a lot used by today still leaves today, wherever the server is.
+        $today = $now->setTimezone(new \DateTimeZone($establishment->getCompany()->getTimezone()));
+
+        return $this->transactions->run(function () use ($establishment, $out, $deliveryNoteId, $now, $today, $skipped): array {
             $location = $this->locations->defaultOf($establishment);
             foreach ($out as $delivered) {
                 $this->movements->lockStockOf($delivered[0]->getId(), $location->getId());
             }
-            $this->movements->save(...array_map(
-                static fn (array $delivered): StockMovement => StockMovement::delivery($delivered[0], $location, $delivered[1]->value, $deliveryNoteId, $now),
-                array_values($out),
-            ));
-        });
+            $written = [];
+            foreach ($out as [$product, $quantity]) {
+                if (ProductTracking::None === $product->getTracking()) {
+                    $written[] = StockMovement::delivery($product, $location, $quantity->value, $deliveryNoteId, $now);
+                    continue;
+                }
+                // Read after the lock, as a count reads: what is picked is what no other delivery is taking.
+                $picked = LotPicking::firstExpiring($this->movements->lotsAt($product->getId(), $location->getId()), $quantity->value, $today);
+                foreach ($picked->taken as [$lot, $taken]) {
+                    $written[] = StockMovement::delivery($product, $location, $taken, $deliveryNoteId, $now, $lot);
+                }
+                if (1 === new Number($picked->short)->compare(0)) {
+                    $skipped[] = \sprintf('%s of %s was in no lot in date at %s, so it moved no stock: receive it under its lot, or release an expired one', $picked->short, $product->getReference(), $location->getCode());
+                }
+            }
+            if ([] !== $written) {
+                $this->movements->save(...$written);
+            }
 
-        return $skipped;
+            return $skipped;
+        });
     }
 
     public function cancelled(Uuid $deliveryNoteId, Uuid $companyId): void

@@ -15,6 +15,8 @@ interface StockLotRepository
 {
     public function save(StockLot $lot): void;
 
+    public function ofIdInCompany(Uuid $id, Uuid $companyId): ?StockLot;
+
     /** The product's lot under that code, exactly as written. */
     public function ofCode(Uuid $productId, string $code): ?StockLot;
 

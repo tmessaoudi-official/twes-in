@@ -2303,6 +2303,16 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   (`lot_tracked`) rather than guessing a lot. Adding a lot column there is not a column alone: the file's identity
   (product and location) would have to take the lot, and an identity column left empty switches the duplicate check
   off, so it waits for its own step.
+- [2026-09-23 05:20] TAKEN OVERNIGHT, to confirm (item 10 of `var/claude/overnight-questions.md`): **how deliveries take
+  lots (L2).** (1) A validated delivery note takes a tracked product from its lots at the default location, the first
+  to expire first, a lot without a date last, lots of one date in the order they arrived. (2) An expired lot — past the
+  day it is used by, in the COMPANY's day — stays unless a person released it; a release is recorded on the lot (who,
+  when), only for an expired lot, and only once: the first decision stands. (3) What no lot in date holds is not
+  moved and is said, the way a line in another unit is, so the stock keepers are told; an untracked product still goes
+  below zero silently, as before. Inventing a lot for the shortfall, or taking it from an expired one, would make the
+  record say something nobody decided. (4) The source key takes the lot, `NULLS NOT DISTINCT` and partial on
+  `source_id IS NOT NULL`: without the predicate, two receipts of one product at one location would collide as one
+  row. (5) The demo puts a lot-tracked or serial article on three of its delivery notes.
 
 ## 8. Status
 

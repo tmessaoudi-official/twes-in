@@ -19,11 +19,13 @@ use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\ModuleRegistry\Domain\ModuleState;
 use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\HttpFoundation\Response;
@@ -381,6 +383,77 @@ final class InventoryTest extends ApiTestCase
         sort($levels);
         self::assertSame([['L2609', '2027-03-31', '7.000'], ['L2610', null, '3.000']], $levels);
         self::assertEquals(2, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM stock_lot'), 'a refused receipt opened no lot');
+    }
+
+    public function testADeliveryNoteTakesTheFirstLotsToExpireAndAnExpiredOneOnlyOnceReleased(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $laptop = $this->em()->find(Product::class, $this->laptopId);
+        self::assertNotNull($laptop);
+        $laptop->track(ProductTracking::Lot, new \DateTimeImmutable());
+        $this->em()->flush();
+        $site = $this->defaultLocationId();
+        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        foreach ([['LATER', '+60 days', '5'], ['SOON', '+10 days', '2'], ['EXPIRED', '-3 days', '4']] as [$code, $offset, $quantity]) {
+            $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => $quantity, 'lotCode' => $code, 'lotExpiresOn' => $today->modify($offset)->format('Y-m-d')]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED, $code);
+        }
+        $customerId = $this->customer();
+
+        $this->validatedNote($customerId, '3');
+        self::assertSame(['EXPIRED' => '4.000', 'LATER' => '4.000', 'SOON' => '0.000'], $this->levelsByLot());
+
+        $expiredId = $this->em()->getConnection()->fetchOne("SELECT id FROM stock_lot WHERE code = 'EXPIRED'");
+        self::assertIsString($expiredId);
+        $laterId = $this->em()->getConnection()->fetchOne("SELECT id FROM stock_lot WHERE code = 'LATER'");
+        self::assertIsString($laterId);
+        $this->postJson($this->path('stock-lots', $laterId).'/release', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a lot in date is not released');
+        $this->postJson($this->path('stock-lots', '0192f5c8-0000-7000-8000-000000000000').'/release', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a lot of no company of ours');
+        $this->postJson($this->path('stock-lots', $expiredId).'/release', null);
+        self::assertResponseIsSuccessful();
+        $releasedBy = $this->em()->getConnection()->fetchOne("SELECT id FROM \"user\" WHERE email = 'stock@twes.local'");
+        self::assertSame(['EXPIRED', $releasedBy], [$this->json()['code'], $this->json()['releasedBy']]);
+        self::assertNotNull($this->json()['releasedAt']);
+
+        $this->validatedNote($customerId, '5');
+        self::assertSame(['EXPIRED' => '0.000', 'LATER' => '3.000', 'SOON' => '0.000'], $this->levelsByLot(), 'released, the expired lot left first');
+        self::assertEquals(0, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM stock_movement WHERE source_type = 'delivery_note' AND lot_id IS NULL"));
+    }
+
+    public function testTheSourceKeyHoldsAnUntrackedDeliveryOnceWhileReceiptsRepeatFreely(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $site = $this->defaultLocationId();
+        foreach (['4', '6'] as $quantity) {
+            $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => $quantity]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'two receipts of one product at one location are two rows');
+        }
+        $this->validatedNote($this->customer(), '3');
+        $connection = $this->em()->getConnection();
+
+        // The test runs inside a transaction a violation aborts, so the probe gets a savepoint of its own to fall back to.
+        $connection->executeStatement('SAVEPOINT duplicate_delivery');
+        try {
+            $connection->executeStatement("INSERT INTO stock_movement (id, company_id, product_id, location_id, lot_id, kind, quantity, source_type, source_id, recorded_by, at) SELECT gen_random_uuid(), company_id, product_id, location_id, lot_id, kind, quantity, source_type, source_id, recorded_by, at FROM stock_movement WHERE source_type = 'delivery_note'");
+            self::fail('The same delivery was written twice for a product that names no lot.');
+        } catch (UniqueConstraintViolationException) {
+            $connection->executeStatement('ROLLBACK TO SAVEPOINT duplicate_delivery');
+            self::assertEquals(1, $connection->fetchOne("SELECT count(*) FROM stock_movement WHERE source_type = 'delivery_note'"));
+        }
+    }
+
+    /** @return array<string, string> each lot's code and its stock, by code */
+    private function levelsByLot(): array
+    {
+        $levels = [];
+        foreach ($this->levels() as $row) {
+            $levels[$this->stringAt($row, 'lotCode')] = $this->stringAt($row, 'quantity');
+        }
+        ksort($levels);
+
+        return $levels;
     }
 
     public function testWithoutThePermissionOrForAnotherCompanyNothingIsFound(): void

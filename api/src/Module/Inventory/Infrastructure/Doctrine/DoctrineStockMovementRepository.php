@@ -9,8 +9,10 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Infrastructure\Doctrine;
 
+use App\Module\Inventory\Domain\LotOnHand;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
+use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
@@ -125,6 +127,30 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->setParameter('lot', $lotId, 'uuid')
             ->getQuery()
             ->getSingleScalarResult());
+    }
+
+    public function lotsAt(Uuid $productId, Uuid $locationId): array
+    {
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('lt AS lot', 'SUM(m.quantity) AS quantity')
+            ->from(StockLot::class, 'lt')
+            ->join(StockMovement::class, 'm', 'WITH', 'm.lot = lt')
+            ->where('m.product = :product')
+            ->andWhere('m.location = :location')
+            ->groupBy('lt.id')
+            ->setParameter('product', $productId, 'uuid')
+            ->setParameter('location', $locationId, 'uuid')
+            ->getQuery()
+            ->getResult();
+
+        $lots = [];
+        foreach (\is_array($rows) ? $rows : [] as $row) {
+            if (\is_array($row) && ($row['lot'] ?? null) instanceof StockLot) {
+                $lots[] = new LotOnHand($row['lot'], self::decimal($row['quantity'] ?? null));
+            }
+        }
+
+        return $lots;
     }
 
     public function levels(Uuid $companyId): array
