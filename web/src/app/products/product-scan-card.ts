@@ -14,6 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { isBareKeystroke } from '../shared/actions/shortcuts';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductScan, ProductsError } from './products-types';
@@ -96,7 +97,7 @@ export class ProductScanCard implements OnInit {
   }
 
   protected onKeydown(event: KeyboardEvent): void {
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (!isBareKeystroke(event)) return;
     const actions = this.actions();
     const action =
       event.key === 'Enter'

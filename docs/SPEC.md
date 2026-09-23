@@ -2258,6 +2258,18 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   picker asks on focus could answer in the middle of a scan burst, putting its rows back with the first held ready,
   and the scanner's Enter took that row — measured in the browser, a carton scanned into a fresh line put another
   product on it (2 of 6 runs); a burst now drops any answer still out.
+- [2026-09-23 02:05] TAKEN OVERNIGHT, to confirm (choices made tonight on the recommended option and first written as
+  NOTED above; listed with the others in `var/claude/overnight-questions.md`): **(1)** a scan into a document line
+  asks the scan lookup rather than every picker row carrying a count (00:40, point 3); **(2)** the lot and use-by
+  date a GS1 label carries are not written on a document line until lots exist (01:35); **(3)** text typed over a
+  line's product and abandoned stays in the box until the line changes — putting the product's words back on blur is
+  the alternative (01:35). **Correcting the 01:10 exposure, stated plainly:** only unit and pack codes are GTINs, all
+  digits. Supplier and internal codes are free text (the demo mints `F-<reference>`), so a scan of a code that starts
+  with a letter, on a record page, ran that page's shortcut for the first letter — `s` saves, `e` issues an invoice
+  without asking, `v` validates. Too much to accept: **a screen shortcut is now held for one scan gap (30 ms, below
+  anything a person notices) and dropped when the next key proves a burst.** Also fixed: AltGr reports Ctrl and Alt together and types a character (`]` of a GS1
+  prefix on AZERTY), and the wedge first read it as a command and dropped the scan; it now follows
+  `isBareKeystroke`, the rule the shortcuts already used.
 
 ## 8. Status
 

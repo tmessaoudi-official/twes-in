@@ -49,7 +49,7 @@ import { SchemeMenu } from '../shared/theme/scheme-menu';
 import { type SchemePreference, ThemeFacade } from '../shared/theme/theme-facade';
 import { ProductScanCard, type ProductScanCardData } from '../products/product-scan-card';
 import { PRODUCTS_MODULE } from '../products/products-nav';
-import { ScanWedge } from '../shared/scan/scan-wedge';
+import { SCAN_GAP_MS, ScanWedge } from '../shared/scan/scan-wedge';
 import { CommandPalette, type CommandPaletteData } from './command-palette';
 import { type Command, MODULE_COMMANDS, navCommands, screenCommands } from './commands';
 import {
@@ -125,6 +125,8 @@ export class AppShell {
   private shortcutsOpen = false;
   private scanOpen = false;
   private readonly wedge = new ScanWedge();
+  /** A screen shortcut waiting out the scan gap before it runs; see `onKeydown`. */
+  private heldShortcut: ReturnType<typeof setTimeout> | null = null;
   private readonly activity = inject(RequestActivity);
   protected readonly theme = inject(ThemeFacade);
   protected readonly language = inject(LanguageFacade);
@@ -196,6 +198,8 @@ export class AppShell {
   });
 
   constructor() {
+    // A shortcut still held when the shell goes (signing out) belongs to a screen that is gone with it.
+    inject(DestroyRef).onDestroy(() => this.dropHeldShortcut());
     // A session that ended while the page was open (expired, or ended from another device) sends the person back to
     // sign in with a word of why, instead of leaving every screen failing one request at a time. A refusal that landed
     // after the last redirect, while no shell was open, belongs to that ended session and must not eject a new one.
@@ -243,15 +247,14 @@ export class AppShell {
       key: event.key,
       at: event.timeStamp,
       editable: isTypingTarget(event.target),
-      modified: event.ctrlKey || event.metaKey || event.altKey,
+      // AltGr reports Ctrl and Alt together and types a character ("]" on AZERTY): only a bare Ctrl or Meta is a command.
+      modified: !isBareKeystroke(event),
     });
-    if (reading.code !== null) {
+    if (reading.code !== null || reading.claimed) {
+      // The key before this one was the first of a scanned code, not a shortcut: what it would have run never runs.
+      this.dropHeldShortcut();
       event.preventDefault();
-      this.openScan(reading.code);
-      return;
-    }
-    if (reading.claimed) {
-      event.preventDefault();
+      if (reading.code !== null) this.openScan(reading.code);
       return;
     }
 
@@ -279,9 +282,22 @@ export class AppShell {
     const action = this.screen.forKey(event.key);
     if (action === undefined) return;
     event.preventDefault();
-    runAction(action, (confirm) =>
-      this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
-    );
+    // Held for one scan gap: a supplier's or an internal code is free text, and its first letter cannot be told from
+    // a hand's until the second arrives — `e` would issue the invoice on view (docs/SPEC.md § 7, 2026-09-23 02:05).
+    // Thirty milliseconds is below anything a person notices.
+    this.dropHeldShortcut();
+    this.heldShortcut = setTimeout(() => {
+      this.heldShortcut = null;
+      runAction(action, (confirm) =>
+        this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+      );
+    }, SCAN_GAP_MS);
+  }
+
+  private dropHeldShortcut(): void {
+    if (this.heldShortcut === null) return;
+    clearTimeout(this.heldShortcut);
+    this.heldShortcut = null;
   }
 
   /** The "?" sheet: what this page's keys are, and the ones that work everywhere. */

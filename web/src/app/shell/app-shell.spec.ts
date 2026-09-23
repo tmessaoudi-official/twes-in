@@ -124,6 +124,11 @@ class CountingPage {
  * Declares actions the way a screen does — a signal, from an injection context — so the shell reads them through
  * the real registry rather than a stand-in that could agree with a broken one.
  */
+/** Longer than the gap between two keys of a scan, which a shortcut waits out before it runs. */
+function pause(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, SCAN_GAP_MS + 10));
+}
+
 function declareScreenActions(actions: readonly ScreenAction[]): void {
   const source = signal(actions);
   TestBed.runInInjectionContext(() => TestBed.inject(ScreenActions).declare(source));
@@ -578,6 +583,8 @@ describe('AppShell', () => {
 
     // AltGr types [ on a French PC keyboard and reports Ctrl and Alt together; Option does on a French Mac, Alt alone.
     press(document.body, { ctrlKey: true, altKey: true });
+    // A hand needs far longer than a scanner between two keys; two presses within SCAN_GAP_MS read as a scan.
+    await new Promise((resolve) => setTimeout(resolve, SCAN_GAP_MS + 10));
     press(document.body, { altKey: true });
     expect(theme.toggleSidebar).toHaveBeenCalledTimes(3);
   });
@@ -691,6 +698,8 @@ describe('AppShell', () => {
       );
 
     press(document.body);
+    // A shortcut waits out the scan gap: until then the key could be the first of a scanned code.
+    await pause();
     expect(ran).toBe(1);
 
     // The same key inside a field is the letter E, which is the reason this whole check exists.
@@ -698,12 +707,37 @@ describe('AppShell', () => {
     el.appendChild(input);
     press(input);
     input.remove();
+    await pause();
     expect(ran).toBe(1);
 
     // And a key no screen declared is nobody's: it must not be swallowed.
     const other = new KeyboardEvent('keydown', { key: 'z', bubbles: true, cancelable: true });
     document.body.dispatchEvent(other);
     expect(other.defaultPrevented).toBe(false);
+  });
+
+  it('runs no shortcut for the first letter of a scanned code', async () => {
+    permissions.set(['product.read']);
+    modules.set(['products']);
+    await render();
+    let issued = 0;
+    declareScreenActions([
+      { id: 'issue', label: 'invoices.issue', shortcut: 'e', run: () => (issued += 1) },
+    ]);
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(undefined),
+    } as never);
+
+    // A supplier's own code is free text: this one starts with the key that issues an invoice.
+    [...'E-4711', 'Enter'].forEach((key) =>
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+      ),
+    );
+    await pause();
+
+    expect(issued).toBe(0);
+    expect(open).toHaveBeenCalledTimes(1);
   });
 
   it('opens what a scan names when a scanner types a code with no field focused', async () => {
@@ -740,6 +774,32 @@ describe('AppShell', () => {
     scan(input, '3017620422003');
     input.remove();
     expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads a scan whose characters a French keyboard types with AltGr, as a GS1 prefix is', async () => {
+    permissions.set(['product.read']);
+    modules.set(['products']);
+    await render();
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(undefined),
+    } as never);
+
+    // AltGr reports Ctrl and Alt together and TYPES the character: "]" is AltGr ) on AZERTY.
+    [...']C10113017620422000', 'Enter'].forEach((key) =>
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key,
+          bubbles: true,
+          cancelable: true,
+          ...(key === ']' ? { ctrlKey: true, altKey: true } : {}),
+        }),
+      ),
+    );
+
+    expect(open).toHaveBeenCalledTimes(1);
+    expect((open.mock.calls[0] as [unknown, { data: { code: string } }])[1].data.code).toBe(
+      ']C10113017620422000',
+    );
   });
 
   it('opens nothing on a scan for somebody who may not read the products', async () => {
@@ -779,6 +839,7 @@ describe('AppShell', () => {
     document.body.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'x', bubbles: true, cancelable: true }),
     );
+    await pause();
 
     expect(open.mock.calls[0][0]).toBe(ConfirmDialog);
     expect(ran).toBe(0);
