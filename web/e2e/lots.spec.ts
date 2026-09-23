@@ -78,6 +78,10 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
     await expect(page.getByTestId('field-lotCode')).toHaveValue(scannedLot);
     await expect(page.getByTestId('field-lotExpiresOn')).toHaveValue('2027-05-31');
     await expect(page.getByTestId('field-quantity')).toHaveValue('1');
+    // The same label again counts on, as a till does.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await scan(page, `]C1010${code}1727053110${scannedLot}`);
+    await expect(page.getByTestId('field-quantity')).toHaveValue('2');
     await page.getByTestId('stock-movement-save').click();
     await expect(page.getByRole('row').filter({ hasText: scannedLot })).toContainText('2027-05-31');
   } finally {

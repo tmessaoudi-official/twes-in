@@ -1650,8 +1650,7 @@
       "view_hint": "Molette pour approcher, glisser pour déplacer"
     },
     "scan": {
-      "filled": "{{name}} : article, lot et quantité remplis",
-      "not_kept": "Aucun stock n'est tenu de {{name}}."
+      "filled": "{{name}} : article, lot et quantité remplis"
     }
   },
   "vendors": {

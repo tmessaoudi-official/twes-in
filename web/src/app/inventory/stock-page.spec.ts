@@ -339,21 +339,34 @@ describe('StockPage', () => {
       expect(values()).toMatchObject({ productId: 'p3', lotCode: 'SN-1', quantity: '1' });
     });
 
-    it('leaves a scan to the card with no movement open, and refuses what no stock is kept of', async () => {
+    it('leaves a scan to the card with no movement open, or when the picker does not answer the product', async () => {
       scans.named.mockResolvedValue(glue);
       expect(await scanned(glue.code)).toEqual({ kind: 'unclaimed' });
       expect(scans.named).not.toHaveBeenCalled();
 
       q('stock-receive')!.click();
       await settle();
-      scans.named.mockResolvedValue({ ...glue, productId: 'p-service', name: 'Pose' });
-      expect(await scanned(glue.code)).toMatchObject({
-        kind: 'refused',
-        key: 'inventory.scan.not_kept',
-        params: { name: 'Pose' },
-      });
+      scans.named.mockResolvedValue({ ...glue, productId: 'p-elsewhere', name: 'Pose' });
+      expect(await scanned(glue.code)).toEqual({ kind: 'unclaimed' });
+      // Asked by id, never by words: a search answers a window of the catalogue and could miss it.
+      expect(facade.pickProducts).toHaveBeenLastCalledWith('c1', { ids: ['p-elsewhere'] });
       scans.named.mockResolvedValue(null);
       expect(await scanned('999')).toEqual({ kind: 'unclaimed' });
+    });
+
+    it('takes back a scan that turned an untracked form into a tracked one, lot fields included', async () => {
+      q('stock-receive')!.click();
+      await settle();
+      scans.named.mockResolvedValue(glue);
+      await scanned(glue.code);
+      await settle();
+      expect(q('field-lotCode')).not.toBeNull();
+
+      TestBed.inject(ScanBus).undoLast();
+      await settle();
+
+      expect(q('field-lotCode')).toBeNull();
+      expect(values()).toMatchObject({ productId: '', quantity: '' });
     });
   });
 

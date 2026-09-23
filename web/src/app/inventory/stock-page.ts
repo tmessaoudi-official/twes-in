@@ -193,8 +193,9 @@ export class StockPage implements OnInit {
   /**
    * A scan on an open movement fills it (docs/SPEC.md § 7, 2026-09-23 slice 7): the product, and from a GS1 label its
    * lot or serial number and the day it is used by, and the pieces the code enters — counting on, as a till does,
-   * while the same lot is scanned again. With no movement open the card takes the scan. A product no stock is kept of
-   * is refused here rather than on saving: the picker is searched, as a person would, never answered by id.
+   * while the same lot is scanned again. With no movement open the card takes the scan. The product is asked by id,
+   * exactly: a search answers a window of the catalogue and could miss it. Whether stock is kept of it is then the
+   * API's to say when the movement is saved.
    */
   private async scanned(scan: Scan): Promise<ScanOutcome> {
     const companyId = this.company()?.id;
@@ -207,11 +208,8 @@ export class StockPage implements OnInit {
     if (!named.isActive) {
       return { kind: 'refused', key: 'scan.retired', params: { name: named.name } };
     }
-    const found = await this.facade.pickProducts(companyId, { words: named.reference });
-    const product = found.find((each) => each.id === named.productId);
-    if (product === undefined) {
-      return { kind: 'refused', key: 'inventory.scan.not_kept', params: { name: named.name } };
-    }
+    const [product] = await this.facade.pickProducts(companyId, { ids: [named.productId] });
+    if (product === undefined) return { kind: 'unclaimed' };
 
     const before = form.getRawValue();
     const chosenBefore = this.product();

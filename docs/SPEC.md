@@ -2462,9 +2462,10 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   screen with a receipt, count or move open, a scan fills the product and, from a GS1 label, its lot — or its serial
   number, which is the lot of a product kept by serial — and its use-by day, with the pieces the code enters; the same
   product and lot scanned again counts on, as a till does, and another lot starts again from its own pieces. Undo puts
-  the form back as it was. A product no stock is kept of is refused at the scan ("Aucun stock n'est tenu de …"), found
-  through the picker's search as a person would, since the picker answers an id whatever is kept of it. With no
-  movement open, the card takes the scan as before; a person who may not read the products leaves it to the card too.
+  the form back as it was. The product is asked of the picker by id, exactly; a search answers only a window of the
+  catalogue and could miss it, so whether stock is kept of the product is the API's to say when the movement is saved
+  (a refusal the screen shows as it shows any). With no movement open, the card takes the scan as before; a person who
+  may not read the products leaves it to the card too.
 
 ## 8. Status
 
