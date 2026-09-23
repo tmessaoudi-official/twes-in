@@ -196,6 +196,20 @@ export const STOCK_LIST: ListDescriptor<StockListRow> = {
       sortable: true,
       filterable: true,
     },
+    // A tracked product's stock is a number per lot (docs/SPEC.md § 7, 2026-09-22 11:10); an untracked one shows none.
+    {
+      id: 'lot',
+      label: `${STOCK_FIELDS}.lot`,
+      value: (row) => row.lotCode ?? '',
+      filterable: true,
+      width: 140,
+    },
+    {
+      id: 'useBy',
+      label: `${STOCK_FIELDS}.useBy`,
+      value: (row) => row.lotExpiresOn ?? '',
+      width: 130,
+    },
     {
       id: 'quantity',
       label: `${STOCK_FIELDS}.quantity`,

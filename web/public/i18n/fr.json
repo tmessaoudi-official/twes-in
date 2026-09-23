@@ -1456,7 +1456,9 @@
         "unit": "Unité",
         "at": "Date",
         "kind": "Nature",
-        "source": "Origine"
+        "source": "Origine",
+        "lot": "Lot",
+        "useBy": "À utiliser avant"
       },
       "no_product_found": "Aucun produit trouvé.",
       "product_hint": "Tapez la référence ou le nom ; seuls les produits dont le stock est suivi sont proposés.",

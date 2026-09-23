@@ -2448,6 +2448,10 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   tracked service. Once stock of the product has moved, the API keeps the tracking it moved under, and the form says so
   in its own words (`tracking_kept`) rather than as a generic refusal. The field stays offered after the first
   movement: which product has moved is the API's to know, and a greyed field would say "you may not" without saying why.
+- [2026-09-23 20:05] TAKEN OVERNIGHT (standing instruction, to confirm): slice 7b, the stock levels by lot. The stock
+  list gains two columns after the location, "Lot" and "À utiliser avant" (the lot's use-by day, as ISO like the
+  other dates of the lists), empty for an untracked product; a tracked product has one row per location and lot, as the
+  API answers it. No colour marks an expired lot yet: the list does not know whether a person released it.
 
 ## 8. Status
 

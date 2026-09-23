@@ -96,8 +96,21 @@ describe('InventoryApi', () => {
     };
     http
       .expectOne((candidate) => candidate.url === '/api/companies/c1/stock-levels')
-      .flush({ member: [level], totalItems: 7 });
-    expect(await levels).toEqual({ rows: [level], total: 7 });
+      .flush({
+        member: [
+          level,
+          { ...level, id: 'p1:l1:k1', lotId: 'k1', lotCode: 'L-07', lotExpiresOn: '2027-05-31' },
+        ],
+        totalItems: 7,
+      });
+    // An untracked product's level carries no lot; a tracked one's names its lot and the day it is used by.
+    expect(await levels).toEqual({
+      rows: [
+        { ...level, lotId: null, lotCode: null, lotExpiresOn: null },
+        { ...level, id: 'p1:l1:k1', lotId: 'k1', lotCode: 'L-07', lotExpiresOn: '2027-05-31' },
+      ],
+      total: 7,
+    });
 
     const locations = api.locations('c1');
     http.expectOne('/api/companies/c1/stock-locations').flush([{ ...zone, kind: 'cellar' }]);

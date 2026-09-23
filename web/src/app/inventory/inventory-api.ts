@@ -481,6 +481,9 @@ function toLevel(raw: StockLevelJsonldStockLevelRead): StockLevelRow {
     locationName: raw.locationName ?? '',
     establishmentId: raw.establishmentId ?? '',
     quantity: raw.quantity ?? '0.000',
+    lotId: raw.lotId ?? null,
+    lotCode: raw.lotCode ?? null,
+    lotExpiresOn: raw.lotExpiresOn ?? null,
   };
 }
 

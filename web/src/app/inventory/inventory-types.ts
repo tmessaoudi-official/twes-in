@@ -112,6 +112,11 @@ export interface StockLevelRow {
   establishmentId: string;
   /** A signed decimal string at three decimals, "-2.000". */
   quantity: string;
+  /** The lot this quantity is of, for a product tracked by lot or serial; null for an untracked one. */
+  lotId: string | null;
+  lotCode: string | null;
+  /** The day the lot is used by (ISO), when it has one. */
+  lotExpiresOn: string | null;
 }
 
 export interface StockMovementRow {

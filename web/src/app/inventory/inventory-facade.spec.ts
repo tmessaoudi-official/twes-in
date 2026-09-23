@@ -56,6 +56,9 @@ const level: StockLevelRow = {
   locationName: 'Siège',
   establishmentId: 'e1',
   quantity: '10.000',
+  lotId: null,
+  lotCode: null,
+  lotExpiresOn: null,
 };
 const zone: StockLocationInput = {
   establishmentId: 'e1',

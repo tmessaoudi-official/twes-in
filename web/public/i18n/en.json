@@ -1456,7 +1456,9 @@
         "unit": "Unit",
         "at": "Date",
         "kind": "Kind",
-        "source": "Source"
+        "source": "Source",
+        "lot": "Lot",
+        "useBy": "Use by"
       },
       "no_product_found": "No product found.",
       "product_hint": "Type the reference or the name; only products whose stock is kept are offered.",

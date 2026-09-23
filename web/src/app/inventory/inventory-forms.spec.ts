@@ -69,6 +69,9 @@ function level(productId: string, locationId: string, quantity: string): StockLe
     locationName: 'Siège',
     establishmentId: 'e1',
     quantity,
+    lotId: null,
+    lotCode: null,
+    lotExpiresOn: null,
   };
 }
 
@@ -177,6 +180,8 @@ describe('the list rows', () => {
       'reference',
       'product',
       'location',
+      'lot',
+      'useBy',
       'quantity',
       'unit',
     ]);
