@@ -30,7 +30,7 @@ make versions
 | PHP packages                | `cd api && composer outdated --direct`                                                       |
 | npm packages                | `cd web && npm outdated`                                                                     |
 | Angular (framework + CLI)   | `cd web && npx ng update` (lists what `ng update` would migrate)                             |
-| Docker images               | Docker Hub tags: `hub.docker.com/_/postgres`, `/_/node`, `/_/nginx`, `/_/composer`, `/r/dunglas/frankenphp`, `/r/gotenberg/gotenberg`, `/r/centrifugo/centrifugo`, `/r/axllent/mailpit` |
+| Docker images               | Docker Hub tags: `hub.docker.com/_/postgres`, `/_/node`, `/_/nginx`, `/_/composer`, `/r/dunglas/frankenphp`, `/r/gotenberg/gotenberg`, `/r/centrifugo/centrifugo`, `/r/axllent/mailpit`, `/_/caddy` |
 | GitHub Actions              | each action's releases page, for example `github.com/actions/checkout/releases`             |
 | PHP and Node themselves     | `php.net/supported-versions.php`, `nodejs.org/en/about/previous-releases`                    |
 
@@ -51,6 +51,7 @@ make versions
 | **Centrifugo** | `compose.yaml`, service `centrifugo` | none | Change the tag | A major can rename `CENTRIFUGO_*` settings: read its migration notes. The realtime e2e scenarios prove it |
 | **Gotenberg** | `compose.yaml`, service `gotenberg` | none | Change the tag | Look at a rendered invoice PDF, not only the tests: a renderer change moves margins (`api/tests/Unit/Shared/Infrastructure/PdfTemplateMarginsTest.php`) |
 | **Mailpit** | `compose.yaml`, service `mailpit` | none | Change the tag | Development-only mail catcher |
+| **Caddy** | `compose.yaml`, service `lan` | none | Change the tag | Development-only HTTPS door for a phone (`infra/lan/Caddyfile`). The phone-pairing e2e run locally proves it: its phone follows the link through it |
 
 ### Frameworks and packages
 

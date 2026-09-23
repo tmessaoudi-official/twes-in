@@ -42,6 +42,8 @@ services:
       APP_MFA_KEY: "${APP_MFA_KEY:-ojCIqjd0KzQ4JrX9wyEpy58LdtCAQ56MTwM8CWA0XOc=}"
       APP_WEBAUTHN_RP_ID: "${APP_WEBAUTHN_RP_ID:-localhost}"
       APP_WEBAUTHN_ORIGINS: "http://localhost:${WEB_PORT:-8090}"
+      # The address a phone opens a pairing link at: the lan service's, which `make up` sets; empty, the tab's own.
+      PAIRING_ORIGIN: "${LAN_ORIGIN:-}"
       # Development realtime secrets, shared with the centrifugo service below; see api/.env.
       REALTIME_TOKEN_KEY: "${REALTIME_TOKEN_KEY:-twes-in-development-realtime-token-key-0001}"
       REALTIME_API_URL: http://centrifugo:8000/api
@@ -69,7 +71,7 @@ services:
     environment:
       CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: "${REALTIME_TOKEN_KEY:-twes-in-development-realtime-token-key-0001}"
       CENTRIFUGO_HTTP_API_KEY: "${REALTIME_API_KEY:-twes-in-development-realtime-api-key}"
-      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: "http://localhost:${WEB_PORT:-8090} http://127.0.0.1:${WEB_PORT:-8090}"
+      CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: "http://localhost:${WEB_PORT:-8090} http://127.0.0.1:${WEB_PORT:-8090} ${LAN_ORIGIN:-}"
       CENTRIFUGO_CHANNEL_NAMESPACES: '[{"name":"user"},{"name":"company"},{"name":"scan"}]'
       CENTRIFUGO_HEALTH_ENABLED: "true"
     healthcheck:
@@ -95,6 +97,24 @@ services:
     ports:
       - "${WEB_PORT:-8090}:80"
 
+  # The HTTPS door a phone on the local network reaches the stack through (docs/SPEC.md § 7, 2026-09-23 14:08):
+  # infra/lan/Caddyfile. Started by `make up`, which detects LAN_HOST and turns the `lan` profile on; a plain
+  # `docker compose up` leaves it off. Development only.
+  lan:
+    logging: *logging
+    image: caddy:2.11.4-alpine
+    profiles: [lan]
+    environment:
+      LAN_HOST: "${LAN_HOST:-localhost}"
+    volumes:
+      - ./infra/lan/Caddyfile:/etc/caddy/Caddyfile:ro
+      - lan-data:/data
+    depends_on:
+      - web
+    ports:
+      - "${LAN_PORT:-8443}:8443"
+      - "${LAN_CA_PORT:-8095}:8095"
+
   # Renders PDFs from HTML (docs/SPEC.md § 2 PDF). Only the api calls it; the host port serves a host-side api process.
   gotenberg:
     logging: *logging
@@ -117,3 +137,5 @@ services:
 volumes:
   postgres-data:
   api-files:
+  # The lan service's local certificate authority, kept so a phone that trusted its root keeps trusting it.
+  lan-data:

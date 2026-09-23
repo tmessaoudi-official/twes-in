@@ -1,8 +1,18 @@
 # Developer entry points. Everything here is also what CI runs (.github/workflows/ci.yml).
 SHELL := /bin/sh
+
+# A phone reaches the stack at this machine's address on the local network, over HTTPS (docs/SPEC.md § 7,
+# 2026-09-23 14:08): the source address of the default route. With no route (offline, or no `ip`, as on macOS) it is
+# empty, and the lan service stays off. Override with LAN_HOST=… make up.
+ifndef LAN_HOST
+LAN_HOST := $(shell ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p')
+endif
+LAN_ORIGIN := $(if $(LAN_HOST),https://$(LAN_HOST):$(or $(LAN_PORT),8443))
+COMPOSE_PROFILES ?= $(if $(LAN_HOST),lan)
+export LAN_HOST LAN_ORIGIN COMPOSE_PROFILES
 .PHONY: up down reset logs migrate seed fixtures operator-code versions api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e gallery notices
 
-up:            ## build and start the whole stack (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094), then seed
+up:            ## build and start the whole stack (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, a phone's HTTPS door :8443), then seed
 	docker compose up -d --build --wait
 	$(MAKE) seed
 

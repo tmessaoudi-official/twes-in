@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# The development stack's HTTPS door for a phone on the local network (docs/SPEC.md § 7, 2026-09-23 14:08). A phone
+# cannot follow a link to http://localhost, and a page served over plain http to another device gets no camera, so
+# `make up` detects this machine's address (LAN_HOST) and Caddy serves the web container there over TLS, with a
+# certificate from its own local authority. The phone trusts it once: accept the warning, or install the root from
+# http://LAN_HOST:8095/root.crt. Development only: nothing here is part of a deployment.
+{
+	admin off
+	local_certs
+	skip_install_trust
+	# A phone connecting to an IP address sends no server name; this is the one it means.
+	default_sni {$LAN_HOST}
+	auto_https disable_redirects
+}
+
+https://{$LAN_HOST}:8443 {
+	tls internal
+	reverse_proxy web:80
+}
+
+# The local authority's root certificate, the one file a phone needs before it trusts the address above.
+http://:8095 {
+	@root path /root.crt
+	handle @root {
+		root * /data/caddy/pki/authorities/local
+		header Content-Type application/x-x509-ca-cert
+		file_server
+	}
+	respond 404
+}

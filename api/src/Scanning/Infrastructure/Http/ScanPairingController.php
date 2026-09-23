@@ -18,6 +18,7 @@ use App\Scanning\Domain\ScanPairingRefused;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -40,6 +41,8 @@ final readonly class ScanPairingController
         private CompanyGuard $guard,
         private Security $security,
         private UserRepository $users,
+        #[Autowire('%env(PAIRING_ORIGIN)%')]
+        private string $phoneAddress,
     ) {
     }
 
@@ -54,7 +57,7 @@ final readonly class ScanPairingController
         $user = $this->users->ofId($this->userId()) ?? throw new \LogicException('The signed-in account exists.');
         $opened = $this->pairings->open($company, $user, $tab);
 
-        return new JsonResponse(['id' => $opened->id->toRfc4122(), 'link' => $opened->link], Response::HTTP_CREATED);
+        return new JsonResponse(['id' => $opened->id->toRfc4122(), 'link' => $opened->link, 'address' => PhoneAddress::of($this->phoneAddress)], Response::HTTP_CREATED);
     }
 
     #[Route(self::PATH.'/{id}/heartbeat', name: 'api_scan_pairing_heartbeat', requirements: ['companyId' => Requirement::UUID, 'id' => Requirement::UUID], methods: ['POST'])]

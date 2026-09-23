@@ -135,7 +135,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - `var/claude/**` — transient review output, gitignored.
 - `.claude/settings.json` — `defaultMode: auto`, allow-list, empty `deny`, no `ask`; one
   `PostToolUse` hook (`.claude/hooks/lint-on-write.sh`) running `php -l` / `bash -n` on writes.
-- `Makefile` — `make up` (compose, web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094; the api image migrates at
+- `Makefile` — `make up` (compose, web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, `lan` :8443 a phone's HTTPS door on this machine's network address, `infra/lan/Caddyfile`; the api image migrates at
   start, then `seed`: operator `operator@twes.local` / `twes-operator-dev`, authenticator secret
   `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`, `make operator-code` prints its current code; Playwright signs the operator in once, `web/e2e/session.ts`; `web/e2e/axe.ts` is the one WCAG scan, waiting for a fresh toast, and `web/e2e/toast.ts` the announced toast), `make gate` (licences + `composer gate`
   + `npm run gate`, which starts by regenerating the types; `composer test` migrates the test database first),

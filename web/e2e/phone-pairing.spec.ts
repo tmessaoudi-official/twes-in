@@ -19,7 +19,9 @@ test('a phone scans for the computer with no sign-in, sees what it did, and its 
   await signIn(page);
   await inACompany(page, CSRF);
   const ids: string[] = [];
-  const phone = await browser.newContext();
+  // Locally the link names the stack's HTTPS address on the network (`make up`, the lan service), whose certificate
+  // comes from Caddy's own authority; in CI there is none and the link is the tab's own address.
+  const phone = await browser.newContext({ ignoreHTTPSErrors: true });
   try {
     ids.push(await aProduct(page, `PHN-${run}`));
     await withCodes(page, ids[0], [code]);
@@ -71,8 +73,8 @@ test('a phone scans for the computer with no sign-in, sees what it did, and its 
 test('a link is claimed by one phone only', async ({ page, browser }) => {
   await signIn(page);
   await inACompany(page, CSRF);
-  const first = await browser.newContext();
-  const second = await browser.newContext();
+  const first = await browser.newContext({ ignoreHTTPSErrors: true });
+  const second = await browser.newContext({ ignoreHTTPSErrors: true });
   try {
     await page.goto('/');
     await page.getByTestId('phone-pair').click();

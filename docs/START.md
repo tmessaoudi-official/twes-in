@@ -13,15 +13,22 @@ Every command runs from the repository root unless it says `cd`. For version bum
 | `postgres`   | `localhost:5433`, user `twes`, password `twes`, databases `twes` and `twes_test` | PostgreSQL                        |
 | `gotenberg`  | `localhost:8094`                            | renders PDFs                                                   |
 | `centrifugo` | not published (reached through `web`)       | realtime updates between tabs, and a phone lent as a scanner   |
+| `lan`        | https://<this machine's address>:8443 (certificate root on http://…:8095/root.crt) | a phone's HTTPS door to `web`; started by `make up` only |
 
 Ports come from `.env`. To change one, set it in your shell (`WEB_PORT=9090 make up`) or in a `.env.local` next to
-`.env`. Only `web` and `api` listen on every interface. The rest listen on `127.0.0.1` only.
+`.env`. Only `web`, `api` and `lan` listen on every interface. The rest listen on `127.0.0.1` only.
 
-To try a phone as a scanner on the local stack (the phone button in the top bar), open the application on the
-computer at its network address (`http://192.168.x.y:8090`), so the address in the QR code is one the phone can reach.
-Add that origin to `CENTRIFUGO_CLIENT_ALLOWED_ORIGINS` in `compose.yaml`, or the phone's realtime connection is
-refused and it never hears what its scans did. Over plain `http` a phone browser opens no camera, so the phone sends
-codes typed by hand; its camera needs the application served over HTTPS.
+**A phone as a scanner** (the phone button in the top bar) works with the computer on `localhost`. `make up` finds
+this machine's address on the network (the source of its default route; `LAN_HOST=192.168.1.20 make up` to choose
+another) and starts `lan`, a Caddy proxy serving the application there over HTTPS on port 8443. The QR code then
+names that address, and Centrifugo accepts it. Phone and computer must be on the same network. The certificate comes
+from Caddy's own local authority, so the first time the phone either:
+- accepts the browser's warning for `https://<address>:8443`, which is enough on Android Chrome; or
+- installs the root from `http://<address>:8095/root.crt` as a trusted certificate. On iOS, install the profile, then
+  turn on full trust under Settings > General > About > Certificate Trust Settings.
+
+The root is kept in the `lan-data` volume, so the phone trusts it until `make reset`. Without a route (offline), or
+under a plain `docker compose up`, `lan` stays off and the QR code names the computer's own address.
 
 **The API documentation is at <http://localhost:8090/api/docs>** (or `:8091/api/docs` on the API directly). `/api`
 on its own is the entrypoint, not the documentation, and answers 401 without a session. Development only: production

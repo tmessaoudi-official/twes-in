@@ -42,7 +42,11 @@ describe('PhonePairing', () => {
   beforeEach(async () => {
     vi.useFakeTimers();
     api = {
-      open: vi.fn(async () => ({ id: 'p-1', link: 'a'.repeat(64) })),
+      open: vi.fn(async () => ({
+        id: 'p-1',
+        link: 'a'.repeat(64),
+        address: null as string | null,
+      })),
       renew: vi.fn(async () => undefined),
       end: vi.fn(async () => undefined),
       echo: vi.fn(async () => undefined),
@@ -86,6 +90,18 @@ describe('PhonePairing', () => {
 
     expect(api.renew).toHaveBeenCalledTimes(2);
     expect(api.renew).toHaveBeenCalledWith('c-1', 'p-1');
+  });
+
+  it('builds the link on the address the API names, which a phone reaches when this tab is on localhost', async () => {
+    api.open.mockResolvedValueOnce({
+      id: 'p-2',
+      link: 'b'.repeat(64),
+      address: 'https://192.168.1.20:8443',
+    });
+
+    await pairing.open();
+
+    expect(pairing.state()?.url).toBe(`https://192.168.1.20:8443/pair#${'b'.repeat(64)}`);
   });
 
   it('hears the phone arrive, and only for its own tab and pairing', () => {

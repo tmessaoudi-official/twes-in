@@ -59,7 +59,8 @@ export class PhonePairing {
     this.companyId = companyId;
     this.current.set({
       id: opened.id,
-      url: `${this.origin}/pair#${opened.link}`,
+      // A tab on localhost shows a link no phone can follow; the API names the address a phone reaches, if any.
+      url: `${opened.address ?? this.origin}/pair#${opened.link}`,
       phone: 'waiting',
     });
     this.heartbeat = setInterval(() => void this.renew(), HEARTBEAT_MS);

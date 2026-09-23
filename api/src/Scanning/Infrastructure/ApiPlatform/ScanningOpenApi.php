@@ -38,10 +38,11 @@ final readonly class ScanningOpenApi implements OpenApiFactoryInterface
         $uuid = ['type' => 'string', 'format' => 'uuid'];
         $schemas['ScanPairingOpened'] = new \ArrayObject([
             'type' => 'object',
-            'required' => ['id', 'link'],
+            'required' => ['id', 'link', 'address'],
             'properties' => [
                 'id' => $uuid,
                 'link' => ['type' => 'string', 'description' => 'The single-use secret the phone claims; shown once, stored only as its hash.'],
+                'address' => ['type' => ['string', 'null'], 'description' => 'The origin a phone opens the link at, when the deployment names one (PAIRING_ORIGIN); null: the tab\'s own.'],
             ],
         ]);
         $schemas['ScanPairingClaimed'] = new \ArrayObject([

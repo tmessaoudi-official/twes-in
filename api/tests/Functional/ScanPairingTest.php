@@ -53,6 +53,15 @@ final class ScanPairingTest extends ApiTestCase
         );
     }
 
+    /** A phone reaches the stack at an address the computer tab may not be on (docs/SPEC.md § 7, 2026-09-23 14:08). */
+    public function testTheOpenedPairingNamesTheAddressAPhoneReaches(): void
+    {
+        $this->postJson($this->pairingsPath(), null, server: ['HTTP_X_TAB' => 'tab-1']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame('https://192.0.2.10:8443', $this->json()['address'], 'api/.env.test names it, without its trailing slash');
+    }
+
     public function testTheLinkIsSingleUse(): void
     {
         [, $link] = $this->open();
