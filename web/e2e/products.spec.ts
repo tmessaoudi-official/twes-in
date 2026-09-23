@@ -4,6 +4,7 @@ import { inACompany, signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
 import { rowAction } from './rows';
+import { scan as scanned } from './scan';
 
 // G5 products through the real stack: in the seeded Tunisian company, the owner files a category, creates a service
 // in it in hours with the 19 % VAT by default, finds its price at the currency's three decimals, revises it, and
@@ -249,8 +250,7 @@ test('a product is given its codes by scanning them, and a code finds it', async
     // The shell reads a scan once the person is signed in and the page is up, as a person would scan.
     await expect(page.getByTestId('list-filter')).toBeVisible();
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-    await page.keyboard.type(`]C101${pack}10LOT-${run}`);
-    await page.keyboard.press('Enter');
+    await scanned(page, `]C101${pack}10LOT-${run}`);
     const card = page.getByTestId('product-scan-card');
     await expect(card).toContainText(`SCAN-${run}`);
     await expect(page.getByTestId('product-scan-enters')).toContainText('Colis');
@@ -270,14 +270,12 @@ test('a product is given its codes by scanning them, and a code finds it', async
     await page.goto('/invoices/new');
     const line = page.getByTestId('line-0-product');
     await line.click();
-    await page.keyboard.type(pack);
-    await page.keyboard.press('Enter');
+    await scanned(page, pack);
     await expect(page.getByTestId('line-0-description')).toHaveValue(`Vis SCAN-${run}`);
     await expect(page.getByTestId('line-0-quantity')).toHaveValue('12');
     await line.click();
     await line.press('ControlOrMeta+a');
-    await page.keyboard.type(`SCAN2-${run}`);
-    await page.keyboard.press('Enter');
+    await scanned(page, `SCAN2-${run}`);
     await expect(page.getByTestId('line-0-description')).toHaveValue(`Vis SCAN2-${run}`);
   } finally {
     await forget(page, ids);

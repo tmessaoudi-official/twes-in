@@ -2320,6 +2320,25 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   slice teaches the notices generator to carry that notice too (the file stays generated). Chosen over
   `@zxing/library` (Apache-2.0, maintenance-only, weaker on 1D codes from a phone camera) because zxing-wasm reads
   angled and blurred codes better, GS1 included.
+- [2026-09-23 09:30] AGREED: customer privacy has two layers — a server permission `product.cost.read` without which
+  the API sends no cost, margin or supplier code, and a one-click "customer view" that hides on screen a
+  company-configured list of sensitive fields; the price-check screen turns customer view on by itself.
+- [2026-09-23 09:30] AGREED: a scan of a product already on a draft document's lines increments that line (by one, or
+  by the pack's count for a pack code) when product, unit and lot are all the same, a hand-edited price included;
+  otherwise it adds a line; "5×" then a scan sets the quantity to five.
+- [2026-09-23 09:45] AGREED: a phone paired to a computer by QR code is a remote douchette with a remote control. It
+  needs no sign-in: a single-use link gives it only the right to send scans to that session, which dies with the
+  computer's tab or its sign-out. It keeps scanning. Each scan acts once, on the computer's screen and under the
+  computer's session; the phone mirrors the product's name, its customer price and what happened, never more than
+  customer view shows. It also shows the same choice buttons, and a tap sends the choice to the computer, which
+  performs it.
+- [2026-09-23 09:45] AGREED: the scanning goal runs autonomously and continuously in this order, each slice committed
+  CI-green and its choices recorded for confirmation: (0) the red e2e fix; (1) a scan bus with per-screen handlers, a
+  scan log with undo, and the cashier rule in invoice and delivery-note lines; (2) the generic actions card; (3) the
+  device camera, continuous, on zxing-wasm; (4) phone pairing; (5) `product.cost.read` and customer view; (6) the
+  price-check screen and a customer display; (7) lots on the web; (8) a stock count mode, location labels and printed
+  product labels; (9) QR codes on our own documents; (10) the lot and serial recall search; (11) weighed-item barcodes
+  and customer card scans. Purchase orders stay their own module.
 
 ## 8. Status
 
