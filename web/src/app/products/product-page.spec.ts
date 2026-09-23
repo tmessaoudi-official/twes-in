@@ -2,7 +2,7 @@
 
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
+import { DOCUMENT, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter, Router } from '@angular/router';
@@ -22,6 +22,7 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { CustomerView } from '../shared/customer-view/customer-view';
+import { ScreenActions } from '../shared/actions/screen-actions';
 import { ProductPage } from './product-page';
 import type { SettingRow } from '../shared/settings/settings-types';
 import { ArticleSettings } from './article-settings-facade';
@@ -165,6 +166,30 @@ describe('ProductPage', () => {
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
       ],
     });
+  });
+
+  // docs/SPEC.md § 7, 2026-09-23 slice 8: a saved product's labels open in a tab of their own, to print.
+  it("offers a saved product's labels, opened in a new tab", async () => {
+    const view = TestBed.inject(DOCUMENT).defaultView!;
+    const opened = vi.spyOn(view, 'open').mockReturnValue(null);
+    product.set(laptop);
+    await open(laptop.id);
+    const labels = TestBed.inject(ScreenActions)
+      .actions()
+      .find((each) => each.id === 'labels');
+    expect(labels).toMatchObject({ rare: true, shown: true });
+    labels!.run!();
+    expect(opened).toHaveBeenCalledWith(`/print/product-labels/${laptop.id}`, '_blank');
+  });
+
+  it('offers no labels for a product not saved yet', async () => {
+    await open(undefined);
+    // The bar offers only what is shown, so the page's other actions prove the declaration was read.
+    const ids = TestBed.inject(ScreenActions)
+      .actions()
+      .map((each) => each.id);
+    expect(ids).toContain('save');
+    expect(ids).not.toContain('labels');
   });
 
   // docs/SPEC.md § 7, 2026-09-19 21:55: a page names nothing it has not loaded.

@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DOCUMENT,
   effect,
   inject,
   input,
@@ -73,6 +74,7 @@ export class ProductPage {
   /** `?add=` on a product: a code a scan card sent to be added, listed on its codes waiting to be saved. */
   readonly add = input<string | undefined>(undefined);
 
+  private readonly document = inject(DOCUMENT);
   protected readonly id = computed(() => this.productId() ?? null);
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
@@ -216,8 +218,22 @@ export class ProductPage {
         run: () => this.revert(),
         shown: may && changes > 0,
       },
+      {
+        // Printed labels (docs/SPEC.md § 7, 2026-09-23 slice 8), in a tab of their own to print.
+        id: 'labels',
+        label: 'products.labels.open',
+        icon: 'label',
+        rare: true,
+        run: () => this.openLabels(),
+        shown: this.id() !== null,
+      },
     ];
   });
+
+  private openLabels(): void {
+    const id = this.id();
+    if (id !== null) this.document.defaultView?.open(`/print/product-labels/${id}`, '_blank');
+  }
 
   /** From the bar beside the title, which holds no form of its own. */
   protected saveFromBar(): void {

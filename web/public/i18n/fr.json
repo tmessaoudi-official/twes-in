@@ -1421,6 +1421,14 @@
       "none": "Sans suivi",
       "lot": "Par lot",
       "serial": "Par numéro de série"
+    },
+    "labels": {
+      "title": "Étiquettes produit",
+      "intro": "Le nom, la référence, le prix TTC de ce que le code fait entrer, et le code en code-barres (EAN pour un GTIN, Code 128 sinon).",
+      "copies": "Exemplaires",
+      "print": "Imprimer",
+      "no_code": "Cet article ne répond à aucun code qui soit le sien : ajoutez-lui un code unitaire ou interne pour imprimer ses étiquettes.",
+      "open": "Imprimer des étiquettes"
     }
   },
   "inventory": {

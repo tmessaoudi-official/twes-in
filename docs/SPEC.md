@@ -2458,7 +2458,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   printable ASCII without a space, at most 40; a receipt or a count also offers "À utiliser avant", optional, since
   either may be the first to meet the lot, while a move names a lot that exists and never says its date again. The form
   is rebuilt for the product chosen and keeps what was already typed. An untracked product's form is as it was.
-- [2026-09-23 21:10] TAKEN OVERNIGHT (standing instruction, to confirm): slice 7c, a scan fills a movement. On the stock
+- [2026-09-23 19:47] TAKEN OVERNIGHT (standing instruction, to confirm): slice 7c, a scan fills a movement. On the stock
   screen with a receipt, count or move open, a scan fills the product and, from a GS1 label, its lot — or its serial
   number, which is the lot of a product kept by serial — and its use-by day, with the pieces the code enters; the same
   product and lot scanned again counts on, as a till does, and another lot starts again from its own pieces. Undo puts
@@ -2466,7 +2466,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   catalogue and could miss it, so whether stock is kept of the product is the API's to say when the movement is saved
   (a refusal the screen shows as it shows any). With no movement open, the card takes the scan as before; a person who
   may not read the products leaves it to the card too.
-- [2026-09-23 21:55] TAKEN OVERNIGHT (standing instruction, to confirm): slice 8a, count mode. "Comptage" is a tab of the
+- [2026-09-23 20:07] TAKEN OVERNIGHT (standing instruction, to confirm): slice 8a, count mode. "Comptage" is a tab of the
   stock screens (`/stock/count`, the inventory module, `stock.write` to count). It counts at the company's default
   location until another is chosen or its label is scanned — the address a location's label carries
   (`…/stock/locations/<id>`, slice 8b) or its code exactly as the store numbers it; a location's code is looked for
@@ -2476,7 +2476,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   location's stock of it to what was counted; nothing is written of what was not scanned, so a product missing from
   the shelf is not set to zero by this screen. A line the API refuses stays on the sheet, the others go. The sheet
   lives in the page: leaving it forgets what was not recorded.
-- [2026-09-23 22:30] TAKEN OVERNIGHT (standing instruction, to confirm): slice 8b, location labels. "Imprimer les
+- [2026-09-23 20:26] TAKEN OVERNIGHT (standing instruction, to confirm): slice 8b, location labels. "Imprimer les
   étiquettes" on the locations screen opens a sheet in a new tab (`/print/location-labels`, outside the shell, the
   inventory module): one label per location of the company, each with its code in large type, its path from the site
   down, and a QR code of `<this app's origin>/stock/locations/<id>`, black on white whatever the screen's scheme. That
@@ -2484,6 +2484,18 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   a scanner reading it in count mode switches location (slice 8a). The browser prints the sheet (the button is left
   off the paper); no label size or printer format is chosen by the app, and no selection of locations: the sheet is
   all of them.
+- [2026-09-23 21:57] TAKEN OVERNIGHT (standing instruction, to confirm): slice 8c, product labels. "Étiquettes" is a
+  rare action of a saved product, opening a sheet in a new tab (`/print/product-labels/<id>`, outside the shell, the
+  products module): as many copies as asked, 1 to 100, of one label carrying the product's name, its reference, the
+  price a scan of that code pays taxes included (the price check's own figure), and the code as a barcode with the code
+  in clear under it. The code printed is the product's unit code, else an internal one, else a pack code, never a
+  supplier's; `?code=` prints another of its codes. The barcode is drawn in-house as SVG from the published symbologies
+  (ISO/IEC 15420: EAN-13 for a valid 12- or 13-digit GTIN, EAN-8 for an 8-digit one; ISO/IEC 15417: Code 128, set C
+  for an even run of digits, set B otherwise) rather than taken from a library: a few tables and a checksum, no
+  dependency to license and record, and the e2e proves it by reading the bars back with the decoder the camera uses.
+  A product without a usable code says so instead of printing; black on white whatever the scheme; the browser
+  prints, and no label size is chosen by the app. (The three stamps above, 7c, 8a and 8b, first read 21:10, 21:55
+  and 22:30, two hours ahead of the clock; corrected 21:57 to the time of the commit each landed in.)
 
 ## 8. Status
 

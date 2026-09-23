@@ -1421,6 +1421,14 @@
       "none": "Not tracked",
       "lot": "By lot",
       "serial": "By serial number"
+    },
+    "labels": {
+      "title": "Product labels",
+      "intro": "The name, the reference, the price taxes included of what the code enters, and the code as a barcode (EAN for a GTIN, Code 128 otherwise).",
+      "copies": "Copies",
+      "print": "Print",
+      "no_code": "This product answers to no code of its own: give it a unit or internal code to print its labels.",
+      "open": "Print labels"
     }
   },
   "inventory": {

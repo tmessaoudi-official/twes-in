@@ -53,7 +53,7 @@ export const routes: Routes = [
       import('./customer-display/customer-display-page').then((m) => m.CustomerDisplayPage),
   },
   {
-    // A sheet of location labels (docs/SPEC.md § 7, 2026-09-23 slice 8): outside the shell, so the paper carries
+    // Sheets of location and product labels (docs/SPEC.md § 7, 2026-09-23 slice 8): outside the shell, so the paper carries
     // nothing but the labels. The module guard sits on the child, as in the shell, so the session is read first.
     path: 'print',
     canActivate: [authGuard],
@@ -63,6 +63,12 @@ export const routes: Routes = [
         canActivate: [moduleGuard(INVENTORY_MODULE)],
         loadComponent: () =>
           import('./inventory/location-labels-page').then((m) => m.LocationLabelsPage),
+      },
+      {
+        path: 'product-labels/:productId',
+        canActivate: [moduleGuard(PRODUCTS_MODULE)],
+        loadComponent: () =>
+          import('./products/product-labels-page').then((m) => m.ProductLabelsPage),
       },
     ],
   },

@@ -1,0 +1,61 @@
+<main class="flex flex-col gap-6 p-6 print:p-0" data-testid="product-labels">
+  <header
+    class="flex flex-wrap items-start justify-between gap-3 print:hidden"
+    data-testid="product-labels-controls"
+  >
+    <div class="flex flex-col gap-1">
+      <h1 class="m-0 text-3xl font-semibold">{{ 'products.labels.title' | translate }}</h1>
+      <p class="m-0 max-w-prose">{{ 'products.labels.intro' | translate }}</p>
+    </div>
+    <div class="flex flex-wrap items-start gap-3">
+      <mat-form-field class="w-32">
+        <mat-label>{{ 'products.labels.copies' | translate }}</mat-label>
+        <input
+          matInput
+          type="number"
+          min="1"
+          max="100"
+          data-testid="product-labels-copies"
+          [ngModel]="copies()"
+          (ngModelChange)="setCopies($event)"
+        />
+      </mat-form-field>
+      <button
+        mat-flat-button
+        type="button"
+        class="mt-2"
+        data-testid="product-labels-print"
+        [disabled]="printed() === null"
+        (click)="print()"
+      >
+        <mat-icon>print</mat-icon>
+        {{ 'products.labels.print' | translate }}
+      </button>
+    </div>
+  </header>
+
+  @if (product(); as product) {
+    @if (printed(); as barcode) {
+      <ul
+        class="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-4 p-0 print:gap-2"
+      >
+        @for (copy of labels(); track copy) {
+          <li
+            class="flex break-inside-avoid flex-col gap-1 rounded-md border border-black bg-white p-3 text-black"
+            data-testid="product-label"
+          >
+            <span class="text-lg leading-tight font-semibold">{{ product.name }}</span>
+            <span class="text-sm">{{ product.reference }}</span>
+            @if (price(); as price) {
+              <span class="text-2xl font-bold">{{ price }}</span>
+            }
+            <app-barcode-svg class="block h-16" [value]="barcode.code" />
+            <span class="text-center font-mono text-sm tracking-widest">{{ barcode.code }}</span>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p data-testid="product-labels-no-code">{{ 'products.labels.no_code' | translate }}</p>
+    }
+  }
+</main>
