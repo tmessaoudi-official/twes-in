@@ -57,6 +57,10 @@ security:
         # Public signup: asked for from the sign-in page and finished from a mailed link, both with no session by design.
         # Closed until an operator opens it (signup.enabled), rate limited, and answered the same whatever the address.
         - { path: ^/api/signup, roles: PUBLIC_ACCESS }
+        # A phone lent to a computer tab as a scanner has no session by design: the single-use link it claims, then the
+        # key the claim gave it, is what authorises it, for these four operations alone (docs/SPEC.md § 7, 2026-09-23).
+        - { path: ^/api/scan-pairings/claim$, roles: PUBLIC_ACCESS }
+        - { path: '^/api/scan-pairings/[0-9a-f-]{36}/(scans|choices|realtime-token)$', roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: ROLE_USER }
 
 when@test:

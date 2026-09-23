@@ -17,3 +17,14 @@ framework:
             policy: 'fixed_window'
             limit: 1
             interval: '15 minutes'
+        # A phone pairing link is claimed with no session (docs/SPEC.md § 7, 2026-09-23 09:45, slice 4). Links are 256
+        # random bits, so the budget is not what protects them; it keeps a client from hammering the table.
+        scan_pairing_claim:
+            policy: 'fixed_window'
+            limit: 10
+            interval: '15 minutes'
+        # A paired phone's scans, choices and token renewals, per pairing: a till's fastest pace with room to spare.
+        scan_pairing_phone:
+            policy: 'sliding_window'
+            limit: 240
+            interval: '1 minute'

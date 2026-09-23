@@ -85,6 +85,11 @@ final class ProductScanResource
     #[Groups([self::READ])]
     public ?string $useBy = null;
 
+    /** What a customer pays for one unit, net: shown to a phone lent as a scanner. The cost is never here. */
+    #[ApiProperty(required: true)]
+    #[Groups([self::READ])]
+    public string $unitPriceNet = '0';
+
     /** `(21)` of a GS1 scan. */
     #[Groups([self::READ])]
     public ?string $serial = null;
@@ -97,6 +102,7 @@ final class ProductScanResource
         $resource->reference = $product->getReference();
         $resource->name = $product->getDetails()->name;
         $resource->isActive = $product->isActive();
+        $resource->unitPriceNet = $product->getDetails()->unitPriceNet;
         $resource->code = $held->getCode();
         $resource->role = $held->getRole()->value;
         $resource->quantity = $held->getQuantity();

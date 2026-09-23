@@ -18,4 +18,11 @@ use Symfony\Component\Uid\Uuid;
 interface RealtimeTokens
 {
     public function issue(Uuid $userId, ?Uuid $workingCompanyId): RealtimeToken;
+
+    /**
+     * A token for a connection that is not a person's: a paired phone hears its pairing's channel alone.
+     *
+     * @param list<string> $channels
+     */
+    public function issueFor(string $subject, array $channels): RealtimeToken;
 }

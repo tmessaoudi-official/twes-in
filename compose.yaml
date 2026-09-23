@@ -61,7 +61,8 @@ services:
 
   # Realtime notifications (docs/SPEC.md § 7, 2026-09-13). Browsers reach it only through nginx on the web origin
   # (/connection/websocket) and only the api container calls its HTTP API, so no port is published. Connections
-  # are subscribed server-side from the token's channels claim; the two namespaces are the two channel shapes.
+  # are subscribed server-side from the token's channels claim; the namespaces are the channel shapes: a person, a company,
+  # and a phone paired to a tab as a scanner (docs/SPEC.md § 7, 2026-09-23 09:45).
   centrifugo:
     logging: *logging
     image: centrifugo/centrifugo:v6.9.5
@@ -69,7 +70,7 @@ services:
       CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: "${REALTIME_TOKEN_KEY:-twes-in-development-realtime-token-key-0001}"
       CENTRIFUGO_HTTP_API_KEY: "${REALTIME_API_KEY:-twes-in-development-realtime-api-key}"
       CENTRIFUGO_CLIENT_ALLOWED_ORIGINS: "http://localhost:${WEB_PORT:-8090} http://127.0.0.1:${WEB_PORT:-8090}"
-      CENTRIFUGO_CHANNEL_NAMESPACES: '[{"name":"user"},{"name":"company"}]'
+      CENTRIFUGO_CHANNEL_NAMESPACES: '[{"name":"user"},{"name":"company"},{"name":"scan"}]'
       CENTRIFUGO_HEALTH_ENABLED: "true"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8000/health"]

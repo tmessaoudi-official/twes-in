@@ -46,6 +46,18 @@ final class ProductScanTest extends ApiTestCase
         self::assertSame(['unit', 1], [$this->json()['role'], $this->json()['quantity']]);
     }
 
+    public function testAScanSaysTheCustomerPriceAndNeverTheCost(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->aProductWith([['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]);
+
+        $this->getJson($this->path('3017620422003'));
+
+        $price = $this->stringAt($this->json(), 'unitPriceNet');
+        self::assertSame(10.0, (float) $price, 'the price a customer pays for one unit, as the product keeps it');
+        self::assertArrayNotHasKey('costPrice', $this->json());
+    }
+
     public function testAGs1ScanIsReadForItsGtinLotUseByAndSerial(): void
     {
         $this->signedIn(['product.read', 'product.write']);

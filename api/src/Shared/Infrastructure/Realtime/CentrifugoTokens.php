@@ -33,15 +33,20 @@ final readonly class CentrifugoTokens implements RealtimeTokens
 
     public function issue(Uuid $userId, ?Uuid $workingCompanyId): RealtimeToken
     {
-        $expiresAt = $this->clock->now()->modify(\sprintf('+%d seconds', $this->lifetimeSeconds));
-
         $channels = ['user:'.$userId->toRfc4122()];
         if (null !== $workingCompanyId) {
             $channels[] = 'company:'.$workingCompanyId->toRfc4122();
         }
 
+        return $this->issueFor($userId->toRfc4122(), $channels);
+    }
+
+    public function issueFor(string $subject, array $channels): RealtimeToken
+    {
+        $expiresAt = $this->clock->now()->modify(\sprintf('+%d seconds', $this->lifetimeSeconds));
+
         return new RealtimeToken(
-            HmacJwt::encode(['sub' => $userId->toRfc4122(), 'exp' => $expiresAt->getTimestamp(), 'channels' => $channels], $this->hmacKey),
+            HmacJwt::encode(['sub' => $subject, 'exp' => $expiresAt->getTimestamp(), 'channels' => $channels], $this->hmacKey),
             $expiresAt,
         );
     }
