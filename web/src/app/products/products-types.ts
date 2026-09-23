@@ -97,6 +97,8 @@ export interface ProductScan {
   lot: string | null;
   useBy: string | null;
   serial: string | null;
+  /** What a customer pays for one unit, net; never the cost. */
+  unitPriceNet: string;
 }
 
 export interface ProductCategoryRow {

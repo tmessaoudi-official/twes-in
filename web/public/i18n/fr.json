@@ -2224,6 +2224,39 @@
         "busy": "La caméra est déjà utilisée par une autre application.",
         "unsupported": "Ce navigateur ne peut pas ouvrir la caméra ici."
       }
+    },
+    "phone": {
+      "pair": "Utiliser un téléphone comme scanner",
+      "paired": "Téléphone relié : ouvrir",
+      "title": "Scanner avec un téléphone",
+      "hint": "Scannez ce code avec l'appareil photo du téléphone, ou ouvrez cette adresse sur celui-ci. Aucune connexion n'y est demandée.",
+      "qr": "Code QR du lien pour le téléphone",
+      "opening": "Préparation du lien…",
+      "waiting": "En attente du téléphone",
+      "connected": "Téléphone relié",
+      "disconnect": "Libérer le téléphone",
+      "close": "Fermer",
+      "ended": "Le téléphone n'est plus relié à cet onglet",
+      "found": "{{name}}",
+      "retired": "{{name}} n'est plus vendu",
+      "unknown": "Aucun produit ne porte le code {{code}}",
+      "page": {
+        "title": "Scanner",
+        "claiming": "Liaison avec l'ordinateur…",
+        "ended": "Ce téléphone n'est plus relié. Pour scanner à nouveau, scannez un nouveau code sur l'ordinateur.",
+        "code": "Code",
+        "send": "Envoyer",
+        "sent": "Envoyé :"
+      },
+      "refused": {
+        "unknown": "Ce lien n'existe pas. Scannez à nouveau le code affiché sur l'ordinateur.",
+        "key": "Ce téléphone n'est pas celui qui a été relié.",
+        "claimed": "Ce lien a déjà été utilisé par un autre téléphone. Demandez-en un nouveau sur l'ordinateur.",
+        "expired": "Ce lien a expiré. Demandez-en un nouveau sur l'ordinateur.",
+        "ended": "L'ordinateur n'utilise plus ce lien. Demandez-en un nouveau sur l'ordinateur.",
+        "invalid": "Ce lien n'est pas valide.",
+        "network": "L'ordinateur ne répond pas. Vérifiez la connexion du téléphone."
+      }
     }
   }
 }

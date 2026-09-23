@@ -123,6 +123,7 @@ describe('ProductsApi', () => {
       role: 'pack',
       quantity: 12,
       lot: 'LOT 7',
+      unitPriceNet: '12.500',
     });
     expect(await scanned).toEqual({
       productId: 'p1',
@@ -135,6 +136,7 @@ describe('ProductsApi', () => {
       lot: 'LOT 7',
       useBy: null,
       serial: null,
+      unitPriceNet: '12.500',
     });
 
     const none = api.scan('c1', '999');

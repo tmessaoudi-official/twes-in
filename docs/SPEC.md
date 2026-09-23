@@ -2368,6 +2368,25 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   the camera facing away is the default, and the camera picked last is remembered in this browser. The CSP gains
   `'wasm-unsafe-eval'`, which lets WebAssembly compile and still refuses `eval`. Formats read: EAN-13/8, UPC-A/E,
   Code 128, ITF, Code 39, GS1 DataBar, DataMatrix, QR.
+- [2026-09-23 13:24] TAKEN OVERNIGHT (standing instruction, to confirm): slice 4, a phone lent as a scanner. A phone
+  button in the top bar (with `product.read`, which every scan handler needs) opens a dialog with a QR code and the
+  address `/pair#<link>`. The link is 256 random bits after `#`, so no server log or Referer carries it, and the phone
+  page takes it off its address at once. It is single-use: the first phone to claim it within 5 minutes gets a key.
+  Only the hashes of the link and the key are stored (`scan_pairing`, context `Scanning`, company-owned). With its key,
+  the phone may do four things and nothing else, with no session: claim, send a scan, send a tapped choice, and take a
+  realtime token that names only its own channel. That channel is in a new Centrifugo namespace, `scan`. A scan goes
+  to the user's channel with the tab named (`X-Tab`), and only that tab acts on it, once per scan id, as a
+  `phone` scan through the scan bus, under its own session. The tab then echoes to the phone: the toast's key and
+  flat parameters, the product's name and a unit's customer price in the company's currency (a product scan now
+  carries `unitPriceNet`, never the cost), and, for a code no screen claimed, the card's own choices. A tap sends
+  the choice back, and only the latest echo's choices act. The API holds an echo to that shape. The tab renews the
+  pairing every 30 s, and it lapses after 90 s without a renewal. Letting it go, leaving the signed-in shell and
+  signing out (a logout listener) end it at once. A closed or crashed tab ends it through the lapse, because
+  `sendBeacon` cannot carry the CSRF header and the app's HTTP client is not the fetch backend. One tab lends one
+  phone; opening again ends the tab's earlier pairing. Claims are budgeted at 10 per 15 min per client, and a
+  pairing's phone requests at 240 per minute. A caller without the key is refused for the key before its request is
+  read. The phone keeps its key in its tab's session storage, so a reload resumes without a new link. The QR code
+  reuses `lean-qr` through the shared `QrCode` component (moved from `auth/` to `shared/qr/`), so no new dependency.
 
 ## 8. Status
 

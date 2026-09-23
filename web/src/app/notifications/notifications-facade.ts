@@ -4,19 +4,22 @@ import { DOCUMENT } from '@angular/common';
 import { inject, Injectable, signal } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { REALTIME_CONNECTOR, type RealtimeConnection } from '../shared/realtime/realtime-connector';
+import { PhonePairing } from '../shared/scan/phone-pairing';
 import { NotificationsApi } from './notifications-api';
 import type { InboxEntry } from './notifications-types';
 
 /**
  * The notification centre as signals, and the one realtime connection of the signed-in shell. The API's rows are
  * the truth (docs/SPEC.md § 7, 2026-09-13): a notification carries no state here, it only says "read the centre
- * again"; a change to data goes to LiveChanges for the screens showing it (§ 7, 2026-09-17).
+ * again"; a change to data goes to LiveChanges for the screens showing it (§ 7, 2026-09-17), and what a paired phone
+ * sends goes to PhonePairing.
  */
 @Injectable({ providedIn: 'root' })
 export class NotificationsFacade {
   private readonly api = inject(NotificationsApi);
   private readonly connector = inject(REALTIME_CONNECTOR);
   private readonly live = inject(LiveChanges);
+  private readonly pairing = inject(PhonePairing);
   private readonly document = inject(DOCUMENT);
   private readonly itemsSignal = signal<readonly InboxEntry[]>([]);
   private readonly unreadSignal = signal(0);
@@ -48,6 +51,8 @@ export class NotificationsFacade {
       `${scheme}://${host}/connection/websocket`,
       () => this.api.realtimeToken(),
       (data) => {
+        // A paired phone's scan is for the tab that lent it (docs/SPEC.md § 7, 2026-09-23 09:45), not a notification.
+        if (this.pairing.receive(data)) return;
         if (isChange(data)) {
           this.live.receive(data);
         } else {

@@ -18,7 +18,7 @@ d=$(repo); printf '<input #face #bad />\n<span [style.width.px]="w" [style.backg
 out=$(bash "$GATE" --root "$d" 2>&1); check "template references, style bindings and tokens are not colours" $? 0 "$out" "OK — 2 files"
 d=$(repo); printf ':root { --twes-ink: #111; }\n' > "$d/web/src/app/shared/theme/t.scss"; mkdir -p "$d/web/src"; printf ':root { --a: oklch(0.6 0.1 250); }\n' > "$d/web/src/styles.scss"; printf "const c = '#fff';\n" > "$d/web/src/app/x/a.spec.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "the theme, the global stylesheet and specs define or test tokens and are not read" $? 0 "$out" "OK — 0 files"
-d=$(repo); mkdir -p "$d/web/src/app/auth" "$d/web/src/app/shared/settings"; printf '<rect fill="#ffffff" />\n' > "$d/web/src/app/auth/qr-code.ts"; printf "export const DEFAULT_ACCENT = '#1f6feb';\n" > "$d/web/src/app/shared/settings/settings-registry.ts"; git -C "$d" add -A
+d=$(repo); mkdir -p "$d/web/src/app/shared/qr" "$d/web/src/app/shared/settings"; printf '<rect fill="#ffffff" />\n' > "$d/web/src/app/shared/qr/qr-code.ts"; printf "export const DEFAULT_ACCENT = '#1f6feb';\n" > "$d/web/src/app/shared/settings/settings-registry.ts"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "the two named exceptions pass: a QR code's fixed ink and the default accent setting" $? 0 "$out" "OK — 0 files"
 d=$(repo); printf '.a { color: #abc; }\n' > "$d/web/src/app/x/new.scss"
 out=$(bash "$GATE" --root "$d" 2>&1); check "a file not yet staged is read too" $? 1 "$out" "web/src/app/x/new.scss:1"

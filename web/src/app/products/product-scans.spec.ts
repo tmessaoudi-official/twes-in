@@ -17,6 +17,7 @@ const pack: ProductScan = {
   lot: null,
   useBy: null,
   serial: null,
+  unitPriceNet: '10',
 };
 
 describe('ProductScans', () => {

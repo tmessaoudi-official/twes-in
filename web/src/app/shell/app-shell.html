@@ -165,6 +165,22 @@
               <mat-icon aria-hidden="true">photo_camera</mat-icon>
             </button>
           }
+          @if (mayScan()) {
+            <button
+              mat-icon-button
+              type="button"
+              (click)="openPhone()"
+              [appLabel]="
+                (phone.state()?.phone === 'connected' ? 'scan.phone.paired' : 'scan.phone.pair')
+                  | translate
+              "
+              data-testid="phone-pair"
+            >
+              <mat-icon aria-hidden="true">{{
+                phone.state()?.phone === 'connected' ? 'mobile_friendly' : 'smartphone'
+              }}</mat-icon>
+            </button>
+          }
           @if (scanCount(); as count) {
             <button
               mat-stroked-button

@@ -2,7 +2,7 @@
 
 import { FormArray, FormControl, FormGroup } from '@angular/forms';
 import { describe, expect, it } from 'vitest';
-import { addCount, type LineFields, scanIntoLines } from './scan-lines';
+import { addCount, type LineFields, placedOutcome, scanIntoLines } from './scan-lines';
 
 type Line = FormGroup<LineFields & { note: FormControl<string> }>;
 
@@ -115,5 +115,25 @@ describe('scanIntoLines', () => {
     added.undo();
 
     expect(rows(lines)).toEqual([]);
+  });
+
+  it('says what a scan did, and names the product with its customer price for a paired phone', () => {
+    const undo = () => undefined;
+    const product = { name: 'Nutella', unitPrice: '12.500' };
+
+    expect(placedOutcome({ index: 0, added: true, quantity: '1', undo }, product)).toEqual({
+      kind: 'done',
+      key: 'scan.added',
+      params: { name: 'Nutella' },
+      product,
+      undo,
+    });
+    expect(placedOutcome({ index: 0, added: false, quantity: '3', undo }, product)).toEqual({
+      kind: 'done',
+      key: 'scan.incremented',
+      params: { name: 'Nutella', quantity: '3' },
+      product,
+      undo,
+    });
   });
 });

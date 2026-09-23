@@ -12,10 +12,16 @@ Every command runs from the repository root unless it says `cd`. For version bum
 | `mailpit`    | http://localhost:8092 (SMTP on 8093)        | **every mail the application sends lands here**, none leaves   |
 | `postgres`   | `localhost:5433`, user `twes`, password `twes`, databases `twes` and `twes_test` | PostgreSQL                        |
 | `gotenberg`  | `localhost:8094`                            | renders PDFs                                                   |
-| `centrifugo` | not published (reached through `web`)       | realtime updates between tabs                                  |
+| `centrifugo` | not published (reached through `web`)       | realtime updates between tabs, and a phone lent as a scanner   |
 
 Ports come from `.env`. To change one, set it in your shell (`WEB_PORT=9090 make up`) or in a `.env.local` next to
 `.env`. Only `web` and `api` listen on every interface. The rest listen on `127.0.0.1` only.
+
+To try a phone as a scanner on the local stack (the phone button in the top bar), open the application on the
+computer at its network address (`http://192.168.x.y:8090`), so the address in the QR code is one the phone can reach.
+Add that origin to `CENTRIFUGO_CLIENT_ALLOWED_ORIGINS` in `compose.yaml`, or the phone's realtime connection is
+refused and it never hears what its scans did. Over plain `http` a phone browser opens no camera, so the phone sends
+codes typed by hand; its camera needs the application served over HTTPS.
 
 **The API documentation is at <http://localhost:8090/api/docs>** (or `:8091/api/docs` on the API directly). `/api`
 on its own is the entrypoint, not the documentation, and answers 401 without a session. Development only: production

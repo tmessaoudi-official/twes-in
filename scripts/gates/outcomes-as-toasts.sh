@@ -22,8 +22,10 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # since the form holding the count stands beside the board rather than under it (2026-09-22 20:44, finding B).
 # `product-scan-loading`, `product-scan-found` and `product-scan-none` are the scan card's whole content — looking the
 # code up, the product it names, or that none does: what the card IS, arriving after it opened, and never the outcome
-# of something the person did there (2026-09-23 01:10).
-page_states=' login-expired signup-sent activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none '
+# of something the person did there (2026-09-23 01:10). `phone-loading`, `phone-ended`, `phone-pair-opening` and
+# `phone-pair-status` are what a phone lent as a scanner IS, on the phone and in the computer's dialog: being linked,
+# no longer linked, the link being made, waiting for the phone or connected to it (2026-09-23 13:07, slice 4).
+page_states=' login-expired signup-sent activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {

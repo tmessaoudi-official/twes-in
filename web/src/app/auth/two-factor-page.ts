@@ -10,7 +10,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from './auth-facade';
 import type { LoginError, PasskeySummary, TotpEnrolment } from './auth-types';
 import { PasskeyClient } from './passkey-client';
-import { QrCode } from './qr-code';
+import { QrCode } from '../shared/qr/qr-code';
 import { SignedOutLayout } from './signed-out-layout';
 
 /**

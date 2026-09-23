@@ -5,7 +5,11 @@ import type { Signal } from '@angular/core';
 /** Who is signed in and in which company, as far as shared code needs to know. */
 export interface SessionState {
   readonly user: { readonly id: string };
-  readonly company: { readonly id: string; readonly countryCode: string } | null;
+  readonly company: {
+    readonly id: string;
+    readonly countryCode: string;
+    readonly currency: string;
+  } | null;
 }
 
 /**

@@ -39,6 +39,12 @@ export const routes: Routes = [
       import('./invitation/accept-invitation-page').then((m) => m.AcceptInvitationPage),
   },
   {
+    // A phone lent to a computer as a scanner (docs/SPEC.md § 7, 2026-09-23 09:45, slice 4): no sign-in by design,
+    // the link it claims is its only right. Outside both guards and outside the shell, like an invitation.
+    path: 'pair',
+    loadComponent: () => import('./pairing/phone-scanner-page').then((m) => m.PhoneScannerPage),
+  },
+  {
     // Asking for a signup link is for somebody not signed in.
     path: 'signup',
     canActivate: [anonymousGuard],

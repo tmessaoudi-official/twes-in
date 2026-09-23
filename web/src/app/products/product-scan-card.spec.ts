@@ -12,6 +12,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { FormatFacade } from '../shared/i18n/format-facade';
+import { ScanOffers } from '../shared/scan/scan-offers';
 import { ProductScanCard } from './product-scan-card';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductScan } from './products-types';
@@ -33,6 +34,7 @@ const pack: ProductScan = {
   lot: 'LOT-7',
   useBy: '2027-05-31',
   serial: null,
+  unitPriceNet: '12.500',
 };
 
 describe('ProductScanCard', () => {
@@ -223,5 +225,36 @@ describe('ProductScanCard', () => {
     expect(q('product-scan-action-create')).toBeNull();
     expect(q('product-scan-action-attach')).toBeNull();
     expect(q('product-scan-action-search')).not.toBeNull();
+  });
+
+  it('offers a paired phone its product, its customer price and its choices, and does the one tapped', async () => {
+    await open('13017620422000');
+    const offer = await TestBed.inject(ScanOffers).next('13017620422000', 0);
+
+    expect(offer?.message).toBe('scan.phone.found');
+    expect(offer?.params).toEqual({ name: 'Pâte à tartiner' });
+    expect(offer?.product).toEqual({ name: 'Pâte à tartiner', unitPrice: '12.500' });
+    expect(offer?.choices.map((choice) => choice.id)).toEqual(['sheet', 'codes', 'movements']);
+    expect(offer?.choices[0].label).toBe('products.scan.actions.sheet');
+
+    offer?.choose('codes');
+
+    expect(close).toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith('/products/p1?tab=codes');
+  });
+
+  it('offers a code nobody holds as unknown, and withdraws the offer when it closes', async () => {
+    scan.mockResolvedValue(null);
+    await open('999');
+    const offers = TestBed.inject(ScanOffers);
+
+    expect((await offers.next('999', 0))?.message).toBe('scan.phone.unknown');
+
+    fixture.destroy();
+    vi.useFakeTimers();
+    const late = offers.next('999', 10);
+    vi.advanceTimersByTime(10);
+    vi.useRealTimers();
+    expect(await late).toBeNull();
   });
 });

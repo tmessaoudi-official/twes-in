@@ -127,13 +127,18 @@ export function addCount(quantity: string, count: number): string {
 }
 
 /** What a screen says of a scan that landed on its lines: the product added, or its line's new quantity. */
-export function placedOutcome(placed: ScanPlacement, name: string): ScanOutcome {
+export function placedOutcome(
+  placed: ScanPlacement,
+  product: { readonly name: string; readonly unitPrice: string },
+): ScanOutcome {
+  const { name } = product;
   return placed.added
-    ? { kind: 'done', key: 'scan.added', params: { name }, undo: placed.undo }
+    ? { kind: 'done', key: 'scan.added', params: { name }, product, undo: placed.undo }
     : {
         kind: 'done',
         key: 'scan.incremented',
         params: { name, quantity: placed.quantity },
+        product,
         undo: placed.undo,
       };
 }

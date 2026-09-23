@@ -1,0 +1,81 @@
+<main class="mx-auto flex max-w-md flex-col gap-4 p-4">
+  <h1 class="m-0 flex items-center gap-2 text-xl font-medium">
+    <mat-icon aria-hidden="true">barcode_scanner</mat-icon>
+    {{ 'scan.phone.page.title' | translate }}
+  </h1>
+
+  @if (stage() === 'loading') {
+    <p class="m-0" role="status" data-testid="phone-loading">
+      {{ 'scan.phone.page.claiming' | translate }}
+    </p>
+  } @else if (stage() === 'ended') {
+    <p class="m-0" role="status" data-testid="phone-ended">
+      {{ 'scan.phone.page.ended' | translate }}
+    </p>
+  } @else if (refusal(); as reason) {
+    <p class="m-0 text-error" role="alert" data-testid="phone-refused">
+      {{ 'scan.phone.refused.' + reason | translate }}
+    </p>
+  } @else {
+    @if (cameraAvailable) {
+      <app-camera-view (read)="send($event)" />
+    }
+
+    <form class="flex items-start gap-2" (ngSubmit)="submit()" data-testid="phone-code-form">
+      <mat-form-field class="flex-1" subscriptSizing="dynamic">
+        <mat-label>{{ 'scan.phone.page.code' | translate }}</mat-label>
+        <input
+          matInput
+          name="code"
+          [(ngModel)]="code"
+          autocomplete="off"
+          inputmode="numeric"
+          data-testid="phone-code"
+        />
+      </mat-form-field>
+      <button mat-flat-button type="submit" class="mt-2" data-testid="phone-send">
+        {{ 'scan.phone.page.send' | translate }}
+      </button>
+    </form>
+
+    @if (sent(); as code) {
+      <p class="m-0 text-sm" data-testid="phone-sent">
+        {{ 'scan.phone.page.sent' | translate }} <span class="font-mono">{{ code }}</span>
+      </p>
+    }
+
+    <section class="flex flex-col gap-3" aria-live="polite">
+      @for (echo of echoes(); track echo.id; let first = $first) {
+        <article
+          class="flex flex-col gap-1 rounded-lg p-3"
+          [class.bg-surface-container-high]="first"
+          [attr.data-testid]="first ? 'phone-echo' : null"
+        >
+          <p class="m-0" [class.text-error]="echo.outcome === 'refused'">
+            {{ echo.message | translate: echo.params }}
+          </p>
+          @if (echo.product; as product) {
+            <p class="m-0 flex justify-between gap-2 font-medium">
+              <span>{{ product.name }}</span>
+              <span>{{ product.price }}</span>
+            </p>
+          }
+          @if (first && echo.choices.length > 0) {
+            <div class="flex flex-wrap gap-2">
+              @for (choice of echo.choices; track choice.id) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="choose(echo, choice.id)"
+                  [attr.data-testid]="'phone-choice-' + choice.id"
+                >
+                  {{ choice.label | translate }}
+                </button>
+              }
+            </div>
+          }
+        </article>
+      }
+    </section>
+  }
+</main>

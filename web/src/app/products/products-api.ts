@@ -161,6 +161,7 @@ export class ProductsApi {
         lot: raw.lot ?? null,
         useBy: raw.useBy ?? null,
         serial: raw.serial ?? null,
+        unitPriceNet: raw.unitPriceNet,
       };
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status === 404) return null;

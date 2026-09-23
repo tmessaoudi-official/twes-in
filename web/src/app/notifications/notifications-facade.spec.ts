@@ -7,6 +7,7 @@ import { NotificationsFacade } from './notifications-facade';
 import type { InboxEntry, InboxPage } from './notifications-types';
 import { notificationKey } from './notifications-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { PhonePairing } from '../shared/scan/phone-pairing';
 import { REALTIME_CONNECTOR, type RealtimeConnector } from '../shared/realtime/realtime-connector';
 
 const added: InboxEntry = {
@@ -39,17 +40,20 @@ describe('NotificationsFacade', () => {
     return connection;
   };
   const live = { receive: vi.fn() };
+  const pairing = { receive: vi.fn((data: { type?: string }) => data.type === 'pairing') };
   let facade: NotificationsFacade;
 
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset());
     live.receive.mockReset();
+    pairing.receive.mockClear();
     opened.length = 0;
     TestBed.configureTestingModule({
       providers: [
         { provide: NotificationsApi, useValue: api },
         { provide: REALTIME_CONNECTOR, useValue: connector },
         { provide: LiveChanges, useValue: live },
+        { provide: PhonePairing, useValue: pairing },
       ],
     });
     facade = TestBed.inject(NotificationsFacade);
@@ -106,6 +110,17 @@ describe('NotificationsFacade', () => {
 
     expect(live.receive).toHaveBeenCalledWith(change);
     expect(api.list).not.toHaveBeenCalled();
+  });
+
+  it("hands a paired phone's publication to the pairing, and neither reads the centre nor tells the screens", () => {
+    facade.connect();
+    const scan = { type: 'pairing', event: 'scan', pairing: 'p-1', tab: 't', scan: 's', code: '1' };
+
+    opened[0].onPublication(scan);
+
+    expect(pairing.receive).toHaveBeenCalledWith(scan);
+    expect(api.list).not.toHaveBeenCalled();
+    expect(live.receive).not.toHaveBeenCalled();
   });
 
   it('closes the previous connection before opening another, so a company switch hears only the new channels', () => {

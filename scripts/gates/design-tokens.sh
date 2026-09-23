@@ -13,7 +13,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
 # A QR code's modules are fixed black on white, whatever the scheme, or a phone cannot read them; the default accent
 # is the value a company starts with, which the theme then derives every token from.
-exceptions=' web/src/app/auth/qr-code.ts web/src/app/shared/settings/settings-registry.ts '
+exceptions=' web/src/app/shared/qr/qr-code.ts web/src/app/shared/settings/settings-registry.ts '
 files=()
 while IFS= read -r file; do
   [[ "$file" == *.spec.ts || "$file" == web/src/app/shared/theme/* || "$exceptions" == *" $file "* ]] && continue

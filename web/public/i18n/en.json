@@ -2224,6 +2224,39 @@
         "busy": "The camera is already in use by another application.",
         "unsupported": "This browser cannot open the camera here."
       }
+    },
+    "phone": {
+      "pair": "Use a phone as a scanner",
+      "paired": "Phone connected: open",
+      "title": "Scan with a phone",
+      "hint": "Scan this code with the phone's camera, or open this address on it. No sign-in is needed there.",
+      "qr": "QR code of the link for the phone",
+      "opening": "Preparing the link…",
+      "waiting": "Waiting for the phone",
+      "connected": "Phone connected",
+      "disconnect": "Let the phone go",
+      "close": "Close",
+      "ended": "The phone is no longer connected to this tab",
+      "found": "{{name}}",
+      "retired": "{{name}} is no longer sold",
+      "unknown": "No product carries the code {{code}}",
+      "page": {
+        "title": "Scanner",
+        "claiming": "Connecting to the computer…",
+        "ended": "This phone is no longer connected. To scan again, scan a new code on the computer.",
+        "code": "Code",
+        "send": "Send",
+        "sent": "Sent:"
+      },
+      "refused": {
+        "unknown": "This link does not exist. Scan the code shown on the computer again.",
+        "key": "This phone is not the one that was connected.",
+        "claimed": "Another phone already used this link. Ask the computer for a new one.",
+        "expired": "This link has expired. Ask the computer for a new one.",
+        "ended": "The computer no longer uses this link. Ask it for a new one.",
+        "invalid": "This link is not valid.",
+        "network": "The computer does not answer. Check the phone's connection."
+      }
     }
   }
 }

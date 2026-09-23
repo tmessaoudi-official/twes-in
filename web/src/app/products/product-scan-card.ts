@@ -5,6 +5,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
   inject,
   Injector,
@@ -20,6 +21,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { isBareKeystroke } from '../shared/actions/shortcuts';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { FormatFacade } from '../shared/i18n/format-facade';
+import { ScanOffers } from '../shared/scan/scan-offers';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductScan, ProductsError } from './products-types';
 
@@ -60,6 +62,8 @@ export class ProductScanCard implements OnInit {
   private readonly router = inject(Router);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
+  private readonly offers = inject(ScanOffers);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly format = inject(FormatFacade);
 
   protected readonly code = this.data.code;
@@ -68,6 +72,8 @@ export class ProductScanCard implements OnInit {
   protected readonly failed = signal<ProductsError | null>(null);
   /** Whether the picker of the product to add the code to is open. */
   protected readonly attaching = signal(false);
+
+  private destroyed = false;
 
   protected readonly actions = computed((): readonly ScanAction[] => {
     const scan = this.scan();
@@ -132,7 +138,41 @@ export class ProductScanCard implements OnInit {
       this.scan.set(await this.api.scan(companyId, this.code));
     } catch (error) {
       this.failed.set(error instanceof ProductsRefused ? error.code : 'network');
+      return;
     }
+    this.offerToAPhone();
+  }
+
+  /**
+   * What a phone lent as a scanner shows of this card (docs/SPEC.md § 7, 2026-09-23 09:45, slice 4): the product with a
+   * unit's customer price, and the card's own buttons, each of which a tap on the phone presses here.
+   */
+  private offerToAPhone(): void {
+    const scan = this.scan();
+    if (scan === undefined) return;
+    const found = scan !== null;
+    const withdraw = this.offers.offer({
+      code: this.code,
+      message: !found
+        ? 'scan.phone.unknown'
+        : scan.isActive
+          ? 'scan.phone.found'
+          : 'scan.phone.retired',
+      params: found ? { name: scan.name } : { code: this.code },
+      product: found ? { name: scan.name, unitPrice: scan.unitPriceNet } : null,
+      choices: this.actions().map((action) => ({
+        id: action.id,
+        label: `products.scan.actions.${action.id}`,
+      })),
+      choose: (id) => {
+        const action = this.actions().find((candidate) => candidate.id === id);
+        if (action !== undefined) this.run(action);
+      },
+    });
+    this.destroyRef.onDestroy(() => {
+      this.destroyed = true;
+      withdraw();
+    });
   }
 
   protected onKeydown(event: KeyboardEvent): void {
@@ -153,6 +193,7 @@ export class ProductScanCard implements OnInit {
   }
 
   protected run(action: ScanAction): void {
+    if (this.destroyed) return;
     if (action.url === null) {
       this.attaching.set(true);
       afterNextRender(

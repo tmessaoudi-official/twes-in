@@ -51,6 +51,8 @@ import { ProductScanCard, type ProductScanCardData } from '../products/product-s
 import { PRODUCTS_MODULE } from '../products/products-nav';
 import { Camera } from '../shared/scan/camera';
 import { CameraScanPanel } from '../shared/scan/camera-scan-panel';
+import { PhonePairing } from '../shared/scan/phone-pairing';
+import { PhonePairingDialog } from '../shared/scan/phone-pairing-dialog';
 import { ScanBus } from '../shared/scan/scan-bus';
 import { ScanCount } from '../shared/scan/scan-count';
 import { SCAN_GAP_MS, ScanWedge } from '../shared/scan/scan-wedge';
@@ -130,6 +132,13 @@ export class AppShell {
   private cameraOpen = false;
   /** Whether this browser can open a camera here: a secure page and the media devices API. */
   protected readonly cameraAvailable = inject(Camera).available();
+  /** A phone lent to this tab as a scanner (slice 4): it lives with the shell, so leaving or signing out ends it. */
+  protected readonly phone = inject(PhonePairing);
+  /** Every scan handler needs product.read, so a phone scanning for somebody without it would do nothing. */
+  protected readonly mayScan = computed(
+    () => this.auth.me() !== null && this.auth.hasPermission('product.read'),
+  );
+  private phoneOpen = false;
   private scanOpen = false;
   private readonly wedge = new ScanWedge();
   private readonly scans = inject(ScanBus);
@@ -210,7 +219,10 @@ export class AppShell {
 
   constructor() {
     // A shortcut still held when the shell goes (signing out) belongs to a screen that is gone with it.
-    inject(DestroyRef).onDestroy(() => this.dropHeldShortcut());
+    inject(DestroyRef).onDestroy(() => {
+      this.dropHeldShortcut();
+      this.phone.end();
+    });
     // A scan no screen acts on opens the card of what it names.
     this.scans.fallback((scan) => this.openScan(scan.code));
     // A session that ended while the page was open (expired, or ended from another device) sends the person back to
@@ -396,6 +408,16 @@ export class AppShell {
       })
       .afterClosed()
       .subscribe(() => (this.cameraOpen = false));
+  }
+
+  /** The link a phone claims to scan for this tab (docs/SPEC.md § 7, 2026-09-23 09:45, slice 4). One at a time. */
+  protected openPhone(): void {
+    if (this.phoneOpen) return;
+    this.phoneOpen = true;
+    this.dialog
+      .open(PhonePairingDialog, { width: 'min(24rem, calc(100vw - 2rem))' })
+      .afterClosed()
+      .subscribe(() => (this.phoneOpen = false));
   }
 
   protected openCommands(): void {

@@ -28,6 +28,8 @@ import { ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { ProductScanCard } from '../products/product-scan-card';
 import { Camera } from '../shared/scan/camera';
+import { PhonePairing } from '../shared/scan/phone-pairing';
+import { PhonePairingDialog } from '../shared/scan/phone-pairing-dialog';
 import { ScanBus } from '../shared/scan/scan-bus';
 import { SCAN_GAP_MS } from '../shared/scan/scan-wedge';
 import { CommandPalette } from './command-palette';
@@ -142,6 +144,11 @@ function declareScreenActions(actions: readonly ScreenAction[]): void {
 }
 
 describe('AppShell', () => {
+  const pairing = {
+    state: signal<{ id: string; url: string; phone: 'waiting' | 'connected' } | null>(null),
+    open: vi.fn(async () => undefined),
+    end: vi.fn(),
+  };
   const width = new BehaviorSubject(1280);
   const me = signal<SignedInState | null>(owner);
   const permissions = signal<readonly string[]>(['user.read']);
@@ -213,6 +220,7 @@ describe('AppShell', () => {
         { provide: RequestActivity, useValue: activity },
         { provide: Feedback, useClass: RecordedFeedback },
         { provide: Camera, useValue: { available: () => true } },
+        { provide: PhonePairing, useValue: pairing },
         {
           provide: NotificationsFacade,
           useValue: {
@@ -810,6 +818,28 @@ describe('AppShell', () => {
     expect((open.mock.calls[0] as [unknown, { data: { code: string } }])[1].data.code).toBe(
       ']C10113017620422000',
     );
+  });
+
+  it('lends a phone as a scanner to somebody who reads the products, and lets it go when the shell goes', async () => {
+    permissions.set(['product.read']);
+    modules.set(['products']);
+    const { fixture, click } = await render();
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(undefined),
+    } as never);
+
+    await click('phone-pair');
+
+    expect(open).toHaveBeenCalledWith(PhonePairingDialog, expect.anything());
+    fixture.destroy();
+    expect(pairing.end).toHaveBeenCalled();
+  });
+
+  it('offers no phone to somebody who may not read the products', async () => {
+    permissions.set(['customer.read']);
+    const { byTestId } = await render();
+
+    expect(byTestId('phone-pair')).toBeNull();
   });
 
   it('opens nothing on a scan for somebody who may not read the products', async () => {

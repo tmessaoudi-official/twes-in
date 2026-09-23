@@ -426,7 +426,7 @@ export class InvoicePage {
         return line;
       },
     );
-    return placedOutcome(placed, product.name);
+    return placedOutcome(placed, { name: product.name, unitPrice: product.unitPriceNet });
   }
 
   constructor() {

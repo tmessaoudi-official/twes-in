@@ -19,6 +19,8 @@ export type ScanOutcome =
       readonly kind: 'done';
       readonly key: string;
       readonly params?: Record<string, unknown>;
+      /** What the scan was taken as, for a phone that sent it: the name and a unit's customer price, never the cost. */
+      readonly product?: { readonly name: string; readonly unitPrice: string };
       /** Takes back what the scan did; absent when nothing can be. */
       readonly undo?: () => void;
     }

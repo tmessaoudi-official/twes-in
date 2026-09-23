@@ -1,0 +1,34 @@
+<h2 mat-dialog-title>{{ 'scan.phone.title' | translate }}</h2>
+
+<mat-dialog-content class="flex flex-col items-center gap-3">
+  @if (pairing.state(); as state) {
+    <p class="m-0 text-sm">{{ 'scan.phone.hint' | translate }}</p>
+    <div class="w-56" data-testid="phone-pair-qr">
+      <app-qr-code [value]="state.url" [label]="'scan.phone.qr' | translate" />
+    </div>
+    <p class="m-0 font-mono text-xs break-all select-all" data-testid="phone-pair-url">
+      {{ state.url }}
+    </p>
+    <p class="m-0 flex items-center gap-2" role="status" data-testid="phone-pair-status">
+      <mat-icon aria-hidden="true">{{
+        state.phone === 'connected' ? 'mobile_friendly' : 'hourglass_top'
+      }}</mat-icon>
+      {{ 'scan.phone.' + state.phone | translate }}
+    </p>
+  } @else {
+    <p class="m-0" role="status" data-testid="phone-pair-opening">
+      {{ 'scan.phone.opening' | translate }}
+    </p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  @if (pairing.state() !== null) {
+    <button mat-button type="button" (click)="end()" data-testid="phone-pair-end">
+      {{ 'scan.phone.disconnect' | translate }}
+    </button>
+  }
+  <button mat-flat-button type="button" mat-dialog-close data-testid="phone-pair-close">
+    {{ 'scan.phone.close' | translate }}
+  </button>
+</mat-dialog-actions>
