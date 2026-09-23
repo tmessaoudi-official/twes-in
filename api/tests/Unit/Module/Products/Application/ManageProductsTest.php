@@ -25,6 +25,7 @@ use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorProfile;
 use App\Tenancy\Domain\Company;
@@ -219,6 +220,52 @@ final class ManageProductsTest extends TestCase
         self::assertSame(['C62', ProductKind::Service], [$fresh->getUnit()->getCode(), $fresh->getDetails()->kind], 'without movements both change');
     }
 
+    /**
+     * A product says whether its stock is kept by lot or by serial (docs/SPEC.md § 7, 2026-09-22 11:10, 2026-09-23 02:40),
+     * and says it before its first movement: a movement written without a lot cannot be given one afterwards.
+     */
+    public function testTrackingIsSetBeforeTheFirstMovementAndAServiceTracksNothing(): void
+    {
+        $product = $this->manage->create($this->company, $this->input(), null);
+        self::assertSame(ProductTracking::None, $product->getTracking(), 'a product is untracked until someone says otherwise');
+
+        $this->manage->revise($this->company, $product->getId(), $this->input(tracking: ProductTracking::Lot), null);
+        self::assertSame(ProductTracking::Lot, $product->getTracking());
+        self::assertSame(['fields' => ['tracking']], $this->audit->entries[1]->changes);
+        $this->manage->revise($this->company, $product->getId(), $this->input(price: '9'), null);
+        self::assertSame(ProductTracking::Lot, $product->getTracking(), 'a revision that does not say keeps it');
+
+        $this->stockHistory->withMovements[] = $product->getId()->toRfc4122();
+        try {
+            $this->manage->revise($this->company, $product->getId(), $this->input(tracking: ProductTracking::Serial), null);
+            self::fail('The tracking of a product with stock movements was changed.');
+        } catch (InvalidProduct $refused) {
+            self::assertSame('tracking', $refused->field);
+        }
+        self::assertSame(ProductTracking::Lot, $product->getTracking());
+        $this->manage->revise($this->company, $product->getId(), $this->input(tracking: ProductTracking::Lot, price: '8'), null);
+        self::assertSame('8.0000', $product->getDetails()->unitPriceNet, 'saying the same tracking again is no change');
+
+        foreach ([
+            fn () => $this->manage->create($this->company, $this->input(reference: 'SRV-1', unit: 'HUR', kind: ProductKind::Service, tracking: ProductTracking::Serial), null),
+            fn () => $this->manage->revise($this->company, $product->getId(), $this->input(kind: ProductKind::Service), null),
+        ] as $attempt) {
+            try {
+                $attempt();
+                self::fail('A service was given a tracking.');
+            } catch (InvalidProduct $refused) {
+                self::assertContains($refused->field, ['tracking', 'kind']);
+            }
+        }
+        $fresh = $this->manage->create($this->company, $this->input(reference: 'ART-2', tracking: ProductTracking::Lot), null);
+        try {
+            $this->manage->revise($this->company, $fresh->getId(), $this->input(reference: 'ART-2', kind: ProductKind::Service), null);
+            self::fail('A tracked product became a service.');
+        } catch (InvalidProduct $refused) {
+            self::assertSame('tracking', $refused->field);
+        }
+    }
+
     public function testCustomFieldValuesAreCheckedAgainstTheCompanysFieldsForProductsOnly(): void
     {
         $now = new \DateTimeImmutable();
@@ -331,6 +378,7 @@ final class ManageProductsTest extends TestCase
         ?Company $company = null,
         ProductKind $kind = ProductKind::Goods,
         array $barcodes = [],
+        ?ProductTracking $tracking = null,
     ): ProductInput {
         $company ??= $this->company;
 
@@ -343,6 +391,7 @@ final class ManageProductsTest extends TestCase
             $active,
             $customFields,
             $barcodes,
+            $tracking,
         );
     }
 

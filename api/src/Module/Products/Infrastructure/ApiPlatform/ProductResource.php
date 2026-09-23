@@ -21,6 +21,7 @@ use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -108,6 +109,15 @@ final class ProductResource
     #[Groups([self::READ, self::WRITE])]
     public string $kind = 'goods';
 
+    /**
+     * How its stock is told apart (docs/SPEC.md § 7, 2026-09-23 02:40): chosen before its first stock movement, `none`
+     * for a service. Left out of a write, it is kept.
+     */
+    #[ApiProperty(schema: ['type' => 'string', 'enum' => ['none', 'lot', 'serial']])]
+    #[Assert\Choice(choices: ['none', 'lot', 'serial'], groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $tracking = null;
+
     /** One of the company's units (GET .../units); a retired one stays with the products that have it. */
     #[Assert\NotBlank(groups: [self::WRITE])]
     #[Assert\Uuid(groups: [self::WRITE])]
@@ -161,6 +171,7 @@ final class ProductResource
         $resource->name = $details->name;
         $resource->description = $details->description;
         $resource->kind = $details->kind->value;
+        $resource->tracking = $product->getTracking()->value;
         $resource->unitId = $product->getUnit()->getId()->toRfc4122();
         $resource->unitPriceNet = $details->unitPriceNet;
         $resource->costPrice = $details->costPrice;
@@ -184,6 +195,7 @@ final class ProductResource
             array_map(static fn (string $id): Uuid => Uuid::fromString($id), $this->defaultTaxComponentIds),
             $this->isActive,
             $this->customFields,
+            tracking: null === $this->tracking ? null : ProductTracking::from($this->tracking),
         );
     }
 }

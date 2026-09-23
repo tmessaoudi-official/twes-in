@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Products\Application;
 
 use App\Module\Products\Domain\ProductDetails;
+use App\Module\Products\Domain\ProductTracking;
 use Symfony\Component\Uid\Uuid;
 
 /** A product as it is written: its reference and details, the unit, category and taxes it names by id, its codes. */
@@ -19,6 +20,7 @@ final readonly class ProductInput
      * @param list<Uuid>              $defaultTaxComponentIds
      * @param array<array-key, mixed> $customFields           values by the company's custom field keys, checked by the use case
      * @param list<BarcodeInput>|null $barcodes               the codes it answers to, exactly these; null keeps them
+     * @param ProductTracking|null    $tracking               how its stock is told apart; null keeps it, `none` on a new one
      */
     public function __construct(
         public string $reference,
@@ -29,6 +31,7 @@ final readonly class ProductInput
         public bool $isActive,
         public array $customFields = [],
         public ?array $barcodes = null,
+        public ?ProductTracking $tracking = null,
     ) {
     }
 }

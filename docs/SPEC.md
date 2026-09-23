@@ -2270,6 +2270,24 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   anything a person notices) and dropped when the next key proves a burst.** Also fixed: AltGr reports Ctrl and Alt together and types a character (`]` of a GS1
   prefix on AZERTY), and the wedge first read it as a command and dropped the scan; it now follows
   `isBareKeystroke`, the rule the shortcuts already used.
+- [2026-09-23 02:40] TAKEN OVERNIGHT, to confirm (the recommended option at each point, building the 11:10 ruling;
+  listed in `var/claude/overnight-questions.md`): **how lots enter the model.** (1) A product carries `tracking`,
+  `none | lot | serial`, default `none`, set on its form; it can change only while the product has no stock movement,
+  because a movement written without a lot cannot be given one afterwards — refused 422 on `tracking`, exactly as a
+  unit or a kind change after stock already is, through the same `ProductStockHistory` port. A service tracks
+  nothing. (2) A lot is
+  its own row, `stock_lot`: the product, a code unique within the product (1 to 40 printable characters, no space: GS1
+  `(10)` is at most 20, and a company's own codes run longer), an optional use-by date, and who released it and when
+  if it was released after expiring. A serial number is a lot of the `serial` product: the same row, never more than
+  one piece in stock across the company. (3) Every movement of a tracked product names its lot, a movement of an
+  untracked one names none — held by the movement's factories in the domain, since a table constraint cannot see
+  the product's tracking. (4) Stock becomes a number per location **and lot**; the levels
+  list gains the lot and its date, and an untracked product reads exactly as before. (5) A receipt names the lot by its
+  code and date — creating the lot the first time the code is seen, refusing a date that contradicts the lot's own —
+  and a GS1 scan fills both. (6) Slices: the model and receipts, counts and moves (L1); delivery notes picking FEFO and
+  the expired-lot block with its recorded release (L2); the web — the tracking field, receiving with the scan, the
+  levels by lot (L3); the recall search (L4). Nothing here is written to existing movements: every product is `none`
+  until someone sets it, so the history stays as recorded.
 
 ## 8. Status
 

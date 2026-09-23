@@ -53,6 +53,10 @@ class Product implements CompanyOwned
     #[ORM\Column(length: 16, enumType: ProductKind::class)]
     private ProductKind $kind;
 
+    /** How its stock is told apart; `none` until someone says otherwise, and only before its first movement. */
+    #[ORM\Column(length: 8, enumType: ProductTracking::class, options: ['default' => 'none'])]
+    private ProductTracking $tracking;
+
     #[ORM\ManyToOne(targetEntity: Unit::class)]
     #[ORM\JoinColumn(name: 'unit_id', nullable: false)]
     private Unit $unit;
@@ -99,6 +103,8 @@ class Product implements CompanyOwned
         $this->createdAt = $now;
         $this->updatedAt = $now;
         $this->barcodes = new ArrayCollection();
+        // Set here, not as the property's default: Doctrine's lazy ghosts skip defaults naming another class.
+        $this->tracking = ProductTracking::None;
     }
 
     /**
@@ -159,6 +165,44 @@ class Product implements CompanyOwned
         $this->updatedAt = $now;
 
         return $changed;
+    }
+
+    /**
+     * The tracking a product of this kind may have: a service holds no stock, so it tracks nothing.
+     *
+     * @throws InvalidProduct
+     */
+    public static function trackingFor(ProductTracking $tracking, ProductKind $kind): ProductTracking
+    {
+        if (ProductTracking::None !== $tracking && ProductKind::Service === $kind) {
+            throw new InvalidProduct('tracking', 'A service holds no stock, so it is tracked neither by lot nor by serial.');
+        }
+
+        return $tracking;
+    }
+
+    /**
+     * Sets how its stock is told apart. Whether stock already moved is the use case's to know; this holds the rest.
+     *
+     * @return bool whether it changed
+     *
+     * @throws InvalidProduct
+     */
+    public function track(ProductTracking $tracking, \DateTimeImmutable $now): bool
+    {
+        self::trackingFor($tracking, $this->kind);
+        if ($tracking === $this->tracking) {
+            return false;
+        }
+        $this->tracking = $tracking;
+        $this->updatedAt = $now;
+
+        return true;
+    }
+
+    public function getTracking(): ProductTracking
+    {
+        return $this->tracking;
     }
 
     /**

@@ -30,6 +30,7 @@ use App\Module\Products\Domain\ProductCategoryRepository;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Domain\ProductSearch;
+use App\Module\Products\Domain\ProductTracking;
 use App\Module\Vendors\Domain\VendorRepository;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
@@ -96,9 +97,11 @@ final readonly class ManageProducts
             }
             $lines = $this->barcodeLines($company, $input->barcodes ?? [], null);
             [$unit, $category] = $this->checked($company, $input, null);
+            $tracking = Product::trackingFor($input->tracking ?? ProductTracking::None, $input->details->kind);
             $values = $this->customFieldValues($company, $input, null);
             $now = $this->clock->now();
             $product = Product::create($company, $input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, $now);
+            $product->track($tracking, $now);
             $product->reviseCustomFields($values, $now);
             $product->replaceBarcodes($lines, $now);
             if (!$input->isActive) {
@@ -128,10 +131,14 @@ final readonly class ManageProducts
             $lines = null === $input->barcodes ? null : $this->barcodeLines($company, $input->barcodes, $product);
             [$unit, $category] = $this->checked($company, $input, $product);
             $this->assertStockKeepsItsMeaning($company, $product, $unit, $input->details->kind);
+            $tracking = $this->trackingKeptByStock($company, $product, Product::trackingFor($input->tracking ?? $product->getTracking(), $input->details->kind));
             $values = $this->customFieldValues($company, $input, $product);
 
             $now = $this->clock->now();
             $changed = $product->revise($input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, $input->isActive, $now);
+            if ($product->track($tracking, $now)) {
+                $changed[] = 'tracking';
+            }
             $changed = [...$changed, ...$product->reviseCustomFields($values, $now)];
             if (null !== $lines && $product->replaceBarcodes($lines, $now)) {
                 $changed[] = 'barcodes';
@@ -220,6 +227,21 @@ final readonly class ManageProducts
         }
 
         throw new InvalidProduct('kind', \sprintf('Stock of %s was moved, so it stays goods.', $product->getReference()));
+    }
+
+    /**
+     * A movement written without a lot cannot be given one afterwards, nor a lot taken off one (docs/SPEC.md § 7,
+     * 2026-09-23 02:40): once stock moved, the tracking is the one it moved under.
+     *
+     * @throws InvalidProduct
+     */
+    private function trackingKeptByStock(Company $company, Product $product, ProductTracking $tracking): ProductTracking
+    {
+        if ($tracking !== $product->getTracking() && $this->stockHistory->hasMovements($product->getId(), $company->getId())) {
+            throw new InvalidProduct('tracking', \sprintf('Stock of %s was moved %s, so it stays that way.', $product->getReference(), ProductTracking::None === $product->getTracking() ? 'without lots' : 'by '.$product->getTracking()->value));
+        }
+
+        return $tracking;
     }
 
     /**

@@ -318,6 +318,35 @@ final class InventoryTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
+    public function testTrackingIsChosenBeforeTheFirstMovementAndKeptAfterIt(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
+        $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($piece);
+        $products = '/api/companies/'.$this->company->getId()->toRfc4122().'/products';
+        $laptop = ['reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $piece->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true];
+
+        $this->getJson($products.'/'.$this->laptopId);
+        self::assertSame('none', $this->json()['tracking']);
+        $this->sendJson('PUT', $products.'/'.$this->laptopId, [...$laptop, 'tracking' => 'serial']);
+        self::assertResponseIsSuccessful();
+        self::assertSame('serial', $this->json()['tracking']);
+        $this->sendJson('PUT', $products.'/'.$this->laptopId, $laptop);
+        self::assertSame('serial', $this->json()['tracking'], 'a body without tracking keeps it');
+        $this->sendJson('PUT', $products.'/'.$this->laptopId, [...$laptop, 'tracking' => 'batch']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '1']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->sendJson('PUT', $products.'/'.$this->laptopId, [...$laptop, 'tracking' => 'lot']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('tracking', (string) $this->client->getResponse()->getContent());
+        self::assertSame('serial', $this->em()->getConnection()->fetchOne('SELECT tracking FROM product WHERE id = ?', [$this->laptopId]));
+
+        $this->sendJson('PUT', $products.'/'.$this->supportId, [...$laptop, 'reference' => 'SRV-001', 'name' => 'Assistance', 'kind' => 'service', 'unitPriceNet' => '50', 'tracking' => 'lot']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a service tracks nothing');
+    }
+
     public function testWithoutThePermissionOrForAnotherCompanyNothingIsFound(): void
     {
         $this->signedIn(['stock.read']);
