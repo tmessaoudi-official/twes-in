@@ -6,6 +6,7 @@ import {
   computed,
   effect,
   inject,
+  input,
   type OnInit,
   signal,
   untracked,
@@ -37,7 +38,8 @@ import { INVENTORY_TABS } from './inventory-nav';
 
 /**
  * Count mode (docs/SPEC.md § 7, 2026-09-23 slice 8): walking the shelves with a scanner. The location counted is the
- * default one until a location's label — its address, or its code — is scanned; every product scanned there is
+ * default one, or the one whose label's address opened the page, until a location's label — its address, or its
+ * code — is scanned; every product scanned there is
  * tallied, the same product and lot counting on as a till does, and each line can be corrected by hand. Recording
  * writes one count per line, which sets what is on hand at that location to what was found; a line the API refused
  * stays on the sheet with the reason shown, and the others are gone. Nothing is recorded of what was not scanned.
@@ -67,6 +69,9 @@ export class StockCountPage implements OnInit {
   private readonly bus = inject(ScanBus);
   protected readonly tabs = INVENTORY_TABS;
 
+  /** The location a label's address named (`/stock/locations/:location`), counted from the start. */
+  readonly location = input<string>();
+
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('stock.write'));
   protected readonly busy = this.facade.busy;
@@ -84,7 +89,8 @@ export class StockCountPage implements OnInit {
       const locations = this.facade.locations();
       untracked(() => {
         if (this.locationId() !== '') return;
-        const first = locations.find((location) => location.isDefault) ?? locations[0];
+        const named = locations.find((location) => location.id === this.location());
+        const first = named ?? locations.find((location) => location.isDefault) ?? locations[0];
         if (first) this.locationId.set(first.id);
       });
     });

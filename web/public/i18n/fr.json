@@ -1667,6 +1667,13 @@
       "recorded": "Comptage enregistré : {{count}} ligne(s).",
       "at_location": "Comptage à : {{name}}",
       "tallied": "{{name}} : {{quantity}} compté(s)"
+    },
+    "labels": {
+      "title": "Étiquettes d'emplacements",
+      "intro": "Une étiquette par emplacement, à coller sur l'étagère : un téléphone qui en lit le QR code ouvre le comptage à cet emplacement, et une douchette le reconnaît aussi.",
+      "print": "Imprimer",
+      "empty": "Aucun emplacement à étiqueter.",
+      "open": "Imprimer les étiquettes"
     }
   },
   "vendors": {

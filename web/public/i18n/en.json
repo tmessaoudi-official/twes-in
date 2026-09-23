@@ -1667,6 +1667,13 @@
       "recorded": "Count recorded: {{count}} line(s).",
       "at_location": "Counting at: {{name}}",
       "tallied": "{{name}}: {{quantity}} counted"
+    },
+    "labels": {
+      "title": "Location labels",
+      "intro": "One label per location, to stick on the shelf: a phone reading its QR code opens count mode at that location, and a scanner recognises it too.",
+      "print": "Print",
+      "empty": "No location to label.",
+      "open": "Print labels"
     }
   },
   "vendors": {

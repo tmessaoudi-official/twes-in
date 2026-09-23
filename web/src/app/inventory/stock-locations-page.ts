@@ -14,6 +14,7 @@ import {
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
@@ -43,6 +44,7 @@ import { Feedback } from '../shared/feedback/feedback';
     PageTabs,
     MatButtonModule,
     MatCardModule,
+    RouterLink,
     TranslatePipe,
     DataList,
     DataListCell,

@@ -182,6 +182,13 @@ describe('StockCountPage', () => {
     expect(facade.pickProducts).toHaveBeenCalledWith('c1', { ids: ['p1'] });
   });
 
+  it("starts at the location a label's address named, which a phone's camera opens", async () => {
+    fixture = TestBed.createComponent(StockCountPage);
+    fixture.componentRef.setInput('location', rack.id);
+    await settle();
+    expect(q('stock-count-location')?.textContent).toContain('R1');
+  });
+
   it('asks a lot of a tracked product whose label named none, and records every line as a count', async () => {
     scans.named.mockResolvedValue(scanOf('p1'));
     await scanned('3017620422003');

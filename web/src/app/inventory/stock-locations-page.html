@@ -4,16 +4,28 @@
       <h1 class="text-3xl font-semibold" data-testid="stock-locations-title">
         {{ 'inventory.locations.title' | translate }}
       </h1>
-      @if (mayWrite() && editing() === null && company()) {
-        <button
-          mat-flat-button
-          type="button"
-          (click)="open('new')"
-          data-testid="stock-location-add"
-        >
-          {{ 'inventory.locations.add' | translate }}
-        </button>
-      }
+      <div class="flex flex-wrap items-center gap-2">
+        @if (company()) {
+          <a
+            mat-stroked-button
+            routerLink="/print/location-labels"
+            target="_blank"
+            data-testid="stock-location-labels"
+          >
+            {{ 'inventory.labels.open' | translate }}
+          </a>
+        }
+        @if (mayWrite() && editing() === null && company()) {
+          <button
+            mat-flat-button
+            type="button"
+            (click)="open('new')"
+            data-testid="stock-location-add"
+          >
+            {{ 'inventory.locations.add' | translate }}
+          </button>
+        }
+      </div>
     </div>
     <p class="max-w-prose">{{ 'inventory.locations.intro' | translate }}</p>
 

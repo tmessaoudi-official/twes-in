@@ -2476,6 +2476,14 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   location's stock of it to what was counted; nothing is written of what was not scanned, so a product missing from
   the shelf is not set to zero by this screen. A line the API refuses stays on the sheet, the others go. The sheet
   lives in the page: leaving it forgets what was not recorded.
+- [2026-09-23 22:30] TAKEN OVERNIGHT (standing instruction, to confirm): slice 8b, location labels. "Imprimer les
+  étiquettes" on the locations screen opens a sheet in a new tab (`/print/location-labels`, outside the shell, the
+  inventory module): one label per location of the company, each with its code in large type, its path from the site
+  down, and a QR code of `<this app's origin>/stock/locations/<id>`, black on white whatever the screen's scheme. That
+  address opens count mode with the location already chosen, so a phone's camera goes straight to counting there, and
+  a scanner reading it in count mode switches location (slice 8a). The browser prints the sheet (the button is left
+  off the paper); no label size or printer format is chosen by the app, and no selection of locations: the sheet is
+  all of them.
 
 ## 8. Status
 

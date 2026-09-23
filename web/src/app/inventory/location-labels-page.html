@@ -1,0 +1,41 @@
+<main class="flex flex-col gap-6 p-6 print:p-0" data-testid="location-labels">
+  <header class="flex flex-wrap items-center justify-between gap-3 print:hidden">
+    <div class="flex flex-col gap-1">
+      <h1 class="m-0 text-3xl font-semibold">{{ 'inventory.labels.title' | translate }}</h1>
+      <p class="m-0 max-w-prose">{{ 'inventory.labels.intro' | translate }}</p>
+    </div>
+    <button
+      mat-flat-button
+      type="button"
+      class="print:hidden"
+      data-testid="location-labels-print"
+      (click)="print()"
+    >
+      <mat-icon>print</mat-icon>
+      {{ 'inventory.labels.print' | translate }}
+    </button>
+  </header>
+
+  @if (labels().length === 0) {
+    <p class="opacity-80" data-testid="location-labels-empty">
+      {{ 'inventory.labels.empty' | translate }}
+    </p>
+  }
+
+  <ul
+    class="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-4 p-0 print:gap-2"
+  >
+    @for (label of labels(); track label.id) {
+      <li
+        class="flex break-inside-avoid items-center gap-4 rounded-md border border-black bg-white p-4 text-black"
+        [attr.data-testid]="'location-label-' + label.code"
+      >
+        <app-qr-code class="w-28 shrink-0" [value]="address(label.id)" [label]="label.path" />
+        <div class="flex min-w-0 flex-col gap-1">
+          <span class="text-4xl font-bold break-all">{{ label.code }}</span>
+          <span class="text-sm break-words">{{ label.path }}</span>
+        </div>
+      </li>
+    }
+  </ul>
+</main>
