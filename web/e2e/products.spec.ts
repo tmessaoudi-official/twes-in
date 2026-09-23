@@ -264,6 +264,21 @@ test('a product is given its codes by scanning them, and a code finds it', async
       'true',
     );
     await expect(page.getByTestId('product-barcode-code-1')).toHaveValue(pack);
+
+    // Scanned into an invoice line, the carton puts its product on the line and enters the twelve it holds; scanned
+    // over, a line takes the other product, as a person correcting a wrong scan does.
+    await page.goto('/invoices/new');
+    const line = page.getByTestId('line-0-product');
+    await line.click();
+    await page.keyboard.type(pack);
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('line-0-description')).toHaveValue(`Vis SCAN-${run}`);
+    await expect(page.getByTestId('line-0-quantity')).toHaveValue('12');
+    await line.click();
+    await line.press('ControlOrMeta+a');
+    await page.keyboard.type(`SCAN2-${run}`);
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('line-0-description')).toHaveValue(`Vis SCAN2-${run}`);
   } finally {
     await forget(page, ids);
   }

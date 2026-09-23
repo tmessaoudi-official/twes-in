@@ -33,6 +33,7 @@ import type {
 } from './delivery-notes-types';
 import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
+import { ProductScans } from '../products/product-scans';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 
 type CheckedField = keyof Omit<
@@ -63,6 +64,7 @@ type CheckedField = keyof Omit<
 })
 export class DeliveryNoteLines {
   private readonly facade = inject(DeliveryNotesFacade);
+  private readonly scans = inject(ProductScans);
 
   readonly lines = input.required<LinesArray>();
   /** Whose company's catalogue the pickers ask; a line is never offered another company's products. */
@@ -136,6 +138,16 @@ export class DeliveryNoteLines {
       name: product.name,
     }));
   };
+
+  /** A pack scanned into the line enters the pieces it holds; a single piece leaves the quantity as it is. */
+  protected async scannedInto(line: LineGroup, code: string): Promise<void> {
+    const productId = line.controls.productId.value;
+    if (productId === '') return;
+    const pieces = await this.scans.piecesPerScan(code, productId);
+    if (pieces === null || line.controls.productId.value !== productId) return;
+    line.controls.quantity.setValue(String(pieces));
+    line.markAsDirty();
+  }
 
   protected chooseProduct(line: LineGroup, option: PickOption | null): void {
     const product = option === null ? null : (this.known.get(option.id) ?? null);

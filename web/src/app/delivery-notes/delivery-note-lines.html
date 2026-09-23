@@ -22,6 +22,7 @@
             [noneLabel]="'delivery_notes.lines.no_product' | translate"
             [noneFoundLabel]="'delivery_notes.lines.no_product_found' | translate"
             (picked)="chooseProduct(line, $event)"
+            (scanned)="scannedInto(line, $event)"
           />
         </div>
 

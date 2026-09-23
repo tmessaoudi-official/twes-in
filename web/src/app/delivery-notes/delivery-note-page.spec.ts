@@ -22,6 +22,7 @@ import {
 } from '../shared/settings/settings-facade';
 import { DeliveryNotePage } from './delivery-note-page';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
+import { ProductScans } from '../products/product-scans';
 import type {
   CustomerOption,
   DeliveryNoteOptions,
@@ -140,6 +141,7 @@ describe('DeliveryNotePage', () => {
     pdfUrl: (companyId: string, id: string) =>
       `/api/companies/${companyId}/delivery-notes/${id}/pdf`,
   };
+  const scans = { piecesPerScan: vi.fn() };
   const granted = new Set<string>();
   const modules = new Set<string>(['delivery_notes', 'invoices']);
   const auth = {
@@ -202,6 +204,7 @@ describe('DeliveryNotePage', () => {
   }
 
   beforeEach(() => {
+    scans.piecesPerScan.mockReset().mockResolvedValue(null);
     error.set(null);
     note.set(null);
     granted.clear();
@@ -234,6 +237,7 @@ describe('DeliveryNotePage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: DeliveryNotesFacade, useValue: facade },
+        { provide: ProductScans, useValue: scans },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -299,6 +303,25 @@ describe('DeliveryNotePage', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-19 21:55: a line's figures show the French decimal comma and take a comma or a point.
+  // docs/SPEC.md § 7, 2026-09-23: a carton scanned into a line delivers the pieces it holds.
+  it('puts on a line the pieces a scanned pack holds', async () => {
+    await open(undefined);
+    scans.piecesPerScan.mockResolvedValue(12);
+    const field = q('line-0-product') as HTMLInputElement;
+    field.dispatchEvent(new Event('focusin'));
+    for (const at of [...'13017620422000'].keys()) typeIn(field, '13017620422000'.slice(0, at + 1));
+    field.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true, cancelable: true }),
+    );
+    await settle();
+    await vi.waitFor(() =>
+      expect(scans.piecesPerScan).toHaveBeenCalledWith('13017620422000', 'p1'),
+    );
+    await settle();
+
+    expect((q('line-0-quantity') as HTMLInputElement).value).toBe('12');
+  });
+
   it('shows a line’s price with a decimal comma, and sends a typed comma as a point', async () => {
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);

@@ -168,6 +168,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - A `@var list<string>` on an API Platform property refuses nothing: a JSON object is denormalized with its keys and
   stored as a JSON object. A writable list property carries `#[Assert\Type('list')]` (2026-09-14: `choices` and
   `defaultTaxComponentIds` both accepted `{"first": …}` with 201).
+- A template binding `[value]="fn(line)"` that builds a new object hands the child a new input on EVERY check, and a
+  child effect over that input re-fires each time: `PickField` reset the text being typed on every keystroke. Compare
+  a structured input by its content (`computed` with `equal`) before acting on it (2026-09-23).
 - Never name a PHPUnit helper `run()` or `count()`: both are final on `TestCase` and the whole file fails to load.
 - `\DomainException` extends `\LogicException`, so a test catching `\LogicException` also passes on every domain refusal
   (`InvalidInvoice` and the like): assert the refusal is not the domain one, or the guard under test can vanish unseen

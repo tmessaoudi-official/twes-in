@@ -2247,6 +2247,17 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   field, or under an open dialog, the scan stays where it was typed. From the second character of a burst on, the
   keys are swallowed so a letter inside a code never runs a screen's shortcut; the FIRST cannot be told from a hand's
   and runs whatever the screen binds to it — accepted, since GTINs are digits and no screen binds a digit.
+- [2026-09-23 01:35] NOTED (the fourth slice, and two defects of the picker it exposed): **a pack scanned into an
+  invoice or delivery note line enters the pieces it holds.** `PickField` emits `scanned` with what the scanner read
+  after the one match is taken; the line asks `ProductScans`, which asks the scan lookup and answers a count only for
+  a pack of the product now on the line — a unit code, another product's code, no product or a failed lookup leave
+  the quantity typed. The lot and use-by date a GS1 label carries are not written on the line yet: that waits for
+  lots. **Defect 1, fixed:** a line hands its picker a new but equal pick object on every check, and the picker put
+  that pick's words back over whatever was being typed, so a product already on a line could never be typed or
+  scanned over; the picker now follows the pick by id, reference and name. **Defect 2, fixed:** the question the
+  picker asks on focus could answer in the middle of a scan burst, putting its rows back with the first held ready,
+  and the scanner's Enter took that row — measured in the browser, a carton scanned into a fresh line put another
+  product on it (2 of 6 runs); a burst now drops any answer still out.
 
 ## 8. Status
 

@@ -22,6 +22,7 @@ const BOLT: PickOption = { id: 'p2', code: 'BOU-001', name: 'Boulon inox' };
       [inputId]="outside() ? 'expense-form-vendorId' : ''"
       [labelInside]="!outside()"
       (picked)="taken.set($event)"
+      (scanned)="scans.push($event)"
     />
   `,
 })
@@ -30,10 +31,17 @@ class Host {
   readonly chosen = signal<PickOption | null>(null);
   readonly taken = signal<PickOption | null | undefined>(undefined);
   readonly asked: string[] = [];
+  readonly scans: string[] = [];
   answer: readonly PickOption[] = [SCREW, BOLT];
+  /** When set, the question asked on no words waits for this before answering, as a slow API does. */
+  firstAnswer: Promise<void> | null = null;
 
   readonly search = async (words: string): Promise<readonly PickOption[]> => {
     this.asked.push(words);
+    if (words === '' && this.firstAnswer !== null) {
+      await this.firstAnswer;
+      return [BOLT, SCREW];
+    }
 
     return this.answer;
   };
@@ -226,8 +234,48 @@ describe('PickField', () => {
 
     expect(host.asked).toContain('6191234567897');
     expect(host.taken()).toEqual(SCREW);
+    // What was scanned travels with the pick, so the screen can ask what the code counts (a pack of twelve).
+    expect(host.scans).toEqual(['6191234567897']);
+    // The box reads the row taken, not the code the scanner typed, whether or not the screen hands it back.
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+    expect(input.value).toBe('VIS-6X40 · Vis 6x40');
     // The form around the field must not receive that Enter as a submit.
     expect(stopped).toBe(true);
+  });
+
+  /**
+   * A scan right after the field is focused: the question the focus asked (no words) answers in the middle of the
+   * burst. Its rows belong to before the scan, and the Enter must not take the first of them.
+   */
+  it('takes the scan’s own match even when an older answer lands during the burst', async () => {
+    let release!: () => void;
+    fixture = TestBed.createComponent(Host);
+    host = fixture.componentInstance;
+    host.firstAnswer = new Promise<void>((resolve) => (release = resolve));
+    host.answer = [SCREW];
+    await settle();
+
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+    input.dispatchEvent(new Event('focusin'));
+    const code = '6191234567897';
+    for (let at = 1; at <= code.length; at += 1) {
+      input.value = code.slice(0, at);
+      input.dispatchEvent(new Event('input'));
+      if (at === 6) {
+        release();
+        await Promise.resolve();
+        await Promise.resolve();
+        fixture.detectChanges();
+      }
+    }
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true, cancelable: true }),
+    );
+    await settle();
+    await Promise.resolve();
+    await settle();
+
+    expect(host.taken()).toEqual(SCREW);
   });
 
   /** Several matches is a question, not a guess: the list is offered and nothing is emitted. */
@@ -242,6 +290,7 @@ describe('PickField', () => {
     // Asked for the scanned code, not merely showing what the empty first search had left on screen.
     expect(host.asked).toContain('ATL-VIS');
     expect(host.taken()).toBeUndefined();
+    expect(host.scans).toEqual([]);
     const shown = options().map((option) => option.textContent?.trim());
     expect(shown).toContain('VIS-6X40 · Vis 6x40');
     expect(shown).toContain('BOU-001 · Boulon inox');
@@ -279,5 +328,27 @@ describe('PickField', () => {
     expect(input.value).toBe('VIS-6X40 · Vis 6x40');
     // Showing what is already picked asks nothing.
     expect(host.asked).toEqual(['']);
+  });
+
+  /**
+   * A screen that builds the picked row afresh on every check — a document line reading it from its controls — hands
+   * over a new but equal object each time. That is the same pick, and what the person types over it must stay.
+   */
+  it('keeps what is typed over a pick when the screen hands the same pick again', async () => {
+    host.chosen.set(SCREW);
+    await settle();
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+
+    input.value = 'BOU';
+    input.dispatchEvent(new Event('input'));
+    host.chosen.set({ ...SCREW });
+    await settle();
+
+    expect(input.value).toBe('BOU');
+
+    // Another pick is another pick: the box shows it.
+    host.chosen.set(BOLT);
+    await settle();
+    expect(input.value).toBe('BOU-001 · Boulon inox');
   });
 });

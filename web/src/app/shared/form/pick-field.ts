@@ -109,6 +109,15 @@ export class PickField {
   readonly search = input.required<(words: string) => Promise<readonly PickOption[]>>();
   /** What is picked now, as the record itself says it; null for a field nothing has been picked in. */
   readonly value = input<PickOption | null>(null);
+  /**
+   * The pick as the box follows it: the same row handed over again as a new object — a document line builds it from
+   * its controls on every check — is the same pick, and must not put its words back over what the person is typing.
+   */
+  private readonly pick = computed(() => this.value(), {
+    equal: (a, b) =>
+      a === b ||
+      (a !== null && b !== null && a.id === b.id && a.code === b.code && a.name === b.name),
+  });
   readonly disabled = input(false);
   /** Whether "none of them" is an answer: a line may name no product, a document must name a customer. */
   readonly clearable = input(false);
@@ -125,6 +134,11 @@ export class PickField {
   readonly inputId = input('');
 
   readonly picked = output<PickOption | null>();
+  /**
+   * What a scanner read, emitted after `picked` when a scan took its one match: the screen can then ask what the code
+   * counts — a pack enters twelve — which the row itself does not say.
+   */
+  readonly scanned = output<string>();
 
   protected readonly typed = new FormControl<string | PickOption>('', { nonNullable: true });
   protected readonly offered = signal<readonly PickOption[]>([]);
@@ -133,6 +147,8 @@ export class PickField {
   /** Whether the characters are arriving too fast for a hand — see `clocked` below. */
   protected readonly scanning = signal(false);
   private lastKeyAt = Number.NEGATIVE_INFINITY;
+  /** Counts the questions asked; an answer to any but the latest is dropped. */
+  private asking = 0;
 
   private readonly words = toSignal(
     this.typed.valueChanges.pipe(
@@ -149,8 +165,10 @@ export class PickField {
   constructor() {
     // What the record says goes into the box, without asking the API: the document already carries the words.
     effect(() => {
-      const value = this.value();
+      const value = this.pick();
       this.typed.setValue(value ?? '', { emitEvent: false });
+    });
+    effect(() => {
       if (this.disabled()) {
         this.typed.disable({ emitEvent: false });
       } else {
@@ -158,15 +176,14 @@ export class PickField {
       }
     });
 
-    let asking = 0;
     effect(async () => {
       const words = this.wanted();
       const search = this.search();
-      const turn = ++asking;
+      const turn = ++this.asking;
       this.asked.set(false);
       const found = await search(words);
       // A later keystroke may have asked again while this one was answering; its answer wins.
-      if (turn !== asking) return;
+      if (turn !== this.asking) return;
       this.offered.set(found);
       this.asked.set(true);
     });
@@ -186,6 +203,9 @@ export class PickField {
     this.lastKeyAt = now;
     this.scanning.set(gap < SCAN_GAP_MS);
     if (this.scanning()) {
+      // A question still out was asked before the scan — on focus, on no words — and its rows must not come back
+      // mid-burst with the first one held ready for the scanner's Enter.
+      this.asking += 1;
       this.offered.set([]);
       this.asked.set(false);
     }
@@ -209,7 +229,11 @@ export class PickField {
     const found = await this.search()(words);
     this.offered.set(found);
     this.asked.set(true);
-    if (found.length === 1) this.picked.emit(found[0]);
+    if (found.length === 1) {
+      this.typed.setValue(found[0], { emitEvent: false });
+      this.picked.emit(found[0]);
+      this.scanned.emit(words);
+    }
   }
 
   /** What the box reads once something is picked: the same two words the list showed. */

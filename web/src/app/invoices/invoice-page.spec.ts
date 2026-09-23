@@ -23,6 +23,7 @@ import {
 } from '../shared/settings/settings-facade';
 import { InvoicePage } from './invoice-page';
 import { InvoicesFacade } from './invoices-facade';
+import { ProductScans } from '../products/product-scans';
 import type {
   CustomerOption,
   InvoiceOptions,
@@ -225,6 +226,7 @@ describe('InvoicePage', () => {
     clearError: vi.fn(),
     pdfUrl: (companyId: string, id: string) => `/api/companies/${companyId}/invoices/${id}/pdf`,
   };
+  const scans = { piecesPerScan: vi.fn() };
   const granted = new Set<string>();
   const auth = {
     me: () => ({
@@ -301,6 +303,7 @@ describe('InvoicePage', () => {
     facade.loadInvoice.mockReset().mockResolvedValue(undefined);
     facade.pickCustomers.mockClear();
     facade.pickProducts.mockClear();
+    scans.piecesPerScan.mockReset().mockResolvedValue(null);
     facade.create.mockReset().mockResolvedValue({ ...draft, id: 'i9' });
     facade.revise.mockReset().mockResolvedValue(draft);
     facade.reviseAndIssue.mockReset().mockResolvedValue(issued);
@@ -323,6 +326,7 @@ describe('InvoicePage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: InvoicesFacade, useValue: facade },
+        { provide: ProductScans, useValue: scans },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -389,6 +393,50 @@ describe('InvoicePage', () => {
       expect(navigate).toHaveBeenCalledWith(['/invoices', 'i9'], { replaceUrl: true }),
     );
     expect(successToasts()).toContain('invoices.saved');
+  });
+
+  // docs/SPEC.md § 7, 2026-09-23: a carton scanned into a line enters the pieces it holds.
+  it('puts on a line the pieces a scanned pack holds, and leaves a unit scan to the quantity typed', async () => {
+    await open(undefined);
+    const field = q('line-0-product') as HTMLInputElement;
+    const scanInto = async (code: string) => {
+      field.dispatchEvent(new Event('focusin'));
+      for (let at = 1; at <= code.length; at += 1) typeIn(field, code.slice(0, at));
+      field.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          keyCode: 13,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+      await settle();
+      await vi.waitFor(() => expect(scans.piecesPerScan).toHaveBeenCalled());
+      await settle();
+    };
+
+    scans.piecesPerScan.mockResolvedValue(12);
+    await scanInto('13017620422000');
+    expect(scans.piecesPerScan).toHaveBeenCalledWith('13017620422000', 'p1');
+    expect((q('line-0-quantity') as HTMLInputElement).value).toBe('12');
+    expect((q('line-0-description') as HTMLInputElement).value).toBe('Conception');
+  });
+
+  it('leaves the quantity typed on a line when the code scanned into it is a single piece', async () => {
+    await open(undefined);
+    type('line-0-quantity', '3');
+    const field = q('line-0-product') as HTMLInputElement;
+    field.dispatchEvent(new Event('focusin'));
+    for (const at of [...'3017620422003'].keys()) typeIn(field, '3017620422003'.slice(0, at + 1));
+    field.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true, cancelable: true }),
+    );
+    await settle();
+    await vi.waitFor(() => expect(scans.piecesPerScan).toHaveBeenCalledWith('3017620422003', 'p1'));
+    await settle();
+
+    expect((q('line-0-description') as HTMLInputElement).value).toBe('Conception');
+    expect((q('line-0-quantity') as HTMLInputElement).value).toBe('3');
   });
 
   // docs/SPEC.md § 7, 2026-09-19 21:55: a line's figures show the French decimal comma and take a comma or a point.
