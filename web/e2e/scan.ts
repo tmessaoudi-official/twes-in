@@ -53,3 +53,15 @@ export async function scan(page: Page, code: string): Promise<void> {
     await nextTask();
   }, code);
 }
+
+/**
+ * Waits until the scan card holds the focus, as a person's next key needs: the card hears its one-key actions on itself,
+ * and the dialog moves the focus in only once it has opened. A key pressed while the card is visible but not yet focused
+ * goes to the page instead (CI run 35863365591: `i` left the page on /products).
+ */
+export async function cardHasFocus(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    const card = document.querySelector('[data-testid="product-scan-card"]');
+    return card !== null && card.contains(document.activeElement);
+  });
+}

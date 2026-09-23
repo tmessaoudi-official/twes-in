@@ -5,7 +5,7 @@ import { toast } from './toast';
 import { wcagViolations } from './axe';
 import { rowAction } from './rows';
 import { aProduct, forget, gtin } from './catalogue';
-import { scan as scanned } from './scan';
+import { cardHasFocus, scan as scanned } from './scan';
 
 // G5 products through the real stack: in the seeded Tunisian company, the owner files a category, creates a service
 // in it in hours with the 19 % VAT by default, finds its price at the currency's three decimals, revises it, and
@@ -192,6 +192,7 @@ test('a product is given its codes by scanning them, and a code finds it', async
     await expect(page.getByTestId('product-scan-enters')).toContainText('12');
     await expect(page.getByTestId('product-scan-lot')).toContainText(`LOT-${run}`);
     expect(await wcagViolations(page)).toEqual([]);
+    await cardHasFocus(page);
     await page.keyboard.press('c');
     await expect(page).toHaveURL(new RegExp(`/products/${ids[0]}\\?tab=codes$`));
     await expect(page.getByRole('tab', { name: 'Codes-barres' })).toHaveAttribute(
@@ -206,6 +207,7 @@ test('a product is given its codes by scanning them, and a code finds it', async
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await scanned(page, pack);
     await expect(page.getByTestId('product-scan-action-invoice')).toBeVisible();
+    await cardHasFocus(page);
     await page.keyboard.press('i');
     await expect(page).toHaveURL(/\/invoices\/new$/);
     await expect(page.getByTestId('line-0-description')).toHaveValue(`Vis SCAN-${run}`);
@@ -219,6 +221,7 @@ test('a product is given its codes by scanning them, and a code finds it', async
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await scanned(page, fresh);
     await expect(page.getByTestId('product-scan-none')).toBeVisible();
+    await cardHasFocus(page);
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(new RegExp(`/products/new\\?barcode=${fresh}$`));
     await page.getByTestId('field-reference').fill(fresh);
