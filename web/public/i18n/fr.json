@@ -729,7 +729,9 @@
       "sidebar": "Menu latéral",
       "sidebar_settings": "Menu des réglages",
       "plan_labels": "Étiquettes du plan",
-      "language": "Langue"
+      "language": "Langue",
+      "customer_view_cost": "En vue client, masquer le coût des produits",
+      "customer_view_supplier_codes": "En vue client, masquer les codes des fournisseurs"
     },
     "choices": {
       "document": {
@@ -2261,5 +2263,10 @@
         "network": "L'ordinateur ne répond pas. Vérifiez la connexion du téléphone."
       }
     }
+  },
+  "customer_view": {
+    "enter": "Passer en vue client",
+    "leave": "Quitter la vue client",
+    "banner": "Vue client : ce que l'entreprise réserve à l'équipe est masqué sur cet onglet."
   }
 }

@@ -24,6 +24,7 @@ import { ArticleDefaults } from './article-defaults';
 import { ProductBarcodesSection } from './product-barcodes';
 import { ProductHomes } from './product-homes-facade';
 import { ProductHomesSection } from './product-homes';
+import { CustomerView } from '../shared/customer-view/customer-view';
 import { productForm, productInput, productValues } from './product-forms';
 import { ProductsFacade } from './products-facade';
 import { Feedback } from '../shared/feedback/feedback';
@@ -60,6 +61,7 @@ export class ProductPage {
   private readonly unsaved = inject(UnsavedChanges);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
+  protected readonly customerView = inject(CustomerView);
   private readonly router = inject(Router);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `products/new`. */
@@ -96,7 +98,9 @@ export class ProductPage {
     const options = this.facade.options();
     return options === null
       ? null
-      : productForm(options, this.facade.categories(), this.facade.customFields());
+      : productForm(options, this.facade.categories(), this.facade.customFields(), {
+          cost: this.auth.hasPermission('product.cost.read') && !this.customerView.hides('cost'),
+        });
   });
   /**
    * What the form is of: the product and the fields shown. Reading the product again yields new objects with the same
@@ -236,7 +240,7 @@ export class ProductPage {
     const companyId = this.company()?.id;
     const options = this.facade.options();
     if (!companyId || options === null || this.busy()) return;
-    const input = productInput(values, options, this.facade.customFields());
+    const input = productInput(values, options, this.facade.customFields(), this.current() ?? null);
     const id = this.id();
     if (id === null) {
       const created = await this.facade.createProduct(companyId, input);

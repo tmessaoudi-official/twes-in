@@ -2403,6 +2403,19 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   address, which `make` detects and hands over as a setting, so the computer stays on localhost. The phone accepts
   the certificate once, or installs its root. Chosen over opening the computer on the LAN address too, a public
   tunnel, and two-browser testing only.
+- [2026-09-23 15:50] TAKEN OVERNIGHT (standing instruction, to confirm): slice 5, the screen half of customer privacy.
+  - The product form asks the cost only of someone holding `product.cost.read`, outside customer view.
+  - The codes editor names a supplier only with that permission.
+  - Customer view is a toggle in the top bar, offered to whoever may read costs (and to whoever has it on, so it can
+    be turned off). It is remembered per tab in session storage, so a counter stays in it through a reload and
+    another tab is not affected. A banner above the page says it is on, with a button to leave it.
+  - What it hides is the company's choice, two presentation settings at the company level alone:
+    `presentation.customer-view.cost` and `presentation.customer-view.supplier-codes`, both true until changed on the
+    company settings page. That is a list of switches rather than a free list, so every field it names exists.
+  - It hides on screen only. A save in customer view sends the stored cost and the stored supplier codes, so hiding
+    never erases them. What the API sends at all stays `product.cost.read`'s.
+  - Alternatives: a keyboard shortcut and a palette command for the toggle; a free list setting; hiding stock levels
+    too.
 
 ## 8. Status
 

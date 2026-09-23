@@ -729,7 +729,9 @@
       "sidebar": "Sidebar",
       "sidebar_settings": "Settings menu",
       "plan_labels": "Plan labels",
-      "language": "Language"
+      "language": "Language",
+      "customer_view_cost": "In customer view, hide product costs",
+      "customer_view_supplier_codes": "In customer view, hide suppliers' codes"
     },
     "choices": {
       "document": {
@@ -2261,5 +2263,10 @@
         "network": "The computer does not answer. Check the phone's connection."
       }
     }
+  },
+  "customer_view": {
+    "enter": "Switch to customer view",
+    "leave": "Leave customer view",
+    "banner": "Customer view: what the company keeps for its team is hidden on this tab."
   }
 }

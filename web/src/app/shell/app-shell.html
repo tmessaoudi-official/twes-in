@@ -181,6 +181,22 @@
               }}</mat-icon>
             </button>
           }
+          @if (mayHide()) {
+            <button
+              mat-icon-button
+              type="button"
+              (click)="customerView.toggle()"
+              [attr.aria-pressed]="customerView.active()"
+              [appLabel]="
+                (customerView.active() ? 'customer_view.leave' : 'customer_view.enter') | translate
+              "
+              data-testid="customer-view-toggle"
+            >
+              <mat-icon aria-hidden="true">{{
+                customerView.active() ? 'visibility_off' : 'storefront'
+              }}</mat-icon>
+            </button>
+          }
           @if (scanCount(); as count) {
             <button
               mat-stroked-button
@@ -309,6 +325,24 @@
     </header>
 
     <app-subscription-notice />
+
+    @if (customerView.active()) {
+      <div
+        class="flex flex-wrap items-center justify-center gap-3 border-b border-outline-variant bg-surface-container-high px-4 py-2 text-on-surface"
+        data-testid="customer-view-banner"
+      >
+        <mat-icon aria-hidden="true">storefront</mat-icon>
+        <span>{{ 'customer_view.banner' | translate }}</span>
+        <button
+          mat-button
+          type="button"
+          (click)="customerView.off()"
+          data-testid="customer-view-leave"
+        >
+          {{ 'customer_view.leave' | translate }}
+        </button>
+      </div>
+    }
 
     <!-- In settings the area docks its own list against the rail, so main gives it the whole width with no gutter
          and no cap; everywhere else the page keeps its reading measure (design review finding 7). -->

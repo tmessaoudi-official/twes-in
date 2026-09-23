@@ -222,6 +222,26 @@ describe('product forms', () => {
     );
   });
 
+  // docs/SPEC.md § 7, 2026-09-23 slice 5: the cost is asked of someone who may read it, and not in customer view.
+  it('leaves the cost out of a form that must not show it', () => {
+    const fields = productForm(options, [laptops, hardware], [warranty], {
+      cost: false,
+    }).sections.flatMap((section) => section.fields);
+
+    expect(fields.map((field) => field.id)).not.toContain('costPrice');
+    expect(fields.filter((field) => field.kind === 'decimal').map((field) => field.id)).toEqual([
+      'unitPriceNet',
+    ]);
+  });
+
+  it("keeps the product's cost when the form did not show it, so a save never erases what was hidden", () => {
+    const values = productValues(laptop, options, [warranty]);
+    delete values['costPrice'];
+
+    expect(productInput(values, options, [warranty], laptop).costPrice).toBe('900.1250');
+    expect(productInput(values, options, [warranty], null).costPrice).toBeNull();
+  });
+
   it('turns the form back into what the API takes: trimmed, empty as null, ticked taxes', () => {
     const values = {
       ...productValues(laptop, options, [warranty]),

@@ -184,12 +184,14 @@ const section = (id: string, fields: FormField[]): FormSection => ({
 
 /**
  * The product form, from what the company offers: its active units, one box per active tax charged on a line, its
- * categories by path, then its custom fields for products. The API checks everything again.
+ * categories by path, then its custom fields for products. The API checks everything again. The cost is asked only
+ * where it may be shown: to someone who may read costs, outside customer view (docs/SPEC.md § 7, 2026-09-23 slice 5).
  */
 export function productForm(
   options: ProductOptions,
   categories: readonly ProductCategoryRow[],
   fields: readonly CustomFieldDefinition[] = [],
+  shown: { readonly cost: boolean } = { cost: true },
 ): FormDescriptor {
   const labels = categoryLabels(categories);
   const taxes = options.taxes.map((tax): FormField => ({
@@ -262,14 +264,18 @@ export function productForm(
           pattern: PRICE_PATTERN,
           hint: 'products.form.price_hint',
         },
-        {
-          id: 'costPrice',
-          label: `${FIELDS}.costPrice`,
-          kind: 'decimal',
-          maxLength: 15,
-          pattern: PRICE_PATTERN,
-          hint: 'products.form.cost_hint',
-        },
+        ...(shown.cost
+          ? [
+              {
+                id: 'costPrice',
+                label: `${FIELDS}.costPrice`,
+                kind: 'decimal',
+                maxLength: 15,
+                pattern: PRICE_PATTERN,
+                hint: 'products.form.cost_hint',
+              } satisfies FormField,
+            ]
+          : []),
       ]),
       ...(taxes.length > 0 ? [section('taxes', taxes)] : []),
       section('description', [
@@ -323,11 +329,15 @@ export function productValues(
   return { ...values, ...customFieldValues(fields, row?.customFields ?? {}) };
 }
 
-/** The form's values as the API takes them: trimmed, an empty field as no value, the ticked taxes in form order. */
+/**
+ * The form's values as the API takes them: trimmed, an empty field as no value, the ticked taxes in form order. A form
+ * that did not show the cost sends the product's own, so a save in customer view never erases it.
+ */
 export function productInput(
   values: FormValues,
   options: ProductOptions,
   fields: readonly CustomFieldDefinition[] = [],
+  kept: ProductRow | null = null,
 ): ProductInput {
   const kind = (PRODUCT_KINDS as readonly string[]).includes(String(values['kind']))
     ? (values['kind'] as ProductKind)
@@ -339,7 +349,7 @@ export function productInput(
     kind,
     unitId: String(values['unitId'] ?? ''),
     unitPriceNet: String(values['unitPriceNet'] ?? '').trim(),
-    costPrice: text(values['costPrice']),
+    costPrice: 'costPrice' in values ? text(values['costPrice']) : (kept?.costPrice ?? null),
     categoryId: text(values['categoryId']),
     defaultTaxComponentIds: options.taxes
       .filter((tax) => values[TAX_PREFIX + tax.id] === true)

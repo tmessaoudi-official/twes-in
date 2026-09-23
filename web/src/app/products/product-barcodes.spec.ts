@@ -34,10 +34,11 @@ describe('ProductBarcodesSection', () => {
     forget: vi.fn(),
   };
   const modules = new Set(['vendors']);
+  const denied = new Set<string>();
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasModule: (module: string) => modules.has(module),
-    hasPermission: () => true,
+    hasPermission: (permission: string) => !denied.has(permission),
   };
   let fixture: ComponentFixture<ProductBarcodesSection>;
 
@@ -75,6 +76,7 @@ describe('ProductBarcodesSection', () => {
     refusal.set(null);
     modules.clear();
     modules.add('vendors');
+    denied.clear();
     facade.loadSuppliers.mockReset().mockResolvedValue(undefined);
     facade.save.mockReset().mockResolvedValue(true);
     facade.forget.mockReset();
@@ -166,6 +168,43 @@ describe('ProductBarcodesSection', () => {
     await open();
 
     expect(facade.loadSuppliers).not.toHaveBeenCalled();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-23 slice 5: a supplier's code is read and written with product.cost.read.
+  it('names no supplier to someone who may not read costs', async () => {
+    denied.add('product.cost.read');
+    await open();
+
+    expect(facade.loadSuppliers).not.toHaveBeenCalled();
+  });
+
+  it("leaves the suppliers' codes off the screen in customer view, and saves them with the rest", async () => {
+    const carton: ProductBarcode = {
+      role: 'supplier',
+      code: 'F-001',
+      quantity: 12,
+      supplierId: 'v1',
+    };
+    fixture = TestBed.createComponent(ProductBarcodesSection);
+    fixture.componentRef.setInput('productId', 'p1');
+    fixture.componentRef.setInput('saved', [unit, carton]);
+    fixture.componentRef.setInput('hideSupplierCodes', true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(codes()).toEqual(['3017620422003']);
+    expect(fixture.nativeElement.textContent).not.toContain('F-001');
+
+    await scan('10012345678902');
+    (q('product-barcodes-save') as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    expect(facade.save).toHaveBeenCalledWith('c1', 'p1', [
+      unit,
+      carton,
+      { role: 'internal', code: '10012345678902', quantity: 1, supplierId: null },
+    ]);
   });
 
   it('shows the codes without a way to change them to a reader', async () => {

@@ -28,6 +28,7 @@ import { ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { ProductScanCard } from '../products/product-scan-card';
 import { Camera } from '../shared/scan/camera';
+import { CustomerView } from '../shared/customer-view/customer-view';
 import { PhonePairing } from '../shared/scan/phone-pairing';
 import { PhonePairingDialog } from '../shared/scan/phone-pairing-dialog';
 import { ScanBus } from '../shared/scan/scan-bus';
@@ -149,6 +150,12 @@ describe('AppShell', () => {
     open: vi.fn(async () => undefined),
     end: vi.fn(),
   };
+  const customerActive = signal(false);
+  const customerView = {
+    active: customerActive.asReadonly(),
+    toggle: () => customerActive.update((on) => !on),
+    off: () => customerActive.set(false),
+  };
   const width = new BehaviorSubject(1280);
   const me = signal<SignedInState | null>(owner);
   const permissions = signal<readonly string[]>(['user.read']);
@@ -195,6 +202,7 @@ describe('AppShell', () => {
 
   beforeEach(async () => {
     me.set(owner);
+    customerActive.set(false);
     permissions.set(['user.read']);
     modules.set(['customers']);
     theme.sidebar.set('expanded');
@@ -221,6 +229,7 @@ describe('AppShell', () => {
         { provide: Feedback, useClass: RecordedFeedback },
         { provide: Camera, useValue: { available: () => true } },
         { provide: PhonePairing, useValue: pairing },
+        { provide: CustomerView, useValue: customerView },
         {
           provide: NotificationsFacade,
           useValue: {
@@ -833,6 +842,32 @@ describe('AppShell', () => {
     expect(open).toHaveBeenCalledWith(PhonePairingDialog, expect.anything());
     fixture.destroy();
     expect(pairing.end).toHaveBeenCalled();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-23 slice 5: one click hides, on this tab, what a customer must not read.
+  it('turns customer view on in one click, says so above the page, and turns it off from there', async () => {
+    permissions.set(['product.read', 'product.cost.read']);
+    const { click, byTestId, fixture } = await render();
+    expect(byTestId('customer-view-banner')).toBeNull();
+    expect(byTestId('customer-view-toggle')?.getAttribute('aria-pressed')).toBe('false');
+
+    await click('customer-view-toggle');
+
+    expect(customerActive()).toBe(true);
+    expect(byTestId('customer-view-toggle')?.getAttribute('aria-pressed')).toBe('true');
+    expect(byTestId('customer-view-banner')).not.toBeNull();
+
+    await click('customer-view-leave');
+    fixture.detectChanges();
+    expect(customerActive()).toBe(false);
+    expect(byTestId('customer-view-banner')).toBeNull();
+  });
+
+  it('offers no customer view to somebody with no cost to hide', async () => {
+    permissions.set(['product.read']);
+    const { byTestId } = await render();
+
+    expect(byTestId('customer-view-toggle')).toBeNull();
   });
 
   it('offers no phone to somebody who may not read the products', async () => {

@@ -55,6 +55,11 @@ export class ProductBarcodesSection implements OnInit {
   readonly readOnly = input(false);
   /** A code a scan card sent here to be added (`?add=`), listed as a new row the person saves like any other. */
   readonly adding = input<string | undefined>(undefined);
+  /**
+   * Customer view (docs/SPEC.md § 7, 2026-09-23 slice 5): the suppliers' codes stay off the screen, and in the list a
+   * save sends, so hiding them never erases them.
+   */
+  readonly hideSupplierCodes = input(false);
 
   protected readonly busy = this.facade.busy;
   protected readonly suppliers = this.facade.suppliers;
@@ -80,9 +85,11 @@ export class ProductBarcodesSection implements OnInit {
       }),
   });
 
-  /** The supplier's role is offered only where there is somebody to name. */
+  /** The supplier's role is offered only where there is somebody to name, and outside customer view. */
   protected readonly roles = computed<readonly BarcodeRole[]>(() =>
-    this.mayName() ? BARCODE_ROLES : BARCODE_ROLES.filter((role) => role !== 'supplier'),
+    this.mayName() && !this.hideSupplierCodes()
+      ? BARCODE_ROLES
+      : BARCODE_ROLES.filter((role) => role !== 'supplier'),
   );
   protected readonly problems = computed(() => this.rows().map(rowProblem));
   protected readonly changed = computed(() => !sameCodes(this.rows(), this.saved()));
@@ -93,8 +100,12 @@ export class ProductBarcodesSection implements OnInit {
   protected readonly refusal = this.facade.refusal;
 
   private readonly companyId = computed(() => this.auth.me()?.company?.id ?? null);
+  /** A supplier's code is read and written with product.cost.read (docs/SPEC.md § 7, 2026-09-23 slice 5). */
   private readonly mayName = computed(
-    () => this.auth.hasModule('vendors') && this.auth.hasPermission('vendor.read'),
+    () =>
+      this.auth.hasModule('vendors') &&
+      this.auth.hasPermission('vendor.read') &&
+      this.auth.hasPermission('product.cost.read'),
   );
 
   async ngOnInit(): Promise<void> {

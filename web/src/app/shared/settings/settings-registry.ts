@@ -39,6 +39,10 @@ const oneOf =
   (raw: unknown): T | undefined =>
     allowed.find((value) => value === raw);
 
+function parseBool(raw: unknown): boolean | undefined {
+  return typeof raw === 'boolean' ? raw : undefined;
+}
+
 function parseAccent(raw: unknown): string | undefined {
   if (typeof raw !== 'string') return undefined;
   try {
@@ -91,6 +95,16 @@ export const PRESENTATION = {
     'presentation.language',
     SUPPORTED_LANGUAGES[0],
     oneOf(...SUPPORTED_LANGUAGES),
+  ),
+  /**
+   * What customer view hides on screen (docs/SPEC.md § 7, 2026-09-23 slice 5), set by the company alone: a
+   * product's cost, and the codes its suppliers print. Both, until the company says otherwise.
+   */
+  customerViewCost: defineSetting<boolean>('presentation.customer-view.cost', true, parseBool),
+  customerViewSupplierCodes: defineSetting<boolean>(
+    'presentation.customer-view.supplier-codes',
+    true,
+    parseBool,
   ),
 } as const;
 

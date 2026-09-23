@@ -21,6 +21,7 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
+import { CustomerView } from '../shared/customer-view/customer-view';
 import { ProductPage } from './product-page';
 import type { SettingRow } from '../shared/settings/settings-types';
 import { ArticleSettings } from './article-settings-facade';
@@ -325,6 +326,38 @@ describe('ProductPage', () => {
     auth.hasPermission.mockImplementation((name: string) => name !== 'stock.read');
     await open('p1');
     expect(q('product-tab-homes')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-23 slice 5.
+  it('asks no cost of someone who may not read costs', async () => {
+    auth.hasPermission.mockImplementation(
+      (permission: string) => permission !== 'product.cost.read',
+    );
+    product.set(laptop);
+    await open('p1');
+
+    expect(q('field-unitPriceNet')).not.toBeNull();
+    expect(q('field-costPrice')).toBeNull();
+  });
+
+  it('hides the cost in customer view, and a save there keeps the stored cost', async () => {
+    product.set({ ...laptop, costPrice: '900.1250' });
+    await open('p1');
+    expect(q('field-costPrice')).not.toBeNull();
+
+    TestBed.inject(CustomerView).on();
+    await settle();
+    expect(q('field-costPrice')).toBeNull();
+    type('field-unitPriceNet', '1300');
+    await settle();
+    q('record-save')!.click();
+    await settle();
+
+    expect(facade.reviseProduct).toHaveBeenCalledWith(
+      'c1',
+      'p1',
+      expect.objectContaining({ unitPriceNet: '1300', costPrice: '900.1250' }),
+    );
   });
 
   it('keeps what was typed when the product and its options are read again', async () => {
