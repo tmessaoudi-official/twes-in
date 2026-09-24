@@ -81,8 +81,32 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         $paginator = new Paginator($query, fetchJoinCollection: false);
         /** @var list<Invoice> $invoices */
         $invoices = iterator_to_array($paginator, false);
+        $this->loadWhatARowShows($invoices);
 
         return new Page($invoices, \count($paginator), $page);
+    }
+
+    /**
+     * A row answers its lines with their taxes and products, its document taxes and its payments. Read one relation
+     * at a time for every row of the page, they cost the same few statements for 1 row or 100, where walking them row
+     * by row cost 183 statements for 25 (Doctrine, "Improving performance": fetch joins; audit PF-07). Each query only
+     * fills collections of documents already in memory, so a page's rows come back fully loaded.
+     *
+     * @param list<Invoice> $invoices
+     */
+    private function loadWhatARowShows(array $invoices): void
+    {
+        if ([] === $invoices) {
+            return;
+        }
+        $ids = array_map(static fn (Invoice $invoice): string => $invoice->getId()->toRfc4122(), $invoices);
+        foreach ([
+            'SELECT i, l, lt, p FROM '.Invoice::class.' i LEFT JOIN i.lines l LEFT JOIN l.taxes lt LEFT JOIN l.product p WHERE i.id IN (:ids)',
+            'SELECT i, t FROM '.Invoice::class.' i LEFT JOIN i.documentTaxes t WHERE i.id IN (:ids)',
+            'SELECT i, pay FROM '.Invoice::class.' i LEFT JOIN i.payments pay WHERE i.id IN (:ids)',
+        ] as $dql) {
+            $this->entityManager->createQuery($dql)->setParameter('ids', $ids, ArrayParameterType::STRING)->getResult();
+        }
     }
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Invoice

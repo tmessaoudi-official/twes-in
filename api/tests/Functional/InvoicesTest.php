@@ -666,6 +666,56 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
+    /**
+     * A page of the list reads its rows' lines, taxes, products and payments together, so what it costs does not grow
+     * with the rows it holds: the audit counted 183 statements for 25 rows and 858 for 100 (PF-07, SCL-02).
+     */
+    public function testAPageOfTheListCostsTheSameStatementsWhateverTheRowsItHolds(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        // A product per document, so the identity map cannot hide a read per row; made before the first request,
+        // which reboots the kernel and leaves the company detached.
+        $products = [];
+        foreach (range(1, 6) as $n) {
+            $product = Product::create($this->company, 'ART-1'.$n, new ProductDetails('Article '.$n, null, ProductKind::Goods, '100'), $this->unit('C62'), null, [$this->tax('TVA19')->getId()], new \DateTimeImmutable());
+            $this->em()->persist($product);
+            $products[$n] = $product->getId()->toRfc4122();
+        }
+        $this->em()->flush();
+        foreach ($products as $n => $productId) {
+            $lines = [['productId' => $productId, 'quantity' => '2'], ['productId' => $this->productId, 'quantity' => '1']];
+            $this->postJson($this->path(), $this->invoice(['lines' => $lines]));
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            if ($n > 2) {
+                $id = $this->stringAt($this->json(), 'id');
+                $this->postJson($this->path($id).'/issue', null);
+                self::assertResponseStatusCodeSame(Response::HTTP_OK);
+                $this->postJson($this->path($id).'/payments', ['date' => $today, 'amount' => '10', 'method' => 'cash', 'reference' => null, 'notes' => null]);
+                self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            }
+        }
+        $this->em()->clear();
+
+        $statements = [];
+        foreach ([1, 6] as $rows) {
+            $this->client->enableProfiler();
+            $this->getJson($this->path().'?itemsPerPage='.$rows);
+            self::assertResponseIsSuccessful();
+            self::assertCount($rows, $this->jsonList());
+            $profile = $this->client->getProfile();
+            self::assertInstanceOf(\Symfony\Component\HttpKernel\Profiler\Profile::class, $profile, 'the profiler recorded the request');
+            $collector = $profile->getCollector('db');
+            self::assertInstanceOf(\Doctrine\Bundle\DoctrineBundle\DataCollector\DoctrineDataCollector::class, $collector);
+            $statements[$rows] = $collector->getQueryCount();
+        }
+
+        self::assertSame($statements[1], $statements[6], 'six rows cost what one does');
+        // Measured 13 on 2026-09-24, the session and the company's checks included; the page itself is its count, its
+        // ids, its rows and one statement per relation a row shows.
+        self::assertLessThanOrEqual(13, $statements[6]);
+    }
+
     /** Drafts and issues a one-line invoice; the response left to read is the issued invoice. */
     private function issuedInvoice(): string
     {
