@@ -4,17 +4,20 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
   computed,
   effect,
   inject,
   input,
   output,
   signal,
+  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import {
   MatAutocompleteModule,
+  MatAutocompleteTrigger,
   type MatAutocompleteSelectedEvent,
 } from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -57,6 +60,7 @@ export const PICK_PAUSE_MS = 300;
            attribute binding is overwritten by matInput's host binding, which leaves the form's label
            pointing at nothing. Material falls back to its own generated id when this is empty. -->
       <input
+        #box
         matInput
         [formControl]="typed"
         [matAutocomplete]="list"
@@ -66,7 +70,7 @@ export const PICK_PAUSE_MS = 300;
         autocomplete="off"
         (input)="clocked($event)"
         (keydown.enter)="resolve($event)"
-        (blur)="scanning.set(false)"
+        (blur)="left()"
       />
       @if (hint() !== '') {
         <mat-hint [id]="testId() + '-hint'">{{ hint() }}</mat-hint>
@@ -81,6 +85,7 @@ export const PICK_PAUSE_MS = 300;
         [displayWith]="shown"
         [autoActiveFirstOption]="true"
         (optionSelected)="take($event)"
+        (closed)="restoreIfLeft()"
         [attr.data-testid]="testId() + '-options'"
       >
         @for (option of offered(); track option.id) {
@@ -139,6 +144,9 @@ export class PickField {
    * counts — a pack enters twelve — which the row itself does not say.
    */
   readonly scanned = output<string>();
+
+  private readonly box = viewChild.required<ElementRef<HTMLInputElement>>('box');
+  private readonly trigger = viewChild.required(MatAutocompleteTrigger);
 
   protected readonly typed = new FormControl<string | PickOption>('', { nonNullable: true });
   protected readonly offered = signal<readonly PickOption[]>([]);
@@ -236,6 +244,33 @@ export class PickField {
       this.picked.emit(found[0]);
       this.scanned.emit(words);
     }
+  }
+
+  /**
+   * Leaving a field that holds a pick without choosing puts the pick's own words back (docs/SPEC.md § 7, 2026-09-24,
+   * overnight row 6):
+   * the box never reads one thing while the record holds another. While the list is open the leaving may be a click
+   * on one of its rows, which takes focus before the row is taken, so the words wait for the list to close.
+   */
+  protected left(): void {
+    this.scanning.set(false);
+    if (!this.trigger().panelOpen) this.restore();
+  }
+
+  /** The list closed: if the person has left the box by then and chose nothing, its words go back. */
+  protected restoreIfLeft(): void {
+    if (document.activeElement !== this.box().nativeElement) this.restore();
+  }
+
+  /**
+   * Words typed where nothing is picked stay: there is nothing to put back, and they may be a code left to deal with.
+   * Putting the words back also asks the API afresh with no words, so the list opens on the first few next time
+   * rather than on what was abandoned.
+   */
+  private restore(): void {
+    const pick = this.pick();
+    if (pick === null || typeof this.typed.value !== 'string') return;
+    this.typed.setValue(pick);
   }
 
   /** What the box reads once something is picked: the same two words the list showed. */

@@ -380,4 +380,80 @@ describe('PickField', () => {
     await settle();
     expect(input.value).toBe('BOU-001 · Boulon inox');
   });
+
+  /**
+   * Words typed over a pick and then abandoned would leave the box saying one thing while the record holds another
+   * (docs/SPEC.md § 7, 2026-09-24, overnight row 6): leaving the field puts the pick's own words back.
+   */
+  it('puts the pick’s words back when the person leaves without choosing', async () => {
+    host.chosen.set(SCREW);
+    await settle();
+    await type('bou');
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+    expect(input.value).toBe('bou');
+
+    input.dispatchEvent(new Event('blur'));
+    await settle();
+
+    expect(input.value).toBe('VIS-6X40 · Vis 6x40');
+    // Nothing was chosen, so nothing is emitted: the record keeps its pick.
+    expect(host.taken()).toBeUndefined();
+
+    // The list is asked afresh with no words, so it does not reopen on what was abandoned.
+    vi.advanceTimersByTime(400);
+    await settle();
+    expect(host.asked).toEqual(['', 'bou', '']);
+  });
+
+  it('keeps what is typed on leaving when nothing was ever picked', async () => {
+    await type('bou');
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+
+    input.dispatchEvent(new Event('blur'));
+    await settle();
+
+    expect(input.value).toBe('bou');
+  });
+
+  /** A click on a row moves the focus out of the box before the row is taken: the list must still take it. */
+  it('still takes a row clicked while the list is open', async () => {
+    host.chosen.set(SCREW);
+    await settle();
+    await type('bou');
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+    input.dispatchEvent(new Event('focusin'));
+    await settle();
+
+    input.dispatchEvent(new Event('blur'));
+    await settle();
+    expect(input.value).toBe('bou');
+
+    options()
+      .find((option) => option.textContent?.includes('BOU-001'))
+      ?.click();
+    await settle();
+
+    expect(host.taken()).toEqual(BOLT);
+    expect(input.value).toBe('BOU-001 · Boulon inox');
+  });
+
+  it('puts the pick’s words back when the list closes after the person has left', async () => {
+    host.chosen.set(SCREW);
+    await settle();
+    await type('bou');
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+    input.dispatchEvent(new Event('focusin'));
+    await settle();
+    input.dispatchEvent(new Event('blur'));
+    await settle();
+
+    // Material closes the list on a click outside it; Escape closes it the same way.
+    input.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true, cancelable: true }),
+    );
+    await settle();
+
+    expect(input.value).toBe('VIS-6X40 · Vis 6x40');
+    expect(host.taken()).toBeUndefined();
+  });
 });

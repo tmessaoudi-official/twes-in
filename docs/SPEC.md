@@ -2496,6 +2496,16 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   A product without a usable code says so instead of printing; black on white whatever the scheme; the browser
   prints, and no label size is chosen by the app. (The three stamps above, 7c, 8a and 8b, first read 21:10, 21:55
   and 22:30, two hours ahead of the clock; corrected 21:57 to the time of the commit each landed in.)
+- [2026-09-24 10:28] AGREED: every choice TAKEN OVERNIGHT on 2026-09-22 → 23 (rows 1–25 of
+  `var/claude/overnight-questions.md`, the entries from 01:10 to 21:57 above) is CONFIRMED as written, but one: rows
+  1–4 one by one, then the rest on the developer's "accept all recommendations, I will test and tell you what to
+  change" — so any of them may still be reopened after that test. Row 1 (the scan lookup rather than a count on every
+  picker row) is confirmed "for now"; row 3 is superseded by 10:42's `A` key; row 7 was already ruled at 08:05.
+  **Row 6 is REVERSED:** words typed over a pick and abandoned no longer stay in the box. Leaving a pick field without
+  choosing puts back the words of the pick the record holds, so the box never reads one thing while the line holds
+  another; the list is then asked afresh with no words. Where nothing is picked the typed words stay (not ruled: the
+  narrower reading of row 6, and a scanned code that matched nothing is left there to deal with). While the list is
+  open the leaving may be a click on a row, so the words wait for the list to close. This is `PickField`, so it applies to every picker, not only a line's product.
 
 ## 8. Status
 
