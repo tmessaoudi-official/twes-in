@@ -2600,6 +2600,40 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   selling price without tax on the hawl date, cost being offered as a minority fallback; an expired lot counts at zero
   or at an entered value. There is no price history, so the worksheet is computed on or near the hawl date and frozen
   then; the Hijri date stays editable, since two calendars disagree by two days on the same day.
+- [2026-09-24 22:51] AGREED: the round-5 design canvas (https://claude.ai/artifact/DNsLYS28bWR3MyrXGnMeFB, version 9,
+  199 boards: every screen of today and the future ones of `var/claude/design-direction-2026-09-24/screen-inventory.md`,
+  each beside the real app where a screenshot exists) is the direction for the five areas Vendre, Catalogue et stock,
+  Achats et caisse, Paramètres and Accès; they are built in the inventory's Part C priority order (rows 121–126). The
+  developer comments on the canvas and a comment amends a board, not this entry.
+- [2026-09-24 22:51] AGREED: **at 1024 px the rail keeps a short label under each icon (80 px)** and a record opens as a
+  sheet over its list, so the list keeps its columns; the rail's Vendre group gains « Caisse » and « Travaux ».
+  « Mon compte » is one page with four tabs, Sécurité, Préférences, Cet appareil and Notifications, which absorbs the
+  device page.
+- [2026-09-24 22:51] AGREED: **every behaviour has a default and is configurable**, keyboard shortcuts first: C opens
+  the Créer menu, N a new document on its list, E the next step (Émettre, Encaisser), / or Ctrl K the search; each
+  person changes or restores them in Mon compte › Préférences, and a single-letter key never fires inside a field.
+- [2026-09-24 22:51] AGREED: **the paid stamp** is computed from the recorded payments, never set by hand, so deleting a
+  payment removes it; it is printed only on the up-to-date copy (« COPIE — état au … »), never on the original as
+  issued; three wordings, « Acquittée » (paid in money), « Réglée partiellement » (with the balance and its date) and
+  « Soldée » (a credit note closed it); one template option, **off by default**, since a company may stamp digitally or
+  by hand.
+- [2026-09-24 22:51] AGREED: **a signature zone and a cachet image on invoices are postponed**, together with the
+  electronic signature of PDF files, which is future work to explore (row 126). A picture of a stamp is not an
+  electronic signature and nothing may claim it is.
+- [2026-09-24 22:51] AGREED: the amount in words (« Arrêtée la présente facture à la somme de … ») and a « Comment
+  payer » block (RIB and the reference to quote) are two template switches, on by default on invoices, available on
+  quotes, off on delivery notes: the amount in words is custom, not a requirement found in a text, so it stays a
+  switch.
+- [2026-09-24 22:51] AGREED: **a credit note always states its reason and the number and date of the invoice it
+  corrects** (EN 16931 BG-3); the reference comes from the invoice, the reason is required when the credit note is
+  created.
+- [2026-09-24 22:51] AGREED: **signature boxes on other documents now**: the delivery note's « Réception » box with
+  réserves, on by default; the quote's « Bon pour accord », with « Marquer accepté » asking for the signed scan to
+  attach, so the paper comes back into the app; the supplier order prints who approved it and when, plus a box.
+  Capturing réserves or a signature in the app waits for the electronic-signature work.
+- [2026-09-24 22:51] AGREED: a reprint after the first carries « DUPLICATA — réimprimé le jj/mm/aaaa » and the
+  up-to-date copy « COPIE — état au … »; « ANNULÉE » on an issued invoice (a credit note corrects it, numbering stays
+  continuous) and a PROFORMA document (the quote does its job) stay refused.
 
 ## 8. Status
 
@@ -2728,6 +2762,12 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 118 | Count mode amendments (§ 7 2026-09-24 12:40, row 23): leave guard, the no-`stock.write` notice, « Comptage » everywhere | S | todo | - | |
 | 119 | Labels (§ 7 2026-09-24 12:40, rows 24, 25): location QR on the public address and a stable path, return after sign-in, a company label format, chosen locations; barcodes at ISO/IEC 15420 proportions | M | todo | - | |
 | 120 | Zakat (§ 7 2026-09-24 13:10): the second research pass (Shafi'i, Hanbali), then the module — settings, bundles, worksheet, reminder | L | todo | - | |
+| 121 | Document mentions (§ 7 2026-09-24 22:51): the paid-stamp option (computed, copy only, off by default), amount in words and « Comment payer » switches, a credit note's required reason and invoice reference, COPIE and DUPLICATA marks | M | todo | - | |
+| 122 | Signature boxes (§ 7 2026-09-24 22:51): delivery-note reception with réserves, quote « Bon pour accord » with « Marquer accepté » and the signed scan, the supplier order's printed approver | M | todo | - | |
+| 123 | 1024 px layout (§ 7 2026-09-24 22:51): the labelled 80 px rail, a record as a sheet over its list | M | todo | - | |
+| 124 | Navigation (§ 7 2026-09-24 22:51): « Caisse » and « Travaux » in the rail, « Mon compte » with four tabs absorbing the device page | S | todo | - | |
+| 125 | Configurable keyboard shortcuts (§ 7 2026-09-24 22:51): C, N, E, / and Ctrl K as defaults, changed and restored per person in Mon compte › Préférences | S | todo | - | |
+| 126 | Signature, cachet and electronic PDF signature (§ 7 2026-09-24 22:51): research first, postponed | M | deferred | - | |
 <!-- /progress-block -->
 
 ### Delivered
