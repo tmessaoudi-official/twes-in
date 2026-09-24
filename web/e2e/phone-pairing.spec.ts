@@ -58,6 +58,8 @@ test('a phone scans for the computer with no sign-in, sees what it did, and its 
     await screen.getByTestId('phone-send').click();
     await expect(page.getByTestId('product-scan-none')).toBeVisible();
     await screen.getByTestId('phone-choice-create').click();
+    // The sale on the computer holds a scanned line, so leaving it for the new product asks there first (RCH-01).
+    await page.getByTestId('confirm-run').click();
     await expect(page).toHaveURL(new RegExp(`/products/new\\?barcode=${unknown}`));
 
     // Letting the phone go on the computer stops it.

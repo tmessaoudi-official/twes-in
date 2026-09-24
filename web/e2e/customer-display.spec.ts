@@ -35,6 +35,8 @@ test('the customer display shows what the counter scans onto a sale, and waits a
 
     // Leaving the sale inside the app empties the display…
     await page.getByTestId('nav-products').click();
+    // The scanned line is unsaved work, so leaving asks first (RCH-01).
+    await page.getByTestId('confirm-run').click();
     await expect(display.getByTestId('customer-display-waiting')).toBeVisible();
 
     // …and so does leaving the page itself, where no screen is destroyed.
