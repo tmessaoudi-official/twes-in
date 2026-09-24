@@ -35,9 +35,28 @@ final class DecimalExtensionTest extends TestCase
         }
     }
 
-    public function testWhatIsNotADecimalIsRefusedAndTheFilterIsNamedDecimal(): void
+    public function testADeductionIsWrittenWithOneSignWhateverTheSignOfTheAmount(): void
     {
-        self::assertSame(['decimal'], array_map(static fn (TwigFilter $filter): string => $filter->getName(), new DecimalExtension()->getFilters()));
+        $decimal = new DecimalExtension();
+        $space = "\u{a0}";
+
+        // An invoice's withholding (15.126) prints as a deduction; a credit note's (-15.126) gives back what it took,
+        // so it prints without the sign rather than as "−-15,126" (row 29).
+        foreach ([
+            ['15.126', 3, 'fr', '−15,126'],
+            ['-15.126', 3, 'fr', '15,126'],
+            ['1250.5', 3, 'fr', "−1{$space}250,500"],
+            ['-1250.5', 2, 'en', '1,250.50'],
+            ['0.000', 3, 'fr', '0,000'],
+            ['-0.000', 3, 'fr', '0,000'],
+        ] as [$value, $minimum, $language, $written]) {
+            self::assertSame($written, $decimal->deduction($value, $minimum, $language), "$value in $language");
+        }
+    }
+
+    public function testWhatIsNotADecimalIsRefusedAndTheFiltersAreNamed(): void
+    {
+        self::assertSame(['decimal', 'deduction'], array_map(static fn (TwigFilter $filter): string => $filter->getName(), new DecimalExtension()->getFilters()));
 
         $this->expectException(\InvalidArgumentException::class);
         new DecimalExtension()->format('1e3', 2, 'fr');

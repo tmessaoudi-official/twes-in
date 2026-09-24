@@ -122,7 +122,7 @@
   <table class="totals">
     <tr><td>{{ 'totals.subtotal'|trans({}, t, locale) }}</td><td class="number">{{ figures.subtotalNet|decimal(scale, locale) }}</td></tr>
     {%- if header.discountAmount %}
-      <tr><td>{{ 'totals.document_discount'|trans({}, t, locale) }}</td><td class="number">−{{ figures.documentDiscount|decimal(scale, locale) }}</td></tr>
+      <tr><td>{{ 'totals.document_discount'|trans({}, t, locale) }}</td><td class="number">{{ figures.documentDiscount|deduction(scale, locale) }}</td></tr>
       <tr><td>{{ 'totals.total_net'|trans({}, t, locale) }}</td><td class="number">{{ figures.totalNet|decimal(scale, locale) }}</td></tr>
     {%- endif %}
     {%- for tax in figures.taxes %}
@@ -139,7 +139,7 @@
     {%- for withholding in figures.withholdings %}
       <tr>
         <td>{{ 'totals.withheld'|trans({}, t, locale) }} {{ withholding.code }} <span class="muted">({{ withholding.base|decimal(scale, locale) }})</span></td>
-        <td class="number">−{{ withholding.amount|decimal(scale, locale) }}</td>
+        <td class="number">{{ withholding.amount|deduction(scale, locale) }}</td>
       </tr>
     {%- endfor %}
     <tr class="due"><td>{{ 'totals.amount_due'|trans({}, t, locale) }}</td><td class="number">{{ figures.amountDue|decimal(scale, locale) }}</td></tr>
