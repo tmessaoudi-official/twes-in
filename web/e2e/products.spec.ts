@@ -151,6 +151,8 @@ test('a product is given its codes by scanning them, and a code finds it', async
     // The carton enters twelve at once: it is a pack.
     await page.getByTestId('product-barcode-role-1').click();
     await page.getByRole('option', { name: 'Colis' }).click();
+    // A pack starts at two; typing before that render lands let it write into the field mid-fill ("212").
+    await expect(page.getByTestId('product-barcode-quantity-1')).toHaveValue('2');
     await page.getByTestId('product-barcode-quantity-1').fill('12');
     // The same code scanned again is pointed at, not listed twice.
     await scan.fill(`0${unit}`);
