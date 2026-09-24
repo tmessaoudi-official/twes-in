@@ -80,6 +80,36 @@ test('a translation file is revalidated on every load, and the API keeps its own
   expect(health.headers()['cache-control']).toBe('no-cache, private');
 });
 
+/**
+ * A file whose name carries its content hash never changes under that name, so a browser may keep it for a year
+ * without asking again; without a header each visit revalidated the 3.8 MB icon font and every bundle (PF-09). A
+ * file whose name stays the same across releases (a vendored font, the icons of the web manifest) keeps no such
+ * promise.
+ */
+test('a hashed bundle is kept for good, and a file that keeps its name is not', async ({
+  request,
+}) => {
+  const html = await (await request.get('/')).text();
+  const hashed = [
+    ...html.matchAll(/(?:src|href)="((?:main|styles|chunk)-[A-Za-z0-9_-]{8,9}\.(?:js|css))"/g),
+  ].map((match) => match[1]);
+  expect(hashed.length, html).toBeGreaterThanOrEqual(2);
+  const css = await (await request.get(`/${hashed.find((name) => name.endsWith('.css'))}`)).text();
+  const font = /url\("?\.?\/?(media\/material-symbols-outlined-[A-Z0-9]{8}\.woff2)/.exec(css)?.[1];
+  expect(font, 'the stylesheet names the hashed icon font').toBeDefined();
+
+  for (const name of [...hashed, font]) {
+    const response = await request.get(`/${name}`);
+    expect(response.ok(), name).toBe(true);
+    expect(response.headers()['cache-control'], name).toBe('public, max-age=31536000, immutable');
+  }
+  for (const name of ['/fonts/inter/inter-latin-wght-normal.woff2', '/icon-192.png']) {
+    const response = await request.get(name);
+    expect(response.ok(), name).toBe(true);
+    expect(response.headers()['cache-control'] ?? '', name).not.toContain('immutable');
+  }
+});
+
 test('every page load carries a fresh CSP nonce, shared by the header and the document', async ({
   request,
 }) => {
