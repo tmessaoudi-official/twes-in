@@ -2507,6 +2507,100 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   narrower reading of row 6, and a scanned code that matched nothing is left there to deal with). While the list is
   open the leaving may be a click on a row, so the words wait for the list to close. This is `PickField`, so it applies to every picker, not only a line's product.
 
+- [2026-09-24 11:20] AGREED: the scale company and the cleanup. The overnight audit's records were deleted from the
+  development database after a dump (the stray owner invitation, the audit member, seven scanner pairings, the probe
+  product and customers, a cancelled credit-note draft, the two AUDIT-1011 companies and their owners, six pending
+  sessions). Kept on purpose: the scratch company AUDIT-EXT-2026-09-23, the measurement baseline for SCL-01/SCL-02
+  until those are re-measured (the operator therefore holds a fourth membership locally), and Demo's issued
+  FAC-2026-00006, FAC-2026-00007 and BL-2026-00009, whose deletion would leave gaps in Demo's numbering.
+- [2026-09-24 11:40] AGREED: new data before the reports (audit K § 5d). **(1)** an invoice line carries the cost of its
+  product copied at issue (`unit_cost`, nullable, read only with `product.cost.read`; row 87's weighted average replaces
+  the source later), shipped before any report (RPT-01); **(2)** a reorder point per product per establishment,
+  nullable, empty meaning no alert; **(3)** a company-wide payments list, built on IN-A-01's receipt aggregate and not
+  before it; **(4)** cheques and traites as an instrument with a due date and a state (IN-B-14), its own row;
+  **(5)** Tunisia's withholding on suppliers is first sourced in `docs/fiscal/TN.md`, then recorded on an expense's
+  payment with the preset's rate, overridable (RPT-09); **(6)** each country's VAT basis and declaration calendar is
+  researched and cited now (RPT-03), and until then the home's tile reads « TVA collectée » and the report « TVA par
+  taux », never « à déclarer » or « déclaration »; **(7)** composite date indexes on invoice, payment and expense land
+  with the first report.
+- [2026-09-24 11:55] AGREED: the home page's figures (audit K § 5a), after row 57. **Margin this month is the headline**
+  (the 2026-09-20 03:55 ruling stands), read from the costs frozen on lines and blank with a note until they exist;
+  « Facturé ce mois » — net of tax and of credit notes, month to date against the same days last month — sits under
+  it, smaller; collected stays its own figure. Kept, with upgrades: outstanding (delta against the same day last
+  month), overdue (its « voir » opens the overdue list), collected (month to date against last month, and today by
+  method), VAT invoiced (moves to Declarations with row 91), to chase (with each customer's total due), the
+  six-month payments columns (each bar labelled, the current month outlined, the table behind it). Added: withholding
+  suffered this month (Tunisia), expenses recorded (never called profit), products with no sale in 90 days and lots
+  expiring within 30 days, and cheques and traites due this week once (4) above ships. Every figure reads maintained
+  totals, and a functional test caps the home's query count on a seeded company, so a figure that walks the documents
+  is red in CI (SCL-01).
+- [2026-09-24 12:05] AGREED: the Reports area (audit K § 5b): ten reports on row 89's engine, in this order — takings
+  by day and method, aged balance, sales by product and family (margin columns blank until line costs exist), sales
+  by customer with those gone quiet, VAT by rate (a report, not a declaration), withholding suffered, expenses by
+  category and supplier, credit notes and discounts, stock movements and dead stock, activity by member (owners and
+  admins only). Each has period, comparison, establishment and export, and every figure opens its list. A report can
+  be saved as a named view with its filters, columns and period, personal or shared; a user-built query builder stays
+  refused **for now** (custom reports may be reconsidered). A factual « dû à 30 jours » — invoices due to us against
+  bills due to suppliers, from the documents — is shown on the aged balance and expenses reports; a modelled cash
+  forecast, a break-even and anything called profit stay refused. Charts are bars, columns, lines and tables, a part
+  of a whole is a stacked bar, every figure carries its comparison or its rate; no pies, gauges or 3D (for now: the
+  developer decides after testing). No consolidated figures across companies; the company switcher may show each of
+  the member's own companies' headline figures, each computed inside its own tenant boundary; the operator sees
+  operational figures only.
+- [2026-09-24 12:10] AGREED: insights (audit K § 5c). The ten insights of the audit each ship when what they read
+  exists, pushed once to whoever holds the subject's permission, every threshold a company setting declared through
+  `DeclaresSettings`. And one live screen, « À surveiller », lists the conditions true now — each with its figure and a
+  link to its list, recomputed and not stored, emptying as things are dealt with; the home shows its count.
+- [2026-09-24 12:40] AGREED: the vision review of the overnight rulings (`var/claude/vision-review-2026-09-24.md`, one
+  read-only reviewer: 12 kept, 11 amended, 2 reopened) is ruled row by row. **Row 5:** invoice and delivery-note lines
+  carry an optional lot or serial, a GS1 scan fills it, and validation takes the named lot, first-to-expire only for a
+  line naming none — built first, since every tracked delivery until then is attributed to a lot nobody handed over.
+  **Row 8:** lot tracking becomes an articles-chain setting (company, category, product) seeded by the trade and
+  materialised onto the product's column, whose "no change after the first movement" guard stays; the field is
+  « Traçabilité » (par lot, par numéro de série). **Row 13:** scan sound and vibration on or off per user (on by
+  default); the camera's re-count delay a company setting (700 ms by default, in a declared range); the frame rate
+  fixed. **Row 14:** a lent phone's pairing ends when the lending tab closes (a keepalive request on `pagehide`) and the
+  phone is told « terminé » on any end or lapse; the claim window stays 5 minutes, amending the 10 minutes of
+  2026-09-17 (a QR is scanned in seconds). **Row 16 (reopened):** customer view holds for the whole browser on that
+  device, leaving it needs step-up (the method ruled with the step-up list), and the company chooses from a list what
+  it hides — cost, margin, supplier codes, other customers' names and totals; `product.cost.read` stays the server's
+  guard. **Row 17:** the price check restores customer view from a marker it writes, so a reload cannot leave it on;
+  a checked item goes to the customer display; « Le lot de N » becomes « Le colis de N ». **Row 18:** the customer
+  display shows the line's own unit price with tax and discount once the draft is saved, and before that the shelf
+  price labelled « prix affiché ». **Row 20 (reopened):** stock levels say whether a lot is expired and released, the
+  list marks an expired unreleased lot, and its row offers « Libérer » behind a dialog naming the consequence.
+  **Row 21:** a serial product's movement quantity is 1, read-only. **Row 22:** a re-scanned serial is refused
+  (« déjà sur la ligne »), the movement form stays open after saving, and a location label names a move's destination.
+  **Row 23:** a count's unrecorded lines are unsaved work under the usual leave guard; a member without `stock.write`
+  is told they may count but not record; counting is « Comptage » everywhere. **Row 24 (a one-way door, printed):** a
+  location label's QR is the platform's public address (the LAN address in development) plus a short stable path by
+  the location's id, its code printed in clear so our scanner resolves it without the URL; sign-in returns to the
+  location; a company label format shared with product labels; the sheet prints the locations chosen. **Row 25:** a
+  barcode's height scales with its width at ISO/IEC 15420's magnification, quiet zones kept, the code in clear on one
+  line, and the e2e asserts the proportions as well as the decode. The scanner's key gap becomes a per-browser setting
+  (30 ms by default) with a « tester mon scanner » step that measures a scan and suggests the value.
+- [2026-09-24 12:55] AGREED: **what faces a customer shows the price with tax the document will charge**, else the
+  shelf price with tax labelled as such — Tunisia's Law 2015-36 art. 29 (« Le prix affiché est le prix au comptant
+  toutes taxes comprises et en monnaie nationale », read in the law's text) and France's arrêté of 3 December 1987
+  (per the ministry's summary; the text itself not yet read). A company setting « Afficher aussi le prix HT », off by
+  default, shows the price without tax beside it, never instead. A phone or tablet's scan shows the name, that price,
+  the photo, the stock here and at the other locations, the nearest use-by of a lot-tracked product (marked expired or
+  expiring), the draft customer's own price after discount when the lending tab's draft names one, and a pack's
+  contents on a pack scan; cost and margin only outside customer view and with `product.cost.read`.
+- [2026-09-24 13:10] AGREED: a **Zakat** module (research: `var/claude/zakat-research-2026-09-24.md`, 26 sources,
+  AAOIFI Shari'ah Standard 35 quoted directly). Off by default; `zakat.read` / `zakat.write`, built-in owner and admin
+  only, every computation audited, an optional owners' share table. On the company's hawl date it builds a dated
+  worksheet — stock, receivables and unpaid expenses from the app, cash, bank, loans and other items entered by hand
+  — tests the nisab, computes the amount and freezes it, printing the method, the nisab source and date and the Hijri
+  calendar beside the figure with a disclaimer that it is a calculation aid, not a religious ruling; « À surveiller »
+  reminds before the hawl date. The 18 points where the schools differ are company settings, filled in one step by
+  five named bundles — AAOIFI, Maliki, Hanafi, Shafi'i, Hanbali — each shipping only once all its points are sourced
+  (Shafi'i and Hanbali need a second research pass); Maliki is the Tunisian preset's default and AAOIFI the default
+  elsewhere, and a changed point reads « <bundle>, modifié : … ». Stock is valued by a parameter whose default is the
+  selling price without tax on the hawl date, cost being offered as a minority fallback; an expired lot counts at zero
+  or at an entered value. There is no price history, so the worksheet is computed on or near the hawl date and frozen
+  then; the Hijri date stays editable, since two calendars disagree by two days on the same day.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -2621,6 +2715,19 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 105 | Generated operator credentials (§ 7 2026-09-20 13:10): `app:seed --generate-operator-password` mints a password and a TOTP secret, prints both once and stores only the hash and the encrypted secret; seeding refuses the published development password and TOTP secret when the environment is production. The fixed literals stay for the local stack and CI so tests keep a deterministic sign-in | S | todo | - | api/src/Tenancy/** api/tests/Functional/SeedCommandTest.php docs/START.md |
 | 106 | The five RecordBar pages (customer, product, expense, vendor, company profile — five, not the four the row named) and `RowAction` read the row-45 declaration: "s", Ctrl K and "?" work on a record page, and a row's own destructive control asks (§ 7 2026-09-20 22:10, 2026-09-21 07:05 and 07:50) | M | done | - | web/src/app/customers/** web/src/app/products/** web/src/app/expenses/** web/src/app/vendors/** web/src/app/shared/list/** |
 | 107 | The server-side bin the `undo` action class needs: a deletion kept recoverable for a while, so "Annuler" on a toast can put it back. Row 45 shipped `plain` and `confirm` only and declared no field for `undo`, because a class nothing can produce is a promise (§ 7 2026-09-20 22:10) | L | todo | - | api/** web/src/app/shared/actions/** |
+| 108 | Lot on document lines (§ 7 2026-09-24 12:40, row 5): an optional lot or serial on invoice and delivery-note lines, filled by a GS1 scan; validation takes the named lot, first-to-expire only for a line naming none. First of the amendments | M | todo | - | |
+| 109 | Cost on the line at issue (§ 7 2026-09-24 11:40, RPT-01): `invoice_line.unit_cost` copied from the product at issue, read only with `product.cost.read` | S | todo | - | |
+| 110 | Reorder point per product per establishment (§ 7 2026-09-24 11:40): column, product form field, import column; empty means no alert | S | todo | - | |
+| 111 | Supplier withholding (§ 7 2026-09-24 11:40, RPT-09): Tunisia's rules sourced in `docs/fiscal/TN.md`, then recorded on an expense's payment at the preset's rate, overridable | M | todo | - | |
+| 112 | Declaration basis and calendar (§ 7 2026-09-24 11:40, RPT-03): TN and FR researched with citations; « TVA collectée » on the home meanwhile | S | todo | - | |
+| 113 | Home figures revised (§ 7 2026-09-24 11:55): margin headline, « Facturé ce mois » under it, the kept and added figures, the query-count test; after row 57 | M | todo | - | |
+| 114 | The ten reports and saved report views (§ 7 2026-09-24 12:05) on row 89's engine, « dû à 30 jours », the company switcher's per-company figures | L | todo | - | |
+| 115 | Insights and « À surveiller » (§ 7 2026-09-24 12:10): the ten insights as their data exists, thresholds as settings, the live screen and the home's count | M | todo | - | |
+| 116 | Lots amendments (§ 7 2026-09-24 12:40, rows 8, 20, 21, 22): lot tracking on the articles chain and « Traçabilité », expired marker and « Libérer », serial quantity 1, re-scanned serial refused, form kept open, destination label | M | todo | - | |
+| 117 | Scanning and customer-facing amendments (§ 7 2026-09-24 12:40 and 12:55, rows 13, 14, 16, 17, 18): sound and re-count settings, key-gap setting and scanner test, pairing ends with its tab, customer view per device with step-up and a hide list, price-check restore and display, the display's line price, the customer-facing price rule and « Afficher aussi le prix HT », the phone's scan card | L | todo | - | |
+| 118 | Count mode amendments (§ 7 2026-09-24 12:40, row 23): leave guard, the no-`stock.write` notice, « Comptage » everywhere | S | todo | - | |
+| 119 | Labels (§ 7 2026-09-24 12:40, rows 24, 25): location QR on the public address and a stable path, return after sign-in, a company label format, chosen locations; barcodes at ISO/IEC 15420 proportions | M | todo | - | |
+| 120 | Zakat (§ 7 2026-09-24 13:10): the second research pass (Shafi'i, Hanbali), then the module — settings, bundles, worksheet, reminder | L | todo | - | |
 <!-- /progress-block -->
 
 ### Delivered
