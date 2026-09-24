@@ -136,6 +136,7 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
     expect([draftPdf.status, draftPdf.magic]).toEqual([200, '%PDF-']);
 
     await page.getByTestId('document-action-validate').click();
+    await page.getByTestId('confirm-run').click();
     await expect(page.getByTestId('delivery-note-title')).toHaveText(/BL-\d{4}-\d{5}/);
     const noteNumber = ((await page.getByTestId('delivery-note-title').textContent()) ?? '').trim();
     await expect(page.getByTestId('line-0-quantity')).toBeDisabled();

@@ -1105,7 +1105,12 @@
       "confirm_cancel": "Confirmer l'annulation",
       "keep": "Garder le brouillon",
       "pdf": "Télécharger le PDF",
-      "pdf_draft": "Aperçu du PDF"
+      "pdf_draft": "Aperçu du PDF",
+      "issue_title": "Émettre cette facture ?",
+      "issue_message": "Elle reçoit son numéro et ne se modifie plus : une erreur se corrige ensuite par un avoir.",
+      "issue_credit_note_title": "Émettre cet avoir ?",
+      "issue_credit_note_message": "Il reçoit son numéro et ne se modifie plus.",
+      "confirm_issue": "Émettre"
     },
     "errors": {
       "network": "Le serveur est injoignable.",
@@ -1240,7 +1245,10 @@
       "confirm_cancel": "Confirmer l'annulation",
       "keep": "Garder le bon",
       "pdf": "Télécharger le PDF",
-      "pdf_draft": "Aperçu du PDF"
+      "pdf_draft": "Aperçu du PDF",
+      "validate_title": "Valider ce bon ?",
+      "validate_message": "Il reçoit son numéro et ses lignes ne se modifient plus.",
+      "confirm_validate": "Valider"
     },
     "errors": {
       "network": "Le serveur est injoignable.",

@@ -141,6 +141,7 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     expect([draftPdf.status, draftPdf.magic]).toEqual([200, '%PDF-']);
 
     await page.getByTestId('document-action-issue').click();
+    await page.getByTestId('confirm-run').click();
     await expect(page.getByTestId('document-action-issue')).toHaveCount(0);
     await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
     const invoiceNumber = ((await page.getByTestId('invoice-title').textContent()) ?? '').trim();
@@ -187,6 +188,7 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await expect(page.getByTestId('invoice-payments')).toHaveCount(0);
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('document-action-issue').click();
+    await page.getByTestId('confirm-run').click();
     await expect(page.getByTestId('document-action-issue')).toHaveCount(0);
     await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
 

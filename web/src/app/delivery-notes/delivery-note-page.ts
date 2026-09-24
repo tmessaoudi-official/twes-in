@@ -50,6 +50,7 @@ import {
 } from './delivery-notes-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { unsavedChanges } from '../shared/form/dirty-count';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
@@ -205,6 +206,30 @@ export class DeliveryNotePage {
 
   /** Who the note is for, as the picker answered it: the row itself, so the taxes its regime refuses are known. */
   protected readonly customer = signal<CustomerOption | null>(null);
+
+  /**
+   * What is typed and not saved, counted so that leaving the page asks first (row 45, RCH-01): the header's fields,
+   * the lines, and who the note is for. Each part declares itself to the leave guard.
+   */
+  private readonly savedHeader = computed(() => {
+    const current = this.current();
+    const options = this.options();
+    return current === undefined || options === null ? null : deliveryNoteValues(current, options);
+  });
+  protected readonly headerChanges = unsavedChanges(this.form, this.savedHeader);
+  private readonly savedLines = computed(() => {
+    const current = this.current();
+    const options = this.options();
+    if (current === undefined || options === null) return null;
+    return linesArray(current?.lines ?? [], options).getRawValue();
+  });
+  protected readonly lineChanges = unsavedChanges(this.lines, this.savedLines);
+  private readonly customerChanges = computed(() => {
+    const current = this.current();
+    const picked = this.customer()?.id ?? null;
+    if (current === undefined || picked === null) return 0;
+    return picked !== (current?.customerId ?? null) ? 1 : 0;
+  });
   protected readonly customerShown = computed(() => pickedCustomer(this.customer()));
   /** The note read rather than filled in, once it no longer changes (design review finding 3). */
   protected readonly asView = computed(() => !this.editable() && this.current() != null);
@@ -255,6 +280,13 @@ export class DeliveryNotePage {
         disabled: busy,
         run: () => void this.validate(),
         shown: this.canValidate(),
+        // Numbering is for good, so neither a click nor the bare key validates unasked (EFF-01, row 45).
+        confirm: {
+          title: 'delivery_notes.actions.validate_title',
+          message: 'delivery_notes.actions.validate_message',
+          confirmLabel: 'delivery_notes.actions.confirm_validate',
+          keepLabel: 'delivery_notes.actions.keep',
+        },
       },
       {
         id: 'deliver',
@@ -391,6 +423,7 @@ export class DeliveryNotePage {
   }
 
   constructor() {
+    this.unsaved.declare(this.customerChanges);
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45): one
     // declaration, so an action cannot be offered in one of them and missing from another.
     inject(ScreenActions).declare(this.actions);

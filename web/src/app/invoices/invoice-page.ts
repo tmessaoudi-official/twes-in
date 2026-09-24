@@ -57,6 +57,7 @@ import {
 } from './invoices-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { unsavedChanges } from '../shared/form/dirty-count';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
@@ -221,6 +222,35 @@ export class InvoicePage {
   protected readonly nets = computed(() => (this.current()?.lines ?? []).map((line) => line.net));
 
   /**
+   * What is typed and not saved, counted so that leaving the page asks first (row 45, RCH-01): the header's fields,
+   * the lines against the lines the saved document would show, and who the document is for. Each part declares
+   * itself to the leave guard.
+   */
+  private readonly savedHeader = computed(() => {
+    const current = this.current();
+    const options = this.options();
+    return current === undefined || options === null ? null : invoiceValues(current, options);
+  });
+  protected readonly headerChanges = unsavedChanges(this.form, this.savedHeader);
+  private readonly savedLines = computed(() => {
+    const current = this.current();
+    const options = this.options();
+    if (current === undefined || options === null) return null;
+    return linesArray(current?.lines ?? [], options, this.customer()).getRawValue();
+  });
+  protected readonly lineChanges = unsavedChanges(this.lines, this.savedLines);
+  /** Picking someone else, or anyone at all on a new document; the document taxes follow the customer. */
+  private readonly customerChanges = computed(() => {
+    const current = this.current();
+    const picked = this.customer()?.id ?? null;
+    if (current === undefined || picked === null) return 0;
+    const taxesMoved =
+      current !== null &&
+      this.linesText([], this.documentTaxes()) !== this.linesText([], this.savedDocumentTaxes());
+    return (picked !== (current?.customerId ?? null) ? 1 : 0) + (taxesMoved ? 1 : 0);
+  });
+
+  /**
    * Who the document is for, as the picker answered it: the whole row, so the taxes its regime refuses and its
    * default discount are known without the company's book ever being read.
    */
@@ -296,6 +326,20 @@ export class InvoicePage {
         disabled: busy,
         run: () => void this.issue(),
         shown: this.canIssue(),
+        // Numbering is for good, so neither a click nor the bare key issues unasked (EFF-01, row 45).
+        confirm: this.isCreditNote()
+          ? {
+              title: 'invoices.actions.issue_credit_note_title',
+              message: 'invoices.actions.issue_credit_note_message',
+              confirmLabel: 'invoices.actions.confirm_issue',
+              keepLabel: 'invoices.actions.keep',
+            }
+          : {
+              title: 'invoices.actions.issue_title',
+              message: 'invoices.actions.issue_message',
+              confirmLabel: 'invoices.actions.confirm_issue',
+              keepLabel: 'invoices.actions.keep',
+            },
       },
       {
         id: 'record-payment',
@@ -458,6 +502,7 @@ export class InvoicePage {
   }
 
   constructor() {
+    this.unsaved.declare(this.customerChanges);
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45): one
     // declaration, so an action cannot be offered in one of them and missing from another.
     inject(ScreenActions).declare(this.actions);

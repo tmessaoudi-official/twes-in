@@ -1105,7 +1105,12 @@
       "confirm_cancel": "Confirm cancellation",
       "keep": "Keep the draft",
       "pdf": "Download the PDF",
-      "pdf_draft": "Preview the PDF"
+      "pdf_draft": "Preview the PDF",
+      "issue_title": "Issue this invoice?",
+      "issue_message": "It receives its number and no longer changes: a mistake is then corrected with a credit note.",
+      "issue_credit_note_title": "Issue this credit note?",
+      "issue_credit_note_message": "It receives its number and no longer changes.",
+      "confirm_issue": "Issue"
     },
     "errors": {
       "network": "The server cannot be reached.",
@@ -1240,7 +1245,10 @@
       "confirm_cancel": "Confirm the cancellation",
       "keep": "Keep the note",
       "pdf": "Download the PDF",
-      "pdf_draft": "Preview the PDF"
+      "pdf_draft": "Preview the PDF",
+      "validate_title": "Validate this note?",
+      "validate_message": "It receives its number and its lines no longer change.",
+      "confirm_validate": "Validate"
     },
     "errors": {
       "network": "The server could not be reached.",

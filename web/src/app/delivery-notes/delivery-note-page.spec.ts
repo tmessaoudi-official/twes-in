@@ -36,6 +36,7 @@ import type {
 import type { PickAsked } from '../shared/form/pick-api';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -396,11 +397,33 @@ describe('DeliveryNotePage', () => {
     type('line-0-quantity', '4');
     q('document-action-validate')!.click();
     await settle();
+    // Numbering is for good, so neither a click nor the bare key V validates unasked (EFF-01).
+    expect(facade.reviseAndValidate).not.toHaveBeenCalled();
+    over('confirm-run')!.click();
+    await settle();
     expect(facade.reviseAndValidate).toHaveBeenCalledWith(
       'c1',
       'n1',
       expect.objectContaining({ lines: [expect.objectContaining({ quantity: '4' })] }),
     );
+  });
+
+  it('counts what is typed on a note, so leaving it asks first (RCH-01)', async () => {
+    const unsaved = TestBed.inject(UnsavedChanges);
+    note.set(draft);
+    await open('n1');
+    expect(unsaved.count()).toBe(0);
+    type('line-0-quantity', '3');
+    await settle();
+    expect(unsaved.count()).toBeGreaterThan(0);
+  });
+
+  it('counts a new note once a customer is picked', async () => {
+    const unsaved = TestBed.inject(UnsavedChanges);
+    await open(undefined);
+    expect(unsaved.count()).toBe(0);
+    await pick('delivery-note-customer', 'CLI-1 · Carthage');
+    expect(unsaved.count()).toBeGreaterThan(0);
   });
 
   it('takes the header and lines another person saved into a quiet draft', async () => {

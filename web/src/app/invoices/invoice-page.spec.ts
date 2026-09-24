@@ -37,6 +37,7 @@ import type {
 import type { PickAsked } from '../shared/form/pick-api';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -522,11 +523,16 @@ describe('InvoicePage', () => {
     expect(text('line-0-net')).toContain('1 800,000');
   });
 
-  it('issues exactly what is on screen', async () => {
+  it('issues exactly what is on screen, once the consequence is confirmed', async () => {
     invoice.set(draft);
     await open('i1');
     type('line-0-quantity', '3');
     q('document-action-issue')!.click();
+    await settle();
+    // Issuing numbers a fiscal document for good, so neither a click nor the bare key E does it unasked (EFF-01).
+    expect(facade.reviseAndIssue).not.toHaveBeenCalled();
+    expect(over('confirm-run')).not.toBeNull();
+    over('confirm-run')!.click();
     await settle();
     expect(facade.reviseAndIssue).toHaveBeenCalledWith(
       'c1',
@@ -582,6 +588,31 @@ describe('InvoicePage', () => {
     await settle();
     expect((q('line-0-quantity') as HTMLInputElement).value).toMatch(/^2/);
     expect(q('field-conflict-lines')).toBeNull();
+  });
+
+  it('counts what is typed on a document, so leaving it asks first (RCH-01)', async () => {
+    const unsaved = TestBed.inject(UnsavedChanges);
+    invoice.set(draft);
+    await open('i1');
+    // A document just opened holds what was saved: leaving it is not a question.
+    expect(unsaved.count()).toBe(0);
+    type('line-0-quantity', '3');
+    await settle();
+    expect(unsaved.count()).toBeGreaterThan(0);
+    type('line-0-quantity', '1');
+    await settle();
+    expect(unsaved.count()).toBe(0);
+    type('field-customerReference', 'BC-9');
+    await settle();
+    expect(unsaved.count()).toBeGreaterThan(0);
+  });
+
+  it('counts a new document once a customer is picked or a line is typed', async () => {
+    const unsaved = TestBed.inject(UnsavedChanges);
+    await open(undefined);
+    expect(unsaved.count()).toBe(0);
+    await pick('invoice-customer', 'CLI-1 · Carthage');
+    expect(unsaved.count()).toBeGreaterThan(0);
   });
 
   it('cancels a draft only once confirmed', async () => {
