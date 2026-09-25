@@ -24,15 +24,26 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { ScanOffers } from '../shared/scan/scan-offers';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductScan, ProductsError } from './products-types';
+import type { ProductOnViewRef } from './product-on-view';
 
 export interface ProductScanCardData {
   /** What the scanner read, as it came. */
   readonly code: string;
+  /** The product whose page is on view, which a code nobody holds is offered to first; null elsewhere. */
+  readonly onView?: ProductOnViewRef | null;
 }
 
 interface ScanAction {
   readonly id:
-    'sheet' | 'codes' | 'movements' | 'invoice' | 'delivery_note' | 'create' | 'attach' | 'search';
+    | 'here'
+    | 'sheet'
+    | 'codes'
+    | 'movements'
+    | 'invoice'
+    | 'delivery_note'
+    | 'create'
+    | 'attach'
+    | 'search';
   /** The one key that runs it; Enter always runs the first. */
   readonly key: string;
   readonly icon: string;
@@ -67,6 +78,10 @@ export class ProductScanCard implements OnInit {
   protected readonly format = inject(FormatFacade);
 
   protected readonly code = this.data.code;
+  /** The product whose page is on view (docs/SPEC.md § 7, 2026-09-25 10:13), or null. */
+  protected readonly onView = this.data.onView ?? null;
+  /** What an action's label names: the product on view, for « Ajouter à … ». */
+  protected readonly labelParams = { reference: this.onView?.reference ?? '' };
   /** Undefined while the API is asked, null when no product holds the code. */
   protected readonly scan = signal<ProductScan | null | undefined>(undefined);
   protected readonly failed = signal<ProductsError | null>(null);
@@ -82,6 +97,15 @@ export class ProductScanCard implements OnInit {
     if (scan === null) {
       const actions: ScanAction[] = [];
       if (this.auth.hasPermission('product.write')) {
+        // On a product's page the code most likely belongs to that product: listed on its codes, saved from there.
+        if (this.onView !== null) {
+          actions.push({
+            id: 'here',
+            key: 'p',
+            icon: 'add_link',
+            url: `/products/${encodeURIComponent(this.onView.id)}?tab=codes&add=${code}`,
+          });
+        }
         actions.push(
           { id: 'create', key: 'n', icon: 'add', url: `/products/new?barcode=${code}` },
           { id: 'attach', key: 'a', icon: 'add_link', url: null },
@@ -158,7 +182,11 @@ export class ProductScanCard implements OnInit {
         : scan.isActive
           ? 'scan.phone.found'
           : 'scan.phone.retired',
-      params: found ? { name: scan.name } : { code: this.code },
+      params: found
+        ? { name: scan.name }
+        : this.onView === null
+          ? { code: this.code }
+          : { code: this.code, reference: this.onView.reference },
       product: found ? { name: scan.name, unitPrice: scan.unitPriceNet } : null,
       choices: this.actions().map((action) => ({
         id: action.id,

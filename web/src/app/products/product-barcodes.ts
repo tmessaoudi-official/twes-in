@@ -73,17 +73,25 @@ export class ProductBarcodesSection implements OnInit {
    * What the saved list SAYS, so a reload answering the same codes as new objects keeps what is being typed
    * (CLAUDE.md lesson, 2026-09-14): only another product or a different saved list starts the rows again.
    */
-  private readonly savedKey = computed(
-    () => `${this.productId()}|${JSON.stringify(this.saved())}|${this.adding() ?? ''}`,
-  );
-  protected readonly rows = linkedSignal<string, ProductBarcode[]>({
-    source: this.savedKey,
-    computation: () =>
+  private readonly savedKey = computed(() => `${this.productId()}|${JSON.stringify(this.saved())}`);
+  private readonly rowsKey = computed(() => ({ saved: this.savedKey(), adding: this.adding() }), {
+    equal: (a, b) => a.saved === b.saved && a.adding === b.adding,
+  });
+  protected readonly rows = linkedSignal<
+    { saved: string; adding: string | undefined },
+    ProductBarcode[]
+  >({
+    source: this.rowsKey,
+    computation: (key, previous) =>
       untracked(() => {
-        const saved = this.saved().map((row) => ({ ...row }));
-        const adding = this.adding();
+        // A code sent while the same list is being edited (a scan on the product's own page, docs/SPEC.md § 7,
+        // 2026-09-25 10:13) joins the rows not saved yet; another product or another saved list starts them again.
+        const rows =
+          previous !== undefined && previous.source.saved === key.saved
+            ? previous.value
+            : this.saved().map((row) => ({ ...row }));
         // Read-only, the section shows what is saved and never these rows.
-        return adding === undefined ? saved : addScanned(saved, adding).rows;
+        return key.adding === undefined ? rows : addScanned(rows, key.adding).rows;
       }),
   });
 

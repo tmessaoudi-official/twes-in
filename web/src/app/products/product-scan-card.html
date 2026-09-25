@@ -57,6 +57,18 @@
         </p>
       }
     </div>
+    @if (onView !== null && onView.id === found.productId) {
+      <p class="m-0 text-sm" data-testid="product-scan-held-here">
+        {{ 'products.scan.held_here' | translate }}
+      </p>
+    } @else if (onView !== null) {
+      <p class="m-0 text-sm" data-testid="product-scan-held-elsewhere">
+        {{
+          'products.scan.held_elsewhere'
+            | translate: { reference: found.reference, here: onView.reference }
+        }}
+      </p>
+    }
   } @else {
     <p role="status" data-testid="product-scan-none">{{ 'products.scan.none' | translate }}</p>
   }
@@ -71,7 +83,7 @@
           [attr.data-testid]="'product-scan-action-' + action.id"
         >
           <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-          {{ 'products.scan.actions.' + action.id | translate }}
+          {{ 'products.scan.actions.' + action.id | translate: labelParams }}
           <kbd class="ml-1 text-xs opacity-80" aria-hidden="true">{{
             first ? '↵' : action.key.toUpperCase()
           }}</kbd>

@@ -26,7 +26,8 @@ import type { ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
-import { ProductScanCard } from '../products/product-scan-card';
+import { ProductScanCard, type ProductScanCardData } from '../products/product-scan-card';
+import { ProductOnView } from '../products/product-on-view';
 import { Camera } from '../shared/scan/camera';
 import { CustomerView } from '../shared/customer-view/customer-view';
 import { PhonePairing } from '../shared/scan/phone-pairing';
@@ -785,12 +786,15 @@ describe('AppShell', () => {
         ),
       );
 
+    // docs/SPEC.md § 7, 2026-09-25 10:13: the card learns which product's page is on view.
+    TestBed.inject(ProductOnView).show({ id: 'p7', reference: 'ART-007' });
     scan(document.body, '0s123');
 
     await vi.waitFor(() => expect(open).toHaveBeenCalledTimes(1));
-    const [component, config] = open.mock.calls[0] as [unknown, { data: { code: string } }];
+    const [component, config] = open.mock.calls[0] as [unknown, { data: ProductScanCardData }];
     expect(component).toBe(ProductScanCard);
     expect(config.data.code).toBe('0s123');
+    expect(config.data.onView).toEqual({ id: 'p7', reference: 'ART-007' });
     // The s inside the code is part of the scan, not the screen's save.
     expect(saved).toBe(0);
 

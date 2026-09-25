@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   DOCUMENT,
   effect,
   inject,
@@ -30,6 +31,7 @@ import { ProductReorderPointsSection } from './product-reorder-points';
 import { CustomerView } from '../shared/customer-view/customer-view';
 import { productForm, productInput, productValues } from './product-forms';
 import { ProductsFacade } from './products-facade';
+import { ProductOnView } from './product-on-view';
 import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
@@ -186,6 +188,19 @@ export class ProductPage {
   constructor() {
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45).
     inject(ScreenActions).declare(this.recordActions);
+    // The scan card offers a code nobody holds to the product on view (docs/SPEC.md § 7, 2026-09-25 10:13).
+    const onView = inject(ProductOnView);
+    const shownId = computed(() => this.current()?.id ?? null);
+    const shownReference = computed(() => this.current()?.reference ?? null);
+    effect(() => {
+      const id = shownId();
+      const reference = shownReference();
+      untracked(() => onView.show(id !== null && reference !== null ? { id, reference } : null));
+    });
+    inject(DestroyRef).onDestroy(() => {
+      const id = untracked(shownId);
+      if (id !== null) onView.leave(id);
+    });
     effect(() => {
       const companyId = this.company()?.id;
       const id = this.id();

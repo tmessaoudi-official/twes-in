@@ -24,6 +24,7 @@ import {
 import { CustomerView } from '../shared/customer-view/customer-view';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { ProductPage } from './product-page';
+import { ProductOnView } from './product-on-view';
 import type { SettingRow } from '../shared/settings/settings-types';
 import { ArticleSettings } from './article-settings-facade';
 import { ProductsFacade } from './products-facade';
@@ -311,6 +312,21 @@ describe('ProductPage', () => {
     // The defaults are their own panel, in their own tab, with their own save.
     await openTab('products.tabs.defaults');
     expect(q('article-defaults')).not.toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-25 10:13: the scan card offers a code nobody holds to the product on view.
+  it('names the saved product it shows to the scan card, and nothing once it goes', async () => {
+    const onView = TestBed.inject(ProductOnView);
+    await open(undefined);
+    expect(onView.product()).toBeNull();
+    fixture.destroy();
+
+    product.set(laptop);
+    await open('p1');
+    expect(onView.product()).toEqual({ id: 'p1', reference: 'ART-001' });
+
+    fixture.destroy();
+    expect(onView.product()).toBeNull();
   });
 
   // CI e1b629d5: the defaults tab opened while a save was still on its way snapped back to the record when it answered.

@@ -69,7 +69,7 @@
                   (click)="choose(echo, choice.id)"
                   [attr.data-testid]="'phone-choice-' + choice.id"
                 >
-                  {{ choice.label | translate }}
+                  {{ choice.label | translate: echo.params }}
                 </button>
               }
             </div>

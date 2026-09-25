@@ -6,6 +6,7 @@ import {
   provideTranslateLoader,
   provideTranslateService,
   TranslateLoader,
+  TranslateService,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -163,6 +164,27 @@ describe('PhoneScannerPage', () => {
     await fixture.whenStable();
 
     expect(api.choose).toHaveBeenCalledWith('p-1', 'k'.repeat(64), ECHO, 'create');
+  });
+
+  // docs/SPEC.md § 7, 2026-09-25 10:13: « Ajouter à ART-007 » names the product on the computer's screen.
+  it("words a choice with the echo's own parameters", async () => {
+    await open();
+    TestBed.inject(TranslateService).setTranslation('fr', {
+      products: { scan: { actions: { here: 'Ajouter à {{reference}}' } } },
+    });
+    await TestBed.inject(TranslateService).use('fr');
+    publish({
+      type: 'echo',
+      id: ECHO,
+      scan: null,
+      outcome: 'unclaimed',
+      message: 'scan.phone.unknown',
+      params: { code: '999', reference: 'ART-007' },
+      product: null,
+      choices: [{ id: 'here', label: 'products.scan.actions.here' }],
+    });
+
+    expect(q('phone-choice-here')?.textContent?.trim()).toBe('Ajouter à ART-007');
   });
 
   it('stops when the computer lets it go', async () => {

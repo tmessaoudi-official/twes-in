@@ -1447,6 +1447,7 @@
       "serial": "Numéro de série",
       "hint": "Une touche suffit : Entrée pour la première action, la lettre indiquée pour les autres, Échap pour fermer.",
       "actions": {
+        "here": "Ajouter à {{reference}}",
         "sheet": "Fiche",
         "codes": "Codes-barres",
         "movements": "Mouvements",
@@ -1456,7 +1457,9 @@
         "create": "Créer l’article",
         "attach": "Ajouter à un article"
       },
-      "attach_label": "Article auquel ajouter ce code"
+      "attach_label": "Article auquel ajouter ce code",
+      "held_here": "Ce code est déjà celui de ce produit.",
+      "held_elsewhere": "Ce code est déjà celui de {{reference}} : il ne peut pas aller aussi sur {{here}}."
     },
     "trackings": {
       "none": "Sans suivi",

@@ -49,6 +49,7 @@ import { SchemeMenu } from '../shared/theme/scheme-menu';
 import { type SchemePreference, ThemeFacade } from '../shared/theme/theme-facade';
 import { ProductScanCard, type ProductScanCardData } from '../products/product-scan-card';
 import { PRODUCTS_MODULE } from '../products/products-nav';
+import { ProductOnView } from '../products/product-on-view';
 import { Camera } from '../shared/scan/camera';
 import { CameraScanPanel } from '../shared/scan/camera-scan-panel';
 import { CustomerView } from '../shared/customer-view/customer-view';
@@ -152,6 +153,8 @@ export class AppShell {
   private scanOpen = false;
   private readonly wedge = new ScanWedge();
   private readonly scans = inject(ScanBus);
+  /** The product whose page is on view, which the scan card offers a code nobody holds to first. */
+  private readonly productOnView = inject(ProductOnView);
   private readonly count = new ScanCount();
   /** The count typed for the next scan ("5×"), shown until that scan takes it. */
   protected readonly scanCount = this.scans.multiplier;
@@ -394,7 +397,7 @@ export class AppShell {
     this.scanOpen = true;
     this.dialog
       .open<ProductScanCard, ProductScanCardData>(ProductScanCard, {
-        data: { code },
+        data: { code, onView: this.productOnView.product() },
         width: 'min(36rem, calc(100vw - 2rem))',
         position: { top: '12vh' },
         // The card itself, where its keys are read: the dialog's own container sits above it.

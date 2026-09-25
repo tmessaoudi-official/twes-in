@@ -257,6 +257,17 @@ describe('ProductBarcodesSection', () => {
     expect(q('product-barcodes-readonly')?.textContent).toContain('3017620422003');
   });
 
+  // docs/SPEC.md § 7, 2026-09-25 10:13: a scan on the product's own page adds its code to the rows being edited.
+  it('adds a code a scan card sent here to the rows not saved yet, rather than starting them again', async () => {
+    await open();
+    await scan('10012345678902');
+
+    fixture.componentRef.setInput('adding', '5449000000996');
+    fixture.detectChanges();
+
+    expect(codes()).toEqual(['3017620422003', '10012345678902', '5449000000996']);
+  });
+
   it('lists a code a scan card sent here as a row waiting to be saved, and only once', async () => {
     fixture = TestBed.createComponent(ProductBarcodesSection);
     fixture.componentRef.setInput('productId', 'p1');
@@ -270,12 +281,12 @@ describe('ProductBarcodesSection', () => {
     expect(facade.save).not.toHaveBeenCalled();
     expect((q('product-barcodes-save') as HTMLButtonElement).disabled).toBe(false);
 
-    // A code the product already holds is pointed at, not listed twice.
+    // A code the product already holds is not listed twice, and the row waiting to be saved stays.
     fixture.componentRef.setInput('adding', '03017620422003');
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(codes()).toEqual(['3017620422003']);
+    expect(codes()).toEqual(['3017620422003', '5449000000996']);
   });
 
   it('adds nothing sent here for somebody who may only read the codes', async () => {

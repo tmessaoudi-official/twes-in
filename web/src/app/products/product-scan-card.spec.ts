@@ -13,7 +13,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { ScanOffers } from '../shared/scan/scan-offers';
-import { ProductScanCard } from './product-scan-card';
+import { ProductScanCard, type ProductScanCardData } from './product-scan-card';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductScan } from './products-types';
 
@@ -56,8 +56,11 @@ describe('ProductScanCard', () => {
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
 
-  async function open(code = ']C10113017620422000'): Promise<void> {
-    TestBed.overrideProvider(MAT_DIALOG_DATA, { useValue: { code } });
+  async function open(
+    code = ']C10113017620422000',
+    onView: ProductScanCardData['onView'] = null,
+  ): Promise<void> {
+    TestBed.overrideProvider(MAT_DIALOG_DATA, { useValue: { code, onView } });
     fixture = TestBed.createComponent(ProductScanCard);
     navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     fixture.detectChanges();
@@ -258,5 +261,67 @@ describe('ProductScanCard', () => {
     vi.advanceTimersByTime(10);
     vi.useRealTimers();
     expect(await late).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-25 10:13: a scan while a product is on view offers the code to that product first.
+  describe('while a product is on view', () => {
+    const onView = { id: 'p7', reference: 'ART-007' };
+
+    it('offers a code nobody holds to that product first, listed on its codes and saved from there', async () => {
+      scan.mockResolvedValue(null);
+      permissions.add('product.write');
+      await open('3760001', onView);
+
+      expect(
+        [...fixture.nativeElement.querySelectorAll('[data-testid^="product-scan-action-"]')].map(
+          (button) => (button as HTMLElement).dataset['testid'],
+        ),
+      ).toEqual([
+        'product-scan-action-here',
+        'product-scan-action-create',
+        'product-scan-action-attach',
+        'product-scan-action-search',
+      ]);
+      press('Enter');
+      expect(close).toHaveBeenCalled();
+      expect(navigate).toHaveBeenCalledWith('/products/p7?tab=codes&add=3760001');
+    });
+
+    it('offers a paired phone the same choice, its label naming the product', async () => {
+      scan.mockResolvedValue(null);
+      permissions.add('product.write');
+      await open('3760001', onView);
+      const offer = await TestBed.inject(ScanOffers).next('3760001', 0);
+
+      expect(offer?.choices[0]).toEqual({ id: 'here', label: 'products.scan.actions.here' });
+      expect(offer?.params).toEqual({ code: '3760001', reference: 'ART-007' });
+    });
+
+    it('offers nothing to that product to somebody who may not write the products', async () => {
+      scan.mockResolvedValue(null);
+      await open('3760001', onView);
+
+      expect(q('product-scan-action-here')).toBeNull();
+    });
+
+    it('names the product that holds a code already, and moves nothing: its sheet comes first', async () => {
+      permissions.add('product.write');
+      await open('13017620422000', onView);
+
+      expect(q('product-scan-held-elsewhere')?.textContent).toContain(
+        'products.scan.held_elsewhere',
+      );
+      expect(q('product-scan-action-here')).toBeNull();
+      press('Enter');
+      expect(navigate).toHaveBeenCalledWith('/products/p1');
+    });
+
+    it('says a code is already on the product on view', async () => {
+      permissions.add('product.write');
+      await open('13017620422000', { id: 'p1', reference: 'ART-001' });
+
+      expect(q('product-scan-held-here')).not.toBeNull();
+      expect(q('product-scan-held-elsewhere')).toBeNull();
+    });
   });
 });

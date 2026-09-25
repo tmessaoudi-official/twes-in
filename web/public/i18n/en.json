@@ -1447,6 +1447,7 @@
       "serial": "Serial number",
       "hint": "One key is enough: Enter for the first action, the letter shown for the others, Esc to close.",
       "actions": {
+        "here": "Add to {{reference}}",
         "sheet": "Record",
         "codes": "Barcodes",
         "movements": "Movements",
@@ -1456,7 +1457,9 @@
         "create": "Create the product",
         "attach": "Add to a product"
       },
-      "attach_label": "Product to add this code to"
+      "attach_label": "Product to add this code to",
+      "held_here": "This code already belongs to this product.",
+      "held_elsewhere": "This code already belongs to {{reference}}: it cannot also go on {{here}}."
     },
     "trackings": {
       "none": "Not tracked",
