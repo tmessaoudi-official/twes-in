@@ -70,12 +70,16 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
     await expect(page).toHaveURL(new RegExp(`lot=${lot.toLowerCase()}`));
     await expect(page.getByTestId('stock-movements-of-lot')).toContainText(lot.toLowerCase());
     await expect(page.locator('[data-column="lot"]').filter({ hasText: lot })).toHaveCount(1);
-    await expect(page.locator('[data-column="lot"]').filter({ hasText: scannedLot })).toHaveCount(0);
+    await expect(page.locator('[data-column="lot"]').filter({ hasText: scannedLot })).toHaveCount(
+      0,
+    );
     expect(await wcagViolations(page)).toEqual([]);
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await scan(page, `]C1010${code}1727053110${scannedLot}`);
     await expect(page).toHaveURL(new RegExp(`lot=${scannedLot}`));
-    await expect(page.locator('[data-column="lot"]').filter({ hasText: scannedLot })).toHaveCount(1);
+    await expect(page.locator('[data-column="lot"]').filter({ hasText: scannedLot })).toHaveCount(
+      1,
+    );
   } finally {
     if (ids.length > 0) await stockKept(page, ids[0], false);
     await forget(page, ids);
