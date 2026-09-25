@@ -19,7 +19,10 @@ use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 
-/** Documents an expense's file upload and download, plain controllers API Platform does not describe (ExpenseAttachmentsController). */
+/**
+ * Documents what plain controllers answer, which API Platform does not describe: an expense's file upload and download
+ * (ExpenseAttachmentsController) and the month's TEJ declaration (TejDeclarationController).
+ */
 #[AsDecorator('api_platform.openapi.factory')]
 final readonly class ExpensesOpenApi implements OpenApiFactoryInterface
 {
@@ -64,6 +67,54 @@ final readonly class ExpensesOpenApi implements OpenApiFactoryInterface
             ],
             summary: 'A file attached to an expense',
             parameters: [$uuid('companyId', 'The company'), $uuid('expenseId', 'The expense'), $uuid('attachmentId', 'The attachment')],
+        )));
+
+        $paths->addPath('/api/companies/{companyId}/withholding-declarations/tej/{year}-{month}', new PathItem(get: new Operation(
+            operationId: 'tejWithholdingDeclaration',
+            tags: ['Expense'],
+            responses: [
+                '200' => new Response('The DeclarationsRS file (TEJDeclarationRS_v1.0.xsd), named [MATRICULE]-[YYYY]-[MM]-0.xml in Content-Disposition', new \ArrayObject(['application/xml' => new MediaType(new \ArrayObject(['type' => 'string', 'format' => 'binary']))])),
+                '401' => new Response('Not signed in'),
+                '404' => new Response('No such company, no expense.read, the expenses module is switched off, or no such month'),
+                '422' => new Response(
+                    'No file, and why: a stable code, translated by the screen, with its parameters',
+                    new \ArrayObject(['application/json' => new MediaType(new \ArrayObject([
+                        'type' => 'object',
+                        'required' => ['code', 'params', 'message', 'expenses'],
+                        'properties' => [
+                            'code' => ['type' => 'string', 'enum' => ['not_declared_to_tej', 'company_matricule_missing', 'company_matricule_unreadable', 'nothing_to_declare', 'incomplete_expenses']],
+                            'params' => ['type' => 'object', 'additionalProperties' => ['type' => ['string', 'integer']], 'description' => 'preset; year and month; count.'],
+                            'message' => ['type' => 'string'],
+                            'expenses' => [
+                                'type' => 'array',
+                                'description' => 'With incomplete_expenses: each payment of the month that lacks what the platform asks for.',
+                                'items' => [
+                                    'type' => 'object',
+                                    'required' => ['expenseId', 'paidOn', 'description', 'reference', 'vendorName', 'problems'],
+                                    'properties' => [
+                                        'expenseId' => ['type' => 'string', 'format' => 'uuid'],
+                                        'paidOn' => ['type' => 'string', 'format' => 'date'],
+                                        'description' => ['type' => 'string'],
+                                        'reference' => ['type' => ['string', 'null']],
+                                        'vendorName' => ['type' => ['string', 'null']],
+                                        'problems' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => [
+                                            'vendor_missing', 'vendor_matricule_missing', 'vendor_matricule_unreadable', 'vendor_category_unknown', 'vendor_address_missing',
+                                            'vendor_email_missing', 'vendor_email_unaccepted', 'vendor_phone_missing', 'operation_code_missing', 'withholding_rate_too_precise', 'tax_rate_too_precise',
+                                        ]]],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ]))]),
+                ),
+            ],
+            summary: 'The month\'s withholdings for the TEJ platform',
+            description: 'Tunisia: one certificate per expense paid in the month with a withholding or a TEJ operation code, every amount in millimes. The file is an initial filing (acte 0). Nothing is written while a payment lacks its operation code or its supplier\'s matricule, address, email or phone: each such payment is listed instead.',
+            parameters: [
+                $uuid('companyId', 'The company'),
+                new Parameter('year', 'path', 'The year the payments were made in', true, schema: ['type' => 'string', 'pattern' => '^20[0-9]{2}$']),
+                new Parameter('month', 'path', 'The month, two digits', true, schema: ['type' => 'string', 'pattern' => '^(0[1-9]|1[0-2])$']),
+            ],
         )));
 
         return $openApi;

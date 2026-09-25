@@ -41,9 +41,11 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         'index' => 'index',
         'key' => 'signup.enabled',
         'moduleKey' => 'customers',
+        'month' => '09',
         'status' => '404',
         'subject' => 'customers',
         'token' => 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        'year' => '2026',
     ];
 
     public function testThePublicPathsAreExactlyTheFirewallsOwn(): void
