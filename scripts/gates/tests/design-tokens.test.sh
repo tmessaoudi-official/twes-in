@@ -28,4 +28,7 @@ d=$(repo); tokens "$d"; printf '<ol>\n  <li [class.bg-surface-container-highest]
 out=$(bash "$GATE" --root "$d" 2>&1); check "a colour class naming a token tailwind.css lacks is caught: Tailwind emits nothing for it" $? 1 "$out" "web/src/app/x/a.html:2 unknown colour token surface-container-highest"
 d=$(repo); tokens "$d"; printf '<span class="hover:bg-primary text-on-surface/60" [class.bg-surface-container-high]="on">x</span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
 out=$(bash "$GATE" --root "$d" 2>&1); check "defined tokens pass with a variant, an opacity or a class binding" $? 0 "$out" "OK — 1 files"
+accent() { mkdir -p "$1/web/src"; printf '@theme inline {\n  --color-accent: var(--twes-accent);\n  --color-accent-soft: var(--twes-accent-soft);\n  --color-on-accent: var(--twes-on-accent);\n}\n' > "$1/web/src/tailwind.css"; }
+d=$(repo); accent "$d"; printf '<a class="bg-accent-soft text-on-accent hover:bg-accent">x</a>\n<b class="text-accent-strong">y</b>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "the accent's roles are read as colour tokens: a declared one passes, an undeclared one is caught" $? 1 "$out" "web/src/app/x/a.html:2 unknown colour token accent-strong"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]

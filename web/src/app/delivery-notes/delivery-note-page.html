@@ -19,7 +19,10 @@
           class="flex flex-wrap items-center gap-x-1 text-sm text-on-surface-variant"
           data-testid="delivery-note-status"
         >
-          <app-status-badge [tone]="tones[note.status]">
+          <app-status-badge
+            [tone]="tones[note.status]"
+            [struck]="stages[note.status] === 'withdrawn'"
+          >
             {{ 'delivery_notes.statuses.' + note.status | translate }}
           </app-status-badge>
           @if (note.issueDate) {

@@ -98,6 +98,74 @@ export function colourTokens(accent: string, scheme: ColourScheme): ColourTokens
   return tokens as ColourTokens;
 }
 
+export type AccentTokens = Record<
+  '--twes-accent' | '--twes-on-accent' | '--twes-accent-soft' | '--twes-accent-text',
+  string
+>;
+
+const WHITE = '#ffffff';
+/** The ink written on a light accent (design direction § 1.1, the approved board's `ink`). */
+const INK = '#0d0f14';
+/** WCAG AA for body text, which every accent role that carries words meets. */
+const READABLE = 4.5;
+
+/**
+ * The accent as the company picked it, and the roles that keep it readable whatever it is (design direction § 1.1,
+ * docs/SPEC.md § 7, 2026-09-25): `--twes-accent` fills primary buttons and marks selection; `--twes-on-accent` writes on
+ * it, in white when white reads, else in ink, else in black, which always reads where white does not;
+ * `--twes-accent-soft` is a selected row's fill; `--twes-accent-text` is the accent as a link on the scheme's surface,
+ * darkened (light) or lightened (dark) from the direction's starting mix until it reaches 4.5:1.
+ */
+export function accentTokens(accent: string, scheme: ColourScheme): AccentTokens {
+  assertAccentColour(accent);
+  const hex = accent.toLowerCase();
+  const surface = colourTokens(hex, scheme)['--mat-sys-surface'];
+  const dark = scheme === 'dark';
+  const onAccent = [WHITE, INK].find((ink) => contrastRatio(ink, hex) >= READABLE) ?? '#000000';
+  const toward = dark ? WHITE : '#000000';
+  let share = dark ? 0.62 : 0.82;
+  let text = mixHex(hex, toward, share);
+  while (contrastRatio(text, surface) < READABLE && share > 0) {
+    share = Math.max(0, share - 0.04);
+    text = mixHex(hex, toward, share);
+  }
+  return {
+    '--twes-accent': hex,
+    '--twes-on-accent': onAccent,
+    '--twes-accent-soft': dark ? mixHex(hex, surface, 0.22) : mixHex(hex, WHITE, 0.11),
+    '--twes-accent-text': text,
+  };
+}
+
+/** `share` of `a` and the rest of `b`, channel by channel in sRGB, as CSS `color-mix(in srgb, a share, b)`. */
+function mixHex(a: string, b: string, share: number): string {
+  const channel = (hex: string, i: number) => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16);
+  return (
+    '#' +
+    [0, 1, 2]
+      .map((i) =>
+        Math.round(channel(a, i) * share + channel(b, i) * (1 - share))
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('')
+  );
+}
+
+/** WCAG 2 contrast ratio between two #rrggbb colours. */
+function contrastRatio(a: string, b: string): number {
+  const [light, dark] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+function relativeLuminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
 /** Throws InvalidAccentColour unless the value is #rrggbb; the one place that rule lives. */
 export function assertAccentColour(value: string): void {
   if (!HEX_COLOUR.test(value)) {

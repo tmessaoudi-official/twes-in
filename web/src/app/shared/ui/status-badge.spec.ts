@@ -7,10 +7,11 @@ import { StatusBadge } from './status-badge';
 
 @Component({
   imports: [StatusBadge],
-  template: `<app-status-badge [tone]="tone()">Livré</app-status-badge>`,
+  template: `<app-status-badge [tone]="tone()" [struck]="struck()">Livré</app-status-badge>`,
 })
 class Host {
   readonly tone = signal<StatusTone>('warning');
+  readonly struck = signal(false);
 }
 
 describe('StatusBadge', () => {
@@ -31,5 +32,17 @@ describe('StatusBadge', () => {
 
     expect(badge.getAttribute('data-tone')).toBe('success');
     expect(badge.style.getPropertyValue('--status-bg')).toBe('var(--twes-status-success-bg)');
+  });
+
+  it('strikes the label of a withdrawn status', () => {
+    const fixture = TestBed.createComponent(Host);
+    fixture.detectChanges();
+    const badge: HTMLElement = fixture.nativeElement.querySelector('app-status-badge');
+    expect(badge.classList.contains('is-struck')).toBe(false);
+
+    fixture.componentInstance.struck.set(true);
+    fixture.detectChanges();
+
+    expect(badge.classList.contains('is-struck')).toBe(true);
   });
 });

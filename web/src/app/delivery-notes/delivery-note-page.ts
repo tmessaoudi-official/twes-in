@@ -45,6 +45,7 @@ import { DeliveryNotesFacade } from './delivery-notes-facade';
 import {
   type CustomerOption,
   DELIVERY_NOTE_STATUS_TONES,
+  DELIVERY_NOTE_STATUS_STAGES,
   type DeliveryNoteInput,
   type TaxFamily,
 } from './delivery-notes-types';
@@ -109,6 +110,7 @@ export class DeliveryNotePage {
   protected readonly id = computed(() => this.deliveryNoteId() ?? null);
   protected readonly scale = computed(() => this.options()?.currencyScale ?? null);
   protected readonly tones = DELIVERY_NOTE_STATUS_TONES;
+  protected readonly stages = DELIVERY_NOTE_STATUS_STAGES;
   protected readonly options = this.facade.options;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;

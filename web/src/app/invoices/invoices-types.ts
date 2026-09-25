@@ -2,6 +2,7 @@
 
 import type { ProductTracking } from '../products/products-types';
 import type { StatusTone } from '../shared/theme/accent-theme';
+import { type LifecycleStage, tonesOf } from '../shared/theme/lifecycle-tones';
 
 /** Why the API refused, as the invoices screens translate it. */
 export type InvoicesError = 'network' | 'not_found' | 'conflict' | 'invalid';
@@ -33,15 +34,21 @@ export const INVOICE_SHOWN_STATUSES: readonly InvoiceShownStatus[] = [
   'cancelled',
 ];
 
-/** A status's tone: a draft is quiet, an issued document under way, one overdue alarming, a paid one done. */
-export const INVOICE_STATUS_TONES: Readonly<Record<InvoiceShownStatus, StatusTone>> = {
-  draft: 'neutral',
-  issued: 'info',
-  overdue: 'danger',
-  partially_paid: 'warning',
-  paid: 'success',
-  cancelled: 'neutral',
+/**
+ * Where each status stands (design direction § 1.1): a draft not started, an issued document under way, one partly paid
+ * waiting on the person, a paid one done, a cancelled one withdrawn, one overdue alarming. The tones derive from it.
+ */
+export const INVOICE_STATUS_STAGES: Readonly<Record<InvoiceShownStatus, LifecycleStage>> = {
+  draft: 'not-started',
+  issued: 'under-way',
+  partially_paid: 'needs-action',
+  paid: 'done',
+  cancelled: 'withdrawn',
+  overdue: 'alarm',
 };
+
+export const INVOICE_STATUS_TONES: Readonly<Record<InvoiceShownStatus, StatusTone>> =
+  tonesOf(INVOICE_STATUS_STAGES);
 
 export type TaxFamily = 'vat' | 'levy' | 'stamp' | 'withholding';
 

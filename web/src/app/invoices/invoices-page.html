@@ -40,7 +40,7 @@
       </span>
     </ng-template>
     <ng-template appDataListCell="status" let-row>
-      <app-status-badge [tone]="toneOf(row.shown)">
+      <app-status-badge [tone]="toneOf(row.shown)" [struck]="struckOf(row.shown)">
         {{ 'invoices.statuses.' + row.shown | translate }}
       </app-status-badge>
     </ng-template>

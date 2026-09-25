@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { StatusTone } from '../shared/theme/accent-theme';
+import { type LifecycleStage, tonesOf } from '../shared/theme/lifecycle-tones';
 import type { ProductTracking } from '../products/products-types';
 
 /** Why the API refused, as the delivery notes screens translate it. */
@@ -31,16 +32,20 @@ export const DELIVERY_NOTE_STATUSES: readonly DeliveryNoteStatus[] = [
 ];
 
 /**
- * A status's colour on its badge: a draft is quiet, a validated note under way, a delivered one waits to be invoiced,
- * an invoiced one is done and a cancelled one withdrawn.
+ * Where each status stands (design direction § 1.1): a draft is not started, a validated note under way, a delivered one
+ * waits to be invoiced, an invoiced one is done and a cancelled one withdrawn. The badge's tone derives from it.
  */
-export const DELIVERY_NOTE_STATUS_TONES: Readonly<Record<DeliveryNoteStatus, StatusTone>> = {
-  draft: 'neutral',
-  validated: 'info',
-  delivered: 'warning',
-  invoiced: 'success',
-  cancelled: 'danger',
+export const DELIVERY_NOTE_STATUS_STAGES: Readonly<Record<DeliveryNoteStatus, LifecycleStage>> = {
+  draft: 'not-started',
+  validated: 'under-way',
+  delivered: 'needs-action',
+  invoiced: 'done',
+  cancelled: 'withdrawn',
 };
+
+export const DELIVERY_NOTE_STATUS_TONES: Readonly<Record<DeliveryNoteStatus, StatusTone>> = tonesOf(
+  DELIVERY_NOTE_STATUS_STAGES,
+);
 
 export type TaxFamily = 'vat' | 'levy' | 'stamp' | 'withholding';
 

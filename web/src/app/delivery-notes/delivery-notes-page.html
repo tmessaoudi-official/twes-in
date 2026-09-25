@@ -33,7 +33,7 @@
       {{ row.number ?? ('delivery_notes.draft' | translate) }}
     </ng-template>
     <ng-template appDataListCell="status" let-row>
-      <app-status-badge [tone]="toneOf(row.status)">
+      <app-status-badge [tone]="toneOf(row.status)" [struck]="struckOf(row.status)">
         {{ 'delivery_notes.statuses.' + row.status | translate }}
       </app-status-badge>
     </ng-template>

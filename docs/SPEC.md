@@ -2877,6 +2877,20 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   companies only — switching it on pins the company worked in now, a select then offers the others, switching it
   off opens the last one used; Raccourcis clavier is « Bientôt » (row 125). (3) **Cet appareil** and
   **Notifications** are « Bientôt » tabs, saying they arrive in a coming version.
+- [2026-09-25 20:04] DECIDED (revisit): **the tokens of design direction § 1, first slice** (step 1, slice 3; same mandate).
+  (1) The accent **as picked** gets its roles, computed in `accentTokens` (`shared/theme/accent-theme.ts`) and exposed
+  to Tailwind as `accent`, `on-accent`, `accent-soft`, `accent-text`: it fills the primary button, marks the rail's
+  selected row, and softly fills a selected settings row. `on-accent` is white when white reads, else the board's
+  ink, else black — the direction's « #fff, else #0d0f14 » alone leaves mid-tone accents below 4.5:1 (#787878 gave
+  4.34). `accent-text` starts from the direction's mix and moves toward black (light) or white (dark) until it reads
+  at 4.5:1 on the scheme's surface; links still use Material's `primary` until each screen is rebuilt. (2) The
+  **lifecycle map** `shared/theme/lifecycle-tones.ts`: invoices, delivery notes and expenses place their statuses on
+  stages and their tones derive from it; a withdrawn status is grey and struck, so **a cancelled delivery note turns
+  from red to grey**. (3) The **type scale, radii and s3** are declared (`text-title`, `rounded-card`, `shadow-s3`…),
+  not yet applied: screens move onto them as each is rebuilt in the 09:03 order, and the gate refusing a raw
+  `text-{size}` comes once they have. Tailwind's own `rounded-sm…xl` keep their sizes until then. The s3 shadow is
+  derived from s2, as no approved value was found in the saved canvas. (4) The design-tokens gate reads the accent
+  roles as colour tokens, so an undeclared one (`bg-accent-strong`) is refused.
 
 ## 8. Status
 

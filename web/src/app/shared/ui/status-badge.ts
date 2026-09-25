@@ -25,6 +25,9 @@ import type { StatusTone } from '../theme/accent-theme';
       font-weight: 500;
       white-space: nowrap;
     }
+    :host(.is-struck) {
+      text-decoration: line-through;
+    }
     .dot {
       flex-shrink: 0;
       width: 0.375rem;
@@ -35,6 +38,7 @@ import type { StatusTone } from '../theme/accent-theme';
   `,
   host: {
     '[attr.data-tone]': 'tone()',
+    '[class.is-struck]': 'struck()',
     '[style.--status-bg]': 'bg()',
     '[style.--status-fg]': 'fg()',
     '[style.--status-dot]': 'dot()',
@@ -43,6 +47,8 @@ import type { StatusTone } from '../theme/accent-theme';
 })
 export class StatusBadge {
   readonly tone = input.required<StatusTone>();
+  /** A withdrawn status (lifecycle-tones.ts): its label struck, so grey alone never has to say it. */
+  readonly struck = input(false);
 
   protected readonly bg = computed(() => `var(--twes-status-${this.tone()}-bg)`);
   protected readonly fg = computed(() => `var(--twes-status-${this.tone()}-fg)`);

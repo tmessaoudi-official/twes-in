@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { StatusTone } from '../shared/theme/accent-theme';
+import { type LifecycleStage, tonesOf } from '../shared/theme/lifecycle-tones';
 
 /** Why the API refused, as the expenses screens translate it. */
 export type ExpensesError =
@@ -16,11 +17,15 @@ export type ExpenseStatus = 'draft' | 'recorded' | 'paid';
 
 export const EXPENSE_STATUSES: readonly ExpenseStatus[] = ['draft', 'recorded', 'paid'];
 
-export const EXPENSE_STATUS_TONES: Readonly<Record<ExpenseStatus, StatusTone>> = {
-  draft: 'neutral',
-  recorded: 'info',
-  paid: 'success',
+/** Where each status stands (design direction § 1.1); the badge's tone derives from it. */
+export const EXPENSE_STATUS_STAGES: Readonly<Record<ExpenseStatus, LifecycleStage>> = {
+  draft: 'not-started',
+  recorded: 'under-way',
+  paid: 'done',
 };
+
+export const EXPENSE_STATUS_TONES: Readonly<Record<ExpenseStatus, StatusTone>> =
+  tonesOf(EXPENSE_STATUS_STAGES);
 
 export type PaymentMethod = 'transfer' | 'cash' | 'check' | 'card' | 'other';
 

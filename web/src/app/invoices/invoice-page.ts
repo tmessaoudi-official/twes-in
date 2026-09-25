@@ -52,6 +52,7 @@ import { RecordChanged } from '../shared/form/record-changed';
 import { InvoicesFacade } from './invoices-facade';
 import {
   INVOICE_STATUS_TONES,
+  INVOICE_STATUS_STAGES,
   type CustomerOption,
   type InvoiceInput,
   type Payment,
@@ -141,6 +142,7 @@ export class InvoicePage {
     return current ? shownStatus(current, this.today()) : null;
   });
   protected readonly tones = INVOICE_STATUS_TONES;
+  protected readonly stages = INVOICE_STATUS_STAGES;
   protected readonly editable = computed(() => {
     const current = this.current();
     return this.mayWrite() && (current === null || current?.status === 'draft');

@@ -26,7 +26,7 @@
           data-testid="invoice-status"
         >
           @if (shown(); as status) {
-            <app-status-badge [tone]="tones[status]">
+            <app-status-badge [tone]="tones[status]" [struck]="stages[status] === 'withdrawn'">
               {{ 'invoices.statuses.' + status | translate }}
             </app-status-badge>
           }

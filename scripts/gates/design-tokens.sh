@@ -31,7 +31,7 @@ if ((${#files[@]})); then
     $why //= "hex colour" if $sheet ? /:[^;{]*#[0-9a-fA-F]{3,8}\b/ : (/["\x27\x60]\s*#[0-9a-fA-F]{3,8}\s*["\x27\x60]/ || /:\s*#[0-9a-fA-F]{3,8}\b/);
     $why //= "inline style" if !$sheet && /(?:^|[\s<])style="/;
     if (!$sheet && !defined $why) {
-      while (/(?<![\w-])(?:bg|text|border|ring|outline|fill|stroke|decoration|divide|from|via|to|accent|caret|placeholder)-((?:on-)?(?:primary|secondary|tertiary|error|surface|outline|inverse|scrim)[a-z-]*)/g) {
+      while (/(?<![\w-])(?:bg|text|border|ring|outline|fill|stroke|decoration|divide|from|via|to|accent|caret|placeholder)-((?:on-)?(?:primary|secondary|tertiary|error|surface|outline|inverse|scrim|accent)[a-z-]*)/g) {
         (my $role = $1) =~ s/-$//;
         if (!$known{$role}) { $why = "unknown colour token $role"; last; }
       }

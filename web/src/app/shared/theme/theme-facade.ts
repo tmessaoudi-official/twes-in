@@ -13,6 +13,7 @@ import {
 import { SettingsFacade } from '../settings/settings-facade';
 import { type Density, PRESENTATION, type SchemePreference } from '../settings/settings-registry';
 import {
+  accentTokens,
   applyColourTokens,
   assertAccentColour,
   type ColourScheme,
@@ -80,6 +81,7 @@ export class ThemeFacade {
       this.root.classList.add('theme-changing');
       applyColourTokens(this.root, {
         ...colourTokens(this.accent(), scheme),
+        ...accentTokens(this.accent(), scheme),
         ...statusTokens(scheme),
       });
       this.root.classList.toggle('theme-dark', scheme === 'dark');

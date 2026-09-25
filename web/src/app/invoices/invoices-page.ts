@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { withdrawn } from '../shared/theme/lifecycle-tones';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -28,6 +29,7 @@ import {
 import { InvoicesFacade } from './invoices-facade';
 import {
   INVOICE_STATUS_TONES,
+  INVOICE_STATUS_STAGES,
   type InvoiceSearch,
   type InvoiceShownStatus,
 } from './invoices-types';
@@ -56,6 +58,8 @@ export class InvoicesPage implements OnInit {
 
   protected readonly list = INVOICES_LIST;
   /** A list cell's row is untyped, so the tone is looked up through a typed function. */
+  protected readonly struckOf = (status: InvoiceShownStatus): boolean =>
+    withdrawn(INVOICE_STATUS_STAGES[status]);
   protected readonly toneOf = (status: InvoiceShownStatus): StatusTone =>
     INVOICE_STATUS_TONES[status];
   protected readonly company = computed(() => this.auth.me()?.company ?? null);

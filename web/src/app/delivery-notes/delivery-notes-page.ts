@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { withdrawn } from '../shared/theme/lifecycle-tones';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -27,6 +28,7 @@ import {
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 import {
   DELIVERY_NOTE_STATUS_TONES,
+  DELIVERY_NOTE_STATUS_STAGES,
   type DeliveryNoteSearch,
   type DeliveryNoteStatus,
 } from './delivery-notes-types';
@@ -55,6 +57,8 @@ export class DeliveryNotesPage implements OnInit {
 
   protected readonly list = DELIVERY_NOTES_LIST;
   /** A list cell's row is untyped, so the tone is looked up through a typed function. */
+  protected readonly struckOf = (status: DeliveryNoteStatus): boolean =>
+    withdrawn(DELIVERY_NOTE_STATUS_STAGES[status]);
   protected readonly toneOf = (status: DeliveryNoteStatus): StatusTone =>
     DELIVERY_NOTE_STATUS_TONES[status];
   protected readonly rows = computed(() => deliveryNoteListRows(this.facade.notes()));

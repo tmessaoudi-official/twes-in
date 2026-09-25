@@ -9,6 +9,12 @@
 @theme inline {
   --font-sans: 'Inter Variable', system-ui, sans-serif;
 
+  /* The accent as the company picked it, and its roles (design direction § 1.1, accent-theme.ts accentTokens). */
+  --color-accent: var(--twes-accent);
+  --color-on-accent: var(--twes-on-accent);
+  --color-accent-soft: var(--twes-accent-soft);
+  --color-accent-text: var(--twes-accent-text);
+
   --color-primary: var(--mat-sys-primary);
   --color-on-primary: var(--mat-sys-on-primary);
   --color-primary-container: var(--mat-sys-primary-container);
@@ -29,4 +35,62 @@
   --color-on-surface-variant: var(--mat-sys-on-surface-variant);
   --color-outline: var(--mat-sys-outline);
   --color-outline-variant: var(--mat-sys-outline-variant);
+}
+
+/*
+ * The type scale by role, the radii and the elevations of the design direction (§ 1.2, § 1.3; docs/SPEC.md § 7,
+ * 2026-09-25): `text-title`, `rounded-card`, `shadow-s2`. A figure adds `tabular-nums`, an overline `uppercase`.
+ * Screens move onto them as each is rebuilt in the order of docs/SPEC.md § 7 2026-09-25 09:03.
+ */
+@theme {
+  --text-display: 2rem;
+  --text-display--line-height: 2.5rem;
+  --text-display--font-weight: 750;
+  --text-display--letter-spacing: -0.025em;
+  --text-title: 1.5rem;
+  --text-title--line-height: 2rem;
+  --text-title--font-weight: 700;
+  --text-title--letter-spacing: -0.02em;
+  --text-section: 0.9375rem;
+  --text-section--line-height: 1.375rem;
+  --text-section--font-weight: 650;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.25rem;
+  --text-body--font-weight: 400;
+  --text-label: 0.78125rem;
+  --text-label--line-height: 1rem;
+  --text-label--font-weight: 600;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-caption--font-weight: 500;
+  --text-overline: 0.6875rem;
+  --text-overline--line-height: 1rem;
+  --text-overline--font-weight: 650;
+  --text-overline--letter-spacing: 0.06em;
+  --text-figure-xl: 2.25rem;
+  --text-figure-xl--line-height: 2.75rem;
+  --text-figure-xl--font-weight: 700;
+  --text-figure-xl--letter-spacing: -0.02em;
+  --text-figure: 1.75rem;
+  --text-figure--line-height: 2.25rem;
+  --text-figure--font-weight: 700;
+  --text-figure--letter-spacing: -0.01em;
+  --text-figure-cell: 0.875rem;
+  --text-figure-cell--line-height: 1.25rem;
+  --text-figure-cell--font-weight: 500;
+  --text-display-customer: 4rem;
+  --text-display-customer--line-height: 4.5rem;
+  --text-display-customer--font-weight: 700;
+  --text-display-customer--letter-spacing: -0.02em;
+
+  --radius-chip: 6px;
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-panel: 20px;
+}
+
+@theme inline {
+  --shadow-s1: var(--twes-shadow-1);
+  --shadow-s2: var(--twes-shadow-2);
+  --shadow-s3: var(--twes-shadow-3);
 }

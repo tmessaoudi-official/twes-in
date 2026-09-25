@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {
+  accentTokens,
   applyColourTokens,
   colourTokens,
   InvalidAccentColour,
@@ -163,5 +164,59 @@ describe('applyColourTokens', () => {
     for (const [name, value] of Object.entries(tokens)) {
       expect(element.style.getPropertyValue(name)).toBe(value);
     }
+  });
+});
+
+// docs/SPEC.md § 7, 2026-09-25 (design direction § 1.1): the accent as the company picked it, with the roles that keep
+// it readable whatever it is.
+describe('accentTokens', () => {
+  const accents = [
+    '#1f6feb',
+    '#ffd400',
+    '#00e5ff',
+    '#0b1f4a',
+    '#e11d48',
+    '#16a34a',
+    '#7c3aed',
+    '#808080',
+    '#787878',
+    '#ffffff',
+    '#000000',
+  ];
+
+  it('shows the accent as picked, in both schemes', () => {
+    expect(accentTokens('#1F6FEB', 'light')['--twes-accent']).toBe('#1f6feb');
+    expect(accentTokens('#1f6feb', 'dark')['--twes-accent']).toBe('#1f6feb');
+  });
+
+  it('writes on the accent in white when white reads, and in ink otherwise', () => {
+    expect(accentTokens('#1f6feb', 'light')['--twes-on-accent']).toBe('#ffffff');
+    expect(accentTokens('#ffd400', 'light')['--twes-on-accent']).toBe('#0d0f14');
+    for (const accent of accents) {
+      const tokens = accentTokens(accent, 'light');
+      expect(contrast(tokens['--twes-on-accent'], accent), accent).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('keeps the accent as text readable on the surface of each scheme, whatever the accent', () => {
+    for (const scheme of ['light', 'dark'] as const) {
+      for (const accent of accents) {
+        const surface = colourTokens(accent, scheme)['--mat-sys-surface'];
+        const text = accentTokens(accent, scheme)['--twes-accent-text'];
+        expect(contrast(text, surface), `${scheme} ${accent}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it('softens the accent toward the surface for a selected fill', () => {
+    const light = accentTokens('#1f6feb', 'light')['--twes-accent-soft'];
+    const dark = accentTokens('#1f6feb', 'dark')['--twes-accent-soft'];
+    expect(luminance(light)).toBeGreaterThan(0.75);
+    expect(luminance(dark)).toBeLessThan(0.08);
+    expect(light).not.toBe('#ffffff');
+  });
+
+  it('refuses what is not a #rrggbb colour', () => {
+    expect(() => accentTokens('blue', 'light')).toThrow(InvalidAccentColour);
   });
 });
