@@ -3,6 +3,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { forgetPresentationChoices } from './presentation';
 import { OPERATOR_EMAIL as EMAIL, signIn as logIn } from './session';
+import { sidewaysOverflow } from './overflow';
 
 // G2b and G3b: presentation preferences survive a reload, and a fresh browser, through the API's presentation
 // chain, and the list chrome every screen shares stays accessible with its column chooser open, at desktop and
@@ -174,8 +175,8 @@ test('at phone width the members list and its chooser are accessible and fit the
   await page.getByTestId('list-columns').click();
   await expect(page.getByTestId('list-column-toggle-role')).toBeVisible();
   await expectAccessible(page, 'members, phone, chooser open');
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(overflow, 'the page itself must not scroll sideways').toBeLessThanOrEqual(0);
+  expect(
+    await sidewaysOverflow(page),
+    'the page itself must not scroll sideways',
+  ).toBeLessThanOrEqual(0);
 });

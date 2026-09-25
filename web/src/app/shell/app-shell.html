@@ -7,8 +7,11 @@
 
 <app-activity-bar />
 
-<!-- autosize: the container measures the sidebar again when it turns into a rail, not only when it opens. -->
-<mat-sidenav-container class="twes-shell min-h-full" autosize>
+<!-- autosize: the container measures the sidebar again when it turns into a rail, not only when it opens. As tall as
+     the window, never taller, as Material lays a sidenav out: the page scrolls inside the content, and the rail keeps
+     its foot (the account menu, the fold toggle) on screen however long the page (a grown container put it 1000 px
+     down a long home). -->
+<mat-sidenav-container class="twes-shell h-full" autosize>
   <mat-sidenav
     #drawer
     [mode]="handset() ? 'over' : 'side'"
@@ -73,50 +76,56 @@
           <kbd aria-hidden="true">Ctrl K</kbd>
         }
       </button>
-      @for (group of sections(); track group.section) {
-        <h2
-          [id]="'nav-section-' + group.section"
-          class="twes-rail-overline"
-          [class.sr-only]="rail()"
-        >
-          {{ 'nav.sections.' + group.section | translate }}
-        </h2>
-        <mat-nav-list [attr.aria-labelledby]="'nav-section-' + group.section">
-          @for (entry of group.entries; track entry.key) {
-            <a
-              mat-list-item
-              [routerLink]="entry.route"
-              routerLinkActive
-              #active="routerLinkActive"
-              [routerLinkActiveOptions]="{ exact: entry.route === '/' }"
-              [activated]="active.isActive"
-              [attr.aria-current]="active.isActive ? 'page' : null"
-              [attr.data-testid]="'nav-' + entry.key"
-              (click)="handset() && drawer.close()"
-            >
-              <mat-icon matListItemIcon aria-hidden="true">{{ entry.icon }}</mat-icon>
-              <!-- Folded, the rail keeps a short label under the icon (docs/SPEC.md § 8 row 123). Each branch has ONE root,
+      <!-- Only the destinations scroll: the head and the foot stay where the board draws them whatever the window's
+           height, so the account menu is never below the fold. -->
+      <div class="twes-rail-groups" data-testid="rail-groups">
+        @for (group of sections(); track group.section) {
+          <h2
+            [id]="'nav-section-' + group.section"
+            class="twes-rail-overline"
+            [class.sr-only]="rail()"
+          >
+            {{ 'nav.sections.' + group.section | translate }}
+          </h2>
+          <mat-nav-list [attr.aria-labelledby]="'nav-section-' + group.section">
+            @for (entry of group.entries; track entry.key) {
+              <a
+                mat-list-item
+                [routerLink]="entry.route"
+                routerLinkActive
+                #active="routerLinkActive"
+                [routerLinkActiveOptions]="{ exact: entry.route === '/' }"
+                [activated]="active.isActive"
+                [attr.aria-current]="active.isActive ? 'page' : null"
+                [attr.data-testid]="'nav-' + entry.key"
+                (click)="handset() && drawer.close()"
+              >
+                <mat-icon matListItemIcon aria-hidden="true">{{ entry.icon }}</mat-icon>
+                <!-- Folded, the rail keeps a short label under the icon (docs/SPEC.md § 8 row 123). Each branch has ONE root,
                    the title, or Angular projects it into the default slot and Material draws it two lines tall. -->
-              @if (rail()) {
-                <span matListItemTitle class="twes-rail-short"
-                  >{{ entry.shortLabelKey ?? entry.labelKey | translate }}
-                  @if (entry.coming) {
-                    <span class="sr-only" data-testid="soon">{{ 'shell.soon' | translate }}</span>
-                    <span class="twes-soon-dot" aria-hidden="true"></span>
-                  }
-                </span>
-              } @else {
-                <span matListItemTitle class="twes-rail-title"
-                  ><span>{{ entry.labelKey | translate }}</span>
-                  @if (entry.coming) {
-                    <span class="twes-soon" data-testid="soon">{{ 'shell.soon' | translate }}</span>
-                  }
-                </span>
-              }
-            </a>
-          }
-        </mat-nav-list>
-      }
+                @if (rail()) {
+                  <span matListItemTitle class="twes-rail-short"
+                    >{{ entry.shortLabelKey ?? entry.labelKey | translate }}
+                    @if (entry.coming) {
+                      <span class="sr-only" data-testid="soon">{{ 'shell.soon' | translate }}</span>
+                      <span class="twes-soon-dot" aria-hidden="true"></span>
+                    }
+                  </span>
+                } @else {
+                  <span matListItemTitle class="twes-rail-title"
+                    ><span>{{ entry.labelKey | translate }}</span>
+                    @if (entry.coming) {
+                      <span class="twes-soon" data-testid="soon">{{
+                        'shell.soon' | translate
+                      }}</span>
+                    }
+                  </span>
+                }
+              </a>
+            }
+          </mat-nav-list>
+        }
+      </div>
       <div class="twes-rail-foot">
         @if (!handset()) {
           <app-notification-bell variant="row" [folded]="rail()" />
@@ -194,10 +203,7 @@
     </nav>
   </mat-sidenav>
 
-  <mat-sidenav-content
-    class="twes-shell-content flex min-h-screen flex-col"
-    [attr.data-window]="windowClass()"
-  >
+  <mat-sidenav-content class="twes-shell-content flex flex-col" [attr.data-window]="windowClass()">
     <!-- On a phone the bar names the company and carries the search, the bell and the member; wider, the rail has
          them all and the bar keeps only the scanning controls, drawn on no board (a departure noted in docs/SPEC.md
          § 7, 2026-09-25 17:22), and is left out when there are none. -->

@@ -2994,6 +2994,20 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   (CI has no copy, so those three cases skip there); the file was never uploaded to tej.finances.gov.tn, so the
   platform's content check is uncertified. Open: **whether the XSD may be vendored** (a licensing question, the
   developer's), whether the demo dataset should show a TEJ month, and a web screen for the code and the download.
+- [2026-09-26 01:11] DECIDED (revisit), CI red on a419072b: **the shell is exactly as tall as the window, and the
+  page scrolls inside its panel.** « Premiers pas » lengthened the home, and the sidenav container (`min-h-full`)
+  grew with it, which pushed the rail's foot (the account menu and the fold toggle) 350 px below the fold.
+  two-factor.spec timed out reaching « Se déconnecter » there. The container is now `h-full`. The rail's groups
+  scroll in their own `.twes-rail-groups`, so the foot stays pinned however many modules are on. The panel is
+  `calc(100% - 1rem)` inside its margins, and its old `min-h-screen` is gone. Sticky elements now stick to the panel,
+  their nearest scroller, and nothing in `web/` read the window's scroll. shell.spec pins it at 1280×500: the foot and
+  the panel end inside the window, and « Se déconnecter » is reachable. That menu is 641 px of content, so Material
+  scrolls its panel. Certified by execution: that test was red for both causes and is now green; 8 spec files (shell,
+  two-factor, global-changes, accessibility, data-list, stock-map, products, settings) pass locally. Stock-map and
+  products timed out once at load average 18 and passed on rerun. Uncertified: the other 34 e2e files, which CI runs.
+  Fixed with it: the five e2e checks that the page does not scroll sideways read only the document, which never
+  overflows now. `e2e/overflow.ts` measures the document and the panel. Proven by a sabotage: with a 3000 px element
+  in the page, the old check said the page fits, and the new one reports 2008 px at 1280 and 2626 px at 390.
 
 ## 8. Status
 

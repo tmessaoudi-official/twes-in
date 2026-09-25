@@ -4,6 +4,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { forgetPresentationChoices } from './presentation';
 import { signIn as signInAsOperator } from './session';
 import { wcagViolations } from './axe';
+import { sidewaysOverflow } from './overflow';
 
 // The design system's quality bar (docs/SPEC.md § 7, 2026-09-13): every screen passes axe's WCAG 2.1 A and AA
 // rules in both colour schemes, the shell works at phone width, and the Content Security Policy is never
@@ -79,7 +80,7 @@ test("at phone width the full navigation is a drawer behind the bottom bar's Plu
   await expect(page.getByTestId('members-title')).toBeVisible();
   // The settings navigation is one row above the page, not a column that pushes it off the screen.
   expect((await page.getByTestId('members-title').boundingBox())?.y ?? Infinity).toBeLessThan(300);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
 
   await expect(page.getByTestId('nav-home')).toBeHidden();
   await page.getByTestId('menu-toggle').click();

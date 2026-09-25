@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './session';
+import { sidewaysOverflow } from './overflow';
 
 // The sidebar's desktop state through the real stack: the [ key turns it into a rail of named icons, the choice is
 // the person's presentation setting and outlives a reload. One database is shared by the whole suite, so the
@@ -61,6 +62,36 @@ test('the [ key collapses the sidebar to a rail of named icons, which outlives a
   }
 });
 
+test('the rail stays as tall as the window, so its foot is on screen however long the page', async ({
+  page,
+}) => {
+  // The shell's container used to grow with its content: a home taller than the window pushed the rail's foot — the
+  // account menu, the fold toggle — below the fold, where only scrolling the whole page reached it (two-factor.spec
+  // timed out on it once « Premiers pas » lengthened the home). The page scrolls inside the content instead.
+  await page.setViewportSize({ width: 1280, height: 500 });
+  await signIn(page);
+  await expect(page.getByTestId('greeting')).toBeVisible();
+  for (const control of ['user-menu', 'sidebar-toggle']) {
+    const box = await page.getByTestId(control).first().boundingBox();
+    expect(box, control).not.toBeNull();
+    expect((box?.y ?? Infinity) + (box?.height ?? 0), `${control} on screen`).toBeLessThanOrEqual(
+      500,
+    );
+  }
+  const panel = await page.locator('mat-sidenav-content').boundingBox();
+  expect(
+    (panel?.y ?? Infinity) + (panel?.height ?? 0),
+    'the page panel ends inside the window',
+  ).toBeLessThanOrEqual(500);
+  // The account menu is taller than a 500 px window: Material caps its panel at the window and scrolls it, so the
+  // last entry is reached inside the window rather than past the page's end.
+  await page.getByTestId('user-menu').first().click();
+  const logout = page.getByTestId('logout');
+  await logout.scrollIntoViewIfNeeded();
+  await expect(logout).toBeInViewport();
+  await page.keyboard.press('Escape');
+});
+
 test('the navigation follows the window: a rail of icons on a tablet, a bottom bar on a phone', async ({
   page,
 }) => {
@@ -78,7 +109,7 @@ test('the navigation follows the window: a rail of icons on a tablet, a bottom b
   await expect(page.getByTestId('bottom-nav-home')).toHaveAttribute('aria-current', 'page');
   const box = await bar.boundingBox();
   expect(box && box.y + box.height).toBeCloseTo(844, 0);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
 });
 
 test('on a phone the settings list stands alone, a setting opens without it, and the way back returns to it', async ({
@@ -104,7 +135,7 @@ test('on a phone the settings list stands alone, a setting opens without it, and
   await page.getByTestId('nav-members').click();
   await expect(page.getByTestId('members-title')).toBeVisible();
   await expect(nav).toBeHidden();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
 
   await page.getByTestId('settings-back').click();
   await expect(page).toHaveURL(/\/company$/);
@@ -155,10 +186,7 @@ test('the rail and the top bar keep every control clear of the next, down to the
         .map((b) => `${a.id} × ${b.id}`),
     );
     expect(overlaps, `${width} px`).toEqual([]);
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-      `${width} px`,
-    ).toBe(true);
+    expect(await sidewaysOverflow(page), `${width} px`).toBeLessThanOrEqual(0);
   }
 });
 
