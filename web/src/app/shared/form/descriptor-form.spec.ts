@@ -31,6 +31,7 @@ const customer: FormDescriptor = {
       title: 'c.billing',
       fields: [
         { id: 'notes', label: 'c.notes', kind: 'textarea' },
+        { id: 'code', label: 'c.code', kind: 'text', pattern: '[A-Z0-9]+', hint: 'c.code_hint' },
         {
           id: 'currency',
           label: 'c.currency',
@@ -81,12 +82,15 @@ class StaticLoader implements TranslateLoader {
         currency: 'Currency',
         tnd: 'Tunisian dinar',
         eur: 'Euro',
+        code: 'Code',
+        code_hint: 'Capital letters and digits.',
       },
       form: {
         optional: 'optional',
         errors: {
           required: 'This field is required.',
           min_length: 'At least {{min}} characters.',
+          pattern: 'This value is not in the expected format.',
         },
       },
     });
@@ -202,6 +206,16 @@ describe('DescriptorForm', () => {
     expect(text('field-error-name')).toBe('At least 2 characters.');
   });
 
+  it('states the rule of a format it refuses, since the hint that stated it is hidden while the error shows (MSG-03)', async () => {
+    type('field-code', 'ab 1');
+    q('field-code')!.dispatchEvent(new Event('blur'));
+    await settle();
+
+    expect(text('field-error-code')).toBe(
+      'This value is not in the expected format. Capital letters and digits.',
+    );
+  });
+
   it('refuses an invalid form: every error shows, the first invalid field takes focus, nothing is emitted', async () => {
     q('save')!.click();
     await settle();
@@ -220,7 +234,7 @@ describe('DescriptorForm', () => {
     await settle();
 
     expect(fixture.componentInstance.saved).toEqual([
-      { name: 'Acme', email: '', terms: 45, notes: '', currency: 'TND' },
+      { name: 'Acme', email: '', terms: 45, notes: '', code: '', currency: 'TND' },
     ]);
   });
 });

@@ -40,6 +40,11 @@ export interface FieldError {
   /** A translation key under `form.errors`. */
   key: string;
   params?: Record<string, number>;
+  /**
+   * The field's hint, a translation key, when the error alone does not state the rule: Material hides the hint while
+   * the error shows, and « not the expected format » says nothing about which one (MSG-03, WCAG 3.3.3).
+   */
+  hint?: string;
 }
 
 export type DescriptorFormGroup = FormGroup<Record<string, FormControl<FieldValue>>>;
@@ -120,7 +125,10 @@ export function fieldError(control: AbstractControl, field: FormField): FieldErr
   if (errors['required']) return { key: 'form.errors.required' };
   if (errors['email']) return { key: 'form.errors.email' };
   if (errors['option']) return { key: 'form.errors.option' };
-  if (errors['pattern']) return { key: 'form.errors.pattern' };
+  if (errors['pattern'])
+    return field.hint
+      ? { key: 'form.errors.pattern', hint: field.hint }
+      : { key: 'form.errors.pattern' };
   if (errors['minlength'])
     return { key: 'form.errors.min_length', params: { min: field.minLength! } };
   if (errors['maxlength'])

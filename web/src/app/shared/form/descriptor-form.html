@@ -198,7 +198,10 @@
                     }
                     @if (errorFor(field); as error) {
                       <mat-error [attr.data-testid]="'field-error-' + field.id">
-                        {{ error.key | translate: error.params }}
+                        {{
+                          (error.key | translate: error.params) +
+                            (error.hint ? ' ' + (error.hint | translate) : '')
+                        }}
                       </mat-error>
                     }
                   </mat-form-field>

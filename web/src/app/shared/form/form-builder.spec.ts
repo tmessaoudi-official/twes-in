@@ -117,6 +117,10 @@ describe('fieldError', () => {
 
   it('matches the pattern against the whole value', () => {
     expect(errorOf(vat, 'fr 12')).toEqual({ key: 'form.errors.pattern' });
+    expect(errorOf({ ...vat, hint: 'c.vat_hint' }, 'fr 12')).toEqual({
+      key: 'form.errors.pattern',
+      hint: 'c.vat_hint',
+    });
     expect(errorOf(vat, 'ok/but lower')).toEqual({ key: 'form.errors.pattern' });
     expect(errorOf(vat, '1234567A/A/M/000')).toBeNull();
   });

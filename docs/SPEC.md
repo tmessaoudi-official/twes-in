@@ -2634,6 +2634,13 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-09-24 22:51] AGREED: a reprint after the first carries « DUPLICATA — réimprimé le jj/mm/aaaa » and the
   up-to-date copy « COPIE — état au … »; « ANNULÉE » on an issued invoice (a credit note corrects it, numbering stays
   continuous) and a PROFORMA document (the quote does its job) stay refused.
+- [2026-09-25 02:47] PROVISIONAL — to confirm (overnight, audit MSG-03): **a format error states the rule its field's hint
+  states**. Material hides a field's hint while its error shows, so « Cette valeur n’a pas le format attendu. » was all
+  that remained; the error now reads the generic sentence followed by the field's own hint (« … Lettres, chiffres et . _
+  / -, 32 caractères au plus. »). Chosen over the audit's per-validator message keys because it needs no new wording
+  and covers every hinted field at once. The 27 patterned fields that declare no hint (the preset's identifiers, IBAN,
+  BIC, the numbering format among them) still show the generic sentence: each needs its rule written, which is wording
+  for you to rule.
 
 ## 8. Status
 
