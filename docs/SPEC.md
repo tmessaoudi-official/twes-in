@@ -2978,6 +2978,22 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   (`customer.write`, not `customer.read`) while its module is on. No « Masquer »: the panel goes when the steps are
   done, and a member who may do none sees none; a dismissal waits for a real complaint. The contextual suggestions
   half of row 139 is not built.
+- [2026-09-26 00:22] DECIDED (revisit): **the TEJ file, as the first builder built it** (row 144, commits `bac2ed0b`…`d554d62c`;
+  the builder's full report is `var/claude/builders/tej.md`, local). An expense paid with a withholding carries its
+  TEJ operation code (the 47 codes and labels carried verbatim from `TEJRSCodesOperations_v1.0.xsd`, typos included —
+  the administration's text), given at payment or later through `POST …/expenses/{id}/withholding-operation`, refused
+  outside the TN preset and never guessed from the rate. `GET /companies/{id}/withholding-declarations/tej/{YYYY}-{MM}`
+  (read with `expense.read`) answers the month's `DeclarationsRS` file, named `[matricule]-[YYYY]-[MM]-0.xml`: one
+  certificate per paid expense, its reference the expense's id so a later rectifying file can name it; every amount
+  in millimes; `Resident=1`, `CNPC=0`, `P_Charge=0` always; `TauxTVA` and `MontantTVA` always written; the invoicing
+  year is the expense's own date. The whole month is refused (422 `incomplete_expenses`, each payment with its
+  problems) rather than written partly, since the initial filing happens once; an empty month is refused too. A
+  vendor's address, email (to the XSD's pattern) and phone are required, as the XSD and the cahier require them;
+  PM or PP is read from the matricule's category letter (M → PM; P and C → PP; any other is reported, never
+  guessed). Certified: the XML validates against the official XSD with its one malformed line removed, locally only
+  (CI has no copy, so those three cases skip there); the file was never uploaded to tej.finances.gov.tn, so the
+  platform's content check is uncertified. Open: **whether the XSD may be vendored** (a licensing question, the
+  developer's), whether the demo dataset should show a TEJ month, and a web screen for the code and the download.
 
 ## 8. Status
 
@@ -3129,7 +3145,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 141 | Till hardware, France (§ 7 2026-09-25 22:16): a `ReceiptPrinter` port, ePOS-Print XML to a network printer, the drawer kick, Chrome/Edge only; a card terminal through a cloud provider later | M | todo | - | web/src/app/** api/src/** |
 | 142 | The editor's attestation, France (§ 7 2026-09-25 22:16): the fiscal core versioned apart, the BOI-LETTRE-000242 attestation delivered in the product, its wording read by a lawyer; after row 103 | S | todo | - | docs/** |
 | 143 | Tunisia till accreditation (§ 7 2026-09-25 22:16): lawyer or expert-comptable, the cahier des charges read, an accredited partner or our own accreditation — the developer's task | M | blocked | - | docs/fiscal/TN.md |
-| 144 | Tax data without a partner (§ 7 2026-09-25 22:16): TEJ withholding certificates XML, the four French mentions, payments split by VAT rate, CA3 and Tunisian monthly worksheets | L | todo | - | api/src/** web/src/app/** |
+| 144 | Tax data without a partner (§ 7 2026-09-25 22:16): TEJ withholding certificates XML, the four French mentions, payments split by VAT rate, CA3 and Tunisian monthly worksheets | L | doing | - | api/src/** web/src/app/** |
 | 145 | E-invoicing files (§ 7 2026-09-25 22:16): Factur-X and UBL (EN 16931), TEIF 1.8.8 signed; then a plateforme agréée before 2027-09-01 and TTN (row 102) | L | todo | - | api/src/** |
 <!-- /progress-block -->
 
