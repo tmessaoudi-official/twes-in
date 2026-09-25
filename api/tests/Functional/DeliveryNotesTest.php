@@ -382,6 +382,35 @@ final class DeliveryNotesTest extends ApiTestCase
         ], ...$changes];
     }
 
+    public function testAPageOfTheListCostsTheSameStatementsWhateverTheRowsItHolds(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        // A product per note, so the identity map cannot hide a read per row; made before the first request, which
+        // reboots the kernel and leaves the company detached.
+        $products = [];
+        foreach (range(1, 6) as $n) {
+            $product = Product::create($this->company, 'ART-1'.$n, new ProductDetails('Article '.$n, null, ProductKind::Goods, '100'), $this->unit('C62'), null, [$this->tax('TVA19')->getId()], new \DateTimeImmutable());
+            $this->em()->persist($product);
+            $products[$n] = $product->getId()->toRfc4122();
+        }
+        $this->em()->flush();
+        foreach ($products as $n => $productId) {
+            $this->postJson($this->path(), $this->note(['lines' => [['productId' => $productId, 'quantity' => '2'], ['productId' => $this->productId, 'quantity' => '1']]]));
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            if ($n > 3) {
+                $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/validate', null);
+                self::assertResponseStatusCodeSame(Response::HTTP_OK);
+            }
+        }
+        $this->em()->clear();
+
+        $statements = [1 => $this->statementsForAPageOf($this->path(), 1), 6 => $this->statementsForAPageOf($this->path(), 6)];
+
+        self::assertSame($statements[1], $statements[6], 'six rows cost what one does (audit PF-07)');
+        // Measured 11 on 2026-09-25 (15 for one row, 35 for six before), the session and the company's checks included.
+        self::assertLessThanOrEqual(11, $statements[6]);
+    }
+
     /** A draft delivering one unit of the product; its id. */
     private function draftWithALine(): string
     {

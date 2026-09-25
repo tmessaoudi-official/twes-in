@@ -19,11 +19,13 @@ use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Permission;
 use App\Tenancy\Domain\Role;
+use Doctrine\Bundle\DoctrineBundle\DataCollector\DoctrineDataCollector;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Profiler\Profile;
 
 /**
  * Functional tests talk to the API the way the SPA does: JSON bodies, a random csrf-token header on every
@@ -169,6 +171,24 @@ abstract class ApiTestCase extends WebTestCase
         }
 
         return $out;
+    }
+
+    /**
+     * The statements one page of a list costs, asked for this many rows, which the page must hold (audit PF-07). A list
+     * that reads a relation per row costs more for more rows; one that reads each relation once for the page does not.
+     */
+    protected function statementsForAPageOf(string $path, int $rows): int
+    {
+        $this->client->enableProfiler();
+        $this->getJson($path.(str_contains($path, '?') ? '&' : '?').'itemsPerPage='.$rows);
+        self::assertResponseIsSuccessful();
+        self::assertCount($rows, $this->jsonList());
+        $profile = $this->client->getProfile();
+        self::assertInstanceOf(Profile::class, $profile, 'the profiler recorded the request');
+        $collector = $profile->getCollector('db');
+        self::assertInstanceOf(DoctrineDataCollector::class, $collector);
+
+        return $collector->getQueryCount();
     }
 
     /** An invitation and its acceptance resolve a role through RoleRepository::builtIn, which only ever returns a company-less role. */

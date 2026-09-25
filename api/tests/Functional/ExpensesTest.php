@@ -198,6 +198,29 @@ final class ExpensesTest extends ApiTestCase
         self::assertSame(['expense.created', 'expense.revised', 'expense.recorded', 'expense.paid'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense' ORDER BY at, id"));
     }
 
+    public function testAPageOfTheListCostsTheSameStatementsWhateverTheRowsItHolds(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        foreach (range(1, 6) as $n) {
+            $this->postJson($this->path(), $this->expense(['reference' => 'F-2026-10'.$n]));
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            if (0 === $n % 2) {
+                $this->uploadFile($this->path($this->stringAt($this->json(), 'id')).'/attachments', 'recu.pdf', AttachmentsTest::PDF);
+                self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            }
+        }
+        $this->em()->clear();
+
+        $statements = [1 => $this->statementsForAPageOf($this->path(), 1), 6 => $this->statementsForAPageOf($this->path(), 6)];
+
+        self::assertSame($statements[1], $statements[6], 'six rows cost what one does (audit PF-07)');
+        // Measured 11 on 2026-09-25 (16 for six rows before), the session and the company's checks included.
+        self::assertLessThanOrEqual(11, $statements[6]);
+        $counts = array_column($this->jsonList(), 'attachmentCount', 'reference');
+        ksort($counts);
+        self::assertSame(['F-2026-101' => 0, 'F-2026-102' => 1, 'F-2026-103' => 0, 'F-2026-104' => 1, 'F-2026-105' => 0, 'F-2026-106' => 1], $counts, 'each row still counts its own');
+    }
+
     public function testAReceiptIsAttachedByItsBytesListedDownloadedAndDetachedWhileTheExpenseIsADraft(): void
     {
         $this->signedIn(['expense.read', 'expense.write']);

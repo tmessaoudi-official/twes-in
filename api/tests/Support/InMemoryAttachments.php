@@ -26,6 +26,16 @@ final class InMemoryAttachments implements AttachmentRepository
         ));
     }
 
+    public function countsOfEntities(Uuid $companyId, string $entityType, array $entityIds): array
+    {
+        $counts = [];
+        foreach ($entityIds as $entityId) {
+            $counts[$entityId->toRfc4122()] = \count($this->ofEntity($companyId, $entityType, $entityId));
+        }
+
+        return $counts;
+    }
+
     public function save(Attachment $attachment): void
     {
         if (!\in_array($attachment, $this->attachments, true)) {

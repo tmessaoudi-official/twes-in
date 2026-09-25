@@ -52,9 +52,12 @@ final readonly class ExpenseCollectionProvider implements ProviderInterface
             Paging::order($operation, ExpenseSearch::SORTS),
         );
 
+        $page = $this->manage->search($company, $search, $this->paging->request($operation, $context));
+        $attached = $this->manage->attachmentCounts($company, $page->items);
+
         return $this->paging->paginator(
-            $this->manage->search($company, $search, $this->paging->request($operation, $context)),
-            fn (Expense $expense) => ExpenseResource::of($expense, $scale, $this->manage->attachmentCount($expense)),
+            $page,
+            static fn (Expense $expense) => ExpenseResource::of($expense, $scale, $attached[$expense->getId()->toRfc4122()] ?? 0),
         );
     }
 

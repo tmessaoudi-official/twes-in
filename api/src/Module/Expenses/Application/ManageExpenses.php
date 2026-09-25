@@ -186,6 +186,18 @@ final readonly class ManageExpenses
     }
 
     /**
+     * Each expense's attachment count, read once for a whole list page (audit PF-07).
+     *
+     * @param list<Expense> $expenses
+     *
+     * @return array<string, int> by expense id (RFC 4122)
+     */
+    public function attachmentCounts(Company $company, array $expenses): array
+    {
+        return $this->attachments->countsOf($company, self::ENTITY_TYPE, array_map(static fn (Expense $expense): Uuid => $expense->getId(), $expenses));
+    }
+
+    /**
      * @throws ExpenseNotFound
      * @throws AttachmentRefused
      */

@@ -63,6 +63,16 @@ final readonly class Attachments
         return $this->attachments->ofEntity($company->getId(), $entityType, $entityId);
     }
 
+    /**
+     * @param list<Uuid> $entityIds
+     *
+     * @return array<string, int> each subject's attachment count, by id (RFC 4122)
+     */
+    public function countsOf(Company $company, string $entityType, array $entityIds): array
+    {
+        return $this->attachments->countsOfEntities($company->getId(), $entityType, $entityIds);
+    }
+
     public function find(Company $company, string $entityType, Uuid $entityId, Uuid $id): ?Attachment
     {
         foreach ($this->of($company, $entityType, $entityId) as $attachment) {

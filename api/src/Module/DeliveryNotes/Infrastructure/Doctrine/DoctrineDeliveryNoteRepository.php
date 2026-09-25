@@ -73,8 +73,27 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
         $paginator = new Paginator($query, fetchJoinCollection: false);
         /** @var list<DeliveryNote> $notes */
         $notes = iterator_to_array($paginator, false);
+        $this->loadWhatARowShows($notes);
 
         return new Page($notes, \count($paginator), $page);
+    }
+
+    /**
+     * A row answers its lines with their taxes, units and products. Read in one statement for the whole page, they cost
+     * the same for 1 row or 100, where walking them row by row cost 35 statements for 6 rows (Doctrine, "Improving
+     * performance": fetch joins; audit PF-07). The query only fills collections of notes already in memory.
+     *
+     * @param list<DeliveryNote> $notes
+     */
+    private function loadWhatARowShows(array $notes): void
+    {
+        if ([] === $notes) {
+            return;
+        }
+        $this->entityManager
+            ->createQuery('SELECT n, l, lt, u, p FROM '.DeliveryNote::class.' n LEFT JOIN n.lines l LEFT JOIN l.taxes lt LEFT JOIN l.unit u LEFT JOIN l.product p WHERE n.id IN (:ids)')
+            ->setParameter('ids', array_map(static fn (DeliveryNote $note): string => $note->getId()->toRfc4122(), $notes), ArrayParameterType::STRING)
+            ->getResult();
     }
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?DeliveryNote

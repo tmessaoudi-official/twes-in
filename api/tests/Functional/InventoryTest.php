@@ -330,6 +330,34 @@ final class InventoryTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
+    public function testAPageOfMovementsCostsTheSameStatementsWhateverTheRowsItHolds(): void
+    {
+        // A product per movement, so the identity map cannot hide a read per row; made before the first request, which
+        // reboots the kernel and leaves the company detached.
+        $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($piece);
+        $products = [];
+        foreach (range(1, 6) as $n) {
+            $product = Product::create($this->company, 'ART-10'.$n, new ProductDetails('Article '.$n, null, ProductKind::Goods, '10'), $piece, null, [], new \DateTimeImmutable());
+            $this->em()->persist($product);
+            $products[] = $product->getId()->toRfc4122();
+        }
+        $this->em()->flush();
+        $this->signedIn(['stock.read', 'stock.write']);
+        $siteId = $this->defaultLocationId();
+        foreach ($products as $productId) {
+            $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $productId, 'locationId' => $siteId, 'quantity' => '3']);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        }
+        $this->em()->clear();
+
+        $statements = [1 => $this->statementsForAPageOf($this->path('stock-movements'), 1), 6 => $this->statementsForAPageOf($this->path('stock-movements'), 6)];
+
+        self::assertSame($statements[1], $statements[6], 'six rows cost what one does (audit PF-07)');
+        // Measured 11 on 2026-09-25 (18 for six rows before), the session and the company's checks included.
+        self::assertLessThanOrEqual(11, $statements[6]);
+    }
+
     public function testTrackingIsChosenBeforeTheFirstMovementAndKeptAfterIt(): void
     {
         $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);

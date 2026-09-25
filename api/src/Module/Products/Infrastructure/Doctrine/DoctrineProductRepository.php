@@ -20,6 +20,7 @@ use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\Pagination\Paginator;
@@ -64,8 +65,27 @@ final readonly class DoctrineProductRepository implements ProductRepository
         $paginator = new Paginator($query, fetchJoinCollection: false);
         /** @var list<Product> $products */
         $products = iterator_to_array($paginator, false);
+        $this->loadWhatARowShows($products);
 
         return new Page($products, \count($paginator), $page);
+    }
+
+    /**
+     * A row answers its unit and its codes. Read in one statement for the whole page, they cost the same for 1 row or
+     * 100, where walking them row by row cost 17 statements for 6 rows (Doctrine, "Improving performance": fetch joins;
+     * audit PF-07). The query only fills products already in memory.
+     *
+     * @param list<Product> $products
+     */
+    private function loadWhatARowShows(array $products): void
+    {
+        if ([] === $products) {
+            return;
+        }
+        $this->entityManager
+            ->createQuery('SELECT p, u, b FROM '.Product::class.' p JOIN p.unit u LEFT JOIN p.barcodes b WHERE p.id IN (:ids)')
+            ->setParameter('ids', array_map(static fn (Product $product): string => $product->getId()->toRfc4122(), $products), ArrayParameterType::STRING)
+            ->getResult();
     }
 
     public function pick(Uuid $companyId, string $words, int $limit, ?ProductKind $kind = null): array

@@ -697,18 +697,7 @@ final class InvoicesTest extends ApiTestCase
         }
         $this->em()->clear();
 
-        $statements = [];
-        foreach ([1, 6] as $rows) {
-            $this->client->enableProfiler();
-            $this->getJson($this->path().'?itemsPerPage='.$rows);
-            self::assertResponseIsSuccessful();
-            self::assertCount($rows, $this->jsonList());
-            $profile = $this->client->getProfile();
-            self::assertInstanceOf(\Symfony\Component\HttpKernel\Profiler\Profile::class, $profile, 'the profiler recorded the request');
-            $collector = $profile->getCollector('db');
-            self::assertInstanceOf(\Doctrine\Bundle\DoctrineBundle\DataCollector\DoctrineDataCollector::class, $collector);
-            $statements[$rows] = $collector->getQueryCount();
-        }
+        $statements = [1 => $this->statementsForAPageOf($this->path(), 1), 6 => $this->statementsForAPageOf($this->path(), 6)];
 
         self::assertSame($statements[1], $statements[6], 'six rows cost what one does');
         // Measured 13 on 2026-09-24, the session and the company's checks included; the page itself is its count, its

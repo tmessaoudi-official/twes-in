@@ -227,6 +227,24 @@ final class ProductsTest extends ApiTestCase
         return $this->stringAt($this->json(), 'id');
     }
 
+    public function testAPageOfTheListCostsTheSameStatementsWhateverTheRowsItHolds(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        // Each its own unit and codes, so the identity map cannot hide a read per row.
+        foreach (['C62', 'H87', 'HUR', 'DAY', 'KGM', 'MTR'] as $n => $unit) {
+            $id = $this->created($this->product(['reference' => 'ART-10'.$n, 'unitId' => $this->unitId($unit)]));
+            $this->sendJson('PUT', $this->path($id).'/barcodes', ['barcodes' => [['role' => 'unit', 'code' => 'CODE-'.$n, 'quantity' => 1]]]);
+            self::assertResponseIsSuccessful();
+        }
+        $this->em()->clear();
+
+        $statements = [1 => $this->statementsForAPageOf($this->path(), 1), 6 => $this->statementsForAPageOf($this->path(), 6)];
+
+        self::assertSame($statements[1], $statements[6], 'six rows cost what one does (audit PF-07)');
+        // Measured 12 on 2026-09-25 (17 for six rows before), the session and the company's checks included.
+        self::assertLessThanOrEqual(12, $statements[6]);
+    }
+
     public function testARevisionIsAuditedWithTheNamesOfTheFieldsItChanged(): void
     {
         $this->signedIn(['product.read', 'product.write']);

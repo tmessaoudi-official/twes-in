@@ -61,11 +61,11 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
 
     public function searchMovements(Uuid $companyId, StockMovementSearch $search, PageRequest $page): Page
     {
-        // The product and the location are joined whatever the search asks: every row names both, so this is the read
-        // the list needs anyway rather than a join the filters added.
+        // The product, the location and the lot are joined and SELECTED whatever the search asks: every row names them,
+        // and joined without being selected each row read them again, 18 statements for 6 rows (audit PF-07).
         $query = $this->entityManager->createQueryBuilder()
-            ->select('m')->from(StockMovement::class, 'm')
-            ->join('m.product', 'p')->join('m.location', 'l')
+            ->select('m', 'p', 'l', 'lt')->from(StockMovement::class, 'm')
+            ->join('m.product', 'p')->join('m.location', 'l')->leftJoin('m.lot', 'lt')
             ->where('m.company = :company')->setParameter('company', $companyId, 'uuid');
         if (null !== $search->product) {
             $query->andWhere('m.product = :product')->setParameter('product', $search->product, 'uuid');
