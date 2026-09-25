@@ -31,8 +31,20 @@
         spellcheck="false"
         data-testid="product-barcode-scan"
         #scan
+        (input)="pending.set(scan.value)"
         (keydown.enter)="$event.preventDefault(); add(scan)"
       />
+      <button
+        mat-button
+        matSuffix
+        type="button"
+        class="!mr-2"
+        data-testid="product-barcode-add"
+        [disabled]="pending().trim() === ''"
+        (click)="add(scan)"
+      >
+        {{ 'products.barcodes.add' | translate }}
+      </button>
       <mat-hint>{{ 'products.barcodes.scan_hint' | translate }}</mat-hint>
     </mat-form-field>
 
@@ -164,7 +176,7 @@
         type="button"
         data-testid="product-barcodes-save"
         [disabled]="!savable()"
-        (click)="save()"
+        (click)="save(scan)"
       >
         {{ 'form.save' | translate }}
       </button>

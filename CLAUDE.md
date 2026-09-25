@@ -177,6 +177,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - A template binding `[value]="fn(line)"` that builds a new object hands the child a new input on EVERY check, and a
   child effect over that input re-fires each time: `PickField` reset the text being typed on every keystroke. Compare
   a structured input by its content (`computed` with `equal`) before acting on it (2026-09-23).
+- A `linkedSignal`'s `source` function is re-run, and its `computation` with it, whenever a signal it READS changes,
+  even when the value it returns is the same: `() => \`${tab}|${product() != null}\`` reset an opened tab on every save.
+  Give it a `computed` as its source, which only notifies when the value changes (2026-09-25, `ProductPage.tabKey`).
 - A field added to a shared type, or a column added to a list, reaches specs and e2e you did not open: an API spec's
   `toEqual` on the whole mapped row, and an e2e reading a cell by position (`nth(3)`). Run the whole web unit suite
   before committing such a change, and read list cells by `[data-column="<id>"]`, never by index (2026-09-23: two reds).

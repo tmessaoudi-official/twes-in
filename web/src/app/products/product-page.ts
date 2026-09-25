@@ -93,10 +93,13 @@ export class ProductPage {
   });
   /**
    * The tab on view. It starts on the one the address names once that tab exists — the codes tab only appears when
-   * the product has been read — and a reload of the same product leaves the person's own choice alone.
+   * the product has been read — and a reload of the same product leaves the person's own choice alone. The key is a
+   * `computed` of its own: a linkedSignal reruns whenever what its source READS changes, not when what it returns
+   * does, so a save answering with the product anew snapped an opened tab back to the record (CI e1b629d5).
    */
+  private readonly tabKey = computed(() => `${this.tab() ?? ''}|${this.current() != null}`);
   protected readonly selectedTab = linkedSignal<string, number>({
-    source: () => `${this.tab() ?? ''}|${this.current() != null}`,
+    source: this.tabKey,
     computation: (key: string) => (key === 'codes|true' ? 1 : 0),
   });
   protected readonly descriptor = computed(() => {

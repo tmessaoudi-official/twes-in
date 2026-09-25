@@ -313,6 +313,36 @@ describe('ProductPage', () => {
     expect(q('article-defaults')).not.toBeNull();
   });
 
+  // CI e1b629d5: the defaults tab opened while a save was still on its way snapped back to the record when it answered.
+  it('keeps the tab opened while a save was on its way when the save answers', async () => {
+    product.set(laptop);
+    await open('p1');
+    let answer!: (row: ProductRow) => void;
+    facade.reviseProduct.mockImplementation(
+      () =>
+        new Promise<ProductRow>((resolve) => {
+          answer = (row) => {
+            product.set(row);
+            resolve(row);
+          };
+        }),
+    );
+
+    type('field-unitPriceNet', '1300');
+    await settle();
+    q('record-save')!.click();
+    fixture.detectChanges();
+    await openTab('products.tabs.defaults');
+    answer({ ...laptop, unitPriceNet: '1300.0000' });
+    await settle();
+
+    const selected = fixture.nativeElement.querySelector(
+      '[role="tab"][aria-selected="true"]',
+    ) as HTMLElement;
+    expect(selected.textContent).toContain('products.tabs.defaults');
+    expect(q('article-defaults')).not.toBeNull();
+  });
+
   /**
    * Where the product lives is its own tab, offered only for a product that exists and only to somebody who may
    * both write products and see the warehouse (docs/SPEC.md row 101): choosing a home means reading a list of

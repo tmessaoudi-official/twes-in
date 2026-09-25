@@ -122,6 +122,48 @@ describe('ProductBarcodesSection', () => {
     expect(successToasts()).toContain('products.barcodes.saved');
   });
 
+  // Developer, 2026-09-25: a code typed by hand left « Enregistrer » greyed with nothing saying Enter adds it.
+  it('offers « Ajouter » once a code is typed, and adds it as Enter does', async () => {
+    await open();
+    const add = q('product-barcode-add') as HTMLButtonElement;
+    expect(add.disabled).toBe(true);
+
+    const field = q('product-barcode-scan') as HTMLInputElement;
+    field.value = '10012345678902';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(add.disabled).toBe(false);
+
+    add.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(codes()).toEqual(['3017620422003', '10012345678902']);
+    expect(field.value).toBe('');
+    expect(add.disabled).toBe(true);
+  });
+
+  it('saves a typed code not yet added with the rest, rather than greying « Enregistrer »', async () => {
+    await open();
+    const field = q('product-barcode-scan') as HTMLInputElement;
+    field.value = '10012345678902';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const save = q('product-barcodes-save') as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    save.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(facade.save).toHaveBeenCalledWith('c1', 'p1', [
+      unit,
+      { role: 'internal', code: '10012345678902', quantity: 1, supplierId: null },
+    ]);
+    expect(field.value).toBe('');
+  });
+
   it('says a code is already in the list rather than adding it twice', async () => {
     await open();
 

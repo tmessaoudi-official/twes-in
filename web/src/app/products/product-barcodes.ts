@@ -64,6 +64,8 @@ export class ProductBarcodesSection implements OnInit {
   protected readonly busy = this.facade.busy;
   protected readonly suppliers = this.facade.suppliers;
   protected readonly maxQuantity = BARCODE_QUANTITY_MAX;
+  /** What the scan field holds, not yet a row: « Ajouter » and « Enregistrer » both take it. */
+  protected readonly pending = signal('');
   /** The row a scan found already listed, pointed at instead of added twice. */
   protected readonly duplicate = signal<number | null>(null);
 
@@ -94,7 +96,10 @@ export class ProductBarcodesSection implements OnInit {
   protected readonly problems = computed(() => this.rows().map(rowProblem));
   protected readonly changed = computed(() => !sameCodes(this.rows(), this.saved()));
   protected readonly savable = computed(
-    () => this.changed() && !this.busy() && this.problems().every((problem) => problem === null),
+    () =>
+      (this.changed() || this.pending().trim() !== '') &&
+      !this.busy() &&
+      this.problems().every((problem) => problem === null),
   );
   /** The API's refusal, under the row it named. */
   protected readonly refusal = this.facade.refusal;
@@ -125,6 +130,7 @@ export class ProductBarcodesSection implements OnInit {
     this.duplicate.set(duplicate);
     this.rows.set(rows);
     field.value = '';
+    this.pending.set('');
     this.facade.forget();
   }
 
@@ -156,9 +162,17 @@ export class ProductBarcodesSection implements OnInit {
     this.facade.forget();
   }
 
-  protected async save(): Promise<void> {
+  /**
+   * A code typed and not yet added is part of what is saved (developer, 2026-09-25: « Enregistrer » stayed greyed over
+   * a typed code and only Enter, pressed by chance, added it). A row it makes that is wrong stops the save under it.
+   */
+  protected async save(field: HTMLInputElement): Promise<void> {
     const companyId = this.companyId();
     if (companyId === null || !this.savable()) return;
+    if (field.value.trim() !== '') {
+      this.add(field);
+      if (!this.savable()) return;
+    }
     if (await this.facade.save(companyId, this.productId(), this.rows())) {
       this.feedback.success('products.barcodes.saved');
     }

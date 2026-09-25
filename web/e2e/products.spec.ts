@@ -104,7 +104,14 @@ test('a product is filed in a category, priced at the currency scale and revised
     expect(await wcagViolations(page)).toEqual([]);
 
     await page.getByTestId('field-unitPriceNet').fill('135');
+    // The creation's toast may still be showing, so the revision is known saved by its own answer, not by a toast.
+    const revised = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PUT' &&
+        /\/products\/[0-9a-f-]{36}$/.test(new URL(response.url()).pathname),
+    );
     await page.getByTestId('record-save').click();
+    expect((await revised).ok()).toBe(true);
     await expect(toast(page)).toContainText('Le produit a été enregistré.');
 
     // The record splits into tabs (design review finding 4): what the category set is one click away.

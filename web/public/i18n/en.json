@@ -1409,8 +1409,9 @@
     "barcodes": {
       "intro": "The codes a scanner reads for this article: its unit code, packs that count several at once, its supplier’s carton code, a code you printed. A code belongs to one article of the company only.",
       "none": "No code yet.",
-      "scan": "Scan or type a code, then Enter",
-      "scan_hint": "A scanner types the code and Enter by itself: scan the codes one after another.",
+      "scan": "Scan or type a code",
+      "scan_hint": "Enter or “Add” puts it in the list, then “Save”. A scanner types the code and Enter by itself.",
+      "add": "Add",
       "code": "Code",
       "role": "Role",
       "quantity": "Quantity per scan",

@@ -1409,8 +1409,9 @@
     "barcodes": {
       "intro": "Les codes que la douchette lit pour cet article : son code à l’unité, les colis qui en comptent plusieurs d’un coup, le code du carton de son fournisseur, un code que vous avez imprimé. Un code n’appartient qu’à un seul article de l’entreprise.",
       "none": "Aucun code pour l’instant.",
-      "scan": "Scannez ou tapez un code, puis Entrée",
-      "scan_hint": "La douchette tape le code et Entrée d’elle-même : scannez les codes l’un après l’autre.",
+      "scan": "Scannez ou tapez un code",
+      "scan_hint": "Entrée ou « Ajouter » le met dans la liste, puis « Enregistrer ». Une douchette tape le code et Entrée d’elle-même.",
+      "add": "Ajouter",
       "code": "Code",
       "role": "Rôle",
       "quantity": "Quantité par lecture",

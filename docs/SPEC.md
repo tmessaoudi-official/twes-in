@@ -2764,6 +2764,10 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   meaning a sign-in reopens the company the person last worked in; on, it always opens the company pinned. A company
   the person no longer belongs to falls back to the last used, then to the only one; with one company nothing changes.
   A sign-in never lands on « aucune entreprise » while the person belongs to one.
+- [2026-09-25 10:13] AGREED: **a scan on a product page offers the code to that product.** A code no product holds opens
+  the scan card with « Ajouter à <référence> » first, which opens the product's Codes-barres tab with the code listed and
+  nothing saved until « Enregistrer », so a carton's quantity can be set; a paired phone's card offers the same. A code
+  another product holds is never moved: the card names its holder and offers to open it.
 
 ## 8. Status
 
