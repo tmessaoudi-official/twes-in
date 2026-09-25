@@ -135,6 +135,7 @@ export function movementSearch(query: ListQuery): StockMovementSearch {
     locationId: null,
     kind: isMovementKind(kind) ? kind : null,
     sourceType: isSourceType(sourceType) ? sourceType : null,
+    lot: null,
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };
@@ -251,6 +252,12 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
       value: (row) => row.locationLabel,
       sortable: true,
       filterable: true,
+    },
+    {
+      id: 'lot',
+      label: `${STOCK_FIELDS}.lot`,
+      value: (row) => row.lotCode ?? '',
+      width: 140,
     },
     {
       id: 'kind',

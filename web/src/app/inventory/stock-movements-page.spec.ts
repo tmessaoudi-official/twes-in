@@ -5,7 +5,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -13,6 +13,10 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { ProductScans } from '../products/product-scans';
+import type { ProductScan } from '../products/products-types';
+import { ScanBus } from '../shared/scan/scan-bus';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -36,6 +40,7 @@ class StaticLoader implements TranslateLoader {
       inventory: {
         movement_kinds: { out: 'Sortie' },
         sources: { delivery_note: 'Bon de livraison' },
+        movements: { of_lot: 'Mouvements du lot {{code}}.' },
       },
     });
   }
@@ -71,6 +76,7 @@ const delivered: StockMovementRow = {
   quantity: '-3.000',
   sourceType: 'delivery_note',
   sourceId: 'n1',
+  lotCode: 'L-2408',
   recordedBy: null,
   at: '2026-09-15T09:00:00+00:00',
 };
@@ -88,6 +94,7 @@ describe('StockMovementsPage', () => {
     reloadMovements: vi.fn(),
     loadLocations: vi.fn(),
   };
+  const productScans = { named: vi.fn() };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: () => true,
@@ -121,6 +128,8 @@ describe('StockMovementsPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: InventoryFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
+        { provide: ProductScans, useValue: productScans },
+        ...provideQuietFeedback(),
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -157,6 +166,7 @@ describe('StockMovementsPage', () => {
       locationId: null,
       kind: null,
       sourceType: null,
+      lot: null,
       order: { key: 'movedAt', direction: 'desc' },
     });
     expect(q('stock-movements-all')).toBeNull();
@@ -166,6 +176,62 @@ describe('StockMovementsPage', () => {
     expect(facade.loadMovements).toHaveBeenLastCalledWith(
       'c1',
       expect.objectContaining({ productId: 'p1', page: 1 }),
+    );
+  });
+
+  it('names the lot a row moved', async () => {
+    await settle();
+
+    expect(q('stock-movement-m1')?.textContent).toContain('L-2408');
+  });
+
+  it('narrows to the lot or serial number the address names, says so, and offers the whole history back (row 63 slice 10)', async () => {
+    fixture.componentRef.setInput('lot', 'L-2408');
+    await settle();
+
+    expect(facade.loadMovements).toHaveBeenLastCalledWith(
+      'c1',
+      expect.objectContaining({ lot: 'L-2408', productId: null }),
+    );
+    expect(q('stock-movements-of-lot')?.textContent).toContain('Mouvements du lot L-2408.');
+    expect(q('stock-movements-all')?.getAttribute('href')).toBe('/stock/movements');
+  });
+
+  it('opens the movements of a lot typed into the search, trimmed', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await settle();
+
+    const field = q('stock-movements-lot-search') as HTMLInputElement;
+    field.value = '  L-2408 ';
+    field.dispatchEvent(new Event('input'));
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+
+    expect(navigate).toHaveBeenCalledWith(['/stock/movements'], { queryParams: { lot: 'L-2408' } });
+  });
+
+  it('opens the movements of the lot or serial number a scanned label carries, and leaves any other code to the card', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await settle();
+    const scan = (lot: string | null, serial: string | null): ProductScan =>
+      ({
+        productId: 'p1',
+        name: 'Peinture',
+        isActive: true,
+        lot,
+        serial,
+        useBy: null,
+      }) as ProductScan;
+
+    productScans.named.mockResolvedValueOnce(scan(null, 'SN-0001'));
+    const outcome = await TestBed.inject(ScanBus).receive('(01)06194000123456(21)SN-0001', 'wedge');
+    expect(navigate).toHaveBeenCalledWith(['/stock/movements'], {
+      queryParams: { lot: 'SN-0001' },
+    });
+    expect(outcome.kind).toBe('done');
+
+    productScans.named.mockResolvedValueOnce(scan(null, null));
+    expect((await TestBed.inject(ScanBus).receive('6194000123456', 'wedge')).kind).toBe(
+      'unclaimed',
     );
   });
 

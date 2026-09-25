@@ -46,6 +46,7 @@ final readonly class StockMovementCollectionProvider implements ProviderInterfac
             StockMovementKind::tryFrom((string) Paging::text($operation, 'kind')),
             Paging::text($operation, 'sourceType'),
             Paging::order($operation, StockMovementSearch::SORTS),
+            Paging::text($operation, 'lot'),
         );
 
         return $this->paging->paginator(

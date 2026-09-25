@@ -2641,6 +2641,16 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   and covers every hinted field at once. The 19 patterned form fields that declare no hint (the preset's identifiers, IBAN,
   BIC, the numbering format among them) still show the generic sentence: each needs its rule written, which is wording
   for you to rule.
+- [2026-09-25 03:13] PROVISIONAL — to confirm (overnight, row 63 slice 10): **the lot and serial recall search is a
+  filter of the movements list, not a screen of its own.** « Mouvements de stock » gains a « Lot ou numéro de série »
+  field and a Lot column; Entrée, or a GS1 label scanned on that page, opens `/stock/movements?lot=<code>`, every
+  movement of that code across the company's products, matched whole and whatever its case, with its location, date and
+  the kind of document that moved it (the Origine column). It does NOT yet name which delivery note or which customer:
+  that is a read across the Inventory and delivery-notes modules, left for you to rule (a note number and customer
+  column, or a link per row). Two limits, by design until row 108: a delivery note's lot is the
+  one FEFO picked, not the one handed over, and an invoice with no delivery note moves no stock, so leaves no trace.
+  Slice 9 (QR codes on our own documents) was skipped: printed output whose content, placement and documents are not
+  ruled.
 
 ## 8. Status
 

@@ -36,6 +36,8 @@ final readonly class StockMovementSearch
         public ?StockMovementKind $kind = null,
         public ?string $sourceType = null,
         public array $order = [],
+        /** A lot or serial code, matched whole and whatever its case: where a recall starts (row 63 slice 10). */
+        public ?string $lot = null,
     ) {
     }
 }

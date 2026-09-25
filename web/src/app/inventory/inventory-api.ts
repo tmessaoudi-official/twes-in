@@ -464,6 +464,8 @@ function toMovementParams(search: StockMovementSearch): HttpParams {
   if (search.locationId !== null) params = params.set('locationId', search.locationId);
   if (search.kind !== null) params = params.set('kind', search.kind);
   if (search.sourceType !== null) params = params.set('sourceType', search.sourceType);
+  if (search.lot !== null && search.lot.trim() !== '')
+    params = params.set('lot', search.lot.trim());
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
   return params;
@@ -583,6 +585,7 @@ function toMovement(
     quantity: raw.quantity ?? '0.000',
     sourceType: STOCK_SOURCE_TYPES.find((type) => type === raw.sourceType) ?? 'receipt',
     sourceId: raw.sourceId ?? null,
+    lotCode: raw.lotCode ?? null,
     recordedBy: raw.recordedBy ?? null,
     at: raw.at ?? '',
   };

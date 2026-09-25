@@ -1501,7 +1501,12 @@
       "title": "Stock movements",
       "none": "No movements yet.",
       "filtered": "Movements of one product.",
-      "all": "Show every product"
+      "all": "Show every product",
+      "lot_search": "Lot or serial number",
+      "lot_search_hint": "Enter to find everything that moved it; a label scanned here does the same.",
+      "of_lot": "Movements of lot or serial number {{code}}.",
+      "all_lots": "See every movement",
+      "scanned_lot": "Movements of {{code}}."
     },
     "movement_kinds": {
       "in": "In",

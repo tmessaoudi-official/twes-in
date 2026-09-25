@@ -135,6 +135,7 @@ final class InMemoryStockMovements implements StockMovementRepository
                 && (null === $search->location || $m->getLocation()->getId()->equals($search->location))
                 && (null === $search->kind || $m->getKind() === $search->kind)
                 && (null === $search->sourceType || $m->getSourceType() === $search->sourceType)
+                && ('' === trim($search->lot ?? '') || mb_strtolower((string) $m->getLot()?->getCode()) === mb_strtolower(trim((string) $search->lot)))
                 && ('' === $words || str_contains(mb_strtolower(
                     $m->getProduct()->getReference().' '.$m->getProduct()->getDetails()->name.' '.$m->getLocation()->getCode().' '.$m->getLocation()->getName(),
                 ), $words)),

@@ -41,6 +41,7 @@ use Symfony\Component\Validator\Constraints as Assert;
                 'productId' => new QueryParameter(schema: self::ID, description: 'Only what moved this product.'),
                 'locationId' => new QueryParameter(schema: self::ID, description: 'Only what moved at this location.'),
                 'kind' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['in', 'out', 'adjustment']], description: 'Only what moved this way.'),
+                'lot' => new QueryParameter(description: 'Only what moved this lot or serial number, its code matched whole and whatever its case.'),
                 'sourceType' => new QueryParameter(schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_MOVE, StockMovement::SOURCE_DELIVERY_NOTE]], description: 'Only what this kind of document moved.'),
                 'order[movedAt]' => new QueryParameter(schema: self::DIRECTION),
                 'order[product]' => new QueryParameter(schema: self::DIRECTION),

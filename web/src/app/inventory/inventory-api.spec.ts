@@ -42,6 +42,7 @@ const received: StockMovementRow = {
   quantity: '10.000',
   sourceType: 'receipt',
   sourceId: null,
+  lotCode: null,
   recordedBy: 'u1',
   at: '2026-09-15T09:00:00+00:00',
 };
@@ -179,6 +180,7 @@ describe('InventoryApi', () => {
       locationId: null,
       kind: 'in',
       sourceType: null,
+      lot: ' L-2408 ',
       order: { key: 'quantity', direction: 'asc' },
     });
     const asked = http.expectOne((request) => request.url === '/api/companies/c1/stock-movements');
@@ -186,6 +188,7 @@ describe('InventoryApi', () => {
     expect([...asked.request.params.keys()].sort()).toEqual([
       'itemsPerPage',
       'kind',
+      'lot',
       'order[quantity]',
       'page',
       'productId',
@@ -193,6 +196,7 @@ describe('InventoryApi', () => {
     ]);
     // The words are sent trimmed, and what the search left out is left out rather than sent empty.
     expect(asked.request.params.get('q')).toBe('portable');
+    expect(asked.request.params.get('lot')).toBe('L-2408');
     asked.flush({ member: [received], totalItems: 40 });
     expect(await narrowed).toEqual({ rows: [received], total: 40 });
 
@@ -204,6 +208,7 @@ describe('InventoryApi', () => {
       locationId: null,
       kind: null,
       sourceType: null,
+      lot: null,
       order: null,
     });
     const plain = http.expectOne((request) => request.url === '/api/companies/c1/stock-movements');

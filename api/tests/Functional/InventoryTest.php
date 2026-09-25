@@ -387,6 +387,31 @@ final class InventoryTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a service tracks nothing');
     }
 
+    /** Row 63 slice 10: a recall starts from a lot or serial code and finds everything that moved it. */
+    public function testALotsMovementsAreFoundByItsCodeWhateverItsCase(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
+        $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($piece);
+        $this->sendJson('PUT', '/api/companies/'.$this->company->getId()->toRfc4122().'/products/'.$this->laptopId, ['reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $piece->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true, 'tracking' => 'lot']);
+        self::assertResponseIsSuccessful();
+        $receipt = ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId()];
+        foreach ([['L-2408', '4'], ['L-2409', '2'], ['L-2408', '1']] as [$lot, $quantity]) {
+            $this->postJson($this->path('stock-movements'), [...$receipt, 'quantity' => $quantity, 'lotCode' => $lot]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        }
+
+        $this->getJson($this->path('stock-movements').'?lot=l-2408');
+        self::assertResponseIsSuccessful();
+        self::assertSame(['1.000', '4.000'], array_column($this->jsonList(), 'quantity'), 'both receipts of the lot, newest first');
+        self::assertSame(['L-2408', 'L-2408'], array_column($this->jsonList(), 'lotCode'));
+
+        $this->getJson($this->path('stock-movements').'?lot=L-2409');
+        self::assertSame(['2.000'], array_column($this->jsonList(), 'quantity'));
+        $this->getJson($this->path('stock-movements').'?lot=L-24');
+        self::assertSame([], $this->jsonList(), 'a code is matched whole, not as a prefix');
+    }
+
     public function testGoodsTrackedByLotAreReceivedUnderTheirLotAndListedPerLot(): void
     {
         $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);

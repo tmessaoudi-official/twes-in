@@ -62,6 +62,20 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
     await expect(page.getByTestId('field-quantity')).toHaveValue('2');
     await page.getByTestId('stock-movement-save').click();
     await expect(page.getByRole('row').filter({ hasText: scannedLot })).toContainText('2027-05-31');
+
+    // Row 63 slice 10: a recall starts from the code, typed or read from the label, and finds what moved it.
+    await page.goto('/stock/movements');
+    await page.getByTestId('stock-movements-lot-search').fill(lot.toLowerCase());
+    await page.getByTestId('stock-movements-lot-search').press('Enter');
+    await expect(page).toHaveURL(new RegExp(`lot=${lot.toLowerCase()}`));
+    await expect(page.getByTestId('stock-movements-of-lot')).toContainText(lot.toLowerCase());
+    await expect(page.locator('[data-column="lot"]').filter({ hasText: lot })).toHaveCount(1);
+    await expect(page.locator('[data-column="lot"]').filter({ hasText: scannedLot })).toHaveCount(0);
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await scan(page, `]C1010${code}1727053110${scannedLot}`);
+    await expect(page).toHaveURL(new RegExp(`lot=${scannedLot}`));
+    await expect(page.locator('[data-column="lot"]').filter({ hasText: scannedLot })).toHaveCount(1);
   } finally {
     if (ids.length > 0) await stockKept(page, ids[0], false);
     await forget(page, ids);

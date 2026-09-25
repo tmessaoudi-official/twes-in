@@ -1501,7 +1501,12 @@
       "title": "Mouvements de stock",
       "none": "Aucun mouvement pour l’instant.",
       "filtered": "Mouvements d’un seul produit.",
-      "all": "Voir tous les produits"
+      "all": "Voir tous les produits",
+      "lot_search": "Lot ou numéro de série",
+      "lot_search_hint": "Entrée pour retrouver tout ce qui l’a déplacé ; une étiquette scannée ici fait de même.",
+      "of_lot": "Mouvements du lot ou numéro de série {{code}}.",
+      "all_lots": "Voir tous les mouvements",
+      "scanned_lot": "Mouvements de {{code}}."
     },
     "movement_kinds": {
       "in": "Entrée",

@@ -79,6 +79,10 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         if (null !== $search->sourceType) {
             $query->andWhere('m.sourceType = :sourceType')->setParameter('sourceType', $search->sourceType);
         }
+        $lot = trim($search->lot ?? '');
+        if ('' !== $lot) {
+            $query->andWhere('LOWER(lt.code) = LOWER(:lot)')->setParameter('lot', $lot);
+        }
         self::narrowToWords($query, $search->text);
         // `id` breaks the tie: two movements of the same moment are common, and a page boundary that falls between
         // them would otherwise show one row twice and hide another.

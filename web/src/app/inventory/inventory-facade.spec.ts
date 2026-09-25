@@ -42,6 +42,7 @@ const MOVEMENTS_SEARCH = {
   locationId: null,
   kind: null,
   sourceType: null,
+  lot: null,
   order: null,
 } as const;
 const level: StockLevelRow = {

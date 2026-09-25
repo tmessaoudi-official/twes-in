@@ -93,6 +93,8 @@ export interface StockMovementSearch {
   locationId: string | null;
   kind: StockMovementKind | null;
   sourceType: StockSourceType | null;
+  /** A lot or serial code, matched whole whatever its case: where a recall starts (row 63 slice 10). */
+  lot: string | null;
   order: { key: StockMovementSortKey; direction: 'asc' | 'desc' } | null;
 }
 
@@ -136,6 +138,8 @@ export interface StockMovementRow {
   quantity: string;
   sourceType: StockSourceType;
   sourceId: string | null;
+  /** The lot or serial number it moved, for a tracked product; null for an untracked one. */
+  lotCode: string | null;
   recordedBy: string | null;
   at: string;
 }

@@ -98,6 +98,7 @@ function movement(
     quantity,
     sourceType,
     sourceId,
+    lotCode: null,
     recordedBy: null,
     at: '2026-09-15T09:00:00+00:00',
   };
@@ -189,6 +190,7 @@ describe('the list rows', () => {
       'at',
       'product',
       'location',
+      'lot',
       'kind',
       'quantity',
       'source',

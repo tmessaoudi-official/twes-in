@@ -4,7 +4,27 @@
       {{ 'inventory.movements.title' | translate }}
     </h1>
 
-    @if (productId()) {
+    <mat-form-field class="max-w-sm" subscriptSizing="dynamic">
+      <mat-label>{{ 'inventory.movements.lot_search' | translate }}</mat-label>
+      <input
+        matInput
+        #lotSearch
+        type="search"
+        [value]="lot() ?? ''"
+        (keydown.enter)="findLot(lotSearch.value)"
+        data-testid="stock-movements-lot-search"
+      />
+      <mat-hint>{{ 'inventory.movements.lot_search_hint' | translate }}</mat-hint>
+    </mat-form-field>
+
+    @if (lot(); as code) {
+      <p class="flex flex-wrap items-center gap-2" data-testid="stock-movements-of-lot">
+        {{ 'inventory.movements.of_lot' | translate: { code } }}
+        <a mat-button routerLink="/stock/movements" data-testid="stock-movements-all">
+          {{ 'inventory.movements.all_lots' | translate }}
+        </a>
+      </p>
+    } @else if (productId()) {
       <p class="flex flex-wrap items-center gap-2" data-testid="stock-movements-filtered">
         {{ 'inventory.movements.filtered' | translate }}
         <a mat-button routerLink="/stock/movements" data-testid="stock-movements-all">
