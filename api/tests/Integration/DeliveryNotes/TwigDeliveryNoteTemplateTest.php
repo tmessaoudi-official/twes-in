@@ -73,6 +73,8 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
             'Acme Distribution', 'Carthage Conseil SARL', 'CLI-0007', 'Matricule fiscal', '1234567APM000', 'Rue de Rome',
             'Portable &lt;14&quot;&gt;', 'C62', "1\u{a0}250,000", "2\u{a0}500,000", 'FODEC', "2\u{a0}525,000",
             'Exportation exonérée de la TVA.', 'Livrer au quai 3.', 'Marchandise voyageant aux risques du client.',
+            // The reception block (docs/SPEC.md § 7, 2026-09-24 22:51, on by default): three cells and a line for réserves.
+            'Réception', 'Date et heure', 'Nom', 'Signature et cachet', 'Réserves',
         ] as $expected) {
             self::assertStringContainsString($expected, $html);
         }
@@ -84,7 +86,7 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
     {
         $html = $this->html(DeliveryNotePage::CANCELLED, false, 'en', '');
 
-        foreach (['<html lang="en">', 'Delivery note', 'CANCELLED', 'BL-2026-00001', 'Carthage Conseil SARL', 'Quantity'] as $expected) {
+        foreach (['<html lang="en">', 'Delivery note', 'CANCELLED', 'BL-2026-00001', 'Carthage Conseil SARL', 'Quantity', 'Date and time', 'Signature and stamp', 'Reservations'] as $expected) {
             self::assertStringContainsString($expected, $html);
         }
         foreach (['1,250.000', '2,525.000', 'FODEC', 'fiscal.mention', 'pdf.'] as $absent) {
@@ -92,8 +94,18 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         }
     }
 
+    public function testACompanyMayLeaveTheReceptionBlockOut(): void
+    {
+        $html = $this->html(null, true, 'fr', '', false);
+
+        self::assertStringContainsString('BL-2026-00001', $html);
+        foreach (['Réception', 'Signature et cachet', 'Réserves', 'Reçu par'] as $absent) {
+            self::assertStringNotContainsString($absent, $html);
+        }
+    }
+
     /** @param DeliveryNotePage::DRAFT|DeliveryNotePage::CANCELLED|null $watermark */
-    private function html(?string $watermark, bool $showPrices, string $language, string $printedNotes): string
+    private function html(?string $watermark, bool $showPrices, string $language, string $printedNotes, bool $receptionBlock = true): string
     {
         self::bootKernel();
         $template = static::getContainer()->get(DeliveryNoteTemplate::class);
@@ -101,6 +113,6 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         $snapshot = $this->note->getCustomerSnapshot();
         self::assertInstanceOf(CustomerSnapshot::class, $snapshot);
 
-        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $snapshot, $watermark, $showPrices, $language, $printedNotes));
+        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $snapshot, $watermark, $showPrices, $language, $printedNotes, $receptionBlock));
     }
 }

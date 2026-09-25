@@ -721,7 +721,8 @@
       "stock_tracking": "Track stock"
     },
     "delivery_note": {
-      "show_prices": "Show prices on delivery notes"
+      "show_prices": "Show prices on delivery notes",
+      "reception_block": "Print the receipt block (date and time, name, signature and stamp, reservations)"
     },
     "presentation": {
       "accent": "Accent colour",

@@ -2662,6 +2662,14 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   served byte for byte, so a mark needs a second output, and what counts as the first print is not ruled); « Comment
   payer » (the company has no bank account field yet); the amount in words (the number spelling and the TND millimes
   are printed money wording).
+- [2026-09-25 04:10] PROVISIONAL — to confirm (overnight, row 122 first part): **the delivery note ends with a « Réception »
+  block** in place of the dashed « Reçu par le client » strip: three cells 30 mm tall, « Date et heure », « Nom »,
+  « Signature et cachet », and a « Réserves » line under them (design research R10), kept whole on one page. It is the
+  setting « Imprimer le bloc de réception », on by default, in the parties chain like « Afficher les prix », so a
+  customer group, a customer or one note may leave it out. Not done, for rulings or for work that does not exist yet:
+  anchoring the block to the foot of the last page, « Préparé par », vehicle and driver; the quote's « Bon pour accord »
+  and the supplier order's approver (neither document exists yet); capturing réserves in the app (waits for the
+  electronic-signature work, row 126).
 
 ## 8. Status
 
@@ -2791,7 +2799,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 119 | Labels (§ 7 2026-09-24 12:40, rows 24, 25): location QR on the public address and a stable path, return after sign-in, a company label format, chosen locations; barcodes at ISO/IEC 15420 proportions | M | todo | - | |
 | 120 | Zakat (§ 7 2026-09-24 13:10): the second research pass (Shafi'i, Hanbali), then the module — settings, bundles, worksheet, reminder | L | todo | - | |
 | 121 | Document mentions (§ 7 2026-09-24 22:51): the paid-stamp option (computed, copy only, off by default), amount in words and « Comment payer » switches, a credit note's required reason and invoice reference, COPIE and DUPLICATA marks | M | doing | - | |
-| 122 | Signature boxes (§ 7 2026-09-24 22:51): delivery-note reception with réserves, quote « Bon pour accord » with « Marquer accepté » and the signed scan, the supplier order's printed approver | M | todo | - | |
+| 122 | Signature boxes (§ 7 2026-09-24 22:51): delivery-note reception with réserves, quote « Bon pour accord » with « Marquer accepté » and the signed scan, the supplier order's printed approver | M | doing | - | |
 | 123 | 1024 px layout (§ 7 2026-09-24 22:51): the labelled 80 px rail, a record as a sheet over its list | M | todo | - | |
 | 124 | Navigation (§ 7 2026-09-24 22:51): « Caisse » and « Travaux » in the rail, « Mon compte » with four tabs absorbing the device page | S | todo | - | |
 | 125 | Configurable keyboard shortcuts (§ 7 2026-09-24 22:51): C, N, E, / and Ctrl K as defaults, changed and restored per person in Mon compte › Préférences | S | todo | - | |

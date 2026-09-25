@@ -28,7 +28,11 @@
     .totals td { border: 0; padding: 2px 4px; }
     .totals .grand td { border-top: 2px solid #1f2328; font-weight: 700; padding-top: 6px; }
     .mention, .remarks { margin-top: 16px; }
-    .received { margin-top: 32px; height: 64px; border: 1px dashed #afb8c1; padding: 6px; font-size: 8pt; color: #57606a; }
+    .reception { margin-top: 24px; break-inside: avoid; }
+    .reception h2 { font-size: 9pt; margin: 0 0 4px; }
+    .reception table { margin: 0; }
+    .reception td { width: 33.33%; height: 30mm; vertical-align: top; border: 1px solid #afb8c1; padding: 6px; font-size: 8pt; color: #57606a; }
+    .reception .reserves { height: 18mm; border: 1px solid #afb8c1; border-top: 0; padding: 6px; font-size: 8pt; color: #57606a; }
     .muted { color: #57606a; }
     .watermark { position: fixed; top: 45%; left: 0; right: 0; text-align: center; transform: rotate(-30deg); font-size: 96pt; font-weight: 800; color: rgba(207, 34, 46, .14); letter-spacing: .1em; }
   </style>
@@ -151,6 +155,20 @@
     </div>
   {%- endif %}
 
-  <div class="received">{{ 'delivery_note.received'|trans({}, t, locale) }}</div>
+  {#- The reception block (docs/SPEC.md § 7, 2026-09-24 22:51; design research R10): three cells and a line for réserves,
+      a delivery setting, on by default. #}
+  {%- if page.receptionBlock %}
+    <section class="reception">
+      <h2>{{ 'delivery_note.reception.title'|trans({}, t, locale) }}</h2>
+      <table>
+        <tr>
+          <td>{{ 'delivery_note.reception.when'|trans({}, t, locale) }}</td>
+          <td>{{ 'delivery_note.reception.name'|trans({}, t, locale) }}</td>
+          <td>{{ 'delivery_note.reception.signature'|trans({}, t, locale) }}</td>
+        </tr>
+      </table>
+      <div class="reserves">{{ 'delivery_note.reception.reserves'|trans({}, t, locale) }}</div>
+    </section>
+  {%- endif %}
 </body>
 </html>

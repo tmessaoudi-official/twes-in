@@ -36,6 +36,8 @@ final readonly class DeliveryNotePage
         public bool $showPrices,
         public string $language,
         public string $printedNotes,
+        /** Whether the note ends with its reception block: date and time, name, signature and cachet, réserves. */
+        public bool $receptionBlock,
     ) {
     }
 }

@@ -158,9 +158,12 @@ final class PrintDeliveryNoteTest extends TestCase
         $this->change->change(new SettingContext($this->company), 'document.printed_notes', SettingLevel::Company, 'Goods travel at the customer\'s risk.', null);
 
         $this->print->pdf($this->company, $this->draft()->getId());
+        $this->change->change($atCustomer, 'delivery_note.reception_block', SettingLevel::Customer, false, null);
+        $this->print->pdf($this->company, $this->draft()->getId());
 
         $page = $this->template->pages[0];
-        self::assertSame([false, 'en', 'Goods travel at the customer\'s risk.'], [$page->showPrices, $page->language, $page->printedNotes]);
+        self::assertSame([false, 'en', 'Goods travel at the customer\'s risk.', true], [$page->showPrices, $page->language, $page->printedNotes, $page->receptionBlock], 'the reception block is printed unless a level leaves it out');
+        self::assertFalse($this->template->pages[1]->receptionBlock);
     }
 
     public function testACancelledNoteIsRenderedStampedAndWhatWasStoredStays(): void

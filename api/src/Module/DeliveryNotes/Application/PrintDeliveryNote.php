@@ -102,6 +102,7 @@ final readonly class PrintDeliveryNote
             true === $this->settings->value($context, 'delivery_note.show_prices'),
             \is_string($language) ? $language : 'fr',
             \is_string($printedNotes) ? $printedNotes : '',
+            true === $this->settings->value($context, 'delivery_note.reception_block'),
         )));
     }
 

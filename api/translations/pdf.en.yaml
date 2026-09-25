@@ -13,7 +13,12 @@ delivery_note:
     delivery_date: 'Delivery date'
     customer_reference: 'Your reference'
     remarks: 'Remarks'
-    received: 'Received by the customer (date, name and signature)'
+    reception:
+        title: 'Receipt'
+        when: 'Date and time'
+        name: 'Name'
+        signature: 'Signature and stamp'
+        reserves: 'Reservations'
 invoice:
     title: 'Invoice'
     credit_note_title: 'Credit note'

@@ -29,5 +29,7 @@ final readonly class DeliveryNoteSettings implements DeclaresSettings
         $parties = [SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer, SettingLevel::Document];
 
         yield new SettingDefinition('delivery_note.show_prices', SettingType::Bool, true, SettingChain::Parties, $parties, 'settings.delivery_note.show_prices', self::MODULE);
+        // The reception block, on by default (docs/SPEC.md § 7, 2026-09-24 22:51).
+        yield new SettingDefinition('delivery_note.reception_block', SettingType::Bool, true, SettingChain::Parties, $parties, 'settings.delivery_note.reception_block', self::MODULE);
     }
 }

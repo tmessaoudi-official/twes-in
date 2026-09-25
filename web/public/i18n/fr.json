@@ -721,7 +721,8 @@
       "stock_tracking": "Suivre le stock"
     },
     "delivery_note": {
-      "show_prices": "Afficher les prix sur les bons de livraison"
+      "show_prices": "Afficher les prix sur les bons de livraison",
+      "reception_block": "Imprimer le bloc de réception (date et heure, nom, signature et cachet, réserves)"
     },
     "presentation": {
       "accent": "Couleur d'accent",
