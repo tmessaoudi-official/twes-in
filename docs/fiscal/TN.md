@@ -57,6 +57,19 @@ scanned PDF. The rate and base above agree across every source read.
 latest amendment; four secondary sources on LF 2021 [4] report the reduction to 1 %. The mirror looks stale; the
 preset uses 1 %.
 
+### 5a. When the company pays a supplier (row 111, 2026-09-25)
+
+The same article binds the company as a PAYER: a legal person, or an individual under the real regime, withholds on
+what it pays for goods, equipment and services from 1000 TND VAT included, and hands the supplier the rest [4] [11].
+
+| Rule | Modelled as | Source | Status |
+|---|---|---|---|
+| Paying a supplier 1000 TND or more, VAT included, withholds 1 % | an expense's payment withholds the preset's one active `withholding_total` component (`RS1`, rate 1, threshold 1000.000) when its gross reaches the threshold; `withholding_rate`, `withholding_amount` and the amount paid are kept on the expense | art. 52-I; LF 2021 art. 14 [4] [11] | unvalidated |
+| The rate depends on the SUPPLIER: 1 % for one whose profits bear the 15 % corporate tax, 1.5 % in the article's general case, 0.5 % for one at the 10 % rate or with the two-thirds deduction | the payment says its own rate, which replaces the default; "0" withholds nothing (an excluded purchase, an exempt supplier) | [11]; the 0.5 / 1 / 1.5 split is also reported by [16] | unvalidated |
+| The threshold is compared with the amount VAT included, and the withholding is taken on it | the gross of the expense (net plus its VAT) | "y compris la taxe sur la valeur ajoutée" [11]; one secondary source [16] says the base is the amount before VAT, contradicting the article's text | unvalidated |
+| Other natures: fees 3 %, commercial rents 15 %, and others | **not modelled**: an expense does not say its nature; the rate is said on the payment | [16], not checked against the code | unvalidated |
+| The certificate of withholding given to the supplier, and the monthly declaration | **not modelled** here: printed and declared output, row 91 | — | — |
+
 ## 6. VAT withholding by public buyers (art. 19 bis): deferred
 
 The State, local authorities and public establishments and enterprises withhold 25 % of the VAT on purchases of
@@ -119,6 +132,7 @@ comes after the POC (docs/SPEC.md § 2).
 - LF 2026 stamp brackets for large retail (§ 4), not modelled.
 - Tax-inclusive entry with FODEC and VAT on one line, refused by the calculator (ruling of 2026-09-13).
 - Withholding exclusions and reduced rates (§ 5), not modelled.
+- On supplier payments (§ 5a): the withholding by nature (fees, rents), the certificate and the declaration, not modelled.
 - Matricule check letter (§ 8), not verified.
 - Regime mention wording (§ 7, § 9), unsourced.
 
@@ -138,3 +152,5 @@ comes after the POC (docs/SPEC.md § 2).
 12. VAT withholding (art. 19 bis): https://www.finances.gov.tn/fr/node/905 ; https://www.jurisitetunisie.com/tunisie/codes/tva/tva1060.htm
 13. Code de la TVA, art. 18 (invoices), jurisitetunisie mirror of the code.
 14. EN 16931-1:2017, business rule BR-CO-17 (VAT category tax amount).
+15. Note commune n° 6/2025 (LF 2025 art. 68, 3 % withheld by delivery services from sellers without a tax card, not modelled): https://jibaya.tn/wp-content/uploads/2025/03/Note-Commune-N%C2%B006.pdf
+16. Hesabi, « Taux de retenue à la source en Tunisie 2026 » (secondary): https://hesabi.tn/actualites/taux-retenue-source-tunisie-2026

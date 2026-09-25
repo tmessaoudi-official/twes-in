@@ -1818,6 +1818,7 @@
       "status": "Statut",
       "paymentMethod": "Réglée par",
       "paidOn": "Payée le",
+      "withholdingRate": "Retenue à la source (%)",
       "notes": "Notes"
     },
     "form": {
@@ -1829,7 +1830,8 @@
       "category_hint": "Seules les catégories actives sont proposées.",
       "net_hint": "Hors taxes, sans plus de décimales que la devise n’en compte.",
       "no_tax": "Aucune taxe",
-      "notes_hint": "Pour votre équipe uniquement."
+      "notes_hint": "Pour votre équipe uniquement.",
+      "withholding_hint": "Proposée à 1 % dès 1 000 TND TTC ; indiquez 0 pour un achat exclu ou un fournisseur exonéré, ou le taux qui s'applique au fournisseur."
     },
     "payment_methods": {
       "transfer": "Virement",
@@ -1880,7 +1882,8 @@
       "invalid": "La modification a été refusée. Vérifiez le fournisseur, la catégorie, la taxe et le montant.",
       "file_refused": "Le fichier a été refusé : il doit être un PDF ou une image PNG, JPEG ou WebP d’au plus 10 Mo, non vide, et la dépense compte au plus 10 fichiers.",
       "file_too_large": "Le fichier dépasse 10 Mo."
-    }
+    },
+    "withheld": "Retenue à la source {{rate}} % : {{amount}} · versé {{paid}}"
   },
   "signup": {
     "back_to_login": "Retour à la connexion",

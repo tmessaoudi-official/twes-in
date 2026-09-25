@@ -39,6 +39,7 @@ class StaticLoader implements TranslateLoader {
     return of({
       expenses: {
         saved: 'La dépense a été enregistrée.',
+        withheld: 'Retenue à la source {{rate}} % : {{amount}} · versé {{paid}}',
         errors: { not_draft: 'Seule une dépense en brouillon peut être modifiée.' },
       },
     });
@@ -85,6 +86,10 @@ const draft: ExpenseRow = {
   paymentMethod: null,
   paidOn: null,
   notes: null,
+  withholdingRate: null,
+  withholdingAmount: null,
+  amountPaid: '0.000',
+  suggestedWithholdingRate: null,
   attachmentCount: 1,
 };
 const receipt: ExpenseAttachment = {
@@ -327,6 +332,35 @@ describe('ExpensePage', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  // docs/SPEC.md § 7, 2026-09-24 11:40 (RPT-09).
+  it('proposes the withholding the API suggests, sends it, and shows what a paid expense withheld', async () => {
+    expense.set({ ...draft, status: 'recorded', suggestedWithholdingRate: '1.000' });
+    await open('e1');
+    expect(payment().get('withholdingRate')!.value).toBe('1');
+
+    q('expense-pay')!.click();
+    await settle();
+    expect(facade.payExpense).toHaveBeenCalledWith(
+      'c1',
+      'e1',
+      expect.objectContaining({ withholdingRate: '1' }),
+    );
+
+    expense.set({
+      ...draft,
+      status: 'paid',
+      paymentMethod: 'transfer',
+      paidOn: '2026-09-12',
+      withholdingRate: '1.000',
+      withholdingAmount: '11.900',
+      amountPaid: '1178.100',
+    });
+    await settle();
+    const withheld = q('expense-withheld')?.textContent?.replace(/\s/g, '');
+    expect(withheld).toContain('1%:11,900');
+    expect(withheld).toContain('versé1178,100');
   });
 
   it('deletes a draft only on the second click', async () => {

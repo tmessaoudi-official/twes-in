@@ -202,6 +202,30 @@ final class ExpenseResource
     #[Groups([self::READ, self::PAY])]
     public ?string $paidOn = null;
 
+    /**
+     * The percentage withheld from the supplier (docs/SPEC.md § 7, 2026-09-24 11:40, RPT-09). Sent when paying: absent or
+     * null for the preset's withholding when the expense reaches its threshold, "0" for none, any other for that rate.
+     * Read: what the payment withheld, null when nothing was.
+     */
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'example' => '1'])]
+    #[Groups([self::READ, self::PAY])]
+    public ?string $withholdingRate = null;
+
+    /** What the payment withheld from the supplier; null when nothing was. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $withholdingAmount = null;
+
+    /** What the supplier is handed: the gross less what was withheld. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $amountPaid = '';
+
+    /** What paying this recorded expense would withhold unless told otherwise; null for none, and once paid. Read on one expense. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $suggestedWithholdingRate = null;
+
     #[Assert\Length(max: ExpenseDetails::NOTES_MAX, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $notes = null;
@@ -210,7 +234,7 @@ final class ExpenseResource
     #[Groups([self::READ])]
     public int $attachmentCount = 0;
 
-    public static function of(Expense $expense, int $currencyScale, int $attachmentCount): self
+    public static function of(Expense $expense, int $currencyScale, int $attachmentCount, ?string $suggestedWithholdingRate = null): self
     {
         $amount = static fn (string $stored): string => Decimal::format(Decimal::of($stored), $currencyScale);
         $resource = new self();
@@ -232,6 +256,10 @@ final class ExpenseResource
         $resource->dueDate = $expense->getDueDate()?->format('Y-m-d');
         $resource->paymentMethod = $expense->getPaymentMethod()?->value;
         $resource->paidOn = $expense->getPaidOn()?->format('Y-m-d');
+        $resource->withholdingRate = $expense->getWithholdingRate();
+        $resource->withholdingAmount = null === $expense->getWithholdingAmount() ? null : $amount($expense->getWithholdingAmount());
+        $resource->amountPaid = $amount($expense->getAmountPaid());
+        $resource->suggestedWithholdingRate = $suggestedWithholdingRate;
         $resource->notes = $expense->getNotes();
         $resource->attachmentCount = $attachmentCount;
 

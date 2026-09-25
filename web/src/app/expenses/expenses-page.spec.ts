@@ -50,6 +50,10 @@ const fuel: ExpenseRow = {
   paymentMethod: null,
   paidOn: null,
   notes: null,
+  withholdingRate: null,
+  withholdingAmount: null,
+  amountPaid: '0.000',
+  suggestedWithholdingRate: null,
   attachmentCount: 1,
 };
 

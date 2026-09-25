@@ -91,6 +91,19 @@
                 {{ expense.paidOn | day }} ·
                 {{ 'expenses.payment_methods.' + expense.paymentMethod | translate }}
               </dd>
+              @if (expense.withholdingAmount !== null) {
+                <dd class="text-sm tabular-nums" data-testid="expense-withheld">
+                  {{
+                    'expenses.withheld'
+                      | translate
+                        : {
+                            rate: +(expense.withholdingRate ?? 0),
+                            amount: expense.withholdingAmount | amount: options()?.currencyScale,
+                            paid: expense.amountPaid | amount: options()?.currencyScale,
+                          }
+                  }}
+                </dd>
+              }
             } @else {
               <dt class="text-sm text-on-surface-variant">
                 {{ 'expenses.fields.dueDate' | translate }}

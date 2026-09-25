@@ -35,6 +35,6 @@ final readonly class ExpenseItemProvider implements ProviderInterface
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         }
 
-        return ExpenseResource::of($expense, $this->scales->of($company->getCurrency()), $this->manage->attachmentCount($expense));
+        return ExpenseResource::of($expense, $this->scales->of($company->getCurrency()), $this->manage->attachmentCount($expense), $this->manage->suggestedWithholdingRate($company, $expense));
     }
 }

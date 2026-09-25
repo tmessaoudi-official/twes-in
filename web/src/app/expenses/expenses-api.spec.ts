@@ -67,6 +67,10 @@ describe('ExpensesApi', () => {
       paidOn: null,
       notes: null,
       attachmentCount: 2,
+      withholdingRate: null,
+      withholdingAmount: null,
+      amountPaid: '119.000',
+      suggestedWithholdingRate: null,
     });
   });
 
@@ -135,11 +139,34 @@ describe('ExpensesApi', () => {
     record.flush({ id: 'e1', status: 'recorded' });
     expect((await recorded).status).toBe('recorded');
 
-    const paid = api.payExpense('c1', 'e1', { paymentMethod: 'cash', paidOn: '2026-09-12' });
+    const paid = api.payExpense('c1', 'e1', {
+      paymentMethod: 'cash',
+      paidOn: '2026-09-12',
+      withholdingRate: '1',
+    });
     const pay = http.expectOne('/api/companies/c1/expenses/e1/pay');
-    expect(pay.request.body).toEqual({ paymentMethod: 'cash', paidOn: '2026-09-12' });
-    pay.flush({ id: 'e1', status: 'paid', paymentMethod: 'cash', paidOn: '2026-09-12' });
-    expect(await paid).toMatchObject({ status: 'paid', paymentMethod: 'cash' });
+    expect(pay.request.body).toEqual({
+      paymentMethod: 'cash',
+      paidOn: '2026-09-12',
+      withholdingRate: '1',
+    });
+    pay.flush({
+      id: 'e1',
+      status: 'paid',
+      paymentMethod: 'cash',
+      paidOn: '2026-09-12',
+      amountGross: '1190.000',
+      withholdingRate: '1.000',
+      withholdingAmount: '11.900',
+      amountPaid: '1178.100',
+    });
+    expect(await paid).toMatchObject({
+      status: 'paid',
+      paymentMethod: 'cash',
+      withholdingRate: '1.000',
+      withholdingAmount: '11.900',
+      amountPaid: '1178.100',
+    });
   });
 
   it('tells a refused expense from a refused category and a refused file', async () => {

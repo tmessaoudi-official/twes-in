@@ -41,6 +41,7 @@ final readonly class PayExpenseProcessor implements ProcessorInterface
                 PaymentMethod::from((string) $data->paymentMethod),
                 new \DateTimeImmutable((string) $data->paidOn, new \DateTimeZone('UTC')),
                 $this->guard->account()->getId(),
+                $data->withholdingRate,
             );
         } catch (ExpenseNotFound $absent) {
             throw new NotFoundHttpException($absent->getMessage(), $absent);

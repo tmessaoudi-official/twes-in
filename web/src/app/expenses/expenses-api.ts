@@ -301,6 +301,10 @@ function toExpense(raw: ExpenseExpenseRead | ExpenseJsonldExpenseRead): ExpenseR
     dueDate: raw.dueDate ?? null,
     paymentMethod: raw.paymentMethod ?? null,
     paidOn: raw.paidOn ?? null,
+    withholdingRate: raw.withholdingRate ?? null,
+    withholdingAmount: raw.withholdingAmount ?? null,
+    amountPaid: raw.amountPaid ?? raw.amountGross ?? '',
+    suggestedWithholdingRate: raw.suggestedWithholdingRate ?? null,
     notes: raw.notes ?? null,
     attachmentCount: raw.attachmentCount ?? 0,
   };

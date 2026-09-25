@@ -2708,6 +2708,19 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   row's home location, else the company's only establishment; a company with several and a row naming no home rejects
   the row (`ambiguous_establishment`) rather than guessing a building; a blank cell keeps what is there. The alert that
   reads it is row 115's; nothing reads it yet.
+- [2026-09-25 07:18] PROVISIONAL — to confirm (overnight, row 111): **paying a supplier withholds tax at source, the
+  rate proposed and overridable per payment** (`docs/fiscal/TN.md` § 5a, sources 15 and 16). An expense's payment
+  keeps `withholdingRate` (DECIMAL(6,3), 0 to 100, three decimals) and `withholdingAmount` (DECIMAL(14,3), the gross
+  including VAT times the rate, rounded to the currency's scale); what the supplier receives is `amountPaid`, the gross
+  less that. Nothing withheld keeps both null, so an expense paid before this reads as it did. The proposal
+  (`suggestedWithholdingRate`, read-only, on a recorded expense only) is the rate of the company's ONE active
+  whole-amount withholding component (the TN preset's RS1, 1 %, the general rule since LF 2021 art. 14) when the
+  payment's gross reaches that component's threshold (1 000 TND, VAT included, per payment); none, or several such
+  components, proposes nothing rather than guessing. The pay dialog prefills it; sending no rate takes the proposal,
+  "0" withholds nothing, any other rate is kept as said (the 0.5 % and 1.5 % cases depend on the supplier's own regime,
+  which the company knows and the software does not). Not modelled: the natures excluded from withholding (utilities,
+  insurance, leasing, price-controlled goods, agriculture) and the per-nature rates (fees, rents); the company overrides
+  the rate on such a payment. The certificate handed to the supplier is printed output and stays with row 91.
 
 ## 8. Status
 
@@ -2825,8 +2838,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 107 | The server-side bin the `undo` action class needs: a deletion kept recoverable for a while, so "Annuler" on a toast can put it back. Row 45 shipped `plain` and `confirm` only and declared no field for `undo`, because a class nothing can produce is a promise (§ 7 2026-09-20 22:10) | L | todo | - | api/** web/src/app/shared/actions/** |
 | 108 | Lot on document lines (§ 7 2026-09-24 12:40, row 5): an optional lot or serial on invoice and delivery-note lines, filled by a GS1 scan; validation takes the named lot, first-to-expire only for a line naming none. First of the amendments | M | done | 19b3b43 | |
 | 109 | Cost on the line at issue (§ 7 2026-09-24 11:40, RPT-01): `invoice_line.unit_cost` copied from the product at issue, read only with `product.cost.read` | S | done | 82c4b08 | |
-| 110 | Reorder point per product per establishment (§ 7 2026-09-24 11:40): column, product form field, import column; empty means no alert | S | done | - | |
-| 111 | Supplier withholding (§ 7 2026-09-24 11:40, RPT-09): Tunisia's rules sourced in `docs/fiscal/TN.md`, then recorded on an expense's payment at the preset's rate, overridable | M | todo | - | |
+| 110 | Reorder point per product per establishment (§ 7 2026-09-24 11:40): column, product form field, import column; empty means no alert | S | done | 0088780 | |
+| 111 | Supplier withholding (§ 7 2026-09-24 11:40, RPT-09): Tunisia's rules sourced in `docs/fiscal/TN.md`, then recorded on an expense's payment at the preset's rate, overridable | M | done | - | |
 | 112 | Declaration basis and calendar (§ 7 2026-09-24 11:40, RPT-03): TN and FR researched with citations; « TVA collectée » on the home meanwhile | S | todo | - | |
 | 113 | Home figures revised (§ 7 2026-09-24 11:55): margin headline, « Facturé ce mois » under it, the kept and added figures, the query-count test; after row 57 | M | todo | - | |
 | 114 | The ten reports and saved report views (§ 7 2026-09-24 12:05) on row 89's engine, « dû à 30 jours », the company switcher's per-company figures | L | todo | - | |

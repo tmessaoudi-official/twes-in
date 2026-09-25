@@ -17,13 +17,16 @@ use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
 use App\Files\Domain\Attachment;
 use App\Fiscal\Application\CurrencyScales;
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxComponentRepository;
+use App\Fiscal\Domain\TaxKind;
 use App\Module\Expenses\Domain\Expense;
 use App\Module\Expenses\Domain\ExpenseCategory;
 use App\Module\Expenses\Domain\ExpenseCategoryRepository;
 use App\Module\Expenses\Domain\ExpenseRepository;
 use App\Module\Expenses\Domain\ExpenseSearch;
+use App\Module\Expenses\Domain\ExpenseStatus;
 use App\Module\Expenses\Domain\ExpenseTransitionRefused;
 use App\Module\Expenses\Domain\InvalidExpense;
 use App\Module\Vendors\Domain\Vendor;
@@ -142,17 +145,50 @@ final readonly class ManageExpenses
      * @throws ExpenseTransitionRefused
      * @throws InvalidExpense
      */
-    public function pay(Company $company, Uuid $id, PaymentMethod $method, \DateTimeImmutable $paidOn, ?Uuid $actorUserId): Expense
+    /**
+     * Pays a recorded expense. What is withheld from the supplier is the rate said, "0" for none, or — no rate said —
+     * the preset's withholding when the expense reaches its threshold (docs/SPEC.md § 7, 2026-09-24 11:40, RPT-09).
+     */
+    public function pay(Company $company, Uuid $id, PaymentMethod $method, \DateTimeImmutable $paidOn, ?Uuid $actorUserId, ?string $withholdingRate = null): Expense
     {
-        return $this->transactions->run(function () use ($company, $id, $method, $paidOn, $actorUserId): Expense {
+        return $this->transactions->run(function () use ($company, $id, $method, $paidOn, $actorUserId, $withholdingRate): Expense {
             $expense = $this->get($company, $id);
             $now = $this->clock->now();
-            $expense->pay($method, $paidOn, $now->setTimezone(new \DateTimeZone($company->getTimezone())), $now);
+            $rate = $withholdingRate ?? $this->suggestedWithholdingRate($company, $expense);
+            $expense->pay($method, $paidOn, $now->setTimezone(new \DateTimeZone($company->getTimezone())), $now, $rate, $this->scales->of($company->getCurrency()));
             $this->expenses->save($expense);
-            $this->record($company, $expense->getId(), self::PAID, ['fields' => ['paymentMethod', 'paidOn']], $actorUserId);
+            $fields = null === $expense->getWithholdingRate() ? ['paymentMethod', 'paidOn'] : ['paymentMethod', 'paidOn', 'withholdingRate'];
+            $this->record($company, $expense->getId(), self::PAID, ['fields' => $fields], $actorUserId);
 
             return $expense;
         });
+    }
+
+    /**
+     * What paying this expense withholds unless told otherwise: the company's one active withholding on a total, when
+     * the expense's gross reaches its threshold. The TN preset's RS1 is 1 % from 1 000 TND taxes included (art. 52 of
+     * the IRPP and IS code, docs/fiscal/TN.md § 5). None for an expense that is not recorded, for a company with no
+     * such withholding, or with several, since which one applies depends on the supplier and is said on the payment.
+     */
+    public function suggestedWithholdingRate(Company $company, Expense $expense): ?string
+    {
+        if (ExpenseStatus::Recorded !== $expense->getStatus()) {
+            return null;
+        }
+        $withholdings = array_values(array_filter(
+            $this->taxes->ofCompany($company->getId()),
+            static fn (TaxComponent $tax): bool => TaxKind::WithholdingTotal === $tax->getKind() && $tax->isActive(),
+        ));
+        $rate = 1 === \count($withholdings) ? $withholdings[0]->getRate() : null;
+        if (null === $rate) {
+            return null;
+        }
+        $threshold = $withholdings[0]->getThreshold();
+        if (null !== $threshold && Decimal::of($expense->getAmountGross())->compare(Decimal::of($threshold)) < 0) {
+            return null;
+        }
+
+        return Decimal::format(Decimal::of($rate), 3);
     }
 
     /**

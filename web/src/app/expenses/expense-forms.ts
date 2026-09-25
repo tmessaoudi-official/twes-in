@@ -347,20 +347,47 @@ export function paymentForm(options: ExpenseOptions): FormDescriptor {
             })),
           },
           { id: 'paidOn', label: `${FIELDS}.paidOn`, kind: 'date', required: true },
+          {
+            id: 'withholdingRate',
+            label: `${FIELDS}.withholdingRate`,
+            kind: 'decimal',
+            maxLength: 7,
+            pattern: '(0|[1-9][0-9]{0,2})([.,][0-9]{1,3})?',
+            hint: 'expenses.form.withholding_hint',
+          },
         ],
       },
     ],
   };
 }
 
-export function paymentValues(today: string): FormValues {
-  return { paymentMethod: 'transfer', paidOn: today };
+/**
+ * A payment dated today, proposing the withholding the API suggests for this expense (docs/SPEC.md § 7, 2026-09-24
+ * 11:40, RPT-09): the preset's rate once the expense reaches its threshold, as a person writes it, else none.
+ */
+export function paymentValues(
+  today: string,
+  suggestedWithholdingRate: string | null = null,
+): FormValues {
+  return {
+    paymentMethod: 'transfer',
+    paidOn: today,
+    withholdingRate: plainRate(suggestedWithholdingRate),
+  };
+}
+
+/** "1.000" as a person writes a rate: "1". */
+function plainRate(rate: string | null): string {
+  if (rate === null) return '';
+  return rate.includes('.') ? rate.replace(/0+$/, '').replace(/\.$/, '') : rate;
 }
 
 export function paymentInput(values: FormValues): ExpensePayment {
   return {
     paymentMethod: String(values['paymentMethod'] ?? 'transfer') as PaymentMethod,
     paidOn: String(values['paidOn'] ?? '').trim(),
+    // Always said: an empty field withholds nothing, rather than letting the API apply its default.
+    withholdingRate: text(values['withholdingRate'])?.replace(',', '.') ?? '0',
   };
 }
 

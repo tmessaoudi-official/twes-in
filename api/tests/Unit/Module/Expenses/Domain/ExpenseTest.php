@@ -131,6 +131,34 @@ final class ExpenseTest extends TestCase
         $expense->pay(PaymentMethod::Cash, new \DateTimeImmutable('2026-09-13'), $today, $this->now);
     }
 
+    public function testAPaymentWithholdsItsRateOfTheGrossAtTheCurrencysScaleAndHandsOverTheRest(): void
+    {
+        // docs/SPEC.md § 7, 2026-09-24 11:40 (RPT-09): the withholding on a supplier is recorded on the expense's payment.
+        $today = new \DateTimeImmutable('2026-09-15');
+        $expense = Expense::create($this->acme, $this->details('1037.451'), null, $this->fuel, $this->vat19, 3, $this->now);
+        $expense->record($this->now);
+        self::assertSame(['1234.567', null, null, '1234.567'], [$expense->getAmountGross(), $expense->getWithholdingRate(), $expense->getWithholdingAmount(), $expense->getAmountPaid()], 'nothing is withheld before the payment');
+
+        foreach (['101' => 'over a hundred', '-1' => 'negative', '1.2345' => 'four decimals', 'un' => 'not a number'] as $rate => $case) {
+            $this->assertRefused('withholdingRate', fn () => $expense->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-12'), $today, $this->now, (string) $rate, 3), $case);
+        }
+        self::assertSame(ExpenseStatus::Recorded, $expense->getStatus(), 'a refused rate pays nothing');
+
+        $expense->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-12'), $today, $this->now, ' 1 ', 3);
+
+        self::assertSame(['1.000', '12.346', '1222.221'], [$expense->getWithholdingRate(), $expense->getWithholdingAmount(), $expense->getAmountPaid()], '1 % of 1234.567 is 12.34567, rounded half away from zero to the millime');
+    }
+
+    public function testAPaymentAtARateOfZeroWithholdsNothing(): void
+    {
+        $expense = Expense::create($this->acme, $this->details('10'), null, $this->fuel, null, 2, $this->now);
+        $expense->record($this->now);
+
+        $expense->pay(PaymentMethod::Cash, new \DateTimeImmutable('2026-09-12'), new \DateTimeImmutable('2026-09-15'), $this->now, '0', 2);
+
+        self::assertSame([null, null, '10.000'], [$expense->getWithholdingRate(), $expense->getWithholdingAmount(), $expense->getAmountPaid()]);
+    }
+
     public function testTheDueDayIsTheVendorsPaymentTermsAfterTheExpensesDate(): void
     {
         $sotumag = Vendor::create($this->acme, 'FRN-0001', new VendorProfile('Sotumag', paymentTermsDays: 30), $this->now);

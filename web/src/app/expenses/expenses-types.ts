@@ -66,6 +66,13 @@ export interface ExpenseRow {
   dueDate: string | null;
   paymentMethod: PaymentMethod | null;
   paidOn: string | null;
+  /** What the payment withheld from the supplier: percent with three decimals, and the amount; null when nothing was. */
+  withholdingRate: string | null;
+  withholdingAmount: string | null;
+  /** What the supplier is handed: the gross less what was withheld. */
+  amountPaid: string;
+  /** What paying this recorded expense would withhold unless told otherwise; null for none. */
+  suggestedWithholdingRate: string | null;
   notes: string | null;
   attachmentCount: number;
 }
@@ -85,6 +92,8 @@ export interface ExpensePayment {
   paymentMethod: PaymentMethod;
   /** YYYY-MM-DD, from the expense's day to today. */
   paidOn: string;
+  /** The percentage withheld from the supplier; "0" for none (docs/SPEC.md § 7, 2026-09-24 11:40, RPT-09). */
+  withholdingRate: string;
 }
 
 export interface ExpenseCategoryRow {

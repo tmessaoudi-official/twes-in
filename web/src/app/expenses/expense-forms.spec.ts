@@ -11,7 +11,9 @@ import {
   expenseSearch,
   expenseValues,
   EXPENSES_LIST,
+  paymentForm,
   paymentInput,
+  paymentValues,
 } from './expense-forms';
 import type { ExpenseCategoryRow, ExpenseOptions } from './expenses-types';
 
@@ -146,7 +148,30 @@ describe('expense forms', () => {
     expect(paymentInput({ paymentMethod: 'check', paidOn: '2026-09-12' })).toEqual({
       paymentMethod: 'check',
       paidOn: '2026-09-12',
+      withholdingRate: '0',
     });
+  });
+
+  // docs/SPEC.md § 7, 2026-09-24 11:40 (RPT-09): the withholding on a supplier, said on the payment.
+  it('proposes the withholding the API suggests, and sends an emptied one as none', () => {
+    const field = paymentForm(options).sections[0]?.fields.find(
+      (each) => each.id === 'withholdingRate',
+    );
+    expect(field?.kind).toBe('decimal');
+    expect(paymentValues('2026-09-15', '1.000')).toEqual({
+      paymentMethod: 'transfer',
+      paidOn: '2026-09-15',
+      withholdingRate: '1',
+    });
+    expect(paymentValues('2026-09-15', null)['withholdingRate']).toBe('');
+    expect(
+      paymentInput({ paymentMethod: 'transfer', paidOn: '2026-09-15', withholdingRate: ' 1.5 ' })
+        .withholdingRate,
+    ).toBe('1.5');
+    expect(
+      paymentInput({ paymentMethod: 'transfer', paidOn: '2026-09-15', withholdingRate: '' })
+        .withholdingRate,
+    ).toBe('0');
   });
 
   it('never offers a category as the parent of itself or of one of its subcategories', () => {

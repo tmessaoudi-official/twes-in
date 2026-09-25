@@ -175,7 +175,13 @@ export class ExpensePage {
     return descriptor === null || id === undefined
       ? null
       : untracked(() =>
-          buildFormGroup(descriptor, paymentValues(todayIn(this.company()?.timezone))),
+          buildFormGroup(
+            descriptor,
+            paymentValues(
+              todayIn(this.company()?.timezone),
+              this.current()?.suggestedWithholdingRate ?? null,
+            ),
+          ),
         );
   });
 

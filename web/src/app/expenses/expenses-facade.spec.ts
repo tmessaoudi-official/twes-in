@@ -28,6 +28,10 @@ const draft: ExpenseRow = {
   dueDate: null,
   paymentMethod: null,
   paidOn: null,
+  withholdingRate: null,
+  withholdingAmount: null,
+  amountPaid: '0.000',
+  suggestedWithholdingRate: null,
   attachmentCount: 0,
 };
 const receipt: ExpenseAttachment = {
@@ -152,7 +156,11 @@ describe('ExpensesFacade', () => {
 
     api.payExpense.mockRejectedValue(new ExpensesRefused('invalid'));
     expect(
-      await facade.payExpense('c1', 'e1', { paymentMethod: 'cash', paidOn: '2026-09-01' }),
+      await facade.payExpense('c1', 'e1', {
+        paymentMethod: 'cash',
+        paidOn: '2026-09-01',
+        withholdingRate: '0',
+      }),
     ).toBeNull();
     expect(facade.error()).toBe('invalid');
     expect(facade.expense()?.status).toBe('recorded');

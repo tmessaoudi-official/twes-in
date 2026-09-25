@@ -198,6 +198,50 @@ final class ExpensesTest extends ApiTestCase
         self::assertSame(['expense.created', 'expense.revised', 'expense.recorded', 'expense.paid'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense' ORDER BY at, id"));
     }
 
+    public function testPayingASupplierWithholdsThePresetsRateFromOneThousandDinarsAndAnotherRateWhenSaid(): void
+    {
+        // docs/SPEC.md § 7, 2026-09-24 11:40 (RPT-09): the TN preset's RS1, 1 % from 1 000 TND taxes included.
+        $this->signedIn(['expense.read', 'expense.write']);
+        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $recorded = function (string $net): string {
+            $this->postJson($this->path(), $this->expense(['categoryId' => $this->category('Fournitures '.$net), 'amountNet' => $net]));
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+            $id = $this->stringAt($this->json(), 'id');
+            $this->postJson($this->path($id).'/record', null);
+            self::assertResponseIsSuccessful();
+
+            return $id;
+        };
+        $withheld = fn (): array => [$this->json()['withholdingRate'] ?? null, $this->json()['withholdingAmount'] ?? null, $this->json()['amountPaid'] ?? null];
+        $pay = fn (string $id, ?string $rate = null) => $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'transfer', 'paidOn' => $today->format('Y-m-d')] + (null === $rate ? [] : ['withholdingRate' => $rate]));
+
+        $large = $recorded('1000');
+        $this->getJson($this->path($large));
+        self::assertSame(['1190.000', '1.000'], [$this->json()['amountGross'], $this->json()['suggestedWithholdingRate'] ?? null], 'what the pay dialog proposes');
+        $pay($large);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['1.000', '11.900', '1178.100'], $withheld(), 'no rate said: the preset\'s');
+        self::assertNull($this->json()['suggestedWithholdingRate'] ?? null, 'a paid expense proposes nothing');
+
+        $small = $recorded('840');
+        $this->getJson($this->path($small));
+        self::assertSame(['999.600', null], [$this->json()['amountGross'], $this->json()['suggestedWithholdingRate'] ?? null], 'under the threshold, taxes included');
+        $pay($small);
+        self::assertSame([null, null, '999.600'], $withheld());
+
+        $exempt = $recorded('2000');
+        $pay($exempt, '101');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('withholdingRate', (string) $this->client->getResponse()->getContent());
+        $pay($exempt, '0');
+        self::assertResponseIsSuccessful();
+        self::assertSame([null, null, '2380.000'], $withheld(), 'an exempt supplier: said so, nothing withheld');
+
+        $other = $recorded('1500');
+        $pay($other, '1.5');
+        self::assertSame(['1.500', '26.775', '1758.225'], $withheld(), 'another rate, said by who pays');
+    }
+
     public function testAPageOfTheListCostsTheSameStatementsWhateverTheRowsItHolds(): void
     {
         $this->signedIn(['expense.read', 'expense.write']);

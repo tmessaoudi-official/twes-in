@@ -1818,6 +1818,7 @@
       "status": "Status",
       "paymentMethod": "Paid by",
       "paidOn": "Paid on",
+      "withholdingRate": "Withholding (%)",
       "notes": "Notes"
     },
     "form": {
@@ -1829,7 +1830,8 @@
       "category_hint": "Only active categories are offered.",
       "net_hint": "Before tax, with no more decimals than the currency has.",
       "no_tax": "No tax",
-      "notes_hint": "For your team only."
+      "notes_hint": "For your team only.",
+      "withholding_hint": "Proposed at 1% from 1,000 TND including VAT; enter 0 for an excluded purchase or an exempt supplier, or the rate that applies to the supplier."
     },
     "payment_methods": {
       "transfer": "Bank transfer",
@@ -1880,7 +1882,8 @@
       "invalid": "The change was refused. Check the vendor, the category, the tax and the amount.",
       "file_refused": "The file was refused: it must be a PDF, PNG, JPEG or WebP image of up to 10 MB, not empty, and the expense may hold at most 10 files.",
       "file_too_large": "The file is larger than 10 MB."
-    }
+    },
+    "withheld": "Withheld at {{rate}}%: {{amount}} · paid {{paid}}"
   },
   "signup": {
     "back_to_login": "Back to sign in",

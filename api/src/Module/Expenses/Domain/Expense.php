@@ -34,6 +34,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_expense_tax_component', columns: ['tax_component_id'])]
 class Expense implements CompanyOwned
 {
+    private const string WITHHOLDING_RATE = '/^(0|[1-9][0-9]{0,2})(\.[0-9]{1,3})?$/';
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -86,6 +88,16 @@ class Expense implements CompanyOwned
 
     #[ORM\Column(name: 'payment_date', type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $paidOn = null;
+
+    /**
+     * What the company withheld from the supplier when paying, as a percentage and an amount at the currency's scale
+     * (docs/SPEC.md § 7, 2026-09-24 11:40, RPT-09): the supplier is handed the gross less it. Null when nothing was.
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 6, scale: 3, nullable: true)]
+    private ?string $withholdingRate = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $withholdingAmount = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $notes = null;
@@ -158,12 +170,14 @@ class Expense implements CompanyOwned
     }
 
     /**
-     * @param \DateTimeImmutable $today the company's own day
+     * @param \DateTimeImmutable $today           the company's own day
+     * @param string|null        $withholdingRate the percentage withheld from the supplier, 0 to 100 with at most three
+     *                                            decimals; null or 0 for none
      *
      * @throws ExpenseTransitionRefused
      * @throws InvalidExpense
      */
-    public function pay(PaymentMethod $method, \DateTimeImmutable $paidOn, \DateTimeImmutable $today, \DateTimeImmutable $now): void
+    public function pay(PaymentMethod $method, \DateTimeImmutable $paidOn, \DateTimeImmutable $today, \DateTimeImmutable $now, ?string $withholdingRate = null, int $currencyScale = 3): void
     {
         if (ExpenseStatus::Recorded !== $this->status) {
             throw new ExpenseTransitionRefused(\sprintf('The expense is %s: only a recorded expense is paid.', $this->status->value));
@@ -174,6 +188,18 @@ class Expense implements CompanyOwned
         }
         if ($day > self::day($today)) {
             throw new InvalidExpense('paidOn', 'A payment is recorded once it happened, today at the latest.');
+        }
+        $rate = trim($withholdingRate ?? '');
+        if ('' !== $rate && (1 !== preg_match(self::WITHHOLDING_RATE, $rate) || Decimal::of($rate)->compare(100) > 0)) {
+            throw new InvalidExpense('withholdingRate', 'A withholding is a percentage from 0 to 100 with at most three decimals.');
+        }
+        if ('' === $rate || 0 === Decimal::of($rate)->compare(0)) {
+            $this->withholdingRate = null;
+            $this->withholdingAmount = null;
+        } else {
+            $withheld = Decimal::round(Decimal::of($this->amountGross)->mul(Decimal::of($rate))->div(100, Decimal::WORKING_SCALE), $currencyScale);
+            $this->withholdingRate = Decimal::format(Decimal::of($rate), 3);
+            $this->withholdingAmount = self::stored($withheld);
         }
 
         $this->paymentMethod = $method;
@@ -324,6 +350,24 @@ class Expense implements CompanyOwned
     public function getAmountGross(): string
     {
         return $this->amountGross;
+    }
+
+    /** The percentage withheld from the supplier at payment, three decimals; null when nothing was. */
+    public function getWithholdingRate(): ?string
+    {
+        return $this->withholdingRate;
+    }
+
+    /** What was withheld from the supplier at payment; null when nothing was. */
+    public function getWithholdingAmount(): ?string
+    {
+        return $this->withholdingAmount;
+    }
+
+    /** What the supplier is handed: the gross less what was withheld. */
+    public function getAmountPaid(): string
+    {
+        return null === $this->withholdingAmount ? $this->amountGross : self::stored(Decimal::of($this->amountGross)->sub(Decimal::of($this->withholdingAmount)));
     }
 
     public function getCurrency(): string
