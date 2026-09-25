@@ -59,7 +59,7 @@ class Invoice implements CompanyOwned
     #[ORM\Column(length: 16, enumType: InvoiceType::class)]
     private InvoiceType $documentType;
 
-    #[ORM\ManyToOne(targetEntity: self::class)]
+    #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'corrections')]
     #[ORM\JoinColumn(name: 'corrects_invoice_id', nullable: true)]
     private ?Invoice $correctsInvoice = null;
 
