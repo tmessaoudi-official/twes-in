@@ -138,6 +138,10 @@ describe('the navigation manifest', () => {
       expect(hasKey(en, entry.labelKey), `en ${entry.labelKey}`).toBe(true);
       expect(hasKey(fr, `nav.sections.${entry.section}`), `fr section ${entry.section}`).toBe(true);
       expect(hasKey(en, `nav.sections.${entry.section}`), `en section ${entry.section}`).toBe(true);
+      if (entry.shortLabelKey !== undefined) {
+        expect(hasKey(fr, entry.shortLabelKey), `fr ${entry.shortLabelKey}`).toBe(true);
+        expect(hasKey(en, entry.shortLabelKey), `en ${entry.shortLabelKey}`).toBe(true);
+      }
     }
   });
 

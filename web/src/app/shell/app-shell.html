@@ -90,23 +90,26 @@
               [activated]="active.isActive"
               [attr.aria-current]="active.isActive ? 'page' : null"
               [attr.data-testid]="'nav-' + entry.key"
-              [matTooltip]="entry.labelKey | translate"
-              matTooltipPosition="right"
-              [matTooltipDisabled]="!rail()"
               (click)="handset() && drawer.close()"
             >
               <mat-icon matListItemIcon aria-hidden="true">{{ entry.icon }}</mat-icon>
-              <span matListItemTitle [class.sr-only]="rail()">{{
-                entry.labelKey | translate
-              }}</span>
-              @if (entry.coming) {
-                <span
-                  matListItemMeta
-                  class="twes-soon"
-                  [class.sr-only]="rail()"
-                  data-testid="soon"
-                  >{{ 'shell.soon' | translate }}</span
-                >
+              <!-- Folded, the rail keeps a short label under the icon (docs/SPEC.md § 8 row 123). Each branch has ONE root,
+                   the title, or Angular projects it into the default slot and Material draws it two lines tall. -->
+              @if (rail()) {
+                <span matListItemTitle class="twes-rail-short"
+                  >{{ entry.shortLabelKey ?? entry.labelKey | translate }}
+                  @if (entry.coming) {
+                    <span class="sr-only" data-testid="soon">{{ 'shell.soon' | translate }}</span>
+                    <span class="twes-soon-dot" aria-hidden="true"></span>
+                  }
+                </span>
+              } @else {
+                <span matListItemTitle class="twes-rail-title"
+                  ><span>{{ entry.labelKey | translate }}</span>
+                  @if (entry.coming) {
+                    <span class="twes-soon" data-testid="soon">{{ 'shell.soon' | translate }}</span>
+                  }
+                </span>
               }
             </a>
           }

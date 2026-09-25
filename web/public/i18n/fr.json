@@ -496,7 +496,10 @@
     "alerts": "Alertes",
     "fiscal_preset": "Préréglage fiscal",
     "support_access": "Accès du support",
-    "texts": "Textes"
+    "texts": "Textes",
+    "short": {
+      "delivery_notes": "Livraisons"
+    }
   },
   "shell": {
     "skip": "Aller au contenu",

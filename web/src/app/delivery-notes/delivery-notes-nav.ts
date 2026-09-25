@@ -11,6 +11,7 @@ export const DELIVERY_NOTES_NAV: readonly NavEntry[] = [
   {
     key: 'delivery-notes',
     labelKey: 'nav.delivery_notes',
+    shortLabelKey: 'nav.short.delivery_notes',
     icon: 'local_shipping',
     route: '/delivery-notes',
     section: 'sell',

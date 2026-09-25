@@ -2891,6 +2891,16 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   `text-{size}` comes once they have. Tailwind's own `rounded-sm…xl` keep their sizes until then. The s3 shadow is
   derived from s2, as no approved value was found in the saved canvas. (4) The design-tokens gate reads the accent
   roles as colour tokens, so an undeclared one (`bg-accent-strong`) is refused.
+- [2026-09-25 21:24] DECIDED (revisit): **the 80 px rail keeps a short label under each icon** (row 123, first half; same
+  mandate), wherever the rail is folded — the medium window, or a wide one folded by choice — rather than only at
+  1024 px, so a folded rail reads the same everywhere. A label too long for it declares a short one
+  (`shortLabelKey`: « Livraisons » for « Bons de livraison »); an entry not built yet shows a hollow dot, its
+  « Bientôt » kept for a screen reader. The foot (Notifications, Paramètres, the member) stays icons with tooltips.
+  Measured in a real browser at 1024 and 1400 px, which found what the unit suite could not: the folded rail's
+  scrollbar took 15 px of 80 (labels cut to « Ac… »), the `mat-sidenav` itself is what scrolls, a `@if` branch with
+  two roots dropped the title into Material's default slot (rows 77–95 px tall), the « Bientôt » chip squeezed its
+  label, and the search's « Ctrl K » wrapped because `font: … inherit` is invalid shorthand. The rail's row titles are
+  now the direction's body size (14 px), and « Créer » takes the accent as picked.
 
 ## 8. Status
 
@@ -3021,8 +3031,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 120 | Zakat (§ 7 2026-09-24 13:10): the second research pass (Shafi'i, Hanbali), then the module — settings, bundles, worksheet, reminder | L | todo | - | |
 | 121 | Document mentions (§ 7 2026-09-24 22:51): the paid-stamp option (computed, copy only, off by default), amount in words and « Comment payer » switches, a credit note's required reason and invoice reference, COPIE and DUPLICATA marks | M | doing | - | |
 | 122 | Signature boxes (§ 7 2026-09-24 22:51): delivery-note reception with réserves, quote « Bon pour accord » with « Marquer accepté » and the signed scan, the supplier order's printed approver | M | doing | - | |
-| 123 | 1024 px layout (§ 7 2026-09-24 22:51): the labelled 80 px rail, a record as a sheet over its list | M | todo | - | |
-| 124 | Navigation (§ 7 2026-09-24 22:51): « Caisse » and « Travaux » in the rail, « Mon compte » with four tabs absorbing the device page | S | todo | - | |
+| 123 | 1024 px layout (§ 7 2026-09-24 22:51): the labelled 80 px rail, a record as a sheet over its list | M | doing | - | |
+| 124 | Navigation (§ 7 2026-09-24 22:51): « Caisse » and « Travaux » in the rail, « Mon compte » with four tabs absorbing the device page | S | done | d128c231 | |
 | 125 | Configurable keyboard shortcuts (§ 7 2026-09-24 22:51): C, N, E, / and Ctrl K as defaults, changed and restored per person in Mon compte › Préférences | S | todo | - | |
 | 126 | Signature, cachet and electronic PDF signature (§ 7 2026-09-24 22:51): research first, postponed | M | deferred | - | |
 | 127 | Insights pushed once (§ 7 2026-09-24 12:10 and 2026-09-25 08:31): a scheduler (Symfony Scheduler worker in compose), a record of what was pushed per subject and bucket, and the pushes through the Inbox | L | todo | - | |

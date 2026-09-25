@@ -29,6 +29,8 @@ export interface Gated {
 export interface NavEntry extends Gated {
   readonly key: string;
   readonly labelKey: string;
+  /** What the 80 px rail writes under the icon when the label is too long for it (docs/SPEC.md § 8 row 123). */
+  readonly shortLabelKey?: string;
   /** A Material Symbols ligature. */
   readonly icon: string;
   readonly route: string;

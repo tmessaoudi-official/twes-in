@@ -496,7 +496,10 @@
     "alerts": "Alerts",
     "fiscal_preset": "Fiscal preset",
     "support_access": "Support access",
-    "texts": "Texts"
+    "texts": "Texts",
+    "short": {
+      "delivery_notes": "Deliveries"
+    }
   },
   "shell": {
     "skip": "Skip to content",

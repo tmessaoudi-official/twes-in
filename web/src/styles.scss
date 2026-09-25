@@ -405,6 +405,19 @@ body {
 
 // No width transition here: the container's autosize measures the drawer once per change, so an animated width is
 // read mid-flight and the page keeps a margin between the two widths.
+// Unfolded, a thin scrollbar leaves the labels their width.
+.twes-shell-nav,
+.twes-shell-nav .mat-drawer-inner-container {
+  scrollbar-width: thin;
+}
+
+// Folded, the rail has no room for a scrollbar: 15 px of an 80 px column cut every short label to three letters. It
+// still scrolls with the wheel, a touch or the keyboard's focus.
+.twes-shell-nav:has(.twes-rail.is-folded),
+.twes-shell-nav:has(.twes-rail.is-folded) .mat-drawer-inner-container {
+  scrollbar-width: none;
+}
+
 // The rail of the round-6 boards: company, « Créer », search, the two groups, then its foot. A selected row is the
 // page's surface raised off the backdrop, with a 3 px accent bar at its start and the accent on its icon.
 .twes-rail {
@@ -425,6 +438,16 @@ body {
     padding-inline: 0.625rem;
   }
 
+  // Body size, as the direction's type scale says (§ 1.2), not Material's 16 px list title.
+  .mdc-list-item__primary-text {
+    font-size: 0.875rem;
+  }
+
+  // The icon lines up with « Créer »'s, and leaves the label Material's 16 px gap minus a quarter.
+  .mdc-list-item--with-leading-icon .mdc-list-item__start {
+    margin-inline: 0.625rem 0.75rem;
+  }
+
   .mdc-list-item--activated {
     background-color: var(--mat-sys-surface);
     box-shadow:
@@ -443,12 +466,43 @@ body {
 
   &.is-folded {
     align-items: stretch;
-    padding-inline: 0.5rem;
+    padding-inline: 0.25rem;
 
     .mdc-list-item {
       justify-content: center;
     }
+
+    // A destination keeps a short label under its icon (docs/SPEC.md § 8 row 123, the 80 px rail at 1024 px).
+    .mdc-list-item:has(.twes-rail-short) {
+      flex-direction: column;
+      gap: 0.125rem;
+      height: auto;
+      min-height: 3.5rem;
+      padding: 0.375rem 0.125rem;
+
+      .mdc-list-item__start {
+        margin: 0;
+      }
+
+      .mdc-list-item__content {
+        align-self: stretch;
+        text-align: center;
+      }
+    }
   }
+}
+
+.twes-rail .twes-rail-short {
+  display: block;
+  overflow: hidden;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 0.875rem;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  // Material's list title sets its own line height, which made each row 62 px tall.
+  height: auto;
+  white-space: nowrap;
 }
 
 .twes-rail-overline {
@@ -549,11 +603,18 @@ body {
     outline-offset: 2px;
   }
 
+  // Longhands: `font: … inherit` is not valid shorthand, so the whole rule was dropped and « Ctrl K » fell back to a
+  // 13 px monospace that wrapped onto two lines.
   kbd {
+    flex: none;
     margin-inline-start: auto;
     padding: 0 0.375rem;
     border-radius: 0.375rem;
-    font: 600 0.6875rem/1.25rem inherit;
+    font-family: inherit;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    white-space: nowrap;
   }
 
   .is-folded & {
@@ -564,12 +625,12 @@ body {
 
 .twes-rail-create {
   margin-top: 0.5rem;
-  background-color: var(--mat-sys-primary);
-  color: var(--mat-sys-on-primary);
+  background-color: var(--twes-accent);
+  color: var(--twes-on-accent);
   font-weight: 600;
 
   kbd {
-    background-color: color-mix(in oklch, var(--mat-sys-on-primary) 22%, transparent);
+    background-color: color-mix(in oklch, var(--twes-on-accent) 22%, transparent);
   }
 }
 
@@ -605,14 +666,40 @@ body {
 
 /* « Bientôt »: an entry of the vision not built yet (docs/SPEC.md § 7, 2026-09-25 17:22). Quiet, never a colour role. */
 .twes-soon {
-  padding: 0 0.375rem;
+  flex: none;
+  padding: 0 0.3125rem;
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 9999px;
   color: var(--mat-sys-on-surface-variant);
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 600;
+  line-height: 1rem;
   letter-spacing: 0.02em;
   white-space: nowrap;
+}
+
+// Folded, « Bientôt » is a hollow dot by the icon; its word stays for a screen reader.
+.twes-soon-dot {
+  position: absolute;
+  top: 0.5rem;
+  right: 1rem;
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border: 1.5px solid var(--mat-sys-outline);
+  border-radius: 9999px;
+}
+
+// A menu row's title with its « Bientôt » beside it: the label gives way first, the chip never does.
+.twes-rail-title {
+  display: flex !important;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+
+  > :first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .twes-coming-mark {

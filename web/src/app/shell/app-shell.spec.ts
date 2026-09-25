@@ -57,6 +57,8 @@ class StaticLoader implements TranslateLoader {
         watch: 'À surveiller',
         register: 'Caisse',
         reports: 'Rapports',
+        delivery_notes: 'Bons de livraison',
+        short: { delivery_notes: 'Livraisons' },
         sections: { sell: 'Vendre', manage: 'Gérer', team: 'Équipe' },
       },
       shell: {
@@ -479,14 +481,38 @@ describe('AppShell', () => {
     permissions.set(['customer.write', 'customer.read', 'user.read']);
     theme.sidebar.set('rail');
     const { byTestId } = await render();
-    for (const id of [
-      'sidebar-toggle',
-      'command-open',
-      'create-open',
-      'nav-settings',
-      'nav-home',
-    ]) {
+    for (const id of ['sidebar-toggle', 'command-open', 'create-open', 'nav-settings']) {
       expect(byTestId(id)?.classList.contains('mat-mdc-tooltip-trigger'), id).toBe(true);
+    }
+  });
+
+  it('keeps a short label under each destination’s icon once folded, as at 1024 px', async () => {
+    // docs/SPEC.md § 7, 2026-09-24 22:51 (row 123): the 80 px rail keeps a short label under each icon.
+    permissions.set(['delivery_note.read', 'user.read']);
+    modules.set(['delivery_notes']);
+    theme.sidebar.set('rail');
+    const { byTestId } = await render();
+    const home = byTestId('nav-home');
+    expect(home?.querySelector('.twes-rail-short')?.textContent?.trim()).toBe('Accueil');
+    expect(home?.querySelector('.sr-only')).toBeNull();
+    expect(home?.classList.contains('mat-mdc-tooltip-trigger')).toBe(false);
+    expect(
+      byTestId('nav-delivery-notes')?.querySelector('.twes-rail-short')?.textContent?.trim(),
+    ).toBe('Livraisons');
+    // What is not built yet still says so, folded: a dot to see, the word to hear.
+    const register = byTestId('nav-register');
+    expect(register?.querySelector('[data-testid="soon"]')?.textContent).toContain('Bientôt');
+    expect(register?.querySelector('.twes-soon-dot')).not.toBeNull();
+    // Each label is Material's title, never the default slot, which draws a row two lines tall (84 px measured).
+    for (const id of ['nav-home', 'nav-register']) {
+      expect(
+        byTestId(id)?.querySelector('.mat-mdc-list-item-unscoped-content .twes-rail-short'),
+        id,
+      ).toBeNull();
+      expect(
+        byTestId(id)?.querySelector('.mdc-list-item__primary-text.twes-rail-short'),
+        id,
+      ).not.toBeNull();
     }
   });
 
@@ -659,7 +685,7 @@ describe('AppShell', () => {
     expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
     expect(byTestId('sidebar-toggle')?.closest('[data-testid="shell-nav"]')).not.toBeNull();
     expect(byTestId('sidebar-toggle')?.getAttribute('aria-label')).toBe('Réduire le menu');
-    expect(byTestId('nav-home')?.classList.contains('mat-mdc-tooltip-disabled')).toBe(true);
+    expect(byTestId('nav-home')?.querySelector('.twes-rail-short')).toBeNull();
 
     await click('sidebar-toggle');
     expect(theme.toggleSidebar).toHaveBeenCalledTimes(1);
@@ -670,8 +696,9 @@ describe('AppShell', () => {
 
     expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('rail');
     expect(byTestId('sidebar-toggle')?.getAttribute('aria-label')).toBe('Déployer le menu');
-    expect(byTestId('nav-home')?.querySelector('.sr-only')?.textContent).toContain('Accueil');
-    expect(byTestId('nav-home')?.classList.contains('mat-mdc-tooltip-disabled')).toBe(false);
+    expect(byTestId('nav-home')?.querySelector('.twes-rail-short')?.textContent).toContain(
+      'Accueil',
+    );
   });
 
   it('toggles the sidebar with the [ key, but not while typing or with a shortcut', async () => {
@@ -698,7 +725,7 @@ describe('AppShell', () => {
     expect(theme.toggleSidebar).toHaveBeenCalledTimes(3);
   });
 
-  it('lays the navigation out by window width: labelled from 1200 px, a rail of named icons below', async () => {
+  it('lays the navigation out by window width: labelled from 1200 px, an 80 px rail with short labels below', async () => {
     const { fixture, byTestId } = await render();
     expect(byTestId('shell-nav')?.getAttribute('data-window')).toBe('expanded');
     expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
@@ -711,7 +738,9 @@ describe('AppShell', () => {
     expect(byTestId('shell-nav')?.getAttribute('data-window')).toBe('medium');
     // The setting says expanded, but a medium window has no room for labels: the rail is not a choice there.
     expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('rail');
-    expect(byTestId('nav-home')?.querySelector('.sr-only')?.textContent).toContain('Accueil');
+    expect(byTestId('nav-home')?.querySelector('.twes-rail-short')?.textContent).toContain(
+      'Accueil',
+    );
     expect(byTestId('sidebar-toggle')).toBeNull();
     expect(byTestId('bottom-bar')).toBeNull();
   });
