@@ -13,7 +13,7 @@ export const INVENTORY_NAV: readonly NavEntry[] = [
     labelKey: 'nav.stock',
     icon: 'warehouse',
     route: '/stock',
-    section: 'main',
+    section: 'manage',
     permission: 'stock.read',
     module: INVENTORY_MODULE,
   },

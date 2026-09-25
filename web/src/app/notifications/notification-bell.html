@@ -1,18 +1,48 @@
-<button
-  mat-icon-button
-  type="button"
-  aria-haspopup="dialog"
-  (click)="open()"
-  [appLabel]="'notifications.bell' | translate: { count: unread() }"
-  [attr.data-unread]="unread()"
-  data-testid="notification-bell"
->
-  <mat-icon
-    aria-hidden="true"
-    [matBadge]="badge()"
-    [matBadgeHidden]="unread() === 0"
-    matBadgeSize="medium"
-    matBadgeColor="warn"
-    >notifications</mat-icon
+@if (variant() === 'row') {
+  <!-- The rail's foot (docs/SPEC.md § 7, 2026-09-25 09:03): a row like the destinations above it, its count beside
+       the label; folded to the rail, the icon alone carries the count and the tooltip names it. -->
+  <button
+    type="button"
+    class="twes-rail-row"
+    aria-haspopup="dialog"
+    (click)="open()"
+    [appLabel]="'notifications.bell' | translate: { count: unread() }"
+    [matTooltipDisabled]="!folded()"
+    matTooltipPosition="right"
+    [attr.data-unread]="unread()"
+    data-testid="notification-bell"
   >
-</button>
+    <mat-icon
+      aria-hidden="true"
+      [matBadge]="badge()"
+      [matBadgeHidden]="unread() === 0 || !folded()"
+      matBadgeSize="small"
+      >notifications</mat-icon
+    >
+    <span class="twes-rail-label" [class.sr-only]="folded()" aria-hidden="true">{{
+      'notifications.title' | translate
+    }}</span>
+    @if (unread() > 0 && !folded()) {
+      <span class="twes-rail-count" aria-hidden="true">{{ badge() }}</span>
+    }
+  </button>
+} @else {
+  <button
+    mat-icon-button
+    type="button"
+    aria-haspopup="dialog"
+    (click)="open()"
+    [appLabel]="'notifications.bell' | translate: { count: unread() }"
+    [attr.data-unread]="unread()"
+    data-testid="notification-bell"
+  >
+    <mat-icon
+      aria-hidden="true"
+      [matBadge]="badge()"
+      [matBadgeHidden]="unread() === 0"
+      matBadgeSize="medium"
+      matBadgeColor="warn"
+      >notifications</mat-icon
+    >
+  </button>
+}

@@ -13,7 +13,7 @@ export const VENDORS_NAV: readonly NavEntry[] = [
     labelKey: 'nav.vendors',
     icon: 'storefront',
     route: '/vendors',
-    section: 'main',
+    section: 'manage',
     permission: 'vendor.read',
     module: VENDORS_MODULE,
   },

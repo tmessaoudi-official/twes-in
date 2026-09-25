@@ -96,6 +96,7 @@ describe('refuseReservedShortcut', () => {
     // never fires or fires alongside the shell, decided by whichever handler ran first.
     expect(() => refuseReservedShortcut('?')).toThrow(/reserved/i);
     expect(() => refuseReservedShortcut('[')).toThrow(/reserved/i);
+    expect(() => refuseReservedShortcut('c')).toThrow(/reserved/i);
   });
 
   it('refuses a shortcut that is not one single character', () => {

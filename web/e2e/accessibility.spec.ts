@@ -37,8 +37,9 @@ test('the shell, the home page and the members page are accessible in light and 
   await expect(page.getByTestId('members-title')).toBeVisible();
   await expectAccessible(page, 'members, light');
 
-  await page.getByTestId('scheme-menu').click();
-  await page.getByTestId('scheme-dark').click();
+  // Signed in, the scheme is in the member's menu (docs/SPEC.md § 7, 2026-09-25 17:22).
+  await page.getByTestId('user-menu').click();
+  await page.getByTestId('account-scheme-dark').click();
   await expect(page.locator('html')).toHaveClass(/theme-dark/);
   // axe must read the page, not the scheme menu's closing animation over it.
   await expect(page.locator('.mat-mdc-menu-panel')).toHaveCount(0);
@@ -91,8 +92,8 @@ test('the language switch translates the shell and the page', async ({ page }) =
   await signIn(page);
   await expect(page.getByTestId('nav-home')).toContainText('Accueil');
 
-  await page.getByTestId('language-menu').click();
-  await page.getByTestId('language-en').click();
+  await page.getByTestId('user-menu').click();
+  await page.getByTestId('account-language-en').click();
 
   await expect(page.getByTestId('nav-home')).toContainText('Home');
   await expect(page.getByTestId('greeting')).toContainText('Hello');
@@ -207,8 +208,9 @@ test('every screen the goals added is accessible, in both colour schemes', async
       /\/settings\/presentation\.scheme$/.test(response.url()) &&
       response.request().method() !== 'GET',
   );
-  await page.getByTestId('scheme-menu').click();
-  await page.getByTestId('scheme-dark').click();
+  // Signed in, the scheme is in the member's menu (docs/SPEC.md § 7, 2026-09-25 17:22).
+  await page.getByTestId('user-menu').click();
+  await page.getByTestId('account-scheme-dark').click();
   expect((await stored).status()).toBe(200);
   await expect(page.locator('html')).toHaveClass(/theme-dark/);
   // axe must read the page, not the scheme menu's closing animation over it.
@@ -257,8 +259,9 @@ test('using the shell raises no Content Security Policy violation', async ({ pag
   await signIn(page);
   await page.getByTestId('nav-settings').click();
   await page.getByTestId('nav-members').click();
-  await page.getByTestId('scheme-menu').click();
-  await page.getByTestId('scheme-dark').click();
+  // Signed in, the scheme is in the member's menu (docs/SPEC.md § 7, 2026-09-25 17:22).
+  await page.getByTestId('user-menu').click();
+  await page.getByTestId('account-scheme-dark').click();
   await page.reload();
   await expect(page.getByTestId('members-title')).toBeVisible();
 

@@ -24,13 +24,13 @@ import {
 } from './nav-manifest';
 
 const entries: readonly NavEntry[] = [
-  { key: 'home', labelKey: 'nav.home', icon: 'home', route: '/', section: 'main' },
+  { key: 'home', labelKey: 'nav.home', icon: 'home', route: '/', section: 'sell' },
   {
     key: 'customers',
     labelKey: 'nav.customers',
     icon: 'contacts',
     route: '/customers',
-    section: 'main',
+    section: 'sell',
     permission: 'customer.read',
     module: 'customers',
   },
@@ -47,7 +47,7 @@ const entries: readonly NavEntry[] = [
     labelKey: 'nav.design',
     icon: 'palette',
     route: '/design',
-    section: 'main',
+    section: 'sell',
     devOnly: true,
   },
 ];
@@ -109,9 +109,9 @@ describe('visibleEntries', () => {
 describe('navSections', () => {
   it('groups entries by section in the given order and drops empty sections', () => {
     expect(
-      navSections(entries, ['main', 'company', 'team']).map((s) => [s.section, keys(s.entries)]),
+      navSections(entries, ['sell', 'company', 'team']).map((s) => [s.section, keys(s.entries)]),
     ).toEqual([
-      ['main', ['home', 'customers', 'design']],
+      ['sell', ['home', 'customers', 'design']],
       ['team', ['members']],
     ]);
     expect(navSections(entries, ['team']).map((s) => s.section)).toEqual(['team']);
@@ -163,8 +163,18 @@ describe('the navigation manifest', () => {
     expect(DEV_NAV.every((entry) => entry.devOnly === true)).toBe(true);
   });
 
-  // docs/SPEC.md § 7, 2026-09-24 12:10: « À surveiller » is reached from the sidebar, after the modules, so the
-  // phone's bottom bar keeps its four module destinations.
+  // docs/SPEC.md § 7, 2026-09-25 09:03 and the round-6 rail board: two groups, Vendre then Gérer, each in this order.
+  it('splits the sidebar into Vendre then Gérer, in the approved order', () => {
+    expect(SIDEBAR_SECTIONS).toEqual(['sell', 'manage']);
+    expect(navSections(sidebar, SIDEBAR_SECTIONS).map((g) => [g.section, keys(g.entries)])).toEqual(
+      [
+        ['sell', ['home', 'invoices', 'delivery-notes', 'customers', 'products']],
+        ['manage', ['stock', 'vendors', 'expenses', 'watch']],
+      ],
+    );
+  });
+
+  // docs/SPEC.md § 7, 2026-09-24 12:10: « À surveiller » is reached from the sidebar, last of Gérer.
   it('offers « À surveiller » after the modules to whoever may read the company', () => {
     expect(
       MANAGE_NAV.map((entry) => [entry.key, entry.route, entry.permission, entry.module]),
@@ -177,7 +187,6 @@ describe('the navigation manifest', () => {
         (entry) => entry.module !== undefined,
       ),
     ).toEqual([]);
-    // Invoices come first: on a phone the bottom bar shows the first four destinations.
     expect(
       INVOICES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
     ).toEqual([['invoices', 'invoices', 'invoice.read', '/invoices']]);
@@ -204,9 +213,9 @@ describe('the navigation manifest', () => {
     ).toEqual([['expenses', 'expenses', 'expense.read', '/expenses']]);
     expect(MODULE_NAV).toEqual([
       ...INVOICES_NAV,
+      ...DELIVERY_NOTES_NAV,
       ...CUSTOMERS_NAV,
       ...PRODUCTS_NAV,
-      ...DELIVERY_NOTES_NAV,
       ...INVENTORY_NAV,
       ...VENDORS_NAV,
       ...EXPENSES_NAV,

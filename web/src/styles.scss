@@ -392,20 +392,236 @@ body {
 
 // No width transition here: the container's autosize measures the drawer once per change, so an animated width is
 // read mid-flight and the page keeps a margin between the two widths.
-.twes-shell-nav {
+// The rail of the round-6 boards: company, « Créer », search, the two groups, then its foot. A selected row is the
+// page's surface raised off the backdrop, with a 3 px accent bar at its start and the accent on its icon.
+.twes-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 100%;
+  padding: 0.75rem 0.75rem 0.75rem;
+  box-sizing: border-box;
+
+  .mdc-list {
+    padding: 0;
+  }
+
   .mdc-list-item {
-    border-radius: 9999px;
+    height: 2.5rem;
+    border-radius: 0.625rem;
+    padding-inline: 0.625rem;
   }
 
   .mdc-list-item--activated {
-    background-color: color-mix(in oklch, var(--mat-sys-primary) 16%, var(--mat-sys-surface));
+    background-color: var(--mat-sys-surface);
+    box-shadow:
+      inset 3px 0 0 var(--mat-sys-primary),
+      var(--twes-shadow-1);
 
-    .mdc-list-item__primary-text,
-    .mat-icon {
+    .mdc-list-item__primary-text {
       color: var(--mat-sys-on-surface);
-      font-weight: 600;
+      font-weight: 650;
+    }
+
+    .mat-icon {
+      color: var(--mat-sys-primary);
     }
   }
+
+  &.is-folded {
+    align-items: stretch;
+    padding-inline: 0.5rem;
+
+    .mdc-list-item {
+      justify-content: center;
+    }
+  }
+}
+
+.twes-rail-overline {
+  margin: 0.75rem 0 0.25rem;
+  padding-inline: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  line-height: 1rem;
+  text-transform: uppercase;
+}
+
+.twes-rail-company {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border: 0;
+  border-radius: 0.625rem;
+  background: none;
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  text-align: start;
+  cursor: default;
+
+  &:is(button) {
+    cursor: pointer;
+
+    &:hover {
+      background-color: color-mix(in oklch, var(--mat-sys-on-surface) 6%, transparent);
+    }
+  }
+
+  .mat-icon {
+    margin-inline-start: auto;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.twes-rail-company-mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background-color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  font-weight: 700;
+}
+
+.twes-rail-company-text,
+.twes-rail-member-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.twes-rail-company-name {
+  font-weight: 650;
+}
+
+.twes-rail-company-sub,
+.twes-rail-member-role {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.75rem;
+}
+
+// The role reads as a label here, « Propriétaire », where the same word sits lower case inside sentences elsewhere.
+.twes-rail-member-role::first-letter {
+  text-transform: uppercase;
+}
+
+.twes-rail-create,
+.twes-rail-search,
+.twes-rail-row,
+.twes-rail-member {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.5rem;
+  padding-inline: 0.625rem;
+  border: 0;
+  border-radius: 0.625rem;
+  background: none;
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  text-align: start;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+
+  kbd {
+    margin-inline-start: auto;
+    padding: 0 0.375rem;
+    border-radius: 0.375rem;
+    font: 600 0.6875rem/1.25rem inherit;
+  }
+
+  .is-folded & {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+
+.twes-rail-create {
+  margin-top: 0.5rem;
+  background-color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  font-weight: 600;
+
+  kbd {
+    background-color: color-mix(in oklch, var(--mat-sys-on-primary) 22%, transparent);
+  }
+}
+
+.twes-rail-search {
+  border: 1px solid var(--mat-sys-outline-variant);
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface-variant);
+
+  kbd {
+    border: 1px solid var(--mat-sys-outline-variant);
+  }
+}
+
+.twes-rail-row:hover,
+.twes-rail-member:hover {
+  background-color: color-mix(in oklch, var(--mat-sys-on-surface) 6%, transparent);
+}
+
+.twes-rail-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.twes-rail-count {
+  margin-inline-start: auto;
+  padding: 0 0.375rem;
+  border-radius: 9999px;
+  background-color: var(--mat-sys-surface-container-high);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.twes-rail-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+.twes-rail-member {
+  margin-top: 0.5rem;
+  padding-block: 0.5rem;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 0;
+
+  > .mat-icon {
+    margin-inline-start: auto;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.twes-avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  background-color: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font-size: 0.8125rem;
+  font-weight: 650;
 }
 
 .twes-shell-content[data-window='medium'],
@@ -425,6 +641,12 @@ body {
 .twes-shell-bar.mat-toolbar {
   background: transparent;
   border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+  // From a tablet up the bar only carries the scanning controls: short, and without a line under it.
+  &.is-slim {
+    --mat-toolbar-standard-height: 3rem;
+    border-bottom: 0;
+  }
 }
 
 .twes-shell-content > header {
@@ -476,6 +698,11 @@ body {
       outline-offset: -2px;
       border-radius: 0.75rem;
     }
+  }
+
+  > .twes-bottom-create .mat-icon {
+    background-color: var(--mat-sys-primary);
+    color: var(--mat-sys-on-primary);
   }
 
   > a.is-active {

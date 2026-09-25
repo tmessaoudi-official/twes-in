@@ -10,15 +10,16 @@ import {
   isDevMode,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
-import { BrandMark } from '../shared/theme/brand-mark';
 import { MatDialog } from '@angular/material/dialog';
 import { MatListModule } from '@angular/material/list';
-import { MatMenuModule } from '@angular/material/menu';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -44,8 +45,6 @@ import {
   LanguageFacade,
   SUPPORTED_LANGUAGES,
 } from '../shared/i18n/language-facade';
-import { LanguageMenu } from '../shared/i18n/language-menu';
-import { SchemeMenu } from '../shared/theme/scheme-menu';
 import { type SchemePreference, ThemeFacade } from '../shared/theme/theme-facade';
 import { ProductScanCard, type ProductScanCardData } from '../products/product-scan-card';
 import { PRODUCTS_MODULE } from '../products/products-nav';
@@ -68,6 +67,7 @@ import {
   isSettingsUrl,
   MODULE_NAV,
   navSections,
+  PHONE_BAR_FIRST,
   SETTINGS_NAV,
   SIDEBAR_SECTIONS,
   visibleEntries,
@@ -79,8 +79,8 @@ import { WINDOW_CLASS } from '../shared/ui/window-class';
  * bar of destinations at the bottom and the rest in a drawer, a medium window a rail of icons, and only from 1200 px
  * is there room for labels, which the person may still fold into the rail.
  */
-/** How many destinations the phone's bottom bar holds before the Plus button. */
-const BOTTOM_BAR_DESTINATIONS = 4;
+/** How many destinations the phone's bottom bar holds beside « Créer » and Plus. */
+const BOTTOM_BAR_DESTINATIONS = 3;
 
 /** "Amel Ben Salah" → "AS": the first and last word, which is how people recognise their own initials. */
 export function initialsOf(displayName: string): string {
@@ -107,8 +107,8 @@ export function initialsOf(displayName: string): string {
     MatToolbarModule,
     MatListModule,
     MatIconModule,
-    BrandMark,
     MatButtonModule,
+    NgTemplateOutlet,
     MatMenuModule,
     MatDividerModule,
     MatTooltipModule,
@@ -116,8 +116,6 @@ export function initialsOf(displayName: string): string {
     CompanySwitcher,
     NotificationBell,
     Label,
-    LanguageMenu,
-    SchemeMenu,
     ActivityBar,
     SubscriptionNoticeBar,
   ],
@@ -200,12 +198,31 @@ export class AppShell {
       ...navCommands([...CORE_NAV, ...MODULE_NAV, ...MANAGE_NAV, ...SETTINGS_NAV]),
     ]),
   ]);
-  /** The phone's bottom bar: the first destinations of the sidebar, in its order. */
-  protected readonly bottomBar = computed(() =>
-    this.sections()
-      .flatMap((group) => group.entries)
-      .slice(0, BOTTOM_BAR_DESTINATIONS),
+  /** What « Créer » offers this person: the modules' creations they may make, in the palette's order. */
+  protected readonly createCommands = computed(() =>
+    this.visible(MODULE_COMMANDS).filter((command) => command.group === 'create'),
   );
+  /** « Créer »'s menu, wherever it is drawn: the rail's button from a tablet up, the phone's bar below. */
+  private readonly createTrigger = viewChild('createTrigger', { read: MatMenuTrigger });
+  /**
+   * The scanning controls, which the rail does not carry: what keeps a slim bar above the page from a tablet up. The
+   * camera shows wherever the browser can open one, whatever the person may do.
+   */
+  protected readonly scanControls = computed(
+    () => this.cameraAvailable || this.mayScan() || this.mayHide() || this.scanCount() !== null,
+  );
+  /**
+   * The phone's bottom bar: the most used destinations first (`PHONE_BAR_FIRST`), then the sidebar's next ones, three
+   * in all; « Créer » goes between the second and the third.
+   */
+  protected readonly bottomBar = computed(() => {
+    const entries = this.sections().flatMap((group) => group.entries);
+    const first = PHONE_BAR_FIRST.flatMap((key) => entries.filter((entry) => entry.key === key));
+    return [...first, ...entries.filter((entry) => !first.includes(entry))].slice(
+      0,
+      BOTTOM_BAR_DESTINATIONS,
+    );
+  });
   /**
    * Where the person is, so the shell can answer to it. Read from the router rather than from a child, because the
    * shell folds itself before the settings area exists.
@@ -344,6 +361,18 @@ export class AppShell {
       if (this.windowClass() !== 'expanded') return;
       event.preventDefault();
       this.theme.toggleSidebar(this.inSettings());
+      return;
+    }
+
+    // C opens « Créer » (docs/SPEC.md § 7, 2026-09-24 22:51), held for one scan gap like a screen's key: a code may
+    // begin with a c.
+    if (matchesShortcut(event, 'c') && this.createCommands().length > 0) {
+      event.preventDefault();
+      this.dropHeldShortcut();
+      this.heldShortcut = setTimeout(() => {
+        this.heldShortcut = null;
+        this.createTrigger()?.openMenu();
+      }, SCAN_GAP_MS);
       return;
     }
 

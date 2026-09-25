@@ -13,7 +13,7 @@ export const DELIVERY_NOTES_NAV: readonly NavEntry[] = [
     labelKey: 'nav.delivery_notes',
     icon: 'local_shipping',
     route: '/delivery-notes',
-    section: 'main',
+    section: 'sell',
     permission: 'delivery_note.read',
     module: DELIVERY_NOTES_MODULE,
   },

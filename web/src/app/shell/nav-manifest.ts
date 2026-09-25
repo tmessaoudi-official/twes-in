@@ -9,11 +9,12 @@ import { VENDORS_NAV } from '../vendors/vendors-nav';
 import { EXPENSES_NAV } from '../expenses/expenses-nav';
 
 /**
- * What the shell offers. The sidebar keeps the daily entries: the core ones, then each module's, declared by the
- * module's web feature beside its routes and shown while the working company has the module on (docs/SPEC.md § 3
- * Modules). The company settings sit behind the gear in the top bar, grouped in their own area.
+ * What the shell offers. The sidebar keeps the daily entries in two groups, Vendre and Gérer (docs/SPEC.md § 7,
+ * 2026-09-25 09:03): the core ones, then each module's, declared by the module's web feature beside its routes and
+ * shown while the working company has the module on (docs/SPEC.md § 3 Modules). The company settings sit behind
+ * « Paramètres » at the foot of the sidebar, grouped in their own area.
  */
-export type NavSection = 'main' | 'company' | 'fiscal' | 'team' | 'customisation';
+export type NavSection = 'sell' | 'manage' | 'company' | 'fiscal' | 'team' | 'customisation';
 
 /** What decides whether a user sees something the shell offers: a navigation entry or a command. */
 export interface Gated {
@@ -39,7 +40,7 @@ export interface NavGroup {
   readonly entries: readonly NavEntry[];
 }
 
-export const SIDEBAR_SECTIONS: readonly NavSection[] = ['main'];
+export const SIDEBAR_SECTIONS: readonly NavSection[] = ['sell', 'manage'];
 export const SETTINGS_SECTIONS: readonly NavSection[] = [
   'company',
   'fiscal',
@@ -48,13 +49,12 @@ export const SETTINGS_SECTIONS: readonly NavSection[] = [
 ];
 
 export const CORE_NAV: readonly NavEntry[] = [
-  { key: 'home', labelKey: 'nav.home', icon: 'home', route: '/', section: 'main' },
+  { key: 'home', labelKey: 'nav.home', icon: 'home', route: '/', section: 'sell' },
 ];
 
 /**
- * What the sidebar lists after the modules: « À surveiller » (docs/SPEC.md § 7, 2026-09-24 12:10), for whoever may read
- * the company, each condition on it gated by its own module and permission. After the modules, so the phone's bottom
- * bar keeps its four module destinations.
+ * What the sidebar lists after the modules: « À surveiller » (docs/SPEC.md § 7, 2026-09-24 12:10), last of Gérer, for
+ * whoever may read the company, each condition on it gated by its own module and permission.
  */
 export const MANAGE_NAV: readonly NavEntry[] = [
   {
@@ -62,7 +62,7 @@ export const MANAGE_NAV: readonly NavEntry[] = [
     labelKey: 'nav.watch',
     icon: 'visibility',
     route: '/watch',
-    section: 'main',
+    section: 'manage',
     permission: 'company.read',
   },
 ];
@@ -168,6 +168,12 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
 ];
 
 /**
+ * What a phone's bottom bar puts around « Créer », most used first (the round-6 phone boards: Accueil, Factures,
+ * Créer, Clients). A company without one of these modules gets the sidebar's next destinations in their place.
+ */
+export const PHONE_BAR_FIRST: readonly string[] = ['home', 'invoices', 'customers'];
+
+/**
  * Entries for development builds only, never shipped (`devOnly`). Empty since the design checkpoint's fixture screens
  * were retired with the invoice screens (docs/SPEC.md § 7, 2026-09-16); the gate stays for the next one.
  */
@@ -176,9 +182,9 @@ export const DEV_NAV: readonly NavEntry[] = [];
 /** Every module's entries, each declared by its module's web feature. */
 export const MODULE_NAV: readonly NavEntry[] = [
   ...INVOICES_NAV,
+  ...DELIVERY_NOTES_NAV,
   ...CUSTOMERS_NAV,
   ...PRODUCTS_NAV,
-  ...DELIVERY_NOTES_NAV,
   ...INVENTORY_NAV,
   ...VENDORS_NAV,
   ...EXPENSES_NAV,

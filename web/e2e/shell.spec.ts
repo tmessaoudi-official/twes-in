@@ -110,7 +110,7 @@ test('on a phone the settings list stands alone, a setting opens without it, and
   await expect(page.getByTestId('settings-index')).toBeVisible();
 });
 
-test('the top bar keeps every control clear of the next, down to the narrowest labelled window', async ({
+test('the rail and the top bar keep every control clear of the next, down to the narrowest labelled window', async ({
   page,
 }) => {
   await signIn(page);
@@ -120,7 +120,11 @@ test('the top bar keeps every control clear of the next, down to the narrowest l
     await expect(page.getByTestId('user-menu')).toBeVisible();
     // A control another one covers cannot be clicked: the account button once lay over the gear at 1280 px (CI, row 37).
     const boxes = await page.evaluate(() =>
-      [...document.querySelectorAll<HTMLElement>('.twes-shell-bar button, .twes-shell-bar a')]
+      [
+        ...document.querySelectorAll<HTMLElement>(
+          '.twes-shell-bar button, .twes-shell-bar a, .twes-rail > button, .twes-rail-foot > button',
+        ),
+      ]
         .filter((control) => control.offsetParent !== null)
         .map((control) => {
           const box = control.getBoundingClientRect();

@@ -458,7 +458,8 @@
     "members": "Membres",
     "roles": "Rôles",
     "sections": {
-      "main": "Général",
+      "sell": "Vendre",
+      "manage": "Gérer",
       "company": "Société",
       "fiscal": "Fiscalité",
       "team": "Équipe",
@@ -494,6 +495,7 @@
     "more": "Plus",
     "bottom_navigation": "Raccourcis",
     "commands": {
+      "search": "Rechercher…",
       "open": "Rechercher",
       "title": "Commandes",
       "placeholder": "Aller à ou créer…",
@@ -504,6 +506,7 @@
       "create": "Créer",
       "goto": "Aller à"
     },
+    "create": "Créer",
     "user_menu": "Compte",
     "language": "Langue",
     "density_compact": "Affichage compact",

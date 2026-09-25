@@ -42,6 +42,9 @@ class StaticLoader implements TranslateLoader {
     return of({
       app: { name: 'twes-in' },
       auth: { logout: 'Se déconnecter' },
+      roles: { owner: 'Propriétaire' },
+      customers: { new_title: 'Nouveau client' },
+      invoices: { new_title: 'Nouvelle facture' },
       nav: {
         home: 'Accueil',
         members: 'Membres',
@@ -50,7 +53,9 @@ class StaticLoader implements TranslateLoader {
         vendors: 'Fournisseurs',
         expenses: 'Dépenses',
         design: 'Design',
-        sections: { main: 'Général', team: 'Équipe' },
+        invoices: 'Factures',
+        watch: 'À surveiller',
+        sections: { sell: 'Vendre', manage: 'Gérer', team: 'Équipe' },
       },
       shell: {
         menu: 'Menu',
@@ -61,7 +66,12 @@ class StaticLoader implements TranslateLoader {
         collapse_menu: 'Réduire le menu',
         expand_menu: 'Déployer le menu',
         settings: 'Paramètres',
-        commands: { open: 'Rechercher', find: 'Rechercher un client, une facture, un produit…' },
+        create: 'Créer',
+        commands: {
+          open: 'Rechercher',
+          find: 'Rechercher un client, une facture, un produit…',
+          search: 'Rechercher…',
+        },
       },
       appearance: {
         scheme_menu: 'Thème : {{current}}',
@@ -290,23 +300,75 @@ describe('AppShell', () => {
     me.set(owner);
   });
 
-  it('shows the navigation the user may see, with the product name', async () => {
-    const { el, byTestId } = await render();
-    expect(el.querySelector('[data-testid="brand"]')?.textContent).toContain('twes-in');
-    // The mark beside the name is ours, drawn from the theme, and not a stock Material glyph (invariant 5):
-    // nothing in the product may be another product's badge.
-    const mark = el.querySelector('[data-testid="brand-mark"] svg');
-    expect(mark).not.toBeNull();
-    expect(mark?.getAttribute('viewBox')).toBe('0 0 32 32');
-    expect(mark?.querySelector('rect')?.getAttribute('class')).toContain('fill-primary');
-    // It sits beside the name in text, so announcing it again would say the product's name twice.
-    expect(mark?.getAttribute('aria-hidden')).toBe('true');
-    expect(el.querySelector('[data-testid="brand"]')?.parentElement?.textContent).not.toContain(
-      'receipt_long',
-    );
+  it('leads the rail with the working company, where the product name was', async () => {
+    // docs/SPEC.md § 7, 2026-09-25 09:03 and the round-6 rail board: the company a person acts for heads the rail.
+    const { byTestId } = await render();
+    const company = byTestId('rail-company');
+    expect(company?.closest('[data-testid="shell-nav"]')).not.toBeNull();
+    expect(company?.textContent).toContain('Demo');
+    expect(company?.textContent).toContain('TND');
+    expect(byTestId('brand')).toBeNull();
     expect(byTestId('nav-home')?.textContent).toContain('Accueil');
     // Each settings page lives in the settings area, not in the sidebar, which has one way in to all of them.
     expect(byTestId('nav-members')).toBeNull();
+  });
+
+  it('groups the rail under Vendre and Gérer, each under its own heading', async () => {
+    permissions.set(['customer.read', 'company.read']);
+    const { byTestId } = await render();
+    const sell = document.querySelector('[aria-labelledby="nav-section-sell"]');
+    const manage = document.querySelector('[aria-labelledby="nav-section-manage"]');
+    expect(document.getElementById('nav-section-sell')?.textContent).toContain('Vendre');
+    expect(document.getElementById('nav-section-manage')?.textContent).toContain('Gérer');
+    expect(sell?.contains(byTestId('nav-home'))).toBe(true);
+    expect(sell?.contains(byTestId('nav-customers'))).toBe(true);
+    expect(manage?.contains(byTestId('nav-watch'))).toBe(true);
+  });
+
+  it('keeps Notifications, Paramètres and the member at the foot of the rail, in that order', async () => {
+    const { byTestId } = await render();
+    const nav = byTestId('shell-nav')!;
+    const order = ['notification-bell', 'nav-settings', 'user-menu'].map((id) => byTestId(id));
+    for (const control of order) expect(nav.contains(control)).toBe(true);
+    expect(
+      order[0]!.compareDocumentPosition(order[1]!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      order[1]!.compareDocumentPosition(order[2]!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // The member row says who and in what role, the way the board draws it.
+    expect(byTestId('user-menu')?.textContent).toContain('Amel Ben Salah');
+    expect(byTestId('user-menu')?.textContent).toContain('Propriétaire');
+    expect(byTestId('user-menu')?.textContent).toContain('AS');
+  });
+
+  it('offers what the person may create from « Créer », and the C key opens it outside a field', async () => {
+    permissions.set(['customer.read', 'customer.write']);
+    const { byTestId, el } = await render();
+    const create = byTestId('create-open');
+    expect(create?.closest('[data-testid="shell-nav"]')).not.toBeNull();
+    expect(create?.textContent).toContain('Créer');
+    expect(create?.getAttribute('aria-keyshortcuts')).toBe('c');
+
+    // Typed into a field it is a letter, and it never opens anything.
+    const input = document.createElement('input');
+    el.appendChild(input);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', bubbles: true }));
+    await pause();
+    input.remove();
+    expect(document.querySelector('[data-testid="create-new-customer"]')).toBeNull();
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', bubbles: true }));
+    await pause();
+    expect(byTestId('create-new-customer')?.textContent).toContain('Nouveau client');
+    // Only what this person may create in this company: invoices are off for it.
+    expect(byTestId('create-new-invoice')).toBeNull();
+  });
+
+  it('draws no « Créer » for somebody who may create nothing', async () => {
+    permissions.set([]);
+    const { byTestId } = await render();
+    expect(byTestId('create-open')).toBeNull();
   });
 
   it('reaches the settings from the sidebar and from nowhere else', async () => {
@@ -320,19 +382,16 @@ describe('AppShell', () => {
     expect(byTestId('settings-gear')).toBeNull();
   });
 
-  it('puts the language and the scheme in the top bar, out of the account menu', async () => {
+  it('puts the language and the scheme in the member’s menu at every width', async () => {
+    // The top bar gave them its room (direction § 4.1): the rail's member row carries them from 1200 px as on a phone.
     const { click, byTestId } = await render();
-    expect(byTestId('language-menu')?.closest('header')).not.toBeNull();
-    expect(byTestId('language-menu')?.getAttribute('aria-label')).toBe('Langue : Français');
-    expect(byTestId('scheme-menu')?.closest('header')).not.toBeNull();
-    expect(byTestId('scheme-menu')?.getAttribute('aria-label')).toBe('Thème : Automatique');
+    expect(byTestId('language-menu')).toBeNull();
+    expect(byTestId('scheme-menu')).toBeNull();
 
     await click('user-menu');
-    expect(document.querySelectorAll('.mat-mdc-menu-panel [role="menuitemradio"]')).toHaveLength(0);
+    expect(byTestId('account-scheme-auto')?.getAttribute('aria-checked')).toBe('true');
     expect(byTestId('account-settings')).toBeNull();
-
-    await click('scheme-menu');
-    await click('scheme-dark');
+    await click('account-scheme-dark');
     expect(theme.setScheme).toHaveBeenCalledWith('dark');
   });
 
@@ -352,31 +411,47 @@ describe('AppShell', () => {
     expect(theme.setScheme).toHaveBeenCalledWith('dark');
   });
 
-  it('starts the search after the menu button and lets it fill the bar, capped', async () => {
-    // Design review finding 6, measured: 496 px centred in a 1184 px header at 1440, empty on both sides. It now
-    // starts where the reading does and grows to meet the right-hand controls; the cap only binds around 1920 px.
+  it('puts the search in the rail, under « Créer », saying what it finds', async () => {
     const { fixture, byTestId } = await render();
-    const search = byTestId('top-bar-search');
-    expect(byTestId('command-open')?.closest('[data-testid="top-bar-search"]')).not.toBeNull();
-    expect(
-      search?.previousElementSibling?.querySelector('[data-testid="sidebar-toggle"]'),
-    ).not.toBeNull();
-    expect(search?.className).toContain('flex-1');
-    expect(search?.className).toMatch(/max-w-\[800px\]/);
-    // The placeholder says what it finds rather than only that it searches.
-    expect(byTestId('command-open')?.textContent).toContain('Rechercher un client');
+    const search = byTestId('command-open');
+    expect(search?.closest('[data-testid="shell-nav"]')).not.toBeNull();
+    expect(search?.textContent).toContain('Rechercher…');
+    expect(search?.textContent).toContain('Ctrl K');
+    expect(search?.getAttribute('aria-label')).toBe('Rechercher');
 
+    // A rail of icons keeps the search, named.
     width.next(900);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(byTestId('top-bar-search')).toBeNull();
-    expect(byTestId('command-open')?.textContent).not.toContain('Rechercher un client');
     expect(byTestId('command-open')?.getAttribute('aria-label')).toBe('Rechercher');
   });
 
-  it('gives every control in the top bar that shows no words a tooltip saying what it does', async () => {
+  it('keeps a slim bar above the page only for the scanning controls', async () => {
+    permissions.set(['product.read']);
+    const { fixture, byTestId, el } = await render();
+    const bar = el.querySelector('.twes-shell-bar');
+    expect(bar?.contains(byTestId('camera-open'))).toBe(true);
+    expect(bar?.contains(byTestId('phone-pair'))).toBe(true);
+    expect(bar?.contains(byTestId('user-menu'))).toBe(false);
+
+    // With no product to scan the phone has nothing to do, and the bar keeps only the camera.
+    permissions.set([]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(el.querySelector('.twes-shell-bar [data-testid="phone-pair"]')).toBeNull();
+  });
+
+  it('names every rail control that shows no words once folded, with a tooltip', async () => {
+    permissions.set(['customer.write', 'customer.read', 'user.read']);
+    theme.sidebar.set('rail');
     const { byTestId } = await render();
-    for (const id of ['sidebar-toggle', 'scheme-menu', 'language-menu']) {
+    for (const id of [
+      'sidebar-toggle',
+      'command-open',
+      'create-open',
+      'nav-settings',
+      'nav-home',
+    ]) {
       expect(byTestId(id)?.classList.contains('mat-mdc-tooltip-trigger'), id).toBe(true);
     }
   });
@@ -426,62 +501,44 @@ describe('AppShell', () => {
     expect(byTestId('nav-settings')?.getAttribute('href')).toBe('/company/profile');
   });
 
-  it('folds the menu to its rail while in settings, and gives the area the whole width', async () => {
-    // Design review finding 7, measured: the settings menu floated as a card beside a FULL app menu, about 650 px
-    // of a 1440 px window, and cut the tables beside it. In settings the app menu is the rail, so the settings list
-    // docks against it; main drops its own gutter and cap so the list can sit flush rather than inset.
+  it('keeps the full menu beside the settings list, as the approved board draws it', async () => {
+    // The round-6 settings board shows the labelled rail beside the area's own list; the area still takes the whole
+    // width, with no gutter and no cap, so its list docks against the rail.
+    theme.settingsSidebar.set('expanded');
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/members');
     const { el, byTestId, fixture } = await render();
 
-    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('rail');
+    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
     const main = el.querySelector('main');
     expect(main?.className).not.toContain('max-w-6xl');
     expect(main?.getAttribute('data-settings')).toBe('true');
 
-    // Off a settings address the menu is whatever the person chose, and main is inset again.
     await router.navigateByUrl('/invoices');
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
     expect(el.querySelector('main')?.className).toContain('max-w-6xl');
     expect(el.querySelector('main')?.getAttribute('data-settings')).toBe('false');
   });
 
-  it('lets the menu be unfolded inside settings too, where the toggle used to do nothing', async () => {
-    // It was drawn there and inert: the rail was forced for the whole area, so the button and the [ key both
-    // wrote a preference nothing then read (developer, 2026-09-20).
+  it('lets the menu be folded inside settings, remembered apart from the rest', async () => {
+    theme.settingsSidebar.set('expanded');
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/members');
     const { byTestId, click, fixture } = await render();
-    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('rail');
-    expect(byTestId('sidebar-toggle')).not.toBeNull();
 
     await click('sidebar-toggle');
     expect(theme.toggleSidebar).toHaveBeenCalledWith(true);
 
-    theme.settingsSidebar.set('expanded');
+    theme.settingsSidebar.set('rail');
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
-  });
-
-  it('keeps each area’s answer apart, so folding one menu does not fold the other', async () => {
-    const router = TestBed.inject(Router);
-    await router.navigateByUrl('/members');
-    const { byTestId, fixture } = await render();
-
-    // The settings menu unfolded; the general one is untouched and still whatever it was.
-    theme.settingsSidebar.set('expanded');
-    theme.sidebar.set('rail');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
+    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('rail');
 
     await router.navigateByUrl('/invoices');
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('rail');
+    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
   });
 
   it('writes the [ key to the menu the person is looking at', async () => {
@@ -501,9 +558,7 @@ describe('AppShell', () => {
     expect(theme.toggleSidebar).toHaveBeenLastCalledWith(false);
   });
 
-  it('shows the working company where the wordmark is, on a phone', async () => {
-    // Design review finding 5, measured: at 390 px the account button was cut off on every screen. The company a
-    // person acts for is what that space is worth; the wordmark stays on wider windows and the signed-out pages.
+  it('shows the working company at the head of a phone’s bar, with the search, the bell and the member', async () => {
     width.next(390);
     const { byTestId, el } = await render();
 
@@ -511,19 +566,11 @@ describe('AppShell', () => {
     expect(company?.closest('header')).not.toBeNull();
     const leading = el.querySelector('[data-testid="top-bar-leading"]');
     expect(leading?.contains(company as Node)).toBe(true);
-    // Truncated rather than pushing the controls off the bar, which is the defect this replaced.
     expect(company?.className).toContain('truncate');
-    // The wordmark is the sidebar's on a phone, not the header's.
-    expect(el.querySelector('header [data-testid="brand"]')).toBeNull();
-  });
-
-  it('keeps the wordmark in the menu above a phone, where there is room for both', async () => {
-    // The company still names the bar at every width; what the phone gives up is the wordmark, which stays in the
-    // menu on wider windows rather than being shown twice.
-    width.next(900);
-    const { el } = await render();
-    expect(el.querySelector('header [data-testid="company-name"]')).not.toBeNull();
-    expect(el.querySelector('[data-testid="shell-nav"] [data-testid="brand-mark"]')).not.toBeNull();
+    for (const id of ['command-open', 'notification-bell', 'user-menu']) {
+      expect(byTestId(id)?.closest('header'), id).not.toBeNull();
+    }
+    expect(byTestId('rail-company')).toBeNull();
   });
 
   it('keeps the settings under Plus on a phone, not in the account menu as well', async () => {
@@ -541,8 +588,8 @@ describe('AppShell', () => {
   it('keeps every part of the shell inside a landmark, each named once', async () => {
     const { el } = await render();
 
-    expect(el.querySelector('[data-testid="brand"]')?.closest('nav')).not.toBeNull();
-    expect(el.querySelector('[data-testid="user-menu"]')?.closest('header')).not.toBeNull();
+    expect(el.querySelector('[data-testid="rail-company"]')?.closest('nav')).not.toBeNull();
+    expect(el.querySelector('[data-testid="user-menu"]')?.closest('nav')).not.toBeNull();
     const lists = [...el.querySelectorAll<HTMLElement>('mat-nav-list')];
     expect(lists.length).toBeGreaterThan(0);
     const names = lists.map(
@@ -550,7 +597,7 @@ describe('AppShell', () => {
         list.getAttribute('aria-label') ??
         el.querySelector(`#${list.getAttribute('aria-labelledby')}`)?.textContent?.trim(),
     );
-    expect(names).toEqual(['Général', 'Paramètres']);
+    expect(names).toEqual(['Vendre', 'Paramètres']);
   });
 
   it('hides an entry whose permission the user lacks', async () => {
@@ -573,9 +620,10 @@ describe('AppShell', () => {
     expect(byTestId('nav-home')).not.toBeNull();
   });
 
-  it('collapses the sidebar to a rail from the top bar, every entry still named', async () => {
+  it('collapses the sidebar to a rail from its own foot, every entry still named', async () => {
     const { fixture, byTestId, click } = await render();
     expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
+    expect(byTestId('sidebar-toggle')?.closest('[data-testid="shell-nav"]')).not.toBeNull();
     expect(byTestId('sidebar-toggle')?.getAttribute('aria-label')).toBe('Réduire le menu');
     expect(byTestId('nav-home')?.classList.contains('mat-mdc-tooltip-disabled')).toBe(true);
 
@@ -641,32 +689,49 @@ describe('AppShell', () => {
     expect(theme.toggleSidebar).not.toHaveBeenCalled();
   });
 
-  it('puts four destinations and a Plus button in a bar at the bottom of a phone', async () => {
-    permissions.set(['customer.read', 'product.read', 'vendor.read', 'expense.read']);
-    modules.set(['customers', 'products', 'vendors', 'expenses']);
+  it('puts Accueil, Factures, Créer, Clients and Plus in a bar at the bottom of a phone', async () => {
+    // The round-6 phone boards: the two most used destinations, « Créer » in the thumb's middle, then Clients.
+    permissions.set(['invoice.read', 'customer.read', 'customer.write', 'product.read']);
+    modules.set(['invoices', 'customers', 'products']);
     width.next(390);
     const { byTestId, click } = await render();
 
     const bar = byTestId('bottom-bar');
     expect(bar?.tagName).toBe('NAV');
-    const destinations = [...(bar?.querySelectorAll<HTMLAnchorElement>('a') ?? [])];
-    expect(destinations.map((link) => link.querySelector('span')?.textContent?.trim())).toEqual([
-      'Accueil',
-      'Clients',
-      'Produits',
-      'Fournisseurs',
+    const items = [...(bar?.children ?? [])].map((item) => item.textContent?.replace(/\s+/g, ''));
+    expect(items).toEqual([
+      'homeAccueil',
+      'receipt_longFactures',
+      'addCréer',
+      'contactsClients',
+      'menuPlus',
     ]);
-    expect(destinations[0].getAttribute('href')).toBe('/');
-    expect(byTestId('menu-toggle')?.textContent).toContain('Plus');
-    expect(byTestId('menu-toggle')?.closest('[data-testid="bottom-bar"]')).toBe(bar);
+    expect(byTestId('bottom-nav-home')?.getAttribute('href')).toBe('/');
+    expect(byTestId('create-open')?.closest('[data-testid="bottom-bar"]')).toBe(bar);
     expect(byTestId('shell-nav')?.getAttribute('data-window')).toBe('compact');
     expect(byTestId('sidebar-toggle')).toBeNull();
+
+    await click('create-open');
+    expect(byTestId('create-new-customer')).not.toBeNull();
+    (document.querySelector('.cdk-overlay-backdrop') as HTMLElement | null)?.click();
+    await settled();
 
     // Everything else is one tap away: Plus opens the full drawer.
     await click('menu-toggle');
     expect(document.querySelector('mat-sidenav')?.classList.contains('mat-drawer-opened')).toBe(
       true,
     );
+  });
+
+  it('fills the phone bar from the next destinations when a module is off', async () => {
+    permissions.set(['customer.read', 'product.read']);
+    modules.set(['customers', 'products']);
+    width.next(390);
+    const { byTestId } = await render();
+    const labels = [...(byTestId('bottom-bar')?.querySelectorAll('a') ?? [])].map((a) =>
+      a.querySelector('span')?.textContent?.trim(),
+    );
+    expect(labels).toEqual(['Accueil', 'Clients', 'Produits']);
   });
 
   it('opens the command palette with Ctrl K or ⌘ K, offering only what the user may do', async () => {
@@ -984,13 +1049,13 @@ describe('AppShell', () => {
     ]);
   });
 
-  it('opens the command palette from the search button in the top bar', async () => {
+  it('opens the command palette from the search in the rail', async () => {
     const { click, byTestId } = await render();
     const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
       afterClosed: () => of(undefined),
     } as never);
 
-    expect(byTestId('command-open')?.closest('header')).not.toBeNull();
+    expect(byTestId('command-open')?.closest('[data-testid="shell-nav"]')).not.toBeNull();
     expect(byTestId('command-open')?.getAttribute('aria-keyshortcuts')).toBe('Control+K Meta+K');
     // Named even on a phone, where its visible label and shortcut are hidden to save room.
     expect(byTestId('command-open')?.getAttribute('aria-label')).toBe('Rechercher');

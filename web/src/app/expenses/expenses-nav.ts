@@ -14,7 +14,7 @@ export const EXPENSES_NAV: readonly NavEntry[] = [
     labelKey: 'nav.expenses',
     icon: 'receipt_long',
     route: '/expenses',
-    section: 'main',
+    section: 'manage',
     permission: 'expense.read',
     module: EXPENSES_MODULE,
   },

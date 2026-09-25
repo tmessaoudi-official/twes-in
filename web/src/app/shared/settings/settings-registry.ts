@@ -72,13 +72,12 @@ export const PRESENTATION = {
     oneOf('expanded', 'rail'),
   ),
   /**
-   * The settings area keeps its own answer, and that is what lets the toggle work in BOTH menus while each opens
-   * the way it does today: the area is a rail plus a docked list, so it starts folded, but a person who expands it
-   * there is not overruled on the next visit — and is not forced to the same answer everywhere else.
+   * The settings area keeps its own answer, so folding the menu beside the settings list does not fold it everywhere
+   * else. It opens labelled, as the round-6 settings board draws it (docs/SPEC.md § 7, 2026-09-25 17:22).
    */
   settingsSidebar: defineSetting<SidebarState>(
     'presentation.sidebar-settings',
-    'rail',
+    'expanded',
     oneOf('expanded', 'rail'),
   ),
   /**

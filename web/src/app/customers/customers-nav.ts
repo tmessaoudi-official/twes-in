@@ -14,7 +14,7 @@ export const CUSTOMERS_NAV: readonly NavEntry[] = [
     labelKey: 'nav.customers',
     icon: 'contacts',
     route: '/customers',
-    section: 'main',
+    section: 'sell',
     permission: 'customer.read',
     module: CUSTOMERS_MODULE,
   },

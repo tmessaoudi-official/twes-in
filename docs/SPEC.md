@@ -2840,6 +2840,18 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   a company requires (« une facture doit venir d'un bon »), not the link itself, which is data. The five groups marked
   « avant le premier client » become rows 131–135 and are built before the first version ships; every other yes is
   built with the screen or row it touches.
+- [2026-09-25 17:22] DECIDED (revisit): **the rail of step 1, as built where the boards say nothing** (developer: « keep
+  implementing; make a recommended decision and note it »). (1) The **scanning controls** (camera, phone, customer view
+  and the typed count) are on no round-6 board; from a tablet up they keep a slim bar above the page, shown only when
+  one of them applies, rather than a « Scanner ▾ » menu, whose merge would rewrite three scanning e2e specs for no
+  ruled gain — the direction's rule 10 (menu · company · search · Scanner · bell · avatar) is superseded by the boards
+  for everything else. (2) **Language, scheme and density** move into the member's menu at every width, as on a phone
+  (direction rule 10). (3) The settings area keeps its own fold preference but now **opens labelled**, as the round-6
+  settings board draws it; `presentation.sidebar-settings` defaults to `expanded`. (4) The **phone's bottom bar** is
+  Accueil · Factures · Créer · Clients · Plus, taking the sidebar's next destinations when a module is off, « Créer »
+  always third. (5) **C** opens « Créer » and is reserved from every screen; the fold control moves from the top bar to
+  the rail's foot, above the member. (6) The notification centre slides in from the side it was opened from: the
+  rail's start from a tablet up, the end on a phone.
 
 ## 8. Status
 

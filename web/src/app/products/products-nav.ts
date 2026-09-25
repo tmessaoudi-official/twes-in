@@ -14,7 +14,7 @@ export const PRODUCTS_NAV: readonly NavEntry[] = [
     labelKey: 'nav.products',
     icon: 'inventory_2',
     route: '/products',
-    section: 'main',
+    section: 'sell',
     permission: 'product.read',
     module: PRODUCTS_MODULE,
   },

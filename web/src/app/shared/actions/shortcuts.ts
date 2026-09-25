@@ -23,10 +23,12 @@ export const RESERVED_KEYS: readonly string[] = [
   // Firefox opens quick-find on both of these with no modifier at all, so a shortcut there never reaches us.
   '/',
   "'",
-  // The shell answers these two everywhere, before any screen sees them: a screen claiming one would either lose
+  // The shell answers these everywhere, before any screen sees them: a screen claiming one would either lose
   // silently or fire alongside the shell, and which of the two happened would depend on the order of two handlers.
+  // C opens « Créer » (docs/SPEC.md § 7, 2026-09-24 22:51).
   '?',
   '[',
+  'c',
 ];
 
 /**

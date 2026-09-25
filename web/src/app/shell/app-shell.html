@@ -16,36 +16,70 @@
     class="twes-shell-nav"
     [style.width.px]="rail() ? 80 : 248"
   >
+    <!-- The rail of the approved design (docs/SPEC.md § 7, 2026-09-25 09:03; round-6 boards): the company at its head,
+         « Créer » and the search, the destinations in two groups, then Notifications, Paramètres and the member at
+         its foot. On a phone the header carries the company, the bell and the member, so the drawer keeps the rest. -->
     <nav
       [attr.aria-label]="'shell.navigation' | translate"
-      class="pb-4"
+      class="twes-rail"
+      [class.is-folded]="rail()"
       data-testid="shell-nav"
       [attr.data-window]="windowClass()"
       [attr.data-sidebar]="rail() ? 'rail' : 'expanded'"
     >
-      <div
-        class="flex h-16 items-center gap-2"
-        [class.px-5]="!rail()"
-        [class.justify-center]="rail()"
+      @if (!handset()) {
+        <div data-testid="rail-company">
+          <app-company-switcher variant="rail" [folded]="rail()" />
+        </div>
+        @if (createCommands().length > 0) {
+          <button
+            type="button"
+            class="twes-rail-create"
+            [matMenuTriggerFor]="createMenu"
+            #createTrigger="matMenuTrigger"
+            aria-keyshortcuts="c"
+            [appLabel]="'shell.create' | translate"
+            [matTooltipDisabled]="!rail()"
+            matTooltipPosition="right"
+            data-testid="create-open"
+          >
+            <mat-icon aria-hidden="true">add</mat-icon>
+            @if (!rail()) {
+              <span class="twes-rail-label" aria-hidden="true">{{
+                'shell.create' | translate
+              }}</span>
+              <kbd aria-hidden="true">C</kbd>
+            }
+          </button>
+        }
+      }
+      <button
+        type="button"
+        class="twes-rail-search"
+        (click)="openCommands()"
+        aria-keyshortcuts="Control+K Meta+K"
+        [appLabel]="'shell.commands.open' | translate"
+        [matTooltipDisabled]="!rail()"
+        matTooltipPosition="right"
+        [attr.data-testid]="handset() ? 'command-open-drawer' : 'command-open'"
       >
-        <app-brand-mark data-testid="brand-mark" />
-        <span
-          class="text-lg font-semibold tracking-tight"
-          [class.sr-only]="rail()"
-          data-testid="brand"
-        >
-          {{ 'app.name' | translate }}
-        </span>
-      </div>
+        <mat-icon aria-hidden="true">search</mat-icon>
+        @if (!rail()) {
+          <span class="twes-rail-label" aria-hidden="true">{{
+            'shell.commands.search' | translate
+          }}</span>
+          <kbd aria-hidden="true">Ctrl K</kbd>
+        }
+      </button>
       @for (group of sections(); track group.section) {
         <h2
           [id]="'nav-section-' + group.section"
-          class="px-6 pb-1 pt-4 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
+          class="twes-rail-overline"
           [class.sr-only]="rail()"
         >
           {{ 'nav.sections.' + group.section | translate }}
         </h2>
-        <mat-nav-list class="!px-2" [attr.aria-labelledby]="'nav-section-' + group.section">
+        <mat-nav-list [attr.aria-labelledby]="'nav-section-' + group.section">
           @for (entry of group.entries; track entry.key) {
             <a
               mat-list-item
@@ -69,27 +103,78 @@
           }
         </mat-nav-list>
       }
-      @if (settingsRoute(); as route) {
-        <mat-nav-list class="!px-2 !pt-4" [attr.aria-label]="'shell.settings' | translate">
-          <a
-            mat-list-item
-            [routerLink]="route"
-            routerLinkActive
-            #settingsActive="routerLinkActive"
-            [activated]="settingsActive.isActive"
-            data-testid="nav-settings"
-            [matTooltip]="'shell.settings' | translate"
+      <div class="twes-rail-foot">
+        @if (!handset()) {
+          <app-notification-bell variant="row" [folded]="rail()" />
+        }
+        @if (settingsRoute(); as route) {
+          <mat-nav-list [attr.aria-label]="'shell.settings' | translate">
+            <a
+              mat-list-item
+              [routerLink]="route"
+              routerLinkActive
+              #settingsActive="routerLinkActive"
+              [activated]="settingsActive.isActive || inSettings()"
+              data-testid="nav-settings"
+              [matTooltip]="'shell.settings' | translate"
+              matTooltipPosition="right"
+              [matTooltipDisabled]="!rail()"
+              (click)="handset() && drawer.close()"
+            >
+              <mat-icon matListItemIcon aria-hidden="true">settings</mat-icon>
+              <span matListItemTitle [class.sr-only]="rail()">{{
+                'shell.settings' | translate
+              }}</span>
+            </a>
+          </mat-nav-list>
+        }
+        @if (windowClass() === 'expanded') {
+          <button
+            type="button"
+            class="twes-rail-row twes-rail-fold"
+            (click)="theme.toggleSidebar(inSettings())"
+            [appLabel]="(rail() ? 'shell.expand_menu' : 'shell.collapse_menu') | translate"
+            [matTooltipDisabled]="!rail()"
+            matTooltipPosition="right"
+            [attr.aria-keyshortcuts]="'['"
+            data-testid="sidebar-toggle"
+          >
+            <mat-icon aria-hidden="true">{{
+              rail() ? 'left_panel_open' : 'left_panel_close'
+            }}</mat-icon>
+            <span class="twes-rail-label" [class.sr-only]="rail()" aria-hidden="true">{{
+              (rail() ? 'shell.expand_menu' : 'shell.collapse_menu') | translate
+            }}</span>
+          </button>
+        }
+        @if (!handset() && me(); as me) {
+          <button
+            type="button"
+            class="twes-rail-member"
+            [matMenuTriggerFor]="account"
+            [attr.aria-label]="('shell.user_menu' | translate) + ' — ' + me.user.displayName"
+            [matTooltip]="me.user.displayName"
             matTooltipPosition="right"
             [matTooltipDisabled]="!rail()"
-            (click)="handset() && drawer.close()"
+            data-testid="user-menu"
           >
-            <mat-icon matListItemIcon aria-hidden="true">settings</mat-icon>
-            <span matListItemTitle [class.sr-only]="rail()">{{
-              'shell.settings' | translate
-            }}</span>
-          </a>
-        </mat-nav-list>
-      }
+            <span class="twes-avatar" aria-hidden="true">{{ initials() }}</span>
+            @if (!rail()) {
+              <span class="twes-rail-member-text" aria-hidden="true">
+                <span class="truncate font-semibold" data-testid="user-name">{{
+                  me.user.displayName
+                }}</span>
+                @if (me.company; as company) {
+                  <span class="twes-rail-member-role truncate">{{
+                    'roles.' + company.role | translate
+                  }}</span>
+                }
+              </span>
+              <mat-icon aria-hidden="true">more_horiz</mat-icon>
+            }
+          </button>
+        }
+      </div>
     </nav>
   </mat-sidenav>
 
@@ -97,232 +182,196 @@
     class="twes-shell-content flex min-h-screen flex-col"
     [attr.data-window]="windowClass()"
   >
-    <header class="sticky top-0 z-10">
-      <mat-toolbar class="twes-shell-bar gap-2">
-        <!-- Reading order, left to right: what names this place, then the search, then the controls used from
-             anywhere. The search starts where the reading starts rather than floating in the middle of the bar
-             (design review finding 6); the right-hand group never shrinks below its controls. -->
-        <div class="flex min-w-0 shrink items-center gap-2" data-testid="top-bar-leading">
+    <!-- On a phone the bar names the company and carries the search, the bell and the member; wider, the rail has
+         them all and the bar keeps only the scanning controls, drawn on no board (a departure noted in docs/SPEC.md
+         § 7, 2026-09-25 17:22), and is left out when there are none. -->
+    @if (handset() || scanControls()) {
+      <header class="sticky top-0 z-10">
+        <mat-toolbar class="twes-shell-bar gap-2" [class.is-slim]="!handset()">
           @if (handset()) {
-            <!-- The company a person acts for takes the wordmark's place: at 390 px it is worth more than a logo,
-                 and tapping it switches company (design review finding 5). -->
-            <app-company-switcher class="min-w-0 truncate" />
-          } @else {
-            @if (windowClass() === 'expanded') {
+            <div class="flex min-w-0 shrink items-center gap-2" data-testid="top-bar-leading">
+              <app-company-switcher class="min-w-0 truncate" />
+            </div>
+          }
+          <div class="flex min-w-max flex-1 basis-0 items-center justify-end gap-1">
+            @if (handset()) {
               <button
                 mat-icon-button
                 type="button"
-                (click)="theme.toggleSidebar(inSettings())"
-                [appLabel]="(rail() ? 'shell.expand_menu' : 'shell.collapse_menu') | translate"
-                [attr.aria-keyshortcuts]="'['"
-                data-testid="sidebar-toggle"
+                (click)="openCommands()"
+                aria-keyshortcuts="Control+K Meta+K"
+                [appLabel]="'shell.commands.open' | translate"
+                data-testid="command-open"
               >
-                <mat-icon aria-hidden="true">{{ rail() ? 'menu' : 'menu_open' }}</mat-icon>
+                <mat-icon aria-hidden="true">search</mat-icon>
               </button>
             }
-            <app-company-switcher class="min-w-0 truncate" />
-          }
-        </div>
-        @if (windowClass() === 'expanded') {
-          <!-- Grows to meet the controls on the right; the cap only binds from about 1920 px, where an uncapped
-               field would be a stripe across the window. -->
-          <div class="flex min-w-0 flex-1 max-w-[800px] items-center" data-testid="top-bar-search">
-            <button
-              type="button"
-              class="twes-command-open twes-command-open-wide w-full"
-              (click)="openCommands()"
-              aria-keyshortcuts="Control+K Meta+K"
-              [attr.aria-label]="'shell.commands.open' | translate"
-              data-testid="command-open"
-            >
-              <mat-icon aria-hidden="true">search</mat-icon>
-              <span class="twes-command-open-label">{{ 'shell.commands.find' | translate }}</span>
-              <kbd aria-hidden="true">Ctrl K</kbd>
-            </button>
-          </div>
-        }
-        <div class="flex min-w-max flex-1 basis-0 items-center justify-end gap-1">
-          @if (windowClass() !== 'expanded') {
-            <button
-              mat-icon-button
-              type="button"
-              (click)="openCommands()"
-              aria-keyshortcuts="Control+K Meta+K"
-              [appLabel]="'shell.commands.open' | translate"
-              data-testid="command-open"
-            >
-              <mat-icon aria-hidden="true">search</mat-icon>
-            </button>
-          }
-          @if (cameraAvailable) {
-            <button
-              mat-icon-button
-              type="button"
-              (click)="openCamera()"
-              [appLabel]="'scan.camera.open' | translate"
-              data-testid="camera-open"
-            >
-              <mat-icon aria-hidden="true">photo_camera</mat-icon>
-            </button>
-          }
-          @if (mayScan()) {
-            <button
-              mat-icon-button
-              type="button"
-              (click)="openPhone()"
-              [appLabel]="
-                (phone.state()?.phone === 'connected' ? 'scan.phone.paired' : 'scan.phone.pair')
-                  | translate
-              "
-              data-testid="phone-pair"
-            >
-              <mat-icon aria-hidden="true">{{
-                phone.state()?.phone === 'connected' ? 'mobile_friendly' : 'smartphone'
-              }}</mat-icon>
-            </button>
-          }
-          @if (mayHide()) {
-            <button
-              mat-icon-button
-              type="button"
-              (click)="customerView.toggle()"
-              [attr.aria-pressed]="customerView.active()"
-              [appLabel]="
-                (customerView.active() ? 'customer_view.leave' : 'customer_view.enter') | translate
-              "
-              data-testid="customer-view-toggle"
-            >
-              <mat-icon aria-hidden="true">{{
-                customerView.active() ? 'visibility_off' : 'storefront'
-              }}</mat-icon>
-            </button>
-          }
-          @if (scanCount(); as count) {
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="clearScanCount()"
-              data-testid="scan-count"
-            >
-              <mat-icon aria-hidden="true">close</mat-icon>
-              {{ 'scan.count' | translate: { count } }}
-            </button>
-          }
-          <app-notification-bell />
-          @if (!handset()) {
-            <app-language-menu />
-            <app-scheme-menu />
-          }
-
-          @if (me(); as me) {
-            <button
-              mat-button
-              type="button"
-              [matMenuTriggerFor]="account"
-              [attr.aria-label]="('shell.user_menu' | translate) + ' — ' + me.user.displayName"
-              data-testid="user-menu"
-            >
-              <span
-                class="inline-flex size-8 items-center justify-center rounded-full bg-primary-container text-sm font-semibold text-on-primary-container"
-                aria-hidden="true"
-              >
-                {{ initials() }}
-              </span>
-              <span class="ml-2 hidden text-on-surface min-[1600px]:inline" data-testid="user-name">
-                {{ me.user.displayName }}
-              </span>
-            </button>
-
-            <mat-menu #account="matMenu" xPosition="before">
-              <div class="px-4 pb-2 pt-1">
-                <p class="font-medium text-on-surface">{{ me.user.displayName }}</p>
-                <p class="text-sm text-on-surface-variant">{{ me.user.email }}</p>
-              </div>
-              <mat-divider />
-              @if (handset()) {
-                <!-- On a phone the top bar has no room: language, scheme and settings fold in here. -->
-                <p
-                  class="px-4 pb-1 pt-2 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
-                >
-                  {{ 'shell.language' | translate }}
-                </p>
-                @for (lang of languages; track lang) {
-                  <button
-                    mat-menu-item
-                    type="button"
-                    role="menuitemradio"
-                    [attr.aria-checked]="language.current() === lang"
-                    (click)="useLanguage(lang)"
-                    [attr.data-testid]="'account-language-' + lang"
-                  >
-                    <mat-icon aria-hidden="true">{{
-                      language.current() === lang
-                        ? 'radio_button_checked'
-                        : 'radio_button_unchecked'
-                    }}</mat-icon>
-                    <span [attr.lang]="lang">{{ languageNames[lang] }}</span>
-                  </button>
-                }
-                <mat-divider />
-                <p
-                  class="px-4 pb-1 pt-2 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
-                >
-                  {{ 'shell.scheme' | translate }}
-                </p>
-                @for (scheme of schemes; track scheme) {
-                  <button
-                    mat-menu-item
-                    type="button"
-                    role="menuitemradio"
-                    [attr.aria-checked]="theme.preference() === scheme"
-                    (click)="theme.setScheme(scheme)"
-                    [attr.data-testid]="'account-scheme-' + scheme"
-                  >
-                    <mat-icon aria-hidden="true">{{
-                      theme.preference() === scheme
-                        ? 'radio_button_checked'
-                        : 'radio_button_unchecked'
-                    }}</mat-icon>
-                    <span>{{ 'appearance.schemes.' + scheme | translate }}</span>
-                  </button>
-                }
-              }
+            @if (cameraAvailable) {
               <button
-                mat-menu-item
+                mat-icon-button
                 type="button"
-                (click)="theme.toggleDensity()"
-                data-testid="density-toggle"
+                (click)="openCamera()"
+                [appLabel]="'scan.camera.open' | translate"
+                data-testid="camera-open"
+              >
+                <mat-icon aria-hidden="true">photo_camera</mat-icon>
+              </button>
+            }
+            @if (mayScan()) {
+              <button
+                mat-icon-button
+                type="button"
+                (click)="openPhone()"
+                [appLabel]="
+                  (phone.state()?.phone === 'connected' ? 'scan.phone.paired' : 'scan.phone.pair')
+                    | translate
+                "
+                data-testid="phone-pair"
               >
                 <mat-icon aria-hidden="true">{{
-                  theme.density() === 'compact' ? 'density_medium' : 'density_small'
+                  phone.state()?.phone === 'connected' ? 'mobile_friendly' : 'smartphone'
                 }}</mat-icon>
-                <span>{{
-                  (theme.density() === 'compact'
-                    ? 'shell.density_comfortable'
-                    : 'shell.density_compact'
-                  ) | translate
-                }}</span>
               </button>
-              <mat-divider />
-              <a mat-menu-item routerLink="/two-factor" data-testid="two-factor-link">
-                <mat-icon aria-hidden="true">security</mat-icon>
-                <span>{{ 'auth.two_factor.menu' | translate }}</span>
-              </a>
+            }
+            @if (mayHide()) {
               <button
-                mat-menu-item
+                mat-icon-button
                 type="button"
-                (click)="logout()"
-                [disabled]="signingOut()"
-                data-testid="logout"
+                (click)="customerView.toggle()"
+                [attr.aria-pressed]="customerView.active()"
+                [appLabel]="
+                  (customerView.active() ? 'customer_view.leave' : 'customer_view.enter')
+                    | translate
+                "
+                data-testid="customer-view-toggle"
               >
-                <mat-icon aria-hidden="true">logout</mat-icon>
-                <span>{{ 'auth.logout' | translate }}</span>
+                <mat-icon aria-hidden="true">{{
+                  customerView.active() ? 'visibility_off' : 'storefront'
+                }}</mat-icon>
               </button>
-            </mat-menu>
-          }
+            }
+            @if (scanCount(); as count) {
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="clearScanCount()"
+                data-testid="scan-count"
+              >
+                <mat-icon aria-hidden="true">close</mat-icon>
+                {{ 'scan.count' | translate: { count } }}
+              </button>
+            }
+            @if (handset()) {
+              <app-notification-bell />
+              @if (me(); as me) {
+                <button
+                  mat-icon-button
+                  type="button"
+                  [matMenuTriggerFor]="account"
+                  [appLabel]="('shell.user_menu' | translate) + ' — ' + me.user.displayName"
+                  data-testid="user-menu"
+                >
+                  <span class="twes-avatar" aria-hidden="true">{{ initials() }}</span>
+                </button>
+              }
+            }
+          </div>
+        </mat-toolbar>
+      </header>
+    }
+
+    <mat-menu #account="matMenu" xPosition="before">
+      @if (me(); as me) {
+        <div class="px-4 pb-2 pt-1">
+          <p class="font-medium text-on-surface">{{ me.user.displayName }}</p>
+          <p class="text-sm text-on-surface-variant">{{ me.user.email }}</p>
         </div>
-      </mat-toolbar>
-    </header>
+      }
+      <mat-divider />
+      <!-- The language and the scheme live here at every width: the top bar gave its room to the rail. -->
+      <p
+        class="px-4 pb-1 pt-2 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
+      >
+        {{ 'shell.language' | translate }}
+      </p>
+      @for (lang of languages; track lang) {
+        <button
+          mat-menu-item
+          type="button"
+          role="menuitemradio"
+          [attr.aria-checked]="language.current() === lang"
+          (click)="useLanguage(lang)"
+          [attr.data-testid]="'account-language-' + lang"
+        >
+          <mat-icon aria-hidden="true">{{
+            language.current() === lang ? 'radio_button_checked' : 'radio_button_unchecked'
+          }}</mat-icon>
+          <span [attr.lang]="lang">{{ languageNames[lang] }}</span>
+        </button>
+      }
+      <mat-divider />
+      <p
+        class="px-4 pb-1 pt-2 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
+      >
+        {{ 'shell.scheme' | translate }}
+      </p>
+      @for (scheme of schemes; track scheme) {
+        <button
+          mat-menu-item
+          type="button"
+          role="menuitemradio"
+          [attr.aria-checked]="theme.preference() === scheme"
+          (click)="theme.setScheme(scheme)"
+          [attr.data-testid]="'account-scheme-' + scheme"
+        >
+          <mat-icon aria-hidden="true">{{
+            theme.preference() === scheme ? 'radio_button_checked' : 'radio_button_unchecked'
+          }}</mat-icon>
+          <span>{{ 'appearance.schemes.' + scheme | translate }}</span>
+        </button>
+      }
+      <mat-divider />
+      <button
+        mat-menu-item
+        type="button"
+        (click)="theme.toggleDensity()"
+        data-testid="density-toggle"
+      >
+        <mat-icon aria-hidden="true">{{
+          theme.density() === 'compact' ? 'density_medium' : 'density_small'
+        }}</mat-icon>
+        <span>{{
+          (theme.density() === 'compact' ? 'shell.density_comfortable' : 'shell.density_compact')
+            | translate
+        }}</span>
+      </button>
+      <mat-divider />
+      <a mat-menu-item routerLink="/two-factor" data-testid="two-factor-link">
+        <mat-icon aria-hidden="true">security</mat-icon>
+        <span>{{ 'auth.two_factor.menu' | translate }}</span>
+      </a>
+      <button
+        mat-menu-item
+        type="button"
+        (click)="logout()"
+        [disabled]="signingOut()"
+        data-testid="logout"
+      >
+        <mat-icon aria-hidden="true">logout</mat-icon>
+        <span>{{ 'auth.logout' | translate }}</span>
+      </button>
+    </mat-menu>
+
+    <!-- « Créer » (docs/SPEC.md § 7, 2026-09-24 22:51): what the person may create here, from the rail, the phone's
+         bar or the C key. -->
+    <mat-menu #createMenu="matMenu">
+      @for (command of createCommands(); track command.key) {
+        <a mat-menu-item [routerLink]="command.route" [attr.data-testid]="'create-' + command.key">
+          <mat-icon aria-hidden="true">{{ command.icon }}</mat-icon>
+          <span>{{ command.labelKey | translate: command.labelParams }}</span>
+        </a>
+      }
+    </mat-menu>
 
     <app-subscription-notice />
 
@@ -372,7 +421,10 @@
         [attr.aria-label]="'shell.bottom_navigation' | translate"
         data-testid="bottom-bar"
       >
-        @for (entry of bottomBar(); track entry.key) {
+        @for (entry of bottomBar(); track entry.key; let index = $index) {
+          @if (index === 2 && createCommands().length > 0) {
+            <ng-container [ngTemplateOutlet]="phoneCreate" />
+          }
           <a
             [routerLink]="entry.route"
             routerLinkActive="is-active"
@@ -385,6 +437,22 @@
             <span>{{ entry.labelKey | translate }}</span>
           </a>
         }
+        @if (bottomBar().length < 3 && createCommands().length > 0) {
+          <ng-container [ngTemplateOutlet]="phoneCreate" />
+        }
+        <ng-template #phoneCreate>
+          <button
+            type="button"
+            class="twes-bottom-create"
+            [matMenuTriggerFor]="createMenu"
+            #createTrigger="matMenuTrigger"
+            aria-keyshortcuts="c"
+            data-testid="create-open"
+          >
+            <mat-icon aria-hidden="true">add</mat-icon>
+            <span>{{ 'shell.create' | translate }}</span>
+          </button>
+        </ng-template>
         <button
           type="button"
           (click)="drawer.toggle()"

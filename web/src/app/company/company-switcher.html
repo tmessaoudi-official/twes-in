@@ -1,33 +1,92 @@
-@if (companies().length > 1) {
-  <button
-    mat-button
-    type="button"
-    [matMenuTriggerFor]="menu"
-    [disabled]="switching()"
-    data-testid="company-switcher"
-  >
-    <!-- Truncated rather than pushing the bar's controls off the edge: at 390 px this sits where the wordmark
-         was, and a long company name would otherwise cut off the account button (design review finding 5). -->
-    <span class="block max-w-[45vw] truncate" data-testid="company-name">{{
-      current()?.name ?? ('company.choose' | translate)
-    }}</span>
-  </button>
-  <mat-menu #menu="matMenu">
-    @for (company of companies(); track company.id) {
+@if (variant() === 'rail') {
+  <!-- The head of the rail (docs/SPEC.md § 7, 2026-09-25 09:03): the company a person acts for, its country and its
+       currency; a menu of the others when there are others, a plain block when there is one. -->
+  @if (current(); as current) {
+    @if (companies().length > 1) {
       <button
-        mat-menu-item
         type="button"
-        (click)="choose(company.id)"
-        [attr.data-testid]="'company-option-' + company.name"
-        [attr.aria-current]="company.id === current()?.id ? 'true' : null"
+        class="twes-rail-company"
+        [matMenuTriggerFor]="railMenu"
+        [disabled]="switching()"
+        [appLabel]="current.name"
+        [matTooltipDisabled]="!folded()"
+        matTooltipPosition="right"
+        data-testid="company-switcher"
       >
-        {{ company.name }}
-        <span class="opacity-60">— {{ 'roles.' + company.role | translate }}</span>
+        <span class="twes-rail-company-mark" aria-hidden="true">{{ initial() }}</span>
+        <span class="twes-rail-company-text" [class.sr-only]="folded()">
+          <span class="twes-rail-company-name truncate" data-testid="company-name">{{
+            current.name
+          }}</span>
+          <span class="twes-rail-company-sub">{{ where() }}</span>
+        </span>
+        @if (!folded()) {
+          <mat-icon aria-hidden="true">unfold_more</mat-icon>
+        }
       </button>
+      <mat-menu #railMenu="matMenu">
+        @for (company of companies(); track company.id) {
+          <button
+            mat-menu-item
+            type="button"
+            (click)="choose(company.id)"
+            [attr.data-testid]="'company-option-' + company.name"
+            [attr.aria-current]="company.id === current.id ? 'true' : null"
+          >
+            {{ company.name }}
+            <span class="text-on-surface-variant">— {{ 'roles.' + company.role | translate }}</span>
+          </button>
+        }
+      </mat-menu>
+    } @else {
+      <div
+        class="twes-rail-company"
+        [appLabel]="current.name"
+        [matTooltipDisabled]="!folded()"
+        matTooltipPosition="right"
+      >
+        <span class="twes-rail-company-mark" aria-hidden="true">{{ initial() }}</span>
+        <span class="twes-rail-company-text" [class.sr-only]="folded()">
+          <span class="twes-rail-company-name truncate" data-testid="company-name">{{
+            current.name
+          }}</span>
+          <span class="twes-rail-company-sub">{{ where() }}</span>
+        </span>
+      </div>
     }
-  </mat-menu>
-} @else if (current(); as current) {
-  <span data-testid="company-name" class="block max-w-[45vw] truncate text-sm opacity-90">{{
-    current.name
-  }}</span>
+  }
+} @else {
+  @if (companies().length > 1) {
+    <button
+      mat-button
+      type="button"
+      [matMenuTriggerFor]="menu"
+      [disabled]="switching()"
+      data-testid="company-switcher"
+    >
+      <!-- Truncated rather than pushing the bar's controls off the edge: at 390 px this sits where the wordmark
+         was, and a long company name would otherwise cut off the account button (design review finding 5). -->
+      <span class="block max-w-[45vw] truncate" data-testid="company-name">{{
+        current()?.name ?? ('company.choose' | translate)
+      }}</span>
+    </button>
+    <mat-menu #menu="matMenu">
+      @for (company of companies(); track company.id) {
+        <button
+          mat-menu-item
+          type="button"
+          (click)="choose(company.id)"
+          [attr.data-testid]="'company-option-' + company.name"
+          [attr.aria-current]="company.id === current()?.id ? 'true' : null"
+        >
+          {{ company.name }}
+          <span class="opacity-60">— {{ 'roles.' + company.role | translate }}</span>
+        </button>
+      }
+    </mat-menu>
+  } @else if (current(); as current) {
+    <span data-testid="company-name" class="block max-w-[45vw] truncate text-sm opacity-90">{{
+      current.name
+    }}</span>
+  }
 }

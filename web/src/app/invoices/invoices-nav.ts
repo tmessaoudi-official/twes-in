@@ -14,7 +14,7 @@ export const INVOICES_NAV: readonly NavEntry[] = [
     labelKey: 'nav.invoices',
     icon: 'receipt_long',
     route: '/invoices',
-    section: 'main',
+    section: 'sell',
     permission: 'invoice.read',
     module: INVOICES_MODULE,
   },

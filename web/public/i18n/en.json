@@ -458,7 +458,8 @@
     "members": "Members",
     "roles": "Roles",
     "sections": {
-      "main": "General",
+      "sell": "Sell",
+      "manage": "Manage",
       "company": "Company",
       "fiscal": "Tax",
       "team": "Team",
@@ -494,6 +495,7 @@
     "more": "More",
     "bottom_navigation": "Shortcuts",
     "commands": {
+      "search": "Search…",
       "open": "Search",
       "title": "Commands",
       "placeholder": "Go to or create…",
@@ -504,6 +506,7 @@
       "create": "Create",
       "goto": "Go to"
     },
+    "create": "Create",
     "user_menu": "Account",
     "language": "Language",
     "density_compact": "Compact density",

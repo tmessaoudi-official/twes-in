@@ -54,20 +54,25 @@ test('the menu folds and unfolds inside settings too, and each menu keeps its ow
 
   await expect(nav).toHaveAttribute('data-sidebar', 'expanded');
 
-  // Settings opens folded, as it does today — and its toggle used to do nothing at all.
+  // Settings opens labelled, as the round-6 board draws it (docs/SPEC.md § 7, 2026-09-25 17:22); folding it there
+  // is remembered for settings alone.
   await page.getByTestId('nav-settings').click();
-  await expect(nav).toHaveAttribute('data-sidebar', 'rail');
-  await page.getByTestId('sidebar-toggle').click();
   await expect(nav).toHaveAttribute('data-sidebar', 'expanded');
+  await page.getByTestId('sidebar-toggle').click();
+  await expect(nav).toHaveAttribute('data-sidebar', 'rail');
 
-  // The general menu is untouched by that, and folding IT does not fold the settings one back.
+  // The general menu is untouched by that, and folding IT does not unfold the settings one.
   await page.getByTestId('nav-home').click();
   await expect(nav).toHaveAttribute('data-sidebar', 'expanded');
   await page.getByTestId('sidebar-toggle').click();
   await expect(nav).toHaveAttribute('data-sidebar', 'rail');
+  await page.getByTestId('sidebar-toggle').click();
+  await expect(nav).toHaveAttribute('data-sidebar', 'expanded');
 
   await page.getByTestId('nav-settings').click();
-  await expect(nav).toHaveAttribute('data-sidebar', 'expanded');
+  await expect(nav).toHaveAttribute('data-sidebar', 'rail');
+  await forgetPreference(page, 'presentation.sidebar');
+  await forgetPreference(page, 'presentation.sidebar-settings');
 });
 
 test("the company's default colour takes effect at once, with no refresh", async ({ page }) => {
