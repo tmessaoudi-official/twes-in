@@ -31,3 +31,4 @@
 .npmrc
 service-account*.json
 /.playwright-mcp/
+/.angular/
