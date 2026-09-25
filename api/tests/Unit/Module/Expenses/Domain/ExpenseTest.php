@@ -17,6 +17,7 @@ use App\Module\Expenses\Domain\ExpenseDetails;
 use App\Module\Expenses\Domain\ExpenseStatus;
 use App\Module\Expenses\Domain\ExpenseTransitionRefused;
 use App\Module\Expenses\Domain\InvalidExpense;
+use App\Module\Expenses\Domain\TejOperationCode;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorProfile;
 use App\Shared\Domain\PaymentMethod;
@@ -157,6 +158,64 @@ final class ExpenseTest extends TestCase
         $expense->pay(PaymentMethod::Cash, new \DateTimeImmutable('2026-09-12'), new \DateTimeImmutable('2026-09-15'), $this->now, '0', 2);
 
         self::assertSame([null, null, '10.000'], [$expense->getWithholdingRate(), $expense->getWithholdingAmount(), $expense->getAmountPaid()]);
+    }
+
+    public function testAPaymentRecordsTheTejOperationItWasSaidToBeAndNeverGuessesOne(): void
+    {
+        $today = new \DateTimeImmutable('2026-09-15');
+        $said = Expense::create($this->acme, $this->details('1000'), null, $this->fuel, $this->vat19, 3, $this->now);
+        $said->record($this->now);
+        $said->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-12'), $today, $this->now, '1.5', 3, TejOperationCode::Rs7_000001);
+        self::assertSame(TejOperationCode::Rs7_000001, $said->getWithholdingOperationCode());
+
+        $unsaid = Expense::create($this->acme, $this->details('1000'), null, $this->fuel, $this->vat19, 3, $this->now);
+        $unsaid->record($this->now);
+        $unsaid->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-12'), $today, $this->now, '1.5', 3);
+        self::assertNull($unsaid->getWithholdingOperationCode(), 'a rate of 1.5 is RS7_000001 on its face, and still not assumed');
+
+        $exempt = Expense::create($this->acme, $this->details('1000'), null, $this->fuel, $this->vat19, 3, $this->now);
+        $exempt->record($this->now);
+        $exempt->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-12'), $today, $this->now, '0', 3, TejOperationCode::Rs7_000006);
+        self::assertSame([null, TejOperationCode::Rs7_000006], [$exempt->getWithholdingRate(), $exempt->getWithholdingOperationCode()], 'a supplier exempt from withholding is still declared, at 0 %');
+
+        $french = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $abroad = Expense::create($french, $this->details('1000'), null, ExpenseCategory::create($french, 'Loyer', null, $this->now), null, 2, $this->now);
+        $abroad->record($this->now);
+        $this->assertRefused('withholdingOperationCode', fn () => $abroad->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-12'), $today, $this->now, null, 2, TejOperationCode::Rs1_000002), 'a TEJ code outside Tunisia');
+        self::assertSame(ExpenseStatus::Recorded, $abroad->getStatus(), 'a refused code pays nothing');
+    }
+
+    public function testAPaidExpenseIsGivenItsTejOperationAfterwardsAndNothingElseIs(): void
+    {
+        $expense = Expense::create($this->acme, $this->details('1000'), null, $this->fuel, null, 3, $this->now);
+        foreach (['draft' => null, 'recorded' => 'record'] as $state => $step) {
+            if (null !== $step) {
+                $expense->record($this->now);
+            }
+            try {
+                $expense->classifyWithholding(TejOperationCode::Rs7_000001, $this->now);
+                self::fail("a $state expense was classified");
+            } catch (ExpenseTransitionRefused) {
+            }
+        }
+        $expense->pay(PaymentMethod::Transfer, new \DateTimeImmutable('2026-09-12'), new \DateTimeImmutable('2026-09-15'), $this->now, '1', 3);
+
+        self::assertTrue($expense->classifyWithholding(TejOperationCode::Rs7_000002, $this->now));
+        self::assertSame(TejOperationCode::Rs7_000002, $expense->getWithholdingOperationCode());
+        self::assertFalse($expense->classifyWithholding(TejOperationCode::Rs7_000002, $this->now), 'the same code again changes nothing');
+        self::assertTrue($expense->classifyWithholding(null, $this->now));
+        self::assertNull($expense->getWithholdingOperationCode());
+    }
+
+    public function testTheOperationCodesAreTheAdministrationsFortySevenWithTheirPublishedLabels(): void
+    {
+        self::assertCount(47, TejOperationCode::cases());
+        self::assertSame('RS7_000001', TejOperationCode::Rs7_000001->value);
+        self::assertSame('Loyers servis à des résidents établis', TejOperationCode::Rs1_000002->label());
+        foreach (TejOperationCode::cases() as $code) {
+            self::assertMatchesRegularExpression('/^RS(1[01]|[1-9])_0000\d\d$/', $code->value);
+            self::assertNotSame('', $code->label(), $code->value);
+        }
     }
 
     public function testTheDueDayIsTheVendorsPaymentTermsAfterTheExpensesDate(): void

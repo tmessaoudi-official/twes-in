@@ -36,6 +36,9 @@ class Expense implements CompanyOwned
 {
     private const string WITHHOLDING_RATE = '/^(0|[1-9][0-9]{0,2})(\.[0-9]{1,3})?$/';
 
+    /** The fiscal preset whose companies declare their withholdings to TEJ. */
+    private const string TEJ_PRESET = 'TN';
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -98,6 +101,13 @@ class Expense implements CompanyOwned
 
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
     private ?string $withholdingAmount = null;
+
+    /**
+     * What the payment is to Tunisia's TEJ platform, which declares the withholding under it (docs/research/
+     * tax-data-tunisia.md § 2.2); said by whoever pays, never worked out from the rate. Null when nobody said.
+     */
+    #[ORM\Column(length: 16, nullable: true, enumType: TejOperationCode::class)]
+    private ?TejOperationCode $withholdingOperationCode = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $notes = null;
@@ -173,11 +183,13 @@ class Expense implements CompanyOwned
      * @param \DateTimeImmutable $today           the company's own day
      * @param string|null        $withholdingRate the percentage withheld from the supplier, 0 to 100 with at most three
      *                                            decimals; null or 0 for none
+     * @param TejOperationCode|null $operationCode what the payment is to the TEJ platform, kept whatever the rate:
+     *                                            a supplier exempt from withholding is declared at 0 %
      *
      * @throws ExpenseTransitionRefused
      * @throws InvalidExpense
      */
-    public function pay(PaymentMethod $method, \DateTimeImmutable $paidOn, \DateTimeImmutable $today, \DateTimeImmutable $now, ?string $withholdingRate = null, int $currencyScale = 3): void
+    public function pay(PaymentMethod $method, \DateTimeImmutable $paidOn, \DateTimeImmutable $today, \DateTimeImmutable $now, ?string $withholdingRate = null, int $currencyScale = 3, ?TejOperationCode $operationCode = null): void
     {
         if (ExpenseStatus::Recorded !== $this->status) {
             throw new ExpenseTransitionRefused(\sprintf('The expense is %s: only a recorded expense is paid.', $this->status->value));
@@ -189,6 +201,7 @@ class Expense implements CompanyOwned
         if ($day > self::day($today)) {
             throw new InvalidExpense('paidOn', 'A payment is recorded once it happened, today at the latest.');
         }
+        $this->assertDeclarableToTej($operationCode);
         $rate = trim($withholdingRate ?? '');
         if ('' !== $rate && (1 !== preg_match(self::WITHHOLDING_RATE, $rate) || Decimal::of($rate)->compare(100) > 0)) {
             throw new InvalidExpense('withholdingRate', 'A withholding is a percentage from 0 to 100 with at most three decimals.');
@@ -202,10 +215,43 @@ class Expense implements CompanyOwned
             $this->withholdingAmount = self::stored($withheld);
         }
 
+        $this->withholdingOperationCode = $operationCode;
         $this->paymentMethod = $method;
         $this->paidOn = $day;
         $this->status = ExpenseStatus::Paid;
         $this->updatedAt = $now;
+    }
+
+    /**
+     * Says, or corrects, what a payment already made is to the TEJ platform: a payment recorded before anyone said
+     * would otherwise never be declared. Null takes it back.
+     *
+     * @return bool whether anything changed
+     *
+     * @throws ExpenseTransitionRefused when the expense is not paid
+     * @throws InvalidExpense           when its company does not declare to TEJ
+     */
+    public function classifyWithholding(?TejOperationCode $operationCode, \DateTimeImmutable $now): bool
+    {
+        if (ExpenseStatus::Paid !== $this->status) {
+            throw new ExpenseTransitionRefused(\sprintf('The expense is %s: only a paid expense has a withholding to classify.', $this->status->value));
+        }
+        $this->assertDeclarableToTej($operationCode);
+        if ($operationCode === $this->withholdingOperationCode) {
+            return false;
+        }
+        $this->withholdingOperationCode = $operationCode;
+        $this->updatedAt = $now;
+
+        return true;
+    }
+
+    /** @throws InvalidExpense when a TEJ code is said for a company outside the Tunisian preset */
+    private function assertDeclarableToTej(?TejOperationCode $operationCode): void
+    {
+        if (null !== $operationCode && self::TEJ_PRESET !== $this->company->getFiscalPreset()) {
+            throw new InvalidExpense('withholdingOperationCode', 'A TEJ operation code is said for a company under the Tunisian preset only.');
+        }
     }
 
     /** @throws ExpenseTransitionRefused when the expense is no longer a draft */
@@ -362,6 +408,12 @@ class Expense implements CompanyOwned
     public function getWithholdingAmount(): ?string
     {
         return $this->withholdingAmount;
+    }
+
+    /** What the payment is to the TEJ platform; null when nobody said. */
+    public function getWithholdingOperationCode(): ?TejOperationCode
+    {
+        return $this->withholdingOperationCode;
     }
 
     /** What the supplier is handed: the gross less what was withheld. */
