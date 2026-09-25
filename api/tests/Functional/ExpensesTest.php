@@ -242,6 +242,51 @@ final class ExpensesTest extends ApiTestCase
         self::assertSame(['1.500', '26.775', '1758.225'], $withheld(), 'another rate, said by who pays');
     }
 
+    /** docs/research/tax-data-tunisia.md § 2.2: the TEJ operation a withholding is declared under, said by who pays. */
+    public function testATejOperationIsSaidWhenPayingOrGivenAfterwardsAndTheOptionsOfferTheCodes(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $this->getJson($this->companyPath().'/expense-options');
+        $codes = $this->arrayAt($this->json(), 'withholdingOperationCodes');
+        self::assertCount(47, $codes);
+        self::assertSame(['code' => 'RS1_000002', 'label' => 'Loyers servis à des résidents établis'], $codes[1]);
+
+        $recorded = function (): string {
+            $this->postJson($this->path(), $this->expense(['categoryId' => $this->category('Achats '.bin2hex(random_bytes(3))), 'amountNet' => '1000']));
+            $id = $this->stringAt($this->json(), 'id');
+            $this->postJson($this->path($id).'/record', null);
+            self::assertResponseIsSuccessful();
+
+            return $id;
+        };
+        $pay = fn (string $id, array $more) => $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'transfer', 'paidOn' => $today->format('Y-m-d'), 'withholdingRate' => '1.5'] + $more);
+
+        $said = $recorded();
+        $pay($said, ['withholdingOperationCode' => 'RS99_000001']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('withholdingOperationCode', (string) $this->client->getResponse()->getContent());
+        $pay($said, ['withholdingOperationCode' => 'RS7_000001']);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['1.500', 'RS7_000001'], [$this->json()['withholdingRate'], $this->json()['withholdingOperationCode']]);
+        $this->getJson($this->path($said));
+        self::assertSame('RS7_000001', $this->json()['withholdingOperationCode']);
+
+        $unsaid = $recorded();
+        $this->postJson($this->path($unsaid).'/withholding-operation', ['withholdingOperationCode' => 'RS7_000002']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a recorded expense has no payment to classify');
+        $pay($unsaid, []);
+        self::assertNull($this->json()['withholdingOperationCode'], 'nobody said: nothing is guessed');
+        $this->postJson($this->path($unsaid).'/withholding-operation', ['withholdingOperationCode' => 'RS7_000002']);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['paid', 'RS7_000002'], [$this->json()['status'], $this->json()['withholdingOperationCode']]);
+        $this->postJson($this->path($unsaid).'/withholding-operation', ['withholdingOperationCode' => 'not-a-code']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'expense.withholding_classified'");
+        self::assertIsString($changes);
+        self::assertSame(['fields' => ['withholdingOperationCode']], json_decode($changes, true));
+    }
+
     public function testAPageOfTheListCostsTheSameStatementsWhateverTheRowsItHolds(): void
     {
         $this->signedIn(['expense.read', 'expense.write']);

@@ -22,6 +22,7 @@ use App\Module\Expenses\Application\ExpenseInput;
 use App\Module\Expenses\Domain\Expense;
 use App\Module\Expenses\Domain\ExpenseDetails;
 use App\Module\Expenses\Domain\InvalidExpense;
+use App\Module\Expenses\Domain\TejOperationCode;
 use App\Shared\Domain\PaymentMethod;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
@@ -104,6 +105,17 @@ use Symfony\Component\Validator\Constraints as Assert;
             denormalizationContext: ['groups' => [self::PAY]],
             validationContext: ['groups' => [self::PAY]],
         ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/expenses/{expenseId}/withholding-operation',
+            status: 200,
+            processor: ClassifyExpenseWithholdingProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            normalizationContext: ['groups' => [self::READ]],
+            denormalizationContext: ['groups' => [self::CLASSIFY]],
+            validationContext: ['groups' => [self::CLASSIFY]],
+            description: 'Says, corrects or, with null, takes back the TEJ operation a paid expense\'s withholding is declared under. A paid expense alone (409 otherwise).',
+        ),
     ],
 )]
 final class ExpenseResource
@@ -111,6 +123,7 @@ final class ExpenseResource
     public const string READ = 'expense:read';
     public const string WRITE = 'expense:write';
     public const string PAY = 'expense:pay';
+    public const string CLASSIFY = 'expense:classify';
 
     /** Which way one of the list's sorts reads. */
     private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
@@ -216,6 +229,17 @@ final class ExpenseResource
     #[Groups([self::READ])]
     public ?string $withholdingAmount = null;
 
+    /**
+     * The operation the payment's withholding is declared under on Tunisia's TEJ platform, one of the codes the
+     * expense options list (docs/research/tax-data-tunisia.md § 2.2). Sent when paying, or afterwards to
+     * `/withholding-operation`; never worked out from the rate. Null when nobody said; the monthly declaration then
+     * names the expense as missing one.
+     */
+    #[ApiProperty(example: 'RS7_000001')]
+    #[Assert\Choice(callback: [self::class, 'operationCodes'], groups: [self::PAY, self::CLASSIFY])]
+    #[Groups([self::READ, self::PAY, self::CLASSIFY])]
+    public ?string $withholdingOperationCode = null;
+
     /** What the supplier is handed: the gross less what was withheld. */
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
@@ -258,6 +282,7 @@ final class ExpenseResource
         $resource->paidOn = $expense->getPaidOn()?->format('Y-m-d');
         $resource->withholdingRate = $expense->getWithholdingRate();
         $resource->withholdingAmount = null === $expense->getWithholdingAmount() ? null : $amount($expense->getWithholdingAmount());
+        $resource->withholdingOperationCode = $expense->getWithholdingOperationCode()?->value;
         $resource->amountPaid = $amount($expense->getAmountPaid());
         $resource->suggestedWithholdingRate = $suggestedWithholdingRate;
         $resource->notes = $expense->getNotes();
@@ -283,5 +308,11 @@ final class ExpenseResource
     public static function methods(): array
     {
         return array_map(static fn (PaymentMethod $method): string => $method->value, PaymentMethod::cases());
+    }
+
+    /** @return list<string> */
+    public static function operationCodes(): array
+    {
+        return array_map(static fn (TejOperationCode $code): string => $code->value, TejOperationCode::cases());
     }
 }

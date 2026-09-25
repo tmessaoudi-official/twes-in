@@ -15,6 +15,7 @@ use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\TaxKind;
 use App\Module\Expenses\Domain\ExpenseCategoryRepository;
+use App\Module\Expenses\Domain\TejOperationCode;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 
@@ -47,6 +48,9 @@ final readonly class ExpenseOptionsProvider implements ProviderInterface
             }
         }
         $options->paymentMethods = ExpenseResource::methods();
+        if (TejOperationCode::PRESET === $company->getFiscalPreset()) {
+            $options->withholdingOperationCodes = array_map(static fn (TejOperationCode $code): array => ['code' => $code->value, 'label' => $code->label()], TejOperationCode::cases());
+        }
 
         return $options;
     }

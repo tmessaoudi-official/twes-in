@@ -29,6 +29,7 @@ use App\Module\Expenses\Domain\ExpenseSearch;
 use App\Module\Expenses\Domain\ExpenseStatus;
 use App\Module\Expenses\Domain\ExpenseTransitionRefused;
 use App\Module\Expenses\Domain\InvalidExpense;
+use App\Module\Expenses\Domain\TejOperationCode;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorRepository;
 use App\Shared\Application\Transactions;
@@ -52,6 +53,7 @@ final readonly class ManageExpenses
     public const string REVISED = 'expense.revised';
     public const string RECORDED = 'expense.recorded';
     public const string PAID = 'expense.paid';
+    public const string WITHHOLDING_CLASSIFIED = 'expense.withholding_classified';
     public const string DELETED = 'expense.deleted';
     public const string ATTACHMENT_ADDED = 'expense.attachment_added';
     public const string ATTACHMENT_REMOVED = 'expense.attachment_removed';
@@ -149,16 +151,42 @@ final readonly class ManageExpenses
      * Pays a recorded expense. What is withheld from the supplier is the rate said, "0" for none, or — no rate said —
      * the preset's withholding when the expense reaches its threshold (docs/SPEC.md § 7, 2026-09-24 11:40, RPT-09).
      */
-    public function pay(Company $company, Uuid $id, PaymentMethod $method, \DateTimeImmutable $paidOn, ?Uuid $actorUserId, ?string $withholdingRate = null): Expense
+    public function pay(Company $company, Uuid $id, PaymentMethod $method, \DateTimeImmutable $paidOn, ?Uuid $actorUserId, ?string $withholdingRate = null, ?TejOperationCode $operationCode = null): Expense
     {
-        return $this->transactions->run(function () use ($company, $id, $method, $paidOn, $actorUserId, $withholdingRate): Expense {
+        return $this->transactions->run(function () use ($company, $id, $method, $paidOn, $actorUserId, $withholdingRate, $operationCode): Expense {
             $expense = $this->get($company, $id);
             $now = $this->clock->now();
             $rate = $withholdingRate ?? $this->suggestedWithholdingRate($company, $expense);
-            $expense->pay($method, $paidOn, $now->setTimezone(new \DateTimeZone($company->getTimezone())), $now, $rate, $this->scales->of($company->getCurrency()));
+            $expense->pay($method, $paidOn, $now->setTimezone(new \DateTimeZone($company->getTimezone())), $now, $rate, $this->scales->of($company->getCurrency()), $operationCode);
             $this->expenses->save($expense);
-            $fields = null === $expense->getWithholdingRate() ? ['paymentMethod', 'paidOn'] : ['paymentMethod', 'paidOn', 'withholdingRate'];
+            $fields = ['paymentMethod', 'paidOn'];
+            if (null !== $expense->getWithholdingRate()) {
+                $fields[] = 'withholdingRate';
+            }
+            if (null !== $expense->getWithholdingOperationCode()) {
+                $fields[] = 'withholdingOperationCode';
+            }
             $this->record($company, $expense->getId(), self::PAID, ['fields' => $fields], $actorUserId);
+
+            return $expense;
+        });
+    }
+
+    /**
+     * Says, corrects or takes back what a paid expense's withholding is to the TEJ platform; audited when it changes.
+     *
+     * @throws ExpenseNotFound
+     * @throws ExpenseTransitionRefused
+     * @throws InvalidExpense
+     */
+    public function classifyWithholding(Company $company, Uuid $id, ?TejOperationCode $operationCode, ?Uuid $actorUserId): Expense
+    {
+        return $this->transactions->run(function () use ($company, $id, $operationCode, $actorUserId): Expense {
+            $expense = $this->get($company, $id);
+            if ($expense->classifyWithholding($operationCode, $this->clock->now())) {
+                $this->expenses->save($expense);
+                $this->record($company, $expense->getId(), self::WITHHOLDING_CLASSIFIED, ['fields' => ['withholdingOperationCode']], $actorUserId);
+            }
 
             return $expense;
         });

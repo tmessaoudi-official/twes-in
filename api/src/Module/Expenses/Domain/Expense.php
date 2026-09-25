@@ -35,10 +35,6 @@ use Symfony\Component\Uid\Uuid;
 class Expense implements CompanyOwned
 {
     private const string WITHHOLDING_RATE = '/^(0|[1-9][0-9]{0,2})(\.[0-9]{1,3})?$/';
-
-    /** The fiscal preset whose companies declare their withholdings to TEJ. */
-    private const string TEJ_PRESET = 'TN';
-
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -249,7 +245,7 @@ class Expense implements CompanyOwned
     /** @throws InvalidExpense when a TEJ code is said for a company outside the Tunisian preset */
     private function assertDeclarableToTej(?TejOperationCode $operationCode): void
     {
-        if (null !== $operationCode && self::TEJ_PRESET !== $this->company->getFiscalPreset()) {
+        if (null !== $operationCode && TejOperationCode::PRESET !==$this->company->getFiscalPreset()) {
             throw new InvalidExpense('withholdingOperationCode', 'A TEJ operation code is said for a company under the Tunisian preset only.');
         }
     }

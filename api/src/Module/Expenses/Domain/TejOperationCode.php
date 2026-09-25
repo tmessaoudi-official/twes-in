@@ -17,6 +17,9 @@ namespace App\Module\Expenses\Domain;
  */
 enum TejOperationCode: string
 {
+    /** The fiscal preset whose companies declare their withholdings to TEJ. */
+    public const string PRESET = 'TN';
+
     case Rs1_000001 = 'RS1_000001';
     case Rs1_000002 = 'RS1_000002';
     case Rs2_000001 = 'RS2_000001';

@@ -72,4 +72,21 @@ final class ExpenseOptionsResource
     #[ApiProperty(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['transfer', 'cash', 'check', 'card', 'other']]])]
     #[Groups([self::READ])]
     public array $paymentMethods = [];
+
+    /**
+     * What a payment's withholding may be declared under on Tunisia's TEJ platform, with the administration's own
+     * label; empty for a company outside the Tunisian preset.
+     *
+     * @var list<array{code: string, label: string}>
+     */
+    #[ApiProperty(schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['code', 'label'],
+            'properties' => ['code' => ['type' => 'string'], 'label' => ['type' => 'string', 'description' => 'As the administration publishes it, in French.']],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $withholdingOperationCodes = [];
 }
