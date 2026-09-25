@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { StatusTone } from '../shared/theme/accent-theme';
+import type { ProductTracking } from '../products/products-types';
 
 /** Why the API refused, as the delivery notes screens translate it. */
 export type DeliveryNotesError = 'network' | 'not_found' | 'conflict' | 'invalid';
@@ -66,13 +67,17 @@ export interface DeliveryNoteLine {
    */
   productReference: string | null;
   productName: string | null;
+  /** How the product's stock is told apart today; null for a line naming no product. Read only. */
+  productTracking: ProductTracking | null;
+  /** The lot or serial handed over, for a product tracked by one (docs/SPEC.md § 7, 2026-09-24 12:40 row 5). */
+  lotCode: string | null;
   /** The line's net amount at the currency's scale, computed by the API on every read. */
   net: string;
 }
 
 export type DeliveryNoteLineInput = Omit<
   DeliveryNoteLine,
-  'net' | 'productReference' | 'productName'
+  'net' | 'productReference' | 'productName' | 'productTracking'
 >;
 
 export interface TaxTotal {
@@ -144,6 +149,8 @@ export interface ProductOption {
   unitId: string;
   unitPriceNet: string;
   defaultTaxComponentIds: string[];
+  /** Whether a line of it names the lot or serial handed over. */
+  tracking: ProductTracking;
 }
 
 export interface UnitOption {

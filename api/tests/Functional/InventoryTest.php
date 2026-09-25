@@ -448,6 +448,41 @@ final class InventoryTest extends ApiTestCase
         self::assertEquals(2, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM stock_lot'), 'a refused receipt opened no lot');
     }
 
+    public function testADeliveryNoteLineNamingItsLotTakesThatLotRatherThanTheFirstToExpire(): void
+    {
+        // docs/SPEC.md § 7, 2026-09-24 12:40 row 5.
+        $this->signedIn(['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $laptop = $this->em()->find(Product::class, $this->laptopId);
+        self::assertNotNull($laptop);
+        $laptop->track(ProductTracking::Lot, new \DateTimeImmutable());
+        $this->em()->flush();
+        $site = $this->defaultLocationId();
+        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        foreach ([['LATER', '+60 days', '5'], ['SOON', '+10 days', '2']] as [$code, $offset, $quantity]) {
+            $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => $quantity, 'lotCode' => $code, 'lotExpiresOn' => $today->modify($offset)->format('Y-m-d')]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED, $code);
+        }
+        $customerId = $this->customer();
+
+        $noteId = $this->draftNote($customerId, '3', [['productId' => $this->laptopId, 'quantity' => '3', 'lotCode' => ' later ']]);
+        $lines = $this->arrayAt($this->json(), 'lines');
+        self::assertCount(1, $lines);
+        self::assertIsArray($lines[0] ?? null);
+        self::assertSame(['later', 'lot'], [$lines[0]['lotCode'] ?? null, $lines[0]['productTracking'] ?? null], 'the lot as typed, trimmed');
+        $this->postJson($this->path('delivery-notes', $noteId).'/validate', null);
+        self::assertResponseIsSuccessful();
+
+        self::assertSame(['LATER' => '2.000', 'SOON' => '2.000'], $this->levelsByLot(), 'the lot handed over, not the first to expire');
+        $this->getJson($this->path('stock-movements').'?lot=LATER');
+        self::assertSame([['out', $noteId], ['in', null]], array_map(static fn (array $m): array => [$m['kind'], $m['sourceId']], $this->jsonList()), 'the recall search names the note that took it');
+
+        $unitId = $this->em()->getConnection()->fetchOne("SELECT id FROM unit WHERE code = 'C62' AND company_id = ?", [$this->company->getId()->toRfc4122()]);
+        self::assertIsString($unitId);
+        $this->postJson($this->path('delivery-notes'), ['customerId' => $customerId, 'lines' => [['description' => 'Pose', 'quantity' => '1', 'unitId' => $unitId, 'unitPriceNet' => '10', 'taxComponentIds' => [], 'lotCode' => 'L-1']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a line with no product names no lot');
+        self::assertStringContainsString('lines[0].lotCode', (string) $this->client->getResponse()->getContent());
+    }
+
     public function testADeliveryNoteTakesTheFirstLotsToExpireAndAnExpiredOneOnlyOnceReleased(): void
     {
         $this->signedIn(['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
@@ -559,7 +594,8 @@ final class InventoryTest extends ApiTestCase
     }
 
     /** A draft note delivering the laptop to the customer; its id. */
-    private function draftNote(string $customerId, string $quantity): string
+    /** @param list<array<string, mixed>>|null $lines */
+    private function draftNote(string $customerId, string $quantity, ?array $lines = null): string
     {
         $this->postJson($this->path('delivery-notes'), [
             'customerId' => $customerId,
@@ -573,7 +609,7 @@ final class InventoryTest extends ApiTestCase
             'customerReference' => null,
             'remarksPrinted' => null,
             'notesInternal' => null,
-            'lines' => [['productId' => $this->laptopId, 'quantity' => $quantity]],
+            'lines' => $lines ?? [['productId' => $this->laptopId, 'quantity' => $quantity]],
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 

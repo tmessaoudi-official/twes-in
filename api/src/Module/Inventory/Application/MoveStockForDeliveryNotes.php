@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Application;
 
 use App\Module\DeliveryNotes\Domain\DeliveredQuantity;
+use App\Module\Inventory\Domain\LotOnHand;
 use App\Module\Inventory\Domain\LotPicking;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementKind;
@@ -75,8 +76,10 @@ final readonly class MoveStockForDeliveryNotes
                 $skipped[] = \sprintf('a line of %s has no quantity, so it moved no stock', $product->getReference());
                 continue;
             }
-            $key = $product->getId()->toRfc4122();
-            $out[$key] = [$product, ($out[$key][1] ?? new Number(0))->add($line->quantity)];
+            // A named lot is its own group, taken as named; a line naming none joins its product's first-to-expire group.
+            $lot = ProductTracking::None === $product->getTracking() ? null : $line->lotCode;
+            $key = $product->getId()->toRfc4122().(null === $lot ? '' : "\0".$lot);
+            $out[$key] = [$product, ($out[$key][1] ?? new Number(0))->add($line->quantity), $lot];
         }
         if ([] === $out) {
             return $skipped;
@@ -87,28 +90,47 @@ final readonly class MoveStockForDeliveryNotes
         }
 
         $now = $this->clock->now();
-        ksort($out);
+        // Named lots go first, in the note's order, so the first-to-expire pick cannot take the stock a line named; locks
+        // are taken product by product in a fixed order all the same.
+        $named = array_filter($out, static fn (string $key): bool => str_contains($key, "\0"), \ARRAY_FILTER_USE_KEY);
+        $unnamed = array_diff_key($out, $named);
+        ksort($unnamed);
+        $out = [...$named, ...$unnamed];
         // The company's day decides which lots have expired: a lot used by today still leaves today, wherever the server is.
         $today = $now->setTimezone(new \DateTimeZone($establishment->getCompany()->getTimezone()));
 
         return $this->transactions->run(function () use ($establishment, $out, $deliveryNoteId, $now, $today, $skipped): array {
             $location = $this->locations->defaultOf($establishment);
-            foreach ($out as $delivered) {
-                $this->movements->lockStockOf($delivered[0]->getId(), $location->getId());
+            $products = [];
+            foreach ($out as [$product]) {
+                $products[$product->getId()->toRfc4122()] = $product;
+            }
+            ksort($products);
+            foreach ($products as $product) {
+                $this->movements->lockStockOf($product->getId(), $location->getId());
             }
             $written = [];
-            foreach ($out as [$product, $quantity]) {
+            $taking = [];
+            foreach ($out as [$product, $quantity, $named]) {
                 if (ProductTracking::None === $product->getTracking()) {
                     $written[] = StockMovement::delivery($product, $location, $quantity->value, $deliveryNoteId, $now);
                     continue;
                 }
-                // Read after the lock, as a count reads: what is picked is what no other delivery is taking.
-                $picked = LotPicking::firstExpiring($this->movements->lotsAt($product->getId(), $location->getId()), $quantity->value, $today);
+                // Read after the lock, as a count reads: what is picked is what no other delivery is taking. What an
+                // earlier group of this note took is not on hand any more, though it is not saved yet.
+                $onHand = self::less($this->movements->lotsAt($product->getId(), $location->getId()), $taking);
+                $picked = null === $named
+                    ? LotPicking::firstExpiring($onHand, $quantity->value, $today)
+                    : LotPicking::named($onHand, $named, $quantity->value, $today);
                 foreach ($picked->taken as [$lot, $taken]) {
                     $written[] = StockMovement::delivery($product, $location, $taken, $deliveryNoteId, $now, $lot);
+                    $key = $lot->getId()->toRfc4122();
+                    $taking[$key] = ($taking[$key] ?? new Number(0))->add($taken);
                 }
                 if (1 === new Number($picked->short)->compare(0)) {
-                    $skipped[] = \sprintf('%s of %s was in no lot in date at %s, so it moved no stock: receive it under its lot, or release an expired one', $picked->short, $product->getReference(), $location->getCode());
+                    $skipped[] = null === $named
+                        ? \sprintf('%s of %s was in no lot in date at %s, so it moved no stock: receive it under its lot, or release an expired one', $picked->short, $product->getReference(), $location->getCode())
+                        : self::namedShort($picked->short, $product->getReference(), $named, $location->getCode(), LotPicking::find($onHand, $named), $today);
                 }
             }
             if ([] !== $written) {
@@ -117,6 +139,33 @@ final readonly class MoveStockForDeliveryNotes
 
             return $skipped;
         });
+    }
+
+    /**
+     * The lots on hand less what this note already takes from them.
+     *
+     * @param list<LotOnHand>       $onHand
+     * @param array<string, Number> $taking by lot id
+     *
+     * @return list<LotOnHand>
+     */
+    private static function less(array $onHand, array $taking): array
+    {
+        return array_map(static function (LotOnHand $each) use ($taking): LotOnHand {
+            $taken = $taking[$each->lot->getId()->toRfc4122()] ?? null;
+
+            return null === $taken ? $each : new LotOnHand($each->lot, new Number('0.000')->add(new Number($each->quantity)->sub($taken))->value);
+        }, $onHand);
+    }
+
+    /** Why what a line named was not all taken: its lot is not at the location, expired unreleased, or holds less. */
+    private static function namedShort(string $short, string $reference, string $code, string $location, ?LotOnHand $found, \DateTimeImmutable $today): string
+    {
+        if (null !== $found && !$found->lot->deliverableOn($today)) {
+            return \sprintf('%s of %s lot %s moved no stock: that lot is expired and nobody released it, so release it or name another lot', $short, $reference, $code);
+        }
+
+        return \sprintf('%s of %s lot %s was not at %s, so it moved no stock: receive it under that lot, or name the lot handed over', $short, $reference, $code, $location);
     }
 
     public function cancelled(Uuid $deliveryNoteId, Uuid $companyId): void

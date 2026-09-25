@@ -19,6 +19,7 @@ use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
@@ -89,8 +90,16 @@ final class InvoicePickTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $pick = $this->jsonList()[0] ?? null;
         self::assertIsArray($pick);
-        self::assertSame(['id', 'reference', 'name', 'unitId', 'unitPriceNet', 'defaultTaxComponentIds'], array_keys($pick));
+        self::assertSame(['id', 'reference', 'name', 'unitId', 'unitPriceNet', 'defaultTaxComponentIds', 'tracking'], array_keys($pick));
+        self::assertSame('none', $pick['tracking'], 'whether a line names the lot or serial handed over');
         self::assertNotSame('', $pick['unitId']);
+
+        $bolt = $this->em()->getRepository(Product::class)->findOneBy(['reference' => 'BOU-001']);
+        self::assertNotNull($bolt);
+        $bolt->track(ProductTracking::Serial, new \DateTimeImmutable());
+        $this->em()->flush();
+        $this->getJson($this->path('products').'?q=boulon');
+        self::assertSame(['serial'], array_column($this->jsonList(), 'tracking'));
     }
 
     public function testAPickerShowsAFewAndNeverTheWholeCatalogue(): void

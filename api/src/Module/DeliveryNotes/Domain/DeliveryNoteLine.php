@@ -60,6 +60,10 @@ class DeliveryNoteLine implements CompanyOwned
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 4)]
     private string $unitPriceNet;
 
+    /** The lot or serial handed over (docs/SPEC.md § 7, 2026-09-24 12:40 row 5); null when the line names none. */
+    #[ORM\Column(length: DeliveryNoteLineDetails::LOT_CODE_MAX, nullable: true)]
+    private ?string $lotCode;
+
     /** @var Collection<int, DeliveryNoteLineTax> */
     #[ORM\OneToMany(targetEntity: DeliveryNoteLineTax::class, mappedBy: 'line', cascade: ['persist'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC'])]
@@ -77,6 +81,7 @@ class DeliveryNoteLine implements CompanyOwned
         $this->quantity = $details->quantity;
         $this->unit = $details->unit;
         $this->unitPriceNet = $details->unitPriceNet;
+        $this->lotCode = $details->lotCode;
         $this->taxes = new ArrayCollection();
         foreach ($details->taxes as $index => $tax) {
             $this->taxes->add(new DeliveryNoteLineTax($this, $index + 1, $tax));
@@ -105,7 +110,7 @@ class DeliveryNoteLine implements CompanyOwned
         }
     }
 
-    /** @return array{string|null, string, string, string, string, list<string>} compared the way DeliveryNoteLineDetails::values() is */
+    /** @return array{string|null, string, string, string, string, list<string>, string|null} compared the way DeliveryNoteLineDetails::values() is */
     public function values(): array
     {
         return [
@@ -115,7 +120,14 @@ class DeliveryNoteLine implements CompanyOwned
             $this->unit->getId()->toRfc4122(),
             $this->unitPriceNet,
             array_map(static fn (DeliveryNoteLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $this->getTaxes()),
+            $this->lotCode,
         ];
+    }
+
+    /** The lot or serial the line hands over; null when it names none. */
+    public function getLotCode(): ?string
+    {
+        return $this->lotCode;
     }
 
     public function getId(): Uuid

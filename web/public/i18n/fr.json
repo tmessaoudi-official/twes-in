@@ -1219,6 +1219,8 @@
       "description": "Ce qui est livré",
       "quantity": "Quantité",
       "unit": "Unité",
+      "lot": "Lot ou numéro de série",
+      "lot_hint": "Celui qui est remis ; vide, le lot qui expire le premier sort du stock.",
       "unitPriceNet": "Prix unitaire HT",
       "price_hint": "En {{currency}}, avec au plus quatre décimales.",
       "taxes": "Taxes de la ligne",
@@ -1230,7 +1232,8 @@
         "description": "Indiquez ce qui est livré.",
         "quantity": "Une quantité supérieure à zéro, sans plus de décimales que son unité n'en compte (trois au plus).",
         "unitId": "Choisissez une unité.",
-        "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales."
+        "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales.",
+        "lotCode": "Jusqu’à 40 caractères visibles, sans espace."
       },
       "no_product_found": "Aucun produit trouvé."
     },

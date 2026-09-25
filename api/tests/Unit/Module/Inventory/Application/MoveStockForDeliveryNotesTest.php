@@ -167,6 +167,42 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         self::assertSame([['OCTOBER', '2.000'], ['NOVEMBER', '2.000']], \array_slice($this->lotsWritten($received), 3), 'each lot gets back what left it');
     }
 
+    public function testALineNamingItsLotTakesThatLotAndOnlyTheOthersGoFirstToExpire(): void
+    {
+        // docs/SPEC.md § 7, 2026-09-24 12:40 row 5: validation takes the named lot, first-to-expire only for a line naming none.
+        $this->laptop->track(ProductTracking::Lot, $this->clock->now());
+        $depot = $this->manage->defaultOf($this->depot)->getId();
+        foreach ([['NOVEMBER', '2026-11-01', '5'], ['OCTOBER', '2026-10-01', '2'], ['AUGUST', '2026-08-31', '3']] as [$code, $date, $quantity]) {
+            $this->keep->receive($this->company, $this->laptop->getId(), $depot, $quantity, null, new NamedLot($code, new \DateTimeImmutable($date)));
+        }
+        $received = \count($this->movements->movements);
+        $first = Uuid::v7();
+
+        $skipped = $this->move->validated($first, $this->company->getId(), $this->depot->getId(), [
+            $this->line($this->laptop, '1.000', $this->piece),
+            $this->line($this->laptop, '3.000', $this->piece, 'november'),
+        ]);
+
+        self::assertSame([], $skipped);
+        self::assertSame([['NOVEMBER', '-3.000'], ['OCTOBER', '-1.000']], $this->lotsWritten($received), 'the named lot first, whatever its case, then the first to expire for the line naming none');
+
+        $skipped = $this->move->validated(Uuid::v7(), $this->company->getId(), $this->depot->getId(), [
+            $this->line($this->laptop, '4.000', $this->piece, 'OCTOBER'),
+            $this->line($this->laptop, '1.000', $this->piece, 'DECEMBER'),
+            $this->line($this->laptop, '2.000', $this->piece, 'AUGUST'),
+        ]);
+
+        self::assertSame([['NOVEMBER', '-3.000'], ['OCTOBER', '-1.000'], ['OCTOBER', '-1.000']], $this->lotsWritten($received), 'nothing is taken from another lot than the one named');
+        self::assertCount(3, $skipped);
+        self::assertStringContainsString('3.000 of ART-001 lot OCTOBER', $skipped[0]);
+        self::assertStringContainsString('lot DECEMBER', $skipped[1]);
+        self::assertStringContainsString('lot AUGUST', $skipped[2]);
+        self::assertStringContainsString('expired', $skipped[2]);
+
+        $this->move->cancelled($first, $this->company->getId());
+        self::assertSame([['NOVEMBER', '3.000'], ['OCTOBER', '1.000']], \array_slice($this->lotsWritten($received), 3));
+    }
+
     /** @return list<array{string, string}> the lot and quantity of each movement written after the first $from */
     private function lotsWritten(int $from): array
     {
@@ -202,9 +238,9 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         self::assertSame(['0.000', '0.000'], array_map(static fn ($level) => $level->quantity, $this->movements->levels($this->company->getId())));
     }
 
-    private function line(?Product $product, string $quantity, Unit $unit): DeliveredQuantity
+    private function line(?Product $product, string $quantity, Unit $unit, ?string $lotCode = null): DeliveredQuantity
     {
-        return new DeliveredQuantity($product?->getId(), $quantity, $unit->getId());
+        return new DeliveredQuantity($product?->getId(), $quantity, $unit->getId(), $lotCode);
     }
 
     /** @return list<array{string, string, string, string}> */

@@ -32,7 +32,7 @@ final readonly class PickProducts
     }
 
     /**
-     * @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>}>
+     * @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string}>
      */
     public function matching(Company $company, string $words, int $limit = self::SHOWN): array
     {
@@ -46,14 +46,14 @@ final readonly class PickProducts
      *
      * @param list<Uuid> $ids
      *
-     * @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>}>
+     * @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string}>
      */
     public function byIds(Company $company, array $ids): array
     {
         return array_map(self::row(...), $this->products->ofIdsInCompany(\array_slice($ids, 0, self::SHOWN), $company->getId()));
     }
 
-    /** @return array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>} */
+    /** @return array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string} */
     private static function row(Product $product): array
     {
         return [
@@ -63,6 +63,8 @@ final readonly class PickProducts
             'unitId' => $product->getUnit()->getId()->toRfc4122(),
             'unitPriceNet' => $product->getDetails()->unitPriceNet,
             'defaultTaxComponentIds' => $product->getDefaultTaxComponentIds(),
+            // none, lot or serial: whether a line names the lot or serial handed over (docs/SPEC.md § 7, 2026-09-24 12:40 row 5).
+            'tracking' => $product->getTracking()->value,
         ];
     }
 }

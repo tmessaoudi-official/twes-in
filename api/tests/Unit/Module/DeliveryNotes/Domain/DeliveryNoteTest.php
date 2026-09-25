@@ -31,6 +31,7 @@ use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
@@ -113,6 +114,39 @@ final class DeliveryNoteTest extends TestCase
     {
         $this->assertRefused('description', fn () => new DeliveryNoteLineDetails(null, '  ', '1', $this->unit('C62'), '1', []));
         $this->assertRefused('description', fn () => new DeliveryNoteLineDetails(null, str_repeat('a', DeliveryNoteLineDetails::DESCRIPTION_MAX + 1), '1', $this->unit('C62'), '1', []));
+    }
+
+    public function testALineNamesTheLotOrSerialHandedOverOnlyForAProductTrackedByOne(): void
+    {
+        // docs/SPEC.md § 7, 2026-09-24 12:40 row 5: a line carries the lot or serial actually handed over.
+        $lotted = $this->product($this->company);
+        $lotted->track(ProductTracking::Lot, $this->now);
+        $untracked = Product::create($this->company, 'ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '40'), $this->unit('C62'), null, [], $this->now);
+
+        self::assertSame('L-2409', new DeliveryNoteLineDetails($lotted, 'Colle', '2', $this->unit('C62'), '10', [], ' L-2409 ')->lotCode);
+        self::assertNull(new DeliveryNoteLineDetails($lotted, 'Colle', '2', $this->unit('C62'), '10', [], '  ')->lotCode, 'a blank lot names none');
+        self::assertNull(new DeliveryNoteLineDetails($lotted, 'Colle', '2', $this->unit('C62'), '10', [])->lotCode);
+        $this->assertRefused('lotCode', fn () => new DeliveryNoteLineDetails($untracked, 'Souris', '1', $this->unit('C62'), '40', [], 'L-1'), 'a product not tracked by lot');
+        $this->assertRefused('lotCode', fn () => new DeliveryNoteLineDetails(null, 'Pose', '1', $this->unit('C62'), '40', [], 'L-1'), 'a line with no product');
+        $this->assertRefused('lotCode', fn () => new DeliveryNoteLineDetails($lotted, 'Colle', '1', $this->unit('C62'), '10', [], 'L 24'), 'a space no label carries');
+        $this->assertRefused('lotCode', fn () => new DeliveryNoteLineDetails($lotted, 'Colle', '1', $this->unit('C62'), '10', [], str_repeat('A', DeliveryNoteLineDetails::LOT_CODE_MAX + 1)));
+
+        $note = DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [
+            new DeliveryNoteLineDetails($lotted, 'Colle', '2', $this->unit('C62'), '10', [], 'L-2409'),
+            new DeliveryNoteLineDetails($lotted, 'Colle', '1', $this->unit('C62'), '10', []),
+        ], $this->now);
+        self::assertSame(['L-2409', null], array_map(static fn ($line): ?string => $line->getLotCode(), $note->getLines()));
+        self::assertSame(['lines'], $note->revise($this->establishment(), $this->customer, new DeliveryNoteHeader(), [
+            new DeliveryNoteLineDetails($lotted, 'Colle', '2', $this->unit('C62'), '10', [], 'L-2410'),
+            new DeliveryNoteLineDetails($lotted, 'Colle', '1', $this->unit('C62'), '10', []),
+        ], $this->now), 'another lot is another line');
+        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $this->now);
+        $validated = $note->releaseEvents()[0];
+        self::assertInstanceOf(DeliveryNoteValidated::class, $validated);
+        self::assertEquals([
+            new DeliveredQuantity($lotted->getId(), '2.000', $this->unit('C62')->getId(), 'L-2410'),
+            new DeliveredQuantity($lotted->getId(), '1.000', $this->unit('C62')->getId()),
+        ], $validated->lines);
     }
 
     public function testALineCarriesEachOfItsLineTaxesOnce(): void

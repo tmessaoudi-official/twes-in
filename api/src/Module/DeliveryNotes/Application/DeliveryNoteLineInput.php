@@ -17,7 +17,10 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DeliveryNoteLineInput
 {
-    /** @param list<Uuid>|null $taxComponentIds null for the product's default taxes; an empty list for none */
+    /**
+     * @param list<Uuid>|null $taxComponentIds null for the product's default taxes; an empty list for none
+     * @param string|null     $lotCode         the lot or serial handed over, for a product tracked by one
+     */
     public function __construct(
         public ?Uuid $productId,
         public ?string $description,
@@ -25,6 +28,7 @@ final readonly class DeliveryNoteLineInput
         public ?Uuid $unitId = null,
         public ?string $unitPriceNet = null,
         public ?array $taxComponentIds = null,
+        public ?string $lotCode = null,
     ) {
     }
 }

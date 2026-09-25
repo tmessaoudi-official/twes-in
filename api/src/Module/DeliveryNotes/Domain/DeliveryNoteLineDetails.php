@@ -13,6 +13,7 @@ use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxKind;
 use App\Fiscal\Domain\Unit;
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductTracking;
 
 /**
  * One line as it is written: what is delivered, how much of it in which unit, its net unit price and the taxes charged
@@ -24,12 +25,20 @@ final readonly class DeliveryNoteLineDetails
     public const int DESCRIPTION_MAX = 5000;
     public const int QUANTITY_DECIMALS = 3;
     public const int PRICE_DECIMALS = 4;
+    /**
+     * A lot or serial as a label carries it: the stock lot's own rule (Inventory's StockLot::CODE), restated here
+     * because the inventory reads a delivery note and never the other way round.
+     */
+    public const int LOT_CODE_MAX = 40;
+    private const string LOT_CODE = '/^[\x21-\x7E]{1,40}$/';
     private const string QUANTITY = '/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/';
     private const string PRICE = '/^(0|[1-9][0-9]{0,9})(\.[0-9]{1,4})?$/';
 
     public string $description;
     public string $quantity;
     public string $unitPriceNet;
+    /** The lot or serial handed over (docs/SPEC.md § 7, 2026-09-24 12:40 row 5); null when the line names none. */
+    public ?string $lotCode;
     /** @var list<TaxComponent> */
     public array $taxes;
 
@@ -38,7 +47,7 @@ final readonly class DeliveryNoteLineDetails
      *
      * @throws InvalidDeliveryNote
      */
-    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, array $taxes)
+    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, array $taxes, ?string $lotCode = null)
     {
         $description = trim($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
@@ -60,9 +69,10 @@ final readonly class DeliveryNoteLineDetails
             $ids[$id] = true;
         }
         $this->taxes = $taxes;
+        $this->lotCode = self::lotCode($product, $lotCode);
     }
 
-    /** @return array{string|null, string, string, string, string, list<string>} what two lines are compared on */
+    /** @return array{string|null, string, string, string, string, list<string>, string|null} what two lines are compared on */
     public function values(): array
     {
         return [
@@ -72,6 +82,7 @@ final readonly class DeliveryNoteLineDetails
             $this->unit->getId()->toRfc4122(),
             $this->unitPriceNet,
             array_map(static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(), $this->taxes),
+            $this->lotCode,
         ];
     }
 
@@ -89,6 +100,23 @@ final readonly class DeliveryNoteLineDetails
         }
 
         return $units.'.'.str_pad($decimals, self::QUANTITY_DECIMALS, '0');
+    }
+
+    /** @throws InvalidDeliveryNote */
+    private static function lotCode(?Product $product, ?string $code): ?string
+    {
+        $code = trim($code ?? '');
+        if ('' === $code) {
+            return null;
+        }
+        if (null === $product || ProductTracking::None === $product->getTracking()) {
+            throw new InvalidDeliveryNote('lotCode', 'A lot or serial is named on a line of a product tracked by one.');
+        }
+        if (1 !== preg_match(self::LOT_CODE, $code)) {
+            throw new InvalidDeliveryNote('lotCode', \sprintf('A lot code is 1 to %d printable characters without space or accent.', self::LOT_CODE_MAX));
+        }
+
+        return $code;
     }
 
     private static function price(string $price): string

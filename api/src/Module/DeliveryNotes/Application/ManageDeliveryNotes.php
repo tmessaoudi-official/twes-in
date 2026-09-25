@@ -173,7 +173,7 @@ final readonly class ManageDeliveryNotes
         $price = $line->unitPriceNet ?? $product?->getDetails()->unitPriceNet ?? throw new InvalidDeliveryNote('unitPriceNet', 'A line without a product states its price.');
         $description = null === $line->description || '' === trim($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
 
-        return new DeliveryNoteLineDetails($product, $description, $line->quantity, $unit, $price, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']));
+        return new DeliveryNoteLineDetails($product, $description, $line->quantity, $unit, $price, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->lotCode);
     }
 
     /**

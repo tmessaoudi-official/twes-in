@@ -77,7 +77,12 @@ final class DeliveryNoteProductPickResource
     #[Groups([self::READ])]
     public array $defaultTaxComponentIds = [];
 
-    /** @param array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>} $pick */
+    /** How its stock is told apart: none, lot or serial; a line of a tracked product may name the one handed over. */
+    #[ApiProperty(required: true, schema: ['type' => 'string', 'enum' => ['none', 'lot', 'serial']])]
+    #[Groups([self::READ])]
+    public string $tracking = 'none';
+
+    /** @param array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string} $pick */
     public static function of(array $pick): self
     {
         $resource = new self();
@@ -87,6 +92,7 @@ final class DeliveryNoteProductPickResource
         $resource->unitId = $pick['unitId'];
         $resource->unitPriceNet = $pick['unitPriceNet'];
         $resource->defaultTaxComponentIds = $pick['defaultTaxComponentIds'];
+        $resource->tracking = $pick['tracking'];
 
         return $resource;
     }

@@ -2,7 +2,7 @@
 
 import { FormArray, FormControl, FormGroup } from '@angular/forms';
 import { describe, expect, it } from 'vitest';
-import { addCount, type LineFields, placedOutcome, scanIntoLines } from './scan-lines';
+import { addCount, type LineFields, placedOutcome, scanIntoLines, scannedLot } from './scan-lines';
 
 type Line = FormGroup<LineFields & { note: FormControl<string> }>;
 
@@ -55,6 +55,39 @@ describe('scanIntoLines', () => {
     expect(placed).toMatchObject({ added: true, quantity: '12', index: 1 });
     // Attached before it is marked, so the document reads as changed, not only the line.
     expect(lines.dirty).toBe(true);
+  });
+
+  it('keeps a scanned lot or serial on its own line: the same lot adds to it, another starts one', () => {
+    // docs/SPEC.md § 7, 2026-09-24 12:40 row 5: a till compares product, unit AND lot.
+    const lotted = (productId: string, lotCode: string, quantity: string) =>
+      new FormGroup({
+        productId: new FormControl(productId, { nonNullable: true }),
+        unitId: new FormControl('pc', { nonNullable: true }),
+        quantity: new FormControl(quantity, { nonNullable: true }),
+        description: new FormControl(productId, { nonNullable: true }),
+        lotCode: new FormControl(lotCode, { nonNullable: true }),
+      });
+    const lines = new FormArray([lotted('glue', 'L-1', '2')]);
+    const lotFields = (each: ReturnType<typeof lotted>): LineFields => each.controls;
+    const lotRows = () =>
+      lines.controls.map(
+        (each) => `${each.controls.lotCode.value}×${each.controls.quantity.value}`,
+      );
+
+    scanIntoLines(lines, lotFields, { productId: 'glue', unitId: 'pc', count: 1, lot: 'L-1' }, () =>
+      lotted('glue', '', '1'),
+    );
+    expect(lotRows()).toEqual(['L-1×3']);
+
+    scanIntoLines(lines, lotFields, { productId: 'glue', unitId: 'pc', count: 1, lot: 'L-2' }, () =>
+      lotted('glue', '', '1'),
+    );
+    expect(lotRows()).toEqual(['L-1×3', 'L-2×1']);
+
+    scanIntoLines(lines, lotFields, { productId: 'glue', unitId: 'pc', count: 1 }, () =>
+      lotted('glue', '', '1'),
+    );
+    expect(lotRows()).toEqual(['L-1×3', 'L-2×1', '×1']);
   });
 
   it('fills the empty line a new document starts with rather than leaving it blank', () => {
@@ -135,5 +168,17 @@ describe('scanIntoLines', () => {
       product,
       undo,
     });
+  });
+});
+
+describe('scannedLot', () => {
+  it('takes the number a product is tracked by, the other when the label carries only that one', () => {
+    const both = { lot: 'L-12', serial: 'SN-9' };
+    expect(scannedLot('serial', both)).toBe('SN-9');
+    expect(scannedLot('lot', both)).toBe('L-12');
+    expect(scannedLot('serial', { lot: 'L-12', serial: null })).toBe('L-12');
+    expect(scannedLot('lot', { lot: null, serial: 'SN-9' })).toBe('SN-9');
+    expect(scannedLot('none', both)).toBeNull();
+    expect(scannedLot('lot', { lot: null, serial: null })).toBeNull();
   });
 });

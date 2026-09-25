@@ -243,7 +243,8 @@ final class DeliveryNoteResource
 
     /**
      * The lines, in order. A line naming a product may leave out its description, unit, price and taxes (null), which
-     * then come from the product; `net` is answered, never read.
+     * then come from the product; a line of a product tracked by lot or serial may name the one handed over, which
+     * validation takes out of stock (docs/SPEC.md § 7, 2026-09-24 12:40 row 5); `net` is answered, never read.
      *
      * @var list<array<string, mixed>>
      */
@@ -256,11 +257,13 @@ final class DeliveryNoteResource
                 'productId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
                 'productReference' => ['type' => ['string', 'null'], 'description' => 'The product as it reads today, so a form shows the line without the catalogue. Read only.'],
                 'productName' => ['type' => ['string', 'null'], 'description' => 'The product as it reads today. Read only.'],
+                'productTracking' => ['type' => ['string', 'null'], 'enum' => ['none', 'lot', 'serial', null], 'description' => 'How the product\'s stock is told apart today, so a form knows whether the line names a lot. Read only.'],
                 'description' => ['type' => ['string', 'null'], 'maxLength' => DeliveryNoteLineDetails::DESCRIPTION_MAX],
                 'quantity' => ['type' => 'string', 'pattern' => '^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$', 'example' => '2.5'],
                 'unitId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
                 'unitPriceNet' => ['type' => ['string', 'null'], 'pattern' => '^(0|[1-9][0-9]{0,9})(\.[0-9]{1,4})?$', 'example' => '1250.5000'],
                 'taxComponentIds' => ['type' => ['array', 'null'], 'items' => self::ID],
+                'lotCode' => ['type' => ['string', 'null'], 'maxLength' => DeliveryNoteLineDetails::LOT_CODE_MAX, 'description' => 'The lot or serial handed over, for a product tracked by one.'],
                 'net' => ['type' => 'string', 'readOnly' => true],
             ],
         ],
@@ -276,6 +279,7 @@ final class DeliveryNoteResource
             new Assert\Type('list', groups: [self::WRITE]),
             new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
         ], groups: [self::WRITE]),
+        'lotCode' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public array $lines = [];
@@ -328,11 +332,13 @@ final class DeliveryNoteResource
             'productId' => $line->getProduct()?->getId()->toRfc4122(),
             'productReference' => $line->getProduct()?->getReference(),
             'productName' => $line->getProduct()?->getDetails()->name,
+            'productTracking' => $line->getProduct()?->getTracking()->value,
             'description' => $line->getDescription(),
             'quantity' => $line->getQuantity(),
             'unitId' => $line->getUnit()->getId()->toRfc4122(),
             'unitPriceNet' => $line->getUnitPriceNet(),
             'taxComponentIds' => array_map(static fn (DeliveryNoteLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $line->getTaxes()),
+            'lotCode' => $line->getLotCode(),
             'net' => $figures->net,
         ], $note->getLines(), $totals->lines);
         $resource->subtotalNet = $totals->subtotalNet;
@@ -361,6 +367,7 @@ final class DeliveryNoteResource
                 self::uuid(self::text($line, 'unitId')),
                 self::text($line, 'unitPriceNet'),
                 \is_array($taxIds) ? array_values(array_map(static fn (mixed $id): Uuid => Uuid::fromString(\is_string($id) ? $id : ''), $taxIds)) : null,
+                self::text($line, 'lotCode'),
             );
         }
 

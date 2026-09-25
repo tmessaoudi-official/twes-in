@@ -54,6 +54,40 @@ final readonly class LotPicking
         return new self($taken, self::decimal($left));
     }
 
+    /**
+     * What a line naming its lot takes (docs/SPEC.md § 7, 2026-09-24 12:40 row 5): that lot and no other, as much as it
+     * holds at the location, and never when it expired unreleased. What it cannot cover is short, never taken from
+     * another lot, since the record would then say a lot left that nobody handed over.
+     *
+     * @param list<LotOnHand> $available the product's lots at the location
+     * @param numeric-string  $quantity  what leaves
+     */
+    public static function named(array $available, string $code, string $quantity, \DateTimeImmutable $today): self
+    {
+        $found = self::find($available, $code);
+        if (null === $found || !$found->lot->deliverableOn($today) || 1 !== new Number($found->quantity)->compare(0)) {
+            return new self([], self::decimal(new Number($quantity)));
+        }
+        $wanted = new Number($quantity);
+        $take = -1 === $wanted->compare(new Number($found->quantity)) ? $wanted : new Number($found->quantity);
+
+        return new self([[$found->lot, self::decimal($take)]], self::decimal($wanted->sub($take)));
+    }
+
+    /**
+     * The lot on hand a code names: the one written exactly so, else the one written so whatever its case, since a
+     * label read aloud or typed loses the case and the recall search matches it so too.
+     *
+     * @param list<LotOnHand> $available
+     */
+    public static function find(array $available, string $code): ?LotOnHand
+    {
+        $code = trim($code);
+
+        return array_find($available, static fn (LotOnHand $each): bool => $each->lot->getCode() === $code)
+            ?? array_find($available, static fn (LotOnHand $each): bool => 0 === strcasecmp($each->lot->getCode(), $code));
+    }
+
     /** @return numeric-string */
     private static function decimal(Number $quantity): string
     {

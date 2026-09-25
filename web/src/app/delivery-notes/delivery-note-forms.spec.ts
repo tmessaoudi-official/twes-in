@@ -50,6 +50,7 @@ const laptop: ProductOption = {
   unitId: 'u2',
   unitPriceNet: '1250.5000',
   defaultTaxComponentIds: ['t1', 't2'],
+  tracking: 'none',
 };
 
 const validated: DeliveryNoteRow = {
@@ -82,6 +83,8 @@ const validated: DeliveryNoteRow = {
       taxComponentIds: ['t1'],
       productReference: null,
       productName: null,
+      productTracking: null,
+      lotCode: null,
       net: '20.000',
     },
   ],
@@ -168,6 +171,8 @@ describe('delivery note forms', () => {
       unitId: 'u1',
       unitPriceNet: '',
       taxComponentIds: [],
+      lotCode: '',
+      productTracking: '',
     });
     expect(line.controls.description.hasError('required')).toBe(true);
 
@@ -198,6 +203,8 @@ describe('delivery note forms', () => {
       unitId: 'u1',
       unitPriceNet: '10.000',
       taxComponentIds: ['t1'],
+      lotCode: '',
+      productTracking: '',
     });
     expect(lines.valid).toBe(true);
     expect(linesArray([], options).length).toBe(1);
@@ -217,6 +224,8 @@ describe('delivery note forms', () => {
       unitId: 'u2',
       unitPriceNet: '1250.500',
       taxComponentIds: ['t1', 't2'],
+      lotCode: '',
+      productTracking: 'none',
     });
     // The line carries the product's own words, which is what lets the picker show it without the catalogue.
     expect(pickedProduct(line)).toEqual({ id: 'p1', code: 'ART-1', name: 'Portable 14"' });
@@ -268,8 +277,32 @@ describe('delivery note forms', () => {
           unitId: 'u1',
           unitPriceNet: '10',
           taxComponentIds: [],
+          lotCode: null,
         },
       ],
     });
+  });
+
+  it('names the lot or serial handed over only on a line of a product tracked by one', () => {
+    // docs/SPEC.md § 7, 2026-09-24 12:40 row 5.
+    const lines = linesArray([], options);
+    const line = lines.at(0);
+    applyProduct(line, { ...laptop, tracking: 'lot' }, options, []);
+    line.patchValue({ lotCode: ' L-2409 ' });
+    expect(line.valid).toBe(true);
+    expect(
+      deliveryNoteInput(deliveryNoteValues(null, options), lines, carthage.id).lines[0].lotCode,
+    ).toBe('L-2409');
+
+    line.patchValue({ lotCode: 'L 24' });
+    expect(line.controls.lotCode.hasError('pattern')).toBe(true);
+
+    // Another product, not tracked: the lot typed for the first one is not sent with it.
+    line.patchValue({ lotCode: 'L-2409' });
+    applyProduct(line, laptop, options, []);
+    expect(line.controls.lotCode.value).toBe('');
+    expect(
+      deliveryNoteInput(deliveryNoteValues(null, options), lines, carthage.id).lines[0].lotCode,
+    ).toBeNull();
   });
 });

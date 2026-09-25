@@ -77,6 +77,7 @@ const products: ProductOption[] = [
     unitId: 'u1',
     unitPriceNet: '1250.0000',
     defaultTaxComponentIds: ['t1'],
+    tracking: 'none',
   },
 ];
 
@@ -104,6 +105,8 @@ const draft: DeliveryNoteRow = {
       taxComponentIds: ['t1'],
       productReference: 'ART-1',
       productName: 'Portable 14"',
+      productTracking: 'none',
+      lotCode: null,
       net: '2500.000',
     },
   ],
@@ -300,6 +303,7 @@ describe('DeliveryNotePage', () => {
             unitId: 'u1',
             unitPriceNet: '1250.000',
             taxComponentIds: ['t1'],
+            lotCode: null,
           },
         ],
       }),
@@ -678,12 +682,55 @@ describe('DeliveryNotePage', () => {
           unitId: 'u1',
           unitPriceNet: '30.0000',
           defaultTaxComponentIds: [],
+          tracking: 'none',
         },
       ]);
       expect(await scanned('5449000000996')).toMatchObject({ kind: 'done', key: 'scan.added' });
       await settle();
       expect(quantityOf(1)).toBe('1');
       expect((q('line-1-description') as HTMLInputElement).value).toBe('Souris');
+    });
+
+    // docs/SPEC.md § 7, 2026-09-24 12:40 row 5: a line names the lot or serial handed over.
+    it('puts the lot a GS1 label names on the line, and starts a line for another lot', async () => {
+      note.set({ ...draft, lines: [] });
+      await open('n1');
+      const yoghurt: ProductOption = {
+        id: 'p3',
+        reference: 'YAO-1',
+        name: 'Yaourt',
+        unitId: 'u1',
+        unitPriceNet: '1.2000',
+        defaultTaxComponentIds: [],
+        tracking: 'lot',
+      };
+      facade.pickProducts.mockResolvedValue([yoghurt]);
+      scans.named.mockResolvedValue({ ...laptop, productId: 'p3', name: 'Yaourt', lot: 'L-12' });
+
+      await scanned('0103017620422003' + '10L-12');
+      await settle();
+      await scanned('0103017620422003' + '10L-12');
+      await settle();
+      expect(quantityOf(0)).toBe('2');
+      expect((q('line-0-lot') as HTMLInputElement).value).toBe('L-12');
+
+      scans.named.mockResolvedValue({ ...laptop, productId: 'p3', name: 'Yaourt', lot: 'L-13' });
+      await scanned('0103017620422003' + '10L-13');
+      await settle();
+      expect(quantityOf(1)).toBe('1');
+      expect((q('line-1-lot') as HTMLInputElement).value).toBe('L-13');
+    });
+
+    it('asks no lot for an untracked product, even when its label carries one', async () => {
+      note.set({ ...draft, lines: [] });
+      await open('n1');
+      facade.pickProducts.mockResolvedValue(products);
+      scans.named.mockResolvedValue({ ...laptop, lot: 'L-12' });
+
+      await scanned('0103017620422003' + '10L-12');
+      await settle();
+      expect(quantityOf(0)).toBe('1');
+      expect(q('line-0-lot')).toBeNull();
     });
 
     // docs/SPEC.md § 7, 2026-09-23 slice 6: the customer display.

@@ -1219,6 +1219,8 @@
       "description": "What is delivered",
       "quantity": "Quantity",
       "unit": "Unit",
+      "lot": "Lot or serial number",
+      "lot_hint": "The one handed over; left empty, the lot expiring first leaves the stock.",
       "unitPriceNet": "Net unit price",
       "price_hint": "In {{currency}}, with up to four decimals.",
       "taxes": "Taxes on the line",
@@ -1230,7 +1232,8 @@
         "description": "Say what is delivered.",
         "quantity": "A quantity above zero, with no more decimals than its unit counts (at most three).",
         "unitId": "Choose a unit.",
-        "unitPriceNet": "A price from 0, with up to four decimals."
+        "unitPriceNet": "A price from 0, with up to four decimals.",
+        "lotCode": "Up to 40 visible characters, no spaces."
       },
       "no_product_found": "No product found."
     },

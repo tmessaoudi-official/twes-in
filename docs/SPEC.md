@@ -2678,6 +2678,17 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   did not move in between. Copying the invoice line's frozen cost instead is the other choice, yours to rule. The API answers it on each line of a read invoice, a listed one and the answer to issuing, null for a
   caller without product.cost.read; no screen shows it yet (the margin reports and the home's headline will read it).
   Lines issued before this carry none, which the margin figures must read as unknown, never as zero.
+- [2026-09-25 05:18] PROVISIONAL — to confirm (overnight, row 108 first half, the delivery note): **a delivery-note line
+  of a product tracked by lot or serial may name the one handed over** (`lot_code`, up to 40 visible ASCII characters,
+  stored as typed and trimmed), and a line of an untracked product, or with no product, is refused one. At validation a
+  line naming its lot takes exactly that lot at the note's location, matched exactly first and then ignoring case; the
+  lines naming none then take the first to expire from what is left, as before. A named lot that is expired and not
+  released, or that is not at that location, moves NO stock for that line, and the note says so in its stock message
+  rather than silently taking another lot: the paper says which lot left, so the stock must not contradict it. A GS1
+  scan fills the line's lot (the serial for a serial-tracked product, the lot for a lot-tracked one, the other when the
+  label carries only that one), and another lot of the same product starts its own line. Scanning the same serial twice
+  still counts on to 2 here; refusing it is row 116's. The product pickers now answer each product's tracking. Not done
+  yet: a lot scanned INTO a line's product field (only its piece count is read there), and invoice lines (second half).
 
 ## 8. Status
 
@@ -2793,8 +2804,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 105 | Generated operator credentials (§ 7 2026-09-20 13:10): `app:seed --generate-operator-password` mints a password and a TOTP secret, prints both once and stores only the hash and the encrypted secret; seeding refuses the published development password and TOTP secret when the environment is production. The fixed literals stay for the local stack and CI so tests keep a deterministic sign-in | S | todo | - | api/src/Tenancy/** api/tests/Functional/SeedCommandTest.php docs/START.md |
 | 106 | The five RecordBar pages (customer, product, expense, vendor, company profile — five, not the four the row named) and `RowAction` read the row-45 declaration: "s", Ctrl K and "?" work on a record page, and a row's own destructive control asks (§ 7 2026-09-20 22:10, 2026-09-21 07:05 and 07:50) | M | done | - | web/src/app/customers/** web/src/app/products/** web/src/app/expenses/** web/src/app/vendors/** web/src/app/shared/list/** |
 | 107 | The server-side bin the `undo` action class needs: a deletion kept recoverable for a while, so "Annuler" on a toast can put it back. Row 45 shipped `plain` and `confirm` only and declared no field for `undo`, because a class nothing can produce is a promise (§ 7 2026-09-20 22:10) | L | todo | - | api/** web/src/app/shared/actions/** |
-| 108 | Lot on document lines (§ 7 2026-09-24 12:40, row 5): an optional lot or serial on invoice and delivery-note lines, filled by a GS1 scan; validation takes the named lot, first-to-expire only for a line naming none. First of the amendments | M | todo | - | |
-| 109 | Cost on the line at issue (§ 7 2026-09-24 11:40, RPT-01): `invoice_line.unit_cost` copied from the product at issue, read only with `product.cost.read` | S | done | - | |
+| 108 | Lot on document lines (§ 7 2026-09-24 12:40, row 5): an optional lot or serial on invoice and delivery-note lines, filled by a GS1 scan; validation takes the named lot, first-to-expire only for a line naming none. First of the amendments | M | doing | - | |
+| 109 | Cost on the line at issue (§ 7 2026-09-24 11:40, RPT-01): `invoice_line.unit_cost` copied from the product at issue, read only with `product.cost.read` | S | done | 82c4b08 | |
 | 110 | Reorder point per product per establishment (§ 7 2026-09-24 11:40): column, product form field, import column; empty means no alert | S | todo | - | |
 | 111 | Supplier withholding (§ 7 2026-09-24 11:40, RPT-09): Tunisia's rules sourced in `docs/fiscal/TN.md`, then recorded on an expense's payment at the preset's rate, overridable | M | todo | - | |
 | 112 | Declaration basis and calendar (§ 7 2026-09-24 11:40, RPT-03): TN and FR researched with citations; « TVA collectée » on the home meanwhile | S | todo | - | |

@@ -216,7 +216,7 @@ class DeliveryNote implements CompanyOwned
     /** @return list<DeliveredQuantity> what each line delivers, in order: what `DeliveryNoteValidated` carries */
     public function deliveredQuantities(): array
     {
-        return array_map(static fn (DeliveryNoteLine $line): DeliveredQuantity => new DeliveredQuantity($line->getProduct()?->getId(), $line->getQuantity(), $line->getUnit()->getId()), $this->getLines());
+        return array_map(static fn (DeliveryNoteLine $line): DeliveredQuantity => new DeliveredQuantity($line->getProduct()?->getId(), $line->getQuantity(), $line->getUnit()->getId(), $line->getLotCode()), $this->getLines());
     }
 
     /**

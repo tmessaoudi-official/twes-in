@@ -37,7 +37,7 @@ import {
 } from './delivery-note-forms';
 import { ProductScans } from '../products/product-scans';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
-import { placedOutcome, scanIntoLines } from '../shared/scan/scan-lines';
+import { placedOutcome, scanIntoLines, scannedLot } from '../shared/scan/scan-lines';
 import { CustomerDisplay } from '../shared/customer-display/customer-display';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { DeliveryNoteLines } from './delivery-note-lines';
@@ -397,6 +397,7 @@ export class DeliveryNotePage {
         productId: product.id,
         unitId: product.unitId,
         count: Math.max(named.quantity, 1) * scan.times,
+        lot: scannedLot(product.tracking, named),
       },
       () => {
         const line = lineGroup(null, options);

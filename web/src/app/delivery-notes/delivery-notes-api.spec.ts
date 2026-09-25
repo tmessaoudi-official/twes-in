@@ -28,6 +28,7 @@ const input: DeliveryNoteInput = {
       unitId: 'u1',
       unitPriceNet: '1250',
       taxComponentIds: ['t1'],
+      lotCode: 'L-2409',
     },
   ],
 };
@@ -162,6 +163,8 @@ describe('DeliveryNotesApi', () => {
           taxComponentIds: [],
           productReference: null,
           productName: null,
+          productTracking: null,
+          lotCode: null,
           net: '2500.000',
         },
       ],
@@ -196,6 +199,7 @@ describe('DeliveryNotesApi', () => {
           unitId: 'u1',
           unitPriceNet: '1250',
           taxComponentIds: ['t1'],
+          lotCode: 'L-2409',
         },
       ],
     });

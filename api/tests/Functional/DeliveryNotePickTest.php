@@ -76,7 +76,8 @@ final class DeliveryNotePickTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $pick = $this->jsonList()[0] ?? null;
         self::assertIsArray($pick);
-        self::assertSame(['id', 'reference', 'name', 'unitId', 'unitPriceNet', 'defaultTaxComponentIds'], array_keys($pick));
+        self::assertSame(['id', 'reference', 'name', 'unitId', 'unitPriceNet', 'defaultTaxComponentIds', 'tracking'], array_keys($pick));
+        self::assertSame('none', $pick['tracking'], 'whether a line names the lot or serial handed over');
         self::assertSame(['BOU-001', '1.2000'], [$pick['reference'], $pick['unitPriceNet']]);
     }
 

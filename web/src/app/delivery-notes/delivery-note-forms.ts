@@ -18,6 +18,7 @@ import {
   type ProductOption,
   type TaxFamily,
 } from './delivery-notes-types';
+import type { ProductTracking } from '../products/products-types';
 
 const FIELDS = 'delivery_notes.fields';
 /** The API's longest line description. */
@@ -278,9 +279,22 @@ export interface LineControls {
   unitId: FormControl<string>;
   unitPriceNet: FormControl<string>;
   taxComponentIds: FormControl<string[]>;
+  /** The lot or serial handed over; asked only for a product tracked by one (docs/SPEC.md § 7, 2026-09-24 12:40 row 5). */
+  lotCode: FormControl<string>;
+  /** How the line's product is tracked, which decides whether the lot is asked; '' for a line naming no product. */
+  productTracking: FormControl<ProductTracking | ''>;
 }
 
 export type LineGroup = FormGroup<LineControls>;
+
+/** A lot or serial as a label carries it: printable characters without space or accent, 40 at most, as the API keeps it. */
+export const LOT_CODE_PATTERN = /^[\x21-\x7E]{1,40}$/;
+
+/** Whether a line asks which lot or serial it hands over. */
+export function namesALot(line: LineGroup): boolean {
+  const tracking = line.controls.productTracking.value;
+  return tracking === 'lot' || tracking === 'serial';
+}
 export type LinesArray = FormArray<LineGroup>;
 
 /** Unlike Validators.required, a value made only of spaces is missing too. */
@@ -338,6 +352,13 @@ export function lineGroup(line: DeliveryNoteLine | null, options: DeliveryNoteOp
       taxComponentIds: new FormControl<string[]>(line === null ? [] : [...line.taxComponentIds], {
         nonNullable: true,
       }),
+      lotCode: new FormControl(line?.lotCode ?? '', {
+        nonNullable: true,
+        validators: [matches(LOT_CODE_PATTERN)],
+      }),
+      productTracking: new FormControl<ProductTracking | ''>(line?.productTracking ?? '', {
+        nonNullable: true,
+      }),
     },
     { validators: fitsUnit(options) },
   );
@@ -372,9 +393,17 @@ export function applyProduct(
   excludedFamilies: readonly TaxFamily[],
 ): void {
   if (product === null) {
-    line.patchValue({ productId: '', productReference: '', productName: '' });
+    line.patchValue({
+      productId: '',
+      productReference: '',
+      productName: '',
+      lotCode: '',
+      productTracking: '',
+    });
     return;
   }
+  // A lot names a batch of one product: another product starts without it.
+  const sameProduct = line.controls.productId.value === product.id;
   const offered = new Set(offeredTaxes(options, excludedFamilies).map((tax) => tax.id));
   line.patchValue({
     productId: product.id,
@@ -384,6 +413,8 @@ export function applyProduct(
     unitId: product.unitId,
     unitPriceNet: atScale(product.unitPriceNet, options.currencyScale),
     taxComponentIds: product.defaultTaxComponentIds.filter((id) => offered.has(id)),
+    lotCode: sameProduct && product.tracking !== 'none' ? line.controls.lotCode.value : '',
+    productTracking: product.tracking,
   });
 }
 
@@ -432,6 +463,10 @@ export function deliveryNoteInput(
       unitId: line.unitId,
       unitPriceNet: line.unitPriceNet.trim(),
       taxComponentIds: [...line.taxComponentIds],
+      lotCode:
+        line.productTracking === 'lot' || line.productTracking === 'serial'
+          ? text(line.lotCode)
+          : null,
     })),
   };
 }

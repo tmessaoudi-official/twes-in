@@ -28,6 +28,7 @@ import {
   type LineTaxOption,
   type ProductOption,
 } from './delivery-notes-types';
+import { PRODUCT_TRACKINGS, type ProductTracking } from '../products/products-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class DeliveryNotesRefused extends Error {
@@ -92,6 +93,7 @@ export class DeliveryNotesApi {
         unitId: product.unitId,
         unitPriceNet: product.unitPriceNet,
         defaultTaxComponentIds: [...product.defaultTaxComponentIds],
+        tracking: trackingOf(product.tracking),
       }));
     });
   }
@@ -279,6 +281,8 @@ function toNote(
       ),
       productReference: line.productReference ?? null,
       productName: line.productName ?? null,
+      productTracking: line.productTracking == null ? null : trackingOf(line.productTracking),
+      lotCode: line.lotCode ?? null,
       net: line.net ?? '',
     })),
     subtotalNet: raw.subtotalNet ?? '0',
@@ -291,6 +295,11 @@ function toNote(
     totalTax: raw.totalTax ?? '0',
     total: raw.total ?? '0',
   };
+}
+
+/** A tracking the API named; anything else reads as none, which asks for no lot. */
+function trackingOf(value: string): ProductTracking {
+  return PRODUCT_TRACKINGS.find((each) => each === value) ?? 'none';
 }
 
 function toBody(input: DeliveryNoteInput): DeliveryNoteDeliveryNoteWrite {

@@ -22,6 +22,7 @@ import {
   type LineGroup,
   lineGroup,
   type LinesArray,
+  namesALot,
   offeredTaxes,
   pickedProduct,
 } from './delivery-note-forms';
@@ -38,7 +39,7 @@ import { DeliveryNotesFacade } from './delivery-notes-facade';
 
 type CheckedField = keyof Omit<
   LineControls,
-  'productId' | 'productReference' | 'productName' | 'taxComponentIds'
+  'productId' | 'productReference' | 'productName' | 'productTracking' | 'taxComponentIds'
 >;
 
 /**
@@ -88,6 +89,12 @@ export class DeliveryNoteLines {
       );
       onCleanup(() => subscription.unsubscribe());
     });
+  }
+
+  /** A line of a product tracked by lot or serial asks which one it hands over. */
+  protected namesALot(line: LineGroup): boolean {
+    this.revision();
+    return namesALot(line);
   }
 
   protected groups(): LineGroup[] {

@@ -9,6 +9,8 @@ export interface LineFields {
   readonly unitId: FormControl<string>;
   readonly quantity: FormControl<string>;
   readonly description: FormControl<string>;
+  /** The lot or serial the line hands over, on a document whose lines carry one. */
+  readonly lotCode?: FormControl<string>;
 }
 
 /**
@@ -30,6 +32,22 @@ export interface ScannedLine {
   readonly unitId: string;
   /** Whole pieces: a pack's count, times the multiplier typed before the scan. */
   readonly count: number;
+  /** The lot or serial a GS1 label named, for a product tracked by one; none otherwise. */
+  readonly lot?: string | null;
+}
+
+/**
+ * The lot or serial a GS1 scan hands a line, by how its product is tracked: a serial number for a product followed
+ * piece by piece, a lot number for one followed by lot, the other when the label carries only that one, and none for
+ * an untracked product, whatever its label carries (docs/SPEC.md § 7, 2026-09-24 12:40 row 5).
+ */
+export function scannedLot(
+  tracking: 'none' | 'lot' | 'serial',
+  scanned: { readonly lot: string | null; readonly serial: string | null },
+): string | null {
+  if (tracking === 'serial') return scanned.serial ?? scanned.lot;
+  if (tracking === 'lot') return scanned.lot ?? scanned.serial;
+  return null;
 }
 
 /** Where a scan landed, and how to take it back. */
@@ -50,7 +68,8 @@ export interface ScanPlacement {
  * — in place of the empty one a new document opens with, when it is still empty. `fresh` builds that line with the
  * product already applied, since what a product fills in (price, taxes) is each document's own rule.
  *
- * Lots are not compared yet: no document line carries one. When lines do, the lot joins the product and the unit.
+ * On a document whose lines carry a lot, the lot joins the product and the unit (docs/SPEC.md § 7, 2026-09-24 12:40
+ * row 5): another lot of the same product starts its own line, and a scan naming none adds to a line naming none.
  */
 export function scanIntoLines<L extends AbstractControl>(
   lines: LineList<L>,
@@ -58,9 +77,14 @@ export function scanIntoLines<L extends AbstractControl>(
   scanned: ScannedLine,
   fresh: () => L,
 ): ScanPlacement {
+  const lot = scanned.lot ?? '';
   const same = lines.controls.findIndex((line) => {
-    const { productId, unitId } = fields(line);
-    return productId.value === scanned.productId && unitId.value === scanned.unitId;
+    const { productId, unitId, lotCode } = fields(line);
+    return (
+      productId.value === scanned.productId &&
+      unitId.value === scanned.unitId &&
+      (lotCode === undefined || lotCode.value.trim() === lot)
+    );
   });
   if (same !== -1) {
     const line = lines.at(same);
@@ -82,6 +106,7 @@ export function scanIntoLines<L extends AbstractControl>(
 
   const line = fresh();
   fields(line).quantity.setValue(String(scanned.count));
+  fields(line).lotCode?.setValue(lot);
   const blank = lines.controls.findIndex((each) => {
     const { productId, description } = fields(each);
     return productId.value === '' && description.value.trim() === '';
