@@ -334,6 +334,9 @@ make e2e              # Playwright against the running stack (make up first)
 - After changing an API resource, run `cd api && bin/console cache:clear && bin/console cache:pool:clear --all`
   before `make gate-web`, or the OpenAPI export is stale.
 - `make e2e` targets http://127.0.0.1:8090. For another port: `BASE_URL=http://127.0.0.1:<port> make e2e`.
+- CI splits the e2e suite into three shards, each on its own runner with its own stack and database. To rerun the
+  files of a red shard locally: `cd web && npx playwright test --shard=2/3` (the job's name gives the shard). A
+  scenario that only passes after another file ran has a hidden dependency the split will expose.
 - `make versions` prints every version pin (see `docs/UPDATE.md`).
 - `make gallery` screenshots every screen of the running stack, desktop and phone, light and dark, into
   `var/claude/gallery/` with a `manifest.json` (what was captured, and what could not be opened). It checks nothing;

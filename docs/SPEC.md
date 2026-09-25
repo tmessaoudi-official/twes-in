@@ -2942,6 +2942,17 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   Track two, the e-invoicing files and connectors: Factur-X and UBL (France), TEIF 1.8.8 signed (Tunisia), then a
   plateforme agréée with a public API live before 1 September 2027, and TTN with TunTrust or DigiGo certificates
   (row 102). Out of reach: becoming a plateforme agréée, EDI filing of VAT returns, a full FEC.
+- [2026-09-25 22:34] DECIDED (revisit): **e2e runs in three CI shards** (row 136). Each shard is its own runner with
+  its own compose stack, seed and database, so scenarios stay serial within a shard and never meet another shard's
+  rows; the operator's sign-in setup runs in each. Three, not more: every shard rebuilds both images, and three
+  already cut the 25-minute job to about ten. If a scenario turns out to depend on another file's rows, the fix is in
+  the scenario, not in going back to one runner.
+- [2026-09-25 22:34] DECIDED (revisit): **the TEJ schema is not vendored.** The official XSD zip (jibaya.tn, dated
+  2026-09-15) is kept outside the tree (`var/claude/tej/`) until its licence is read: government-published, but no
+  licence text ships with it. It is also malformed: `TEJISOPaysDevises.xsd` line 1580 closes an `xs:enumeration`
+  twice, so nothing can load the schema as published; local validation uses a copy without that line. The operation
+  code of a withholding (RS7_000001…) is chosen by the person when the payment is recorded, never inferred from the
+  rate: the rate alone does not tell a supplier at the 15 % corporate rate from one exempt of withholding.
 
 ## 8. Status
 
@@ -3085,7 +3096,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 133 | Cancel or reverse (§ 7 2026-09-25 16:51, DOC-16): a draft is cancelled, an issued document is only reversed by a credit note; no soft delete, no restore | S | todo | - | |
 | 134 | The customer's running account (§ 7 2026-09-25 16:51, MON-19 / MON-03): one account per customer that the statement, overdue and credit limit all read; a credit note always names the invoice it corrects, its excess going to the balance or a refund (row 128) | M | todo | - | |
 | 135 | Reminders and late fees (§ 7 2026-09-25 16:51, DOC-20 / MON-15 / CLI-14): staged reminders; late fees off by default, per company, in tiers with no default amount until the law is sourced, charged on a separate debit document, never on the issued invoice | M | todo | - | |
-| 136 | Two builders and one integrator (§ 7 2026-09-25 22:16): the builder protocol, e2e split across CI jobs | S | todo | - | .github/workflows/** |
+| 136 | Two builders and one integrator (§ 7 2026-09-25 22:16): the builder protocol, e2e split across CI jobs | S | doing | - | .github/workflows/** |
 | 137 | Effects and kinds of actions (§ 7 2026-09-25 22:16): every consequential action states its effect and whether it is annulable, corrigeable or définitif, on its button, confirmation and toast; the `data-tour` anchors on the shared components | M | todo | - | web/src/app/shared/** |
 | 138 | Practice company (§ 7 2026-09-25 22:16): a company flagged training on the real engine, watermarked, excluded from exports and declarations, reset in one click, seeded from the demo data; after row 103 | M | todo | - | api/src/** web/src/app/** |
 | 139 | Premiers pas and suggestions (§ 7 2026-09-25 22:16): the first-run checklist on the home page and contextual next steps | M | todo | - | web/src/app/** |

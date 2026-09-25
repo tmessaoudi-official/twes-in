@@ -118,9 +118,17 @@ jobs:
 
   # WHY: the parts passing says nothing about the whole. This boots the compose stack (nginx → FrankenPHP →
   # PostgreSQL) from the committed Dockerfiles and drives a real browser through it.
+  # WHY sharded: the serial suite took 25 minutes on one runner and every push waited on it (docs/SPEC.md § 7,
+  # 2026-09-25 22:16, row 136). Each shard is its own runner with its own compose stack and database, so the
+  # scenarios stay serial within a shard and cannot see another shard's rows; the setup project that signs the
+  # operator in runs in every shard (Playwright runs a project's dependencies wherever it is needed).
   e2e:
     runs-on: ubuntu-latest
     needs: [licences, api, web]
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7
       # The api image migrates at start (infra/api/docker-entrypoint.sh) and --wait holds until it is healthy;
@@ -141,7 +149,7 @@ jobs:
       - run: sudo rm -f /etc/apt/sources.list.d/google-chrome*.list /etc/apt/sources.list.d/google-chrome*.sources
       - run: npx playwright install --with-deps chromium
         working-directory: web
-      - run: npx playwright test
+      - run: npx playwright test --shard=${{ matrix.shard }}/3
         working-directory: web
       - if: failure()
         run: docker compose logs --no-color
@@ -150,7 +158,7 @@ jobs:
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             web/playwright-report
             web/test-results
