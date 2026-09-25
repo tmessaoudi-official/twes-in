@@ -2768,12 +2768,16 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   the scan card with « Ajouter à <référence> » first, which opens the product's Codes-barres tab with the code listed and
   nothing saved until « Enregistrer », so a carton's quantity can be set; a paired phone's card offers the same. A code
   another product holds is never moved: the card names its holder and offers to open it.
-- [2026-09-25 11:05] AGREED: **the whole vision shows, marked, and can be hidden.** Every screen of the full vision (the
+- [2026-09-25 11:17] AGREED: **the whole vision shows, marked, and can be hidden.** Every screen of the full vision (the
   screen inventory, beyond version 1 too) has its entry in the rail and the settings menu; one not built yet carries a
   « Bientôt » chip and opens one shared « En construction » page naming what it will do, its § 8 row and « Version 1 » or
   « Plus tard ». A personal preference in Mon compte › Préférences, « Montrer ce qui arrive », hides them all; it is on
   by default until release. Inside a built screen, a mockup card with no data yet shows as a greyed « En construction »
   tile where it will sit, named in the § 8 row that builds its data. This amends the 09:03 ruling, which left them out.
+- [2026-09-25 11:23] AGREED: **every screen of the vision is mocked before more is built.** Building pauses (defects still
+  first) while every screen and feature of the vision with no approved mockup or ruling is drawn on the design canvas,
+  in batches by area, each board with the decisions it needs; the developer validates or comments each batch, and once
+  all are validated the rest is built autonomously in the 09:03 order.
 
 ## 8. Status
 
