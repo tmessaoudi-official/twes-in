@@ -9,7 +9,6 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -18,6 +17,8 @@ import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
+import { dayKey } from '../shared/i18n/format';
+import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { declaredPayment, paymentForm, paymentFormValues } from './subscription-forms';
 import { SubscriptionFacade } from './subscription-facade';
@@ -29,7 +30,7 @@ import { SubscriptionFacade } from './subscription-facade';
  */
 @Component({
   selector: 'app-subscription-page',
-  imports: [DatePipe, MatButtonModule, MatCardModule, TranslatePipe, DescriptorForm],
+  imports: [AmountPipe, DayPipe, MatButtonModule, MatCardModule, TranslatePipe, DescriptorForm],
   templateUrl: './subscription-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -56,6 +57,12 @@ export class SubscriptionPage implements OnInit {
   protected readonly currency = computed(
     () => this.subscription()?.currency ?? this.company()?.currency ?? '',
   );
+
+  /** The last day covered, in the company's own time zone: the API sends the last instant of that day. */
+  protected coveredDay(moment: string): string {
+    const company = this.company();
+    return company === null ? '' : dayKey(moment, company.timezone);
+  }
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;

@@ -14,6 +14,12 @@ import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { Session } from '../shared/session/session';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
 import { SubscriptionFacade } from './subscription-facade';
 import { SubscriptionPage } from './subscription-page';
 import type { PaymentRow, SubscriptionError, SubscriptionView } from './subscription-types';
@@ -102,7 +108,10 @@ describe('SubscriptionPage', () => {
     declare: vi.fn(),
   };
   const auth = {
-    me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme', currency: 'TND' } }),
+    me: () => ({
+      user: { id: 'u1' },
+      company: { id: 'c1', name: 'Acme', currency: 'TND', timezone: 'Africa/Tunis' },
+    }),
   };
   const live = { reloadOn: vi.fn() };
   let fixture: ComponentFixture<SubscriptionPage>;
@@ -138,6 +147,8 @@ describe('SubscriptionPage', () => {
         { provide: SubscriptionFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: LiveChanges, useValue: live },
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         provideTranslateService({
@@ -156,6 +167,18 @@ describe('SubscriptionPage', () => {
     expect(q('subscription-stage')?.textContent).toContain('Impayé');
     expect(q('subscription-paid-through')).not.toBeNull();
     expect(q('subscription-payments')?.textContent).toContain('Confirmé');
+  });
+
+  // docs/SPEC.md § 7, 2026-09-25 11:54 (hardcoded walkthrough item 16): the page wrote its dates with Angular's own
+  // 'mediumDate' and its amounts as the API sent them, where every other screen writes both as the locale does.
+  it('writes its days and amounts as every other screen does', async () => {
+    await open();
+
+    expect(q('subscription-covered-until')?.textContent?.trim()).toBe('18/08/2026');
+    expect(q('subscription-paid-through')?.textContent?.trim()).toBe('18/08/2026');
+    expect(q('subscription-price')?.textContent).toContain('600,000 TND');
+    expect(q('subscription-payments')?.textContent).toContain('600,000 TND');
+    expect(q('subscription-payments')?.textContent).toContain('16/08/2026');
   });
 
   it('declares a payment in the subscription’s own currency, never one that was typed', async () => {

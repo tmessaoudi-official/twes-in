@@ -2778,6 +2778,32 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   first) while every screen and feature of the vision with no approved mockup or ruling is drawn on the design canvas,
   in batches by area, each board with the decisions it needs; the developer validates or comments each batch, and once
   all are validated the rest is built autonomously in the 09:03 order.
+- [2026-09-25 11:54] AGREED: **the mockups are not complete yet: the ideas are walked first, then a batch 3 is drawn,
+  then everything is validated.** Every screen of the inventory (B1–B90) has a board (round 5 or round 6), but these
+  are not drawn yet: the flows (quote → order → delivery → invoice → payment; purchase order → receipt → supplier
+  bill), the phone versions of the « Bientôt » pages and the café, Arabic beyond two screens, the new shell in dark
+  mode and at 1024 px, café reservation tiers 1 and 3, and the opening hours. The idea pools the developer has never
+  ruled on are walked with them first: the 280 harvested ideas (`var/claude/ideas.json`, graded by Claude only), the
+  deep-pass lists (`var/claude/deep-{products,headers,lines,parties}.md`), and the rest of the hardcoded walkthrough
+  (item 16 and the batch of ten). Batch 3 then draws the gaps and every idea ruled in, and flags Tâches (B73) and
+  « Déclarations » under Gérer for a ruling.
+- [2026-09-25 12:45] AGREED: **the rest of the hardcoded walkthrough (item 16 and the batch of ten), shown one by one with
+  what each is and its risk.** Stay fixed in code: a document is issued with at least one line; recovery codes come
+  in sets of ten; the realtime token's lifetime stays equal to Centrifugo's; the attachment types stay PDF, PNG, JPEG
+  and WebP; a subscription runs at most 1200 billing periods and one declaration covers at most 60; each list keeps
+  its default sort (a person's own sort is already remembered); rates print with no forced decimals (not a defect).
+  Changed: **(2) a paid invoice can be credited**: a credit note takes up to what the invoice invoiced less its earlier
+  credit notes, and the part beyond what is still due goes, at the user's choice, to a refund payment or to the
+  customer's credit balance (the 2026-09-21 17:35 pattern; the cap stays for everything else, and nothing is ever
+  credited with no trace of where the money went). **(3) partial invoicing of a delivery note**: each line keeps
+  its quantity left to invoice, an invoice takes all or part of it, and the note turns invoiced only once nothing is
+  left, so a unit is never billed twice. **(10) a date and number format of one's own**: a presentation setting
+  (person, then company) that defaults to the language and country's own; a format chosen there overrides it
+  everywhere, screens and printed documents alike. Item 16, a defect, is fixed: the subscription page wrote its
+  dates with Angular's `mediumDate` in the browser's time zone (a subscription covered to the end of 18 August
+  read "Aug 19, 2026") and its amounts as the API sent them; it now goes through the shared formatter, and the
+  last day covered is read in the company's time zone. The 2026-09-21 17:35 credit balance and write-off had no
+  § 8 row; row 128 carries them with (2).
 
 ## 8. Status
 
@@ -2913,6 +2939,9 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 125 | Configurable keyboard shortcuts (§ 7 2026-09-24 22:51): C, N, E, / and Ctrl K as defaults, changed and restored per person in Mon compte › Préférences | S | todo | - | |
 | 126 | Signature, cachet and electronic PDF signature (§ 7 2026-09-24 22:51): research first, postponed | M | deferred | - | |
 | 127 | Insights pushed once (§ 7 2026-09-24 12:10 and 2026-09-25 08:31): a scheduler (Symfony Scheduler worker in compose), a record of what was pushed per subject and bucket, and the pushes through the Inbox | L | todo | - | |
+| 128 | Credit balance, write-off and crediting a paid invoice (§ 7 2026-09-21 17:35, 2026-09-25 12:45): an overpayment's excess moves to the customer's credit balance, applied to a later invoice and shown on the statement; a short-paid invoice closes on a credit note under a per-company tolerance; a credit note on a paid invoice sends what exceeds the due to a refund or to the credit balance | M | todo | - | |
+| 129 | Partial invoicing of delivery notes (§ 7 2026-09-25 12:45): a quantity left to invoice per line, an invoice taking all or part, the note invoiced once nothing is left | M | todo | - | |
+| 130 | A date and number format of one's own (§ 7 2026-09-25 12:45): a presentation setting, person then company, defaulting to the language and country, followed by every screen and printed document | S | todo | - | |
 <!-- /progress-block -->
 
 ### Delivered

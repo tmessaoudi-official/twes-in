@@ -30,14 +30,14 @@
             <div class="flex justify-between gap-4 sm:flex-col sm:justify-start">
               <dt class="text-sm">{{ 'licensing.covered_until' | translate }}</dt>
               <dd class="font-medium" data-testid="subscription-covered-until">
-                {{ current.coveredUntil | date: 'mediumDate' }}
+                {{ coveredDay(current.coveredUntil) | day }}
               </dd>
             </div>
             @if (current.paidThrough) {
               <div class="flex justify-between gap-4 sm:flex-col sm:justify-start">
                 <dt class="text-sm">{{ 'licensing.paid_through' | translate }}</dt>
                 <dd class="font-medium" data-testid="subscription-paid-through">
-                  {{ current.paidThrough | date: 'mediumDate' }}
+                  {{ current.paidThrough | day }}
                 </dd>
               </div>
             }
@@ -45,7 +45,7 @@
               <div class="flex justify-between gap-4 sm:flex-col sm:justify-start">
                 <dt class="text-sm">{{ 'licensing.price' | translate }}</dt>
                 <dd class="font-medium" data-testid="subscription-price">
-                  {{ current.price }} {{ current.currency }} /
+                  {{ current.price | amount: null }} {{ current.currency }} /
                   {{
                     'licensing.periods.' + current.periodUnit
                       | translate: { count: current.periodCount }
@@ -113,10 +113,12 @@
         <ul class="flex flex-col gap-2" data-testid="subscription-payments">
           @for (payment of current.payments; track payment.id) {
             <li class="flex flex-wrap items-baseline justify-between gap-2 border-b py-2">
-              <span class="font-medium">{{ payment.amount }} {{ payment.currency }}</span>
+              <span class="font-medium"
+                >{{ payment.amount | amount: null }} {{ payment.currency }}</span
+              >
               <span class="text-sm">
                 {{ 'licensing.payment.methods.' + payment.method | translate }} ·
-                {{ payment.paidOn | date: 'mediumDate' }}
+                {{ payment.paidOn | day }}
               </span>
               <span class="text-sm" [attr.data-testid]="'payment-status-' + payment.id">
                 {{ 'licensing.payment.statuses.' + payment.status | translate }}
