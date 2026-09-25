@@ -17,7 +17,8 @@ delivery_note:
 invoice:
     title: 'Facture'
     credit_note_title: 'Avoir'
-    corrects: 'Avoir sur la facture %number%'
+    corrects: 'Avoir sur la facture %number% du %date%'
+    reason: 'Motif : %reason%'
     customer: 'Client'
     customer_number: 'Code client'
     issue_date: 'Date'

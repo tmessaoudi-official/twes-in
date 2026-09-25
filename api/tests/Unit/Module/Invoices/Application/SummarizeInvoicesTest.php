@@ -145,7 +145,7 @@ final class SummarizeInvoicesTest extends TestCase
     /** @param array<string, string> $taxes */
     private function credit(Invoice $invoice, string $number, string $day, string $total, array $taxes): void
     {
-        $credit = Invoice::creditNoteFor($invoice, $this->clock->now());
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
         $credit->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), 0, 'fr', [], null, null, null), fn (): InvoiceFigures => $this->figures($total, $taxes), $this->clock->now());
         $invoice->credit($credit, $this->clock->now());
         $this->invoices->save($credit);

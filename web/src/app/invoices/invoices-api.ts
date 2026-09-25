@@ -5,6 +5,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIdinvoicesGetCollectionResponse,
+  InvoiceInvoiceCredit,
   InvoiceInvoiceRead,
   InvoiceJsonldInvoiceRead,
   InvoiceInvoiceWrite,
@@ -167,9 +168,10 @@ export class InvoicesApi {
     return this.step(companyId, id, 'cancel');
   }
 
-  /** Drafts a credit note for an issued invoice from its lines; the answer is the credit note. */
-  async creditNote(companyId: string, id: string): Promise<InvoiceRow> {
-    return this.step(companyId, id, 'credit-notes');
+  /** Drafts a credit note for an issued invoice from its lines, stating why; the answer is the credit note. */
+  async creditNote(companyId: string, id: string, reason: string): Promise<InvoiceRow> {
+    const body: InvoiceInvoiceCredit = { creditNoteReason: reason };
+    return this.step(companyId, id, 'credit-notes', body);
   }
 
   /** Copies a document into a new draft; the answer is the copy. 409 for a credit note. */
@@ -202,11 +204,12 @@ export class InvoicesApi {
     companyId: string,
     id: string,
     action: 'issue' | 'cancel' | 'credit-notes' | 'duplicate',
+    body: InvoiceInvoiceCredit | null = null,
   ): Promise<InvoiceRow> {
     return this.guard(async () =>
       toInvoice(
         await firstValueFrom(
-          this.http.post<InvoiceInvoiceRead>(`${invoicePath(companyId, id)}/${action}`, null),
+          this.http.post<InvoiceInvoiceRead>(`${invoicePath(companyId, id)}/${action}`, body),
         ),
       ),
     );
@@ -260,6 +263,7 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
     id: raw.id ?? '',
     type: raw.type === 'credit_note' ? 'credit_note' : 'invoice',
     correctsInvoiceId: raw.correctsInvoiceId ?? null,
+    creditNoteReason: raw.creditNoteReason ?? null,
     number: raw.number ?? null,
     status: INVOICE_STATUSES.find((status) => status === raw.status) ?? 'draft',
     customerId: raw.customerId ?? '',

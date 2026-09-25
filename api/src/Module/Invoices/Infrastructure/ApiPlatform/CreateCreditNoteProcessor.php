@@ -23,9 +23,10 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
- * Drafts a credit note for an issued invoice; a draft, a cancelled draft or a credit note answers 409.
+ * Drafts a credit note for an issued invoice, stating why; a draft, a cancelled draft or a credit note answers 409, and
+ * a blank reason 422.
  *
- * @implements ProcessorInterface<mixed, InvoiceResource>
+ * @implements ProcessorInterface<InvoiceResource, InvoiceResource>
  */
 final readonly class CreateCreditNoteProcessor implements ProcessorInterface
 {
@@ -38,7 +39,7 @@ final readonly class CreateCreditNoteProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::WRITE);
 
         try {
-            $credit = $this->manage->draftCreditNote($company, CompanyPath::identifier($uriVariables, 'invoiceId'), $this->guard->account()->getId());
+            $credit = $this->manage->draftCreditNote($company, CompanyPath::identifier($uriVariables, 'invoiceId'), (string) $data->creditNoteReason, $this->guard->account()->getId());
         } catch (InvoiceNotFound $absent) {
             throw new NotFoundHttpException('No such invoice.', $absent);
         } catch (InvoiceTransitionRefused $conflict) {

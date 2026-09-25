@@ -122,7 +122,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$first]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an invoiced note is not invoiced again');
 
-        $this->postJson($this->invoicePath($id).'/credit-notes', null);
+        $this->postJson($this->invoicePath($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         self::assertSame([null, null, null], array_column($this->arrayAt($this->json(), 'lines'), 'sourceDeliveryNoteLineId'), 'a credit note invoices no delivery note');
     }

@@ -33,6 +33,7 @@ import {
   type LineGroup,
   lineGroup,
   applyProduct,
+  creditNoteForm,
   paymentForm,
   paymentInput,
   paymentValues,
@@ -63,6 +64,7 @@ import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
+import { CreditNoteDialog } from './credit-note-dialog';
 import { PaymentDialog } from './payment-dialog';
 import { RecordView } from '../shared/form/record-view';
 
@@ -654,11 +656,20 @@ export class InvoicePage {
     await this.facade.cancel(companyId, id);
   }
 
+  /** Asks why first: a credit note states its reason when it is drafted (docs/SPEC.md § 7, 2026-09-24 22:51). */
   protected async creditNote(): Promise<void> {
     const companyId = this.company()?.id;
     const id = this.id();
     if (!companyId || id === null || this.busy()) return;
-    const credit = await this.facade.creditNote(companyId, id);
+    const data = {
+      descriptor: creditNoteForm(),
+      group: buildFormGroup(creditNoteForm(), { reason: '' }),
+    };
+    const reason = await firstValueFrom(
+      this.dialog.open(CreditNoteDialog, { data, autoFocus: 'first-tabbable' }).afterClosed(),
+    );
+    if (!reason) return;
+    const credit = await this.facade.creditNote(companyId, id, reason);
     if (credit !== null) {
       await this.router.navigate(['/invoices', credit.id]);
     }

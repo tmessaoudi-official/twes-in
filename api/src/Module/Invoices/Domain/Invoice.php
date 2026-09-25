@@ -44,6 +44,9 @@ class Invoice implements CompanyOwned
     /** The decimals of every stored amount column; the currency's scale is applied when the figures are read. */
     private const int STORED_SCALE = 3;
 
+    /** The longest reason a credit note states, in characters. */
+    public const int CREDIT_NOTE_REASON_MAX = 500;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -58,6 +61,10 @@ class Invoice implements CompanyOwned
     #[ORM\ManyToOne(targetEntity: self::class)]
     #[ORM\JoinColumn(name: 'corrects_invoice_id', nullable: true)]
     private ?Invoice $correctsInvoice = null;
+
+    /** Why a credit note corrects its invoice, stated when it is created (docs/SPEC.md § 7, 2026-09-24 22:51); null on an invoice. */
+    #[ORM\Column(name: 'credit_note_reason', length: self::CREDIT_NOTE_REASON_MAX, nullable: true)]
+    private ?string $creditNoteReason = null;
 
     #[ORM\ManyToOne(targetEntity: Establishment::class)]
     #[ORM\JoinColumn(name: 'establishment_id', nullable: false)]
@@ -269,16 +276,28 @@ class Invoice implements CompanyOwned
      * header, lines and document taxes, each tax charged as the invoice charged it. Its figures are the negative of
      * what it copies until it is revised.
      *
+     * It states why, as EN 16931 asks a correction to (BG-3 names the invoice it corrects; the reason is required when
+     * it is created, docs/SPEC.md § 7, 2026-09-24 22:51).
+     *
      * @throws InvoiceTransitionRefused when the document is not an issued invoice
+     * @throws InvalidInvoice           when the reason is blank or longer than CREDIT_NOTE_REASON_MAX
      */
-    public static function creditNoteFor(self $invoice, \DateTimeImmutable $now): self
+    public static function creditNoteFor(self $invoice, string $reason, \DateTimeImmutable $now): self
     {
         if (InvoiceType::Invoice !== $invoice->documentType || !$invoice->isIssued()) {
             throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is corrected by a credit note.', $invoice->documentType->value, $invoice->reference(), $invoice->status->value));
         }
+        $reason = trim($reason);
+        if ('' === $reason) {
+            throw new InvalidInvoice('creditNoteReason', 'A credit note states why it corrects its invoice.');
+        }
+        if (mb_strlen($reason) > self::CREDIT_NOTE_REASON_MAX) {
+            throw new InvalidInvoice('creditNoteReason', \sprintf('A credit note\'s reason is at most %d characters.', self::CREDIT_NOTE_REASON_MAX));
+        }
         $credit = new self($invoice->company, $now);
         $credit->documentType = InvoiceType::CreditNote;
         $credit->correctsInvoice = $invoice;
+        $credit->creditNoteReason = $reason;
         // Held on both sides here rather than left to Doctrine to fill on a load: what a correction withholds is
         // decided from the siblings correcting the same invoice, and an invoice never loaded has none of them.
         $invoice->corrections->add($credit);
@@ -896,6 +915,12 @@ class Invoice implements CompanyOwned
     public function getCorrectedInvoice(): ?self
     {
         return $this->correctsInvoice;
+    }
+
+    /** Why a credit note corrects its invoice; null for an invoice, and for a credit note drafted before it was asked. */
+    public function getCreditNoteReason(): ?string
+    {
+        return $this->creditNoteReason;
     }
 
     /** @return list<self> the credit notes correcting this invoice, drafts among them */

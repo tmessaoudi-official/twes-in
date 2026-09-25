@@ -48,6 +48,11 @@
             >{{ 'invoices.corrects' | translate }}</a
           >
         }
+        @if (invoice.creditNoteReason; as reason) {
+          <p class="text-sm" data-testid="invoice-credit-reason">
+            {{ 'invoices.credit_note.reason_shown' | translate: { reason } }}
+          </p>
+        }
       }
     </div>
     <div class="flex flex-wrap items-center gap-2">

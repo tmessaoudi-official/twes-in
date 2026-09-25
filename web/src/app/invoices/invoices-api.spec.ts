@@ -310,7 +310,7 @@ describe('InvoicesApi', () => {
     for (const [call, path] of [
       [() => api.issue('c1', 'i1'), '/api/companies/c1/invoices/i1/issue'],
       [() => api.cancel('c1', 'i1'), '/api/companies/c1/invoices/i1/cancel'],
-      [() => api.creditNote('c1', 'i1'), '/api/companies/c1/invoices/i1/credit-notes'],
+      [() => api.creditNote('c1', 'i1', 'Retour'), '/api/companies/c1/invoices/i1/credit-notes'],
     ] as const) {
       const pending = call();
       const request = http.expectOne(path);
@@ -318,6 +318,18 @@ describe('InvoicesApi', () => {
       request.flush(issued);
       await pending;
     }
+  });
+
+  it('drafts a credit note with its reason, and reads the reason back', async () => {
+    const drafted = api.creditNote('c1', 'i1', 'Retour de marchandise');
+    const request = http.expectOne('/api/companies/c1/invoices/i1/credit-notes');
+    expect(request.request.body).toEqual({ creditNoteReason: 'Retour de marchandise' });
+    request.flush({ ...issued, type: 'credit_note', creditNoteReason: 'Retour de marchandise' });
+    expect((await drafted).creditNoteReason).toBe('Retour de marchandise');
+
+    const read = api.invoice('c1', 'i1');
+    http.expectOne('/api/companies/c1/invoices/i1').flush(issued);
+    expect((await read).creditNoteReason).toBeNull();
   });
 
   it('records and deletes a payment', async () => {

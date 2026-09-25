@@ -47,6 +47,7 @@ class StaticLoader implements TranslateLoader {
         statuses: { draft: 'Brouillon', issued: 'Émise', overdue: 'En retard', paid: 'Soldée' },
         types: { credit_note: 'Avoir' },
         credit_note_draft_title: 'Avoir en brouillon',
+        credit_note: { reason_shown: 'Motif : {{reason}}' },
         fixed: { issued: 'Émis, il se corrige par un avoir.' },
         totals: {
           tax: '{{code}} {{rate}} % · base {{base}}',
@@ -140,6 +141,7 @@ const draft: InvoiceRow = {
   id: 'i1',
   type: 'invoice',
   correctsInvoiceId: null,
+  creditNoteReason: null,
   number: null,
   status: 'draft',
   customerId: 'k1',
@@ -734,7 +736,14 @@ describe('InvoicePage', () => {
     await settle();
     over('document-menu-credit-note')!.click();
     await settle();
-    expect(facade.creditNote).toHaveBeenCalledWith('c1', 'i1');
+    // The reason is asked first (docs/SPEC.md § 7, 2026-09-24 22:51): nothing is drafted without one.
+    over('credit-note-create')!.click();
+    await settle();
+    expect(facade.creditNote).not.toHaveBeenCalled();
+    typeIn(over('field-reason') as HTMLInputElement, '  Retour de marchandise ');
+    over('credit-note-create')!.click();
+    await settle();
+    expect(facade.creditNote).toHaveBeenCalledWith('c1', 'i1', 'Retour de marchandise');
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'cn1']));
   });
 
@@ -752,10 +761,16 @@ describe('InvoicePage', () => {
   });
 
   it('shows a credit note as one: its title, its invoice, no payments and no credit note of its own', async () => {
-    invoice.set({ ...draft, type: 'credit_note', correctsInvoiceId: 'i0' });
+    invoice.set({
+      ...draft,
+      type: 'credit_note',
+      correctsInvoiceId: 'i0',
+      creditNoteReason: 'Retour de marchandise',
+    });
     await open('i1');
     expect(text('invoice-title')).toContain('Avoir en brouillon');
     expect(q('invoice-corrects')?.getAttribute('href')).toBe('/invoices/i0');
+    expect(text('invoice-credit-reason').trim()).toBe('Motif : Retour de marchandise');
     expect(q('document-action-issue')).not.toBeNull();
 
     invoice.set({ ...issued, type: 'credit_note', correctsInvoiceId: 'i0', status: 'issued' });

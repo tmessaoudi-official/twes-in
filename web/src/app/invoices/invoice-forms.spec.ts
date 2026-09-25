@@ -89,6 +89,7 @@ function invoice(overrides: Partial<InvoiceRow> = {}): InvoiceRow {
     id: 'i1',
     type: 'invoice',
     correctsInvoiceId: null,
+    creditNoteReason: null,
     number: 'FAC-2026-00043',
     status: 'issued',
     customerId: 'k1',

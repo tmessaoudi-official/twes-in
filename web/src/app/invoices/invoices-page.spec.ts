@@ -47,6 +47,7 @@ const issued: InvoiceRow = {
   id: 'i1',
   type: 'invoice',
   correctsInvoiceId: null,
+  creditNoteReason: null,
   number: 'FAC-2026-00045',
   status: 'partially_paid',
   customerId: 'k1',

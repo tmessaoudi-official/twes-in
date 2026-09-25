@@ -383,7 +383,7 @@ final class InvoicesTest extends ApiTestCase
         $this->postJson($this->path($copyId).'/duplicate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 
-        $this->postJson($this->path($id).'/credit-notes', null);
+        $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
         $creditId = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path($creditId).'/duplicate', null);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a credit note belongs to the invoice it corrects; a copy of it would correct it twice');
@@ -403,13 +403,19 @@ final class InvoicesTest extends ApiTestCase
         $invoice = $this->json();
         $due = $this->stringAt($invoice, 'amountDue');
         self::assertIsNumeric($due);
+        foreach (['no reason' => [], 'a blank reason' => ['creditNoteReason' => " \n "], 'a reason too long' => ['creditNoteReason' => str_repeat('a', 501)]] as $case => $body) {
+            $this->postJson($this->path($id).'/credit-notes', $body);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
+            self::assertStringContainsString('creditNoteReason', (string) $this->client->getResponse()->getContent(), $case);
+        }
+        self::assertEquals(0, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM invoice WHERE document_type = 'credit_note'"), 'a refused credit note leaves nothing behind');
 
-        $this->postJson($this->path($id).'/credit-notes', null);
+        $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => ' Retour de deux portables ']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $credit = $this->json();
         $creditId = $this->stringAt($credit, 'id');
-        self::assertSame(['credit_note', 'draft', null, $id, $this->customerId], [$credit['type'], $credit['status'], $credit['number'], $credit['correctsInvoiceId'], $credit['customerId']]);
+        self::assertSame(['credit_note', 'draft', null, $id, $this->customerId, 'Retour de deux portables'], [$credit['type'], $credit['status'], $credit['number'], $credit['correctsInvoiceId'], $credit['customerId'], $credit['creditNoteReason']]);
         self::assertSame(['-'.$this->stringAt($invoice, 'total'), $invoice['documentTaxComponentIds'], ['2.000']], [$this->stringAt($credit, 'total'), $credit['documentTaxComponentIds'], array_column($this->arrayAt($credit, 'lines'), 'quantity')], 'a credit note starts as the whole invoice, negative');
         self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM audit_log WHERE action = 'invoice.created' AND entity_id = ?", [$creditId]));
 
@@ -424,6 +430,11 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
         self::assertSame(['issued', $number(1)], [$this->json()['status'], $this->json()['number']]);
         $credited = $this->stringAt($this->json(), 'amountDue');
+        $this->client->request('GET', $this->path($creditId).'/pdf');
+        $printed = (string) $this->client->getResponse()->getContent();
+        $issuedOn = new \DateTimeImmutable($this->stringAt($invoice, 'issueDate'))->format('d/m/Y');
+        self::assertStringContainsString(\sprintf('Avoir sur la facture %s du %s', $this->stringAt($invoice, 'number'), $issuedOn), $printed, 'the number and date of the invoice it corrects (EN 16931 BG-3)');
+        self::assertStringContainsString('Motif : Retour de deux portables', $printed);
         self::assertStringStartsWith('-', $credited);
         $credited = ltrim($credited, '-');
         self::assertIsNumeric($credited);
@@ -434,7 +445,7 @@ final class InvoicesTest extends ApiTestCase
         self::assertIsString($changes);
         self::assertEquals(['creditNoteId' => $creditId, 'number' => $number(1), 'amount' => $credited], json_decode($changes, true));
 
-        $this->postJson($this->path($id).'/credit-notes', null);
+        $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
         $secondId = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path($secondId).'/issue', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the whole invoice again is more than it still has due');
@@ -453,14 +464,14 @@ final class InvoicesTest extends ApiTestCase
         $this->getJson($this->path($id));
         self::assertSame(['paid', '0.000', bcadd($credited, '100', 3)], [$this->json()['status'], $this->json()['amountDue'], $this->json()['amountCredited']], 'credits and payments settle an invoice together');
 
-        $this->postJson($this->path($creditId).'/credit-notes', null);
+        $this->postJson($this->path($creditId).'/credit-notes', ['creditNoteReason' => 'Retour']);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a credit note is not credited');
         $this->postJson($this->path($creditId).'/payments', ['date' => $today, 'amount' => '1', 'method' => 'cash']);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a credit note is not paid');
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
-        $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/credit-notes', null);
+        $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/credit-notes', ['creditNoteReason' => 'Retour']);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not credited');
-        $this->postJson($this->path(self::ABSENT).'/credit-notes', null);
+        $this->postJson($this->path(self::ABSENT).'/credit-notes', ['creditNoteReason' => 'Retour']);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
@@ -479,7 +490,7 @@ final class InvoicesTest extends ApiTestCase
         // The second credit note leaves the stamp out, which every partial credit note copies (docs/SPEC.md § 8).
         // Each half comes to 6.0095 of its own: the first rounds that away, the second takes the 6.009 still left.
         foreach ([[$taxes, '-595.940'], [[$this->taxId('RS1')], '-594.941']] as [$documentTaxes, $due]) {
-            $this->postJson($this->path($id).'/credit-notes', null);
+            $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
             self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
             $creditId = $this->stringAt($this->json(), 'id');
             $this->sendJson('PUT', $this->path($creditId), $this->invoice(['documentTaxComponentIds' => $documentTaxes, 'lines' => [$line()]]));

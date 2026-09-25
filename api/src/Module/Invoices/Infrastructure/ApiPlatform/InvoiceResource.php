@@ -105,8 +105,9 @@ use Symfony\Component\Validator\Constraints as Assert;
             processor: CreateCreditNoteProcessor::class,
             security: 'is_granted("ROLE_USER")',
             read: false,
-            input: false,
             normalizationContext: self::NORMALIZATION,
+            denormalizationContext: ['groups' => [self::CREDIT]],
+            validationContext: ['groups' => [self::CREDIT]],
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/issue',
@@ -123,6 +124,8 @@ final class InvoiceResource
 {
     public const string READ = 'invoice:read';
     public const string WRITE = 'invoice:write';
+    /** What drafting a credit note takes: its reason, and nothing a revision changes. */
+    public const string CREDIT = 'invoice:credit';
     /** Nulls are answered: a draft's absent number and a line without a product read alike. */
     public const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
     private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
@@ -150,6 +153,12 @@ final class InvoiceResource
     #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'format' => 'uuid'])]
     #[Groups([self::READ])]
     public ?string $correctsInvoiceId = null;
+
+    /** Why a credit note corrects its invoice, stated when it is drafted and printed on it; null for an invoice. */
+    #[Assert\NotBlank(normalizer: 'trim', groups: [self::CREDIT])]
+    #[Assert\Length(max: Invoice::CREDIT_NOTE_REASON_MAX, groups: [self::CREDIT])]
+    #[Groups([self::READ, self::CREDIT])]
+    public ?string $creditNoteReason = null;
 
     /** The number issuing gives the document; null while it is a draft. */
     #[ApiProperty(writable: false)]
@@ -413,6 +422,7 @@ final class InvoiceResource
         $resource->id = $invoice->getId()->toRfc4122();
         $resource->type = $invoice->getType()->value;
         $resource->correctsInvoiceId = $invoice->getCorrectedInvoice()?->getId()->toRfc4122();
+        $resource->creditNoteReason = $invoice->getCreditNoteReason();
         $resource->number = $invoice->getNumber();
         $resource->status = $invoice->getStatus()->value;
         $resource->customerId = $invoice->getCustomer()->getId()->toRfc4122();

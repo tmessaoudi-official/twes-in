@@ -130,6 +130,8 @@ export interface InvoiceRow {
   type: InvoiceType;
   /** The invoice a credit note corrects; null for an invoice. */
   correctsInvoiceId: string | null;
+  /** Why a credit note corrects its invoice, stated when it was drafted; null for an invoice. */
+  creditNoteReason: string | null;
   /** Null until the document is issued. */
   number: string | null;
   status: InvoiceStatus;

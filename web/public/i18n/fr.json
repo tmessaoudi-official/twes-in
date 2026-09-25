@@ -970,6 +970,13 @@
     "duplicated": "Le document a été dupliqué.",
     "read_only": "Vous pouvez consulter les factures, pas les modifier.",
     "corrects": "Voir la facture corrigée",
+    "credit_note": {
+      "title": "Motif de l’avoir",
+      "reason": "Motif",
+      "reason_hint": "Imprimé sur l’avoir avec le numéro et la date de la facture corrigée.",
+      "reason_shown": "Motif : {{reason}}",
+      "keep": "Ne pas créer"
+    },
     "fixed": {
       "issued": "Ce document est émis et ne change plus : il se corrige par un avoir, et peut encore être imprimé.",
       "cancelled": "Ce brouillon est annulé et ne change plus."

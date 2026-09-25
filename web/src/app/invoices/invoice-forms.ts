@@ -567,6 +567,33 @@ export function paymentForm(): FormDescriptor {
   };
 }
 
+/** The longest reason a credit note states, as the API keeps it. */
+export const CREDIT_NOTE_REASON_MAX = 500;
+
+/** Why a credit note corrects its invoice, asked before it is drafted (docs/SPEC.md § 7, 2026-09-24 22:51). */
+export function creditNoteForm(): FormDescriptor {
+  return {
+    id: 'invoice-credit-note',
+    sections: [
+      {
+        id: 'credit-note',
+        title: 'invoices.credit_note.title',
+        fields: [
+          {
+            id: 'reason',
+            label: 'invoices.credit_note.reason',
+            kind: 'textarea',
+            required: true,
+            maxLength: CREDIT_NOTE_REASON_MAX,
+            hint: 'invoices.credit_note.reason_hint',
+            span: 2,
+          },
+        ],
+      },
+    ],
+  };
+}
+
 /** A new payment on the company's day, for the whole amount still due, by transfer. */
 export function paymentValues(today: string, amountDue: string): FormValues {
   return { date: today, amount: amountDue, method: 'transfer', reference: '', notes: '' };

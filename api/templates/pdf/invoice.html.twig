@@ -81,7 +81,11 @@
     {% if invoice.number %}<strong>{{ invoice.number }}</strong>{% endif %}
   </div>
   {%- if invoice.correctedInvoice and invoice.correctedInvoice.number %}
-    <p class="muted">{{ 'invoice.corrects'|trans({'%number%': invoice.correctedInvoice.number}, t, locale) }}</p>
+    {#- The number and date of the invoice it corrects, EN 16931 BG-3, and why (docs/SPEC.md § 7, 2026-09-24 22:51). #}
+    <p class="muted">{{ 'invoice.corrects'|trans({'%number%': invoice.correctedInvoice.number, '%date%': invoice.correctedInvoice.issueDate ? invoice.correctedInvoice.issueDate|date(dateFormat, 'UTC') : ''}, t, locale) }}</p>
+  {%- endif %}
+  {%- if invoice.creditNoteReason %}
+    <p>{{ 'invoice.reason'|trans({'%reason%': invoice.creditNoteReason}, t, locale) }}</p>
   {%- endif %}
 
   <dl class="facts">

@@ -311,7 +311,7 @@ final class InvoiceTest extends TestCase
         $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures(), $this->now);
         $vat->revise($vat->getName(), '7', null, null, false, $vat->isDefault(), true, null, $vat->getSortOrder(), 3, $this->now);
 
-        $credit = Invoice::creditNoteFor($invoice, $this->now);
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
 
         self::assertSame([InvoiceType::CreditNote, InvoiceStatus::Draft, null, $invoice, $invoice->getCustomer(), $invoice->getEstablishment()], [$credit->getType(), $credit->getStatus(), $credit->getNumber(), $credit->getCorrectedInvoice(), $credit->getCustomer(), $credit->getEstablishment()]);
         self::assertEquals($invoice->getHeader(), $credit->getHeader());
@@ -332,19 +332,32 @@ final class InvoiceTest extends TestCase
         self::assertSame([['TIMBRE', '1.000']], array_map(static fn (InvoiceTax $tax): array => [$tax->getCode(), $tax->getAmount()], $credit->getDocumentTaxes()));
     }
 
+    public function testACreditNoteStatesItsReasonWhenItIsCreatedAndAnInvoiceHasNone(): void
+    {
+        $invoice = $this->issued('12.900', '0.000', '12.900');
+
+        $credit = Invoice::creditNoteFor($invoice, "  Retour d'un portable défectueux  ", $this->now);
+
+        self::assertSame("Retour d'un portable défectueux", $credit->getCreditNoteReason());
+        self::assertNull($invoice->getCreditNoteReason());
+        $this->assertRefused('creditNoteReason', fn () => Invoice::creditNoteFor($invoice, "  \n ", $this->now), 'a blank reason');
+        $this->assertRefused('creditNoteReason', fn () => Invoice::creditNoteFor($invoice, str_repeat('é', Invoice::CREDIT_NOTE_REASON_MAX + 1), $this->now), 'a reason too long');
+        self::assertSame(Invoice::CREDIT_NOTE_REASON_MAX, mb_strlen(Invoice::creditNoteFor($invoice, str_repeat('é', Invoice::CREDIT_NOTE_REASON_MAX), $this->now)->getCreditNoteReason() ?? ''), 'the longest reason is kept whole');
+    }
+
     public function testOnlyAnIssuedInvoiceIsCreditedAndACreditNoteStaysWithItsCustomerAndIsNeverPaid(): void
     {
         $today = new \DateTimeImmutable('2026-09-20');
         $draft = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine()], [], $this->now);
         $invoice = $this->issued('12.900', '0.000', '12.900');
-        $credit = Invoice::creditNoteFor($invoice, $this->now);
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
 
         $this->assertRefused('customerId', fn () => $credit->revise($this->establishment(), $this->customer($this->company, 'CLI-0002'), new InvoiceHeader(), [$this->pieceLine()], [], $this->now));
         $credit->issue(new \App\Module\Invoices\Domain\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures('-12.900', '0.000', '-12.900'), $this->now);
 
         foreach ([
-            'a draft credited' => fn () => Invoice::creditNoteFor($draft, $this->now),
-            'a credit note credited' => fn () => Invoice::creditNoteFor($credit, $this->now),
+            'a draft credited' => fn () => Invoice::creditNoteFor($draft, 'Retour', $this->now),
+            'a credit note credited' => fn () => Invoice::creditNoteFor($credit, 'Retour', $this->now),
             'a credit note paid' => fn () => $credit->recordPayment(new PaymentDetails($today, '1', PaymentMethod::Cash), $today, 3, null, $this->now),
         ] as $case => $attempt) {
             try {
@@ -365,7 +378,7 @@ final class InvoiceTest extends TestCase
 
         self::assertSame([InvoiceStatus::PartiallyPaid, '0.000', '1000.000', '178.100'], $this->settlement($invoice), 'credited is no longer only issued');
         foreach ([
-            'a draft credit note' => Invoice::creditNoteFor($invoice, $this->now),
+            'a draft credit note' => Invoice::creditNoteFor($invoice, 'Retour', $this->now),
             'another invoice\'s credit note' => $this->issuedCreditNote($this->issued('1190.000', '0.000', '1190.000'), '-0.001'),
             'an invoice' => $this->issued('0.001', '0.000', '0.001'),
         ] as $case => $wrong) {
@@ -406,13 +419,13 @@ final class InvoiceTest extends TestCase
         $events = $invoice->releaseEvents();
         self::assertInstanceOf(\App\Module\Invoices\Domain\InvoiceIssued::class, $events[0]);
         self::assertEquals([$second, $first], $events[0]->sourceDeliveryNoteLineIds, 'the delivery note lines its lines came from, in order');
-        $credit = Invoice::creditNoteFor($invoice, $this->now);
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
         self::assertSame([null, null, null], array_map(static fn ($copied): ?Uuid => $copied->getSourceDeliveryNoteLineId(), $credit->getLines()), 'a credit note invoices no delivery note');
     }
 
     private function issuedCreditNote(Invoice $invoice, string $due): Invoice
     {
-        $credit = Invoice::creditNoteFor($invoice, $this->now);
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
         $credit->issue(new \App\Module\Invoices\Domain\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures($due, '0.000', $due), $this->now);
 
         return $credit;

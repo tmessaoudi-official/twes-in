@@ -16,6 +16,7 @@ const draft: InvoiceRow = {
   id: 'i1',
   type: 'invoice',
   correctsInvoiceId: null,
+  creditNoteReason: null,
   number: null,
   status: 'draft',
   customerId: 'k1',
@@ -194,7 +195,8 @@ describe('InvoicesFacade', () => {
   it('answers the credit note it drafted, which becomes the document on screen', async () => {
     const credit = { ...draft, id: 'cn1', type: 'credit_note' as const, correctsInvoiceId: 'i1' };
     api.creditNote.mockResolvedValue(credit);
-    expect(await facade.creditNote('c1', 'i1')).toEqual(credit);
+    expect(await facade.creditNote('c1', 'i1', 'Retour')).toEqual(credit);
+    expect(api.creditNote).toHaveBeenCalledWith('c1', 'i1', 'Retour');
     expect(facade.invoice()).toEqual(credit);
   });
 

@@ -139,7 +139,7 @@ final class InvoiceWorkflowTest extends TestCase
     {
         $invoice = $this->workflow->issue($this->company, $this->draft($this->customer('standard', null))->getId(), null);
         self::assertSame('12.900', $invoice->getIssuedFigures()?->amountDue);
-        $credit = Invoice::creditNoteFor($invoice, $this->clock->now());
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
         $this->invoices->save($credit);
         $actor = Uuid::v7();
 
@@ -156,7 +156,7 @@ final class InvoiceWorkflowTest extends TestCase
         self::assertInstanceOf(InvoiceIssued::class, $event);
         self::assertSame([$credit->getId(), InvoiceType::CreditNote, 'AV-2026-00001'], [$event->invoiceId, $event->type, $event->number]);
 
-        $again = Invoice::creditNoteFor($invoice, $this->clock->now());
+        $again = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
         $this->invoices->save($again);
         try {
             $this->workflow->issue($this->company, $again->getId(), $actor);
@@ -217,7 +217,7 @@ final class InvoiceWorkflowTest extends TestCase
         self::assertSame([], $invoice->getIssuedFigures()?->withholdings, '119 is under the threshold');
 
         // A credit note takes lines of its own: above the threshold alone, it still withholds as its invoice did, not at all.
-        $credit = Invoice::creditNoteFor($invoice, $this->clock->now());
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
         $line = $invoice->getLines()[0];
         $credit->revise($credit->getEstablishment(), $credit->getCustomer(), $credit->getHeader(), [
             new InvoiceLineDetails(null, 'Pièce', '1', $line->getUnit(), '2000', null, array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes())),
@@ -248,7 +248,7 @@ final class InvoiceWorkflowTest extends TestCase
     public function testACreditNoteIssuedTwiceAtOnceCreditsItsInvoiceOnce(): void
     {
         $invoice = $this->workflow->issue($this->company, $this->draft($this->customer('standard', null))->getId(), null);
-        $credit = Invoice::creditNoteFor($invoice, $this->clock->now());
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
         $this->invoices->save($credit);
         $readAsDraft = clone $credit;
         $this->workflow->issue($this->company, $credit->getId(), null);
@@ -337,7 +337,7 @@ final class InvoiceWorkflowTest extends TestCase
     /** A draft credit note of one of its invoice's lines, keeping the stamp or leaving it out. */
     private function creditKeeping(Invoice $invoice, int $index, bool $stamp): Invoice
     {
-        $credit = Invoice::creditNoteFor($invoice, $this->clock->now());
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
         $line = $invoice->getLines()[$index];
         $taxes = array_values(array_filter(
             array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $credit->getDocumentTaxes()),

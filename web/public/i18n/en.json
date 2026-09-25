@@ -970,6 +970,13 @@
     "duplicated": "The document was duplicated.",
     "read_only": "You can view invoices, not change them.",
     "corrects": "See the corrected invoice",
+    "credit_note": {
+      "title": "Credit note reason",
+      "reason": "Reason",
+      "reason_hint": "Printed on the credit note with the number and date of the invoice it corrects.",
+      "reason_shown": "Reason: {{reason}}",
+      "keep": "Do not create"
+    },
     "fixed": {
       "issued": "This document is issued and no longer changes: it is corrected with a credit note, and can still be printed.",
       "cancelled": "This draft is cancelled and no longer changes."

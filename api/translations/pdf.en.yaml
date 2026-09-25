@@ -17,7 +17,8 @@ delivery_note:
 invoice:
     title: 'Invoice'
     credit_note_title: 'Credit note'
-    corrects: 'Credit note for invoice %number%'
+    corrects: 'Credit note for invoice %number% of %date%'
+    reason: 'Reason: %reason%'
     customer: 'Customer'
     customer_number: 'Customer code'
     issue_date: 'Date'

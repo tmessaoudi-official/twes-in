@@ -113,9 +113,9 @@ export class InvoicesFacade {
     return this.step(() => this.api.cancel(companyId, id));
   }
 
-  /** The credit note drafted for an issued invoice, which becomes the document on screen. */
-  async creditNote(companyId: string, id: string): Promise<InvoiceRow | null> {
-    return this.step(() => this.api.creditNote(companyId, id));
+  /** The credit note drafted for an issued invoice, stating why, which becomes the document on screen. */
+  async creditNote(companyId: string, id: string, reason: string): Promise<InvoiceRow | null> {
+    return this.step(() => this.api.creditNote(companyId, id, reason));
   }
 
   /** A copy of the document as a new draft, which becomes the document on screen. */

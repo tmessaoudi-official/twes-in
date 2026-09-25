@@ -531,7 +531,7 @@ final class DemoCompanies extends Fixture
             }
             if (6 === $i || 18 === $i) {
                 $timeline->at($day + 7, function () use (&$ids, $i, $company, $actor): void {
-                    $creditNote = $this->invoices->draftCreditNote($company(), $ids[$i], $actor);
+                    $creditNote = $this->invoices->draftCreditNote($company(), $ids[$i], 6 === $i ? 'Retour d\'une partie de la commande' : 'Geste commercial après un retard de livraison', $actor);
                     $this->invoiceWorkflow->issue($company(), $creditNote->getId(), $actor);
                 });
                 continue;

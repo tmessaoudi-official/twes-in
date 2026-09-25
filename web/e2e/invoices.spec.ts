@@ -7,8 +7,8 @@ import { wcagViolations } from './axe';
 // G7 invoices through the real stack (docs/SPEC.md § 8 row 10): in the seeded Tunisian company, the owner drafts an
 // invoice for a customer made for the run, two days of consulting at 500 under the 19 % VAT, issues it and finds it
 // numbered, downloads its PDF rendered by Gotenberg, records a payment and deletes it again, then corrects the whole
-// invoice with a credit note, which leaves nothing due. One database is shared by the whole suite and issued documents
-// are never deleted, so the customer is unique to the run and deactivated afterwards.
+// invoice with a credit note, stating why, which leaves nothing due. One database is shared by the whole suite and
+// issued documents are never deleted, so the customer is unique to the run and deactivated afterwards.
 const CSRF = '0123456789abcdef0123456789abcdef';
 
 /** A customer billed in Tunis under the standard regime, through the API: the customers screens have their own run. */
@@ -181,9 +181,20 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     // A credit note is rare, so it sits behind "⋮".
     await page.getByTestId('document-more').click();
     await page.getByTestId('document-menu-credit-note').click();
+    // It asks why before anything is drafted: the reason is printed on the credit note.
+    await expect(page.getByTestId('credit-note-dialog-title')).toBeVisible();
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('credit-note-create').click();
+    await expect(page.getByTestId('credit-note-dialog-title')).toBeVisible();
+    await expect(page).toHaveURL(invoiceUrl);
+    await page.getByTestId('field-reason').fill('Geste commercial après un retard');
+    await page.getByTestId('credit-note-create').click();
     await expect(page).not.toHaveURL(invoiceUrl);
     await expect(page.getByTestId('invoice-title')).toContainText(
       /Avoir en brouillon|Draft credit note/,
+    );
+    await expect(page.getByTestId('invoice-credit-reason')).toContainText(
+      'Geste commercial après un retard',
     );
     await expect(page.getByTestId('invoice-payments')).toHaveCount(0);
     expect(await wcagViolations(page)).toEqual([]);
