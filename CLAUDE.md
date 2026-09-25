@@ -239,10 +239,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   toasts a save that changed nothing. `LiveRecord.savedHere` writes the answer into the controls (2026-09-17).
 - The shared Demo company outgrows a list page as e2e runs leave rows behind (52 customers on 2026-09-16, 25 a page): a
   scenario asserting its new row in a list filters the list first, or the row sorts onto page 2 and reads as missing.
-- Every company screen failing in a local `make e2e` after `make fixtures` is the operator's three memberships, not a
-  regression: a login picks a working company only for a single membership (`ChooseWorkingCompany`), so the saved
-  session reads "membre d'aucune entreprise". CI seeds Demo alone and stays green; let it arbitrate (2026-09-19).
-  A scenario fixes it for itself by calling `inACompany(page, CSRF)` after `signIn` — a no-op in CI. Add it to any
+- Every company screen failing in a local `make e2e` after `make fixtures` is the operator's several memberships, not a
+  regression: a sign-in opens the pinned, else the last used, else the first company by name (2026-09-25), which may
+  not be Demo. A scenario fixes it for itself by calling `inACompany(page, CSRF)` after `signIn` (it switches to
+  Demo; a no-op in CI, which seeds Demo alone). Switching moves the operator's "last used" company too. Add it to any
   spec you need to run locally: "let CI arbitrate" hid a real failure for three commits (2026-09-20). And a test id
   renamed in a shared component is a blast-radius sweep over `web/e2e` too, not only over `web/src`.
 - Several unrelated e2e signing in and landing on `/two-factor` is Demo's `mfa_required` left `true` on this machine,

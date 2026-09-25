@@ -31,7 +31,13 @@ final readonly class DoctrineMembershipRepository implements MembershipRepositor
 
     public function ofUser(Uuid $userId, int $limit): array
     {
-        return $this->entityManager->getRepository(Membership::class)->findBy(['user' => $userId], limit: $limit);
+        // By company name: the switcher is a menu, and a row a sign-in touched must not move in it.
+        /** @var list<Membership> $memberships */
+        $memberships = $this->entityManager->createQuery(
+            'SELECT m, c FROM '.Membership::class.' m JOIN m.company c WHERE m.user = :user ORDER BY c.name ASC, c.id ASC',
+        )->setParameter('user', $userId, 'uuid')->setMaxResults($limit)->getResult();
+
+        return $memberships;
     }
 
     public function ofCompany(Uuid $companyId): array
@@ -42,6 +48,16 @@ final readonly class DoctrineMembershipRepository implements MembershipRepositor
     public function ofUserInCompany(Uuid $userId, Uuid $companyId): ?Membership
     {
         return $this->entityManager->getRepository(Membership::class)->findOneBy(['user' => $userId, 'company' => $companyId]);
+    }
+
+    public function toOpenAtSignIn(Uuid $userId): ?Membership
+    {
+        $membership = $this->entityManager->createQuery(
+            'SELECT m, c FROM '.Membership::class.' m JOIN m.company c WHERE m.user = :user
+             ORDER BY m.openedAtSignIn DESC, CASE WHEN m.lastUsedAt IS NULL THEN 1 ELSE 0 END, m.lastUsedAt DESC, c.name ASC, c.id ASC',
+        )->setParameter('user', $userId, 'uuid')->setMaxResults(1)->getOneOrNullResult();
+
+        return $membership instanceof Membership ? $membership : null;
     }
 
     public function countByRole(Uuid $companyId): array

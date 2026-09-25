@@ -62,6 +62,11 @@ final class WorkingCompanyResource
     #[Groups([self::READ])]
     public ?string $role = null;
 
+    /** Whether every sign-in opens this company (« Société à l'ouverture »). */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public bool $pinned = false;
+
     public static function of(CompanySummary $summary): self
     {
         $resource = new self();
@@ -69,6 +74,7 @@ final class WorkingCompanyResource
         $resource->name = $summary->name;
         $resource->status = $summary->status;
         $resource->role = $summary->role;
+        $resource->pinned = $summary->pinned;
 
         return $resource;
     }

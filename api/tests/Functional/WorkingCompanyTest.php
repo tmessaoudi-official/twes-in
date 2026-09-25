@@ -149,6 +149,84 @@ final class WorkingCompanyTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
     }
 
+    // docs/SPEC.md § 7, 2026-09-25 09:03: a sign-in never lands on « aucune entreprise » while the person belongs to one.
+    public function testASignInWithSeveralCompaniesNeverUsedOpensTheFirstByName(): void
+    {
+        $this->memberOfBoth($this->createCompany('Globex'), $this->createCompany('Acme'));
+
+        $this->getJson('/api/auth/me');
+
+        self::assertSame('Acme', $this->companyName());
+    }
+
+    public function testASignInReopensTheCompanyLastWorkedIn(): void
+    {
+        $first = $this->createCompany('Acme');
+        $second = $this->createCompany('Globex');
+        $this->memberOfBoth($first, $second);
+        $this->postJson('/api/me/company', ['companyId' => $second->getId()->toRfc4122()]);
+        self::assertResponseIsSuccessful();
+
+        $this->signInAgain();
+
+        self::assertSame('Globex', $this->companyName());
+    }
+
+    public function testAPinnedCompanyOpensAtEverySignInUntilUnpinned(): void
+    {
+        $first = $this->createCompany('Acme');
+        $second = $this->createCompany('Globex');
+        $this->memberOfBoth($first, $second);
+
+        $this->sendJson('PUT', '/api/me/company-at-sign-in', ['companyId' => $first->getId()->toRfc4122()]);
+        self::assertResponseIsSuccessful();
+        $this->getJson('/api/me/companies');
+        self::assertSame([['Acme', true], ['Globex', false]], array_map(static fn (array $row): array => [$row['name'] ?? null, $row['pinned'] ?? null], $this->jsonList()));
+
+        $this->postJson('/api/me/company', ['companyId' => $second->getId()->toRfc4122()]);
+        $this->signInAgain();
+        self::assertSame('Acme', $this->companyName(), 'pinned: Acme, although Globex was used last');
+
+        $this->sendJson('PUT', '/api/me/company-at-sign-in', ['companyId' => $second->getId()->toRfc4122()]);
+        self::assertResponseIsSuccessful('moving the pin to another company');
+        $this->getJson('/api/me/companies');
+        self::assertSame([false, true], array_map(static fn (array $row): mixed => $row['pinned'] ?? null, $this->jsonList()));
+
+        $this->sendJson('PUT', '/api/me/company-at-sign-in', ['companyId' => null]);
+        self::assertResponseIsSuccessful();
+        $this->postJson('/api/me/company', ['companyId' => $second->getId()->toRfc4122()]);
+        $this->signInAgain();
+        self::assertSame('Globex', $this->companyName(), 'unpinned: the last used again');
+    }
+
+    public function testACompanyTheUserIsNotInCannotBePinned(): void
+    {
+        $this->memberOfBoth($this->createCompany('Acme'), $this->createCompany('Globex'));
+        $theirs = $this->createCompany('Initech');
+
+        $this->sendJson('PUT', '/api/me/company-at-sign-in', ['companyId' => $theirs->getId()->toRfc4122()]);
+
+        // As the switcher answers: a company the person has nothing to do with looks like one that is not there.
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson('/api/me/companies');
+        self::assertSame([false, false], array_map(static fn (array $row): mixed => $row['pinned'] ?? null, $this->jsonList()));
+    }
+
+    private function signInAgain(): void
+    {
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('user@twes.local', 'password-1234');
+        self::assertResponseIsSuccessful();
+        $this->getJson('/api/auth/me');
+    }
+
+    private function companyName(): mixed
+    {
+        $company = $this->json()['company'] ?? null;
+
+        return \is_array($company) ? ($company['name'] ?? null) : null;
+    }
+
     private function memberOfBoth(Company $first, Company $second): void
     {
         $user = $this->createUser('user@twes.local', 'password-1234', $first, ['*']);

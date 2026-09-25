@@ -43,16 +43,19 @@ final class WorkingCompanyTest extends TestCase
         self::assertTrue($company->getId()->equals($this->current->id() ?? throw new \LogicException()));
     }
 
-    public function testNoMembershipOrSeveralLeavesTheChoiceOpen(): void
+    // docs/SPEC.md § 7, 2026-09-25 09:03: several companies never leave the choice open; the first by name opens.
+    public function testNoMembershipLeavesTheChoiceOpenAndSeveralOpenTheFirstByName(): void
     {
         $chooser = new ChooseWorkingCompany($this->memberships, $this->current);
         $chooser->for($this->user->getId());
         self::assertNull($this->current->id());
 
-        $this->memberships->save(new Membership($this->user, new Company('A', 'TN', 'TND', 'fr', 'Africa/Tunis'), new Role(Role::MEMBER, [])));
-        $this->memberships->save(new Membership($this->user, new Company('B', 'FR', 'EUR', 'fr', 'Europe/Paris'), new Role(Role::MEMBER, [])));
+        $b = new Company('B', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $a = new Company('A', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->memberships->save(new Membership($this->user, $b, new Role(Role::MEMBER, [])));
+        $this->memberships->save(new Membership($this->user, $a, new Role(Role::MEMBER, [])));
         $chooser->for($this->user->getId());
-        self::assertNull($this->current->id(), 'several companies: the switcher decides, not the login');
+        self::assertTrue($a->getId()->equals($this->current->id()), 'several companies, none used yet: the first by name');
     }
 
     public function testTheWorkingContextDescribesTheCompanyTheRoleAndThePermissions(): void

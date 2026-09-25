@@ -32,6 +32,7 @@ final readonly class ListCompaniesOfUser
                 $m->getCompany()->getName(),
                 $m->getCompany()->getStatus(),
                 $m->getRole()->getName(),
+                $m->isOpenedAtSignIn(),
             ),
             $this->memberships->ofUser($userId, self::LIMIT),
         );

@@ -61,6 +61,7 @@ import { CommandPalette, type CommandPaletteData } from './command-palette';
 import { type Command, MODULE_COMMANDS, navCommands, screenCommands } from './commands';
 import {
   CORE_NAV,
+  MANAGE_NAV,
   DEV_NAV,
   type Gated,
   isSettingsUrl,
@@ -168,7 +169,10 @@ export class AppShell {
   protected readonly windowClass = inject(WINDOW_CLASS);
   protected readonly handset = computed(() => this.windowClass() === 'compact');
   protected readonly sections = computed(() =>
-    navSections(this.visible([...CORE_NAV, ...MODULE_NAV, ...DEV_NAV]), SIDEBAR_SECTIONS),
+    navSections(
+      this.visible([...CORE_NAV, ...MODULE_NAV, ...MANAGE_NAV, ...DEV_NAV]),
+      SIDEBAR_SECTIONS,
+    ),
   );
   /**
    * The gear opens the first settings page this user may see, and is absent when there is none. On a phone the list and
@@ -190,7 +194,7 @@ export class AppShell {
     ...screenCommands(this.screen.actions()),
     ...this.visible([
       ...MODULE_COMMANDS,
-      ...navCommands([...CORE_NAV, ...MODULE_NAV, ...SETTINGS_NAV]),
+      ...navCommands([...CORE_NAV, ...MODULE_NAV, ...MANAGE_NAV, ...SETTINGS_NAV]),
     ]),
   ]);
   /** The phone's bottom bar: the first destinations of the sidebar, in its order. */

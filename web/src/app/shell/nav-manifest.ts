@@ -51,6 +51,22 @@ export const CORE_NAV: readonly NavEntry[] = [
   { key: 'home', labelKey: 'nav.home', icon: 'home', route: '/', section: 'main' },
 ];
 
+/**
+ * What the sidebar lists after the modules: « À surveiller » (docs/SPEC.md § 7, 2026-09-24 12:10), for whoever may read
+ * the company, each condition on it gated by its own module and permission. After the modules, so the phone's bottom
+ * bar keeps its four module destinations.
+ */
+export const MANAGE_NAV: readonly NavEntry[] = [
+  {
+    key: 'watch',
+    labelKey: 'nav.watch',
+    icon: 'visibility',
+    route: '/watch',
+    section: 'main',
+    permission: 'company.read',
+  },
+];
+
 /** The company settings, in the order of the settings area's groups; each needs a permission. */
 export const SETTINGS_NAV: readonly NavEntry[] = [
   {

@@ -17,6 +17,7 @@ final readonly class CompanySummary
         public string $name,
         public string $status,
         public string $role,
+        public bool $pinned = false,
     ) {
     }
 }

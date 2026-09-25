@@ -21,6 +21,7 @@ use App\Tests\Support\InMemoryCurrentCompany;
 use App\Tests\Support\InMemoryMemberships;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 #[CoversClass(SwitchWorkingCompany::class)]
@@ -35,7 +36,7 @@ final class SwitchWorkingCompanyTest extends TestCase
     {
         $this->memberships = new InMemoryMemberships();
         $this->currentCompany = new InMemoryCurrentCompany();
-        $this->switch = new SwitchWorkingCompany($this->memberships, $this->currentCompany);
+        $this->switch = new SwitchWorkingCompany($this->memberships, $this->currentCompany, new MockClock('2026-09-25 09:00:00'));
         $this->user = new User(Email::fromString('user@twes.local'), 'Someone');
     }
 

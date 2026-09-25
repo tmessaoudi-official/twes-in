@@ -12,6 +12,7 @@ namespace App\Tenancy\Application\Session;
 use App\Shared\Application\CurrentCompany;
 use App\Tenancy\Application\Company\NotAMember;
 use App\Tenancy\Domain\MembershipRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -23,16 +24,19 @@ final readonly class SwitchWorkingCompany
     public function __construct(
         private MembershipRepository $memberships,
         private CurrentCompany $currentCompany,
+        private ClockInterface $clock,
     ) {
     }
 
     /** @throws NotAMember */
     public function to(Uuid $userId, Uuid $companyId): void
     {
-        if (null === $this->memberships->ofUserInCompany($userId, $companyId)) {
-            throw new NotAMember(\sprintf('%s is not a member of that company.', $userId->toRfc4122()));
-        }
+        $membership = $this->memberships->ofUserInCompany($userId, $companyId)
+            ?? throw new NotAMember(\sprintf('%s is not a member of that company.', $userId->toRfc4122()));
 
         $this->currentCompany->set($companyId);
+        // The next sign-in reopens it (docs/SPEC.md § 7, 2026-09-25 09:03).
+        $membership->use($this->clock->now());
+        $this->memberships->save($membership);
     }
 }

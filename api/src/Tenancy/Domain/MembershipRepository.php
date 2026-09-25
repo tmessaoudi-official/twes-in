@@ -13,13 +13,19 @@ use Symfony\Component\Uid\Uuid;
 
 interface MembershipRepository
 {
-    /** @return list<Membership> at most $limit of them, in no particular order */
+    /** @return list<Membership> at most $limit of them, by company name */
     public function ofUser(Uuid $userId, int $limit): array;
 
     /** @return list<Membership> every member of one company, oldest first */
     public function ofCompany(Uuid $companyId): array;
 
     public function ofUserInCompany(Uuid $userId, Uuid $companyId): ?Membership;
+
+    /**
+     * The company a sign-in opens: the one pinned, else the one last used, else the first by name
+     * (docs/SPEC.md § 7, 2026-09-25 09:03). Null only for a person who belongs to none.
+     */
+    public function toOpenAtSignIn(Uuid $userId): ?Membership;
 
     /**
      * How many members of this company hold each role, keyed by the role's RFC 4122 identifier. A role nobody

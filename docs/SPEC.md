@@ -2749,6 +2749,21 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   (row 91, and never worded « à déclarer » before it), the evening digest (row 90), the month against last month (no
   comparison rule, RPT-07), a credit limit passed (row 85) and the projection check (row 57). On screen the page is
   `/watch`, the home shows its count first, above the invoices' panel, and both read again on a live change.
+- [2026-09-25 09:03] AGREED: **the order of work to the first version.** Bugs first, always: a reported defect jumps the queue.
+  Then the approved design (`var/claude/design-direction-2026-09-24/`, `direction.md` and `approved/`), screen by
+  screen: (1) tokens and the shell — the rail with « Créer » (C), search, the groups Vendre / Gérer, the company
+  switcher at its top and the member at its bottom, a slimmer top bar, « Mon compte » (rows 123, 124); (2) the home as
+  « Accueil »; (3) the invoice list as « Factures », status chips with counts and the record as a side sheet over the
+  list; (4) the same pattern for delivery notes, expenses, customers, products and stock; (5) « À surveiller » as
+  designed; (6) the phone screens; (7) the settings screens; (8) the rest of rows 121, 122 and 125. After the first
+  version: rows 116–119, then 56, 57 and 127, reports (89, 114), declarations (91), quotes (78), the counter sale (82)
+  and purchases (81). Each slice is built, pushed, the stack rebuilt, and the developer told what to test.
+- [2026-09-25 09:03] AGREED: **an element a mockup shows with no data behind it yet is left out, never faked**, and named in the
+  § 8 row that builds its data, which is done only once the element shows on its screen as designed.
+- [2026-09-25 09:03] AGREED: **« Société à l'ouverture », a personal preference in Mon compte › Préférences**: off by default,
+  meaning a sign-in reopens the company the person last worked in; on, it always opens the company pinned. A company
+  the person no longer belongs to falls back to the last used, then to the only one; with one company nothing changes.
+  A sign-in never lands on « aucune entreprise » while the person belongs to one.
 
 ## 8. Status
 

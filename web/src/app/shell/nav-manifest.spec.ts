@@ -11,6 +11,7 @@ import { VENDORS_NAV } from '../vendors/vendors-nav';
 import { EXPENSES_NAV } from '../expenses/expenses-nav';
 import {
   CORE_NAV,
+  MANAGE_NAV,
   DEV_NAV,
   MODULE_NAV,
   type NavEntry,
@@ -118,7 +119,7 @@ describe('navSections', () => {
 });
 
 describe('the navigation manifest', () => {
-  const sidebar = [...CORE_NAV, ...MODULE_NAV, ...DEV_NAV];
+  const sidebar = [...CORE_NAV, ...MODULE_NAV, ...MANAGE_NAV, ...DEV_NAV];
   const all = [...sidebar, ...SETTINGS_NAV];
 
   it('has unique keys and routes across the core and the modules', () => {
@@ -162,9 +163,19 @@ describe('the navigation manifest', () => {
     expect(DEV_NAV.every((entry) => entry.devOnly === true)).toBe(true);
   });
 
+  // docs/SPEC.md § 7, 2026-09-24 12:10: « À surveiller » is reached from the sidebar, after the modules, so the
+  // phone's bottom bar keeps its four module destinations.
+  it('offers « À surveiller » after the modules to whoever may read the company', () => {
+    expect(
+      MANAGE_NAV.map((entry) => [entry.key, entry.route, entry.permission, entry.module]),
+    ).toEqual([['watch', '/watch', 'company.read', undefined]]);
+  });
+
   it('ties every module entry to its module and no core entry to one', () => {
     expect(
-      [...CORE_NAV, ...SETTINGS_NAV, ...DEV_NAV].filter((entry) => entry.module !== undefined),
+      [...CORE_NAV, ...MANAGE_NAV, ...SETTINGS_NAV, ...DEV_NAV].filter(
+        (entry) => entry.module !== undefined,
+      ),
     ).toEqual([]);
     // Invoices come first: on a phone the bottom bar shows the first four destinations.
     expect(

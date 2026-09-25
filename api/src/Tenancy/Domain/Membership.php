@@ -18,6 +18,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: 'membership')]
 #[ORM\UniqueConstraint(name: 'uniq_membership_user_company', columns: ['user_id', 'company_id'])]
+// One pinned company per person, whatever writes it (docs/SPEC.md § 7, 2026-09-25 09:03).
+#[ORM\UniqueConstraint(name: 'uniq_membership_opened_at_sign_in', columns: ['user_id'], options: ['where' => 'opened_at_sign_in'])]
 class Membership
 {
     #[ORM\Id]
@@ -38,6 +40,14 @@ class Membership
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
+
+    /** When the person last switched to this company: a sign-in reopens the latest. To the second. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $lastUsedAt = null;
+
+    /** « Société à l'ouverture »: the company a sign-in always opens; at most one of a person's memberships. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $openedAtSignIn = false;
 
     public function __construct(User $user, Company $company, Role $role, ?\DateTimeImmutable $now = null)
     {
@@ -71,5 +81,27 @@ class Membership
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getLastUsedAt(): ?\DateTimeImmutable
+    {
+        return $this->lastUsedAt;
+    }
+
+    public function isOpenedAtSignIn(): bool
+    {
+        return $this->openedAtSignIn;
+    }
+
+    /** The person opened this company now. */
+    public function use(\DateTimeImmutable $now): void
+    {
+        $this->lastUsedAt = $now;
+    }
+
+    /** Pins it, or unpins it; keeping one pin per person is the use case's rule, across memberships. */
+    public function openAtSignIn(bool $opened): void
+    {
+        $this->openedAtSignIn = $opened;
     }
 }

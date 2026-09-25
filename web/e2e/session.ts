@@ -32,15 +32,17 @@ export async function signIn(page: Page): Promise<void> {
 }
 
 /**
- * Makes sure the session is working in a company. A sign-in picks one only for a single membership
- * (ChooseWorkingCompany), so a seed where the operator belongs to several leaves none chosen and every company screen
- * reads "no company" — which is a state of the database, not of the screen under test. CI seeds one company and this
- * does nothing; locally, after `make fixtures`, it is what keeps a run about invoices about invoices.
+ * Makes sure the session is working in Demo. A sign-in opens the company pinned, else the one last used, else the
+ * first by name (docs/SPEC.md § 7, 2026-09-25 09:03), so after `make fixtures` it may open another of the operator's
+ * companies than the one the scenarios' data lives in. CI seeds Demo alone and this does nothing; locally it is what
+ * keeps a run about invoices about Demo's invoices.
  */
 export async function inACompany(page: Page, csrf: string): Promise<void> {
   await page.evaluate(async (token) => {
-    const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } | null };
-    if (me.company !== null) return;
+    const me = (await (await fetch('/api/auth/me')).json()) as {
+      company: { id: string; name: string } | null;
+    };
+    if (me.company?.name === 'Demo') return;
     const answered = (await (await fetch('/api/me/companies')).json()) as
       { member: { companyId: string; name: string }[] } | { companyId: string; name: string }[];
     const mine = Array.isArray(answered) ? answered : answered.member;

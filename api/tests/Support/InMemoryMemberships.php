@@ -32,8 +32,19 @@ final class InMemoryMemberships implements MembershipRepository
     public function ofUser(Uuid $userId, int $limit): array
     {
         $found = array_values(array_filter($this->memberships, static fn (Membership $m) => $m->getUser()->getId()->equals($userId)));
+        usort($found, static fn (Membership $a, Membership $b): int => [$a->getCompany()->getName(), $a->getCompany()->getId()->toRfc4122()] <=> [$b->getCompany()->getName(), $b->getCompany()->getId()->toRfc4122()]);
 
         return \array_slice($found, 0, $limit);
+    }
+
+    /** As the Doctrine query orders them: the pin, then the latest use (never used last), then the name. */
+    public function toOpenAtSignIn(Uuid $userId): ?Membership
+    {
+        $found = $this->ofUser($userId, \PHP_INT_MAX);
+        usort($found, static fn (Membership $a, Membership $b): int => [!$a->isOpenedAtSignIn(), null === $a->getLastUsedAt(), -($a->getLastUsedAt()?->getTimestamp() ?? 0)]
+            <=> [!$b->isOpenedAtSignIn(), null === $b->getLastUsedAt(), -($b->getLastUsedAt()?->getTimestamp() ?? 0)]);
+
+        return $found[0] ?? null;
     }
 
     public function ofCompany(Uuid $companyId): array
