@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\DeliveryNotes\Application;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxFamily;
@@ -30,6 +31,7 @@ use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\CompanyProfile;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomers;
@@ -71,7 +73,7 @@ final class ManageDeliveryNotesTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->totals = new DeliveryNoteTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
-        $this->manage = new ManageDeliveryNotes($this->notes = new InMemoryDeliveryNotes(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock);
+        $this->manage = new ManageDeliveryNotes($this->notes = new InMemoryDeliveryNotes(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ExcludedTaxFamilies(ShippedFiscalPresets::presets()));
         $this->notes->transactions = $transactions;
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
@@ -95,6 +97,25 @@ final class ManageDeliveryNotesTest extends TestCase
         self::assertSame(['FODEC'], array_map(static fn (DeliveryNoteLineTax $tax): string => $tax->getCode(), $line->getTaxes()));
         $entry = $this->audit->entries[0];
         self::assertSame(['delivery_note', 'delivery_note.created', $actor, [], $this->company->getId()], [$entry->entityType, $entry->action, $entry->actorUserId, $entry->changes, $entry->companyId]);
+    }
+
+    public function testACompanyOnAVatFreeRegimeChargesNoVatToAnyCustomer(): void
+    {
+        $this->company = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $this->clock)->handle($this->company);
+        $this->company->reviseProfile(new CompanyProfile(vatRegime: 'franchise'));
+        $customer = $this->customer();
+
+        $note = $this->manage->create($this->company, $this->input($customer, [new DeliveryNoteLineInput($this->product(taxes: ['TVA20'])->getId(), null, '1')]), null);
+
+        self::assertSame([], array_map(static fn (DeliveryNoteLineTax $tax): string => $tax->getCode(), $note->getLines()[0]->getTaxes()), 'franchise leaves the product\'s VAT out (EXT-03)');
+        $stated = new DeliveryNoteLineInput(null, 'Pièce', '1', $this->unit('C62')->getId(), '100', [$this->tax('TVA20')->getId()]);
+        try {
+            $this->manage->create($this->company, $this->input($customer, [$stated]), null);
+            self::fail('a franchise company charged VAT');
+        } catch (InvalidDeliveryNote $refused) {
+            self::assertSame(['lines[0].taxComponentIds', 'The franchise regime does not charge TVA20.'], [$refused->field, $refused->getMessage()]);
+        }
     }
 
     public function testWhatALineStatesItselfWinsOverItsProduct(): void
@@ -217,7 +238,7 @@ final class ManageDeliveryNotesTest extends TestCase
     private function customer(string $regime = 'standard', array $excluded = [], string $number = 'CLI-0001'): Customer
     {
         $now = $this->clock->now();
-        $customer = Customer::create($this->company, $number, new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', $regime, 'fiscal.regime.'.$regime, $excluded, null, 0, $now), [], $now);
+        $customer = Customer::create($this->company, $number, new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime($this->company->getFiscalPreset(), $regime, 'fiscal.regime.'.$regime, $excluded, null, 0, $now), [], $now);
         $this->customers->save($customer);
 
         return $customer;

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Application;
 
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Module\Customers\Domain\Customer;
 use App\Tenancy\Domain\Company;
 
@@ -19,7 +20,7 @@ use App\Tenancy\Domain\Company;
  */
 final readonly class InvoiceMentions
 {
-    public function __construct(private FiscalPresets $presets)
+    public function __construct(private FiscalPresets $presets, private ExcludedTaxFamilies $regimes)
     {
     }
 
@@ -27,8 +28,7 @@ final readonly class InvoiceMentions
     public function keys(Company $company, Customer $customer): array
     {
         $preset = $this->presets->get($company->getFiscalPreset());
-        $vatRegime = $company->getProfile()->vatRegime;
-        $companyRegime = array_find($preset->companyVatRegimes, static fn ($regime): bool => $regime->code === $vatRegime);
+        $companyRegime = $this->regimes->companyRegime($company);
 
         return array_values(array_unique(array_filter(
             [$customer->getTaxRegime()->getMentionKey(), $companyRegime?->mentionKey, ...$preset->invoiceMentions],

@@ -11,6 +11,7 @@ namespace App\Tests\Unit\Module\Invoices\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxFamily;
@@ -95,7 +96,7 @@ final class InvoiceWorkflowTest extends TestCase
             new AllocateNumber($this->series, $this->transactions, $this->clock),
             $this->transactions,
             new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()),
-            new InvoiceMentions(ShippedFiscalPresets::presets()),
+            new InvoiceMentions(ShippedFiscalPresets::presets(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets())),
             new ReadSetting($resolve),
             $this->events,
             $this->audit,

@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\TaxKind;
@@ -61,6 +62,7 @@ final readonly class ManageInvoices
         private InvoiceTotals $totals,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private ExcludedTaxFamilies $excluded,
     ) {
     }
 
@@ -313,7 +315,7 @@ final readonly class ManageInvoices
     }
 
     /**
-     * The active taxes among the ids that the customer's regime charges, of one kind when one is named.
+     * The active taxes among the ids that the customer's regime and the company's own charge, of one kind when one is named.
      *
      * @param list<string> $ids
      *
@@ -321,7 +323,7 @@ final readonly class ManageInvoices
      */
     private function chargeable(Company $company, Customer $customer, array $ids, ?TaxKind $kind): array
     {
-        $excluded = $customer->getTaxRegime()->getExcludedFamilies();
+        $excluded = $this->excluded->of($company, $customer->getTaxRegime());
         $taxes = array_map(fn (string $id): ?TaxComponent => $this->taxes->ofIdInCompany(Uuid::fromString($id), $company->getId()), $ids);
 
         return array_values(array_filter($taxes, static fn (?TaxComponent $tax): bool => null !== $tax
@@ -345,8 +347,9 @@ final readonly class ManageInvoices
             if (!$tax->isActive() && !\in_array($taxId->toRfc4122(), $kept, true)) {
                 throw new InvalidInvoice($field, \sprintf('The tax %s is retired.', $tax->getCode()));
             }
-            if (\in_array($tax->getFamily(), $customer->getTaxRegime()->getExcludedFamilies(), true)) {
-                throw new InvalidInvoice($field, \sprintf('The %s regime does not charge %s.', $customer->getTaxRegime()->getCode(), $tax->getCode()));
+            $leftOutBy = $this->excluded->regimeLeavingOut($company, $customer->getTaxRegime(), $tax->getFamily());
+            if (null !== $leftOutBy) {
+                throw new InvalidInvoice($field, \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()));
             }
             $taxes[] = $tax;
         }

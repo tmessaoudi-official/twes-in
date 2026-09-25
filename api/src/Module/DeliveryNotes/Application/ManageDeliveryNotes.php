@@ -11,6 +11,7 @@ namespace App\Module\DeliveryNotes\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
@@ -55,6 +56,7 @@ final readonly class ManageDeliveryNotes
         private DeliveryNoteTotals $totals,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private ExcludedTaxFamilies $excluded,
     ) {
     }
 
@@ -175,8 +177,8 @@ final readonly class ManageDeliveryNotes
     }
 
     /**
-     * The taxes a line states, each checked; or, when it states none, its product's defaults its customer's regime
-     * charges and the company still has active.
+     * The taxes a line states, each checked; or, when it states none, its product's defaults that both its customer's
+     * regime and its company's own charge, and that the company still has active.
      *
      * @param list<string>|null $productDefaults
      * @param list<string>      $kept
@@ -185,7 +187,7 @@ final readonly class ManageDeliveryNotes
      */
     private function lineTaxes(Company $company, Customer $customer, DeliveryNoteLineInput $line, ?array $productDefaults, array $kept): array
     {
-        $excluded = $customer->getTaxRegime()->getExcludedFamilies();
+        $excluded = $this->excluded->of($company, $customer->getTaxRegime());
         if (null === $line->taxComponentIds) {
             $defaults = array_map(fn (string $id): ?TaxComponent => $this->taxes->ofIdInCompany(Uuid::fromString($id), $company->getId()), $productDefaults ?? []);
 
@@ -199,8 +201,9 @@ final readonly class ManageDeliveryNotes
             if (!$tax->isActive() && !\in_array($taxId->toRfc4122(), $kept, true)) {
                 throw new InvalidDeliveryNote('taxComponentIds', \sprintf('The tax %s is retired.', $tax->getCode()));
             }
-            if (\in_array($tax->getFamily(), $excluded, true)) {
-                throw new InvalidDeliveryNote('taxComponentIds', \sprintf('The %s regime does not charge %s.', $customer->getTaxRegime()->getCode(), $tax->getCode()));
+            $leftOutBy = $this->excluded->regimeLeavingOut($company, $customer->getTaxRegime(), $tax->getFamily());
+            if (null !== $leftOutBy) {
+                throw new InvalidDeliveryNote('taxComponentIds', \sprintf('The %s regime does not charge %s.', $leftOutBy, $tax->getCode()));
             }
             $taxes[] = $tax;
         }

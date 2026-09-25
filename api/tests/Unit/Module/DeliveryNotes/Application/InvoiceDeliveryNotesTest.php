@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\DeliveryNotes\Application;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\Unit;
@@ -80,7 +81,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $this->audit = new InMemoryAuditTrail($this->transactions);
         // The notes are held while they are read, as the database holds their rows.
         $this->notes->transactions = $this->transactions;
-        $manage = new ManageInvoices($this->invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $this->units, $this->taxes, $this->establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $this->audit, $this->clock);
+        $manage = new ManageInvoices($this->invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $this->units, $this->taxes, $this->establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $this->audit, $this->clock, new ExcludedTaxFamilies(ShippedFiscalPresets::presets()));
         $this->invoicing = new InvoiceDeliveryNotes($this->notes, $this->invoices, $manage, $this->transactions, $this->audit, $this->clock);
         $this->customer = $this->customer($this->company);
     }

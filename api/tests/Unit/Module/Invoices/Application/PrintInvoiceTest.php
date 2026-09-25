@@ -11,6 +11,7 @@ namespace App\Tests\Unit\Module\Invoices\Application;
 
 use App\Files\Application\Files;
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Fiscal\Domain\TaxFamily;
 use App\Module\Customers\Domain\Customer;
@@ -88,7 +89,7 @@ final class PrintInvoiceTest extends TestCase
         $this->print = new PrintInvoice(
             $this->invoices,
             $this->totals,
-            new InvoiceMentions(ShippedFiscalPresets::presets()),
+            new InvoiceMentions(ShippedFiscalPresets::presets(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets())),
             $this->template,
             $this->renderer,
             new Files($this->storage, $this->records, $this->clock),

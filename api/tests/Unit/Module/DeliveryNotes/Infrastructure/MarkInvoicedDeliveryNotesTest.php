@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\DeliveryNotes\Infrastructure;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
@@ -56,7 +57,7 @@ final class MarkInvoicedDeliveryNotesTest extends TestCase
         $notes->transactions = $transactions;
         $invoices = new InMemoryInvoices();
         $audit = new InMemoryAuditTrail($transactions);
-        $manage = new ManageInvoices($invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $units, $taxes, $establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $audit, $clock);
+        $manage = new ManageInvoices($invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $units, $taxes, $establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $audit, $clock, new ExcludedTaxFamilies(ShippedFiscalPresets::presets()));
         $now = $clock->now();
         $customer = Customer::create($company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
         $unit = $units->ofCodeInCompany('C62', $company->getId());

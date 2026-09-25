@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Module\Invoices\Application;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxFamily;
@@ -34,6 +35,7 @@ use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\CompanyProfile;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomers;
@@ -75,7 +77,7 @@ final class ManageInvoicesTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->totals = new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
-        $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock);
+        $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ExcludedTaxFamilies(ShippedFiscalPresets::presets()));
         $this->invoices->transactions = $transactions;
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->provision->handle($this->company);
@@ -129,6 +131,25 @@ final class ManageInvoicesTest extends TestCase
         $this->assertRefused('documentTaxComponentIds', fn () => $this->manage->create($this->company, $this->input($customer, [], [$this->tax('TIMBRE')->getId()]), null));
         $this->manage->revise($this->company, $kept->getId(), $this->input($customer, [], [$this->tax('TIMBRE')->getId()], new InvoiceHeader(customerReference: 'kept')), null);
         self::assertSame(['TIMBRE'], $this->documentTaxCodes($kept->getDocumentTaxes()), 'a retired tax stays on the draft that already names it');
+    }
+
+    public function testACompanyOnAVatFreeRegimeChargesNoVatToAnyCustomer(): void
+    {
+        $this->company = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->provision->handle($this->company);
+        $this->company->reviseProfile(new CompanyProfile(vatRegime: 'franchise'));
+        $customer = $this->customer();
+
+        $invoice = $this->manage->create($this->company, $this->input($customer, [new InvoiceLineInput($this->product(['TVA20'])->getId(), null, '1')]), null);
+
+        self::assertSame([], array_map(static fn (InvoiceLineTax $tax): string => $tax->getCode(), $invoice->getLines()[0]->getTaxes()), 'franchise leaves the product\'s VAT out (EXT-03)');
+        $stated = new InvoiceLineInput(null, 'Conseil', '1', $this->unit('C62')->getId(), '100', null, [$this->tax('TVA20')->getId()]);
+        try {
+            $this->manage->create($this->company, $this->input($customer, [$stated]), null);
+            self::fail('a franchise company charged VAT');
+        } catch (InvalidInvoice $refused) {
+            self::assertSame(['lines[0].taxComponentIds', 'The franchise regime does not charge TVA20.'], [$refused->field, $refused->getMessage()]);
+        }
     }
 
     public function testTheTotalsApplyTheLineDiscountTheDocumentDiscountTheStampAndTheWithholding(): void
@@ -253,7 +274,7 @@ final class ManageInvoicesTest extends TestCase
      */
     private function customer(string $regime = 'standard', array $excluded = [], array $defaultTaxes = [], string $number = 'CLI-0001'): Customer
     {
-        $taxRegime = new CustomerTaxRegime('TN', $regime, 'fiscal.regime.'.$regime, $excluded, null, 0, $this->clock->now());
+        $taxRegime = new CustomerTaxRegime($this->company->getFiscalPreset(), $regime, 'fiscal.regime.'.$regime, $excluded, null, 0, $this->clock->now());
         $customer = Customer::create($this->company, $number, new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $taxRegime, $defaultTaxes, $this->clock->now());
         $this->customers->save($customer);
 
