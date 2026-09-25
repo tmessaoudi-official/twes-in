@@ -2804,6 +2804,25 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   read "Aug 19, 2026") and its amounts as the API sent them; it now goes through the shared formatter, and the
   last day covered is read in the company's time zone. The 2026-09-21 17:35 credit balance and write-off had no
   § 8 row; row 128 carries them with (2).
+- [2026-09-25 15:53] AGREED: **a café has several espaces, waiters are given zones, and a table QR stays account-free
+  for now** (developer, after the round-6 board review). **(1) Espaces.** One café at one address can have a
+  terrace, a non-smoking room, an events room: an **espace** is a named zone drawn on a floor (`venue_area` stays
+  one plan per floor per establishment; an upper floor is a floor holding its own espaces), and each table belongs
+  to exactly one. An espace carries **smoking or non-smoking**, can be **closed** (the terrace in winter: its tables
+  leave the floor and their QR says so), and is what the price lists (2026-09-20 02:30) and the menu hours are
+  keyed to; the room screen shows one tab per espace plus « Tout ». Booking a **whole espace** for an event joins
+  the staff-side booking tier (2026-09-20 19:40, tier 2), built later with it. A second café at another address is
+  a second **establishment**, not an espace. **(2) Waiter zones.** Per shift a waiter is given espaces and/or
+  single tables; a table's own assignment wins over its espace's; zones may be shared. A QR order goes to the
+  table's waiter; a table with none is offered to every waiter on shift, and the first to accept owns it for the
+  service (2026-09-20 02:05's acceptance rule unchanged). The plan carries over from shift to shift until someone
+  changes it; no weekday templates. **(3) « A client with an account »** at a table means a portal contact
+  (2026-09-20 19:20): later, a signed-in contact may put the table's order on the company account, still accepted
+  by the waiter. Guests stay device sessions; personal guest accounts are refused (a third kind of principal for
+  no customer who asked). The review also found the café drawn one state board per module, never its flows: the
+  guest's ordering path, the waiter's acceptance, moving and joining tabs, courses, the locked and suspended table,
+  a station's rupture reaching every phone, the untouched-ticket alarm, the portal's standing order, station
+  routing, the QR sheet, drawing the tables and the Guest settings are drawn in batch 4.
 
 ## 8. Status
 
