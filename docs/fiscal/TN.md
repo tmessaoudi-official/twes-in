@@ -22,6 +22,20 @@ disagree, both are cited and the preset's choice is stated.
 **Source conflict.** The Ministry of Finance's overview page [9] still lists 18 %, 12 % and 6 %, the rates in force
 before LF 2018. It is stale; the preset follows the amended code [1].
 
+## 2a. When VAT is due, and when it is declared (row 112, 2026-09-25)
+
+| Rule | What the software does | Source | Status |
+|---|---|---|---|
+| The taxable event of a sale of goods is the delivery; for successive orders it is the delivery, at the latest the invoice date | a delivered invoice's VAT counts in the month of its issue date | Code de la TVA art. 5-2 [17]; Ministère des Finances FAQ [18] | unvalidated |
+| The taxable event of a service is its performance, or the receipt of the price or of an advance when that comes first | same as above: the issue date, not the performance or the receipt | Code de la TVA art. 5-3 [17] | unvalidated |
+| Every VAT-registered business outside the régime forfaitaire declares monthly, even when nothing is due: within the first 15 days of the following month for a natural person, the first 28 days for a legal person | nothing yet: no declaration is produced (row 91) | Code de la TVA art. 18-I [12] | unvalidated |
+| A natural person under IRPP art. 62 III ter declares quarterly, within the first 15 days of the month after each calendar quarter (LF 2023 art. 57) | not modelled | Code de la TVA art. 18 as amended by loi n° 2022-22 [12] | unvalidated |
+
+What the home shows is therefore the VAT **on the invoices issued in the month**, labelled « TVA collectée »
+(docs/SPEC.md § 7, 2026-09-24 11:40). For goods invoiced on delivery it is the month's due VAT; for a service invoiced
+before its performance and before any payment it comes early, and for a service paid in advance of its invoice it comes
+late. It is never called « à déclarer ».
+
 ## 3. FODEC (taxe professionnelle de compétitivité)
 
 | Rule | Preset | Source | Status |
@@ -133,6 +147,7 @@ comes after the POC (docs/SPEC.md § 2).
 - Tax-inclusive entry with FODEC and VAT on one line, refused by the calculator (ruling of 2026-09-13).
 - Withholding exclusions and reduced rates (§ 5), not modelled.
 - On supplier payments (§ 5a): the withholding by nature (fees, rents), the certificate and the declaration, not modelled.
+- The monthly declaration itself and its forms (§ 2a), not produced; the declaration of a régime forfaitaire, not researched.
 - Matricule check letter (§ 8), not verified.
 - Regime mention wording (§ 7, § 9), unsourced.
 
@@ -154,3 +169,5 @@ comes after the POC (docs/SPEC.md § 2).
 14. EN 16931-1:2017, business rule BR-CO-17 (VAT category tax amount).
 15. Note commune n° 6/2025 (LF 2025 art. 68, 3 % withheld by delivery services from sellers without a tax card, not modelled): https://jibaya.tn/wp-content/uploads/2025/03/Note-Commune-N%C2%B006.pdf
 16. Hesabi, « Taux de retenue à la source en Tunisie 2026 » (secondary): https://hesabi.tn/actualites/taux-retenue-source-tunisie-2026
+17. Code de la TVA, art. 5 (fait générateur), read from the 2024 consolidated code: https://alliance-tunisie.com/wp-content/uploads/2024/06/CODE-DE-LA-TVA-2024.pdf
+18. Ministère des Finances, FAQ « Quel est le fait générateur de la TVA en cas de vente de marchandises (cas des commandes successives) ? »: https://www.finances.gov.tn/fr/node/895

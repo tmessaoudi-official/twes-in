@@ -30,7 +30,8 @@ const AGING_COLOURS: Readonly<Record<AgingBucket, string>> = {
 
 /**
  * The invoices module's panel on the home page (docs/SPEC.md § 8 row 35): what is still to collect and how much of it
- * is late, what came in this month, the VAT invoiced this month, the invoices to chase and six months of payments.
+ * is late, what came in this month, the VAT its invoices charged this month (« TVA collectée »), the invoices to chase
+ * and six months of payments.
  * Every figure is the API's; the page only lays them out.
  */
 @Component({

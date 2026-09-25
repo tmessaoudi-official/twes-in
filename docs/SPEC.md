@@ -2721,6 +2721,17 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   which the company knows and the software does not). Not modelled: the natures excluded from withholding (utilities,
   insurance, leasing, price-controlled goods, agriculture) and the per-nature rates (fees, rents); the company overrides
   the rate on such a payment. The certificate handed to the supplier is printed output and stays with row 91.
+- [2026-09-25 07:42] PROVISIONAL — to confirm (overnight, row 112): **each country's VAT basis and declaration
+  calendar is sourced** in `docs/fiscal/TN.md` § 2a and `docs/fiscal/FR.md` § 2a (primary texts: Code de la TVA art. 5
+  and 18, CGI art. 269 and 287, BOFiP, impots.gouv.fr). In both, goods are taxed on delivery; services on performance or
+  earlier receipt in Tunisia, and on receipt (« encaissements ») in France unless the company opted for the débits.
+  Tunisia declares monthly (by the 15th for a natural person, the 28th for a legal one); France files a monthly CA3
+  (quarterly under 4,000 € a year, due the 15th to the 24th) or, under the simplifié, an annual CA12 with July and
+  December instalments. What the home shows stays the VAT of the invoices issued in the month, so the tile now reads
+  « TVA collectée · mois » (en « VAT collected · month », the wording that is provisional), and a translation test
+  keeps « TVA à déclarer », « déclaration de TVA » and their English out of every message; the three « Déclarer » hits
+  that remain are « Déclarer un règlement », a payment. The VAT due on receipts for French services is not computed:
+  that belongs to the declaration work, row 91.
 
 ## 8. Status
 
@@ -2839,8 +2850,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 108 | Lot on document lines (§ 7 2026-09-24 12:40, row 5): an optional lot or serial on invoice and delivery-note lines, filled by a GS1 scan; validation takes the named lot, first-to-expire only for a line naming none. First of the amendments | M | done | 19b3b43 | |
 | 109 | Cost on the line at issue (§ 7 2026-09-24 11:40, RPT-01): `invoice_line.unit_cost` copied from the product at issue, read only with `product.cost.read` | S | done | 82c4b08 | |
 | 110 | Reorder point per product per establishment (§ 7 2026-09-24 11:40): column, product form field, import column; empty means no alert | S | done | 0088780 | |
-| 111 | Supplier withholding (§ 7 2026-09-24 11:40, RPT-09): Tunisia's rules sourced in `docs/fiscal/TN.md`, then recorded on an expense's payment at the preset's rate, overridable | M | done | - | |
-| 112 | Declaration basis and calendar (§ 7 2026-09-24 11:40, RPT-03): TN and FR researched with citations; « TVA collectée » on the home meanwhile | S | todo | - | |
+| 111 | Supplier withholding (§ 7 2026-09-24 11:40, RPT-09): Tunisia's rules sourced in `docs/fiscal/TN.md`, then recorded on an expense's payment at the preset's rate, overridable | M | done | 4fa586e | |
+| 112 | Declaration basis and calendar (§ 7 2026-09-24 11:40, RPT-03): TN and FR researched with citations; « TVA collectée » on the home meanwhile | S | done | - | |
 | 113 | Home figures revised (§ 7 2026-09-24 11:55): margin headline, « Facturé ce mois » under it, the kept and added figures, the query-count test; after row 57 | M | todo | - | |
 | 114 | The ten reports and saved report views (§ 7 2026-09-24 12:05) on row 89's engine, « dû à 30 jours », the company switcher's per-company figures | L | todo | - | |
 | 115 | Insights and « À surveiller » (§ 7 2026-09-24 12:10): the ten insights as their data exists, thresholds as settings, the live screen and the home's count | M | todo | - | |

@@ -1136,7 +1136,7 @@
       "overdue_none": "Aucune facture en retard",
       "see": "Voir",
       "collected": "Encaissé en {{month}}",
-      "vat": "TVA facturée · {{month}}",
+      "vat": "TVA collectée · {{month}}",
       "to_chase": "À relancer",
       "to_chase_detail": "{{count}} factures · {{amount}} {{currency}}",
       "to_chase_none": "Rien à relancer : aucune facture en retard ni à échéance cette semaine.",

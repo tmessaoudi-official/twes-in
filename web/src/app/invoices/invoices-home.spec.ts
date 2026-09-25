@@ -36,7 +36,7 @@ class StaticLoader implements TranslateLoader {
           overdue_none: 'Aucune facture en retard',
           see: 'Voir',
           collected: 'Encaissé en {{month}}',
-          vat: 'TVA facturée · {{month}}',
+          vat: 'TVA collectée · {{month}}',
           to_chase: 'À relancer',
           to_chase_detail: '{{count}} factures · {{amount}} {{currency}}',
           to_chase_none: 'Rien à relancer',
@@ -164,7 +164,7 @@ describe('InvoicesHome', () => {
     expect(facade.loadSummary).toHaveBeenLastCalledWith('c2');
   });
 
-  it('shows what is to collect, what is late, what came in and the VAT invoiced, as the API has them', () => {
+  it('shows what is to collect, what is late, what came in and the VAT collected, as the API has them', () => {
     expect(text('home-outstanding')).toContain('3 531,050');
     expect(text('home-outstanding')).toContain('TND');
     expect(text('home-overdue')).toContain('2 031,050');

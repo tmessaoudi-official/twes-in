@@ -25,6 +25,22 @@ impositions sur les biens et services (CIBS, book II, from art. L. 211-1). It wa
 ordonnance n° 2026-671 du 27 juillet 2026 postpones it to 1 January 2027 [4]. The rates do not change, only the
 articles that carry them. Secondary sources only. This file cites the CGI articles in force today.
 
+## 2a. When VAT is due, and when it is declared (row 112, 2026-09-25)
+
+| Rule | What the software does | Source | Status |
+|---|---|---|---|
+| VAT on a delivery of goods is due when the power to dispose of them as owner passes (the delivery); since 1 January 2023 an advance received before it makes VAT due on the advance, when the goods are precisely identified | a delivered invoice's VAT counts in the month of its issue date; advances are not modelled | CGI art. 269-1-a and 269-2-a; BOI-TVA-BASE-20-10 § 40 and § 65 [10] | unvalidated |
+| VAT on a service is due on receipt of the price or of advances (« encaissements »), unless the business opted to pay it on the invoices (« débits ») | the issue date, which matches only the débits option | CGI art. 269-2-c; BOI-TVA-BASE-20-20 § 30 [11] | unvalidated |
+| Régime réel normal: a monthly CA3 declaration; quarterly when the year's tax is under 4,000 € | nothing yet: no declaration is produced (row 91) | CGI art. 287-2 (in force since 1 January 2025) [12] | unvalidated |
+| The CA3 is due between the 15th and the 24th of the following month, the day set by the business's legal form, its département and its name or SIREN | not modelled | BOI-TVA-DECLA-20-20-10-10 § 200 [13] | unvalidated |
+| Régime simplifié: one annual CA12, with two instalments of 55 % (July) and 40 % (December) of the previous year's tax before VAT on fixed assets; the CA12 is due by the second working day after 1 May for a calendar year, within the three months after the year closes otherwise | not modelled | CGI art. 287-3 [12]; impots.gouv.fr [14] | unvalidated |
+| Franchise en base: no VAT charged, no declaration of it (§ 3) | the company regime `franchise` | § 3 | unvalidated |
+
+What the home shows is therefore the VAT **on the invoices issued in the month**, labelled « TVA collectée »
+(docs/SPEC.md § 7, 2026-09-24 11:40). For goods it is close to the month's due VAT; for services, unless the company
+opted for the débits, what is due is the VAT on what was received in the month, which the software does not compute
+yet. It is never called « à déclarer ».
+
 ## 3. Company VAT regime: franchise en base
 
 | Rule | Preset | Source | Status |
@@ -101,6 +117,8 @@ E-invoicing comes after the POC (docs/SPEC.md § 2).
 
 - The CIBS article numbers replace the CGI references from 1 January 2027 (§ 2, § 3), not yet reflected.
 - La Poste's SIRET exception (§ 5) is taken from secondary sources; no primary INSEE text was found for it.
+- The encaissements basis for services (§ 2a): the VAT on what was received in a period, not computed; the débits option is not recorded on the company.
+- The CA3/CA12 themselves and the CIBS article numbers for § 2a, not researched.
 - A VAT key of letters (numbers issued without a SIREN) is accepted unchecked (§ 5).
 - Mention wording (§ 4, § 6) is unsourced beyond the articles named.
 
@@ -115,3 +133,8 @@ E-invoicing comes after the POC (docs/SPEC.md § 2).
 7. E-invoicing calendar: economie.gouv.fr (fetch refused with 403 in this round) and secondary sources.
 8. Code de commerce art. L441-9 and D441-5 (décret n° 2012-1115), Légifrance.
 9. EN 16931-1:2017, business rule BR-CO-17.
+10. BOI-TVA-BASE-20-10 (delivery of goods): https://bofip.impots.gouv.fr/bofip/534-PGP.html/identifiant=BOI-TVA-BASE-20-10-20221221
+11. BOI-TVA-BASE-20-20 (services): https://bofip.impots.gouv.fr/bofip/283-PGP.html/identifiant=BOI-TVA-BASE-20-20-20181107
+12. CGI art. 287: https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048826856
+13. BOI-TVA-DECLA-20-20-10-10 (filing dates): https://bofip.impots.gouv.fr/bofip/1001-PGP.html/identifiant=BOI-TVA-DECLA-20-20-10-10-20150506
+14. impots.gouv.fr, CA12 due date: https://www.impots.gouv.fr/professionnel/questions/je-suis-soumis-au-regime-simplifie-dimposition-la-tva-quelle-echeance-dois

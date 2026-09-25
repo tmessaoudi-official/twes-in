@@ -1136,7 +1136,7 @@
       "overdue_none": "No overdue invoice",
       "see": "View",
       "collected": "Collected in {{month}}",
-      "vat": "VAT invoiced · {{month}}",
+      "vat": "VAT collected · {{month}}",
       "to_chase": "To chase",
       "to_chase_detail": "{{count}} invoices · {{amount}} {{currency}}",
       "to_chase_none": "Nothing to chase: no invoice overdue or due this week.",

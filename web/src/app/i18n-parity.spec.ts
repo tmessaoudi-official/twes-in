@@ -24,6 +24,9 @@ const paidStatus = [
   en.auth.scene.paid,
 ];
 
+// The home's VAT tile, in both languages.
+const homeVat = [fr.invoices.home.vat, en.invoices.home.vat];
+
 function load(lang: string): unknown {
   return files[lang];
 }
@@ -69,5 +72,12 @@ describe('translation files', () => {
 
   it('an invoice with nothing left due reads settled, not paid', () => {
     expect(paidStatus).toEqual(['Soldée', 'Settled', 'Soldée', 'Settled']);
+  });
+
+  // docs/SPEC.md § 7, 2026-09-24 11:40: the home's VAT is what the month's invoices charged, never a declaration.
+  it('the VAT on the home reads collected, and no message calls VAT due for declaring', () => {
+    expect(homeVat).toEqual(['TVA collectée · {{month}}', 'VAT collected · {{month}}']);
+    expect(JSON.stringify(load('fr'))).not.toMatch(/TVA à déclarer|déclaration de TVA/i);
+    expect(JSON.stringify(load('en'))).not.toMatch(/VAT to declare|VAT return/i);
   });
 });
