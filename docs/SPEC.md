@@ -2638,7 +2638,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   states**. Material hides a field's hint while its error shows, so « Cette valeur n’a pas le format attendu. » was all
   that remained; the error now reads the generic sentence followed by the field's own hint (« … Lettres, chiffres et . _
   / -, 32 caractères au plus. »). Chosen over the audit's per-validator message keys because it needs no new wording
-  and covers every hinted field at once. The 27 patterned fields that declare no hint (the preset's identifiers, IBAN,
+  and covers every hinted field at once. The 19 patterned form fields that declare no hint (the preset's identifiers, IBAN,
   BIC, the numbering format among them) still show the generic sentence: each needs its rule written, which is wording
   for you to rule.
 
