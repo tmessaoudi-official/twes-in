@@ -93,6 +93,11 @@
               <app-product-homes [productId]="productId" [readOnly]="!mayWrite()" />
             </mat-card-content>
           </mat-card>
+          <mat-card>
+            <mat-card-content>
+              <app-product-reorder-points [productId]="productId" [readOnly]="!mayWrite()" />
+            </mat-card-content>
+          </mat-card>
         </div>
       </mat-tab>
     }

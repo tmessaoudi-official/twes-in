@@ -1,0 +1,76 @@
+<section class="flex flex-col gap-4" data-testid="product-reorder-points">
+  <h3 class="text-base font-medium">{{ 'products.reorder.title' | translate }}</h3>
+  <p class="text-sm opacity-80">{{ 'products.reorder.intro' | translate }}</p>
+
+  @if (error(); as code) {
+    <p role="alert" data-testid="product-reorder-error" class="text-error">
+      {{ 'products.errors.' + code | translate }}
+    </p>
+  }
+
+  <ul class="flex flex-col gap-2" data-testid="product-reorder-list">
+    @for (row of rows(); track row.establishmentId) {
+      <li
+        class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
+        [attr.data-testid]="'product-reorder-' + row.establishmentCode"
+      >
+        <span class="flex min-w-40 flex-col">
+          <span class="font-medium">{{ row.establishmentName }}</span>
+          <span class="text-sm opacity-80">{{ row.establishmentCode }}</span>
+        </span>
+        @if (readOnly()) {
+          <span [attr.data-testid]="'product-reorder-value-' + row.establishmentCode">
+            {{ row.quantity === null ? ('products.reorder.none' | translate) : valueOf(row) }}
+          </span>
+        } @else {
+          <div class="flex flex-wrap items-start gap-2">
+            <mat-form-field class="w-40">
+              <mat-label>{{ 'products.reorder.quantity' | translate }}</mat-label>
+              <input
+                matInput
+                appDecimal
+                autocomplete="off"
+                [ngModel]="valueOf(row)"
+                (ngModelChange)="type(row, $event)"
+                (keydown.enter)="save(row)"
+                [attr.data-testid]="'product-reorder-quantity-' + row.establishmentCode"
+              />
+              <mat-hint>{{ 'products.reorder.hint' | translate }}</mat-hint>
+            </mat-form-field>
+            <button
+              mat-flat-button
+              type="button"
+              class="mt-2"
+              [disabled]="busy() || !savable(row)"
+              [attr.data-testid]="'product-reorder-save-' + row.establishmentCode"
+              (click)="save(row)"
+            >
+              {{ 'products.reorder.save' | translate }}
+            </button>
+            @if (row.quantity !== null) {
+              <button
+                mat-icon-button
+                type="button"
+                class="mt-1"
+                [disabled]="busy()"
+                [appLabel]="'products.reorder.clear' | translate"
+                [attr.data-testid]="'product-reorder-clear-' + row.establishmentCode"
+                (click)="clear(row)"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            }
+          </div>
+          @if (malformed(row)) {
+            <span
+              role="alert"
+              class="w-full text-xs text-error"
+              [attr.data-testid]="'product-reorder-malformed-' + row.establishmentCode"
+              >{{ 'products.reorder.malformed' | translate }}</span
+            >
+          }
+        }
+      </li>
+    }
+  </ul>
+</section>

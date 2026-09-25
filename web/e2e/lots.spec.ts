@@ -97,6 +97,25 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
     await scan(page, `]C1010${code}1727053110${scannedLot}`);
     await expect(page.getByTestId('line-0-lot')).toHaveValue(scannedLot);
     expect(await wcagViolations(page)).toEqual([]);
+
+    // Row 110: the product keeps a reorder point per establishment, beside where it is stored.
+    await page.goto(`/products/${ids[0]}`);
+    await page.getByRole('tab', { name: 'Où il est rangé' }).click();
+    const quantity = page.locator('[data-testid^="product-reorder-quantity-"]').first();
+    await expect(quantity).toHaveValue('');
+    // A piece is counted whole: the API refuses a half, and the section says so.
+    await quantity.fill('2,5');
+    await page.locator('[data-testid^="product-reorder-save-"]').first().click();
+    await expect(page.getByTestId('product-reorder-error')).toBeVisible();
+    await quantity.fill('4');
+    await page.locator('[data-testid^="product-reorder-save-"]').first().click();
+    await expect(toast(page)).toContainText('Le seuil a été enregistré.');
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.reload();
+    await page.getByRole('tab', { name: 'Où il est rangé' }).click();
+    await expect(page.locator('[data-testid^="product-reorder-quantity-"]').first()).toHaveValue(
+      '4',
+    );
   } finally {
     if (ids.length > 0) await stockKept(page, ids[0], false);
     await forget(page, ids);

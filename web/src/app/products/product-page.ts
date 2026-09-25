@@ -25,6 +25,8 @@ import { ArticleDefaults } from './article-defaults';
 import { ProductBarcodesSection } from './product-barcodes';
 import { ProductHomes } from './product-homes-facade';
 import { ProductHomesSection } from './product-homes';
+import { ProductReorderPoints } from './product-reorder-points-facade';
+import { ProductReorderPointsSection } from './product-reorder-points';
 import { CustomerView } from '../shared/customer-view/customer-view';
 import { productForm, productInput, productValues } from './product-forms';
 import { ProductsFacade } from './products-facade';
@@ -50,12 +52,13 @@ import { MatTabsModule } from '@angular/material/tabs';
     RecordChanged,
     ArticleDefaults,
     ProductHomesSection,
+    ProductReorderPointsSection,
     ProductBarcodesSection,
   ],
   templateUrl: './product-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   // Its own instance per product screen: what one product's homes are is not shared state.
-  providers: [ProductHomes],
+  providers: [ProductHomes, ProductReorderPoints],
 })
 export class ProductPage {
   private readonly facade = inject(ProductsFacade);

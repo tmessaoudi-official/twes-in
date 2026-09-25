@@ -29,6 +29,8 @@ use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductHomes;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Application\ProductReferenceTaken;
+use App\Module\Products\Application\ProductReorderPoints;
+use App\Module\Products\Application\ReorderPointRefused;
 use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\Product;
@@ -40,6 +42,7 @@ use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\EstablishmentRepository;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -87,6 +90,8 @@ final readonly class ProductImport implements DeclaresImport
         private TaxComponentRepository $taxes,
         private EntityManagerInterface $entityManager,
         private ProductHomes $homes,
+        private ProductReorderPoints $reorderPoints,
+        private EstablishmentRepository $establishments,
         private CompanyGuard $guard,
     ) {
     }
@@ -128,17 +133,20 @@ final readonly class ProductImport implements DeclaresImport
         // refusal that fires after the product is created is a rule the file is held to in a different order from
         // the rest, and only the whole import being rolled back keeps that from showing.
         $home = $this->homeOf($company, $record);
+        $reorderPoint = $this->reorderPointOf($company, $record, $home);
 
         $written = null;
         try {
             if (null === $existing) {
                 $written = $this->manage->create($company, $this->input($company, $record, null), $actorUserId);
                 $this->settleHome($company, $written, $home, $actorUserId);
+                $this->settleReorderPoint($company, $written, $reorderPoint, $actorUserId);
 
                 return RowImported::Created;
             }
             $written = $this->manage->revise($company, $existing->getId(), $this->input($company, $record, $existing), $actorUserId);
             $this->settleHome($company, $written, $home, $actorUserId);
+            $this->settleReorderPoint($company, $written, $reorderPoint, $actorUserId);
 
             return RowImported::Updated;
         } catch (InvalidProduct $refused) {
@@ -147,6 +155,8 @@ final readonly class ProductImport implements DeclaresImport
             [$column, $code] = self::REFUSAL_OF[$field] ?? [null, 'invalid_value'];
 
             throw new RowRejected($column, $refused->getMessage(), $code);
+        } catch (ReorderPointRefused $refused) {
+            throw new RowRejected('reorder_point', $refused->getMessage(), 'invalid_value');
         } catch (ProductReferenceTaken) {
             throw new RowRejected('reference', 'A product already has this reference.', 'already_exists');
         } catch (ProductBarcodeTaken $taken) {
@@ -197,6 +207,53 @@ final readonly class ProductImport implements DeclaresImport
     {
         if (null !== $locationId) {
             $this->homes->setHome($company, $product->getId(), $locationId, $actorUserId);
+        }
+    }
+
+    /**
+     * The reorder point the row sets, and the establishment it is kept for (docs/SPEC.md § 7, 2026-09-24 11:40): the
+     * establishment of the row's home location when it names one, else the company's only establishment. A company
+     * with several and a row naming no home cannot say which, so the row is rejected naming the cell rather than
+     * the point landing in a building nobody chose (PROVISIONAL, § 7). A blank cell keeps what is there.
+     *
+     * The quantity's shape is checked here with the rest of the row; whether the product's unit can count it is the
+     * inventory's rule, answered once the product is written.
+     *
+     * @return array{Uuid, string}|null
+     *
+     * @throws RowRejected
+     */
+    private function reorderPointOf(Company $company, ImportRecord $record, ?Uuid $homeLocationId): ?array
+    {
+        $quantity = self::decimal($record->value('reorder_point'));
+        if (null === $quantity || '' === trim($quantity)) {
+            return null;
+        }
+        $quantity = trim($quantity);
+        if (1 !== preg_match('/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/', $quantity)) {
+            throw new RowRejected('reorder_point', 'A reorder point is a quantity from 0, with at most three decimals.', 'invalid_value');
+        }
+        $establishmentId = null === $homeLocationId ? null : $this->reorderPoints->establishmentOfLocation($company, $homeLocationId);
+        if (null === $establishmentId) {
+            $establishments = $this->establishments->ofCompany($company->getId());
+            if (1 !== \count($establishments)) {
+                throw new RowRejected('reorder_point', 'The company has several establishments, so a reorder point needs the row\'s home_location to say which one.', 'ambiguous_establishment');
+            }
+            $establishmentId = $establishments[0]->getId();
+        }
+
+        return [$establishmentId, $quantity];
+    }
+
+    /**
+     * @param array{Uuid, string}|null $point
+     *
+     * @throws ReorderPointRefused
+     */
+    private function settleReorderPoint(Company $company, Product $product, ?array $point, ?Uuid $actorUserId): void
+    {
+        if (null !== $point) {
+            $this->reorderPoints->setReorderPoint($company, $product->getId(), $point[0], $point[1], $actorUserId);
         }
     }
 
@@ -350,7 +407,10 @@ final readonly class ProductImport implements DeclaresImport
             new ImportColumn('default_tax_codes', 'import.products.default_taxes', false, null, 'import.products.default_taxes_note'),
             new ImportColumn('active', 'import.products.active', false, 'yes', 'import.boolean_note'),
             ...$this->homes->offered($company)
-                ? [new ImportColumn('home_location', 'import.products.home_location', false, 'A-12', 'import.products.home_location_note')]
+                ? [
+                    new ImportColumn('home_location', 'import.products.home_location', false, 'A-12', 'import.products.home_location_note'),
+                    new ImportColumn('reorder_point', 'import.products.reorder_point', false, '12', 'import.products.reorder_point_note'),
+                ]
                 : [],
         ];
     }

@@ -1387,6 +1387,18 @@
       "saved": "Emplacement habituel enregistré.",
       "cleared": "Emplacement habituel retiré."
     },
+    "reorder": {
+      "title": "Seuils de réapprovisionnement",
+      "intro": "La quantité à partir de laquelle l'article est à racheter, par établissement. Vide : aucune alerte.",
+      "quantity": "Seuil",
+      "hint": "Dans l'unité de l'article.",
+      "save": "Enregistrer",
+      "clear": "Retirer le seuil",
+      "none": "Aucun seuil",
+      "malformed": "Une quantité à partir de 0, avec au plus trois décimales.",
+      "saved": "Le seuil a été enregistré.",
+      "cleared": "Le seuil a été retiré."
+    },
     "barcodes": {
       "intro": "Les codes que la douchette lit pour cet article : son code à l’unité, les colis qui en comptent plusieurs d’un coup, le code du carton de son fournisseur, un code que vous avez imprimé. Un code n’appartient qu’à un seul article de l’entreprise.",
       "none": "Aucun code pour l’instant.",
@@ -2168,7 +2180,9 @@
       "default_taxes_note": "Codes de taxes séparés par des virgules (TVA19).",
       "active": "Actif",
       "home_location": "Emplacement habituel",
-      "home_location_note": "Le code d'un emplacement de stock : c'est celui que la réception proposera."
+      "home_location_note": "Le code d'un emplacement de stock : c'est celui que la réception proposera.",
+      "reorder_point": "Seuil de réapprovisionnement",
+      "reorder_point_note": "La quantité à partir de laquelle l'article est à racheter, dans l'établissement de son emplacement habituel (ou le seul établissement)."
     },
     "vendors": {
       "number": "Numéro fournisseur",
@@ -2268,6 +2282,7 @@
       "unknown_product": "L'entreprise n'a aucun produit référencé « {{reference}} ». Importez les produits d'abord.",
       "unknown_location": "L'entreprise n'a aucun emplacement codé « {{code}} ». Créez-le d'abord dans Stock.",
       "ambiguous_location": "Plusieurs établissements ont un emplacement codé « {{code}} » : renommez-en un, ou importez un établissement à la fois.",
+      "ambiguous_establishment": "L'entreprise a plusieurs établissements : indiquez l'emplacement habituel pour dire lequel.",
       "not_stocked": "Aucun stock n'est tenu pour ce produit : seules les marchandises suivies le sont.",
       "lot_tracked": "« {{reference}} » est suivi par lot ou par numéro de série : comptez son stock d'ouverture dans Stock, lot par lot.",
       "invalid_quantity": "Quantité refusée : un nombre, dans les décimales de l'unité.",

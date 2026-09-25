@@ -45,6 +45,48 @@ describe('ProductsApi', () => {
 
   afterEach(() => http.verify());
 
+  // docs/SPEC.md § 7, 2026-09-24 11:40.
+  it('reads, sets and clears a reorder point per establishment', async () => {
+    const read = api.reorderPoints('c1', 'p1');
+    http.expectOne('/api/companies/c1/products/p1/reorder-points').flush([
+      {
+        id: 'r1',
+        establishmentId: 'e1',
+        establishmentCode: 'SIEGE',
+        establishmentName: 'Siège',
+        quantity: '12.000',
+      },
+      {
+        id: null,
+        establishmentId: 'e2',
+        establishmentCode: 'SFAX',
+        establishmentName: 'Sfax',
+        quantity: null,
+      },
+    ]);
+    expect((await read).map((row) => [row.establishmentId, row.quantity])).toEqual([
+      ['e1', '12.000'],
+      ['e2', null],
+    ]);
+
+    const set = api.setReorderPoint('c1', 'p1', 'e2', '2.5');
+    const put = http.expectOne('/api/companies/c1/products/p1/reorder-points/e2');
+    expect([put.request.method, put.request.body]).toEqual(['PUT', { quantity: '2.5' }]);
+    put.flush({
+      establishmentId: 'e2',
+      establishmentCode: 'SFAX',
+      establishmentName: 'Sfax',
+      quantity: '2.500',
+    });
+    expect((await set).quantity).toBe('2.500');
+
+    const cleared = api.clearReorderPoint('c1', 'p1', 'e2');
+    const del = http.expectOne('/api/companies/c1/products/p1/reorder-points/e2');
+    expect(del.request.method).toBe('DELETE');
+    del.flush(null);
+    await cleared;
+  });
+
   it('reads the form options, keeping only line taxes it knows', async () => {
     const pending = api.options('c 1');
     http.expectOne('/api/companies/c%201/product-options').flush({

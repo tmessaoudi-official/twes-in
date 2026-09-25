@@ -196,6 +196,8 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         self::assertCount(3, $skipped);
         self::assertStringContainsString('3.000 of ART-001 lot OCTOBER', $skipped[0]);
         self::assertStringContainsString('lot DECEMBER', $skipped[1]);
+        self::assertStringContainsString('was not at', $skipped[1]);
+        self::assertStringNotContainsString('expired', $skipped[1], 'a lot never received is not called expired');
         self::assertStringContainsString('lot AUGUST', $skipped[2]);
         self::assertStringContainsString('expired', $skipped[2]);
 

@@ -9,6 +9,7 @@ import type {
   ProductJsonldProductRead,
   ProductCategoryProductCategoryWrite,
   ProductHomeProductHomeRead,
+  ProductReorderPointProductReorderPointRead,
   ProductOptionsProductOptionsRead,
   ProductBarcodeRowJsonldProductRead,
   ProductBarcodeRowProductBarcodesRead,
@@ -30,6 +31,7 @@ import {
   type ProductCategoryInput,
   type ProductCategoryRow,
   type ProductHomeRow,
+  type ProductReorderPointRow,
   type ProductInput,
   type ProductOptions,
   type ProductRow,
@@ -269,6 +271,53 @@ export class ProductsApi {
     );
   }
 
+  /** Every establishment of the company with this product's reorder point there, null where it has none. */
+  async reorderPoints(companyId: string, productId: string): Promise<ProductReorderPointRow[]> {
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<ProductReorderPointProductReorderPointRead[]>(
+            reorderPointsPath(companyId, productId),
+          ),
+        )
+      ).map(toReorderPoint),
+    );
+  }
+
+  /** Sets the product's reorder point in that establishment, changing the one it had there. */
+  async setReorderPoint(
+    companyId: string,
+    productId: string,
+    establishmentId: string,
+    quantity: string,
+  ): Promise<ProductReorderPointRow> {
+    return this.guard(async () =>
+      toReorderPoint(
+        await firstValueFrom(
+          this.http.put<ProductReorderPointProductReorderPointRead>(
+            `${reorderPointsPath(companyId, productId)}/${encodeURIComponent(establishmentId)}`,
+            { quantity },
+          ),
+        ),
+      ),
+    );
+  }
+
+  /** Takes the reorder point away in that establishment: no alert there. One it never had is not an error. */
+  async clearReorderPoint(
+    companyId: string,
+    productId: string,
+    establishmentId: string,
+  ): Promise<void> {
+    await this.guard(async () =>
+      firstValueFrom(
+        this.http.delete(
+          `${reorderPointsPath(companyId, productId)}/${encodeURIComponent(establishmentId)}`,
+        ),
+      ),
+    );
+  }
+
   /** A 409 means what the endpoint makes it mean: a reference or a name another row has, or a category in use. */
   private async guard<T>(
     call: () => Promise<T>,
@@ -303,6 +352,18 @@ function codeOf(error: unknown, conflict: ProductsError): ProductsError {
 
 const homesPath = (companyId: string, productId: string): string =>
   `${path(companyId, 'products', productId)}/home-locations`;
+
+const reorderPointsPath = (companyId: string, productId: string): string =>
+  `${path(companyId, 'products', productId)}/reorder-points`;
+
+function toReorderPoint(raw: ProductReorderPointProductReorderPointRead): ProductReorderPointRow {
+  return {
+    establishmentId: raw.establishmentId ?? '',
+    establishmentCode: raw.establishmentCode ?? '',
+    establishmentName: raw.establishmentName ?? '',
+    quantity: raw.quantity ?? null,
+  };
+}
 
 function toHome(raw: ProductHomeProductHomeRead): ProductHomeRow {
   return {

@@ -158,6 +158,18 @@ export interface ProductOptions {
  * Where a product normally lives, one entry per establishment that has one (docs/SPEC.md row 101). It is what a
  * receipt proposes, never a rule: stock may still be put anywhere.
  */
+/**
+ * A product's reorder point in one establishment (docs/SPEC.md § 7, 2026-09-24 11:40): every establishment of the
+ * company is listed, `quantity` null where the product has none, which means no alert there.
+ */
+export interface ProductReorderPointRow {
+  establishmentId: string;
+  establishmentCode: string;
+  establishmentName: string;
+  /** A decimal string with three decimals, in the product's unit; null for none. */
+  quantity: string | null;
+}
+
 export interface ProductHomeRow {
   id: string;
   establishmentId: string;

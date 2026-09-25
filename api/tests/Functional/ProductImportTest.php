@@ -245,6 +245,55 @@ final class ProductImportTest extends ApiTestCase
         self::assertSame([], $managed[ProductHomeLocation::class] ?? [], 'no home a row wrote is still managed');
     }
 
+    public function testARowSetsTheReorderPointOfTheEstablishmentItsHomeIsIn(): void
+    {
+        // docs/SPEC.md § 7, 2026-09-24 11:40: a reorder point per product per establishment, and an import column.
+        $this->aZoneCoded('Z1');
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+
+        $this->import(self::HEADER.",reorder_point\nVIS-6X40,Vis 6x40 zinguée,goods,H87,,1.000,,,,,,12\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'rejected' => []], $this->json());
+        self::assertSame(['12.000'], $this->pointsOf('VIS-6X40'), 'the company has one establishment, so the row needs no home to say which');
+
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertInstanceOf(Company::class, $company);
+        $this->em()->persist(Establishment::create($company, 'SFAX', 'Sfax', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->import("reference,name,reorder_point\nVIS-6X40,Vis 6x40 zinguée,5\n", mode: 'upsert');
+        self::assertResponseStatusCodeSame(422);
+        $rejected = $this->arrayAt($this->json(), 'rejected');
+        self::assertIsArray($rejected[0] ?? null);
+        self::assertSame(['reorder_point', 'ambiguous_establishment'], [$rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null], 'two establishments and no home: the file cannot say which');
+
+        $this->import("reference,name,home_location,reorder_point\nVIS-6X40,Vis 6x40 zinguée,Z1,5\n", mode: 'upsert');
+        self::assertResponseIsSuccessful();
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => []], $this->json());
+        self::assertSame(['5.000'], $this->pointsOf('VIS-6X40'), 'the home names the establishment');
+
+        $this->import("reference,name,home_location,reorder_point\nVIS-6X40,Vis 6x40 zinguée,Z1,-1\n", mode: 'upsert');
+        self::assertResponseStatusCodeSame(422);
+        $rejected = $this->arrayAt($this->json(), 'rejected');
+        self::assertIsArray($rejected[0] ?? null);
+        self::assertSame(['reorder_point', 'invalid_value'], [$rejected[0]['column'] ?? null, $rejected[0]['code'] ?? null]);
+
+        $this->import("reference,name,home_location,reorder_point\nVIS-6X40,Vis 6x40 zinguée,Z1,\n", mode: 'upsert');
+        self::assertResponseIsSuccessful();
+        self::assertSame(['5.000'], $this->pointsOf('VIS-6X40'), 'a blank cell keeps what is there');
+    }
+
+    /** @return list<string> the product's reorder points' quantities */
+    private function pointsOf(string $reference): array
+    {
+        $quantities = $this->em()->getConnection()->fetchFirstColumn(
+            'SELECT r.quantity FROM product_reorder_point r JOIN product p ON p.id = r.product_id WHERE p.reference = ?',
+            [$reference],
+        );
+
+        return array_map(static fn (mixed $quantity): string => \is_string($quantity) ? $quantity : '', $quantities);
+    }
+
     /** A blank cell keeps what is there, like every other cell: a file that does not mention homes does not clear them. */
     public function testAnUpsertLeavingTheHomeBlankKeepsIt(): void
     {

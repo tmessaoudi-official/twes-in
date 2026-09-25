@@ -1387,6 +1387,18 @@
       "saved": "Home location saved.",
       "cleared": "Home location removed."
     },
+    "reorder": {
+      "title": "Reorder points",
+      "intro": "The quantity at or under which the product is to be reordered, per establishment. Empty: no alert.",
+      "quantity": "Reorder point",
+      "hint": "In the product's unit.",
+      "save": "Save",
+      "clear": "Remove the reorder point",
+      "none": "No reorder point",
+      "malformed": "A quantity from 0, with at most three decimals.",
+      "saved": "The reorder point was saved.",
+      "cleared": "The reorder point was removed."
+    },
     "barcodes": {
       "intro": "The codes a scanner reads for this article: its unit code, packs that count several at once, its supplier’s carton code, a code you printed. A code belongs to one article of the company only.",
       "none": "No code yet.",
@@ -2168,7 +2180,9 @@
       "default_taxes_note": "Tax codes separated by commas (TVA19).",
       "active": "Active",
       "home_location": "Home location",
-      "home_location_note": "The code of a stock location: it is what a receipt will propose."
+      "home_location_note": "The code of a stock location: it is what a receipt will propose.",
+      "reorder_point": "Reorder point",
+      "reorder_point_note": "The quantity at or under which the product is to be reordered, in its home location's establishment (or the only one)."
     },
     "vendors": {
       "number": "Vendor number",
@@ -2268,6 +2282,7 @@
       "unknown_product": "The company has no product referenced “{{reference}}”. Import the products first.",
       "unknown_location": "The company has no stock location coded “{{code}}”. Create it first, under Stock.",
       "ambiguous_location": "Several establishments have a location coded “{{code}}”: rename one of them, or import one establishment at a time.",
+      "ambiguous_establishment": "The company has several establishments: give the home location to say which one.",
       "not_stocked": "No stock is kept of this product: only goods whose stock is tracked are.",
       "lot_tracked": "“{{reference}}” is tracked by lot or serial number: count its opening stock under Stock, lot by lot.",
       "invalid_quantity": "Quantity refused: a number, within the unit's decimals.",
