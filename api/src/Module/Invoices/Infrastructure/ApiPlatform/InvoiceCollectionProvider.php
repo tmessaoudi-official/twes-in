@@ -18,6 +18,7 @@ use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceSearch;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceType;
+use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
@@ -61,9 +62,11 @@ final readonly class InvoiceCollectionProvider implements ProviderInterface
             $overdue ? new \DateTimeImmutable('today', new \DateTimeZone($company->getTimezone())) : null,
         );
 
+        $withCosts = $this->guard->may($company, ProductPermission::COST_READ);
+
         return $this->paging->paginator(
             $this->manage->search($company, $search, $this->paging->request($operation, $context)),
-            fn (Invoice $invoice): InvoiceResource => InvoiceResource::of($invoice, $this->totals->figures($invoice)),
+            fn (Invoice $invoice): InvoiceResource => InvoiceResource::of($invoice, $this->totals->figures($invoice), $withCosts),
         );
     }
 }

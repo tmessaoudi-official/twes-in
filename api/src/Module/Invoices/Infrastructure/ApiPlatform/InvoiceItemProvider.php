@@ -14,6 +14,7 @@ use ApiPlatform\State\ProviderInterface;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
+use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -35,6 +36,6 @@ final readonly class InvoiceItemProvider implements ProviderInterface
             throw new NotFoundHttpException('No such invoice.', $absent);
         }
 
-        return InvoiceResource::of($invoice, $this->totals->figures($invoice));
+        return InvoiceResource::of($invoice, $this->totals->figures($invoice), $this->guard->may($company, ProductPermission::COST_READ));
     }
 }

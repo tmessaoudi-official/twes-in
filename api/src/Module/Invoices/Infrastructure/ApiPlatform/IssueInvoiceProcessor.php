@@ -17,6 +17,7 @@ use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\InvoiceWorkflow;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\InvoiceNotDraft;
+use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
 use App\Tenancy\Domain\InvalidNumbering;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -51,6 +52,6 @@ final readonly class IssueInvoiceProcessor implements ProcessorInterface
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }
 
-        return InvoiceResource::of($invoice, $this->totals->figures($invoice));
+        return InvoiceResource::of($invoice, $this->totals->figures($invoice), $this->guard->may($company, ProductPermission::COST_READ));
     }
 }

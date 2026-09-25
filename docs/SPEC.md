@@ -2670,6 +2670,14 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   anchoring the block to the foot of the last page, « Préparé par », vehicle and driver; the quote's « Bon pour accord »
   and the supplier order's approver (neither document exists yet); capturing réserves in the app (waits for the
   electronic-signature work, row 126).
+- [2026-09-25 04:32] PROVISIONAL — to confirm (overnight, row 109): **an issued line's `unit_cost` is its product's cost as it
+  stood at issue, and only for a line in the product's own unit**; a line in another unit (a kilogram of a product sold
+  by the piece) freezes nothing, since no conversion between the two is known, and neither does a line with no product
+  or whose product has no cost. A credit note freezes its lines' costs when it is issued, as an invoice does: the
+  product's cost THEN, not what its invoice froze, so a margin subtracting what was credited is exact only when the cost
+  did not move in between. Copying the invoice line's frozen cost instead is the other choice, yours to rule. The API answers it on each line of a read invoice, a listed one and the answer to issuing, null for a
+  caller without product.cost.read; no screen shows it yet (the margin reports and the home's headline will read it).
+  Lines issued before this carry none, which the margin figures must read as unknown, never as zero.
 
 ## 8. Status
 
@@ -2786,7 +2794,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 106 | The five RecordBar pages (customer, product, expense, vendor, company profile — five, not the four the row named) and `RowAction` read the row-45 declaration: "s", Ctrl K and "?" work on a record page, and a row's own destructive control asks (§ 7 2026-09-20 22:10, 2026-09-21 07:05 and 07:50) | M | done | - | web/src/app/customers/** web/src/app/products/** web/src/app/expenses/** web/src/app/vendors/** web/src/app/shared/list/** |
 | 107 | The server-side bin the `undo` action class needs: a deletion kept recoverable for a while, so "Annuler" on a toast can put it back. Row 45 shipped `plain` and `confirm` only and declared no field for `undo`, because a class nothing can produce is a promise (§ 7 2026-09-20 22:10) | L | todo | - | api/** web/src/app/shared/actions/** |
 | 108 | Lot on document lines (§ 7 2026-09-24 12:40, row 5): an optional lot or serial on invoice and delivery-note lines, filled by a GS1 scan; validation takes the named lot, first-to-expire only for a line naming none. First of the amendments | M | todo | - | |
-| 109 | Cost on the line at issue (§ 7 2026-09-24 11:40, RPT-01): `invoice_line.unit_cost` copied from the product at issue, read only with `product.cost.read` | S | todo | - | |
+| 109 | Cost on the line at issue (§ 7 2026-09-24 11:40, RPT-01): `invoice_line.unit_cost` copied from the product at issue, read only with `product.cost.read` | S | done | - | |
 | 110 | Reorder point per product per establishment (§ 7 2026-09-24 11:40): column, product form field, import column; empty means no alert | S | todo | - | |
 | 111 | Supplier withholding (§ 7 2026-09-24 11:40, RPT-09): Tunisia's rules sourced in `docs/fiscal/TN.md`, then recorded on an expense's payment at the preset's rate, overridable | M | todo | - | |
 | 112 | Declaration basis and calendar (§ 7 2026-09-24 11:40, RPT-03): TN and FR researched with citations; « TVA collectée » on the home meanwhile | S | todo | - | |

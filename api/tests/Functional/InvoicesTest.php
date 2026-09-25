@@ -44,7 +44,7 @@ final class InvoicesTest extends ApiTestCase
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->customerId = $this->customer('CLI-0001', 'standard', [$this->tax('RS1')->getId()], '5')->getId()->toRfc4122();
-        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '1250'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], new \DateTimeImmutable());
+        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '1250', '900.5'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], new \DateTimeImmutable());
         $this->em()->persist($product);
         $this->em()->flush();
         $this->productId = $product->getId()->toRfc4122();
@@ -240,6 +240,29 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'issuing needs invoice.issue');
         $this->getJson($this->path($id));
         self::assertSame(['draft', null, null, null], [$this->json()['status'], $this->json()['number'], $this->json()['dueDate'], $this->json()['customerSnapshot']]);
+    }
+
+    public function testAnIssuedLineKeepsItsProductsCostForWhoMayReadCosts(): void
+    {
+        $this->createUser('reader@twes.local', 'password-1234', $this->company, ['invoice.read'], 'reader');
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'product.cost.read']);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
+        $id = $this->stringAt($this->json(), 'id');
+        self::assertSame([null], $this->costs($this->json()), 'a draft freezes nothing');
+
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertSame(['900.5000'], $this->costs($this->json()), 'issuing copies the product\'s cost (docs/SPEC.md § 7, 2026-09-24 11:40)');
+        $this->getJson($this->path($id));
+        self::assertSame(['900.5000'], $this->costs($this->json()));
+        $this->getJson($this->path());
+        self::assertSame(['900.5000'], $this->costs($this->jsonList()[0]));
+
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('reader@twes.local', 'password-1234');
+        $this->getJson($this->path($id));
+        self::assertSame([null], $this->costs($this->json()), 'a cost is read only with product.cost.read');
+        $this->getJson($this->path());
+        self::assertSame([null], $this->costs($this->jsonList()[0]));
     }
 
     public function testADraftPrintsOnRequestAndAnIssuedInvoicePrintsAsItWasIssued(): void
@@ -712,8 +735,21 @@ final class InvoicesTest extends ApiTestCase
 
         self::assertSame($statements[1], $statements[6], 'six rows cost what one does');
         // Measured 13 on 2026-09-24, the session and the company's checks included; the page itself is its count, its
-        // ids, its rows and one statement per relation a row shows.
-        self::assertLessThanOrEqual(13, $statements[6]);
+        // ids, its rows and one statement per relation a row shows. 14 since 2026-09-25: whether the caller may read
+        // the costs issued lines froze (product.cost.read) is one more membership read, once a page.
+        self::assertLessThanOrEqual(14, $statements[6]);
+    }
+
+    /**
+     * The cost each line of an answered invoice froze at issue.
+     *
+     * @param array<string, mixed> $body
+     *
+     * @return list<mixed>
+     */
+    private function costs(array $body): array
+    {
+        return array_column($this->arrayAt($body, 'lines'), 'unitCost');
     }
 
     /** Drafts and issues a one-line invoice; the response left to read is the issued invoice. */

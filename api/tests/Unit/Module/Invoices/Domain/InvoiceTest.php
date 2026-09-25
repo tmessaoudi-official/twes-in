@@ -332,6 +332,29 @@ final class InvoiceTest extends TestCase
         self::assertSame([['TIMBRE', '1.000']], array_map(static fn (InvoiceTax $tax): array => [$tax->getCode(), $tax->getAmount()], $credit->getDocumentTaxes()));
     }
 
+    public function testIssuingFreezesTheCostOfEachLinesProductInItsOwnUnit(): void
+    {
+        $costed = Product::create($this->company, 'ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '40', '22.5000'), $this->unit('C62'), null, [], $this->now);
+        $uncosted = $this->product($this->company);
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [
+            $this->pieceLine($costed),
+            $this->pieceLine($costed, $this->unit('KGM')),
+            $this->pieceLine($uncosted),
+            $this->pieceLine(),
+        ], [], $this->now);
+        self::assertSame([null, null, null, null], array_map(static fn ($line): ?string => $line->getUnitCost(), $invoice->getLines()), 'a draft freezes nothing');
+
+        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures(lines: 4), $this->now);
+        $costed->revise('ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '40', '30'), $this->unit('C62'), null, [], true, $this->now);
+
+        self::assertSame(['22.5000', null, null, null], array_map(static fn ($line): ?string => $line->getUnitCost(), $invoice->getLines()), 'the cost as it stood at issue, only in the product\'s own unit, which is the only one it is known in');
+
+        // A credit note freezes the cost as it stands when IT is issued, not what its invoice froze (PROVISIONAL, § 7).
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
+        $credit->issue(new \App\Module\Invoices\Domain\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures('-12.900', '0.000', '-12.900', lines: 4), $this->now);
+        self::assertSame(['30.0000', null, null, null], array_map(static fn ($line): ?string => $line->getUnitCost(), $credit->getLines()));
+    }
+
     public function testACreditNoteStatesItsReasonWhenItIsCreatedAndAnInvoiceHasNone(): void
     {
         $invoice = $this->issued('12.900', '0.000', '12.900');

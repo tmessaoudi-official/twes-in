@@ -74,6 +74,14 @@ class InvoiceLine implements CompanyOwned
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
     private ?string $lineGross = null;
 
+    /**
+     * What one unit of its product cost the company when the line was issued (docs/SPEC.md § 7, 2026-09-24 11:40,
+     * RPT-01), read only with product.cost.read; null on a draft, for a line without a product or whose product has no
+     * cost, and for a line in another unit than its product's, the only unit a cost is known in.
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 4, nullable: true)]
+    private ?string $unitCost = null;
+
     /** The delivery note line it invoices; an id rather than an association, delivery notes being their own module. */
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $sourceDeliveryNoteLineId;
@@ -113,6 +121,14 @@ class InvoiceLine implements CompanyOwned
         $this->lineNet = $figures['net'];
         $this->lineTax = $figures['tax'];
         $this->lineGross = $figures['gross'];
+        $product = $this->product;
+        $this->unitCost = null !== $product && $product->getUnit()->getId()->equals($this->unit->getId()) ? $product->getDetails()->costPrice : null;
+    }
+
+    /** What one unit cost the company as it stood at issue; see the property for when it is null. */
+    public function getUnitCost(): ?string
+    {
+        return $this->unitCost;
     }
 
     /** @return array{net: string, tax: string, gross: string}|null what issuing fixed; null on a draft */

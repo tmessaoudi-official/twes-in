@@ -262,6 +262,7 @@ final class InvoiceResource
                 'taxComponentIds' => ['type' => ['array', 'null'], 'items' => self::ID],
                 'sourceDeliveryNoteLineId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
                 'net' => ['type' => 'string', 'readOnly' => true],
+                'unitCost' => ['type' => ['string', 'null'], 'readOnly' => true, 'description' => 'What one unit of its product cost the company when the line was issued; null on a draft, when unknown, and for a caller without product.cost.read.'],
             ],
         ],
     ])]
@@ -415,7 +416,8 @@ final class InvoiceResource
     #[Groups([self::READ])]
     public ?string $footer = null;
 
-    public static function of(Invoice $invoice, InvoiceFigures $figures): self
+    /** @param bool $withCosts whether the caller may read costs (product.cost.read), which each issued line froze */
+    public static function of(Invoice $invoice, InvoiceFigures $figures, bool $withCosts = false): self
     {
         $header = $invoice->getHeader();
         $resource = new self();
@@ -448,6 +450,7 @@ final class InvoiceResource
             'taxComponentIds' => array_map(static fn (InvoiceLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $line->getTaxes()),
             'sourceDeliveryNoteLineId' => $line->getSourceDeliveryNoteLineId()?->toRfc4122(),
             'net' => $fixed['net'],
+            'unitCost' => $withCosts ? $line->getUnitCost() : null,
         ], $invoice->getLines(), $figures->lines);
         $resource->subtotalNet = $figures->subtotalNet;
         $resource->documentDiscount = $figures->documentDiscount;
