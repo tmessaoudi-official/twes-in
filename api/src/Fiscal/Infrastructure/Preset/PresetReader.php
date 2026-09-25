@@ -41,6 +41,8 @@ final readonly class PresetReader
     private const string CODE = '/^[A-Z][A-Z0-9_]{0,31}$/';
     private const string UNIT_CODE = '/^[A-Z0-9]{2,3}$/';
     private const string REGIME_CODE = '/^[a-z][a-z0-9_]{0,23}$/';
+    /** The shape of a CEF VATEX code: VATEX-EU-IC, VATEX-FR-FRANCHISE, VATEX-EU-132-1A. */
+    private const string VATEX_CODE = '/^VATEX-[A-Z]{2}-[A-Z0-9]+(-[A-Z0-9]+)*$/';
     private const string TRANSLATION_KEY = '/^fiscal(\.[a-z0-9_]+){2,}$/';
 
     public function __construct(private string $file, private string $key)
@@ -197,10 +199,43 @@ final readonly class PresetReader
             }
             $mentionKey = null === ($node['mention_key'] ?? null) ? null : $this->translationKey($node, 'mention_key', "$path.mention_key");
 
-            $regimes[] = new PresetRegime($code, $this->translationKey($node, 'label_key', "$path.label_key"), $families, $mentionKey, ($i + 1) * 10);
+            [$vatCategory, $vatExemptionCode] = $this->vatExemption($node, $path);
+            if (null !== $vatCategory && !\in_array(TaxFamily::Vat, $families, true)) {
+                $this->refuse("$path.vat_category", 'belongs to a regime that excludes the vat family');
+            }
+
+            $regimes[] = new PresetRegime($code, $this->translationKey($node, 'label_key', "$path.label_key"), $families, $mentionKey, ($i + 1) * 10, $vatCategory, $vatExemptionCode);
         }
 
         return $regimes;
+    }
+
+    /**
+     * A regime's EN 16931 VAT category and VATEX code, both or neither: a category under which no VAT is charged, and a
+     * code from the CEF VATEX list's shape (the list itself is checked by the validator that receives the invoice).
+     *
+     * @param array<mixed> $node
+     *
+     * @return array{0: string|null, 1: string|null}
+     */
+    private function vatExemption(array $node, string $path): array
+    {
+        $category = null === ($node['vat_category'] ?? null) ? null : $this->string($node, 'vat_category', "$path.vat_category");
+        $code = null === ($node['vat_exemption_code'] ?? null) ? null : $this->string($node, 'vat_exemption_code', "$path.vat_exemption_code");
+        if (null === $category && null !== $code) {
+            $this->refuse("$path.vat_category", 'must be declared beside vat_exemption_code');
+        }
+        if (null !== $category && null === $code) {
+            $this->refuse("$path.vat_exemption_code", 'must be declared beside vat_category');
+        }
+        if (null !== $category && !\in_array($category, PresetRegime::VAT_CATEGORIES_WITHOUT_VAT, true)) {
+            $this->refuse("$path.vat_category", \sprintf('"%s" is not a VAT category under which no VAT is charged (%s)', $category, implode(', ', PresetRegime::VAT_CATEGORIES_WITHOUT_VAT)));
+        }
+        if (null !== $code && 1 !== preg_match(self::VATEX_CODE, $code)) {
+            $this->refuse("$path.vat_exemption_code", \sprintf('"%s" is not a VATEX code (VATEX-, a two-letter scope, then capitals, digits and hyphens)', $code));
+        }
+
+        return [$category, $code];
     }
 
     /**

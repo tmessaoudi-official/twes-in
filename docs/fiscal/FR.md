@@ -92,6 +92,13 @@ only when it is two digits. Unvalidated, like the rest of this section.
 | `intra_eu` | the `vat` family | `fiscal.mention.fr.intra_eu`: "Autoliquidation" for services (CGI art. 283-2), "Exonération de TVA, article 262 ter I du CGI" for goods | unvalidated |
 | `export` | the `vat` family | `fiscal.mention.fr.export`: "Exonération de TVA, article 262 I du CGI" | unvalidated |
 
+In an EN 16931 invoice (Factur-X), a line without VAT carries the VAT category and VATEX exemption code its regime
+declares: `intra_eu` K and `VATEX-EU-IC`, `export` G and `VATEX-EU-G`, and the company regime `franchise` E and
+`VATEX-FR-FRANCHISE` (EN 16931-1 BT-118, BT-121; codes read in the CEN validation artefacts' code list, CEF VATEX).
+`exempt` declares neither, because it does not say which article exempts the sale, so such an invoice is not written
+as Factur-X until it does. Unvalidated; `intra_eu` covers goods and services alike, while the printed mention says
+« Autoliquidation » for services.
+
 The data model's list `standard, exempt, suspended, export` is Tunisia's. Regime codes are preset data, not a
 closed set, and France has no suspended regime in this preset.
 

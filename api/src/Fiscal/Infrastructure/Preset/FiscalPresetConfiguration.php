@@ -126,6 +126,8 @@ final class FiscalPresetConfiguration implements ConfigurationInterface
                     ->scalarNode('label_key')->isRequired()->cannotBeEmpty()->end()
                     ->arrayNode('excluded_families')->scalarPrototype()->end()->end()
                     ->scalarNode('mention_key')->defaultNull()->end()
+                    ->scalarNode('vat_category')->defaultNull()->end()
+                    ->scalarNode('vat_exemption_code')->defaultNull()->end()
                 ->end()
             ->end();
 

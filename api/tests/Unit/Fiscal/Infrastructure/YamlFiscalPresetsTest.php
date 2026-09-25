@@ -86,6 +86,38 @@ final class YamlFiscalPresetsTest extends TestCase
         self::assertSame([IdentifierCheck::Luhn, IdentifierCheck::Siret, IdentifierCheck::FrenchVatKey], array_map(static fn ($identifier) => $identifier->check, $fr->identifiers));
         self::assertNull($tn->identifiers[0]->check, "the matricule fiscal's check letter is not sourced (docs/fiscal/TN.md § 8)");
         self::assertSame(['fiscal.mention.fr.late_payment', 'fiscal.mention.fr.recovery_indemnity', 'fiscal.mention.fr.no_early_discount'], $fr->invoiceMentions);
+
+        // What a regime removing VAT means in an EN 16931 invoice (BT-118, BT-121): declared where the article is known,
+        // left undeclared where it is not ("exempt" names no article), and absent from a preset that has no e-invoicing yet.
+        $vat = static fn (PresetRegime $regime): array => [$regime->code, $regime->vatCategory, $regime->vatExemptionCode];
+        self::assertSame(
+            [['standard', null, null], ['exempt', null, null], ['intra_eu', 'K', 'VATEX-EU-IC'], ['export', 'G', 'VATEX-EU-G']],
+            array_map($vat, $fr->customerTaxRegimes),
+        );
+        self::assertSame([['standard', null, null], ['franchise', 'E', 'VATEX-FR-FRANCHISE']], array_map($vat, $fr->companyVatRegimes));
+        self::assertSame([null], array_values(array_unique(array_map(static fn (PresetRegime $regime) => $regime->vatCategory, [...$tn->customerTaxRegimes, ...$tn->companyVatRegimes]))));
+    }
+
+    public function testAnExemptionCodeIsAVatexCode(): void
+    {
+        $preset = Yaml::parseFile(self::SHIPPED.'/TN.yaml');
+        $preset = self::edit($preset, 'customer_tax_regimes.1.vat_category', 'E');
+        $this->writeTunisia(self::edit($preset, 'customer_tax_regimes.1.vat_exemption_code', 'article 262'));
+
+        $this->expectException(InvalidFiscalPreset::class);
+        $this->expectExceptionMessage('vat_exemption_code');
+        (new YamlFiscalPresets($this->dir))->get('TN');
+    }
+
+    public function testARegimeDeclaringItsVatCategoryAndCodeLoads(): void
+    {
+        // The control for the case above and the refusals below: the two keys together, well formed, are accepted.
+        $preset = Yaml::parseFile(self::SHIPPED.'/TN.yaml');
+        $preset = self::edit($preset, 'customer_tax_regimes.3.vat_category', 'G');
+        $this->writeTunisia(self::edit($preset, 'customer_tax_regimes.3.vat_exemption_code', 'VATEX-EU-G'));
+
+        $export = (new YamlFiscalPresets($this->dir))->get('TN')->customerTaxRegimes[3];
+        self::assertSame(['export', 'G', 'VATEX-EU-G'], [$export->code, $export->vatCategory, $export->vatExemptionCode]);
     }
 
     public function testAPresetNobodyWroteIsUnknown(): void
@@ -125,6 +157,10 @@ final class YamlFiscalPresetsTest extends TestCase
         yield 'a regime excluding a family that does not exist' => ['customer_tax_regimes.1.excluded_families', ['tva'], 'excluded_families'];
         yield 'a regime code used twice' => ['customer_tax_regimes.1.code', 'standard', 'standard'];
         yield 'a translation key outside the fiscal domain' => ['customer_tax_regimes.1.mention_key', 'mention.exempt', 'mention_key'];
+        yield 'a regime removing VAT that claims VAT is charged' => ['customer_tax_regimes.1.vat_category', 'S', 'vat_category'];
+        yield 'a VAT category the standard does not have' => ['customer_tax_regimes.1.vat_category', 'X', 'vat_category'];
+        yield 'a VAT category without its exemption code' => ['customer_tax_regimes.1.vat_category', 'E', 'vat_exemption_code'];
+        yield 'an exemption code without its VAT category' => ['customer_tax_regimes.1.vat_exemption_code', 'VATEX-EU-G', 'vat_category'];
         yield 'a minor unit the currency does not have' => ['minor_unit', 2, 'minor_unit'];
         yield 'a currency that does not exist' => ['currency', 'XXQ', 'currency'];
         yield 'a file named for another country' => ['country', 'FR', 'country'];

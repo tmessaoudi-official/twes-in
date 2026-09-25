@@ -63,10 +63,15 @@ customer_tax_regimes:
       label_key: fiscal.regime.intra_eu
       excluded_families: [vat]
       mention_key: fiscal.mention.fr.intra_eu
+      # EN 16931 BT-151/BT-118 and BT-121 (docs/fiscal/FR.md § 6): intra-community supply, VATEX-EU-IC.
+      vat_category: K
+      vat_exemption_code: VATEX-EU-IC
     - code: export
       label_key: fiscal.regime.export
       excluded_families: [vat]
       mention_key: fiscal.mention.fr.export
+      vat_category: G
+      vat_exemption_code: VATEX-EU-G
 
 company_vat_regimes:
     - code: standard
@@ -76,6 +81,8 @@ company_vat_regimes:
       label_key: fiscal.regime.franchise
       excluded_families: [vat]
       mention_key: fiscal.mention.fr.franchise
+      vat_category: E
+      vat_exemption_code: VATEX-FR-FRANCHISE
 
 mentions:
     invoice:
