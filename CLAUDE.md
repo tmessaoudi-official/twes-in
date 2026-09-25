@@ -104,6 +104,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   the phone's four public ones behind its key, named in `UnauthenticatedSweepTest`),
   `Watch` (« À surveiller »: a module declares its live conditions with `DeclaresWatch` in its own
   `Infrastructure/Watch/`, one statement per kind, gated by its module and permission),
+  `FirstSteps` (« Premiers pas »: a context declares its step with `DeclaresFirstStep` in its own
+  `Infrastructure/FirstSteps/`, done worked out from what is there, shown to whoever may do it),
   and the modules one level down in `api/src/Module/<Name>/`, `Shared` (docs/SPEC.md § 3
   "Architecture style"; `Shared/Domain/CompanyOwned` marks an entity the `Shared/Infrastructure/Doctrine/CompanyFilter`
   scopes to the company a request acts for, and `tests/Architecture/CompanyColumnTest` requires it; a paged list's provider
@@ -119,7 +121,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   clean clone builds without them and a stale local copy is kept out by `.dockerignore`). One directory per feature — over twenty, so
   check `ls web/src/app` rather than this sentence: `account` — « Mon compte », the person's own preferences, `auth`, `company`, `customers`, `delivery-notes`, `expenses`,
   `fiscal`, `hello`, `inventory`, `invitation`, `invoices`, `platform`, `products`, `settings`, `signup`,
-  `vendors`, `pairing` — the phone's public `/pair` page, a scanner with no sign-in, `watch` — « À surveiller » and its home count, `notifications` — the bell, the centre and the Centrifugo connection behind
+  `vendors`, `pairing` — the phone's public `/pair` page, a scanner with no sign-in, `watch` — « À surveiller » and its home count, `first-steps` — « Premiers pas » on the home, `notifications` — the bell, the centre and the Centrifugo connection behind
   the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout by window class (bottom bar below 600 px, rail to 1199, labelled from 1200), its nav manifest, the home manifest (`home-manifest.ts`: a module declares its `*_HOME` panel, loaded lazily, beside its `*_NAV`), the Ctrl K palette (`commands.ts`: a module declares its `*_COMMANDS` beside its `*_NAV`), account menu and the settings area behind the gear; every
   signed-in route is a child of it but `/customer-display`, a window facing the customer), `shared/` for what several features use and which imports no feature (ESLint enforces it; `session/`: the `Session`
   port the auth facade answers; `theme/`: runtime accent colour tokens (`accentTokens`: the accent as picked and its readable roles), the lifecycle map every module's status tones derive from (`lifecycle-tones.ts`),

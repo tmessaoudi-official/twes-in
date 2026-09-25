@@ -2548,5 +2548,26 @@
       "definitif": "This can be neither undone nor corrected."
     },
     "final_group": "Final"
+  },
+  "first_steps": {
+    "title": "First steps",
+    "progress": "{{done}} of {{total}}",
+    "done": "Done",
+    "steps": {
+      "company": {
+        "profile": "Complete the profile and registration number",
+        "brand": "Choose your colour",
+        "members": "Invite a member"
+      },
+      "fiscal": {
+        "taxes": "Check your taxes"
+      },
+      "customers": {
+        "first": "Create a first customer"
+      },
+      "products": {
+        "first": "Create a first product"
+      }
+    }
   }
 }

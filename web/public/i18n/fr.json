@@ -2548,5 +2548,26 @@
       "definitif": "Cela ne pourra être ni annulé ni corrigé."
     },
     "final_group": "Définitif"
+  },
+  "first_steps": {
+    "title": "Premiers pas",
+    "progress": "{{done}} sur {{total}}",
+    "done": "Fait",
+    "steps": {
+      "company": {
+        "profile": "Compléter le profil et le matricule",
+        "brand": "Choisir votre couleur",
+        "members": "Inviter un membre"
+      },
+      "fiscal": {
+        "taxes": "Vérifier vos taxes"
+      },
+      "customers": {
+        "first": "Créer un premier client"
+      },
+      "products": {
+        "first": "Créer un premier article"
+      }
+    }
   }
 }

@@ -82,6 +82,9 @@ services:
         # Every module's watch conditions reach the one catalogue (docs/SPEC.md § 7, 2026-09-24 12:10).
         App\Watch\Application\DeclaresWatch:
             tags: ['app.watch.declarations']
+        # Every context's step of « Premiers pas » reaches the one catalogue (docs/SPEC.md § 7, 2026-09-25 22:17).
+        App\FirstSteps\Application\DeclaresFirstStep:
+            tags: ['app.first_steps.declarations']
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
@@ -109,6 +112,9 @@ services:
     App\Watch\Application\WatchCatalogue:
         arguments:
             $declarations: !tagged_iterator app.watch.declarations
+    App\FirstSteps\Application\FirstStepsCatalogue:
+        arguments:
+            $declarations: !tagged_iterator app.first_steps.declarations
     App\ImportExport\Application\RunImport:
         arguments:
             $maxRows: '%app.import.max_rows%'

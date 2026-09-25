@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { Type } from '@angular/core';
+import { FIRST_STEPS_HOME } from '../first-steps/first-steps-nav';
 import { INVOICES_HOME } from '../invoices/invoices-nav';
 import { WATCH_HOME } from '../watch/watch-nav';
 import type { Gated } from './nav-manifest';
@@ -16,4 +17,8 @@ export interface HomePanel extends Gated {
 }
 
 /** Every module's home panels, in the order the page shows them. */
-export const HOME_PANELS: readonly HomePanel[] = [...WATCH_HOME, ...INVOICES_HOME];
+export const HOME_PANELS: readonly HomePanel[] = [
+  ...FIRST_STEPS_HOME,
+  ...WATCH_HOME,
+  ...INVOICES_HOME,
+];
