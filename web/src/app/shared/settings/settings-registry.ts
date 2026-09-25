@@ -105,6 +105,8 @@ export const PRESENTATION = {
     true,
     parseBool,
   ),
+  /** « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. */
+  showComing: defineSetting<boolean>('presentation.show-coming', true, parseBool),
 } as const;
 
 const LIST_ID = /^[a-z][a-z0-9-]*$/;

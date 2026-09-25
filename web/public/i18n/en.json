@@ -487,7 +487,16 @@
     "expense_categories": "Expense categories",
     "company_security": "Security",
     "subscription": "Subscription",
-    "stock_count": "Count"
+    "stock_count": "Count",
+    "register": "Till",
+    "works": "Works",
+    "reports": "Reports",
+    "declarations": "Declarations",
+    "document_templates": "Document templates",
+    "alerts": "Alerts",
+    "fiscal_preset": "Fiscal preset",
+    "support_access": "Support access",
+    "texts": "Texts"
   },
   "shell": {
     "skip": "Skip to content",
@@ -529,7 +538,8 @@
       "sidebar": "Collapse or expand the menu",
       "help": "Show this list",
       "close": "Close"
-    }
+    },
+    "soon": "Soon"
   },
   "notifications": {
     "bell": "Notifications, {{count}} unread",
@@ -743,7 +753,8 @@
       "plan_labels": "Plan labels",
       "language": "Language",
       "customer_view_cost": "In customer view, hide product costs",
-      "customer_view_supplier_codes": "In customer view, hide suppliers' codes"
+      "customer_view_supplier_codes": "In customer view, hide suppliers' codes",
+      "show_coming": "Show what is coming"
     },
     "choices": {
       "document": {
@@ -2424,6 +2435,72 @@
         "lot_expiring": "Lot {{lot}} of {{product}} ({{reference}}): {{quantity}} in stock, expires on {{expiresOn}}",
         "lot_expired": "Lot {{lot}} of {{product}} ({{reference}}): {{quantity}} in stock, expired on {{expiresOn}}"
       }
+    }
+  },
+  "coming": {
+    "version": {
+      "v1": "Version 1",
+      "later": "Later"
+    },
+    "planned": "Planned for",
+    "plan_row": "Plan row",
+    "home": "Back to home",
+    "hide": "Hide what is coming",
+    "unknown": "Nothing is planned at this address.",
+    "register": {
+      "heading": "The till is being built",
+      "does": "Counter sales on one screen, with the scanner and the keyboard: a receipt or an invoice for the same sale, cash with change, card, on credit or two means, returns with a credit note and back into stock, opening and closing the drawer with the Z report.",
+      "plan": "§ 8 · 82 — counter sales",
+      "meanwhile": "Meanwhile, a counter sale is made from an invoice:",
+      "meanwhile_link": "Issue and collect"
+    },
+    "works": {
+      "heading": "Works are being built",
+      "does": "Follow a job or an intervention end to end: what is planned, the time and supplies spent, what is left to invoice.",
+      "plan": "§ 8 · 80 — works"
+    },
+    "reports": {
+      "heading": "Reports are being built",
+      "does": "Revenue, payments received, margins and stock over the chosen period, by customer, by item or by establishment, to read or to export.",
+      "plan": "§ 8 · 89 and 114 — reports",
+      "meanwhile": "Meanwhile, the home page shows today's figures:",
+      "meanwhile_link": "Open home"
+    },
+    "declarations": {
+      "heading": "Declarations are being built",
+      "does": "The period's tax returns prepared from the documents issued: the amounts per tax, what is left to declare, and a reminder of each due date.",
+      "plan": "§ 8 · 91 — declarations"
+    },
+    "document-templates": {
+      "heading": "Document templates are being built",
+      "does": "Choose the template of each document from a gallery, adjust it (logo, colour, columns, mentions and blocks) and see a real document update while you adjust.",
+      "plan": "A plan row to create (B45, decided on 24/09)",
+      "meanwhile": "Meanwhile, the printed logo and details are set in the profile:",
+      "meanwhile_link": "Company profile"
+    },
+    "alerts": {
+      "heading": "Alerts are being built",
+      "does": "Choose what deserves an alert, from which threshold, and who receives it: a late invoice, low stock, a lot about to expire.",
+      "plan": "§ 8 · 115 — alerts",
+      "meanwhile": "Meanwhile, what needs attention is listed here:",
+      "meanwhile_link": "To watch"
+    },
+    "fiscal-preset": {
+      "heading": "The fiscal preset is being built",
+      "does": "Apply at once the taxes, mentions and numbering the company's country requires, then adjust them.",
+      "plan": "Not in the plan yet",
+      "meanwhile": "Meanwhile, taxes are set one by one:",
+      "meanwhile_link": "Taxes"
+    },
+    "support-access": {
+      "heading": "Support access is being built",
+      "does": "Give support, for a limited time and with your consent, read access to the company, and see everything it did there.",
+      "plan": "Not in the plan yet"
+    },
+    "texts": {
+      "heading": "Texts are being built",
+      "does": "Replace the application's words with yours (“Customer” as “Patient”, for example), in each language.",
+      "plan": "Not in the plan yet"
     }
   }
 }

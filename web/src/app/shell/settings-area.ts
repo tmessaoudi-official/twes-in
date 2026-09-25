@@ -17,7 +17,16 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { filter, map } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
-import { navSections, SETTINGS_NAV, SETTINGS_SECTIONS, visibleEntries } from './nav-manifest';
+import { ThemeFacade } from '../shared/theme/theme-facade';
+import {
+  COMING_NAV,
+  type Gated,
+  navSections,
+  SETTINGS_NAV,
+  SETTINGS_SECTIONS,
+  visibleEntries,
+  withComing,
+} from './nav-manifest';
 
 /** Where the list of settings stands alone: what the gear opens on a phone (docs/SPEC.md § 8 row 35). */
 export const SETTINGS_INDEX = '/company';
@@ -47,6 +56,7 @@ export class SettingsArea {
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
+  private readonly theme = inject(ThemeFacade);
 
   protected readonly index = SETTINGS_INDEX;
   protected readonly query = signal('');
@@ -71,11 +81,18 @@ export class SettingsArea {
     const words = normalized(this.query())
       .split(/\s+/)
       .filter((word) => word !== '');
-    const entries = visibleEntries(
-      SETTINGS_NAV,
-      (permission) => this.auth.hasPermission(permission),
-      isDevMode(),
-      (module) => this.auth.hasModule(module),
+    const visible = <T extends Gated>(entries: readonly T[]): readonly T[] =>
+      visibleEntries(
+        entries,
+        (permission) => this.auth.hasPermission(permission),
+        isDevMode(),
+        (module) => this.auth.hasModule(module),
+      );
+    const settingsComing = COMING_NAV.filter((entry) => SETTINGS_SECTIONS.includes(entry.section));
+    const entries = withComing(
+      visible(SETTINGS_NAV),
+      visible(settingsComing),
+      this.theme.showComing(),
     ).filter((entry) => {
       const names = normalized(
         `${this.translate.instant(entry.labelKey)} ${this.translate.instant(`nav.sections.${entry.section}`)}`,

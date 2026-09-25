@@ -590,6 +590,26 @@ body {
   font-weight: 650;
 }
 
+/* « Bientôt »: an entry of the vision not built yet (docs/SPEC.md § 7, 2026-09-25 17:22). Quiet, never a colour role. */
+.twes-soon {
+  padding: 0 0.375rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 9999px;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.twes-coming-mark {
+  flex: none;
+  width: 3rem !important;
+  height: 3rem !important;
+  font-size: 3rem !important;
+  color: var(--mat-sys-on-surface-variant);
+}
+
 .twes-rail-foot {
   display: flex;
   flex-direction: column;

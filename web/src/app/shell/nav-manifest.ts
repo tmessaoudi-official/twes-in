@@ -33,6 +33,21 @@ export interface NavEntry extends Gated {
   readonly icon: string;
   readonly route: string;
   readonly section: NavSection;
+  /** Present on an entry of the vision not built yet: it shows « Bientôt » and opens the « En construction » page. */
+  readonly coming?: Coming;
+}
+
+/**
+ * What the « En construction » page says of an entry not built yet (docs/SPEC.md § 7, 2026-09-25 11:17): what it will
+ * do, whether it is for version 1 or later, the § 8 row that builds it, and what to use meanwhile. Its texts live
+ * under `coming.<key>` in the translations.
+ */
+export interface Coming {
+  /** The entry it follows in its section; an entry the person cannot see is skipped over, never waited for. */
+  readonly after: string;
+  readonly version: 'v1' | 'later';
+  /** What to use until it exists, when something does the job today. */
+  readonly meanwhile?: string;
 }
 
 export interface NavGroup {
@@ -166,6 +181,120 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
     permission: 'company.settings',
   },
 ];
+
+/** Where an entry not built yet opens: one shared page, keyed by the entry (docs/SPEC.md § 7, 2026-09-25 11:17). */
+export const COMING_ROUTE = '/coming';
+/** The same page inside the settings area, so it opens beside the settings list. */
+export const COMING_SETTINGS_ROUTE = '/company/coming';
+
+/**
+ * The whole vision in the menus (docs/SPEC.md § 7, 2026-09-25 11:17; the round-6 rail and settings boards): each
+ * entry not built yet, placed after the one it follows. An entry leaves this list in the change that builds it.
+ */
+export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
+  {
+    key: 'register',
+    labelKey: 'nav.register',
+    icon: 'point_of_sale',
+    route: `${COMING_ROUTE}/register`,
+    section: 'sell',
+    coming: { after: 'products', version: 'v1', meanwhile: '/invoices/new' },
+  },
+  {
+    key: 'works',
+    labelKey: 'nav.works',
+    icon: 'construction',
+    route: `${COMING_ROUTE}/works`,
+    section: 'sell',
+    coming: { after: 'register', version: 'v1' },
+  },
+  {
+    key: 'reports',
+    labelKey: 'nav.reports',
+    icon: 'bar_chart',
+    route: `${COMING_ROUTE}/reports`,
+    section: 'manage',
+    coming: { after: 'expenses', version: 'v1', meanwhile: '/' },
+  },
+  {
+    key: 'declarations',
+    labelKey: 'nav.declarations',
+    icon: 'event_note',
+    route: `${COMING_ROUTE}/declarations`,
+    section: 'manage',
+    coming: { after: 'reports', version: 'v1' },
+  },
+  {
+    key: 'document-templates',
+    labelKey: 'nav.document_templates',
+    icon: 'article',
+    route: `${COMING_SETTINGS_ROUTE}/document-templates`,
+    section: 'company',
+    permission: 'company.settings',
+    coming: { after: 'numbering', version: 'v1', meanwhile: '/company/profile' },
+  },
+  {
+    key: 'alerts',
+    labelKey: 'nav.alerts',
+    icon: 'notifications_active',
+    route: `${COMING_SETTINGS_ROUTE}/alerts`,
+    section: 'company',
+    permission: 'company.settings',
+    coming: { after: 'settings', version: 'v1', meanwhile: '/watch' },
+  },
+  {
+    key: 'fiscal-preset',
+    labelKey: 'nav.fiscal_preset',
+    icon: 'gavel',
+    route: `${COMING_SETTINGS_ROUTE}/fiscal-preset`,
+    section: 'fiscal',
+    permission: 'company.settings',
+    coming: { after: 'units', version: 'later', meanwhile: '/fiscal/taxes' },
+  },
+  {
+    key: 'support-access',
+    labelKey: 'nav.support_access',
+    icon: 'support_agent',
+    route: `${COMING_SETTINGS_ROUTE}/support-access`,
+    section: 'team',
+    permission: 'company.settings',
+    coming: { after: 'roles', version: 'later' },
+  },
+  {
+    key: 'texts',
+    labelKey: 'nav.texts',
+    icon: 'translate',
+    route: `${COMING_SETTINGS_ROUTE}/texts`,
+    section: 'customisation',
+    permission: 'company.settings',
+    coming: { after: 'modules', version: 'later' },
+  },
+];
+
+/**
+ * The entries with the vision's coming ones placed among them, each right after the entry it follows, or last of its
+ * section when that entry is hidden. A coming entry joins only a section the person already has: somebody who sells
+ * nothing is not shown the till. With `show` off, only what works.
+ */
+export function withComing(
+  entries: readonly NavEntry[],
+  coming: readonly (NavEntry & { readonly coming: Coming })[],
+  show: boolean,
+): readonly NavEntry[] {
+  if (!show) return entries;
+  const result = [...entries];
+  for (const entry of coming) {
+    const at = result.findIndex((placed) => placed.key === entry.coming.after);
+    if (at >= 0) {
+      result.splice(at + 1, 0, entry);
+      continue;
+    }
+    // The entry it follows is hidden here: it goes after the last one of its section, if the person has that section.
+    const lastOfSection = result.map((placed) => placed.section).lastIndexOf(entry.section);
+    if (lastOfSection >= 0) result.splice(lastOfSection + 1, 0, entry);
+  }
+  return result;
+}
 
 /**
  * What a phone's bottom bar puts around « Créer », most used first (the round-6 phone boards: Accueil, Factures,

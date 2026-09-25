@@ -2852,6 +2852,23 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   always third. (5) **C** opens « Créer » and is reserved from every screen; the fold control moves from the top bar to
   the rail's foot, above the member. (6) The notification centre slides in from the side it was opened from: the
   rail's start from a tablet up, the end on a phone.
+- [2026-09-25 19:01] DECIDED (revisit): **« Bientôt » and « En construction », as built** (step 1, slice 2a; same
+  mandate). (1) Nine entries of the round-6 rail and settings boards are not built and show, each marked « Bientôt »,
+  after the entry the board puts them behind: Caisse and Travaux in Vendre, Rapports and Déclarations in Gérer,
+  Modèles de documents and Alertes in Société, Préréglage fiscal, Accès du support, Textes. They are `COMING_NAV` in
+  `web/src/app/shell/nav-manifest.ts`; an entry leaves that list in the change that builds it. (2) **Versions**:
+  Caisse (§ 8 row 82), Travaux (80), Rapports (89, 114), Déclarations (91), Modèles de documents (B45, no row yet) and
+  Alertes (115) are « Version 1 »; Préréglage fiscal, Accès du support and Textes are « Plus tard », with no plan row
+  yet. (3) One shared page, `/coming/<key>` or `/company/coming/<key>` beside the settings list, says what the entry
+  will do, the version, the row and, when something does the job today, a link to it. (4) An entry not built yet
+  joins only a **section the person already has**: somebody who sells nothing is not shown the till; a settings one
+  carries `company.settings`. (5) They stay **off the phone's bottom bar and out of the Ctrl K palette**, which hold
+  only what works. (6) « Montrer ce qui arrive » is `presentation.show-coming`, a boolean on the presentation chain at
+  company, role and user level, on by default; the page's « Masquer ce qui arrive » sets it for the person, and Mon
+  compte › Préférences will carry the switch. (7) The **brand mark** row 99 put in the sidebar is gone from the rail:
+  the round-6 board opens the rail on the company, not on twes-in, and the board wins. (8) **Achats** (vendors and
+  expenses as one entry) is deferred to the list-pattern step, where both lists are rebuilt anyway; the rail keeps
+  Fournisseurs and Dépenses side by side until then.
 
 ## 8. Status
 

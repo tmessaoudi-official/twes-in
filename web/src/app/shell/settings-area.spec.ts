@@ -11,6 +11,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
+import { ThemeFacade } from '../shared/theme/theme-facade';
 import { SettingsArea } from './settings-area';
 
 class StaticLoader implements TranslateLoader {
@@ -27,6 +28,11 @@ class StaticLoader implements TranslateLoader {
         numbering: 'Numérotation',
         custom_fields: 'Champs personnalisés',
         modules: 'Modules',
+        document_templates: 'Modèles de documents',
+        alerts: 'Alertes',
+        fiscal_preset: 'Préréglage fiscal',
+        support_access: 'Accès du support',
+        texts: 'Textes',
         sections: {
           company: 'Société',
           fiscal: 'Fiscalité',
@@ -41,6 +47,7 @@ class StaticLoader implements TranslateLoader {
         settings_filter: 'Filtrer les réglages',
         settings_back: 'Tous les paramètres',
         settings_none: 'Aucun réglage ne correspond.',
+        soon: 'Bientôt',
       },
     });
   }
@@ -55,9 +62,12 @@ describe('SettingsArea', () => {
     hasPermission: (permission: string) => permissions().includes(permission),
     hasModule: () => true,
   };
+  // What is not built yet is off here, so the other cases read only the settings that work.
+  const showComing = signal(false);
 
   beforeEach(async () => {
     permissions.set(['company.settings', 'fiscal.read', 'user.read']);
+    showComing.set(false);
     await TestBed.configureTestingModule({
       imports: [SettingsArea],
       providers: [
@@ -67,6 +77,7 @@ describe('SettingsArea', () => {
         ]),
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
+        { provide: ThemeFacade, useValue: { showComing } },
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',
@@ -92,6 +103,30 @@ describe('SettingsArea', () => {
       });
     return { fixture, el, byTestId, groups };
   }
+
+  it('lists the settings not built yet among the others, marked « Bientôt », while what is coming shows', async () => {
+    // docs/SPEC.md § 7, 2026-09-25 17:22 and the round-6 settings board.
+    showComing.set(true);
+    const { byTestId, groups } = await render();
+    expect(groups().map(([, , entries]) => entries)).toEqual([
+      [
+        'nav-company-profile',
+        'nav-company-security',
+        'nav-establishments',
+        'nav-numbering',
+        'nav-document-templates',
+        'nav-settings',
+        'nav-alerts',
+      ],
+      ['nav-taxes', 'nav-units', 'nav-fiscal-preset'],
+      ['nav-members', 'nav-roles', 'nav-support-access'],
+      ['nav-custom-fields', 'nav-modules', 'nav-texts'],
+    ]);
+    const templates = byTestId('nav-document-templates');
+    expect(templates?.getAttribute('href')).toBe('/company/coming/document-templates');
+    expect(templates?.querySelector('[data-testid="soon"]')?.textContent).toContain('Bientôt');
+    expect(byTestId('nav-numbering')?.querySelector('[data-testid="soon"]')).toBeNull();
+  });
 
   it('groups the settings in one navigation of their own, beside the page', async () => {
     const { el, byTestId, groups } = await render();

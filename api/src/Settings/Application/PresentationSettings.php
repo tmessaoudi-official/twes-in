@@ -42,6 +42,9 @@ final readonly class PresentationSettings implements DeclaresSettings
         // customer standing at the counter is not one person's preference. What the API sends is product.cost.read's.
         yield new SettingDefinition('presentation.customer-view.cost', SettingType::Bool, true, $chain, [SettingLevel::Company], 'settings.presentation.customer_view_cost', self::MODULE);
         yield new SettingDefinition('presentation.customer-view.supplier-codes', SettingType::Bool, true, $chain, [SettingLevel::Company], 'settings.presentation.customer_view_supplier_codes', self::MODULE);
+        // « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. The
+        // company may hide them for everyone; a member for themself.
+        yield new SettingDefinition('presentation.show-coming', SettingType::Bool, true, $chain, $shared, 'settings.presentation.show_coming', self::MODULE);
         yield new SettingDefinition('presentation.list.<id>', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.list', self::MODULE, keyPattern: self::LIST);
         yield new SettingDefinition('presentation.list.<id>.views', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.list_views', self::MODULE, keyPattern: self::LIST_VIEWS);
     }

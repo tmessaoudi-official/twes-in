@@ -116,6 +116,11 @@ export const routes: Routes = [
         loadComponent: () => import('./watch/watch-page').then((m) => m.WatchPage),
       },
       {
+        // What the vision holds and is not built yet (docs/SPEC.md § 7, 2026-09-25 17:22).
+        path: 'coming/:key',
+        loadComponent: () => import('./shell/coming-page').then((m) => m.ComingPage),
+      },
+      {
         path: 'customers',
         canActivate: [moduleGuard(CUSTOMERS_MODULE)],
         loadComponent: () => import('./customers/customers-page').then((m) => m.CustomersPage),
@@ -296,6 +301,11 @@ export const routes: Routes = [
           {
             path: 'members',
             loadComponent: () => import('./company/members-page').then((m) => m.MembersPage),
+          },
+          {
+            // A settings entry not built yet opens beside the settings list (docs/SPEC.md § 7, 2026-09-25 17:22).
+            path: 'company/coming/:key',
+            loadComponent: () => import('./shell/coming-page').then((m) => m.ComingPage),
           },
           {
             path: 'company/roles',

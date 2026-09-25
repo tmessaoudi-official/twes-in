@@ -55,6 +55,8 @@ class StaticLoader implements TranslateLoader {
         design: 'Design',
         invoices: 'Factures',
         watch: 'À surveiller',
+        register: 'Caisse',
+        reports: 'Rapports',
         sections: { sell: 'Vendre', manage: 'Gérer', team: 'Équipe' },
       },
       shell: {
@@ -67,6 +69,7 @@ class StaticLoader implements TranslateLoader {
         expand_menu: 'Déployer le menu',
         settings: 'Paramètres',
         create: 'Créer',
+        soon: 'Bientôt',
         commands: {
           open: 'Rechercher',
           find: 'Rechercher un client, une facture, un produit…',
@@ -195,6 +198,7 @@ describe('AppShell', () => {
     density: signal<'comfortable' | 'compact'>('comfortable'),
     toggleDensity: vi.fn(),
     sidebar: signal<'expanded' | 'rail'>('expanded'),
+    showComing: signal(true),
     settingsSidebar: signal<'expanded' | 'rail'>('rail'),
     toggleSidebar: vi.fn(),
   };
@@ -218,6 +222,7 @@ describe('AppShell', () => {
     modules.set(['customers']);
     theme.sidebar.set('expanded');
     theme.settingsSidebar.set('rail');
+    theme.showComing.set(true);
     sessionExpired.set(false);
     width.next(1280);
     vi.clearAllMocks();
@@ -363,6 +368,33 @@ describe('AppShell', () => {
     expect(byTestId('create-new-customer')?.textContent).toContain('Nouveau client');
     // Only what this person may create in this company: invoices are off for it.
     expect(byTestId('create-new-invoice')).toBeNull();
+  });
+
+  it('shows the vision’s entries not built yet, marked « Bientôt », and hides them all when asked', async () => {
+    // docs/SPEC.md § 7, 2026-09-25 11:17: the whole vision shows, marked, and one preference hides it.
+    const { fixture, byTestId } = await render();
+    const register = byTestId('nav-register');
+    expect(register?.getAttribute('href')).toBe('/coming/register');
+    expect(register?.textContent).toContain('Caisse');
+    expect(register?.querySelector('[data-testid="soon"]')?.textContent).toContain('Bientôt');
+    expect(byTestId('nav-home')?.querySelector('[data-testid="soon"]')).toBeNull();
+
+    theme.showComing.set(false);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(byTestId('nav-register')).toBeNull();
+    expect(byTestId('nav-home')).not.toBeNull();
+  });
+
+  it('keeps what is not built yet off the phone’s bar, which holds only working destinations', async () => {
+    permissions.set([]);
+    modules.set([]);
+    width.next(390);
+    const { byTestId } = await render();
+    const labels = [...(byTestId('bottom-bar')?.querySelectorAll('a') ?? [])].map((a) =>
+      a.querySelector('span')?.textContent?.trim(),
+    );
+    expect(labels).toEqual(['Accueil']);
   });
 
   it('draws no « Créer » for somebody who may create nothing', async () => {

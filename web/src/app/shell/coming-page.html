@@ -1,0 +1,49 @@
+<section class="flex max-w-2xl flex-col gap-4 p-4" data-testid="coming-page">
+  @if (entry(); as entry) {
+    <p class="flex items-center gap-2 text-sm text-on-surface-variant" data-testid="coming-crumb">
+      {{ 'nav.sections.' + entry.section | translate }}
+      <mat-icon aria-hidden="true" class="!size-4 !text-base">chevron_right</mat-icon>
+      {{ entry.labelKey | translate }}
+      <span class="twes-soon">{{ 'shell.soon' | translate }}</span>
+    </p>
+    <div class="flex items-start gap-4">
+      <mat-icon aria-hidden="true" class="twes-coming-mark">construction</mat-icon>
+      <div class="flex flex-col gap-2">
+        <h1 class="text-2xl font-semibold" data-testid="coming-heading">
+          {{ 'coming.' + entry.key + '.heading' | translate }}
+        </h1>
+        <p data-testid="coming-does">{{ 'coming.' + entry.key + '.does' | translate }}</p>
+      </div>
+    </div>
+    <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+      <dt class="text-on-surface-variant">{{ 'coming.planned' | translate }}</dt>
+      <dd data-testid="coming-version">
+        {{ 'coming.version.' + entry.coming.version | translate }}
+      </dd>
+      <dt class="text-on-surface-variant">{{ 'coming.plan_row' | translate }}</dt>
+      <dd data-testid="coming-plan">{{ 'coming.' + entry.key + '.plan' | translate }}</dd>
+    </dl>
+    @if (entry.coming.meanwhile; as meanwhile) {
+      <p
+        class="rounded border border-outline-variant bg-surface-container-low p-3"
+        data-testid="coming-meanwhile"
+      >
+        {{ 'coming.' + entry.key + '.meanwhile' | translate }}
+        <a class="font-medium text-primary" [routerLink]="meanwhile">{{
+          'coming.' + entry.key + '.meanwhile_link' | translate
+        }}</a>
+      </p>
+    }
+    <div class="flex flex-wrap gap-2">
+      <a mat-flat-button routerLink="/" data-testid="coming-home">{{
+        'coming.home' | translate
+      }}</a>
+      <button mat-button type="button" data-testid="coming-hide" (click)="hide()">
+        {{ 'coming.hide' | translate }}
+      </button>
+    </div>
+  } @else {
+    <p data-testid="coming-unknown">{{ 'coming.unknown' | translate }}</p>
+    <a mat-flat-button routerLink="/" class="self-start">{{ 'coming.home' | translate }}</a>
+  }
+</section>

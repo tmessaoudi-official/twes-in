@@ -62,6 +62,8 @@ export class ThemeFacade {
   readonly sidebar = this.settings.value(PRESENTATION.sidebar);
   /** The settings area's own answer, so folding one menu does not fold the other. */
   readonly settingsSidebar = this.settings.value(PRESENTATION.settingsSidebar);
+  /** Whether the menus show the parts of the vision not built yet, each marked « Bientôt ». */
+  readonly showComing = this.settings.value(PRESENTATION.showComing);
 
   constructor() {
     const query = this.deviceQuery;
@@ -104,6 +106,10 @@ export class ThemeFacade {
 
   toggleDensity(): void {
     this.setDensity(this.density() === 'compact' ? 'comfortable' : 'compact');
+  }
+
+  setShowComing(show: boolean): void {
+    this.settings.set(PRESENTATION.showComing, show);
   }
 
   /** Folds or unfolds the menu of the area the person is in; each area remembers its own answer. */

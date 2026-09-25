@@ -487,7 +487,16 @@
     "expense_categories": "Catégories de dépenses",
     "company_security": "Sécurité",
     "subscription": "Abonnement",
-    "stock_count": "Comptage"
+    "stock_count": "Comptage",
+    "register": "Caisse",
+    "works": "Travaux",
+    "reports": "Rapports",
+    "declarations": "Déclarations",
+    "document_templates": "Modèles de documents",
+    "alerts": "Alertes",
+    "fiscal_preset": "Préréglage fiscal",
+    "support_access": "Accès du support",
+    "texts": "Textes"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -529,7 +538,8 @@
       "sidebar": "Réduire ou déployer le menu",
       "help": "Afficher cette liste",
       "close": "Fermer"
-    }
+    },
+    "soon": "Bientôt"
   },
   "notifications": {
     "bell": "Notifications, {{count}} non lue(s)",
@@ -743,7 +753,8 @@
       "plan_labels": "Étiquettes du plan",
       "language": "Langue",
       "customer_view_cost": "En vue client, masquer le coût des produits",
-      "customer_view_supplier_codes": "En vue client, masquer les codes des fournisseurs"
+      "customer_view_supplier_codes": "En vue client, masquer les codes des fournisseurs",
+      "show_coming": "Montrer ce qui arrive"
     },
     "choices": {
       "document": {
@@ -2424,6 +2435,72 @@
         "lot_expiring": "Lot {{lot}} de {{product}} ({{reference}}) : {{quantity}} en stock, date limite le {{expiresOn}}",
         "lot_expired": "Lot {{lot}} de {{product}} ({{reference}}) : {{quantity}} en stock, date limite dépassée le {{expiresOn}}"
       }
+    }
+  },
+  "coming": {
+    "version": {
+      "v1": "Version 1",
+      "later": "Plus tard"
+    },
+    "planned": "Prévu pour",
+    "plan_row": "Ligne du plan",
+    "home": "Retour à l'accueil",
+    "hide": "Masquer ce qui arrive",
+    "unknown": "Rien n'est prévu à cette adresse.",
+    "register": {
+      "heading": "La caisse est en construction",
+      "does": "La vente au comptoir sur un seul écran, à la douchette et au clavier : reçu ou facture de la même vente, espèces avec rendu, carte, à crédit ou deux moyens, retours avec avoir et remise en stock, ouverture et clôture du tiroir avec le rapport Z.",
+      "plan": "§ 8 · 82 — la vente au comptoir",
+      "meanwhile": "En attendant, une vente au comptoir se fait depuis une facture :",
+      "meanwhile_link": "Émettre et encaisser"
+    },
+    "works": {
+      "heading": "Les travaux sont en construction",
+      "does": "Suivre un chantier ou une intervention de bout en bout : ce qui est prévu, le temps et les fournitures passés, ce qui reste à facturer.",
+      "plan": "§ 8 · 80 — les travaux"
+    },
+    "reports": {
+      "heading": "Les rapports sont en construction",
+      "does": "Le chiffre d'affaires, les encaissements, les marges et le stock sur la période choisie, par client, par article ou par établissement, à regarder ou à exporter.",
+      "plan": "§ 8 · 89 et 114 — les rapports",
+      "meanwhile": "En attendant, l'accueil montre les chiffres du jour :",
+      "meanwhile_link": "Ouvrir l'accueil"
+    },
+    "declarations": {
+      "heading": "Les déclarations sont en construction",
+      "does": "Les déclarations fiscales de la période préparées depuis les documents émis : les montants par taxe, ce qui reste à déclarer, et le rappel de chaque échéance.",
+      "plan": "§ 8 · 91 — les déclarations"
+    },
+    "document-templates": {
+      "heading": "Les modèles de documents sont en construction",
+      "does": "Choisir le modèle de chaque document dans une galerie, le régler (logo, couleur, colonnes, mentions et blocs) et voir un vrai document à jour pendant qu'on règle.",
+      "plan": "Une ligne du plan à créer (B45, décidé le 24/09)",
+      "meanwhile": "En attendant, le logo et les coordonnées imprimés se règlent dans le profil :",
+      "meanwhile_link": "Profil de la société"
+    },
+    "alerts": {
+      "heading": "Les alertes sont en construction",
+      "does": "Choisir ce qui mérite une alerte, à partir de quel seuil, et qui la reçoit : une facture en retard, un stock bas, un lot qui périme.",
+      "plan": "§ 8 · 115 — les alertes",
+      "meanwhile": "En attendant, ce qui demande attention est listé ici :",
+      "meanwhile_link": "À surveiller"
+    },
+    "fiscal-preset": {
+      "heading": "Le préréglage fiscal est en construction",
+      "does": "Appliquer d'un coup les taxes, les mentions et la numérotation qu'exige le pays de la société, puis les ajuster.",
+      "plan": "Pas encore de ligne dans le plan",
+      "meanwhile": "En attendant, les taxes se règlent une à une :",
+      "meanwhile_link": "Taxes"
+    },
+    "support-access": {
+      "heading": "L'accès du support est en construction",
+      "does": "Ouvrir au support, pour un temps limité et sur votre accord, un accès en lecture à la société, et voir tout ce qu'il y a fait.",
+      "plan": "Pas encore de ligne dans le plan"
+    },
+    "texts": {
+      "heading": "Les textes sont en construction",
+      "does": "Remplacer les mots de l'application par les vôtres (« Client » en « Patient », par exemple), dans chaque langue.",
+      "plan": "Pas encore de ligne dans le plan"
     }
   }
 }

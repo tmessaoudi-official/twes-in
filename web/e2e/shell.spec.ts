@@ -7,8 +7,13 @@ import { signIn } from './session';
 // operator's own choice is forgotten before and after.
 const CSRF = '0123456789abcdef0123456789abcdef';
 const SIDEBAR = 'presentation.sidebar';
+const SHOW_COMING = 'presentation.show-coming';
 
 async function forgetSidebar(page: Page): Promise<void> {
+  await forget(page, SIDEBAR);
+}
+
+async function forget(page: Page, setting: string): Promise<void> {
   const status = await page.evaluate(
     async ([csrf, key]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
@@ -18,7 +23,7 @@ async function forgetSidebar(page: Page): Promise<void> {
       });
       return response.status;
     },
-    [CSRF, SIDEBAR],
+    [CSRF, setting],
   );
   expect(status).toBe(204);
 }
@@ -154,5 +159,36 @@ test('the rail and the top bar keep every control clear of the next, down to the
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
       `${width} px`,
     ).toBe(true);
+  }
+});
+
+// docs/SPEC.md § 7, 2026-09-25 19:01: the vision's entries not built yet show, marked, open one page saying what they
+// will do, and « Masquer ce qui arrive » takes them out of the menus for this person.
+test('an entry not built yet says what it will do, and hiding what is coming takes it out of the rail', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  await forget(page, SHOW_COMING);
+  try {
+    await page.reload();
+    const register = page.getByTestId('nav-register');
+    await expect(register.getByTestId('soon')).toBeVisible();
+    await register.click();
+    await expect(page).toHaveURL(/\/coming\/register$/);
+    await expect(page.getByTestId('coming-heading')).toBeVisible();
+    await expect(page.getByTestId('coming-meanwhile').locator('a')).toHaveAttribute(
+      'href',
+      '/invoices/new',
+    );
+
+    await page.getByTestId('coming-hide').click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByTestId('nav-register')).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByTestId('nav-home')).toBeVisible();
+    await expect(page.getByTestId('nav-register')).toHaveCount(0);
+  } finally {
+    await forget(page, SHOW_COMING);
   }
 });

@@ -58,6 +58,11 @@
           >
             <mat-icon matListItemIcon aria-hidden="true">{{ entry.icon }}</mat-icon>
             <span matListItemTitle>{{ entry.labelKey | translate }}</span>
+            @if (entry.coming) {
+              <span matListItemMeta class="twes-soon" data-testid="soon">{{
+                'shell.soon' | translate
+              }}</span>
+            }
           </a>
         }
       </mat-nav-list>

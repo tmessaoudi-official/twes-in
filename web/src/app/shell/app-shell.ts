@@ -71,6 +71,8 @@ import {
   SETTINGS_NAV,
   SIDEBAR_SECTIONS,
   visibleEntries,
+  COMING_NAV,
+  withComing,
 } from './nav-manifest';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
 
@@ -171,7 +173,11 @@ export class AppShell {
   protected readonly handset = computed(() => this.windowClass() === 'compact');
   protected readonly sections = computed(() =>
     navSections(
-      this.visible([...CORE_NAV, ...MODULE_NAV, ...MANAGE_NAV, ...DEV_NAV]),
+      withComing(
+        this.visible([...CORE_NAV, ...MODULE_NAV, ...MANAGE_NAV, ...DEV_NAV]),
+        this.visible(COMING_NAV),
+        this.theme.showComing(),
+      ),
       SIDEBAR_SECTIONS,
     ),
   );
@@ -216,7 +222,10 @@ export class AppShell {
    * in all; « Créer » goes between the second and the third.
    */
   protected readonly bottomBar = computed(() => {
-    const entries = this.sections().flatMap((group) => group.entries);
+    // What is not built yet never takes one of the phone's few places.
+    const entries = this.sections()
+      .flatMap((group) => group.entries)
+      .filter((entry) => entry.coming === undefined);
     const first = PHONE_BAR_FIRST.flatMap((key) => entries.filter((entry) => entry.key === key));
     return [...first, ...entries.filter((entry) => !first.includes(entry))].slice(
       0,

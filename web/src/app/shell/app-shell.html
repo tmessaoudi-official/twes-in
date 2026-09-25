@@ -99,6 +99,15 @@
               <span matListItemTitle [class.sr-only]="rail()">{{
                 entry.labelKey | translate
               }}</span>
+              @if (entry.coming) {
+                <span
+                  matListItemMeta
+                  class="twes-soon"
+                  [class.sr-only]="rail()"
+                  data-testid="soon"
+                  >{{ 'shell.soon' | translate }}</span
+                >
+              }
             </a>
           }
         </mat-nav-list>

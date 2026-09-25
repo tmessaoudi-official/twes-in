@@ -10,6 +10,7 @@ import { PRODUCTS_NAV } from '../products/products-nav';
 import { VENDORS_NAV } from '../vendors/vendors-nav';
 import { EXPENSES_NAV } from '../expenses/expenses-nav';
 import {
+  COMING_NAV,
   CORE_NAV,
   MANAGE_NAV,
   DEV_NAV,
@@ -21,6 +22,7 @@ import {
   SIDEBAR_SECTIONS,
   visibleEntries,
   isSettingsUrl,
+  withComing,
 } from './nav-manifest';
 
 const entries: readonly NavEntry[] = [
@@ -122,7 +124,10 @@ describe('the navigation manifest', () => {
   const sidebar = [...CORE_NAV, ...MODULE_NAV, ...MANAGE_NAV, ...DEV_NAV];
   const all = [...sidebar, ...SETTINGS_NAV];
 
-  it('has unique keys and routes across the core and the modules', () => {
+  it('has unique keys and routes across the core, the modules and what is coming', () => {
+    const everything = [...all, ...COMING_NAV];
+    expect(new Set(keys(everything)).size).toBe(everything.length);
+    expect(new Set(everything.map((entry) => entry.route)).size).toBe(everything.length);
     expect(new Set(keys(all)).size).toBe(all.length);
     expect(new Set(all.map((entry) => entry.route)).size).toBe(all.length);
   });
@@ -172,6 +177,74 @@ describe('the navigation manifest', () => {
         ['manage', ['stock', 'vendors', 'expenses', 'watch']],
       ],
     );
+  });
+
+  // docs/SPEC.md § 7, 2026-09-25 11:17 and the round-6 boards: the whole vision shows, each part not built yet marked.
+  it('places each entry not built yet after the one it follows, as the rail and settings boards draw them', () => {
+    const shown = withComing([...sidebar, ...SETTINGS_NAV], COMING_NAV, true);
+    expect(navSections(shown, SIDEBAR_SECTIONS).map((g) => [g.section, keys(g.entries)])).toEqual([
+      [
+        'sell',
+        ['home', 'invoices', 'delivery-notes', 'customers', 'products', 'register', 'works'],
+      ],
+      ['manage', ['stock', 'vendors', 'expenses', 'reports', 'declarations', 'watch']],
+    ]);
+    expect(navSections(shown, SETTINGS_SECTIONS).map((g) => [g.section, keys(g.entries)])).toEqual([
+      [
+        'company',
+        [
+          'company-profile',
+          'company-security',
+          'establishments',
+          'numbering',
+          'document-templates',
+          'subscription',
+          'settings',
+          'alerts',
+        ],
+      ],
+      ['fiscal', ['taxes', 'units', 'fiscal-preset']],
+      ['team', ['members', 'roles', 'support-access']],
+      ['customisation', ['custom-fields', 'modules', 'texts']],
+    ]);
+    // « Montrer ce qui arrive » off: only what works.
+    expect(withComing(sidebar, COMING_NAV, false)).toEqual(sidebar);
+  });
+
+  it('keeps an entry not built yet last of its section when the one it follows is hidden, and only in a section the person has', () => {
+    const shown = withComing(
+      CORE_NAV,
+      COMING_NAV.filter((e) => e.key === 'register'),
+      true,
+    );
+    expect(keys(shown)).toEqual(['home', 'register']);
+    const alone = withComing(
+      CORE_NAV,
+      COMING_NAV.filter((e) => e.key === 'reports'),
+      true,
+    );
+    expect(keys(alone)).toEqual(['home']);
+  });
+
+  it('names every entry not built yet, what it will do and its plan row, in both languages', () => {
+    for (const entry of COMING_NAV) {
+      for (const json of [fr, en]) {
+        for (const key of [
+          entry.labelKey,
+          `coming.${entry.key}.heading`,
+          `coming.${entry.key}.does`,
+          `coming.${entry.key}.plan`,
+        ]) {
+          expect(hasKey(json, key), key).toBe(true);
+        }
+        if (entry.coming.meanwhile !== undefined) {
+          expect(hasKey(json, `coming.${entry.key}.meanwhile`), entry.key).toBe(true);
+          expect(hasKey(json, `coming.${entry.key}.meanwhile_link`), entry.key).toBe(true);
+        }
+      }
+      // A settings entry opens beside the settings list; a rail entry on its own.
+      expect(isSettingsUrl(entry.route), entry.key).toBe(SETTINGS_SECTIONS.includes(entry.section));
+    }
   });
 
   // docs/SPEC.md § 7, 2026-09-24 12:10: « À surveiller » is reached from the sidebar, last of Gérer.
