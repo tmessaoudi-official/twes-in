@@ -2823,6 +2823,23 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   guest's ordering path, the waiter's acceptance, moving and joining tabs, courses, the locked and suspended table,
   a station's rupture reaching every phone, the untouched-ticket alarm, the portal's standing order, station
   routing, the QR sheet, drawing the tables and the Guest settings are drawn in batch 4.
+- [2026-09-25 16:51] AGREED: **the round-6 designs and batch 4 are validated, and the 237 open ideas are ruled** (developer:
+  « I validate overall, let's implement — I would rather test when it's implemented than keep going over a design »).
+  The canvas `DMiBgmXZ6QhFG2WkhWEeTo` version 7 is the design of record: rounds 1–3 plus the café flows of batch 4
+  (17 boards, drawn against every café ruling of 2026-09-20 and 2026-09-25 15:53). The ideas page
+  `BEKRVHDmLSY9bEEpKJhqYy` is settled as the developer chose at 16:10: its nine principles approved, every unmarked idea
+  taking its recommendation, his marks and notes winning. The result, one line per idea, is
+  `docs/spec/ideas-ruled-2026-09-25.md`: 115 yes, 92 yes with a change, 30 no. Three of his notes asked for a
+  recommendation and were ruled on it. **Numbering (DOC-45):** a draft takes no number; the next number of a series is
+  set freely until that series first issues, then locked; an issued number is never stepped back or reused, and a
+  mistake is corrected by a credit note — no administrator reset, because a gap or a reuse is what an audit reads as
+  fraud. **What a line keeps (DP-66):** an issued line keeps the product's name and reference for ever; a company
+  setting « Un brouillon suit les changements de l'article », on by default, is the only choice, since what an issued
+  document says is law, not preference. **Provenance (DP-49):** one typed « issu de » link between documents replaces
+  the separate columns, migrated before the first customer while nothing is issued for real; the setting is which steps
+  a company requires (« une facture doit venir d'un bon »), not the link itself, which is data. The five groups marked
+  « avant le premier client » become rows 131–135 and are built before the first version ships; every other yes is
+  built with the screen or row it touches.
 
 ## 8. Status
 
@@ -2961,6 +2978,11 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 128 | Credit balance, write-off and crediting a paid invoice (§ 7 2026-09-21 17:35, 2026-09-25 12:45): an overpayment's excess moves to the customer's credit balance, applied to a later invoice and shown on the statement; a short-paid invoice closes on a credit note under a per-company tolerance; a credit note on a paid invoice sends what exceeds the due to a refund or to the credit balance | M | todo | - | |
 | 129 | Partial invoicing of delivery notes (§ 7 2026-09-25 12:45): a quantity left to invoice per line, an invoice taking all or part, the note invoiced once nothing is left | M | todo | - | |
 | 130 | A date and number format of one's own (§ 7 2026-09-25 12:45): a presentation setting, person then company, defaulting to the language and country, followed by every screen and printed document | S | todo | - | |
+| 131 | What an issued document keeps (§ 7 2026-09-25 16:51, DP-05 / DP-49 / DP-60 / DP-66): name and reference frozen on the line at issue with the « Un brouillon suit les changements de l'article » setting, one typed « issu de » link replacing the separate columns with required steps as a setting, a fiscal code per product carried to the line, custom fields on documents and lines | L | todo | - | |
+| 132 | Numbering (§ 7 2026-09-25 16:51, DOC-45 / MON-08 / NAV-47): drafts unnumbered, the next number editable until a series first issues then locked, never stepped back; the option « avoirs dans la suite des factures », chosen once; receipts and payments numbered where a gap is allowed; year, month and counter reset per type | M | todo | - | |
+| 133 | Cancel or reverse (§ 7 2026-09-25 16:51, DOC-16): a draft is cancelled, an issued document is only reversed by a credit note; no soft delete, no restore | S | todo | - | |
+| 134 | The customer's running account (§ 7 2026-09-25 16:51, MON-19 / MON-03): one account per customer that the statement, overdue and credit limit all read; a credit note always names the invoice it corrects, its excess going to the balance or a refund (row 128) | M | todo | - | |
+| 135 | Reminders and late fees (§ 7 2026-09-25 16:51, DOC-20 / MON-15 / CLI-14): staged reminders; late fees off by default, per company, in tiers with no default amount until the law is sourced, charged on a separate debit document, never on the issued invoice | M | todo | - | |
 <!-- /progress-block -->
 
 ### Delivered
