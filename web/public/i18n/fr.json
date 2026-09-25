@@ -2502,5 +2502,30 @@
       "does": "Remplacer les mots de l'application par les vôtres (« Client » en « Patient », par exemple), dans chaque langue.",
       "plan": "Pas encore de ligne dans le plan"
     }
+  },
+  "account": {
+    "title": "Mon compte",
+    "tabs": {
+      "security": "Sécurité",
+      "preferences": "Préférences",
+      "device": "Cet appareil",
+      "notifications": "Notifications"
+    },
+    "display": "Affichage",
+    "language": "Langue",
+    "scheme": "Thème",
+    "density": "Densité",
+    "coming": "Ce qui arrive",
+    "show_coming": "Montrer ce qui arrive, marqué « Bientôt »",
+    "company_at_sign_in": "Société à l'ouverture",
+    "company_at_sign_in_on": "Toujours ouvrir la même société",
+    "company_at_sign_in_off": "Sinon, la dernière société utilisée s'ouvre.",
+    "company_at_sign_in_pick": "Société",
+    "shortcuts": "Raccourcis clavier",
+    "two_factor": "Vérification en deux étapes",
+    "two_factor_on": "Activée",
+    "two_factor_off": "Désactivée",
+    "two_factor_manage": "Gérer",
+    "later": "Arrive dans une prochaine version."
   }
 }

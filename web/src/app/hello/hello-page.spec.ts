@@ -169,8 +169,8 @@ describe('HelloPage', () => {
    */
   it('tells a member of companies to choose one, rather than that they have none', async () => {
     companies.set([
-      { id: 'c1', name: 'Demo', status: 'active', role: 'owner' },
-      { id: 'c2', name: 'Atelier', status: 'active', role: 'owner' },
+      { id: 'c1', name: 'Demo', status: 'active', role: 'owner', pinned: false },
+      { id: 'c2', name: 'Atelier', status: 'active', role: 'owner', pinned: false },
     ]);
     me.set({ ...owner, company: null, permissions: [] });
 

@@ -16,6 +16,8 @@ export interface CompanyOption {
   readonly name: string;
   readonly status: string;
   readonly role: string;
+  /** Whether every sign-in opens this company (« Société à l'ouverture »). */
+  readonly pinned: boolean;
 }
 
 /** One person in the company being administered. */

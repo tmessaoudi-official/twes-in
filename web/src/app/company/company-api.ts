@@ -49,6 +49,13 @@ export class CompanyApi {
     });
   }
 
+  /** « Société à l'ouverture »: the company every sign-in opens, or null for the one last worked in. */
+  async pinAtSignIn(companyId: string | null): Promise<void> {
+    await this.guard(async () => {
+      await firstValueFrom(this.http.put('/api/me/company-at-sign-in', { companyId }));
+    });
+  }
+
   /** Moves the session to another company; the API refuses one the user is not a member of. */
   async switchTo(companyId: string): Promise<CompanyOption> {
     return this.guard(async () =>
@@ -328,6 +335,7 @@ function toOption(row: WorkingCompanyWorkingCompanyRead): CompanyOption {
     name: row.name ?? '',
     status: row.status ?? '',
     role: row.role ?? '',
+    pinned: row.pinned ?? false,
   };
 }
 

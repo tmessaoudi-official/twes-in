@@ -116,6 +116,11 @@ export const routes: Routes = [
         loadComponent: () => import('./watch/watch-page').then((m) => m.WatchPage),
       },
       {
+        // « Mon compte »: the person's own account, apart from any company (docs/SPEC.md § 7, 2026-09-25 17:22).
+        path: 'account',
+        loadComponent: () => import('./account/account-page').then((m) => m.AccountPage),
+      },
+      {
         // What the vision holds and is not built yet (docs/SPEC.md § 7, 2026-09-25 17:22).
         path: 'coming/:key',
         loadComponent: () => import('./shell/coming-page').then((m) => m.ComingPage),

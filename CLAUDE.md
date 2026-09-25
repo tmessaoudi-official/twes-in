@@ -116,8 +116,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - `web/src/app/api/` — TypeScript types generated from the API's OpenAPI document (`make api-types`, gitignored;
   CI passes the document from the api job to the web job as an artifact; the web IMAGE generates them itself from
   the document the api image exports at build, through a compose `additional_contexts` service reference, so a
-  clean clone builds without them and a stale local copy is kept out by `.dockerignore`). One directory per feature — twenty of them, so
-  check `ls web/src/app` rather than this sentence: `auth`, `company`, `customers`, `delivery-notes`, `expenses`,
+  clean clone builds without them and a stale local copy is kept out by `.dockerignore`). One directory per feature — over twenty, so
+  check `ls web/src/app` rather than this sentence: `account` — « Mon compte », the person's own preferences, `auth`, `company`, `customers`, `delivery-notes`, `expenses`,
   `fiscal`, `hello`, `inventory`, `invitation`, `invoices`, `platform`, `products`, `settings`, `signup`,
   `vendors`, `pairing` — the phone's public `/pair` page, a scanner with no sign-in, `watch` — « À surveiller » and its home count, `notifications` — the bell, the centre and the Centrifugo connection behind
   the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout by window class (bottom bar below 600 px, rail to 1199, labelled from 1200), its nav manifest, the home manifest (`home-manifest.ts`: a module declares its `*_HOME` panel, loaded lazily, beside its `*_NAV`), the Ctrl K palette (`commands.ts`: a module declares its `*_COMMANDS` beside its `*_NAV`), account menu and the settings area behind the gear; every

@@ -1,0 +1,150 @@
+<section class="flex max-w-3xl flex-col gap-4 p-4" data-testid="account-page">
+  <h1 class="text-2xl font-semibold">{{ 'account.title' | translate }}</h1>
+
+  <mat-tab-group
+    data-testid="account-tabs"
+    [selectedIndex]="selected()"
+    (selectedIndexChange)="openTab($event)"
+  >
+    @for (tab of tabs; track tab) {
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="flex items-center gap-2">
+            {{ 'account.tabs.' + tab | translate }}
+            @if (comingTabs.includes(tab)) {
+              <span class="twes-soon">{{ 'shell.soon' | translate }}</span>
+            }
+          </span>
+        </ng-template>
+        <div class="flex flex-col gap-6 py-4">
+          @switch (tab) {
+            @case ('security') {
+              <div
+                class="flex flex-wrap items-center justify-between gap-3"
+                data-testid="account-two-factor"
+              >
+                <div class="flex flex-col">
+                  <span class="font-medium">{{ 'account.two_factor' | translate }}</span>
+                  <span class="text-sm text-on-surface-variant">{{
+                    (twoFactorOn() ? 'account.two_factor_on' : 'account.two_factor_off') | translate
+                  }}</span>
+                </div>
+                <a
+                  mat-stroked-button
+                  routerLink="/two-factor"
+                  data-testid="account-two-factor-manage"
+                  >{{ 'account.two_factor_manage' | translate }}</a
+                >
+              </div>
+            }
+            @case ('preferences') {
+              <div class="flex flex-col gap-3">
+                <h2 class="text-lg font-semibold">{{ 'account.display' | translate }}</h2>
+                <div class="grid gap-3 sm:grid-cols-3">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>{{ 'account.language' | translate }}</mat-label>
+                    <select
+                      matNativeControl
+                      data-testid="account-language"
+                      (change)="useLanguage($any($event.target).value)"
+                    >
+                      @for (lang of languages; track lang) {
+                        <option
+                          [value]="lang"
+                          [selected]="language.current() === lang"
+                          [attr.lang]="lang"
+                        >
+                          {{ languageNames[lang] }}
+                        </option>
+                      }
+                    </select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>{{ 'account.scheme' | translate }}</mat-label>
+                    <select
+                      matNativeControl
+                      data-testid="account-scheme"
+                      (change)="theme.setScheme(schemeOf($any($event.target).value))"
+                    >
+                      @for (scheme of schemes; track scheme) {
+                        <option [value]="scheme" [selected]="theme.preference() === scheme">
+                          {{ 'settings.choices.presentation.scheme.' + scheme | translate }}
+                        </option>
+                      }
+                    </select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>{{ 'account.density' | translate }}</mat-label>
+                    <select
+                      matNativeControl
+                      data-testid="account-density"
+                      (change)="theme.setDensity(densityOf($any($event.target).value))"
+                    >
+                      @for (density of densities; track density) {
+                        <option [value]="density" [selected]="theme.density() === density">
+                          {{ 'settings.choices.presentation.density.' + density | translate }}
+                        </option>
+                      }
+                    </select>
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <h2 class="text-lg font-semibold">{{ 'account.coming' | translate }}</h2>
+                <mat-slide-toggle
+                  data-testid="account-show-coming"
+                  [checked]="theme.showComing()"
+                  (change)="theme.setShowComing($event.checked)"
+                  >{{ 'account.show_coming' | translate }}</mat-slide-toggle
+                >
+              </div>
+
+              @if (canPin()) {
+                <div class="flex flex-col gap-2">
+                  <h2 class="text-lg font-semibold">
+                    {{ 'account.company_at_sign_in' | translate }}
+                  </h2>
+                  <mat-slide-toggle
+                    data-testid="account-company-at-sign-in"
+                    [checked]="pinned() !== null"
+                    (change)="pinAtSignIn($event.checked)"
+                    >{{ 'account.company_at_sign_in_on' | translate }}</mat-slide-toggle
+                  >
+                  @if (pinned(); as pinned) {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="sm:w-80">
+                      <mat-label>{{ 'account.company_at_sign_in_pick' | translate }}</mat-label>
+                      <select
+                        matNativeControl
+                        data-testid="account-company-at-sign-in-pick"
+                        (change)="pick($any($event.target).value)"
+                      >
+                        @for (company of companies(); track company.id) {
+                          <option [value]="company.id" [selected]="company.id === pinned.id">
+                            {{ company.name }}
+                          </option>
+                        }
+                      </select>
+                    </mat-form-field>
+                  } @else {
+                    <p class="text-sm text-on-surface-variant">
+                      {{ 'account.company_at_sign_in_off' | translate }}
+                    </p>
+                  }
+                </div>
+              }
+
+              <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-lg font-semibold">{{ 'account.shortcuts' | translate }}</h2>
+                <span class="twes-soon">{{ 'shell.soon' | translate }}</span>
+              </div>
+            }
+            @default {
+              <p class="text-on-surface-variant">{{ 'account.later' | translate }}</p>
+            }
+          }
+        </div>
+      </mat-tab>
+    }
+  </mat-tab-group>
+</section>

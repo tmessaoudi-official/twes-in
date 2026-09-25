@@ -423,6 +423,8 @@ describe('AppShell', () => {
     await click('user-menu');
     expect(byTestId('account-scheme-auto')?.getAttribute('aria-checked')).toBe('true');
     expect(byTestId('account-settings')).toBeNull();
+    // « Mon compte » (docs/SPEC.md § 7, 2026-09-25 17:22): the person's own account, first of the menu.
+    expect(byTestId('account-page-link')?.getAttribute('href')).toBe('/account');
     await click('account-scheme-dark');
     expect(theme.setScheme).toHaveBeenCalledWith('dark');
   });

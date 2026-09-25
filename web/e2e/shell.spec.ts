@@ -192,3 +192,27 @@ test('an entry not built yet says what it will do, and hiding what is coming tak
     await forget(page, SHOW_COMING);
   }
 });
+
+// docs/SPEC.md § 7, 2026-09-25 19:01: « Mon compte » from the member's menu, where « Montrer ce qui arrive » is set.
+test('« Mon compte » opens from the member’s menu and turns what is coming off', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  await forget(page, SHOW_COMING);
+  try {
+    await page.reload();
+    await expect(page.getByTestId('nav-register')).toBeVisible();
+    await page.getByTestId('user-menu').click();
+    await page.getByTestId('account-page-link').click();
+    await expect(page).toHaveURL(/\/account$/);
+    await expect(page.getByRole('tab')).toHaveCount(4);
+
+    await page.getByRole('tab', { name: /Préférences/ }).click();
+    await expect(page).toHaveURL(/\/account\?tab=preferences$/);
+    await page.getByTestId('account-show-coming').getByRole('switch').click();
+    await expect(page.getByTestId('nav-register')).toHaveCount(0);
+  } finally {
+    await forget(page, SHOW_COMING);
+  }
+});

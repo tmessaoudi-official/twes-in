@@ -2869,6 +2869,14 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   the round-6 board opens the rail on the company, not on twes-in, and the board wins. (8) **Achats** (vendors and
   expenses as one entry) is deferred to the list-pattern step, where both lists are rebuilt anyway; the rail keeps
   Fournisseurs and Dépenses side by side until then.
+- [2026-09-25 19:34] DECIDED (revisit): **« Mon compte », as built** (step 1, slice 2b; same mandate). `/account`, first item
+  of the member's menu, with the round-6 board's four tabs, the tab in the address (`?tab=`). (1) **Sécurité** says
+  whether the two-step check is on and leads to `/two-factor`, which it does not absorb: that page is also the
+  sign-in's enrolment step, outside the shell. (2) **Préférences**: Langue, Thème and Densité as selects (the member's
+  menu keeps its quick choices), « Montrer ce qui arrive », and « Société à l'ouverture » for somebody in several
+  companies only — switching it on pins the company worked in now, a select then offers the others, switching it
+  off opens the last one used; Raccourcis clavier is « Bientôt » (row 125). (3) **Cet appareil** and
+  **Notifications** are « Bientôt » tabs, saying they arrive in a coming version.
 
 ## 8. Status
 

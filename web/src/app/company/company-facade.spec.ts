@@ -9,13 +9,26 @@ import { CompanyApi, CompanyRefused } from './company-api';
 import { CompanyFacade } from './company-facade';
 import type { CompanyOption } from './company-types';
 
-const acme: CompanyOption = { id: 'c1', name: 'Acme', status: 'active', role: 'owner' };
-const globex: CompanyOption = { id: 'c2', name: 'Globex', status: 'active', role: 'member' };
+const acme: CompanyOption = {
+  id: 'c1',
+  name: 'Acme',
+  status: 'active',
+  role: 'owner',
+  pinned: false,
+};
+const globex: CompanyOption = {
+  id: 'c2',
+  name: 'Globex',
+  status: 'active',
+  role: 'member',
+  pinned: false,
+};
 
 describe('CompanyFacade', () => {
   const api = {
     companies: vi.fn(),
     switchTo: vi.fn(),
+    pinAtSignIn: vi.fn(),
     members: vi.fn(),
     addMember: vi.fn(),
     removeMember: vi.fn(),
@@ -120,5 +133,26 @@ describe('CompanyFacade', () => {
 
     expect(facade.companies()).toEqual([]);
     expect(facade.error()).toBe('network');
+  });
+
+  it('pins the company a sign-in opens, then reads the list again to show it', async () => {
+    api.pinAtSignIn.mockResolvedValue(undefined);
+    api.companies.mockResolvedValue([{ ...acme, pinned: true }, globex]);
+
+    expect(await facade.pinAtSignIn('c1')).toBe(true);
+
+    expect(api.pinAtSignIn).toHaveBeenCalledWith('c1');
+    expect(facade.companies()[0]?.pinned).toBe(true);
+  });
+
+  it('says a refused pin, and leaves the list as it was', async () => {
+    api.companies.mockResolvedValue([acme, globex]);
+    await facade.load();
+    api.pinAtSignIn.mockRejectedValue(new CompanyRefused('forbidden'));
+
+    expect(await facade.pinAtSignIn('c2')).toBe(false);
+
+    expect(facade.error()).toBe('forbidden');
+    expect(facade.companies()).toEqual([acme, globex]);
   });
 });

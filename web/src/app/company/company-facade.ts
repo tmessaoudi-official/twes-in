@@ -43,6 +43,19 @@ export class CompanyFacade {
     }
   }
 
+  /** Pins the company every sign-in opens (null: the one last worked in), then reads the list that says so. */
+  async pinAtSignIn(companyId: string | null): Promise<boolean> {
+    this.errorSignal.set(null);
+    try {
+      await this.api.pinAtSignIn(companyId);
+    } catch (error) {
+      this.errorSignal.set(error instanceof CompanyRefused ? error.code : 'network');
+      return false;
+    }
+    await this.load();
+    return true;
+  }
+
   /** Returns whether the session actually moved. */
   async switchTo(companyId: string): Promise<boolean> {
     if (companyId === this.current()?.id) {

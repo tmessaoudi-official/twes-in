@@ -99,3 +99,45 @@ describe('CompanyApi, the members', () => {
     await expect(removing).rejects.toEqual(new CompanyRefused('forbidden'));
   });
 });
+
+// docs/SPEC.md § 7, 2026-09-25 09:03: « Société à l'ouverture », the company every sign-in opens.
+describe('CompanyApi, the company a sign-in opens', () => {
+  let api: CompanyApi;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    api = TestBed.inject(CompanyApi);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('says which company is pinned', async () => {
+    const reading = api.companies();
+    http.expectOne({ method: 'GET', url: '/api/me/companies' }).flush([
+      { companyId: 'c1', name: 'Acme', status: 'active', role: 'owner', pinned: true },
+      { companyId: 'c2', name: 'Globex', status: 'active', role: 'member' },
+    ]);
+    expect((await reading).map((company) => [company.id, company.pinned])).toEqual([
+      ['c1', true],
+      ['c2', false],
+    ]);
+  });
+
+  it('pins a company, or none for the one last worked in', async () => {
+    const pinning = api.pinAtSignIn('c2');
+    const request = http.expectOne({ method: 'PUT', url: '/api/me/company-at-sign-in' });
+    expect(request.request.body).toEqual({ companyId: 'c2' });
+    request.flush({ companyId: 'c2' });
+    await pinning;
+
+    const unpinning = api.pinAtSignIn(null);
+    const unpin = http.expectOne({ method: 'PUT', url: '/api/me/company-at-sign-in' });
+    expect(unpin.request.body).toEqual({ companyId: null });
+    unpin.flush({ companyId: null });
+    await unpinning;
+  });
+});

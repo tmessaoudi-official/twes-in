@@ -2502,5 +2502,30 @@
       "does": "Replace the application's words with yours (“Customer” as “Patient”, for example), in each language.",
       "plan": "Not in the plan yet"
     }
+  },
+  "account": {
+    "title": "My account",
+    "tabs": {
+      "security": "Security",
+      "preferences": "Preferences",
+      "device": "This device",
+      "notifications": "Notifications"
+    },
+    "display": "Display",
+    "language": "Language",
+    "scheme": "Theme",
+    "density": "Density",
+    "coming": "What is coming",
+    "show_coming": "Show what is coming, marked “Soon”",
+    "company_at_sign_in": "Company at sign-in",
+    "company_at_sign_in_on": "Always open the same company",
+    "company_at_sign_in_off": "Otherwise, the company used last opens.",
+    "company_at_sign_in_pick": "Company",
+    "shortcuts": "Keyboard shortcuts",
+    "two_factor": "Two-step verification",
+    "two_factor_on": "On",
+    "two_factor_off": "Off",
+    "two_factor_manage": "Manage",
+    "later": "Arrives in a coming version."
   }
 }
