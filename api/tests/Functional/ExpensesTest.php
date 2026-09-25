@@ -287,6 +287,20 @@ final class ExpensesTest extends ApiTestCase
         self::assertSame(['fields' => ['withholdingOperationCode']], json_decode($changes, true));
     }
 
+    public function testACompanyOutsideTunisiaIsOfferedNoTejOperation(): void
+    {
+        $durand = new Company('Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->em()->persist($durand);
+        $this->em()->flush();
+        $this->createUser('achats@durand.fr', 'password-1234', $durand, ['expense.read'], 'member');
+        $this->login('achats@durand.fr', 'password-1234');
+
+        $this->getJson('/api/companies/'.$durand->getId()->toRfc4122().'/expense-options');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json()['withholdingOperationCodes'] ?? null);
+    }
+
     public function testAPageOfTheListCostsTheSameStatementsWhateverTheRowsItHolds(): void
     {
         $this->signedIn(['expense.read', 'expense.write']);
@@ -414,6 +428,8 @@ final class ExpensesTest extends ApiTestCase
             $this->sendJson(trim($method), $through);
             self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, "$method another company's expense through this company");
         }
+        $this->postJson($this->path($theirId).'/withholding-operation', ['withholdingOperationCode' => 'RS7_000001']);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company’s expense classified through this company');
         $this->uploadFile($this->path($theirId).'/attachments', 'recu.pdf', AttachmentsTest::PDF);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a file attached to another company’s expense');
 
@@ -433,6 +449,8 @@ final class ExpensesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $this->postJson($this->path(), $this->expense());
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->postJson($this->path($id).'/withholding-operation', ['withholdingOperationCode' => 'RS7_000001']);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a reader does not classify a withholding');
         $this->uploadFile($this->path($id).'/attachments', 'recu.pdf', AttachmentsTest::PDF);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->sendJson('DELETE', $this->path($id).'/attachments/'.$attachment);
