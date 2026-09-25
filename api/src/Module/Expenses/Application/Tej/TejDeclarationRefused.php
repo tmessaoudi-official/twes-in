@@ -17,7 +17,7 @@ namespace App\Module\Expenses\Application\Tej;
 final class TejDeclarationRefused extends \DomainException
 {
     /**
-     * @param array<string, string|int>                                                                                                                          $params
+     * @param array<string, string|int>                                                                                                                              $params
      * @param list<array{expenseId: string, paidOn: string, description: string, reference: string|null, vendorName: string|null, problems: non-empty-list<string>}> $expenses
      */
     public function __construct(

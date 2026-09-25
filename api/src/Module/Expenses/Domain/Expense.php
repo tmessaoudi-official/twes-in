@@ -176,11 +176,11 @@ class Expense implements CompanyOwned
     }
 
     /**
-     * @param \DateTimeImmutable $today           the company's own day
-     * @param string|null        $withholdingRate the percentage withheld from the supplier, 0 to 100 with at most three
-     *                                            decimals; null or 0 for none
-     * @param TejOperationCode|null $operationCode what the payment is to the TEJ platform, kept whatever the rate:
-     *                                            a supplier exempt from withholding is declared at 0 %
+     * @param \DateTimeImmutable    $today           the company's own day
+     * @param string|null           $withholdingRate the percentage withheld from the supplier, 0 to 100 with at most three
+     *                                               decimals; null or 0 for none
+     * @param TejOperationCode|null $operationCode   what the payment is to the TEJ platform, kept whatever the rate:
+     *                                               a supplier exempt from withholding is declared at 0 %
      *
      * @throws ExpenseTransitionRefused
      * @throws InvalidExpense
@@ -245,7 +245,7 @@ class Expense implements CompanyOwned
     /** @throws InvalidExpense when a TEJ code is said for a company outside the Tunisian preset */
     private function assertDeclarableToTej(?TejOperationCode $operationCode): void
     {
-        if (null !== $operationCode && TejOperationCode::PRESET !==$this->company->getFiscalPreset()) {
+        if (null !== $operationCode && TejOperationCode::PRESET !== $this->company->getFiscalPreset()) {
             throw new InvalidExpense('withholdingOperationCode', 'A TEJ operation code is said for a company under the Tunisian preset only.');
         }
     }

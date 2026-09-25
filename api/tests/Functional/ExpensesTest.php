@@ -260,13 +260,13 @@ final class ExpensesTest extends ApiTestCase
 
             return $id;
         };
-        $pay = fn (string $id, array $more) => $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'transfer', 'paidOn' => $today->format('Y-m-d'), 'withholdingRate' => '1.5'] + $more);
+        $pay = fn (string $id, ?string $code) => $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'transfer', 'paidOn' => $today->format('Y-m-d'), 'withholdingRate' => '1.5'] + (null === $code ? [] : ['withholdingOperationCode' => $code]));
 
         $said = $recorded();
-        $pay($said, ['withholdingOperationCode' => 'RS99_000001']);
+        $pay($said, 'RS99_000001');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('withholdingOperationCode', (string) $this->client->getResponse()->getContent());
-        $pay($said, ['withholdingOperationCode' => 'RS7_000001']);
+        $pay($said, 'RS7_000001');
         self::assertResponseIsSuccessful();
         self::assertSame(['1.500', 'RS7_000001'], [$this->json()['withholdingRate'], $this->json()['withholdingOperationCode']]);
         $this->getJson($this->path($said));
@@ -275,7 +275,7 @@ final class ExpensesTest extends ApiTestCase
         $unsaid = $recorded();
         $this->postJson($this->path($unsaid).'/withholding-operation', ['withholdingOperationCode' => 'RS7_000002']);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a recorded expense has no payment to classify');
-        $pay($unsaid, []);
+        $pay($unsaid, null);
         self::assertNull($this->json()['withholdingOperationCode'], 'nobody said: nothing is guessed');
         $this->postJson($this->path($unsaid).'/withholding-operation', ['withholdingOperationCode' => 'RS7_000002']);
         self::assertResponseIsSuccessful();
