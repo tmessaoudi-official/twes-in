@@ -25,6 +25,14 @@ interface ExpenseRepository
      */
     public function search(Uuid $companyId, ExpenseSearch $search, PageRequest $page): Page;
 
+    /**
+     * A company's expenses paid from one day included to another excluded, by day of payment, then as they were
+     * written down.
+     *
+     * @return list<Expense>
+     */
+    public function paidBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): array;
+
     /** Null for an expense that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Expense;
 

@@ -12,10 +12,12 @@ namespace App\Module\Expenses\Infrastructure\Doctrine;
 use App\Module\Expenses\Domain\Expense;
 use App\Module\Expenses\Domain\ExpenseRepository;
 use App\Module\Expenses\Domain\ExpenseSearch;
+use App\Module\Expenses\Domain\ExpenseStatus;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
@@ -42,6 +44,22 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
     {
         /** @var list<Expense> $expenses */
         $expenses = $this->entityManager->getRepository(Expense::class)->findBy(['company' => $companyId], ['date' => 'DESC', 'createdAt' => 'DESC']);
+
+        return $expenses;
+    }
+
+    public function paidBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): array
+    {
+        /** @var list<Expense> $expenses */
+        $expenses = $this->entityManager->createQueryBuilder()
+            ->select('e', 'v')->from(Expense::class, 'e')
+            ->leftJoin('e.vendor', 'v')
+            ->where('e.company = :company')->setParameter('company', $companyId, 'uuid')
+            ->andWhere('e.status = :paid')->setParameter('paid', ExpenseStatus::Paid)
+            ->andWhere('e.paidOn >= :from')->setParameter('from', $from, Types::DATE_IMMUTABLE)
+            ->andWhere('e.paidOn < :until')->setParameter('until', $until, Types::DATE_IMMUTABLE)
+            ->orderBy('e.paidOn', 'ASC')->addOrderBy('e.createdAt', 'ASC')->addOrderBy('e.id', 'ASC')
+            ->getQuery()->getResult();
 
         return $expenses;
     }
