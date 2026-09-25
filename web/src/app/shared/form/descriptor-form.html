@@ -4,6 +4,7 @@
   novalidate
   class="twes-form flex flex-col"
   [attr.data-testid]="testId()"
+  data-tour="form"
 >
   @for (section of descriptor().sections; track section.id) {
     <fieldset

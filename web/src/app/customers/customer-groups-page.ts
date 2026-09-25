@@ -72,6 +72,7 @@ export class CustomerGroupsPage implements OnInit {
         disabled: () => this.busy(),
         shown: () => this.mayWrite(),
         confirm: (row) => ({
+          kind: 'definitif',
           title: 'customers.groups.delete_title',
           message: 'customers.groups.delete_message',
           messageParams: { name: row.name },

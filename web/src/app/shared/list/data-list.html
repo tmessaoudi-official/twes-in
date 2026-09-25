@@ -52,6 +52,7 @@
             [attr.aria-label]="'list.filter' | translate"
             (input)="onFilter($event)"
             data-testid="list-filter"
+            data-tour="list-search"
           />
           @if (query()) {
             <button
@@ -81,6 +82,7 @@
         [attr.aria-expanded]="viewsOpen()"
         [attr.aria-controls]="testId() + '-views'"
         data-testid="list-views"
+        data-tour="list-views"
       >
         <mat-icon aria-hidden="true">bookmarks</mat-icon>
       </button>
@@ -93,6 +95,7 @@
         [attr.aria-expanded]="chooserOpen()"
         [attr.aria-controls]="testId() + '-columns'"
         data-testid="list-columns"
+        data-tour="list-columns"
       >
         <mat-icon aria-hidden="true">view_column</mat-icon>
       </button>
@@ -414,6 +417,7 @@
       [pageSizeOptions]="descriptor().pageSizes"
       (page)="onPage($event)"
       data-testid="list-paginator"
+      data-tour="list-paginator"
     />
   }
 </div>

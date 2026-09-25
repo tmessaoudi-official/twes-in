@@ -23,6 +23,8 @@ class StaticLoader implements TranslateLoader {
       refused: 'Suppression impossible',
       feedback: { close: 'Fermer' },
       undo: 'Annuler',
+      issued: 'Facture émise',
+      actions: { kind: { corrigeable: 'Corrigeable', definitif: 'Définitif' } },
     });
   }
 }
@@ -89,6 +91,33 @@ describe('MaterialFeedback', () => {
     button?.click();
     expect(run).toHaveBeenCalledTimes(1);
     await vi.waitFor(() => expect(document.querySelector('[data-testid="toast"]')).toBeNull());
+  });
+
+  it('says what was done and whether it can be taken back, in the words the confirmation used', () => {
+    const open = vi.spyOn(TestBed.inject(MatSnackBar), 'openFromComponent');
+    TestBed.inject(MaterialFeedback).effect('issued', {}, 'corrigeable');
+
+    const config = open.mock.calls[0]?.[1];
+    expect(config?.politeness).toBe('polite');
+    expect(config?.duration).toBe(SUCCESS_DURATION_MS);
+    expect(config?.data).toEqual({
+      kind: 'success',
+      key: 'issued',
+      params: {},
+      effect: 'corrigeable',
+    });
+  });
+
+  it('draws the kind after the message, with its icon', async () => {
+    TestBed.inject(MaterialFeedback).effect('issued', {}, 'definitif');
+    await vi.waitFor(() =>
+      expect(document.querySelector('[data-testid="toast-effect"]')).not.toBeNull(),
+    );
+    const effect = document.querySelector<HTMLElement>('[data-testid="toast-effect"]');
+    expect(effect?.getAttribute('data-kind')).toBe('definitif');
+    expect(effect?.textContent).toContain('Définitif');
+    expect(effect?.textContent).toContain('lock');
+    expect(document.querySelector('[data-testid="toast"]')?.textContent).toContain('Facture émise');
   });
 
   it('shows the translated message with a named way to close it', async () => {

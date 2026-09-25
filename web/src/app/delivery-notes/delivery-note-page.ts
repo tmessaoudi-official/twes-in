@@ -55,7 +55,7 @@ import { unsavedChanges } from '../shared/form/dirty-count';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
-import type { ScreenAction } from '../shared/actions/screen-action';
+import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { DeliverDialog } from './deliver-dialog';
 import { RecordView } from '../shared/form/record-view';
@@ -284,6 +284,7 @@ export class DeliveryNotePage {
         shown: this.canValidate(),
         // Numbering is for good, so neither a click nor the bare key validates unasked (EFF-01, row 45).
         confirm: {
+          kind: 'corrigeable',
           title: 'delivery_notes.actions.validate_title',
           message: 'delivery_notes.actions.validate_message',
           confirmLabel: 'delivery_notes.actions.confirm_validate',
@@ -333,6 +334,7 @@ export class DeliveryNotePage {
         run: () => void this.cancel(),
         shown: this.canCancel(),
         confirm: {
+          kind: 'definitif',
           title: 'delivery_notes.actions.cancel_title',
           message: 'delivery_notes.actions.cancel_message',
           confirmLabel: 'delivery_notes.actions.confirm_cancel',
@@ -531,7 +533,11 @@ export class DeliveryNotePage {
     const id = this.id();
     const input = this.collect();
     if (!companyId || id === null || input === null) return;
-    await this.facade.reviseAndValidate(companyId, id, input);
+    const kind = kindAmong(this.actions(), 'validate');
+    const validated = await this.facade.reviseAndValidate(companyId, id, input);
+    if (validated !== null && kind !== undefined) {
+      this.feedback.effect('delivery_notes.validated', {}, kind);
+    }
   }
 
   /** Asked in a dialog, so the bar carries actions and not a date field (design review finding 3). */
@@ -568,7 +574,11 @@ export class DeliveryNotePage {
     const id = this.id();
     this.confirmingCancel.set(false);
     if (!companyId || id === null || this.busy()) return;
-    await this.facade.cancel(companyId, id);
+    const kind = kindAmong(this.actions(), 'cancel');
+    const cancelled = await this.facade.cancel(companyId, id);
+    if (cancelled !== null && kind !== undefined) {
+      this.feedback.effect('delivery_notes.cancelled', {}, kind);
+    }
   }
 
   /** The header and the lines as the API takes them, or null after showing what is wrong with them. */

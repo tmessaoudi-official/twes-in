@@ -83,6 +83,7 @@ export class ProductCategoriesPage implements OnInit {
         disabled: () => this.busy(),
         shown: () => this.mayWrite(),
         confirm: (row) => ({
+          kind: 'definitif',
           title: 'products.categories.delete_title',
           message: 'products.categories.delete_message',
           messageParams: { name: row.name },

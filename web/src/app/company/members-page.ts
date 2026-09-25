@@ -121,6 +121,7 @@ export class MembersPage implements OnInit {
         disabled: () => this.busy(),
         shown: (row) => this.mayManage() && row.status === 'joined',
         confirm: (row) => ({
+          kind: 'corrigeable',
           title: 'members.remove_title',
           message: 'members.remove_message',
           messageParams: { name: row.displayName },

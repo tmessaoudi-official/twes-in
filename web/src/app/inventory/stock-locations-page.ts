@@ -87,6 +87,7 @@ export class StockLocationsPage implements OnInit {
         disabled: () => this.busy(),
         shown: (row) => this.mayWrite() && !row.isDefault,
         confirm: (row) => ({
+          kind: 'definitif',
           title: 'inventory.delete_title',
           message: 'inventory.delete_message',
           messageParams: { name: row.path },

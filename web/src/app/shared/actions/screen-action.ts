@@ -13,6 +13,9 @@
  * The class of an action is DERIVED, not declared twice: an action carrying `confirm` is a confirm action, and one
  * without is plain. The ruling's third class, `undo` — an "Annuler" toast over a server-side bin — has no field
  * here on purpose: no bin exists in the API, and a class nothing can produce is a promise, not a type.
+ *
+ * What a consequential action does to the record is its KIND (docs/SPEC.md § 7, 2026-09-25 22:17): a confirmation
+ * must say it, so `ActionConfirm.kind` is required and a new confirmation cannot be written without choosing one.
  */
 export interface ScreenAction {
   id: string;
@@ -44,7 +47,39 @@ export interface ScreenAction {
   shortcut?: string;
 }
 
+/**
+ * Whether what an action did can be taken back (docs/SPEC.md § 7, 2026-09-25 22:17): `annulable` is undone from its
+ * toast; `corrigeable` is not undone but corrected afterwards, by a counter-document such as a credit note;
+ * `definitif` can be neither. The same word is said on the confirmation, in the menu and on the toast.
+ */
+export type ActionKind = 'annulable' | 'corrigeable' | 'definitif';
+
+export const ACTION_KINDS: readonly ActionKind[] = ['annulable', 'corrigeable', 'definitif'];
+
+/** The icon said beside a kind's word wherever it appears, so the three are told apart at a glance. */
+export const ACTION_KIND_ICONS: Readonly<Record<ActionKind, string>> = {
+  annulable: 'undo',
+  corrigeable: 'edit_note',
+  definitif: 'lock',
+};
+
+/** An action's kind, from its confirmation; an action that asks nothing has none. */
+export function kindOf(action: { confirm?: ActionConfirm }): ActionKind | undefined {
+  return action.confirm?.kind;
+}
+
+/**
+ * The kind a screen declared for one of its actions, read so the toast after it says the word its confirmation said:
+ * one declaration, never a second literal beside the call.
+ */
+export function kindAmong(actions: readonly ScreenAction[], id: string): ActionKind | undefined {
+  const action = actions.find((each) => each.id === id);
+  return action === undefined ? undefined : kindOf(action);
+}
+
 export interface ActionConfirm {
+  /** What the action does to the record, said beside the question with the matching icon. */
+  kind: ActionKind;
   title: string;
   message: string;
   /**

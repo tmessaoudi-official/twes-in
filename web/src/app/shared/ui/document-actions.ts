@@ -2,6 +2,7 @@
 
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -9,7 +10,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../a11y/label';
 import { runAction } from '../actions/run-action';
-import type { ScreenAction } from '../actions/screen-action';
+import { kindOf, type ScreenAction } from '../actions/screen-action';
 import { ConfirmDialog } from './confirm-dialog';
 
 /**
@@ -19,7 +20,15 @@ import { ConfirmDialog } from './confirm-dialog';
  */
 @Component({
   selector: 'app-document-actions',
-  imports: [MatButtonModule, MatIconModule, MatMenuModule, RouterLink, TranslatePipe, Label],
+  imports: [
+    MatButtonModule,
+    MatDividerModule,
+    MatIconModule,
+    MatMenuModule,
+    RouterLink,
+    TranslatePipe,
+    Label,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './document-actions.html',
 })
@@ -41,6 +50,22 @@ export class DocumentActions {
   protected readonly rare = computed(() =>
     this.offered().filter((action) => action.rare === true || action.destructive === true),
   );
+  /**
+   * The folded ones that can be taken back or corrected, first; what is final last, under its own heading, so it is
+   * never the entry beside the pointer (docs/SPEC.md § 7, 2026-09-25 22:17 and NAV-38).
+   */
+  protected readonly menu = computed(() => [
+    ...this.rare().filter((action) => kindOf(action) !== 'definitif'),
+    ...this.rare().filter((action) => kindOf(action) === 'definitif'),
+  ]);
+  /** The entry the « Définitif » heading is drawn above; one loop, so the menu keeps its keyboard order. */
+  protected readonly firstFinal = computed(() =>
+    this.menu().find((action) => kindOf(action) === 'definitif'),
+  );
+
+  protected kind(action: ScreenAction): string | null {
+    return kindOf(action) ?? null;
+  }
 
   /**
    * Delegated rather than decided here, so the bar, the keyboard shortcut and the palette cannot come to different

@@ -3,6 +3,7 @@
   role="group"
   [attr.aria-label]="label() | translate"
   data-testid="document-actions"
+  data-tour="document-actions"
 >
   @for (action of visible(); track action.id) {
     @if (action.href; as href) {
@@ -64,7 +65,19 @@
       <mat-icon aria-hidden="true">more_vert</mat-icon>
     </button>
     <mat-menu #moreMenu="matMenu" xPosition="before">
-      @for (action of rare(); track action.id) {
+      @for (action of menu(); track action.id) {
+        @if (action === firstFinal()) {
+          @if (!$first) {
+            <mat-divider />
+          }
+          <div
+            class="px-4 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
+            data-testid="document-menu-final"
+            data-tour="actions-final"
+          >
+            {{ 'actions.final_group' | translate }}
+          </div>
+        }
         @if (action.href; as href) {
           <a
             mat-menu-item
@@ -93,6 +106,7 @@
             [class.text-error]="action.destructive"
             (click)="run(action)"
             [attr.data-testid]="'document-menu-' + action.id"
+            [attr.data-kind]="kind(action)"
           >
             @if (action.icon) {
               <mat-icon aria-hidden="true" [class.text-error]="action.destructive">{{

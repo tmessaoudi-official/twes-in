@@ -17,6 +17,7 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       document: { actions: 'Actions', more_actions: 'More actions' },
+      actions: { final_group: 'Final' },
       d: {
         issue: 'Issue',
         pdf: 'PDF',
@@ -70,6 +71,7 @@ describe('DocumentActions', () => {
     destructive: true,
     run: () => ran.push('cancel'),
     confirm: {
+      kind: 'definitif',
       title: 'd.cancel_title',
       message: 'd.cancel_message',
       confirmLabel: 'd.cancel_confirm',
@@ -165,6 +167,34 @@ describe('DocumentActions', () => {
     expect((q('document-action-issue') as HTMLButtonElement).disabled).toBe(true);
     expect(q('document-action-duplicate')).toBeNull();
     expect(q('document-more')).toBeNull();
+  });
+
+  it('keeps what is final apart, last in the menu under its own heading (§ 7, 2026-09-25 22:17)', async () => {
+    fixture.componentInstance.actions.set([issue, cancel, { ...duplicate, rare: true }]);
+    await settle();
+    q('document-more')!.click();
+    await settle();
+
+    const entries = [
+      ...document.body.querySelectorAll<HTMLElement>(
+        '[data-testid^="document-menu-"], [data-testid="document-menu-final"]',
+      ),
+    ].map((entry) => entry.getAttribute('data-testid'));
+    expect(entries).toEqual([
+      'document-menu-duplicate',
+      'document-menu-final',
+      'document-menu-cancel',
+    ]);
+    expect(q('document-menu-final')?.textContent).toContain('Final');
+    expect(q('document-menu-cancel')?.getAttribute('data-kind')).toBe('definitif');
+  });
+
+  it('draws no final heading when nothing in the menu is final', async () => {
+    fixture.componentInstance.actions.set([issue, { ...duplicate, rare: true }]);
+    await settle();
+    q('document-more')!.click();
+    await settle();
+    expect(q('document-menu-final')).toBeNull();
   });
 
   it('names the "⋮" it draws', () => {

@@ -1070,7 +1070,13 @@ describe('AppShell', () => {
         label: 'invoices.cancel',
         shortcut: 'x',
         destructive: true,
-        confirm: { title: 't', message: 'm', confirmLabel: 'c', keepLabel: 'k' },
+        confirm: {
+          kind: 'definitif' as const,
+          title: 't',
+          message: 'm',
+          confirmLabel: 'c',
+          keepLabel: 'k',
+        },
         run: () => (ran += 1),
       },
     ]);

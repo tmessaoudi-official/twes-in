@@ -1177,7 +1177,10 @@
         "days_31_45": "31–45 d",
         "days_over_45": "> 45 d"
       }
-    }
+    },
+    "issued": "The invoice was issued.",
+    "credit_note_issued": "The credit note was issued.",
+    "cancelled": "The document was cancelled."
   },
   "delivery_notes": {
     "title": "Delivery notes",
@@ -1292,7 +1295,9 @@
       "not_found": "Delivery note not found.",
       "conflict": "The note changed state meanwhile, or its establishment has no delivery note numbering series to number it with.",
       "invalid": "The note was refused. Check the customer, the lines and the dates."
-    }
+    },
+    "validated": "The note was validated.",
+    "cancelled": "The note was cancelled."
   },
   "products": {
     "tabs": {
@@ -2530,5 +2535,18 @@
     "two_factor_off": "Off",
     "two_factor_manage": "Manage",
     "later": "Arrives in a coming version."
+  },
+  "actions": {
+    "kind": {
+      "annulable": "Can be undone",
+      "corrigeable": "Can be corrected",
+      "definitif": "Final"
+    },
+    "kind_help": {
+      "annulable": "You can take it back from the message that follows.",
+      "corrigeable": "This cannot be undone; a mistake is corrected afterwards.",
+      "definitif": "This can be neither undone nor corrected."
+    },
+    "final_group": "Final"
   }
 }

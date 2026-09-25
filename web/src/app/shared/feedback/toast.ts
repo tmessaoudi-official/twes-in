@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MAT_SNACK_BAR_DATA, MatSnackBarRef } from '@angular/material/snack-bar';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../a11y/label';
+import { ACTION_KIND_ICONS, type ActionKind } from '../actions/screen-action';
 import type { FeedbackAction } from './feedback';
 
 export interface ToastData {
@@ -13,6 +14,8 @@ export interface ToastData {
   readonly key: string;
   readonly params: Record<string, unknown>;
   readonly action?: FeedbackAction;
+  /** Whether what was done can be taken back, said after the message in its confirmation's words. */
+  readonly effect?: ActionKind;
 }
 
 /** One outcome, said in a line: its icon, its message and a way to close it. */
@@ -25,6 +28,16 @@ export interface ToastData {
         data.kind === 'success' ? 'check_circle' : data.kind === 'notice' ? 'sync' : 'error'
       }}</mat-icon>
       <span class="twes-toast-message">{{ data.key | translate: data.params }}</span>
+      @if (data.effect; as effect) {
+        <span
+          class="twes-toast-effect flex shrink-0 items-center gap-1 text-sm font-semibold"
+          data-testid="toast-effect"
+          [attr.data-kind]="effect"
+        >
+          <mat-icon aria-hidden="true">{{ icons[effect] }}</mat-icon>
+          {{ 'actions.kind.' + effect | translate }}
+        </span>
+      }
       @if (data.action; as action) {
         <button mat-button type="button" (click)="act(action)" data-testid="toast-action">
           {{ action.key | translate }}
@@ -46,6 +59,7 @@ export interface ToastData {
 export class Toast {
   protected readonly data = inject<ToastData>(MAT_SNACK_BAR_DATA);
   protected readonly ref = inject(MatSnackBarRef);
+  protected readonly icons = ACTION_KIND_ICONS;
 
   protected act(action: FeedbackAction): void {
     action.run();

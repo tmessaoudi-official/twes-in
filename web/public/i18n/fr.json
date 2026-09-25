@@ -1177,7 +1177,10 @@
         "days_31_45": "31–45 j",
         "days_over_45": "> 45 j"
       }
-    }
+    },
+    "issued": "La facture a été émise.",
+    "credit_note_issued": "L'avoir a été émis.",
+    "cancelled": "Le document a été annulé."
   },
   "delivery_notes": {
     "title": "Bons de livraison",
@@ -1292,7 +1295,9 @@
       "not_found": "Bon de livraison introuvable.",
       "conflict": "Le bon a changé d'état entre-temps, ou son établissement n'a pas de série de numérotation des bons de livraison.",
       "invalid": "Le bon a été refusé. Vérifiez le client, les lignes et les dates."
-    }
+    },
+    "validated": "Le bon a été validé.",
+    "cancelled": "Le bon a été annulé."
   },
   "products": {
     "tabs": {
@@ -2530,5 +2535,18 @@
     "two_factor_off": "Désactivée",
     "two_factor_manage": "Gérer",
     "later": "Arrive dans une prochaine version."
+  },
+  "actions": {
+    "kind": {
+      "annulable": "Annulable",
+      "corrigeable": "Corrigeable",
+      "definitif": "Définitif"
+    },
+    "kind_help": {
+      "annulable": "Vous pourrez revenir en arrière depuis le message qui suit.",
+      "corrigeable": "Cela ne s’annule pas ; une erreur se corrige ensuite.",
+      "definitif": "Cela ne pourra être ni annulé ni corrigé."
+    },
+    "final_group": "Définitif"
   }
 }

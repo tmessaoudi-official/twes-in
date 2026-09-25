@@ -35,7 +35,7 @@ import type {
   ProductOption,
 } from './invoices-types';
 import type { PickAsked } from '../shared/form/pick-api';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { effectToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 
@@ -548,6 +548,8 @@ describe('InvoicePage', () => {
         lines: [expect.objectContaining({ quantity: '3' })],
       }),
     );
+    // What was confirmed as corrigeable is said so once done (docs/SPEC.md § 7, 2026-09-25 22:17).
+    await vi.waitFor(() => expect(effectToasts()).toEqual(['invoices.issued:corrigeable']));
   });
 
   it('takes the header and lines another person saved into a quiet draft', async () => {
@@ -634,6 +636,7 @@ describe('InvoicePage', () => {
     over('confirm-run')!.click();
     await settle();
     expect(facade.cancel).toHaveBeenCalledWith('c1', 'i1');
+    await vi.waitFor(() => expect(effectToasts()).toEqual(['invoices.cancelled:definitif']));
   });
 
   it('reads a locked document rather than showing a form nobody may fill in', async () => {

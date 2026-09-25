@@ -2,6 +2,7 @@
 
 import { type Provider, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import type { ActionKind } from '../actions/screen-action';
 import { Feedback, type FeedbackAction } from '../feedback/feedback';
 import { RequestActivity } from '../feedback/request-activity';
 
@@ -12,10 +13,15 @@ export class RecordedFeedback extends Feedback {
     key: string;
     params?: Record<string, unknown>;
     action?: FeedbackAction;
+    effect?: ActionKind;
   }[] = [];
 
   success(key: string, params?: Record<string, unknown>, action?: FeedbackAction): void {
     this.said.push({ kind: 'success', key, params, ...(action === undefined ? {} : { action }) });
+  }
+
+  effect(key: string, params: Record<string, unknown>, kind: ActionKind): void {
+    this.said.push({ kind: 'success', key, params, effect: kind });
   }
 
   notice(key: string, params?: Record<string, unknown>): void {
@@ -58,4 +64,11 @@ export function successToasts(): string[] {
   return (TestBed.inject(Feedback) as RecordedFeedback).said
     .filter((toast) => toast.kind === 'success')
     .map((toast) => toast.key);
+}
+
+/** The consequential actions a spec's page has reported, as `key:kind` (needs `provideQuietFeedback()`). */
+export function effectToasts(): string[] {
+  return (TestBed.inject(Feedback) as RecordedFeedback).said
+    .filter((toast) => toast.effect !== undefined)
+    .map((toast) => `${toast.key}:${toast.effect}`);
 }

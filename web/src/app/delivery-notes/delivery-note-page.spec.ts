@@ -34,7 +34,7 @@ import type {
   ProductOption,
 } from './delivery-notes-types';
 import type { PickAsked } from '../shared/form/pick-api';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { effectToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 
@@ -410,6 +410,9 @@ describe('DeliveryNotePage', () => {
       'n1',
       expect.objectContaining({ lines: [expect.objectContaining({ quantity: '4' })] }),
     );
+    await vi.waitFor(() =>
+      expect(effectToasts()).toEqual(['delivery_notes.validated:corrigeable']),
+    );
   });
 
   it('counts what is typed on a note, so leaving it asks first (RCH-01)', async () => {
@@ -517,6 +520,7 @@ describe('DeliveryNotePage', () => {
     over('confirm-run')!.click();
     await settle();
     expect(facade.cancel).toHaveBeenCalledWith('c1', 'n1');
+    await vi.waitFor(() => expect(effectToasts()).toEqual(['delivery_notes.cancelled:definitif']));
   });
 
   it('shows an invoiced note with its delivery day and PDF, neither delivered nor cancelled again', async () => {

@@ -24,6 +24,7 @@
       class="twes-rail"
       [class.is-folded]="rail()"
       data-testid="shell-nav"
+      data-tour="shell-nav"
       [attr.data-window]="windowClass()"
       [attr.data-sidebar]="rail() ? 'rail' : 'expanded'"
     >
@@ -42,6 +43,7 @@
             [matTooltipDisabled]="!rail()"
             matTooltipPosition="right"
             data-testid="create-open"
+            data-tour="shell-create"
           >
             <mat-icon aria-hidden="true">add</mat-icon>
             @if (!rail()) {
@@ -128,6 +130,7 @@
               #settingsActive="routerLinkActive"
               [activated]="settingsActive.isActive || inSettings()"
               data-testid="nav-settings"
+              data-tour="shell-settings"
               [matTooltip]="'shell.settings' | translate"
               matTooltipPosition="right"
               [matTooltipDisabled]="!rail()"
@@ -169,6 +172,7 @@
             matTooltipPosition="right"
             [matTooltipDisabled]="!rail()"
             data-testid="user-menu"
+            data-tour="shell-account"
           >
             <span class="twes-avatar" aria-hidden="true">{{ initials() }}</span>
             @if (!rail()) {
@@ -214,6 +218,7 @@
                 aria-keyshortcuts="Control+K Meta+K"
                 [appLabel]="'shell.commands.open' | translate"
                 data-testid="command-open"
+                data-tour="shell-palette"
               >
                 <mat-icon aria-hidden="true">search</mat-icon>
               </button>
@@ -282,6 +287,7 @@
                   [matMenuTriggerFor]="account"
                   [appLabel]="('shell.user_menu' | translate) + ' — ' + me.user.displayName"
                   data-testid="user-menu"
+                  data-tour="shell-account"
                 >
                   <span class="twes-avatar" aria-hidden="true">{{ initials() }}</span>
                 </button>
@@ -465,6 +471,7 @@
             #createTrigger="matMenuTrigger"
             aria-keyshortcuts="c"
             data-testid="create-open"
+            data-tour="shell-create"
           >
             <mat-icon aria-hidden="true">add</mat-icon>
             <span>{{ 'shell.create' | translate }}</span>

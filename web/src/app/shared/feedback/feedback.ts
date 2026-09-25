@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { ActionKind } from '../actions/screen-action';
+
 /**
  * The port every screen reports an outcome through: a short toast that says what happened (docs/SPEC.md § 7,
  * 2026-09-16, row 48). Keys are translation keys. What a person must act on — a refused field, a rule the domain
@@ -11,6 +13,12 @@ export abstract class Feedback {
    * one follow-up that makes sense at once, such as taking back a scan; the toast stays a little longer with it.
    */
   abstract success(key: string, params?: Record<string, unknown>, action?: FeedbackAction): void;
+
+  /**
+   * A consequential action was done: said like a success, with the word its confirmation used — Corrigeable,
+   * Définitif — so what can be taken back reads the same before and after (docs/SPEC.md § 7, 2026-09-25 22:17).
+   */
+  abstract effect(key: string, params: Record<string, unknown>, kind: ActionKind): void;
 
   /**
    * Something another person or tab did to what is on this screen (docs/SPEC.md § 7, 2026-09-17): announced politely

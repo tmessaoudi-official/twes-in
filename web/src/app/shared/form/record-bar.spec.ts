@@ -69,6 +69,7 @@ class Host {
         shown: this.dangerous(),
         run: () => this.did.push('danger'),
         confirm: {
+          kind: 'definitif',
           title: 'danger.title',
           message: 'danger.message',
           confirmLabel: 'danger.run',

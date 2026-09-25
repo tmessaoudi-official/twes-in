@@ -2,6 +2,7 @@
 
 import { inject, Injectable } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import type { ActionKind } from '../actions/screen-action';
 import { Feedback, type FeedbackAction } from './feedback';
 import { Toast, type ToastData } from './toast';
 
@@ -27,6 +28,17 @@ export class MaterialFeedback extends Feedback {
           : { kind: 'success', key, params, action },
       politeness: 'polite',
       duration: action === undefined ? SUCCESS_DURATION_MS : ACTION_DURATION_MS,
+      verticalPosition: 'top',
+      horizontalPosition: 'center',
+      panelClass: ['twes-toast-panel', 'twes-toast-success'],
+    });
+  }
+
+  effect(key: string, params: Record<string, unknown>, kind: ActionKind): void {
+    this.snackBar.openFromComponent<Toast, ToastData>(Toast, {
+      data: { kind: 'success', key, params, effect: kind },
+      politeness: 'polite',
+      duration: SUCCESS_DURATION_MS,
       verticalPosition: 'top',
       horizontalPosition: 'center',
       panelClass: ['twes-toast-panel', 'twes-toast-success'],

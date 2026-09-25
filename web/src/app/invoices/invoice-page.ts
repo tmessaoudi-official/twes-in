@@ -63,7 +63,7 @@ import { unsavedChanges } from '../shared/form/dirty-count';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
-import type { ScreenAction } from '../shared/actions/screen-action';
+import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { CreditNoteDialog } from './credit-note-dialog';
 import { PaymentDialog } from './payment-dialog';
@@ -333,12 +333,14 @@ export class InvoicePage {
         // Numbering is for good, so neither a click nor the bare key issues unasked (EFF-01, row 45).
         confirm: this.isCreditNote()
           ? {
+              kind: 'definitif',
               title: 'invoices.actions.issue_credit_note_title',
               message: 'invoices.actions.issue_credit_note_message',
               confirmLabel: 'invoices.actions.confirm_issue',
               keepLabel: 'invoices.actions.keep',
             }
           : {
+              kind: 'corrigeable',
               title: 'invoices.actions.issue_title',
               message: 'invoices.actions.issue_message',
               confirmLabel: 'invoices.actions.confirm_issue',
@@ -399,6 +401,7 @@ export class InvoicePage {
         run: () => void this.cancel(),
         shown: this.canCancel(),
         confirm: {
+          kind: 'definitif',
           title: 'invoices.actions.cancel_title',
           message: 'invoices.actions.cancel_message',
           confirmLabel: 'invoices.actions.confirm_cancel',
@@ -648,7 +651,11 @@ export class InvoicePage {
     const id = this.id();
     const input = this.collect();
     if (!companyId || id === null || input === null) return;
-    await this.facade.reviseAndIssue(companyId, id, input);
+    // Read before issuing: once issued, the screen declares what an issued document offers.
+    const kind = kindAmong(this.actions(), 'issue');
+    const key = this.isCreditNote() ? 'invoices.credit_note_issued' : 'invoices.issued';
+    const issued = await this.facade.reviseAndIssue(companyId, id, input);
+    if (issued !== null && kind !== undefined) this.feedback.effect(key, {}, kind);
   }
 
   protected async cancel(): Promise<void> {
@@ -656,7 +663,10 @@ export class InvoicePage {
     const id = this.id();
     this.confirmingCancel.set(false);
     if (!companyId || id === null || this.busy()) return;
-    await this.facade.cancel(companyId, id);
+    const kind = kindAmong(this.actions(), 'cancel');
+    const cancelled = await this.facade.cancel(companyId, id);
+    if (cancelled !== null && kind !== undefined)
+      this.feedback.effect('invoices.cancelled', {}, kind);
   }
 
   /** Asks why first: a credit note states its reason when it is drafted (docs/SPEC.md § 7, 2026-09-24 22:51). */

@@ -23,7 +23,13 @@ describe('runAction', () => {
   });
 
   it('asks first when the action says what to ask, and runs only on yes', () => {
-    const confirm = { title: 't', message: 'm', confirmLabel: 'c', keepLabel: 'k' };
+    const confirm = {
+      kind: 'definitif' as const,
+      title: 't',
+      message: 'm',
+      confirmLabel: 'c',
+      keepLabel: 'k',
+    };
     let ran = 0;
     runAction(action({ confirm, run: () => (ran += 1) }), () => of(false));
     expect(ran).toBe(0);
@@ -43,7 +49,13 @@ describe('runAction', () => {
     runAction(
       action({
         disabled: true,
-        confirm: { title: 't', message: 'm', confirmLabel: 'c', keepLabel: 'k' },
+        confirm: {
+          kind: 'definitif' as const,
+          title: 't',
+          message: 'm',
+          confirmLabel: 'c',
+          keepLabel: 'k',
+        },
         run: () => (ran += 1),
       }),
       () => {
@@ -60,7 +72,13 @@ describe('runAction', () => {
     let ran = 0;
     runAction(
       action({
-        confirm: { title: 't', message: 'm', confirmLabel: 'c', keepLabel: 'k' },
+        confirm: {
+          kind: 'definitif' as const,
+          title: 't',
+          message: 'm',
+          confirmLabel: 'c',
+          keepLabel: 'k',
+        },
         run: () => (ran += 1),
       }),
       () => of(undefined),

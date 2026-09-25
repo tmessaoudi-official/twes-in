@@ -159,6 +159,7 @@ const declared: ListDescriptor<Customer> = {
       // A function of the row, so the question can name it: "Archiver Customer 01 ?" rather than a list of
       // eleven identical questions.
       confirm: (row) => ({
+        kind: 'definitif',
         title: 'c.archive_title',
         message: 'c.archive_message',
         messageParams: { name: row.name },

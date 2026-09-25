@@ -169,6 +169,7 @@ export class CustomerPage {
         disabled: () => this.busy(),
         shown: () => this.mayWrite(),
         confirm: (row) => ({
+          kind: 'definitif',
           title: 'customers.contacts.remove_title',
           message: 'customers.contacts.remove_message',
           // The same name the list's own column shows, so the question and the row read alike.

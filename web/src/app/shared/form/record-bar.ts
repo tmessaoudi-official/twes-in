@@ -25,7 +25,7 @@ import { ConfirmDialog } from '../ui/confirm-dialog';
   imports: [MatButtonModule, MatIconModule, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex flex-wrap items-center gap-2" data-testid="record-bar">
+    <div class="flex flex-wrap items-center gap-2" data-testid="record-bar" data-tour="record-bar">
       @if (changes() > 0) {
         <!-- Announced, because nothing else on the page says a form was left half-filled. -->
         <span
