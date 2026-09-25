@@ -5,6 +5,7 @@ import type { FieldValue, FormDescriptor, FormField, FormValues } from '../share
 import { atScale } from '../shared/i18n/format';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import type { PickOption } from '../shared/form/pick-field';
+import { LOT_CODE_PATTERN, type ProductTracking } from '../products/products-types';
 import {
   type CustomerOption,
   INVOICE_SHOWN_STATUSES,
@@ -343,10 +344,20 @@ export interface LineControls {
   discountRate: FormControl<string>;
   taxComponentIds: FormControl<string[]>;
   sourceDeliveryNoteLineId: FormControl<string>;
+  /** The lot or serial sold; asked only for a product tracked by one (docs/SPEC.md § 7, 2026-09-24 12:40 row 5). */
+  lotCode: FormControl<string>;
+  /** How the line's product is tracked, which decides whether the lot is asked; '' for a line naming no product. */
+  productTracking: FormControl<ProductTracking | ''>;
 }
 
 export type LineGroup = FormGroup<LineControls>;
 export type LinesArray = FormArray<LineGroup>;
+
+/** Whether a line asks which lot or serial it sells. */
+export function namesALot(line: LineGroup): boolean {
+  const tracking = line.controls.productTracking.value;
+  return tracking === 'lot' || tracking === 'serial';
+}
 
 /** Unlike Validators.required, a value made only of spaces is missing too. */
 const notBlank: ValidatorFn = (control) =>
@@ -416,6 +427,13 @@ export function lineGroup(
       sourceDeliveryNoteLineId: new FormControl(line?.sourceDeliveryNoteLineId ?? '', {
         nonNullable: true,
       }),
+      lotCode: new FormControl(line?.lotCode ?? '', {
+        nonNullable: true,
+        validators: [matches(LOT_CODE_PATTERN)],
+      }),
+      productTracking: new FormControl<ProductTracking | ''>(line?.productTracking ?? '', {
+        nonNullable: true,
+      }),
     },
     { validators: fitsUnit(options) },
   );
@@ -455,10 +473,18 @@ export function applyProduct(
   excludedFamilies: readonly TaxFamily[],
 ): void {
   if (product === null) {
-    line.patchValue({ productId: '', productReference: '', productName: '' });
+    line.patchValue({
+      productId: '',
+      productReference: '',
+      productName: '',
+      lotCode: '',
+      productTracking: '',
+    });
     return;
   }
   const offered = new Set(offeredLineTaxes(options, excludedFamilies).map((tax) => tax.id));
+  // A lot names a batch of one product: another product starts without it.
+  const sameProduct = line.controls.productId.value === product.id;
   line.patchValue({
     productId: product.id,
     productReference: product.reference,
@@ -467,6 +493,8 @@ export function applyProduct(
     unitId: product.unitId,
     unitPriceNet: atScale(product.unitPriceNet, options.currencyScale),
     taxComponentIds: product.defaultTaxComponentIds.filter((id) => offered.has(id)),
+    lotCode: sameProduct && product.tracking !== 'none' ? line.controls.lotCode.value : '',
+    productTracking: product.tracking,
   });
 }
 
@@ -515,6 +543,10 @@ export function invoiceInput(
       taxComponentIds: [...line.taxComponentIds],
       sourceDeliveryNoteLineId:
         line.sourceDeliveryNoteLineId === '' ? null : line.sourceDeliveryNoteLineId,
+      lotCode:
+        line.productTracking === 'lot' || line.productTracking === 'serial'
+          ? text(line.lotCode)
+          : null,
     })),
   };
 }

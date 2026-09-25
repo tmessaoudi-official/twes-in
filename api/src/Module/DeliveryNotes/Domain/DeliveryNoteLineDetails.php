@@ -12,8 +12,8 @@ namespace App\Module\DeliveryNotes\Domain;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxKind;
 use App\Fiscal\Domain\Unit;
+use App\Module\Products\Domain\LotCode;
 use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductTracking;
 
 /**
  * One line as it is written: what is delivered, how much of it in which unit, its net unit price and the taxes charged
@@ -29,8 +29,7 @@ final readonly class DeliveryNoteLineDetails
      * A lot or serial as a label carries it: the stock lot's own rule (Inventory's StockLot::CODE), restated here
      * because the inventory reads a delivery note and never the other way round.
      */
-    public const int LOT_CODE_MAX = 40;
-    private const string LOT_CODE = '/^[\x21-\x7E]{1,40}$/';
+    public const int LOT_CODE_MAX = LotCode::MAX;
     private const string QUANTITY = '/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/';
     private const string PRICE = '/^(0|[1-9][0-9]{0,9})(\.[0-9]{1,4})?$/';
 
@@ -109,10 +108,10 @@ final readonly class DeliveryNoteLineDetails
         if ('' === $code) {
             return null;
         }
-        if (null === $product || ProductTracking::None === $product->getTracking()) {
+        if (!LotCode::namedFor($product)) {
             throw new InvalidDeliveryNote('lotCode', 'A lot or serial is named on a line of a product tracked by one.');
         }
-        if (1 !== preg_match(self::LOT_CODE, $code)) {
+        if (!LotCode::isWellFormed($code)) {
             throw new InvalidDeliveryNote('lotCode', \sprintf('A lot code is 1 to %d printable characters without space or accent.', self::LOT_CODE_MAX));
         }
 

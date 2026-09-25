@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Domain;
 
 use App\Fiscal\Domain\Unit;
+use App\Module\Products\Domain\LotCode;
 use App\Module\Products\Domain\Product;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
@@ -86,6 +87,10 @@ class InvoiceLine implements CompanyOwned
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $sourceDeliveryNoteLineId;
 
+    /** The lot or serial sold, for a product tracked by one (docs/SPEC.md § 7, 2026-09-24 12:40 row 5); a record only: an invoice moves no stock. */
+    #[ORM\Column(length: LotCode::MAX, nullable: true)]
+    private ?string $lotCode;
+
     /** @var Collection<int, InvoiceLineTax> */
     #[ORM\OneToMany(targetEntity: InvoiceLineTax::class, mappedBy: 'line', cascade: ['persist'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC'])]
@@ -105,6 +110,7 @@ class InvoiceLine implements CompanyOwned
         $this->unitPriceNet = $details->unitPriceNet;
         $this->discountRate = $details->discountRate;
         $this->sourceDeliveryNoteLineId = $details->sourceDeliveryNoteLineId;
+        $this->lotCode = $details->lotCode;
         $this->taxes = new ArrayCollection();
         foreach ($details->taxes as $index => $tax) {
             $this->taxes->add(new InvoiceLineTax($this, $index + 1, $tax));
@@ -141,7 +147,7 @@ class InvoiceLine implements CompanyOwned
         return ['net' => $this->lineNet, 'tax' => $this->lineTax, 'gross' => $this->lineGross];
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null} compared the way InvoiceLineDetails::values() is */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null} compared the way InvoiceLineDetails::values() is */
     public function values(): array
     {
         return [
@@ -153,6 +159,7 @@ class InvoiceLine implements CompanyOwned
             $this->discountRate,
             array_map(static fn (InvoiceLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $this->getTaxes()),
             $this->sourceDeliveryNoteLineId?->toRfc4122(),
+            $this->lotCode,
         ];
     }
 
@@ -206,6 +213,12 @@ class InvoiceLine implements CompanyOwned
     public function getSourceDeliveryNoteLineId(): ?Uuid
     {
         return $this->sourceDeliveryNoteLineId;
+    }
+
+    /** The lot or serial sold; null when the line names none. */
+    public function getLotCode(): ?string
+    {
+        return $this->lotCode;
     }
 
     /** @return list<InvoiceLineTax> in the order they are printed */

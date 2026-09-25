@@ -26,6 +26,7 @@ const input: InvoiceInput = {
       discountRate: '10',
       taxComponentIds: ['t1'],
       sourceDeliveryNoteLineId: null,
+      lotCode: null,
     },
   ],
 };
@@ -57,6 +58,8 @@ const issued = {
       discountRate: null,
       taxComponentIds: ['t1'],
       sourceDeliveryNoteLineId: 'dl1',
+      productTracking: 'lot',
+      lotCode: 'L-1',
       net: '10000.000',
     },
   ],
@@ -207,9 +210,10 @@ describe('InvoicesApi', () => {
         unitId: 'u2',
         unitPriceNet: '1800.0000',
         defaultTaxComponentIds: [],
+        tracking: 'serial',
       },
     ]);
-    expect((await named)[0]?.reference).toBe('ART-1');
+    expect((await named)[0]).toMatchObject({ reference: 'ART-1', tracking: 'serial' });
   });
 
   it('asks for nothing at all when a picker opens on no words, so the API answers its first few', async () => {
@@ -231,7 +235,11 @@ describe('InvoicesApi', () => {
     expect(invoice.status).toBe('partially_paid');
     expect(invoice.amountDue).toBe('5951.000');
     expect(invoice.fixedTaxes).toEqual([{ code: 'TIMBRE', amount: '1.000' }]);
-    expect(invoice.lines[0]?.sourceDeliveryNoteLineId).toBe('dl1');
+    expect(invoice.lines[0]).toMatchObject({
+      sourceDeliveryNoteLineId: 'dl1',
+      productTracking: 'lot',
+      lotCode: 'L-1',
+    });
     expect(invoice.payments[0]).toEqual({
       id: 'y1',
       date: '2026-09-12',

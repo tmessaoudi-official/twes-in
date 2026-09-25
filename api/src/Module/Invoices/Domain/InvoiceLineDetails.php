@@ -13,6 +13,7 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxKind;
 use App\Fiscal\Domain\Unit;
+use App\Module\Products\Domain\LotCode;
 use App\Module\Products\Domain\Product;
 use Symfony\Component\Uid\Uuid;
 
@@ -38,14 +39,17 @@ final readonly class InvoiceLineDetails
     public ?string $discountRate;
     /** @var list<TaxComponent> */
     public array $taxes;
+    /** The lot or serial sold, for a product tracked by one; null when the line names none. */
+    public ?string $lotCode;
 
     /**
      * @param list<TaxComponent> $taxes
      * @param Uuid|null          $sourceDeliveryNoteLineId the delivery note line it invoices; null for a line written by hand
+     * @param string|null        $lotCode                  the lot or serial sold; blank or null for none
      *
      * @throws InvalidInvoice
      */
-    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, public ?Uuid $sourceDeliveryNoteLineId = null)
+    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, public ?Uuid $sourceDeliveryNoteLineId = null, ?string $lotCode = null)
     {
         $description = trim($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
@@ -68,9 +72,10 @@ final readonly class InvoiceLineDetails
             $ids[$id] = true;
         }
         $this->taxes = $taxes;
+        $this->lotCode = self::lotCode($product, $lotCode);
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null} what two lines are compared on */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null} what two lines are compared on */
     public function values(): array
     {
         return [
@@ -82,6 +87,7 @@ final readonly class InvoiceLineDetails
             $this->discountRate,
             array_map(static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(), $this->taxes),
             $this->sourceDeliveryNoteLineId?->toRfc4122(),
+            $this->lotCode,
         ];
     }
 
@@ -99,6 +105,23 @@ final readonly class InvoiceLineDetails
         }
 
         return $units.'.'.str_pad($decimals, self::QUANTITY_DECIMALS, '0');
+    }
+
+    /** @throws InvalidInvoice */
+    private static function lotCode(?Product $product, ?string $code): ?string
+    {
+        $code = trim($code ?? '');
+        if ('' === $code) {
+            return null;
+        }
+        if (!LotCode::namedFor($product)) {
+            throw new InvalidInvoice('lotCode', 'A lot or serial is named on a line of a product tracked by one.');
+        }
+        if (!LotCode::isWellFormed($code)) {
+            throw new InvalidInvoice('lotCode', \sprintf('A lot code is 1 to %d printable characters without space or accent.', LotCode::MAX));
+        }
+
+        return $code;
     }
 
     private static function price(string $price): string

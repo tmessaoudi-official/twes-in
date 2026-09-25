@@ -18,7 +18,7 @@ import {
   type ProductOption,
   type TaxFamily,
 } from './delivery-notes-types';
-import type { ProductTracking } from '../products/products-types';
+import { LOT_CODE_PATTERN, type ProductTracking } from '../products/products-types';
 
 const FIELDS = 'delivery_notes.fields';
 /** The API's longest line description. */
@@ -286,9 +286,6 @@ export interface LineControls {
 }
 
 export type LineGroup = FormGroup<LineControls>;
-
-/** A lot or serial as a label carries it: printable characters without space or accent, 40 at most, as the API keeps it. */
-export const LOT_CODE_PATTERN = /^[\x21-\x7E]{1,40}$/;
 
 /** Whether a line asks which lot or serial it hands over. */
 export function namesALot(line: LineGroup): boolean {

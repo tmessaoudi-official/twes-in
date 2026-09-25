@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Domain;
 
+use App\Module\Products\Domain\LotCode;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductTracking;
 use App\Shared\Domain\CompanyOwned;
@@ -33,9 +34,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\UniqueConstraint(name: 'uniq_stock_lot_code', columns: ['product_id', 'code'])]
 class StockLot implements CompanyOwned
 {
-    public const int CODE_MAX = 40;
-
-    private const string CODE = '/^[\x21-\x7E]{1,40}$/';
+    public const int CODE_MAX = LotCode::MAX;
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
@@ -93,7 +92,7 @@ class StockLot implements CompanyOwned
     public static function code(string $code): string
     {
         $code = trim($code);
-        if (1 !== preg_match(self::CODE, $code)) {
+        if (!LotCode::isWellFormed($code)) {
             throw new InvalidStockMovement('lotCode', \sprintf('A lot code is 1 to %d printable characters without space or accent.', self::CODE_MAX));
         }
 

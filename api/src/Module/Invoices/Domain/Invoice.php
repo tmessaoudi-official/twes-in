@@ -15,6 +15,7 @@ use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxKind;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerSnapshot;
+use App\Module\Products\Domain\LotCode;
 use App\Shared\Domain\CompanyOwned;
 use App\Shared\Domain\DomainEvent;
 use App\Tenancy\Domain\Company;
@@ -304,6 +305,7 @@ class Invoice implements CompanyOwned
         $credit->establishment = $invoice->establishment;
         $credit->customer = $invoice->customer;
         $credit->apply($invoice->getHeader());
+        // The lot sold is the lot credited (docs/SPEC.md § 7, row 108); a duplicate, a new sale, names none.
         $credit->writeLines(array_map(static fn (InvoiceLine $line): InvoiceLineDetails => new InvoiceLineDetails(
             $line->getProduct(),
             $line->getDescription(),
@@ -312,6 +314,8 @@ class Invoice implements CompanyOwned
             $line->getUnitPriceNet(),
             $line->getDiscountRate(),
             array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
+            null,
+            LotCode::carried($line->getProduct(), $line->getLotCode()),
         ), $invoice->getLines()));
         $credit->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
         $credit->retakeTaxes();

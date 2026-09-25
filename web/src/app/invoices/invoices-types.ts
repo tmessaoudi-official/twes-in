@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { ProductTracking } from '../products/products-types';
 import type { StatusTone } from '../shared/theme/accent-theme';
 
 /** Why the API refused, as the invoices screens translate it. */
@@ -64,11 +65,18 @@ export interface InvoiceLine {
    */
   productReference: string | null;
   productName: string | null;
+  /** How the product's stock is told apart today; null for a line naming no product. Read only. */
+  productTracking: ProductTracking | null;
+  /** The lot or serial sold, for a product tracked by one (docs/SPEC.md § 7, 2026-09-24 12:40 row 5). */
+  lotCode: string | null;
   /** The line after its own discount, at the currency's scale, worked out by the API. */
   net: string;
 }
 
-export type InvoiceLineInput = Omit<InvoiceLine, 'net' | 'productReference' | 'productName'>;
+export type InvoiceLineInput = Omit<
+  InvoiceLine,
+  'net' | 'productReference' | 'productName' | 'productTracking'
+>;
 
 export interface TaxTotal {
   code: string;
@@ -208,6 +216,8 @@ export interface ProductOption {
   unitId: string;
   unitPriceNet: string;
   defaultTaxComponentIds: string[];
+  /** Whether a line of it names the lot or serial sold. */
+  tracking: ProductTracking;
 }
 
 export interface UnitOption {

@@ -23,6 +23,7 @@ import {
   type LineGroup,
   lineGroup,
   type LinesArray,
+  namesALot,
   offeredLineTaxes,
   pickedProduct,
 } from './invoice-forms';
@@ -40,7 +41,12 @@ import { InvoicesFacade } from './invoices-facade';
 
 type CheckedField = keyof Omit<
   LineControls,
-  'productId' | 'productReference' | 'productName' | 'taxComponentIds' | 'sourceDeliveryNoteLineId'
+  | 'productId'
+  | 'productReference'
+  | 'productName'
+  | 'productTracking'
+  | 'taxComponentIds'
+  | 'sourceDeliveryNoteLineId'
 >;
 
 /**
@@ -100,6 +106,12 @@ export class InvoiceLines {
       );
       onCleanup(() => subscription.unsubscribe());
     });
+  }
+
+  /** A line of a product tracked by lot or serial asks which one it sells. */
+  protected namesALot(line: LineGroup): boolean {
+    this.revision();
+    return namesALot(line);
   }
 
   protected groups(): LineGroup[] {

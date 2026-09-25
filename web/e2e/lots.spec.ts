@@ -89,6 +89,14 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
     await expect(page.getByTestId('line-0-lot')).toHaveValue(scannedLot);
     await expect(page.getByTestId('line-0-quantity')).toHaveValue('1');
     expect(await wcagViolations(page)).toEqual([]);
+
+    // And an invoice's line names the lot it sells, from the same label.
+    await page.goto('/invoices/new');
+    await expect(page.getByTestId('line-0-description')).toBeVisible();
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await scan(page, `]C1010${code}1727053110${scannedLot}`);
+    await expect(page.getByTestId('line-0-lot')).toHaveValue(scannedLot);
+    expect(await wcagViolations(page)).toEqual([]);
   } finally {
     if (ids.length > 0) await stockKept(page, ids[0], false);
     await forget(page, ids);

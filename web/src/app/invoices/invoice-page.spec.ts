@@ -134,6 +134,7 @@ const products: ProductOption[] = [
     unitId: 'u1',
     unitPriceNet: '1800.0000',
     defaultTaxComponentIds: ['t1'],
+    tracking: 'none',
   },
 ];
 
@@ -169,6 +170,8 @@ const draft: InvoiceRow = {
       sourceDeliveryNoteLineId: null,
       productReference: 'ART-1',
       productName: 'Conception',
+      productTracking: 'none',
+      lotCode: null,
       net: '1800.000',
     },
   ],
@@ -395,6 +398,7 @@ describe('InvoicePage', () => {
             discountRate: '5',
             taxComponentIds: ['t1'],
             sourceDeliveryNoteLineId: null,
+            lotCode: null,
           },
         ],
       }),
@@ -885,6 +889,7 @@ describe('InvoicePage', () => {
           unitId: 'u1',
           unitPriceNet: '4.5000',
           defaultTaxComponentIds: ['t1'],
+          tracking: 'none',
         },
       ]);
 
@@ -901,6 +906,24 @@ describe('InvoicePage', () => {
       expect(quantityOf(1)).toBe('24');
       expect((q('line-1-description') as HTMLInputElement).value).toBe('Papier');
       expect((q('line-1-price') as HTMLInputElement).value).toContain('4');
+    });
+
+    // docs/SPEC.md § 7, 2026-09-24 12:40 row 5: a line names the lot or serial sold.
+    it('puts the serial a GS1 label names on the line, and starts a line for another', async () => {
+      invoice.set({ ...draft, lines: [] });
+      await open('i1');
+      facade.pickProducts.mockResolvedValue([{ ...products[0], tracking: 'serial' }]);
+      scans.named.mockResolvedValue({ ...coffee, lot: 'L-1', serial: 'SN-1' });
+
+      await scanned('0103017620422003' + '21SN-1');
+      await settle();
+      expect((q('line-0-lot') as HTMLInputElement).value).toBe('SN-1');
+
+      scans.named.mockResolvedValue({ ...coffee, lot: 'L-1', serial: 'SN-2' });
+      await scanned('0103017620422003' + '21SN-2');
+      await settle();
+      expect(quantityOf(1)).toBe('1');
+      expect((q('line-1-lot') as HTMLInputElement).value).toBe('SN-2');
     });
 
     // docs/SPEC.md § 7, 2026-09-23 slice 6: the customer display.

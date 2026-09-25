@@ -24,6 +24,7 @@ use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceRepository;
+use App\Module\Products\Domain\LotCode;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
@@ -111,6 +112,7 @@ final readonly class InvoiceDeliveryNotes
                         null,
                         array_map(static fn (DeliveryNoteLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
                         $line->getId(),
+                        LotCode::carried($line->getProduct(), $line->getLotCode()),
                     );
                 }
             }

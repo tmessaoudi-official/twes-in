@@ -1037,6 +1037,7 @@
       "description": "Description",
       "quantity": "Quantity",
       "unit": "Unit",
+      "lot": "Lot or serial number",
       "unitPriceNet": "Unit price before tax",
       "price_hint": "In {{currency}}, with at most four decimals.",
       "discountRate": "Discount",
@@ -1051,7 +1052,8 @@
         "quantity": "A quantity above zero, with no more decimals than its unit counts (three at most).",
         "unitId": "Choose a unit.",
         "unitPriceNet": "A price from 0, with at most four decimals.",
-        "discountRate": "A percentage from 0 to 100, with at most three decimals."
+        "discountRate": "A percentage from 0 to 100, with at most three decimals.",
+        "lotCode": "Up to 40 visible characters, no spaces."
       },
       "no_product_found": "No product found."
     },

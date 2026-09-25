@@ -21,6 +21,7 @@ final readonly class InvoiceLineInput
     /**
      * @param list<Uuid>|null $taxComponentIds          null for the product's default taxes; an empty list for none
      * @param Uuid|null       $sourceDeliveryNoteLineId only one its draft already invoices
+     * @param string|null     $lotCode                  the lot or serial sold, for a product tracked by one
      */
     public function __construct(
         public ?Uuid $productId,
@@ -31,6 +32,7 @@ final readonly class InvoiceLineInput
         public ?string $discountRate = null,
         public ?array $taxComponentIds = null,
         public ?Uuid $sourceDeliveryNoteLineId = null,
+        public ?string $lotCode = null,
     ) {
     }
 }

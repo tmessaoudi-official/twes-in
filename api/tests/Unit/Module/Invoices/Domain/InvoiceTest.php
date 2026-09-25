@@ -27,9 +27,11 @@ use App\Module\Invoices\Domain\InvoiceTax;
 use App\Module\Invoices\Domain\InvoiceTransitionRefused;
 use App\Module\Invoices\Domain\InvoiceType;
 use App\Module\Invoices\Domain\PaymentDetails;
+use App\Module\Products\Domain\LotCode;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\Shared\Domain\PaymentMethod;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
@@ -444,6 +446,31 @@ final class InvoiceTest extends TestCase
         self::assertEquals([$second, $first], $events[0]->sourceDeliveryNoteLineIds, 'the delivery note lines its lines came from, in order');
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
         self::assertSame([null, null, null], array_map(static fn ($copied): ?Uuid => $copied->getSourceDeliveryNoteLineId(), $credit->getLines()), 'a credit note invoices no delivery note');
+    }
+
+    public function testALineNamesTheLotOrSerialSoldOnlyForAProductTrackedByOneAndACreditNoteKeepsIt(): void
+    {
+        // docs/SPEC.md § 7, 2026-09-24 12:40 row 5: invoice lines carry an optional lot or serial.
+        $lotted = $this->product($this->company);
+        $lotted->track(ProductTracking::Lot, $this->now);
+        $untracked = Product::create($this->company, 'ART-002', new ProductDetails('Pose', null, ProductKind::Service, '40'), $this->unit('C62'), null, [], $this->now);
+        $line = fn (?Product $product, ?string $lot): InvoiceLineDetails => new InvoiceLineDetails($product, 'Pièce', '1', $this->unit('C62'), '10', null, [], null, $lot);
+
+        self::assertSame('L-12', $line($lotted, '  L-12 ')->lotCode, 'kept as typed, trimmed');
+        self::assertNull($line($lotted, '  ')->lotCode, 'a blank lot names none');
+        self::assertNull($line($untracked, null)->lotCode);
+        $this->assertRefused('lotCode', static fn () => $line($untracked, 'L-12'), 'an untracked product');
+        $this->assertRefused('lotCode', static fn () => $line(null, 'L-12'), 'a line with no product');
+        $this->assertRefused('lotCode', static fn () => $line($lotted, 'L 12'), 'a space');
+        $this->assertRefused('lotCode', static fn () => $line($lotted, str_repeat('A', LotCode::MAX + 1)), 'too long');
+
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$line($lotted, 'L-12'), $line($lotted, null)], [], $this->now);
+        self::assertSame(['L-12', null], array_map(static fn ($kept): ?string => $kept->getLotCode(), $invoice->getLines()));
+        self::assertSame(['lines'], $invoice->revise($invoice->getEstablishment(), $invoice->getCustomer(), new InvoiceHeader(), [$line($lotted, 'L-13'), $line($lotted, null)], [], $this->now), 'the lot is part of what a line says');
+        self::assertSame([null, null], array_map(static fn ($copied): ?string => $copied->getLotCode(), Invoice::duplicateOf($invoice, $this->now)->getLines()), 'a duplicate is a new sale, of pieces not chosen yet');
+
+        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures(lines: 2), $this->now);
+        self::assertSame(['L-13', null], array_map(static fn ($copied): ?string => $copied->getLotCode(), Invoice::creditNoteFor($invoice, 'Retour', $this->now)->getLines()), 'a credit note corrects the goods its invoice named');
     }
 
     private function issuedCreditNote(Invoice $invoice, string $due): Invoice

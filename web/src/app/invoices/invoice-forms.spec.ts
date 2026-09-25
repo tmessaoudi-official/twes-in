@@ -62,6 +62,7 @@ const design: ProductOption = {
   unitId: 'u2',
   unitPriceNet: '1800.0000',
   defaultTaxComponentIds: ['t1', 'f1'],
+  tracking: 'none',
 };
 
 function tax(
@@ -288,6 +289,29 @@ describe('invoice forms', () => {
       expect(line.controls.discountRate.valid).toBe(true);
     });
 
+    it('names the lot or serial sold only on a line of a product tracked by one', () => {
+      // docs/SPEC.md § 7, 2026-09-24 12:40 row 5.
+      const lines = linesArray([], options, null);
+      const line = lines.at(0);
+      applyProduct(line, { ...design, tracking: 'serial' }, options, []);
+      line.patchValue({ lotCode: ' SN-7 ' });
+      expect(line.valid).toBe(true);
+      expect(invoiceInput(invoiceValues(null, options), lines, [], 'k1').lines[0].lotCode).toBe(
+        'SN-7',
+      );
+
+      line.patchValue({ lotCode: 'SN 7' });
+      expect(line.controls.lotCode.hasError('pattern')).toBe(true);
+
+      // Another product, not tracked: the serial typed for the first one is not sent with it.
+      line.patchValue({ lotCode: 'SN-7' });
+      applyProduct(line, { ...design, id: 'p2' }, options, []);
+      expect(line.controls.lotCode.value).toBe('');
+      expect(
+        invoiceInput(invoiceValues(null, options), lines, [], 'k1').lines[0].lotCode,
+      ).toBeNull();
+    });
+
     it('keeps where a line came from through the form', () => {
       const lines = linesArray(
         [
@@ -302,6 +326,8 @@ describe('invoice forms', () => {
             sourceDeliveryNoteLineId: 'dl1',
             productReference: null,
             productName: null,
+            productTracking: null,
+            lotCode: null,
             net: '70.000',
           },
         ],

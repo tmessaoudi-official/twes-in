@@ -16,6 +16,7 @@ import type {
   PaymentPaymentWrite,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
+import { trackingOf } from '../products/products-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import {
   AGING_BUCKETS,
@@ -96,6 +97,7 @@ export class InvoicesApi {
         unitId: product.unitId,
         unitPriceNet: product.unitPriceNet,
         defaultTaxComponentIds: [...product.defaultTaxComponentIds],
+        tracking: trackingOf(product.tracking),
       }));
     });
   }
@@ -293,6 +295,8 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
       sourceDeliveryNoteLineId: line.sourceDeliveryNoteLineId ?? null,
       productReference: line.productReference ?? null,
       productName: line.productName ?? null,
+      productTracking: line.productTracking == null ? null : trackingOf(line.productTracking),
+      lotCode: line.lotCode ?? null,
       net: line.net ?? '',
     })),
     subtotalNet: raw.subtotalNet ?? '0',

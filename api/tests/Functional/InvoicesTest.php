@@ -22,6 +22,7 @@ use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
 use Symfony\Component\HttpFoundation\Response;
@@ -263,6 +264,23 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame([null], $this->costs($this->json()), 'a cost is read only with product.cost.read');
         $this->getJson($this->path());
         self::assertSame([null], $this->costs($this->jsonList()[0]));
+    }
+
+    public function testALineNamesALotOnlyForAProductTrackedByOne(): void
+    {
+        // docs/SPEC.md § 7, 2026-09-24 12:40 row 5.
+        $this->signedIn(['invoice.read', 'invoice.write']);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1', 'lotCode' => 'L-1']]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'an untracked product names no lot');
+        self::assertStringContainsString('lines[0].lotCode', (string) $this->client->getResponse()->getContent());
+
+        $product = $this->em()->find(Product::class, $this->productId);
+        self::assertNotNull($product);
+        $product->track(ProductTracking::Lot, new \DateTimeImmutable());
+        $this->em()->flush();
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1', 'lotCode' => ' L-1 ']]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame([['L-1', 'lot']], array_map(static fn (array $line): array => [$line['lotCode'] ?? null, $line['productTracking'] ?? null], $this->lines($this->json())));
     }
 
     public function testADraftPrintsOnRequestAndAnIssuedInvoicePrintsAsItWasIssued(): void
@@ -750,6 +768,16 @@ final class InvoicesTest extends ApiTestCase
     private function costs(array $body): array
     {
         return array_column($this->arrayAt($body, 'lines'), 'unitCost');
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     *
+     * @return list<array<array-key, mixed>>
+     */
+    private function lines(array $body): array
+    {
+        return array_values(array_filter($this->arrayAt($body, 'lines'), is_array(...)));
     }
 
     /** Drafts and issues a one-line invoice; the response left to read is the issued invoice. */

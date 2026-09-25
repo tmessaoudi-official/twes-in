@@ -1037,6 +1037,7 @@
       "description": "Désignation",
       "quantity": "Quantité",
       "unit": "Unité",
+      "lot": "Lot ou numéro de série",
       "unitPriceNet": "Prix unitaire HT",
       "price_hint": "En {{currency}}, avec au plus quatre décimales.",
       "discountRate": "Remise",
@@ -1051,7 +1052,8 @@
         "quantity": "Une quantité supérieure à zéro, sans plus de décimales que son unité n'en compte (trois au plus).",
         "unitId": "Choisissez une unité.",
         "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales.",
-        "discountRate": "Un pourcentage de 0 à 100, avec au plus trois décimales."
+        "discountRate": "Un pourcentage de 0 à 100, avec au plus trois décimales.",
+        "lotCode": "Jusqu’à 40 caractères visibles, sans espace."
       },
       "no_product_found": "Aucun produit trouvé."
     },

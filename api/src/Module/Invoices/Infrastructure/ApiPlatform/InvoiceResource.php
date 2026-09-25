@@ -27,6 +27,7 @@ use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceLineTax;
 use App\Module\Invoices\Domain\InvoiceTax;
 use App\Module\Invoices\Domain\Payment;
+use App\Module\Products\Domain\LotCode;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -241,7 +242,9 @@ final class InvoiceResource
     /**
      * The lines, in order. A line naming a product may leave out its description, unit, price and taxes (null), which
      * then come from the product; a line of a draft drafted from delivery notes names the delivery note line it invoices,
-     * which a revision may keep or drop but never add; `net` is answered, never read: the line after its own discount.
+     * which a revision may keep or drop but never add; a line of a product tracked by lot or serial may name the one
+     * sold, a record only (docs/SPEC.md § 7, 2026-09-24 12:40 row 5); `net` is answered, never read: the line after its
+     * own discount.
      *
      * @var list<array<string, mixed>>
      */
@@ -261,6 +264,8 @@ final class InvoiceResource
                 'discountRate' => ['type' => ['string', 'null'], 'example' => '10'],
                 'taxComponentIds' => ['type' => ['array', 'null'], 'items' => self::ID],
                 'sourceDeliveryNoteLineId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+                'productTracking' => ['type' => ['string', 'null'], 'enum' => ['none', 'lot', 'serial', null], 'description' => 'How the product\'s stock is told apart today, so a form knows whether the line names a lot. Read only.'],
+                'lotCode' => ['type' => ['string', 'null'], 'maxLength' => LotCode::MAX, 'description' => 'The lot or serial sold, for a product tracked by one.'],
                 'net' => ['type' => 'string', 'readOnly' => true],
                 'unitCost' => ['type' => ['string', 'null'], 'readOnly' => true, 'description' => 'What one unit of its product cost the company when the line was issued; null on a draft, when unknown, and for a caller without product.cost.read.'],
             ],
@@ -279,6 +284,7 @@ final class InvoiceResource
             new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
         ], groups: [self::WRITE]),
         'sourceDeliveryNoteLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+        'lotCode' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public array $lines = [];
@@ -449,6 +455,8 @@ final class InvoiceResource
             'discountRate' => $line->getDiscountRate(),
             'taxComponentIds' => array_map(static fn (InvoiceLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $line->getTaxes()),
             'sourceDeliveryNoteLineId' => $line->getSourceDeliveryNoteLineId()?->toRfc4122(),
+            'productTracking' => $line->getProduct()?->getTracking()->value,
+            'lotCode' => $line->getLotCode(),
             'net' => $fixed['net'],
             'unitCost' => $withCosts ? $line->getUnitCost() : null,
         ], $invoice->getLines(), $figures->lines);
@@ -494,6 +502,7 @@ final class InvoiceResource
                 self::text($line, 'discountRate'),
                 \is_array($taxIds) ? self::uuids($taxIds) : null,
                 self::uuid(self::text($line, 'sourceDeliveryNoteLineId')),
+                self::text($line, 'lotCode'),
             );
         }
 

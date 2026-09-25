@@ -28,7 +28,7 @@ import {
   type LineTaxOption,
   type ProductOption,
 } from './delivery-notes-types';
-import { PRODUCT_TRACKINGS, type ProductTracking } from '../products/products-types';
+import { trackingOf } from '../products/products-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class DeliveryNotesRefused extends Error {
@@ -295,11 +295,6 @@ function toNote(
     totalTax: raw.totalTax ?? '0',
     total: raw.total ?? '0',
   };
-}
-
-/** A tracking the API named; anything else reads as none, which asks for no lot. */
-function trackingOf(value: string): ProductTracking {
-  return PRODUCT_TRACKINGS.find((each) => each === value) ?? 'none';
 }
 
 function toBody(input: DeliveryNoteInput): DeliveryNoteDeliveryNoteWrite {

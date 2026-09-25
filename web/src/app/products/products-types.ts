@@ -60,6 +60,14 @@ export interface ProductRow {
 export type ProductTracking = 'none' | 'lot' | 'serial';
 export const PRODUCT_TRACKINGS: readonly ProductTracking[] = ['none', 'lot', 'serial'];
 
+/** A tracking the API named; anything else reads as none, which asks for no lot. */
+export function trackingOf(value: string): ProductTracking {
+  return PRODUCT_TRACKINGS.find((each) => each === value) ?? 'none';
+}
+
+/** A lot or serial as a label carries it: printable characters without space or accent, 40 at most, as the API keeps it. */
+export const LOT_CODE_PATTERN = /^[\x21-\x7E]{1,40}$/;
+
 export type ProductInput = Omit<ProductRow, 'id' | 'barcodes'>;
 
 /**

@@ -75,6 +75,29 @@
           }
         </div>
 
+        @if (namesALot(line)) {
+          <div class="flex flex-col">
+            <mat-form-field>
+              <mat-label>{{ 'invoices.lines.lot' | translate }}</mat-label>
+              <input
+                matInput
+                formControlName="lotCode"
+                maxlength="40"
+                autocomplete="off"
+                [attr.data-testid]="'line-' + i + '-lot'"
+              />
+            </mat-form-field>
+            @if (errorKey(line, 'lotCode'); as key) {
+              <span
+                role="alert"
+                class="-mt-4 px-4 pb-2 text-xs text-error"
+                [attr.data-testid]="'line-' + i + '-lot-error'"
+                >{{ key | translate }}</span
+              >
+            }
+          </div>
+        }
+
         <div class="flex flex-col">
           <mat-form-field>
             <mat-label>{{ 'invoices.lines.unit' | translate }}</mat-label>

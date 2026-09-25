@@ -23,6 +23,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteLineDetails;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
 use Symfony\Component\HttpFoundation\Response;
@@ -125,6 +126,33 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         $this->postJson($this->invoicePath($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         self::assertSame([null, null, null], array_column($this->arrayAt($this->json(), 'lines'), 'sourceDeliveryNoteLineId'), 'a credit note invoices no delivery note');
+    }
+
+    public function testAnInvoiceDraftedFromNotesNamesTheLotEachLineHandedOverAndARevisionKeepsIt(): void
+    {
+        // docs/SPEC.md § 7, 2026-09-24 12:40 row 5: the lot handed over is the lot invoiced.
+        $this->signedIn();
+        $product = $this->em()->find(Product::class, $this->productId);
+        self::assertNotNull($product);
+        $product->track(ProductTracking::Serial, new \DateTimeImmutable());
+        $this->em()->flush();
+        $note = $this->validatedNote(['lines' => [
+            ['productId' => $this->productId, 'quantity' => '1', 'lotCode' => 'SN-7'],
+            ['productId' => $this->productId, 'quantity' => '1'],
+        ]]);
+
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $invoice = $this->json();
+        $lines = $this->arrayAt($invoice, 'lines');
+        self::assertSame(['SN-7', null], array_column($lines, 'lotCode'));
+        self::assertSame(['serial', 'serial'], array_column($lines, 'productTracking'));
+
+        $echo = array_map(static fn (mixed $line): array => array_diff_key(\is_array($line) ? $line : [], ['net' => true]), $lines);
+        $this->sendJson('PUT', $this->invoicePath($this->stringAt($invoice, 'id')), [...$this->invoiceBody($invoice), 'lines' => $echo]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['SN-7', null], array_column($this->arrayAt($this->json(), 'lines'), 'lotCode'), 'what was read is saved back as it was');
     }
 
     public function testACancelledDraftFreesItsNotesAndWhatCannotBeInvoicedIsRefused(): void
