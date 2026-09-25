@@ -720,6 +720,12 @@
       "default_unit": "Unité par défaut",
       "stock_tracking": "Suivre le stock"
     },
+    "watch": {
+      "late_after_days": "À surveiller : un client est signalé quand une facture a ce nombre de jours de retard",
+      "unsold_after_days": "À surveiller : un produit est signalé quand il n'a pas été vendu depuis ce nombre de jours",
+      "lot_expiry_days": "À surveiller : un lot est signalé ce nombre de jours avant sa date limite",
+      "lead_days": "À surveiller : délai de réapprovisionnement (jours) sous lequel un stock qui s'épuise est signalé"
+    },
     "delivery_note": {
       "show_prices": "Afficher les prix sur les bons de livraison",
       "reception_block": "Imprimer le bloc de réception (date et heure, nom, signature et cachet, réserves)"
@@ -2389,5 +2395,27 @@
     "taxes_included": "Prix unitaire TTC",
     "total": "Total :",
     "open": "Ouvrir l'affichage client"
+  },
+  "watch": {
+    "title": "À surveiller",
+    "intro": "Ce qui demande votre attention maintenant. La liste se met à jour d'elle-même : un point traité en sort.",
+    "none": "Rien à surveiller.",
+    "count": "À surveiller : {{count}}",
+    "see": "Voir",
+    "errors": {
+      "unavailable": "La liste n'a pas pu être lue. Réessayez dans un instant."
+    },
+    "kinds": {
+      "invoices": {
+        "late_customer": "{{customer}} : {{amount}} {{currency}} en retard, {{invoices}} facture(s), la plus ancienne depuis {{days}} jours",
+        "unsold_products": "{{products}} produit(s) n'ont pas été vendus depuis {{days}} jours"
+      },
+      "stock": {
+        "reorder_point": "{{product}} ({{reference}}) : {{onHand}} en stock à {{establishment}}, seuil de réapprovisionnement {{point}}",
+        "running_out": "{{product}} ({{reference}}) : {{onHand}} en stock, épuisé dans environ {{days}} jours à ce rythme",
+        "lot_expiring": "Lot {{lot}} de {{product}} ({{reference}}) : {{quantity}} en stock, date limite le {{expiresOn}}",
+        "lot_expired": "Lot {{lot}} de {{product}} ({{reference}}) : {{quantity}} en stock, date limite dépassée le {{expiresOn}}"
+      }
+    }
   }
 }

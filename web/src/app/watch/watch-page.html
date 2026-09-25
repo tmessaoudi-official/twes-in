@@ -1,0 +1,33 @@
+<section class="flex flex-col gap-4 p-4" data-testid="watch-page">
+  <h1 class="text-2xl font-semibold">{{ 'watch.title' | translate }}</h1>
+  <p class="text-sm text-on-surface-variant">{{ 'watch.intro' | translate }}</p>
+
+  @if (error()) {
+    <p role="alert" class="text-error" data-testid="watch-error">
+      {{ 'watch.errors.unavailable' | translate }}
+    </p>
+  }
+
+  @if (list() !== null) {
+    @if (lines().length === 0) {
+      <p data-testid="watch-none">{{ 'watch.none' | translate }}</p>
+    } @else {
+      <ul class="flex flex-col gap-2" data-testid="watch-list">
+        @for (line of lines(); track $index) {
+          <li
+            class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
+            [attr.data-testid]="'watch-item-' + $index"
+          >
+            <span>{{ line.key | translate: line.params }}</span>
+            <a
+              class="flex items-center gap-1 font-medium text-primary"
+              [routerLink]="line.link"
+              [queryParams]="line.query"
+              >{{ 'watch.see' | translate }}<mat-icon aria-hidden="true">chevron_right</mat-icon></a
+            >
+          </li>
+        }
+      </ul>
+    }
+  }
+</section>

@@ -720,6 +720,12 @@
       "default_unit": "Default unit",
       "stock_tracking": "Track stock"
     },
+    "watch": {
+      "late_after_days": "Watch: a customer is flagged once an invoice is this many days late",
+      "unsold_after_days": "Watch: a product is flagged once it has not been sold for this many days",
+      "lot_expiry_days": "Watch: a lot is flagged this many days before its expiry date",
+      "lead_days": "Watch: restocking lead time (days) under which stock running out is flagged"
+    },
     "delivery_note": {
       "show_prices": "Show prices on delivery notes",
       "reception_block": "Print the receipt block (date and time, name, signature and stamp, reservations)"
@@ -2389,5 +2395,27 @@
     "taxes_included": "Unit price, taxes included",
     "total": "Total:",
     "open": "Open the customer display"
+  },
+  "watch": {
+    "title": "To watch",
+    "intro": "What needs your attention now. The list keeps itself up to date: anything dealt with leaves it.",
+    "none": "Nothing to watch.",
+    "count": "To watch: {{count}}",
+    "see": "See",
+    "errors": {
+      "unavailable": "The list could not be read. Try again in a moment."
+    },
+    "kinds": {
+      "invoices": {
+        "late_customer": "{{customer}}: {{amount}} {{currency}} late, {{invoices}} invoice(s), the oldest for {{days}} days",
+        "unsold_products": "{{products}} product(s) not sold for {{days}} days"
+      },
+      "stock": {
+        "reorder_point": "{{product}} ({{reference}}): {{onHand}} in stock at {{establishment}}, reorder point {{point}}",
+        "running_out": "{{product}} ({{reference}}): {{onHand}} in stock, out in about {{days}} days at this pace",
+        "lot_expiring": "Lot {{lot}} of {{product}} ({{reference}}): {{quantity}} in stock, expires on {{expiresOn}}",
+        "lot_expired": "Lot {{lot}} of {{product}} ({{reference}}): {{quantity}} in stock, expired on {{expiresOn}}"
+      }
+    }
   }
 }

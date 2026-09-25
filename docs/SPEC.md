@@ -2732,6 +2732,23 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   keeps « TVA à déclarer », « déclaration de TVA » and their English out of every message; the three « Déclarer » hits
   that remain are « Déclarer un règlement », a payment. The VAT due on receipts for French services is not computed:
   that belongs to the declaration work, row 91.
+- [2026-09-25 08:31] PROVISIONAL — to confirm (overnight, row 115): **« À surveiller » ships as a live list, and pushing
+  an insight once waits for its own row (127)**, because the repo has no scheduler and a push needs one (a Symfony
+  Scheduler worker in compose and a table of what was already pushed). A module declares its conditions with
+  `DeclaresWatch` (the `DeclaresImport` shape) in a new `Watch` context; `GET /companies/{c}/watch` answers `count`
+  and `items` (kind, subject, figures) to any member holding `company.read`, each condition shown only while its module
+  is on and to a role granting its subject's permission (`invoice.read`, `stock.read`), worked out on every read in one
+  SQL statement per kind and never stored. Five of the audit's ten ship now: a customer with invoices late past
+  `watch.late_after_days` (30, overdue as the invoices list means it, the link opening that list searched by the
+  customer's name); goods not sold for `watch.unsold_after_days` (90, one count, products younger than that and
+  services left out); a product at or under its reorder point in an establishment (row 110); one whose stock at the
+  last 30 days' pace of delivery lasts under `watch.lead_days` (7, the pace read from the movements rather than a
+  nightly projection until row 56's worker); and a dated lot on hand within `watch.lot_expiry_days` (30) of its date or
+  past it, unless released. The thresholds are company settings (the invoices' under Clients et documents and
+  Produits, the stock's under Produits). Left out, each for its reason: the cheques due (IN-B-14), the VAT to declare
+  (row 91, and never worded « à déclarer » before it), the evening digest (row 90), the month against last month (no
+  comparison rule, RPT-07), a credit limit passed (row 85) and the projection check (row 57). On screen the page is
+  `/watch`, the home shows its count first, above the invoices' panel, and both read again on a live change.
 
 ## 8. Status
 
@@ -2851,10 +2868,10 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 109 | Cost on the line at issue (§ 7 2026-09-24 11:40, RPT-01): `invoice_line.unit_cost` copied from the product at issue, read only with `product.cost.read` | S | done | 82c4b08 | |
 | 110 | Reorder point per product per establishment (§ 7 2026-09-24 11:40): column, product form field, import column; empty means no alert | S | done | 0088780 | |
 | 111 | Supplier withholding (§ 7 2026-09-24 11:40, RPT-09): Tunisia's rules sourced in `docs/fiscal/TN.md`, then recorded on an expense's payment at the preset's rate, overridable | M | done | 4fa586e | |
-| 112 | Declaration basis and calendar (§ 7 2026-09-24 11:40, RPT-03): TN and FR researched with citations; « TVA collectée » on the home meanwhile | S | done | - | |
+| 112 | Declaration basis and calendar (§ 7 2026-09-24 11:40, RPT-03): TN and FR researched with citations; « TVA collectée » on the home meanwhile | S | done | 1a6ccf5 | |
 | 113 | Home figures revised (§ 7 2026-09-24 11:55): margin headline, « Facturé ce mois » under it, the kept and added figures, the query-count test; after row 57 | M | todo | - | |
 | 114 | The ten reports and saved report views (§ 7 2026-09-24 12:05) on row 89's engine, « dû à 30 jours », the company switcher's per-company figures | L | todo | - | |
-| 115 | Insights and « À surveiller » (§ 7 2026-09-24 12:10): the ten insights as their data exists, thresholds as settings, the live screen and the home's count | M | todo | - | |
+| 115 | Insights and « À surveiller » (§ 7 2026-09-24 12:10): the ten insights as their data exists, thresholds as settings, the live screen and the home's count | M | done | - | |
 | 116 | Lots amendments (§ 7 2026-09-24 12:40, rows 8, 20, 21, 22): lot tracking on the articles chain and « Traçabilité », expired marker and « Libérer », serial quantity 1, re-scanned serial refused, form kept open, destination label | M | todo | - | |
 | 117 | Scanning and customer-facing amendments (§ 7 2026-09-24 12:40 and 12:55, rows 13, 14, 16, 17, 18): sound and re-count settings, key-gap setting and scanner test, pairing ends with its tab, customer view per device with step-up and a hide list, price-check restore and display, the display's line price, the customer-facing price rule and « Afficher aussi le prix HT », the phone's scan card | L | todo | - | |
 | 118 | Count mode amendments (§ 7 2026-09-24 12:40, row 23): leave guard, the no-`stock.write` notice, « Comptage » everywhere | S | todo | - | |
@@ -2866,6 +2883,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 124 | Navigation (§ 7 2026-09-24 22:51): « Caisse » and « Travaux » in the rail, « Mon compte » with four tabs absorbing the device page | S | todo | - | |
 | 125 | Configurable keyboard shortcuts (§ 7 2026-09-24 22:51): C, N, E, / and Ctrl K as defaults, changed and restored per person in Mon compte › Préférences | S | todo | - | |
 | 126 | Signature, cachet and electronic PDF signature (§ 7 2026-09-24 22:51): research first, postponed | M | deferred | - | |
+| 127 | Insights pushed once (§ 7 2026-09-24 12:10 and 2026-09-25 08:31): a scheduler (Symfony Scheduler worker in compose), a record of what was pushed per subject and bucket, and the pushes through the Inbox | L | todo | - | |
 <!-- /progress-block -->
 
 ### Delivered

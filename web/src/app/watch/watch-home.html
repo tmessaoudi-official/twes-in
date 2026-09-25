@@ -1,0 +1,21 @@
+@if (list(); as current) {
+  <mat-card appearance="outlined" data-testid="home-watch">
+    <mat-card-content>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <span class="flex items-center gap-2">
+          <mat-icon aria-hidden="true">{{
+            current.count > 0 ? 'visibility' : 'check_circle'
+          }}</mat-icon>
+          @if (current.count > 0) {
+            <span class="font-medium">{{
+              'watch.count' | translate: { count: current.count }
+            }}</span>
+          } @else {
+            <span>{{ 'watch.none' | translate }}</span>
+          }
+        </span>
+        <a routerLink="/watch" class="font-medium text-primary">{{ 'watch.title' | translate }}</a>
+      </div>
+    </mat-card-content>
+  </mat-card>
+}

@@ -2,6 +2,7 @@
 
 import type { Type } from '@angular/core';
 import { INVOICES_HOME } from '../invoices/invoices-nav';
+import { WATCH_HOME } from '../watch/watch-nav';
 import type { Gated } from './nav-manifest';
 
 /**
@@ -15,4 +16,4 @@ export interface HomePanel extends Gated {
 }
 
 /** Every module's home panels, in the order the page shows them. */
-export const HOME_PANELS: readonly HomePanel[] = [...INVOICES_HOME];
+export const HOME_PANELS: readonly HomePanel[] = [...WATCH_HOME, ...INVOICES_HOME];

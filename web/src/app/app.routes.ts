@@ -112,6 +112,10 @@ export const routes: Routes = [
         loadComponent: () => import('./hello/hello-page').then((m) => m.HelloPage),
       },
       {
+        path: 'watch',
+        loadComponent: () => import('./watch/watch-page').then((m) => m.WatchPage),
+      },
+      {
         path: 'customers',
         canActivate: [moduleGuard(CUSTOMERS_MODULE)],
         loadComponent: () => import('./customers/customers-page').then((m) => m.CustomersPage),

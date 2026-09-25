@@ -159,7 +159,7 @@ final class SettingsTest extends ApiTestCase
 
         $this->getJson($this->path().'?chain=parties');
         self::assertResponseIsSuccessful();
-        self::assertSame(['delivery_note.show_prices', 'delivery_note.reception_block', 'document.payment_terms_days', 'document.language', 'document.printed_notes'], array_column($this->jsonList(), 'key'));
+        self::assertSame(['delivery_note.show_prices', 'delivery_note.reception_block', 'watch.late_after_days', 'document.payment_terms_days', 'document.language', 'document.printed_notes'], array_column($this->jsonList(), 'key'));
         $terms = $this->row('document.payment_terms_days');
         self::assertSame(30, $terms['value']);
         self::assertSame(['company'], $terms['writableLevels']);
