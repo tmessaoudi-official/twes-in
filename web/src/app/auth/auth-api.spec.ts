@@ -34,6 +34,10 @@ const owner: Me = {
   permissions: ['*'],
   mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
   modules: ['customers'],
+  plannedModules: [
+    { key: 'quotes', planned: 'v1' },
+    { key: 'zakat', planned: 'later' },
+  ],
 };
 
 describe('AuthApi', () => {
@@ -58,6 +62,10 @@ describe('AuthApi', () => {
     expect(state.company?.role).toBe('owner');
     expect(state.permissions).toEqual(['*']);
     expect(state.modules).toEqual(['customers']);
+    expect(state.plannedModules).toEqual([
+      { key: 'quotes', planned: 'v1' },
+      { key: 'zakat', planned: 'later' },
+    ]);
   });
 
   it('posts the credentials as the API expects them', async () => {

@@ -65,4 +65,17 @@ if ((${#missing[@]})); then
   exit 1
 fi
 
-printf 'planned-module-labels: OK — %d planned modules are named and described in fr and en\n' "${#keys[@]}"
+# Row 150: the menu draws a planned module only from its place in the web; one without a place is never shown. A
+# missing file places nothing, so every module is reported.
+places_file=web/src/app/shell/planned-nav.ts
+unplaced=()
+for key in "${keys[@]}"; do
+  grep -qE "(^|[{ ])key: '$key'," "$root/$places_file" 2>/dev/null || unplaced+=("$key")
+done
+if ((${#unplaced[@]})); then
+  printf 'planned-module-labels: FAIL — %d planned module(s) with no menu place: %s (add each to PLANNED_NAV in %s)\n' \
+    "${#unplaced[@]}" "${unplaced[*]}" "$places_file"
+  exit 1
+fi
+
+printf 'planned-module-labels: OK — %d planned modules are named, described and placed in the menu, in fr and en\n' "${#keys[@]}"

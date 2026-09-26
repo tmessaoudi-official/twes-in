@@ -250,9 +250,28 @@ final class AuthTest extends ApiTestCase
         $this->createUser('owner@example.test', self::PASSWORD, $this->createCompany());
         $this->login('owner@example.test', self::PASSWORD);
 
-        self::assertSame(['user', 'company', 'permissions', 'mfa', 'modules'], array_keys($this->json()));
+        self::assertSame(['user', 'company', 'permissions', 'mfa', 'modules', 'plannedModules'], array_keys($this->json()));
         self::assertSame(['id', 'email', 'displayName', 'locale', 'isPlatformOperator'], array_keys($this->section($this->json(), 'user')));
         self::assertStringNotContainsString('argon', (string) $this->client->getResponse()->getContent());
+    }
+
+    // docs/SPEC.md § 7, 2026-09-26 10:08 (row 150): the menu shows the modules not built yet from the API's catalogue,
+    // so the signed-in state names them, the same in the login answer and in /auth/me.
+    public function testTheSignedInStateNamesThePlannedModulesTheMenuShows(): void
+    {
+        $this->createUser('owner@example.test', self::PASSWORD, $this->createCompany());
+        $this->login('owner@example.test', self::PASSWORD);
+        $atLogin = $this->arrayAt($this->json(), 'plannedModules');
+
+        $this->getJson('/api/auth/me');
+
+        self::assertResponseIsSuccessful();
+        $planned = $this->arrayAt($this->json(), 'plannedModules');
+        self::assertSame($atLogin, $planned);
+        self::assertCount(23, $planned);
+        self::assertSame(['key' => 'accounting_export', 'planned' => 'v1'], $planned[0]);
+        self::assertSame(['key' => 'zakat', 'planned' => 'later'], $planned[22]);
+        self::assertNotContains('customers', array_column($planned, 'key'), 'a module that ships is never planned');
     }
 
     public function testAnAnonymousRequestStartsNoSession(): void

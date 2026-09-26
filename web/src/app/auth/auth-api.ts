@@ -196,6 +196,10 @@ function toState(me: Me): SignedInState {
           },
     permissions: [...me.permissions],
     modules: [...me.modules],
+    plannedModules: me.plannedModules.map((module) => ({
+      key: module.key,
+      planned: module.planned,
+    })),
     mfa: {
       enrolled: me.mfa.enrolled,
       required: me.mfa.required,

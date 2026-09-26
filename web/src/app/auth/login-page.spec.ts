@@ -70,6 +70,7 @@ const me: Me = {
   permissions: [],
   mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
   modules: [],
+  plannedModules: [],
 };
 
 describe('LoginPage', () => {

@@ -91,6 +91,14 @@ export interface SignedInState {
   /** keys of the modules the working company has on */
   modules: string[];
   mfa: MfaStatus;
+  /** the modules not built yet, from the API's catalogue: the menus show them « Bientôt » (docs/SPEC.md § 7, 2026-09-26) */
+  plannedModules?: readonly PlannedModule[];
+}
+
+/** A module of the complete product not built yet, and the version it is expected in. */
+export interface PlannedModule {
+  readonly key: string;
+  readonly planned: 'v1' | 'later';
 }
 
 /** A pending authenticator: the secret to type in by hand, and the otpauth:// URI its QR code carries. */

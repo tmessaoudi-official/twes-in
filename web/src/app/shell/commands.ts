@@ -33,6 +33,8 @@ interface CommandBase extends Gated {
 export interface NavigateCommand extends CommandBase {
   readonly group: 'create' | 'goto';
   readonly route: string;
+  /** A planned module's (row 150): marked « Bientôt », it opens the « En construction » page and creates nothing. */
+  readonly coming?: true;
 }
 
 /**

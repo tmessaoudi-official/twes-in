@@ -50,6 +50,8 @@ export interface Coming {
   readonly version: 'v1' | 'later';
   /** What to use until it exists, when something does the job today. */
   readonly meanwhile?: string;
+  /** Whether a § 8 row builds it yet: its page then names that row, under `coming.<key>.plan`. */
+  readonly plan?: true;
 }
 
 export interface NavGroup {
@@ -190,42 +192,11 @@ export const COMING_ROUTE = '/coming';
 export const COMING_SETTINGS_ROUTE = '/company/coming';
 
 /**
- * The whole vision in the menus (docs/SPEC.md § 7, 2026-09-25 11:17; the round-6 rail and settings boards): each
- * entry not built yet, placed after the one it follows. An entry leaves this list in the change that builds it.
+ * The settings pages of the vision not built yet (docs/SPEC.md § 7, 2026-09-25 11:17; the round-6 settings board),
+ * each placed after the one it follows. They are not modules; the planned modules come from the API's catalogue
+ * (`planned-nav.ts`). An entry leaves this list in the change that builds it.
  */
 export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
-  {
-    key: 'register',
-    labelKey: 'nav.register',
-    icon: 'point_of_sale',
-    route: `${COMING_ROUTE}/register`,
-    section: 'sell',
-    coming: { after: 'products', version: 'v1', meanwhile: '/invoices/new' },
-  },
-  {
-    key: 'works',
-    labelKey: 'nav.works',
-    icon: 'construction',
-    route: `${COMING_ROUTE}/works`,
-    section: 'sell',
-    coming: { after: 'register', version: 'v1' },
-  },
-  {
-    key: 'reports',
-    labelKey: 'nav.reports',
-    icon: 'bar_chart',
-    route: `${COMING_ROUTE}/reports`,
-    section: 'manage',
-    coming: { after: 'expenses', version: 'v1', meanwhile: '/' },
-  },
-  {
-    key: 'declarations',
-    labelKey: 'nav.declarations',
-    icon: 'event_note',
-    route: `${COMING_ROUTE}/declarations`,
-    section: 'manage',
-    coming: { after: 'reports', version: 'v1' },
-  },
   {
     key: 'document-templates',
     labelKey: 'nav.document_templates',
@@ -233,7 +204,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/document-templates`,
     section: 'company',
     permission: 'company.settings',
-    coming: { after: 'numbering', version: 'v1', meanwhile: '/company/profile' },
+    coming: { after: 'numbering', version: 'v1', meanwhile: '/company/profile', plan: true },
   },
   {
     key: 'alerts',
@@ -242,7 +213,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/alerts`,
     section: 'company',
     permission: 'company.settings',
-    coming: { after: 'settings', version: 'v1', meanwhile: '/watch' },
+    coming: { after: 'settings', version: 'v1', meanwhile: '/watch', plan: true },
   },
   {
     key: 'fiscal-preset',
@@ -251,7 +222,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/fiscal-preset`,
     section: 'fiscal',
     permission: 'company.settings',
-    coming: { after: 'units', version: 'later', meanwhile: '/fiscal/taxes' },
+    coming: { after: 'units', version: 'later', meanwhile: '/fiscal/taxes', plan: true },
   },
   {
     key: 'support-access',
@@ -260,7 +231,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/support-access`,
     section: 'team',
     permission: 'company.settings',
-    coming: { after: 'roles', version: 'later' },
+    coming: { after: 'roles', version: 'later', plan: true },
   },
   {
     key: 'texts',
@@ -269,7 +240,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/texts`,
     section: 'customisation',
     permission: 'company.settings',
-    coming: { after: 'modules', version: 'later' },
+    coming: { after: 'modules', version: 'later', plan: true },
   },
 ];
 

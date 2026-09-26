@@ -518,10 +518,6 @@
     "company_security": "Sécurité",
     "subscription": "Abonnement",
     "stock_count": "Comptage",
-    "register": "Caisse",
-    "works": "Travaux",
-    "reports": "Rapports",
-    "declarations": "Déclarations",
     "document_templates": "Modèles de documents",
     "alerts": "Alertes",
     "fiscal_preset": "Préréglage fiscal",
@@ -2572,12 +2568,14 @@
       "does": "La vente au comptoir sur un seul écran, à la douchette et au clavier : reçu ou facture de la même vente, espèces avec rendu, carte, à crédit ou deux moyens, retours avec avoir et remise en stock, ouverture et clôture du tiroir avec le rapport Z.",
       "plan": "§ 8 · 82 — la vente au comptoir",
       "meanwhile": "En attendant, une vente au comptoir se fait depuis une facture :",
-      "meanwhile_link": "Émettre et encaisser"
+      "meanwhile_link": "Émettre et encaisser",
+      "create": "Nouvelle vente au comptoir"
     },
     "works": {
       "heading": "Les travaux sont en construction",
       "does": "Suivre un chantier ou une intervention de bout en bout : ce qui est prévu, le temps et les fournitures passés, ce qui reste à facturer.",
-      "plan": "§ 8 · 80 — les travaux"
+      "plan": "§ 8 · 80 — les travaux",
+      "create": "Nouveau chantier"
     },
     "reports": {
       "heading": "Les rapports sont en construction",
@@ -2624,7 +2622,8 @@
     },
     "accounting_export": {
       "heading": "L’export comptable est en construction",
-      "does": "Les écritures des ventes, des achats et des encaissements de la période, prêtes à reprendre dans le logiciel de votre comptable, avec un rôle comptable et les périodes clôturées."
+      "does": "Les écritures des ventes, des achats et des encaissements de la période, prêtes à reprendre dans le logiciel de votre comptable, avec un rôle comptable et les périodes clôturées.",
+      "plan": "§ 8 · 92 — l'export comptable"
     },
     "composites": {
       "heading": "Les produits composés sont en construction",
@@ -2636,7 +2635,8 @@
     },
     "einvoicing": {
       "heading": "La facturation électronique est en construction",
-      "does": "Transmettre les factures au format exigé par l’administration : El Fatoora par TTN en Tunisie, Factur-X par une plateforme agréée en France."
+      "does": "Transmettre les factures au format exigé par l’administration : El Fatoora par TTN en Tunisie, Factur-X par une plateforme agréée en France.",
+      "plan": "§ 8 · 93 et 145 — la facturation électronique"
     },
     "guests": {
       "heading": "Les clients fidèles sont en construction",
@@ -2644,7 +2644,8 @@
     },
     "mailing": {
       "heading": "L’envoi par e-mail est en construction",
-      "does": "Envoyer une facture, un devis ou un bon au client depuis le document, et relancer automatiquement ce qui reste impayé."
+      "does": "Envoyer une facture, un devis ou un bon au client depuis le document, et relancer automatiquement ce qui reste impayé.",
+      "plan": "§ 8 · 135 — les relances"
     },
     "menu": {
       "heading": "La carte est en construction",
@@ -2656,15 +2657,21 @@
     },
     "price_lists": {
       "heading": "Les tarifs sont en construction",
-      "does": "Des prix par client ou par groupe de clients, par quantité et sur une période, appliqués d’eux-mêmes sur chaque document."
+      "does": "Des prix par client ou par groupe de clients, par quantité et sur une période, appliqués d’eux-mêmes sur chaque document.",
+      "plan": "§ 8 · 77 — les tarifs",
+      "create": "Nouveau tarif"
     },
     "purchases": {
       "heading": "Les commandes fournisseurs sont en construction",
-      "does": "Commander aux fournisseurs, recevoir la marchandise en stock et rapprocher la commande, la réception et la facture."
+      "does": "Commander aux fournisseurs, recevoir la marchandise en stock et rapprocher la commande, la réception et la facture.",
+      "plan": "§ 8 · 81 et 84 — commandes fournisseurs et réceptions",
+      "create": "Nouvelle commande fournisseur"
     },
     "quotes": {
       "heading": "Les devis sont en construction",
-      "does": "Un devis que le client accepte devient la commande : acompte, suivi de ce qui reste à livrer et à facturer, puis la facture sans rien ressaisir."
+      "does": "Un devis que le client accepte devient la commande : acompte, suivi de ce qui reste à livrer et à facturer, puis la facture sans rien ressaisir.",
+      "plan": "§ 8 · 78 — le devis",
+      "create": "Nouveau devis"
     },
     "ratings": {
       "heading": "Les avis sont en construction",
@@ -2672,7 +2679,9 @@
     },
     "recurring": {
       "heading": "Les factures récurrentes sont en construction",
-      "does": "Un abonnement ou un contrat facturé chaque mois ou chaque année : les brouillons se préparent d’eux-mêmes à la date prévue."
+      "does": "Un abonnement ou un contrat facturé chaque mois ou chaque année : les brouillons se préparent d’eux-mêmes à la date prévue.",
+      "plan": "§ 8 · 86 — les factures récurrentes",
+      "create": "Nouvelle facture récurrente"
     },
     "service": {
       "heading": "Le service en salle est en construction",
@@ -2680,11 +2689,13 @@
     },
     "statements": {
       "heading": "Les relevés sont en construction",
-      "does": "Le relevé de compte d’un client sur une période et un plafond de crédit qui prévient avant qu’il soit dépassé."
+      "does": "Le relevé de compte d’un client sur une période et un plafond de crédit qui prévient avant qu’il soit dépassé.",
+      "plan": "§ 8 · 85 et 134 — le relevé et le plafond de crédit"
     },
     "stock_valuation": {
       "heading": "La valorisation du stock est en construction",
-      "does": "La valeur du stock à une date, au coût moyen pondéré ou au premier entré, premier sorti, et le coût de ce qui a été vendu."
+      "does": "La valeur du stock à une date, au coût moyen pondéré ou au premier entré, premier sorti, et le coût de ce qui a été vendu.",
+      "plan": "§ 8 · 87 — la valorisation du stock"
     },
     "venue": {
       "heading": "La salle est en construction",
@@ -2692,11 +2703,13 @@
     },
     "whatsapp": {
       "heading": "L’envoi par WhatsApp est en construction",
-      "does": "Envoyer une facture ou un bon au client par WhatsApp, avec le lien vers le document."
+      "does": "Envoyer une facture ou un bon au client par WhatsApp, avec le lien vers le document.",
+      "plan": "§ 8 · 95 — l'envoi WhatsApp"
     },
     "zakat": {
       "heading": "La zakat est en construction",
-      "does": "Calculer la zakat de l’entreprise à la date de son hawl, selon votre école : les biens soumis, le nisab en or ou en argent, et un rappel chaque année."
+      "does": "Calculer la zakat de l’entreprise à la date de son hawl, selon votre école : les biens soumis, le nisab en or ou en argent, et un rappel chaque année.",
+      "plan": "§ 8 · 120 — la zakat"
     }
   },
   "account": {

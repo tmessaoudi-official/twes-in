@@ -9,13 +9,16 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import { AuthFacade } from '../auth/auth-facade';
+import type { PlannedModule } from '../auth/auth-types';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { ComingPage } from './coming-page';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
-      nav: { register: 'Caisse', works: 'Travaux', sections: { sell: 'Vendre' } },
+      nav: { sections: { sell: 'Vendre' } },
+      modules: { register: 'Caisse', works: 'Travaux', venue: 'Salle' },
       shell: { soon: 'Bientôt' },
       coming: {
         version: { v1: 'Version 1', later: 'Plus tard' },
@@ -36,6 +39,10 @@ class StaticLoader implements TranslateLoader {
           does: 'Les chantiers.',
           plan: '§ 8 · 80',
         },
+        venue: {
+          heading: 'La salle est en construction',
+          does: 'Le plan de la salle.',
+        },
       },
     });
   }
@@ -46,6 +53,13 @@ class StaticLoader implements TranslateLoader {
 describe('ComingPage', () => {
   const showComing = signal(true);
   const theme = { showComing, setShowComing: vi.fn((show: boolean) => showComing.set(show)) };
+  // The API's catalogue (row 150): the planned modules the signed-in state names.
+  const planned = signal<readonly PlannedModule[]>([
+    { key: 'register', planned: 'v1' },
+    { key: 'works', planned: 'v1' },
+    { key: 'venue', planned: 'later' },
+  ]);
+  const auth = { me: () => ({ plannedModules: planned() }) };
   let fixture: ComponentFixture<ComingPage>;
 
   async function render(key: string): Promise<HTMLElement> {
@@ -58,6 +72,7 @@ describe('ComingPage', () => {
           loader: provideTranslateLoader(StaticLoader),
         }),
         { provide: ThemeFacade, useValue: theme },
+        { provide: AuthFacade, useValue: auth },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(ComingPage);
@@ -74,6 +89,11 @@ describe('ComingPage', () => {
   beforeEach(() => {
     showComing.set(true);
     theme.setShowComing.mockClear();
+    planned.set([
+      { key: 'register', planned: 'v1' },
+      { key: 'works', planned: 'v1' },
+      { key: 'venue', planned: 'later' },
+    ]);
   });
 
   it('says what the entry will do, for which version, the plan row and what to use meanwhile', async () => {
@@ -104,6 +124,20 @@ describe('ComingPage', () => {
     byTestId(root, 'coming-hide')?.click();
     expect(theme.setShowComing).toHaveBeenCalledWith(false);
     expect(navigate).toHaveBeenCalledWith('/');
+  });
+
+  it('names no plan row for a planned module no § 8 row builds yet, and gives the version the API says', async () => {
+    const root = await render('venue');
+    expect(byTestId(root, 'coming-heading')?.textContent).toContain('La salle');
+    expect(byTestId(root, 'coming-version')?.textContent).toContain('Plus tard');
+    expect(byTestId(root, 'coming-plan')).toBeNull();
+    expect(root.textContent).not.toContain('Ligne du plan');
+  });
+
+  it('says nothing is planned once the API no longer lists the module as planned', async () => {
+    planned.set([{ key: 'works', planned: 'v1' }]);
+    const root = await render('register');
+    expect(byTestId(root, 'coming-unknown')).not.toBeNull();
   });
 
   it('says nothing is planned at an address no entry names', async () => {

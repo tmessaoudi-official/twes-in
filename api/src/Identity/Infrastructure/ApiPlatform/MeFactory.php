@@ -13,6 +13,8 @@ use App\Identity\Domain\PasskeyRepository;
 use App\Identity\Domain\UserRepository;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Licensing\Application\CompanyStandings;
+use App\ModuleRegistry\Application\ModuleCatalog;
+use App\ModuleRegistry\Application\ModuleManifest;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Application\Mfa\MfaRequirement;
 use App\Tenancy\Application\Session\DescribeWorkingContext;
@@ -28,6 +30,7 @@ final readonly class MeFactory
         private ModuleStates $modules,
         private PasskeyRepository $passkeys,
         private CompanyStandings $standings,
+        private ModuleCatalog $catalog,
     ) {
     }
 
@@ -39,6 +42,11 @@ final readonly class MeFactory
 
         $standing = null === $context ? null : $this->standings->of(Uuid::fromString($context->companyId));
 
-        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing);
+        $planned = array_values(array_map(
+            static fn (ModuleManifest $manifest) => new MePlannedModule($manifest->key, (string) $manifest->planned),
+            array_filter($this->catalog->all(), static fn (ModuleManifest $manifest) => null !== $manifest->planned),
+        ));
+
+        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned);
     }
 }

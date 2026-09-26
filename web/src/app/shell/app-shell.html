@@ -35,7 +35,7 @@
         <div data-testid="rail-company">
           <app-company-switcher variant="rail" [folded]="rail()" />
         </div>
-        @if (createCommands().length > 0) {
+        @if (canCreate()) {
           <button
             type="button"
             class="twes-rail-create"
@@ -397,10 +397,16 @@
     <!-- « Créer » (docs/SPEC.md § 7, 2026-09-24 22:51): what the person may create here, from the rail, the phone's
          bar or the C key. -->
     <mat-menu #createMenu="matMenu">
-      @for (command of createCommands(); track command.key) {
+      @for (command of createCommands(); track command.key; let index = $index) {
+        @if (command.coming && !createCommands()[index - 1]?.coming) {
+          <mat-divider />
+        }
         <a mat-menu-item [routerLink]="command.route" [attr.data-testid]="'create-' + command.key">
           <mat-icon aria-hidden="true">{{ command.icon }}</mat-icon>
           <span>{{ command.labelKey | translate: command.labelParams }}</span>
+          @if (command.coming) {
+            <span class="twes-soon" data-testid="soon">{{ 'shell.soon' | translate }}</span>
+          }
         </a>
       }
     </mat-menu>
@@ -454,7 +460,7 @@
         data-testid="bottom-bar"
       >
         @for (entry of bottomBar(); track entry.key; let index = $index) {
-          @if (index === 2 && createCommands().length > 0) {
+          @if (index === 2 && canCreate()) {
             <ng-container [ngTemplateOutlet]="phoneCreate" />
           }
           <a
@@ -469,7 +475,7 @@
             <span>{{ entry.labelKey | translate }}</span>
           </a>
         }
-        @if (bottomBar().length < 3 && createCommands().length > 0) {
+        @if (bottomBar().length < 3 && canCreate()) {
           <ng-container [ngTemplateOutlet]="phoneCreate" />
         }
         <ng-template #phoneCreate>

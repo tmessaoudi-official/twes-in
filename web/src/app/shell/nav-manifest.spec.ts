@@ -24,6 +24,7 @@ import {
   isSettingsUrl,
   withComing,
 } from './nav-manifest';
+import { plannedNav } from './planned-nav';
 
 const entries: readonly NavEntry[] = [
   { key: 'home', labelKey: 'nav.home', icon: 'home', route: '/', section: 'sell' },
@@ -186,13 +187,8 @@ describe('the navigation manifest', () => {
   // docs/SPEC.md § 7, 2026-09-25 11:17 and the round-6 boards: the whole vision shows, each part not built yet marked.
   it('places each entry not built yet after the one it follows, as the rail and settings boards draw them', () => {
     const shown = withComing([...sidebar, ...SETTINGS_NAV], COMING_NAV, true);
-    expect(navSections(shown, SIDEBAR_SECTIONS).map((g) => [g.section, keys(g.entries)])).toEqual([
-      [
-        'sell',
-        ['home', 'invoices', 'delivery-notes', 'customers', 'products', 'register', 'works'],
-      ],
-      ['manage', ['stock', 'vendors', 'expenses', 'reports', 'declarations', 'watch']],
-    ]);
+    // The sidebar's entries not built yet are the planned modules, from the API's catalogue (planned-nav.spec.ts).
+    expect(navSections(shown, SIDEBAR_SECTIONS)).toEqual(navSections(sidebar, SIDEBAR_SECTIONS));
     expect(navSections(shown, SETTINGS_SECTIONS).map((g) => [g.section, keys(g.entries)])).toEqual([
       [
         'company',
@@ -216,17 +212,9 @@ describe('the navigation manifest', () => {
   });
 
   it('keeps an entry not built yet last of its section when the one it follows is hidden, and only in a section the person has', () => {
-    const shown = withComing(
-      CORE_NAV,
-      COMING_NAV.filter((e) => e.key === 'register'),
-      true,
-    );
+    const shown = withComing(CORE_NAV, plannedNav([{ key: 'register', planned: 'v1' }]), true);
     expect(keys(shown)).toEqual(['home', 'register']);
-    const alone = withComing(
-      CORE_NAV,
-      COMING_NAV.filter((e) => e.key === 'reports'),
-      true,
-    );
+    const alone = withComing(CORE_NAV, plannedNav([{ key: 'reports', planned: 'v1' }]), true);
     expect(keys(alone)).toEqual(['home']);
   });
 

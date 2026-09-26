@@ -17,7 +17,9 @@ class StaticLoader implements TranslateLoader {
     return of({
       nav: { home: 'Accueil', expenses: 'Dépenses' },
       expenses: { new_title: 'Nouvelle dépense' },
+      modules: { quotes: 'Devis' },
       shell: {
+        soon: 'Bientôt',
         commands: {
           title: 'Commandes',
           placeholder: 'Aller à ou créer…',
@@ -58,7 +60,8 @@ describe('CommandPalette', () => {
       imports: [CommandPalette],
       providers: [
         provideRouter([]),
-        { provide: MAT_DIALOG_DATA, useValue: { commands: COMMANDS } },
+        // A fresh object per test: a case that adds commands must not leave them to the next.
+        { provide: MAT_DIALOG_DATA, useFactory: () => ({ commands: COMMANDS }) },
         { provide: MatDialogRef, useValue: { close } },
         provideTranslateService({
           lang: 'fr',
@@ -153,6 +156,29 @@ describe('CommandPalette', () => {
 
     expect(navigate).toHaveBeenCalledWith('/expenses');
     expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  // Row 150: a planned module's line is marked « Bientôt » and opens its page, like any destination.
+  it('marks what is not built yet and takes the person to its page', async () => {
+    TestBed.inject(MAT_DIALOG_DATA).commands = [
+      ...COMMANDS,
+      {
+        key: 'goto-quotes',
+        labelKey: 'modules.quotes',
+        icon: 'request_quote',
+        route: '/coming/quotes',
+        group: 'goto',
+        coming: true,
+      },
+    ];
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    const { el } = await render();
+
+    const quotes = el.querySelector<HTMLElement>('[data-testid="command-goto-quotes"]')!;
+    expect(quotes.querySelector('[data-testid="soon"]')?.textContent).toContain('Bientôt');
+    expect(el.querySelector('[data-testid="command-goto-home"] [data-testid="soon"]')).toBeNull();
+    quotes.click();
+    expect(navigate).toHaveBeenCalledWith('/coming/quotes');
   });
 
   it('does nothing on Enter when nothing matches', async () => {

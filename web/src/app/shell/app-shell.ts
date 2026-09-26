@@ -74,9 +74,9 @@ import {
   SETTINGS_NAV,
   SIDEBAR_SECTIONS,
   visibleEntries,
-  COMING_NAV,
   withComing,
 } from './nav-manifest';
+import { comingEntries, plannedCommands } from './planned-nav';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
 
 /**
@@ -178,7 +178,7 @@ export class AppShell {
     navSections(
       withComing(
         this.visible([...CORE_NAV, ...MODULE_NAV, ...MANAGE_NAV, ...DEV_NAV]),
-        this.visible(COMING_NAV),
+        this.visible(comingEntries(this.me()?.plannedModules)),
         this.theme.showComing(),
       ),
       SIDEBAR_SECTIONS,
@@ -206,10 +206,20 @@ export class AppShell {
       ...MODULE_COMMANDS,
       ...navCommands([...CORE_NAV, ...MODULE_NAV, ...MANAGE_NAV, ...SETTINGS_NAV]),
     ]),
+    // What is not built yet, after what works, marked, and gone with « Montrer ce qui arrive » (row 150).
+    ...(this.theme.showComing() ? plannedCommands(this.me()?.plannedModules) : []),
   ]);
   /** What « Créer » offers this person: the modules' creations they may make, in the palette's order. */
-  protected readonly createCommands = computed(() =>
-    this.visible(MODULE_COMMANDS).filter((command) => command.group === 'create'),
+  protected readonly createCommands = computed(() => [
+    ...this.visible(MODULE_COMMANDS).filter((command) => command.group === 'create'),
+    // What the planned modules will create, after a divider, marked « Bientôt »: each opens its page (row 150).
+    ...(this.theme.showComing()
+      ? plannedCommands(this.me()?.plannedModules).filter((command) => command.group === 'create')
+      : []),
+  ]);
+  /** Whether « Créer » holds anything that works: a planned creation alone never makes the button appear. */
+  protected readonly canCreate = computed(() =>
+    this.createCommands().some((command) => command.coming !== true),
   );
   /** « Créer »'s menu, wherever it is drawn: the rail's button from a tablet up, the phone's bar below. */
   private readonly createTrigger = viewChild('createTrigger', { read: MatMenuTrigger });
@@ -394,7 +404,7 @@ export class AppShell {
       this.hold(() => this.openCommands());
       return;
     }
-    if (matchesShortcut(event, keys.create) && this.createCommands().length > 0) {
+    if (matchesShortcut(event, keys.create) && this.canCreate()) {
       event.preventDefault();
       this.hold(() => this.createTrigger()?.openMenu());
       return;

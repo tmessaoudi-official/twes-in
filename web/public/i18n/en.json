@@ -471,7 +471,7 @@
     "quotes": "Quotes and orders",
     "ratings": "Ratings",
     "recurring": "Recurring invoices",
-    "register": "Register",
+    "register": "Till",
     "reports": "Reports",
     "service": "Table service",
     "statements": "Statements and credit limits",
@@ -518,10 +518,6 @@
     "company_security": "Security",
     "subscription": "Subscription",
     "stock_count": "Count",
-    "register": "Till",
-    "works": "Works",
-    "reports": "Reports",
-    "declarations": "Declarations",
     "document_templates": "Document templates",
     "alerts": "Alerts",
     "fiscal_preset": "Fiscal preset",
@@ -2572,12 +2568,14 @@
       "does": "Counter sales on one screen, with the scanner and the keyboard: a receipt or an invoice for the same sale, cash with change, card, on credit or two means, returns with a credit note and back into stock, opening and closing the drawer with the Z report.",
       "plan": "§ 8 · 82 — counter sales",
       "meanwhile": "Meanwhile, a counter sale is made from an invoice:",
-      "meanwhile_link": "Issue and collect"
+      "meanwhile_link": "Issue and collect",
+      "create": "New counter sale"
     },
     "works": {
       "heading": "Works are being built",
       "does": "Follow a job or an intervention end to end: what is planned, the time and supplies spent, what is left to invoice.",
-      "plan": "§ 8 · 80 — works"
+      "plan": "§ 8 · 80 — works",
+      "create": "New job"
     },
     "reports": {
       "heading": "Reports are being built",
@@ -2624,7 +2622,8 @@
     },
     "accounting_export": {
       "heading": "The accounting export is under construction",
-      "does": "The period's sales, purchase and payment entries, ready for your accountant's software, with an accountant role and closed periods."
+      "does": "The period's sales, purchase and payment entries, ready for your accountant's software, with an accountant role and closed periods.",
+      "plan": "§ 8 · 92 — the accounting export"
     },
     "composites": {
       "heading": "Composite products are under construction",
@@ -2636,7 +2635,8 @@
     },
     "einvoicing": {
       "heading": "E-invoicing is under construction",
-      "does": "Send invoices in the format the tax authority requires: El Fatoora through TTN in Tunisia, Factur-X through an approved platform in France."
+      "does": "Send invoices in the format the tax authority requires: El Fatoora through TTN in Tunisia, Factur-X through an approved platform in France.",
+      "plan": "§ 8 · 93 and 145 — e-invoicing"
     },
     "guests": {
       "heading": "Regular guests are under construction",
@@ -2644,7 +2644,8 @@
     },
     "mailing": {
       "heading": "Email sending is under construction",
-      "does": "Send an invoice, a quote or a delivery note to the customer from the document, and remind them automatically of what is unpaid."
+      "does": "Send an invoice, a quote or a delivery note to the customer from the document, and remind them automatically of what is unpaid.",
+      "plan": "§ 8 · 135 — reminders"
     },
     "menu": {
       "heading": "The menu is under construction",
@@ -2656,15 +2657,21 @@
     },
     "price_lists": {
       "heading": "Price lists are under construction",
-      "does": "Prices per customer or customer group, per quantity and over a period, applied by themselves on every document."
+      "does": "Prices per customer or customer group, per quantity and over a period, applied by themselves on every document.",
+      "plan": "§ 8 · 77 — price lists",
+      "create": "New price list"
     },
     "purchases": {
       "heading": "Purchase orders are under construction",
-      "does": "Order from suppliers, receive the goods into stock and match the order, the receipt and the supplier's invoice."
+      "does": "Order from suppliers, receive the goods into stock and match the order, the receipt and the supplier's invoice.",
+      "plan": "§ 8 · 81 and 84 — purchase orders and receipts",
+      "create": "New purchase order"
     },
     "quotes": {
       "heading": "Quotes are under construction",
-      "does": "A quote the customer accepts becomes the order: a deposit, what is left to deliver and invoice, then the invoice with nothing typed twice."
+      "does": "A quote the customer accepts becomes the order: a deposit, what is left to deliver and invoice, then the invoice with nothing typed twice.",
+      "plan": "§ 8 · 78 — the quote",
+      "create": "New quote"
     },
     "ratings": {
       "heading": "Ratings are under construction",
@@ -2672,7 +2679,9 @@
     },
     "recurring": {
       "heading": "Recurring invoices are under construction",
-      "does": "A subscription or contract invoiced monthly or yearly: the drafts prepare themselves on the planned date."
+      "does": "A subscription or contract invoiced monthly or yearly: the drafts prepare themselves on the planned date.",
+      "plan": "§ 8 · 86 — recurring invoices",
+      "create": "New recurring invoice"
     },
     "service": {
       "heading": "Table service is under construction",
@@ -2680,11 +2689,13 @@
     },
     "statements": {
       "heading": "Statements are under construction",
-      "does": "A customer's statement of account over a period, and a credit limit that warns before it is exceeded."
+      "does": "A customer's statement of account over a period, and a credit limit that warns before it is exceeded.",
+      "plan": "§ 8 · 85 and 134 — the statement and the credit limit"
     },
     "stock_valuation": {
       "heading": "Stock valuation is under construction",
-      "does": "The value of the stock on a date, at weighted average cost or first in, first out, and the cost of what was sold."
+      "does": "The value of the stock on a date, at weighted average cost or first in, first out, and the cost of what was sold.",
+      "plan": "§ 8 · 87 — stock valuation"
     },
     "venue": {
       "heading": "The venue is under construction",
@@ -2692,11 +2703,13 @@
     },
     "whatsapp": {
       "heading": "WhatsApp sending is under construction",
-      "does": "Send an invoice or a delivery note to the customer through WhatsApp, with a link to the document."
+      "does": "Send an invoice or a delivery note to the customer through WhatsApp, with a link to the document.",
+      "plan": "§ 8 · 95 — WhatsApp delivery"
     },
     "zakat": {
       "heading": "Zakat is under construction",
-      "does": "Work out the company's zakat on its hawl date, according to your school: the assets subject to it, the gold or silver nisab, and a yearly reminder."
+      "does": "Work out the company's zakat on its hawl date, according to your school: the assets subject to it, the gold or silver nisab, and a yearly reminder.",
+      "plan": "§ 8 · 120 — zakat"
     }
   },
   "account": {

@@ -47,6 +47,9 @@
           >
             <mat-icon aria-hidden="true">{{ command.icon }}</mat-icon
             ><span>{{ command.labelKey | translate: command.labelParams }}</span>
+            @if (command.group !== 'screen' && command.coming) {
+              <span class="twes-soon" data-testid="soon">{{ 'shell.soon' | translate }}</span>
+            }
           </div>
         }
       </div>

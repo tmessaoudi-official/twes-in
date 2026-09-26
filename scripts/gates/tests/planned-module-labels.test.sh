@@ -22,7 +22,15 @@ final readonly class PlannedModules
     }
 }
 PHP
+  mkdir -p "$d/web/src/app/shell"
+  places "$d" quotes zakat
   echo "$d"
+}
+# The web's menu places (web/src/app/shell/planned-nav.ts): one `{ key: '<k>', ... }` per planned module given.
+places() {
+  local d=$1; shift
+  { echo "export const PLANNED_NAV = ["; for k in "$@"; do echo "  { key: '$k', icon: 'x', section: 'sell', after: 'invoices' },"; done; echo "];"; } \
+    > "$d/web/src/app/shell/planned-nav.ts"
 }
 labels() { printf '%s\n' "$2" > "$1/web/public/i18n/fr.json"; printf '%s\n' "$3" > "$1/web/public/i18n/en.json"; }
 
@@ -60,6 +68,15 @@ check "a missing translation file reds, with every key in that language" $? 1 "$
 d=$(repo); labels "$d" "$BOTH" '{"modules":'
 out=$(PLANNED_MODULE_LABELS_FLOOR=2 bash "$GATE" --root "$d" 2>&1)
 check "a translation file that is not JSON reds rather than passing" $? 1 "$out" "en: modules.quotes"
+
+# Row 150's menu: a planned module the web has no place for would never be drawn, silently.
+d=$(repo); labels "$d" "$BOTH" "$BOTH"; places "$d" quotes
+out=$(PLANNED_MODULE_LABELS_FLOOR=2 bash "$GATE" --root "$d" 2>&1)
+check "a planned module without a place in the menu is caught" $? 1 "$out" "no menu place: zakat"
+
+d=$(repo); labels "$d" "$BOTH" "$BOTH"; rm "$d/web/src/app/shell/planned-nav.ts"
+out=$(PLANNED_MODULE_LABELS_FLOOR=2 bash "$GATE" --root "$d" 2>&1)
+check "a tree without planned-nav.ts reds with every module, rather than passing" $? 1 "$out" "no menu place: quotes"
 
 d=$(mktemp -d)
 out=$(bash "$GATE" --root "$d" 2>&1)

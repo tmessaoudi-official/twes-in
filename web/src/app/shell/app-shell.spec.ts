@@ -53,6 +53,8 @@ class StaticLoader implements TranslateLoader {
       roles: { owner: 'Propriétaire' },
       customers: { new_title: 'Nouveau client' },
       invoices: { new_title: 'Nouvelle facture' },
+      modules: { register: 'Caisse', reports: 'Rapports' },
+      coming: { register: { create: 'Nouvelle vente au comptoir' } },
       nav: {
         home: 'Accueil',
         members: 'Membres',
@@ -63,8 +65,6 @@ class StaticLoader implements TranslateLoader {
         design: 'Design',
         invoices: 'Factures',
         watch: 'À surveiller',
-        register: 'Caisse',
-        reports: 'Rapports',
         delivery_notes: 'Bons de livraison',
         short: { delivery_notes: 'Livraisons' },
         sections: { sell: 'Vendre', manage: 'Gérer', team: 'Équipe' },
@@ -118,6 +118,11 @@ const owner: SignedInState = {
   permissions: ['*'],
   modules: ['customers'],
   mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
+  // The API's catalogue (row 150): the menu's planned modules come from here, never from a list of the web's own.
+  plannedModules: [
+    { key: 'register', planned: 'v1' },
+    { key: 'reports', planned: 'v1' },
+  ],
 };
 
 /** A viewport of a given width: answers `(max-width: …)` and `(min-width: …)` queries as a browser would. */
@@ -381,6 +386,12 @@ describe('AppShell', () => {
     expect(byTestId('create-new-customer')?.textContent).toContain('Nouveau client');
     // Only what this person may create in this company: invoices are off for it.
     expect(byTestId('create-new-invoice')).toBeNull();
+    // What a planned module will create comes after a divider, marked, and opens its page (row 150).
+    const planned = byTestId('create-new-register');
+    expect(planned?.getAttribute('href')).toBe('/coming/register');
+    expect(planned?.querySelector('[data-testid="soon"]')?.textContent).toContain('Bientôt');
+    expect(byTestId('create-new-customer')?.querySelector('[data-testid="soon"]')).toBeNull();
+    expect(planned?.previousElementSibling?.tagName.toLowerCase()).toBe('mat-divider');
   });
 
   it('answers the keys this person chose rather than the ruled ones (row 125)', async () => {
@@ -416,6 +427,17 @@ describe('AppShell', () => {
     await fixture.whenStable();
     expect(byTestId('nav-register')).toBeNull();
     expect(byTestId('nav-home')).not.toBeNull();
+  });
+
+  it('draws the planned modules the API lists, and none it no longer does', async () => {
+    const { fixture, byTestId } = await render();
+    expect(byTestId('nav-register')).not.toBeNull();
+
+    me.set({ ...owner, plannedModules: [{ key: 'reports', planned: 'v1' }] });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(byTestId('nav-register')).toBeNull();
   });
 
   it('keeps what is not built yet off the phone’s bar, which holds only working destinations', async () => {
@@ -874,11 +896,18 @@ describe('AppShell', () => {
     const [component, config] = open.mock.calls[0] as [unknown, { data: { commands: Command[] } }];
     expect(component).toBe(CommandPalette);
     // Expenses is off for this company: its creation is not offered even with the permission.
+    // Then what is not built yet, from the API's catalogue, marked (row 150).
     expect(config.data.commands.map((command) => command.key)).toEqual([
       'new-customer',
       'goto-home',
       'goto-customers',
+      'new-register',
+      'goto-register',
+      'goto-reports',
     ]);
+    expect(
+      config.data.commands.filter((command) => command.group !== 'screen' && command.coming),
+    ).toHaveLength(3);
 
     press({ metaKey: true });
     expect(open).toHaveBeenCalledTimes(2);
@@ -1263,6 +1292,9 @@ describe('AppShell', () => {
       'new-customer',
       'goto-home',
       'goto-customers',
+      'new-register',
+      'goto-register',
+      'goto-reports',
     ]);
   });
 

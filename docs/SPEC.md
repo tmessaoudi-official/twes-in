@@ -3266,6 +3266,33 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
     a notification's realtime push only warns, so only the database can fail it.
   - The bell names the module by translating the payload's `label_key` as `label`, a rule any later notification
     naming something by its key can use.
+- [2026-09-26 17:25] DECIDED (revisit), row 150 slice 3, the menu, taken without asking under the 12:11 directive:
+  - The signed-in state carries `plannedModules` (`{key, planned}`, in key order, the same in the login answer and
+    `/auth/me`), so the menus draw exactly the planned modules the API's catalogue lists, at the version it gives.
+    `web/src/app/shell/planned-nav.ts` only places and draws them (icon, section, the entry each follows); a key it
+    has no place for is left out, and `planned-module-labels.sh` now fails on a planned key without a place.
+  - The four modules the web used to list itself (Caisse, Travaux, Rapports, Déclarations) left `COMING_NAV`, which
+    now holds only the five settings pages not built yet; their labels are the modules' own (`modules.<key>`), so the
+    English menu and modules page both say « Till ».
+  - Placement: Vendre — Devis and Factures récurrentes after Factures; Relevés, Envoi par e-mail, WhatsApp and Portail
+    after Clients; Tarifs and Produits composés after Produits, then Caisse, Travaux and the café's five (Salle, Carte,
+    Service, Clients fidèles, Avis). Gérer — Valorisation after Stock, Commandes fournisseurs after Fournisseurs, and
+    after Dépenses the money and compliance six (Rapports, Déclarations, Export comptable, Facturation électronique,
+    Devises, Zakat).
+  - « En construction » names a § 8 row only where one builds the module (fifteen of the 23; none yet for Portail,
+    Produits composés, Devises, Salle, Carte, Service, Clients fidèles, Avis).
+  - The rail is now long with « Montrer ce qui arrive » on (32 entries, 9 of them working): row 152's foldable sections are what makes it
+    readable, so row 152 comes next after row 150.
+- [2026-09-26 17:56] DECIDED (revisit), row 150 slice 4, « Créer » and Ctrl K, taken without asking under the 12:11 directive:
+  - Six planned modules make something « Créer » will offer, each named for what it makes: Nouveau devis, Nouvelle
+    facture récurrente, Nouveau tarif, Nouvelle vente au comptoir, Nouveau chantier, Nouvelle commande fournisseur.
+    They sit below a divider after the real creations, each marked « Bientôt », and open the module's « En
+    construction » page: they never create anything. The others (a statement, a mailing, a declaration…) are not
+    things a person creates by hand, so « Créer » does not offer them.
+  - A planned creation alone never draws « Créer »: somebody who may create nothing real still sees no button, and C
+    does nothing for them.
+  - The Ctrl K palette offers each planned module's page and its creation, after everything that works, marked
+    « Bientôt »; « Montrer ce qui arrive » off takes them all away, as it does in the menu.
 
 ## 8. Status
 
@@ -3420,7 +3447,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 144 | Tax data without a partner (§ 7 2026-09-25 22:16): TEJ withholding certificates XML, the four French mentions, payments split by VAT rate, CA3 and Tunisian monthly worksheets | L | doing | - | api/src/** web/src/app/** |
 | 145 | E-invoicing files (§ 7 2026-09-25 22:16): Factur-X and UBL (EN 16931), TEIF 1.8.8 signed; then a plateforme agréée before 2027-09-01 and TTN (row 102) | L | doing | - | api/src/** |
 | 146 | Search on top at the centre (§ 7 2026-09-26 08:52): out of the menu, always visible, Ctrl K, an icon on a phone | S | done | f6fdebe6 | |
-| 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | doing | - | slice 1 (the catalogue and the modules page, `ddc1045a`) and slice 2 (« Me prévenir », the operator's demand, the arrival notice) landed; menu, « Créer », Ctrl K, screen actions and settings cards to come |
+| 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | doing | - | slice 1 (the catalogue and the modules page, `ddc1045a`) and slice 2 (« Me prévenir », the operator's demand, the arrival notice, `f0488509`) and slices 3–4 (the menu from the catalogue, « Créer » and Ctrl K) landed; screen actions and settings cards to come |
 | 151 | Paramètres list fixed and foldable (§ 7 2026-09-26 11:17): pinned head and foot, 80 px rail from its foot, key ], presentation.settings-list | M | todo | - | |
 | 152 | Menus by foldable sections (§ 7 2026-09-26 12:05): each section folds from its heading, remembered, the current one always open; a fade at an edge with more behind; the current entry kept in view — main menu and Paramètres | M | todo | - | |
 | 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | todo | - | |
