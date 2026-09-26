@@ -25,6 +25,14 @@ interface DeliveryNoteRepository
      */
     public function search(Uuid $companyId, DeliveryNoteSearch $search, PageRequest $page): Page;
 
+    /**
+     * How many notes each status chip of the list would show under the same words and customer, the status left aside
+     * (docs/SPEC.md § 7, 2026-09-26), and how many in all.
+     *
+     * @return array{all: int, statuses: array<string, int>} every status named, in the enum's order
+     */
+    public function statusCounts(Uuid $companyId, DeliveryNoteSearch $search): array;
+
     /** Null for a delivery note that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?DeliveryNote;
 

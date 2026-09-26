@@ -4,8 +4,14 @@
       {{ 'delivery_notes.title' | translate }}
     </h1>
     @if (mayWrite() && company()) {
-      <a mat-flat-button routerLink="/delivery-notes/new" data-testid="delivery-note-add">
+      <a
+        mat-flat-button
+        routerLink="/delivery-notes/new"
+        data-testid="delivery-note-add"
+        [attr.aria-keyshortcuts]="newKey()"
+      >
         {{ 'delivery_notes.add' | translate }}
+        <kbd class="twes-button-key" aria-hidden="true">{{ keyName(newKey()) }}</kbd>
       </a>
     }
   </div>
@@ -23,6 +29,7 @@
     [descriptor]="list"
     [rows]="rows()"
     [total]="total()"
+    [facetCounts]="facetCounts()"
     (queryChange)="onQuery($event)"
     testId="delivery-notes-table"
     [rowTestId]="rowTestId"

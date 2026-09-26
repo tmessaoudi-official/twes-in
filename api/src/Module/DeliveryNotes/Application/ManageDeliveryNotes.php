@@ -76,6 +76,16 @@ final readonly class ManageDeliveryNotes
         return $this->notes->search($company->getId(), $search, $page);
     }
 
+    /**
+     * What each status chip of the list would show under the same search (docs/SPEC.md § 7, 2026-09-26).
+     *
+     * @return array{all: int, statuses: array<string, int>}
+     */
+    public function statusCounts(Company $company, DeliveryNoteSearch $search): array
+    {
+        return $this->notes->statusCounts($company->getId(), $search);
+    }
+
     /** @throws DeliveryNoteNotFound */
     public function get(Company $company, Uuid $id): DeliveryNote
     {

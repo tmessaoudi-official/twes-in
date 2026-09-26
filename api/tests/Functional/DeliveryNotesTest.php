@@ -352,6 +352,8 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the PDF is the module\'s too');
         $this->getJson($this->companyPath().'/delivery-note-options');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson($this->companyPath().'/delivery-note-status-counts');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the chips\' counts are the module\'s too');
 
         $this->sendJson('PUT', $this->companyPath().'/modules/delivery_notes', ['enabled' => true]);
         $this->getJson($this->path());
@@ -516,6 +518,61 @@ final class DeliveryNotesTest extends ApiTestCase
             $this->getJson($this->path().'?'.$refused);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
         }
+    }
+
+    /** docs/SPEC.md § 7, 2026-09-26: each status chip of « Bons de livraison » says how many it would list. */
+    public function testEachStatusChipCountsWhatItsFilterWouldList(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
+        $this->postJson($this->path($this->draftWithALine()).'/validate', null);
+        self::assertResponseIsSuccessful();
+        $cancelled = $this->draftWithALine();
+        $this->postJson($this->path($cancelled).'/validate', null);
+        $this->postJson($this->path($cancelled).'/cancel', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path(), $this->note([
+            'customerId' => $other,
+            'customerReference' => 'BC-7788',
+            'lines' => [['productId' => $this->productId, 'quantity' => '1']],
+        ]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->getJson($this->companyPath().'/delivery-note-status-counts');
+        self::assertResponseIsSuccessful();
+        self::assertSame(3, $this->json()['all']);
+        self::assertSame(['draft' => 1, 'validated' => 1, 'delivered' => 0, 'cancelled' => 1, 'invoiced' => 0], $this->json()['statuses']);
+
+        foreach (['', 'q=carthage', 'q=BC-7788', 'customerId='.$other, 'status=draft'] as $filters) {
+            $this->getJson($this->companyPath().'/delivery-note-status-counts?'.$filters);
+            self::assertResponseIsSuccessful($filters);
+            $counts = $this->json();
+            $statuses = $counts['statuses'];
+            self::assertIsArray($statuses);
+            // The chips narrow by status themselves: a status the list carries is left aside.
+            $listed = preg_replace('/(^|&)status=[a-z]+/', '', $filters);
+            $this->getJson($this->path().'?'.$listed);
+            self::assertSame($this->jsonPage()['totalItems'], $counts['all'], $filters);
+            foreach (['draft', 'validated', 'delivered', 'cancelled', 'invoiced'] as $status) {
+                $this->getJson($this->path().'?'.ltrim($listed.'&status='.$status, '&'));
+                self::assertSame($this->jsonPage()['totalItems'], $statuses[$status], $filters.' '.$status);
+            }
+        }
+    }
+
+    public function testStatusCountsAreAReadersOnly(): void
+    {
+        $this->signedIn(['customer.read']);
+        $this->getJson($this->companyPath().'/delivery-note-status-counts');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testStatusCountsOfAnotherCompanyAreNotFound(): void
+    {
+        $this->signedIn(['delivery_note.read']);
+        $globex = $this->createCompany('Globex');
+        $this->getJson('/api/companies/'.$globex->getId()->toRfc4122().'/delivery-note-status-counts');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
     /** @param list<string> $permissions */

@@ -58,6 +58,7 @@ describe('DeliveryNotesFacade', () => {
     deliver: vi.fn(),
     cancel: vi.fn(),
     invoice: vi.fn(),
+    statusCounts: vi.fn(),
   };
   let facade: DeliveryNotesFacade;
 
@@ -88,6 +89,33 @@ describe('DeliveryNotesFacade', () => {
     expect(facade.total()).toBe(1);
     expect(facade.options()).toEqual(options);
     expect(facade.error()).toBeNull();
+  });
+
+  it('shows the chips’ counts of the latest search, whatever order the answers come back in', async () => {
+    const search = {
+      page: 1,
+      itemsPerPage: 25,
+      q: '',
+      status: null,
+      customerId: null,
+      order: null,
+    } as const;
+    const counts = (all: number) => ({
+      all,
+      statuses: { draft: all, validated: 0, delivered: 0, cancelled: 0, invoiced: 0 },
+    });
+    let answerStale: (value: ReturnType<typeof counts>) => void = () => undefined;
+    api.statusCounts
+      .mockReturnValueOnce(new Promise((resolve) => (answerStale = resolve)))
+      .mockResolvedValueOnce(counts(4));
+
+    const stale = facade.loadStatusCounts('c1', search);
+    const latest = facade.loadStatusCounts('c1', { ...search, q: 'carthage' });
+    await latest;
+    answerStale(counts(40));
+    await stale;
+
+    expect(facade.statusCounts()?.all).toBe(4);
   });
 
   it('reads the options alone for a new note, and the note too for an existing one', async () => {

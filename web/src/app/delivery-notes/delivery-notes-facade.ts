@@ -10,6 +10,7 @@ import type {
   DeliveryNoteRow,
   DeliveryNoteSearch,
   DeliveryNotesError,
+  DeliveryNoteStatusCounts,
   ProductOption,
 } from './delivery-notes-types';
 
@@ -21,7 +22,9 @@ export class DeliveryNotesFacade {
   private readonly optionsSignal = signal<DeliveryNoteOptions | null>(null);
   private readonly noteSignal = signal<DeliveryNoteRow | null>(null);
   private readonly totalSignal = signal(0);
+  private readonly statusCountsSignal = signal<DeliveryNoteStatusCounts | null>(null);
   private pageRequest = 0;
+  private countsRequest = 0;
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<DeliveryNotesError | null>(null);
 
@@ -31,6 +34,8 @@ export class DeliveryNotesFacade {
   readonly note = this.noteSignal.asReadonly();
   /** How many notes the last search found in all, the page shown being one part of them. */
   readonly total = this.totalSignal.asReadonly();
+  /** What each status chip of the list would show; null until read, and kept while a new count is on its way. */
+  readonly statusCounts = this.statusCountsSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
@@ -63,6 +68,15 @@ export class DeliveryNotesFacade {
       if (request !== this.pageRequest) return;
       this.notesSignal.set(page.rows);
       this.totalSignal.set(page.total);
+    });
+  }
+
+  /** The chips' counts for the search, the latest search's answer only, as for its page. */
+  async loadStatusCounts(companyId: string, search: DeliveryNoteSearch): Promise<void> {
+    const request = ++this.countsRequest;
+    await this.read(async () => {
+      const counts = await this.api.statusCounts(companyId, search);
+      if (request === this.countsRequest) this.statusCountsSignal.set(counts);
     });
   }
 

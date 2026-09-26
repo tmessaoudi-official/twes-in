@@ -162,6 +162,12 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
     await page.goto('/delivery-notes');
     await page.getByTestId('list-filter').fill(noteNumber);
     await expect(page.getByTestId('delivery-notes-table')).toContainText(noteNumber);
+    // Each status chip says how many it would list under that search (docs/SPEC.md § 7, 2026-09-26): this run's
+    // note, found by its number, is delivered.
+    const count = (id: string) => page.getByTestId(id).locator('.twes-chip-count');
+    await expect(count('list-facet-status-all')).toHaveText('1');
+    await expect(count('list-facet-status-delivered')).toHaveText('1');
+    await expect(count('list-facet-status-draft')).toHaveText('0');
   } finally {
     await retire(page, customerNumber);
   }

@@ -12,6 +12,7 @@ import type {
   DeliveryNoteCustomerPickDeliveryNoteCustomerPickRead,
   DeliveryNoteOptionsDeliveryNoteOptionsRead,
   DeliveryNoteProductPickDeliveryNoteProductPickRead,
+  DeliveryNoteStatusCountsDeliveryNoteStatusCountsRead,
   InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite,
   InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead,
 } from '../api/types.gen';
@@ -23,6 +24,7 @@ import {
   type DeliveryNoteOptions,
   type DeliveryNoteRow,
   type DeliveryNoteSearch,
+  type DeliveryNoteStatusCounts,
   type DeliveryNotesError,
   type CustomerOption,
   type LineTaxOption,
@@ -113,6 +115,24 @@ export class DeliveryNotesApi {
       if (page.totalItems === undefined)
         throw new Error('A page of delivery notes came without its total.');
       return { rows: page.member.map(toNote), total: page.totalItems };
+    });
+  }
+
+  /** What each status chip would list under the list's words and customer (docs/SPEC.md § 7, 2026-09-26). */
+  async statusCounts(
+    companyId: string,
+    search: DeliveryNoteSearch,
+  ): Promise<DeliveryNoteStatusCounts> {
+    return this.guard(async () => {
+      const counts = await firstValueFrom(
+        this.http.get<DeliveryNoteStatusCountsDeliveryNoteStatusCountsRead>(
+          `${companyPath(companyId)}/delivery-note-status-counts`,
+          { params: toCountParams(search) },
+        ),
+      );
+      if (counts.all === undefined || counts.statuses === undefined)
+        throw new Error('Status counts came without their figures.');
+      return { all: counts.all, statuses: { ...counts.statuses } };
     });
   }
 
@@ -244,6 +264,14 @@ function toSearchParams(search: DeliveryNoteSearch): HttpParams {
   if (search.customerId !== null) params = params.set('customerId', search.customerId);
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
+  return params;
+}
+
+/** The chips narrow by status themselves, and a count has no page or order. */
+function toCountParams(search: DeliveryNoteSearch): HttpParams {
+  let params = new HttpParams();
+  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (search.customerId !== null) params = params.set('customerId', search.customerId);
   return params;
 }
 

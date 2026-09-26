@@ -3131,6 +3131,11 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   - Also fixed in this commit: `global-changes.spec.ts` now waits for the settings area before folding its menu. The
     CI trace of 60af45d5 shows the toggle clicked while the settings route was still loading, so it folded the general
     menu. That is not a product defect: the toggle folds whichever menu is on screen.
+- [2026-09-26 06:03] DECIDED (revisit), row 123, third slice: **« Bons de livraison » gets the same counted chips.**
+  `GET …/delivery-note-status-counts` counts each of the five statuses under the list's own words and customer, with the
+  status left aside, and « Tous » is their sum. « Nouveau bon de livraison » names the person's N key.
+  - Delivery notes do not open as a sheet yet: a delivery note has no amount to collect, so the invoice sheet does not
+    fit it as it stands. What such a sheet should show is left to the design review.
 
 ## 8. Status
 

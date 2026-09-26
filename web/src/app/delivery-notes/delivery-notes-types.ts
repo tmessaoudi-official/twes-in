@@ -12,6 +12,12 @@ export type DeliveryNoteStatus = 'draft' | 'validated' | 'delivered' | 'cancelle
 export type DeliveryNoteSortKey = 'number' | 'customer' | 'issueDate' | 'deliveryDate' | 'status';
 
 /** One page of the delivery notes list as the API searches, narrows and sorts it (docs/SPEC.md § 7). */
+/** What each status chip of the list would show under the same search, as the API counted it (docs/SPEC.md § 7, 2026-09-26). */
+export interface DeliveryNoteStatusCounts {
+  all: number;
+  statuses: Record<DeliveryNoteStatus, number>;
+}
+
 export interface DeliveryNoteSearch {
   /** Numbered from 1. */
   page: number;

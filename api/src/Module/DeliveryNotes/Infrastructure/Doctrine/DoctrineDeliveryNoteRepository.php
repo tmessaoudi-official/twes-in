@@ -13,6 +13,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteSearch;
+use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
@@ -21,6 +22,7 @@ use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
 
@@ -48,22 +50,7 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
 
     public function search(Uuid $companyId, DeliveryNoteSearch $search, PageRequest $page): Page
     {
-        $query = $this->entityManager->createQueryBuilder()
-            ->select('n', 'c')->from(DeliveryNote::class, 'n')
-            ->join('n.customer', 'c')
-            ->where('n.company = :company')->setParameter('company', $companyId, 'uuid');
-        $words = trim($search->text ?? '');
-        if (mb_strlen($words) >= SearchText::SHORTEST) {
-            $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
-        } elseif ('' !== $words) {
-            $query->andWhere('LOWER(n.number) = LOWER(:number)')->setParameter('number', $words);
-        }
-        if (null !== $search->status) {
-            $query->andWhere('n.status = :status')->setParameter('status', $search->status->value);
-        }
-        if (null !== $search->customer) {
-            $query->andWhere('n.customer = :customerId')->setParameter('customerId', $search->customer, 'uuid');
-        }
+        $query = $this->filtered($companyId, $search)->select('n', 'c');
         // A draft has no number and no issue day, so neither can settle a tie: the newest first, and the id last,
         // which is unique and never empty.
         ListOrder::apply($query, $search->order, self::SORTED_BY, ['number', 'issueDate', 'deliveryDate'], 'n.createdAt', 'DESC')
@@ -94,6 +81,45 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
             ->createQuery('SELECT n, l, lt, u, p FROM '.DeliveryNote::class.' n LEFT JOIN n.lines l LEFT JOIN l.taxes lt LEFT JOIN l.unit u LEFT JOIN l.product p WHERE n.id IN (:ids)')
             ->setParameter('ids', array_map(static fn (DeliveryNote $note): string => $note->getId()->toRfc4122(), $notes), ArrayParameterType::STRING)
             ->getResult();
+    }
+
+    public function statusCounts(Uuid $companyId, DeliveryNoteSearch $search): array
+    {
+        // The chips narrow by status themselves, so whatever status the search carried is left aside.
+        $statusFree = new DeliveryNoteSearch($search->text, null, $search->customer);
+        $counts = array_fill_keys(array_map(static fn (DeliveryNoteStatus $status): string => $status->value, DeliveryNoteStatus::cases()), 0);
+        /** @var list<array{status: DeliveryNoteStatus, total: int|string}> $rows the column is mapped to the enum */
+        $rows = $this->filtered($companyId, $statusFree)
+            ->select('n.status AS status', 'COUNT(n.id) AS total')->groupBy('n.status')
+            ->getQuery()->getArrayResult();
+        foreach ($rows as $row) {
+            $counts[$row['status']->value] = (int) $row['total'];
+        }
+
+        return ['all' => array_sum($counts), 'statuses' => $counts];
+    }
+
+    /** The company's delivery notes narrowed as a search asks, its order and its page left to the caller. */
+    private function filtered(Uuid $companyId, DeliveryNoteSearch $search): QueryBuilder
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->from(DeliveryNote::class, 'n')
+            ->join('n.customer', 'c')
+            ->where('n.company = :company')->setParameter('company', $companyId, 'uuid');
+        $words = trim($search->text ?? '');
+        if (mb_strlen($words) >= SearchText::SHORTEST) {
+            $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
+        } elseif ('' !== $words) {
+            $query->andWhere('LOWER(n.number) = LOWER(:number)')->setParameter('number', $words);
+        }
+        if (null !== $search->status) {
+            $query->andWhere('n.status = :status')->setParameter('status', $search->status->value);
+        }
+        if (null !== $search->customer) {
+            $query->andWhere('n.customer = :customerId')->setParameter('customerId', $search->customer, 'uuid');
+        }
+
+        return $query;
     }
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?DeliveryNote

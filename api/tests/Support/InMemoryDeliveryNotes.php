@@ -13,6 +13,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteSearch;
+use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
@@ -52,6 +53,17 @@ final class InMemoryDeliveryNotes implements DeliveryNoteRepository
         $mine = $this->ofCompany($companyId);
 
         return new Page(\array_slice($mine, $page->offset(), $page->size), \count($mine), $page);
+    }
+
+    public function statusCounts(Uuid $companyId, DeliveryNoteSearch $search): array
+    {
+        $counts = array_fill_keys(array_map(static fn (DeliveryNoteStatus $status): string => $status->value, DeliveryNoteStatus::cases()), 0);
+        $mine = $this->ofCompany($companyId);
+        foreach ($mine as $note) {
+            ++$counts[$note->getStatus()->value];
+        }
+
+        return ['all' => \count($mine), 'statuses' => $counts];
     }
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?DeliveryNote

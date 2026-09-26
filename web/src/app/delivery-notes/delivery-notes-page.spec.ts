@@ -26,6 +26,7 @@ import type {
   DeliveryNoteOptions,
   DeliveryNoteRow,
   DeliveryNotesError,
+  DeliveryNoteStatusCounts,
 } from './delivery-notes-types';
 
 class StaticLoader implements TranslateLoader {
@@ -63,6 +64,7 @@ const numbered: DeliveryNoteRow = {
 
 describe('DeliveryNotesPage', () => {
   const error = signal<DeliveryNotesError | null>(null);
+  const statusCounts = signal<DeliveryNoteStatusCounts | null>(null);
   const facade = {
     notes: signal<readonly DeliveryNoteRow[]>([
       numbered,
@@ -77,8 +79,10 @@ describe('DeliveryNotesPage', () => {
     }).asReadonly(),
     error: error.asReadonly(),
     total: signal(2).asReadonly(),
+    statusCounts: statusCounts.asReadonly(),
     loadListContext: vi.fn(),
     loadPage: vi.fn(),
+    loadStatusCounts: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -99,6 +103,8 @@ describe('DeliveryNotesPage', () => {
     error.set(null);
     facade.loadListContext.mockReset().mockResolvedValue(undefined);
     facade.loadPage.mockReset().mockResolvedValue(undefined);
+    facade.loadStatusCounts.mockReset().mockResolvedValue(undefined);
+    statusCounts.set(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [DeliveryNotesPage],
@@ -155,6 +161,27 @@ describe('DeliveryNotesPage', () => {
     fixture = TestBed.createComponent(DeliveryNotesPage);
     await settle();
     expect(q('delivery-note-add')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26: each status chip says how many it would list, as the API counts them.
+  it('asks the API what each status would list, and says it on the chips', async () => {
+    expect(facade.loadStatusCounts).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ q: '', customerId: null }),
+    );
+    statusCounts.set({
+      all: 12,
+      statuses: { draft: 2, validated: 4, delivered: 3, cancelled: 1, invoiced: 2 },
+    });
+    await settle();
+    const count = (id: string) => q(id)?.querySelector('.twes-chip-count')?.textContent;
+    expect(count('list-facet-status-all')).toBe('12');
+    expect(count('list-facet-status-delivered')).toBe('3');
+  });
+
+  it('names the key that opens a new note from here (docs/SPEC.md § 7, 2026-09-24 22:51)', () => {
+    expect(q('delivery-note-add')?.getAttribute('aria-keyshortcuts')).toBe('n');
+    expect(q('delivery-note-add')?.querySelector('kbd')?.textContent).toBe('N');
   });
 
   it('says why the list could not be read', async () => {

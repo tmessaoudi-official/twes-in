@@ -260,6 +260,35 @@ describe('DeliveryNotesApi', () => {
     await expect(pending).rejects.toThrow();
   });
 
+  // docs/SPEC.md § 7, 2026-09-26: « Bons de livraison »'s chips say how many each would list.
+  it('asks how many notes each status would list, under the list’s own words and customer', async () => {
+    const pending = api.statusCounts('c1', {
+      ...SEARCH,
+      page: 2,
+      q: '  carthage  ',
+      status: 'validated',
+      customerId: 'k1',
+      order: { key: 'number', direction: 'desc' },
+    });
+    const request = http.expectOne(
+      (candidate) =>
+        candidate.url === '/api/companies/c1/delivery-note-status-counts' &&
+        candidate.method === 'GET',
+    );
+    // The chips narrow by status themselves, and a count has no page or order.
+    expect(request.request.params.keys().sort()).toEqual(['customerId', 'q']);
+    expect(request.request.params.get('q')).toBe('carthage');
+    const statuses = { draft: 1, validated: 2, delivered: 0, cancelled: 1, invoiced: 0 };
+    request.flush({ all: 4, statuses });
+    expect(await pending).toEqual({ all: 4, statuses });
+  });
+
+  it('refuses counts that came without their figures, rather than showing none as nothing', async () => {
+    const pending = api.statusCounts('c1', SEARCH);
+    http.expectOne('/api/companies/c1/delivery-note-status-counts').flush({ all: 5 });
+    await expect(pending).rejects.toThrow();
+  });
+
   it('validates, delivers on a day or today, and cancels', async () => {
     const validated = api.validate('c1', 'n1');
     const validate = http.expectOne('/api/companies/c1/delivery-notes/n1/validate');

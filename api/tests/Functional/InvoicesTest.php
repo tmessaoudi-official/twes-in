@@ -652,6 +652,8 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson($this->companyPath().'/invoice-summary');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson($this->companyPath().'/invoice-status-counts');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the chips\' counts are the module\'s too');
 
         $this->sendJson('PUT', $this->companyPath().'/modules/invoices', ['enabled' => true]);
         $this->getJson($this->path());
