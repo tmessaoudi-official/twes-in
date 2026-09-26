@@ -58,24 +58,6 @@
           </button>
         }
       }
-      <button
-        type="button"
-        class="twes-rail-search"
-        (click)="openCommands()"
-        [attr.aria-keyshortcuts]="keys().search + ' Control+K Meta+K'"
-        [appLabel]="'shell.commands.open' | translate"
-        [matTooltipDisabled]="!rail()"
-        matTooltipPosition="right"
-        [attr.data-testid]="handset() ? 'command-open-drawer' : 'command-open'"
-      >
-        <mat-icon aria-hidden="true">search</mat-icon>
-        @if (!rail()) {
-          <span class="twes-rail-label" aria-hidden="true">{{
-            'shell.commands.search' | translate
-          }}</span>
-          <kbd aria-hidden="true">Ctrl K</kbd>
-        }
-      </button>
       <!-- Only the destinations scroll: the head and the foot stay where the board draws them whatever the window's
            height, so the account menu is never below the fold. -->
       <div class="twes-rail-groups" data-testid="rail-groups">
@@ -204,105 +186,121 @@
   </mat-sidenav>
 
   <mat-sidenav-content class="twes-shell-content flex flex-col" [attr.data-window]="windowClass()">
-    <!-- On a phone the bar names the company and carries the search, the bell and the member; wider, the rail has
-         them all and the bar keeps only the scanning controls, drawn on no board (a departure noted in docs/SPEC.md
-         § 7, 2026-09-25 17:22), and is left out when there are none. -->
-    @if (handset() || scanControls()) {
-      <header class="sticky top-0 z-10">
-        <mat-toolbar class="twes-shell-bar gap-2" [class.is-slim]="!handset()">
-          @if (handset()) {
-            <div class="flex min-w-0 shrink items-center gap-2" data-testid="top-bar-leading">
-              <app-company-switcher class="min-w-0 truncate" />
-            </div>
-          }
-          <div class="flex min-w-max flex-1 basis-0 items-center justify-end gap-1">
-            @if (handset()) {
-              <button
-                mat-icon-button
-                type="button"
-                (click)="openCommands()"
-                [attr.aria-keyshortcuts]="keys().search + ' Control+K Meta+K'"
-                [appLabel]="'shell.commands.open' | translate"
-                data-testid="command-open"
-                data-tour="shell-palette"
-              >
-                <mat-icon aria-hidden="true">search</mat-icon>
-              </button>
-            }
-            @if (cameraAvailable) {
-              <button
-                mat-icon-button
-                type="button"
-                (click)="openCamera()"
-                [appLabel]="'scan.camera.open' | translate"
-                data-testid="camera-open"
-              >
-                <mat-icon aria-hidden="true">photo_camera</mat-icon>
-              </button>
-            }
-            @if (mayScan()) {
-              <button
-                mat-icon-button
-                type="button"
-                (click)="openPhone()"
-                [appLabel]="
-                  (phone.state()?.phone === 'connected' ? 'scan.phone.paired' : 'scan.phone.pair')
-                    | translate
-                "
-                data-testid="phone-pair"
-              >
-                <mat-icon aria-hidden="true">{{
-                  phone.state()?.phone === 'connected' ? 'mobile_friendly' : 'smartphone'
-                }}</mat-icon>
-              </button>
-            }
-            @if (mayHide()) {
-              <button
-                mat-icon-button
-                type="button"
-                (click)="customerView.toggle()"
-                [attr.aria-pressed]="customerView.active()"
-                [appLabel]="
-                  (customerView.active() ? 'customer_view.leave' : 'customer_view.enter')
-                    | translate
-                "
-                data-testid="customer-view-toggle"
-              >
-                <mat-icon aria-hidden="true">{{
-                  customerView.active() ? 'visibility_off' : 'storefront'
-                }}</mat-icon>
-              </button>
-            }
-            @if (scanCount(); as count) {
-              <button
-                mat-stroked-button
-                type="button"
-                (click)="clearScanCount()"
-                data-testid="scan-count"
-              >
-                <mat-icon aria-hidden="true">close</mat-icon>
-                {{ 'scan.count' | translate: { count } }}
-              </button>
-            }
-            @if (handset()) {
-              <app-notification-bell />
-              @if (me(); as me) {
-                <button
-                  mat-icon-button
-                  type="button"
-                  [matMenuTriggerFor]="account"
-                  [appLabel]="('shell.user_menu' | translate) + ' — ' + me.user.displayName"
-                  data-testid="user-menu"
-                  data-tour="shell-account"
-                >
-                  <span class="twes-avatar" aria-hidden="true">{{ initials() }}</span>
-                </button>
-              }
-            }
+    <!-- On a phone the bar names the company and carries the search, the bell and the member. Wider, the rail has
+         the rest and the bar keeps the search at its centre, always there (docs/SPEC.md § 7, 2026-09-26 08:52, row
+         146), with the scanning controls at its end. -->
+    <header class="sticky top-0 z-10">
+      <mat-toolbar class="twes-shell-bar gap-2" [class.is-slim]="!handset()">
+        @if (handset()) {
+          <div class="flex min-w-0 shrink items-center gap-2" data-testid="top-bar-leading">
+            <app-company-switcher class="min-w-0 truncate" />
           </div>
-        </mat-toolbar>
-      </header>
-    }
+        } @else {
+          <div class="flex-1 basis-0" aria-hidden="true"></div>
+          <div class="flex min-w-0 flex-[2] basis-0 justify-center" data-testid="top-bar-centre">
+            <button
+              type="button"
+              class="twes-command-open twes-command-open-wide"
+              (click)="openCommands()"
+              [attr.aria-keyshortcuts]="keys().search + ' Control+K Meta+K'"
+              [attr.aria-label]="'shell.commands.open' | translate"
+              data-testid="command-open"
+              data-tour="shell-palette"
+            >
+              <mat-icon aria-hidden="true">search</mat-icon>
+              <span class="twes-command-open-label">{{
+                'shell.commands.search' | translate
+              }}</span>
+              <kbd aria-hidden="true">Ctrl K</kbd>
+            </button>
+          </div>
+        }
+        <div class="flex min-w-max flex-1 basis-0 items-center justify-end gap-1">
+          @if (handset()) {
+            <button
+              mat-icon-button
+              type="button"
+              (click)="openCommands()"
+              [attr.aria-keyshortcuts]="keys().search + ' Control+K Meta+K'"
+              [appLabel]="'shell.commands.open' | translate"
+              data-testid="command-open"
+              data-tour="shell-palette"
+            >
+              <mat-icon aria-hidden="true">search</mat-icon>
+            </button>
+          }
+          @if (cameraAvailable) {
+            <button
+              mat-icon-button
+              type="button"
+              (click)="openCamera()"
+              [appLabel]="'scan.camera.open' | translate"
+              data-testid="camera-open"
+            >
+              <mat-icon aria-hidden="true">photo_camera</mat-icon>
+            </button>
+          }
+          @if (mayScan()) {
+            <button
+              mat-icon-button
+              type="button"
+              (click)="openPhone()"
+              [appLabel]="
+                (phone.state()?.phone === 'connected' ? 'scan.phone.paired' : 'scan.phone.pair')
+                  | translate
+              "
+              data-testid="phone-pair"
+            >
+              <mat-icon aria-hidden="true">{{
+                phone.state()?.phone === 'connected' ? 'mobile_friendly' : 'smartphone'
+              }}</mat-icon>
+            </button>
+          }
+          @if (mayHide()) {
+            <button
+              mat-icon-button
+              type="button"
+              (click)="customerView.toggle()"
+              [attr.aria-pressed]="customerView.active()"
+              [appLabel]="
+                (customerView.active() ? 'customer_view.leave' : 'customer_view.enter') | translate
+              "
+              data-testid="customer-view-toggle"
+            >
+              <mat-icon aria-hidden="true">{{
+                customerView.active() ? 'visibility_off' : 'storefront'
+              }}</mat-icon>
+            </button>
+          }
+          @if (scanCount(); as count) {
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="clearScanCount()"
+              data-testid="scan-count"
+            >
+              <mat-icon aria-hidden="true">close</mat-icon>
+              {{ 'scan.count' | translate: { count } }}
+            </button>
+          }
+          @if (handset()) {
+            <app-notification-bell />
+            @if (me(); as me) {
+              <button
+                mat-icon-button
+                type="button"
+                [matMenuTriggerFor]="account"
+                [appLabel]="('shell.user_menu' | translate) + ' — ' + me.user.displayName"
+                data-testid="user-menu"
+                data-tour="shell-account"
+              >
+                <span class="twes-avatar" aria-hidden="true">{{ initials() }}</span>
+              </button>
+            }
+          }
+        </div>
+      </mat-toolbar>
+    </header>
 
     <mat-menu #account="matMenu" xPosition="before">
       @if (me(); as me) {

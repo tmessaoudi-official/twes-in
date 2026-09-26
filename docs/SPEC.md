@@ -3184,6 +3184,32 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-09-26 08:52] AGREED: **the copyright and legal-links line is a slim line under the content.** It reads
   « © <year> <brand> · AGPL-3.0 · Mentions légales · … ». It appears at the end of every page and on the signed-out pages,
   scrolls with the content, and the brand comes from configuration.
+- [2026-09-26 10:08] AGREED (developer, asked twice and confirmed): **the app shows the complete product, and what is
+  not built yet says « Bientôt ».**
+  - Settings › Modules lists 23 planned modules beside the real ones:
+    - Selling: Devis & commandes, Travaux, Tarifs, Caisse, Factures récurrentes, Relevés & plafonds de crédit, Envoi
+      par e-mail & relances, Envoi WhatsApp, Portail client.
+    - Buying and stock: Commandes fournisseurs & réceptions, Valorisation du stock, Produits composés.
+    - Money and compliance: Rapports, Déclarations, Export comptable, Facturation électronique, Devises étrangères,
+      Zakat.
+    - Café and restaurant: Salle & plan, Carte, Service en salle, Clients fidèles, Avis.
+  - They are declared in the **API catalogue as planned**. One catalogue feeds the modules page, the menu and later
+    the plans; switching a planned module on answers 409. The web's separate « Bientôt » list is folded into it.
+  - Each planned module shows a greyed switch marked « Bientôt », a one-line description, its target (v1 / plus tard)
+    and what it needs. **« Me prévenir »** records the company's interest, shows demand per module in the operator's
+    platform screen, and a notification says when the module arrives.
+  - The same entries reach the menu (each opening its « En construction » page), « Créer » and the Ctrl K palette (never
+    creating anything).
+  - Actions inside screens are **visible beside the working ones, in a separate group after a thin divider**. Each is a
+    dashed-outline button in a muted colour with a small « Bientôt » badge, never filled or tonal. It stays focusable
+    (`aria-disabled`, not `disabled`, so the keyboard reaches it and it can say what it is), and a click opens « En
+    construction ». On a phone they move into « ⋯ », still marked.
+  - A planned module's settings show as **one « Bientôt » card that says in words** what will be configurable, with no
+    fake fields and no default that would read as already chosen.
+  - All of it follows each person's « Montrer ce qui arrive ». The texts are in fr and en; Arabic follows the
+    interface's RTL pass.
+  - In the queue it comes **right after the search bar** (row 146) and before the footer, the cookie banner and the
+    legal pages.
 
 ## 8. Status
 
@@ -3337,7 +3363,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 143 | Tunisia till accreditation (§ 7 2026-09-25 22:16): lawyer or expert-comptable, the cahier des charges read, an accredited partner or our own accreditation — the developer's task | M | blocked | - | docs/fiscal/TN.md |
 | 144 | Tax data without a partner (§ 7 2026-09-25 22:16): TEJ withholding certificates XML, the four French mentions, payments split by VAT rate, CA3 and Tunisian monthly worksheets | L | doing | - | api/src/** web/src/app/** |
 | 145 | E-invoicing files (§ 7 2026-09-25 22:16): Factur-X and UBL (EN 16931), TEIF 1.8.8 signed; then a plateforme agréée before 2027-09-01 and TTN (row 102) | L | doing | - | api/src/** |
-| 146 | Search on top at the centre (§ 7 2026-09-26 08:52): out of the menu, always visible, Ctrl K, an icon on a phone | S | todo | - | |
+| 146 | Search on top at the centre (§ 7 2026-09-26 08:52): out of the menu, always visible, Ctrl K, an icon on a phone | S | done | - | |
+| 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | todo | - | |
 | 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | todo | - | |
 | 148 | Legal pages (§ 7 2026-09-26 08:52): nine pages the platform operator edits per language and dates, fr/en/ar drafts marked « Brouillon — à faire valider », Arabic in RTL, security.txt | L | todo | - | |
 | 149 | Cookie banner and guard (§ 7 2026-09-26 08:52): an informational first-visit banner, and a CI gate refusing an undeclared cookie, storage key or third-party script | M | todo | - | |

@@ -588,7 +588,6 @@ body {
 }
 
 .twes-rail-create,
-.twes-rail-search,
 .twes-rail-row,
 .twes-rail-member {
   display: flex;
@@ -655,16 +654,6 @@ body {
   // A phone has no keyboard to press it on.
   @media (max-width: 599.98px) {
     display: none;
-  }
-}
-
-.twes-rail-search {
-  border: 1px solid var(--mat-sys-outline-variant);
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface-variant);
-
-  kbd {
-    border: 1px solid var(--mat-sys-outline-variant);
   }
 }
 
@@ -805,7 +794,7 @@ body {
   background: transparent;
   border-bottom: 1px solid var(--mat-sys-outline-variant);
 
-  // From a tablet up the bar only carries the scanning controls: short, and without a line under it.
+  // From a tablet up the bar carries the search at its centre and the scanning controls: short, with no line under it.
   &.is-slim {
     --mat-toolbar-standard-height: 3rem;
     border-bottom: 0;
@@ -919,7 +908,7 @@ body {
   }
 }
 
-/* From 1200 px the search is the top bar's centre: a field-wide button, its shortcut at the far end. */
+/* From a tablet up the search is the top bar's centre (row 146): a field-wide button, its shortcut at the far end. */
 .twes-command-open-wide {
   width: min(100%, 36rem);
   height: 2.5rem;

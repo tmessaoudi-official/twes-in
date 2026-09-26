@@ -214,13 +214,6 @@ export class AppShell {
   /** « Créer »'s menu, wherever it is drawn: the rail's button from a tablet up, the phone's bar below. */
   private readonly createTrigger = viewChild('createTrigger', { read: MatMenuTrigger });
   /**
-   * The scanning controls, which the rail does not carry: what keeps a slim bar above the page from a tablet up. The
-   * camera shows wherever the browser can open one, whatever the person may do.
-   */
-  protected readonly scanControls = computed(
-    () => this.cameraAvailable || this.mayScan() || this.mayHide() || this.scanCount() !== null,
-  );
-  /**
    * The phone's bottom bar: the most used destinations first (`PHONE_BAR_FIRST`), then the sidebar's next ones, three
    * in all; « Créer » goes between the second and the third.
    */

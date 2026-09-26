@@ -476,22 +476,26 @@ describe('AppShell', () => {
     expect(theme.setScheme).toHaveBeenCalledWith('dark');
   });
 
-  it('puts the search in the rail, under « Créer », saying what it finds', async () => {
-    const { fixture, byTestId } = await render();
+  // docs/SPEC.md § 7, 2026-09-26 08:52 (row 146): the search is out of the menu, at the top bar's centre, always there.
+  it('puts the search at the top bar’s centre, out of the menu, saying what it finds', async () => {
+    const { fixture, byTestId, el } = await render();
     const search = byTestId('command-open');
-    expect(search?.closest('[data-testid="shell-nav"]')).not.toBeNull();
+    expect(search?.closest('[data-testid="shell-nav"]')).toBeNull();
+    expect(search?.closest('[data-testid="top-bar-centre"]')).not.toBeNull();
     expect(search?.textContent).toContain('Rechercher…');
     expect(search?.textContent).toContain('Ctrl K');
     expect(search?.getAttribute('aria-label')).toBe('Rechercher');
+    expect(el.querySelectorAll('[data-testid^="command-open"]')).toHaveLength(1);
 
-    // A rail of icons keeps the search, named.
+    // With the menu folded to a rail of icons, the search stays where it is, whole.
     width.next(900);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(byTestId('command-open')?.getAttribute('aria-label')).toBe('Rechercher');
+    expect(byTestId('command-open')?.closest('[data-testid="top-bar-centre"]')).not.toBeNull();
+    expect(byTestId('command-open')?.textContent).toContain('Rechercher…');
   });
 
-  it('keeps a slim bar above the page only for the scanning controls', async () => {
+  it('keeps a slim bar above the page, its scanning controls at the end', async () => {
     permissions.set(['product.read']);
     const { fixture, byTestId, el } = await render();
     const bar = el.querySelector('.twes-shell-bar');
@@ -510,7 +514,7 @@ describe('AppShell', () => {
     permissions.set(['customer.write', 'customer.read', 'user.read']);
     theme.sidebar.set('rail');
     const { byTestId } = await render();
-    for (const id of ['sidebar-toggle', 'command-open', 'create-open', 'nav-settings']) {
+    for (const id of ['sidebar-toggle', 'create-open', 'nav-settings']) {
       expect(byTestId(id)?.classList.contains('mat-mdc-tooltip-trigger'), id).toBe(true);
     }
   });
@@ -1234,13 +1238,13 @@ describe('AppShell', () => {
     ]);
   });
 
-  it('opens the command palette from the search in the rail', async () => {
+  it('opens the command palette from the search in the top bar', async () => {
     const { click, byTestId } = await render();
     const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
       afterClosed: () => of(undefined),
     } as never);
 
-    expect(byTestId('command-open')?.closest('[data-testid="shell-nav"]')).not.toBeNull();
+    expect(byTestId('command-open')?.closest('header')).not.toBeNull();
     expect(byTestId('command-open')?.getAttribute('aria-keyshortcuts')).toBe('/ Control+K Meta+K');
     // Named even on a phone, where its visible label and shortcut are hidden to save room.
     expect(byTestId('command-open')?.getAttribute('aria-label')).toBe('Rechercher');
