@@ -14,6 +14,7 @@ import type {
   ExpenseSearch,
   ExpensesError,
   ExpenseVendorOption,
+  TejFileAnswer,
 } from './expenses-types';
 
 /** The expenses of the company being worked in, their categories, and the expense open with its files. */
@@ -96,6 +97,30 @@ export class ExpensesFacade {
     payment: ExpensePayment,
   ): Promise<ExpenseRow | null> {
     return this.save(() => this.api.payExpense(companyId, id, payment));
+  }
+
+  /** The options alone, for a screen that shows no expense: the list asks whether the company declares to TEJ. */
+  async loadOptions(companyId: string): Promise<void> {
+    if (this.optionsSignal() !== null) return;
+    try {
+      this.optionsSignal.set(await this.api.options(companyId));
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+    }
+  }
+
+  /** A month's TEJ file, or why it cannot be written; null when the call failed, with the error said. */
+  async tejFile(companyId: string, month: string): Promise<TejFileAnswer | null> {
+    this.busySignal.set(true);
+    this.errorSignal.set(null);
+    try {
+      return await this.api.tejFile(companyId, month);
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return null;
+    } finally {
+      this.busySignal.set(false);
+    }
   }
 
   async classifyWithholding(

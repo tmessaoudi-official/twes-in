@@ -29,6 +29,8 @@ import type {
   ExpenseSearch,
   ExpensesError,
   ExpenseVendorOption,
+  TejFileAnswer,
+  TejRefusalCode,
 } from './expenses-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
@@ -173,6 +175,33 @@ export class ExpensesApi {
         ),
       ),
     );
+  }
+
+  /**
+   * A month's TEJ file, `YYYY-MM`: fetched rather than linked, so a 422 can say in the page which payments hold the
+   * month back. Any other failure is refused as usual.
+   */
+  async tejFile(companyId: string, month: string): Promise<TejFileAnswer> {
+    const url = `${path(companyId, 'withholding-declarations')}/tej/${month}`;
+    try {
+      const response = await firstValueFrom(
+        this.http.get(url, { observe: 'response', responseType: 'blob' }),
+      );
+      return {
+        kind: 'file',
+        file: response.body ?? new Blob([]),
+        filename: filenameOf(response.headers.get('Content-Disposition')) ?? `tej-${month}.xml`,
+      };
+    } catch (error) {
+      if (
+        error instanceof HttpErrorResponse &&
+        error.status === 422 &&
+        error.error instanceof Blob
+      ) {
+        return toTejRefusal(JSON.parse(await error.error.text()) as RawTejRefusal);
+      }
+      throw new ExpensesRefused(codeOf(error, EXPENSE));
+    }
   }
 
   async categories(companyId: string): Promise<ExpenseCategoryRow[]> {
@@ -342,6 +371,41 @@ function toSearchParams(search: ExpenseSearch): HttpParams {
 
 function toExpenseBody(input: ExpenseInput): ExpenseExpenseWrite {
   return { ...input };
+}
+
+/** `attachment; filename=…`, quoted or not, as Symfony writes it. */
+function filenameOf(disposition: string | null): string | null {
+  const match = /filename="?([^";]+)"?/.exec(disposition ?? '');
+  return match?.[1] ?? null;
+}
+
+interface RawTejRefusal {
+  code: TejRefusalCode;
+  params?: Record<string, string | number>;
+  expenses?: {
+    expenseId: string;
+    paidOn: string;
+    description: string;
+    reference: string | null;
+    vendorName: string | null;
+    problems: string[];
+  }[];
+}
+
+function toTejRefusal(raw: RawTejRefusal): TejFileAnswer {
+  return {
+    kind: 'refused',
+    code: raw.code,
+    params: { ...(raw.params ?? {}) },
+    expenses: (raw.expenses ?? []).map((expense) => ({
+      id: expense.expenseId,
+      paidOn: expense.paidOn,
+      description: expense.description,
+      reference: expense.reference,
+      vendorName: expense.vendorName,
+      problems: [...expense.problems],
+    })),
+  };
 }
 
 function toCategory(raw: ExpenseCategoryExpenseCategoryRead): ExpenseCategoryRow {

@@ -145,6 +145,35 @@ export interface ExpenseOptions {
   withholdingOperationCodes: TejOperation[];
 }
 
+/** Why the API refused a month's TEJ file (docs/SPEC.md § 7, 2026-09-26 00:22). */
+export type TejRefusalCode =
+  | 'not_declared_to_tej'
+  | 'company_matricule_missing'
+  | 'company_matricule_unreadable'
+  | 'nothing_to_declare'
+  | 'incomplete_expenses';
+
+/** A payment the month's file cannot be written without, and what it lacks, as the API names it. */
+export interface TejRefusedExpense {
+  id: string;
+  /** YYYY-MM-DD. */
+  paidOn: string;
+  description: string;
+  reference: string | null;
+  vendorName: string | null;
+  problems: string[];
+}
+
+/** A month's TEJ file, or why it cannot be written yet. */
+export type TejFileAnswer =
+  | { kind: 'file'; file: Blob; filename: string }
+  | {
+      kind: 'refused';
+      code: TejRefusalCode;
+      params: Record<string, string | number>;
+      expenses: TejRefusedExpense[];
+    };
+
 export interface TejOperation {
   code: string;
   /** In French, verbatim, typing included: the administration's text. */

@@ -124,3 +124,33 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
     await retire(page, category);
   }
 });
+
+// docs/SPEC.md § 7, 2026-09-26: Demo is Tunisian, so the list offers the month's TEJ file. What a past month holds
+// depends on the data this database has seen, so either answer is taken — each held to its own shape.
+test('the month’s TEJ file is downloaded, or the page says in words what holds the month back', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/expenses');
+  await page.getByTestId('expenses-tej-file').click();
+  await expect(page.getByTestId('tej-file-title')).toBeVisible();
+  expect(await wcagViolations(page)).toEqual([]);
+
+  const downloaded = page.waitForEvent('download', { timeout: 15_000 }).catch(() => null);
+  await page.getByTestId('tej-download').click();
+  const refusal = page.getByTestId('tej-refusal');
+  const outcome = await Promise.race([
+    downloaded.then((file) => (file === null ? null : { file })),
+    refusal.waitFor({ timeout: 15_000 }).then(() => ({ refused: true as const })),
+  ]);
+  expect(outcome, 'a file or a refusal').not.toBeNull();
+  if (outcome !== null && 'file' in outcome && outcome.file !== null) {
+    expect(outcome.file.suggestedFilename()).toMatch(/^\d{7}[A-Z]-\d{4}-\d{2}-0\.xml$/);
+  } else {
+    // Said in the person's language: no raw key, no API message.
+    await expect(refusal).not.toContainText('expenses.tej_file');
+    await expect(refusal).not.toBeEmpty();
+    expect(await wcagViolations(page)).toEqual([]);
+  }
+});

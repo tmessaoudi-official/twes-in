@@ -20,9 +20,10 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 import { ExpensesFacade } from './expenses-facade';
 import { ExpensesPage } from './expenses-page';
-import type { ExpenseRow, ExpensesError } from './expenses-types';
+import type { ExpenseOptions, ExpenseRow, ExpensesError } from './expenses-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -60,11 +61,14 @@ const fuel: ExpenseRow = {
 
 describe('ExpensesPage', () => {
   const expenses = signal<readonly ExpenseRow[]>([fuel]);
+  const options = signal<ExpenseOptions | null>(null);
   const facade = {
     expenses: expenses.asReadonly(),
     total: signal(1).asReadonly(),
     error: signal<ExpensesError | null>(null).asReadonly(),
+    options: options.asReadonly(),
     loadPage: vi.fn(),
+    loadOptions: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -84,10 +88,13 @@ describe('ExpensesPage', () => {
 
   beforeEach(() => {
     facade.loadPage.mockReset().mockResolvedValue(undefined);
+    facade.loadOptions.mockReset().mockResolvedValue(undefined);
+    options.set(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [ExpensesPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -130,5 +137,23 @@ describe('ExpensesPage', () => {
     await create();
     expect(q('expense-add')).toBeNull();
     expect(q('list-link-e1')).not.toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26: the month's TEJ file, where the company declares to TEJ, which the API says.
+  it('offers the month’s TEJ file only where the API lists TEJ operations', async () => {
+    await create();
+    expect(facade.loadOptions).toHaveBeenCalledWith('c1');
+    expect(q('expenses-tej-file')).toBeNull();
+
+    options.set({
+      currency: 'TND',
+      currencyScale: 3,
+      categories: [],
+      taxes: [],
+      paymentMethods: ['transfer'],
+      withholdingOperationCodes: [{ code: 'RS7_000006', label: 'Honoraires' }],
+    });
+    fixture.detectChanges();
+    expect(q('expenses-tej-file')).not.toBeNull();
   });
 });

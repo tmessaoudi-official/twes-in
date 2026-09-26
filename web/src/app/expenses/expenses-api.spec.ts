@@ -206,6 +206,67 @@ describe('ExpensesApi', () => {
     expect((await classified).withholdingOperationCode).toBe('RS1_000001');
   });
 
+  // The month's TEJ file (docs/SPEC.md § 7, 2026-09-26 00:22): the file as the API names it, or why it was refused.
+  it('fetches a month’s TEJ file under the name the API gives it', async () => {
+    const pending = api.tejFile('c1', '2026-08');
+    const request = http.expectOne('/api/companies/c1/withholding-declarations/tej/2026-08');
+    expect(request.request.method).toBe('GET');
+    request.flush(new Blob(['<DeclarationsRS/>'], { type: 'application/xml' }), {
+      headers: { 'Content-Disposition': 'attachment; filename=1234567A-2026-08-0.xml' },
+    });
+    const answer = await pending;
+    expect(answer.kind).toBe('file');
+    if (answer.kind !== 'file') return;
+    expect(answer.filename).toBe('1234567A-2026-08-0.xml');
+    expect(await answer.file.text()).toBe('<DeclarationsRS/>');
+  });
+
+  it('reads why a month cannot be declared, each payment with what it lacks', async () => {
+    const pending = api.tejFile('c1', '2026-08');
+    const refusal = {
+      code: 'incomplete_expenses',
+      params: { count: 1 },
+      message: 'not for a person',
+      expenses: [
+        {
+          expenseId: 'e1',
+          paidOn: '2026-08-12',
+          description: 'Honoraires',
+          reference: 'F-1',
+          vendorName: null,
+          problems: ['vendor_missing', 'operation_code_missing'],
+        },
+      ],
+    };
+    http
+      .expectOne('/api/companies/c1/withholding-declarations/tej/2026-08')
+      .flush(new Blob([JSON.stringify(refusal)], { type: 'application/json' }), {
+        status: 422,
+        statusText: 'Unprocessable Content',
+      });
+    expect(await pending).toEqual({
+      kind: 'refused',
+      code: 'incomplete_expenses',
+      params: { count: 1 },
+      expenses: [
+        {
+          id: 'e1',
+          paidOn: '2026-08-12',
+          description: 'Honoraires',
+          reference: 'F-1',
+          vendorName: null,
+          problems: ['vendor_missing', 'operation_code_missing'],
+        },
+      ],
+    });
+
+    const failing = api.tejFile('c1', '2026-07');
+    http
+      .expectOne('/api/companies/c1/withholding-declarations/tej/2026-07')
+      .flush(new Blob(['oops']), { status: 500, statusText: 'Server Error' });
+    await expect(failing).rejects.toThrow();
+  });
+
   it('tells a refused expense from a refused category and a refused file', async () => {
     const recorded = api.reviseExpense('c1', 'e1', fuel);
     http

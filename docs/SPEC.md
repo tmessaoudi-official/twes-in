@@ -3029,6 +3029,22 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   ordinary save with a plain toast, not a confirmed action: it is corrigeable by nature, and it is the same endpoint
   again. Noticed, not fixed: the expense page's « Joindre un fichier » is a bare native file input, which shows the
   browser's own "Choose File / No file chosen" in its language.
+- [2026-09-26 02:35] DECIDED (revisit), row 144 on the screen: **the month's TEJ file is downloaded from the expenses list**,
+  through « Fichier TEJ », offered when the API lists TEJ operations. The web never decides by the company's country.
+  A dialog offers the twelve months that are over, the latest first, and preselects the one just ended. The file is
+  fetched, not linked, so a refusal can be shown in the page: each refusal code and each problem of each payment
+  holding the month back is a sentence in the person's language, with a link to that payment. The API's `message` is
+  never shown. The dialog says what the file is: an initial filing (acte 0), for the person to file on the platform
+  themselves. It says nothing about whether the platform will accept it, since that check is uncertified.
+  `shared/files/save-file.ts` is the first download a page fetches itself, behind `FileSaver`.
+- [2026-09-26 03:00] DECIDED (revisit), CI red on faea4555, products.spec's axe scan: **a filled button's hover, focus and
+  press layers are the opposite of its ink.** They darken a fill written in white, and lighten one written in ink.
+  Material lays `on-primary` over the fill at 8 to 12 %. With the default accent #1f6feb, white reads 4.64:1 at rest
+  but about 4.07:1 hovered, which fails AA. Axe saw that only when the pointer rested on the button after a click,
+  which is why the same scan kept failing by turns (twice before in CI). `--twes-accent-state` is the layer's colour,
+  derived beside `--twes-on-accent`, and the button overrides take it for the state layer and the ripple. A state now
+  never lowers a filled control's contrast, whatever accent a company picks, and `accent-theme.spec` checks that for
+  eleven accents in both schemes. The look changes: a hovered primary button darkens instead of lightening.
 
 ## 8. Status
 

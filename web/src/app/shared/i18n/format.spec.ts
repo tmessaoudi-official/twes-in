@@ -9,6 +9,7 @@ import {
   formatDay,
   formatLongDay,
   formatMonth,
+  formatYearMonth,
   formatLocale,
   formatMoment,
   todayIn,
@@ -107,6 +108,12 @@ describe('formatLongDay and formatMonth', () => {
     expect(formatMonth('2026-09-21', 'en')).toBe('September');
     expect(formatMonth('2026-09-01', 'fr-TN', 'short')).toMatch(/^sept/);
     expect(formatLongDay('soon', 'fr')).toBe('soon');
+  });
+
+  it('names a month of a year, for a monthly declaration', () => {
+    expect(formatYearMonth('2026-09', 'fr-TN')).toBe('septembre 2026');
+    expect(formatYearMonth('2026-01', 'en')).toBe('January 2026');
+    expect(formatYearMonth('later', 'fr')).toBe('later');
   });
 });
 

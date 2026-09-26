@@ -108,6 +108,12 @@ export function formatMonth(
   return formatDayParts(value, locale, { month: width });
 }
 
+/** A month of a year, `YYYY-MM`, named in full ("septembre 2026"); what is not one shows as it came. */
+export function formatYearMonth(value: string, locale: string): string {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) return value;
+  return formatDayParts(`${value}-01`, locale, { month: 'long', year: 'numeric' });
+}
+
 function formatDayParts(value: string, locale: string, parts: Intl.DateTimeFormatOptions): string {
   const match = DAY.exec(value);
   if (match === null) return value;

@@ -1933,6 +1933,36 @@
     "tej": {
       "none": "Opération TEJ non indiquée",
       "classified": "L'opération TEJ a été enregistrée."
+    },
+    "tej_file": {
+      "open": "Fichier TEJ",
+      "title": "Fichier TEJ du mois",
+      "intro": "Les retenues à la source des paiements du mois, au format de la plateforme TEJ (dépôt initial, acte 0), à déposer vous-même sur la plateforme.",
+      "month": "Mois",
+      "download": "Télécharger",
+      "close": "Fermer",
+      "failed": "Le fichier n'a pas pu être obtenu. Réessayez.",
+      "downloaded": "Le fichier TEJ a été téléchargé.",
+      "refused": {
+        "not_declared_to_tej": "Cette entreprise ne déclare pas à la TEJ.",
+        "company_matricule_missing": "Le matricule fiscal de l'entreprise n'est pas renseigné.",
+        "company_matricule_unreadable": "Le matricule fiscal de l'entreprise n'est pas lisible.",
+        "nothing_to_declare": "Aucune retenue à déclarer ce mois-ci.",
+        "incomplete_expenses": "{{count}} paiement(s) à compléter avant de pouvoir écrire le fichier :"
+      },
+      "problems": {
+        "vendor_missing": "aucun fournisseur",
+        "vendor_matricule_missing": "matricule du fournisseur manquant",
+        "vendor_matricule_unreadable": "matricule du fournisseur illisible",
+        "vendor_category_unknown": "catégorie du matricule du fournisseur inconnue",
+        "vendor_address_missing": "adresse du fournisseur manquante",
+        "vendor_email_missing": "e-mail du fournisseur manquant",
+        "vendor_email_unaccepted": "e-mail du fournisseur refusé par la plateforme",
+        "vendor_phone_missing": "téléphone du fournisseur manquant",
+        "operation_code_missing": "opération TEJ non indiquée",
+        "withholding_rate_too_precise": "taux de retenue à plus de deux décimales",
+        "tax_rate_too_precise": "taux de TVA à plus de deux décimales"
+      }
     }
   },
   "signup": {

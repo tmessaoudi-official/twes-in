@@ -4,11 +4,23 @@
       <h1 class="text-3xl font-semibold" data-testid="expenses-title">
         {{ 'expenses.title' | translate }}
       </h1>
-      @if (mayWrite() && company()) {
-        <a mat-flat-button routerLink="/expenses/new" data-testid="expense-add">
-          {{ 'expenses.add' | translate }}
-        </a>
-      }
+      <div class="flex flex-wrap gap-2">
+        @if (declaresToTej()) {
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="openTejFile()"
+            data-testid="expenses-tej-file"
+          >
+            {{ 'expenses.tej_file.open' | translate }}
+          </button>
+        }
+        @if (mayWrite() && company()) {
+          <a mat-flat-button routerLink="/expenses/new" data-testid="expense-add">
+            {{ 'expenses.add' | translate }}
+          </a>
+        }
+      </div>
     </div>
 
     @if (!company()) {

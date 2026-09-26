@@ -12,6 +12,7 @@ import {
   expenseValues,
   EXPENSES_LIST,
   classifyForm,
+  tejMonths,
   paymentForm,
   paymentInput,
   paymentValues,
@@ -195,6 +196,15 @@ describe('expense forms', () => {
       kind: 'select',
       required: true,
     });
+  });
+
+  // The TEJ file is declared for a month that is over: the one before today's first, then a year back.
+  it('offers the twelve months that are over, the latest first, across a new year', () => {
+    const months = tejMonths('2026-09-26');
+    expect(months).toHaveLength(12);
+    expect(months[0]).toBe('2026-08');
+    expect(months[11]).toBe('2025-09');
+    expect(tejMonths('2027-01-01').slice(0, 2)).toEqual(['2026-12', '2026-11']);
   });
 
   // docs/SPEC.md § 7, 2026-09-24 11:40 (RPT-09): the withholding on a supplier, said on the payment.

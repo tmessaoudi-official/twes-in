@@ -429,6 +429,19 @@ function operation(values: FormValues): { withholdingOperationCode?: string } {
   return code === null ? {} : { withholdingOperationCode: code };
 }
 
+/**
+ * The months a TEJ file may be asked for, `YYYY-MM`, the latest first: the twelve that are over by `today`, since a
+ * month is declared once it has ended (docs/SPEC.md § 7, 2026-09-26).
+ */
+export function tejMonths(today: string): string[] {
+  const year = Number(today.slice(0, 4));
+  const month = Number(today.slice(5, 7));
+  return Array.from({ length: 12 }, (_, back) => {
+    const index = year * 12 + (month - 1) - (back + 1);
+    return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`;
+  });
+}
+
 /** A category as its list shows it: with its path in the tree. */
 export type ExpenseCategoryListRow = ExpenseCategoryRow & { path: string };
 

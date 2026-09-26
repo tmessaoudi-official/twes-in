@@ -1933,6 +1933,36 @@
     "tej": {
       "none": "TEJ operation not given",
       "classified": "The TEJ operation was saved."
+    },
+    "tej_file": {
+      "open": "TEJ file",
+      "title": "The month's TEJ file",
+      "intro": "The month's withholdings at source, in the TEJ platform's format (initial filing, acte 0), for you to file on the platform yourself.",
+      "month": "Month",
+      "download": "Download",
+      "close": "Close",
+      "failed": "The file could not be fetched. Try again.",
+      "downloaded": "The TEJ file was downloaded.",
+      "refused": {
+        "not_declared_to_tej": "This company does not declare to TEJ.",
+        "company_matricule_missing": "The company's tax number is not filled in.",
+        "company_matricule_unreadable": "The company's tax number cannot be read.",
+        "nothing_to_declare": "No withholding to declare this month.",
+        "incomplete_expenses": "{{count}} payment(s) to complete before the file can be written:"
+      },
+      "problems": {
+        "vendor_missing": "no supplier",
+        "vendor_matricule_missing": "supplier's tax number missing",
+        "vendor_matricule_unreadable": "supplier's tax number unreadable",
+        "vendor_category_unknown": "supplier's tax number category unknown",
+        "vendor_address_missing": "supplier's address missing",
+        "vendor_email_missing": "supplier's email missing",
+        "vendor_email_unaccepted": "supplier's email refused by the platform",
+        "vendor_phone_missing": "supplier's phone missing",
+        "operation_code_missing": "TEJ operation not given",
+        "withholding_rate_too_precise": "withholding rate with more than two decimals",
+        "tax_rate_too_precise": "VAT rate with more than two decimals"
+      }
     }
   },
   "signup": {
