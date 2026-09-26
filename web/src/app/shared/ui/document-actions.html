@@ -5,6 +5,9 @@
   data-testid="document-actions"
   data-tour="document-actions"
 >
+  @if (planned().length > 0) {
+    <app-planned-actions [actions]="planned()" />
+  }
   @for (action of visible(); track action.id) {
     @if (action.href; as href) {
       <a

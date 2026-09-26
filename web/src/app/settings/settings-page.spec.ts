@@ -9,7 +9,9 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import { provideRouter } from '@angular/router';
 import { AuthFacade } from '../auth/auth-facade';
+import { ThemeFacade } from '../shared/theme/theme-facade';
 import { Session } from '../shared/session/session';
 import type { SettingRow, SettingsError } from '../shared/settings/settings-types';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
@@ -25,7 +27,12 @@ import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
-    return of({ settings: { title: 'Paramètres', saved: 'Enregistré' } });
+    return of({
+      settings: { title: 'Paramètres', saved: 'Enregistré' },
+      modules: { quotes: 'Devis & commandes', zakat: 'Zakat' },
+      coming: { quotes: { settings: 'La durée de validité par défaut.' } },
+      shell: { soon: 'Bientôt' },
+    });
   }
 }
 
@@ -77,7 +84,16 @@ describe('SettingsPage', () => {
     clearError: vi.fn(),
   };
   const auth = {
-    me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
+    me: () => ({
+      user: { id: 'u1' },
+      company: { id: 'c1', name: 'Acme' },
+      // A key this page declares no card for is left out.
+      plannedModules: [
+        { key: 'zakat', planned: 'later' },
+        { key: 'quotes', planned: 'v1' },
+        { key: 'ratings', planned: 'later' },
+      ],
+    }),
     hasPermission: vi.fn(),
   };
   let fixture: ComponentFixture<SettingsPage>;
@@ -96,6 +112,7 @@ describe('SettingsPage', () => {
       imports: [SettingsPage],
       providers: [
         ...provideQuietFeedback(),
+        provideRouter([]),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',
@@ -199,5 +216,32 @@ describe('SettingsPage', () => {
     expect(settings.load).not.toHaveBeenCalled();
     expect(q('settings-forbidden')).not.toBeNull();
     expect(q('settings-form')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26 10:08 and 18:17 (row 150, slice 5): one card per planned module, in words.
+  it('says in words what each planned module will let a company set, with no field to fill in', async () => {
+    await open();
+
+    const cards = [...fixture.nativeElement.querySelectorAll('[data-testid^="settings-coming-"]')];
+    expect(cards.map((card: Element) => card.getAttribute('data-testid'))).toEqual([
+      'settings-coming-quotes',
+      'settings-coming-zakat',
+    ]);
+    const quotes = q('settings-coming-quotes');
+    expect(quotes?.textContent).toContain('Devis & commandes');
+    expect(quotes?.textContent).toContain('La durée de validité par défaut.');
+    expect(quotes?.querySelector('[data-testid="soon"]')?.textContent?.trim()).toBe('Bientôt');
+    expect(quotes?.querySelector('a')?.getAttribute('href')).toBe('/coming/quotes');
+    // No fake field, and no default that would read as already chosen.
+    expect(
+      q('settings-coming')?.querySelector('input, select, textarea, mat-select, mat-slide-toggle'),
+    ).toBeNull();
+  });
+
+  it('shows none of it when the person hides what is coming', async () => {
+    await open();
+    TestBed.inject(ThemeFacade).setShowComing(false);
+    await settle();
+    expect(q('settings-coming')).toBeNull();
   });
 });

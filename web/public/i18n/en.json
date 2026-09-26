@@ -889,6 +889,11 @@
           "height": "Dock door — height (m)"
         }
       }
+    },
+    "coming": {
+      "title": "Coming",
+      "intro": "The settings of the modules to come, in words: nothing is there to choose yet.",
+      "more": "More about {{module}}"
     }
   },
   "customers": {
@@ -2569,7 +2574,8 @@
       "plan": "§ 8 · 82 — counter sales",
       "meanwhile": "Meanwhile, a counter sale is made from an invoice:",
       "meanwhile_link": "Issue and collect",
-      "create": "New counter sale"
+      "create": "New counter sale",
+      "settings": "The printed receipt, the cash drawer and the payment methods taken at the counter."
     },
     "works": {
       "heading": "Works are being built",
@@ -2587,7 +2593,8 @@
     "declarations": {
       "heading": "Declarations are being built",
       "does": "The period's tax returns prepared from the documents issued: the amounts per tax, what is left to declare, and a reminder of each due date.",
-      "plan": "§ 8 · 91 — declarations"
+      "plan": "§ 8 · 91 — declarations",
+      "settings": "The tax regime, how often declarations are due and their deadlines."
     },
     "document-templates": {
       "heading": "Document templates are being built",
@@ -2623,7 +2630,8 @@
     "accounting_export": {
       "heading": "The accounting export is under construction",
       "does": "The period's sales, purchase and payment entries, ready for your accountant's software, with an accountant role and closed periods.",
-      "plan": "§ 8 · 92 — the accounting export"
+      "plan": "§ 8 · 92 — the accounting export",
+      "settings": "The chart of accounts, the journal codes and the exported file's format."
     },
     "composites": {
       "heading": "Composite products are under construction",
@@ -2631,12 +2639,14 @@
     },
     "currencies": {
       "heading": "Foreign currencies are under construction",
-      "does": "Invoice in the customer's currency at the day's rate, collect in that currency and follow the exchange gain or loss."
+      "does": "Invoice in the customer's currency at the day's rate, collect in that currency and follow the exchange gain or loss.",
+      "settings": "Where exchange rates come from and how conversions are rounded."
     },
     "einvoicing": {
       "heading": "E-invoicing is under construction",
       "does": "Send invoices in the format the tax authority requires: El Fatoora through TTN in Tunisia, Factur-X through an approved platform in France.",
-      "plan": "§ 8 · 93 and 145 — e-invoicing"
+      "plan": "§ 8 · 93 and 145 — e-invoicing",
+      "settings": "The network identifier and the platform invoices are sent through."
     },
     "guests": {
       "heading": "Regular guests are under construction",
@@ -2645,7 +2655,8 @@
     "mailing": {
       "heading": "Email sending is under construction",
       "does": "Send an invoice, a quote or a delivery note to the customer from the document, and remind them automatically of what is unpaid.",
-      "plan": "§ 8 · 135 — reminders"
+      "plan": "§ 8 · 135 — reminders",
+      "settings": "The sending address, the signature, each message's text and the reminder schedule."
     },
     "menu": {
       "heading": "The menu is under construction",
@@ -2653,25 +2664,29 @@
     },
     "portal": {
       "heading": "The customer portal is under construction",
-      "does": "Your customers see their invoices, download their documents and place orders from a space of their own."
+      "does": "Your customers see their invoices, download their documents and place orders from a space of their own.",
+      "settings": "What a customer sees in their space: invoices, quotes, statements, and whether they can pay online."
     },
     "price_lists": {
       "heading": "Price lists are under construction",
       "does": "Prices per customer or customer group, per quantity and over a period, applied by themselves on every document.",
       "plan": "§ 8 · 77 — price lists",
-      "create": "New price list"
+      "create": "New price list",
+      "settings": "The price list a new customer gets by default."
     },
     "purchases": {
       "heading": "Purchase orders are under construction",
       "does": "Order from suppliers, receive the goods into stock and match the order, the receipt and the supplier's invoice.",
       "plan": "§ 8 · 81 and 84 — purchase orders and receipts",
-      "create": "New purchase order"
+      "create": "New purchase order",
+      "settings": "The numbering of supplier orders and what a reception confirms."
     },
     "quotes": {
       "heading": "Quotes are under construction",
       "does": "A quote the customer accepts becomes the order: a deposit, what is left to deliver and invoice, then the invoice with nothing typed twice.",
       "plan": "§ 8 · 78 — the quote",
-      "create": "New quote"
+      "create": "New quote",
+      "settings": "A quote's default validity, its numbering and the terms printed at its foot."
     },
     "ratings": {
       "heading": "Ratings are under construction",
@@ -2681,7 +2696,8 @@
       "heading": "Recurring invoices are under construction",
       "does": "A subscription or contract invoiced monthly or yearly: the drafts prepare themselves on the planned date.",
       "plan": "§ 8 · 86 — recurring invoices",
-      "create": "New recurring invoice"
+      "create": "New recurring invoice",
+      "settings": "The default frequency, the day each invoice is issued, and whether each one is emailed on its own."
     },
     "service": {
       "heading": "Table service is under construction",
@@ -2690,12 +2706,14 @@
     "statements": {
       "heading": "Statements are under construction",
       "does": "A customer's statement of account over a period, and a credit limit that warns before it is exceeded.",
-      "plan": "§ 8 · 85 and 134 — the statement and the credit limit"
+      "plan": "§ 8 · 85 and 134 — the statement and the credit limit",
+      "settings": "The credit limit a new customer starts with and the period a statement covers."
     },
     "stock_valuation": {
       "heading": "Stock valuation is under construction",
       "does": "The value of the stock on a date, at weighted average cost or first in, first out, and the cost of what was sold.",
-      "plan": "§ 8 · 87 — stock valuation"
+      "plan": "§ 8 · 87 — stock valuation",
+      "settings": "The valuation method: weighted average cost or first in, first out."
     },
     "venue": {
       "heading": "The venue is under construction",
@@ -2704,12 +2722,14 @@
     "whatsapp": {
       "heading": "WhatsApp sending is under construction",
       "does": "Send an invoice or a delivery note to the customer through WhatsApp, with a link to the document.",
-      "plan": "§ 8 · 95 — WhatsApp delivery"
+      "plan": "§ 8 · 95 — WhatsApp delivery",
+      "settings": "The sending number and the messages' text."
     },
     "zakat": {
       "heading": "Zakat is under construction",
       "does": "Work out the company's zakat on its hawl date, according to your school: the assets subject to it, the gold or silver nisab, and a yearly reminder.",
-      "plan": "§ 8 · 120 — zakat"
+      "plan": "§ 8 · 120 — zakat",
+      "settings": "The hawl date, the nisab threshold used and what the base includes."
     }
   },
   "account": {
@@ -2761,7 +2781,9 @@
       "corrigeable": "This cannot be undone; a mistake is corrected afterwards.",
       "definitif": "This can be neither undone nor corrected."
     },
-    "final_group": "Final"
+    "final_group": "Final",
+    "coming": "Coming to this screen",
+    "coming_more": "What is coming to this screen"
   },
   "first_steps": {
     "title": "First steps",
@@ -2783,5 +2805,13 @@
         "first": "Create a first product"
       }
     }
+  },
+  "planned_actions": {
+    "send_email": "Send by email",
+    "send_whatsapp": "Send by WhatsApp",
+    "make_recurring": "Make recurring",
+    "new_quote": "New quote",
+    "statement": "Account statement",
+    "new_purchase": "New supplier order"
   }
 }

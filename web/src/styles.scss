@@ -703,6 +703,14 @@ body {
   white-space: nowrap;
 }
 
+// A screen's action not built yet (docs/SPEC.md § 7, 2026-09-26 10:08): dashed and muted, never filled or tonal.
+// Two classes, so it outranks Material's own solid outline whatever order the sheets load in.
+.mat-mdc-outlined-button.twes-planned-action {
+  border-style: dashed;
+  color: var(--mat-sys-on-surface-variant);
+  gap: 0.375rem;
+}
+
 // Folded, « Bientôt » is a hollow dot by the icon; its word stays for a screen reader.
 .twes-soon-dot {
   position: absolute;

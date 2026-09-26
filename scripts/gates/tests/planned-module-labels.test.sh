@@ -22,10 +22,17 @@ final readonly class PlannedModules
     }
 }
 PHP
-  mkdir -p "$d/web/src/app/shell"
+  mkdir -p "$d/web/src/app/shell" "$d/web/src/app/invoices"
   places "$d" quotes zakat
+  declares "$d/web/src/app/invoices/invoice-page.ts" "quotes:coming.quotes.heading" "zakat:coming.zakat.does"
   echo "$d"
 }
+# What a screen or the settings page declares for a planned module: `{ module: '<k>', label: '<key>' }`, one a line.
+declares() {
+  local f=$1; shift
+  { echo "export const PLANNED = ["; for pair in "$@"; do echo "  { module: '${pair%%:*}', label: '${pair#*:}', icon: 'x' },"; done; echo "];"; } > "$f"
+}
+export PLANNED_MODULE_DECLARATIONS_FLOOR=2
 # The web's menu places (web/src/app/shell/planned-nav.ts): one `{ key: '<k>', ... }` per planned module given.
 places() {
   local d=$1; shift
@@ -77,6 +84,27 @@ check "a planned module without a place in the menu is caught" $? 1 "$out" "no m
 d=$(repo); labels "$d" "$BOTH" "$BOTH"; rm "$d/web/src/app/shell/planned-nav.ts"
 out=$(PLANNED_MODULE_LABELS_FLOOR=2 bash "$GATE" --root "$d" 2>&1)
 check "a tree without planned-nav.ts reds with every module, rather than passing" $? 1 "$out" "no menu place: quotes"
+
+# Row 150 slice 5: a screen's planned action or a settings card is drawn only while its module is planned, so a key
+# that is not one (a typo, or a module that shipped) draws nothing at all, silently.
+d=$(repo); labels "$d" "$BOTH" "$BOTH"
+declares "$d/web/src/app/invoices/invoice-page.ts" "quotes:coming.quotes.heading" "teleport:coming.zakat.does"
+out=$(PLANNED_MODULE_LABELS_FLOOR=2 bash "$GATE" --root "$d" 2>&1)
+check "a declaration naming a module that is not planned is caught" $? 1 "$out" "not planned: teleport"
+
+d=$(repo); labels "$d" "$BOTH" "$BOTH"
+declares "$d/web/src/app/invoices/invoice-page.ts" "quotes:coming.quotes.heading" "zakat:planned_actions.pay"
+out=$(PLANNED_MODULE_LABELS_FLOOR=2 bash "$GATE" --root "$d" 2>&1)
+check "a declaration whose label is missing is caught, with the language" $? 1 "$out" "en: planned_actions.pay"
+
+d=$(repo); labels "$d" "$BOTH" "$BOTH"
+declares "$d/web/src/app/invoices/invoice-page.spec.ts" "teleport:nowhere"
+out=$(PLANNED_MODULE_LABELS_FLOOR=2 bash "$GATE" --root "$d" 2>&1)
+check "a spec's fixture is not a declaration" $? 0 "$out" "2 declarations"
+
+d=$(repo); labels "$d" "$BOTH" "$BOTH"; rm "$d/web/src/app/invoices/invoice-page.ts"
+out=$(PLANNED_MODULE_LABELS_FLOOR=2 bash "$GATE" --root "$d" 2>&1)
+check "fewer declarations than their floor reds rather than passing over nothing" $? 1 "$out" "declarations, below the floor"
 
 d=$(mktemp -d)
 out=$(bash "$GATE" --root "$d" 2>&1)

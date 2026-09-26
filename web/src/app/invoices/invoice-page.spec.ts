@@ -247,6 +247,11 @@ describe('InvoicePage', () => {
     me: () => ({
       user: { id: 'u1' },
       company: { id: 'c1', name: 'Acme', timezone: 'Africa/Tunis' },
+      plannedModules: [
+        { key: 'mailing', planned: 'v1' },
+        { key: 'whatsapp', planned: 'v1' },
+        { key: 'recurring', planned: 'v1' },
+      ],
     }),
     hasPermission: (permission: string) => granted.has(permission),
   };
@@ -883,6 +888,31 @@ describe('InvoicePage', () => {
     expect(q('invoice-payments')).toBeNull();
     expect(q('invoice-due')).toBeNull();
     expect(over('document-menu-credit-note')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26 10:08 and 18:17 (row 150, slice 5).
+  it('shows what an invoice will offer once its planned modules ship, and nothing of it while one is drafted', async () => {
+    await open(undefined);
+    expect(q('planned-actions')).toBeNull();
+    fixture.destroy();
+
+    invoice.set(issued);
+    await open('i1');
+    const drawn = [...fixture.nativeElement.querySelectorAll('[data-testid^="planned-action-"]')];
+    expect(drawn.map((each: Element) => each.getAttribute('data-testid'))).toEqual([
+      'planned-action-mailing',
+      'planned-action-whatsapp',
+      'planned-action-recurring',
+    ]);
+    // Before the working ones, so the filled next step stays last, where the hand ends up.
+    const bar = q('document-actions');
+    expect(bar?.firstElementChild?.contains(q('planned-actions'))).toBe(true);
+
+    // A credit note is never made recurring.
+    invoice.set({ ...issued, type: 'credit_note', correctsInvoiceId: 'i0' });
+    await settle();
+    expect(q('planned-action-mailing')).not.toBeNull();
+    expect(q('planned-action-recurring')).toBeNull();
   });
 
   it('shows a reader the invoice and its PDF without a way to change it', async () => {

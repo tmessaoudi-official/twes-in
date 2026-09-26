@@ -3293,6 +3293,28 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
     does nothing for them.
   - The Ctrl K palette offers each planned module's page and its creation, after everything that works, marked
     « Bientôt »; « Montrer ce qui arrive » off takes them all away, as it does in the menu.
+- [2026-09-26 18:17] DECIDED (revisit), row 150 slice 5, screen actions and settings cards, taken without asking under
+  the 12:11 directive:
+  - The screens and what each will offer, once the module ships: an invoice — Envoyer par e-mail, Envoyer par WhatsApp,
+    Rendre récurrente (not on a credit note); a delivery note — Envoyer par e-mail, Envoyer par WhatsApp; a customer —
+    Nouveau devis, Relevé de compte; a vendor — Nouvelle commande fournisseur. None while the record is still new.
+    Products and expenses get none yet: nothing planned acts on one record there.
+  - The planned group comes FIRST in the bar, then the thin divider, then the working actions: the filled next step
+    stays last, where the hand ends up (2026-09-19 finding 4), and the divider still separates the two groups.
+  - They are not `ScreenAction`s: no key, no E, no line in the "?" sheet or the Ctrl K palette, which already leads to
+    each planned module (slice 4). A departure from "one declaration feeds the bar, the palette and the sheet",
+    deliberate: a key or a palette line that only opens « En construction » would be noise in the places people act.
+  - On a phone they fold into their own « ⋯ » (`more_horiz`, named « Ce qui arrive sur cet écran »), apart from the
+    screen's « ⋮ » (`more_vert`, « Plus d'actions »), so what works and what is coming never share a menu. Its entries
+    are Material menu items, which bind their own `aria-disabled` to their `disabled` state, so they carry « Bientôt »
+    in their name instead; the wide buttons carry `aria-disabled="true"` and stay focusable.
+  - The settings page ends with « Ce qui arrive »: one outlined card per planned module that will have settings (15 of
+    the 23, the menu's order), its name, « Bientôt », one sentence of what will be configurable and a link to its page.
+    No field and no default. The eight without a card are Produits composés, Travaux, Rapports and the café's five,
+    whose settings are not yet known well enough to name; `PLANNED_SETTINGS` in the settings page is the list.
+  - `planned-module-labels.sh` now also discovers every `{ module, label }` declaration in the web (specs excluded,
+    floor 20) and fails on one naming a module that is not planned — a typo, or a module that shipped and needs its
+    real actions — or whose label is missing in fr or en.
 
 ## 8. Status
 
@@ -3447,7 +3469,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 144 | Tax data without a partner (§ 7 2026-09-25 22:16): TEJ withholding certificates XML, the four French mentions, payments split by VAT rate, CA3 and Tunisian monthly worksheets | L | doing | - | api/src/** web/src/app/** |
 | 145 | E-invoicing files (§ 7 2026-09-25 22:16): Factur-X and UBL (EN 16931), TEIF 1.8.8 signed; then a plateforme agréée before 2027-09-01 and TTN (row 102) | L | doing | - | api/src/** |
 | 146 | Search on top at the centre (§ 7 2026-09-26 08:52): out of the menu, always visible, Ctrl K, an icon on a phone | S | done | f6fdebe6 | |
-| 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | doing | - | slice 1 (the catalogue and the modules page, `ddc1045a`) and slice 2 (« Me prévenir », the operator's demand, the arrival notice, `f0488509`) and slices 3–4 (the menu from the catalogue, « Créer » and Ctrl K) landed; screen actions and settings cards to come |
+| 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | doing | - | slice 1 (the catalogue and the modules page, `ddc1045a`) and slice 2 (« Me prévenir », the operator's demand, the arrival notice, `f0488509`) and slices 3–4 (the menu from the catalogue, « Créer » and Ctrl K, `2ab0eafd`) and slice 5 (screen actions, settings cards) landed |
 | 151 | Paramètres list fixed and foldable (§ 7 2026-09-26 11:17): pinned head and foot, 80 px rail from its foot, key ], presentation.settings-list | M | todo | - | |
 | 152 | Menus by foldable sections (§ 7 2026-09-26 12:05): each section folds from its heading, remembered, the current one always open; a fade at an edge with more behind; the current entry kept in view — main menu and Paramètres | M | todo | - | |
 | 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | todo | - | |

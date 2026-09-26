@@ -72,6 +72,17 @@ test('a vendor is added with its bank account and terms, then revised', async ({
     await expect(toast(page)).toContainText('Le fournisseur a été enregistré.');
     expect(await wcagViolations(page)).toEqual([]);
 
+    // docs/SPEC.md § 7, 2026-09-26 18:17 (row 150): what a vendor will offer once supplier orders ship, beside what
+    // it offers today (the scan above already read it), marked, reachable, and opening the module's page.
+    const planned = page.getByTestId('planned-action-purchases');
+    await expect(planned).toHaveAttribute('aria-disabled', 'true');
+    await expect(planned.getByTestId('soon')).toBeVisible();
+    // Playwright waits for an `aria-disabled` control to be enabled before a click, so it is reached by the keyboard,
+    // as the ruling wants it to be.
+    await planned.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/coming\/purchases$/);
+
     await page.goto('/vendors');
     // Filtered: the shared company holds more vendors than a page, and the API searches the words.
     await page.getByTestId('list-filter').fill(number);

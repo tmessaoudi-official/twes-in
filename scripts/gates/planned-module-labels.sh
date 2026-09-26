@@ -78,4 +78,49 @@ if ((${#unplaced[@]})); then
   exit 1
 fi
 
-printf 'planned-module-labels: OK — %d planned modules are named, described and placed in the menu, in fr and en\n' "${#keys[@]}"
+# Row 150 slice 5: what a screen will offer (`PlannedAction`) and what the settings page says a module will let a
+# company set (`PlannedSetting`) are declared as `{ module: '<key>', label: '<translation key>' }` and drawn only while
+# the API lists that module as planned. A key that is not one — a typo, or a module that has since shipped and needs
+# its real actions instead — draws nothing, silently. Declarations are discovered in the web's sources (specs are
+# fixtures, not declarations), above a floor of their own.
+declarations_floor=${PLANNED_MODULE_DECLARATIONS_FLOOR:-20}
+mapfile -t declarations < <(
+  grep -rhoE --include='*.ts' --exclude='*.spec.ts' \
+    "module: '[a-z][a-z0-9_]*', label: '[a-z][a-z0-9_.]*'" "$root/web/src/app" 2>/dev/null |
+    sed -E "s/module: '([^']*)', label: '([^']*)'/\1 \2/"
+)
+if ((${#declarations[@]} < declarations_floor)); then
+  printf 'planned-module-labels: FAIL — found only %d declarations, below the floor of %d; the discovery pattern is broken\n' \
+    "${#declarations[@]}" "$declarations_floor"
+  exit 1
+fi
+declare -A planned=()
+for key in "${keys[@]}"; do planned[$key]=1; done
+unplanned=()
+for declaration in "${declarations[@]}"; do
+  module=${declaration%% *}
+  [[ -n "${planned[$module]:-}" ]] || unplanned+=("$module")
+done
+if ((${#unplanned[@]})); then
+  printf 'planned-module-labels: FAIL — declared for a module that is not planned: %s (a typo, or a module that shipped: give it its real actions)\n' \
+    "$(printf '%s\n' "${unplanned[@]}" | sort -u | tr '\n' ' ')"
+  exit 1
+fi
+missing=()
+for language in fr en; do
+  mapfile -t absent < <(
+    for declaration in "${declarations[@]}"; do printf '%s\n' "${declaration#* }"; done | sort -u |
+      unlabelled "$root/web/public/i18n/$language.json"
+  )
+  for label in "${absent[@]}"; do
+    missing+=("$language: $label")
+  done
+done
+if ((${#missing[@]})); then
+  printf 'planned-module-labels: FAIL — %d declared label(s) missing (add them to web/public/i18n/<lang>.json):\n' "${#missing[@]}"
+  printf '  %s\n' "${missing[@]}"
+  exit 1
+fi
+
+printf 'planned-module-labels: OK — %d planned modules are named, described and placed in the menu, and %d declarations name one, in fr and en\n' \
+  "${#keys[@]}" "${#declarations[@]}"

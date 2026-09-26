@@ -158,7 +158,17 @@ describe('DeliveryNotePage', () => {
   const granted = new Set<string>();
   const modules = new Set<string>(['delivery_notes', 'invoices']);
   const auth = {
-    me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
+    me: () => ({
+      user: { id: 'u1' },
+      company: { id: 'c1', name: 'Acme' },
+      plannedModules: [
+        { key: 'mailing', planned: 'v1' },
+        { key: 'whatsapp', planned: 'v1' },
+        { key: 'quotes', planned: 'v1' },
+        { key: 'statements', planned: 'v1' },
+        { key: 'purchases', planned: 'v1' },
+      ],
+    }),
     hasPermission: (permission: string) => granted.has(permission),
     hasModule: (module: string) => modules.has(module),
   };
@@ -280,6 +290,21 @@ describe('DeliveryNotePage', () => {
 
     expect(q('delivery-note-title')?.textContent).toContain('delivery_notes.new_title');
     expect(q('delivery-note-title')?.getAttribute('aria-hidden')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26 10:08 and 18:17 (row 150, slice 5).
+  it('shows what a delivery note will offer once its planned modules ship, and nothing of it while one is new', async () => {
+    await open(undefined);
+    expect(q('planned-actions')).toBeNull();
+    fixture.destroy();
+
+    note.set(draft);
+    await open('n1');
+    const drawn = [...fixture.nativeElement.querySelectorAll('[data-testid^="planned-action-"]')];
+    expect(drawn.map((each: Element) => each.getAttribute('data-testid'))).toEqual([
+      'planned-action-mailing',
+      'planned-action-whatsapp',
+    ]);
   });
 
   it('drafts a note for a customer with a line filled from a product, then opens it', async () => {

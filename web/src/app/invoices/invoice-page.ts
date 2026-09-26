@@ -65,6 +65,7 @@ import { unsavedChanges } from '../shared/form/dirty-count';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
+import type { PlannedAction } from '../shared/actions/planned-actions';
 import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { CreditNoteDialog } from './credit-note-dialog';
@@ -76,6 +77,16 @@ import { RecordView } from '../shared/form/record-view';
  * print, pay and correct with a credit note. Only a draft changes; the API refuses anything else whatever this
  * screen shows, and works out every figure it shows.
  */
+/**
+ * What an invoice will offer once its planned modules ship (docs/SPEC.md § 7, 2026-09-26 18:17, row 150), shown
+ * « Bientôt » beside what it offers today. A credit note is never made recurring.
+ */
+export const INVOICE_PLANNED: readonly PlannedAction[] = [
+  { module: 'mailing', label: 'planned_actions.send_email', icon: 'forward_to_inbox' },
+  { module: 'whatsapp', label: 'planned_actions.send_whatsapp', icon: 'chat' },
+  { module: 'recurring', label: 'planned_actions.make_recurring', icon: 'event_repeat' },
+];
+
 @Component({
   selector: 'app-invoice-page',
   imports: [
@@ -314,6 +325,12 @@ export class InvoicePage {
     }));
   });
 
+  /** What the document will offer once its planned modules ship, from the moment it exists. */
+  protected readonly planned = computed(() =>
+    !this.current()
+      ? []
+      : INVOICE_PLANNED.filter((action) => !this.isCreditNote() || action.module !== 'recurring'),
+  );
   /**
    * What the document offers, declared once for the bar beside its title (design review finding 3). The state's
    * next step is the primary: issuing a draft, recording a payment on an open invoice. Cancelling is destructive,

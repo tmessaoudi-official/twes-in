@@ -35,7 +35,7 @@
       }
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <app-document-actions [actions]="actions()" />
+      <app-document-actions [actions]="actions()" [planned]="planned()" />
       <a mat-button routerLink="/delivery-notes">{{ 'delivery_notes.back' | translate }}</a>
     </div>
   </div>

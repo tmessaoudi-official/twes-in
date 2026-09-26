@@ -77,7 +77,17 @@ describe('VendorPage', () => {
     reviseVendor: vi.fn(),
   };
   const auth = {
-    me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
+    me: () => ({
+      user: { id: 'u1' },
+      company: { id: 'c1', name: 'Acme' },
+      plannedModules: [
+        { key: 'mailing', planned: 'v1' },
+        { key: 'whatsapp', planned: 'v1' },
+        { key: 'quotes', planned: 'v1' },
+        { key: 'statements', planned: 'v1' },
+        { key: 'purchases', planned: 'v1' },
+      ],
+    }),
     hasPermission: vi.fn(),
   };
   let fixture: ComponentFixture<VendorPage>;
@@ -135,6 +145,20 @@ describe('VendorPage', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-19 21:55: a page names nothing it has not loaded.
+  // docs/SPEC.md § 7, 2026-09-26 10:08 and 18:17 (row 150, slice 5).
+  it('shows what a vendor will offer once its planned modules ship, and nothing of it while one is new', async () => {
+    await open(undefined);
+    expect(q('planned-actions')).toBeNull();
+    fixture.destroy();
+
+    vendor.set(sotumag);
+    await open('v1');
+    const drawn = [...fixture.nativeElement.querySelectorAll('[data-testid^="planned-action-"]')];
+    expect(drawn.map((each: Element) => each.getAttribute('data-testid'))).toEqual([
+      'planned-action-purchases',
+    ]);
+  });
+
   it('titles a vendor still loading as nothing, never as a new one', async () => {
     await open('v1');
 

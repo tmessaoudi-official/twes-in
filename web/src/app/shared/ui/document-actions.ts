@@ -10,6 +10,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../a11y/label';
 import { runAction } from '../actions/run-action';
+import { type PlannedAction, PlannedActions } from '../actions/planned-actions';
 import { kindOf, type ScreenAction } from '../actions/screen-action';
 import { ConfirmDialog } from './confirm-dialog';
 
@@ -28,6 +29,7 @@ import { ConfirmDialog } from './confirm-dialog';
     RouterLink,
     TranslatePipe,
     Label,
+    PlannedActions,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './document-actions.html',
@@ -36,6 +38,8 @@ export class DocumentActions {
   private readonly dialog = inject(MatDialog);
 
   readonly actions = input.required<readonly ScreenAction[]>();
+  /** What the screen will offer once a planned module ships, drawn first and marked « Bientôt » (row 150). */
+  readonly planned = input<readonly PlannedAction[]>([]);
   /** Named for a screen reader, since several bars can exist on one page in principle. */
   readonly label = input('document.actions');
 

@@ -10,6 +10,8 @@ export interface SessionState {
     readonly countryCode: string;
     readonly currency: string;
   } | null;
+  /** The modules of the complete product not built yet, as the API's catalogue lists them (row 150). */
+  readonly plannedModules?: readonly { readonly key: string; readonly planned: string }[];
 }
 
 /**

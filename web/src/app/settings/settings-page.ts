@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
@@ -26,11 +27,50 @@ import {
   companySettingsValues,
 } from './settings-forms';
 import { Feedback } from '../shared/feedback/feedback';
+import { ThemeFacade } from '../shared/theme/theme-facade';
+
+/** A planned module's settings, said in words: what a company will be able to set once it ships. */
+export interface PlannedSetting {
+  /** The planned module's key in the API's catalogue; the card shows only while the catalogue lists it. */
+  readonly module: string;
+  /** A translation key: one sentence naming what will be configurable. */
+  readonly label: string;
+}
+
+/**
+ * The planned modules that will have settings, in the menu's order (docs/SPEC.md § 7, 2026-09-26 10:08 and 18:17,
+ * row 150): each is one « Bientôt » card, with no field and no default that would read as already chosen. A module
+ * that ships takes its card away and brings its real section with it.
+ */
+export const PLANNED_SETTINGS: readonly PlannedSetting[] = [
+  { module: 'quotes', label: 'coming.quotes.settings' },
+  { module: 'recurring', label: 'coming.recurring.settings' },
+  { module: 'statements', label: 'coming.statements.settings' },
+  { module: 'mailing', label: 'coming.mailing.settings' },
+  { module: 'whatsapp', label: 'coming.whatsapp.settings' },
+  { module: 'portal', label: 'coming.portal.settings' },
+  { module: 'price_lists', label: 'coming.price_lists.settings' },
+  { module: 'register', label: 'coming.register.settings' },
+  { module: 'stock_valuation', label: 'coming.stock_valuation.settings' },
+  { module: 'purchases', label: 'coming.purchases.settings' },
+  { module: 'declarations', label: 'coming.declarations.settings' },
+  { module: 'accounting_export', label: 'coming.accounting_export.settings' },
+  { module: 'einvoicing', label: 'coming.einvoicing.settings' },
+  { module: 'currencies', label: 'coming.currencies.settings' },
+  { module: 'zakat', label: 'coming.zakat.settings' },
+];
 
 /** The one generic settings page: the company's defaults, rendered by type from the definitions the API returns. */
 @Component({
   selector: 'app-settings-page',
-  imports: [MatButtonModule, MatCardModule, TranslatePipe, DescriptorForm, RecordChanged],
+  imports: [
+    MatButtonModule,
+    MatCardModule,
+    RouterLink,
+    TranslatePipe,
+    DescriptorForm,
+    RecordChanged,
+  ],
   templateUrl: './settings-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -38,6 +78,7 @@ export class SettingsPage implements OnInit {
   private readonly settings = inject(CompanySettings);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
+  private readonly theme = inject(ThemeFacade);
 
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
@@ -71,6 +112,12 @@ export class SettingsPage implements OnInit {
     saved: () => this.values(),
   });
   protected readonly overrides = computed(() => companyOverrides(this.settings.rows()));
+  /** The planned modules' settings the API still lists as planned, while the person shows what is coming. */
+  protected readonly comingSettings = computed(() => {
+    if (!this.theme.showComing()) return [];
+    const planned = new Set((this.auth.me()?.plannedModules ?? []).map((each) => each.key));
+    return PLANNED_SETTINGS.filter((setting) => planned.has(setting.module));
+  });
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;

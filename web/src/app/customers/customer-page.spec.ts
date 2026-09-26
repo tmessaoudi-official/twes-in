@@ -122,7 +122,17 @@ describe('CustomerPage', () => {
   };
   const modules = new Set<string>(['customers', 'invoices']);
   const auth = {
-    me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
+    me: () => ({
+      user: { id: 'u1' },
+      company: { id: 'c1', name: 'Acme' },
+      plannedModules: [
+        { key: 'mailing', planned: 'v1' },
+        { key: 'whatsapp', planned: 'v1' },
+        { key: 'quotes', planned: 'v1' },
+        { key: 'statements', planned: 'v1' },
+        { key: 'purchases', planned: 'v1' },
+      ],
+    }),
     hasPermission: vi.fn(),
     hasModule: (module: string) => modules.has(module),
   };
@@ -262,6 +272,21 @@ describe('CustomerPage', () => {
 
     expect(q('customer-title')?.textContent).toContain('customers.new_title');
     expect(q('customer-title')?.getAttribute('aria-hidden')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26 10:08 and 18:17 (row 150, slice 5).
+  it('shows what a customer will offer once its planned modules ship, and nothing of it while one is new', async () => {
+    await open(undefined);
+    expect(q('planned-actions')).toBeNull();
+    fixture.destroy();
+
+    customer.set(carthage);
+    await open('k1');
+    const drawn = [...fixture.nativeElement.querySelectorAll('[data-testid^="planned-action-"]')];
+    expect(drawn.map((each: Element) => each.getAttribute('data-testid'))).toEqual([
+      'planned-action-quotes',
+      'planned-action-statements',
+    ]);
   });
 
   it('creates a customer, then opens it by its identifier', async () => {

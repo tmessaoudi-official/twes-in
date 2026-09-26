@@ -889,6 +889,11 @@
           "height": "Porte de quai — hauteur (m)"
         }
       }
+    },
+    "coming": {
+      "title": "Ce qui arrive",
+      "intro": "Les réglages des modules à venir, dits en mots : rien n'est encore à choisir.",
+      "more": "En savoir plus sur {{module}}"
     }
   },
   "customers": {
@@ -2569,7 +2574,8 @@
       "plan": "§ 8 · 82 — la vente au comptoir",
       "meanwhile": "En attendant, une vente au comptoir se fait depuis une facture :",
       "meanwhile_link": "Émettre et encaisser",
-      "create": "Nouvelle vente au comptoir"
+      "create": "Nouvelle vente au comptoir",
+      "settings": "Le ticket imprimé, le tiroir-caisse et les moyens de paiement acceptés au comptoir."
     },
     "works": {
       "heading": "Les travaux sont en construction",
@@ -2587,7 +2593,8 @@
     "declarations": {
       "heading": "Les déclarations sont en construction",
       "does": "Les déclarations fiscales de la période préparées depuis les documents émis : les montants par taxe, ce qui reste à déclarer, et le rappel de chaque échéance.",
-      "plan": "§ 8 · 91 — les déclarations"
+      "plan": "§ 8 · 91 — les déclarations",
+      "settings": "Le régime de taxe, la périodicité des déclarations et leurs échéances."
     },
     "document-templates": {
       "heading": "Les modèles de documents sont en construction",
@@ -2623,7 +2630,8 @@
     "accounting_export": {
       "heading": "L’export comptable est en construction",
       "does": "Les écritures des ventes, des achats et des encaissements de la période, prêtes à reprendre dans le logiciel de votre comptable, avec un rôle comptable et les périodes clôturées.",
-      "plan": "§ 8 · 92 — l'export comptable"
+      "plan": "§ 8 · 92 — l'export comptable",
+      "settings": "Le plan de comptes, les codes journaux et le format du fichier exporté."
     },
     "composites": {
       "heading": "Les produits composés sont en construction",
@@ -2631,12 +2639,14 @@
     },
     "currencies": {
       "heading": "Les devises étrangères sont en construction",
-      "does": "Facturer dans la devise du client avec le cours du jour, encaisser en devise et suivre le gain ou la perte de change."
+      "does": "Facturer dans la devise du client avec le cours du jour, encaisser en devise et suivre le gain ou la perte de change.",
+      "settings": "La source des taux de change et l'arrondi des conversions."
     },
     "einvoicing": {
       "heading": "La facturation électronique est en construction",
       "does": "Transmettre les factures au format exigé par l’administration : El Fatoora par TTN en Tunisie, Factur-X par une plateforme agréée en France.",
-      "plan": "§ 8 · 93 et 145 — la facturation électronique"
+      "plan": "§ 8 · 93 et 145 — la facturation électronique",
+      "settings": "L'identifiant sur le réseau et la plateforme par laquelle partent les factures."
     },
     "guests": {
       "heading": "Les clients fidèles sont en construction",
@@ -2645,7 +2655,8 @@
     "mailing": {
       "heading": "L’envoi par e-mail est en construction",
       "does": "Envoyer une facture, un devis ou un bon au client depuis le document, et relancer automatiquement ce qui reste impayé.",
-      "plan": "§ 8 · 135 — les relances"
+      "plan": "§ 8 · 135 — les relances",
+      "settings": "L'adresse d'envoi, la signature, le texte de chaque message et le calendrier des relances."
     },
     "menu": {
       "heading": "La carte est en construction",
@@ -2653,25 +2664,29 @@
     },
     "portal": {
       "heading": "Le portail client est en construction",
-      "does": "Vos clients consultent leurs factures, téléchargent leurs documents et passent commande depuis un espace qui leur est réservé."
+      "does": "Vos clients consultent leurs factures, téléchargent leurs documents et passent commande depuis un espace qui leur est réservé.",
+      "settings": "Ce qu'un client voit dans son espace : ses factures, ses devis, ses relevés, et s'il peut payer en ligne."
     },
     "price_lists": {
       "heading": "Les tarifs sont en construction",
       "does": "Des prix par client ou par groupe de clients, par quantité et sur une période, appliqués d’eux-mêmes sur chaque document.",
       "plan": "§ 8 · 77 — les tarifs",
-      "create": "Nouveau tarif"
+      "create": "Nouveau tarif",
+      "settings": "Le tarif qu'un nouveau client reçoit par défaut."
     },
     "purchases": {
       "heading": "Les commandes fournisseurs sont en construction",
       "does": "Commander aux fournisseurs, recevoir la marchandise en stock et rapprocher la commande, la réception et la facture.",
       "plan": "§ 8 · 81 et 84 — commandes fournisseurs et réceptions",
-      "create": "Nouvelle commande fournisseur"
+      "create": "Nouvelle commande fournisseur",
+      "settings": "La numérotation des commandes fournisseur et ce que confirme une réception."
     },
     "quotes": {
       "heading": "Les devis sont en construction",
       "does": "Un devis que le client accepte devient la commande : acompte, suivi de ce qui reste à livrer et à facturer, puis la facture sans rien ressaisir.",
       "plan": "§ 8 · 78 — le devis",
-      "create": "Nouveau devis"
+      "create": "Nouveau devis",
+      "settings": "La durée de validité par défaut d'un devis, sa numérotation et les conditions imprimées en bas."
     },
     "ratings": {
       "heading": "Les avis sont en construction",
@@ -2681,7 +2696,8 @@
       "heading": "Les factures récurrentes sont en construction",
       "does": "Un abonnement ou un contrat facturé chaque mois ou chaque année : les brouillons se préparent d’eux-mêmes à la date prévue.",
       "plan": "§ 8 · 86 — les factures récurrentes",
-      "create": "Nouvelle facture récurrente"
+      "create": "Nouvelle facture récurrente",
+      "settings": "La fréquence proposée par défaut, le jour d'émission et si chaque facture part seule par e-mail."
     },
     "service": {
       "heading": "Le service en salle est en construction",
@@ -2690,12 +2706,14 @@
     "statements": {
       "heading": "Les relevés sont en construction",
       "does": "Le relevé de compte d’un client sur une période et un plafond de crédit qui prévient avant qu’il soit dépassé.",
-      "plan": "§ 8 · 85 et 134 — le relevé et le plafond de crédit"
+      "plan": "§ 8 · 85 et 134 — le relevé et le plafond de crédit",
+      "settings": "Le plafond de crédit proposé à un nouveau client et la période que couvre un relevé."
     },
     "stock_valuation": {
       "heading": "La valorisation du stock est en construction",
       "does": "La valeur du stock à une date, au coût moyen pondéré ou au premier entré, premier sorti, et le coût de ce qui a été vendu.",
-      "plan": "§ 8 · 87 — la valorisation du stock"
+      "plan": "§ 8 · 87 — la valorisation du stock",
+      "settings": "La méthode de valorisation : coût moyen pondéré ou premier entré, premier sorti."
     },
     "venue": {
       "heading": "La salle est en construction",
@@ -2704,12 +2722,14 @@
     "whatsapp": {
       "heading": "L’envoi par WhatsApp est en construction",
       "does": "Envoyer une facture ou un bon au client par WhatsApp, avec le lien vers le document.",
-      "plan": "§ 8 · 95 — l'envoi WhatsApp"
+      "plan": "§ 8 · 95 — l'envoi WhatsApp",
+      "settings": "Le numéro d'envoi et le texte des messages."
     },
     "zakat": {
       "heading": "La zakat est en construction",
       "does": "Calculer la zakat de l’entreprise à la date de son hawl, selon votre école : les biens soumis, le nisab en or ou en argent, et un rappel chaque année.",
-      "plan": "§ 8 · 120 — la zakat"
+      "plan": "§ 8 · 120 — la zakat",
+      "settings": "La date du hawl, le seuil du nisab retenu et ce qui entre dans l'assiette."
     }
   },
   "account": {
@@ -2761,7 +2781,9 @@
       "corrigeable": "Cela ne s’annule pas ; une erreur se corrige ensuite.",
       "definitif": "Cela ne pourra être ni annulé ni corrigé."
     },
-    "final_group": "Définitif"
+    "final_group": "Définitif",
+    "coming": "Bientôt sur cet écran",
+    "coming_more": "Ce qui arrive sur cet écran"
   },
   "first_steps": {
     "title": "Premiers pas",
@@ -2783,5 +2805,13 @@
         "first": "Créer un premier article"
       }
     }
+  },
+  "planned_actions": {
+    "send_email": "Envoyer par e-mail",
+    "send_whatsapp": "Envoyer par WhatsApp",
+    "make_recurring": "Rendre récurrente",
+    "new_quote": "Nouveau devis",
+    "statement": "Relevé de compte",
+    "new_purchase": "Nouvelle commande fournisseur"
   }
 }

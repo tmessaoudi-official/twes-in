@@ -72,5 +72,42 @@
         </ul>
       </section>
     }
+
+    @if (comingSettings().length > 0) {
+      <section
+        class="flex flex-col gap-2"
+        aria-labelledby="settings-coming-title"
+        data-testid="settings-coming"
+      >
+        <h2 id="settings-coming-title" class="text-xl font-semibold">
+          {{ 'settings.coming.title' | translate }}
+        </h2>
+        <p>{{ 'settings.coming.intro' | translate }}</p>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          @for (setting of comingSettings(); track setting.module) {
+            <mat-card
+              appearance="outlined"
+              [attr.data-testid]="'settings-coming-' + setting.module"
+            >
+              <mat-card-content>
+                <div class="flex h-full flex-col items-start gap-2">
+                  <h3 class="flex flex-wrap items-center gap-2 font-semibold">
+                    <span>{{ 'modules.' + setting.module | translate }}</span>
+                    <span class="twes-soon" data-testid="soon">{{ 'shell.soon' | translate }}</span>
+                  </h3>
+                  <p class="text-on-surface-variant">{{ setting.label | translate }}</p>
+                  <a mat-button [routerLink]="['/coming', setting.module]">
+                    {{
+                      'settings.coming.more'
+                        | translate: { module: ('modules.' + setting.module | translate) }
+                    }}
+                  </a>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          }
+        </div>
+      </section>
+    }
   }
 </section>

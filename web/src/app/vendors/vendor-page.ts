@@ -25,10 +25,16 @@ import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { ScreenActions } from '../shared/actions/screen-actions';
+import type { PlannedAction } from '../shared/actions/planned-actions';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
 
 /** One vendor: a new one to fill in, or an existing one to revise or deactivate. */
+/** What a vendor will offer once its planned modules ship (docs/SPEC.md § 7, 2026-09-26 18:17, row 150), shown « Bientôt » beside what it offers today. */
+export const VENDOR_PLANNED: readonly PlannedAction[] = [
+  { module: 'purchases', label: 'planned_actions.new_purchase', icon: 'shopping_cart' },
+];
+
 @Component({
   selector: 'app-vendor-page',
   imports: [
@@ -130,6 +136,8 @@ export class VendorPage {
     });
   }
 
+  /** What the record will offer once its planned modules ship, from the moment it exists. */
+  protected readonly planned = computed(() => (this.current() ? VENDOR_PLANNED : []));
   /**
    * What this page offers, declared once (row 45): the bar beside the title draws it, and the keyboard, the Ctrl K
    * palette and the "?" sheet read the same list — so "s" saves here as it does on a document.

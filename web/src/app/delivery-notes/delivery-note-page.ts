@@ -55,6 +55,7 @@ import { unsavedChanges } from '../shared/form/dirty-count';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
+import type { PlannedAction } from '../shared/actions/planned-actions';
 import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { DeliverDialog } from './deliver-dialog';
@@ -64,6 +65,12 @@ import { RecordView } from '../shared/form/record-view';
  * One delivery note: a new draft to fill in, a draft to revise and validate, or a numbered note to deliver, cancel
  * and print. Only a draft changes; the API refuses anything else whatever this screen shows.
  */
+/** What a delivery note will offer once its planned modules ship (docs/SPEC.md § 7, 2026-09-26 18:17, row 150), shown « Bientôt » beside what it offers today. */
+export const DELIVERY_NOTE_PLANNED: readonly PlannedAction[] = [
+  { module: 'mailing', label: 'planned_actions.send_email', icon: 'forward_to_inbox' },
+  { module: 'whatsapp', label: 'planned_actions.send_whatsapp', icon: 'chat' },
+];
+
 @Component({
   selector: 'app-delivery-note-page',
   imports: [
@@ -256,6 +263,8 @@ export class DeliveryNotePage {
     () => this.customer()?.excludedFamilies ?? [],
   );
 
+  /** What the record will offer once its planned modules ship, from the moment it exists. */
+  protected readonly planned = computed(() => (this.current() ? DELIVERY_NOTE_PLANNED : []));
   /**
    * What the note offers, declared once for the bar beside its title (design review finding 3). The state's next
    * step is the primary one: validating a draft, delivering a validated note, invoicing a delivered one. Delivering

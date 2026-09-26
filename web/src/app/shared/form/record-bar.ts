@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
+import { type PlannedAction, PlannedActions } from '../actions/planned-actions';
 import { runAction } from '../actions/run-action';
 import type { ScreenAction } from '../actions/screen-action';
 import { ConfirmDialog } from '../ui/confirm-dialog';
@@ -22,7 +23,7 @@ import { ConfirmDialog } from '../ui/confirm-dialog';
  */
 @Component({
   selector: 'app-record-bar',
-  imports: [MatButtonModule, MatIconModule, TranslatePipe],
+  imports: [MatButtonModule, MatIconModule, TranslatePipe, PlannedActions],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-wrap items-center gap-2" data-testid="record-bar" data-tour="record-bar">
@@ -39,6 +40,9 @@ import { ConfirmDialog } from '../ui/confirm-dialog';
               | translate: { count: changes() }
           }}
         </span>
+      }
+      @if (planned().length > 0) {
+        <app-planned-actions [actions]="planned()" />
       }
       @for (action of plain(); track action.id) {
         <button
@@ -78,6 +82,8 @@ export class RecordBar {
   readonly changes = input.required<number>();
   /** What the page offers, declared once — the same list the keyboard, the palette and the "?" sheet read. */
   readonly actions = input.required<readonly ScreenAction[]>();
+  /** What the screen will offer once a planned module ships, drawn before the working ones (row 150). */
+  readonly planned = input<readonly PlannedAction[]>([]);
 
   private readonly offered = computed(() =>
     this.actions().filter((action) => action.shown !== false),

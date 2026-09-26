@@ -14,7 +14,7 @@
       }
     </h1>
     <div class="flex flex-wrap items-center gap-2">
-      <app-record-bar [changes]="changes()" [actions]="recordActions()" />
+      <app-record-bar [changes]="changes()" [actions]="recordActions()" [planned]="planned()" />
       <a mat-button routerLink="/customers">{{ 'customers.back' | translate }}</a>
     </div>
   </div>
