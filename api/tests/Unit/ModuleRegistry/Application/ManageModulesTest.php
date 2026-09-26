@@ -13,9 +13,11 @@ use App\ModuleRegistry\Application\ManageModules;
 use App\ModuleRegistry\Application\ModuleCatalog;
 use App\ModuleRegistry\Application\ModuleDependenciesDisabled;
 use App\ModuleRegistry\Application\ModuleManifest;
+use App\ModuleRegistry\Application\ModuleNotAvailable;
 use App\ModuleRegistry\Application\ModuleRequired;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\ModuleRegistry\Application\ModuleView;
+use App\ModuleRegistry\Application\PlannedModules;
 use App\ModuleRegistry\Application\UnknownModule;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakeTransactions;
@@ -43,7 +45,7 @@ final class ManageModulesTest extends TestCase
             new ModuleManifest('customers', 'modules.customers'),
             new ModuleManifest('products', 'modules.products'),
             new ModuleManifest('invoices', 'modules.invoices', ['customers', 'products']),
-        ));
+        ), new PlannedModules([new ModuleManifest('quotes', 'modules.quotes', ['customers'], planned: 'v1')]));
         $this->rows = new InMemoryModuleStates();
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
@@ -56,7 +58,7 @@ final class ManageModulesTest extends TestCase
     {
         $views = $this->manage->list($this->company);
 
-        self::assertSame([['customers', true], ['invoices', true], ['products', true]], self::summary($views));
+        self::assertSame([['customers', true], ['invoices', true], ['products', true], ['quotes', false]], self::summary($views));
         self::assertTrue($this->states->isEnabled($this->company->getId(), 'invoices'));
         self::assertSame(['customers', 'invoices', 'products'], $this->states->enabledKeys($this->company->getId()));
         self::assertSame([], $this->rows->rows, 'nothing is stored before a company changes something');
@@ -72,7 +74,7 @@ final class ManageModulesTest extends TestCase
         self::assertSame('invoices', $view->manifest->key);
         self::assertFalse($this->states->isEnabled($this->company->getId(), 'invoices'));
         self::assertSame(['customers', 'products'], $this->states->enabledKeys($this->company->getId()));
-        self::assertSame([['customers', true], ['invoices', false], ['products', true]], self::summary($this->manage->list($this->company)));
+        self::assertSame([['customers', true], ['invoices', false], ['products', true], ['quotes', false]], self::summary($this->manage->list($this->company)));
         $globex = new Company('Globex', 'FR', 'EUR', 'fr', 'Europe/Paris');
         self::assertTrue($this->states->isEnabled($globex->getId(), 'invoices'));
 
@@ -132,6 +134,22 @@ final class ManageModulesTest extends TestCase
         $this->manage->switch($this->company, 'customers', true, null);
         $this->manage->switch($this->company, 'products', true, null);
         self::assertTrue($this->manage->switch($this->company, 'invoices', true, null)->enabled);
+    }
+
+    // docs/SPEC.md § 7, 2026-09-26 10:08 (row 150): a planned module is listed, never on, and cannot be switched.
+    public function testAPlannedModuleIsNeverOnAndCannotBeSwitched(): void
+    {
+        self::assertFalse($this->states->isEnabled($this->company->getId(), 'quotes'));
+        foreach ([true, false] as $enabled) {
+            try {
+                $this->manage->switch($this->company, 'quotes', $enabled, null);
+                self::fail('a planned module was switched');
+            } catch (ModuleNotAvailable $refusal) {
+                self::assertSame('quotes', $refusal->key);
+            }
+        }
+        self::assertSame([], $this->rows->rows);
+        self::assertSame(['customers', 'invoices', 'products'], $this->states->enabledKeys($this->company->getId()));
     }
 
     public function testAnUndeclaredModuleIsNeitherOnNorSwitched(): void

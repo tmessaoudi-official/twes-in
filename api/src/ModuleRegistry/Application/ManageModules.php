@@ -49,6 +49,7 @@ final readonly class ManageModules
 
     /**
      * @throws UnknownModule
+     * @throws ModuleNotAvailable
      * @throws ModuleDependenciesDisabled
      * @throws ModuleRequired
      */
@@ -56,6 +57,9 @@ final readonly class ManageModules
     {
         return $this->transactions->run(function () use ($company, $key, $enabled, $actorUserId): ModuleView {
             $manifest = $this->catalog->get($key) ?? throw new UnknownModule($key);
+            if (null !== $manifest->planned) {
+                throw new ModuleNotAvailable($key);
+            }
             $companyId = $company->getId();
             if ($this->states->isEnabled($companyId, $key) === $enabled) {
                 return new ModuleView($manifest, $enabled);

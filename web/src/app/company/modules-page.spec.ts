@@ -11,6 +11,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
+import { ThemeFacade } from '../shared/theme/theme-facade';
 import type { ModulesError } from './modules-api';
 import { ModulesFacade } from './modules-facade';
 import { ModulesPage } from './modules-page';
@@ -24,10 +25,19 @@ class StaticLoader implements TranslateLoader {
         invoices: 'Factures',
         products: 'Produits',
         deliveries: 'Livraisons',
+        quotes: 'Devis et commandes',
+        zakat: 'Zakat',
       },
+      coming: {
+        version: { v1: 'Version 1', later: 'Plus tard' },
+        quotes: { does: 'Un devis que le client accepte devient la commande.' },
+        zakat: { does: 'Calculer la zakat de l’entreprise.' },
+      },
+      shell: { soon: 'Bientôt' },
       company: {
         modules: {
           title: 'Modules',
+          planned: 'Ce qui arrive',
           depends_on: 'Nécessite :',
           errors: {
             still_needed: 'Ces modules en ont encore besoin :',
@@ -45,6 +55,22 @@ const customers: ModuleRow = {
   dependencies: [],
   permissions: ['customer.read'],
   enabled: true,
+};
+const quotes: ModuleRow = {
+  key: 'quotes',
+  labelKey: 'modules.quotes',
+  dependencies: ['customers', 'invoices'],
+  permissions: [],
+  enabled: false,
+  planned: 'v1',
+};
+const zakat: ModuleRow = {
+  key: 'zakat',
+  labelKey: 'modules.zakat',
+  dependencies: [],
+  permissions: [],
+  enabled: false,
+  planned: 'later',
 };
 const invoices: ModuleRow = {
   key: 'invoices',
@@ -66,6 +92,7 @@ describe('ModulesPage', () => {
     switch: vi.fn(),
     clearError: vi.fn(),
   };
+  const showComing = signal(true);
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
@@ -92,6 +119,7 @@ describe('ModulesPage', () => {
 
   beforeEach(() => {
     modules.set([customers, invoices]);
+    showComing.set(true);
     error.set(null);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.switch.mockReset().mockResolvedValue(true);
@@ -108,6 +136,7 @@ describe('ModulesPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: ModulesFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
+        { provide: ThemeFacade, useValue: { showComing } },
         { provide: Session, useExisting: AuthFacade },
       ],
     });
@@ -194,5 +223,37 @@ describe('ModulesPage', () => {
     await open();
 
     expect(switchOf('customers').disabled).toBe(true);
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26 10:08 (row 150): the complete product, what is not built yet said « Bientôt ».
+  it('lists the planned modules apart, each saying what it will do, when and what it needs, its switch off for good', async () => {
+    modules.set([customers, invoices, quotes, zakat]);
+    await open();
+
+    expect(q('modules-list')?.querySelector('[data-testid="module-quotes"]')).toBeNull();
+    const planned = q('modules-planned')!;
+    expect(planned.textContent).toContain('Ce qui arrive');
+    const row = q('module-quotes')!;
+    expect(planned.contains(row)).toBe(true);
+    const text = row.textContent?.replace(/\s+/g, ' ') ?? '';
+    for (const words of [
+      'Devis et commandes',
+      'Bientôt',
+      'Un devis que le client accepte',
+      'Version 1',
+      'Nécessite : Clients, Factures',
+    ]) {
+      expect(text).toContain(words);
+    }
+    expect(q('module-zakat')?.textContent).toContain('Plus tard');
+    expect(switchOf('quotes').disabled).toBe(true);
+    expect(switchOf('quotes').getAttribute('aria-checked')).toBe('false');
+    switchOf('quotes').click();
+    expect(facade.switch).not.toHaveBeenCalled();
+
+    showComing.set(false);
+    await settle();
+    expect(q('modules-planned')).toBeNull();
+    expect(q('module-customers')).not.toBeNull();
   });
 });

@@ -56,9 +56,56 @@ final class ModulesTest extends ApiTestCase
             ['key' => 'invoices', 'labelKey' => 'modules.invoices', 'dependencies' => ['customers', 'products'], 'permissions' => ['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write'], 'enabled' => true],
             ['key' => 'products', 'labelKey' => 'modules.products', 'dependencies' => [], 'permissions' => ['product.read', 'product.write', 'product.cost.read'], 'enabled' => true],
             ['key' => 'vendors', 'labelKey' => 'modules.vendors', 'dependencies' => [], 'permissions' => ['vendor.read', 'vendor.write'], 'enabled' => true],
-        ], $this->jsonList());
+        ], array_values(array_filter($this->jsonList(), static fn (array $row) => !isset($row['planned']))));
         $this->getJson('/api/auth/me');
         self::assertSame(['customers', 'delivery_notes', 'expenses', 'fixture_ledger', 'inventory', 'invoices', 'products', 'vendors'], $this->arrayAt($this->json(), 'modules'));
+    }
+
+    // docs/SPEC.md § 7, 2026-09-26 10:08 (row 150): the complete product shows, each module not built yet as planned,
+    // never on, and a switch on it refused. `Me.modules` above is asserted as an exact set: a planned module read as on
+    // there would light its navigation up.
+    public function testThePlannedModulesAreListedOffAndCannotBeSwitched(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+
+        $this->getJson($this->path());
+
+        $planned = array_values(array_filter($this->jsonList(), static fn (array $row) => isset($row['planned'])));
+        self::assertSame([
+            ['accounting_export', 'v1', ['invoices']],
+            ['composites', 'later', ['products']],
+            ['currencies', 'later', ['invoices']],
+            ['declarations', 'v1', ['invoices']],
+            ['einvoicing', 'v1', ['invoices']],
+            ['guests', 'later', ['customers']],
+            ['mailing', 'later', ['invoices']],
+            ['menu', 'later', ['products']],
+            ['portal', 'later', ['customers', 'invoices']],
+            ['price_lists', 'v1', ['customers', 'products']],
+            ['purchases', 'v1', ['inventory', 'products', 'vendors']],
+            ['quotes', 'v1', ['customers', 'invoices']],
+            ['ratings', 'later', ['venue']],
+            ['recurring', 'v1', ['invoices']],
+            ['register', 'v1', ['invoices', 'products']],
+            ['reports', 'v1', []],
+            ['service', 'later', ['menu', 'register', 'venue']],
+            ['statements', 'v1', ['customers', 'invoices']],
+            ['stock_valuation', 'v1', ['inventory']],
+            ['venue', 'later', ['register']],
+            ['whatsapp', 'v1', ['invoices']],
+            ['works', 'v1', ['invoices', 'quotes']],
+            ['zakat', 'later', []],
+        ], array_map(static fn (array $row) => [$row['key'], $row['planned'], $row['dependencies']], $planned));
+        foreach ($planned as $row) {
+            $key = $this->stringAt($row, 'key');
+            self::assertSame(['modules.'.$key, [], false], [$row['labelKey'], $row['permissions'], $row['enabled']], $key);
+        }
+
+        foreach ([true, false] as $enabled) {
+            $this->sendJson('PUT', $this->path('zakat'), ['enabled' => $enabled]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+            self::assertStringContainsString('zakat is not available yet', $this->stringAt($this->json(), 'detail'));
+        }
     }
 
     public function testSwitchingAModuleOffHidesItsResourcesAndKeepsItsData(): void

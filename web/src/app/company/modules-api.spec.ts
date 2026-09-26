@@ -36,6 +36,14 @@ describe('ModulesApi', () => {
         permissions: [],
         enabled: null,
       },
+      {
+        key: 'zakat',
+        labelKey: 'modules.zakat',
+        dependencies: [],
+        permissions: [],
+        enabled: false,
+        planned: 'later',
+      },
     ]);
 
     expect(await pending).toEqual([
@@ -52,6 +60,14 @@ describe('ModulesApi', () => {
         dependencies: ['customers'],
         permissions: [],
         enabled: false,
+      },
+      {
+        key: 'zakat',
+        labelKey: 'modules.zakat',
+        dependencies: [],
+        permissions: [],
+        enabled: false,
+        planned: 'later',
       },
     ]);
   });

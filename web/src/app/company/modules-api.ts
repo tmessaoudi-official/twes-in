@@ -71,5 +71,6 @@ function toRow(raw: ModuleModuleRead): ModuleRow {
     dependencies: [...raw.dependencies],
     permissions: [...raw.permissions],
     enabled: raw.enabled === true,
+    ...(raw.planned ? { planned: raw.planned } : {}),
   };
 }

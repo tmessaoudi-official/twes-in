@@ -25,7 +25,8 @@ final readonly class ModuleStates
 
     public function isEnabled(Uuid $companyId, string $key): bool
     {
-        if (null === $this->catalog->get($key)) {
+        $manifest = $this->catalog->get($key);
+        if (null === $manifest || null !== $manifest->planned) {
             return false;
         }
 
@@ -42,7 +43,8 @@ final readonly class ModuleStates
 
         return array_values(array_map(
             static fn (ModuleManifest $manifest) => $manifest->key,
-            array_filter($this->catalog->all(), static fn (ModuleManifest $manifest) => ($switched[$manifest->key] ?? null)?->isEnabled() ?? true),
+            // A planned module is never on: with no row stored it would otherwise read as on, and light its navigation up.
+            array_filter($this->catalog->all(), static fn (ModuleManifest $manifest) => null === $manifest->planned && (($switched[$manifest->key] ?? null)?->isEnabled() ?? true)),
         ));
     }
 }

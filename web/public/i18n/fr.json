@@ -391,6 +391,7 @@
     "modules": {
       "title": "Modules",
       "intro": "Les modules que votre société utilise. Un module désactivé quitte le menu et ses pages ne s'ouvrent plus ; ses données sont conservées et reviennent quand vous le réactivez.",
+      "planned": "Ce qui arrive",
       "depends_on": "Nécessite :",
       "no_company": "Choisissez une société pour gérer ses modules.",
       "errors": {
@@ -449,7 +450,30 @@
     "inventory": "Stock",
     "vendors": "Fournisseurs",
     "expenses": "Dépenses",
-    "invoices": "Factures"
+    "invoices": "Factures",
+    "accounting_export": "Export comptable",
+    "composites": "Produits composés",
+    "currencies": "Devises étrangères",
+    "declarations": "Déclarations",
+    "einvoicing": "Facturation électronique",
+    "guests": "Clients fidèles",
+    "mailing": "Envoi par e-mail et relances",
+    "menu": "Carte",
+    "portal": "Portail client",
+    "price_lists": "Tarifs",
+    "purchases": "Commandes fournisseurs",
+    "quotes": "Devis et commandes",
+    "ratings": "Avis",
+    "recurring": "Factures récurrentes",
+    "register": "Caisse",
+    "reports": "Rapports",
+    "service": "Service en salle",
+    "statements": "Relevés et plafonds de crédit",
+    "stock_valuation": "Valorisation du stock",
+    "venue": "Salle et plan",
+    "whatsapp": "Envoi par WhatsApp",
+    "works": "Travaux",
+    "zakat": "Zakat"
   },
   "nav": {
     "watch": "À surveiller",
@@ -2584,6 +2608,82 @@
       "heading": "Les textes sont en construction",
       "does": "Remplacer les mots de l'application par les vôtres (« Client » en « Patient », par exemple), dans chaque langue.",
       "plan": "Pas encore de ligne dans le plan"
+    },
+    "accounting_export": {
+      "heading": "L’export comptable est en construction",
+      "does": "Les écritures des ventes, des achats et des encaissements de la période, prêtes à reprendre dans le logiciel de votre comptable, avec un rôle comptable et les périodes clôturées."
+    },
+    "composites": {
+      "heading": "Les produits composés sont en construction",
+      "does": "Un article fait d’autres articles : un kit, une recette ou un menu, avec ses quantités, son coût de revient et le stock de chaque composant."
+    },
+    "currencies": {
+      "heading": "Les devises étrangères sont en construction",
+      "does": "Facturer dans la devise du client avec le cours du jour, encaisser en devise et suivre le gain ou la perte de change."
+    },
+    "einvoicing": {
+      "heading": "La facturation électronique est en construction",
+      "does": "Transmettre les factures au format exigé par l’administration : El Fatoora par TTN en Tunisie, Factur-X par une plateforme agréée en France."
+    },
+    "guests": {
+      "heading": "Les clients fidèles sont en construction",
+      "does": "Reconnaître un habitué, ses préférences et son compte, et le récompenser de sa fidélité."
+    },
+    "mailing": {
+      "heading": "L’envoi par e-mail est en construction",
+      "does": "Envoyer une facture, un devis ou un bon au client depuis le document, et relancer automatiquement ce qui reste impayé."
+    },
+    "menu": {
+      "heading": "La carte est en construction",
+      "does": "Les plats et les boissons avec leurs prix, leurs options et leurs allergènes, organisés en rubriques, pour la salle comme pour la caisse."
+    },
+    "portal": {
+      "heading": "Le portail client est en construction",
+      "does": "Vos clients consultent leurs factures, téléchargent leurs documents et passent commande depuis un espace qui leur est réservé."
+    },
+    "price_lists": {
+      "heading": "Les tarifs sont en construction",
+      "does": "Des prix par client ou par groupe de clients, par quantité et sur une période, appliqués d’eux-mêmes sur chaque document."
+    },
+    "purchases": {
+      "heading": "Les commandes fournisseurs sont en construction",
+      "does": "Commander aux fournisseurs, recevoir la marchandise en stock et rapprocher la commande, la réception et la facture."
+    },
+    "quotes": {
+      "heading": "Les devis sont en construction",
+      "does": "Un devis que le client accepte devient la commande : acompte, suivi de ce qui reste à livrer et à facturer, puis la facture sans rien ressaisir."
+    },
+    "ratings": {
+      "heading": "Les avis sont en construction",
+      "does": "Recueillir l’avis des clients après leur passage et suivre la note de l’établissement."
+    },
+    "recurring": {
+      "heading": "Les factures récurrentes sont en construction",
+      "does": "Un abonnement ou un contrat facturé chaque mois ou chaque année : les brouillons se préparent d’eux-mêmes à la date prévue."
+    },
+    "service": {
+      "heading": "Le service en salle est en construction",
+      "does": "Prendre la commande à table, l’envoyer en cuisine et au bar, suivre chaque table jusqu’à l’addition."
+    },
+    "statements": {
+      "heading": "Les relevés sont en construction",
+      "does": "Le relevé de compte d’un client sur une période et un plafond de crédit qui prévient avant qu’il soit dépassé."
+    },
+    "stock_valuation": {
+      "heading": "La valorisation du stock est en construction",
+      "does": "La valeur du stock à une date, au coût moyen pondéré ou au premier entré, premier sorti, et le coût de ce qui a été vendu."
+    },
+    "venue": {
+      "heading": "La salle est en construction",
+      "does": "Le plan de la salle et de la terrasse avec ses tables, leur état en direct et leur capacité."
+    },
+    "whatsapp": {
+      "heading": "L’envoi par WhatsApp est en construction",
+      "does": "Envoyer une facture ou un bon au client par WhatsApp, avec le lien vers le document."
+    },
+    "zakat": {
+      "heading": "La zakat est en construction",
+      "does": "Calculer la zakat de l’entreprise à la date de son hawl, selon votre école : les biens soumis, le nisab en or ou en argent, et un rappel chaque année."
     }
   },
   "account": {

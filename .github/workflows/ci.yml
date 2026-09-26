@@ -32,6 +32,7 @@ jobs:
       - run: bash scripts/gates/tests/version-pins.test.sh
       - run: bash scripts/gates/tests/design-tokens.test.sh
       - run: bash scripts/gates/tests/permission-labels.test.sh
+      - run: bash scripts/gates/tests/planned-module-labels.test.sh
       - run: bash scripts/gates/tests/setting-labels.test.sh
       - run: bash scripts/gates/tests/presentation-settings-parity.test.sh
       - run: bash scripts/gates/tests/tour-anchors.test.sh
@@ -49,6 +50,7 @@ jobs:
       - run: bash scripts/gates/design-tokens.sh
       # Every permission a role may be given has a label a person can read, in both languages (row 104).
       - run: bash scripts/gates/permission-labels.sh
+      - run: bash scripts/gates/planned-module-labels.sh
       - run: bash scripts/gates/setting-labels.sh
       # A preference the SPA writes but the API never declares is silently lost on reload (docs/SPEC.md § 7, 2026-09-22).
       - run: bash scripts/gates/presentation-settings-parity.sh

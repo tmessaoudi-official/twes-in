@@ -12,6 +12,7 @@ import {
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslatePipe } from '@ngx-translate/core';
+import { ThemeFacade } from '../shared/theme/theme-facade';
 import { AuthFacade } from '../auth/auth-facade';
 import { ModulesFacade } from './modules-facade';
 import type { ModuleRow } from './modules-types';
@@ -33,6 +34,14 @@ export class ModulesPage implements OnInit {
   private readonly auth = inject(AuthFacade);
 
   protected readonly modules = this.facade.modules;
+  /** What the company can switch, and what is only planned (docs/SPEC.md § 7, 2026-09-26 10:08). */
+  protected readonly available = computed(() =>
+    this.modules().filter((row) => row.planned === undefined),
+  );
+  protected readonly planned = computed(() =>
+    this.modules().filter((row) => row.planned !== undefined),
+  );
+  protected readonly showComing = inject(ThemeFacade).showComing;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);

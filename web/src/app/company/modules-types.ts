@@ -10,4 +10,9 @@ export interface ModuleRow {
   /** The permissions its screens and resources check. */
   readonly permissions: readonly string[];
   readonly enabled: boolean;
+  /**
+   * The version a module not built yet is expected in (docs/SPEC.md § 7, 2026-09-26 10:08): shown « Bientôt », never on.
+   * Absent once the module is real.
+   */
+  readonly planned?: 'v1' | 'later';
 }

@@ -22,7 +22,7 @@
   }
 
   <ul class="flex flex-col gap-2" data-testid="modules-list">
-    @for (row of modules(); track row.key) {
+    @for (row of available(); track row.key) {
       <li
         class="flex flex-wrap items-center justify-between gap-4 py-2"
         [attr.data-testid]="'module-' + row.key"
@@ -53,4 +53,62 @@
       </li>
     }
   </ul>
+
+  <!-- docs/SPEC.md § 7, 2026-09-26 10:08 (row 150): the complete product, each module not built yet with what it will
+       do, when, and what it needs; its switch shown off for good. Follows « Montrer ce qui arrive ». -->
+  @if (showComing() && planned().length > 0) {
+    <section
+      class="flex flex-col gap-2"
+      data-testid="modules-planned"
+      aria-labelledby="modules-planned-title"
+    >
+      <h2 id="modules-planned-title" class="text-xl font-semibold">
+        {{ 'company.modules.planned' | translate }}
+      </h2>
+      <ul class="flex flex-col gap-2">
+        @for (row of planned(); track row.key) {
+          <li
+            class="flex items-start justify-between gap-4 py-2"
+            [attr.data-testid]="'module-' + row.key"
+          >
+            <div class="flex min-w-0 flex-col gap-1">
+              <span class="flex flex-wrap items-center gap-2">
+                <span class="font-medium" [id]="'module-label-' + row.key">{{
+                  row.labelKey | translate
+                }}</span>
+                <span class="twes-soon">{{ 'shell.soon' | translate }}</span>
+                <span class="text-sm text-on-surface-variant">{{
+                  'coming.version.' + row.planned | translate
+                }}</span>
+              </span>
+              <span class="max-w-prose text-sm">{{
+                'coming.' + row.key + '.does' | translate
+              }}</span>
+              @if (row.dependencies.length > 0) {
+                <span
+                  class="text-sm text-on-surface-variant"
+                  [attr.data-testid]="'module-' + row.key + '-needs'"
+                >
+                  {{ 'company.modules.depends_on' | translate }}
+                  @for (dependency of row.dependencies; track dependency; let last = $last) {
+                    <span>{{ labelOf(dependency) | translate }}</span>
+                    @if (!last) {
+                      <span>, </span>
+                    }
+                  }
+                </span>
+              }
+            </div>
+            <mat-slide-toggle
+              class="shrink-0"
+              [checked]="false"
+              [disabled]="true"
+              [aria-labelledby]="'module-label-' + row.key"
+              [attr.data-testid]="'module-toggle-' + row.key"
+            ></mat-slide-toggle>
+          </li>
+        }
+      </ul>
+    </section>
+  }
 </section>

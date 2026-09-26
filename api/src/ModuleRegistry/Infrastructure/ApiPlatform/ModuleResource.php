@@ -66,6 +66,14 @@ final class ModuleResource
     #[Groups([self::READ])]
     public array $permissions = [];
 
+    /**
+     * The version a module not built yet is expected in (docs/SPEC.md § 7, 2026-09-26 10:08); null once it is real. A
+     * planned module is never on, and switching it answers 409. Absent from a real module's row.
+     */
+    #[ApiProperty(writable: false, required: false, schema: ['type' => 'string', 'enum' => ['v1', 'later']])]
+    #[Groups([self::READ])]
+    public ?string $planned = null;
+
     #[ApiProperty(required: true)]
     #[Assert\NotNull(groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
@@ -78,6 +86,7 @@ final class ModuleResource
         $resource->labelKey = $view->manifest->labelKey;
         $resource->dependencies = $view->manifest->dependencies;
         $resource->permissions = $view->manifest->permissions;
+        $resource->planned = $view->manifest->planned;
         $resource->enabled = $view->enabled;
 
         return $resource;

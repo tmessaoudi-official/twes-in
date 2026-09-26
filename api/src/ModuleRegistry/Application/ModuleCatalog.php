@@ -18,13 +18,18 @@ final readonly class ModuleCatalog
     /**
      * @param iterable<DeclaresModule> $declarations
      *
-     * @throws \LogicException when a key is declared twice, or a dependency is undeclared or circular (the module itself included)
+     * @throws \LogicException when a key is declared twice, or a dependency is undeclared or circular (the module itself
+     *                         included), or a module that ships depends on one only planned
      */
-    public function __construct(iterable $declarations)
+    public function __construct(iterable $declarations, ?PlannedModules $planned = null)
     {
         $manifests = [];
+        $declared = [];
         foreach ($declarations as $declaration) {
-            $manifest = $declaration->manifest();
+            $declared[] = $declaration->manifest();
+        }
+        // A module that ships replaces its planned entry: declaring both fails here, never merges silently.
+        foreach ([...$declared, ...($planned?->manifests() ?? [])] as $manifest) {
             if (isset($manifests[$manifest->key])) {
                 throw new \LogicException(\sprintf('The module %s is declared twice.', $manifest->key));
             }
@@ -35,6 +40,9 @@ final readonly class ModuleCatalog
             foreach ($manifest->dependencies as $dependency) {
                 if (!isset($manifests[$dependency])) {
                     throw new \LogicException(\sprintf('The module %s depends on %s, which is not declared.', $manifest->key, $dependency));
+                }
+                if (null === $manifest->planned && null !== $manifests[$dependency]->planned) {
+                    throw new \LogicException(\sprintf('The module %s depends on %s, which is only planned: it could never be switched on.', $manifest->key, $dependency));
                 }
             }
         }

@@ -12,6 +12,7 @@ namespace App\Tests\Unit\ModuleRegistry\Application;
 use App\ModuleRegistry\Application\DeclaresModule;
 use App\ModuleRegistry\Application\ModuleCatalog;
 use App\ModuleRegistry\Application\ModuleManifest;
+use App\ModuleRegistry\Application\PlannedModules;
 use PHPUnit\Framework\TestCase;
 
 final class ModuleCatalogTest extends TestCase
@@ -39,6 +40,53 @@ final class ModuleCatalogTest extends TestCase
             }
         }
         self::assertSame('delivery_notes', (new ModuleManifest('delivery_notes', 'modules.delivery_notes'))->key);
+    }
+
+    // docs/SPEC.md § 7, 2026-09-26 10:08 (row 150): the complete product shows, what is not built yet as planned.
+    public function testAPlannedModuleSaysWhenItIsExpectedAndChecksNothingYet(): void
+    {
+        self::assertSame('v1', (new ModuleManifest('quotes', 'modules.quotes', planned: 'v1'))->planned);
+        self::assertSame('later', (new ModuleManifest('zakat', 'modules.zakat', planned: 'later'))->planned);
+        self::assertNull((new ModuleManifest('customers', 'modules.customers'))->planned);
+        foreach ([['soon', []], ['v1', ['quote.read']]] as [$planned, $permissions]) {
+            try {
+                new ModuleManifest('quotes', 'modules.quotes', [], $permissions, $planned);
+                self::fail("$planned with ".\count($permissions).' permissions was accepted.');
+            } catch (\LogicException) {
+                self::addToAssertionCount(1);
+            }
+        }
+    }
+
+    public function testPlannedModulesAreListedWithTheRealOnesAndMayNeedEither(): void
+    {
+        $customers = new ModuleManifest('customers', 'modules.customers');
+        $quotes = new ModuleManifest('quotes', 'modules.quotes', ['customers'], planned: 'v1');
+        $works = new ModuleManifest('works', 'modules.works', ['quotes'], planned: 'v1');
+
+        $catalog = new ModuleCatalog(self::declared($customers), new PlannedModules([$works, $quotes]));
+
+        self::assertSame([$customers, $quotes, $works], $catalog->all());
+        self::assertSame($quotes, $catalog->get('quotes'));
+    }
+
+    public function testAModuleThatShipsCannotNeedAPlannedOne(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('invoices depends on quotes, which is only planned');
+        new ModuleCatalog(
+            self::declared(new ModuleManifest('invoices', 'modules.invoices', ['quotes'])),
+            new PlannedModules([new ModuleManifest('quotes', 'modules.quotes', planned: 'v1')]),
+        );
+    }
+
+    public function testAModuleThatShipsReplacesItsPlannedEntryRatherThanJoiningIt(): void
+    {
+        $this->expectException(\LogicException::class);
+        new ModuleCatalog(
+            self::declared(new ModuleManifest('quotes', 'modules.quotes')),
+            new PlannedModules([new ModuleManifest('quotes', 'modules.quotes', planned: 'v1')]),
+        );
     }
 
     public function testAKeyIsDeclaredOnce(): void

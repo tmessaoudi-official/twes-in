@@ -3238,6 +3238,13 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
     - The planned modules (row 150) sit in the section where they will live, marked « Bientôt », and « Montrer ce qui
       arrive » still hides them all.
   - **The Paramètres list follows the same pattern** (row 151): foldable sections, the fade, the current entry in view.
+- [2026-09-26 14:56] DECIDED (revisit), recovery: **row 150's slice 1 is committed as the frozen session left it.** The
+  machine froze at 14:11, mid `make gate-licences`, and rebooted; the change was wholly staged, so nothing was lost (a
+  snapshot also sits at `refs/recovery/2026-09-26` until CI is green). Rerun here: every licence gate green (the chain
+  itself outruns 600 s because `setting-labels.sh` alone takes 179 s, so its last three ran one by one), php-cs-fixer
+  clean, PHPStan clean on the eleven changed files; the frozen session had run the ModuleRegistry, modules functional,
+  inventory and architecture suites green, plus the web build and lint. Not certified locally, at load 20–30 from other
+  projects: the full PHPStan run (killed at 560 s), the whole API and web unit suites, and e2e. CI arbitrates those.
 
 ## 8. Status
 
@@ -3392,7 +3399,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 144 | Tax data without a partner (§ 7 2026-09-25 22:16): TEJ withholding certificates XML, the four French mentions, payments split by VAT rate, CA3 and Tunisian monthly worksheets | L | doing | - | api/src/** web/src/app/** |
 | 145 | E-invoicing files (§ 7 2026-09-25 22:16): Factur-X and UBL (EN 16931), TEIF 1.8.8 signed; then a plateforme agréée before 2027-09-01 and TTN (row 102) | L | doing | - | api/src/** |
 | 146 | Search on top at the centre (§ 7 2026-09-26 08:52): out of the menu, always visible, Ctrl K, an icon on a phone | S | done | f6fdebe6 | |
-| 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | todo | - | |
+| 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | doing | - | slice 1 (the catalogue and the modules page) landed; « Me prévenir », menu, « Créer », Ctrl K, screen actions and settings cards to come |
 | 151 | Paramètres list fixed and foldable (§ 7 2026-09-26 11:17): pinned head and foot, 80 px rail from its foot, key ], presentation.settings-list | M | todo | - | |
 | 152 | Menus by foldable sections (§ 7 2026-09-26 12:05): each section folds from its heading, remembered, the current one always open; a fade at an edge with more behind; the current entry kept in view — main menu and Paramètres | M | todo | - | |
 | 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | todo | - | |

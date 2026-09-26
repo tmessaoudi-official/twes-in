@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\ModuleRegistry\Application\ManageModules;
 use App\ModuleRegistry\Application\ModuleDependenciesDisabled;
+use App\ModuleRegistry\Application\ModuleNotAvailable;
 use App\ModuleRegistry\Application\ModuleRequired;
 use App\ModuleRegistry\Application\UnknownModule;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -36,7 +37,7 @@ final readonly class SwitchModuleProcessor implements ProcessorInterface
             $view = $this->manage->switch($company, \is_string($key) ? $key : '', true === $data->enabled, $this->guard->account()->getId());
         } catch (UnknownModule $absent) {
             throw new NotFoundHttpException('No such module.', $absent);
-        } catch (ModuleDependenciesDisabled|ModuleRequired $refused) {
+        } catch (ModuleNotAvailable|ModuleDependenciesDisabled|ModuleRequired $refused) {
             throw new ConflictHttpException($refused->getMessage(), $refused);
         }
 

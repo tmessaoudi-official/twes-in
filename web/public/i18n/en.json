@@ -391,6 +391,7 @@
     "modules": {
       "title": "Modules",
       "intro": "The modules your company uses. A module switched off leaves the menu and its pages no longer open; its data is kept and comes back when you switch it on again.",
+      "planned": "Coming",
       "depends_on": "Needs:",
       "no_company": "Choose a company to manage its modules.",
       "errors": {
@@ -449,7 +450,30 @@
     "inventory": "Inventory",
     "vendors": "Vendors",
     "expenses": "Expenses",
-    "invoices": "Invoices"
+    "invoices": "Invoices",
+    "accounting_export": "Accounting export",
+    "composites": "Composite products",
+    "currencies": "Foreign currencies",
+    "declarations": "Declarations",
+    "einvoicing": "E-invoicing",
+    "guests": "Regular guests",
+    "mailing": "Email sending and reminders",
+    "menu": "Menu",
+    "portal": "Customer portal",
+    "price_lists": "Price lists",
+    "purchases": "Purchase orders",
+    "quotes": "Quotes and orders",
+    "ratings": "Ratings",
+    "recurring": "Recurring invoices",
+    "register": "Register",
+    "reports": "Reports",
+    "service": "Table service",
+    "statements": "Statements and credit limits",
+    "stock_valuation": "Stock valuation",
+    "venue": "Venue and floor plan",
+    "whatsapp": "WhatsApp sending",
+    "works": "Works",
+    "zakat": "Zakat"
   },
   "nav": {
     "watch": "To watch",
@@ -2584,6 +2608,82 @@
       "heading": "Texts are being built",
       "does": "Replace the application's words with yours (“Customer” as “Patient”, for example), in each language.",
       "plan": "Not in the plan yet"
+    },
+    "accounting_export": {
+      "heading": "The accounting export is under construction",
+      "does": "The period's sales, purchase and payment entries, ready for your accountant's software, with an accountant role and closed periods."
+    },
+    "composites": {
+      "heading": "Composite products are under construction",
+      "does": "An item made of other items: a kit, a recipe or a set menu, with its quantities, its cost and the stock of each component."
+    },
+    "currencies": {
+      "heading": "Foreign currencies are under construction",
+      "does": "Invoice in the customer's currency at the day's rate, collect in that currency and follow the exchange gain or loss."
+    },
+    "einvoicing": {
+      "heading": "E-invoicing is under construction",
+      "does": "Send invoices in the format the tax authority requires: El Fatoora through TTN in Tunisia, Factur-X through an approved platform in France."
+    },
+    "guests": {
+      "heading": "Regular guests are under construction",
+      "does": "Recognise a regular, their preferences and their account, and reward their loyalty."
+    },
+    "mailing": {
+      "heading": "Email sending is under construction",
+      "does": "Send an invoice, a quote or a delivery note to the customer from the document, and remind them automatically of what is unpaid."
+    },
+    "menu": {
+      "heading": "The menu is under construction",
+      "does": "Dishes and drinks with their prices, options and allergens, in sections, for the floor and the register alike."
+    },
+    "portal": {
+      "heading": "The customer portal is under construction",
+      "does": "Your customers see their invoices, download their documents and place orders from a space of their own."
+    },
+    "price_lists": {
+      "heading": "Price lists are under construction",
+      "does": "Prices per customer or customer group, per quantity and over a period, applied by themselves on every document."
+    },
+    "purchases": {
+      "heading": "Purchase orders are under construction",
+      "does": "Order from suppliers, receive the goods into stock and match the order, the receipt and the supplier's invoice."
+    },
+    "quotes": {
+      "heading": "Quotes are under construction",
+      "does": "A quote the customer accepts becomes the order: a deposit, what is left to deliver and invoice, then the invoice with nothing typed twice."
+    },
+    "ratings": {
+      "heading": "Ratings are under construction",
+      "does": "Collect customers' feedback after their visit and follow the venue's rating."
+    },
+    "recurring": {
+      "heading": "Recurring invoices are under construction",
+      "does": "A subscription or contract invoiced monthly or yearly: the drafts prepare themselves on the planned date."
+    },
+    "service": {
+      "heading": "Table service is under construction",
+      "does": "Take the order at the table, send it to the kitchen and the bar, and follow each table to the bill."
+    },
+    "statements": {
+      "heading": "Statements are under construction",
+      "does": "A customer's statement of account over a period, and a credit limit that warns before it is exceeded."
+    },
+    "stock_valuation": {
+      "heading": "Stock valuation is under construction",
+      "does": "The value of the stock on a date, at weighted average cost or first in, first out, and the cost of what was sold."
+    },
+    "venue": {
+      "heading": "The venue is under construction",
+      "does": "The floor plan of the room and the terrace with its tables, their live state and their capacity."
+    },
+    "whatsapp": {
+      "heading": "WhatsApp sending is under construction",
+      "does": "Send an invoice or a delivery note to the customer through WhatsApp, with a link to the document."
+    },
+    "zakat": {
+      "heading": "Zakat is under construction",
+      "does": "Work out the company's zakat on its hawl date, according to your school: the assets subject to it, the gold or silver nisab, and a yearly reminder."
     }
   },
   "account": {
