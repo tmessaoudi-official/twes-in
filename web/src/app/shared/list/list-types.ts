@@ -85,6 +85,12 @@ export interface ListDescriptor<Row> {
    * gives none of. Selecting text and the row's own controls never open it (design review finding 1).
    */
   link?: (row: Row) => unknown[];
+  /**
+   * What the record's link carries in the address, merged into the list's own (its page, search and filters), or null
+   * for a plain address: a list whose record opens as a sheet over it links to itself with the record named
+   * (docs/SPEC.md § 7, 2026-09-26).
+   */
+  linkQuery?: (row: Row) => Record<string, string> | null;
   /** Which column carries the link; the first column that cannot be hidden when not given. */
   linkColumn?: string;
   /** The row's own actions; the trailing column renders them. */

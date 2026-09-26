@@ -595,6 +595,34 @@ describe('InvoicePage', () => {
     await vi.waitFor(() => expect(over('payment-dialog-title')).not.toBeNull());
   });
 
+  // docs/SPEC.md § 7, 2026-09-26: the sheet's « Encaisser » opens the record with its payment asked, once.
+  it('asks for the payment its address names once the document is read, then forgets the address', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    invoice.set(issued);
+    fixture = TestBed.createComponent(InvoicePage);
+    fixture.componentRef.setInput('invoiceId', 'i1');
+    fixture.componentRef.setInput('pay', '1');
+    await settle();
+    await vi.waitFor(() => expect(over('payment-dialog-title')).not.toBeNull());
+    expect(navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({ queryParams: { pay: null } }),
+    );
+  });
+
+  it('asks for no payment its address names where nothing is owed or the member may not record one', async () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    granted.delete('payment.write');
+    invoice.set(issued);
+    fixture = TestBed.createComponent(InvoicePage);
+    fixture.componentRef.setInput('invoiceId', 'i1');
+    fixture.componentRef.setInput('pay', '1');
+    await settle();
+    await Promise.resolve();
+    fixture.detectChanges();
+    expect(over('payment-dialog-title')).toBeNull();
+  });
+
   it('offers no payment to a member who may not record one', async () => {
     granted.delete('payment.write');
     invoice.set(draft);

@@ -192,6 +192,29 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
     await expect(page.getByTestId('invoice-amount-due')).toHaveText(due);
 
+    // From its list, an issued invoice opens as a sheet over it; « Encaisser » there asks for the payment on the
+    // record (docs/SPEC.md § 7, 2026-09-24 22:51, row 123, and 2026-09-26).
+    await page.goto('/invoices');
+    await page.getByTestId('list-filter').fill(invoiceNumber);
+    await page.getByTestId('invoices-table').getByRole('link', { name: invoiceNumber }).click();
+    const sheet = page.getByTestId('invoice-sheet');
+    await expect(sheet).toBeVisible();
+    await expect(page).toHaveURL(/\/invoices\?.*open=/);
+    await expect(page.getByTestId('invoice-sheet-title')).toHaveText(invoiceNumber);
+    // The same amount the record showed, whatever the locale does with its separators.
+    const sheetDue = (await page.getByTestId('invoice-sheet-due').textContent()) ?? '';
+    expect(sheetDue.replace(/\D/g, '')).toContain(due.replace(/\D/g, ''));
+    await expect(page.getByTestId('invoices-table')).toBeVisible();
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('invoice-sheet-close').click();
+    await expect(sheet).toHaveCount(0);
+    await page.getByTestId('invoices-table').getByRole('link', { name: invoiceNumber }).click();
+    await page.getByTestId('invoice-sheet-pay').click();
+    await expect(page).toHaveURL(invoiceUrl);
+    await expect(page.getByTestId('payment-dialog-title')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('payment-dialog-title')).toHaveCount(0);
+
     // A credit note is rare, so it sits behind "⋮".
     await page.getByTestId('document-more').click();
     await page.getByTestId('document-menu-credit-note').click();

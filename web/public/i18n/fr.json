@@ -1111,6 +1111,14 @@
       "left": "Reste à encaisser",
       "paid_of": "{{paid}} payés sur {{total}}"
     },
+    "sheet": {
+      "label": "Aperçu de {{number}}",
+      "terms": "{{days}} jours",
+      "open": "Ouvrir",
+      "pay": "Encaisser",
+      "close": "Fermer l’aperçu",
+      "unreadable": "Ce document ne peut pas être lu."
+    },
     "payments": {
       "title": "Paiements",
       "none": "Aucun paiement enregistré.",

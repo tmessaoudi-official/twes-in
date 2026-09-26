@@ -56,13 +56,17 @@ test('the menu folds and unfolds inside settings too, and each menu keeps its ow
 
   // Settings opens labelled, as the round-6 board draws it (docs/SPEC.md § 7, 2026-09-25 17:22); folding it there
   // is remembered for settings alone.
+  // The toggle folds the menu on screen: clicked while the settings route is still loading, it folded the general
+  // one (CI, 2026-09-26: the trace's only write was to presentation.sidebar). Arrive first, then fold.
   await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('settings-area')).toBeVisible();
   await expect(nav).toHaveAttribute('data-sidebar', 'expanded');
   await page.getByTestId('sidebar-toggle').click();
   await expect(nav).toHaveAttribute('data-sidebar', 'rail');
 
   // The general menu is untouched by that, and folding IT does not unfold the settings one.
   await page.getByTestId('nav-home').click();
+  await expect(page.getByTestId('settings-area')).toHaveCount(0);
   await expect(nav).toHaveAttribute('data-sidebar', 'expanded');
   await page.getByTestId('sidebar-toggle').click();
   await expect(nav).toHaveAttribute('data-sidebar', 'rail');
@@ -70,6 +74,7 @@ test('the menu folds and unfolds inside settings too, and each menu keeps its ow
   await expect(nav).toHaveAttribute('data-sidebar', 'expanded');
 
   await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('settings-area')).toBeVisible();
   await expect(nav).toHaveAttribute('data-sidebar', 'rail');
   await forgetPreference(page, 'presentation.sidebar');
   await forgetPreference(page, 'presentation.sidebar-settings');

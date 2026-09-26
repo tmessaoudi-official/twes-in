@@ -90,6 +90,18 @@ export class InvoicesFacade {
   }
 
   /**
+   * One document for the list's sheet (docs/SPEC.md § 7, 2026-09-26): it leaves the document open on screen, the
+   * screen's busy state and its error alone, since the list stays usable beside it; null when it cannot be read.
+   */
+  async peek(companyId: string, id: string): Promise<InvoiceRow | null> {
+    try {
+      return await this.api.invoice(companyId, id);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * The few customers or products a person means while typing, and — by id — exactly the records an open document
    * names, still offered or not. A search that fails answers nothing and says so in `error`, rather than reading as
    * "nothing found": what the picker could not ask for is not the same as what does not exist.

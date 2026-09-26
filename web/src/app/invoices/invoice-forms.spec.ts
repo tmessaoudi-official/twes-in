@@ -16,6 +16,9 @@ import {
   paymentForm,
   paymentInput,
   shownStatus,
+  daysLate,
+  paidShare,
+  stillOwed,
 } from './invoice-forms';
 import type { CustomerOption, InvoiceOptions, InvoiceRow, ProductOption } from './invoices-types';
 
@@ -141,6 +144,48 @@ describe('invoice forms', () => {
       expect(shownStatus(invoice({ status: 'paid' }), '2027-01-01')).toBe('paid');
       expect(shownStatus(invoice({ status: 'draft', dueDate: null }), '2027-01-01')).toBe('draft');
       expect(shownStatus(invoice({ type: 'credit_note' }), '2027-01-01')).toBe('issued');
+    });
+  });
+
+  // One rule for the record page's « Enregistrer un paiement » and the sheet's « Encaisser » (docs/SPEC.md § 7, 2026-09-26).
+  describe('stillOwed', () => {
+    it('is an issued or partly paid invoice with something left to collect', () => {
+      expect(stillOwed(invoice())).toBe(true);
+      expect(stillOwed(invoice({ status: 'partially_paid', amountDue: '0.500' }))).toBe(true);
+    });
+
+    it('is never a credit note, a draft, a settled or cancelled document, nor one whose due is zero', () => {
+      expect(stillOwed(invoice({ type: 'credit_note' }))).toBe(false);
+      expect(stillOwed(invoice({ status: 'draft' }))).toBe(false);
+      expect(stillOwed(invoice({ status: 'paid', amountDue: '0.000' }))).toBe(false);
+      expect(stillOwed(invoice({ status: 'cancelled' }))).toBe(false);
+      expect(stillOwed(invoice({ amountDue: '0.000' }))).toBe(false);
+      expect(stillOwed(invoice({ amountDue: '-0.000' }))).toBe(false);
+      expect(stillOwed(null)).toBe(false);
+    });
+  });
+
+  describe('daysLate', () => {
+    it('counts the days since the due day, negative before it, across a month and a year', () => {
+      expect(daysLate('2026-09-13', '2026-09-16')).toBe(3);
+      expect(daysLate('2026-09-16', '2026-09-16')).toBe(0);
+      expect(daysLate('2026-10-10', '2026-09-16')).toBe(-24);
+      expect(daysLate('2026-12-30', '2027-01-02')).toBe(3);
+    });
+
+    it('counts whole days across a daylight saving change', () => {
+      expect(daysLate('2026-03-28', '2026-03-30')).toBe(2);
+      expect(daysLate('2026-10-24', '2026-10-26')).toBe(2);
+    });
+  });
+
+  describe('paidShare', () => {
+    it('is the part of the total paid, in whole percent, held between 0 and 100', () => {
+      expect(paidShare(invoice({ amountPaid: '714.000' }))).toBe(50);
+      expect(paidShare(invoice({ amountPaid: '0.000' }))).toBe(0);
+      expect(paidShare(invoice({ amountPaid: '1428.000' }))).toBe(100);
+      expect(paidShare(invoice({ amountPaid: '2000.000' }))).toBe(100);
+      expect(paidShare(invoice({ total: '0.000', amountPaid: '0.000' }))).toBe(0);
     });
   });
 

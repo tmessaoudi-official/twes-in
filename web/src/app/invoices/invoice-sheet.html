@@ -1,0 +1,188 @@
+<section
+  class="flex h-full flex-col gap-5 overflow-y-auto border-outline-variant bg-surface p-5 lg:border-l"
+  data-testid="invoice-sheet"
+  [attr.aria-label]="'invoices.sheet.label' | translate: { number: invoice()?.number ?? '' }"
+>
+  <div class="flex items-start justify-between gap-3">
+    @if (invoice(); as invoice) {
+      <div class="flex min-w-0 flex-col gap-2">
+        <app-status-badge
+          class="self-start"
+          [tone]="tone()"
+          [struck]="struck()"
+          data-testid="invoice-sheet-status"
+        >
+          {{ 'invoices.statuses.' + shown() | translate }}
+        </app-status-badge>
+        <h2
+          #heading
+          tabindex="-1"
+          class="text-2xl font-semibold tabular-nums outline-none"
+          data-testid="invoice-sheet-title"
+        >
+          {{ invoice.number }}
+        </h2>
+        @if (customerLinked()) {
+          <a
+            class="truncate text-accent-text underline-offset-2 hover:underline"
+            [routerLink]="['/customers', invoice.customerId]"
+            data-testid="invoice-sheet-customer"
+          >
+            {{ invoice.recordedCustomerName ?? invoice.customerName }}
+          </a>
+        } @else {
+          <span class="truncate" data-testid="invoice-sheet-customer">
+            {{ invoice.recordedCustomerName ?? invoice.customerName }}
+          </span>
+        }
+      </div>
+    } @else {
+      <span></span>
+    }
+    <button
+      mat-icon-button
+      type="button"
+      [appLabel]="'invoices.sheet.close' | translate"
+      data-testid="invoice-sheet-close"
+      (click)="close()"
+    >
+      <mat-icon aria-hidden="true">close</mat-icon>
+    </button>
+  </div>
+
+  @if (invoice() === null) {
+    <p role="alert" class="text-error" data-testid="invoice-sheet-unreadable">
+      {{ 'invoices.sheet.unreadable' | translate }}
+    </p>
+  }
+
+  @if (invoice(); as invoice) {
+    @if (owed()) {
+      <div
+        class="flex flex-col gap-3 rounded-2xl bg-surface-container-low p-4"
+        data-testid="invoice-sheet-due"
+      >
+        <span class="text-sm text-on-surface-variant">{{ 'invoices.due.left' | translate }}</span>
+        <span class="text-3xl font-semibold tabular-nums">
+          {{ invoice.amountDue | amount: scale() }}
+          <span class="text-base font-normal">{{ options()?.currency }}</span>
+        </span>
+        <div
+          class="h-2 overflow-hidden rounded-full bg-surface-container-highest"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          [attr.aria-valuenow]="share()"
+          [attr.aria-label]="
+            'invoices.due.paid_of'
+              | translate
+                : {
+                    paid: (invoice.amountPaid | amount: scale()),
+                    total: (invoice.total | amount: scale()),
+                  }
+          "
+          data-testid="invoice-sheet-progress"
+        >
+          <div class="h-full rounded-full bg-accent" [style.width.%]="share()"></div>
+        </div>
+        <div class="flex flex-wrap justify-between gap-2 text-sm tabular-nums">
+          <span class="text-on-surface-variant">
+            {{
+              'invoices.due.paid_of'
+                | translate
+                  : {
+                      paid: (invoice.amountPaid | amount: scale()),
+                      total: (invoice.total | amount: scale()),
+                    }
+            }}
+          </span>
+          @if (due(); as due) {
+            <span [class.text-error]="due.key === 'invoices.home.late'">
+              {{ due.key | translate: { days: due.days } }}
+            </span>
+          }
+        </div>
+      </div>
+    }
+
+    <div class="flex flex-wrap gap-2">
+      @if (mayPay()) {
+        <a
+          mat-flat-button
+          [routerLink]="['/invoices', invoice.id]"
+          [queryParams]="{ pay: 1 }"
+          data-testid="invoice-sheet-pay"
+        >
+          {{ 'invoices.sheet.pay' | translate }}
+        </a>
+      }
+      <a
+        mat-stroked-button
+        [routerLink]="['/invoices', invoice.id]"
+        data-testid="invoice-sheet-open"
+      >
+        {{ 'invoices.sheet.open' | translate }}
+      </a>
+      @if (pdfUrl(); as pdf) {
+        <a
+          mat-icon-button
+          [href]="pdf"
+          target="_blank"
+          rel="noopener"
+          [appLabel]="'invoices.actions.pdf' | translate"
+          data-testid="invoice-sheet-pdf"
+        >
+          <mat-icon aria-hidden="true">picture_as_pdf</mat-icon>
+        </a>
+      }
+    </div>
+
+    <dl
+      class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm"
+      data-testid="invoice-sheet-details"
+    >
+      <dt class="text-on-surface-variant">{{ 'invoices.fields.issueDate' | translate }}</dt>
+      <dd class="tabular-nums">{{ invoice.issueDate | day }}</dd>
+      @if (invoice.dueDate) {
+        <dt class="text-on-surface-variant">{{ 'invoices.fields.dueDate' | translate }}</dt>
+        <dd class="tabular-nums">
+          {{ invoice.dueDate | day }}
+          @if (invoice.paymentTermsDays !== null) {
+            · {{ 'invoices.sheet.terms' | translate: { days: invoice.paymentTermsDays } }}
+          }
+        </dd>
+      }
+      @if (establishment(); as establishment) {
+        <dt class="text-on-surface-variant">{{ 'invoices.fields.establishmentId' | translate }}</dt>
+        <dd>{{ establishment }}</dd>
+      }
+    </dl>
+
+    @if (invoice.payments.length > 0) {
+      <div class="flex flex-col gap-2">
+        <h3 class="text-sm font-medium text-on-surface-variant">
+          {{ 'invoices.payments.title' | translate }}
+        </h3>
+        <ul class="flex flex-col divide-y divide-outline-variant">
+          @for (payment of invoice.payments; track payment.id) {
+            <li
+              class="flex items-baseline justify-between gap-3 py-2 text-sm"
+              [attr.data-testid]="'invoice-sheet-payment-' + payment.id"
+            >
+              <span class="flex min-w-0 flex-col">
+                <span>
+                  {{ 'invoices.payments.methods.' + payment.method | translate }} ·
+                  <span class="tabular-nums">{{ payment.date | day }}</span>
+                </span>
+                @if (payment.reference) {
+                  <span class="truncate text-on-surface-variant">{{ payment.reference }}</span>
+                }
+              </span>
+              <span class="tabular-nums">{{ payment.amount | amount: scale() }}</span>
+            </li>
+          }
+        </ul>
+      </div>
+    }
+  }
+</section>

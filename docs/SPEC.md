@@ -3098,7 +3098,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
     then share one key, all four ruled keys come back.
   - **Not configurable:** Ctrl K and the screens' own keys. Changing a screen key would mean a per-screen setting
     nobody asked for.
-- [2026-09-26 05:03] DECIDED (revisit), row 123, « Factures » as approved, first slice: **each status chip says how many
+- [2026-09-26 05:02] DECIDED (revisit), row 123, « Factures » as approved, first slice: **each status chip says how many
   documents it would list.** `GET …/invoice-status-counts` counts under the list's own words, document type and
   customer, with the status left aside. « Tous » is the total under those filters. A status holding none shows 0. «
   En retard » is counted by the list's own condition on the company's day, and an overdue invoice is also counted
@@ -3113,6 +3113,24 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
     - « Envoyée par e-mail » (no sending);
     - the sidebar's « Épinglés ».
   - Next is the record as a sheet over its list.
+- [2026-09-26 05:33] DECIDED (revisit), row 123, second slice: **an issued document opens as a sheet over « Factures ».**
+  From a tablet up (600 px and wider), a row's link names the document in the list's own address (`/invoices?open=<id>`,
+  merged with the list's page and filters). It is docked beside the list from 1200 px and laid over it below that.
+  - The sheet only reads. It shows the status, the number, the customer as the document recorded them (a link while the
+    customers module is on), what is left to collect with a bar of what is paid, how many days are left or late, the
+    dates and terms, the establishment and the payments.
+  - It offers « Encaisser », « Ouvrir » and the PDF. « Encaisser » opens the record with `?pay=1`, which asks for the
+    payment once the document is read and then forgets the address, so every payment is still recorded in one place.
+  - A draft still opens its editor, since a draft is a form. On a phone every document opens at its own address. An
+    `?open=` link reaching a phone opens that record instead.
+  - `/invoices/:id` is unchanged. The record page's payment button and the sheet share one rule for "still owed"
+    (`stillOwed`).
+  - Left out, with no data behind them: « Relancer », « Envoyée par e-mail / Consultée » and an activity line (no audit
+    read API for a document).
+  - Not done yet: marking the open row in the list.
+  - Also fixed in this commit: `global-changes.spec.ts` now waits for the settings area before folding its menu. The
+    CI trace of 60af45d5 shows the toggle clicked while the settings route was still loading, so it folded the general
+    menu. That is not a product defect: the toggle folds whichever menu is on screen.
 
 ## 8. Status
 

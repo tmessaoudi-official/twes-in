@@ -183,7 +183,7 @@ const declared: ListDescriptor<Customer> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-data-list
-      [descriptor]="descriptor"
+      [descriptor]="descriptor()"
       [rows]="rows()"
       testId="customers-table"
       [rowTestId]="rowTestId"
@@ -197,7 +197,7 @@ const declared: ListDescriptor<Customer> = {
   `,
 })
 class DeclaredHost {
-  readonly descriptor = declared;
+  readonly descriptor = signal<ListDescriptor<Customer>>(declared);
   readonly rows = signal<Customer[]>(all.slice(0, 3));
   readonly rowTestId = (row: Customer) => `customer-${row.id}`;
 }
@@ -834,6 +834,21 @@ describe('DataList', () => {
         'Customer 01',
       );
       expect(host.nativeElement.querySelectorAll('a[data-testid^="list-link-"]')).toHaveLength(3);
+    });
+
+    // docs/SPEC.md § 7, 2026-09-26: a list whose record opens as a sheet over it links to itself, the record named in
+    // the address beside the list's own state; a row that has no sheet keeps its record's address.
+    it('carries in the link the query a row names, and a plain address for a row that names none', async () => {
+      host.componentInstance.descriptor.set({
+        ...declared,
+        link: (row) => (row.id === '2' ? ['/customers', row.id] : ['/customers']),
+        linkQuery: (row) => (row.id === '2' ? null : { open: row.id }),
+      });
+      host.detectChanges();
+      expect(inRow('1', 'a[data-testid="list-link-1"]')?.getAttribute('href')).toBe(
+        '/customers?open=1',
+      );
+      expect(inRow('2', 'a[data-testid="list-link-2"]')?.getAttribute('href')).toBe('/customers/2');
     });
 
     it('wraps the cell template rather than replacing it, since the naming column usually has one', async () => {

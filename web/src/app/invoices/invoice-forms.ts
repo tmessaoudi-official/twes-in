@@ -52,6 +52,31 @@ export function shownStatus(invoice: InvoiceRow, today: string): InvoiceShownSta
     : invoice.status;
 }
 
+/**
+ * Whether a document still has money to collect: an issued or partly paid invoice whose amount due is not zero. A
+ * credit note is paid back, never collected. The record page's payment button and the sheet's « Encaisser » both ask
+ * it, so the two cannot offer a payment the other would not.
+ */
+export function stillOwed(invoice: InvoiceRow | null | undefined): boolean {
+  if (!invoice || invoice.type === 'credit_note') return false;
+  const open = invoice.status === 'issued' || invoice.status === 'partially_paid';
+  return open && !/^-?[0.]+$/.test(invoice.amountDue);
+}
+
+/** Whole days from the due day to `today` (both YYYY-MM-DD): positive once late, negative while still to come. */
+export function daysLate(dueDate: string, today: string): number {
+  return Math.round(
+    (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${dueDate}T00:00:00Z`)) / 86_400_000,
+  );
+}
+
+/** How much of a document's total is paid, in whole percent from 0 to 100: a drawing proportion, never a figure read. */
+export function paidShare(invoice: InvoiceRow): number {
+  const total = Number(invoice.total);
+  if (!(total > 0)) return 0;
+  return Math.min(100, Math.max(0, Math.round((Number(invoice.amountPaid) / total) * 100)));
+}
+
 const SORT_KEYS: Readonly<Record<string, InvoiceSortKey>> = {
   number: 'number',
   customer: 'customer',

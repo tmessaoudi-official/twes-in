@@ -25,45 +25,61 @@
     </p>
   }
 
-  <app-data-list
-    [descriptor]="list"
-    [rows]="rows()"
-    [total]="total()"
-    [facetCounts]="facetCounts()"
-    (queryChange)="onQuery($event)"
-    testId="invoices-table"
-    [rowTestId]="rowTestId"
-    emptyKey="invoices.none"
-    emptyTestId="invoices-empty"
-  >
-    <ng-template appDataListCell="number" let-row>
-      <span class="flex flex-col">
-        <span class="tabular-nums">{{ row.number ?? ('invoices.draft' | translate) }}</span>
-        @if (row.type === 'credit_note') {
-          <span class="text-xs text-on-surface-variant">{{
-            'invoices.types.credit_note' | translate
-          }}</span>
+  <div class="flex items-start gap-6">
+    <app-data-list
+      class="min-w-0 flex-1"
+      [descriptor]="list()"
+      [rows]="rows()"
+      [total]="total()"
+      [facetCounts]="facetCounts()"
+      (queryChange)="onQuery($event)"
+      testId="invoices-table"
+      [rowTestId]="rowTestId"
+      emptyKey="invoices.none"
+      emptyTestId="invoices-empty"
+    >
+      <ng-template appDataListCell="number" let-row>
+        <span class="flex flex-col">
+          <span class="tabular-nums">{{ row.number ?? ('invoices.draft' | translate) }}</span>
+          @if (row.type === 'credit_note') {
+            <span class="text-xs text-on-surface-variant">{{
+              'invoices.types.credit_note' | translate
+            }}</span>
+          }
+        </span>
+      </ng-template>
+      <ng-template appDataListCell="status" let-row>
+        <app-status-badge [tone]="toneOf(row.shown)" [struck]="struckOf(row.shown)">
+          {{ 'invoices.statuses.' + row.shown | translate }}
+        </app-status-badge>
+      </ng-template>
+      <ng-template appDataListCell="issueDate" let-row>
+        {{ row.issueDate | day }}
+      </ng-template>
+      <ng-template appDataListCell="dueDate" let-row>
+        {{ row.dueDate | day }}
+      </ng-template>
+      <ng-template appDataListCell="total" let-row>
+        <span class="tabular-nums">{{ row.total | amount: scale() }}</span>
+      </ng-template>
+      <ng-template appDataListCell="amountDue" let-row>
+        @if (row.type === 'invoice' && row.status !== 'draft' && row.status !== 'cancelled') {
+          <span class="tabular-nums">{{ row.amountDue | amount: scale() }}</span>
         }
-      </span>
-    </ng-template>
-    <ng-template appDataListCell="status" let-row>
-      <app-status-badge [tone]="toneOf(row.shown)" [struck]="struckOf(row.shown)">
-        {{ 'invoices.statuses.' + row.shown | translate }}
-      </app-status-badge>
-    </ng-template>
-    <ng-template appDataListCell="issueDate" let-row>
-      {{ row.issueDate | day }}
-    </ng-template>
-    <ng-template appDataListCell="dueDate" let-row>
-      {{ row.dueDate | day }}
-    </ng-template>
-    <ng-template appDataListCell="total" let-row>
-      <span class="tabular-nums">{{ row.total | amount: scale() }}</span>
-    </ng-template>
-    <ng-template appDataListCell="amountDue" let-row>
-      @if (row.type === 'invoice' && row.status !== 'draft' && row.status !== 'cancelled') {
-        <span class="tabular-nums">{{ row.amountDue | amount: scale() }}</span>
-      }
-    </ng-template>
-  </app-data-list>
+      </ng-template>
+    </app-data-list>
+    @if (sheetId(); as sheetId) {
+      <!-- Beside the list on a wide window, over it on a tablet (docs/SPEC.md § 7, 2026-09-26). -->
+      <app-invoice-sheet
+        [class]="
+          wide()
+            ? 'sticky top-0 max-h-[calc(100dvh-6rem)] w-96 shrink-0 overflow-hidden rounded-3xl border border-outline-variant'
+            : 'fixed inset-y-0 right-0 z-30 w-[min(24rem,100vw)] shadow-2xl'
+        "
+        [invoiceId]="sheetId"
+        [today]="today()"
+        (closed)="closeSheet()"
+      />
+    }
+  </div>
 </section>

@@ -353,6 +353,8 @@
               @if (column.id === linkColumnId() && descriptor().link; as link) {
                 <a
                   [routerLink]="link(row)"
+                  [queryParams]="descriptor().linkQuery?.(row) ?? null"
+                  [queryParamsHandling]="descriptor().linkQuery?.(row) ? 'merge' : null"
                   class="twes-row-link"
                   [attr.data-testid]="'list-link-' + descriptor().rowId(row)"
                 >
@@ -499,6 +501,8 @@
   @if (descriptor().link; as link) {
     <a
       [routerLink]="link(row)"
+      [queryParams]="descriptor().linkQuery?.(row) ?? null"
+      [queryParamsHandling]="descriptor().linkQuery?.(row) ? 'merge' : null"
       class="twes-row-link"
       [attr.data-testid]="'list-link-' + descriptor().rowId(row)"
     >

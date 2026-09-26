@@ -1111,6 +1111,14 @@
       "left": "Still to collect",
       "paid_of": "{{paid}} paid of {{total}}"
     },
+    "sheet": {
+      "label": "Preview of {{number}}",
+      "terms": "{{days}} days",
+      "open": "Open",
+      "pay": "Collect",
+      "close": "Close the preview",
+      "unreadable": "This document cannot be read."
+    },
     "payments": {
       "title": "Payments",
       "none": "No payments recorded.",

@@ -5,7 +5,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -13,6 +13,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { WINDOW_CLASS, type WindowClass } from '../shared/ui/window-class';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -113,13 +114,17 @@ describe('InvoicesPage', () => {
     loadListContext: vi.fn(),
     loadPage: vi.fn(),
     loadStatusCounts: vi.fn(),
+    peek: vi.fn(),
+    pdfUrl: (companyId: string, id: string) => `/api/companies/${companyId}/invoices/${id}/pdf`,
   };
+  const windowClass = signal<WindowClass>('expanded');
   const auth = {
     me: () => ({
       user: { id: 'u1' },
       company: { id: 'c1', name: 'Acme', timezone: 'Africa/Tunis' },
     }),
     hasPermission: vi.fn(),
+    hasModule: () => true,
   };
   let fixture: ComponentFixture<InvoicesPage>;
 
@@ -141,6 +146,8 @@ describe('InvoicesPage', () => {
     facade.loadPage.mockReset().mockResolvedValue(undefined);
     facade.loadStatusCounts.mockReset().mockResolvedValue(undefined);
     statusCounts.set(null);
+    windowClass.set('expanded');
+    facade.peek.mockReset().mockResolvedValue(issued);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [InvoicesPage],
@@ -159,6 +166,7 @@ describe('InvoicesPage', () => {
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+        { provide: WINDOW_CLASS, useValue: windowClass },
       ],
     });
     fixture = TestBed.createComponent(InvoicesPage);
@@ -175,9 +183,53 @@ describe('InvoicesPage', () => {
     expect(row).toContain('Partiellement payée');
     expect(tone('invoice-i1')).toBe('warning');
     // The row's number IS the link now; "Ouvrir" is gone (design review finding 1).
-    expect(q('list-link-i1')?.getAttribute('href')).toBe('/invoices/i1');
     expect(q('list-link-i1')?.textContent).toContain('FAC-2026-00045');
     expect(q('invoice-open-i1')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-24 22:51 (row 123) and 2026-09-26: from a tablet up, an issued document opens as a sheet
+  // over its list, named in the list's own address; a draft opens its editor, and a phone the record itself.
+  it('opens an issued document as a sheet over the list, and a draft in its editor', async () => {
+    expect(q('list-link-i1')?.getAttribute('href')).toBe('/invoices?open=i1');
+    expect(q('list-link-i4')?.getAttribute('href')).toBe('/invoices?open=i4');
+    expect(q('list-link-i3')?.getAttribute('href')).toBe('/invoices/i3');
+
+    windowClass.set('medium');
+    await settle();
+    expect(q('list-link-i1')?.getAttribute('href')).toBe('/invoices?open=i1');
+  });
+
+  it('opens every document at its own address on a phone, where a sheet would cover the list', async () => {
+    windowClass.set('compact');
+    await settle();
+    expect(q('list-link-i1')?.getAttribute('href')).toBe('/invoices/i1');
+    expect(q('list-link-i3')?.getAttribute('href')).toBe('/invoices/i3');
+  });
+
+  it('shows the sheet of the document its address names, and forgets it when the sheet is closed', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    expect(q('invoice-sheet')).toBeNull();
+    fixture.componentRef.setInput('open', 'i1');
+    await settle();
+    expect(facade.peek).toHaveBeenCalledWith('c1', 'i1');
+    expect(q('invoice-sheet')).not.toBeNull();
+    // The list stays beside it, still usable.
+    expect(q('invoice-i2')).not.toBeNull();
+
+    q('invoice-sheet-close')!.click();
+    expect(navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({ queryParams: { open: null }, queryParamsHandling: 'merge' }),
+    );
+  });
+
+  it('opens at its own address a sheet named on a phone, as a link copied from a wider screen', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    windowClass.set('compact');
+    fixture.componentRef.setInput('open', 'i1');
+    await settle();
+    expect(q('invoice-sheet')).toBeNull();
+    expect(navigate).toHaveBeenCalledWith(['/invoices', 'i1'], { replaceUrl: true });
   });
 
   it('shows an issued invoice past its due day as overdue, in the danger tone', () => {

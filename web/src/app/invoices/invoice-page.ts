@@ -39,6 +39,7 @@ import {
   paymentValues,
   pickedCustomer,
   shownStatus,
+  stillOwed,
 } from './invoice-forms';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { InvoiceLines } from './invoice-lines';
@@ -121,6 +122,11 @@ export class InvoicePage {
    * forgotten by the address (docs/SPEC.md § 7, 2026-09-26, row 139).
    */
   readonly billTo = input<string | undefined>(undefined);
+  /**
+   * `?pay=1` on an issued document: the sheet's « Encaisser », which opens the record with its payment asked once the
+   * document is read, where one is still owed, then forgotten by the address (docs/SPEC.md § 7, 2026-09-26).
+   */
+  readonly pay = input<string | undefined>(undefined);
 
   protected readonly id = computed(() => this.invoiceId() ?? null);
   protected readonly options = this.facade.options;
@@ -546,6 +552,23 @@ export class InvoicePage {
         });
       });
     });
+    let payAskedFor: string | null = null;
+    effect(() => {
+      const current = this.current();
+      if (this.pay() === undefined || !current || current.id !== this.id()) return;
+      // Once per document: a payment recorded re-reads it, which must not ask for another.
+      if (payAskedFor === current.id) return;
+      payAskedFor = current.id;
+      untracked(() => {
+        void this.router.navigate([], {
+          queryParams: { pay: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+        // openPayment asks nothing where nothing is owed or the member may not record a payment.
+        void this.openPayment();
+      });
+    });
     // Waits for the new document and its options only: lines drawn again before the address forgets the customer
     // must not choose it a second time over another pick. The lines read the customer when they are drawn.
     effect(() => {
@@ -630,13 +653,7 @@ export class InvoicePage {
   /** An amount the API wrote as zero at any scale, "0" or "0.000". */
   /** Whether a payment can be recorded against this document, by this member: an open invoice with money owed. */
   private owes(document: InvoiceRow | null | undefined): boolean {
-    const status = document?.status;
-    return (
-      document?.type !== 'credit_note' &&
-      (status === 'issued' || status === 'partially_paid') &&
-      this.mayPay() &&
-      !this.isZero(document?.amountDue ?? '0')
-    );
+    return stillOwed(document) && this.mayPay();
   }
 
   protected isZero(amount: string): boolean {

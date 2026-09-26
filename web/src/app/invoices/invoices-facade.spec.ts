@@ -220,6 +220,20 @@ describe('InvoicesFacade', () => {
     expect(facade.invoice()).toEqual(credit);
   });
 
+  // docs/SPEC.md § 7, 2026-09-26: the list's sheet reads a document beside the one open on screen, never over it.
+  it('reads a document for the sheet without making it the document on screen', async () => {
+    await facade.loadInvoice('c1', 'i1');
+    api.invoice.mockResolvedValueOnce(issued);
+    expect(await facade.peek('c1', 'i2')).toEqual(issued);
+    expect(api.invoice).toHaveBeenLastCalledWith('c1', 'i2');
+    expect(facade.invoice()).toEqual(draft);
+
+    api.invoice.mockRejectedValueOnce(new InvoicesRefused('not_found'));
+    expect(await facade.peek('c1', 'gone')).toBeNull();
+    expect(facade.error()).toBeNull();
+    expect(facade.busy()).toBe(false);
+  });
+
   it('names a network failure apart from a refusal', async () => {
     api.invoices.mockRejectedValue(new Error('offline'));
     await facade.loadPage('c1', search);
