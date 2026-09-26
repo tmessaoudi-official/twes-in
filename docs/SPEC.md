@@ -3136,6 +3136,10 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   status left aside, and « Tous » is their sum. « Nouveau bon de livraison » names the person's N key.
   - Delivery notes do not open as a sheet yet: a delivery note has no amount to collect, so the invoice sheet does not
     fit it as it stands. What such a sheet should show is left to the design review.
+- [2026-09-26 06:25] DECIDED (revisit), row 123, fourth slice: **« Dépenses » gets the same counted chips.**
+  `GET …/expense-status-counts` counts draft, recorded and paid under the list's own words, vendor and category, with
+  the status left aside. « Nouvelle dépense » names the person's N key. Paged lists with status chips now all say their
+  counts: invoices, delivery notes and expenses.
 
 ## 8. Status
 

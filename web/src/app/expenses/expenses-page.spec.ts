@@ -23,7 +23,12 @@ import {
 import { provideQuietFeedback } from '../shared/testing/feedback';
 import { ExpensesFacade } from './expenses-facade';
 import { ExpensesPage } from './expenses-page';
-import type { ExpenseOptions, ExpenseRow, ExpensesError } from './expenses-types';
+import type {
+  ExpenseOptions,
+  ExpenseRow,
+  ExpensesError,
+  ExpenseStatusCounts,
+} from './expenses-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -62,13 +67,16 @@ const fuel: ExpenseRow = {
 describe('ExpensesPage', () => {
   const expenses = signal<readonly ExpenseRow[]>([fuel]);
   const options = signal<ExpenseOptions | null>(null);
+  const statusCounts = signal<ExpenseStatusCounts | null>(null);
   const facade = {
     expenses: expenses.asReadonly(),
     total: signal(1).asReadonly(),
     error: signal<ExpensesError | null>(null).asReadonly(),
     options: options.asReadonly(),
+    statusCounts: statusCounts.asReadonly(),
     loadPage: vi.fn(),
     loadOptions: vi.fn(),
+    loadStatusCounts: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -89,6 +97,8 @@ describe('ExpensesPage', () => {
   beforeEach(() => {
     facade.loadPage.mockReset().mockResolvedValue(undefined);
     facade.loadOptions.mockReset().mockResolvedValue(undefined);
+    facade.loadStatusCounts.mockReset().mockResolvedValue(undefined);
+    statusCounts.set(null);
     options.set(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
@@ -130,6 +140,26 @@ describe('ExpensesPage', () => {
       'c1',
       expect.objectContaining({ page: 1, itemsPerPage: 25, q: '', status: null }),
     );
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26: each status chip says how many it would list, as the API counts them.
+  it('asks the API what each status would list, and says it on the chips', async () => {
+    await create();
+    expect(facade.loadStatusCounts).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ q: '', vendorId: null, categoryId: null }),
+    );
+    statusCounts.set({ all: 16, statuses: { draft: 2, recorded: 5, paid: 9 } });
+    fixture.detectChanges();
+    const count = (id: string) => q(id)?.querySelector('.twes-chip-count')?.textContent;
+    expect(count('list-facet-status-all')).toBe('16');
+    expect(count('list-facet-status-paid')).toBe('9');
+  });
+
+  it('names the key that opens a new expense from here (docs/SPEC.md § 7, 2026-09-24 22:51)', async () => {
+    await create();
+    expect(q('expense-add')?.getAttribute('aria-keyshortcuts')).toBe('n');
+    expect(q('expense-add')?.querySelector('kbd')?.textContent).toBe('N');
   });
 
   it('offers a reader no new expense', async () => {

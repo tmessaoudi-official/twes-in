@@ -13,6 +13,7 @@ import type {
   ExpenseExpenseWrite,
   ExpenseJsonldExpenseRead,
   ExpenseOptionsExpenseOptionsRead,
+  ExpenseStatusCountsExpenseStatusCountsRead,
   ExpenseExpenseClassify,
   ExpenseVendorPickExpenseVendorPickRead,
 } from '../api/types.gen';
@@ -28,6 +29,7 @@ import type {
   ExpenseRow,
   ExpenseSearch,
   ExpensesError,
+  ExpenseStatusCounts,
   ExpenseVendorOption,
   TejFileAnswer,
   TejRefusalCode,
@@ -99,6 +101,21 @@ export class ExpensesApi {
       if (page.totalItems === undefined)
         throw new Error('A page of expenses came without its total.');
       return { rows: page.member.map(toExpense), total: page.totalItems };
+    });
+  }
+
+  /** What each status chip would list under the list's words, vendor and category (docs/SPEC.md § 7, 2026-09-26). */
+  async statusCounts(companyId: string, search: ExpenseSearch): Promise<ExpenseStatusCounts> {
+    return this.guard(EXPENSE, async () => {
+      const counts = await firstValueFrom(
+        this.http.get<ExpenseStatusCountsExpenseStatusCountsRead>(
+          path(companyId, 'expense-status-counts'),
+          { params: toCountParams(search) },
+        ),
+      );
+      if (counts.all === undefined || counts.statuses === undefined)
+        throw new Error('Status counts came without their figures.');
+      return { all: counts.all, statuses: { ...counts.statuses } };
     });
   }
 
@@ -366,6 +383,15 @@ function toSearchParams(search: ExpenseSearch): HttpParams {
   if (search.categoryId !== null) params = params.set('categoryId', search.categoryId);
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
+  return params;
+}
+
+/** The chips narrow by status themselves, and a count has no page or order. */
+function toCountParams(search: ExpenseSearch): HttpParams {
+  let params = new HttpParams();
+  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (search.vendorId !== null) params = params.set('vendorId', search.vendorId);
+  if (search.categoryId !== null) params = params.set('categoryId', search.categoryId);
   return params;
 }
 

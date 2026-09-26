@@ -107,6 +107,43 @@ describe('ExpensesApi', () => {
     expect(page.total).toBe(64);
   });
 
+  // docs/SPEC.md § 7, 2026-09-26: « Dépenses »'s chips say how many each would list.
+  it('asks how many expenses each status would list, under the list’s own words, vendor and category', async () => {
+    const pending = api.statusCounts('c1', {
+      page: 2,
+      itemsPerPage: 50,
+      q: '  gasoil  ',
+      status: 'recorded',
+      vendorId: 'v1',
+      categoryId: 'k1',
+      order: { key: 'amountGross', direction: 'desc' },
+    });
+    const request = http.expectOne(
+      (candidate) =>
+        candidate.url === '/api/companies/c1/expense-status-counts' && candidate.method === 'GET',
+    );
+    // The chips narrow by status themselves, and a count has no page or order.
+    expect(request.request.params.keys().sort()).toEqual(['categoryId', 'q', 'vendorId']);
+    expect(request.request.params.get('q')).toBe('gasoil');
+    const statuses = { draft: 2, recorded: 5, paid: 9 };
+    request.flush({ all: 16, statuses });
+    expect(await pending).toEqual({ all: 16, statuses });
+  });
+
+  it('refuses counts that came without their figures, rather than showing none as nothing', async () => {
+    const pending = api.statusCounts('c1', {
+      page: 1,
+      itemsPerPage: 25,
+      q: '',
+      status: null,
+      vendorId: null,
+      categoryId: null,
+      order: null,
+    });
+    http.expectOne('/api/companies/c1/expense-status-counts').flush({ all: 5 });
+    await expect(pending).rejects.toThrow();
+  });
+
   it('refuses a page that came without its total, rather than showing one page as the whole list', async () => {
     const pending = api.expenses('c1', {
       page: 1,

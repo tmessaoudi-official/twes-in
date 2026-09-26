@@ -439,6 +439,8 @@ final class ExpensesTest extends ApiTestCase
             $this->getJson($this->path().$hidden);
             self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, "expenses$hidden while the module is off");
         }
+        $this->getJson($this->companyPath().'/expense-status-counts');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the chips\' counts are the module\'s too');
         $this->sendJson('PUT', $this->companyPath().'/modules/expenses', ['enabled' => true]);
 
         $this->sendJson('POST', '/api/auth/logout');
@@ -519,6 +521,57 @@ final class ExpensesTest extends ApiTestCase
             $this->getJson($this->path().'?'.$refused);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
         }
+    }
+
+    /** docs/SPEC.md § 7, 2026-09-26: each status chip of « Dépenses » says how many it would list. */
+    public function testEachStatusChipCountsWhatItsFilterWouldList(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $fuel = $this->category('Carburant');
+        $rent = $this->category('Loyer');
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertInstanceOf(Company::class, $company);
+        $other = Vendor::create($company, 'FRN-0002', new VendorProfile('Immobilière du Lac'), new \DateTimeImmutable());
+        $this->em()->persist($other);
+        $this->em()->flush();
+        $otherId = $other->getId()->toRfc4122();
+        $this->postJson($this->path(), $this->expense(['categoryId' => $fuel]));
+        $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/record', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path(), $this->expense(['description' => 'Loyer du dépôt', 'vendorId' => $otherId, 'categoryId' => $rent]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->getJson($this->companyPath().'/expense-status-counts');
+        self::assertResponseIsSuccessful();
+        self::assertSame(2, $this->json()['all']);
+        self::assertSame(['draft' => 1, 'recorded' => 1, 'paid' => 0], $this->json()['statuses']);
+
+        foreach (['', 'q=loyer', 'vendorId='.$otherId, 'categoryId='.$fuel] as $filters) {
+            $this->getJson($this->companyPath().'/expense-status-counts?'.$filters);
+            self::assertResponseIsSuccessful($filters);
+            $counts = $this->json();
+            $statuses = $counts['statuses'];
+            self::assertIsArray($statuses);
+            $this->getJson($this->path().'?'.$filters);
+            self::assertSame($this->jsonPage()['totalItems'], $counts['all'], $filters);
+            foreach (['draft', 'recorded', 'paid'] as $status) {
+                $this->getJson($this->path().'?'.ltrim($filters.'&status='.$status, '&'));
+                self::assertSame($this->jsonPage()['totalItems'], $statuses[$status], $filters.' '.$status);
+            }
+        }
+
+        $this->getJson($this->companyPath().'/expense-status-counts?vendorId=not-an-id');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a narrowing it cannot honour is refused');
+    }
+
+    public function testStatusCountsAreAReadersOnlyAndNotAnotherCompanys(): void
+    {
+        $this->signedIn(['vendor.read']);
+        $this->getJson($this->companyPath().'/expense-status-counts');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $globex = $this->createCompany('Globex');
+        $this->getJson('/api/companies/'.$globex->getId()->toRfc4122().'/expense-status-counts');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
     private function category(string $name, ?string $parentId = null): string

@@ -26,6 +26,14 @@ interface ExpenseRepository
     public function search(Uuid $companyId, ExpenseSearch $search, PageRequest $page): Page;
 
     /**
+     * How many expenses each status chip of the list would show under the same words, vendor and category, the status
+     * left aside (docs/SPEC.md § 7, 2026-09-26), and how many in all.
+     *
+     * @return array{all: int, statuses: array<string, int>} every status named, in the enum's order
+     */
+    public function statusCounts(Uuid $companyId, ExpenseSearch $search): array;
+
+    /**
      * A company's expenses paid from one day included to another excluded, by day of payment, then as they were
      * written down.
      *

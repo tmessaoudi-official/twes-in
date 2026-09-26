@@ -37,6 +37,12 @@ export type ExpenseSortKey =
   'date' | 'description' | 'vendor' | 'category' | 'amountGross' | 'status';
 
 /** One page of the expenses list as the API searches, narrows and sorts it (docs/SPEC.md § 7, lists at scale). */
+/** What each status chip of the list would show under the same search, as the API counted it (docs/SPEC.md § 7, 2026-09-26). */
+export interface ExpenseStatusCounts {
+  all: number;
+  statuses: Record<ExpenseStatus, number>;
+}
+
 export interface ExpenseSearch {
   /** Numbered from 1. */
   page: number;

@@ -68,6 +68,7 @@ describe('ExpensesFacade', () => {
     categories: vi.fn(),
     createCategory: vi.fn(),
     reviseCategory: vi.fn(),
+    statusCounts: vi.fn(),
   };
   let facade: ExpensesFacade;
 
@@ -95,6 +96,22 @@ describe('ExpensesFacade', () => {
     expect(api.expenses).toHaveBeenCalledWith('c1', search);
     expect(facade.expenses()).toEqual([draft]);
     expect(facade.total()).toBe(42);
+  });
+
+  it('shows the chips’ counts of the latest search, whatever order the answers come back in', async () => {
+    const counts = (all: number) => ({ all, statuses: { draft: all, recorded: 0, paid: 0 } });
+    let answerStale: (value: ReturnType<typeof counts>) => void = () => undefined;
+    api.statusCounts
+      .mockReturnValueOnce(new Promise((resolve) => (answerStale = resolve)))
+      .mockResolvedValueOnce(counts(4));
+
+    const stale = facade.loadStatusCounts('c1', search);
+    const latest = facade.loadStatusCounts('c1', { ...search, q: 'gasoil' });
+    await latest;
+    answerStale(counts(40));
+    await stale;
+
+    expect(facade.statusCounts()?.all).toBe(4);
   });
 
   it('shows the answer to the latest search, whatever order the answers come back in', async () => {

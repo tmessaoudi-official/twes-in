@@ -199,6 +199,11 @@ final class DeclareTejWithholdingsTest extends TestCase
                 throw new \LogicException('not used');
             }
 
+            public function statusCounts(Uuid $companyId, ExpenseSearch $search): array
+            {
+                throw new \LogicException('not used');
+            }
+
             public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Expense
             {
                 return null;

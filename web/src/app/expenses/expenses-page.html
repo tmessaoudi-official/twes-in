@@ -16,8 +16,14 @@
           </button>
         }
         @if (mayWrite() && company()) {
-          <a mat-flat-button routerLink="/expenses/new" data-testid="expense-add">
+          <a
+            mat-flat-button
+            routerLink="/expenses/new"
+            data-testid="expense-add"
+            [attr.aria-keyshortcuts]="newKey()"
+          >
             {{ 'expenses.add' | translate }}
+            <kbd class="twes-button-key" aria-hidden="true">{{ keyName(newKey()) }}</kbd>
           </a>
         }
       </div>
@@ -36,6 +42,7 @@
       [descriptor]="list"
       [rows]="rows()"
       [total]="total()"
+      [facetCounts]="facetCounts()"
       (queryChange)="onQuery($event)"
       testId="expenses-table"
       [rowTestId]="rowTestId"

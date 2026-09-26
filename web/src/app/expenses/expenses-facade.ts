@@ -13,6 +13,7 @@ import type {
   ExpenseRow,
   ExpenseSearch,
   ExpensesError,
+  ExpenseStatusCounts,
   ExpenseVendorOption,
   TejFileAnswer,
 } from './expenses-types';
@@ -28,13 +29,17 @@ export class ExpensesFacade {
   private readonly attachmentsSignal = signal<readonly ExpenseAttachment[]>([]);
   private readonly categoriesSignal = signal<readonly ExpenseCategoryRow[]>([]);
   private readonly totalSignal = signal(0);
+  private readonly statusCountsSignal = signal<ExpenseStatusCounts | null>(null);
   private pageRequest = 0;
+  private countsRequest = 0;
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<ExpensesError | null>(null);
 
   readonly expenses = this.expensesSignal.asReadonly();
   /** How many expenses the last search found in all, the page shown being one part of them. */
   readonly total = this.totalSignal.asReadonly();
+  /** What each status chip of the list would show; null until read, and kept while a new count is on its way. */
+  readonly statusCounts = this.statusCountsSignal.asReadonly();
   readonly options = this.optionsSignal.asReadonly();
   readonly expense = this.expenseSignal.asReadonly();
   readonly attachments = this.attachmentsSignal.asReadonly();
@@ -53,6 +58,15 @@ export class ExpensesFacade {
       if (request !== this.pageRequest) return;
       this.expensesSignal.set(page.rows);
       this.totalSignal.set(page.total);
+    });
+  }
+
+  /** The chips' counts for the search, the latest search's answer only, as for its page. */
+  async loadStatusCounts(companyId: string, search: ExpenseSearch): Promise<void> {
+    const request = ++this.countsRequest;
+    await this.read(async () => {
+      const counts = await this.api.statusCounts(companyId, search);
+      if (request === this.countsRequest) this.statusCountsSignal.set(counts);
     });
   }
 

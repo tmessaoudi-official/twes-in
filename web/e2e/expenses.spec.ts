@@ -120,6 +120,12 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
     await page.goto('/expenses');
     await page.getByTestId('list-filter').fill(description);
     await expect(page.getByTestId('expenses-table')).toContainText(description);
+    // Each status chip says how many it would list under that search (docs/SPEC.md § 7, 2026-09-26): this run's
+    // expense, found by what it is for, is paid.
+    const count = (id: string) => page.getByTestId(id).locator('.twes-chip-count');
+    await expect(count('list-facet-status-all')).toHaveText('1');
+    await expect(count('list-facet-status-paid')).toHaveText('1');
+    await expect(count('list-facet-status-draft')).toHaveText('0');
   } finally {
     await retire(page, category);
   }
