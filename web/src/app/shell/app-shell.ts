@@ -36,6 +36,7 @@ import { Label } from '../shared/a11y/label';
 import { runAction } from '../shared/actions/run-action';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
+import { LegalFooter } from '../shared/legal/legal-footer';
 import { NavScroller } from '../shared/ui/nav-scroller';
 import { sectionFolds } from '../shared/ui/section-folds';
 import { isBareKeystroke, isTypingTarget, matchesShortcut } from '../shared/actions/shortcuts';
@@ -127,6 +128,7 @@ export function initialsOf(displayName: string): string {
     ActivityBar,
     SubscriptionNoticeBar,
     NavScroller,
+    LegalFooter,
   ],
   templateUrl: './app-shell.html',
   host: { '(document:keydown)': 'onKeydown($event)' },

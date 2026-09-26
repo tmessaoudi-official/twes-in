@@ -3345,6 +3345,18 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
     section folding, and the filter a search icon that unfolds the list with the filter focused.
   - `presentation.settings-list` (`expanded` | `rail`) is each person's own (user level only), as the ruling says;
     unlike `presentation.sidebar` it has no company or role default.
+- [2026-09-26 21:26] DECIDED (revisit) — row 147, the legal footer, taken autonomously under the 2026-09-26 12:11
+  directive:
+  - One line, « © <year> <brand> · AGPL-3.0 · » and the nine legal pages by title, in a `nav` named « Informations
+    légales »; the separators are drawn, not read. The brand is the installation's, through the `Brand` port. The
+    licence leads to `/legal/source`, the page a network service under the AGPL owes its users.
+  - It closes the page's content and scrolls with it: in the signed-out layout's footer (after the page's own line,
+    the API status on sign-in), at the end of the shell's `main`, and in settings at the end of the page beside the
+    list, never under the list. Not drawn on the phone lent as a scanner (`/pair`), the customer display window, or the
+    print sheets: each is a tool screen facing someone else, or paper.
+  - `/legal/<slug>` opens to anyone, signed in or not, outside the shell like the other public pages, in the
+    signed-out layout. Until row 148 each page shows its title, « Brouillon — à faire valider » and one sentence saying
+    its text is being written; an unknown slug says the page does not exist, with a way home.
 
 ## 8. Status
 
@@ -3500,9 +3512,9 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 145 | E-invoicing files (§ 7 2026-09-25 22:16): Factur-X and UBL (EN 16931), TEIF 1.8.8 signed; then a plateforme agréée before 2027-09-01 and TTN (row 102) | L | doing | - | api/src/** |
 | 146 | Search on top at the centre (§ 7 2026-09-26 08:52): out of the menu, always visible, Ctrl K, an icon on a phone | S | done | f6fdebe6 | |
 | 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | done | 225603ca | slice 1 (the catalogue and the modules page, `ddc1045a`) and slice 2 (« Me prévenir », the operator's demand, the arrival notice, `f0488509`) and slices 3–4 (the menu from the catalogue, « Créer » and Ctrl K, `2ab0eafd`) and slice 5 (screen actions, settings cards, `225603ca`) landed; CI green on all five |
-| 151 | Paramètres list fixed and foldable (§ 7 2026-09-26 11:17): pinned head and foot, 80 px rail from its foot, key ], presentation.settings-list | M | done | - | fixed beside the page from 1024 px, folds to the 80 px rail from its foot or with ] |
+| 151 | Paramètres list fixed and foldable (§ 7 2026-09-26 11:17): pinned head and foot, 80 px rail from its foot, key ], presentation.settings-list | M | done | e0e900da | fixed beside the page from 1024 px, folds to the 80 px rail from its foot or with ] |
 | 152 | Menus by foldable sections (§ 7 2026-09-26 12:05): each section folds from its heading, remembered, the current one always open; a fade at an edge with more behind; the current entry kept in view — main menu and Paramètres | M | done | feace55f | the main menu and Paramètres fold by section, with the fade and the current entry in view (on Paramètres since row 151) |
-| 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | todo | - | |
+| 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | done | - | the line closes every page, signed out, in the shell and beside the settings list; /legal/<slug> placeholders until row 148 |
 | 148 | Legal pages (§ 7 2026-09-26 08:52): nine pages the platform operator edits per language and dates, fr/en/ar drafts marked « Brouillon — à faire valider », Arabic in RTL, security.txt | L | todo | - | |
 | 149 | Cookie banner and guard (§ 7 2026-09-26 08:52): an informational first-visit banner, and a CI gate refusing an undeclared cookie, storage key or third-party script | M | todo | - | |
 <!-- /progress-block -->

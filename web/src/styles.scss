@@ -759,6 +759,31 @@ body {
   scrollbar-width: none;
 }
 
+// The copyright and legal-links line (docs/SPEC.md § 7, 2026-09-26 08:52, row 147): slim, quiet, under the content.
+.twes-legal-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.25rem 0.5rem;
+  padding-block: 1.5rem 0.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+
+  a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--mat-sys-outline-variant);
+    text-underline-offset: 0.2em;
+
+    &:hover {
+      color: var(--mat-sys-on-surface);
+      text-decoration-color: currentColor;
+    }
+  }
+}
+
 // A menu's edge with more behind it (docs/SPEC.md § 7, 2026-09-26 12:05, row 152), marked by `NavScroller`: the
 // entries fade out towards it. A mask, so it is the entries that fade, whatever the surface beneath them.
 [data-more-below] {

@@ -468,6 +468,10 @@
       @for (companyId of [workingCompany()]; track companyId) {
         <router-outlet />
       }
+      <!-- The legal line closes the page and scrolls with it (row 147); in settings the area draws it beside its list. -->
+      @if (!inSettings()) {
+        <app-legal-footer />
+      }
     </main>
 
     @if (handset()) {

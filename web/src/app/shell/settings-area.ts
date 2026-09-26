@@ -26,6 +26,7 @@ import { filter, map } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { Label } from '../shared/a11y/label';
+import { LegalFooter } from '../shared/legal/legal-footer';
 import { NavScroller } from '../shared/ui/nav-scroller';
 import { SETTINGS_BESIDE_WINDOW } from '../shared/ui/window-class';
 import { sectionFolds } from '../shared/ui/section-folds';
@@ -63,6 +64,7 @@ export const SETTINGS_INDEX = '/company';
     MatButtonModule,
     MatTooltipModule,
     Label,
+    LegalFooter,
   ],
   templateUrl: './settings-area.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

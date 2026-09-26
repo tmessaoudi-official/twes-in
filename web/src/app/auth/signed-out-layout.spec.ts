@@ -2,6 +2,7 @@
 
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -45,6 +46,7 @@ describe('SignedOutLayout', () => {
     await TestBed.configureTestingModule({
       imports: [Host, PlainHost],
       providers: [
+        provideRouter([]),
         { provide: Brand, useValue: { name, tagline } },
         provideQuietFeedback(),
         { provide: ThemeFacade, useValue: { preference: signal('auto'), setScheme: vi.fn() } },
@@ -73,6 +75,17 @@ describe('SignedOutLayout', () => {
     );
     expect(el.querySelector('main h1')?.textContent).toBe('Connexion');
     expect(el.querySelector('footer [data-testid="footer-line"]')).not.toBeNull();
+  });
+
+  it('closes every signed-out page with the copyright and legal links, after its own line (row 147)', async () => {
+    const el = await render();
+
+    const footer = el.querySelector('footer');
+    expect(footer?.querySelector('[data-testid="legal-footer"]')).not.toBeNull();
+    expect(footer?.querySelector('[data-testid="legal-copyright"]')?.textContent).toContain(
+      'nova-pay',
+    );
+    expect(footer?.lastElementChild?.tagName.toLowerCase()).toBe('app-legal-footer');
   });
 
   it('keeps the decorative scene away from assistive technology', async () => {

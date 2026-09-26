@@ -709,6 +709,22 @@ describe('AppShell', () => {
     expect(el.querySelector('main')?.getAttribute('data-settings')).toBe('false');
   });
 
+  it('closes every page with the legal line, inside the page so it scrolls with it (row 147)', async () => {
+    const { fixture, el } = await render();
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/invoices');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const main = el.querySelector('main');
+    expect(main?.lastElementChild?.tagName.toLowerCase()).toBe('app-legal-footer');
+
+    // In settings the area draws it under the page beside its list, never under the list itself.
+    await router.navigateByUrl('/members');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(el.querySelector('main app-legal-footer')).toBeNull();
+  });
+
   it('lets the menu be folded inside settings, remembered apart from the rest', async () => {
     theme.settingsSidebar.set('expanded');
     const router = TestBed.inject(Router);

@@ -2822,5 +2822,23 @@
     "new_quote": "New quote",
     "statement": "Account statement",
     "new_purchase": "New supplier order"
+  },
+  "legal": {
+    "navigation": "Legal information",
+    "pages": {
+      "mentions": "Legal notice",
+      "privacy": "Privacy",
+      "cookies": "Cookies",
+      "terms": "Terms of use",
+      "sales": "Terms of sale",
+      "dpa": "Data processing (DPA)",
+      "source": "Source code and licences",
+      "accessibility": "Accessibility",
+      "security": "Security"
+    },
+    "draft": "Draft — to be validated",
+    "drafting": "The text of this page is being written.",
+    "unknown": "This page does not exist.",
+    "home": "Back to the start"
   }
 }

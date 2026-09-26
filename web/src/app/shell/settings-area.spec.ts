@@ -256,6 +256,13 @@ describe('SettingsArea', () => {
     expect(byTestId('settings-list-fold')).toBeNull();
   });
 
+  it('closes the page beside the list with the legal line, not the list (row 147)', async () => {
+    const { byTestId } = await render();
+    const page = byTestId('settings-page');
+    expect(page?.lastElementChild?.tagName.toLowerCase()).toBe('app-legal-footer');
+    expect(byTestId('settings-rail')?.querySelector('app-legal-footer')).toBeNull();
+  });
+
   it('groups the settings in one navigation of their own, beside the page', async () => {
     const { el, byTestId, groups } = await render();
 

@@ -2822,5 +2822,23 @@
     "new_quote": "Nouveau devis",
     "statement": "Relevé de compte",
     "new_purchase": "Nouvelle commande fournisseur"
+  },
+  "legal": {
+    "navigation": "Informations légales",
+    "pages": {
+      "mentions": "Mentions légales",
+      "privacy": "Confidentialité",
+      "cookies": "Cookies",
+      "terms": "CGU",
+      "sales": "CGV",
+      "dpa": "Sous-traitance (DPA)",
+      "source": "Code source et licences",
+      "accessibility": "Accessibilité",
+      "security": "Sécurité"
+    },
+    "draft": "Brouillon — à faire valider",
+    "drafting": "Le texte de cette page est en cours de rédaction.",
+    "unknown": "Cette page n’existe pas.",
+    "home": "Retour à l’accueil"
   }
 }

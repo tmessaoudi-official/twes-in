@@ -2,7 +2,7 @@
 
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -32,17 +32,17 @@ class StubSubscriptionPage {}
 
 describe('LockedSubscriptionPage', () => {
   const logout = vi.fn().mockResolvedValue(undefined);
-  const navigateByUrl = vi.fn().mockResolvedValue(true);
+  let navigateByUrl: ReturnType<typeof vi.spyOn>;
 
   beforeEach(async () => {
     logout.mockClear();
-    navigateByUrl.mockClear();
 
     await TestBed.configureTestingModule({
       imports: [LockedSubscriptionPage],
       providers: [
         { provide: AuthFacade, useValue: { logout } },
-        { provide: Router, useValue: { navigateByUrl } },
+        // A real router: the legal line under the page links through it (row 147).
+        provideRouter([]),
         {
           provide: Brand,
           useValue: { name: signal('twes-in'), tagline: signal('Rien ne se perd.') },
@@ -62,6 +62,7 @@ describe('LockedSubscriptionPage', () => {
         add: { imports: [StubSubscriptionPage] },
       })
       .compileComponents();
+    navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
   });
 
   async function render(): Promise<HTMLElement> {

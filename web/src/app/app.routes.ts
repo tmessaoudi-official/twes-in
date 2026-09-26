@@ -369,5 +369,10 @@ export const routes: Routes = [
       },
     ]),
   },
+  {
+    // Open to anyone, signed in or not, outside the shell (docs/SPEC.md § 7, row 147).
+    path: 'legal/:slug',
+    loadComponent: () => import('./legal/legal-page').then((m) => m.LegalPage),
+  },
   { path: '**', redirectTo: '' },
 ];
