@@ -52,6 +52,9 @@ final readonly class PresentationSettings implements DeclaresSettings
         // `auto` follows the language, which is what everything printed before these keys existed.
         yield new SettingDefinition('presentation.date-format', SettingType::Enum, 'auto', $chain, $shared, 'settings.presentation.date_format', self::MODULE, choices: ['auto', 'dmy', 'mdy', 'ymd', 'dmy-dots']);
         yield new SettingDefinition('presentation.number-format', SettingType::Enum, 'auto', $chain, $shared, 'settings.presentation.number_format', self::MODULE, choices: ['auto', 'space-comma', 'dot-comma', 'comma-dot']);
+        // The menu sections a person folded (docs/SPEC.md § 7, 2026-09-26 12:05, row 152), as `<menu>.<section>`: each
+        // person's own, remembered on every device; a section holding the current page opens whatever this says.
+        yield new SettingDefinition('presentation.folded-sections', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.folded_sections', self::MODULE);
         yield new SettingDefinition('presentation.list.<id>', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.list', self::MODULE, keyPattern: self::LIST);
         yield new SettingDefinition('presentation.list.<id>.views', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.list_views', self::MODULE, keyPattern: self::LIST_VIEWS);
     }

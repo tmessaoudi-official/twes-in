@@ -35,6 +35,8 @@ import { Label } from '../shared/a11y/label';
 import { runAction } from '../shared/actions/run-action';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
+import { NavScroller } from '../shared/ui/nav-scroller';
+import { sectionFolds } from '../shared/ui/section-folds';
 import { isBareKeystroke, isTypingTarget, matchesShortcut } from '../shared/actions/shortcuts';
 import { keyName, ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
@@ -123,6 +125,7 @@ export function initialsOf(displayName: string): string {
     Label,
     ActivityBar,
     SubscriptionNoticeBar,
+    NavScroller,
   ],
   templateUrl: './app-shell.html',
   host: { '(document:keydown)': 'onKeydown($event)' },
@@ -261,6 +264,19 @@ export class AppShell {
   /** The person's single keys (row 125), which the rail's hints and the handler below both read. */
   protected readonly keys = inject(SettingsFacade).value(PRESENTATION.shortcuts);
   protected readonly keyName = keyName;
+
+  /** The menu section holding the page on view, which opens whatever the person folded (row 152). */
+  private readonly currentSection = computed(() => {
+    const path = this.url().split(/[?#]/)[0];
+    const holds = (route: string) =>
+      route === '/' ? path === '/' : path === route || path.startsWith(`${route}/`);
+    return (
+      this.sections().find((group) => group.entries.some((entry) => holds(entry.route)))?.section ??
+      null
+    );
+  });
+  /** Each section folds from its heading, remembered per person (docs/SPEC.md § 7, 2026-09-26 12:05, row 152). */
+  protected readonly folds = sectionFolds('nav', this.currentSection);
 
   /** Whether the settings area is open, which changes both the menu and the room the page is given. */
   protected readonly inSettings = computed(() => isSettingsUrl(this.url()));

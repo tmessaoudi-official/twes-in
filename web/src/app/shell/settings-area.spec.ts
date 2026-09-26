@@ -3,6 +3,13 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -59,6 +66,8 @@ class Blank {}
 describe('SettingsArea', () => {
   const permissions = signal<readonly string[]>([]);
   const auth = {
+    // Nobody's choices beyond this page's own memory: the settings read the session to know whose they are.
+    me: signal(null),
     hasPermission: (permission: string) => permissions().includes(permission),
     hasModule: () => true,
   };
@@ -78,6 +87,8 @@ describe('SettingsArea', () => {
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: ThemeFacade, useValue: { showComing } },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',
@@ -95,9 +106,12 @@ describe('SettingsArea', () => {
     const groups = () =>
       [...el.querySelectorAll<HTMLElement>('mat-nav-list')].map((list) => {
         const heading = el.querySelector(`#${list.getAttribute('aria-labelledby')}`);
+        // What a screen reader hears: the fold chevron beside the name is hidden from it (row 152).
+        const spoken = heading?.cloneNode(true) as Element | undefined;
+        spoken?.querySelectorAll('[aria-hidden="true"]').forEach((hidden) => hidden.remove());
         return [
           heading?.id,
-          heading?.textContent?.trim(),
+          spoken?.textContent?.trim(),
           [...list.querySelectorAll('a')].map((a) => a.getAttribute('data-testid')),
         ];
       });
@@ -126,6 +140,40 @@ describe('SettingsArea', () => {
     expect(templates?.getAttribute('href')).toBe('/company/coming/document-templates');
     expect(templates?.querySelector('[data-testid="soon"]')?.textContent).toContain('Bientôt');
     expect(byTestId('nav-numbering')?.querySelector('[data-testid="soon"]')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26 12:05 (row 152): the Paramètres list folds by section like the main menu.
+  it('folds a section from its heading, and keeps it folded for the person', async () => {
+    const { fixture, byTestId } = await render();
+    const fold = byTestId('settings-fold-team')!;
+    expect(fold.closest('h2')?.id).toBe('settings-section-team');
+    expect(fold.getAttribute('aria-expanded')).toBe('true');
+    expect(fold.getAttribute('aria-controls')).toBe('settings-list-team');
+
+    fold.click();
+    await fixture.whenStable();
+    expect(fold.getAttribute('aria-expanded')).toBe('false');
+    expect(
+      (byTestId('settings-nav')?.querySelector('#settings-list-team') as HTMLElement).hidden,
+    ).toBe(true);
+    expect(
+      (byTestId('settings-nav')?.querySelector('#settings-list-fiscal') as HTMLElement).hidden,
+    ).toBe(false);
+    expect(TestBed.inject(SettingsFacade).value(PRESENTATION.foldedSections)()).toEqual([
+      'settings.team',
+    ]);
+  });
+
+  it('opens a folded section when the page on view is in it', async () => {
+    TestBed.inject(SettingsFacade).set(PRESENTATION.foldedSections, ['settings.team']);
+    const { fixture, byTestId } = await render();
+    const team = () =>
+      byTestId('settings-nav')?.querySelector('#settings-list-team') as HTMLElement;
+    expect(team().hidden).toBe(true);
+
+    await TestBed.inject(Router).navigateByUrl('/members');
+    await fixture.whenStable();
+    expect(team().hidden).toBe(false);
   });
 
   it('groups the settings in one navigation of their own, beside the page', async () => {

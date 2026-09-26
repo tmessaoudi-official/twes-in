@@ -45,6 +45,14 @@ function parseBool(raw: unknown): boolean | undefined {
   return typeof raw === 'boolean' ? raw : undefined;
 }
 
+/** Section names, each `<menu>.<section>`; anything else in the list is dropped rather than failing the whole list. */
+function parseSectionNames(raw: unknown): readonly string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  return raw.filter(
+    (item): item is string => typeof item === 'string' && /^[a-z]+\.[a-z0-9-]+$/.test(item),
+  );
+}
+
 function parseAccent(raw: unknown): string | undefined {
   if (typeof raw !== 'string') return undefined;
   try {
@@ -119,6 +127,12 @@ export const PRESENTATION = {
   ),
   /** « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. */
   showComing: defineSetting<boolean>('presentation.show-coming', true, parseBool),
+  /** The menu sections each person folded (docs/SPEC.md § 7, 2026-09-26 12:05, row 152), as `<menu>.<section>`. */
+  foldedSections: defineSetting<readonly string[]>(
+    'presentation.folded-sections',
+    [],
+    parseSectionNames,
+  ),
   /** The shell's single keys (docs/SPEC.md § 7, 2026-09-24 22:51, row 125), each person's own; C, N, E and / until then. */
   shortcuts: defineSetting<ShellKeys>(
     'presentation.shortcuts',

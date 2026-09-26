@@ -15,6 +15,7 @@
 
   <!-- Below the large window class the list and a page take turns: the list alone at its index, a page without it. -->
   <nav
+    appNavScroller
     [attr.aria-label]="'shell.settings_navigation' | translate"
     [attr.data-at-index]="atIndex()"
     class="min-h-full shrink-0 py-2 data-[at-index=false]:max-lg:hidden lg:w-80 lg:border-r lg:border-outline-variant"
@@ -40,10 +41,24 @@
         [id]="'settings-section-' + group.section"
         class="px-4 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
       >
-        {{ 'nav.sections.' + group.section | translate }}
+        <button
+          type="button"
+          class="twes-fold-heading"
+          [attr.aria-expanded]="folds.isOpen(group.section)"
+          [attr.aria-controls]="'settings-list-' + group.section"
+          (click)="folds.toggle(group.section)"
+          [attr.data-testid]="'settings-fold-' + group.section"
+        >
+          <span>{{ 'nav.sections.' + group.section | translate }}</span>
+          <mat-icon aria-hidden="true">{{
+            folds.isOpen(group.section) ? 'expand_less' : 'expand_more'
+          }}</mat-icon>
+        </button>
       </h2>
       <mat-nav-list
         class="!px-2 !py-0"
+        [id]="'settings-list-' + group.section"
+        [hidden]="!folds.isOpen(group.section)"
         [attr.aria-labelledby]="'settings-section-' + group.section"
       >
         @for (entry of group.entries; track entry.key) {

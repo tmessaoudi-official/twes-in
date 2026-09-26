@@ -791,7 +791,8 @@
       "customer_view_cost": "In customer view, hide product costs",
       "customer_view_supplier_codes": "In customer view, hide suppliers' codes",
       "show_coming": "Show what is coming",
-      "shortcuts": "Keyboard shortcuts"
+      "shortcuts": "Keyboard shortcuts",
+      "folded_sections": "Folded menu sections"
     },
     "choices": {
       "document": {

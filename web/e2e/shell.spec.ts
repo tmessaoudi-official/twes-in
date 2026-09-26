@@ -11,6 +11,7 @@ const CSRF = '0123456789abcdef0123456789abcdef';
 const SIDEBAR = 'presentation.sidebar';
 const SHOW_COMING = 'presentation.show-coming';
 const SHORTCUTS = 'presentation.shortcuts';
+const FOLDED = 'presentation.folded-sections';
 
 async function forgetSidebar(page: Page): Promise<void> {
   await forget(page, SIDEBAR);
@@ -229,6 +230,40 @@ test('an entry not built yet says what it will do, and hiding what is coming tak
     await expect(page.getByTestId('nav-quotes')).toHaveCount(0);
   } finally {
     await forget(page, SHOW_COMING);
+  }
+});
+
+// docs/SPEC.md § 7, 2026-09-26 12:05, row 152: a section folds from its heading, the fold outlives a reload, and the
+// section holding the page on view opens whatever was folded.
+test('a menu section folds from its heading, stays folded after a reload, and opens for its own page', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await forget(page, FOLDED);
+  try {
+    await page.goto('/');
+    const fold = page.getByTestId('nav-fold-manage');
+    await expect(fold).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByTestId('nav-watch')).toBeVisible();
+
+    await fold.click();
+    await expect(fold).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByTestId('nav-watch')).toBeHidden();
+    await expect(page.getByTestId('nav-invoices')).toBeVisible();
+    expect(await wcagViolations(page)).toEqual([]);
+
+    await page.reload();
+    await expect(page.getByTestId('nav-fold-manage')).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByTestId('nav-watch')).toBeHidden();
+
+    await page.goto('/watch');
+    await expect(page.getByTestId('nav-fold-manage')).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByTestId('nav-watch')).toBeVisible();
+    await expect(page.getByTestId('nav-watch')).toHaveAttribute('aria-current', 'page');
+  } finally {
+    await forget(page, FOLDED);
   }
 });
 

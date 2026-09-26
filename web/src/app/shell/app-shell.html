@@ -60,9 +60,10 @@
       }
       <!-- Only the destinations scroll: the head and the foot stay where the board draws them whatever the window's
            height, so the account menu is never below the fold. -->
-      <div class="twes-rail-groups" data-testid="rail-groups">
+      <div class="twes-rail-groups" data-testid="rail-groups" appNavScroller>
         @for (group of sections(); track group.section) {
-          <!-- Folded, a section's name becomes a line to see and stays a name to hear. -->
+          <!-- Folded, a section's name becomes a line to see and stays a name to hear. Labelled, it folds its
+               section (row 152), except in the rail, where every entry stays. -->
           <h2
             [id]="'nav-section-' + group.section"
             class="twes-rail-overline"
@@ -71,10 +72,26 @@
             @if (rail()) {
               <span class="sr-only">{{ 'nav.sections.' + group.section | translate }}</span>
             } @else {
-              {{ 'nav.sections.' + group.section | translate }}
+              <button
+                type="button"
+                class="twes-fold-heading"
+                [attr.aria-expanded]="folds.isOpen(group.section)"
+                [attr.aria-controls]="'nav-list-' + group.section"
+                (click)="folds.toggle(group.section)"
+                [attr.data-testid]="'nav-fold-' + group.section"
+              >
+                <span>{{ 'nav.sections.' + group.section | translate }}</span>
+                <mat-icon aria-hidden="true">{{
+                  folds.isOpen(group.section) ? 'expand_less' : 'expand_more'
+                }}</mat-icon>
+              </button>
             }
           </h2>
-          <mat-nav-list [attr.aria-labelledby]="'nav-section-' + group.section">
+          <mat-nav-list
+            [id]="'nav-list-' + group.section"
+            [hidden]="!rail() && !folds.isOpen(group.section)"
+            [attr.aria-labelledby]="'nav-section-' + group.section"
+          >
             @for (entry of group.entries; track entry.key) {
               <a
                 mat-list-item

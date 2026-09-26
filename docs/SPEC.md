@@ -3315,6 +3315,22 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   - `planned-module-labels.sh` now also discovers every `{ module, label }` declaration in the web (specs excluded,
     floor 20) and fails on one naming a module that is not planned — a typo, or a module that shipped and needs its
     real actions — or whose label is missing in fr or en.
+  - Not certified by execution: the planned buttons' contrast, because axe leaves every `aria-disabled` control out of
+    `color-contrast` (their text is `on-surface-variant`, the pair the rail's « Bientôt » chips carry, which axe does
+    read), and the phone « ⋯ », which only a unit spec at `compact` opens.
+- [2026-09-26 19:37] DECIDED (revisit), row 152, the menus by foldable sections, taken without asking under the 12:11
+  directive:
+  - A section's heading is a disclosure button inside its `h2` (`aria-expanded`, `aria-controls`, a chevron hidden
+    from assistive technology); a folded section's list stays in the page, `hidden`, so its link names never change.
+  - What a person folded is `presentation.folded-sections`, a user-only JSON list of `<menu>.<section>` (`nav.manage`,
+    `settings.team`): theirs alone, on every device, and one key for both menus. No company or role default, and
+    nothing on the company's settings page.
+  - « The current one always open »: arriving on a page opens its section without unfolding it for good, and the
+    person may fold it again while there; arriving in it again opens it again.
+  - The folded rail folds nothing: its headings are lines, and every icon stays.
+  - The fade (`NavScroller`, a mask over the entries) marks any edge of the main menu with more behind it, and after
+    each navigation the current entry is scrolled into view. The Paramètres list carries the same directive, but it
+    becomes a scroll box of its own only with row 151, so its fade and scroll show from then.
 
 ## 8. Status
 
@@ -3469,9 +3485,9 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 144 | Tax data without a partner (§ 7 2026-09-25 22:16): TEJ withholding certificates XML, the four French mentions, payments split by VAT rate, CA3 and Tunisian monthly worksheets | L | doing | - | api/src/** web/src/app/** |
 | 145 | E-invoicing files (§ 7 2026-09-25 22:16): Factur-X and UBL (EN 16931), TEIF 1.8.8 signed; then a plateforme agréée before 2027-09-01 and TTN (row 102) | L | doing | - | api/src/** |
 | 146 | Search on top at the centre (§ 7 2026-09-26 08:52): out of the menu, always visible, Ctrl K, an icon on a phone | S | done | f6fdebe6 | |
-| 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | doing | - | slice 1 (the catalogue and the modules page, `ddc1045a`) and slice 2 (« Me prévenir », the operator's demand, the arrival notice, `f0488509`) and slices 3–4 (the menu from the catalogue, « Créer » and Ctrl K, `2ab0eafd`) and slice 5 (screen actions, settings cards) landed |
+| 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | done | 225603ca | slice 1 (the catalogue and the modules page, `ddc1045a`) and slice 2 (« Me prévenir », the operator's demand, the arrival notice, `f0488509`) and slices 3–4 (the menu from the catalogue, « Créer » and Ctrl K, `2ab0eafd`) and slice 5 (screen actions, settings cards, `225603ca`) landed; CI green on all five |
 | 151 | Paramètres list fixed and foldable (§ 7 2026-09-26 11:17): pinned head and foot, 80 px rail from its foot, key ], presentation.settings-list | M | todo | - | |
-| 152 | Menus by foldable sections (§ 7 2026-09-26 12:05): each section folds from its heading, remembered, the current one always open; a fade at an edge with more behind; the current entry kept in view — main menu and Paramètres | M | todo | - | |
+| 152 | Menus by foldable sections (§ 7 2026-09-26 12:05): each section folds from its heading, remembered, the current one always open; a fade at an edge with more behind; the current entry kept in view — main menu and Paramètres | M | done | - | the main menu and Paramètres fold by section; the fade and the current entry in view on the main menu, on Paramètres with row 151 |
 | 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | todo | - | |
 | 148 | Legal pages (§ 7 2026-09-26 08:52): nine pages the platform operator edits per language and dates, fr/en/ar drafts marked « Brouillon — à faire valider », Arabic in RTL, security.txt | L | todo | - | |
 | 149 | Cookie banner and guard (§ 7 2026-09-26 08:52): an informational first-visit banner, and a CI gate refusing an undeclared cookie, storage key or third-party script | M | todo | - | |

@@ -73,7 +73,8 @@ test('a vendor is added with its bank account and terms, then revised', async ({
     expect(await wcagViolations(page)).toEqual([]);
 
     // docs/SPEC.md § 7, 2026-09-26 18:17 (row 150): what a vendor will offer once supplier orders ship, beside what
-    // it offers today (the scan above already read it), marked, reachable, and opening the module's page.
+    // it offers today, marked, reachable, and opening the module's page. The scan above skips its contrast: axe leaves
+    // every `aria-disabled` control out of `color-contrast`.
     const planned = page.getByTestId('planned-action-purchases');
     await expect(planned).toHaveAttribute('aria-disabled', 'true');
     await expect(planned.getByTestId('soon')).toBeVisible();

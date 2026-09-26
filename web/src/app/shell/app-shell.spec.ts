@@ -250,6 +250,7 @@ describe('AppShell', () => {
           { path: 'account', component: BlankPage },
           { path: 'invoices', component: BlankPage },
           { path: 'customers', component: CountingPage },
+          { path: 'watch', component: BlankPage },
         ]),
         { provide: BreakpointObserver, useValue: viewport(width) },
         { provide: AuthFacade, useValue: auth },
@@ -346,6 +347,46 @@ describe('AppShell', () => {
     expect(sell?.contains(byTestId('nav-home'))).toBe(true);
     expect(sell?.contains(byTestId('nav-customers'))).toBe(true);
     expect(manage?.contains(byTestId('nav-watch'))).toBe(true);
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26 12:05 (row 152): each section folds from its heading, remembered per person.
+  it('folds a section from its heading, and keeps it folded for the person', async () => {
+    permissions.set(['customer.read', 'company.read']);
+    const { byTestId, click } = await render();
+    const fold = byTestId('nav-fold-manage')!;
+    expect(fold.closest('h2')?.id).toBe('nav-section-manage');
+    expect(fold.getAttribute('aria-expanded')).toBe('true');
+    expect(fold.getAttribute('aria-controls')).toBe('nav-list-manage');
+    expect(document.getElementById('nav-list-manage')?.hidden).toBe(false);
+
+    await click('nav-fold-manage');
+    expect(fold.getAttribute('aria-expanded')).toBe('false');
+    expect(document.getElementById('nav-list-manage')?.hidden).toBe(true);
+    expect(document.getElementById('nav-list-sell')?.hidden).toBe(false);
+    expect(TestBed.inject(SettingsFacade).value(PRESENTATION.foldedSections)()).toEqual([
+      'nav.manage',
+    ]);
+  });
+
+  it('opens a folded section when the page on view is in it', async () => {
+    permissions.set(['customer.read', 'company.read']);
+    TestBed.inject(SettingsFacade).set(PRESENTATION.foldedSections, ['nav.manage']);
+    const { fixture, byTestId } = await render();
+    expect(document.getElementById('nav-list-manage')?.hidden).toBe(true);
+
+    await TestBed.inject(Router).navigateByUrl('/watch');
+    await fixture.whenStable();
+    expect(document.getElementById('nav-list-manage')?.hidden).toBe(false);
+    expect(byTestId('nav-fold-manage')?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('folds nothing in the rail, whose headings are only lines', async () => {
+    permissions.set(['customer.read', 'company.read']);
+    TestBed.inject(SettingsFacade).set(PRESENTATION.foldedSections, ['nav.manage']);
+    theme.sidebar.set('rail');
+    const { byTestId } = await render();
+    expect(byTestId('nav-fold-manage')).toBeNull();
+    expect(document.getElementById('nav-list-manage')?.hidden).toBe(false);
   });
 
   it('keeps Notifications, Paramètres and the member at the foot of the rail, in that order', async () => {
@@ -735,10 +776,17 @@ describe('AppShell', () => {
     expect(el.querySelector('[data-testid="user-menu"]')?.closest('nav')).not.toBeNull();
     const lists = [...el.querySelectorAll<HTMLElement>('mat-nav-list')];
     expect(lists.length).toBeGreaterThan(0);
+    // A name leaves out what is hidden from assistive technology: the fold chevron beside a section's name (row 152).
+    const spoken = (node: Element | null): string | undefined => {
+      if (node === null) return undefined;
+      const copy = node.cloneNode(true) as Element;
+      copy.querySelectorAll('[aria-hidden="true"]').forEach((hidden) => hidden.remove());
+      return copy.textContent?.trim();
+    };
     const names = lists.map(
       (list) =>
         list.getAttribute('aria-label') ??
-        el.querySelector(`#${list.getAttribute('aria-labelledby')}`)?.textContent?.trim(),
+        spoken(el.querySelector(`#${list.getAttribute('aria-labelledby')}`)),
     );
     expect(names).toEqual(['Vendre', 'Paramètres']);
   });

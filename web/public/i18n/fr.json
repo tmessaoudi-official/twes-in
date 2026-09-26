@@ -791,7 +791,8 @@
       "customer_view_cost": "En vue client, masquer le coût des produits",
       "customer_view_supplier_codes": "En vue client, masquer les codes des fournisseurs",
       "show_coming": "Montrer ce qui arrive",
-      "shortcuts": "Raccourcis clavier"
+      "shortcuts": "Raccourcis clavier",
+      "folded_sections": "Sections repliées des menus"
     },
     "choices": {
       "document": {

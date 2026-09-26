@@ -18,6 +18,8 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { filter, map } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
+import { NavScroller } from '../shared/ui/nav-scroller';
+import { sectionFolds } from '../shared/ui/section-folds';
 import {
   COMING_NAV,
   type Gated,
@@ -48,6 +50,7 @@ export const SETTINGS_INDEX = '/company';
     MatListModule,
     MatIconModule,
     TranslatePipe,
+    NavScroller,
   ],
   templateUrl: './settings-area.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -101,6 +104,17 @@ export class SettingsArea {
     });
     return navSections(entries, SETTINGS_SECTIONS);
   });
+  /** The section holding the settings page on view, which opens whatever the person folded (row 152). */
+  private readonly currentSection = computed(() => {
+    const path = this.url().split(/[?#]/)[0];
+    return (
+      this.sections().find((group) =>
+        group.entries.some((entry) => path === entry.route || path.startsWith(`${entry.route}/`)),
+      )?.section ?? null
+    );
+  });
+  /** Each section folds from its heading, like the main menu's (docs/SPEC.md § 7, 2026-09-26 12:05, row 152). */
+  protected readonly folds = sectionFolds('settings', this.currentSection);
 }
 
 /** Lower case without accents, so "societe" finds "Société". */

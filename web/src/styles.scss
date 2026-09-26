@@ -759,6 +759,58 @@ body {
   scrollbar-width: none;
 }
 
+// A menu's edge with more behind it (docs/SPEC.md § 7, 2026-09-26 12:05, row 152), marked by `NavScroller`: the
+// entries fade out towards it. A mask, so it is the entries that fade, whatever the surface beneath them.
+[data-more-below] {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent);
+}
+
+[data-more-above] {
+  mask-image: linear-gradient(to top, #000 calc(100% - 2rem), transparent);
+}
+
+[data-more-above][data-more-below] {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 2rem,
+    #000 calc(100% - 2rem),
+    transparent
+  );
+}
+
+// A section's heading that folds it (row 152): the heading's own look, as a button that says whether it is open.
+.twes-fold-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0.375rem;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+
+  .mat-icon {
+    width: 1.125rem;
+    height: 1.125rem;
+    font-size: 1.125rem;
+  }
+
+  &:hover {
+    color: var(--mat-sys-on-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+}
+
 .twes-rail-foot {
   flex: none;
   display: flex;
