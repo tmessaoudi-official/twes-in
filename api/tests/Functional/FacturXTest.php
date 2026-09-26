@@ -236,7 +236,7 @@ final class FacturXTest extends ApiTestCase
         self::assertNotFalse($nodes);
         $values = [];
         foreach ($nodes as $node) {
-            $values[] = (string) $node->textContent;
+            $values[] = $node->nodeValue ?? '';
         }
 
         return $values;
