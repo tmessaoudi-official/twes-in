@@ -538,6 +538,7 @@
       "everywhere": "Everywhere",
       "none": "This page offers no shortcut.",
       "palette": "Open the commands",
+      "search": "Search",
       "create": "Open Create",
       "new": "New document, from its list",
       "next": "Next step: issue, record a payment, validate…",
@@ -760,7 +761,8 @@
       "language": "Language",
       "customer_view_cost": "In customer view, hide product costs",
       "customer_view_supplier_codes": "In customer view, hide suppliers' codes",
-      "show_coming": "Show what is coming"
+      "show_coming": "Show what is coming",
+      "shortcuts": "Keyboard shortcuts"
     },
     "choices": {
       "document": {
@@ -2580,6 +2582,16 @@
     "company_at_sign_in_off": "Otherwise, the company used last opens.",
     "company_at_sign_in_pick": "Company",
     "shortcuts": "Keyboard shortcuts",
+    "shortcuts_intro": "One key, without Ctrl or Alt, for each action. It does nothing while you type in a field. Ctrl K always opens the search.",
+    "shortcuts_restore": "Restore",
+    "shortcut_refused": {
+      "length": "A single key: a letter or a sign.",
+      "browser": "The browser already uses this key.",
+      "interface": "This key already works everywhere (“?” and “[”).",
+      "screen": "A page already uses this key (S, V, L or P).",
+      "count": "Kept for the count typed before a scan (digits and ×).",
+      "taken": "Already given to another action."
+    },
     "two_factor": "Two-step verification",
     "two_factor_on": "On",
     "two_factor_off": "Off",

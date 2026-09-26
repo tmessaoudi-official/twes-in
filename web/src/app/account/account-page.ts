@@ -7,6 +7,7 @@ import {
   inject,
   input,
   type OnInit,
+  signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -18,13 +19,26 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanyFacade } from '../company/company-facade';
+import {
+  DEFAULT_SHORTCUTS,
+  SHELL_SHORTCUTS,
+  type ShellKeyRefusal,
+  type ShellShortcut,
+  shellKeyRefusal,
+} from '../shared/actions/shortcuts';
+import { keyName } from '../shared/actions/shortcuts-sheet';
 import { LANGUAGE_NAMES, LanguageFacade } from '../shared/i18n/language-facade';
+import { SettingsFacade } from '../shared/settings/settings-facade';
 import {
   type Density,
+  PRESENTATION,
   type SchemePreference,
   SUPPORTED_LANGUAGES,
 } from '../shared/settings/settings-registry';
 import { ThemeFacade } from '../shared/theme/theme-facade';
+
+/** Why a key typed in Préférences was not kept: the shell's own reasons, or another action has it already. */
+type KeyRefusal = ShellKeyRefusal | 'taken';
 
 /** The page's tabs, in the order the round-6 account board draws them; the last two are not built yet. */
 export const ACCOUNT_TABS = ['security', 'preferences', 'device', 'notifications'] as const;
@@ -34,7 +48,7 @@ const COMING_TABS: readonly AccountTab[] = ['device', 'notifications'];
 /**
  * « Mon compte » (docs/SPEC.md § 7, 2026-09-25 17:22; the round-6 account boards): the person's own account, apart
  * from any company. Sécurité leads to the two-step check; Préférences holds the display choices, « Montrer ce qui
- * arrive » and « Société à l'ouverture ». The tab is in the address (`?tab=`), so a link can open the right one.
+ * arrive », « Société à l'ouverture » and the keyboard shortcuts. The tab is in the address (`?tab=`), so a link can open the right one.
  */
 @Component({
   selector: 'app-account-page',
@@ -73,6 +87,17 @@ export class AccountPage implements OnInit {
   );
   protected readonly twoFactorOn = computed(() => this.auth.me()?.mfa.enrolled === true);
 
+  private readonly settings = inject(SettingsFacade);
+  /** The shell's single keys as this person has them (docs/SPEC.md § 7, 2026-09-24 22:51, row 125). */
+  protected readonly keys = this.settings.value(PRESENTATION.shortcuts);
+  protected readonly shellShortcuts = SHELL_SHORTCUTS;
+  protected readonly keyName = keyName;
+  /** Why the key last typed in a field was not kept; forgotten once one is. */
+  protected readonly keyRefusals = signal<Partial<Record<ShellShortcut, KeyRefusal>>>({});
+  protected readonly customisedKeys = computed(() =>
+    SHELL_SHORTCUTS.some((name) => this.keys()[name] !== DEFAULT_SHORTCUTS[name]),
+  );
+
   protected readonly companies = this.company.companies;
   /** Pinning means something only to somebody in several companies. */
   protected readonly canPin = computed(() => this.companies().length > 1);
@@ -103,6 +128,34 @@ export class AccountPage implements OnInit {
 
   protected pick(companyId: string): void {
     void this.company.pinAtSignIn(companyId);
+  }
+
+  /**
+   * Keeps a typed key at once, as the other preferences here are kept, or says why not: one the browser, the
+   * interface, a screen or a till count answers, or one another of the four already has. The field takes the last
+   * character typed and then shows the key actually kept, so it never holds one that does nothing; an emptied field
+   * keeps the key it had.
+   */
+  protected chooseKey(name: ShellShortcut, field: HTMLInputElement): void {
+    const key = ([...field.value].at(-1) ?? '').toLowerCase();
+    this.keep(name, key);
+    field.value = keyName(this.keys()[name]);
+  }
+
+  private keep(name: ShellShortcut, key: string): void {
+    if (key === '') return;
+    const keys = this.keys();
+    const refusal: KeyRefusal | null =
+      shellKeyRefusal(key) ??
+      (SHELL_SHORTCUTS.some((other) => other !== name && keys[other] === key) ? 'taken' : null);
+    this.keyRefusals.update((refusals) => ({ ...refusals, [name]: refusal ?? undefined }));
+    if (refusal === null) this.settings.set(PRESENTATION.shortcuts, { ...keys, [name]: key });
+  }
+
+  /** « Rétablir »: the ruled keys again, C, N, E and /. */
+  protected restoreKeys(): void {
+    this.keyRefusals.set({});
+    this.settings.reset(PRESENTATION.shortcuts);
   }
 
   protected schemeOf(value: string): SchemePreference {

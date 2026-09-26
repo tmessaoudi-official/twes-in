@@ -17,7 +17,7 @@ export type ShellShortcut = 'create' | 'new' | 'next' | 'search';
  * Encaisser), / the search that Ctrl K also opens. A person will change them in Mon compte › Préférences; these are
  * what they start from and what « Rétablir » returns to.
  */
-export const DEFAULT_SHORTCUTS: Readonly<Record<ShellShortcut, string>> = {
+export const DEFAULT_SHORTCUTS: ShellKeys = {
   create: 'c',
   new: 'n',
   next: 'e',
@@ -30,8 +30,14 @@ export const DEFAULT_SHORTCUTS: Readonly<Record<ShellShortcut, string>> = {
  */
 export const SCREEN_KEYS: readonly string[] = ['s', 'v', 'l', 'p'];
 
-/** Keys the browser or the interface already answers; a declaration naming one is refused where it is written. */
-export const RESERVED_KEYS: readonly string[] = [
+/** The shell's actions in the order Préférences and the « ? » sheet list them. */
+export const SHELL_SHORTCUTS: readonly ShellShortcut[] = ['search', 'create', 'new', 'next'];
+
+/** The shell's keys as one person has them: the ruled ones, or their own. */
+export type ShellKeys = Readonly<Record<ShellShortcut, string>>;
+
+/** Keys the browser answers itself, before a page is asked. */
+const BROWSER_KEYS: readonly string[] = [
   'Enter',
   'Escape',
   'Tab',
@@ -43,12 +49,61 @@ export const RESERVED_KEYS: readonly string[] = [
   'Backspace',
   // Firefox opens quick-find on this one with no modifier at all; the shell takes / before it does (the search).
   "'",
+];
+
+/** What the interface answers everywhere and nobody changes: the « ? » sheet and folding the sidebar. */
+const INTERFACE_KEYS: readonly string[] = ['?', '['];
+
+/** "5×" typed before a scan makes it count five (docs/SPEC.md § 7, 2026-09-23 09:30): a digit or a times sign. */
+const COUNT_KEY = /^[0-9x*×]$/;
+
+/**
+ * Keys a screen may not declare: the browser's, the interface's and the shell's ruled ones. A screen may declare only
+ * `SCREEN_KEYS` anyway; this list is what a declaration is told it collided with.
+ */
+export const RESERVED_KEYS: readonly string[] = [
+  ...BROWSER_KEYS,
   // The shell answers these everywhere, before any screen sees them: a screen claiming one would either lose
   // silently or fire alongside the shell, and which of the two happened would depend on the order of two handlers.
-  '?',
-  '[',
+  ...INTERFACE_KEYS,
   ...Object.values(DEFAULT_SHORTCUTS),
 ];
+
+/** Why a key cannot be one of the shell's, each said in the person's language in Préférences. */
+export type ShellKeyRefusal = 'length' | 'browser' | 'interface' | 'screen' | 'count';
+
+/**
+ * Whether a person may give this key to one of the shell's actions (row 125): one character, and not one the
+ * browser, the interface, a screen or a till count already answers. The caller has lower-cased a letter.
+ */
+export function shellKeyRefusal(key: string): ShellKeyRefusal | null {
+  // Length first: most of the browser's keys are NAMED ("Enter"), and what a person typed there is not one key.
+  if ([...key].length !== 1 || key.trim() === '') return 'length';
+  if (BROWSER_KEYS.includes(key)) return 'browser';
+  if (INTERFACE_KEYS.includes(key)) return 'interface';
+  if (SCREEN_KEYS.includes(key)) return 'screen';
+  if (COUNT_KEY.test(key)) return 'count';
+  return null;
+}
+
+/**
+ * The shell's keys from what is stored, read one by one: a key refused since it was stored — a screen took it — puts
+ * back that action's ruled key and costs the person nothing else. If that leaves two actions on one key, the ruled
+ * keys come back whole, since which of the two the key would run could not be told.
+ */
+export function parseShellShortcuts(raw: unknown): ShellKeys | undefined {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return undefined;
+  const stored = raw as Record<string, unknown>;
+  const keys = Object.fromEntries(
+    SHELL_SHORTCUTS.map((name) => {
+      const value = stored[name];
+      const key = typeof value === 'string' ? value.toLowerCase() : '';
+      return [name, shellKeyRefusal(key) === null ? key : DEFAULT_SHORTCUTS[name]];
+    }),
+  ) as ShellKeys;
+
+  return new Set(Object.values(keys)).size === SHELL_SHORTCUTS.length ? keys : DEFAULT_SHORTCUTS;
+}
 
 /**
  * Whether this keystroke is the declared shortcut: the character the board produced, typed without Ctrl or Meta

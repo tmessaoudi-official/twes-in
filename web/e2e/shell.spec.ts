@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
-import { signIn } from './session';
+import { inACompany, signIn } from './session';
+import { wcagViolations } from './axe';
 import { sidewaysOverflow } from './overflow';
 
 // The sidebar's desktop state through the real stack: the [ key turns it into a rail of named icons, the choice is
@@ -9,6 +10,7 @@ import { sidewaysOverflow } from './overflow';
 const CSRF = '0123456789abcdef0123456789abcdef';
 const SIDEBAR = 'presentation.sidebar';
 const SHOW_COMING = 'presentation.show-coming';
+const SHORTCUTS = 'presentation.shortcuts';
 
 async function forgetSidebar(page: Page): Promise<void> {
   await forget(page, SIDEBAR);
@@ -242,5 +244,45 @@ test('« Mon compte » opens from the member’s menu and turns what is coming o
     await expect(page.getByTestId('nav-register')).toHaveCount(0);
   } finally {
     await forget(page, SHOW_COMING);
+  }
+});
+
+// docs/SPEC.md § 7, 2026-09-24 22:51, row 125: each person gives the shell's keys their own, and restores the ruled ones.
+test('a person gives « Créer » a key of their own in Préférences, which outlives a reload, and restores C', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await forget(page, SHORTCUTS);
+  try {
+    await page.goto('/account?tab=preferences');
+    const field = page.getByTestId('account-key-create');
+    await expect(field).toHaveValue('C');
+    // A key a page uses is refused with its reason, and the field goes back to the key kept.
+    await field.fill('s');
+    await expect(page.getByTestId('account-key-create-error')).toBeVisible();
+    await expect(field).toHaveValue('C');
+    await field.fill('k');
+    await expect(page.getByTestId('account-key-create-error')).toHaveCount(0);
+    await expect(field).toHaveValue('K');
+    expect(await wcagViolations(page)).toEqual([]);
+
+    // The API keeps it: after a reload, K opens « Créer » and the rail says K.
+    await page.goto('/');
+    await page.reload();
+    await expect(page.getByTestId('greeting')).toBeVisible();
+    await expect(page.getByTestId('create-open').locator('kbd')).toHaveText('K');
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press('k');
+    await expect(page.locator('[data-testid^="create-new-"]').first()).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await page.goto('/account?tab=preferences');
+    await page.getByTestId('account-keys-restore').click();
+    await expect(field).toHaveValue('C');
+    await expect(page.getByTestId('account-keys-restore')).toHaveCount(0);
+  } finally {
+    await forget(page, SHORTCUTS);
   }
 });

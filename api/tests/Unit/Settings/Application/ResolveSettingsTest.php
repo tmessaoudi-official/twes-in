@@ -106,7 +106,7 @@ final class ResolveSettingsTest extends TestCase
 
         $keys = array_map(static fn (ResolvedSetting $setting) => $setting->key, $resolved);
         self::assertSame(
-            ['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.language', 'presentation.customer-view.cost', 'presentation.customer-view.supplier-codes', 'presentation.show-coming', 'presentation.list.members', 'presentation.list.members.views'],
+            ['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.language', 'presentation.customer-view.cost', 'presentation.customer-view.supplier-codes', 'presentation.show-coming', 'presentation.shortcuts', 'presentation.list.members', 'presentation.list.members.views'],
             $keys,
         );
         // Read by key and not by position: what this case is about is the layout arriving under its own key, and an

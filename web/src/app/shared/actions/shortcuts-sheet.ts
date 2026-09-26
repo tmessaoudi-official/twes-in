@@ -6,7 +6,9 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { TranslatePipe } from '@ngx-translate/core';
 import type { ScreenAction } from './screen-action';
 import { ScreenActions } from './screen-actions';
-import { DEFAULT_SHORTCUTS } from './shortcuts';
+import { SettingsFacade } from '../settings/settings-facade';
+import { PRESENTATION } from '../settings/settings-registry';
+import type { ShellKeys } from './shortcuts';
 
 /** A key that works on every screen, answered by the shell itself. */
 export interface GlobalShortcut {
@@ -23,21 +25,19 @@ export function keyName(key: string): string {
 
 /**
  * "Ctrl K" rather than "⌘ K" on a Mac, and that is not a simplification: the shell answers `metaKey` OR `ctrlKey`,
- * so Ctrl K is true on every platform while ⌘ K would be false on most of them. The single keys come from the one
- * list the shell answers them by, so the sheet cannot name a key that does something else.
+ * so Ctrl K is true on every platform while ⌘ K would be false on most of them. The single keys are the person's
+ * own, from the setting the shell answers them by, so the sheet cannot name a key that does something else.
  */
-export const GLOBAL_SHORTCUTS: readonly GlobalShortcut[] = [
-  {
-    id: 'palette',
-    keys: [keyName(DEFAULT_SHORTCUTS.search), 'Ctrl K'],
-    label: 'shell.shortcuts.palette',
-  },
-  { id: 'create', keys: [keyName(DEFAULT_SHORTCUTS.create)], label: 'shell.shortcuts.create' },
-  { id: 'new', keys: [keyName(DEFAULT_SHORTCUTS.new)], label: 'shell.shortcuts.new' },
-  { id: 'next', keys: [keyName(DEFAULT_SHORTCUTS.next)], label: 'shell.shortcuts.next' },
-  { id: 'sidebar', keys: ['['], label: 'shell.shortcuts.sidebar' },
-  { id: 'help', keys: ['?'], label: 'shell.shortcuts.help' },
-];
+export function globalShortcuts(keys: ShellKeys): readonly GlobalShortcut[] {
+  return [
+    { id: 'palette', keys: [keyName(keys.search), 'Ctrl K'], label: 'shell.shortcuts.palette' },
+    { id: 'create', keys: [keyName(keys.create)], label: 'shell.shortcuts.create' },
+    { id: 'new', keys: [keyName(keys.new)], label: 'shell.shortcuts.new' },
+    { id: 'next', keys: [keyName(keys.next)], label: 'shell.shortcuts.next' },
+    { id: 'sidebar', keys: ['['], label: 'shell.shortcuts.sidebar' },
+    { id: 'help', keys: ['?'], label: 'shell.shortcuts.help' },
+  ];
+}
 
 /** One of the page's lines: the action, and every key that runs it now. */
 interface PageShortcut {
@@ -81,7 +81,7 @@ interface PageShortcut {
 
       <h3 class="twes-shortcuts-heading">{{ 'shell.shortcuts.everywhere' | translate }}</h3>
       <dl class="twes-shortcuts">
-        @for (shortcut of global; track shortcut.id) {
+        @for (shortcut of global(); track shortcut.id) {
           <div class="twes-shortcuts-row" [attr.data-testid]="'shortcut-' + shortcut.id">
             <dt>{{ shortcut.label | translate }}</dt>
             <dd>
@@ -137,7 +137,8 @@ export class ShortcutsSheet {
   protected readonly ref = inject<MatDialogRef<ShortcutsSheet>>(MatDialogRef);
   private readonly screen = inject(ScreenActions);
 
-  protected readonly global = GLOBAL_SHORTCUTS;
+  private readonly keys = inject(SettingsFacade).value(PRESENTATION.shortcuts);
+  protected readonly global = computed(() => globalShortcuts(this.keys()));
   /**
    * The screen's own keys and its next step under E, live: what this sheet lists is exactly what pressing the key
    * would run right now.
@@ -151,7 +152,7 @@ export class ShortcutsSheet {
         action,
         keys: [
           ...(action.shortcut === undefined ? [] : [keyName(action.shortcut)]),
-          ...(action === next ? [keyName(DEFAULT_SHORTCUTS.next)] : []),
+          ...(action === next ? [keyName(this.keys().next)] : []),
         ],
       }));
   });

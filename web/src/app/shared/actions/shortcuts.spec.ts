@@ -4,9 +4,11 @@ import {
   DEFAULT_SHORTCUTS,
   isTypingTarget,
   matchesShortcut,
+  parseShellShortcuts,
   refuseReservedShortcut,
   RESERVED_KEYS,
   SCREEN_KEYS,
+  shellKeyRefusal,
 } from './shortcuts';
 
 function press(key: string, modifiers: Partial<KeyboardEvent> = {}): KeyboardEvent {
@@ -120,5 +122,45 @@ describe('refuseReservedShortcut', () => {
     for (const key of ['i', '7', 'é', 'x']) {
       expect(() => refuseReservedShortcut(key), key).toThrow(/screen/i);
     }
+  });
+});
+
+// docs/SPEC.md § 7, 2026-09-24 22:51, row 125: each person may give the shell's four actions keys of their own.
+describe('shellKeyRefusal', () => {
+  it('refuses what the browser, the interface, a screen or a till count already answers, saying which', () => {
+    expect(shellKeyRefusal("'")).toBe('browser');
+    expect(shellKeyRefusal('?')).toBe('interface');
+    expect(shellKeyRefusal('[')).toBe('interface');
+    for (const key of SCREEN_KEYS) expect(shellKeyRefusal(key), key).toBe('screen');
+    // "5×" makes the next scan count five, so a digit or a times sign is the count's.
+    for (const key of ['0', '5', '9', 'x', '*', '×'])
+      expect(shellKeyRefusal(key), key).toBe('count');
+    for (const key of ['', 'Enter', 'ab', ' ']) expect(shellKeyRefusal(key), key).toBe('length');
+  });
+
+  it('accepts any other single character, including the ruled ones', () => {
+    for (const key of ['c', 'n', 'e', '/', 'k', 'é', 'q', ';']) {
+      expect(shellKeyRefusal(key), key).toBeNull();
+    }
+  });
+});
+
+describe('parseShellShortcuts', () => {
+  it('answers the ruled keys for nothing stored, and the person’s own for what they chose', () => {
+    expect(parseShellShortcuts(null)).toBeUndefined();
+    expect(parseShellShortcuts('c')).toBeUndefined();
+    expect(parseShellShortcuts({ create: 'K' })).toEqual({ ...DEFAULT_SHORTCUTS, create: 'k' });
+  });
+
+  it('keeps each entry that is still allowed, and puts back the ruled key for one that is not', () => {
+    // A key refused since it was stored — a screen took it — costs that one key, not the person's others.
+    expect(parseShellShortcuts({ create: 's', new: 'j', next: 42 })).toEqual({
+      ...DEFAULT_SHORTCUTS,
+      new: 'j',
+    });
+  });
+
+  it('falls back to the ruled keys whole when two actions would share one', () => {
+    expect(parseShellShortcuts({ create: 'n' })).toEqual(DEFAULT_SHORTCUTS);
   });
 });

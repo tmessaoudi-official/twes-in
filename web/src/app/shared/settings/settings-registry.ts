@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { DEFAULT_SHORTCUTS, parseShellShortcuts, type ShellKeys } from '../actions/shortcuts';
 import { assertAccentColour } from '../theme/accent-theme';
 import type { ListFilterValues, ListPreferences, ListSort, ListView } from '../list/list-types';
 import { NO_LIST_PREFERENCES } from '../list/list-types';
@@ -107,6 +108,12 @@ export const PRESENTATION = {
   ),
   /** « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. */
   showComing: defineSetting<boolean>('presentation.show-coming', true, parseBool),
+  /** The shell's single keys (docs/SPEC.md § 7, 2026-09-24 22:51, row 125), each person's own; C, N, E and / until then. */
+  shortcuts: defineSetting<ShellKeys>(
+    'presentation.shortcuts',
+    DEFAULT_SHORTCUTS,
+    parseShellShortcuts,
+  ),
 } as const;
 
 const LIST_ID = /^[a-z][a-z0-9-]*$/;

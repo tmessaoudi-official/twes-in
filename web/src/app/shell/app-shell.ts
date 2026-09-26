@@ -35,12 +35,7 @@ import { Label } from '../shared/a11y/label';
 import { runAction } from '../shared/actions/run-action';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
-import {
-  DEFAULT_SHORTCUTS,
-  isBareKeystroke,
-  isTypingTarget,
-  matchesShortcut,
-} from '../shared/actions/shortcuts';
+import { isBareKeystroke, isTypingTarget, matchesShortcut } from '../shared/actions/shortcuts';
 import { keyName, ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { ActivityBar } from '../shared/feedback/activity-bar';
@@ -52,6 +47,8 @@ import {
   SUPPORTED_LANGUAGES,
 } from '../shared/i18n/language-facade';
 import { type SchemePreference, ThemeFacade } from '../shared/theme/theme-facade';
+import { SettingsFacade } from '../shared/settings/settings-facade';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 import { ProductScanCard, type ProductScanCardData } from '../products/product-scan-card';
 import { PRODUCTS_MODULE } from '../products/products-nav';
 import { ProductOnView } from '../products/product-on-view';
@@ -258,8 +255,8 @@ export class AppShell {
     const path = this.url().split(/[?#]/)[0];
     return this.createCommands().find((command) => command.route === `${path}/new`);
   });
-  /** The shell's single keys, which the rail's hints and the handler below both read. */
-  protected readonly keys = DEFAULT_SHORTCUTS;
+  /** The person's single keys (row 125), which the rail's hints and the handler below both read. */
+  protected readonly keys = inject(SettingsFacade).value(PRESENTATION.shortcuts);
   protected readonly keyName = keyName;
 
   /** Whether the settings area is open, which changes both the menu and the room the page is given. */
@@ -391,29 +388,30 @@ export class AppShell {
       return;
     }
 
-    // The shell's own keys (docs/SPEC.md § 7, 2026-09-24 22:51): / searches, C opens « Créer », N a new document on
+    // The shell's own keys (docs/SPEC.md § 7, 2026-09-24 22:51), the person's or the ruled ones: / searches, C opens « Créer », N a new document on
     // its list, E the next step. Each is taken only when it has something to do, so a key with nothing behind it on
     // this screen stays the browser's; and each is held for one scan gap like a screen's key, since a code may
     // begin with any of them.
-    if (matchesShortcut(event, this.keys.search)) {
+    const keys = this.keys();
+    if (matchesShortcut(event, keys.search)) {
       // Taken at once even so: Firefox opens its quick-find on a bare /.
       event.preventDefault();
       this.hold(() => this.openCommands());
       return;
     }
-    if (matchesShortcut(event, this.keys.create) && this.createCommands().length > 0) {
+    if (matchesShortcut(event, keys.create) && this.createCommands().length > 0) {
       event.preventDefault();
       this.hold(() => this.createTrigger()?.openMenu());
       return;
     }
     const creation = this.newOnThisList();
-    if (matchesShortcut(event, this.keys.new) && creation !== undefined) {
+    if (matchesShortcut(event, keys.new) && creation !== undefined) {
       event.preventDefault();
       this.hold(() => void this.router.navigateByUrl(creation.route));
       return;
     }
     const next = this.screen.next();
-    if (matchesShortcut(event, this.keys.next) && next !== undefined) {
+    if (matchesShortcut(event, keys.next) && next !== undefined) {
       event.preventDefault();
       this.hold(() => this.run(next));
       return;

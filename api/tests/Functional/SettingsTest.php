@@ -36,7 +36,7 @@ final class SettingsTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $rows = $this->jsonList();
         $keys = array_column($rows, 'key');
-        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.language', 'presentation.customer-view.cost', 'presentation.customer-view.supplier-codes', 'presentation.show-coming'], $keys);
+        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.language', 'presentation.customer-view.cost', 'presentation.customer-view.supplier-codes', 'presentation.show-coming', 'presentation.shortcuts'], $keys);
         // Read by key and not by position: what each case below is about is one setting's own default, and an
         // ordinal makes every future presentation setting shift assertions that have nothing to do with it.
         $row = static function (string $key) use ($rows, $keys): array {
@@ -200,6 +200,32 @@ final class SettingsTest extends ApiTestCase
         $this->sendJson('PUT', $this->path().'/presentation.density', ['level' => 'user', 'value' => 'cosy']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    // docs/SPEC.md § 7, 2026-09-24 22:51, row 125: each person's own keys, which no company or role sets for them.
+    public function testEachPersonChangesAndRestoresTheirOwnKeyboardShortcuts(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->getJson($this->path().'?chain=presentation');
+        self::assertNull($this->row('presentation.shortcuts')['value']);
+        self::assertSame('json', $this->row('presentation.shortcuts')['type']);
+        self::assertSame(['user'], $this->row('presentation.shortcuts')['writableLevels']);
+
+        $keys = ['create' => 'k', 'new' => 'n', 'next' => 'e', 'search' => '/'];
+        $this->sendJson('PUT', $this->path().'/presentation.shortcuts', ['level' => 'user', 'value' => $keys]);
+        self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $this->path().'/presentation.shortcuts', ['level' => 'company', 'value' => $keys]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        $this->getJson($this->path().'?chain=presentation');
+        // The mapping, not its order: jsonb keeps an object's keys in its own order.
+        self::assertEquals($keys, $this->row('presentation.shortcuts')['value']);
+
+        // « Rétablir » forgets the person's own choice, and the keys are the ruled ones again.
+        $this->sendJson('DELETE', $this->path().'/presentation.shortcuts?level=user');
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->getJson($this->path().'?chain=presentation');
+        self::assertNull($this->row('presentation.shortcuts')['value']);
     }
 
     public function testALevelTheSettingDoesNotAllowIsUnprocessable(): void

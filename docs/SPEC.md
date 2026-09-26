@@ -3083,6 +3083,21 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   - `DEFAULT_SHORTCUTS` is the one list the handler, the rail's « C » and the « ? » sheet read. The sheet shows the
     page's next step under E.
   - Part two is the per-person setting in Mon compte › Préférences.
+- [2026-09-26 04:23] DECIDED (revisit), row 125 part two: **each person gives the shell's four actions keys of their
+  own in Mon compte › Préférences**, as `presentation.shortcuts`. It is a JSON setting at user level only, and neither a
+  company nor a role sets it. « Rétablir » deletes the person's value, and C, N, E and / are back.
+  - **What may not be chosen:** anything longer than one character; the browser's keys (the named ones and "'");
+    « ? » and « [ »; the screen keys S, V, L and P; and the count typed before a scan (digits, x, * and ×). A key
+    another of the four already holds is also refused. The reason is said under the field, and the field goes back to
+    the key actually kept.
+  - **Taking a key:** the field takes the LAST character typed, so typing over the old key works without selecting
+    it first, and focusing a field selects it.
+  - **Saving:** a key is kept at once, like the page's other preferences, with no toast.
+  - **Reading what is stored:** the API checks only that it is JSON, as it does for a list layout. The web reads it
+    one entry at a time: an entry refused since it was stored puts back that action's ruled key. If two actions would
+    then share one key, all four ruled keys come back.
+  - **Not configurable:** Ctrl K and the screens' own keys. Changing a screen key would mean a per-screen setting
+    nobody asked for.
 
 ## 8. Status
 
@@ -3215,7 +3230,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 122 | Signature boxes (§ 7 2026-09-24 22:51): delivery-note reception with réserves, quote « Bon pour accord » with « Marquer accepté » and the signed scan, the supplier order's printed approver | M | doing | - | |
 | 123 | 1024 px layout (§ 7 2026-09-24 22:51): the labelled 80 px rail, a record as a sheet over its list | M | doing | - | |
 | 124 | Navigation (§ 7 2026-09-24 22:51): « Caisse » and « Travaux » in the rail, « Mon compte » with four tabs absorbing the device page | S | done | d128c231 | |
-| 125 | Configurable keyboard shortcuts (§ 7 2026-09-24 22:51): C, N, E, / and Ctrl K as defaults, changed and restored per person in Mon compte › Préférences | S | doing | - | |
+| 125 | Configurable keyboard shortcuts (§ 7 2026-09-24 22:51): C, N, E, / and Ctrl K as defaults, changed and restored per person in Mon compte › Préférences | S | done | 42b92ccb | |
 | 126 | Signature, cachet and electronic PDF signature (§ 7 2026-09-24 22:51): research first, postponed | M | deferred | - | |
 | 127 | Insights pushed once (§ 7 2026-09-24 12:10 and 2026-09-25 08:31): a scheduler (Symfony Scheduler worker in compose), a record of what was pushed per subject and bucket, and the pushes through the Inbox | L | todo | - | |
 | 128 | Credit balance, write-off and crediting a paid invoice (§ 7 2026-09-21 17:35, 2026-09-25 12:45): an overpayment's excess moves to the customer's credit balance, applied to a later invoice and shown on the statement; a short-paid invoice closes on a credit note under a per-company tolerance; a credit note on a paid invoice sends what exceeds the due to a refund or to the credit balance | M | todo | - | |

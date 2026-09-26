@@ -45,6 +45,9 @@ final readonly class PresentationSettings implements DeclaresSettings
         // « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. The
         // company may hide them for everyone; a member for themself.
         yield new SettingDefinition('presentation.show-coming', SettingType::Bool, true, $chain, $shared, 'settings.presentation.show_coming', self::MODULE);
+        // Each person's single-key shortcuts (docs/SPEC.md § 7, 2026-09-24 22:51, row 125): C, N, E and / until they choose.
+        // Nothing but the person sets them, and the web reads each key defensively, as it reads a list layout.
+        yield new SettingDefinition('presentation.shortcuts', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.shortcuts', self::MODULE);
         yield new SettingDefinition('presentation.list.<id>', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.list', self::MODULE, keyPattern: self::LIST);
         yield new SettingDefinition('presentation.list.<id>.views', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.list_views', self::MODULE, keyPattern: self::LIST_VIEWS);
     }

@@ -6,8 +6,12 @@ import { MatDialogRef } from '@angular/material/dialog';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import type { ScreenAction } from './screen-action';
 import { ScreenActions } from './screen-actions';
+import { Session } from '../session/session';
+import { BrowserStorageSettings } from '../settings/browser-storage-settings';
+import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
+import { PRESENTATION } from '../settings/settings-registry';
 import { DEFAULT_SHORTCUTS } from './shortcuts';
-import { GLOBAL_SHORTCUTS, ShortcutsSheet } from './shortcuts-sheet';
+import { globalShortcuts, ShortcutsSheet } from './shortcuts-sheet';
 
 @Component({ template: '' })
 class Holder {
@@ -42,6 +46,9 @@ describe('ShortcutsSheet', () => {
       providers: [
         provideTranslateService(),
         { provide: MatDialogRef, useValue: { close: () => (closed += 1) } },
+        { provide: Session, useValue: { me: signal(null) } },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
       ],
     });
     TestBed.inject(TranslateService).setTranslation('fr', {
@@ -111,7 +118,7 @@ describe('ShortcutsSheet', () => {
     // the palette, which nothing on the screen names.
     open();
 
-    for (const shortcut of GLOBAL_SHORTCUTS) {
+    for (const shortcut of globalShortcuts(DEFAULT_SHORTCUTS)) {
       expect(testId(`shortcut-${shortcut.id}`), shortcut.id).not.toBeNull();
     }
     expect(text()).toContain('Ctrl');
@@ -124,6 +131,19 @@ describe('ShortcutsSheet', () => {
     expect(keysOf('shortcut-create')).toEqual([DEFAULT_SHORTCUTS.create.toUpperCase()]);
     expect(keysOf('shortcut-new')).toEqual([DEFAULT_SHORTCUTS.new.toUpperCase()]);
     expect(keysOf('shortcut-next')).toEqual([DEFAULT_SHORTCUTS.next.toUpperCase()]);
+  });
+
+  it('names the keys this person chose, on the page’s next step too (row 125)', () => {
+    TestBed.inject(SettingsFacade).set(PRESENTATION.shortcuts, {
+      ...DEFAULT_SHORTCUTS,
+      create: 'k',
+      next: 'j',
+    });
+    open([{ id: 'issue', label: 'invoices.issue', next: true, run: () => undefined }]);
+
+    expect(keysOf('shortcut-create')).toEqual(['K']);
+    expect(keysOf('shortcut-next')).toEqual(['J']);
+    expect(keysOf('shortcut-issue')).toEqual(['J']);
   });
 
   it('closes when asked', () => {

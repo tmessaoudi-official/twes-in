@@ -24,6 +24,14 @@ import { ThemeFacade } from '../shared/theme/theme-facade';
 import { AppShell } from './app-shell';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
+import { DEFAULT_SHORTCUTS } from '../shared/actions/shortcuts';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 import { ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { ProductScanCard, type ProductScanCardData } from '../products/product-scan-card';
@@ -248,6 +256,8 @@ describe('AppShell', () => {
         { provide: Camera, useValue: { available: () => true } },
         { provide: PhonePairing, useValue: pairing },
         { provide: CustomerView, useValue: customerView },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         {
           provide: NotificationsFacade,
           useValue: {
@@ -370,6 +380,25 @@ describe('AppShell', () => {
     expect(byTestId('create-new-customer')?.textContent).toContain('Nouveau client');
     // Only what this person may create in this company: invoices are off for it.
     expect(byTestId('create-new-invoice')).toBeNull();
+  });
+
+  it('answers the keys this person chose rather than the ruled ones (row 125)', async () => {
+    permissions.set(['customer.read', 'customer.write']);
+    TestBed.inject(SettingsFacade).set(PRESENTATION.shortcuts, {
+      ...DEFAULT_SHORTCUTS,
+      create: 'k',
+    });
+    const { byTestId } = await render();
+    expect(byTestId('create-open')?.getAttribute('aria-keyshortcuts')).toBe('k');
+    expect(byTestId('create-open')?.querySelector('kbd')?.textContent).toBe('K');
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', bubbles: true }));
+    await pause();
+    expect(byTestId('create-new-customer')).toBeNull();
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', bubbles: true }));
+    await pause();
+    expect(byTestId('create-new-customer')).not.toBeNull();
   });
 
   it('shows the vision’s entries not built yet, marked « Bientôt », and hides them all when asked', async () => {
