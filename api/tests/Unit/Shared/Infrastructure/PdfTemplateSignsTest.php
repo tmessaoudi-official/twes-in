@@ -30,6 +30,24 @@ final class PdfTemplateSignsTest extends TestCase
         }
     }
 
+    /**
+     * Every figure and every day a printed document writes follows the company's number and date format (docs/SPEC.md
+     * § 7, 2026-09-25 12:45, row 130): a filter call left on the language alone would print one amount another way.
+     */
+    public function testEveryPrintedFigureAndDayFollowsTheCompanysFormats(): void
+    {
+        $templates = glob(\dirname(__DIR__, 4).'/templates/pdf/*.html.twig') ?: [];
+        $figures = 0;
+        foreach ($templates as $template) {
+            $source = (string) file_get_contents($template);
+            $figures += preg_match_all('/\|(?:decimal|deduction)\(/', $source);
+            self::assertSame(0, preg_match_all('/\|(?:decimal|deduction)\([^)]*\blocale\)/', $source), basename($template).' formats a figure by the language alone');
+            self::assertSame(0, preg_match_all('/\|date\((?!dateFormat\b)/', $source), basename($template).' writes a day in a format of its own');
+            self::assertStringContainsString("date_pattern(page.dateFormat, 'format.date'|trans({}, t, locale))", $source, basename($template));
+        }
+        self::assertGreaterThanOrEqual(20, $figures, 'both layouts (25 figures on 2026-09-26)\' figures are found, so an empty set cannot pass');
+    }
+
     public function testTheInvoiceDeductsItsDiscountAndItsWithholdingsThroughTheFilter(): void
     {
         $source = (string) file_get_contents(\dirname(__DIR__, 4).'/templates/pdf/invoice.html.twig');

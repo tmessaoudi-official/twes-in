@@ -10,6 +10,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { decimalShown } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { Session } from '../shared/session/session';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
@@ -83,7 +84,13 @@ describe('ProductReorderPointsSection', () => {
         { provide: ProductReorderPoints, useValue: facade },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
-        { provide: FormatFacade, useValue: { locale: signal('fr-FR') } },
+        {
+          provide: FormatFacade,
+          useValue: {
+            locale: signal('fr-FR'),
+            decimal: (value: string) => decimalShown(value, 'fr-FR'),
+          },
+        },
       ],
     });
   });

@@ -1,7 +1,8 @@
 {# A delivery note on A4, rendered by Gotenberg's Chromium. Everything it says comes from translations/pdf and fiscal
    in the note's language; amounts go through the decimal filter, never through a float. Nothing here runs a script. #}
 {%- set t = 'pdf' -%}
-{%- set dateFormat = 'format.date'|trans({}, t, locale) -%}
+{#- The company's date and number format win over the language's (docs/SPEC.md § 7, 2026-09-25 12:45, row 130). -#}
+{%- set dateFormat = date_pattern(page.dateFormat, 'format.date'|trans({}, t, locale)) -%}
 <!DOCTYPE html>
 <html lang="{{ locale }}">
 <head>
@@ -112,12 +113,12 @@
       {%- for line in note.lines %}
         <tr>
           <td>{{ line.description|nl2br }}</td>
-          <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale) }}</td>
+          <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
           <td>{{ line.unit.code }}</td>
           {%- if page.showPrices %}
-            <td class="number">{{ line.unitPriceNet|decimal(scale, locale) }}</td>
+            <td class="number">{{ line.unitPriceNet|decimal(scale, locale, page.numberFormat) }}</td>
             <td>{{ line.taxes|map(tax => tax.code)|join(', ') }}</td>
-            <td class="number">{{ page.totals.lines[loop.index0].net|decimal(scale, locale) }}</td>
+            <td class="number">{{ page.totals.lines[loop.index0].net|decimal(scale, locale, page.numberFormat) }}</td>
           {%- endif %}
         </tr>
       {%- endfor %}
@@ -126,15 +127,15 @@
 
   {%- if page.showPrices %}
     <table class="totals">
-      <tr><td>{{ 'totals.subtotal'|trans({}, t, locale) }}</td><td class="number">{{ page.totals.subtotalNet|decimal(scale, locale) }}</td></tr>
+      <tr><td>{{ 'totals.subtotal'|trans({}, t, locale) }}</td><td class="number">{{ page.totals.subtotalNet|decimal(scale, locale, page.numberFormat) }}</td></tr>
       {%- for tax in page.totals.taxes %}
         <tr>
-          <td>{{ tax.code }} {{ tax.rate.percentage()|decimal(0, locale) }} % <span class="muted">({{ tax.base|decimal(scale, locale) }})</span></td>
-          <td class="number">{{ tax.amount|decimal(scale, locale) }}</td>
+          <td>{{ tax.code }} {{ tax.rate.percentage()|decimal(0, locale, page.numberFormat) }} % <span class="muted">({{ tax.base|decimal(scale, locale, page.numberFormat) }})</span></td>
+          <td class="number">{{ tax.amount|decimal(scale, locale, page.numberFormat) }}</td>
         </tr>
       {%- endfor %}
-      <tr><td>{{ 'totals.total_tax'|trans({}, t, locale) }}</td><td class="number">{{ page.totals.totalTax|decimal(scale, locale) }}</td></tr>
-      <tr class="grand"><td>{{ 'totals.total'|trans({}, t, locale) }}</td><td class="number">{{ page.totals.total|decimal(scale, locale) }}</td></tr>
+      <tr><td>{{ 'totals.total_tax'|trans({}, t, locale) }}</td><td class="number">{{ page.totals.totalTax|decimal(scale, locale, page.numberFormat) }}</td></tr>
+      <tr class="grand"><td>{{ 'totals.total'|trans({}, t, locale) }}</td><td class="number">{{ page.totals.total|decimal(scale, locale, page.numberFormat) }}</td></tr>
     </table>
     <p class="muted">{{ 'totals.currency'|trans({'%currency%': company.currency}, t, locale) }}</p>
   {%- endif %}

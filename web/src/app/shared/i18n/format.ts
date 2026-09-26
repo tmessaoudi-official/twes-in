@@ -6,6 +6,22 @@ const DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MOMENT = /^\d{4}-\d{2}-\d{2}T/;
 
 /**
+ * How a person chose to see days and figures (docs/SPEC.md § 7, 2026-09-25 12:45, row 130), whatever the language:
+ * `auto` writes them as the locale does, which is what everything showed before the choice existed.
+ */
+export const DATE_FORMATS = ['auto', 'dmy', 'mdy', 'ymd', 'dmy-dots'] as const;
+export type DateFormat = (typeof DATE_FORMATS)[number];
+export const NUMBER_FORMATS = ['auto', 'space-comma', 'dot-comma', 'comma-dot'] as const;
+export type NumberStyle = (typeof NUMBER_FORMATS)[number];
+
+/** Each chosen number style's thousands and decimal separators; the space is ICU's narrow no-break one, as French. */
+const NUMBER_STYLES: Readonly<Record<Exclude<NumberStyle, 'auto'>, readonly [string, string]>> = {
+  'space-comma': ['\u202f', ','],
+  'dot-comma': ['.', ','],
+  'comma-dot': [',', '.'],
+};
+
+/**
  * An amount as the API takes it and a form control holds it: at the currency's scale, and finer only when the value
  * itself is ("0.0045" per unit). Nothing is rounded here; the API computes every figure, and trailing zeros past the
  * scale are dropped. The field shows it through `decimalShown`.
@@ -23,8 +39,8 @@ export function atScale(value: string, scale: number): string {
  * "890.000" shows "890,000" in French and a typed "1,234" can never mean a thousand (docs/SPEC.md § 7, 2026-09-19).
  * What is not a decimal shows as it came.
  */
-export function decimalShown(value: string, locale: string): string {
-  return DECIMAL.test(value) ? value.replace('.', numberFormat(locale).decimal) : value;
+export function decimalShown(value: string, locale: string, style: NumberStyle = 'auto'): string {
+  return DECIMAL.test(value) ? value.replace('.', numberFormat(locale, style).decimal) : value;
 }
 
 /** What a person typed in a decimal field, as the API reads it: a comma or a point; anything else is left to refuse. */
@@ -38,34 +54,51 @@ export function decimalTyped(text: string): string {
  * does ("2 975,000" in fr-TN). The digits stay the API's own string and never pass through a float, so no figure
  * changes on the way. A scale not known yet keeps the decimals as they came; what is not a decimal shows as it came.
  */
-export function formatAmount(value: string, scale: number | null, locale: string): string {
+export function formatAmount(
+  value: string,
+  scale: number | null,
+  locale: string,
+  style: NumberStyle = 'auto',
+): string {
   if (!DECIMAL.test(value)) return value;
   const negative = value.startsWith('-');
   const unsigned = negative ? value.slice(1) : value;
   const [integer = '0', fraction] = (scale === null ? unsigned : atScale(unsigned, scale)).split(
     '.',
   );
-  const { numbers, decimal, minus } = numberFormat(locale);
-  const shown = `${numbers.format(BigInt(integer))}${fraction === undefined ? '' : decimal + fraction}`;
+  const { group, decimal, minus } = numberFormat(locale, style);
+  const shown = `${group(integer)}${fraction === undefined ? '' : decimal + fraction}`;
   return negative ? `${minus}${shown}` : shown;
 }
 
 interface NumberFormat {
-  numbers: Intl.NumberFormat;
+  /** The integer part's digits, grouped. */
+  group: (digits: string) => string;
   decimal: string;
   minus: string;
 }
 
 const numberFormats = new Map<string, NumberFormat>();
 
-/** A locale's number format and its glyphs, built once: a list re-renders every amount on each change detection. */
-function numberFormat(locale: string): NumberFormat {
+/**
+ * A locale's number format and its glyphs, or a chosen style's, built once: a list re-renders every amount on each
+ * change detection.
+ */
+function numberFormat(locale: string, style: NumberStyle = 'auto'): NumberFormat {
+  if (style !== 'auto') {
+    const [thousands, decimal] = NUMBER_STYLES[style];
+    return {
+      group: (digits) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, thousands),
+      decimal,
+      minus: '-',
+    };
+  }
   let known = numberFormats.get(locale);
   if (known === undefined) {
     const numbers = new Intl.NumberFormat(locale);
     const parts = numbers.formatToParts(-1.5);
     known = {
-      numbers,
+      group: (digits) => numbers.format(BigInt(digits)),
       decimal: parts.find((part) => part.type === 'decimal')?.value ?? '.',
       minus: parts.find((part) => part.type === 'minusSign')?.value ?? '-',
     };
@@ -74,13 +107,33 @@ function numberFormat(locale: string): NumberFormat {
   return known;
 }
 
+/** A day's two-digit parts in a chosen order. */
+function dayInOrder(
+  year: string,
+  month: string,
+  day: string,
+  style: Exclude<DateFormat, 'auto'>,
+): string {
+  switch (style) {
+    case 'dmy':
+      return `${day}/${month}/${year}`;
+    case 'mdy':
+      return `${month}/${day}/${year}`;
+    case 'ymd':
+      return `${year}-${month}-${day}`;
+    case 'dmy-dots':
+      return `${day}.${month}.${year}`;
+  }
+}
+
 /** A calendar day ("2026-09-05") as the locale writes it, "05/09/2026" in French; what is not a day shows as it came. */
-export function formatDay(value: string, locale: string): string {
+export function formatDay(value: string, locale: string, style: DateFormat = 'auto'): string {
   const match = DAY.exec(value);
   if (match === null) return value;
   const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
   const date = new Date(Date.UTC(year, month - 1, day));
   if (date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return value;
+  if (style !== 'auto') return dayInOrder(match[1]!, match[2]!, match[3]!, style);
   return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: '2-digit',
@@ -125,9 +178,28 @@ function formatDayParts(value: string, locale: string, parts: Intl.DateTimeForma
  * A moment (an ISO date-time) as its day and a 24-hour time in a time zone, the viewer's when none is given; what is
  * not a moment shows as it came.
  */
-export function formatMoment(value: string, locale: string, timeZone?: string): string {
+export function formatMoment(
+  value: string,
+  locale: string,
+  timeZone?: string,
+  style: DateFormat = 'auto',
+): string {
   const date = new Date(value);
   if (!MOMENT.test(value) || Number.isNaN(date.getTime())) return value;
+  if (style !== 'auto') {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+      ...(timeZone === undefined ? {} : { timeZone }),
+    }).formatToParts(date);
+    const part = (type: Intl.DateTimeFormatPartTypes) =>
+      parts.find((candidate) => candidate.type === type)?.value ?? '';
+    return `${dayInOrder(part('year'), part('month'), part('day'), style)} ${part('hour')}:${part('minute')}`;
+  }
   return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: '2-digit',

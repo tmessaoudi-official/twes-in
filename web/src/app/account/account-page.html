@@ -87,7 +87,38 @@
                       }
                     </select>
                   </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>{{ 'account.date_format' | translate }}</mat-label>
+                    <select
+                      matNativeControl
+                      data-testid="account-date-format"
+                      (change)="useDateFormat($any($event.target).value)"
+                    >
+                      @for (format of dateFormats; track format) {
+                        <option [value]="format" [selected]="dateFormat() === format">
+                          {{ 'settings.choices.presentation.date-format.' + format | translate }}
+                        </option>
+                      }
+                    </select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>{{ 'account.number_format' | translate }}</mat-label>
+                    <select
+                      matNativeControl
+                      data-testid="account-number-format"
+                      (change)="useNumberFormat($any($event.target).value)"
+                    >
+                      @for (format of numberFormats; track format) {
+                        <option [value]="format" [selected]="numberFormat() === format">
+                          {{ 'settings.choices.presentation.number-format.' + format | translate }}
+                        </option>
+                      }
+                    </select>
+                  </mat-form-field>
                 </div>
+                <p class="text-sm opacity-80" data-testid="account-format-preview">
+                  {{ 'account.format_preview' | translate: formatPreview() }}
+                </p>
               </div>
 
               <div class="flex flex-col gap-2">

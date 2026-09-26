@@ -3,6 +3,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { decimalShown, type NumberStyle } from '../i18n/format';
 import { FormatFacade } from '../i18n/format-facade';
 import { DecimalInput } from './decimal-input';
 
@@ -20,10 +21,12 @@ class Host {
  */
 describe('DecimalInput', () => {
   const locale = signal('fr-TN');
+  const numberFormat = signal<NumberStyle>('auto');
+  const decimal = (value: string) => decimalShown(value, locale(), numberFormat());
 
   function render(): { host: Host; input: HTMLInputElement } {
     TestBed.configureTestingModule({
-      providers: [{ provide: FormatFacade, useValue: { locale } }],
+      providers: [{ provide: FormatFacade, useValue: { locale, decimal } }],
     });
     const fixture = TestBed.createComponent(Host);
     fixture.detectChanges();
@@ -36,7 +39,23 @@ describe('DecimalInput', () => {
     input.dispatchEvent(new Event('input'));
   }
 
-  beforeEach(() => locale.set('fr-TN'));
+  beforeEach(() => {
+    locale.set('fr-TN');
+    numberFormat.set('auto');
+  });
+
+  it('shows the separator of a number format the person chose, and follows a change of it', () => {
+    numberFormat.set('comma-dot');
+    const { host, input } = render();
+    expect(input.value).toBe('890.000');
+
+    numberFormat.set('dot-comma');
+    TestBed.tick();
+
+    expect(input.value).toBe('890,000');
+    type(input, '12.5');
+    expect(host.control.value).toBe('12.5');
+  });
 
   it('shows the control’s value with the locale’s decimal separator', () => {
     const { host, input } = render();

@@ -10,7 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { type ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { decimalShown, decimalTyped } from '../i18n/format';
+import { decimalTyped } from '../i18n/format';
 import { FormatFacade } from '../i18n/format-facade';
 
 /**
@@ -28,18 +28,18 @@ import { FormatFacade } from '../i18n/format-facade';
 export class DecimalInput implements ControlValueAccessor {
   private readonly element = inject<ElementRef<HTMLInputElement>>(ElementRef);
   private readonly renderer = inject(Renderer2);
-  private readonly locale = inject(FormatFacade).locale;
+  private readonly format = inject(FormatFacade);
   private value = '';
   private changed: (value: string) => void = () => undefined;
   private touched: () => void = () => undefined;
 
   constructor() {
-    effect(() => this.show(this.locale()));
+    effect(() => this.show());
   }
 
   writeValue(value: unknown): void {
     this.value = typeof value === 'string' ? value : value == null ? '' : String(value);
-    this.show(untracked(this.locale));
+    untracked(() => this.show());
   }
 
   registerOnChange(changed: (value: string) => void): void {
@@ -60,15 +60,12 @@ export class DecimalInput implements ControlValueAccessor {
   }
 
   protected left(): void {
-    this.show(this.locale());
+    this.show();
     this.touched();
   }
 
-  private show(locale: string): void {
-    this.renderer.setProperty(
-      this.element.nativeElement,
-      'value',
-      decimalShown(this.value, locale),
-    );
+  /** Reads the screen's locale and the person's number format, so the effect re-shows the field when either moves. */
+  private show(): void {
+    this.renderer.setProperty(this.element.nativeElement, 'value', this.format.decimal(this.value));
   }
 }

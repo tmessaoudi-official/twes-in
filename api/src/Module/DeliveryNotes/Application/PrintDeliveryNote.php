@@ -16,6 +16,7 @@ use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
+use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\PdfRenderer;
@@ -103,6 +104,7 @@ final readonly class PrintDeliveryNote
             \is_string($language) ? $language : 'fr',
             \is_string($printedNotes) ? $printedNotes : '',
             true === $this->settings->value($context, 'delivery_note.reception_block'),
+            ...DocumentFormats::of($this->settings, $note->getCompany()),
         )));
     }
 

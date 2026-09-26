@@ -200,3 +200,37 @@ describe('formatLocale', () => {
     expect(formatLocale('fr', 'not a country')).toBe('fr');
   });
 });
+
+// docs/SPEC.md § 7, 2026-09-25 12:45, row 130: a date and a number format chosen, whatever the language.
+describe('a chosen format', () => {
+  it('groups and punctuates an amount as chosen, and follows the locale when the choice is auto', () => {
+    expect(formatAmount('2975.5', 3, 'en', 'space-comma')).toBe('2 975,500');
+    expect(formatAmount('-1234567', 2, 'fr', 'dot-comma')).toBe('-1.234.567,00');
+    expect(formatAmount('2975', 3, 'fr-TN', 'comma-dot')).toBe('2,975.000');
+    expect(formatAmount('12', 3, 'fr', 'comma-dot')).toBe('12.000');
+    expect(formatAmount('2975', 3, 'en', 'auto')).toBe(formatAmount('2975', 3, 'en'));
+  });
+
+  it('shows a decimal field with the chosen separator, still never grouped', () => {
+    expect(decimalShown('1234.5', 'fr', 'comma-dot')).toBe('1234.5');
+    expect(decimalShown('1234.5', 'en', 'space-comma')).toBe('1234,5');
+    expect(decimalShown('1234.5', 'en', 'dot-comma')).toBe('1234,5');
+    expect(decimalShown('1234.5', 'fr', 'auto')).toBe('1234,5');
+  });
+
+  it('writes a day in the chosen order, and as the locale does when the choice is auto', () => {
+    expect(formatDay('2026-09-05', 'en', 'dmy')).toBe('05/09/2026');
+    expect(formatDay('2026-09-05', 'fr', 'mdy')).toBe('09/05/2026');
+    expect(formatDay('2026-09-05', 'fr', 'ymd')).toBe('2026-09-05');
+    expect(formatDay('2026-09-05', 'fr', 'dmy-dots')).toBe('05.09.2026');
+    expect(formatDay('2026-09-05', 'en', 'auto')).toBe('09/05/2026');
+    expect(formatDay('2026-02-30', 'fr', 'ymd')).toBe('2026-02-30');
+  });
+
+  it('writes a moment’s day in the chosen order, its time in the given time zone', () => {
+    const moment = '2026-09-13T22:30:00+00:00';
+    expect(formatMoment(moment, 'en', 'Africa/Tunis', 'ymd')).toBe('2026-09-13 23:30');
+    expect(formatMoment(moment, 'fr', 'Asia/Tokyo', 'dmy-dots')).toBe('14.09.2026 07:30');
+    expect(formatMoment(moment, 'fr', 'UTC', 'auto')).toBe(formatMoment(moment, 'fr', 'UTC'));
+  });
+});

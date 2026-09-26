@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { formatAmount, formatDay } from '../shared/i18n/format';
+import type { FormatFacade } from '../shared/i18n/format-facade';
 import type { WatchItem } from './watch-types';
 
 /** One condition as the screen says it: its sentence's key and figures, and where its link goes. */
@@ -22,18 +22,21 @@ function text(item: WatchItem, name: string): string {
 }
 
 /**
- * Each figure in the locale, and the list it opens: a late customer opens the overdue invoices searched by the
+ * Each figure as the screen writes figures (`FormatFacade`: the locale, or the person's chosen formats), and the list it opens: a late customer opens the overdue invoices searched by the
  * customer's name, a product's condition opens the product, the unsold count the products.
  */
-export function watchLine(item: WatchItem, locale: string): WatchLine {
+export function watchLine(
+  item: WatchItem,
+  figures: Pick<FormatFacade, 'amount' | 'day'>,
+): WatchLine {
   const params: Record<string, string | number> = { ...item.params };
   for (const name of ['amount'] as const) {
-    if (name in params) params[name] = formatAmount(text(item, name), null, locale);
+    if (name in params) params[name] = figures.amount(text(item, name), null);
   }
   for (const name of ['quantity', 'onHand', 'point'] as const) {
-    if (name in params) params[name] = formatAmount(plainQuantity(text(item, name)), null, locale);
+    if (name in params) params[name] = figures.amount(plainQuantity(text(item, name)), null);
   }
-  if ('expiresOn' in params) params['expiresOn'] = formatDay(text(item, 'expiresOn'), locale);
+  if ('expiresOn' in params) params['expiresOn'] = figures.day(text(item, 'expiresOn'));
 
   const expired = item.kind === 'stock.lot_expiring' && Number(item.params['days']) < 0;
   const key = `watch.kinds.${expired ? 'stock.lot_expired' : item.kind}`;

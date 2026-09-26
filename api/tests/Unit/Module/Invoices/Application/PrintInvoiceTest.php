@@ -28,6 +28,7 @@ use App\Module\Invoices\Domain\InvoiceIssue;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\PresentationSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
@@ -51,6 +52,7 @@ use App\Tests\Support\RecordingInvoiceTemplate;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 final class PrintInvoiceTest extends TestCase
 {
@@ -82,7 +84,7 @@ final class PrintInvoiceTest extends TestCase
         $this->renderer = new FakePdfRenderer();
         $this->template = new RecordingInvoiceTemplate();
         $settings = new InMemorySettings();
-        $catalog = new SettingCatalog([new BusinessDefaultSettings()]);
+        $catalog = new SettingCatalog([new BusinessDefaultSettings(), new PresentationSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
         $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions);
         $this->totals = new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
@@ -124,6 +126,20 @@ final class PrintInvoiceTest extends TestCase
 
         $page = $this->template->pages[0];
         self::assertSame(['en', 'Payable by transfer.', ['fiscal.mention.tn.export'], 'Pénalité de retard : 1 % par mois', 'Merci'], [$page->language, $page->printedNotes, $page->mentionKeys, $page->latePenaltyText, $page->footer]);
+    }
+
+    // docs/SPEC.md § 7, 2026-09-25 12:45, row 130: a printed document follows the company's formats, never the person printing it.
+    public function testADocumentPrintsTheCompanysDateAndNumberFormatNotAPersonsOwn(): void
+    {
+        $draft = $this->draft($this->customer('standard', null));
+        $this->print->pdf($this->company, $draft->getId());
+        self::assertSame(['auto', 'auto'], [$this->template->pages[0]->dateFormat, $this->template->pages[0]->numberFormat]);
+
+        $this->change->change(new SettingContext($this->company), 'presentation.date-format', SettingLevel::Company, 'ymd', null);
+        $this->change->change(new SettingContext($this->company, userId: Uuid::v7()), 'presentation.number-format', SettingLevel::User, 'comma-dot', null);
+        $this->print->pdf($this->company, $draft->getId());
+
+        self::assertSame(['ymd', 'auto'], [$this->template->pages[1]->dateFormat, $this->template->pages[1]->numberFormat]);
     }
 
     public function testAnIssuedInvoiceIsStoredOnceThenServedAsItWasIssued(): void

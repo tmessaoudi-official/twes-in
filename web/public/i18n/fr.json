@@ -759,6 +759,8 @@
       "sidebar_settings": "Menu des réglages",
       "plan_labels": "Étiquettes du plan",
       "language": "Langue",
+      "date_format": "Format des dates",
+      "number_format": "Format des nombres",
       "customer_view_cost": "En vue client, masquer le coût des produits",
       "customer_view_supplier_codes": "En vue client, masquer les codes des fournisseurs",
       "show_coming": "Montrer ce qui arrive",
@@ -797,6 +799,19 @@
         "language": {
           "fr": "Français",
           "en": "English"
+        },
+        "date-format": {
+          "auto": "Selon la langue",
+          "dmy": "31/12/2026",
+          "mdy": "12/31/2026",
+          "ymd": "2026-12-31",
+          "dmy-dots": "31.12.2026"
+        },
+        "number-format": {
+          "auto": "Selon la langue",
+          "space-comma": "1 234,56",
+          "dot-comma": "1.234,56",
+          "comma-dot": "1,234.56"
         }
       }
     },
@@ -2583,6 +2598,9 @@
     "language": "Langue",
     "scheme": "Thème",
     "density": "Densité",
+    "date_format": "Format des dates",
+    "number_format": "Format des nombres",
+    "format_preview": "Aperçu : {{ day }} · {{ amount }}",
     "coming": "Ce qui arrive",
     "show_coming": "Montrer ce qui arrive, marqué « Bientôt »",
     "company_at_sign_in": "Société à l'ouverture",

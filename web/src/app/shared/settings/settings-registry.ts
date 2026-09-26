@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { DEFAULT_SHORTCUTS, parseShellShortcuts, type ShellKeys } from '../actions/shortcuts';
+import { DATE_FORMATS, type DateFormat, NUMBER_FORMATS, type NumberStyle } from '../i18n/format';
 import { assertAccentColour } from '../theme/accent-theme';
 import type { ListFilterValues, ListPreferences, ListSort, ListView } from '../list/list-types';
 import { NO_LIST_PREFERENCES } from '../list/list-types';
@@ -105,6 +106,16 @@ export const PRESENTATION = {
     'presentation.customer-view.supplier-codes',
     true,
     parseBool,
+  ),
+  /**
+   * How days and figures are written (docs/SPEC.md § 7, 2026-09-25 12:45, row 130): the locale's until someone
+   * chooses, person then role then company, as the API declares them.
+   */
+  dateFormat: defineSetting<DateFormat>('presentation.date-format', 'auto', oneOf(...DATE_FORMATS)),
+  numberFormat: defineSetting<NumberStyle>(
+    'presentation.number-format',
+    'auto',
+    oneOf(...NUMBER_FORMATS),
   ),
   /** « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. */
   showComing: defineSetting<boolean>('presentation.show-coming', true, parseBool),

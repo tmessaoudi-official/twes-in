@@ -759,6 +759,8 @@
       "sidebar_settings": "Settings menu",
       "plan_labels": "Plan labels",
       "language": "Language",
+      "date_format": "Date format",
+      "number_format": "Number format",
       "customer_view_cost": "In customer view, hide product costs",
       "customer_view_supplier_codes": "In customer view, hide suppliers' codes",
       "show_coming": "Show what is coming",
@@ -797,6 +799,19 @@
         "language": {
           "fr": "Français",
           "en": "English"
+        },
+        "date-format": {
+          "auto": "As the language writes it",
+          "dmy": "31/12/2026",
+          "mdy": "12/31/2026",
+          "ymd": "2026-12-31",
+          "dmy-dots": "31.12.2026"
+        },
+        "number-format": {
+          "auto": "As the language writes it",
+          "space-comma": "1 234,56",
+          "dot-comma": "1.234,56",
+          "comma-dot": "1,234.56"
         }
       }
     },
@@ -2583,6 +2598,9 @@
     "language": "Language",
     "scheme": "Theme",
     "density": "Density",
+    "date_format": "Date format",
+    "number_format": "Number format",
+    "format_preview": "Preview: {{ day }} · {{ amount }}",
     "coming": "What is coming",
     "show_coming": "Show what is coming, marked “Soon”",
     "company_at_sign_in": "Company at sign-in",

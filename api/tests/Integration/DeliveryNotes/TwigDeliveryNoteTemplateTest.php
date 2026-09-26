@@ -94,6 +94,18 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         }
     }
 
+    public function testTheCompanysDateAndNumberFormatWinOverTheLanguage(): void
+    {
+        $html = $this->html(null, true, 'fr', '', dateFormat: 'ymd', numberFormat: 'comma-dot');
+
+        foreach (['<html lang="fr">', 'Bon de livraison', '2026-09-15', '2026-09-20', '1,250.000', '2,525.000'] as $expected) {
+            self::assertStringContainsString($expected, $html);
+        }
+        foreach (['15/09/2026', "1\u{a0}250,000"] as $absent) {
+            self::assertStringNotContainsString($absent, $html);
+        }
+    }
+
     public function testACompanyMayLeaveTheReceptionBlockOut(): void
     {
         $html = $this->html(null, true, 'fr', '', false);
@@ -105,7 +117,7 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
     }
 
     /** @param DeliveryNotePage::DRAFT|DeliveryNotePage::CANCELLED|null $watermark */
-    private function html(?string $watermark, bool $showPrices, string $language, string $printedNotes, bool $receptionBlock = true): string
+    private function html(?string $watermark, bool $showPrices, string $language, string $printedNotes, bool $receptionBlock = true, string $dateFormat = 'auto', string $numberFormat = 'auto'): string
     {
         self::bootKernel();
         $template = static::getContainer()->get(DeliveryNoteTemplate::class);
@@ -113,6 +125,6 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         $snapshot = $this->note->getCustomerSnapshot();
         self::assertInstanceOf(CustomerSnapshot::class, $snapshot);
 
-        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $snapshot, $watermark, $showPrices, $language, $printedNotes, $receptionBlock));
+        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $snapshot, $watermark, $showPrices, $language, $printedNotes, $receptionBlock, $dateFormat, $numberFormat));
     }
 }

@@ -3144,6 +3144,46 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   primary colour and a bar on its leading edge, so colour alone does not carry it, and `aria-current="true"` for a
   screen reader. `DataList` takes it as `activeRowId`, which any list with a sheet can reuse. This closes the "not done
   yet" item of 05:33.
+- [2026-09-26 07:51] DECIDED (revisit), row 130: **a date and a number format of one's own.** `presentation.date-format`
+  (`auto`, 31/12/2026, 12/31/2026, 2026-12-31, 31.12.2026) and `presentation.number-format` (`auto`, 1 234,56,
+  1.234,56, 1,234.56) sit on the company, role and user levels. `auto` is the language's, byte for byte what was shown
+  before. « Mon compte » › Préférences has two selects whose options are examples, and a preview line of today and an
+  amount.
+  - On screen: every amount, day and moment written through `FormatFacade` follows the choice, and so does a decimal
+    field's separator (`DecimalInput`). The field still takes a comma or a point and is never grouped.
+  - **Deviation from the ruling, to confirm**: a printed document follows the **company's** level alone, not the
+    person's. A PDF belongs to the company and must not depend on who printed it (`DocumentFormats`). An issued
+    document keeps the PDF it was stored with. Flip it if the ruling meant "the person printing" literally.
+  - Not covered: a day written out in full (« samedi 26 septembre 2026 »), a month's name and a chart's axis keep the
+    language's form. Neither order applies to them.
+  - « À surveiller » now writes its figures through `FormatFacade` as well. A chart's axis labels (« Factures » home)
+    still use the language's form.
+- [2026-09-26 08:52] AGREED (developer, asked and confirmed): **the search is out of the menu, on top at the centre,
+  always visible.** It is still Ctrl K and still opens the palette. On a phone it is an icon in the top bar.
+- [2026-09-26 08:52] AGREED: **the legal pages are nine, each editable by the platform operator:**
+  - Mentions légales, Confidentialité, Cookies.
+  - CGU (every member) and CGV (the company that pays; Code de commerce L441-1), as two separate pages.
+  - DPA with the list of sub-processors.
+  - Code source & licences (AGPL-3.0 § 13: the exact source of the running version, the licence, the commercial-licence
+    contact, THIRD-PARTY-NOTICES).
+  - Déclaration d'accessibilité.
+  - Sécurité, with `/.well-known/security.txt` (RFC 9116).
+  - Each page is kept per language and dated. The operator's identity fills the mentions, since a self-hosted install is
+    its own publisher.
+- [2026-09-26 08:52] AGREED: **Claude drafts the texts in fr, en and ar; a lawyer validates.** Each page is marked
+  « Brouillon — à faire valider » until approved. The Arabic pages render right-to-left on their own; the interface in
+  Arabic stays after the POC, as ruled.
+  - **The reader's language prevails**, against Claude's recommendation that French prevail. So the three versions must
+    be kept strictly equivalent, which is the lawyer's check on every change.
+- [2026-09-26 08:52] AGREED: **a cookie banner, informational, plus a CI guard.** Only a strictly necessary session
+  cookie and the person's own display choices are stored, and CNIL guidance exempts those from consent even in France.
+  - The developer still wants a banner shown on first visit. It says so and links to the Cookies page; closing it is
+    remembered.
+  - A CI gate fails when a cookie, a storage key or a third-party script appears that the Cookies page does not
+    declare. Adding analytics then forces the consent decision instead of slipping in.
+- [2026-09-26 08:52] AGREED: **the copyright and legal-links line is a slim line under the content.** It reads
+  « © <year> <brand> · AGPL-3.0 · Mentions légales · … ». It appears at the end of every page and on the signed-out pages,
+  scrolls with the content, and the brand comes from configuration.
 
 ## 8. Status
 
@@ -3274,14 +3314,14 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 120 | Zakat (§ 7 2026-09-24 13:10): the second research pass (Shafi'i, Hanbali), then the module — settings, bundles, worksheet, reminder | L | todo | - | |
 | 121 | Document mentions (§ 7 2026-09-24 22:51): the paid-stamp option (computed, copy only, off by default), amount in words and « Comment payer » switches, a credit note's required reason and invoice reference, COPIE and DUPLICATA marks | M | doing | - | |
 | 122 | Signature boxes (§ 7 2026-09-24 22:51): delivery-note reception with réserves, quote « Bon pour accord » with « Marquer accepté » and the signed scan, the supplier order's printed approver | M | doing | - | |
-| 123 | 1024 px layout (§ 7 2026-09-24 22:51): the labelled 80 px rail, a record as a sheet over its list | M | doing | - | |
+| 123 | 1024 px layout (§ 7 2026-09-24 22:51): the labelled 80 px rail, a record as a sheet over its list | M | done | 64fca336 | |
 | 124 | Navigation (§ 7 2026-09-24 22:51): « Caisse » and « Travaux » in the rail, « Mon compte » with four tabs absorbing the device page | S | done | d128c231 | |
 | 125 | Configurable keyboard shortcuts (§ 7 2026-09-24 22:51): C, N, E, / and Ctrl K as defaults, changed and restored per person in Mon compte › Préférences | S | done | 42b92ccb | |
 | 126 | Signature, cachet and electronic PDF signature (§ 7 2026-09-24 22:51): research first, postponed | M | deferred | - | |
 | 127 | Insights pushed once (§ 7 2026-09-24 12:10 and 2026-09-25 08:31): a scheduler (Symfony Scheduler worker in compose), a record of what was pushed per subject and bucket, and the pushes through the Inbox | L | todo | - | |
 | 128 | Credit balance, write-off and crediting a paid invoice (§ 7 2026-09-21 17:35, 2026-09-25 12:45): an overpayment's excess moves to the customer's credit balance, applied to a later invoice and shown on the statement; a short-paid invoice closes on a credit note under a per-company tolerance; a credit note on a paid invoice sends what exceeds the due to a refund or to the credit balance | M | todo | - | |
 | 129 | Partial invoicing of delivery notes (§ 7 2026-09-25 12:45): a quantity left to invoice per line, an invoice taking all or part, the note invoiced once nothing is left | M | todo | - | |
-| 130 | A date and number format of one's own (§ 7 2026-09-25 12:45): a presentation setting, person then company, defaulting to the language and country, followed by every screen and printed document | S | todo | - | |
+| 130 | A date and number format of one's own (§ 7 2026-09-25 12:45): a presentation setting, person then company, defaulting to the language and country, followed by every screen and printed document | M | doing | - | |
 | 131 | What an issued document keeps (§ 7 2026-09-25 16:51, DP-05 / DP-49 / DP-60 / DP-66): name and reference frozen on the line at issue with the « Un brouillon suit les changements de l'article » setting, one typed « issu de » link replacing the separate columns with required steps as a setting, a fiscal code per product carried to the line, custom fields on documents and lines | L | todo | - | |
 | 132 | Numbering (§ 7 2026-09-25 16:51, DOC-45 / MON-08 / NAV-47): drafts unnumbered, the next number editable until a series first issues then locked, never stepped back; the option « avoirs dans la suite des factures », chosen once; receipts and payments numbered where a gap is allowed; year, month and counter reset per type | M | todo | - | |
 | 133 | Cancel or reverse (§ 7 2026-09-25 16:51, DOC-16): a draft is cancelled, an issued document is only reversed by a credit note; no soft delete, no restore | S | todo | - | |
@@ -3297,6 +3337,10 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 143 | Tunisia till accreditation (§ 7 2026-09-25 22:16): lawyer or expert-comptable, the cahier des charges read, an accredited partner or our own accreditation — the developer's task | M | blocked | - | docs/fiscal/TN.md |
 | 144 | Tax data without a partner (§ 7 2026-09-25 22:16): TEJ withholding certificates XML, the four French mentions, payments split by VAT rate, CA3 and Tunisian monthly worksheets | L | doing | - | api/src/** web/src/app/** |
 | 145 | E-invoicing files (§ 7 2026-09-25 22:16): Factur-X and UBL (EN 16931), TEIF 1.8.8 signed; then a plateforme agréée before 2027-09-01 and TTN (row 102) | L | doing | - | api/src/** |
+| 146 | Search on top at the centre (§ 7 2026-09-26 08:52): out of the menu, always visible, Ctrl K, an icon on a phone | S | todo | - | |
+| 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | todo | - | |
+| 148 | Legal pages (§ 7 2026-09-26 08:52): nine pages the platform operator edits per language and dates, fr/en/ar drafts marked « Brouillon — à faire valider », Arabic in RTL, security.txt | L | todo | - | |
+| 149 | Cookie banner and guard (§ 7 2026-09-26 08:52): an informational first-visit banner, and a CI gate refusing an undeclared cookie, storage key or third-party script | M | todo | - | |
 <!-- /progress-block -->
 
 ### Delivered

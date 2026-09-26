@@ -26,8 +26,10 @@ final readonly class InvoicePage
 
     /**
      * @param self::DRAFT|self::CANCELLED|null $watermark
-     * @param string                           $language    fr or en
-     * @param list<string>                     $mentionKeys translation keys
+     * @param string                           $language     fr or en
+     * @param list<string>                     $mentionKeys  translation keys
+     * @param string                           $dateFormat   the company's `presentation.date-format`, `auto` for the language's
+     * @param string                           $numberFormat the company's `presentation.number-format`, `auto` for the language's
      */
     public function __construct(
         public Invoice $invoice,
@@ -39,6 +41,8 @@ final readonly class InvoicePage
         public array $mentionKeys,
         public ?string $latePenaltyText,
         public ?string $footer,
+        public string $dateFormat = 'auto',
+        public string $numberFormat = 'auto',
     ) {
     }
 }

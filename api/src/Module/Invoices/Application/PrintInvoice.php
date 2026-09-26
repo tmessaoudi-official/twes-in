@@ -16,6 +16,7 @@ use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\InvoiceStatus;
+use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\PdfRenderer;
@@ -113,6 +114,7 @@ final readonly class PrintInvoice
             $mentionKeys,
             $latePenaltyText,
             $footer,
+            ...DocumentFormats::of($this->settings, $company),
         )));
     }
 

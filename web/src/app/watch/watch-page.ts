@@ -39,7 +39,7 @@ export class WatchPage implements OnInit {
   protected readonly list = this.facade.list;
   protected readonly error = this.facade.error;
   protected readonly lines = computed(() =>
-    (this.list()?.items ?? []).map((item) => watchLine(item, this.format.locale())),
+    (this.list()?.items ?? []).map((item) => watchLine(item, this.format)),
   );
 
   async ngOnInit(): Promise<void> {

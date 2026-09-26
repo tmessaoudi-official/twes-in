@@ -50,6 +50,9 @@ class StaticLoader implements TranslateLoader {
         language: 'Langue',
         scheme: 'Thème',
         density: 'Densité',
+        date_format: 'Format des dates',
+        number_format: 'Format des nombres',
+        format_preview: 'Aperçu : {{ day }} · {{ amount }}',
         coming: 'Ce qui arrive',
         show_coming: 'Montrer ce qui arrive',
         company_at_sign_in: 'Société à l’ouverture',
@@ -78,6 +81,8 @@ class StaticLoader implements TranslateLoader {
           presentation: {
             scheme: { auto: 'Automatique', light: 'Clair', dark: 'Sombre' },
             density: { comfortable: 'Confortable', compact: 'Compacte' },
+            'date-format': { auto: 'Selon la langue', ymd: '2026-12-31' },
+            'number-format': { auto: 'Selon la langue', 'comma-dot': '1,234.56' },
           },
         },
       },
@@ -217,6 +222,37 @@ describe('AccountPage', () => {
     expect(language.use).toHaveBeenCalledWith('en');
     expect(theme.setScheme).toHaveBeenCalledWith('dark');
     expect(theme.setDensity).toHaveBeenCalledWith('compact');
+  });
+
+  // docs/SPEC.md § 7, 2026-09-25 12:45, row 130.
+  it('sets a date and a number format of one’s own, the language’s until then', async () => {
+    const root = await render('preferences');
+    const settings = TestBed.inject(SettingsFacade);
+    const dates = byTestId(root, 'account-date-format') as HTMLSelectElement;
+    expect(dates.value).toBe('auto');
+    expect(dates.selectedOptions[0]?.textContent?.trim()).toBe('Selon la langue');
+    expect([...dates.options].map((option) => option.value)).toEqual([
+      'auto',
+      'dmy',
+      'mdy',
+      'ymd',
+      'dmy-dots',
+    ]);
+
+    choose(root, 'account-date-format', 'ymd');
+    choose(root, 'account-number-format', 'comma-dot');
+
+    expect(settings.value(PRESENTATION.dateFormat)()).toBe('ymd');
+    expect(settings.value(PRESENTATION.numberFormat)()).toBe('comma-dot');
+    fixture.detectChanges();
+    expect(
+      (
+        byTestId(root, 'account-number-format') as HTMLSelectElement
+      ).selectedOptions[0]?.textContent?.trim(),
+    ).toBe('1,234.56');
+    // What they will read, today and an amount, under the two choices.
+    expect(byTestId(root, 'account-format-preview')?.textContent).toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(byTestId(root, 'account-format-preview')?.textContent).toContain('1,234.56');
   });
 
   it('turns « Montrer ce qui arrive » off and on', async () => {

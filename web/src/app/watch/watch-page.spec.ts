@@ -10,6 +10,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { type DateFormat, formatAmount, formatDay, type NumberStyle } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from './watch-facade';
@@ -57,6 +58,10 @@ const list: WatchList = {
 
 // docs/SPEC.md § 7, 2026-09-24 12:10: « À surveiller », the conditions true now, each with its figure and a link.
 describe('WatchPage', () => {
+  const chosen = signal<{ date: DateFormat; number: NumberStyle }>({
+    date: 'auto',
+    number: 'auto',
+  });
   const current = signal<WatchList | null>(null);
   const facade = {
     list: current.asReadonly(),
@@ -77,6 +82,7 @@ describe('WatchPage', () => {
   }
 
   beforeEach(() => {
+    chosen.set({ date: 'auto', number: 'auto' });
     current.set(list);
     facade.load.mockReset().mockResolvedValue(undefined);
     live.reloadOn.mockReset();
@@ -92,7 +98,15 @@ describe('WatchPage', () => {
         { provide: WatchFacade, useValue: facade },
         { provide: LiveChanges, useValue: live },
         { provide: AuthFacade, useValue: { me: () => ({ company: { id: 'k1' } }) } },
-        { provide: FormatFacade, useValue: { locale: signal('fr-FR') } },
+        {
+          provide: FormatFacade,
+          useValue: {
+            locale: signal('fr-FR'),
+            amount: (value: string, scale: number | null) =>
+              formatAmount(value, scale, 'fr-FR', chosen().number),
+            day: (value: string) => formatDay(value, 'fr-FR', chosen().date),
+          },
+        },
       ],
     });
   });
@@ -119,6 +133,15 @@ describe('WatchPage', () => {
     const lot = q('watch-item-1')!;
     expect(lot.textContent).toContain('Lot L-1 de Colle : 3, le 05/10/2026');
     expect(lot.querySelector('a')?.getAttribute('href')).toBe('/products/p1');
+  });
+
+  // docs/SPEC.md § 7, 2026-09-25 12:45, row 130: its figures and days as the person chose them.
+  it('writes its figures and days in the formats the person chose', async () => {
+    chosen.set({ date: 'ymd', number: 'comma-dot' });
+    await open();
+
+    expect(q('watch-item-0')?.textContent?.replace(/\s/g, '')).toContain('Carthage:1,190.000TND');
+    expect(q('watch-item-1')?.textContent).toContain('le 2026-10-05');
   });
 
   it('says a lot already past its date is expired', async () => {

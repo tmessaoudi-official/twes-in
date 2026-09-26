@@ -38,6 +38,9 @@ final readonly class DeliveryNotePage
         public string $printedNotes,
         /** Whether the note ends with its reception block: date and time, name, signature and cachet, réserves. */
         public bool $receptionBlock,
+        /** The company's `presentation.date-format` and `presentation.number-format`, `auto` for the language's. */
+        public string $dateFormat = 'auto',
+        public string $numberFormat = 'auto',
     ) {
     }
 }

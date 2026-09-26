@@ -24,6 +24,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteLineDetails;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteValidated;
 use App\Module\DeliveryNotes\Infrastructure\Pdf\StoreIssuedDeliveryNotePdf;
 use App\Settings\Application\BusinessDefaultSettings;
+use App\Settings\Application\PresentationSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
@@ -62,7 +63,7 @@ final class StoreIssuedDeliveryNotePdfTest extends TestCase
             new RecordingDeliveryNoteTemplate(),
             $renderer,
             new Files(new InMemoryFileStorage(), $records, $clock),
-            new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(), new DeliveryNoteSettings()]), new InMemorySettings())),
+            new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(), new DeliveryNoteSettings(), new PresentationSettings()]), new InMemorySettings())),
         );
         $logger = new class extends AbstractLogger {
             /** @var list<array{string, string, array<array-key, mixed>}> */

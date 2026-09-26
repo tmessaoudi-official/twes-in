@@ -48,6 +48,10 @@ final readonly class PresentationSettings implements DeclaresSettings
         // Each person's single-key shortcuts (docs/SPEC.md § 7, 2026-09-24 22:51, row 125): C, N, E and / until they choose.
         // Nothing but the person sets them, and the web reads each key defensively, as it reads a list layout.
         yield new SettingDefinition('presentation.shortcuts', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.shortcuts', self::MODULE);
+        // How dates and numbers are written, on screen and on printed documents (docs/SPEC.md § 7, 2026-09-25 12:45, row 130):
+        // `auto` follows the language, which is what everything printed before these keys existed.
+        yield new SettingDefinition('presentation.date-format', SettingType::Enum, 'auto', $chain, $shared, 'settings.presentation.date_format', self::MODULE, choices: ['auto', 'dmy', 'mdy', 'ymd', 'dmy-dots']);
+        yield new SettingDefinition('presentation.number-format', SettingType::Enum, 'auto', $chain, $shared, 'settings.presentation.number_format', self::MODULE, choices: ['auto', 'space-comma', 'dot-comma', 'comma-dot']);
         yield new SettingDefinition('presentation.list.<id>', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.list', self::MODULE, keyPattern: self::LIST);
         yield new SettingDefinition('presentation.list.<id>.views', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.list_views', self::MODULE, keyPattern: self::LIST_VIEWS);
     }

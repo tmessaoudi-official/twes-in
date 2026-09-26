@@ -8,6 +8,7 @@ import { FormatFacade } from './format-facade';
 import { LanguageFacade } from './language-facade';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
+import { PRESENTATION } from '../settings/settings-registry';
 
 describe('FormatFacade', () => {
   const me = signal<{ user?: { id: string }; company: { countryCode: string } | null } | null>(
@@ -47,5 +48,25 @@ describe('FormatFacade', () => {
     expect(format.locale()).toBe('en-TN');
     expect(format.amount('2975', 3)).toBe('2,975.000');
     expect(format.day('2026-09-05')).toBe('09/05/2026');
+  });
+
+  it('writes days and figures as the person chose, whatever the language', () => {
+    me.set({ user: { id: 'u1' }, company: { countryCode: 'TN' } });
+    const format = TestBed.inject(FormatFacade);
+    const settings = TestBed.inject(SettingsFacade);
+
+    settings.set(PRESENTATION.dateFormat, 'ymd');
+    settings.set(PRESENTATION.numberFormat, 'comma-dot');
+
+    expect(format.amount('2975', 3)).toBe('2,975.000');
+    expect(format.decimal('2975.5')).toBe('2975.5');
+    expect(format.day('2026-09-05')).toBe('2026-09-05');
+    expect(format.moment('2026-09-13T10:00:00+00:00', 'UTC')).toBe('2026-09-13 10:00');
+
+    settings.set(PRESENTATION.dateFormat, 'auto');
+    settings.set(PRESENTATION.numberFormat, 'auto');
+
+    expect(format.day('2026-09-05')).toBe('05/09/2026');
+    expect(format.decimal('2975.5')).toBe('2975,5');
   });
 });

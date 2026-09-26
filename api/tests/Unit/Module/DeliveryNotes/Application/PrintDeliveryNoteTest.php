@@ -25,6 +25,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineDetails;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\PresentationSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
@@ -47,6 +48,7 @@ use App\Tests\Support\RecordingDeliveryNoteTemplate;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 final class PrintDeliveryNoteTest extends TestCase
 {
@@ -76,7 +78,7 @@ final class PrintDeliveryNoteTest extends TestCase
         $this->renderer = new FakePdfRenderer();
         $this->template = new RecordingDeliveryNoteTemplate();
         $settings = new InMemorySettings();
-        $catalog = new SettingCatalog([new BusinessDefaultSettings(), new DeliveryNoteSettings()]);
+        $catalog = new SettingCatalog([new BusinessDefaultSettings(), new DeliveryNoteSettings(), new PresentationSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
         $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions);
         $this->print = new PrintDeliveryNote(
@@ -123,7 +125,7 @@ final class PrintDeliveryNoteTest extends TestCase
         self::assertSame('BL-2026-00001.pdf', $printed->fileName);
         self::assertSame($this->storage->contents[$file->getStorageKey()], $printed->contents);
         self::assertCount(1, $this->renderer->rendered, 'a stored PDF is served, never rendered again');
-        $note->markInvoiced(\Symfony\Component\Uid\Uuid::v7(), new \DateTimeImmutable());
+        $note->markInvoiced(Uuid::v7(), new \DateTimeImmutable());
         self::assertSame($printed->contents, $this->print->pdf($this->company, $note->getId())->contents, 'an invoiced note prints as it was issued');
         self::assertCount(1, $this->renderer->rendered);
 
@@ -164,6 +166,17 @@ final class PrintDeliveryNoteTest extends TestCase
         $page = $this->template->pages[0];
         self::assertSame([false, 'en', 'Goods travel at the customer\'s risk.', true], [$page->showPrices, $page->language, $page->printedNotes, $page->receptionBlock], 'the reception block is printed unless a level leaves it out');
         self::assertFalse($this->template->pages[1]->receptionBlock);
+    }
+
+    // docs/SPEC.md § 7, 2026-09-25 12:45, row 130: a printed note follows the company's formats, never the person printing it.
+    public function testANotePrintsTheCompanysDateAndNumberFormatNotAPersonsOwn(): void
+    {
+        $this->change->change(new SettingContext($this->company), 'presentation.number-format', SettingLevel::Company, 'dot-comma', null);
+        $this->change->change(new SettingContext($this->company, userId: Uuid::v7()), 'presentation.date-format', SettingLevel::User, 'mdy', null);
+
+        $this->print->pdf($this->company, $this->draft()->getId());
+
+        self::assertSame(['auto', 'dot-comma'], [$this->template->pages[0]->dateFormat, $this->template->pages[0]->numberFormat]);
     }
 
     public function testACancelledNoteIsRenderedStampedAndWhatWasStoredStays(): void

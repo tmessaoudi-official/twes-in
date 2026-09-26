@@ -2,7 +2,8 @@
    fiscal in the document's language; amounts go through the decimal filter, never through a float. Nothing here runs a
    script. An issued document prints what issuing kept: its figures, its customer, its mentions and its texts. #}
 {%- set t = 'pdf' -%}
-{%- set dateFormat = 'format.date'|trans({}, t, locale) -%}
+{#- The company's date and number format win over the language's (docs/SPEC.md § 7, 2026-09-25 12:45, row 130). -#}
+{%- set dateFormat = date_pattern(page.dateFormat, 'format.date'|trans({}, t, locale)) -%}
 {%- set title = (invoice.type.value == 'credit_note' ? 'invoice.credit_note_title' : 'invoice.title')|trans({}, t, locale) -%}
 <!DOCTYPE html>
 <html lang="{{ locale }}">
@@ -112,41 +113,41 @@
       {%- for line in invoice.lines %}
         <tr>
           <td>{{ line.description|nl2br }}</td>
-          <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale) }}</td>
+          <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
           <td>{{ line.unit.code }}</td>
-          <td class="number">{{ line.unitPriceNet|decimal(scale, locale) }}</td>
-          <td class="number">{% if line.discountRate %}{{ line.discountRate|decimal(0, locale) }} %{% endif %}</td>
+          <td class="number">{{ line.unitPriceNet|decimal(scale, locale, page.numberFormat) }}</td>
+          <td class="number">{% if line.discountRate %}{{ line.discountRate|decimal(0, locale, page.numberFormat) }} %{% endif %}</td>
           <td>{{ line.taxes|map(tax => tax.code)|join(', ') }}</td>
-          <td class="number">{{ figures.lines[loop.index0].net|decimal(scale, locale) }}</td>
+          <td class="number">{{ figures.lines[loop.index0].net|decimal(scale, locale, page.numberFormat) }}</td>
         </tr>
       {%- endfor %}
     </tbody>
   </table>
 
   <table class="totals">
-    <tr><td>{{ 'totals.subtotal'|trans({}, t, locale) }}</td><td class="number">{{ figures.subtotalNet|decimal(scale, locale) }}</td></tr>
+    <tr><td>{{ 'totals.subtotal'|trans({}, t, locale) }}</td><td class="number">{{ figures.subtotalNet|decimal(scale, locale, page.numberFormat) }}</td></tr>
     {%- if header.discountAmount %}
-      <tr><td>{{ 'totals.document_discount'|trans({}, t, locale) }}</td><td class="number">{{ figures.documentDiscount|deduction(scale, locale) }}</td></tr>
-      <tr><td>{{ 'totals.total_net'|trans({}, t, locale) }}</td><td class="number">{{ figures.totalNet|decimal(scale, locale) }}</td></tr>
+      <tr><td>{{ 'totals.document_discount'|trans({}, t, locale) }}</td><td class="number">{{ figures.documentDiscount|deduction(scale, locale, page.numberFormat) }}</td></tr>
+      <tr><td>{{ 'totals.total_net'|trans({}, t, locale) }}</td><td class="number">{{ figures.totalNet|decimal(scale, locale, page.numberFormat) }}</td></tr>
     {%- endif %}
     {%- for tax in figures.taxes %}
       <tr>
-        <td>{{ tax.code }} {{ tax.rate|decimal(0, locale) }} % <span class="muted">({{ tax.base|decimal(scale, locale) }})</span></td>
-        <td class="number">{{ tax.amount|decimal(scale, locale) }}</td>
+        <td>{{ tax.code }} {{ tax.rate|decimal(0, locale, page.numberFormat) }} % <span class="muted">({{ tax.base|decimal(scale, locale, page.numberFormat) }})</span></td>
+        <td class="number">{{ tax.amount|decimal(scale, locale, page.numberFormat) }}</td>
       </tr>
     {%- endfor %}
-    <tr><td>{{ 'totals.total_tax'|trans({}, t, locale) }}</td><td class="number">{{ figures.totalTax|decimal(scale, locale) }}</td></tr>
+    <tr><td>{{ 'totals.total_tax'|trans({}, t, locale) }}</td><td class="number">{{ figures.totalTax|decimal(scale, locale, page.numberFormat) }}</td></tr>
     {%- for charge in figures.fixedTaxes %}
-      <tr><td>{{ charge.code }}</td><td class="number">{{ charge.amount|decimal(scale, locale) }}</td></tr>
+      <tr><td>{{ charge.code }}</td><td class="number">{{ charge.amount|decimal(scale, locale, page.numberFormat) }}</td></tr>
     {%- endfor %}
-    <tr class="grand"><td>{{ 'totals.total'|trans({}, t, locale) }}</td><td class="number">{{ figures.total|decimal(scale, locale) }}</td></tr>
+    <tr class="grand"><td>{{ 'totals.total'|trans({}, t, locale) }}</td><td class="number">{{ figures.total|decimal(scale, locale, page.numberFormat) }}</td></tr>
     {%- for withholding in figures.withholdings %}
       <tr>
-        <td>{{ 'totals.withheld'|trans({}, t, locale) }} {{ withholding.code }} <span class="muted">({{ withholding.base|decimal(scale, locale) }})</span></td>
-        <td class="number">{{ withholding.amount|deduction(scale, locale) }}</td>
+        <td>{{ 'totals.withheld'|trans({}, t, locale) }} {{ withholding.code }} <span class="muted">({{ withholding.base|decimal(scale, locale, page.numberFormat) }})</span></td>
+        <td class="number">{{ withholding.amount|deduction(scale, locale, page.numberFormat) }}</td>
       </tr>
     {%- endfor %}
-    <tr class="due"><td>{{ 'totals.amount_due'|trans({}, t, locale) }}</td><td class="number">{{ figures.amountDue|decimal(scale, locale) }}</td></tr>
+    <tr class="due"><td>{{ 'totals.amount_due'|trans({}, t, locale) }}</td><td class="number">{{ figures.amountDue|decimal(scale, locale, page.numberFormat) }}</td></tr>
   </table>
   <p class="muted">{{ 'totals.currency'|trans({'%currency%': company.currency}, t, locale) }}</p>
 

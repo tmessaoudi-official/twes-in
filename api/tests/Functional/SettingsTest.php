@@ -36,7 +36,7 @@ final class SettingsTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $rows = $this->jsonList();
         $keys = array_column($rows, 'key');
-        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.language', 'presentation.customer-view.cost', 'presentation.customer-view.supplier-codes', 'presentation.show-coming', 'presentation.shortcuts'], $keys);
+        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.language', 'presentation.customer-view.cost', 'presentation.customer-view.supplier-codes', 'presentation.show-coming', 'presentation.shortcuts', 'presentation.date-format', 'presentation.number-format'], $keys);
         // Read by key and not by position: what each case below is about is one setting's own default, and an
         // ordinal makes every future presentation setting shift assertions that have nothing to do with it.
         $row = static function (string $key) use ($rows, $keys): array {
@@ -226,6 +226,29 @@ final class SettingsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         $this->getJson($this->path().'?chain=presentation');
         self::assertNull($this->row('presentation.shortcuts')['value']);
+    }
+
+    // docs/SPEC.md § 7, 2026-09-25 12:45, row 130: a date and a number format of one's own, person then company, which
+    // follow the language and country until someone chooses.
+    public function testADateAndANumberFormatAreChosenByThePersonThenTheCompany(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->getJson($this->path().'?chain=presentation');
+        foreach (['presentation.date-format' => ['auto', 'dmy', 'mdy', 'ymd', 'dmy-dots'], 'presentation.number-format' => ['auto', 'space-comma', 'dot-comma', 'comma-dot']] as $key => $choices) {
+            self::assertSame('auto', $this->row($key)['value'], $key);
+            self::assertSame($choices, $this->row($key)['choices'], $key);
+        }
+
+        $this->sendJson('PUT', $this->path().'/presentation.date-format', ['level' => 'company', 'value' => 'ymd']);
+        self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $this->path().'/presentation.number-format', ['level' => 'user', 'value' => 'comma-dot']);
+        self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $this->path().'/presentation.number-format', ['level' => 'user', 'value' => '1,234.56']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'only a declared format');
+
+        $this->getJson($this->path().'?chain=presentation');
+        self::assertSame('ymd', $this->row('presentation.date-format')['value']);
+        self::assertSame('comma-dot', $this->row('presentation.number-format')['value']);
     }
 
     public function testALevelTheSettingDoesNotAllowIsUnprocessable(): void

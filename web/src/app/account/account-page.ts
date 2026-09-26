@@ -27,6 +27,14 @@ import {
   shellKeyRefusal,
 } from '../shared/actions/shortcuts';
 import { keyName } from '../shared/actions/shortcuts-sheet';
+import {
+  DATE_FORMATS,
+  type DateFormat,
+  NUMBER_FORMATS,
+  type NumberStyle,
+  todayIn,
+} from '../shared/i18n/format';
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { LANGUAGE_NAMES, LanguageFacade } from '../shared/i18n/language-facade';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import {
@@ -91,6 +99,17 @@ export class AccountPage implements OnInit {
   /** The shell's single keys as this person has them (docs/SPEC.md § 7, 2026-09-24 22:51, row 125). */
   protected readonly keys = this.settings.value(PRESENTATION.shortcuts);
   protected readonly shellShortcuts = SHELL_SHORTCUTS;
+  /** How days and figures are written, the language's until the person chooses (docs/SPEC.md § 7, row 130). */
+  protected readonly dateFormat = this.settings.value(PRESENTATION.dateFormat);
+  protected readonly numberFormat = this.settings.value(PRESENTATION.numberFormat);
+  protected readonly dateFormats = DATE_FORMATS;
+  protected readonly numberFormats = NUMBER_FORMATS;
+  private readonly format = inject(FormatFacade);
+  /** Today and an amount as they will read under the two choices, « Selon la langue » included. */
+  protected readonly formatPreview = computed(() => ({
+    day: this.format.day(todayIn(this.auth.me()?.company?.timezone)),
+    amount: this.format.amount('1234.56', 2),
+  }));
   protected readonly keyName = keyName;
   /** Why the key last typed in a field was not kept; forgotten once one is. */
   protected readonly keyRefusals = signal<Partial<Record<ShellShortcut, KeyRefusal>>>({});
@@ -156,6 +175,14 @@ export class AccountPage implements OnInit {
   protected restoreKeys(): void {
     this.keyRefusals.set({});
     this.settings.reset(PRESENTATION.shortcuts);
+  }
+
+  protected useDateFormat(value: string): void {
+    this.settings.set(PRESENTATION.dateFormat, value as DateFormat);
+  }
+
+  protected useNumberFormat(value: string): void {
+    this.settings.set(PRESENTATION.numberFormat, value as NumberStyle);
   }
 
   protected schemeOf(value: string): SchemePreference {

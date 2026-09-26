@@ -9,7 +9,7 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
-import { formatAmount } from '../i18n/format';
+import { decimalShown, formatAmount } from '../i18n/format';
 import { FormatFacade } from '../i18n/format-facade';
 import { buildFormGroup } from './form-builder';
 import { DescriptorForm } from './descriptor-form';
@@ -98,6 +98,7 @@ describe('DescriptorForm, a decimal field', () => {
           useValue: {
             locale: signal('fr-TN'),
             amount: (value: string, scale: number | null) => formatAmount(value, scale, 'fr-TN'),
+            decimal: (value: string) => decimalShown(value, 'fr-TN'),
           },
         },
       ],

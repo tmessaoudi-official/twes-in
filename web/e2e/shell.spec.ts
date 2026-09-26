@@ -290,3 +290,34 @@ test('a person gives « Créer » a key of their own in Préférences, which out
     await forget(page, SHORTCUTS);
   }
 });
+
+// docs/SPEC.md § 7, 2026-09-25 12:45, row 130: a date and a number format of one's own, kept by the API.
+test('a person chooses how days and figures read in Préférences, which outlives a reload', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await forget(page, 'presentation.date-format');
+  await forget(page, 'presentation.number-format');
+  try {
+    await page.goto('/account?tab=preferences');
+    const preview = page.getByTestId('account-format-preview');
+    await expect(page.getByTestId('account-date-format')).toHaveValue('auto');
+    await expect(preview).toContainText(/\d{2}\/\d{2}\/\d{4}/);
+
+    await page.getByTestId('account-date-format').selectOption('ymd');
+    await page.getByTestId('account-number-format').selectOption('comma-dot');
+    await expect(preview).toContainText(/\d{4}-\d{2}-\d{2}/);
+    await expect(preview).toContainText('1,234.56');
+    expect(await wcagViolations(page)).toEqual([]);
+
+    await page.reload();
+    await expect(page.getByTestId('account-number-format')).toHaveValue('comma-dot');
+    await expect(preview).toContainText(/\d{4}-\d{2}-\d{2}/);
+    await expect(preview).toContainText('1,234.56');
+  } finally {
+    await forget(page, 'presentation.date-format');
+    await forget(page, 'presentation.number-format');
+  }
+});
