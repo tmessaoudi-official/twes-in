@@ -3045,6 +3045,44 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   derived beside `--twes-on-accent`, and the button overrides take it for the state layer and the ripple. A state now
   never lowers a filled control's contrast, whatever accent a company picks, and `accent-theme.spec` checks that for
   eleven accents in both schemes. The look changes: a hovered primary button darkens instead of lightening.
+- [2026-09-26 03:54] DECIDED (revisit), row 145 part one: **an issued French invoice or credit note answers its
+  Factur-X EN 16931 CII**, at `GET …/invoices/{id}/factur-x.xml`, and **its issued PDF with that XML embedded** at
+  `…/factur-x.pdf`. The PDF uses Gotenberg's own Factur-X route, PDF/A-3b, so no library is added. The XML is
+  written from what issuing stored and never recomputed. A draft answers 409; a document the standard cannot describe
+  answers 422 naming every gap. Builder B's 22 choices are in `var/claude/builders/facturx.md`; the ones to review
+  first:
+  - a credit note is written with positive amounts under type 381;
+  - VAT category S is derived from a VAT component's rate, and a 0 % component is refused rather than guessed;
+  - the no-VAT categories (K, G, E and their VATEX codes) are preset data on the FR regimes; `exempt` declares none
+    and is refused;
+  - the seller is read from the company as it is now, since issuing takes no snapshot of it;
+  - BT-115 equals BT-112, since later payments are not a document amount;
+  - the seller's SIREN and full French addresses are required, which is stricter than EN 16931.
+  Uncertified: the EN 16931 schematron, since no XSLT 2.0 processor is on the machine; PDF/A-3b conformance, since
+  veraPDF is absent; and the PDF route end to end, since the functional tests stub Gotenberg. The schemas are kept
+  out of the tree and of CI until their licences are ruled. The FNFE XSDs carry no licence text, and CEN's artefacts
+  are EUPL-1.2. Open, to rule:
+  - may the schemas, or Saxon-HE for the schematron, enter CI;
+  - BT-32 for a franchise-en-base seller, who is refused today for lack of a VAT number;
+  - which CGI article `exempt` names;
+  - a seller snapshot at issue;
+  - storing the XML at issue;
+  - where the two downloads sit on the invoice screen;
+  - whether issuing warns when the Factur-X would be refused.
+- [2026-09-26 03:54] DECIDED (revisit), row 125 part one, the ruled keys before they are configurable: **N opens a new
+  document on its own list** (the creation whose address is the list's followed by `/new`, nothing elsewhere); **E runs
+  the state's next step**: Émettre then Enregistrer un paiement on an invoice, Valider, Livrer then Facturer on a
+  delivery note, asking first exactly as its button does. **/ opens the search** as Ctrl K does. Each is held for one
+  scan gap like every bare key, and taken only when it has something to do there.
+  - `ScreenAction.next` marks the next step. It is declared rather than read from `primary`, which a record page's
+    save carries. When two are offered at once, the first declared is the one E runs. The delivery note's three steps
+    are included, although the ruling named only Émettre and Encaisser.
+  - An invoice's Émettre no longer has a key of its own (it was E).
+  - A screen may now declare only S, V, L or P (`SCREEN_KEYS`). That closed set is what a person will be free to
+    avoid when choosing the shell's keys.
+  - `DEFAULT_SHORTCUTS` is the one list the handler, the rail's « C » and the « ? » sheet read. The sheet shows the
+    page's next step under E.
+  - Part two is the per-person setting in Mon compte › Préférences.
 
 ## 8. Status
 
@@ -3177,7 +3215,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 122 | Signature boxes (§ 7 2026-09-24 22:51): delivery-note reception with réserves, quote « Bon pour accord » with « Marquer accepté » and the signed scan, the supplier order's printed approver | M | doing | - | |
 | 123 | 1024 px layout (§ 7 2026-09-24 22:51): the labelled 80 px rail, a record as a sheet over its list | M | doing | - | |
 | 124 | Navigation (§ 7 2026-09-24 22:51): « Caisse » and « Travaux » in the rail, « Mon compte » with four tabs absorbing the device page | S | done | d128c231 | |
-| 125 | Configurable keyboard shortcuts (§ 7 2026-09-24 22:51): C, N, E, / and Ctrl K as defaults, changed and restored per person in Mon compte › Préférences | S | todo | - | |
+| 125 | Configurable keyboard shortcuts (§ 7 2026-09-24 22:51): C, N, E, / and Ctrl K as defaults, changed and restored per person in Mon compte › Préférences | S | doing | - | |
 | 126 | Signature, cachet and electronic PDF signature (§ 7 2026-09-24 22:51): research first, postponed | M | deferred | - | |
 | 127 | Insights pushed once (§ 7 2026-09-24 12:10 and 2026-09-25 08:31): a scheduler (Symfony Scheduler worker in compose), a record of what was pushed per subject and bucket, and the pushes through the Inbox | L | todo | - | |
 | 128 | Credit balance, write-off and crediting a paid invoice (§ 7 2026-09-21 17:35, 2026-09-25 12:45): an overpayment's excess moves to the customer's credit balance, applied to a later invoice and shown on the statement; a short-paid invoice closes on a credit note under a per-company tolerance; a credit note on a paid invoice sends what exceeds the due to a refund or to the credit balance | M | todo | - | |

@@ -276,6 +276,7 @@ export class DeliveryNotePage {
       {
         id: 'validate',
         shortcut: 'v',
+        next: true,
         label: 'delivery_notes.actions.validate',
         icon: 'check',
         primary: true,
@@ -294,6 +295,7 @@ export class DeliveryNotePage {
       {
         id: 'deliver',
         shortcut: 'l',
+        next: true,
         label: 'delivery_notes.actions.deliver',
         icon: 'local_shipping',
         primary: true,
@@ -304,6 +306,7 @@ export class DeliveryNotePage {
       {
         id: 'invoice',
         label: 'delivery_notes.actions.invoice',
+        next: true,
         icon: 'receipt_long',
         primary: true,
         disabled: busy,

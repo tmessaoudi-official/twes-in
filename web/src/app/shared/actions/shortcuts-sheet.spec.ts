@@ -6,6 +6,7 @@ import { MatDialogRef } from '@angular/material/dialog';
 import { provideTranslateService, TranslateService } from '@ngx-translate/core';
 import type { ScreenAction } from './screen-action';
 import { ScreenActions } from './screen-actions';
+import { DEFAULT_SHORTCUTS } from './shortcuts';
 import { GLOBAL_SHORTCUTS, ShortcutsSheet } from './shortcuts-sheet';
 
 @Component({ template: '' })
@@ -26,6 +27,12 @@ describe('ShortcutsSheet', () => {
 
   function testId(id: string): HTMLElement | null {
     return fixture.nativeElement.querySelector(`[data-testid="${id}"]`) as HTMLElement | null;
+  }
+
+  function keysOf(id: string): string[] {
+    return [...(testId(id)?.querySelectorAll('kbd') ?? [])].map(
+      (kbd) => kbd.textContent?.trim() ?? '',
+    );
   }
 
   beforeEach(async () => {
@@ -65,15 +72,27 @@ describe('ShortcutsSheet', () => {
   }
 
   it('lists what the screen on view offers, each with the key that runs it', () => {
-    open([{ id: 'issue', label: 'invoices.issue', shortcut: 'e', run: () => undefined }]);
+    open([{ id: 'validate', label: 'invoices.issue', shortcut: 'v', run: () => undefined }]);
 
-    expect(testId('shortcut-issue')?.textContent).toContain('Émettre');
-    expect(testId('shortcut-issue')?.textContent).toContain('E');
+    expect(testId('shortcut-validate')?.textContent).toContain('Émettre');
+    expect(keysOf('shortcut-validate')).toEqual(['V']);
+  });
+
+  it('lists the next step under the key the shell runs it with, beside its own key if it has one', () => {
+    // docs/SPEC.md § 7, 2026-09-24 22:51: E runs the state's next step, whichever screen it is on.
+    open([
+      { id: 'issue', label: 'invoices.issue', next: true, run: () => undefined },
+      { id: 'pay', label: 'invoices.pay', shortcut: 'p', next: true, run: () => undefined },
+    ]);
+
+    expect(keysOf('shortcut-issue')).toEqual(['E']);
+    // Only the first next step is what E runs; the second keeps its own key alone.
+    expect(keysOf('shortcut-pay')).toEqual(['P']);
   });
 
   it('leaves out an action the screen declared without a key', () => {
     open([
-      { id: 'issue', label: 'invoices.issue', shortcut: 'e', run: () => undefined },
+      { id: 'issue', label: 'invoices.issue', shortcut: 'v', run: () => undefined },
       { id: 'pay', label: 'invoices.pay', run: () => undefined },
     ]);
 
@@ -96,6 +115,15 @@ describe('ShortcutsSheet', () => {
       expect(testId(`shortcut-${shortcut.id}`), shortcut.id).not.toBeNull();
     }
     expect(text()).toContain('Ctrl');
+  });
+
+  it('names the shell’s keys from the one list the shell answers them by', () => {
+    open();
+
+    expect(keysOf('shortcut-palette')).toEqual([DEFAULT_SHORTCUTS.search, 'Ctrl K']);
+    expect(keysOf('shortcut-create')).toEqual([DEFAULT_SHORTCUTS.create.toUpperCase()]);
+    expect(keysOf('shortcut-new')).toEqual([DEFAULT_SHORTCUTS.new.toUpperCase()]);
+    expect(keysOf('shortcut-next')).toEqual([DEFAULT_SHORTCUTS.next.toUpperCase()]);
   });
 
   it('closes when asked', () => {

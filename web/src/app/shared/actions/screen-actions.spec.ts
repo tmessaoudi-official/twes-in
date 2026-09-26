@@ -148,10 +148,10 @@ describe('ScreenActions', () => {
 
   it('answers which action a keystroke asked for, and nothing for an unbound key', () => {
     const fixture = TestBed.createComponent(Holder);
-    fixture.componentInstance.actions.set([action({ shortcut: 'i' }), action({ id: 'pay' })]);
+    fixture.componentInstance.actions.set([action({ shortcut: 'v' }), action({ id: 'pay' })]);
     fixture.detectChanges();
 
-    expect(registry().forKey('i')?.id).toBe('issue');
+    expect(registry().forKey('v')?.id).toBe('issue');
     expect(registry().forKey('p')).toBeUndefined();
   });
 
@@ -168,10 +168,42 @@ describe('ScreenActions', () => {
     const fixture = TestBed.createComponent(Holder);
     expect(() => {
       fixture.componentInstance.actions.set([
-        action({ shortcut: 'i' }),
-        action({ id: 'invoice', shortcut: 'i' }),
+        action({ shortcut: 'v' }),
+        action({ id: 'invoice', shortcut: 'v' }),
       ]);
       registry().actions();
     }).toThrow(/twice|already/i);
+  });
+
+  it('refuses a key outside the ones screens share, which a person may have given the shell', () => {
+    const fixture = TestBed.createComponent(Holder);
+    expect(() => {
+      fixture.componentInstance.actions.set([action({ shortcut: 'i' })]);
+      registry().actions();
+    }).toThrow(/screen/i);
+  });
+
+  it('answers the next step E runs: the first one the screen offers and can run now', () => {
+    // docs/SPEC.md § 7, 2026-09-24 22:51: E runs the state's next step — Émettre on a draft, Encaisser once issued.
+    const fixture = TestBed.createComponent(Holder);
+    fixture.componentInstance.actions.set([
+      action({ id: 'save', shortcut: 's', primary: true }),
+      action({ id: 'issue', next: true, shown: false }),
+      action({ id: 'record-payment', next: true }),
+      action({ id: 'invoice', next: true }),
+    ]);
+    fixture.detectChanges();
+    expect(registry().next()?.id).toBe('record-payment');
+
+    // Refused for now (a save in flight): E does nothing rather than run something else.
+    fixture.componentInstance.actions.set([
+      action({ id: 'save', shortcut: 's' }),
+      action({ id: 'record-payment', next: true, disabled: true }),
+    ]);
+    expect(registry().next()).toBeUndefined();
+
+    // A screen whose state has no next step leaves E to nobody.
+    fixture.componentInstance.actions.set([action({ id: 'save', shortcut: 's', primary: true })]);
+    expect(registry().next()).toBeUndefined();
   });
 });

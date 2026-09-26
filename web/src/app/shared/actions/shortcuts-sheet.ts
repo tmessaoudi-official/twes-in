@@ -4,25 +4,46 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { TranslatePipe } from '@ngx-translate/core';
+import type { ScreenAction } from './screen-action';
 import { ScreenActions } from './screen-actions';
+import { DEFAULT_SHORTCUTS } from './shortcuts';
 
 /** A key that works on every screen, answered by the shell itself. */
 export interface GlobalShortcut {
   readonly id: string;
-  /** Shown as typed, not translated: a key's name is the same word in every language. */
-  readonly keys: string;
+  /** Shown as typed, not translated: a key's name is the same word in every language. Either one works. */
+  readonly keys: readonly string[];
   readonly label: string;
+}
+
+/** A single key as the sheet and the rail draw it: the letter a person reads on the board. */
+export function keyName(key: string): string {
+  return key.toUpperCase();
 }
 
 /**
  * "Ctrl K" rather than "⌘ K" on a Mac, and that is not a simplification: the shell answers `metaKey` OR `ctrlKey`,
- * so Ctrl K is true on every platform while ⌘ K would be false on most of them.
+ * so Ctrl K is true on every platform while ⌘ K would be false on most of them. The single keys come from the one
+ * list the shell answers them by, so the sheet cannot name a key that does something else.
  */
 export const GLOBAL_SHORTCUTS: readonly GlobalShortcut[] = [
-  { id: 'palette', keys: 'Ctrl K', label: 'shell.shortcuts.palette' },
-  { id: 'sidebar', keys: '[', label: 'shell.shortcuts.sidebar' },
-  { id: 'help', keys: '?', label: 'shell.shortcuts.help' },
+  {
+    id: 'palette',
+    keys: [keyName(DEFAULT_SHORTCUTS.search), 'Ctrl K'],
+    label: 'shell.shortcuts.palette',
+  },
+  { id: 'create', keys: [keyName(DEFAULT_SHORTCUTS.create)], label: 'shell.shortcuts.create' },
+  { id: 'new', keys: [keyName(DEFAULT_SHORTCUTS.new)], label: 'shell.shortcuts.new' },
+  { id: 'next', keys: [keyName(DEFAULT_SHORTCUTS.next)], label: 'shell.shortcuts.next' },
+  { id: 'sidebar', keys: ['['], label: 'shell.shortcuts.sidebar' },
+  { id: 'help', keys: ['?'], label: 'shell.shortcuts.help' },
 ];
+
+/** One of the page's lines: the action, and every key that runs it now. */
+interface PageShortcut {
+  readonly action: ScreenAction;
+  readonly keys: readonly string[];
+}
 
 /**
  * What "?" opens (docs/SPEC.md § 7, 2026-09-16 point 7, row 45). The page's own keys come first, because they are
@@ -45,11 +66,13 @@ export const GLOBAL_SHORTCUTS: readonly GlobalShortcut[] = [
         <p data-testid="shortcuts-none">{{ 'shell.shortcuts.none' | translate }}</p>
       } @else {
         <dl class="twes-shortcuts">
-          @for (action of page(); track action.id) {
-            <div class="twes-shortcuts-row" [attr.data-testid]="'shortcut-' + action.id">
-              <dt>{{ action.label | translate: action.labelParams }}</dt>
+          @for (line of page(); track line.action.id) {
+            <div class="twes-shortcuts-row" [attr.data-testid]="'shortcut-' + line.action.id">
+              <dt>{{ line.action.label | translate: line.action.labelParams }}</dt>
               <dd>
-                <kbd>{{ action.shortcut?.toUpperCase() }}</kbd>
+                @for (key of line.keys; track key) {
+                  <kbd>{{ key }}</kbd>
+                }
               </dd>
             </div>
           }
@@ -62,7 +85,9 @@ export const GLOBAL_SHORTCUTS: readonly GlobalShortcut[] = [
           <div class="twes-shortcuts-row" [attr.data-testid]="'shortcut-' + shortcut.id">
             <dt>{{ shortcut.label | translate }}</dt>
             <dd>
-              <kbd>{{ shortcut.keys }}</kbd>
+              @for (key of shortcut.keys; track key) {
+                <kbd>{{ key }}</kbd>
+              }
             </dd>
           </div>
         }
@@ -95,6 +120,8 @@ export const GLOBAL_SHORTCUTS: readonly GlobalShortcut[] = [
       gap: 1rem;
     }
     .twes-shortcuts-row dd {
+      display: flex;
+      gap: 0.25rem;
       margin: 0;
     }
     kbd {
@@ -111,6 +138,21 @@ export class ShortcutsSheet {
   private readonly screen = inject(ScreenActions);
 
   protected readonly global = GLOBAL_SHORTCUTS;
-  /** The screen's own keys, live: what this sheet lists is exactly what pressing the key would run right now. */
-  protected readonly page = computed(() => this.screen.withShortcut());
+  /**
+   * The screen's own keys and its next step under E, live: what this sheet lists is exactly what pressing the key
+   * would run right now.
+   */
+  protected readonly page = computed((): readonly PageShortcut[] => {
+    const next = this.screen.next();
+    return this.screen
+      .actions()
+      .filter((action) => action.shortcut !== undefined || action === next)
+      .map((action) => ({
+        action,
+        keys: [
+          ...(action.shortcut === undefined ? [] : [keyName(action.shortcut)]),
+          ...(action === next ? [keyName(DEFAULT_SHORTCUTS.next)] : []),
+        ],
+      }));
+  });
 }

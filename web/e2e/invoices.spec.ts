@@ -73,6 +73,11 @@ async function download(
   }, href);
 }
 
+/** Leaves every field, so a single key is a shortcut rather than a letter typed. */
+async function outOfFields(page: Page): Promise<void> {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+}
+
 /** Deactivates the run's customer; its issued documents stay, as every issued document does. */
 async function retire(page: Page, number: string): Promise<void> {
   await page.evaluate(
@@ -118,7 +123,12 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
   await inACompany(page, CSRF);
   await createCustomer(page, customerNumber);
   try {
-    await page.goto('/invoices/new');
+    // N opens a new invoice from its own list (docs/SPEC.md § 7, 2026-09-24 22:51).
+    await page.goto('/invoices');
+    await expect(page.getByTestId('invoices-table')).toBeVisible();
+    await outOfFields(page);
+    await page.keyboard.press('n');
+    await expect(page).toHaveURL(/\/invoices\/new$/);
     // Typed, not scrolled to: the picker answers the few that match, and this company's book is long.
     await page.getByTestId('invoice-customer').fill(customerNumber);
     await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
@@ -140,7 +150,9 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     );
     expect([draftPdf.status, draftPdf.magic]).toEqual([200, '%PDF-']);
 
-    await page.getByTestId('document-action-issue').click();
+    // E runs the state's next step, and asks first exactly as the button does.
+    await outOfFields(page);
+    await page.keyboard.press('e');
     await page.getByTestId('confirm-run').click();
     await expect(page.getByTestId('document-action-issue')).toHaveCount(0);
     await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
@@ -160,7 +172,9 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     expect(pdf.magic).toBe('%PDF-');
 
     // A payment is one answer to one question, so it is asked in a dialog (design review finding 3).
-    await page.getByTestId('document-action-record-payment').click();
+    // Once issued, the next step E runs is recording a payment.
+    await outOfFields(page);
+    await page.keyboard.press('e');
     await page.getByTestId('field-amount').fill('100');
     await page.getByTestId('field-reference').fill(`VIR ${run}`);
     await page.getByTestId('invoice-payment-record').click();

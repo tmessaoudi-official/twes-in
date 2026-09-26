@@ -607,6 +607,21 @@ describe('InvoicePage', () => {
     expect(offeredNext()).toBeNull();
   });
 
+  // docs/SPEC.md § 7, 2026-09-24 22:51: E runs the state's next step, Émettre on a draft and Encaisser once issued.
+  it('gives E the next step of its state: issuing a draft, then recording a payment', async () => {
+    invoice.set(draft);
+    await open('i1');
+    const screen = TestBed.inject(ScreenActions);
+    expect(screen.next()?.id).toBe('issue');
+    // E is the shell's now, not the screen's: issuing keeps no key of its own.
+    expect(screen.actions().find((each) => each.id === 'issue')?.shortcut).toBeUndefined();
+
+    invoice.set(issued);
+    await settle();
+    expect(screen.next()?.id).toBe('record-payment');
+    expect(screen.forKey('p')?.id).toBe('record-payment');
+  });
+
   it('takes the header and lines another person saved into a quiet draft', async () => {
     invoice.set(draft);
     await open('i1');

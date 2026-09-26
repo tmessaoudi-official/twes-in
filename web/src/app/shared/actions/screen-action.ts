@@ -25,6 +25,12 @@ export interface ScreenAction {
   icon?: string;
   /** The state's next step, drawn filled. At most one action carries it. */
   primary?: boolean;
+  /**
+   * What E runs, whichever screen this is (docs/SPEC.md § 7, 2026-09-24 22:51): the step that moves the record on,
+   * Émettre or Encaisser, never a save. Declared rather than read from `primary`, which a record page's save carries.
+   * When several are offered at once, the first one declared is the one E runs.
+   */
+  next?: boolean;
   /** Folded into "⋮" rather than shown. Destructive actions are always folded, whatever this says. */
   rare?: boolean;
   /** Drawn as destructive, never a visible button, and asks before it runs when `confirm` is given. */

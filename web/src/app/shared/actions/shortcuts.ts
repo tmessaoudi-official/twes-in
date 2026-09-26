@@ -9,6 +9,27 @@
  * is correct on AZERTY, QWERTY and anything else; what would not be is comparing `code`, which names a position.
  */
 
+/** What the shell answers with a single key on every screen (docs/SPEC.md § 7, 2026-09-24 22:51, row 125). */
+export type ShellShortcut = 'create' | 'new' | 'next' | 'search';
+
+/**
+ * The shell's keys as ruled: C opens « Créer », N a new document on its list, E the state's next step (Émettre,
+ * Encaisser), / the search that Ctrl K also opens. A person will change them in Mon compte › Préférences; these are
+ * what they start from and what « Rétablir » returns to.
+ */
+export const DEFAULT_SHORTCUTS: Readonly<Record<ShellShortcut, string>> = {
+  create: 'c',
+  new: 'n',
+  next: 'e',
+  search: '/',
+};
+
+/**
+ * The only keys a screen may declare. Closed on purpose: a person may give the shell any key that is not the
+ * browser's, the interface's or one of these, so a screen reaching for another would collide with somebody's choice.
+ */
+export const SCREEN_KEYS: readonly string[] = ['s', 'v', 'l', 'p'];
+
 /** Keys the browser or the interface already answers; a declaration naming one is refused where it is written. */
 export const RESERVED_KEYS: readonly string[] = [
   'Enter',
@@ -20,15 +41,13 @@ export const RESERVED_KEYS: readonly string[] = [
   'ArrowLeft',
   'ArrowRight',
   'Backspace',
-  // Firefox opens quick-find on both of these with no modifier at all, so a shortcut there never reaches us.
-  '/',
+  // Firefox opens quick-find on this one with no modifier at all; the shell takes / before it does (the search).
   "'",
   // The shell answers these everywhere, before any screen sees them: a screen claiming one would either lose
   // silently or fire alongside the shell, and which of the two happened would depend on the order of two handlers.
-  // C opens « Créer » (docs/SPEC.md § 7, 2026-09-24 22:51).
   '?',
   '[',
-  'c',
+  ...Object.values(DEFAULT_SHORTCUTS),
 ];
 
 /**
@@ -76,5 +95,10 @@ export function refuseReservedShortcut(shortcut: string): void {
   }
   if ([...shortcut].length !== 1) {
     throw new Error(`A shortcut is one character; "${shortcut}" is not.`);
+  }
+  if (!SCREEN_KEYS.includes(shortcut.toLowerCase())) {
+    throw new Error(
+      `"${shortcut}" is not one of the screen keys (${SCREEN_KEYS.join(', ')}); a person may give it to the shell.`,
+    );
   }
 }

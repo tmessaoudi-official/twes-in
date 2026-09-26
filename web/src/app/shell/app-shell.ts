@@ -33,9 +33,15 @@ import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
 import { Label } from '../shared/a11y/label';
 import { runAction } from '../shared/actions/run-action';
+import type { ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
-import { isBareKeystroke, isTypingTarget, matchesShortcut } from '../shared/actions/shortcuts';
-import { ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
+import {
+  DEFAULT_SHORTCUTS,
+  isBareKeystroke,
+  isTypingTarget,
+  matchesShortcut,
+} from '../shared/actions/shortcuts';
+import { keyName, ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { ActivityBar } from '../shared/feedback/activity-bar';
 import { LiveChanges } from '../shared/realtime/live-changes';
@@ -244,6 +250,18 @@ export class AppShell {
     { initialValue: this.router.url },
   );
 
+  /**
+   * What N creates here: the creation whose address is this list's own followed by `/new`, so N is a new invoice on
+   * the invoices list and nothing on a record or on the home page (docs/SPEC.md § 7, 2026-09-24 22:51).
+   */
+  private readonly newOnThisList = computed(() => {
+    const path = this.url().split(/[?#]/)[0];
+    return this.createCommands().find((command) => command.route === `${path}/new`);
+  });
+  /** The shell's single keys, which the rail's hints and the handler below both read. */
+  protected readonly keys = DEFAULT_SHORTCUTS;
+  protected readonly keyName = keyName;
+
   /** Whether the settings area is open, which changes both the menu and the room the page is given. */
   protected readonly inSettings = computed(() => isSettingsUrl(this.url()));
 
@@ -373,15 +391,31 @@ export class AppShell {
       return;
     }
 
-    // C opens « Créer » (docs/SPEC.md § 7, 2026-09-24 22:51), held for one scan gap like a screen's key: a code may
-    // begin with a c.
-    if (matchesShortcut(event, 'c') && this.createCommands().length > 0) {
+    // The shell's own keys (docs/SPEC.md § 7, 2026-09-24 22:51): / searches, C opens « Créer », N a new document on
+    // its list, E the next step. Each is taken only when it has something to do, so a key with nothing behind it on
+    // this screen stays the browser's; and each is held for one scan gap like a screen's key, since a code may
+    // begin with any of them.
+    if (matchesShortcut(event, this.keys.search)) {
+      // Taken at once even so: Firefox opens its quick-find on a bare /.
       event.preventDefault();
-      this.dropHeldShortcut();
-      this.heldShortcut = setTimeout(() => {
-        this.heldShortcut = null;
-        this.createTrigger()?.openMenu();
-      }, SCAN_GAP_MS);
+      this.hold(() => this.openCommands());
+      return;
+    }
+    if (matchesShortcut(event, this.keys.create) && this.createCommands().length > 0) {
+      event.preventDefault();
+      this.hold(() => this.createTrigger()?.openMenu());
+      return;
+    }
+    const creation = this.newOnThisList();
+    if (matchesShortcut(event, this.keys.new) && creation !== undefined) {
+      event.preventDefault();
+      this.hold(() => void this.router.navigateByUrl(creation.route));
+      return;
+    }
+    const next = this.screen.next();
+    if (matchesShortcut(event, this.keys.next) && next !== undefined) {
+      event.preventDefault();
+      this.hold(() => this.run(next));
       return;
     }
 
@@ -391,16 +425,27 @@ export class AppShell {
     const action = this.screen.forKey(event.key);
     if (action === undefined) return;
     event.preventDefault();
-    // Held for one scan gap: a supplier's or an internal code is free text, and its first letter cannot be told from
-    // a hand's until the second arrives — `e` would issue the invoice on view (docs/SPEC.md § 7, 2026-09-23 02:05).
-    // Thirty milliseconds is below anything a person notices.
+    this.hold(() => this.run(action));
+  }
+
+  /**
+   * Runs a bare key's work after one scan gap: a supplier's or an internal code is free text, and its first letter
+   * cannot be told from a hand's until the second arrives — `e` would issue the invoice on view (docs/SPEC.md § 7,
+   * 2026-09-23 02:05). Thirty milliseconds is below anything a person notices.
+   */
+  private hold(work: () => void): void {
     this.dropHeldShortcut();
     this.heldShortcut = setTimeout(() => {
       this.heldShortcut = null;
-      runAction(action, (confirm) =>
-        this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
-      );
+      work();
     }, SCAN_GAP_MS);
+  }
+
+  /** An action by the rule its button follows: asked first when it asks, nothing when refused for now. */
+  private run(action: ScreenAction): void {
+    runAction(action, (confirm) =>
+      this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+    );
   }
 
   private dropHeldShortcut(): void {

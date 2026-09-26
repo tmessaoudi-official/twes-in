@@ -327,7 +327,7 @@ export class InvoicePage {
       },
       {
         id: 'issue',
-        shortcut: 'e',
+        next: true,
         label: this.isCreditNote()
           ? 'invoices.actions.issue_credit_note'
           : 'invoices.actions.issue',
@@ -357,6 +357,7 @@ export class InvoicePage {
         id: 'record-payment',
         label: 'invoices.payments.record',
         shortcut: 'p',
+        next: true,
         icon: 'payments',
         primary: true,
         disabled: busy,

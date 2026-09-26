@@ -845,11 +845,11 @@ describe('AppShell', () => {
     const { el } = await render();
     let ran = 0;
     declareScreenActions([
-      { id: 'issue', label: 'invoices.issue', shortcut: 'e', run: () => (ran += 1) },
+      { id: 'save', label: 'invoices.save', shortcut: 's', run: () => (ran += 1) },
     ]);
     const press = (target: EventTarget) =>
       target.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'e', bubbles: true, cancelable: true }),
+        new KeyboardEvent('keydown', { key: 's', bubbles: true, cancelable: true }),
       );
 
     press(document.body);
@@ -857,7 +857,7 @@ describe('AppShell', () => {
     await pause();
     expect(ran).toBe(1);
 
-    // The same key inside a field is the letter E, which is the reason this whole check exists.
+    // The same key inside a field is the letter S, which is the reason this whole check exists.
     const input = document.createElement('input');
     el.appendChild(input);
     press(input);
@@ -877,7 +877,7 @@ describe('AppShell', () => {
     await render();
     let issued = 0;
     declareScreenActions([
-      { id: 'issue', label: 'invoices.issue', shortcut: 'e', run: () => (issued += 1) },
+      { id: 'issue', label: 'invoices.issue', next: true, run: () => (issued += 1) },
     ]);
     const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
       afterClosed: () => of(undefined),
@@ -893,6 +893,93 @@ describe('AppShell', () => {
 
     expect(issued).toBe(0);
     expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs the next step with E, asking first when its button would (docs/SPEC.md § 7, 2026-09-24 22:51)', async () => {
+    await render();
+    let saved = 0;
+    let issued = 0;
+    declareScreenActions([
+      { id: 'save', label: 'invoices.save', shortcut: 's', primary: true, run: () => (saved += 1) },
+      {
+        id: 'issue',
+        label: 'invoices.issue',
+        next: true,
+        confirm: {
+          kind: 'corrigeable' as const,
+          title: 't',
+          message: 'm',
+          confirmLabel: 'c',
+          keepLabel: 'k',
+        },
+        run: () => (issued += 1),
+      },
+    ]);
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(true),
+    } as never);
+    const e = new KeyboardEvent('keydown', { key: 'E', bubbles: true, cancelable: true });
+
+    document.body.dispatchEvent(e);
+    expect(e.defaultPrevented).toBe(true);
+    await pause();
+
+    expect(open.mock.calls[0][0]).toBe(ConfirmDialog);
+    expect([saved, issued]).toEqual([0, 1]);
+  });
+
+  it('leaves E to nobody on a screen whose state has no next step', async () => {
+    await render();
+    declareScreenActions([
+      { id: 'save', label: 'invoices.save', shortcut: 's', primary: true, run: () => undefined },
+    ]);
+    const e = new KeyboardEvent('keydown', { key: 'e', bubbles: true, cancelable: true });
+    document.body.dispatchEvent(e);
+
+    expect(e.defaultPrevented).toBe(false);
+  });
+
+  it('opens a new document with N on its own list, and nowhere else', async () => {
+    permissions.set(['customer.read', 'customer.write']);
+    const { fixture } = await render();
+    const router = TestBed.inject(Router);
+    const press = () => {
+      const n = new KeyboardEvent('keydown', { key: 'n', bubbles: true, cancelable: true });
+      document.body.dispatchEvent(n);
+      return n;
+    };
+
+    // On the invoices list with invoices off for this company, N has nothing to create.
+    await router.navigateByUrl('/invoices');
+    fixture.detectChanges();
+    const go = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    expect(press().defaultPrevented).toBe(false);
+    await pause();
+    expect(go).not.toHaveBeenCalled();
+
+    go.mockRestore();
+    await router.navigateByUrl('/customers');
+    fixture.detectChanges();
+    const again = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    expect(press().defaultPrevented).toBe(true);
+    await pause();
+    expect(again).toHaveBeenCalledWith('/customers/new');
+  });
+
+  it('opens the search with /, held like any bare key since a code may carry one', async () => {
+    await render();
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(undefined),
+    } as never);
+    const slash = new KeyboardEvent('keydown', { key: '/', bubbles: true, cancelable: true });
+
+    document.body.dispatchEvent(slash);
+    // Taken from the browser at once: Firefox would open its quick-find on it.
+    expect(slash.defaultPrevented).toBe(true);
+    expect(open).not.toHaveBeenCalled();
+    await pause();
+
+    expect(open.mock.calls[0][0]).toBe(CommandPalette);
   });
 
   it('opens what a scan names when a scanner types a code with no field focused', async () => {
@@ -1068,7 +1155,7 @@ describe('AppShell', () => {
       {
         id: 'cancel',
         label: 'invoices.cancel',
-        shortcut: 'x',
+        shortcut: 'v',
         destructive: true,
         confirm: {
           kind: 'definitif' as const,
@@ -1085,7 +1172,7 @@ describe('AppShell', () => {
     } as never);
 
     document.body.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'x', bubbles: true, cancelable: true }),
+      new KeyboardEvent('keydown', { key: 'v', bubbles: true, cancelable: true }),
     );
     await pause();
 
@@ -1125,7 +1212,7 @@ describe('AppShell', () => {
     } as never);
 
     expect(byTestId('command-open')?.closest('[data-testid="shell-nav"]')).not.toBeNull();
-    expect(byTestId('command-open')?.getAttribute('aria-keyshortcuts')).toBe('Control+K Meta+K');
+    expect(byTestId('command-open')?.getAttribute('aria-keyshortcuts')).toBe('/ Control+K Meta+K');
     // Named even on a phone, where its visible label and shortcut are hidden to save room.
     expect(byTestId('command-open')?.getAttribute('aria-label')).toBe('Rechercher');
     await click('command-open');

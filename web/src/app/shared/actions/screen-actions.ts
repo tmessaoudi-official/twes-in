@@ -26,10 +26,14 @@ export class ScreenActions {
     return offered;
   });
 
-  /** The actions a keyboard hint or the "?" sheet lists: those with a key, in the order the screen declared them. */
-  readonly withShortcut: Signal<readonly ScreenAction[]> = computed(() =>
-    this.actions().filter((action) => action.shortcut !== undefined),
-  );
+  /**
+   * The next step E runs: the first one offered that can run now. One refused for now is not skipped in favour of
+   * another, since E would then do something other than what the screen's filled button says.
+   */
+  readonly next: Signal<ScreenAction | undefined> = computed(() => {
+    const next = this.actions().find((action) => action.next === true);
+    return next?.disabled === true ? undefined : next;
+  });
 
   /** Must be called from an injection context: the declaration lives exactly as long as the screen that made it. */
   declare(source: Signal<readonly ScreenAction[]>): void {

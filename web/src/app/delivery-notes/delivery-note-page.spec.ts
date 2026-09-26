@@ -556,6 +556,22 @@ describe('DeliveryNotePage', () => {
     expect(q('document-more')).toBeNull();
   });
 
+  // docs/SPEC.md § 7, 2026-09-24 22:51: E runs the state's next step, whichever document it is.
+  it('gives E the next step of its state: validating, delivering, then invoicing', async () => {
+    note.set(draft);
+    await open('n1');
+    const screen = TestBed.inject(ScreenActions);
+    expect(screen.next()?.id).toBe('validate');
+
+    note.set(validated);
+    await settle();
+    expect(screen.next()?.id).toBe('deliver');
+
+    note.set({ ...validated, status: 'delivered', deliveryDate: '2026-09-20' });
+    await settle();
+    expect(screen.next()?.id).toBe('invoice');
+  });
+
   it('shows a reader the note and its PDF without a way to change it', async () => {
     granted.clear();
     granted.add('delivery_note.read');

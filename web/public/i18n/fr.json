@@ -538,6 +538,9 @@
       "everywhere": "Partout",
       "none": "Cette page ne propose aucun raccourci.",
       "palette": "Ouvrir les commandes",
+      "create": "Ouvrir « Créer »",
+      "new": "Nouveau document, depuis sa liste",
+      "next": "Étape suivante : émettre, encaisser, valider…",
       "sidebar": "Réduire ou déployer le menu",
       "help": "Afficher cette liste",
       "close": "Fermer"

@@ -538,6 +538,9 @@
       "everywhere": "Everywhere",
       "none": "This page offers no shortcut.",
       "palette": "Open the commands",
+      "create": "Open Create",
+      "new": "New document, from its list",
+      "next": "Next step: issue, record a payment, validate…",
       "sidebar": "Collapse or expand the menu",
       "help": "Show this list",
       "close": "Close"

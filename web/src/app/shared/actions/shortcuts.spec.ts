@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {
+  DEFAULT_SHORTCUTS,
   isTypingTarget,
   matchesShortcut,
   refuseReservedShortcut,
   RESERVED_KEYS,
+  SCREEN_KEYS,
 } from './shortcuts';
 
 function press(key: string, modifiers: Partial<KeyboardEvent> = {}): KeyboardEvent {
@@ -96,7 +98,13 @@ describe('refuseReservedShortcut', () => {
     // never fires or fires alongside the shell, decided by whichever handler ran first.
     expect(() => refuseReservedShortcut('?')).toThrow(/reserved/i);
     expect(() => refuseReservedShortcut('[')).toThrow(/reserved/i);
-    expect(() => refuseReservedShortcut('c')).toThrow(/reserved/i);
+  });
+
+  it('refuses every key the shell answers by default — C, N, E and / (docs/SPEC.md § 7, 2026-09-24 22:51)', () => {
+    expect(Object.values(DEFAULT_SHORTCUTS)).toEqual(['c', 'n', 'e', '/']);
+    for (const key of Object.values(DEFAULT_SHORTCUTS)) {
+      expect(() => refuseReservedShortcut(key), key).toThrow(/reserved/i);
+    }
   });
 
   it('refuses a shortcut that is not one single character', () => {
@@ -104,9 +112,13 @@ describe('refuseReservedShortcut', () => {
     expect(() => refuseReservedShortcut('')).toThrow(/one character/i);
   });
 
-  it('accepts an ordinary letter or digit', () => {
-    expect(() => refuseReservedShortcut('n')).not.toThrow();
-    expect(() => refuseReservedShortcut('7')).not.toThrow();
-    expect(() => refuseReservedShortcut('é')).not.toThrow();
+  it('accepts the keys screens share, and no other, so a person may give the shell any key but those', () => {
+    // The keys a person may choose for the shell (row 125) are everything but the browser's, the interface's and
+    // these: a screen claiming a key outside them could collide with a person's own choice.
+    expect(SCREEN_KEYS).toEqual(['s', 'v', 'l', 'p']);
+    for (const key of SCREEN_KEYS) expect(() => refuseReservedShortcut(key), key).not.toThrow();
+    for (const key of ['i', '7', 'é', 'x']) {
+      expect(() => refuseReservedShortcut(key), key).toThrow(/screen/i);
+    }
   });
 });
