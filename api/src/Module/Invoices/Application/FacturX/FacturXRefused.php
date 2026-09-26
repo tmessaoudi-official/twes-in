@@ -18,6 +18,17 @@ final class FacturXRefused extends \DomainException
 {
     public const string NOT_ISSUED = 'not_issued';
 
+    /** Every reason a document is refused for, as the contract lists them. */
+    public const array REASONS = [self::NOT_ISSUED, 'preset_not_supported', 'incomplete_document'];
+
+    /** Every gap an incomplete document is refused with, as the contract lists them. */
+    public const array GAPS = [
+        'seller_siren_missing', 'seller_vat_number_missing', 'seller_address_incomplete',
+        'buyer_address_incomplete', 'buyer_vat_number_missing',
+        'line_tax_unsupported', 'line_vat_ambiguous', 'vat_category_unknown', 'vat_exemption_undeclared',
+        'document_tax_unsupported', 'vat_rate_shared', 'vat_rounding_differs',
+    ];
+
     /**
      * @param array<string, string|int>                                                 $params
      * @param list<array{code: string, params: array<string, string|int|list<string>>}> $gaps

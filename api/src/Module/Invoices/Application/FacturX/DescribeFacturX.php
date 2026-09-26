@@ -358,6 +358,10 @@ final readonly class DescribeFacturX
      */
     private static function gap(string $code, array $params = []): array
     {
+        if (!\in_array($code, FacturXRefused::GAPS, true)) {
+            throw new \LogicException(\sprintf('The gap %s is not in the contract (FacturXRefused::GAPS).', $code));
+        }
+
         return ['code' => $code, 'params' => $params];
     }
 }

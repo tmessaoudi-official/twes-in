@@ -10,6 +10,9 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface;
+use ApiPlatform\OpenApi\Model\MediaType;
+use ApiPlatform\OpenApi\Model\Response;
+use App\Module\Invoices\Application\FacturX\FacturXRefused;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -86,6 +89,40 @@ final class OpenApiTest extends KernelTestCase
         self::assertIsArray($levels);
         self::assertIsArray($levels['items'] ?? null);
         self::assertSame(['level', 'value'], $levels['items']['required'] ?? null);
+    }
+
+    public function testTheFacturXFilesAndWhyThereIsNoneAreInTheContract(): void
+    {
+        self::bootKernel();
+        $paths = static::getContainer()->get(OpenApiFactoryInterface::class)()->getPaths();
+
+        foreach (['/factur-x.xml' => 'application/xml', '/factur-x.pdf' => 'application/pdf'] as $file => $type) {
+            $operation = $paths->getPath('/api/companies/{companyId}/invoices/{invoiceId}'.$file)?->getGet();
+            self::assertNotNull($operation, $file);
+            $responses = $operation->getResponses() ?? [];
+            self::assertSame(['200', '401', '404', '409', '422'], array_values(array_intersect(['200', '401', '404', '409', '422'], array_map(strval(...), array_keys($responses)))), $file);
+            $ok = $responses['200'] ?? null;
+            self::assertInstanceOf(Response::class, $ok);
+            self::assertArrayHasKey($type, $ok->getContent()?->getArrayCopy() ?? [], $file);
+            $refusal = $responses['422'] ?? null;
+            self::assertInstanceOf(Response::class, $refusal);
+            $media = $refusal->getContent()?->getArrayCopy()['application/json'] ?? null;
+            self::assertInstanceOf(MediaType::class, $media, $file);
+            $schema = $media->getSchema()?->getArrayCopy();
+            self::assertIsArray($schema);
+            self::assertSame(['code', 'params', 'message', 'gaps'], $schema['required'] ?? null, $file);
+            $properties = $schema['properties'] ?? null;
+            self::assertIsArray($properties);
+            $gaps = $properties['gaps'] ?? null;
+            self::assertIsArray($gaps);
+            $item = $gaps['items'] ?? null;
+            self::assertIsArray($item);
+            $itemProperties = $item['properties'] ?? null;
+            self::assertIsArray($itemProperties);
+            $code = $itemProperties['code'] ?? null;
+            self::assertIsArray($code);
+            self::assertSame(FacturXRefused::GAPS, $code['enum'] ?? null, $file);
+        }
     }
 
     /** @return list<string> */

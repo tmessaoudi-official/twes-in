@@ -227,6 +227,11 @@ services:
         arguments:
             $url: '%app.pdf.gotenberg_url%'
 
+    # The same container writes Factur-X PDFs through its own route (docs/SPEC.md § 8 row 145).
+    App\Shared\Infrastructure\Pdf\GotenbergFacturXPdf:
+        arguments:
+            $url: '%app.pdf.gotenberg_url%'
+
     # One validated file per country (docs/SPEC.md § 3 Fiscal presets).
     App\Fiscal\Infrastructure\Preset\YamlFiscalPresets:
         arguments:
@@ -245,6 +250,8 @@ when@test:
         # No test reaches Gotenberg either: the fake answers a PDF header followed by the page, which a test can read.
         App\Tests\Support\FakePdfRenderer: ~
         App\Shared\Application\PdfRenderer: '@App\Tests\Support\FakePdfRenderer'
+        App\Tests\Support\FakeFacturXPdf: ~
+        App\Shared\Application\FacturXPdf: '@App\Tests\Support\FakeFacturXPdf'
         # A module only the tests declare, needing customers: the dependency refusals go through the API with it.
         App\Tests\Support\Module\LedgerFixtureModule:
             tags: ['app.modules.declarations']
