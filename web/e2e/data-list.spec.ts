@@ -2,7 +2,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { forgetPresentationChoices } from './presentation';
-import { OPERATOR_EMAIL as EMAIL, signIn as logIn } from './session';
+import { OPERATOR_EMAIL as EMAIL, inACompany, signIn as logIn } from './session';
 import { sidewaysOverflow } from './overflow';
 
 // G2b and G3b: presentation preferences survive a reload, and a fresh browser, through the API's presentation
@@ -179,4 +179,32 @@ test('at phone width the members list and its chooser are accessible and fit the
     await sidewaysOverflow(page),
     'the page itself must not scroll sideways',
   ).toBeLessThanOrEqual(0);
+});
+
+// A list with no row actions pinned its LAST header to the table's right edge while that column's cells scrolled on,
+// so « Statut » covered « Reste à payer » on « Factures » (2026-09-26). At 900 px the invoice columns' own widths
+// exceed the page, so the table is wider than its container with or without rows.
+test('a list wider than its page keeps each header over its own column', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 700 });
+  await logIn(page);
+  await inACompany(page, '0123456789abcdef0123456789abcdef');
+  await page.goto('/invoices');
+  const headers = page.locator('tr.mat-mdc-header-row th');
+  await expect(headers.first()).toBeVisible();
+  const boxes = await headers.evaluateAll((cells) =>
+    cells.map((cell) => {
+      const box = cell.getBoundingClientRect();
+      return { left: Math.round(box.left), right: Math.round(box.right) };
+    }),
+  );
+  const table = await page.locator('table.mat-mdc-table').evaluate((element) => ({
+    table: element.scrollWidth,
+    container: element.parentElement?.clientWidth ?? 0,
+  }));
+  expect(table.table, 'the table is wider than its container').toBeGreaterThan(table.container);
+  for (let index = 1; index < boxes.length; index++) {
+    expect(boxes[index]!.left, `header ${index} starts where header ${index - 1} ends`).toBe(
+      boxes[index - 1]!.right,
+    );
+  }
 });

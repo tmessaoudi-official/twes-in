@@ -376,7 +376,12 @@
         }
         @if (hasRowControls()) {
           <ng-container [matColumnDef]="actionsColumn">
-            <th mat-header-cell *matHeaderCellDef [style.width.px]="actionsWidth">
+            <th
+              mat-header-cell
+              *matHeaderCellDef
+              class="twes-row-actions"
+              [style.width.px]="actionsWidth"
+            >
               <span class="sr-only">{{ 'list.actions' | translate }}</span>
             </th>
             <!-- Pinned to the table's right edge: the actions were past it in every list, even at 1440 px. -->
