@@ -1844,7 +1844,8 @@
       "expense": "Expense",
       "amounts": "Amounts",
       "notes": "Notes",
-      "payment": "Payment"
+      "payment": "Payment",
+      "tej": "TEJ declaration"
     },
     "fields": {
       "date": "Date",
@@ -1861,7 +1862,8 @@
       "paymentMethod": "Paid by",
       "paidOn": "Paid on",
       "withholdingRate": "Withholding (%)",
-      "notes": "Notes"
+      "notes": "Notes",
+      "withholdingOperationCode": "TEJ operation"
     },
     "form": {
       "reference_hint": "The number on the vendor's invoice or receipt.",
@@ -1873,7 +1875,8 @@
       "net_hint": "Before tax, with no more decimals than the currency has.",
       "no_tax": "No tax",
       "notes_hint": "For your team only.",
-      "withholding_hint": "Proposed at 1% from 1,000 TND including VAT; enter 0 for an excluded purchase or an exempt supplier, or the rate that applies to the supplier."
+      "withholding_hint": "Proposed at 1% from 1,000 TND including VAT; enter 0 for an excluded purchase or an exempt supplier, or the rate that applies to the supplier.",
+      "tej_hint": "The TEJ platform code under which this withholding is declared."
     },
     "payment_methods": {
       "transfer": "Bank transfer",
@@ -1886,7 +1889,8 @@
       "record": "Record in the books",
       "pay": "Mark as paid",
       "delete": "Delete draft",
-      "delete_confirm": "Confirm deletion"
+      "delete_confirm": "Confirm deletion",
+      "classify": "Save the operation"
     },
     "attachments": {
       "title": "Receipts",
@@ -1925,7 +1929,11 @@
       "file_refused": "The file was refused: it must be a PDF, PNG, JPEG or WebP image of up to 10 MB, not empty, and the expense may hold at most 10 files.",
       "file_too_large": "The file is larger than 10 MB."
     },
-    "withheld": "Withheld at {{rate}}%: {{amount}} · paid {{paid}}"
+    "withheld": "Withheld at {{rate}}%: {{amount}} · paid {{paid}}",
+    "tej": {
+      "none": "TEJ operation not given",
+      "classified": "The TEJ operation was saved."
+    }
   },
   "signup": {
     "back_to_login": "Back to sign in",

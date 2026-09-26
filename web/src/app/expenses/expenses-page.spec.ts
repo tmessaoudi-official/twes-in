@@ -52,6 +52,7 @@ const fuel: ExpenseRow = {
   notes: null,
   withholdingRate: null,
   withholdingAmount: null,
+  withholdingOperationCode: null,
   amountPaid: '0.000',
   suggestedWithholdingRate: null,
   attachmentCount: 1,

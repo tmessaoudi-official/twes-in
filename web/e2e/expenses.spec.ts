@@ -104,6 +104,17 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
     await expect(page.getByTestId('expense-paid')).toBeVisible();
     expect(await wcagViolations(page)).toEqual([]);
 
+    // Demo is Tunisian: the TEJ operation nobody gave is said so, and given afterwards (docs/SPEC.md § 7,
+    // 2026-09-26 00:22).
+    const tej = page.getByTestId('expense-tej');
+    await expect(tej).toHaveAttribute('data-code', '');
+    await page.getByTestId('field-withholdingOperationCode').click();
+    await page.getByRole('option', { name: /^RS7_000006 — / }).click();
+    await page.getByTestId('expense-classify').click();
+    await expect(tej).toHaveAttribute('data-code', 'RS7_000006');
+    await expect(tej).toContainText('RS7_000006 — ');
+    expect(await wcagViolations(page)).toEqual([]);
+
     // The API pages this list and the shared company outgrows one page, so the row is searched for rather than
     // expected among the newest few.
     await page.goto('/expenses');

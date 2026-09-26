@@ -74,6 +74,8 @@ export interface ExpenseRow {
   /** What the payment withheld from the supplier: percent with three decimals, and the amount; null when nothing was. */
   withholdingRate: string | null;
   withholdingAmount: string | null;
+  /** The TEJ operation the withholding is declared under (Tunisia), as a person gave it; null when nobody did. */
+  withholdingOperationCode: string | null;
   /** What the supplier is handed: the gross less what was withheld. */
   amountPaid: string;
   /** What paying this recorded expense would withhold unless told otherwise; null for none. */
@@ -99,6 +101,8 @@ export interface ExpensePayment {
   paidOn: string;
   /** The percentage withheld from the supplier; "0" for none (docs/SPEC.md § 7, 2026-09-24 11:40, RPT-09). */
   withholdingRate: string;
+  /** Tunisia only, and only when chosen: the API refuses a code for a company that does not declare to TEJ. */
+  withholdingOperationCode?: string;
 }
 
 export interface ExpenseCategoryRow {
@@ -136,6 +140,15 @@ export interface ExpenseOptions {
   categories: Omit<ExpenseCategoryRow, 'isActive'>[];
   taxes: ExpenseTaxOption[];
   paymentMethods: PaymentMethod[];
+  /** The TEJ operations a withholding may be declared under, labelled as the administration publishes them; empty
+   * for a company that does not declare to TEJ (docs/SPEC.md § 7, 2026-09-26 00:22). */
+  withholdingOperationCodes: TejOperation[];
+}
+
+export interface TejOperation {
+  code: string;
+  /** In French, verbatim, typing included: the administration's text. */
+  label: string;
 }
 
 export interface ExpenseAttachment {

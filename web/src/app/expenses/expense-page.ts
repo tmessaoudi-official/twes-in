@@ -30,6 +30,7 @@ import {
   expenseForm,
   expenseInput,
   expenseValues,
+  classifyForm,
   paymentForm,
   paymentInput,
   paymentValues,
@@ -185,6 +186,39 @@ export class ExpensePage {
         );
   });
 
+  /**
+   * The TEJ operation of a paid expense (docs/SPEC.md § 7, 2026-09-26 00:22): what was said, labelled as the
+   * administration publishes it, or '' for nobody said. Null for a company that does not declare to TEJ.
+   */
+  protected readonly tejOperation = computed(
+    () => {
+      const operations = this.options()?.withholdingOperationCodes ?? [];
+      const current = this.current();
+      if (operations.length === 0 || current?.status !== 'paid') return null;
+      const code = current.withholdingOperationCode;
+      const found = operations.find((operation) => operation.code === code);
+      return {
+        code: code ?? '',
+        label: found === undefined ? null : `${found.code} — ${found.label}`,
+      };
+    },
+    // A reload that answers the same operation must not rebuild the form over what is being chosen.
+    { equal: (a, b) => a?.code === b?.code && a?.label === b?.label },
+  );
+  protected readonly classifyDescriptor = computed(() => {
+    const options = this.options();
+    return options === null || !this.mayWrite() || this.tejOperation() === null
+      ? null
+      : classifyForm(options);
+  });
+  protected readonly classifyFormGroup = computed(() => {
+    const descriptor = this.classifyDescriptor();
+    const code = this.tejOperation()?.code ?? '';
+    return descriptor === null
+      ? null
+      : untracked(() => buildFormGroup(descriptor, { withholdingOperationCode: code }));
+  });
+
   constructor() {
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45).
     inject(ScreenActions).declare(this.recordActions);
@@ -337,6 +371,16 @@ export class ExpensePage {
     const id = this.id();
     if (!companyId || id === null || this.busy()) return;
     await this.facade.payExpense(companyId, id, paymentInput(values));
+  }
+
+  protected async classify(values: FormValues): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    const code = String(values['withholdingOperationCode'] ?? '');
+    if (!companyId || id === null || code === '' || this.busy()) return;
+    if ((await this.facade.classifyWithholding(companyId, id, code)) !== null) {
+      this.feedback.success('expenses.tej.classified');
+    }
   }
 
   protected async remove(): Promise<void> {

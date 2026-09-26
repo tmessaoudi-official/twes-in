@@ -11,6 +11,7 @@ import {
   expenseSearch,
   expenseValues,
   EXPENSES_LIST,
+  classifyForm,
   paymentForm,
   paymentInput,
   paymentValues,
@@ -33,6 +34,14 @@ const options: ExpenseOptions = {
   categories: [vehicles, fuel],
   taxes: [{ id: 't1', code: 'TVA19', name: 'TVA', rate: '19.000' }],
   paymentMethods: ['transfer', 'cash'],
+  withholdingOperationCodes: [],
+};
+const tunisian: ExpenseOptions = {
+  ...options,
+  withholdingOperationCodes: [
+    { code: 'RS1_000001', label: 'Traitements et salaires' },
+    { code: 'RS7_000006', label: 'Honoraires exonérés' },
+  ],
 };
 
 describe('expense forms', () => {
@@ -149,6 +158,42 @@ describe('expense forms', () => {
       paymentMethod: 'check',
       paidOn: '2026-09-12',
       withholdingRate: '0',
+    });
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26 00:22: the TEJ operation is chosen by a person, from the administration's own list.
+  it('asks for the TEJ operation on a payment only where the company declares to TEJ', () => {
+    const ids = (descriptor: ReturnType<typeof paymentForm>) =>
+      descriptor.sections.flatMap((section) => section.fields.map((field) => field.id));
+    expect(ids(paymentForm(options))).not.toContain('withholdingOperationCode');
+
+    const field = paymentForm(tunisian)
+      .sections.flatMap((section) => section.fields)
+      .find((each) => each.id === 'withholdingOperationCode');
+    expect(field?.kind).toBe('select');
+    expect(field?.required).toBeFalsy();
+    expect(field?.options).toEqual([
+      { value: 'RS1_000001', label: 'RS1_000001 — Traitements et salaires' },
+      { value: 'RS7_000006', label: 'RS7_000006 — Honoraires exonérés' },
+    ]);
+
+    const chosen = { paymentMethod: 'transfer', paidOn: '2026-09-15', withholdingRate: '' };
+    expect(paymentInput({ ...chosen, withholdingOperationCode: 'RS7_000006' })).toEqual({
+      paymentMethod: 'transfer',
+      paidOn: '2026-09-15',
+      withholdingRate: '0',
+      withholdingOperationCode: 'RS7_000006',
+    });
+    // Nothing chosen is nothing sent: outside Tunisia the API refuses any code at all.
+    expect(paymentInput({ ...chosen, withholdingOperationCode: '' })).not.toHaveProperty(
+      'withholdingOperationCode',
+    );
+
+    const classify = classifyForm(tunisian).sections[0]?.fields[0];
+    expect(classify).toMatchObject({
+      id: 'withholdingOperationCode',
+      kind: 'select',
+      required: true,
     });
   });
 

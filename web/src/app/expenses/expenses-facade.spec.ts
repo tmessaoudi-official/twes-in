@@ -30,6 +30,7 @@ const draft: ExpenseRow = {
   paidOn: null,
   withholdingRate: null,
   withholdingAmount: null,
+  withholdingOperationCode: null,
   amountPaid: '0.000',
   suggestedWithholdingRate: null,
   attachmentCount: 0,
@@ -47,6 +48,7 @@ const options: ExpenseOptions = {
   categories: [],
   taxes: [],
   paymentMethods: ['transfer'],
+  withholdingOperationCodes: [],
 };
 
 describe('ExpensesFacade', () => {

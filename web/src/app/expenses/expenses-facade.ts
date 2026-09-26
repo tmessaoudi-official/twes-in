@@ -98,6 +98,14 @@ export class ExpensesFacade {
     return this.save(() => this.api.payExpense(companyId, id, payment));
   }
 
+  async classifyWithholding(
+    companyId: string,
+    id: string,
+    code: string,
+  ): Promise<ExpenseRow | null> {
+    return this.save(() => this.api.classifyWithholding(companyId, id, code));
+  }
+
   async deleteExpense(companyId: string, id: string): Promise<boolean> {
     return this.write(
       () => this.api.deleteExpense(companyId, id),

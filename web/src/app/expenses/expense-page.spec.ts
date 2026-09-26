@@ -65,6 +65,11 @@ const options: ExpenseOptions = {
   ],
   taxes: [{ id: 't1', code: 'TVA19', name: 'TVA', rate: '19.000' }],
   paymentMethods: ['transfer', 'cash'],
+  withholdingOperationCodes: [],
+};
+const tunisian: ExpenseOptions = {
+  ...options,
+  withholdingOperationCodes: [{ code: 'RS7_000006', label: 'Honoraires exonérés' }],
 };
 const draft: ExpenseRow = {
   id: 'e1',
@@ -88,6 +93,7 @@ const draft: ExpenseRow = {
   notes: null,
   withholdingRate: null,
   withholdingAmount: null,
+  withholdingOperationCode: null,
   amountPaid: '0.000',
   suggestedWithholdingRate: null,
   attachmentCount: 1,
@@ -104,8 +110,9 @@ describe('ExpensePage', () => {
   const error = signal<ExpensesError | null>(null);
   const expense = signal<ExpenseRow | null>(null);
   const attachments = signal<readonly ExpenseAttachment[]>([]);
+  const optionsState = signal<ExpenseOptions | null>(options);
   const facade = {
-    options: signal<ExpenseOptions | null>(options).asReadonly(),
+    options: optionsState.asReadonly(),
     expense: expense.asReadonly(),
     attachments: attachments.asReadonly(),
     busy: signal(false).asReadonly(),
@@ -118,6 +125,7 @@ describe('ExpensePage', () => {
     reviseExpense: vi.fn(),
     recordExpense: vi.fn(),
     payExpense: vi.fn(),
+    classifyWithholding: vi.fn(),
     deleteExpense: vi.fn(),
     attach: vi.fn(),
     detach: vi.fn(),
@@ -141,6 +149,12 @@ describe('ExpensePage', () => {
   /** The expense form as the page holds it; a mat-select is set through its control. */
   const form = (): FormGroup =>
     (fixture.componentInstance as unknown as { form: () => FormGroup }).form();
+
+  /** The TEJ operation form of a paid expense, where the company declares to TEJ. */
+  const classification = (): FormGroup | null =>
+    (
+      fixture.componentInstance as unknown as { classifyFormGroup: () => FormGroup | null }
+    ).classifyFormGroup();
 
   /** The payment form, which exists only once a recorded expense has been read. */
   const payment = (): FormGroup =>
@@ -183,11 +197,13 @@ describe('ExpensePage', () => {
     error.set(null);
     expense.set(null);
     attachments.set([]);
+    optionsState.set(options);
     facade.loadExpense.mockReset().mockResolvedValue(undefined);
     facade.createExpense.mockReset().mockResolvedValue({ ...draft, id: 'e9' });
     facade.reviseExpense.mockReset().mockResolvedValue(draft);
     facade.recordExpense.mockReset().mockResolvedValue({ ...draft, status: 'recorded' });
     facade.payExpense.mockReset().mockResolvedValue({ ...draft, status: 'paid' });
+    facade.classifyWithholding.mockReset().mockResolvedValue({ ...draft, status: 'paid' });
     facade.deleteExpense.mockReset().mockResolvedValue(true);
     facade.attach.mockReset().mockResolvedValue(true);
     facade.detach.mockReset().mockResolvedValue(true);
@@ -361,6 +377,53 @@ describe('ExpensePage', () => {
     const withheld = q('expense-withheld')?.textContent?.replace(/\s/g, '');
     expect(withheld).toContain('1%:11,900');
     expect(withheld).toContain('versé1178,100');
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26 00:22: the TEJ operation, given at payment or afterwards, never worked out here.
+  it('asks a Tunisian company for the TEJ operation when paying, and sends the one chosen', async () => {
+    optionsState.set(tunisian);
+    expense.set({ ...draft, status: 'recorded' });
+    await open('e1');
+    payment().get('withholdingOperationCode')!.setValue('RS7_000006');
+    q('expense-pay')!.click();
+    await settle();
+    expect(facade.payExpense).toHaveBeenCalledWith(
+      'c1',
+      'e1',
+      expect.objectContaining({ withholdingOperationCode: 'RS7_000006' }),
+    );
+  });
+
+  it('shows the TEJ operation of a paid expense, and gives one where none was said', async () => {
+    optionsState.set(tunisian);
+    const paid: ExpenseRow = { ...draft, status: 'paid', paidOn: '2026-09-12' };
+    expense.set(paid);
+    await open('e1');
+    expect(q('expense-tej')?.getAttribute('data-code')).toBe('');
+
+    classification()!.get('withholdingOperationCode')!.setValue('RS7_000006');
+    q('expense-classify')!.click();
+    await settle();
+    expect(facade.classifyWithholding).toHaveBeenCalledWith('c1', 'e1', 'RS7_000006');
+    expect(successToasts()).toContain('expenses.tej.classified');
+
+    expense.set({ ...paid, withholdingOperationCode: 'RS7_000006' });
+    await settle();
+    expect(q('expense-tej')?.getAttribute('data-code')).toBe('RS7_000006');
+    expect(q('expense-tej')?.textContent).toContain('RS7_000006 — Honoraires exonérés');
+  });
+
+  it('says nothing of TEJ outside Tunisia, nor offers a reader to change it', async () => {
+    expense.set({ ...draft, status: 'paid', paidOn: '2026-09-12' });
+    await open('e1');
+    expect(q('expense-tej')).toBeNull();
+    expect(q('expense-classify')).toBeNull();
+
+    optionsState.set(tunisian);
+    auth.hasPermission.mockImplementation((permission: string) => permission !== 'expense.write');
+    await open('e1');
+    expect(q('expense-tej')).not.toBeNull();
+    expect(q('expense-classify')).toBeNull();
   });
 
   it('deletes a draft only on the second click', async () => {

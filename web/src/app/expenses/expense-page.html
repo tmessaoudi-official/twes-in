@@ -104,6 +104,11 @@
                   }}
                 </dd>
               }
+              @if (tejOperation(); as tej) {
+                <dd class="text-sm" data-testid="expense-tej" [attr.data-code]="tej.code">
+                  {{ tej.label ?? ('expenses.tej.none' | translate) }}
+                </dd>
+              }
             } @else {
               <dt class="text-sm text-on-surface-variant">
                 {{ 'expenses.fields.dueDate' | translate }}
@@ -195,6 +200,32 @@
           </mat-card-content>
         </mat-card>
       }
+    }
+  }
+
+  @if (classifyFormGroup(); as classifyGroup) {
+    @if (classifyDescriptor(); as classifyDescriptor) {
+      <mat-card>
+        <mat-card-content>
+          <app-descriptor-form
+            [descriptor]="classifyDescriptor"
+            [form]="classifyGroup"
+            testId="expense-tej-form"
+            (submitted)="classify($event)"
+          >
+            <div class="flex flex-wrap justify-end gap-2">
+              <button
+                mat-stroked-button
+                type="submit"
+                [disabled]="busy()"
+                data-testid="expense-classify"
+              >
+                {{ 'expenses.actions.classify' | translate }}
+              </button>
+            </div>
+          </app-descriptor-form>
+        </mat-card-content>
+      </mat-card>
     }
   }
 

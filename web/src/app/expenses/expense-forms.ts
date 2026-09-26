@@ -4,6 +4,7 @@ import type {
   FieldOption,
   FieldValue,
   FormDescriptor,
+  FormField,
   FormValues,
 } from '../shared/form/form-types';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
@@ -355,9 +356,39 @@ export function paymentForm(options: ExpenseOptions): FormDescriptor {
             pattern: '(0|[1-9][0-9]{0,2})([.,][0-9]{1,3})?',
             hint: 'expenses.form.withholding_hint',
           },
+          ...(options.withholdingOperationCodes.length === 0
+            ? []
+            : [{ ...operationField(options), hint: 'expenses.form.tej_hint' }]),
         ],
       },
     ],
+  };
+}
+
+/** The TEJ operation of a paid expense, given afterwards (docs/SPEC.md § 7, 2026-09-26 00:22). */
+export function classifyForm(options: ExpenseOptions): FormDescriptor {
+  return {
+    id: 'expense-tej',
+    sections: [
+      {
+        id: 'tej',
+        title: 'expenses.sections.tej',
+        fields: [{ ...operationField(options), required: true, span: 2 }],
+      },
+    ],
+  };
+}
+
+/** The administration's own list, its labels as published: a code is chosen, never worked out from the rate. */
+function operationField(options: ExpenseOptions): FormField {
+  return {
+    id: 'withholdingOperationCode',
+    label: `${FIELDS}.withholdingOperationCode`,
+    kind: 'select',
+    options: options.withholdingOperationCodes.map((operation) => ({
+      value: operation.code,
+      label: `${operation.code} — ${operation.label}`,
+    })),
   };
 }
 
@@ -388,7 +419,14 @@ export function paymentInput(values: FormValues): ExpensePayment {
     paidOn: String(values['paidOn'] ?? '').trim(),
     // Always said: an empty field withholds nothing, rather than letting the API apply its default.
     withholdingRate: text(values['withholdingRate'])?.replace(',', '.') ?? '0',
+    ...operation(values),
   };
+}
+
+/** Sent only when chosen: outside Tunisia the API refuses any code at all. */
+function operation(values: FormValues): { withholdingOperationCode?: string } {
+  const code = text(values['withholdingOperationCode']);
+  return code === null ? {} : { withholdingOperationCode: code };
 }
 
 /** A category as its list shows it: with its path in the tree. */

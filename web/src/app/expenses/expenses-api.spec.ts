@@ -69,6 +69,7 @@ describe('ExpensesApi', () => {
       attachmentCount: 2,
       withholdingRate: null,
       withholdingAmount: null,
+      withholdingOperationCode: null,
       amountPaid: '119.000',
       suggestedWithholdingRate: null,
     });
@@ -169,6 +170,42 @@ describe('ExpensesApi', () => {
     });
   });
 
+  // docs/SPEC.md § 7, 2026-09-26 00:22: the TEJ operation a withholding is declared under, never worked out here.
+  it('reads the TEJ operations a Tunisian company may declare, and sends one only when chosen', async () => {
+    const options = api.options('c1');
+    http.expectOne('/api/companies/c1/expense-options').flush({
+      currency: 'TND',
+      currencyScale: 3,
+      withholdingOperationCodes: [{ code: 'RS7_000006', label: 'Honoraires exonérés' }],
+    });
+    expect((await options).withholdingOperationCodes).toEqual([
+      { code: 'RS7_000006', label: 'Honoraires exonérés' },
+    ]);
+
+    const paid = api.payExpense('c1', 'e1', {
+      paymentMethod: 'transfer',
+      paidOn: '2026-09-12',
+      withholdingRate: '0',
+      withholdingOperationCode: 'RS7_000006',
+    });
+    const pay = http.expectOne('/api/companies/c1/expenses/e1/pay');
+    expect(pay.request.body).toEqual({
+      paymentMethod: 'transfer',
+      paidOn: '2026-09-12',
+      withholdingRate: '0',
+      withholdingOperationCode: 'RS7_000006',
+    });
+    pay.flush({ id: 'e1', status: 'paid', withholdingOperationCode: 'RS7_000006' });
+    expect((await paid).withholdingOperationCode).toBe('RS7_000006');
+
+    const classified = api.classifyWithholding('c1', 'e1', 'RS1_000001');
+    const classify = http.expectOne('/api/companies/c1/expenses/e1/withholding-operation');
+    expect(classify.request.method).toBe('POST');
+    expect(classify.request.body).toEqual({ withholdingOperationCode: 'RS1_000001' });
+    classify.flush({ id: 'e1', status: 'paid', withholdingOperationCode: 'RS1_000001' });
+    expect((await classified).withholdingOperationCode).toBe('RS1_000001');
+  });
+
   it('tells a refused expense from a refused category and a refused file', async () => {
     const recorded = api.reviseExpense('c1', 'e1', fuel);
     http
@@ -244,6 +281,7 @@ describe('ExpensesApi', () => {
       categories: [{ id: 'k1', name: 'Carburant', parentId: null }],
       taxes: [{ id: 't1', code: 'TVA19', name: 'TVA', rate: '19.000' }],
       paymentMethods: ['transfer', 'cash'],
+      withholdingOperationCodes: [],
     });
 
     // The book of suppliers is asked for a few at a time, never handed over with the options.

@@ -13,6 +13,7 @@ import type {
   ExpenseExpenseWrite,
   ExpenseJsonldExpenseRead,
   ExpenseOptionsExpenseOptionsRead,
+  ExpenseExpenseClassify,
   ExpenseVendorPickExpenseVendorPickRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
@@ -148,11 +149,27 @@ export class ExpensesApi {
 
   /** 422 for a day before the expense's or after today. */
   async payExpense(companyId: string, id: string, payment: ExpensePayment): Promise<ExpenseRow> {
-    const body: ExpenseExpensePay = { ...payment };
+    // The code is one of the options the API itself offered; its enum is the API's to enforce (422).
+    const body = { ...payment } as ExpenseExpensePay;
     return this.guard(EXPENSE, async () =>
       toExpense(
         await firstValueFrom(
           this.http.post<ExpenseExpenseRead>(`${path(companyId, 'expenses', id)}/pay`, body),
+        ),
+      ),
+    );
+  }
+
+  /** The TEJ operation of a paid expense, given or changed afterwards; 409 unless paid, 422 outside Tunisia. */
+  async classifyWithholding(companyId: string, id: string, code: string): Promise<ExpenseRow> {
+    const body = { withholdingOperationCode: code } as ExpenseExpenseClassify;
+    return this.guard(EXPENSE, async () =>
+      toExpense(
+        await firstValueFrom(
+          this.http.post<ExpenseExpenseRead>(
+            `${path(companyId, 'expenses', id)}/withholding-operation`,
+            body,
+          ),
         ),
       ),
     );
@@ -303,6 +320,7 @@ function toExpense(raw: ExpenseExpenseRead | ExpenseJsonldExpenseRead): ExpenseR
     paidOn: raw.paidOn ?? null,
     withholdingRate: raw.withholdingRate ?? null,
     withholdingAmount: raw.withholdingAmount ?? null,
+    withholdingOperationCode: raw.withholdingOperationCode ?? null,
     amountPaid: raw.amountPaid ?? raw.amountGross ?? '',
     suggestedWithholdingRate: raw.suggestedWithholdingRate ?? null,
     notes: raw.notes ?? null,
@@ -352,5 +370,6 @@ function toOptions(raw: ExpenseOptionsExpenseOptionsRead): ExpenseOptions {
     categories: (raw.categories ?? []).map((category) => ({ ...category })),
     taxes: (raw.taxes ?? []).map((tax) => ({ ...tax })),
     paymentMethods: [...(raw.paymentMethods ?? [])],
+    withholdingOperationCodes: (raw.withholdingOperationCodes ?? []).map((each) => ({ ...each })),
   };
 }

@@ -1844,7 +1844,8 @@
       "expense": "Dépense",
       "amounts": "Montants",
       "notes": "Notes",
-      "payment": "Paiement"
+      "payment": "Paiement",
+      "tej": "Déclaration TEJ"
     },
     "fields": {
       "date": "Date",
@@ -1861,7 +1862,8 @@
       "paymentMethod": "Réglée par",
       "paidOn": "Payée le",
       "withholdingRate": "Retenue à la source (%)",
-      "notes": "Notes"
+      "notes": "Notes",
+      "withholdingOperationCode": "Opération TEJ"
     },
     "form": {
       "reference_hint": "Le numéro figurant sur la facture ou le reçu du fournisseur.",
@@ -1873,7 +1875,8 @@
       "net_hint": "Hors taxes, sans plus de décimales que la devise n’en compte.",
       "no_tax": "Aucune taxe",
       "notes_hint": "Pour votre équipe uniquement.",
-      "withholding_hint": "Proposée à 1 % dès 1 000 TND TTC ; indiquez 0 pour un achat exclu ou un fournisseur exonéré, ou le taux qui s'applique au fournisseur."
+      "withholding_hint": "Proposée à 1 % dès 1 000 TND TTC ; indiquez 0 pour un achat exclu ou un fournisseur exonéré, ou le taux qui s'applique au fournisseur.",
+      "tej_hint": "Code de la plateforme TEJ, à indiquer pour déclarer cette retenue."
     },
     "payment_methods": {
       "transfer": "Virement",
@@ -1886,7 +1889,8 @@
       "record": "Comptabiliser",
       "pay": "Marquer comme payée",
       "delete": "Supprimer le brouillon",
-      "delete_confirm": "Confirmer la suppression"
+      "delete_confirm": "Confirmer la suppression",
+      "classify": "Enregistrer l'opération"
     },
     "attachments": {
       "title": "Justificatifs",
@@ -1925,7 +1929,11 @@
       "file_refused": "Le fichier a été refusé : il doit être un PDF ou une image PNG, JPEG ou WebP d’au plus 10 Mo, non vide, et la dépense compte au plus 10 fichiers.",
       "file_too_large": "Le fichier dépasse 10 Mo."
     },
-    "withheld": "Retenue à la source {{rate}} % : {{amount}} · versé {{paid}}"
+    "withheld": "Retenue à la source {{rate}} % : {{amount}} · versé {{paid}}",
+    "tej": {
+      "none": "Opération TEJ non indiquée",
+      "classified": "L'opération TEJ a été enregistrée."
+    }
   },
   "signup": {
     "back_to_login": "Retour à la connexion",
