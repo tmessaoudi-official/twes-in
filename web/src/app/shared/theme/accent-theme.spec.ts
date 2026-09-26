@@ -198,6 +198,36 @@ describe('accentTokens', () => {
     }
   });
 
+  // CI run 36204583076: a hovered « Enregistrer » in #1f6feb read 4.07:1 under a white state layer. A state layer moves
+  // the fill away from its ink, so hovering, focusing or pressing a filled control never lowers its contrast.
+  it('moves a filled control away from its ink when it is hovered, focused or pressed', () => {
+    expect(accentTokens('#1f6feb', 'light')['--twes-accent-state']).toBe('#000000');
+    expect(accentTokens('#ffd400', 'light')['--twes-accent-state']).toBe('#ffffff');
+    const over = (base: string, layer: string, share: number): string =>
+      '#' +
+      [1, 3, 5]
+        .map((at) => {
+          const channel = (hex: string) => parseInt(hex.slice(at, at + 2), 16);
+          return Math.round(channel(base) * (1 - share) + channel(layer) * share)
+            .toString(16)
+            .padStart(2, '0');
+        })
+        .join('');
+    for (const scheme of ['light', 'dark'] as const) {
+      for (const accent of accents) {
+        const tokens = accentTokens(accent, scheme);
+        const ink = tokens['--twes-on-accent'];
+        // Material's strongest state layer is a pressed or focused one, at 12 %.
+        for (const share of [0.08, 0.12, 0.2]) {
+          const shown = over(accent, tokens['--twes-accent-state'], share);
+          expect(contrast(ink, shown), `${scheme} ${accent} ${share}`).toBeGreaterThanOrEqual(
+            contrast(ink, accent) - 0.01,
+          );
+        }
+      }
+    }
+  });
+
   it('keeps the accent as text readable on the surface of each scheme, whatever the accent', () => {
     for (const scheme of ['light', 'dark'] as const) {
       for (const accent of accents) {

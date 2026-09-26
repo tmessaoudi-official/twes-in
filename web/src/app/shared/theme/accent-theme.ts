@@ -99,7 +99,11 @@ export function colourTokens(accent: string, scheme: ColourScheme): ColourTokens
 }
 
 export type AccentTokens = Record<
-  '--twes-accent' | '--twes-on-accent' | '--twes-accent-soft' | '--twes-accent-text',
+  | '--twes-accent'
+  | '--twes-on-accent'
+  | '--twes-accent-state'
+  | '--twes-accent-soft'
+  | '--twes-accent-text',
   string
 >;
 
@@ -113,6 +117,9 @@ const READABLE = 4.5;
  * The accent as the company picked it, and the roles that keep it readable whatever it is (design direction § 1.1,
  * docs/SPEC.md § 7, 2026-09-25): `--twes-accent` fills primary buttons and marks selection; `--twes-on-accent` writes on
  * it, in white when white reads, else in ink, else in black, which always reads where white does not;
+ * `--twes-accent-state` is the layer a filled control shows when hovered, focused or pressed, the opposite of its ink,
+ * so a state darkens a fill written in white and lightens one written in ink and never lowers its contrast (CI run
+ * 36204583076: a hovered « Enregistrer » in #1f6feb under Material's white layer read 4.07:1);
  * `--twes-accent-soft` is a selected row's fill; `--twes-accent-text` is the accent as a link on the scheme's surface,
  * darkened (light) or lightened (dark) from the direction's starting mix until it reaches 4.5:1.
  */
@@ -132,6 +139,7 @@ export function accentTokens(accent: string, scheme: ColourScheme): AccentTokens
   return {
     '--twes-accent': hex,
     '--twes-on-accent': onAccent,
+    '--twes-accent-state': onAccent === WHITE ? '#000000' : WHITE,
     '--twes-accent-soft': dark ? mixHex(hex, surface, 0.22) : mixHex(hex, WHITE, 0.11),
     '--twes-accent-text': text,
   };

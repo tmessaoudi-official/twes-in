@@ -93,6 +93,13 @@ html {
       // The accent as picked fills the primary button, with its own readable ink (design direction § 1.1).
       filled-container-color: var(--twes-accent),
       filled-label-text-color: var(--twes-on-accent),
+      // Hovered, focused or pressed, the fill moves away from its ink, never toward it (accent-theme.ts).
+      filled-state-layer-color: var(--twes-accent-state),
+      filled-ripple-color: color-mix(
+          in srgb,
+          var(--twes-accent-state) calc(var(--mat-sys-pressed-state-layer-opacity) * 100%),
+          transparent
+        ),
       filled-container-shape: 10px,
       outlined-container-shape: 10px,
       text-container-shape: 10px,
