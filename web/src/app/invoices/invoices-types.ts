@@ -127,6 +127,15 @@ export interface PaymentInput {
 export type InvoiceSortKey = 'number' | 'customer' | 'issueDate' | 'dueDate' | 'status';
 
 /** One page of the invoices list as the API searches, narrows and sorts it (docs/SPEC.md § 7, lists at scale). */
+/**
+ * How many documents each status chip would list, under the list's own words, kind and customer (docs/SPEC.md § 7,
+ * 2026-09-26). An overdue document is counted in its status too, as the list shows it under both.
+ */
+export interface InvoiceStatusCounts {
+  all: number;
+  statuses: Record<InvoiceShownStatus, number>;
+}
+
 export interface InvoiceSearch {
   /** Numbered from 1. */
   page: number;

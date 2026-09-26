@@ -42,6 +42,7 @@ import { listPreferencesSetting, listViewsSetting } from '../settings/settings-r
 import type {
   ListColumn,
   ListDescriptor,
+  ListFacetCounts,
   ListFilterValues,
   ListPreferences,
   ListQuery,
@@ -140,6 +141,8 @@ export class DataList<Row> implements OnInit {
   readonly emptyTestId = input('data-list-empty');
   /** How many rows the whole list holds when the API pages it; null when `rows` is the whole list. */
   readonly total = input<number | null>(null);
+  /** What the API counted for each filter's options, shown on the chips of a paged list (docs/SPEC.md § 7, 2026-09-26). */
+  readonly facetCounts = input<ListFacetCounts | null>(null);
   /** What a list the API pages wants shown: emitted on opening and on every change a person makes. */
   readonly queryChange = output<ListQuery>();
 
@@ -277,12 +280,16 @@ export class DataList<Row> implements OnInit {
   protected readonly facets = computed(() => {
     const chosen = this.chosenFilters();
     if (this.byApi()) {
-      // The page holds a part of the rows only: a count over it would be wrong, so none is shown.
+      // The page holds a part of the rows only: a count over it would be wrong, so only what the API counted is shown.
+      const counted = this.facetCounts();
       return this.filters().map((filter) => ({
         filter,
         chosen: chosen[filter.id] ?? '',
-        total: null,
-        options: filter.options.map((option) => ({ option, count: null })),
+        total: counted?.[filter.id]?.total ?? null,
+        options: filter.options.map((option) => ({
+          option,
+          count: counted?.[filter.id]?.options[option.value] ?? null,
+        })),
       }));
     }
     const searched = filterRows(this.rows(), this.descriptor().columns, this.query());

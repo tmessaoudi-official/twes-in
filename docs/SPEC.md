@@ -3098,6 +3098,21 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
     then share one key, all four ruled keys come back.
   - **Not configurable:** Ctrl K and the screens' own keys. Changing a screen key would mean a per-screen setting
     nobody asked for.
+- [2026-09-26 05:03] DECIDED (revisit), row 123, « Factures » as approved, first slice: **each status chip says how many
+  documents it would list.** `GET …/invoice-status-counts` counts under the list's own words, document type and
+  customer, with the status left aside. « Tous » is the total under those filters. A status holding none shows 0. «
+  En retard » is counted by the list's own condition on the company's day, and an overdue invoice is also counted
+  under its own status, as the list shows it under both.
+  - `DataList` takes the counts for a paged list through a generic `facetCounts` input, so delivery notes and
+    expenses reuse it next. The type chips (Facture, Avoir) show no count yet.
+  - « Nouvelle facture » names the person's N key. The badge is hidden below 600 px, where no keyboard is at hand.
+  - « Soldée » keeps its name; the board says « Payées ».
+  - Left out, since nothing behind them exists yet:
+    - « Exporter » (row 92);
+    - the month picker, bulk selection and « Relancer » (row 135);
+    - « Envoyée par e-mail » (no sending);
+    - the sidebar's « Épinglés ».
+  - Next is the record as a sheet over its list.
 
 ## 8. Status
 

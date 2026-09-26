@@ -105,6 +105,15 @@ export interface ListFilter<Row> {
   options: ListFilterOption[];
 }
 
+/**
+ * How many rows each option of a filter would list, for a list the API pages: counted by the API under the list's
+ * other choices, since the page holds only a part of the rows. Keyed by filter id, then by option value; an option
+ * left out shows no count.
+ */
+export type ListFacetCounts = Readonly<
+  Record<string, { readonly total: number; readonly options: Readonly<Record<string, number>> }>
+>;
+
 /** The option chosen per filter id; a filter with no entry shows every row. */
 export type ListFilterValues = Record<string, string>;
 

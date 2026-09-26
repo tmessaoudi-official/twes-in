@@ -10,6 +10,7 @@ import type {
   InvoiceRow,
   InvoiceSearch,
   InvoicesError,
+  InvoiceStatusCounts,
   InvoiceSummary,
   PaymentInput,
   ProductOption,
@@ -24,7 +25,9 @@ export class InvoicesFacade {
   private readonly invoiceSignal = signal<InvoiceRow | null>(null);
   private readonly summarySignal = signal<InvoiceSummary | null>(null);
   private readonly totalSignal = signal(0);
+  private readonly statusCountsSignal = signal<InvoiceStatusCounts | null>(null);
   private pageRequest = 0;
+  private countsRequest = 0;
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<InvoicesError | null>(null);
 
@@ -32,6 +35,8 @@ export class InvoicesFacade {
   readonly options = this.optionsSignal.asReadonly();
   /** How many documents the last search found in all, the page shown being one part of them. */
   readonly total = this.totalSignal.asReadonly();
+  /** What each status chip of the list would show; null until read, and kept while a new count is on its way. */
+  readonly statusCounts = this.statusCountsSignal.asReadonly();
   /** The document open on screen, as the API last answered with it; null while a new one is filled in. */
   readonly invoice = this.invoiceSignal.asReadonly();
   /** The home page's figures; null until read, and again when the read is refused. */
@@ -55,6 +60,15 @@ export class InvoicesFacade {
       if (request !== this.pageRequest) return;
       this.invoicesSignal.set(page.rows);
       this.totalSignal.set(page.total);
+    });
+  }
+
+  /** The chips' counts for the search, the latest search's answer only, as for its page. */
+  async loadStatusCounts(companyId: string, search: InvoiceSearch): Promise<void> {
+    const request = ++this.countsRequest;
+    await this.read(async () => {
+      const counts = await this.api.statusCounts(companyId, search);
+      if (request === this.countsRequest) this.statusCountsSignal.set(counts);
     });
   }
 

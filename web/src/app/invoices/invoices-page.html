@@ -4,8 +4,14 @@
       {{ 'invoices.title' | translate }}
     </h1>
     @if (mayWrite() && company()) {
-      <a mat-flat-button routerLink="/invoices/new" data-testid="invoice-add">
+      <a
+        mat-flat-button
+        routerLink="/invoices/new"
+        data-testid="invoice-add"
+        [attr.aria-keyshortcuts]="newKey()"
+      >
         {{ 'invoices.add' | translate }}
+        <kbd class="twes-button-key" aria-hidden="true">{{ keyName(newKey()) }}</kbd>
       </a>
     }
   </div>
@@ -23,6 +29,7 @@
     [descriptor]="list"
     [rows]="rows()"
     [total]="total()"
+    [facetCounts]="facetCounts()"
     (queryChange)="onQuery($event)"
     testId="invoices-table"
     [rowTestId]="rowTestId"

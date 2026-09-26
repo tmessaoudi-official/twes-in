@@ -16,7 +16,13 @@ import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings
 import { listPreferencesSetting, listViewsSetting } from '../settings/settings-registry';
 import { DataList, DataListCell } from './data-list';
 import { WINDOW_CLASS, type WindowClass } from '../ui/window-class';
-import type { ListDescriptor, ListPreferences, ListQuery, ListView } from './list-types';
+import type {
+  ListDescriptor,
+  ListFacetCounts,
+  ListPreferences,
+  ListQuery,
+  ListView,
+} from './list-types';
 import { NO_LIST_PREFERENCES } from './list-types';
 
 interface Customer {
@@ -105,6 +111,7 @@ class Host {
       [descriptor]="descriptor"
       [rows]="rows()"
       [total]="total()"
+      [facetCounts]="facetCounts()"
       (queryChange)="queries.push($event)"
       testId="customers-table"
       [rowTestId]="rowTestId"
@@ -117,6 +124,7 @@ class ServerHost {
   readonly descriptor = descriptor;
   readonly rows = signal<Customer[]>([...all].reverse().slice(0, 10));
   readonly total = signal(30);
+  readonly facetCounts = signal<ListFacetCounts | null>(null);
   readonly queries: ListQuery[] = [];
   readonly rowTestId = (row: Customer) => `customer-${row.id}`;
 }
@@ -639,6 +647,18 @@ describe('DataList', () => {
       ).click();
       await settleServer();
       expect(lastQuery()?.pageIndex).toBe(1);
+    });
+
+    it('shows the counts the page was given for a paged list, and none for an option it was not', async () => {
+      // docs/SPEC.md § 7, 2026-09-26: the API counts what each option would list; the page is only a part of it.
+      server.componentInstance.facetCounts.set({ status: { total: 30, options: { active: 21 } } });
+      await settleServer();
+
+      expect(q('list-facet-status-all')?.querySelector('.twes-chip-count')?.textContent).toBe('30');
+      expect(q('list-facet-status-active')?.querySelector('.twes-chip-count')?.textContent).toBe(
+        '21',
+      );
+      expect(q('list-facet-status-archived')?.querySelector('.twes-chip-count')).toBeNull();
     });
 
     it('asks nothing again for what it already asked, such as an option picked twice', async () => {

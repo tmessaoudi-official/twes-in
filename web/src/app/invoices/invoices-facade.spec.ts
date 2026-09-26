@@ -92,6 +92,7 @@ describe('InvoicesFacade', () => {
     deletePayment: vi.fn(),
     pdfUrl: vi.fn(),
     summary: vi.fn(),
+    statusCounts: vi.fn(),
   };
   let facade: InvoicesFacade;
 
@@ -148,6 +149,25 @@ describe('InvoicesFacade', () => {
 
     expect(facade.invoices()).toEqual([]);
     expect(facade.total()).toBe(0);
+  });
+
+  it('shows the chips’ counts of the latest search, whatever order the answers come back in', async () => {
+    const counts = (all: number) => ({
+      all,
+      statuses: { draft: 0, issued: all, overdue: 0, partially_paid: 0, paid: 0, cancelled: 0 },
+    });
+    let answerStale: (value: ReturnType<typeof counts>) => void = () => undefined;
+    api.statusCounts
+      .mockReturnValueOnce(new Promise((resolve) => (answerStale = resolve)))
+      .mockResolvedValueOnce(counts(4));
+
+    const stale = facade.loadStatusCounts('c1', search);
+    const latest = facade.loadStatusCounts('c1', { ...search, q: 'carthage' });
+    await latest;
+    answerStale(counts(40));
+    await stale;
+
+    expect(facade.statusCounts()?.all).toBe(4);
   });
 
   it('reads the options alone for a new invoice', async () => {

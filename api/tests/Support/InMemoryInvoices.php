@@ -56,6 +56,21 @@ final class InMemoryInvoices implements InvoiceRepository
         return new Page(\array_slice($mine, $page->offset(), $page->size), \count($mine), $page);
     }
 
+    public function statusCounts(Uuid $companyId, InvoiceSearch $search, \DateTimeImmutable $today): array
+    {
+        $counts = array_fill_keys([...array_map(static fn (InvoiceStatus $status): string => $status->value, InvoiceStatus::cases()), 'overdue'], 0);
+        $mine = $this->ofCompany($companyId);
+        foreach ($mine as $invoice) {
+            ++$counts[$invoice->getStatus()->value];
+            $due = $invoice->getDueDate();
+            if (InvoiceType::Invoice === $invoice->getType() && \in_array($invoice->getStatus(), [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid], true) && null !== $due && $due < $today) {
+                ++$counts['overdue'];
+            }
+        }
+
+        return ['all' => \count($mine), 'statuses' => $counts];
+    }
+
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Invoice
     {
         $stale = $this->staleReads[$id->toRfc4122()] ?? null;

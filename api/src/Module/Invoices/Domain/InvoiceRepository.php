@@ -25,6 +25,15 @@ interface InvoiceRepository
      */
     public function search(Uuid $companyId, InvoiceSearch $search, PageRequest $page): Page;
 
+    /**
+     * How many documents each status of the list would show under the search, its own status left aside, with
+     * `overdue` answered by the list's rule on the company's day: the chips of « Factures » (docs/SPEC.md § 7,
+     * 2026-09-26). `all` is every status together; overdue documents are counted in their own status too.
+     *
+     * @return array{all: int, statuses: array<string, int>}
+     */
+    public function statusCounts(Uuid $companyId, InvoiceSearch $search, \DateTimeImmutable $today): array;
+
     /** Null for an invoice that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Invoice;
 

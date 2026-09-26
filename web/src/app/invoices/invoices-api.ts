@@ -12,6 +12,7 @@ import type {
   InvoiceCustomerPickInvoiceCustomerPickRead,
   InvoiceOptionsInvoiceOptionsRead,
   InvoiceProductPickInvoiceProductPickRead,
+  InvoiceStatusCountsInvoiceStatusCountsRead,
   InvoiceSummaryInvoiceSummaryRead,
   PaymentPaymentWrite,
 } from '../api/types.gen';
@@ -27,6 +28,7 @@ import {
   type InvoiceRow,
   type InvoiceSearch,
   type InvoicesError,
+  type InvoiceStatusCounts,
   type InvoiceSummary,
   PAYMENT_METHODS,
   type CustomerOption,
@@ -127,6 +129,21 @@ export class InvoicesApi {
       if (page.totalItems === undefined)
         throw new Error('A page of invoices came without its total.');
       return { rows: page.member.map(toInvoice), total: page.totalItems };
+    });
+  }
+
+  /** What each status chip would list, counted by the API under the search's words, kind and customer. */
+  async statusCounts(companyId: string, search: InvoiceSearch): Promise<InvoiceStatusCounts> {
+    return this.guard(async () => {
+      const counts = await firstValueFrom(
+        this.http.get<InvoiceStatusCountsInvoiceStatusCountsRead>(
+          `${companyPath(companyId)}/invoice-status-counts`,
+          { params: toCountParams(search) },
+        ),
+      );
+      if (counts.all === undefined || counts.statuses === undefined)
+        throw new Error('Status counts came without their figures.');
+      return { all: counts.all, statuses: { ...counts.statuses } };
     });
   }
 
@@ -257,6 +274,15 @@ function toSearchParams(search: InvoiceSearch): HttpParams {
   if (search.customerId !== null) params = params.set('customerId', search.customerId);
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
+  return params;
+}
+
+/** The search as a count reads it: its words, kind and customer, never a status, a page or an order. */
+function toCountParams(search: InvoiceSearch): HttpParams {
+  let params = new HttpParams();
+  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (search.documentType !== null) params = params.set('documentType', search.documentType);
+  if (search.customerId !== null) params = params.set('customerId', search.customerId);
   return params;
 }
 

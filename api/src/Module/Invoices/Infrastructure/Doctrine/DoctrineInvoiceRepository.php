@@ -23,6 +23,7 @@ use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
 
@@ -34,6 +35,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
      * table would leave this half indexed and scan the other, which no assertion here would notice.
      */
     public const string MATCHES_WORDS = "SEARCH_TEXT(i.number, i.customerReference, JSON_VALUES(i.customerSnapshot)) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
+    private const string OVERDUE = 'overdue';
     private const array SORTED_BY = ['number' => 'i.number', 'customer' => 'c.name', 'issueDate' => 'i.issueDate', 'dueDate' => 'i.dueDate', 'status' => 'i.status'];
 
     public function __construct(private EntityManagerInterface $entityManager)
@@ -47,8 +49,48 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
 
     public function search(Uuid $companyId, InvoiceSearch $search, PageRequest $page): Page
     {
+        $query = $this->filtered($companyId, $search)->select('i', 'c');
+        // A draft has no number, so the number cannot settle a tie the way a product's reference does: the newest
+        // first, and the id last, which is unique and never null.
+        ListOrder::apply($query, $search->order, self::SORTED_BY, ['number', 'issueDate', 'dueDate'], 'i.createdAt', 'DESC')
+            ->addOrderBy('i.id', 'DESC')
+            ->setFirstResult($page->offset())->setMaxResults($page->size);
+
+        $paginator = new Paginator($query, fetchJoinCollection: false);
+        /** @var list<Invoice> $invoices */
+        $invoices = iterator_to_array($paginator, false);
+        $this->loadWhatARowShows($invoices);
+
+        return new Page($invoices, \count($paginator), $page);
+    }
+
+    public function statusCounts(Uuid $companyId, InvoiceSearch $search, \DateTimeImmutable $today): array
+    {
+        // The chips narrow by status themselves, so whatever status the search carried is left aside.
+        $statusFree = new InvoiceSearch($search->text, null, $search->documentType, $search->customer);
+        $statuses = array_map(static fn (InvoiceStatus $status): string => $status->value, InvoiceStatus::cases());
+        $counts = array_fill_keys($statuses, 0);
+        /** @var list<array{status: InvoiceStatus, n: int|string}> $rows the column is mapped to the enum */
+        $rows = $this->filtered($companyId, $statusFree)
+            ->select('i.status AS status', 'COUNT(i.id) AS n')->groupBy('i.status')
+            ->getQuery()->getArrayResult();
+        foreach ($rows as $row) {
+            $counts[$row['status']->value] = (int) $row['n'];
+        }
+        $all = array_sum($counts);
+        // Overdue by the very condition the list narrows with, so the chip and the list it opens cannot disagree.
+        $overdue = new InvoiceSearch($search->text, null, $search->documentType, $search->customer, [], $today);
+        $counts[self::OVERDUE] = (int) $this->filtered($companyId, $overdue)
+            ->select('COUNT(i.id)')->getQuery()->getSingleScalarResult();
+
+        return ['all' => $all, 'statuses' => $counts];
+    }
+
+    /** The company's documents narrowed as a search asks, its order and its page left to the caller. */
+    private function filtered(Uuid $companyId, InvoiceSearch $search): QueryBuilder
+    {
         $query = $this->entityManager->createQueryBuilder()
-            ->select('i', 'c')->from(Invoice::class, 'i')
+            ->from(Invoice::class, 'i')
             ->join('i.customer', 'c')
             ->where('i.company = :company')->setParameter('company', $companyId, 'uuid');
         $words = trim($search->text ?? '');
@@ -72,18 +114,8 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
                 ->setParameter('overdueStatuses', [InvoiceStatus::Issued->value, InvoiceStatus::PartiallyPaid->value])
                 ->setParameter('overdueOn', $search->overdueOn);
         }
-        // A draft has no number, so the number cannot settle a tie the way a product's reference does: the newest
-        // first, and the id last, which is unique and never null.
-        ListOrder::apply($query, $search->order, self::SORTED_BY, ['number', 'issueDate', 'dueDate'], 'i.createdAt', 'DESC')
-            ->addOrderBy('i.id', 'DESC')
-            ->setFirstResult($page->offset())->setMaxResults($page->size);
 
-        $paginator = new Paginator($query, fetchJoinCollection: false);
-        /** @var list<Invoice> $invoices */
-        $invoices = iterator_to_array($paginator, false);
-        $this->loadWhatARowShows($invoices);
-
-        return new Page($invoices, \count($paginator), $page);
+        return $query;
     }
 
     /**

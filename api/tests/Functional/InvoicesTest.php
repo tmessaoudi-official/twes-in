@@ -719,6 +719,63 @@ final class InvoicesTest extends ApiTestCase
     }
 
     /**
+     * « Factures »'s chips say how many each would list (docs/SPEC.md § 7, 2026-09-26): under the same words, kind and
+     * customer as the list, the status left out. Each count is checked against the list itself, so the two cannot
+     * drift — overdue above all, which is a rule on the company's day and not a status any document holds.
+     */
+    public function testEachStatusChipCountsWhatItsFilterWouldList(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
+        $this->issuedInvoice();
+        $overdueId = $this->issuedInvoice();
+        $this->em()->getConnection()->executeStatement(
+            'UPDATE invoice SET due_date = :due WHERE id = :id',
+            ['due' => (new \DateTimeImmutable('-3 days'))->format('Y-m-d'), 'id' => $overdueId],
+        );
+        $this->postJson($this->path(), $this->invoice([
+            'customerId' => $other,
+            'customerReference' => 'BC-4242',
+            'lines' => [['productId' => $this->productId, 'quantity' => '1']],
+        ]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->getJson($this->companyPath().'/invoice-status-counts');
+        self::assertResponseIsSuccessful();
+        self::assertSame(3, $this->json()['all']);
+        self::assertSame(['draft' => 1, 'issued' => 2, 'partially_paid' => 0, 'paid' => 0, 'cancelled' => 0, 'overdue' => 1], $this->json()['statuses']);
+
+        foreach (['', 'q=carthage', 'q=BC-4242', 'documentType=credit_note', 'customerId='.$other] as $filters) {
+            $this->getJson($this->companyPath().'/invoice-status-counts?'.$filters);
+            self::assertResponseIsSuccessful($filters);
+            $counts = $this->json();
+            $statuses = $counts['statuses'];
+            self::assertIsArray($statuses);
+            $this->getJson($this->path().'?'.$filters);
+            self::assertSame($this->jsonPage()['totalItems'], $counts['all'], $filters);
+            foreach (['draft', 'issued', 'overdue', 'partially_paid', 'paid', 'cancelled'] as $status) {
+                $this->getJson($this->path().'?'.ltrim($filters.'&status='.$status, '&'));
+                self::assertSame($this->jsonPage()['totalItems'], $statuses[$status], $filters.' '.$status);
+            }
+        }
+    }
+
+    public function testStatusCountsAreAReadersOnly(): void
+    {
+        $this->signedIn(['customer.read']);
+        $this->getJson($this->companyPath().'/invoice-status-counts');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testStatusCountsAreTheCompanysOwn(): void
+    {
+        $this->signedIn(['invoice.read']);
+        $globex = $this->createCompany('Globex');
+        $this->getJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoice-status-counts');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
      * A page of the list reads its rows' lines, taxes, products and payments together, so what it costs does not grow
      * with the rows it holds: the audit counted 183 statements for 25 rows and 858 for 100 (PF-07, SCL-02).
      */

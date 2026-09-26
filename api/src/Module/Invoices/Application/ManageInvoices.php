@@ -82,6 +82,17 @@ final readonly class ManageInvoices
         return $this->invoices->search($company->getId(), $search, $page);
     }
 
+    /**
+     * What each status chip of the list would show under the search (docs/SPEC.md § 7, 2026-09-26), overdue on the
+     * company's own day.
+     *
+     * @return array{all: int, statuses: array<string, int>}
+     */
+    public function statusCounts(Company $company, InvoiceSearch $search): array
+    {
+        return $this->invoices->statusCounts($company->getId(), $search, new \DateTimeImmutable('today', new \DateTimeZone($company->getTimezone())));
+    }
+
     /** @throws InvoiceNotFound */
     public function get(Company $company, Uuid $id): Invoice
     {

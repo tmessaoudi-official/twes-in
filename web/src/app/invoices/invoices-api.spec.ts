@@ -298,6 +298,46 @@ describe('InvoicesApi', () => {
     await expect(pending).rejects.toThrow();
   });
 
+  // docs/SPEC.md § 7, 2026-09-26: « Factures »'s chips say how many each would list.
+  it('asks how many documents each status would list, under the list’s own words, kind and customer', async () => {
+    const pending = api.statusCounts('c1', {
+      page: 2,
+      itemsPerPage: 25,
+      q: '  carthage  ',
+      status: 'overdue',
+      documentType: 'invoice',
+      customerId: 'cu1',
+      order: { key: 'number', direction: 'desc' },
+    });
+    const request = http.expectOne(
+      (candidate) =>
+        candidate.url === '/api/companies/c1/invoice-status-counts' && candidate.method === 'GET',
+    );
+    expect(request.request.params.get('q')).toBe('carthage');
+    expect(request.request.params.get('documentType')).toBe('invoice');
+    expect(request.request.params.get('customerId')).toBe('cu1');
+    // The chips narrow by status themselves, and a count has no page or order.
+    expect(request.request.params.keys().sort()).toEqual(['customerId', 'documentType', 'q']);
+    const statuses = { draft: 1, issued: 3, overdue: 1, partially_paid: 1, paid: 0, cancelled: 0 };
+    request.flush({ all: 5, statuses });
+
+    expect(await pending).toEqual({ all: 5, statuses });
+  });
+
+  it('refuses counts that came without their figures, rather than showing none as nothing', async () => {
+    const pending = api.statusCounts('c1', {
+      page: 1,
+      itemsPerPage: 25,
+      q: '',
+      status: null,
+      documentType: null,
+      customerId: null,
+      order: null,
+    });
+    http.expectOne('/api/companies/c1/invoice-status-counts').flush({ all: 5 });
+    await expect(pending).rejects.toThrow();
+  });
+
   it('drafts and revises with the input as the API takes it', async () => {
     const created = api.create('c1', input);
     const post = http.expectOne('/api/companies/c1/invoices');

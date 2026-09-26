@@ -225,6 +225,11 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
 
     await page.goto('/invoices');
     await expect(page.getByTestId('invoices-table')).toContainText(invoiceNumber);
+    // Each status chip says how many it would list, as the API counts them (docs/SPEC.md § 7, 2026-09-26): this run's
+    // invoice is settled, so « Soldée » counts at least it.
+    const count = (id: string) => page.getByTestId(id).locator('.twes-chip-count');
+    await expect(count('list-facet-status-all')).toHaveText(/^\d+$/);
+    await expect(count('list-facet-status-paid')).toHaveText(/^[1-9]\d*$/);
 
     // The home page lays out the API's own summary: the same digits, whatever the locale does with separators.
     await page.goto('/');

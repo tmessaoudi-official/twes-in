@@ -22,7 +22,12 @@ import {
 } from '../shared/settings/settings-facade';
 import { InvoicesFacade } from './invoices-facade';
 import { InvoicesPage } from './invoices-page';
-import type { InvoiceOptions, InvoiceRow, InvoicesError } from './invoices-types';
+import type {
+  InvoiceOptions,
+  InvoiceRow,
+  InvoicesError,
+  InvoiceStatusCounts,
+} from './invoices-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -80,6 +85,7 @@ const issued: InvoiceRow = {
 
 describe('InvoicesPage', () => {
   const error = signal<InvoicesError | null>(null);
+  const statusCounts = signal<InvoiceStatusCounts | null>(null);
   const facade = {
     invoices: signal<readonly InvoiceRow[]>([
       issued,
@@ -103,8 +109,10 @@ describe('InvoicesPage', () => {
     }).asReadonly(),
     error: error.asReadonly(),
     total: signal(2).asReadonly(),
+    statusCounts: statusCounts.asReadonly(),
     loadListContext: vi.fn(),
     loadPage: vi.fn(),
+    loadStatusCounts: vi.fn(),
   };
   const auth = {
     me: () => ({
@@ -131,6 +139,8 @@ describe('InvoicesPage', () => {
     error.set(null);
     facade.loadListContext.mockReset().mockResolvedValue(undefined);
     facade.loadPage.mockReset().mockResolvedValue(undefined);
+    facade.loadStatusCounts.mockReset().mockResolvedValue(undefined);
+    statusCounts.set(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [InvoicesPage],
@@ -189,6 +199,31 @@ describe('InvoicesPage', () => {
     fixture = TestBed.createComponent(InvoicesPage);
     await settle();
     expect(q('invoice-add')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26: each status chip says how many it would list, as the API counts them.
+  it('asks the API what each status would list, and says it on the chips', async () => {
+    expect(facade.loadStatusCounts).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ q: '', documentType: null }),
+    );
+    statusCounts.set({
+      all: 48,
+      statuses: { draft: 2, issued: 6, overdue: 3, partially_paid: 1, paid: 34, cancelled: 2 },
+    });
+    await settle();
+
+    const count = (id: string) => q(id)?.querySelector('.twes-chip-count')?.textContent;
+    expect(count('list-facet-status-all')).toBe('48');
+    expect(count('list-facet-status-overdue')).toBe('3');
+    expect(count('list-facet-status-paid')).toBe('34');
+    // The kind has no counts from the API, so it shows none rather than the page's.
+    expect(count('list-facet-type-invoice')).toBeUndefined();
+  });
+
+  it('names the key that opens a new invoice from here (docs/SPEC.md § 7, 2026-09-24 22:51)', () => {
+    expect(q('invoice-add')?.getAttribute('aria-keyshortcuts')).toBe('n');
+    expect(q('invoice-add')?.querySelector('kbd')?.textContent).toBe('N');
   });
 
   it('says why the list could not be read', async () => {
