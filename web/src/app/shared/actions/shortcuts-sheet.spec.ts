@@ -131,6 +131,7 @@ describe('ShortcutsSheet', () => {
     expect(keysOf('shortcut-create')).toEqual([DEFAULT_SHORTCUTS.create.toUpperCase()]);
     expect(keysOf('shortcut-new')).toEqual([DEFAULT_SHORTCUTS.new.toUpperCase()]);
     expect(keysOf('shortcut-next')).toEqual([DEFAULT_SHORTCUTS.next.toUpperCase()]);
+    expect(keysOf('shortcut-settings-list')).toEqual([']']);
   });
 
   it('names the keys this person chose, on the page’s next step too (row 125)', () => {

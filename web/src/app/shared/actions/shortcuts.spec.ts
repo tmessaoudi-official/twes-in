@@ -100,6 +100,8 @@ describe('refuseReservedShortcut', () => {
     // never fires or fires alongside the shell, decided by whichever handler ran first.
     expect(() => refuseReservedShortcut('?')).toThrow(/reserved/i);
     expect(() => refuseReservedShortcut('[')).toThrow(/reserved/i);
+    // "]" folds the Paramètres list (docs/SPEC.md § 7, 2026-09-26 11:17, row 151).
+    expect(() => refuseReservedShortcut(']')).toThrow(/reserved/i);
   });
 
   it('refuses every key the shell answers by default — C, N, E and / (docs/SPEC.md § 7, 2026-09-24 22:51)', () => {
@@ -131,6 +133,7 @@ describe('shellKeyRefusal', () => {
     expect(shellKeyRefusal("'")).toBe('browser');
     expect(shellKeyRefusal('?')).toBe('interface');
     expect(shellKeyRefusal('[')).toBe('interface');
+    expect(shellKeyRefusal(']')).toBe('interface');
     for (const key of SCREEN_KEYS) expect(shellKeyRefusal(key), key).toBe('screen');
     // "5×" makes the next scan count five, so a digit or a times sign is the count's.
     for (const key of ['0', '5', '9', 'x', '*', '×'])

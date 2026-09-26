@@ -14,6 +14,11 @@ export type WindowClass = 'compact' | 'medium' | 'expanded';
 
 export const COMPACT_WINDOW = '(max-width: 599.98px)';
 export const EXPANDED_WINDOW = '(min-width: 1200px)';
+/**
+ * Where the settings area puts its list beside the page rather than taking turns with it: Tailwind's `lg`, which its
+ * template's `lg:` classes use. `]` folds that list only from here (row 151).
+ */
+export const SETTINGS_BESIDE_WINDOW = '(min-width: 1024px)';
 
 /** The one window class, so a spec can say how wide the window is without a media query. */
 export const WINDOW_CLASS = new InjectionToken<Signal<WindowClass>>('WINDOW_CLASS', {

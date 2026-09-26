@@ -216,6 +216,8 @@ describe('AppShell', () => {
     showComing: signal(true),
     settingsSidebar: signal<'expanded' | 'rail'>('rail'),
     toggleSidebar: vi.fn(),
+    settingsList: signal<'expanded' | 'rail'>('expanded'),
+    toggleSettingsList: vi.fn(),
   };
   const language = { current: signal('fr'), use: vi.fn(async () => undefined) };
   const sessionExpired = signal(false);
@@ -238,6 +240,8 @@ describe('AppShell', () => {
     theme.sidebar.set('expanded');
     theme.settingsSidebar.set('rail');
     theme.showComing.set(true);
+    theme.settingsList.set('expanded');
+    theme.toggleSettingsList.mockClear();
     sessionExpired.set(false);
     width.next(1280);
     vi.clearAllMocks();
@@ -740,6 +744,50 @@ describe('AppShell', () => {
     await new Promise((resolve) => setTimeout(resolve, SCAN_GAP_MS + 10));
     document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '[', bubbles: true }));
     expect(theme.toggleSidebar).toHaveBeenLastCalledWith(false);
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26 11:17 (row 151): ] folds the Paramètres list, as [ folds the menu.
+  it('folds the Paramètres list with ], only in the settings area and where the list sits beside the page', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/members');
+    const { fixture } = await render();
+    const press = () =>
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: ']', bubbles: true }));
+
+    press();
+    // Held for one scan gap: a scanner's code may begin with "]" (its symbology identifier).
+    expect(theme.toggleSettingsList).not.toHaveBeenCalled();
+    await pause();
+    expect(theme.toggleSettingsList).toHaveBeenCalledTimes(1);
+
+    await router.navigateByUrl('/invoices');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    press();
+    await pause();
+    expect(theme.toggleSettingsList).toHaveBeenCalledTimes(1);
+
+    // Narrower, the list and a page take turns: there is no list beside the page to fold.
+    await router.navigateByUrl('/members');
+    width.next(900);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    press();
+    await pause();
+    expect(theme.toggleSettingsList).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves ] to the field being typed in', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/members');
+    await render();
+    const field = document.createElement('input');
+    document.body.append(field);
+    field.focus();
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: ']', bubbles: true }));
+    await pause();
+    expect(theme.toggleSettingsList).not.toHaveBeenCalled();
+    field.remove();
   });
 
   it('shows the working company at the head of a phone’s bar, with the search, the bell and the member', async () => {

@@ -122,7 +122,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   check `ls web/src/app` rather than this sentence: `account` — « Mon compte », the person's own preferences, `auth`, `company`, `customers`, `delivery-notes`, `expenses`,
   `fiscal`, `hello`, `inventory`, `invitation`, `invoices`, `platform`, `products`, `settings`, `signup`,
   `vendors`, `pairing` — the phone's public `/pair` page, a scanner with no sign-in, `watch` — « À surveiller » and its home count, `first-steps` — « Premiers pas » on the home, `notifications` — the bell, the centre and the Centrifugo connection behind
-  the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout by window class (bottom bar below 600 px, rail to 1199, labelled from 1200), its nav manifest (`planned-nav.ts` places the planned modules the signed-in state's `plannedModules` lists; `COMING_NAV` keeps only the settings pages not built yet), the home manifest (`home-manifest.ts`: a module declares its `*_HOME` panel, loaded lazily, beside its `*_NAV`), the Ctrl K palette (`commands.ts`: a module declares its `*_COMMANDS` beside its `*_NAV`), account menu and the settings area behind the gear; every
+  the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout by window class (bottom bar below 600 px, rail to 1199, labelled from 1200), its nav manifest (`planned-nav.ts` places the planned modules the signed-in state's `plannedModules` lists; `COMING_NAV` keeps only the settings pages not built yet), the home manifest (`home-manifest.ts`: a module declares its `*_HOME` panel, loaded lazily, beside its `*_NAV`), the Ctrl K palette (`commands.ts`: a module declares its `*_COMMANDS` beside its `*_NAV`), account menu and the settings area behind the gear, whose list stays put beside the page and folds to a rail with `]`; every
   signed-in route is a child of it but `/customer-display`, a window facing the customer), `shared/` for what several features use and which imports no feature (ESLint enforces it; `session/`: the `Session`
   port the auth facade answers; `theme/`: runtime accent colour tokens (`accentTokens`: the accent as picked and its readable roles), the lifecycle map every module's status tones derive from (`lifecycle-tones.ts`),
   `ThemeFacade` (Automatique follows the device) and the scheme menu; `i18n/`: `LanguageFacade` and the language menu; `a11y/`: the
@@ -315,6 +315,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   read straight after a reload returns `[]` and reads as "nothing was created".
 - `tests/Architecture/ComposePortsTest` reads `compose.yaml`: run it after any compose edit, not only before. And a plain
   `docker compose up` rebuild drops what `make up` exports (`LAN_ORIGIN`): bring the stack back with `make up` (2026-09-23).
+- Global CSS beats Tailwind: `styles.scss` rules are unlayered, Tailwind's utilities sit in a layer, so any global or
+  Material `display` wins over a template's `hidden`, `max-lg:hidden` or `flex`. `mat-sidenav-content` is `display:
+  block` whatever its `flex flex-col` says, and `.twes-rail`'s `display: flex` showed a list `max-lg:hidden` should
+  have hidden. Read the computed style before trusting a utility on a Material or `twes-` element (2026-09-26, row 151).
 - An `aria-disabled="true"` control is disabled to Playwright AND to axe: `click()` waits forever for it to be enabled
   (activate it with `focus()` then `keyboard.press('Enter')`, which also proves the keyboard reaches it), and axe's
   `color-contrast` skips it and everything inside it, so no scan certifies its colours (2026-09-26, row 150).

@@ -15,7 +15,8 @@ import {
   provideTranslateService,
   TranslateLoader,
 } from '@ngx-translate/core';
-import { of } from 'rxjs';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { BehaviorSubject, map, of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import { ThemeFacade } from '../shared/theme/theme-facade';
@@ -55,6 +56,8 @@ class StaticLoader implements TranslateLoader {
         settings_back: 'Tous les paramètres',
         settings_none: 'Aucun réglage ne correspond.',
         soon: 'Bientôt',
+        collapse_settings: 'Réduire les réglages',
+        expand_settings: 'Déployer les réglages',
       },
     });
   }
@@ -73,10 +76,24 @@ describe('SettingsArea', () => {
   };
   // What is not built yet is off here, so the other cases read only the settings that work.
   const showComing = signal(false);
+  // The list's own fold (row 152's sibling, row 151): the toggle flips it, as ThemeFacade's does.
+  const settingsList = signal<'expanded' | 'rail'>('expanded');
+  const theme = {
+    showComing,
+    settingsList,
+    toggleSettingsList: vi.fn(() =>
+      settingsList.update((state) => (state === 'rail' ? 'expanded' : 'rail')),
+    ),
+  };
+  /** Whether the window is wide enough for the list to sit beside the page (Tailwind's lg). */
+  const beside = new BehaviorSubject(true);
 
   beforeEach(async () => {
     permissions.set(['company.settings', 'fiscal.read', 'user.read']);
     showComing.set(false);
+    settingsList.set('expanded');
+    theme.toggleSettingsList.mockClear();
+    beside.next(true);
     await TestBed.configureTestingModule({
       imports: [SettingsArea],
       providers: [
@@ -86,7 +103,13 @@ describe('SettingsArea', () => {
         ]),
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
-        { provide: ThemeFacade, useValue: { showComing } },
+        { provide: ThemeFacade, useValue: theme },
+        {
+          provide: BreakpointObserver,
+          useValue: {
+            observe: () => beside.pipe(map((matches) => ({ matches, breakpoints: {} }))),
+          },
+        },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         provideTranslateService({
@@ -174,6 +197,63 @@ describe('SettingsArea', () => {
     await TestBed.inject(Router).navigateByUrl('/members');
     await fixture.whenStable();
     expect(team().hidden).toBe(false);
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26 11:17 (row 151): the list folds to an 80 px rail from its foot, like the main menu.
+  it('folds the list to its rail from its foot, where it sits beside the page', async () => {
+    const { fixture, byTestId } = await render();
+    const fold = byTestId('settings-list-fold')!;
+    expect(fold.getAttribute('aria-label')).toBe('Réduire les réglages');
+    expect(fold.getAttribute('aria-keyshortcuts')).toBe(']');
+    // The foot follows the entries, which scroll between it and the head.
+    const groups = byTestId('settings-groups')!;
+    expect(groups.compareDocumentPosition(fold) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(byTestId('settings-filter')?.compareDocumentPosition(groups)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+
+    fold.click();
+    await fixture.whenStable();
+    expect(theme.toggleSettingsList).toHaveBeenCalledTimes(1);
+    expect(byTestId('settings-nav')?.getAttribute('data-list')).toBe('rail');
+    expect(byTestId('settings-list-fold')?.getAttribute('aria-label')).toBe(
+      'Déployer les réglages',
+    );
+  });
+
+  it('draws the rail as icons with a short name, headings as lines, and folds no section there', async () => {
+    settingsList.set('rail');
+    TestBed.inject(SettingsFacade).set(PRESENTATION.foldedSections, ['settings.team']);
+    const { byTestId, el } = await render();
+    expect(byTestId('settings-rail')?.classList).toContain('is-folded');
+    expect(byTestId('settings-filter')).toBeNull();
+    expect(byTestId('settings-fold-team')).toBeNull();
+    expect((el.querySelector('#settings-list-team') as HTMLElement).hidden).toBe(false);
+    const heading = el.querySelector('#settings-section-team');
+    expect(heading?.classList).toContain('is-divider');
+    expect(heading?.querySelector('.sr-only')?.textContent?.trim()).toBe('Équipe');
+    expect(byTestId('nav-members')?.querySelector('.twes-rail-short')).not.toBeNull();
+  });
+
+  it('unfolds the list from the rail’s search icon with the filter ready to type in', async () => {
+    settingsList.set('rail');
+    const { fixture, byTestId } = await render();
+    const search = byTestId('settings-search')!;
+    expect(search.getAttribute('aria-label')).toBe('Filtrer les réglages');
+
+    search.click();
+    await fixture.whenStable();
+    expect(settingsList()).toBe('expanded');
+    expect(document.activeElement).toBe(byTestId('settings-filter'));
+  });
+
+  it('never draws the rail where the list and a page take turns', async () => {
+    settingsList.set('rail');
+    beside.next(false);
+    const { byTestId } = await render();
+    expect(byTestId('settings-nav')?.getAttribute('data-list')).toBe('expanded');
+    expect(byTestId('settings-filter')).not.toBeNull();
+    expect(byTestId('settings-list-fold')).toBeNull();
   });
 
   it('groups the settings in one navigation of their own, beside the page', async () => {

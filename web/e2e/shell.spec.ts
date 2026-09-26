@@ -12,6 +12,7 @@ const SIDEBAR = 'presentation.sidebar';
 const SHOW_COMING = 'presentation.show-coming';
 const SHORTCUTS = 'presentation.shortcuts';
 const FOLDED = 'presentation.folded-sections';
+const SETTINGS_LIST = 'presentation.settings-list';
 
 async function forgetSidebar(page: Page): Promise<void> {
   await forget(page, SIDEBAR);
@@ -230,6 +231,48 @@ test('an entry not built yet says what it will do, and hiding what is coming tak
     await expect(page.getByTestId('nav-quotes')).toHaveCount(0);
   } finally {
     await forget(page, SHOW_COMING);
+  }
+});
+
+// docs/SPEC.md § 7, 2026-09-26 11:17, row 151: beside a settings page the list stays where it is while the page scrolls,
+// and folds to an 80 px rail with ], which outlives a reload; its search icon unfolds it with the filter focused.
+test('the Paramètres list stays put while a page scrolls, and folds to a rail with ] until unfolded', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await forget(page, SETTINGS_LIST);
+  try {
+    await page.goto('/settings');
+    const list = page.getByTestId('settings-nav');
+    const content = page.getByTestId('settings-page');
+    await expect(page.getByTestId('settings-coming')).toBeVisible();
+    const before = await list.boundingBox();
+    // The page is longer than the window, and it is the page that scrolls, not the panel around both.
+    expect(await content.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+    await content.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    await expect(page.getByTestId('settings-coming')).toBeInViewport();
+    const after = await list.boundingBox();
+    expect(after?.y).toBe(before?.y);
+    expect(after?.height).toBe(before?.height);
+    // Full height under the top bar: the list ends where the panel does, its foot on screen.
+    await expect(page.getByTestId('settings-list-fold')).toBeInViewport();
+
+    // Out of any field, where a bare key is the shell's.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.press(']');
+    await expect(list).toHaveAttribute('data-list', 'rail');
+    expect(Math.round((await list.boundingBox())?.width ?? 0)).toBe(80);
+    expect(await wcagViolations(page)).toEqual([]);
+
+    await page.reload();
+    await expect(page.getByTestId('settings-nav')).toHaveAttribute('data-list', 'rail');
+    await page.getByTestId('settings-search').click();
+    await expect(page.getByTestId('settings-nav')).toHaveAttribute('data-list', 'expanded');
+    await expect(page.getByTestId('settings-filter')).toBeFocused();
+  } finally {
+    await forget(page, SETTINGS_LIST);
   }
 });
 

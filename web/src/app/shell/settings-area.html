@@ -1,7 +1,10 @@
 <!-- One surface with the app rail: the list docks against it, the page sits beside it, and neither is a card
      floating on the ground (design review finding 7). main gives this area the whole width, so the gutters the
      page needs are supplied here rather than there. -->
-<div class="flex min-h-full flex-col lg:flex-row lg:items-stretch" data-testid="settings-area">
+<div
+  class="flex min-h-full flex-col lg:h-full lg:min-h-0 lg:flex-row lg:items-stretch"
+  data-testid="settings-area"
+>
   @if (!atIndex()) {
     <a
       [routerLink]="index"
@@ -13,83 +16,146 @@
     </a>
   }
 
-  <!-- Below the large window class the list and a page take turns: the list alone at its index, a page without it. -->
+  <!-- Below the large window class the list and a page take turns: the list alone at its index, a page without it.
+       Beside the page it is fixed (row 151): its head and foot stay, only its entries scroll, and it folds to an
+       80 px rail from its foot or with ], as the main menu does with [. -->
   <nav
-    appNavScroller
     [attr.aria-label]="'shell.settings_navigation' | translate"
     [attr.data-at-index]="atIndex()"
-    class="min-h-full shrink-0 py-2 data-[at-index=false]:max-lg:hidden lg:w-80 lg:border-r lg:border-outline-variant"
+    [attr.data-list]="rail() ? 'rail' : 'expanded'"
+    class="min-h-full shrink-0 data-[at-index=false]:max-lg:hidden lg:border-r lg:border-outline-variant"
+    [class.lg:w-80]="!rail()"
+    [class.lg:w-20]="rail()"
     data-testid="settings-nav"
   >
-    <div class="flex flex-col gap-2 px-4 pb-1 pt-2">
-      <p class="text-lg font-semibold">{{ 'shell.settings' | translate }}</p>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
-        <mat-icon matPrefix aria-hidden="true">search</mat-icon>
-        <input
-          matInput
-          type="search"
-          data-testid="settings-filter"
-          [attr.aria-label]="'shell.settings_filter' | translate"
-          [placeholder]="'shell.settings_filter' | translate"
-          [value]="query()"
-          (input)="query.set($any($event.target).value)"
-        />
-      </mat-form-field>
-    </div>
-    @for (group of sections(); track group.section) {
-      <h2
-        [id]="'settings-section-' + group.section"
-        class="px-4 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
-      >
+    <!-- The rail's look is the main menu's; it sits one level in, because its own display would otherwise outrank
+         the nav's max-lg:hidden, which a layered utility cannot win against. -->
+    <div class="twes-rail" [class.is-folded]="rail()" data-testid="settings-rail">
+      <div class="flex flex-col gap-2" [class.items-center]="rail()">
+        @if (rail()) {
+          <button
+            mat-icon-button
+            type="button"
+            (click)="filterFromRail()"
+            [appLabel]="'shell.settings_filter' | translate"
+            matTooltipPosition="right"
+            data-testid="settings-search"
+          >
+            <mat-icon aria-hidden="true">search</mat-icon>
+          </button>
+        } @else {
+          <p class="px-1 text-lg font-semibold">{{ 'shell.settings' | translate }}</p>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
+            <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+            <input
+              #filterField
+              matInput
+              type="search"
+              data-testid="settings-filter"
+              [attr.aria-label]="'shell.settings_filter' | translate"
+              [placeholder]="'shell.settings_filter' | translate"
+              [value]="query()"
+              (input)="query.set($any($event.target).value)"
+            />
+          </mat-form-field>
+        }
+      </div>
+      <div class="twes-rail-groups" appNavScroller data-testid="settings-groups">
+        @for (group of sections(); track group.section) {
+          <!-- Folded, a section's name becomes a line to see and stays a name to hear; labelled, it folds its section
+             (row 152). -->
+          <h2
+            [id]="'settings-section-' + group.section"
+            class="twes-rail-overline"
+            [class.is-divider]="rail()"
+          >
+            @if (rail()) {
+              <span class="sr-only">{{ 'nav.sections.' + group.section | translate }}</span>
+            } @else {
+              <button
+                type="button"
+                class="twes-fold-heading"
+                [attr.aria-expanded]="folds.isOpen(group.section)"
+                [attr.aria-controls]="'settings-list-' + group.section"
+                (click)="folds.toggle(group.section)"
+                [attr.data-testid]="'settings-fold-' + group.section"
+              >
+                <span>{{ 'nav.sections.' + group.section | translate }}</span>
+                <mat-icon aria-hidden="true">{{
+                  folds.isOpen(group.section) ? 'expand_less' : 'expand_more'
+                }}</mat-icon>
+              </button>
+            }
+          </h2>
+          <mat-nav-list
+            [id]="'settings-list-' + group.section"
+            [hidden]="!rail() && !folds.isOpen(group.section)"
+            [attr.aria-labelledby]="'settings-section-' + group.section"
+          >
+            @for (entry of group.entries; track entry.key) {
+              <a
+                mat-list-item
+                [routerLink]="entry.route"
+                routerLinkActive
+                #active="routerLinkActive"
+                [activated]="active.isActive"
+                [attr.aria-current]="active.isActive ? 'page' : null"
+                [attr.data-testid]="'nav-' + entry.key"
+              >
+                <mat-icon matListItemIcon aria-hidden="true">{{ entry.icon }}</mat-icon>
+                <!-- Each branch has ONE root, the title, or Angular projects it into the default slot. -->
+                @if (rail()) {
+                  <span matListItemTitle class="twes-rail-short"
+                    >{{ entry.shortLabelKey ?? entry.labelKey | translate }}
+                    @if (entry.coming) {
+                      <span class="sr-only" data-testid="soon">{{ 'shell.soon' | translate }}</span>
+                      <span class="twes-soon-dot" aria-hidden="true"></span>
+                    }
+                  </span>
+                } @else {
+                  <span matListItemTitle class="twes-rail-title"
+                    ><span>{{ entry.labelKey | translate }}</span>
+                    @if (entry.coming) {
+                      <span class="twes-soon" data-testid="soon">{{
+                        'shell.soon' | translate
+                      }}</span>
+                    }
+                  </span>
+                }
+              </a>
+            }
+          </mat-nav-list>
+        } @empty {
+          <p class="px-1 py-3 text-sm text-on-surface-variant" data-testid="settings-filter-none">
+            {{ 'shell.settings_none' | translate }}
+          </p>
+        }
+      </div>
+      @if (beside()) {
         <button
           type="button"
-          class="twes-fold-heading"
-          [attr.aria-expanded]="folds.isOpen(group.section)"
-          [attr.aria-controls]="'settings-list-' + group.section"
-          (click)="folds.toggle(group.section)"
-          [attr.data-testid]="'settings-fold-' + group.section"
+          class="twes-rail-row twes-rail-fold"
+          (click)="theme.toggleSettingsList()"
+          [appLabel]="(rail() ? 'shell.expand_settings' : 'shell.collapse_settings') | translate"
+          [matTooltipDisabled]="!rail()"
+          matTooltipPosition="right"
+          [attr.aria-keyshortcuts]="']'"
+          data-testid="settings-list-fold"
         >
-          <span>{{ 'nav.sections.' + group.section | translate }}</span>
           <mat-icon aria-hidden="true">{{
-            folds.isOpen(group.section) ? 'expand_less' : 'expand_more'
+            rail() ? 'left_panel_open' : 'left_panel_close'
           }}</mat-icon>
+          <span class="twes-rail-label" [class.sr-only]="rail()" aria-hidden="true">{{
+            (rail() ? 'shell.expand_settings' : 'shell.collapse_settings') | translate
+          }}</span>
         </button>
-      </h2>
-      <mat-nav-list
-        class="!px-2 !py-0"
-        [id]="'settings-list-' + group.section"
-        [hidden]="!folds.isOpen(group.section)"
-        [attr.aria-labelledby]="'settings-section-' + group.section"
-      >
-        @for (entry of group.entries; track entry.key) {
-          <a
-            mat-list-item
-            [routerLink]="entry.route"
-            routerLinkActive
-            #active="routerLinkActive"
-            [activated]="active.isActive"
-            [attr.aria-current]="active.isActive ? 'page' : null"
-            [attr.data-testid]="'nav-' + entry.key"
-          >
-            <mat-icon matListItemIcon aria-hidden="true">{{ entry.icon }}</mat-icon>
-            <span matListItemTitle>{{ entry.labelKey | translate }}</span>
-            @if (entry.coming) {
-              <span matListItemMeta class="twes-soon" data-testid="soon">{{
-                'shell.soon' | translate
-              }}</span>
-            }
-          </a>
-        }
-      </mat-nav-list>
-    } @empty {
-      <p class="px-4 py-3 text-sm text-on-surface-variant" data-testid="settings-filter-none">
-        {{ 'shell.settings_none' | translate }}
-      </p>
-    }
+      }
+    </div>
   </nav>
 
+  <!-- Beside the list, the page scrolls on its own, so the list stays where it is (row 151). -->
   <div
-    class="min-w-0 flex-1 p-4 data-[at-index=true]:max-lg:hidden sm:p-6 lg:p-8"
+    class="min-w-0 flex-1 p-4 data-[at-index=true]:max-lg:hidden sm:p-6 lg:min-h-0 lg:overflow-y-auto lg:p-8"
     [attr.data-at-index]="atIndex()"
     data-testid="settings-page"
   >

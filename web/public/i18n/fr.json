@@ -570,9 +570,12 @@
       "next": "Étape suivante : émettre, encaisser, valider…",
       "sidebar": "Réduire ou déployer le menu",
       "help": "Afficher cette liste",
-      "close": "Fermer"
+      "close": "Fermer",
+      "settings_list": "Réduire ou déployer la liste des réglages"
     },
-    "soon": "Bientôt"
+    "soon": "Bientôt",
+    "collapse_settings": "Réduire les réglages",
+    "expand_settings": "Déployer les réglages"
   },
   "notifications": {
     "bell": "Notifications, {{count}} non lue(s)",
@@ -792,7 +795,8 @@
       "customer_view_supplier_codes": "En vue client, masquer les codes des fournisseurs",
       "show_coming": "Montrer ce qui arrive",
       "shortcuts": "Raccourcis clavier",
-      "folded_sections": "Sections repliées des menus"
+      "folded_sections": "Sections repliées des menus",
+      "settings_list": "Liste des réglages"
     },
     "choices": {
       "document": {
@@ -840,6 +844,10 @@
           "space-comma": "1 234,56",
           "dot-comma": "1.234,56",
           "comma-dot": "1,234.56"
+        },
+        "settings-list": {
+          "expanded": "Déployée",
+          "rail": "Icônes seules"
         }
       }
     },

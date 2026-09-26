@@ -873,6 +873,22 @@ body {
   height: calc(100% - 1rem);
 }
 
+// Beside the Paramètres list, the settings page scrolls on its own and the list stays where it is (docs/SPEC.md § 7,
+// 2026-09-26 11:17, row 151). That needs `main` to take the panel's height below the top bar, which only a flex
+// column gives it — and Material's own `display: block` on the drawer content outranks the template's layered
+// `flex flex-col` utilities, so the column is declared here, unlayered, and for the settings area alone.
+@media (min-width: 1024px) {
+  .twes-shell-content:has(> main[data-settings='true']) {
+    display: flex;
+    flex-direction: column;
+
+    > main {
+      flex: 1 1 0;
+      min-height: 0;
+    }
+  }
+}
+
 .twes-shell-content[data-window='compact'] {
   background-color: var(--mat-sys-surface);
 }

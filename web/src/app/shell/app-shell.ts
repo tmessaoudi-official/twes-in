@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -79,7 +80,7 @@ import {
   withComing,
 } from './nav-manifest';
 import { comingEntries, plannedCommands } from './planned-nav';
-import { WINDOW_CLASS } from '../shared/ui/window-class';
+import { SETTINGS_BESIDE_WINDOW, WINDOW_CLASS } from '../shared/ui/window-class';
 
 /**
  * The window classes of the approved design (docs/SPEC.md § 7, 2026-09-16), as Material 3 draws them: a phone gets a
@@ -278,6 +279,13 @@ export class AppShell {
   /** Each section folds from its heading, remembered per person (docs/SPEC.md § 7, 2026-09-26 12:05, row 152). */
   protected readonly folds = sectionFolds('nav', this.currentSection);
 
+  /** Whether the settings area shows its list beside the page, where `]` folds it (row 151). */
+  private readonly settingsBeside = toSignal(
+    inject(BreakpointObserver)
+      .observe(SETTINGS_BESIDE_WINDOW)
+      .pipe(map((state) => state.matches)),
+    { initialValue: false },
+  );
   /** Whether the settings area is open, which changes both the menu and the room the page is given. */
   protected readonly inSettings = computed(() => isSettingsUrl(this.url()));
   /** « Mon compte » is reached from the member's menu, so the member row is where the person is there. */
@@ -398,6 +406,15 @@ export class AppShell {
     if (matchesShortcut(event, '?')) {
       event.preventDefault();
       this.openShortcuts();
+      return;
+    }
+
+    if (matchesShortcut(event, ']')) {
+      // The Paramètres list folds only where it sits beside the page (docs/SPEC.md § 7, 2026-09-26 11:17, row 151).
+      // Held like the shell's letters: a scanner that sends its symbology identifier begins a code with "]".
+      if (!this.inSettings() || !this.settingsBeside()) return;
+      event.preventDefault();
+      this.hold(() => this.theme.toggleSettingsList());
       return;
     }
 

@@ -1,24 +1,33 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
+  ElementRef,
   inject,
+  Injector,
   isDevMode,
   signal,
+  viewChild,
 } from '@angular/core';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
 import { MatListModule } from '@angular/material/list';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { filter, map } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
+import { Label } from '../shared/a11y/label';
 import { NavScroller } from '../shared/ui/nav-scroller';
+import { SETTINGS_BESIDE_WINDOW } from '../shared/ui/window-class';
 import { sectionFolds } from '../shared/ui/section-folds';
 import {
   COMING_NAV,
@@ -51,6 +60,9 @@ export const SETTINGS_INDEX = '/company';
     MatIconModule,
     TranslatePipe,
     NavScroller,
+    MatButtonModule,
+    MatTooltipModule,
+    Label,
   ],
   templateUrl: './settings-area.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -59,7 +71,8 @@ export class SettingsArea {
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
-  private readonly theme = inject(ThemeFacade);
+  protected readonly theme = inject(ThemeFacade);
+  private readonly injector = inject(Injector);
 
   protected readonly index = SETTINGS_INDEX;
   protected readonly query = signal('');
@@ -78,6 +91,19 @@ export class SettingsArea {
     },
   );
   protected readonly atIndex = computed(() => this.url().split(/[?#]/)[0] === SETTINGS_INDEX);
+  /** Whether the list sits beside the page; narrower, the two take turns and the list never folds (row 151). */
+  protected readonly beside = toSignal(
+    inject(BreakpointObserver)
+      .observe(SETTINGS_BESIDE_WINDOW)
+      .pipe(map((state) => state.matches)),
+    { initialValue: false },
+  );
+  /**
+   * The list folded to its 80 px rail (docs/SPEC.md § 7, 2026-09-26 11:17, row 151): each page's icon with a short
+   * name, the headings as lines, the filter as a search icon. Only where the list sits beside the page.
+   */
+  protected readonly rail = computed(() => this.beside() && this.theme.settingsList() === 'rail');
+  private readonly filterField = viewChild<ElementRef<HTMLInputElement>>('filterField');
 
   protected readonly sections = computed(() => {
     this.language();
@@ -115,6 +141,13 @@ export class SettingsArea {
   });
   /** Each section folds from its heading, like the main menu's (docs/SPEC.md § 7, 2026-09-26 12:05, row 152). */
   protected readonly folds = sectionFolds('settings', this.currentSection);
+
+  /** The rail's search icon unfolds the list with the filter ready to type in. */
+  protected filterFromRail(): void {
+    this.theme.toggleSettingsList();
+    // The field is drawn by the next render, once the list has unfolded.
+    afterNextRender(() => this.filterField()?.nativeElement.focus(), { injector: this.injector });
+  }
 }
 
 /** Lower case without accents, so "societe" finds "Société". */

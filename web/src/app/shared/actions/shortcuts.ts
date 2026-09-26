@@ -51,8 +51,11 @@ const BROWSER_KEYS: readonly string[] = [
   "'",
 ];
 
-/** What the interface answers everywhere and nobody changes: the « ? » sheet and folding the sidebar. */
-const INTERFACE_KEYS: readonly string[] = ['?', '['];
+/**
+ * What the interface answers everywhere and nobody changes: the « ? » sheet, folding the sidebar, and folding the
+ * Paramètres list (row 151).
+ */
+const INTERFACE_KEYS: readonly string[] = ['?', '[', ']'];
 
 /** "5×" typed before a scan makes it count five (docs/SPEC.md § 7, 2026-09-23 09:30): a digit or a times sign. */
 const COUNT_KEY = /^[0-9x*×]$/;

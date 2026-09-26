@@ -63,6 +63,8 @@ export class ThemeFacade {
   readonly sidebar = this.settings.value(PRESENTATION.sidebar);
   /** The settings area's own answer, so folding one menu does not fold the other. */
   readonly settingsSidebar = this.settings.value(PRESENTATION.settingsSidebar);
+  /** The Paramètres list's own fold, apart from both menus' (row 151). */
+  readonly settingsList = this.settings.value(PRESENTATION.settingsList);
   /** Whether the menus show the parts of the vision not built yet, each marked « Bientôt ». */
   readonly showComing = this.settings.value(PRESENTATION.showComing);
 
@@ -119,5 +121,13 @@ export class ThemeFacade {
     const setting = inSettings ? PRESENTATION.settingsSidebar : PRESENTATION.sidebar;
     const current = inSettings ? this.settingsSidebar() : this.sidebar();
     this.settings.set(setting, current === 'rail' ? 'expanded' : 'rail');
+  }
+
+  /** Folds the Paramètres list to its rail, or unfolds it (docs/SPEC.md § 7, 2026-09-26 11:17, row 151). */
+  toggleSettingsList(): void {
+    this.settings.set(
+      PRESENTATION.settingsList,
+      this.settingsList() === 'rail' ? 'expanded' : 'rail',
+    );
   }
 }

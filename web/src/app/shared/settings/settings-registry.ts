@@ -90,6 +90,12 @@ export const PRESENTATION = {
     'expanded',
     oneOf('expanded', 'rail'),
   ),
+  /** The Paramètres list itself, labelled or its 80 px rail (docs/SPEC.md § 7, 2026-09-26 11:17, row 151). */
+  settingsList: defineSetting<SidebarState>(
+    'presentation.settings-list',
+    'expanded',
+    oneOf('expanded', 'rail'),
+  ),
   /**
    * What the stock plan writes on a rectangle: its code, its name, or both. Registered here with the other
    * application-wide preferences although one screen reads it, exactly as `sidebar-settings` is — the registry is

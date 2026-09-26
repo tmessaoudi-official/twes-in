@@ -570,9 +570,12 @@
       "next": "Next step: issue, record a payment, validate…",
       "sidebar": "Collapse or expand the menu",
       "help": "Show this list",
-      "close": "Close"
+      "close": "Close",
+      "settings_list": "Collapse or expand the settings list"
     },
-    "soon": "Soon"
+    "soon": "Soon",
+    "collapse_settings": "Collapse the settings",
+    "expand_settings": "Expand the settings"
   },
   "notifications": {
     "bell": "Notifications, {{count}} unread",
@@ -792,7 +795,8 @@
       "customer_view_supplier_codes": "In customer view, hide suppliers' codes",
       "show_coming": "Show what is coming",
       "shortcuts": "Keyboard shortcuts",
-      "folded_sections": "Folded menu sections"
+      "folded_sections": "Folded menu sections",
+      "settings_list": "Settings list"
     },
     "choices": {
       "document": {
@@ -840,6 +844,10 @@
           "space-comma": "1 234,56",
           "dot-comma": "1.234,56",
           "comma-dot": "1,234.56"
+        },
+        "settings-list": {
+          "expanded": "Expanded",
+          "rail": "Icons only"
         }
       }
     },

@@ -36,7 +36,7 @@ final class SettingsTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $rows = $this->jsonList();
         $keys = array_column($rows, 'key');
-        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.language', 'presentation.customer-view.cost', 'presentation.customer-view.supplier-codes', 'presentation.show-coming', 'presentation.shortcuts', 'presentation.date-format', 'presentation.number-format', 'presentation.folded-sections'], $keys);
+        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.language', 'presentation.customer-view.cost', 'presentation.customer-view.supplier-codes', 'presentation.show-coming', 'presentation.shortcuts', 'presentation.date-format', 'presentation.number-format', 'presentation.folded-sections', 'presentation.settings-list'], $keys);
         // Read by key and not by position: what each case below is about is one setting's own default, and an
         // ordinal makes every future presentation setting shift assertions that have nothing to do with it.
         $row = static function (string $key) use ($rows, $keys): array {
@@ -245,6 +245,25 @@ final class SettingsTest extends ApiTestCase
 
         $this->getJson($this->path().'?chain=presentation');
         self::assertSame($folded, $this->row('presentation.folded-sections')['value']);
+    }
+
+    // docs/SPEC.md § 7, 2026-09-26 11:17, row 151: whether the Paramètres list is folded to a rail, each person's own.
+    public function testEachPersonFoldsTheSettingsListForThemselves(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->getJson($this->path().'?chain=presentation');
+        self::assertSame('expanded', $this->row('presentation.settings-list')['value']);
+        self::assertSame(['user'], $this->row('presentation.settings-list')['writableLevels']);
+
+        $this->sendJson('PUT', $this->path().'/presentation.settings-list', ['level' => 'user', 'value' => 'rail']);
+        self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $this->path().'/presentation.settings-list', ['level' => 'user', 'value' => 'hidden']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $this->sendJson('PUT', $this->path().'/presentation.settings-list', ['level' => 'company', 'value' => 'rail']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        $this->getJson($this->path().'?chain=presentation');
+        self::assertSame('rail', $this->row('presentation.settings-list')['value']);
     }
 
     // docs/SPEC.md § 7, 2026-09-25 12:45, row 130: a date and a number format of one's own, person then company, which

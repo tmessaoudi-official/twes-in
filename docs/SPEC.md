@@ -3331,6 +3331,20 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   - The fade (`NavScroller`, a mask over the entries) marks any edge of the main menu with more behind it, and after
     each navigation the current entry is scrolled into view. The Paramètres list carries the same directive, but it
     becomes a scroll box of its own only with row 151, so its fade and scroll show from then.
+- [2026-09-26 20:45] DECIDED (revisit), row 151, the Paramètres list fixed and foldable, taken without asking under the
+  12:11 directive:
+  - Beside a settings page (from 1024 px, where the list and the page stop taking turns) the page scrolls in a box of
+    its own and the list stays put: its head (title, filter) and its foot stay, only its entries scroll, with row 152's
+    fade and the current entry in view. The panel becomes a flex column for the settings area alone, in unlayered CSS,
+    because Material's `display: block` on the drawer content outranks the template's `flex flex-col` utilities.
+  - « Réduire les réglages » at its foot, with the main menu's panel icon, and `]`, an interface key like `[`: refused
+    as a person's own key, listed on the « ? » sheet, answered only in the settings area where the list sits beside the
+    page, and held for one scan gap, since a scanner sending its symbology identifier begins a code with `]`. A person
+    who had already chosen `]` for one of their own keys gets that key's default back, as for any refused key.
+  - Folded, it is the main menu's 80 px rail: each page's icon with its short name under it, the headings as lines, no
+    section folding, and the filter a search icon that unfolds the list with the filter focused.
+  - `presentation.settings-list` (`expanded` | `rail`) is each person's own (user level only), as the ruling says;
+    unlike `presentation.sidebar` it has no company or role default.
 
 ## 8. Status
 
@@ -3486,8 +3500,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 145 | E-invoicing files (§ 7 2026-09-25 22:16): Factur-X and UBL (EN 16931), TEIF 1.8.8 signed; then a plateforme agréée before 2027-09-01 and TTN (row 102) | L | doing | - | api/src/** |
 | 146 | Search on top at the centre (§ 7 2026-09-26 08:52): out of the menu, always visible, Ctrl K, an icon on a phone | S | done | f6fdebe6 | |
 | 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | done | 225603ca | slice 1 (the catalogue and the modules page, `ddc1045a`) and slice 2 (« Me prévenir », the operator's demand, the arrival notice, `f0488509`) and slices 3–4 (the menu from the catalogue, « Créer » and Ctrl K, `2ab0eafd`) and slice 5 (screen actions, settings cards, `225603ca`) landed; CI green on all five |
-| 151 | Paramètres list fixed and foldable (§ 7 2026-09-26 11:17): pinned head and foot, 80 px rail from its foot, key ], presentation.settings-list | M | todo | - | |
-| 152 | Menus by foldable sections (§ 7 2026-09-26 12:05): each section folds from its heading, remembered, the current one always open; a fade at an edge with more behind; the current entry kept in view — main menu and Paramètres | M | done | - | the main menu and Paramètres fold by section; the fade and the current entry in view on the main menu, on Paramètres with row 151 |
+| 151 | Paramètres list fixed and foldable (§ 7 2026-09-26 11:17): pinned head and foot, 80 px rail from its foot, key ], presentation.settings-list | M | done | - | fixed beside the page from 1024 px, folds to the 80 px rail from its foot or with ] |
+| 152 | Menus by foldable sections (§ 7 2026-09-26 12:05): each section folds from its heading, remembered, the current one always open; a fade at an edge with more behind; the current entry kept in view — main menu and Paramètres | M | done | feace55f | the main menu and Paramètres fold by section, with the fade and the current entry in view (on Paramètres since row 151) |
 | 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | todo | - | |
 | 148 | Legal pages (§ 7 2026-09-26 08:52): nine pages the platform operator edits per language and dates, fr/en/ar drafts marked « Brouillon — à faire valider », Arabic in RTL, security.txt | L | todo | - | |
 | 149 | Cookie banner and guard (§ 7 2026-09-26 08:52): an informational first-visit banner, and a CI gate refusing an undeclared cookie, storage key or third-party script | M | todo | - | |

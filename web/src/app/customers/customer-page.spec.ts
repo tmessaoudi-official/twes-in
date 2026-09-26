@@ -275,11 +275,12 @@ describe('CustomerPage', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-26 10:08 and 18:17 (row 150, slice 5).
-  it('shows what a customer will offer once its planned modules ship, and nothing of it while one is new', async () => {
+  it('offers nothing planned while a customer is new', async () => {
     await open(undefined);
     expect(q('planned-actions')).toBeNull();
-    fixture.destroy();
+  });
 
+  it('shows what a customer will offer once its planned modules ship', async () => {
     customer.set(carthage);
     await open('k1');
     const drawn = [...fixture.nativeElement.querySelectorAll('[data-testid^="planned-action-"]')];

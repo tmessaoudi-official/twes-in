@@ -35,6 +35,7 @@ export function globalShortcuts(keys: ShellKeys): readonly GlobalShortcut[] {
     { id: 'new', keys: [keyName(keys.new)], label: 'shell.shortcuts.new' },
     { id: 'next', keys: [keyName(keys.next)], label: 'shell.shortcuts.next' },
     { id: 'sidebar', keys: ['['], label: 'shell.shortcuts.sidebar' },
+    { id: 'settings-list', keys: [']'], label: 'shell.shortcuts.settings_list' },
     { id: 'help', keys: ['?'], label: 'shell.shortcuts.help' },
   ];
 }

@@ -193,6 +193,23 @@ describe('ThemeFacade', () => {
     expect(reloaded.sidebar()).toBe('expanded');
   });
 
+  // docs/SPEC.md § 7, 2026-09-26 11:17, row 151: the Paramètres list folds apart from both menus.
+  it('folds the settings list to its rail on its own, and keeps it for the next page load', () => {
+    const facade = start();
+    expect(facade.settingsList()).toBe('expanded');
+    facade.toggleSettingsList();
+    TestBed.tick();
+    expect(facade.settingsList()).toBe('rail');
+    expect(facade.sidebar()).toBe('expanded');
+    expect(facade.settingsSidebar()).toBe('expanded');
+
+    const reloaded = start();
+    expect(reloaded.settingsList()).toBe('rail');
+    reloaded.toggleSettingsList();
+    TestBed.tick();
+    expect(reloaded.settingsList()).toBe('expanded');
+  });
+
   it('keeps scheme, density and accent for the next page load', () => {
     const facade = start();
     facade.setScheme('dark');
