@@ -3140,6 +3140,10 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   `GET …/expense-status-counts` counts draft, recorded and paid under the list's own words, vendor and category, with
   the status left aside. « Nouvelle dépense » names the person's N key. Paged lists with status chips now all say their
   counts: invoices, delivery notes and expenses.
+- [2026-09-26 07:09] DECIDED (revisit), row 123: **the row whose sheet is open is marked in the list.** It gets a tint of the
+  primary colour and a bar on its leading edge, so colour alone does not carry it, and `aria-current="true"` for a
+  screen reader. `DataList` takes it as `activeRowId`, which any list with a sheet can reuse. This closes the "not done
+  yet" item of 05:33.
 
 ## 8. Status
 

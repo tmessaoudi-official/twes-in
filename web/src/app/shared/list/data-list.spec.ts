@@ -187,6 +187,7 @@ const declared: ListDescriptor<Customer> = {
       [rows]="rows()"
       testId="customers-table"
       [rowTestId]="rowTestId"
+      [activeRowId]="active()"
       emptyKey="c.none"
       emptyTestId="customers-empty"
     >
@@ -200,6 +201,7 @@ class DeclaredHost {
   readonly descriptor = signal<ListDescriptor<Customer>>(declared);
   readonly rows = signal<Customer[]>(all.slice(0, 3));
   readonly rowTestId = (row: Customer) => `customer-${row.id}`;
+  readonly active = signal<string | null>(null);
 }
 
 class StaticLoader implements TranslateLoader {
@@ -849,6 +851,22 @@ describe('DataList', () => {
         '/customers?open=1',
       );
       expect(inRow('2', 'a[data-testid="list-link-2"]')?.getAttribute('href')).toBe('/customers/2');
+    });
+
+    // docs/SPEC.md § 7, 2026-09-26: the row whose record is open beside the list says so, to the eye and to a reader.
+    it('marks the row whose record is open beside the list, and only that one', () => {
+      host.componentInstance.active.set('2');
+      host.detectChanges();
+      const row = (id: string) =>
+        host.nativeElement.querySelector(`[data-testid="customer-${id}"]`) as HTMLElement;
+      expect(row('2').classList).toContain('twes-row-active');
+      expect(row('2').getAttribute('aria-current')).toBe('true');
+      expect(row('1').classList).not.toContain('twes-row-active');
+      expect(row('1').getAttribute('aria-current')).toBeNull();
+
+      host.componentInstance.active.set(null);
+      host.detectChanges();
+      expect(row('2').getAttribute('aria-current')).toBeNull();
     });
 
     it('wraps the cell template rather than replacing it, since the naming column usually has one', async () => {

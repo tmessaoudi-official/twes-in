@@ -215,6 +215,9 @@ describe('InvoicesPage', () => {
     expect(q('invoice-sheet')).not.toBeNull();
     // The list stays beside it, still usable.
     expect(q('invoice-i2')).not.toBeNull();
+    // Its row says it is the one open.
+    expect(q('invoice-i1')?.getAttribute('aria-current')).toBe('true');
+    expect(q('invoice-i2')?.getAttribute('aria-current')).toBeNull();
 
     q('invoice-sheet-close')!.click();
     expect(navigate).toHaveBeenCalledWith(

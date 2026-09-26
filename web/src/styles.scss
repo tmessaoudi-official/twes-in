@@ -1674,6 +1674,18 @@ th.mat-mdc-header-cell:last-child {
   background: var(--mat-sys-surface-container-low);
 }
 
+/* The row whose record is open beside the list (docs/SPEC.md § 7, 2026-09-26): an accent bar on its leading edge and a
+   soft ground, so it reads as "this one" without a colour alone saying it (aria-current says it to a reader). */
+tr.mat-mdc-row.twes-row-active,
+tr.mat-mdc-row.twes-row-active:hover,
+li.twes-row-active.twes-list-card {
+  background-color: color-mix(in oklch, var(--mat-sys-primary) 12%, transparent);
+}
+tr.twes-row-active > td:first-child,
+li.twes-row-active.twes-list-card {
+  box-shadow: inset 3px 0 0 var(--mat-sys-primary);
+}
+
 tr.twes-row-new > td,
 li.twes-row-new.twes-list-card {
   animation: twes-row-new 2.4s ease-out;

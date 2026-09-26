@@ -242,6 +242,8 @@
         <li
           class="twes-list-card"
           [class.twes-row-new]="isArrived(row)"
+          [class.twes-row-active]="isActive(row)"
+          [attr.aria-current]="isActive(row) ? 'true' : null"
           [attr.data-testid]="testIdOf(row)"
         >
           <div class="flex items-start gap-1">
@@ -390,6 +392,8 @@
           *matRowDef="let row; columns: columnIds()"
           [attr.data-testid]="testIdOf(row)"
           [class.twes-row-new]="isArrived(row)"
+          [class.twes-row-active]="isActive(row)"
+          [attr.aria-current]="isActive(row) ? 'true' : null"
         ></tr>
         <tr *matNoDataRow>
           <td

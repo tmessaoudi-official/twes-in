@@ -143,6 +143,8 @@ export class DataList<Row> implements OnInit {
   readonly total = input<number | null>(null);
   /** What the API counted for each filter's options, shown on the chips of a paged list (docs/SPEC.md § 7, 2026-09-26). */
   readonly facetCounts = input<ListFacetCounts | null>(null);
+  /** The row whose record is open beside the list, marked so the eye and a screen reader find it (docs/SPEC.md § 7, 2026-09-26). */
+  readonly activeRowId = input<string | null>(null);
   /** What a list the API pages wants shown: emitted on opening and on every change a person makes. */
   readonly queryChange = output<ListQuery>();
 
@@ -474,6 +476,11 @@ export class DataList<Row> implements OnInit {
       this.searchTimer = null;
       this.searched.set(words);
     }, LIST_SEARCH_PAUSE_MS);
+  }
+
+  protected isActive(row: Row): boolean {
+    const active = this.activeRowId();
+    return active !== null && this.descriptor().rowId(row) === active;
   }
 
   protected isArrived(row: Row): boolean {

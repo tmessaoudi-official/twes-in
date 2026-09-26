@@ -111,7 +111,9 @@ test('the navigation follows the window: a rail of icons on a tablet, a bottom b
   await expect(page.getByTestId('bottom-nav-home')).toHaveAttribute('aria-current', 'page');
   const box = await bar.boundingBox();
   expect(box && box.y + box.height).toBeCloseTo(844, 0);
-  expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
+  // Measured once the layout has settled: straight after the resize the rail is still leaving and the page reads
+  // 28 px too wide for a moment (CI 4ddf531c's last frame). A width that stays too wide still fails.
+  await expect.poll(() => sidewaysOverflow(page)).toBeLessThanOrEqual(0);
 });
 
 test('on a phone the settings list stands alone, a setting opens without it, and the way back returns to it', async ({
@@ -188,7 +190,9 @@ test('the rail and the top bar keep every control clear of the next, down to the
         .map((b) => `${a.id} × ${b.id}`),
     );
     expect(overlaps, `${width} px`).toEqual([]);
-    expect(await sidewaysOverflow(page), `${width} px`).toBeLessThanOrEqual(0);
+    await expect
+      .poll(() => sidewaysOverflow(page), { message: `${width} px` })
+      .toBeLessThanOrEqual(0);
   }
 });
 
