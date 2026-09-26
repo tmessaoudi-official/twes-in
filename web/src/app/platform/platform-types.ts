@@ -93,3 +93,12 @@ export type CompanyCountry = keyof typeof COMPANY_COUNTRIES;
  */
 export type PlatformError =
   'not_found' | 'own_account' | 'name_taken' | 'already_member' | 'refused' | 'network';
+
+/** A planned module and how many companies asked to be told when it arrives (« Me prévenir », row 150). */
+export interface ModuleDemandRow {
+  readonly key: string;
+  /** The translation key of the module's name. */
+  readonly labelKey: string;
+  readonly planned: 'v1' | 'later';
+  readonly companies: number;
+}

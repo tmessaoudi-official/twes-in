@@ -7,6 +7,7 @@ import {
   COMPANY_COUNTRIES,
   type AccountAction,
   type CompanyCountry,
+  type ModuleDemandRow,
   type PlatformAccountRow,
   type PlatformCompanyRow,
   type PlatformError,
@@ -27,6 +28,9 @@ export class PlatformFacade {
   private readonly errorSignal = signal<PlatformError | null>(null);
 
   private readonly accountsSignal = signal<readonly PlatformAccountRow[]>([]);
+  private readonly demandSignal = signal<readonly ModuleDemandRow[]>([]);
+  /** How many companies wait for each planned module, the most asked for first. */
+  readonly demand = this.demandSignal.asReadonly();
 
   readonly waiting = this.waitingSignal.asReadonly();
   readonly accounts = this.accountsSignal.asReadonly();
@@ -46,12 +50,14 @@ export class PlatformFacade {
   async load(): Promise<void> {
     this.busySignal.set(true);
     try {
-      const [waiting, signup, accounts, companies] = await Promise.all([
+      const [waiting, signup, accounts, companies, demand] = await Promise.all([
         this.api.waitingCompanies(),
         this.api.signup(),
         this.api.accounts(''),
         this.api.companies(),
+        this.api.moduleDemand(),
       ]);
+      this.demandSignal.set(demand);
       this.waitingSignal.set(waiting);
       this.companiesSignal.set(companies);
       this.signupSignal.set(signup);

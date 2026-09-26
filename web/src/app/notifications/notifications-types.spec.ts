@@ -26,6 +26,17 @@ describe('stock notifications', () => {
   });
 });
 
+describe('module notifications', () => {
+  it('have words and lead to the modules page for whoever may switch one on', () => {
+    expect(notificationKey('module.arrived')).toBe('notifications.types.module_arrived');
+    expect(notificationRecord('module.arrived')).toEqual({
+      icon: 'extension',
+      route: '/company/modules',
+      permission: 'company.settings',
+    });
+  });
+});
+
 describe('notificationRecord', () => {
   it('gives each type its icon and, where the record is in this company, the screen it leads to', () => {
     expect(notificationRecord('invitation.accepted')).toEqual({

@@ -84,7 +84,9 @@ This does three things, in order:
    reuse Docker's cache.
 2. **Migrates the database.** The `api` container applies pending migrations every time it starts, before
    serving (`infra/api/docker-entrypoint.sh`). A failed migration stops the container instead of serving a
-   half-migrated schema. You never run migrations by hand. `make migrate` exists for a running container.
+   half-migrated schema. You never run migrations by hand. `make migrate` exists for a running container. Right
+   after, it tells the companies that asked « Me prévenir » for a module this release brings
+   (`app:modules:announce-arrivals`); each is told once, so a restart tells nobody again.
 3. **Seeds** (`make seed`, see § 4). This step is idempotent: running it again creates nothing new.
 
 `make down` stops everything and **keeps** the data. `make up` again brings it back as it was. `make logs` follows

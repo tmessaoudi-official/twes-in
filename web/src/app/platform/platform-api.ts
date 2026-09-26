@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import type {
   CompanyCompanyRead,
   CompanyCompanyWrite,
+  ModuleDemandModuleDemandRead,
   PlatformAccountPlatformAccountRead,
   PlatformCompanyPlatformCompanyRead,
   PlatformSubscriptionPlatformSubscriptionRead,
@@ -16,6 +17,7 @@ import type {
 } from '../api/types.gen';
 import type {
   AccountAction,
+  ModuleDemandRow,
   PlatformSubscriptionRow,
   SubscriptionTerms,
   NewCompany,
@@ -188,6 +190,22 @@ export class PlatformApi {
     return this.guard(async () => {
       await firstValueFrom(this.http.delete(subscriptionPath(companyId)));
     }, 'refused');
+  }
+
+  /** How many companies wait for each planned module, the most asked for first. */
+  moduleDemand(): Promise<ModuleDemandRow[]> {
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<ModuleDemandModuleDemandRead[]>('/api/platform/module-demand'),
+        )
+      ).map((read) => ({
+        key: read.key,
+        labelKey: read.labelKey,
+        planned: read.planned,
+        companies: read.companies,
+      })),
+    );
   }
 
   private async guard<T>(

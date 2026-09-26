@@ -40,12 +40,23 @@ use Symfony\Component\Validator\Constraints as Assert;
             denormalizationContext: ['groups' => [self::WRITE]],
             validationContext: ['groups' => [self::WRITE]],
         ),
+        // « Me prévenir » on a planned module (docs/SPEC.md § 7, 2026-09-26 10:08): 409 on one that already ships.
+        new Put(
+            uriTemplate: '/companies/{companyId}/modules/{moduleKey}/interest',
+            processor: ModuleInterestProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            normalizationContext: ['groups' => [self::READ]],
+            denormalizationContext: ['groups' => [self::INTEREST]],
+            validationContext: ['groups' => [self::INTEREST]],
+        ),
     ],
 )]
 final class ModuleResource
 {
     public const string READ = 'module:read';
     public const string WRITE = 'module:write';
+    public const string INTEREST = 'module:interest';
 
     #[ApiProperty(identifier: false, writable: false, required: true)]
     #[Groups([self::READ])]
@@ -74,12 +85,22 @@ final class ModuleResource
     #[Groups([self::READ])]
     public ?string $planned = null;
 
+    /**
+     * Whether the company asked to be told when this planned module arrives (« Me prévenir »). Absent from a real
+     * module's row.
+     */
+    #[ApiProperty(required: false)]
+    #[Assert\NotNull(groups: [self::INTEREST])]
+    #[Groups([self::READ, self::INTEREST])]
+    public ?bool $interested = null;
+
     #[ApiProperty(required: true)]
     #[Assert\NotNull(groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?bool $enabled = null;
 
-    public static function of(ModuleView $view): self
+    /** @param bool $interested whether the company waits for it: read on a planned module only */
+    public static function of(ModuleView $view, bool $interested = false): self
     {
         $resource = new self();
         $resource->key = $view->manifest->key;
@@ -87,6 +108,7 @@ final class ModuleResource
         $resource->dependencies = $view->manifest->dependencies;
         $resource->permissions = $view->manifest->permissions;
         $resource->planned = $view->manifest->planned;
+        $resource->interested = null === $view->manifest->planned ? null : $interested;
         $resource->enabled = $view->enabled;
 
         return $resource;

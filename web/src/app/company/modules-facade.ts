@@ -52,6 +52,25 @@ export class ModulesFacade {
     }
   }
 
+  /**
+   * « Me prévenir » on a planned module, or its withdrawal. True when the API accepted it; the module's row then
+   * reads what the API kept.
+   */
+  async setInterest(companyId: string, key: string, interested: boolean): Promise<boolean> {
+    this.busySignal.set(true);
+    this.errorSignal.set(null);
+    try {
+      const row = await this.api.setInterest(companyId, key, interested);
+      this.modulesSignal.update((rows) => rows.map((each) => (each.key === row.key ? row : each)));
+      return true;
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return false;
+    } finally {
+      this.busySignal.set(false);
+    }
+  }
+
   clearError(): void {
     this.errorSignal.set(null);
   }

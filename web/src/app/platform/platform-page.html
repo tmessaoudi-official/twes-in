@@ -458,4 +458,29 @@
       <p data-testid="platform-accounts-empty">{{ 'platform.accounts.none' | translate }}</p>
     }
   </section>
+
+  <section class="flex flex-col gap-3" aria-labelledby="platform-demand-title">
+    <h2 id="platform-demand-title" class="text-xl font-semibold">
+      {{ 'platform.demand.title' | translate }}
+    </h2>
+    <p class="max-w-prose text-sm">{{ 'platform.demand.intro' | translate }}</p>
+    @if (awaited().length > 0) {
+      <ul class="flex flex-col gap-2">
+        @for (row of awaited(); track row.key) {
+          <li
+            class="flex flex-wrap items-baseline justify-between gap-2 py-1"
+            [attr.data-testid]="'demand-' + row.key"
+          >
+            <span class="font-medium">{{ row.labelKey | translate }}</span>
+            <span class="text-sm">
+              {{ 'coming.version.' + row.planned | translate }} ·
+              {{ 'platform.demand.companies' | translate: { count: row.companies } }}
+            </span>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p data-testid="platform-demand-empty">{{ 'platform.demand.empty' | translate }}</p>
+    }
+  </section>
 </section>

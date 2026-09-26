@@ -99,13 +99,35 @@
                 </span>
               }
             </div>
-            <mat-slide-toggle
-              class="shrink-0"
-              [checked]="false"
-              [disabled]="true"
-              [aria-labelledby]="'module-label-' + row.key"
-              [attr.data-testid]="'module-toggle-' + row.key"
-            ></mat-slide-toggle>
+            <div class="flex shrink-0 flex-col items-end gap-2">
+              <mat-slide-toggle
+                [checked]="false"
+                [disabled]="true"
+                [aria-labelledby]="'module-label-' + row.key"
+                [attr.data-testid]="'module-toggle-' + row.key"
+              ></mat-slide-toggle>
+              <!-- « Me prévenir » (row 150): the company asks to be told when the module arrives. -->
+              @if (row.interested) {
+                <span class="text-sm" [attr.data-testid]="'module-notified-' + row.key">{{
+                  'company.modules.notified' | translate
+                }}</span>
+              }
+              @if (mayManage()) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="busy()"
+                  [attr.aria-describedby]="'module-label-' + row.key"
+                  (click)="notify(row)"
+                  [attr.data-testid]="'module-notify-' + row.key"
+                >
+                  {{
+                    (row.interested ? 'company.modules.unnotify' : 'company.modules.notify')
+                      | translate
+                  }}
+                </button>
+              }
+            </div>
           </li>
         }
       </ul>

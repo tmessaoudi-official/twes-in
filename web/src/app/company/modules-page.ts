@@ -11,9 +11,11 @@ import {
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { TranslatePipe } from '@ngx-translate/core';
+import { MatButtonModule } from '@angular/material/button';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { AuthFacade } from '../auth/auth-facade';
+import { Feedback } from '../shared/feedback/feedback';
 import { ModulesFacade } from './modules-facade';
 import type { ModuleRow } from './modules-types';
 
@@ -23,7 +25,7 @@ import type { ModuleRow } from './modules-types';
  */
 @Component({
   selector: 'app-modules-page',
-  imports: [MatSlideToggleModule, TranslatePipe],
+  imports: [MatButtonModule, MatSlideToggleModule, TranslatePipe],
   templateUrl: './modules-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -32,6 +34,8 @@ export class ModulesPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly facade = inject(ModulesFacade);
   private readonly auth = inject(AuthFacade);
+  private readonly feedback = inject(Feedback);
+  private readonly translate = inject(TranslateService);
 
   protected readonly modules = this.facade.modules;
   /** What the company can switch, and what is only planned (docs/SPEC.md § 7, 2026-09-26 10:08). */
@@ -76,6 +80,19 @@ export class ModulesPage implements OnInit {
 
   protected labelOf(key: string): string {
     return this.modules().find((row) => row.key === key)?.labelKey ?? `modules.${key}`;
+  }
+
+  /** « Me prévenir », or stop asking: the toast names the module, and says nothing when the API refused. */
+  protected async notify(row: ModuleRow): Promise<void> {
+    const companyId = this.company()?.id;
+    if (!companyId || this.busy()) return;
+    const interested = row.interested !== true;
+    if (await this.facade.setInterest(companyId, row.key, interested)) {
+      this.feedback.success(
+        interested ? 'company.modules.notify_saved' : 'company.modules.unnotify_saved',
+        { label: this.translate.instant(row.labelKey) as string },
+      );
+    }
   }
 
   protected async toggle(row: ModuleRow, change: MatSlideToggleChange): Promise<void> {

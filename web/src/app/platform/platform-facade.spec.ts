@@ -39,6 +39,7 @@ describe('PlatformFacade', () => {
     subscription: vi.fn(),
     setSubscription: vi.fn(),
     stopSubscription: vi.fn(),
+    moduleDemand: vi.fn(),
   };
   let facade: PlatformFacade;
 
@@ -48,6 +49,9 @@ describe('PlatformFacade', () => {
     api.signup.mockResolvedValue({ enabled: false, approvalRequired: true });
     api.accounts.mockResolvedValue([account]);
     api.companies.mockResolvedValue([row]);
+    api.moduleDemand.mockResolvedValue([
+      { key: 'quotes', labelKey: 'modules.quotes', planned: 'v1', companies: 2 },
+    ]);
     TestBed.configureTestingModule({ providers: [{ provide: PlatformApi, useValue: api }] });
     facade = TestBed.inject(PlatformFacade);
   });
@@ -130,6 +134,9 @@ describe('PlatformFacade', () => {
     expect(api.accounts).toHaveBeenCalledWith('');
     expect(facade.accounts()).toEqual([account]);
     expect(facade.companies()).toEqual([row]);
+    expect(facade.demand()).toEqual([
+      { key: 'quotes', labelKey: 'modules.quotes', planned: 'v1', companies: 2 },
+    ]);
     expect(facade.error()).toBeNull();
   });
 

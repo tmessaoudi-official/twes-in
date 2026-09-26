@@ -12,6 +12,7 @@ namespace App\ModuleRegistry\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\ModuleRegistry\Application\ManageModules;
+use App\ModuleRegistry\Application\ModuleInterests;
 use App\ModuleRegistry\Application\ModuleView;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
@@ -19,7 +20,7 @@ use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 /** @implements ProviderInterface<ModuleResource> */
 final readonly class ModuleCollectionProvider implements ProviderInterface
 {
-    public function __construct(private ManageModules $manage, private CompanyGuard $guard)
+    public function __construct(private ManageModules $manage, private ModuleInterests $interests, private CompanyGuard $guard)
     {
     }
 
@@ -28,6 +29,8 @@ final readonly class ModuleCollectionProvider implements ProviderInterface
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ModulePermission::READ);
 
-        return array_map(static fn (ModuleView $view) => ModuleResource::of($view), $this->manage->list($company));
+        $waiting = $this->interests->keysOf($company->getId());
+
+        return array_map(static fn (ModuleView $view) => ModuleResource::of($view, \in_array($view->manifest->key, $waiting, true)), $this->manage->list($company));
     }
 }

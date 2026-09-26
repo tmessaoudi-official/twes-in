@@ -15,4 +15,6 @@ export interface ModuleRow {
    * Absent once the module is real.
    */
   readonly planned?: 'v1' | 'later';
+  /** On a planned module: whether the company asked to be told when it arrives (« Me prévenir »). */
+  readonly interested?: boolean;
 }

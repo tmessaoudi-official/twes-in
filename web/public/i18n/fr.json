@@ -399,8 +399,14 @@
         "not_found": "Ce module n'existe pas.",
         "needs_modules": "Activez d'abord :",
         "still_needed": "Ces modules en ont encore besoin :",
-        "invalid": "Le changement a été refusé."
-      }
+        "invalid": "Le changement a été refusé.",
+        "already_available": "Ce module est déjà là : activez-le."
+      },
+      "notify": "Me prévenir",
+      "notified": "Vous serez prévenu",
+      "unnotify": "Ne plus me prévenir",
+      "notify_saved": "Vous serez prévenu quand « {{label}} » arrivera.",
+      "unnotify_saved": "Vous ne serez plus prévenu pour « {{label}} »."
     },
     "roles": {
       "title": "Rôles",
@@ -593,7 +599,8 @@
       "stock_delivery_note_moved_no_stock": "Le stock du bon de livraison {{number}} n'a pas pu être mis à jour. Rien n'a bougé : prévenez l'administrateur de la plateforme, qui peut le rejouer.",
       "unknown": "Nouvelle notification.",
       "subscription_payment_declared": "{{company}} a déclaré un règlement de {{amount}} {{currency}}.",
-      "subscription_payment_decided": "Votre règlement de {{amount}} {{currency}} a reçu une réponse."
+      "subscription_payment_decided": "Votre règlement de {{amount}} {{currency}} a reçu une réponse.",
+      "module_arrived": "« {{label}} » est arrivé : vous pouvez l'activer pour {{company}} dans Modules."
     }
   },
   "invitation": {
@@ -2156,6 +2163,12 @@
       "reject": "Refuser",
       "confirmed": "Le règlement a été confirmé.",
       "rejected": "Le règlement a été refusé."
+    },
+    "demand": {
+      "title": "Modules attendus",
+      "intro": "Combien de sociétés ont demandé à être prévenues de l'arrivée de chaque module.",
+      "companies": "Sociétés : {{count}}",
+      "empty": "Aucune société n'attend encore de module."
     }
   },
   "appearance": {

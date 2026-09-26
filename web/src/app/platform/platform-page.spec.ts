@@ -17,6 +17,7 @@ import type {
   PlatformCompanyRow,
   PlatformError,
   PlatformSignup,
+  ModuleDemandRow,
   PlatformSubscriptionRow,
 } from './platform-types';
 import { Feedback } from '../shared/feedback/feedback';
@@ -25,7 +26,13 @@ import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedba
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
+      modules: { quotes: 'Devis et commandes', zakat: 'Zakat' },
       platform: {
+        demand: {
+          title: 'Modules attendus',
+          companies: 'Sociétés : {{count}}',
+          empty: 'Aucune société n’attend encore de module.',
+        },
         title: 'Plateforme',
         signup: {
           title: 'Inscriptions',
@@ -129,7 +136,9 @@ describe('PlatformPage', () => {
   const subscription = signal<PlatformSubscriptionRow | null>(null);
   const waitingPayments = signal<readonly WaitingPayment[]>([declared]);
   const openedSubscription = signal<string | null>(null);
+  const demand = signal<readonly ModuleDemandRow[]>([]);
   const facade = {
+    demand: demand.asReadonly(),
     waiting,
     companies,
     openCompany: vi.fn(),
@@ -168,6 +177,7 @@ describe('PlatformPage', () => {
     accounts.set([account]);
     companies.set([row]);
     waitingPayments.set([declared]);
+    demand.set([]);
     Object.values(payments)
       .filter((value) => typeof value === 'function' && 'mockReset' in value)
       .forEach((fn) => (fn as ReturnType<typeof vi.fn>).mockReset().mockResolvedValue(true));
@@ -405,5 +415,25 @@ describe('PlatformPage', () => {
     const { query } = await render();
 
     expect(query('platform-error')?.textContent).toContain('Introuvable');
+  });
+  // « Me prévenir » (row 150): the operator reads which planned modules companies wait for, and how many.
+  it('lists the planned modules companies wait for, the most asked for first, and says when none is', async () => {
+    const { fixture, query } = await render();
+    fixture.detectChanges();
+    expect(query('platform-demand-empty')?.textContent).toContain('Aucune société');
+
+    demand.set([
+      { key: 'quotes', labelKey: 'modules.quotes', planned: 'v1', companies: 2 },
+      { key: 'zakat', labelKey: 'modules.zakat', planned: 'later', companies: 0 },
+    ]);
+    fixture.detectChanges();
+
+    expect(query('platform-demand-empty')).toBeNull();
+    const rows = Array.from(
+      fixture.nativeElement.querySelectorAll('[data-testid^="demand-"]') as NodeListOf<HTMLElement>,
+    );
+    expect(rows.map((row) => row.getAttribute('data-testid'))).toEqual(['demand-quotes']);
+    expect(rows[0].textContent?.replace(/\s+/g, ' ')).toContain('Devis et commandes');
+    expect(rows[0].textContent).toContain('Sociétés : 2');
   });
 });

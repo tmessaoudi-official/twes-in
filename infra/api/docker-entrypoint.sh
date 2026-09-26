@@ -22,6 +22,9 @@ if [ "$1" = 'frankenphp' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
 		if [ "$(find ./migrations -iname '*.php' -print -quit)" ]; then
 			php bin/console doctrine:migrations:migrate --no-interaction --all-or-nothing
 		fi
+		# A module arrives with a release: tell the companies that asked « Me prévenir » (docs/SPEC.md § 7,
+		# 2026-09-26). Each wait is told once, so every start may run it.
+		php bin/console app:modules:announce-arrivals --no-interaction
 	fi
 fi
 

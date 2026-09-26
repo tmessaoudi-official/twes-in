@@ -39,8 +39,10 @@ class StaticLoader implements TranslateLoader {
           membership_added: 'Vous avez rejoint {{company}}',
           invitation_accepted: '{{display_name}} a rejoint l’entreprise',
           unknown: 'Nouvelle notification',
+          module_arrived: '« {{label}} » est arrivé pour {{company}}',
         },
       },
+      modules: { quotes: 'Devis et commandes' },
     });
   }
 }
@@ -327,6 +329,24 @@ describe('NotificationBell', () => {
     expect(facade.markRead).toHaveBeenCalledWith('n2');
     expect(TestBed.inject(Router).url).toBe('/members');
     expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  // « Me prévenir » (row 150): the payload names the module by its translation key, which the panel reads as its name.
+  it('names the module that arrived in the words of the screen', async () => {
+    items.set([
+      {
+        ...unreadEntry,
+        id: 'n3',
+        type: 'module.arrived',
+        payload: { module: 'quotes', label_key: 'modules.quotes', company: 'Acme' },
+      },
+    ]);
+    const fixture = render();
+    await open(fixture);
+
+    expect(text(all('notification-item')[0])).toContain(
+      '« Devis et commandes » est arrivé pour Acme',
+    );
   });
 
   it('does not link a record the person may not open', async () => {

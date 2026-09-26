@@ -32,6 +32,7 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'stock.delivery_note_moved_no_stock',
   'subscription.payment_declared',
   'subscription.payment_decided',
+  'module.arrived',
 ] as const;
 
 /** "membership.added" → "notifications.types.membership_added"; an unknown type → the generic key. */
@@ -74,6 +75,11 @@ const RECORDS = new Map<string, NotificationRecord>([
   [
     'subscription.payment_decided',
     { icon: 'payments', route: '/company/subscription', permission: 'subscription.read' },
+  ],
+  // A module the company asked « Me prévenir » for has arrived: switched on from the modules page.
+  [
+    'module.arrived',
+    { icon: 'extension', route: '/company/modules', permission: 'company.settings' },
   ],
 ]);
 

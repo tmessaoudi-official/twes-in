@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -60,6 +67,10 @@ export class PlatformPage implements OnInit {
   private readonly feedback = inject(Feedback);
 
   protected readonly waitingPayments = this.payments.waiting;
+  /** « Me prévenir » (row 150): the planned modules at least one company waits for, the most asked for first. */
+  protected readonly awaited = computed(() =>
+    this.platform.demand().filter((row) => row.companies > 0),
+  );
   /** How many periods each waiting payment is taken to cover, by declaration; one unless the operator says otherwise. */
   protected readonly periodsFor = signal<Readonly<Record<string, number>>>({});
 

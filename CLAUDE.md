@@ -94,7 +94,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - `api/src/<Context>/{Domain,Application,Infrastructure}/` — `Identity`, `Tenancy`, `Audit`, `Inbox` (the notification
   centre behind the `Notifications` port), `Fiscal`, `Settings` (the settings engine: declarations collected from every
   `DeclaresSettings` service, the three chains, `ReadSetting`), `ModuleRegistry` (the catalogue collected from every
-  `DeclaresModule` service, `module_state`, the 404 guard for a switched-off module's resources and plain controllers),
+  `DeclaresModule` service and the planned ones in `PlannedModules`, `module_state`, `module_interest` (« Me prévenir », told at start by `app:modules:announce-arrivals`, which `infra/api/docker-entrypoint.sh` runs after the migrations), the 404 guard for a switched-off module's resources and plain controllers),
   `CustomFields`, `Files` (the `file` table and the `FileStorage` port on Flysystem, on whichever filesystem
   `FILES_STORAGE` names: `local`, a volume under `FILES_DIRECTORY`, which `api/.env` ships, or `s3`, any
   S3-compatible bucket, which refuses to start without its own variables), `ImportExport` (a module declares an

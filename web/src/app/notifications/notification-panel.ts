@@ -13,7 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { groupByDay, relativeTime } from './notification-days';
@@ -46,6 +46,7 @@ export class NotificationPanel {
   private readonly facade = inject(NotificationsFacade);
   private readonly auth = inject(AuthFacade);
   private readonly format = inject(FormatFacade);
+  private readonly translate = inject(TranslateService);
   private readonly panel = inject<MatDialogRef<NotificationPanel>>(MatDialogRef);
 
   protected readonly unread = this.facade.unread;
@@ -74,6 +75,7 @@ export class NotificationPanel {
           entry,
           icon: record.icon,
           textKey: notificationKey(entry.type),
+          params: this.params(entry),
           route: allowed ? record.route : null,
           ago: relativeTime(entry.createdAt, now, locale),
           at: this.format.moment(entry.createdAt, timeZone),
@@ -85,6 +87,17 @@ export class NotificationPanel {
   constructor() {
     const timer = setInterval(() => this.now.set(new Date()), 60_000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
+  }
+
+  /**
+   * The words' parameters: the payload as the API sent it, and, when it names something by its translation key
+   * (`label_key`, such as the module that arrived), that thing's name in the screen's language as `label`.
+   */
+  private params(entry: InboxEntry): Record<string, unknown> {
+    const labelKey = entry.payload['label_key'];
+    return typeof labelKey === 'string'
+      ? { ...entry.payload, label: this.translate.instant(labelKey) as string }
+      : entry.payload;
   }
 
   protected read(entry: InboxEntry): void {

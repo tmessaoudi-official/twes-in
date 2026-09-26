@@ -106,6 +106,20 @@ describe('PlatformApi', () => {
     await expect(stopping).resolves.toBeUndefined();
   });
 
+  // « Me prévenir » (row 150): how many companies wait for each planned module, the most asked for first.
+  it('reads the demand for the planned modules as the platform orders it', async () => {
+    const pending = api.moduleDemand();
+    http.expectOne('/api/platform/module-demand').flush([
+      { key: 'quotes', labelKey: 'modules.quotes', planned: 'v1', companies: 2 },
+      { key: 'zakat', labelKey: 'modules.zakat', planned: 'later', companies: 0 },
+    ]);
+
+    expect(await pending).toEqual([
+      { key: 'quotes', labelKey: 'modules.quotes', planned: 'v1', companies: 2 },
+      { key: 'zakat', labelKey: 'modules.zakat', planned: 'later', companies: 0 },
+    ]);
+  });
+
   it('finds accounts by a piece of their address or name', async () => {
     const found = api.accounts('acme & co');
 

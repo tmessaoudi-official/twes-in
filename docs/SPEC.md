@@ -376,6 +376,7 @@ no common `created_by`: the tables that record who acted carry their own column 
 | numbering_series | establishment_id, document_type, format, next_number, reset_period, last_reset_year, is_default |
 | setting | level, level_id (the subject: none, a company, a company and role, a user), company_id (levels inside a company), key, value jsonb |
 | module_state | company_id, key, enabled_at |
+| module_interest | company_id, module_key, created_at, announced_at (« Me prévenir » on a planned module; unique per company and module; withdrawn = deleted; `announced_at` set once its members are told it arrived) |
 | establishment | code (the establishment part of the tax identifier), name, address, phone, email, is_default |
 | customer_group | name, description; its settings resolve through the parties chain |
 | customer_tax_regime | code (standard, exempt, suspended, export), label key, which tax components apply, mandatory mention; operator-owned preset data |
@@ -3245,6 +3246,26 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   clean, PHPStan clean on the eleven changed files; the frozen session had run the ModuleRegistry, modules functional,
   inventory and architecture suites green, plus the web build and lint. Not certified locally, at load 20–30 from other
   projects: the full PHPStan run (killed at 560 s), the whole API and web unit suites, and e2e. CI arbitrates those.
+  CI run 36244184392 on `ddc1045a` came back green on every job, e2e included; the recovery ref is deleted.
+- [2026-09-26 16:13] DECIDED (revisit), row 150 slice 2, « Me prévenir », taken without asking under the 12:11
+  directive:
+  - The interest is **the company's**, one row per company and module in `module_interest`; who asked is in the audit
+    log (`module.interest_recorded` / `module.interest_withdrawn`, audited as the `module` entity so the modules page
+    of every other tab reloads). Withdrawing deletes the row.
+  - Asking takes the permission switching takes, `company.settings`, over `PUT
+    /companies/{companyId}/modules/{moduleKey}/interest` `{interested}`; a module that already ships answers 409, an
+    unknown one 404, the mirror of switching a planned module on.
+  - The operator reads `GET /platform/module-demand` behind a new `platform.modules.read` (platform permissions are
+    the operator's alone and carry no label). Every planned module is answered, most asked for first; the platform
+    page lists only those at least one company waits for, with « Aucune société n'attend encore de module » when
+    none does.
+  - « The module arrives » is a release: its key leaves `PlannedModules` for its own `DeclaresModule`. The api
+    entrypoint runs `app:modules:announce-arrivals` after the migrations at every start; it tells each waiting
+    company's members whose role grants `company.settings` (`module.arrived`, leading to the modules page) and sets
+    `announced_at`, so a restart tells nobody again. A failure there stops the container like a failed migration:
+    a notification's realtime push only warns, so only the database can fail it.
+  - The bell names the module by translating the payload's `label_key` as `label`, a rule any later notification
+    naming something by its key can use.
 
 ## 8. Status
 
@@ -3399,7 +3420,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 144 | Tax data without a partner (§ 7 2026-09-25 22:16): TEJ withholding certificates XML, the four French mentions, payments split by VAT rate, CA3 and Tunisian monthly worksheets | L | doing | - | api/src/** web/src/app/** |
 | 145 | E-invoicing files (§ 7 2026-09-25 22:16): Factur-X and UBL (EN 16931), TEIF 1.8.8 signed; then a plateforme agréée before 2027-09-01 and TTN (row 102) | L | doing | - | api/src/** |
 | 146 | Search on top at the centre (§ 7 2026-09-26 08:52): out of the menu, always visible, Ctrl K, an icon on a phone | S | done | f6fdebe6 | |
-| 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | doing | - | slice 1 (the catalogue and the modules page) landed; « Me prévenir », menu, « Créer », Ctrl K, screen actions and settings cards to come |
+| 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | doing | - | slice 1 (the catalogue and the modules page, `ddc1045a`) and slice 2 (« Me prévenir », the operator's demand, the arrival notice) landed; menu, « Créer », Ctrl K, screen actions and settings cards to come |
 | 151 | Paramètres list fixed and foldable (§ 7 2026-09-26 11:17): pinned head and foot, 80 px rail from its foot, key ], presentation.settings-list | M | todo | - | |
 | 152 | Menus by foldable sections (§ 7 2026-09-26 12:05): each section folds from its heading, remembered, the current one always open; a fade at an edge with more behind; the current entry kept in view — main menu and Paramètres | M | todo | - | |
 | 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | todo | - | |

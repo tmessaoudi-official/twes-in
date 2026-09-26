@@ -399,8 +399,14 @@
         "not_found": "This module does not exist.",
         "needs_modules": "Switch these on first:",
         "still_needed": "These modules still need it:",
-        "invalid": "The change was refused."
-      }
+        "invalid": "The change was refused.",
+        "already_available": "This module is already here: switch it on."
+      },
+      "notify": "Notify me",
+      "notified": "You will be notified",
+      "unnotify": "Stop notifying me",
+      "notify_saved": "You will be told when « {{label}} » arrives.",
+      "unnotify_saved": "You will no longer be told about « {{label}} »."
     },
     "roles": {
       "title": "Roles",
@@ -593,7 +599,8 @@
       "stock_delivery_note_moved_no_stock": "The stock of delivery note {{number}} could not be updated. Nothing moved: tell the platform administrator, who can replay it.",
       "unknown": "New notification.",
       "subscription_payment_declared": "{{company}} declared a payment of {{amount}} {{currency}}.",
-      "subscription_payment_decided": "Your payment of {{amount}} {{currency}} was answered."
+      "subscription_payment_decided": "Your payment of {{amount}} {{currency}} was answered.",
+      "module_arrived": "« {{label}} » has arrived: you can switch it on for {{company}} in Modules."
     }
   },
   "invitation": {
@@ -2156,6 +2163,12 @@
       "reject": "Reject",
       "confirmed": "The payment was confirmed.",
       "rejected": "The payment was rejected."
+    },
+    "demand": {
+      "title": "Modules awaited",
+      "intro": "How many companies asked to be told when each module arrives.",
+      "companies": "Companies: {{count}}",
+      "empty": "No company is waiting for a module yet."
     }
   },
   "appearance": {

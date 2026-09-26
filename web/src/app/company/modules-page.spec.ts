@@ -10,6 +10,8 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { Feedback } from '../shared/feedback/feedback';
+import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { Session } from '../shared/session/session';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import type { ModulesError } from './modules-api';
@@ -39,6 +41,9 @@ class StaticLoader implements TranslateLoader {
           title: 'Modules',
           planned: 'Ce qui arrive',
           depends_on: 'Nécessite :',
+          notify: 'Me prévenir',
+          notified: 'Vous serez prévenu',
+          unnotify: 'Ne plus me prévenir',
           errors: {
             still_needed: 'Ces modules en ont encore besoin :',
             needs_modules: 'Activez d’abord :',
@@ -90,6 +95,7 @@ describe('ModulesPage', () => {
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     switch: vi.fn(),
+    setInterest: vi.fn(),
     clearError: vi.fn(),
   };
   const showComing = signal(true);
@@ -123,6 +129,7 @@ describe('ModulesPage', () => {
     error.set(null);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.switch.mockReset().mockResolvedValue(true);
+    facade.setInterest.mockReset().mockResolvedValue(true);
     facade.clearError.mockReset();
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
@@ -138,6 +145,7 @@ describe('ModulesPage', () => {
         { provide: AuthFacade, useValue: auth },
         { provide: ThemeFacade, useValue: { showComing } },
         { provide: Session, useExisting: AuthFacade },
+        ...provideQuietFeedback(),
       ],
     });
   });
@@ -255,5 +263,56 @@ describe('ModulesPage', () => {
     await settle();
     expect(q('modules-planned')).toBeNull();
     expect(q('module-customers')).not.toBeNull();
+  });
+
+  // « Me prévenir » (row 150): the company asks to be told when a planned module arrives, and can stop asking.
+  it('asks to be told when a planned module arrives, says so, and can stop asking', async () => {
+    modules.set([
+      customers,
+      invoices,
+      { ...quotes, interested: false },
+      { ...zakat, interested: true },
+    ]);
+    await open();
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said;
+
+    expect(q('module-notify-quotes')?.textContent).toContain('Me prévenir');
+    expect(q('module-notified-quotes')).toBeNull();
+    expect(q('module-notify-customers')).toBeNull();
+    (q('module-notify-quotes') as HTMLButtonElement).click();
+    await settle();
+    expect(facade.setInterest).toHaveBeenCalledWith('c1', 'quotes', true);
+    expect(said).toEqual([
+      {
+        kind: 'success',
+        key: 'company.modules.notify_saved',
+        params: { label: 'Devis et commandes' },
+      },
+    ]);
+
+    expect(q('module-notified-zakat')?.textContent).toContain('Vous serez prévenu');
+    expect(q('module-notify-zakat')?.textContent).toContain('Ne plus me prévenir');
+    (q('module-notify-zakat') as HTMLButtonElement).click();
+    await settle();
+    expect(facade.setInterest).toHaveBeenCalledWith('c1', 'zakat', false);
+    expect(said[1]).toEqual({
+      kind: 'success',
+      key: 'company.modules.unnotify_saved',
+      params: { label: 'Zakat' },
+    });
+  });
+
+  it('says nothing when the API refused « Me prévenir », and offers it to no reader', async () => {
+    modules.set([customers, invoices, { ...quotes, interested: false }]);
+    facade.setInterest.mockResolvedValue(false);
+    await open();
+
+    (q('module-notify-quotes') as HTMLButtonElement).click();
+    await settle();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([]);
+
+    auth.hasPermission.mockReturnValue(false);
+    await open();
+    expect(q('module-notify-quotes')).toBeNull();
   });
 });

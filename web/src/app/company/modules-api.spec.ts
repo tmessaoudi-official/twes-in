@@ -43,6 +43,7 @@ describe('ModulesApi', () => {
         permissions: [],
         enabled: false,
         planned: 'later',
+        interested: true,
       },
     ]);
 
@@ -68,8 +69,32 @@ describe('ModulesApi', () => {
         permissions: [],
         enabled: false,
         planned: 'later',
+        interested: true,
       },
     ]);
+  });
+
+  it('asks to be told when a planned module arrives, and says why it was refused', async () => {
+    const asked = api.setInterest('c1', 'quotes', true);
+    const request = http.expectOne('/api/companies/c1/modules/quotes/interest');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ interested: true });
+    request.flush({
+      key: 'quotes',
+      labelKey: 'modules.quotes',
+      dependencies: ['customers'],
+      permissions: [],
+      enabled: false,
+      planned: 'v1',
+      interested: true,
+    });
+    expect((await asked).interested).toBe(true);
+
+    const shipped = api.setInterest('c1', 'customers', true);
+    http
+      .expectOne('/api/companies/c1/modules/customers/interest')
+      .flush({}, { status: 409, statusText: 'Conflict' });
+    await expect(shipped).rejects.toMatchObject({ code: 'already_available' });
   });
 
   it('switches a module, and says why a switch was refused', async () => {

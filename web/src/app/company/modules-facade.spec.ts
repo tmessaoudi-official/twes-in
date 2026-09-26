@@ -16,13 +16,14 @@ const customers: ModuleRow = {
 };
 
 describe('ModulesFacade', () => {
-  const api = { list: vi.fn(), switch: vi.fn() };
+  const api = { list: vi.fn(), switch: vi.fn(), setInterest: vi.fn() };
   const auth = { load: vi.fn(), refresh: vi.fn() };
   let facade: ModulesFacade;
 
   beforeEach(() => {
     api.list.mockReset();
     api.switch.mockReset();
+    api.setInterest.mockReset();
     auth.load.mockReset().mockResolvedValue(null);
     auth.refresh.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
@@ -72,6 +73,32 @@ describe('ModulesFacade', () => {
     expect(auth.refresh).not.toHaveBeenCalled();
     facade.clearError();
     expect(facade.error()).toBeNull();
+  });
+
+  it('keeps the row the API answered for « Me prévenir », and the rest as they were', async () => {
+    const quotes: ModuleRow = {
+      key: 'quotes',
+      labelKey: 'modules.quotes',
+      dependencies: [],
+      permissions: [],
+      enabled: false,
+      planned: 'v1',
+      interested: false,
+    };
+    api.list.mockResolvedValue([customers, quotes]);
+    await facade.load('c1');
+    api.setInterest.mockResolvedValue({ ...quotes, interested: true });
+
+    expect(await facade.setInterest('c1', 'quotes', true)).toBe(true);
+
+    expect(api.setInterest).toHaveBeenCalledWith('c1', 'quotes', true);
+    expect(facade.modules()).toEqual([customers, { ...quotes, interested: true }]);
+    expect(api.list).toHaveBeenCalledTimes(1);
+
+    api.setInterest.mockRejectedValue(new ModulesRefused('already_available'));
+    expect(await facade.setInterest('c1', 'quotes', false)).toBe(false);
+    expect(facade.error()).toBe('already_available');
+    expect(facade.modules()).toEqual([customers, { ...quotes, interested: true }]);
   });
 
   it('says the server could not be reached when the modules cannot be read', async () => {
