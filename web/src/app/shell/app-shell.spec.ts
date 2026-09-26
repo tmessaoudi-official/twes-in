@@ -242,6 +242,7 @@ describe('AppShell', () => {
         // Two addresses to move between: one inside the settings area and one outside it.
         provideRouter([
           { path: 'members', component: BlankPage },
+          { path: 'account', component: BlankPage },
           { path: 'invoices', component: BlankPage },
           { path: 'customers', component: CountingPage },
         ]),
@@ -547,6 +548,33 @@ describe('AppShell', () => {
         id,
       ).not.toBeNull();
     }
+  });
+
+  // 2026-09-26 sidebar review: the folded rail keeps its sections apart, and « Mon compte » says where the person is.
+  it('keeps each section apart by a line once folded, its name still read', async () => {
+    modules.set(['customers', 'inventory']);
+    permissions.set(['customer.read', 'user.read', 'stock.read']);
+    theme.sidebar.set('rail');
+    const { el } = await render();
+    const headings = [...el.querySelectorAll<HTMLElement>('.twes-rail-overline')];
+    expect(headings.length).toBeGreaterThan(1);
+    for (const heading of headings) {
+      expect(heading.classList.contains('sr-only'), heading.textContent ?? '').toBe(false);
+      expect(heading.classList.contains('is-divider')).toBe(true);
+      expect(heading.querySelector('.sr-only')?.textContent?.trim()).not.toBe('');
+    }
+  });
+
+  it('marks the member as where the person is on « Mon compte »', async () => {
+    const { fixture, byTestId } = await render();
+    expect(byTestId('user-menu')?.getAttribute('aria-current')).toBeNull();
+
+    await TestBed.inject(Router).navigateByUrl('/account');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(byTestId('user-menu')?.getAttribute('aria-current')).toBe('page');
+    expect(byTestId('user-menu')?.classList.contains('is-current')).toBe(true);
   });
 
   it('rebuilds the open screen when the company changes, so it never shows the last one’s rows', async () => {

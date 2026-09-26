@@ -62,12 +62,17 @@
            height, so the account menu is never below the fold. -->
       <div class="twes-rail-groups" data-testid="rail-groups">
         @for (group of sections(); track group.section) {
+          <!-- Folded, a section's name becomes a line to see and stays a name to hear. -->
           <h2
             [id]="'nav-section-' + group.section"
             class="twes-rail-overline"
-            [class.sr-only]="rail()"
+            [class.is-divider]="rail()"
           >
-            {{ 'nav.sections.' + group.section | translate }}
+            @if (rail()) {
+              <span class="sr-only">{{ 'nav.sections.' + group.section | translate }}</span>
+            } @else {
+              {{ 'nav.sections.' + group.section | translate }}
+            }
           </h2>
           <mat-nav-list [attr.aria-labelledby]="'nav-section-' + group.section">
             @for (entry of group.entries; track entry.key) {
@@ -164,6 +169,8 @@
             [matTooltipDisabled]="!rail()"
             data-testid="user-menu"
             data-tour="shell-account"
+            [attr.aria-current]="onAccount() ? 'page' : null"
+            [class.is-current]="onAccount()"
           >
             <span class="twes-avatar" aria-hidden="true">{{ initials() }}</span>
             @if (!rail()) {

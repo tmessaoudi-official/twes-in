@@ -428,6 +428,12 @@ body {
 // The rail of the round-6 boards: company, « Créer », search, the two groups, then its foot. A selected row is the
 // page's surface raised off the backdrop, with a 3 px accent bar at its start and the accent on its icon.
 .twes-rail {
+  // Material draws its own pill for the selected row and for hover and focus; left at its full-round default it met the
+  // row's 10 px corners and the accent bar as a crescent (2026-09-26 sidebar review). One shape, and our own selection.
+  --mat-list-active-indicator-shape: 0.625rem;
+  --mat-list-list-item-container-shape: 0.625rem;
+  --mat-list-active-indicator-color: transparent;
+
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -453,6 +459,12 @@ body {
   // The icon lines up with « Créer »'s, and leaves the label Material's 16 px gap minus a quarter.
   .mdc-list-item--with-leading-icon .mdc-list-item__start {
     margin-inline: 0.625rem 0.75rem;
+  }
+
+  // Keyboard focus reads apart from a pointer's hover, which Material paints the same grey (WCAG 2.4.7).
+  .mdc-list-item:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
   }
 
   .mdc-list-item--activated {
@@ -746,6 +758,21 @@ body {
   gap: 0.25rem;
   margin-top: auto;
   padding-top: 1rem;
+}
+
+.twes-rail-overline.is-divider {
+  height: 1px;
+  margin: 0.5rem 0.75rem;
+  padding: 0;
+  background-color: var(--mat-sys-outline-variant);
+}
+
+// On « Mon compte » the member row is the current place, drawn as a selected destination is.
+.twes-rail-member.is-current {
+  background-color: var(--mat-sys-surface);
+  box-shadow:
+    inset 3px 0 0 var(--twes-accent),
+    var(--twes-shadow-1);
 }
 
 .twes-rail-member {

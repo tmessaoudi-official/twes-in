@@ -254,6 +254,8 @@ export class AppShell {
 
   /** Whether the settings area is open, which changes both the menu and the room the page is given. */
   protected readonly inSettings = computed(() => isSettingsUrl(this.url()));
+  /** « Mon compte » is reached from the member's menu, so the member row is where the person is there. */
+  protected readonly onAccount = computed(() => /^\/account(?:[/?#]|$)/.test(this.url()));
 
   /**
    * A medium window always shows the rail; a wide one shows it when the person chose it; a phone the full drawer.
