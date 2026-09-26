@@ -7,6 +7,7 @@ import { Brand } from '../shared/brand/brand';
 import { ActivityBar } from '../shared/feedback/activity-bar';
 import { BrandWordmark } from '../shared/brand/brand-wordmark';
 import { LanguageMenu } from '../shared/i18n/language-menu';
+import { CookieNotice } from '../shared/legal/cookie-notice';
 import { LegalFooter } from '../shared/legal/legal-footer';
 import { SchemeMenu } from '../shared/theme/scheme-menu';
 
@@ -20,6 +21,7 @@ import { SchemeMenu } from '../shared/theme/scheme-menu';
   imports: [
     ActivityBar,
     BrandWordmark,
+    CookieNotice,
     LanguageMenu,
     LegalFooter,
     MatIconModule,

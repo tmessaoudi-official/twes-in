@@ -88,6 +88,17 @@ describe('SignedOutLayout', () => {
     expect(footer?.lastElementChild?.tagName.toLowerCase()).toBe('app-legal-footer');
   });
 
+  it('says what is stored on a first visit, above everything else on the page (row 149)', async () => {
+    const el = await render();
+    const notice = el.querySelector('[data-testid="cookie-notice"]');
+    expect(notice).not.toBeNull();
+    // The first thing a keyboard reaches, and covering nothing: in the flow, before the page.
+    const toolbar = el.querySelector('[data-testid="language-menu"]');
+    expect(
+      notice!.compareDocumentPosition(toolbar!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('keeps the decorative scene away from assistive technology', async () => {
     const el = await render();
 

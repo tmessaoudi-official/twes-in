@@ -19,6 +19,16 @@ test('a slow request shows the bar and says it is taking long, then everything c
   await page.getByTestId('nav-customers').click();
 
   await expect(page.getByTestId('activity-progress')).toBeVisible();
+  // The bar lies over the page's top edge and moves nothing: in the flow it pushed the whole app 4 px down on every
+  // request, and back up when it ended (CI run 36267701194 met the settings list 4 px off, 2026-09-26).
+  expect(
+    await page
+      .getByTestId('activity-progress')
+      .evaluate((bar) => [
+        getComputedStyle(bar).position,
+        document.querySelector('mat-sidenav-container')!.getBoundingClientRect().top,
+      ]),
+  ).toEqual(['fixed', 0]);
   await expect(page.getByTestId('activity-slow')).toBeVisible({ timeout: 12_000 });
   await expect(page.getByTestId('activity-slow')).toHaveAttribute('role', 'status');
   // What the bar shows sits in a landmark like the rest of the page (CI met the bar outside one, 2026-09-17).

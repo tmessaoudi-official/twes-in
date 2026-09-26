@@ -2839,6 +2839,39 @@
     "draft": "Brouillon — à faire valider",
     "drafting": "Le texte de cette page est en cours de rédaction.",
     "unknown": "Cette page n’existe pas.",
-    "home": "Retour à l’accueil"
+    "home": "Retour à l’accueil",
+    "notice": {
+      "title": "Cookies",
+      "text": "Ce service ne dépose qu’un seul cookie, celui de votre session, et garde vos choix d’affichage sur cet appareil. Aucun suivi, aucune publicité, aucun script tiers.",
+      "more": "Les cookies de ce service",
+      "close": "J’ai compris"
+    },
+    "stored": {
+      "title": "Ce que ce service garde sur votre appareil",
+      "intro": "Cette liste suit le code : une vérification automatique refuse tout cookie, toute clé ou tout script qu’elle ne déclare pas.",
+      "name": "Nom",
+      "kind": "Où",
+      "purpose": "À quoi il sert",
+      "lasts": "Durée",
+      "kinds": {
+        "cookie": "Cookie",
+        "local": "Stockage du navigateur",
+        "session": "Stockage de l’onglet"
+      },
+      "durations": {
+        "session": "Jusqu’à la déconnexion ou la fermeture du navigateur",
+        "tab": "Jusqu’à la fermeture de l’onglet",
+        "kept": "Jusqu’à ce que vous l’effaciez"
+      },
+      "purposes": {
+        "session": "Vous garder connecté. Strictement nécessaire.",
+        "display": "Vos choix d’affichage : thème, couleur, disposition des menus.",
+        "camera": "La caméra choisie pour scanner.",
+        "notice": "Que vous avez fermé le bandeau sur les cookies.",
+        "customer_view": "Si la vue client est active dans cet onglet.",
+        "phone": "Le lien d’un téléphone prêté comme scanner."
+      },
+      "third_party": "Aucun script tiers, aucune mesure d’audience, aucune publicité."
+    }
   }
 }

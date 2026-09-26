@@ -3357,6 +3357,77 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   - `/legal/<slug>` opens to anyone, signed in or not, outside the shell like the other public pages, in the
     signed-out layout. Until row 148 each page shows its title, « Brouillon — à faire valider » and one sentence saying
     its text is being written; an unknown slug says the page does not exist, with a way home.
+- [2026-09-26 22:24] AGREED (developer, asked): **a tooltip on every control whose full name is not visible**: icon-only controls
+  (already through `appLabel`) and every label cut with « … », menu entries included, with a gate so none is missed. A
+  tooltip repeating visible text is not added. And **the app is to be fully RGAA-compliant** (accessibility, beyond the
+  WCAG 2.1 AA the e2e scans check today).
+- [2026-09-26 22:24] AGREED (developer, asked): **each company uploads its logo** in Paramètres › Entreprise, printed on its invoices,
+  credit notes and delivery notes and shown in the company switcher. Where the product's own name still shows is to be
+  asked again with a recommendation.
+- [2026-09-26 22:24] AGREED (developer, asked, against their first idea of a fixed footer): **the legal line stays in the page's
+  flow and sits at the window's bottom edge when a page is shorter than the window**; it never covers anything.
+- [2026-09-26 22:24] AGREED (developer, asked): **« À surveiller » carries its live count on its menu entry**, as Notifications
+  does, in the full menu and the folded rail, in a neutral tone. A total per company is to be asked again.
+- [2026-09-26 22:34] AGREED (developer, asked): **the company switcher shows, beside each company a person belongs to, one number:
+  its unread notifications plus its live « À surveiller » alerts**; the menu keeps the two counts apart for the company
+  being worked in.
+- [2026-09-26 22:54] AGREED (developer, asked, confirming Invoice Ninja keeps the company's logo on top and adds its own at the
+  bottom): **a company's documents always carry the company's logo; on the free plan and during the trial a small
+  « Émis avec twes-in » line sits at their foot, and on e-mails and the portal; a paid plan removes it.** Plans become
+  data in `Licensing` (modules, limits, whether the line shows), our own gating as licensing invariant 2 allows. The
+  line reads the installation's configured brand, never a hardcoded name. The twes-in mark otherwise shows where the
+  product speaks: the sign-in pages, a small wordmark at the menu's foot, the legal line.
+- [2026-09-26 22:54] AGREED (developer, asked): **what a free plan « Découverte » includes is decided in a dedicated walkthrough
+  later**, from the proposal: invoices, credit notes, customers and products, 1 member, 1 establishment, 30 documents
+  a month and the « Émis avec » line; paid plans unlock the rest and remove the line.
+- [2026-09-26 22:54] AGREED (developer, asked): **the running build is shown as « v0.1.0 · <short commit> · <build date> »** (the
+  date in the reader's format), baked into each image at build, in the legal line linking to « Code source et
+  licences » and at the expanded menu's foot (the account menu when folded). The API reports its own in `/api/health`;
+  when the two differ after a deployment a bar offers « Nouvelle version disponible — recharger ».
+- [2026-09-26 22:54] AGREED (developer, asked, having pointed at the wheel over the settings gear): **the folded rail must never
+  scroll as a whole.** Reproduced: on a settings page a wheel over the gear slid the rail up by 364 px (900 px window)
+  or 564 px (700 px), because each folded entry's hidden name, an absolutely placed screen-reader span, measured
+  against the whole sidenav. Fix: those spans kept inside the list, the sidenav itself never scrolling, the list's
+  scroll contained, the folded gear and its highlight centred, the settings list's duplicate `nav-settings` test id
+  renamed.
+- [2026-09-26 23:04] AGREED (developer, asked whether an undo, a dry-run or a warning before every action was still possible):
+  **undo first, preview the rest**, against a confirmation on every action (confirmation fatigue: the warning that
+  mattered gets clicked through with the rest). (1) Nothing that can be undone asks a question: it is undone from its
+  toast, and later from the history. (2) What cannot be undone is previewed first, saying exactly what will happen
+  (« FA-2026-0143 sera numérotée, 1 428,000 TND, envoyée à …, ne pourra plus être supprimée »). (3) Every bulk action
+  gets a dry-run preview, as imports have. (4) Deleted customers, products and vendors go to a 30-day « Corbeille ».
+- [2026-09-26 23:04] AGREED (developer, asked): **a « Journal d'activité »** reading the audit log, in Paramètres › Équipe, for a
+  new `audit.read` permission (owner and admin by default): filtered by person, period, record type, action and text;
+  each entry a sentence with its before/after fields and a link to the record; also per person (a member's « Activité »
+  tab, sign-ins included) and per record (« Historique » on invoices, customers, products); CSV export.
+- [2026-09-26 23:04] AGREED (developer, asked): **the activity journal is kept 12 months by default**, a company setting up to 3
+  years; members are told on accepting an invitation and on the Confidentialité page; sign-in addresses are shown to
+  owners and admins only; the fiscal journal (row 103) stays separate and permanent.
+- [2026-09-26 23:04] AGREED (developer, asked): **the order of work**: row 149, the sidebar (153), the legal pages (148), the
+  activity journal (161), undo first and previews (162), then tooltips, version, counts and logo; the plans walkthrough
+  (159) and the RGAA audit (160) when the developer is there to answer.
+- [2026-09-26 23:25] DECIDED (revisit) — row 149, the cookie notice and its guard, taken autonomously under the 2026-09-26 12:11
+  directive:
+  - The declaration is code: `web/src/app/shared/legal/stored-items.ts` lists what is stored (name, where, purpose, how
+    long), and the Cookies page renders it as a table. The operator's text (row 148) surrounds that table and never
+    replaces it, so what the page declares is what the gate checked.
+  - `scripts/gates/stored-items.sh` compares it both ways with the cookies the API sets (framework.yaml's session name,
+    any `Cookie::create` or `new Cookie`, a name it cannot read refused) and the `twes.*` keys of every web file that
+    reaches storage through a `*_STORAGE` token; browser storage outside such a token's factory, `document.cookie`,
+    IndexedDB, the Cache API, `cookieStore` and a service worker are refused outright; the CSP's `script-src` may name
+    no host, and no page may load a script from elsewhere or build one. A discovery floor of 6 catches a gate that
+    stopped finding things. An e2e also checks the running browser after signing in: every cookie and storage key
+    must match the declaration, except the two cookies Symfony's profiler sets in development only
+    (`main_auth_profile_token`, `main_deauth_profile_token`, exempted by exact name).
+  - The notice sits in the page's flow at the top, as GOV.UK places its own, not fixed over the page: it covers
+    nothing, and a keyboard reaches it first. « J'ai compris » closes it for good in that browser
+    (`twes.cookie-notice`, itself declared); a browser refusing storage closes it for the page only. Drawn by the
+    signed-out layout and the shell, so like the legal line it is absent from the scanner phone (`/pair`, a first
+    visit for that phone — worth revisiting), the customer display window and the print sheets.
+  - Found on the way, fixed with it: the activity bar was never out of the flow. Material's `.mdc-linear-progress`
+    (`position: relative; height: 4px`) loads after `styles.scss` and beat `.twes-activity-progress` at equal
+    specificity, so every request pushed the whole app 4 px down and back; CI run 36267701194 (b7a64532) met the
+    settings list 4 px off. `feedback.spec.ts` now asserts the bar is fixed and the page unmoved while it shows.
 
 ## 8. Status
 
@@ -3514,9 +3585,19 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 150 | The complete product with « Bientôt » (§ 7 2026-09-26 10:08): 23 planned modules in the API catalogue, « Me prévenir » and the operator's demand view, menu, « Créer », Ctrl K, screen actions beside the real ones, settings cards | L | done | 225603ca | slice 1 (the catalogue and the modules page, `ddc1045a`) and slice 2 (« Me prévenir », the operator's demand, the arrival notice, `f0488509`) and slices 3–4 (the menu from the catalogue, « Créer » and Ctrl K, `2ab0eafd`) and slice 5 (screen actions, settings cards, `225603ca`) landed; CI green on all five |
 | 151 | Paramètres list fixed and foldable (§ 7 2026-09-26 11:17): pinned head and foot, 80 px rail from its foot, key ], presentation.settings-list | M | done | e0e900da | fixed beside the page from 1024 px, folds to the 80 px rail from its foot or with ] |
 | 152 | Menus by foldable sections (§ 7 2026-09-26 12:05): each section folds from its heading, remembered, the current one always open; a fade at an edge with more behind; the current entry kept in view — main menu and Paramètres | M | done | feace55f | the main menu and Paramètres fold by section, with the fade and the current entry in view (on Paramètres since row 151) |
-| 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | done | - | the line closes every page, signed out, in the shell and beside the settings list; /legal/<slug> placeholders until row 148 |
+| 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | done | b7a64532 | the line closes every page, signed out, in the shell and beside the settings list; /legal/<slug> placeholders until row 148 |
 | 148 | Legal pages (§ 7 2026-09-26 08:52): nine pages the platform operator edits per language and dates, fr/en/ar drafts marked « Brouillon — à faire valider », Arabic in RTL, security.txt | L | todo | - | |
-| 149 | Cookie banner and guard (§ 7 2026-09-26 08:52): an informational first-visit banner, and a CI gate refusing an undeclared cookie, storage key or third-party script | M | todo | - | |
+| 149 | Cookie banner and guard (§ 7 2026-09-26 08:52): an informational first-visit banner, and a CI gate refusing an undeclared cookie, storage key or third-party script | M | done | - | the notice in the flow on a first visit, the Cookies page's table from stored-items.ts, stored-items.sh both ways, an e2e checking the live browser |
+| 153 | Sidebar folded rail (§ 7 2026-09-26 22:54): the rail never scrolls as a whole, the list's scroll contained, the folded gear centred, one nav-settings test id | S | todo | - | |
+| 154 | Tooltips on hidden names (§ 7 2026-09-26 22:24): every icon-only control and every label cut with « … », menu entries included, a gate for both | M | todo | - | |
+| 155 | Legal line at the window's bottom on short pages (§ 7 2026-09-26 22:24) | S | todo | - | |
+| 156 | Build version (§ 7 2026-09-26 22:54): « v0.1.0 · commit · date » in the legal line and the menu foot, the API's in /api/health, a reload offer when they differ | M | todo | - | |
+| 157 | Counts (§ 7 2026-09-26 22:24 and 22:34): « À surveiller » live count on its menu entry; the switcher's total per company | M | todo | - | |
+| 158 | Company logo (§ 7 2026-09-26 22:24): uploaded in Paramètres › Entreprise, printed on invoices, credit notes and delivery notes, shown in the switcher | M | todo | - | |
+| 159 | Plans (§ 7 2026-09-26 22:54): the walkthrough of what « Découverte » and the paid plans include, then plans as data in Licensing and the « Émis avec » line | L | todo | - | |
+| 160 | RGAA (§ 7 2026-09-26 22:24): the app fully RGAA-compliant; how it is audited to be asked | L | todo | - | |
+| 161 | Activity journal (§ 7 2026-09-26 23:04): « Journal d'activité » over the audit log, per person and per record, audit.read, CSV, 12 months by default, members told | L | todo | - | |
+| 162 | Undo first, preview the rest (§ 7 2026-09-26 23:04): undo for the reversible, a precise preview before the irreversible, dry-run on bulk actions, a 30-day Corbeille | L | todo | - | |
 <!-- /progress-block -->
 
 ### Delivered

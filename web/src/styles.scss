@@ -760,6 +760,25 @@ body {
 }
 
 // The copyright and legal-links line (docs/SPEC.md § 7, 2026-09-26 08:52, row 147): slim, quiet, under the content.
+.twes-legal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th,
+  td {
+    padding: 0.5rem 0.75rem;
+    border-block-end: 1px solid var(--mat-sys-outline-variant);
+    text-align: start;
+    vertical-align: top;
+  }
+
+  th {
+    color: var(--mat-sys-on-surface-variant);
+    font-weight: 600;
+  }
+}
+
 .twes-legal-line {
   display: flex;
   flex-wrap: wrap;
@@ -1178,12 +1197,20 @@ body {
 }
 
 // The pages shown before the shell (auth/signed-out-layout.html): the brand over one card, on a softly tinted ground.
-.twes-auth {
-  position: relative;
+/* The layout, not its page, holds the window's height: a first visit's cookie notice above it then takes its share of
+   the height instead of pushing the page's foot below the window (row 149). */
+app-signed-out-layout {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+.twes-auth {
+  position: relative;
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
   overflow: hidden;
   background:
     radial-gradient(
@@ -1636,7 +1663,10 @@ body {
 }
 
 /* Row 48: what the application waits for (shared/feedback/activity-bar) and what it did (toasts). */
-.twes-activity-progress {
+// Qualified by Material's own class: its component styles load after this file with `.mdc-linear-progress { position:
+// relative; height: 4px }`, which at equal specificity won, put the bar in the flow and pushed the whole app 4 px down
+// on every request (2026-09-26, feedback.spec.ts pins it).
+.mat-mdc-progress-bar.twes-activity-progress {
   position: fixed;
   inset-block-start: 0;
   inset-inline: 0;

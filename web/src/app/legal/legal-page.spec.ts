@@ -16,6 +16,7 @@ import { LanguageFacade } from '../shared/i18n/language-facade';
 import { provideQuietFeedback } from '../shared/testing/feedback';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { LEGAL_PAGES } from '../shared/legal/legal-pages';
+import { STORED_ITEMS } from '../shared/legal/stored-items';
 import { LegalPage } from './legal-page';
 
 class StaticLoader implements TranslateLoader {
@@ -57,6 +58,39 @@ describe('LegalPage', () => {
     expect(q('legal-draft')?.textContent?.trim()).toBe('Brouillon — à faire valider');
     // The line of legal links closes the page, as on every other.
     expect(q('legal-footer')).not.toBeNull();
+  });
+
+  it('lists on the Cookies page everything stored on the device, from the one declaration the gate checks (row 149)', async () => {
+    await open('cookies');
+    const rows = [
+      ...fixture.nativeElement.querySelectorAll('[data-testid="stored-row"]'),
+    ] as HTMLElement[];
+    expect(rows.map((row) => row.querySelector('code')?.textContent?.trim())).toEqual(
+      STORED_ITEMS.map((item) => item.name),
+    );
+    expect(rows[0].textContent).toContain('Cookie');
+    expect(rows[0].textContent).toContain('Strictement nécessaire');
+    expect(q('stored-third-party')?.textContent).toContain('Aucun script tiers');
+  });
+
+  it('keeps that list to the Cookies page', async () => {
+    await open('mentions');
+    expect(q('stored-items')).toBeNull();
+  });
+
+  it('names every stored item, where it is kept and how long, in both languages', () => {
+    for (const json of [fr, en]) {
+      const stored = (
+        json as unknown as {
+          legal: { stored: Record<'purposes' | 'kinds' | 'durations', Record<string, string>> };
+        }
+      ).legal.stored;
+      for (const item of STORED_ITEMS) {
+        expect(stored.purposes[item.id], item.id).toBeTruthy();
+        expect(stored.kinds[item.kind], item.kind).toBeTruthy();
+        expect(stored.durations[item.lasts], item.lasts).toBeTruthy();
+      }
+    }
   });
 
   it('has every page title in both languages', () => {

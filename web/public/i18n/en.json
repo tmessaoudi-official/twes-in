@@ -2839,6 +2839,39 @@
     "draft": "Draft — to be validated",
     "drafting": "The text of this page is being written.",
     "unknown": "This page does not exist.",
-    "home": "Back to the start"
+    "home": "Back to the start",
+    "notice": {
+      "title": "Cookies",
+      "text": "This service sets a single cookie, for your session, and keeps your display choices on this device. No tracking, no advertising, no third-party script.",
+      "more": "This service’s cookies",
+      "close": "Got it"
+    },
+    "stored": {
+      "title": "What this service keeps on your device",
+      "intro": "This list follows the code: an automatic check refuses any cookie, key or script it does not declare.",
+      "name": "Name",
+      "kind": "Where",
+      "purpose": "What it is for",
+      "lasts": "How long",
+      "kinds": {
+        "cookie": "Cookie",
+        "local": "Browser storage",
+        "session": "Tab storage"
+      },
+      "durations": {
+        "session": "Until you sign out or close the browser",
+        "tab": "Until the tab is closed",
+        "kept": "Until you clear it"
+      },
+      "purposes": {
+        "session": "Keeps you signed in. Strictly necessary.",
+        "display": "Your display choices: scheme, colour, how the menus are laid out.",
+        "camera": "The camera chosen for scanning.",
+        "notice": "That you closed the cookie notice.",
+        "customer_view": "Whether the customer view is on in this tab.",
+        "phone": "The link of a phone lent as a scanner."
+      },
+      "third_party": "No third-party script, no audience measurement, no advertising."
+    }
   }
 }

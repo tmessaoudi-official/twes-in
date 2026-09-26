@@ -725,6 +725,15 @@ describe('AppShell', () => {
     expect(el.querySelector('main app-legal-footer')).toBeNull();
   });
 
+  it('says what is stored on a first visit, above the page and never over it (row 149)', async () => {
+    const { el } = await render();
+    const notice = el.querySelector('[data-testid="cookie-notice"]');
+    expect(notice).not.toBeNull();
+    expect(notice?.closest('main')).toBeNull();
+    const main = el.querySelector('main');
+    expect(notice!.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('lets the menu be folded inside settings, remembered apart from the rest', async () => {
     theme.settingsSidebar.set('expanded');
     const router = TestBed.inject(Router);

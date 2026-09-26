@@ -16,6 +16,9 @@ const OPERATOR_TOTP_SECRET = process.env['E2E_TOTP_SECRET'] ?? 'JBSWY3DPEHPK3PXP
 /** Where the setup project leaves the operator's session, relative to web/ (gitignored). */
 export const OPERATOR_SESSION = 'playwright/.auth/operator.json';
 
+/** `COOKIE_NOTICE_KEY` in web/src/app/shared/legal/cookie-notice.ts: e2e imports nothing from the app. */
+export const NOTICE_CLOSED = 'twes.cookie-notice';
+
 type SavedCookie = Awaited<ReturnType<BrowserContext['storageState']>>['cookies'][number];
 
 /** The operator, signed in on the session the setup project opened, on whichever host this page talks to. */
@@ -27,6 +30,8 @@ export async function signIn(page: Page): Promise<void> {
   // passkeys.spec.ts talks to the stack as localhost, and a cookie belongs to the host it was set by.
   const host = new URL(page.url()).hostname;
   await page.context().addCookies(cookies.map((cookie) => ({ ...cookie, domain: host })));
+  // A scenario is not a first visit: the cookie notice (row 149) was closed long ago, in every context it opens.
+  await page.evaluate((key) => localStorage.setItem(key, 'closed'), NOTICE_CLOSED);
   await page.goto('/');
   await expect(page).toHaveURL(/\/$/);
 }
