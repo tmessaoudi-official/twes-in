@@ -356,14 +356,7 @@ export class DeliveryNotePage {
     () => this.current()?.status === 'validated' && this.mayWrite(),
   );
   /** A validated or delivered note becomes an invoice, while the invoices module is on for a writer of invoices. */
-  protected readonly canInvoice = computed(() => {
-    const status = this.current()?.status;
-    return (
-      (status === 'validated' || status === 'delivered') &&
-      this.auth.hasModule('invoices') &&
-      this.auth.hasPermission('invoice.write')
-    );
-  });
+  protected readonly canInvoice = computed(() => this.invoiceable(this.current()?.status));
   protected readonly canCancel = computed(() => {
     const status = this.current()?.status;
     return (status === 'draft' || status === 'validated') && this.mayValidate();
@@ -528,6 +521,14 @@ export class DeliveryNotePage {
     }
   }
 
+  private invoiceable(status: string | undefined): boolean {
+    return (
+      (status === 'validated' || status === 'delivered') &&
+      this.auth.hasModule('invoices') &&
+      this.auth.hasPermission('invoice.write')
+    );
+  }
+
   protected async validate(): Promise<void> {
     const companyId = this.company()?.id;
     const id = this.id();
@@ -535,9 +536,12 @@ export class DeliveryNotePage {
     if (!companyId || id === null || input === null) return;
     const kind = kindAmong(this.actions(), 'validate');
     const validated = await this.facade.reviseAndValidate(companyId, id, input);
-    if (validated !== null && kind !== undefined) {
-      this.feedback.effect('delivery_notes.validated', {}, kind);
-    }
+    if (validated === null || kind === undefined) return;
+    // Its next step, to whoever may take it (docs/SPEC.md § 7, 2026-09-26, row 139).
+    const next = this.invoiceable(validated.status)
+      ? { key: 'delivery_notes.suggest.invoice', run: () => void this.invoice() }
+      : undefined;
+    this.feedback.effect('delivery_notes.validated', {}, kind, next);
   }
 
   /** Asked in a dialog, so the bar carries actions and not a date field (design review finding 3). */

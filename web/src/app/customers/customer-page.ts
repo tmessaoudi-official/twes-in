@@ -263,7 +263,18 @@ export class CustomerPage {
     if (id === null) {
       const created = await this.facade.createCustomer(companyId, input);
       if (created !== null) {
-        this.feedback.success('customers.saved');
+        // Its next step, to whoever may take it (docs/SPEC.md § 7, 2026-09-26, row 139).
+        const next =
+          this.auth.hasModule('invoices') && this.auth.hasPermission('invoice.write')
+            ? {
+                key: 'customers.suggest.invoice',
+                run: () =>
+                  void this.router.navigate(['/invoices/new'], {
+                    queryParams: { billTo: created.id },
+                  }),
+              }
+            : undefined;
+        this.feedback.success('customers.saved', {}, next);
         // It exists now: going to it is not leaving unsaved work, though the form still holds what was
         // typed and the record holds what the API answered (row 45's leave guard, 2026-09-20).
         this.unsaved.savedAndLeaving();

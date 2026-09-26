@@ -3008,6 +3008,18 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   Fixed with it: the five e2e checks that the page does not scroll sideways read only the document, which never
   overflows now. `e2e/overflow.ts` measures the document and the panel. Proven by a sabotage: with a 3000 px element
   in the page, the old check said the page fits, and the new one reports 2008 px at 1280 and 2626 px at 390.
+- [2026-09-26 01:55] DECIDED (revisit), row 139's second half: **a contextual suggestion is the toast's one button**,
+  offering the next step on what was just done, to a member who may take it, while its module is on. There is no
+  panel, no counter and nothing to dismiss: it goes with the toast, which stays eight seconds instead of four when it
+  carries one. There are three:
+  - a customer just created offers « Facturer ce client ». It opens `/invoices/new?billTo=<id>`, which chooses that
+    customer as if picked, then drops the parameter from the address.
+  - an issued invoice with money owed offers « Enregistrer un paiement », which opens the payment dialog.
+  - a validated delivery note offers « Facturer ce bon ».
+  Each is decided on the document the API answered, by the same rule as the screen's own button (`owes`,
+  `invoiceable`), so the two cannot disagree. `Feedback.effect` takes the action `success` already took. Left out on
+  purpose: a product just created (its next step is not one thing), and anything on an edit. Revisit when a real
+  first-run session shows where people stall.
 
 ## 8. Status
 

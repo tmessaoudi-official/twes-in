@@ -34,11 +34,19 @@ export class MaterialFeedback extends Feedback {
     });
   }
 
-  effect(key: string, params: Record<string, unknown>, kind: ActionKind): void {
+  effect(
+    key: string,
+    params: Record<string, unknown>,
+    kind: ActionKind,
+    action?: FeedbackAction,
+  ): void {
     this.snackBar.openFromComponent<Toast, ToastData>(Toast, {
-      data: { kind: 'success', key, params, effect: kind },
+      data:
+        action === undefined
+          ? { kind: 'success', key, params, effect: kind }
+          : { kind: 'success', key, params, effect: kind, action },
       politeness: 'polite',
-      duration: SUCCESS_DURATION_MS,
+      duration: action === undefined ? SUCCESS_DURATION_MS : ACTION_DURATION_MS,
       verticalPosition: 'top',
       horizontalPosition: 'center',
       panelClass: ['twes-toast-panel', 'twes-toast-success'],

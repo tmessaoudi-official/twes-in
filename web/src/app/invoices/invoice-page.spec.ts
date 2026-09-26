@@ -35,7 +35,12 @@ import type {
   ProductOption,
 } from './invoices-types';
 import type { PickAsked } from '../shared/form/pick-api';
-import { effectToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import {
+  effectToasts,
+  offeredNext,
+  provideQuietFeedback,
+  successToasts,
+} from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 
@@ -410,6 +415,25 @@ describe('InvoicePage', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-23: a carton scanned into a line enters the pieces it holds.
+  // docs/SPEC.md § 7, 2026-09-26, row 139: « Facturer ce client » from a customer just created.
+  it('drafts an invoice for the customer its address names, then forgets the address', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture = TestBed.createComponent(InvoicePage);
+    fixture.componentRef.setInput('billTo', 'k2');
+    await settle();
+    await vi.waitFor(() => expect(checked('document-tax-TIMBRE')).toBe(true));
+    expect((q('invoice-customer') as HTMLInputElement).value).toContain('Méditerranée');
+    expect(navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({ queryParams: { billTo: null } }),
+    );
+
+    await pick('line-0-product', 'ART-1 · Conception');
+    q('document-action-save')!.click();
+    await settle();
+    expect(facade.create).toHaveBeenCalledWith('c1', expect.objectContaining({ customerId: 'k2' }));
+  });
+
   it('puts on a line the pieces a scanned pack holds, and leaves a unit scan to the quantity typed', async () => {
     await open(undefined);
     const field = q('line-0-product') as HTMLInputElement;
@@ -550,6 +574,37 @@ describe('InvoicePage', () => {
     );
     // What was confirmed as corrigeable is said so once done (docs/SPEC.md § 7, 2026-09-25 22:17).
     await vi.waitFor(() => expect(effectToasts()).toEqual(['invoices.issued:corrigeable']));
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26, row 139: what was just done offers its next step, to whoever may take it.
+  it('offers to record a payment once an invoice is issued with money owed, and opens it', async () => {
+    facade.reviseAndIssue.mockImplementation(() => {
+      invoice.set(issued);
+      return Promise.resolve(issued);
+    });
+    invoice.set(draft);
+    await open('i1');
+    q('document-action-issue')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+    await vi.waitFor(() => expect(offeredNext()?.key).toBe('invoices.suggest.record_payment'));
+
+    offeredNext()!.run();
+    await settle();
+    await vi.waitFor(() => expect(over('payment-dialog-title')).not.toBeNull());
+  });
+
+  it('offers no payment to a member who may not record one', async () => {
+    granted.delete('payment.write');
+    invoice.set(draft);
+    await open('i1');
+    q('document-action-issue')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+    await vi.waitFor(() => expect(effectToasts()).toEqual(['invoices.issued:corrigeable']));
+    expect(offeredNext()).toBeNull();
   });
 
   it('takes the header and lines another person saved into a quiet draft', async () => {

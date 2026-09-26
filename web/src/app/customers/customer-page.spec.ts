@@ -37,6 +37,7 @@ import type {
 import { Feedback } from '../shared/feedback/feedback';
 import { LiveChanges, type LiveChange } from '../shared/realtime/live-changes';
 import {
+  offeredNext,
   provideQuietFeedback,
   type RecordedFeedback,
   successToasts,
@@ -119,9 +120,11 @@ describe('CustomerPage', () => {
     clearError: vi.fn(),
     customFields: customFields.asReadonly(),
   };
+  const modules = new Set<string>(['customers', 'invoices']);
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
+    hasModule: (module: string) => modules.has(module),
   };
   const partySettings = {
     rows: signal<readonly SettingRow[]>([]).asReadonly(),
@@ -214,6 +217,8 @@ describe('CustomerPage', () => {
     facade.reviseContact.mockReset().mockResolvedValue(true);
     facade.removeContact.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    modules.clear();
+    ['customers', 'invoices'].forEach((each) => modules.add(each));
     partySettings.load.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       imports: [CustomerPage],
@@ -291,6 +296,47 @@ describe('CustomerPage', () => {
     await new Promise((resolve) => {
       TestBed.inject(UnsavedChanges).confirmLeave().subscribe(resolve);
     }).then((allowed) => expect(allowed).toBe(true));
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26, row 139: what was just done offers its next step, to whoever may take it.
+  it('offers to invoice a customer just created, at a new invoice naming them', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await open(undefined);
+    type('field-number', 'CLI-0009');
+    type('field-name', 'Carthage Conseil');
+    type('field-identifier__matricule_fiscal', '1234567A/B/M/000');
+    q('record-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect(offeredNext()?.key).toBe('customers.suggest.invoice'));
+
+    offeredNext()!.run();
+    expect(navigate).toHaveBeenLastCalledWith(['/invoices/new'], {
+      queryParams: { billTo: 'k9' },
+    });
+  });
+
+  it('offers no invoice when the invoices module is off or invoicing is not allowed', async () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    modules.delete('invoices');
+    await open(undefined);
+    type('field-number', 'CLI-0009');
+    type('field-name', 'Carthage Conseil');
+    type('field-identifier__matricule_fiscal', '1234567A/B/M/000');
+    q('record-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect(successToasts()).toContain('customers.saved'));
+    expect(offeredNext()).toBeNull();
+
+    modules.add('invoices');
+    auth.hasPermission.mockImplementation((permission: string) => permission !== 'invoice.write');
+    await open(undefined);
+    type('field-number', 'CLI-0010');
+    type('field-name', 'Tunis Conseil');
+    type('field-identifier__matricule_fiscal', '1234567A/B/M/000');
+    q('record-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect(successToasts()).toHaveLength(2));
+    expect(offeredNext()).toBeNull();
   });
 
   it("sends what the company's custom fields were filled in with", async () => {

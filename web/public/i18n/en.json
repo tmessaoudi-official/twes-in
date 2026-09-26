@@ -979,6 +979,9 @@
         "not_found": "Not found.",
         "network": "The server could not be reached."
       }
+    },
+    "suggest": {
+      "invoice": "Invoice this customer"
     }
   },
   "invoices": {
@@ -1180,7 +1183,10 @@
     },
     "issued": "The invoice was issued.",
     "credit_note_issued": "The credit note was issued.",
-    "cancelled": "The document was cancelled."
+    "cancelled": "The document was cancelled.",
+    "suggest": {
+      "record_payment": "Record a payment"
+    }
   },
   "delivery_notes": {
     "title": "Delivery notes",
@@ -1297,7 +1303,10 @@
       "invalid": "The note was refused. Check the customer, the lines and the dates."
     },
     "validated": "The note was validated.",
-    "cancelled": "The note was cancelled."
+    "cancelled": "The note was cancelled.",
+    "suggest": {
+      "invoice": "Invoice this note"
+    }
   },
   "products": {
     "tabs": {

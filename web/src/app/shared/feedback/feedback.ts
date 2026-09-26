@@ -16,9 +16,15 @@ export abstract class Feedback {
 
   /**
    * A consequential action was done: said like a success, with the word its confirmation used — Corrigeable,
-   * Définitif — so what can be taken back reads the same before and after (docs/SPEC.md § 7, 2026-09-25 22:17).
+   * Définitif — so what can be taken back reads the same before and after (docs/SPEC.md § 7, 2026-09-25 22:17). An
+   * `action` offers the next step on what was just done (docs/SPEC.md § 7, 2026-09-26, row 139).
    */
-  abstract effect(key: string, params: Record<string, unknown>, kind: ActionKind): void;
+  abstract effect(
+    key: string,
+    params: Record<string, unknown>,
+    kind: ActionKind,
+    action?: FeedbackAction,
+  ): void;
 
   /**
    * Something another person or tab did to what is on this screen (docs/SPEC.md § 7, 2026-09-17): announced politely

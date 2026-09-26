@@ -117,3 +117,31 @@ test("a customer in a group inherits the group's payment terms and gets a contac
     await retire(page, number, groupName);
   }
 });
+
+// docs/SPEC.md § 7, 2026-09-26, row 139: a customer just created offers its next step, a new invoice naming them.
+test('« Facturer ce client » from a customer just created opens a new invoice for them', async ({
+  page,
+}) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const number = `E2E-${run}`;
+  const name = `Tunis Conseil ${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  try {
+    await page.goto('/customers/new');
+    await page.getByTestId('field-number').fill(number);
+    await page.getByTestId('field-name').fill(name);
+    await page.getByTestId('field-identifier__matricule_fiscal').fill('1234567A/B/M/000');
+    await page.getByTestId('record-save').click();
+    await expect(page).toHaveURL(/\/customers\/[0-9a-f-]{36}$/);
+
+    const next = toast(page).getByTestId('toast-action');
+    await expect(next).toHaveText('Facturer ce client');
+    await next.click();
+    // The address names the customer once, then forgets it: a reload is an ordinary new invoice.
+    await expect(page).toHaveURL(/\/invoices\/new$/);
+    await expect(page.getByTestId('invoice-customer')).toHaveValue(new RegExp(name));
+  } finally {
+    await retire(page, number, `no group ${run}`);
+  }
+});

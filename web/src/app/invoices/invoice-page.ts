@@ -55,6 +55,7 @@ import {
   INVOICE_STATUS_STAGES,
   type CustomerOption,
   type InvoiceInput,
+  type InvoiceRow,
   type Payment,
 } from './invoices-types';
 import { Feedback } from '../shared/feedback/feedback';
@@ -115,6 +116,11 @@ export class InvoicePage {
    * on the first line by the same rule as any scan — a pack enters its count (docs/SPEC.md § 7, 2026-09-23, slice 2).
    */
   readonly scan = input<string | undefined>(undefined);
+  /**
+   * `?billTo=` on a new document: the customer « Facturer ce client » names, chosen once as if picked, then
+   * forgotten by the address (docs/SPEC.md § 7, 2026-09-26, row 139).
+   */
+  readonly billTo = input<string | undefined>(undefined);
 
   protected readonly id = computed(() => this.invoiceId() ?? null);
   protected readonly options = this.facade.options;
@@ -439,16 +445,7 @@ export class InvoicePage {
   protected readonly canDuplicate = computed(
     () => this.mayWrite() && this.current() !== null && this.current() !== undefined,
   );
-  protected readonly canRecordPayment = computed(() => {
-    const current = this.current();
-    const status = current?.status;
-    return (
-      !this.isCreditNote() &&
-      (status === 'issued' || status === 'partially_paid') &&
-      this.mayPay() &&
-      !this.isZero(current?.amountDue ?? '0')
-    );
-  });
+  protected readonly canRecordPayment = computed(() => this.owes(this.current()));
 
   /**
    * A scan on a draft puts its product on the lines as a till does (docs/SPEC.md § 7, 2026-09-23 09:30): the same
@@ -548,6 +545,25 @@ export class InvoicePage {
         });
       });
     });
+    // Waits for the new document and its options only: lines drawn again before the address forgets the customer
+    // must not choose it a second time over another pick. The lines read the customer when they are drawn.
+    effect(() => {
+      const customerId = this.billTo();
+      const companyId = this.company()?.id;
+      const ready = this.id() === null && this.current() === null && this.options() !== null;
+      if (customerId === undefined || !companyId || !ready) return;
+      untracked(async () => {
+        void this.router.navigate([], {
+          queryParams: { billTo: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+        const [found] = await this.facade.pickCustomers(companyId, { ids: [customerId] });
+        if (found === undefined) return;
+        this.knownCustomers.set(found.id, found);
+        this.chooseCustomer({ id: found.id, code: found.number, name: found.name });
+      });
+    });
     effect(() => {
       const companyId = this.company()?.id;
       const id = this.id();
@@ -611,6 +627,17 @@ export class InvoicePage {
   }
 
   /** An amount the API wrote as zero at any scale, "0" or "0.000". */
+  /** Whether a payment can be recorded against this document, by this member: an open invoice with money owed. */
+  private owes(document: InvoiceRow | null | undefined): boolean {
+    const status = document?.status;
+    return (
+      document?.type !== 'credit_note' &&
+      (status === 'issued' || status === 'partially_paid') &&
+      this.mayPay() &&
+      !this.isZero(document?.amountDue ?? '0')
+    );
+  }
+
   protected isZero(amount: string): boolean {
     return /^-?[0.]+$/.test(amount);
   }
@@ -655,7 +682,12 @@ export class InvoicePage {
     const kind = kindAmong(this.actions(), 'issue');
     const key = this.isCreditNote() ? 'invoices.credit_note_issued' : 'invoices.issued';
     const issued = await this.facade.reviseAndIssue(companyId, id, input);
-    if (issued !== null && kind !== undefined) this.feedback.effect(key, {}, kind);
+    if (issued === null || kind === undefined) return;
+    // Its next step, to whoever may take it (docs/SPEC.md § 7, 2026-09-26, row 139).
+    const next = this.owes(issued)
+      ? { key: 'invoices.suggest.record_payment', run: () => void this.openPayment() }
+      : undefined;
+    this.feedback.effect(key, {}, kind, next);
   }
 
   protected async cancel(): Promise<void> {

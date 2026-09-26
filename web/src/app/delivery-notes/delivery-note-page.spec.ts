@@ -34,7 +34,12 @@ import type {
   ProductOption,
 } from './delivery-notes-types';
 import type { PickAsked } from '../shared/form/pick-api';
-import { effectToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import {
+  effectToasts,
+  offeredNext,
+  provideQuietFeedback,
+  successToasts,
+} from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 
@@ -595,6 +600,37 @@ describe('DeliveryNotePage', () => {
     await pick('delivery-note-customer', 'CLI-2 · Export SA');
 
     expect(q('line-0-tax-TVA19')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26, row 139: what was just done offers its next step, to whoever may take it.
+  it('offers to invoice a note once it is validated, and invoices it', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    note.set(draft);
+    await open('n1');
+    q('document-action-validate')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+    await vi.waitFor(() => expect(offeredNext()?.key).toBe('delivery_notes.suggest.invoice'));
+
+    offeredNext()!.run();
+    await settle();
+    expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1');
+    expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']);
+  });
+
+  it('offers no invoice after validating without the invoices module', async () => {
+    modules.delete('invoices');
+    note.set(draft);
+    await open('n1');
+    q('document-action-validate')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+    await vi.waitFor(() =>
+      expect(effectToasts()).toEqual(['delivery_notes.validated:corrigeable']),
+    );
+    expect(offeredNext()).toBeNull();
   });
 
   it('offers no invoice for a draft, an invoiced note, without the invoices module or the permission', async () => {

@@ -20,8 +20,19 @@ export class RecordedFeedback extends Feedback {
     this.said.push({ kind: 'success', key, params, ...(action === undefined ? {} : { action }) });
   }
 
-  effect(key: string, params: Record<string, unknown>, kind: ActionKind): void {
-    this.said.push({ kind: 'success', key, params, effect: kind });
+  effect(
+    key: string,
+    params: Record<string, unknown>,
+    kind: ActionKind,
+    action?: FeedbackAction,
+  ): void {
+    this.said.push({
+      kind: 'success',
+      key,
+      params,
+      effect: kind,
+      ...(action === undefined ? {} : { action }),
+    });
   }
 
   notice(key: string, params?: Record<string, unknown>): void {
@@ -71,4 +82,9 @@ export function effectToasts(): string[] {
   return (TestBed.inject(Feedback) as RecordedFeedback).said
     .filter((toast) => toast.effect !== undefined)
     .map((toast) => `${toast.key}:${toast.effect}`);
+}
+
+/** The next step the last toast offered, or null (needs `provideQuietFeedback()`). */
+export function offeredNext(): FeedbackAction | null {
+  return (TestBed.inject(Feedback) as RecordedFeedback).said.at(-1)?.action ?? null;
 }

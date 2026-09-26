@@ -979,6 +979,9 @@
         "not_found": "Introuvable.",
         "network": "Le serveur est injoignable."
       }
+    },
+    "suggest": {
+      "invoice": "Facturer ce client"
     }
   },
   "invoices": {
@@ -1180,7 +1183,10 @@
     },
     "issued": "La facture a été émise.",
     "credit_note_issued": "L'avoir a été émis.",
-    "cancelled": "Le document a été annulé."
+    "cancelled": "Le document a été annulé.",
+    "suggest": {
+      "record_payment": "Enregistrer un paiement"
+    }
   },
   "delivery_notes": {
     "title": "Bons de livraison",
@@ -1297,7 +1303,10 @@
       "invalid": "Le bon a été refusé. Vérifiez le client, les lignes et les dates."
     },
     "validated": "Le bon a été validé.",
-    "cancelled": "Le bon a été annulé."
+    "cancelled": "Le bon a été annulé.",
+    "suggest": {
+      "invoice": "Facturer ce bon"
+    }
   },
   "products": {
     "tabs": {

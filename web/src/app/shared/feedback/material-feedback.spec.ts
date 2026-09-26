@@ -108,6 +108,22 @@ describe('MaterialFeedback', () => {
     });
   });
 
+  it('offers what was just done its next step, and stays long enough to reach it', () => {
+    const open = vi.spyOn(TestBed.inject(MatSnackBar), 'openFromComponent');
+    const next = { key: 'invoices.suggest.record_payment', run: vi.fn() };
+    TestBed.inject(MaterialFeedback).effect('issued', {}, 'corrigeable', next);
+
+    const config = open.mock.calls[0]?.[1];
+    expect(config?.duration).toBe(ACTION_DURATION_MS);
+    expect(config?.data).toEqual({
+      kind: 'success',
+      key: 'issued',
+      params: {},
+      effect: 'corrigeable',
+      action: next,
+    });
+  });
+
   it('draws the kind after the message, with its icon', async () => {
     TestBed.inject(MaterialFeedback).effect('issued', {}, 'definitif');
     await vi.waitFor(() =>
