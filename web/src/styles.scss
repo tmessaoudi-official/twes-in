@@ -491,6 +491,22 @@ body {
       justify-content: center;
     }
 
+    // Every folded icon on the rail's centre line (row 153). An entry with no short label under it (the settings gear at
+    // the foot) kept Material's leading-icon margins, its asymmetric padding and a content box growing to fill the row
+    // around its screen-reader name, which pushed its icon 14 px off the others.
+    .mdc-list-item__start {
+      margin-inline: 0;
+    }
+
+    .mdc-list-item:not(:has(.twes-rail-short)) {
+      // Material pads a leading-icon row 0 at its start and 16 px at its end.
+      padding-inline: 0;
+
+      .mdc-list-item__content {
+        flex: 0 0 0;
+      }
+    }
+
     // A destination keeps a short label under its icon (docs/SPEC.md § 8 row 123, the 80 px rail at 1024 px).
     .mdc-list-item:has(.twes-rail-short) {
       flex-direction: column;
@@ -745,13 +761,18 @@ body {
 
 // The destinations between the rail's head and its foot, and only they, scroll when the window is shorter than the
 // rail: the foot keeps the account menu and the fold toggle on screen.
+// The list is its entries' containing block: folded, each entry's name is an absolutely placed screen-reader span, and
+// measured against the drawer those spans made it 364-564 px taller than the window, so a wheel over the gear slid the
+// whole rail up (row 153). Its scroll is contained, so reaching its end moves nothing else.
 .twes-rail-groups {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   gap: 0.25rem;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
 }
 

@@ -129,7 +129,8 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
     permission: 'subscription.read',
   },
   {
-    key: 'settings',
+    // Not `settings`: its test id would be `nav-settings`, which the main menu's gear already carries (row 153).
+    key: 'defaults',
     labelKey: 'nav.settings',
     icon: 'tune',
     route: '/settings',
@@ -213,7 +214,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/alerts`,
     section: 'company',
     permission: 'company.settings',
-    coming: { after: 'settings', version: 'v1', meanwhile: '/watch', plan: true },
+    coming: { after: 'defaults', version: 'v1', meanwhile: '/watch', plan: true },
   },
   {
     key: 'fiscal-preset',

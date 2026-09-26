@@ -276,6 +276,42 @@ test('the Paramètres list stays put while a page scrolls, and folds to a rail w
   }
 });
 
+// docs/SPEC.md § 7, 2026-09-26 22:54, row 153: the folded rail never scrolls as a whole. A wheel over the gear slid it
+// up by 364 px, its company and « Créer » off the screen, because each folded entry's hidden name measured against the
+// whole drawer; and the folded gear sat 14 px left of every other icon.
+test('the folded rail stays put under a wheel, and its gear sits in line with the other icons', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/members');
+  const rail = page.getByTestId('shell-nav');
+  const gear = rail.getByTestId('nav-settings');
+  await expect(gear).toBeVisible();
+  const head = await page.getByTestId('rail-company').boundingBox();
+
+  const box = (await gear.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  for (let turn = 0; turn < 8; turn++) await page.mouse.wheel(0, 300);
+  await expect
+    .poll(() => page.evaluate(() => document.querySelector('mat-sidenav')!.scrollTop))
+    .toBe(0);
+  expect((await page.getByTestId('rail-company').boundingBox())?.y).toBe(head?.y);
+
+  // Every folded icon on one vertical line: the gear's centre is the home icon's.
+  const centre = (id: string) =>
+    rail
+      .getByTestId(id)
+      .locator('mat-icon')
+      .first()
+      .evaluate((icon) => {
+        const r = icon.getBoundingClientRect();
+        return Math.round(r.left + r.width / 2);
+      });
+  expect(await centre('nav-settings')).toBe(await centre('nav-home'));
+});
+
 // docs/SPEC.md § 7, 2026-09-26 12:05, row 152: a section folds from its heading, the fold outlives a reload, and the
 // section holding the page on view opens whatever was folded.
 test('a menu section folds from its heading, stays folded after a reload, and opens for its own page', async ({
