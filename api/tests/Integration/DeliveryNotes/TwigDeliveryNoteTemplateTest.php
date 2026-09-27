@@ -21,7 +21,9 @@ use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineDetails;
+use App\Module\DeliveryNotes\Domain\DeliveryNotePrint;
 use App\Shared\Domain\PostalAddress;
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\SellerSnapshot;
 use App\Tests\Support\InMemoryEstablishments;
@@ -61,7 +63,7 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         $this->note = DeliveryNote::create($company, $establishments->ofCompany($company->getId())[0], $customer, new DeliveryNoteHeader(new \DateTimeImmutable('2026-09-20'), customerReference: 'PO-77', remarksPrinted: 'Livrer au quai 3.'), [
             new DeliveryNoteLineDetails(null, 'Portable <14">', '2', $piece, '1250', [$levy]),
         ], $now);
-        $this->note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $now);
+        $this->note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $now);
         $this->totals = new DeliveryNoteTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
     }
 

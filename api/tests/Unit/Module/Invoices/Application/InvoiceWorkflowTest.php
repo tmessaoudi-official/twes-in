@@ -34,11 +34,13 @@ use App\Module\Invoices\Domain\InvoiceTax;
 use App\Module\Invoices\Domain\InvoiceType;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\PresentationSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\SettingLevel;
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
@@ -88,7 +90,7 @@ final class InvoiceWorkflowTest extends TestCase
         $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->events = new RecordingDomainEvents($this->transactions);
         $settings = new InMemorySettings();
-        $catalog = new SettingCatalog([new BusinessDefaultSettings()]);
+        $catalog = new SettingCatalog([new BusinessDefaultSettings(), new PresentationSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
         $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions);
         $this->workflow = new InvoiceWorkflow(
@@ -133,6 +135,18 @@ final class InvoiceWorkflowTest extends TestCase
         self::assertSame([false], $this->events->whileInTransaction, 'published once the transaction is over');
 
         self::assertSame('FAC-2026-00002', $this->workflow->issue($this->company, $this->draft($customer)->getId(), null)->getNumber());
+    }
+
+    /** A re-render (the PDF first rendered after the renderer failed at issue) prints what issuing kept. */
+    public function testIssuingKeepsTheNotesAndFormatsItsCustomerAndCompanySay(): void
+    {
+        $customer = $this->customer('standard', null);
+        $this->change->change(new SettingContext($this->company, customerId: $customer->getId()), 'document.printed_notes', SettingLevel::Customer, 'Virement à 30 jours.', null);
+        $this->change->change(new SettingContext($this->company), 'presentation.date-format', SettingLevel::Company, 'ymd', null);
+
+        $invoice = $this->workflow->issue($this->company, $this->draft($customer)->getId(), null);
+
+        self::assertEquals(new PrintSettings('Virement à 30 jours.', 'ymd', 'auto'), $invoice->getPrintSettings());
     }
 
     public function testIssuingACreditNoteNumbersItInItsOwnSeriesAndTakesItOffItsInvoiceInTheSameTransaction(): void

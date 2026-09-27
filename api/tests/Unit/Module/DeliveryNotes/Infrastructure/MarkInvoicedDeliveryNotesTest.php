@@ -19,12 +19,14 @@ use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineDetails;
+use App\Module\DeliveryNotes\Domain\DeliveryNotePrint;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Module\DeliveryNotes\Infrastructure\Invoicing\MarkInvoicedDeliveryNotes;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\InvoiceIssued;
 use App\Module\Invoices\Domain\InvoiceType;
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
@@ -65,7 +67,7 @@ final class MarkInvoicedDeliveryNotesTest extends TestCase
         $establishment = $establishments->ofCompany($company->getId())[0];
         $note = static function (string $number) use ($company, $establishment, $customer, $unit, $now, $notes): DeliveryNote {
             $note = DeliveryNote::create($company, $establishment, $customer, new DeliveryNoteHeader(), [new DeliveryNoteLineDetails(null, 'Pièce', '1', $unit, '10', [])], $now);
-            $note->validate($number, new \DateTimeImmutable('2026-09-15'), $now);
+            $note->validate($number, new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $now);
             $notes->save($note);
 
             return $note;

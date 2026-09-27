@@ -18,6 +18,7 @@ use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Products\Domain\LotCode;
 use App\Shared\Domain\CompanyOwned;
 use App\Shared\Domain\DomainEvent;
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tenancy\Domain\SellerSnapshot;
@@ -116,6 +117,10 @@ class Invoice implements CompanyOwned
     /** @var array<string, mixed>|null SellerSnapshot::toArray(), written by issuing */
     #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
     private ?array $sellerSnapshot = null;
+
+    /** @var array<string, mixed>|null PrintSettings::toArray(), written by issuing */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $printSettings = null;
 
     #[ORM\Column(name: 'footer_snapshot', type: Types::TEXT, nullable: true)]
     private ?string $footer = null;
@@ -425,6 +430,7 @@ class Invoice implements CompanyOwned
 
         $this->customerSnapshot = CustomerSnapshot::of($this->customer)->toArray();
         $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
+        $this->printSettings = $issue->print->toArray();
         $this->status = InvoiceStatus::Issued;
         $this->number = $issue->number;
         $this->issueDate = self::day($issue->issueDate);
@@ -632,6 +638,12 @@ class Invoice implements CompanyOwned
     public function getCustomerSnapshot(): ?CustomerSnapshot
     {
         return null === $this->customerSnapshot ? null : CustomerSnapshot::fromArray($this->customerSnapshot);
+    }
+
+    /** The notes and formats the document printed the day it was issued; null while it is a draft, or for one issued before this was kept. */
+    public function getPrintSettings(): ?PrintSettings
+    {
+        return null === $this->printSettings ? null : PrintSettings::fromArray($this->printSettings);
     }
 
     /** The seller as the document printed it the day it was issued; null while it is a draft or was cancelled as one. */

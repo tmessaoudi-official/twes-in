@@ -24,6 +24,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineDetails;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineTax;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteNotDraft;
+use App\Module\DeliveryNotes\Domain\DeliveryNotePrint;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteValidated;
@@ -33,6 +34,7 @@ use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductTracking;
 use App\Shared\Domain\PostalAddress;
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tests\Support\InMemoryEstablishments;
@@ -98,7 +100,7 @@ final class DeliveryNoteTest extends TestCase
         ], $this->now);
         self::assertNull($note->getSellerSnapshot(), 'a draft prints the seller as it is today');
 
-        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $this->now);
+        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $this->now);
         $this->company->reviseProfile(new \App\Tenancy\Domain\CompanyProfile(legalName: 'Acme Holding SA', addressLine1: '1 avenue de France', city: 'Sousse'));
 
         self::assertSame(['Acme SARL', 'Tunis'], [$note->getSellerSnapshot()?->name, $note->getSellerSnapshot()?->address->city]);
@@ -154,7 +156,7 @@ final class DeliveryNoteTest extends TestCase
             new DeliveryNoteLineDetails($lotted, 'Colle', '2', $this->unit('C62'), '10', [], 'L-2410'),
             new DeliveryNoteLineDetails($lotted, 'Colle', '1', $this->unit('C62'), '10', []),
         ], $this->now), 'another lot is another line');
-        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $this->now);
+        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $this->now);
         $validated = $note->releaseEvents()[0];
         self::assertInstanceOf(DeliveryNoteValidated::class, $validated);
         self::assertEquals([
@@ -232,7 +234,7 @@ final class DeliveryNoteTest extends TestCase
         $vat->revise($vat->getName(), '18', null, null, false, $vat->isDefault(), true, $vat->getExemptionMention(), $vat->getSortOrder(), 3, $this->now);
         $later = $this->now->modify('+1 hour');
 
-        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15 00:00:00', new \DateTimeZone('UTC')), $later);
+        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15 00:00:00', new \DateTimeZone('UTC')), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $later);
 
         self::assertSame([DeliveryNoteStatus::Validated, 'BL-2026-00001', '2026-09-15'], [$note->getStatus(), $note->getNumber(), $note->getIssueDate()?->format('Y-m-d')]);
         self::assertEquals($later, $note->getUpdatedAt());
@@ -262,7 +264,7 @@ final class DeliveryNoteTest extends TestCase
         self::assertSame([], $note->releaseEvents(), 'an event is released once');
 
         $this->expectException(DeliveryNoteNotDraft::class);
-        $note->validate('BL-2026-00002', new \DateTimeImmutable('2026-09-15'), $later);
+        $note->validate('BL-2026-00002', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $later);
     }
 
     public function testValidationRefusesAQuantityItsUnitNoLongerCounts(): void
@@ -273,18 +275,18 @@ final class DeliveryNoteTest extends TestCase
         ], $this->now);
         $kilogram->revise('Kilogramme', 0, true, 9, $this->now);
 
-        $this->assertRefused('quantity', fn () => $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $this->now));
+        $this->assertRefused('quantity', fn () => $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $this->now));
         self::assertSame([DeliveryNoteStatus::Draft, null, []], [$note->getStatus(), $note->getNumber(), $note->releaseEvents()]);
 
         $kilogram->revise('Kilogramme', 1, true, 9, $this->now);
-        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $this->now);
+        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $this->now);
         self::assertSame(DeliveryNoteStatus::Validated, $note->getStatus());
     }
 
     public function testANoteIsValidatedWithALineAndGoesWhereItOrItsCustomerSays(): void
     {
         $empty = DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [], $this->now);
-        $this->assertRefused('lines', fn () => $empty->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $this->now));
+        $this->assertRefused('lines', fn () => $empty->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $this->now));
         self::assertSame([DeliveryNoteStatus::Draft, null, null, []], [$empty->getStatus(), $empty->getNumber(), $empty->getCustomerSnapshot(), $empty->releaseEvents()]);
 
         $shipping = new PostalAddress('Zone industrielle', null, '3000', 'Sfax', 'TN');
@@ -334,7 +336,7 @@ final class DeliveryNoteTest extends TestCase
         } catch (DeliveryNoteTransitionRefused) {
         }
         try {
-            $draft->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $this->now);
+            $draft->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $this->now);
             self::fail('a cancelled note was validated');
         } catch (DeliveryNoteNotDraft) {
         }
@@ -417,7 +419,7 @@ final class DeliveryNoteTest extends TestCase
         $note = DeliveryNote::create($this->company, $this->establishment(), $customer, $header, [
             new DeliveryNoteLineDetails(null, 'Pièce', '1', $this->unit('C62'), '10', []),
         ], $this->now);
-        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $this->now);
+        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $this->now);
         $note->releaseEvents();
 
         return $note;

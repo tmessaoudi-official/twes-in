@@ -18,6 +18,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
 use App\Module\Invoices\Domain\InvoiceRepository;
+use App\Settings\Application\ReadSetting;
 use App\Shared\Application\DomainEvents;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Numbering\AllocateNumber;
@@ -48,6 +49,7 @@ final readonly class DeliveryNoteWorkflow
         private DomainEvents $events,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private ReadSetting $settings,
     ) {
     }
 
@@ -70,7 +72,7 @@ final readonly class DeliveryNoteWorkflow
             if ($this->notes->numberTaken($company->getId(), $allocated->number)) {
                 throw new DeliveryNoteNumberTaken(\sprintf('The number %s is already on another delivery note of this company: give the delivery note series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $note->getEstablishment()->getCode()));
             }
-            $note->validate($allocated->number, $allocated->issueDate, $this->clock->now());
+            $note->validate($allocated->number, $allocated->issueDate, DeliveryNotePrinting::today($this->settings, $note), $this->clock->now());
             $this->totals->checked($note);
             $this->notes->save($note);
             $this->record($company, $note, self::VALIDATED, ['number' => $allocated->number], $actorUserId);

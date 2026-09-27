@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Settings\Application;
 
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 
 /**
@@ -26,5 +27,17 @@ final readonly class DocumentFormats
         $number = $settings->value($context, 'presentation.number-format');
 
         return ['dateFormat' => \is_string($date) ? $date : 'auto', 'numberFormat' => \is_string($number) ? $number : 'auto'];
+    }
+
+    /**
+     * What a document prints with today: the notes its customer's settings say, and the company's formats. Issuing keeps
+     * it with the document; a draft reads it again on every render.
+     */
+    public static function print(ReadSetting $settings, SettingContext $atCustomer, Company $company): PrintSettings
+    {
+        $notes = $settings->value($atCustomer, 'document.printed_notes');
+        $formats = self::of($settings, $company);
+
+        return new PrintSettings(\is_string($notes) ? $notes : '', $formats['dateFormat'], $formats['numberFormat']);
     }
 }

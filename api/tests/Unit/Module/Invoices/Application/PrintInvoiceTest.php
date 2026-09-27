@@ -35,6 +35,7 @@ use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\SettingLevel;
 use App\Shared\Application\PdfRenderingFailed;
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
 use App\Tests\Support\FakePdfRenderer;
@@ -199,6 +200,22 @@ final class PrintInvoiceTest extends TestCase
         self::assertSame(['Acme Holding', '99 avenue Nouvelle'], [$this->template->pages[1]->seller->name, $this->template->pages[1]->seller->address->line1], 'a draft prints the company as it is today');
     }
 
+    public function testAPdfFirstRenderedAfterTheSettingsChangedPrintsTheNotesAndFormatsItWasIssuedWith(): void
+    {
+        $invoice = $this->issued($this->customer('standard', null), new PrintSettings('Virement à 30 jours.', 'ymd', 'dot-comma'));
+        $company = new SettingContext($this->company);
+        $this->change->change($company, 'document.printed_notes', SettingLevel::Company, 'Nouvelles notes', null);
+        $this->change->change($company, 'presentation.date-format', SettingLevel::Company, 'dmy', null);
+        $draft = $this->draft($this->customer('standard', null));
+
+        $this->print->pdf($this->company, $invoice->getId());
+        $this->print->pdf($this->company, $draft->getId());
+
+        [$issued, $today] = $this->template->pages;
+        self::assertSame(['Virement à 30 jours.', 'ymd', 'dot-comma'], [$issued->printedNotes, $issued->dateFormat, $issued->numberFormat]);
+        self::assertSame(['Nouvelles notes', 'dmy', 'auto'], [$today->printedNotes, $today->dateFormat, $today->numberFormat], 'a draft prints today\'s settings');
+    }
+
     public function testACancelledDraftIsRenderedStampedAndNeverStored(): void
     {
         $draft = $this->draft($this->customer('standard', null));
@@ -229,11 +246,11 @@ final class PrintInvoiceTest extends TestCase
         return $invoice;
     }
 
-    private function issued(Customer $customer): Invoice
+    private function issued(Customer $customer, PrintSettings $print = new PrintSettings('', 'auto', 'auto')): Invoice
     {
         $invoice = $this->draft($customer);
         $invoice->issue(
-            new InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), 30, 'en', $customer->getTaxRegime()->getMentionKey() ? [$customer->getTaxRegime()->getMentionKey()] : [], null, 'Merci', null),
+            new InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), 30, 'en', $customer->getTaxRegime()->getMentionKey() ? [$customer->getTaxRegime()->getMentionKey()] : [], null, 'Merci', null, $print),
             fn (Invoice $issuing) => $this->totals->issued($issuing),
             $this->clock->now(),
         );

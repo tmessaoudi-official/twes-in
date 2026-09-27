@@ -16,9 +16,7 @@ use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
-use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
-use App\Settings\Application\SettingContext;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Domain\Company;
@@ -91,22 +89,20 @@ final readonly class PrintDeliveryNote
     /** @param DeliveryNotePage::DRAFT|DeliveryNotePage::CANCELLED|null $watermark */
     private function render(DeliveryNote $note, ?string $watermark): string
     {
-        $customer = $note->getCustomer();
-        $context = new SettingContext($note->getCompany(), customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
-        $language = $this->settings->value($context, 'document.language');
-        $printedNotes = $this->settings->value($context, 'document.printed_notes');
+        $printing = $note->getPrintSettings() ?? DeliveryNotePrinting::today($this->settings, $note);
 
         return $this->renderer->render($this->template->html(new DeliveryNotePage(
             $note,
             $this->totals->of($note),
-            $note->getCustomerSnapshot() ?? CustomerSnapshot::of($customer),
+            $note->getCustomerSnapshot() ?? CustomerSnapshot::of($note->getCustomer()),
             $note->getSellerSnapshot() ?? SellerSnapshot::of($note->getCompany(), $note->getEstablishment()),
             $watermark,
-            true === $this->settings->value($context, 'delivery_note.show_prices'),
-            \is_string($language) ? $language : 'fr',
-            \is_string($printedNotes) ? $printedNotes : '',
-            true === $this->settings->value($context, 'delivery_note.reception_block'),
-            ...DocumentFormats::of($this->settings, $note->getCompany()),
+            $printing->showPrices,
+            $printing->language,
+            $printing->print->printedNotes,
+            $printing->receptionBlock,
+            $printing->print->dateFormat,
+            $printing->print->numberFormat,
         )));
     }
 

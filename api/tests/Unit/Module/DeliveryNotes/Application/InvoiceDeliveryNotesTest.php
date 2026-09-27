@@ -22,6 +22,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineDetails;
+use App\Module\DeliveryNotes\Domain\DeliveryNotePrint;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
@@ -30,6 +31,7 @@ use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceLineTax;
 use App\Module\Invoices\Domain\InvoiceStatus;
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
 use App\Tenancy\Domain\Company;
@@ -217,7 +219,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $note = DeliveryNote::create($company, $establishment ?? $this->establishment($company), $customer ?? ($company === $this->company ? $this->customer : $this->customer($company)), $header, $lines ?? [
             new DeliveryNoteLineDetails(null, 'Pièce', '1', $this->unit('C62', $company), '10', []),
         ], $now);
-        $note->validate($number, new \DateTimeImmutable('2026-09-15'), $now);
+        $note->validate($number, new \DateTimeImmutable('2026-09-15'), new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto')), $now);
         $note->releaseEvents();
         $this->notes->save($note);
 

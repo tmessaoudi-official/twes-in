@@ -95,7 +95,7 @@ final readonly class PrintInvoice
         $company = $invoice->getCompany();
         $customer = $invoice->getCustomer();
         $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
-        $printedNotes = $this->settings->value($context, 'document.printed_notes');
+        $print = $invoice->getPrintSettings() ?? DocumentFormats::print($this->settings, $context, $company);
         $issuedLanguage = $invoice->getLanguage();
         if (null === $issuedLanguage) {
             $language = $this->settings->value($context, 'document.language');
@@ -112,11 +112,12 @@ final readonly class PrintInvoice
             $invoice->getSellerSnapshot() ?? SellerSnapshot::of($company, $invoice->getEstablishment()),
             $watermark,
             $language,
-            \is_string($printedNotes) ? $printedNotes : '',
+            $print->printedNotes,
             $mentionKeys,
             $latePenaltyText,
             $footer,
-            ...DocumentFormats::of($this->settings, $company),
+            $print->dateFormat,
+            $print->numberFormat,
         )));
     }
 

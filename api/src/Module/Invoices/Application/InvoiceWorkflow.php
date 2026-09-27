@@ -18,6 +18,7 @@ use App\Module\Invoices\Domain\InvoiceIssue;
 use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\InvoiceType;
+use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\DomainEvents;
@@ -97,6 +98,7 @@ final readonly class InvoiceWorkflow
                     $profile->latePenaltyText,
                     $profile->invoiceFooterText,
                     $actorUserId,
+                    DocumentFormats::print($this->settings, $context, $company),
                 ),
                 fn (Invoice $issuing): InvoiceFigures => null === $corrected ? $this->totals->issued($issuing) : $corrected->fitsCredit($this->totals->issued($issuing)),
                 $now = $this->clock->now(),

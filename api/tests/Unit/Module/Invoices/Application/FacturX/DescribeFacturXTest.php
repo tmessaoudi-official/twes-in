@@ -30,6 +30,7 @@ use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceIssue;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Shared\Domain\PostalAddress;
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
 use App\Tests\Support\InMemoryEstablishments;
@@ -119,7 +120,7 @@ final class DescribeFacturXTest extends TestCase
     {
         $invoice = $this->issued($this->customer('standard'), [$this->line('Réglage du tour', '2', 'C62', '150', null, 'TVA20')]);
         $credit = Invoice::creditNoteFor($invoice, 'Pièce défectueuse', $this->clock->now());
-        $credit->issue(new InvoiceIssue('AV-2026-00001', new \DateTimeImmutable('2026-09-20'), 0, 'fr', [], null, null, null), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
+        $credit->issue(new InvoiceIssue('AV-2026-00001', new \DateTimeImmutable('2026-09-20'), 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
         $this->invoices->save($credit);
 
         $cii = $this->describe->describe($this->company, $credit->getId());
@@ -196,7 +197,7 @@ final class DescribeFacturXTest extends TestCase
         $regime = new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $this->clock->now());
         $customer = Customer::create($tunisian, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $regime, [], $this->clock->now());
         $invoice = Invoice::create($tunisian, $this->establishments->ofCompany($tunisian->getId())[0], $customer, new InvoiceHeader(), [new InvoiceLineDetails(null, 'Pièce', '1', $unit, '10', null, [$vat])], [], $this->clock->now());
-        $invoice->issue(new InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), 30, 'fr', [], null, null, null), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
+        $invoice->issue(new InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
         $this->invoices->save($invoice);
         try {
             $this->describe->describe($tunisian, $invoice->getId());
@@ -329,7 +330,7 @@ final class DescribeFacturXTest extends TestCase
     private function issued(Customer $customer, array $lines, InvoiceHeader $header = new InvoiceHeader(paymentTermsDays: 30)): Invoice
     {
         $invoice = Invoice::create($this->company, $this->establishments->ofCompany($this->company->getId())[0], $customer, $header, $lines, [], $this->clock->now());
-        $invoice->issue(new InvoiceIssue('FA-2026-00001', new \DateTimeImmutable('2026-09-15'), $header->paymentTermsDays ?? 30, 'fr', [], null, null, null), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
+        $invoice->issue(new InvoiceIssue('FA-2026-00001', new \DateTimeImmutable('2026-09-15'), $header->paymentTermsDays ?? 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
         $invoice->releaseEvents();
         $this->invoices->save($invoice);
 

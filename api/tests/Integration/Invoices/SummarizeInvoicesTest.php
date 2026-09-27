@@ -29,6 +29,7 @@ use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\PaymentDetails;
 use App\Shared\Domain\PaymentMethod;
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -160,7 +161,7 @@ final class SummarizeInvoicesTest extends KernelTestCase
     {
         $company ??= $this->company;
         $invoice = Invoice::create($company, $this->establishment($company), $this->customer($company, $customer), new InvoiceHeader(), [$this->line($company, array_keys($taxes))], [], $this->clock->now());
-        $invoice->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), $terms, 'fr', [], null, null, null), fn (): InvoiceFigures => $this->figures($total, $taxes), $this->clock->now());
+        $invoice->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), $terms, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (): InvoiceFigures => $this->figures($total, $taxes), $this->clock->now());
         static::getContainer()->get(InvoiceRepository::class)->save($invoice);
 
         return $invoice;
@@ -170,7 +171,7 @@ final class SummarizeInvoicesTest extends KernelTestCase
     private function credit(Invoice $invoice, string $number, string $day, string $total, array $taxes): void
     {
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
-        $credit->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), 0, 'fr', [], null, null, null), fn (): InvoiceFigures => $this->figures($total, $taxes), $this->clock->now());
+        $credit->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (): InvoiceFigures => $this->figures($total, $taxes), $this->clock->now());
         $invoice->credit($credit, $this->clock->now());
         $invoices = static::getContainer()->get(InvoiceRepository::class);
         $invoices->save($credit);

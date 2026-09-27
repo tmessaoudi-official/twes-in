@@ -17,6 +17,7 @@ use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\DeliveryNotes\Application\DeliveryNoteNotFound;
 use App\Module\DeliveryNotes\Application\DeliveryNoteNumberTaken;
+use App\Module\DeliveryNotes\Application\DeliveryNoteSettings;
 use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Application\DeliveryNoteWorkflow;
 use App\Module\DeliveryNotes\Domain\DeliveredQuantity;
@@ -25,6 +26,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteCancelled;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineDetails;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteNotDraft;
+use App\Module\DeliveryNotes\Domain\DeliveryNotePrint;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteValidated;
@@ -32,6 +34,15 @@ use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
+use App\Settings\Application\BusinessDefaultSettings;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\PresentationSettings;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\ResolveSettings;
+use App\Settings\Application\SettingCatalog;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\SettingLevel;
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
 use App\Tenancy\Application\Numbering\AllocateNumber;
@@ -44,6 +55,7 @@ use App\Tests\Support\InMemoryDeliveryNotes;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryInvoices;
 use App\Tests\Support\InMemoryNumberingSeries;
+use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\RecordingDomainEvents;
@@ -64,6 +76,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
     private FakeTransactions $transactions;
     private RecordingDomainEvents $events;
     private DeliveryNoteWorkflow $workflow;
+    private ChangeSettings $change;
     private Company $company;
     private Company $globex;
     private Customer $customer;
@@ -83,6 +96,10 @@ final class DeliveryNoteWorkflowTest extends TestCase
         $this->transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->events = new RecordingDomainEvents($this->transactions);
+        $settings = new InMemorySettings();
+        $catalog = new SettingCatalog([new BusinessDefaultSettings(), new DeliveryNoteSettings(), new PresentationSettings()]);
+        $resolve = new ResolveSettings($catalog, $settings);
+        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions);
         $this->workflow = new DeliveryNoteWorkflow(
             $this->notes,
             $this->invoices,
@@ -92,9 +109,27 @@ final class DeliveryNoteWorkflowTest extends TestCase
             $this->events,
             $this->audit,
             $this->clock,
+            new ReadSetting($resolve),
         );
         $now = $this->clock->now();
         $this->customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
+    }
+
+    /** A re-render (the note cancelled, or its PDF first rendered after the renderer failed) prints what validation kept. */
+    public function testValidationKeepsTheLanguagePricesReceptionBlockNotesAndFormatsItsCustomerAndCompanySay(): void
+    {
+        $atCustomer = new SettingContext($this->company, customerId: $this->customer->getId());
+        $this->change->change($atCustomer, 'document.language', SettingLevel::Customer, 'en', null);
+        $this->change->change($atCustomer, 'delivery_note.show_prices', SettingLevel::Customer, false, null);
+        $this->change->change(new SettingContext($this->company), 'document.printed_notes', SettingLevel::Company, 'Marchandise voyageant aux risques du client.', null);
+        $this->change->change(new SettingContext($this->company), 'presentation.number-format', SettingLevel::Company, 'space-comma', null);
+
+        $note = $this->workflow->validate($this->company, $this->draft()->getId(), null);
+
+        self::assertEquals(
+            new DeliveryNotePrint('en', false, true, new PrintSettings('Marchandise voyageant aux risques du client.', 'auto', 'space-comma')),
+            $note->getPrintSettings(),
+        );
     }
 
     public function testValidationNumbersTheNoteInOneTransactionAndTellsOnlyOnceItIsStored(): void

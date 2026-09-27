@@ -87,6 +87,10 @@ class DeliveryNote implements CompanyOwned
     #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
     private ?array $sellerSnapshot = null;
 
+    /** @var array<string, mixed>|null DeliveryNotePrint::toArray(), written by validation */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $printSettings = null;
+
     /** The PDF as the note was issued; null until it is stored. */
     #[ORM\ManyToOne(targetEntity: StoredFile::class)]
     #[ORM\JoinColumn(name: 'pdf_file_id', nullable: true)]
@@ -180,12 +184,13 @@ class DeliveryNote implements CompanyOwned
     /**
      * Gives a draft with lines its number and issue day. From then on it prints what its customer was called that day,
      * the rates its taxes had that day, and, when it names no delivery address, where the customer takes goods
-     * (its shipping address, else its billing one). Records `delivery_note.validated`.
+     * (its shipping address, else its billing one), and it prints as its settings said that day (`$print`). Records
+     * `delivery_note.validated`.
      *
      * @throws DeliveryNoteNotDraft
      * @throws InvalidDeliveryNote
      */
-    public function validate(string $number, \DateTimeImmutable $issueDate, \DateTimeImmutable $now): void
+    public function validate(string $number, \DateTimeImmutable $issueDate, DeliveryNotePrint $print, \DateTimeImmutable $now): void
     {
         $this->assertDraft('is validated');
         if ($this->lines->isEmpty()) {
@@ -205,6 +210,7 @@ class DeliveryNote implements CompanyOwned
         }
         $this->customerSnapshot = CustomerSnapshot::of($this->customer)->toArray();
         $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
+        $this->printSettings = $print->toArray();
         $this->status = DeliveryNoteStatus::Validated;
         $this->number = $number;
         $this->issueDate = self::day($issueDate);
@@ -321,6 +327,12 @@ class DeliveryNote implements CompanyOwned
     public function getCustomerSnapshot(): ?CustomerSnapshot
     {
         return null === $this->customerSnapshot ? null : CustomerSnapshot::fromArray($this->customerSnapshot);
+    }
+
+    /** How the note printed the day it was validated; null while it is a draft, or for a note validated before this was kept. */
+    public function getPrintSettings(): ?DeliveryNotePrint
+    {
+        return null === $this->printSettings ? null : DeliveryNotePrint::fromArray($this->printSettings);
     }
 
     /** The seller as the document printed it the day the note was validated; null while it is a draft or was cancelled as one. */

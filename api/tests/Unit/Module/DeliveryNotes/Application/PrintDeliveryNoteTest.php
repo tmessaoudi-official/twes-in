@@ -23,6 +23,7 @@ use App\Module\DeliveryNotes\Application\PrintDeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineDetails;
+use App\Module\DeliveryNotes\Domain\DeliveryNotePrint;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\PresentationSettings;
@@ -32,6 +33,7 @@ use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\SettingLevel;
 use App\Shared\Application\PdfRenderingFailed;
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakePdfRenderer;
 use App\Tests\Support\FakeTransactions;
@@ -193,6 +195,32 @@ final class PrintDeliveryNoteTest extends TestCase
         self::assertSame([$stored, 1], [$this->storage->contents, \count($this->records->files)]);
     }
 
+    public function testACancelledNotePrintsTheLanguagePricesReceptionBlockNotesAndFormatsItWasValidatedWith(): void
+    {
+        $note = $this->validated(new DeliveryNotePrint('en', false, false, new PrintSettings('Goods travel at the customer\'s risk.', 'ymd', 'dot-comma')));
+        $atCustomer = new SettingContext($this->company, customerId: $this->customer->getId());
+        $this->change->change($atCustomer, 'document.language', SettingLevel::Customer, 'fr', null);
+        $this->change->change($atCustomer, 'delivery_note.show_prices', SettingLevel::Customer, true, null);
+        $this->change->change($atCustomer, 'delivery_note.reception_block', SettingLevel::Customer, true, null);
+        $this->change->change(new SettingContext($this->company), 'document.printed_notes', SettingLevel::Company, 'Nouvelles notes', null);
+        $this->change->change(new SettingContext($this->company), 'presentation.date-format', SettingLevel::Company, 'dmy', null);
+        $note->cancel($this->clock->now());
+
+        $this->print->pdf($this->company, $note->getId());
+        $this->print->pdf($this->company, $this->draft()->getId());
+
+        [$cancelled, $today] = $this->template->pages;
+        self::assertSame(
+            ['en', false, false, 'Goods travel at the customer\'s risk.', 'ymd', 'dot-comma'],
+            [$cancelled->language, $cancelled->showPrices, $cancelled->receptionBlock, $cancelled->printedNotes, $cancelled->dateFormat, $cancelled->numberFormat],
+        );
+        self::assertSame(
+            ['fr', true, true, 'Nouvelles notes', 'dmy', 'auto'],
+            [$today->language, $today->showPrices, $today->receptionBlock, $today->printedNotes, $today->dateFormat, $today->numberFormat],
+            'a draft prints today\'s settings',
+        );
+    }
+
     private function draft(): DeliveryNote
     {
         $unit = $this->units->ofCodeInCompany('C62', $this->company->getId());
@@ -205,10 +233,10 @@ final class PrintDeliveryNoteTest extends TestCase
         return $note;
     }
 
-    private function validated(): DeliveryNote
+    private function validated(DeliveryNotePrint $print = new DeliveryNotePrint('fr', true, true, new PrintSettings('', 'auto', 'auto'))): DeliveryNote
     {
         $note = $this->draft();
-        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $this->clock->now());
+        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $print, $this->clock->now());
         $note->releaseEvents();
 
         return $note;

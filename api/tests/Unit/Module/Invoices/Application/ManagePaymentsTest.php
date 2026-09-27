@@ -27,6 +27,7 @@ use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\PaymentDetails;
 use App\Shared\Domain\PaymentMethod;
+use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
@@ -146,7 +147,7 @@ final class ManagePaymentsTest extends TestCase
         self::assertNotNull($unit);
         $invoice = Invoice::create($company, $this->establishments->ofCompany($company->getId())[0], $customer, new InvoiceHeader(), [new InvoiceLineDetails(null, 'Pièce', '1', $unit, '1000', null, [])], [], $this->clock->now());
         $invoice->issue(
-            new InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), 30, 'fr', [], null, null, null),
+            new InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')),
             static fn (Invoice $issuing): InvoiceFigures => new InvoiceFigures('1000.000', '0.000', '1000.000', [], '190.000', [], '1190.000', [['code' => 'RS1', 'rate' => '1.000', 'base' => '1190.000', 'amount' => '11.900']], '11.900', '1178.100', [['net' => '1000.000', 'tax' => '190.000', 'gross' => '1190.000']]),
             $this->clock->now(),
         );
