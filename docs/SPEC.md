@@ -3712,6 +3712,16 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   keeps the built images exactly as CI runs them (CI calls `docker compose up` on `compose.yaml` and is unchanged), for
   production-like checks and every timing, the large-data run's included. This replaces `make dev` in row 184.
 
+- [2026-09-27 19:33] DECIDED (revisit): row 183. Signing in from the LAN door was refused (`csrf_token_invalid`): Caddy ends
+  TLS and talks http to the web container, whose nginx forwarded its own `$scheme`, so the API compared the phone's
+  `https://<address>:8443` origin with `http://…` and took every write for a cross-site one. nginx now passes the
+  `X-Forwarded-Proto` a proxy on a private network gives (`https` or `http`, nothing else), else its own scheme: the
+  same private-range trust `framework.yaml` gives the header. A client forging it changes only its own request's origin
+  check, and a cross-site page cannot set it without a preflight that fails. `infra/web/tests/forwarded-proto.test.sh`
+  runs the real configuration in the web image's nginx, in CI beside the logrotate test. `DEFAULT_URI` is the LAN
+  address while `lan` is on, so mailed links open on a phone; `make up` prints both addresses. Passkeys stay on the
+  computer.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -3901,7 +3911,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 180 | Trésorerie (§ 7 2026-09-27 18:34): cash and bank accounts, a balance, typed movements for what is not a purchase (drawings, contributions, loan principal, taxes paid, transfers); after row 80 | L | todo | - | |
 | 181 | Large-data run (§ 7 2026-09-27 18:59): `make scale-data` / `make up-scale` in steps of 100k to 10m invoices, a large company and a wide platform, real documents cloned, measured per list, screen and operation; after 178 | L | todo | - | api/src/DataFixtures/** Makefile docs/** |
 | 182 | Data health check (§ 7 2026-09-27 18:59): `app:data:check` over the invariants, after generation, nightly with the worker and told to the operator | M | todo | - | |
-| 183 | The whole app from a phone (§ 7 2026-09-27 19:16): sign-in through the LAN door tested and fixed, the LAN address as the app's own when detected, `make up` prints it; before 178 | S | todo | - | compose.yaml Makefile infra/** api/config/** |
+| 183 | The whole app from a phone (§ 7 2026-09-27 19:16): sign-in through the LAN door tested and fixed, the LAN address as the app's own when detected, `make up` prints it; before 178 | S | done | 409ad73 | compose.yaml Makefile infra/** api/config/** |
 | 184 | Live development by default (§ 7 2026-09-27 19:16 and 2026-09-27 19:20): `make up` mounts the api source with FrankenPHP watch, OPcache revalidating at once, Angular dev server with live reload, through the LAN door too; `make up-images` keeps the images CI runs; before 178 | M | todo | - | compose*.yaml Makefile infra/** web/** docs/START.md |
 <!-- /progress-block -->
 
