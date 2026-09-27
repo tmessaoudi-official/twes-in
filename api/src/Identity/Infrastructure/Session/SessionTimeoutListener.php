@@ -16,16 +16,16 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
- * Idle and absolute session limits. Runs before the firewall (priority 8): an expired session is invalidated
- * here, so the context listener finds no token and the request proceeds unauthenticated. Only sessions the
- * client already had are examined; a request without a session cookie starts nothing.
+ * The absolute session limit. Runs before the firewall: an expired session is invalidated here, so the context listener
+ * finds no token and the request proceeds unauthenticated. Only sessions the client already had are examined; a
+ * request without a session cookie starts nothing. The idle limit is not here: it is the session row's expiry
+ * (PostgresSessionHandler), because a request that only reads never writes back the last use this data records.
  */
 #[AsEventListener(event: KernelEvents::REQUEST, priority: 16)]
 final readonly class SessionTimeoutListener
 {
     public function __construct(
         private ClockInterface $clock,
-        #[Autowire(param: 'app.session.idle_ttl')] private int $idleTtl,
         #[Autowire(param: 'app.session.absolute_ttl')] private int $absoluteTtl,
     ) {
     }
@@ -42,7 +42,7 @@ final readonly class SessionTimeoutListener
         }
         $meta = $session->getMetadataBag();
         $now = $this->clock->now()->getTimestamp();
-        if ($now - $meta->getLastUsed() > $this->idleTtl || $now - $meta->getCreated() > $this->absoluteTtl) {
+        if ($now - $meta->getCreated() > $this->absoluteTtl) {
             $session->invalidate();
         }
     }

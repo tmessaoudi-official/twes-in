@@ -3485,6 +3485,18 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   label, the settings list unreachable from a settings page on a phone, and whatever else a pass finds.
 - [2026-09-27 08:59] DECIDED (revisit): row 175 goes before 165: it corrects two rows shipped hours ago, which the developer
   has just tested; the correctness-and-speed block resumes after it.
+- [2026-09-27 10:31] DECIDED (revisit): **a request that only reads neither waits for the session's lock nor writes the
+  session back** (row 165). `PostgresSessionHandler` now picks, per request, Symfony's `PdoSessionHandler` with the
+  advisory lock (a method that can change the session: sign-in, a company switch, a second factor) or without it
+  (GET, HEAD, OPTIONS), on one connection of its own. No safe request changes what the session holds (every writer
+  was traced to a POST); Symfony's `ContextListener` re-saving a refreshed security token on a GET is the one write
+  dropped, harmless because every request refreshes the user again. **The idle limit moved from the session's data to
+  the row's expiry**: a read could no longer record its use in the data, so a person only reading would have been
+  signed out after 30 minutes. Every write sets the expiry to now plus 30 minutes; a read pushes it forward at most once
+  a minute, with an UPDATE that writes nothing when the last push is recent; `PdoSessionHandler` reads a row past its
+  expiry as no session. The absolute limit stays in `SessionTimeoutListener`. Measured on the rebuilt image: ten
+  GETs wrote the sessions table zero times (ten before) and left the row's version unchanged, and no advisory lock
+  was held during ten parallel GETs.
 
 ## 8. Status
 
@@ -3656,8 +3668,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 161 | Activity journal (§ 7 2026-09-26 23:04): « Journal d'activité » over the audit log, per person and per record, audit.read, CSV, 12 months by default, members told | L | todo | - | |
 | 162 | Undo first, preview the rest (§ 7 2026-09-26 23:04): undo for the reversible, a precise preview before the irreversible, dry-run on bulk actions, a 30-day Corbeille | L | todo | - | |
 | 163 | Seller snapshot (§ 7 2026-09-27 07:16, P1; narrowed 08:18): issuing writes the seller as it is (name, legal form, identifiers, address, establishment's contacts, bank, currency, VAT regime); PDF and Factur-X read only snapshots | M | done | 3c29179 | api/src/Tenancy/Domain/SellerSnapshot.php api/src/Module/Invoices/** api/src/Module/DeliveryNotes/** api/templates/pdf/** api/migrations/** |
-| 164 | Home summary as SQL (§ 7 2026-09-27 07:16, P1): aging, chase list, payments per month and the month's VAT as aggregates, same figures as today's fixtures | M | done | - | api/src/Module/Invoices/Application/SummarizeInvoices.php api/src/Module/Invoices/Application/InvoiceSummarySource.php api/src/Module/Invoices/Infrastructure/Doctrine/** api/tests/Integration/Invoices/** |
-| 165 | Sessions that do not lock read requests, and no write per GET (§ 7 2026-09-27 07:16) | S | todo | - | |
+| 164 | Home summary as SQL (§ 7 2026-09-27 07:16, P1): aging, chase list, payments per month and the month's VAT as aggregates, same figures as today's fixtures | M | done | 101d649 | api/src/Module/Invoices/Application/SummarizeInvoices.php api/src/Module/Invoices/Application/InvoiceSummarySource.php api/src/Module/Invoices/Infrastructure/Doctrine/** api/tests/Integration/Invoices/** |
+| 165 | Sessions that do not lock read requests, and no write per GET (§ 7 2026-09-27 07:16) | S | done | - | api/src/Identity/Infrastructure/Session/** api/config/packages/framework.yaml api/tests/Integration/Identity/** |
 | 166 | Production image (§ 7 2026-09-27 07:16): prod mode, production php.ini, Symfony's OPcache values, preload, no dev packages | M | todo | - | |
 | 167 | FrankenPHP worker mode with its leak audit (§ 7 2026-09-27 07:16) | M | todo | - | |
 | 168 | Icon font cut to the icons used, with a gate (§ 7 2026-09-27 07:16) | S | todo | - | |
@@ -3667,7 +3679,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 172 | Pages on httpResource and linkedSignal instead of chains of effects, screen by screen (§ 7 2026-09-27 07:16, P2) | L | todo | - | |
 | 173 | Lighter list answers, watch counts, a shorter startup chain (§ 7 2026-09-27 07:16, P2) | M | todo | - | |
 | 174 | Print settings frozen at issue (§ 7 2026-09-27 08:18): the printed notes, date and number formats, and a delivery note's language, prices and reception block, kept when the document is issued, so a re-render (a cancelled note, a PDF first rendered after a renderer failure) prints what the document said | S | todo | - | |
-| 175 | Legal texts over the screen (§ 7 2026-09-27 08:59): footer always centred; notice pinned, never covering content, app usable before « Compris »; legal text from the notice or footer opens in a panel, the full page gets « Retour » | S | done | - | web/src/app/legal/** web/src/app/shared/legal/** |
+| 175 | Legal texts over the screen (§ 7 2026-09-27 08:59): footer always centred; notice pinned, never covering content, app usable before « Compris »; legal text from the notice or footer opens in a panel, the full page gets « Retour » | S | done | ed2506d | web/src/app/legal/** web/src/app/shared/legal/** |
 | 176 | Mobile review (§ 7 2026-09-27 08:59, not urgent): bottom bar icon/label gap, settings list reachable from a settings page on a phone, a full pass for other anomalies | M | todo | - | |
 <!-- /progress-block -->
 

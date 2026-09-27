@@ -14,10 +14,12 @@ framework:
         stateless_token_ids: [api]
         check_header: !php/const Symfony\Component\Security\Csrf\SameOriginCsrfTokenManager::CHECK_ONLY_HEADER
 
-    # Server-side sessions in PostgreSQL (App\Identity\Infrastructure\Session\PostgresSessionHandler wraps PdoSessionHandler).
-    # Cookie: HttpOnly, Secure everywhere (Chromium accepts Secure cookies on http://localhost and 127.0.0.1,
-    # probed 2026-09-09), SameSite=Strict, session-scoped (no cookie_lifetime). Idle and absolute limits are
-    # enforced per request by App\Identity\Infrastructure\Session\SessionTimeoutListener; gc_maxlifetime is the absolute limit.
+    # Server-side sessions in PostgreSQL (App\Identity\Infrastructure\Session\PostgresSessionHandler, over PdoSessionHandler).
+    # Cookie: HttpOnly, Secure everywhere (Chromium accepts Secure cookies on http://localhost and 127.0.0.1),
+    # SameSite=Strict, session-scoped (no cookie_lifetime). The idle limit is the session row's expiry, kept by the
+    # handler; the absolute limit is enforced per request by App\Identity\Infrastructure\Session\SessionTimeoutListener.
+    # A request that only reads never writes the session back, so the last-use date it records is left to go stale
+    # (metadata_update_threshold): nothing reads it.
     session:
         handler_id: App\Identity\Infrastructure\Session\PostgresSessionHandler
         name: twes_session
@@ -26,7 +28,7 @@ framework:
         cookie_samesite: strict
         cookie_lifetime: 0
         gc_maxlifetime: '%app.session.absolute_ttl%'
-        metadata_update_threshold: 0
+        metadata_update_threshold: 60
 
     #esi: true
     #fragments: true

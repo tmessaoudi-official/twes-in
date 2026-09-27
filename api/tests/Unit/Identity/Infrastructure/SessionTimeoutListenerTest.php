@@ -32,11 +32,13 @@ final class SessionTimeoutListenerTest extends TestCase
         self::assertSame('kept', $session->get('marker'));
     }
 
-    public function testASessionIdleLongerThanTheIdleLimitIsInvalidated(): void
+    public function testTheLastUseTheSessionDataRecordsIsNotTheIdleLimit(): void
     {
+        // A request that only reads never writes the session back, so this date goes stale while the person reads on;
+        // the idle limit is the row's expiry instead, which such a read pushes forward (PostgresSessionHandlerTest).
         $session = $this->drive(created: self::NOW - 3600, lastUsed: self::NOW - self::IDLE - 1);
 
-        self::assertNull($session->get('marker'));
+        self::assertSame('kept', $session->get('marker'));
     }
 
     public function testASessionUsedRecentlyButOlderThanTheAbsoluteLimitIsInvalidated(): void
@@ -81,7 +83,7 @@ final class SessionTimeoutListenerTest extends TestCase
             $request->cookies->set($session->getName(), 'previous');
         }
 
-        $listener = new SessionTimeoutListener(new MockClock('@'.self::NOW), self::IDLE, self::ABSOLUTE);
+        $listener = new SessionTimeoutListener(new MockClock('@'.self::NOW), self::ABSOLUTE);
         $listener(new RequestEvent($this->createStub(HttpKernelInterface::class), $request, $requestType));
 
         return $session;
