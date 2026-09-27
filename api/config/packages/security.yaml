@@ -64,6 +64,8 @@ security:
         # The legal pages are read by anyone, signed in or not: a visitor must be able to read them before signing in
         # (docs/SPEC.md § 8 row 148). Reading only; the operator edits them under /api/platform.
         - { path: '^/api/legal/[a-z]+/[a-z]{2}$', roles: PUBLIC_ACCESS, methods: [GET] }
+        # security.txt (RFC 9116), mapped from /.well-known/ by the web server: whoever reports a flaw has no account.
+        - { path: '^/api/legal/security\.txt$', roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api, roles: ROLE_USER }
 
 when@test:

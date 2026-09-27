@@ -170,7 +170,9 @@ On an empty database it prints exactly that:
 Apart from the seed, the api writes the **legal pages' shipped drafts** at every start
 (`app:legal:seed-drafts`, from `api/resources/legal/<page>.<language>.md`), only where a page has no version yet in that
 language, so what an operator wrote is never replaced. The operator edits and validates them at `/platform/legal`
-(« Gérer les pages légales » on the platform page); anyone reads them at `/legal/<page>`.
+(« Gérer les pages légales » on the platform page); anyone reads them at `/legal/<page>`. The publisher's and host's
+facts the texts name are filled in at the top of that screen; once its security contact is,
+`/.well-known/security.txt` (RFC 9116) answers with it, and until then it answers 404.
 
 The seed loads no business rows. **`make fixtures`** adds two demo companies, which the operator owns:
 

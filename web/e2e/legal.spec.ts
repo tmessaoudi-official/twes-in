@@ -213,3 +213,23 @@ test('the operator publishes a legal page, which a visitor reads as a draft unti
   await expect(reader.getByTestId('legal-draft')).toHaveCount(0);
   await visitor.close();
 });
+
+// docs/SPEC.md § 8 row 148: security.txt (RFC 9116) is written from the contact the operator fills in, at the fixed
+// address the web server maps to the API. Each run gives its own address, so the file read is this run's.
+test('the security contact the operator fills in is published in security.txt', async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto('/platform/legal');
+  const address = `security+${Date.now()}@twes.test`;
+  await page.getByTestId('legal-identity-security.email').fill(address);
+  await page.getByTestId('legal-identity-save').click();
+  await expect(page.getByTestId('legal-identity-save')).toBeDisabled();
+
+  const answer = await page.request.get('/.well-known/security.txt');
+  expect(answer.status()).toBe(200);
+  expect(answer.headers()['content-type']).toBe('text/plain; charset=utf-8');
+  const text = await answer.text();
+  expect(text).toContain(`Contact: mailto:${address}\n`);
+  expect(text).toMatch(/^Expires: \d{4}-\d{2}-\d{2}T00:00:00Z$/m);
+});

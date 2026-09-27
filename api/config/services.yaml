@@ -145,6 +145,10 @@ services:
     App\Tenancy\Application\Company\DecideCompanyApproval:
         arguments:
             $loginUrl: '%app.signup.login_url%'
+    # security.txt names its own address and the Security page, on the origin the SPA is served from.
+    App\Legal\Application\SecurityTxt:
+        arguments:
+            $origin: '%env(DEFAULT_URI)%'
     App\Licensing\Application\ManagePayments:
         arguments:
             $loginUrl: '%app.signup.login_url%'

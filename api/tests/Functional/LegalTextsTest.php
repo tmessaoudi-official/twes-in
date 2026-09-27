@@ -74,6 +74,26 @@ final class LegalTextsTest extends ApiTestCase
         self::assertSame('Éditeur : {{publisher.name}}', $this->body()['body'], 'the text itself is kept as written');
     }
 
+    public function testSecurityTxtIsServedToAnyoneOnceTheOperatorGaveASecurityContact(): void
+    {
+        $this->client->request('GET', '/api/legal/security.txt');
+        self::assertResponseStatusCodeSame(404, 'no contact, no file: RFC 9116 requires one');
+
+        $this->createUser('op@twes.local', 'password-1234', operator: true);
+        $this->login('op@twes.local', 'password-1234');
+        $this->sendJson('PUT', '/api/platform/settings/legal.security.email', ['value' => 'security@twes.test']);
+        self::assertResponseIsSuccessful();
+        $this->client->getCookieJar()->clear();
+
+        $this->client->request('GET', '/api/legal/security.txt');
+
+        self::assertResponseIsSuccessful();
+        self::assertResponseHeaderSame('Content-Type', 'text/plain; charset=utf-8');
+        $text = (string) $this->client->getResponse()->getContent();
+        self::assertStringStartsWith("Contact: mailto:security@twes.test\n", $text);
+        self::assertMatchesRegularExpression('#^Canonical: https?://[^\s]+/\.well-known/security\.txt$#m', $text);
+    }
+
     private function write(LegalPage $page, LegalLanguage $language, string $body, string $at): LegalText
     {
         $text = LegalText::draft($page, $language, $body, null, new \DateTimeImmutable($at));
