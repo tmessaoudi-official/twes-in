@@ -32,8 +32,20 @@ final class InMemoryLegalTexts implements LegalTextRepository
         return $latest;
     }
 
+    public function all(): array
+    {
+        $rows = array_reverse($this->rows);
+        usort($rows, static fn (LegalText $a, LegalText $b) => $b->getCreatedAt() <=> $a->getCreatedAt());
+
+        return $rows;
+    }
+
     public function add(LegalText $text): void
     {
         $this->rows[] = $text;
+    }
+
+    public function save(LegalText $text): void
+    {
     }
 }

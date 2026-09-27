@@ -41,9 +41,28 @@ final readonly class DoctrineLegalTextRepository implements LegalTextRepository
         return $text;
     }
 
+    public function all(): array
+    {
+        /** @var list<LegalText> $texts */
+        $texts = $this->entityManager->createQueryBuilder()
+            ->select('t')
+            ->from(LegalText::class, 't')
+            ->orderBy('t.createdAt', \SortDirection::Descending)
+            ->addOrderBy('t.id', \SortDirection::Descending)
+            ->getQuery()
+            ->getResult();
+
+        return $texts;
+    }
+
     public function add(LegalText $text): void
     {
         $this->entityManager->persist($text);
+        $this->entityManager->flush();
+    }
+
+    public function save(LegalText $text): void
+    {
         $this->entityManager->flush();
     }
 }

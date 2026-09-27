@@ -1,32 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  input,
-  linkedSignal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, linkedSignal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
-import { marked } from 'marked';
 import { formatDay } from '../i18n/format';
 import { LanguageFacade } from '../i18n/language-facade';
 import { LEGAL_LANGUAGE_NAMES, LEGAL_LANGUAGES, LegalApi, type LegalLanguage } from './legal-api';
+import { LegalMarkdown } from './legal-markdown';
 import { STORED_ITEMS } from './stored-items';
 
 /**
  * The text of one legal page, under the title its container gives it: the full page and the panel opened over a
  * screen show the same words. The API answers the page's latest version, in Markdown, in the language chosen here
  * (the interface's to begin with) or in the one it fell back to; the page says which, gives its date, and says it is a
- * draft until someone validated it (docs/SPEC.md § 8 row 148). The Markdown is turned into HTML by `marked` and bound
- * through `[innerHTML]`, which Angular sanitizes: a script, an event handler or a `javascript:` link in a text never runs.
+ * draft until someone validated it (docs/SPEC.md § 8 row 148). `LegalMarkdown` renders the text, sanitized.
  */
 @Component({
   selector: 'app-legal-text',
-  imports: [MatButtonModule, TranslatePipe],
+  imports: [LegalMarkdown, MatButtonModule, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-4">
@@ -82,13 +74,7 @@ import { STORED_ITEMS } from './stored-items';
               {{ 'legal.fallback' | translate: { language: names[shown.language] } }}
             </p>
           }
-          <div
-            class="twes-legal-body"
-            [attr.lang]="shown.language"
-            [attr.dir]="shown.language === 'ar' ? 'rtl' : 'ltr'"
-            [innerHTML]="html()"
-            data-testid="legal-body"
-          ></div>
+          <app-legal-markdown [body]="shown.body" [language]="shown.language" />
         }
       }
       <!-- Rendered from the one declaration scripts/gates/stored-items.sh checks against the code. -->
@@ -139,11 +125,6 @@ export class LegalText {
   protected readonly text = rxResource({
     params: () => ({ page: this.slug(), language: this.language() }),
     stream: ({ params }) => this.api.read(params.page, params.language),
-  });
-
-  protected readonly html = computed(() => {
-    const shown = this.text.hasValue() ? this.text.value() : null;
-    return shown === null ? '' : marked.parse(shown.body, { async: false });
   });
 
   protected day(value: string, language: string): string {
