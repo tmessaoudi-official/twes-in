@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { signal } from '@angular/core';
+import { Location } from '@angular/common';
+import { Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router, withComponentInputBinding } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -18,6 +20,9 @@ import { ThemeFacade } from '../shared/theme/theme-facade';
 import { LEGAL_PAGES } from '../shared/legal/legal-pages';
 import { STORED_ITEMS } from '../shared/legal/stored-items';
 import { LegalPage } from './legal-page';
+
+@Component({ template: '<p data-testid="elsewhere">ailleurs</p>' })
+class Elsewhere {}
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -105,5 +110,61 @@ describe('LegalPage', () => {
     expect(q('legal-title')).toBeNull();
     expect(q('legal-unknown')?.textContent).toContain('Cette page n’existe pas.');
     expect(q('legal-unknown')?.querySelector('a')?.getAttribute('href')).toBe('/');
+  });
+
+  describe('« Retour »', () => {
+    async function harness(): Promise<RouterTestingHarness> {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        providers: [
+          provideRouter(
+            [
+              { path: 'legal/:slug', component: LegalPage },
+              { path: 'invoices', component: Elsewhere },
+            ],
+            withComponentInputBinding(),
+          ),
+          provideQuietFeedback(),
+          provideTranslateService({ lang: 'fr', fallbackLang: 'fr' }),
+          provideTranslateLoader(StaticLoader),
+          { provide: Brand, useValue: { name: signal('twes-in'), tagline: signal('') } },
+          { provide: ThemeFacade, useValue: { preference: signal('auto'), setScheme: vi.fn() } },
+          { provide: LanguageFacade, useValue: { current: signal('fr'), use: vi.fn() } },
+        ],
+      }).compileComponents();
+      return RouterTestingHarness.create();
+    }
+
+    const back = (root: HTMLElement) =>
+      root.querySelector<HTMLAnchorElement>('[data-testid="legal-back"]');
+
+    it('returns to the very screen the page was opened from', async () => {
+      const test = await harness();
+      await test.navigateByUrl('/invoices?status=issued');
+      await test.navigateByUrl('/legal/mentions');
+      const location = TestBed.inject(Location);
+      const goBack = vi.spyOn(location, 'back').mockImplementation(() => undefined);
+
+      back(test.routeNativeElement!)!.click();
+
+      expect(goBack).toHaveBeenCalled();
+    });
+
+    it('opened directly, goes to the home page, which sends a signed-out visitor to sign in', async () => {
+      const test = await harness();
+      await test.navigateByUrl('/legal/mentions');
+      const location = TestBed.inject(Location);
+      const goBack = vi.spyOn(location, 'back');
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+
+      const link = back(test.routeNativeElement!)!;
+      // The arrow is drawn, not read: the link is named by its word alone.
+      expect(link.querySelector('mat-icon')?.getAttribute('aria-hidden')).toBe('true');
+      expect(link.querySelector('span')?.textContent?.trim()).toBe('Retour');
+      link.click();
+
+      expect(goBack).not.toHaveBeenCalled();
+      expect(navigate).toHaveBeenCalledWith('/');
+    });
   });
 });

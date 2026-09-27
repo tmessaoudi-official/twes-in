@@ -429,8 +429,6 @@
     </mat-menu>
 
     <app-subscription-notice />
-    <!-- What is stored, on a first visit: above the page, never over it (row 149). -->
-    <app-cookie-notice />
 
     @if (customerView.active()) {
       <div
@@ -475,9 +473,12 @@
         <app-legal-footer />
       }
     </main>
+    <!-- What is stored, on a first visit: the last row of the page, held at its foot, over nothing. -->
+    <app-cookie-notice />
 
     @if (handset()) {
       <nav
+        #bottomBarNav
         class="twes-bottom-bar"
         [attr.aria-label]="'shell.bottom_navigation' | translate"
         data-testid="bottom-bar"

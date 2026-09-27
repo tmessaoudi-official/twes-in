@@ -780,7 +780,19 @@ body {
   scrollbar-width: none;
 }
 
-// The copyright and legal-links line (docs/SPEC.md § 7, 2026-09-26 08:52, row 147): slim, quiet, under the content.
+// The cookie notice: the last row of the scrolling page, held at its foot. It takes its own place in the flow, so
+// scrolled to the end nothing lies under it; on a phone it stands on the bottom bar, whose height the shell measures.
+app-legal-footer {
+  display: block;
+}
+
+app-cookie-notice {
+  position: sticky;
+  bottom: var(--twes-bottom-bar-height, 0px);
+  z-index: 10;
+  display: block;
+}
+
 .twes-legal-table {
   width: 100%;
   border-collapse: collapse;
@@ -1444,10 +1456,11 @@ app-signed-out-layout {
   position: relative;
   z-index: 1;
   display: flex;
-  justify-content: space-between;
+  // Stacked and centred: the page's own line (the API status on sign-in) above, the legal line centred under it.
+  flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
+  gap: 0.5rem;
+  text-align: center;
   min-height: 1.5rem;
   padding: 0 1rem 1rem;
   color: var(--mat-sys-on-surface-variant);

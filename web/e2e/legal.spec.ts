@@ -4,26 +4,45 @@ import { expect, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { NOTICE_CLOSED, signIn } from './session';
 
-// docs/SPEC.md § 7, 2026-09-26 08:52 (row 147): the copyright and legal links close every page, signed out or in,
-// inside the page so they scroll with it; each link opens its page, open to anyone.
+// The copyright and legal links close every page, signed out or in, centred, inside the page so they scroll with it;
+// each link opens its text over the page, and each text is also a page of its own, open to anyone.
 
-test('the legal line closes the sign-in page and leads to each legal page', async ({ page }) => {
+test('the legal line closes the sign-in page, centred, and opens each text over the page', async ({
+  page,
+}) => {
   await page.goto('/login');
   const line = page.getByTestId('legal-footer');
   await expect(line).toBeVisible();
   await expect(line.getByTestId('legal-copyright')).toContainText(`© ${new Date().getFullYear()}`);
   await expect(line.getByRole('link')).toHaveCount(10);
+  // Centred under the page, whatever the page puts beside it (the API status on sign-in).
+  const [middle, width] = await line.evaluate((nav) => {
+    const boxes = [...nav.children].map((child) => child.getBoundingClientRect());
+    const left = Math.min(...boxes.map((box) => box.left));
+    const right = Math.max(...boxes.map((box) => box.right));
+    return [(left + right) / 2, document.documentElement.clientWidth];
+  });
+  expect(Math.abs(middle - width / 2)).toBeLessThan(2);
 
+  // A text opens over the page, which stays where it was; it is also a page of its own, to share or open in a tab.
+  await page.getByTestId('email').fill('typed@before.reading');
   await line.getByTestId('legal-link-mentions').click();
-  await expect(page).toHaveURL(/\/legal\/mentions$/);
+  const panel = page.getByRole('dialog');
+  await expect(panel.getByTestId('legal-title')).toHaveText('Mentions légales');
+  await expect(page).toHaveURL(/\/login$/);
+  expect(await wcagViolations(page)).toEqual([]);
+  await panel.getByTestId('legal-close').click();
+  await expect(panel).toHaveCount(0);
+  await expect(page.getByTestId('email')).toHaveValue('typed@before.reading');
+  await expect(line.getByTestId('legal-licence')).toHaveAttribute('href', '/legal/source');
+
+  // Opened directly, the page's « Retour » leads home, which sends a signed-out visitor to sign in.
+  await page.goto('/legal/mentions');
   await expect(page.getByTestId('legal-title')).toHaveText('Mentions légales');
   await expect(page.getByTestId('legal-draft')).toBeVisible();
   expect(await wcagViolations(page)).toEqual([]);
-
-  // The licence leads to the source page, as the AGPL asks of a network service.
-  await page.getByTestId('legal-licence').click();
-  await expect(page).toHaveURL(/\/legal\/source$/);
-  await expect(page.getByTestId('legal-title')).toHaveText('Code source et licences');
+  await page.getByTestId('legal-back').click();
+  await expect(page).toHaveURL(/\/login$/);
 });
 
 test('the legal line closes a signed-in page, after its content, and a settings page beside its list', async ({
@@ -58,25 +77,65 @@ test.describe('a first visit', () => {
   // A truly fresh browser: nothing stored, the notice never closed (row 149).
   test.use({ storageState: { cookies: [], origins: [] } });
 
-  test('says what is stored, leads to the Cookies page, and stays closed once closed', async ({
+  test('says what is stored at the foot of the page, over nothing, and stays closed once closed', async ({
     page,
   }) => {
     await page.goto('/login');
     const notice = page.getByTestId('cookie-notice');
     await expect(notice).toBeVisible();
-    // In the flow at the top: it covers nothing, the sign-in form stays where a person expects it.
-    expect((await notice.boundingBox())!.y).toBeLessThan(5);
+    // Held at the foot of the window while the page is read…
+    const viewport = page.viewportSize()!;
+    expect(
+      Math.abs(
+        (await notice.boundingBox())!.y + (await notice.boundingBox())!.height - viewport.height,
+      ),
+    ).toBeLessThan(2);
+    // …and, scrolled to the end, below the page's last line rather than over it.
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const [lineBottom, noticeTop] = await page.evaluate(() => [
+      document.querySelector('[data-testid="legal-footer"]')!.getBoundingClientRect().bottom,
+      document.querySelector('[data-testid="cookie-notice"]')!.getBoundingClientRect().top,
+    ]);
+    expect(lineBottom).toBeLessThanOrEqual(noticeTop + 1);
     expect(await wcagViolations(page)).toEqual([]);
 
+    // The app works while it is open: its link opens the Cookies text over the page.
     await notice.getByTestId('cookie-notice-more').click();
-    await expect(page).toHaveURL(/\/legal\/cookies$/);
-    await expect(page.getByTestId('stored-row').first()).toContainText('twes_session');
+    const panel = page.getByRole('dialog');
+    await expect(panel.getByTestId('stored-row').first()).toContainText('twes_session');
+    await expect(page).toHaveURL(/\/login$/);
+    await panel.getByTestId('legal-close').click();
 
     await page.getByTestId('cookie-notice-close').click();
     await expect(notice).toHaveCount(0);
     await page.reload();
-    await expect(page.getByTestId('legal-title')).toBeVisible();
+    await expect(page.getByTestId('email')).toBeVisible();
     await expect(page.getByTestId('cookie-notice')).toHaveCount(0);
+  });
+});
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('the notice stands on the bottom bar, never under it', async ({ page }) => {
+    await signIn(page);
+    await page.evaluate((key) => localStorage.removeItem(key), NOTICE_CLOSED);
+    await page.reload();
+    const notice = page.getByTestId('cookie-notice');
+    await expect(notice).toBeVisible();
+    await expect(page.getByTestId('bottom-bar')).toBeVisible();
+    // The bar's height reaches the notice from a ResizeObserver, a frame after the bar is drawn.
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const notice = document.querySelector('[data-testid="cookie-notice"]')!;
+          const bar = document.querySelector('[data-testid="bottom-bar"]')!;
+          return Math.round(
+            bar.getBoundingClientRect().top - notice.getBoundingClientRect().bottom,
+          );
+        }),
+      )
+      .toBe(0);
   });
 });
 

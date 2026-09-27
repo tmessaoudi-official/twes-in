@@ -88,15 +88,16 @@ describe('SignedOutLayout', () => {
     expect(footer?.lastElementChild?.tagName.toLowerCase()).toBe('app-legal-footer');
   });
 
-  it('says what is stored on a first visit, above everything else on the page (row 149)', async () => {
+  it('says what is stored on a first visit as the last row of the page, after its footer, over nothing', async () => {
     const el = await render();
-    const notice = el.querySelector('[data-testid="cookie-notice"]');
-    expect(notice).not.toBeNull();
-    // The first thing a keyboard reaches, and covering nothing: in the flow, before the page.
-    const toolbar = el.querySelector('[data-testid="language-menu"]');
+    const notice = el.querySelector('app-cookie-notice');
+    expect(el.querySelector('[data-testid="cookie-notice"]')).not.toBeNull();
+    // In the flow after the legal line, so scrolled to the end it lies under nothing; the CSS holds it at the foot.
+    const footer = el.querySelector('[data-testid="legal-footer"]');
     expect(
-      notice!.compareDocumentPosition(toolbar!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      notice!.compareDocumentPosition(footer!) & Node.DOCUMENT_POSITION_PRECEDING,
     ).toBeTruthy();
+    expect(notice?.closest('main')).toBeNull();
   });
 
   it('keeps the decorative scene away from assistive technology', async () => {

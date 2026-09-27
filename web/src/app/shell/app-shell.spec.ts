@@ -725,13 +725,13 @@ describe('AppShell', () => {
     expect(el.querySelector('main app-legal-footer')).toBeNull();
   });
 
-  it('says what is stored on a first visit, above the page and never over it (row 149)', async () => {
+  it('says what is stored on a first visit as the last row of the page, after it, over nothing', async () => {
     const { el } = await render();
-    const notice = el.querySelector('[data-testid="cookie-notice"]');
-    expect(notice).not.toBeNull();
+    const notice = el.querySelector('app-cookie-notice');
+    expect(el.querySelector('[data-testid="cookie-notice"]')).not.toBeNull();
     expect(notice?.closest('main')).toBeNull();
     const main = el.querySelector('main');
-    expect(notice!.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(notice!.compareDocumentPosition(main!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
   });
 
   it('lets the menu be folded inside settings, remembered apart from the rest', async () => {

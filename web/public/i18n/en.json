@@ -2840,6 +2840,9 @@
     "drafting": "The text of this page is being written.",
     "unknown": "This page does not exist.",
     "home": "Back to the start",
+    "back": "Back",
+    "close": "Close",
+    "as_page": "Open as a full page",
     "notice": {
       "title": "Cookies",
       "text": "This service sets a single cookie, for your session, and keeps your display choices on this device. No tracking, no advertising, no third-party script.",

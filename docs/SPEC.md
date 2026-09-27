@@ -3470,6 +3470,21 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   numbers byte by byte (`COLLATE "C"`), as the PHP comparison did; Postgres here sorts `en_US.utf8`, where `FAC-b`
   would otherwise come before `FAC-C`. Its test moved from a unit test over an in-memory repository to an integration
   test against PostgreSQL, with another company's payment and VAT added so all four reads are proven scoped.
+- [2026-09-27 08:47] AGREED (developer, asked, after testing the cookie notice): **the legal links footer is always centred**, on
+  every layout, wrapping to centred lines on a phone with the copyright on its own line. **The cookie notice stays
+  an information notice, not a wall**: everything stored is strictly necessary or a chosen preference, so it asks no
+  consent and offers no refusal; a real consent with Accepter and Refuser equally visible comes only with the first
+  optional tracker, if ever. Whether the app stays usable before « Compris », and how a legal page returns to the
+  exact screen, are re-asked.
+- [2026-09-27 08:59] AGREED (developer, asked): **the app is fully usable before « Compris »**; the notice stays pinned at the
+  bottom of every page, never covering a button or content, until it is closed. **A legal text opened from the notice
+  or the footer opens in a panel over the current screen**, so closing it leaves the person exactly where they were
+  (record, filters, scroll, unsaved typing); `/legal/<slug>` stays a full page for shared links, with « Retour » (the
+  previous in-app screen, else Accueil when signed in, else Connexion). Row 175, done next because it corrects rows
+  147 and 149 just shipped. **A mobile review later, not urgent** (row 176): the bottom bar's gap between icon and
+  label, the settings list unreachable from a settings page on a phone, and whatever else a pass finds.
+- [2026-09-27 08:59] DECIDED (revisit): row 175 goes before 165: it corrects two rows shipped hours ago, which the developer
+  has just tested; the correctness-and-speed block resumes after it.
 
 ## 8. Status
 
@@ -3652,6 +3667,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 172 | Pages on httpResource and linkedSignal instead of chains of effects, screen by screen (§ 7 2026-09-27 07:16, P2) | L | todo | - | |
 | 173 | Lighter list answers, watch counts, a shorter startup chain (§ 7 2026-09-27 07:16, P2) | M | todo | - | |
 | 174 | Print settings frozen at issue (§ 7 2026-09-27 08:18): the printed notes, date and number formats, and a delivery note's language, prices and reception block, kept when the document is issued, so a re-render (a cancelled note, a PDF first rendered after a renderer failure) prints what the document said | S | todo | - | |
+| 175 | Legal texts over the screen (§ 7 2026-09-27 08:59): footer always centred; notice pinned, never covering content, app usable before « Compris »; legal text from the notice or footer opens in a panel, the full page gets « Retour » | S | done | - | web/src/app/legal/** web/src/app/shared/legal/** |
+| 176 | Mobile review (§ 7 2026-09-27 08:59, not urgent): bottom bar icon/label gap, settings list reachable from a settings page on a phone, a full pass for other anomalies | M | todo | - | |
 <!-- /progress-block -->
 
 ### Delivered

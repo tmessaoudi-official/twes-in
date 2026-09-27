@@ -2840,6 +2840,9 @@
     "drafting": "Le texte de cette page est en cours de rédaction.",
     "unknown": "Cette page n’existe pas.",
     "home": "Retour à l’accueil",
+    "back": "Retour",
+    "close": "Fermer",
+    "as_page": "Ouvrir en pleine page",
     "notice": {
       "title": "Cookies",
       "text": "Ce service ne dépose qu’un seul cookie, celui de votre session, et garde vos choix d’affichage sur cet appareil. Aucun suivi, aucune publicité, aucun script tiers.",

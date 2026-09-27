@@ -7,6 +7,7 @@ import {
   computed,
   DestroyRef,
   effect,
+  ElementRef,
   inject,
   isDevMode,
   signal,
@@ -107,6 +108,9 @@ export function initialsOf(displayName: string): string {
  * Every signed-in page sits inside this: the navigation the user may see, where they work, the language and colour
  * scheme, and their account. Pages bring content only.
  */
+/** The phone's bottom bar height, which what is held at the page's foot stands on. */
+const BOTTOM_BAR_HEIGHT = '--twes-bottom-bar-height';
+
 @Component({
   selector: 'app-shell',
   imports: [
@@ -231,6 +235,8 @@ export class AppShell {
   );
   /** « Créer »'s menu, wherever it is drawn: the rail's button from a tablet up, the phone's bar below. */
   private readonly createTrigger = viewChild('createTrigger', { read: MatMenuTrigger });
+  private readonly bottomBarElement = viewChild<ElementRef<HTMLElement>>('bottomBarNav');
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   /**
    * The phone's bottom bar: the most used destinations first (`PHONE_BAR_FIRST`), then the sidebar's next ones, three
    * in all; « Créer » goes between the second and the third.
@@ -308,6 +314,22 @@ export class AppShell {
   });
 
   constructor() {
+    // The phone's bottom bar is laid over the page: what is held at the page's foot (the cookie notice) stands on it,
+    // by its measured height, which its labels and the device's safe area decide.
+    effect((onCleanup) => {
+      const bar = this.bottomBarElement()?.nativeElement;
+      const host = this.host.nativeElement;
+      // jsdom, where the component specs run, has no ResizeObserver; a browser always has one.
+      if (bar === undefined || typeof ResizeObserver === 'undefined') {
+        host.style.removeProperty(BOTTOM_BAR_HEIGHT);
+        return;
+      }
+      const observer = new ResizeObserver(() =>
+        host.style.setProperty(BOTTOM_BAR_HEIGHT, `${bar.offsetHeight}px`),
+      );
+      observer.observe(bar);
+      onCleanup(() => observer.disconnect());
+    });
     // A shortcut still held when the shell goes (signing out) belongs to a screen that is gone with it.
     inject(DestroyRef).onDestroy(() => {
       this.dropHeldShortcut();
