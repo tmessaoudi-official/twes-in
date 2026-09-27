@@ -3456,6 +3456,20 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   judges the seller as issued, so completing the company profile after issuing no longer fills an issued invoice's
   gaps (a corrected document goes through a credit note); and the snapshot is not exposed on the API, which no screen
   reads — expose it when one does.
+- [2026-09-27 08:18] DECIDED (revisit): **row 163 is narrowed to the seller**, which is what the 07:16 ruling named ("a
+  seller snapshot at issue"); the row's own wording had added "settings printed". The print settings a re-render
+  still reads live (`document.printed_notes`, the date and number formats, and for a delivery note its language,
+  `show_prices` and `reception_block`) are row 174, queued after the correctness-and-speed block: they only matter
+  when a numbered document is rendered again, a cancelled delivery note or an invoice whose renderer failed at issue.
+- [2026-09-27 08:42] DECIDED (revisit): **the home summary is summed by PostgreSQL** (row 164): an
+  `InvoiceSummarySource` port with four reads (what is due by due day, the first four to chase, payments by month, the
+  month's VAT from `tax_breakdown` where a line charges a VAT-family component of that code), each naming its company
+  because plain SQL escapes the company filter; which bucket, which month and what is late stay in `SummarizeInvoices`.
+  Measured on the 3 011-invoice company, dev mode at load 14: 3–18 s before (and the old walk ran out of its 128 MB
+  after answering), 0.38–0.71 s after warm-up, and every figure identical to the old answer. The chase list sorts
+  numbers byte by byte (`COLLATE "C"`), as the PHP comparison did; Postgres here sorts `en_US.utf8`, where `FAC-b`
+  would otherwise come before `FAC-C`. Its test moved from a unit test over an in-memory repository to an integration
+  test against PostgreSQL, with another company's payment and VAT added so all four reads are proven scoped.
 
 ## 8. Status
 
@@ -3626,8 +3640,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 160 | RGAA (§ 7 2026-09-26 22:24): the app fully RGAA-compliant; how it is audited to be asked | L | todo | - | |
 | 161 | Activity journal (§ 7 2026-09-26 23:04): « Journal d'activité » over the audit log, per person and per record, audit.read, CSV, 12 months by default, members told | L | todo | - | |
 | 162 | Undo first, preview the rest (§ 7 2026-09-26 23:04): undo for the reversible, a precise preview before the irreversible, dry-run on bulk actions, a 30-day Corbeille | L | todo | - | |
-| 163 | Seller snapshot (§ 7 2026-09-27 07:16, P1): issuing writes the seller as it is (name, legal form, identifiers, address, establishment, settings printed); PDF and Factur-X read only snapshots | M | done | - | |
-| 164 | Home summary as SQL (§ 7 2026-09-27 07:16, P1): aging, chase list, payments per month and the month's VAT as aggregates, same figures as today's fixtures | M | todo | - | |
+| 163 | Seller snapshot (§ 7 2026-09-27 07:16, P1; narrowed 08:18): issuing writes the seller as it is (name, legal form, identifiers, address, establishment's contacts, bank, currency, VAT regime); PDF and Factur-X read only snapshots | M | done | 3c29179 | api/src/Tenancy/Domain/SellerSnapshot.php api/src/Module/Invoices/** api/src/Module/DeliveryNotes/** api/templates/pdf/** api/migrations/** |
+| 164 | Home summary as SQL (§ 7 2026-09-27 07:16, P1): aging, chase list, payments per month and the month's VAT as aggregates, same figures as today's fixtures | M | done | - | api/src/Module/Invoices/Application/SummarizeInvoices.php api/src/Module/Invoices/Application/InvoiceSummarySource.php api/src/Module/Invoices/Infrastructure/Doctrine/** api/tests/Integration/Invoices/** |
 | 165 | Sessions that do not lock read requests, and no write per GET (§ 7 2026-09-27 07:16) | S | todo | - | |
 | 166 | Production image (§ 7 2026-09-27 07:16): prod mode, production php.ini, Symfony's OPcache values, preload, no dev packages | M | todo | - | |
 | 167 | FrankenPHP worker mode with its leak audit (§ 7 2026-09-27 07:16) | M | todo | - | |
@@ -3637,6 +3651,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 171 | One authorization decision point (§ 7 2026-09-27 07:16, P2) | M | todo | - | |
 | 172 | Pages on httpResource and linkedSignal instead of chains of effects, screen by screen (§ 7 2026-09-27 07:16, P2) | L | todo | - | |
 | 173 | Lighter list answers, watch counts, a shorter startup chain (§ 7 2026-09-27 07:16, P2) | M | todo | - | |
+| 174 | Print settings frozen at issue (§ 7 2026-09-27 08:18): the printed notes, date and number formats, and a delivery note's language, prices and reception block, kept when the document is issued, so a re-render (a cancelled note, a PDF first rendered after a renderer failure) prints what the document said | S | todo | - | |
 <!-- /progress-block -->
 
 ### Delivered

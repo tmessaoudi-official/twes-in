@@ -7,53 +7,60 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Module\Invoices\Application;
+namespace App\Tests\Integration\Invoices;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
-use App\Fiscal\Domain\CustomerTaxRegime;
+use App\Fiscal\Application\CurrencyScales;
+use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
+use App\Fiscal\Domain\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\TaxComponent;
+use App\Fiscal\Domain\TaxComponentRepository;
+use App\Fiscal\Domain\UnitRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
+use App\Module\Invoices\Application\InvoiceSummarySource;
 use App\Module\Invoices\Application\SummarizeInvoices;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceFigures;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceIssue;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
+use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\PaymentDetails;
 use App\Shared\Domain\PaymentMethod;
 use App\Tenancy\Domain\Company;
-use App\Tests\Support\InMemoryEstablishments;
-use App\Tests\Support\InMemoryInvoices;
-use App\Tests\Support\InMemoryNumberingSeries;
-use App\Tests\Support\InMemoryTaxComponents;
-use App\Tests\Support\InMemoryUnits;
-use App\Tests\Support\ShippedFiscalPresets;
-use PHPUnit\Framework\TestCase;
+use App\Tenancy\Domain\EstablishmentRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\MockClock;
 
-final class SummarizeInvoicesTest extends TestCase
+/**
+ * The home page's figures as the database sums them: the same figures a walk over every invoice gave, in a handful of
+ * statements whatever the number of invoices.
+ */
+final class SummarizeInvoicesTest extends KernelTestCase
 {
     private MockClock $clock;
-    private InMemoryUnits $units;
-    private InMemoryTaxComponents $taxes;
-    private InMemoryEstablishments $establishments;
-    private InMemoryInvoices $invoices;
     private Company $company;
     private Company $globex;
+    private SummarizeInvoices $summarize;
 
     protected function setUp(): void
     {
+        self::bootKernel();
         // Half past eleven at night in UTC is already the 21st in Tunis: every day below is counted from the 21st.
         $this->clock = new MockClock('2026-09-20 23:30:00', 'UTC');
-        $this->units = new InMemoryUnits();
-        $this->taxes = new InMemoryTaxComponents();
-        $this->establishments = new InMemoryEstablishments();
-        $provision = new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $this->clock);
-        $provision->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
-        $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'));
-        $this->invoices = new InMemoryInvoices();
+        static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
+        $provision = static::getContainer()->get(ProvisionCompany::class);
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        foreach ([$this->company, $this->globex] as $company) {
+            $this->em()->persist($company);
+            $this->em()->flush();
+            $provision->handle($company);
+        }
+        $this->summarize = new SummarizeInvoices(static::getContainer()->get(InvoiceSummarySource::class), $this->clock, static::getContainer()->get(CurrencyScales::class));
     }
 
     public function testTheHomeFiguresAreWorkedOutFromIssuedDocumentsOnTheCompanysDay(): void
@@ -76,10 +83,13 @@ final class SummarizeInvoicesTest extends TestCase
         $paid = $this->issued('FAC-P', 'Hôtel Dar Zarrouk', '2026-08-20', 0, '1000.000');
         $this->pay($paid, '2026-08-20', '400');
         $this->pay($paid, '2026-09-05', '600');
-        // Another company's overdue invoice counts nowhere.
+        // Another company's documents count nowhere: an overdue invoice, a payment and VAT this month.
         $this->issued('GLX-1', 'Autre', '2026-05-01', 0, '9999.000', company: $this->globex);
+        $theirs = $this->issued('GLX-2', 'Autre encore', '2026-09-03', 30, '1190.000', ['TVA19' => '190.000'], $this->globex);
+        $this->pay($theirs, '2026-09-04', '500');
+        $this->em()->clear();
 
-        $summary = (new SummarizeInvoices($this->invoices, $this->clock, ShippedFiscalPresets::scales()))->handle($this->company);
+        $summary = $this->summarize->handle($this->company);
 
         self::assertSame(['TND', 3, '2026-09-21'], [$summary->currency, $summary->currencyScale, $summary->today]);
         self::assertSame(['3531.050', '1500.000', '2031.050', 3, 82], [$summary->outstanding, $summary->notYetDue, $summary->overdue, $summary->overdueCount, $summary->oldestOverdueDays]);
@@ -112,15 +122,28 @@ final class SummarizeInvoicesTest extends TestCase
         $this->issued('FAC-W', 'Semaine', '2026-08-29', 30, '200.000');
         $this->issued('FAC-L', 'Plus tard', '2026-08-30', 30, '400.000');
 
-        $summary = (new SummarizeInvoices($this->invoices, $this->clock, ShippedFiscalPresets::scales()))->handle($this->company);
+        $summary = $this->summarize->handle($this->company);
 
         self::assertSame(['0.000', 0, null], [$summary->overdue, $summary->overdueCount, $summary->oldestOverdueDays]);
         self::assertSame([['FAC-T', 0], ['FAC-W', -7]], array_map(static fn (array $row): array => [$row['number'], $row['daysLate']], $summary->toChase));
     }
 
+    public function testOnlyFourAreShownToChaseTheMostLateFirstAndTheCountAndSumAreAllOfThem(): void
+    {
+        // Two due the same day are told apart by their number, byte by byte: an upper case sorts before a lower one.
+        foreach (['FAC-b' => '2026-08-01', 'FAC-C' => '2026-08-01', 'FAC-A' => '2026-08-05', 'FAC-D' => '2026-08-10', 'FAC-E' => '2026-08-15'] as $number => $day) {
+            $this->issued($number, 'Client '.$number, $day, 0, '10.000');
+        }
+
+        $summary = $this->summarize->handle($this->company);
+
+        self::assertSame(['FAC-C', 'FAC-b', 'FAC-A', 'FAC-D'], array_column($summary->toChase, 'number'));
+        self::assertSame([5, '50.000'], [$summary->toChaseCount, $summary->toChaseAmount]);
+    }
+
     public function testACompanyWithoutInvoicesReadsZeros(): void
     {
-        $summary = (new SummarizeInvoices($this->invoices, $this->clock, ShippedFiscalPresets::scales()))->handle($this->company);
+        $summary = $this->summarize->handle($this->company);
 
         self::assertSame(['0.000', '0.000', '0.000', 0, null, [], 0, '0.000', [], '0.000'], [$summary->outstanding, $summary->notYetDue, $summary->overdue, $summary->overdueCount, $summary->oldestOverdueDays, $summary->toChase, $summary->toChaseCount, $summary->toChaseAmount, $summary->vat, $summary->vatTotal]);
         self::assertSame(['2026-04', '2026-09', '0.000'], [$summary->collected[0]['month'], $summary->collected[5]['month'], $summary->collected[5]['amount']]);
@@ -128,16 +151,17 @@ final class SummarizeInvoicesTest extends TestCase
 
     private function draft(): void
     {
-        $this->invoices->save(Invoice::create($this->company, $this->establishments->ofCompany($this->company->getId())[0], $this->customer($this->company, 'Brouillon'), new InvoiceHeader(), [$this->line($this->company, [])], [], $this->clock->now()));
+        $invoice = Invoice::create($this->company, $this->establishment($this->company), $this->customer($this->company, 'Brouillon'), new InvoiceHeader(), [$this->line($this->company, [])], [], $this->clock->now());
+        static::getContainer()->get(InvoiceRepository::class)->save($invoice);
     }
 
     /** @param array<string, string> $taxes the line taxes charged, by code */
     private function issued(string $number, string $customer, string $day, int $terms, string $total, array $taxes = [], ?Company $company = null): Invoice
     {
         $company ??= $this->company;
-        $invoice = Invoice::create($company, $this->establishments->ofCompany($company->getId())[0], $this->customer($company, $customer), new InvoiceHeader(), [$this->line($company, array_keys($taxes))], [], $this->clock->now());
+        $invoice = Invoice::create($company, $this->establishment($company), $this->customer($company, $customer), new InvoiceHeader(), [$this->line($company, array_keys($taxes))], [], $this->clock->now());
         $invoice->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), $terms, 'fr', [], null, null, null), fn (): InvoiceFigures => $this->figures($total, $taxes), $this->clock->now());
-        $this->invoices->save($invoice);
+        static::getContainer()->get(InvoiceRepository::class)->save($invoice);
 
         return $invoice;
     }
@@ -148,12 +172,15 @@ final class SummarizeInvoicesTest extends TestCase
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
         $credit->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), 0, 'fr', [], null, null, null), fn (): InvoiceFigures => $this->figures($total, $taxes), $this->clock->now());
         $invoice->credit($credit, $this->clock->now());
-        $this->invoices->save($credit);
+        $invoices = static::getContainer()->get(InvoiceRepository::class);
+        $invoices->save($credit);
+        $invoices->save($invoice);
     }
 
     private function pay(Invoice $invoice, string $day, string $amount): void
     {
         $invoice->recordPayment(new PaymentDetails(new \DateTimeImmutable($day), $amount, PaymentMethod::Transfer), new \DateTimeImmutable('2026-09-21'), 3, null, $this->clock->now());
+        static::getContainer()->get(InvoiceRepository::class)->save($invoice);
     }
 
     /** @param array<string, string> $taxes */
@@ -169,18 +196,33 @@ final class SummarizeInvoicesTest extends TestCase
 
     private function customer(Company $company, string $name): Customer
     {
-        $regime = new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $this->clock->now());
+        $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
+        self::assertNotNull($regime);
+        $customer = Customer::create($company, 'CLI-'.substr(md5($name), 0, 8), new CustomerProfile(CustomerKind::Company, $name), null, $regime, [], $this->clock->now());
+        $this->em()->persist($customer);
+        $this->em()->flush();
 
-        return Customer::create($company, 'CLI-'.substr(md5($name), 0, 8), new CustomerProfile(CustomerKind::Company, $name), null, $regime, [], $this->clock->now());
+        return $customer;
+    }
+
+    private function establishment(Company $company): \App\Tenancy\Domain\Establishment
+    {
+        return static::getContainer()->get(EstablishmentRepository::class)->ofCompany($company->getId())[0];
     }
 
     /** @param list<string> $taxCodes */
     private function line(Company $company, array $taxCodes): InvoiceLineDetails
     {
-        $unit = $this->units->ofCodeInCompany('C62', $company->getId());
+        $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $company->getId());
         self::assertNotNull($unit);
-        $taxes = array_map(fn (string $code): TaxComponent => $this->taxes->ofCodeInCompany($code, $company->getId()) ?? throw new \LogicException($code), $taxCodes);
+        $components = static::getContainer()->get(TaxComponentRepository::class);
+        $taxes = array_map(static fn (string $code): TaxComponent => $components->ofCodeInCompany($code, $company->getId()) ?? throw new \LogicException($code), $taxCodes);
 
         return new InvoiceLineDetails(null, 'Pièce', '1', $unit, '1', null, $taxes);
+    }
+
+    private function em(): EntityManagerInterface
+    {
+        return static::getContainer()->get(EntityManagerInterface::class);
     }
 }

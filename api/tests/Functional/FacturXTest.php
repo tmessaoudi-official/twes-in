@@ -21,6 +21,7 @@ use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
 use App\Tests\Support\FakeFacturXPdf;
+use App\Tests\Support\FakePdfRenderer;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -158,7 +159,11 @@ final class FacturXTest extends ApiTestCase
     public function testAnInvoiceIssuedBeforeTheCompanyMovedAnswersTheSellerItWasIssuedBy(): void
     {
         $this->signedIn();
+        // Kept across requests, so the renderer stays down while the invoice is issued: its first download renders it.
+        $this->client->disableReboot();
+        static::getContainer()->get(FakePdfRenderer::class)->failing = true;
         $id = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
+        static::getContainer()->get(FakePdfRenderer::class)->failing = false;
         $this->company = $this->reloaded();
         $this->company->reviseProfile(new CompanyProfile(
             legalName: 'Durand Industries SAS',
@@ -182,6 +187,15 @@ final class FacturXTest extends ApiTestCase
             $read->evaluate('string(//ram:PayeePartyCreditorFinancialAccount/ram:IBANID)'),
             $read->evaluate('string(//ram:PayeeSpecifiedCreditorFinancialInstitution/ram:BICID)'),
         ]);
+
+        $this->client->request('GET', $this->path($id).'/pdf');
+
+        self::assertResponseIsSuccessful();
+        $pdf = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('<div class="company-name">Atelier Durand SARL</div>', $pdf);
+        self::assertStringContainsString('12 rue des Forges', $pdf);
+        self::assertStringNotContainsString('Durand Industries', $pdf);
+        self::assertStringNotContainsString('quai Nouveau', $pdf);
     }
 
     public function testThePdfCarriesTheXmlInTheInvoicesOwnPdf(): void
