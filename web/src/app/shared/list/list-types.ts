@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { ActionConfirm } from '../actions/screen-action';
+import type { IconName } from '../icons/icons';
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -43,7 +44,7 @@ export interface RowAction<Row> {
    * after another, so "Delete Zone 1" tells somebody which row they are on where eleven identical "Delete" do not.
    */
   labelParams?: (row: Row) => Record<string, string>;
-  icon: string;
+  icon: IconName;
   /** Where it goes, for an action that is a navigation; a `routerLink` array. */
   link?: (row: Row) => unknown[];
   /** What the link carries in the address beside its path — the movements of THIS product, not of every product. */

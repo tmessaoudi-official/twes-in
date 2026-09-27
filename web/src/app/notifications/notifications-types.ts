@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { IconName } from '../shared/icons/icons';
+
 /**
  * The notification centre seen from its components. Built by the API adapter (notifications-api.ts) from the
  * generated OpenAPI types, which nothing else imports.
@@ -44,7 +46,7 @@ export function notificationKey(type: string): string {
 
 /** Where a notification leads: its icon, and the screen of its record in this company with the permission it takes. */
 export interface NotificationRecord {
-  readonly icon: string;
+  readonly icon: IconName;
   /** null when there is nothing in this company to open */
   readonly route: string | null;
   readonly permission: string | null;

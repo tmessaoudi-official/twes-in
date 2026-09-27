@@ -98,6 +98,7 @@ function vendoredFonts(string $root): array
         }
     }
     ksort($byDir);
+    $byDir = withoutIgnored($root, $byDir);
 
     $fonts = [];
     foreach ($byDir as $dir => $names) {
@@ -106,6 +107,50 @@ function vendoredFonts(string $root): array
     }
 
     return $fonts;
+}
+
+/**
+ * Leaves out the font files git ignores: a font the build generates from a locked package (the icon font cut to the
+ * declared icons, web/scripts/subset-icons.mjs) is that package, whose licence the lock records, not a vendored font.
+ * A font not yet staged is still checked. Outside a git work tree nothing is left out.
+ *
+ * @param array<string, list<string>> $byDir file names by directory relative to the root
+ *
+ * @return array<string, list<string>>
+ */
+function withoutIgnored(string $root, array $byDir): array
+{
+    $paths = [];
+    foreach ($byDir as $dir => $names) {
+        foreach ($names as $name) {
+            $paths[] = $dir.'/'.$name;
+        }
+    }
+    if ([] === $paths) {
+        return $byDir;
+    }
+    $process = proc_open(['git', '-C', $root, 'check-ignore', '--stdin'], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    if (!is_resource($process)) {
+        return $byDir;
+    }
+    fwrite($pipes[0], implode("\n", $paths)."\n");
+    fclose($pipes[0]);
+    $ignored = array_filter(explode("\n", (string) stream_get_contents($pipes[1])));
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    // 0: some are ignored; 1: none is; anything else (128, not a repository): nothing to leave out.
+    if (0 !== proc_close($process)) {
+        return $byDir;
+    }
+    $kept = [];
+    foreach ($byDir as $dir => $names) {
+        $left = array_values(array_filter($names, static fn (string $name): bool => !in_array($dir.'/'.$name, $ignored, true)));
+        if ([] !== $left) {
+            $kept[$dir] = $left;
+        }
+    }
+
+    return $kept;
 }
 
 /**

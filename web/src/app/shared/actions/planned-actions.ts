@@ -11,6 +11,7 @@ import { Label } from '../a11y/label';
 import { Session } from '../session/session';
 import { ThemeFacade } from '../theme/theme-facade';
 import { WINDOW_CLASS } from '../ui/window-class';
+import type { IconName } from '../icons/icons';
 
 /** Something a screen will offer once a planned module ships: shown « Bientôt », never run. */
 export interface PlannedAction {
@@ -19,7 +20,7 @@ export interface PlannedAction {
   /** A translation key. */
   readonly label: string;
   /** A Material Symbols ligature. */
-  readonly icon: string;
+  readonly icon: IconName;
 }
 
 /**

@@ -7,6 +7,7 @@ import { INVOICES_NAV } from '../invoices/invoices-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
 import { VENDORS_NAV } from '../vendors/vendors-nav';
 import { EXPENSES_NAV } from '../expenses/expenses-nav';
+import type { IconName } from '../shared/icons/icons';
 
 /**
  * What the shell offers. The sidebar keeps the daily entries in two groups, Vendre and Gérer (docs/SPEC.md § 7,
@@ -32,7 +33,7 @@ export interface NavEntry extends Gated {
   /** What the 80 px rail writes under the icon when the label is too long for it (docs/SPEC.md § 8 row 123). */
   readonly shortLabelKey?: string;
   /** A Material Symbols ligature. */
-  readonly icon: string;
+  readonly icon: IconName;
   readonly route: string;
   readonly section: NavSection;
   /** Present on an entry of the vision not built yet: it shows « Bientôt » and opens the « En construction » page. */

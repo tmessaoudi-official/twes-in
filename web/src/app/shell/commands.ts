@@ -8,6 +8,7 @@ import { PRODUCTS_COMMANDS } from '../products/products-nav';
 import { VENDORS_COMMANDS } from '../vendors/vendors-nav';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import type { Gated, NavEntry } from './nav-manifest';
+import type { IconName } from '../shared/icons/icons';
 
 /**
  * Where a command sits in the palette: what the screen on view can do, then what it creates, then where it goes.
@@ -25,7 +26,7 @@ interface CommandBase extends Gated {
   readonly labelKey: string;
   readonly labelParams?: Record<string, string>;
   /** A Material Symbols ligature. */
-  readonly icon: string;
+  readonly icon: IconName;
   readonly group: CommandGroup;
 }
 

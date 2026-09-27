@@ -139,14 +139,14 @@ const declared: ListDescriptor<Customer> = {
     {
       id: 'call',
       label: 'c.call',
-      icon: 'call',
+      icon: 'chat',
       run: (row) => ran.push(`call:${row.id}`),
       disabled: (row) => row.id === '3',
     },
     {
       id: 'invoice',
       label: 'c.invoice',
-      icon: 'receipt',
+      icon: 'receipt_long',
       link: () => ['/invoices/new'],
       linkQuery: (row) => ({ customerId: row.id }),
     },

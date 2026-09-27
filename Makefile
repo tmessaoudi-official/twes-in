@@ -70,6 +70,7 @@ gate-licences:
 	bash scripts/gates/tests/tour-anchors.test.sh
 	bash scripts/gates/tests/stored-items.test.sh
 	bash scripts/gates/tests/production-image.test.sh
+	bash scripts/gates/tests/icons-declared.test.sh
 	bash infra/self-hosted/tests/logrotate.test.sh
 	php scripts/gates/dependency-licences.php
 	bash scripts/gates/spdx-headers.sh
@@ -85,6 +86,7 @@ gate-licences:
 	bash scripts/gates/presentation-settings-parity.sh
 	bash scripts/gates/tour-anchors.sh
 	bash scripts/gates/stored-items.sh
+	bash scripts/gates/icons-declared.sh
 
 gate-api:      ## needs the postgres service up (make up, or docker compose up -d postgres)
 	cd api && composer gate

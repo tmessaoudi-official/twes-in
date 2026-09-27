@@ -25,6 +25,7 @@ import { ScanOffers } from '../shared/scan/scan-offers';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductScan, ProductsError } from './products-types';
 import type { ProductOnViewRef } from './product-on-view';
+import type { IconName } from '../shared/icons/icons';
 
 export interface ProductScanCardData {
   /** What the scanner read, as it came. */
@@ -46,7 +47,7 @@ interface ScanAction {
     | 'search';
   /** The one key that runs it; Enter always runs the first. */
   readonly key: string;
-  readonly icon: string;
+  readonly icon: IconName;
   /** Where it goes; none for what happens in the card itself. */
   readonly url: string | null;
 }

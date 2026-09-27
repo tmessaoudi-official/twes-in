@@ -7,8 +7,9 @@ import { MatMenuModule } from '@angular/material/menu';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../a11y/label';
 import { type SchemePreference, ThemeFacade } from './theme-facade';
+import type { IconName } from '../icons/icons';
 
-const SCHEMES: readonly { value: SchemePreference; icon: string }[] = [
+const SCHEMES: readonly { value: SchemePreference; icon: IconName }[] = [
   { value: 'auto', icon: 'contrast' },
   { value: 'light', icon: 'light_mode' },
   { value: 'dark', icon: 'dark_mode' },

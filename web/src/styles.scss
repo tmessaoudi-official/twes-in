@@ -361,8 +361,34 @@ body {
   height: 100%;
 }
 
-// Material Symbols (Apache-2.0, the `material-symbols` package): outlined, regular weight, unfilled.
+// Material Symbols (Apache-2.0, the `material-symbols` package): outlined, regular weight, unfilled. The font is the
+// package's, cut to the icons src/app/shared/icons/icons.ts declares (scripts/subset-icons.mjs, run before a build);
+// the rules are the package's outlined.css, which is no longer loaded. `block`: a name never shows as letters while
+// the font loads.
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url('./generated/material-symbols-outlined.woff2') format('woff2');
+}
+
 .material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
   font-variation-settings:
     'FILL' 0,
     'wght' 400,

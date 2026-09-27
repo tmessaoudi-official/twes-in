@@ -3,13 +3,14 @@
 import type { PlannedModule } from '../auth/auth-types';
 import type { NavigateCommand } from './commands';
 import { type Coming, COMING_NAV, COMING_ROUTE, type NavEntry } from './nav-manifest';
+import type { IconName } from '../shared/icons/icons';
 
 /** Where a planned module sits in the menu and how it is drawn: the only thing the web declares about it. */
 export interface PlannedPlace {
   /** The module's key in the API's catalogue. */
   readonly key: string;
   /** A Material Symbols ligature. */
-  readonly icon: string;
+  readonly icon: IconName;
   readonly section: 'sell' | 'manage';
   /** The entry it follows in its section; the chain below is read in order. */
   readonly after: string;

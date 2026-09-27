@@ -171,7 +171,7 @@ not compiled into what we distribute, and are not listed here.
 | webmozart/assert | 2.4.1 | MIT | runtime |
 | willdurand/negotiation | 3.1.0 | MIT | runtime |
 
-## web (npm) — 38 runtime, 624 dev
+## web (npm) — 38 runtime, 626 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -607,6 +607,7 @@ not compiled into what we distribute, and are not listed here.
 | glob-parent | 6.0.2 | ISC | dev |
 | gopd | 1.2.0 | MIT | dev |
 | graceful-fs | 4.2.11 | ISC | dev |
+| harfbuzzjs | 1.6.2 | MIT | dev |
 | has-symbols | 1.1.0 | MIT | dev |
 | hashery | 1.5.1 | MIT | dev |
 | hasown | 2.0.4 | MIT | dev |
@@ -815,6 +816,7 @@ not compiled into what we distribute, and are not listed here.
 | vitest | 4.1.11 | MIT | dev |
 | w3c-xmlserializer | 5.0.0 | MIT | dev |
 | watchpack | 2.5.2 | MIT | dev |
+| wawoff2 | 2.0.1 | MIT | dev |
 | weak-lru-cache | 1.2.2 | MIT | dev |
 | webidl-conversions | 8.0.1 | BSD-2-Clause | dev |
 | whatwg-mimetype | 5.0.0 | MIT | dev |

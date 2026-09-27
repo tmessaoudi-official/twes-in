@@ -121,6 +121,13 @@ assert_gate "a vendored font under another licence fails" "$d" 1 "web/public/fon
 d=$(fixture); vendor_font "$d" src/assets/odd ""
 assert_gate "a font file under web/src is checked too" "$d" 1 "web/src/assets/odd/demo-latin.woff2 is a vendored font with no LICENSE file beside it"
 
+# A font the build generates from a locked package and git ignores is that package, whose licence the lock records: not
+# a vendored font. One not yet staged is still checked; only an ignored one is left out.
+d=$(fixture); git -C "$d" init -q; printf '/web/src/generated\n' > "$d/.gitignore"; vendor_font "$d" src/generated ""
+assert_gate "a font the build generates, which git ignores, is not a vendored font" "$d" 0 "OK"
+vendor_font "$d" src/assets/new ""
+assert_gate "beside it, a font not yet staged is still checked" "$d" 1 "web/src/assets/new/demo-latin.woff2 is a vendored font with no LICENSE file beside it"
+
 # WebAssembly shipped from an npm package compiles in code no lock file shows: a COMPONENTS.json beside its licence
 # texts lists what is inside, audited against ONE exact tarball (docs/SPEC.md § 7, 2026-09-22 22:38 and 2026-09-23 08:05).
 # vendor_wasm <root> — a package in the lock, a build that ships its .wasm, and a manifest of what the wasm holds.

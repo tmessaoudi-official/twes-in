@@ -38,7 +38,7 @@ const COMMANDS: readonly Command[] = [
   {
     key: 'goto-expenses',
     labelKey: 'nav.expenses',
-    icon: 'receipt',
+    icon: 'receipt_long',
     route: '/expenses',
     group: 'goto',
   },

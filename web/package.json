@@ -11,6 +11,9 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "icons": "node scripts/subset-icons.mjs",
+    "prebuild": "npm run icons",
+    "prestart": "npm run icons",
     "test": "ng test",
     "lint": "ng lint",
     "format:check": "prettier --check .",
@@ -49,13 +52,15 @@
     "@tailwindcss/postcss": "^4.3.3",
     "angular-eslint": "22.5.0",
     "eslint": "^10.9.1",
+    "harfbuzzjs": "^1.6.2",
     "jsdom": "^30.0.1",
     "postcss": "^8.5.28",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "typescript-eslint": "8.70.0",
-    "vitest": "^4.0.8"
+    "vitest": "^4.0.8",
+    "wawoff2": "^2.0.1"
   },
   "overrides": {
     "js-yaml": "4.3.2"

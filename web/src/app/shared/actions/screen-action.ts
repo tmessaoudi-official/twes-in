@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { IconName } from '../icons/icons';
+
 /**
  * What a screen offers, declared once (docs/SPEC.md § 7, 2026-09-16 point 7 and 2026-09-19 23:17, row 45). The
  * toolbar beside the title, the command palette, the keyboard shortcut and the "?" sheet all read this one list,
@@ -22,7 +24,7 @@ export interface ScreenAction {
   /** A translation key; also the accessible name where the control shows only an icon. */
   label: string;
   labelParams?: Record<string, string>;
-  icon?: string;
+  icon?: IconName;
   /** The state's next step, drawn filled. At most one action carries it. */
   primary?: boolean;
   /**
@@ -63,7 +65,7 @@ export type ActionKind = 'annulable' | 'corrigeable' | 'definitif';
 export const ACTION_KINDS: readonly ActionKind[] = ['annulable', 'corrigeable', 'definitif'];
 
 /** The icon said beside a kind's word wherever it appears, so the three are told apart at a glance. */
-export const ACTION_KIND_ICONS: Readonly<Record<ActionKind, string>> = {
+export const ACTION_KIND_ICONS: Readonly<Record<ActionKind, IconName>> = {
   annulable: 'undo',
   corrigeable: 'edit_note',
   definitif: 'lock',

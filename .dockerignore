@@ -15,3 +15,5 @@ scripts
 **/playwright
 # Generated in the web image from the api image's OpenAPI document; a local copy must never leak in.
 web/src/app/api
+# The cut icon font: the web image generates its own before building, so a stale local copy must not leak in.
+web/src/generated

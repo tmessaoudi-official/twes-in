@@ -3538,6 +3538,24 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   api, p50, load 26-30: prod classic → prod worker, health 33 → 6 ms, `/api/auth/me` 100 → 14, customers 121 → 48, 25
   invoices 225 → 147; dev classic → dev worker, `/api/auth/me` 188 → 42. `production-image.php` now also refuses an
   image without the worker.
+- [2026-09-27 13:02] DECIDED (revisit): **the icon font is cut at build to the icons the app declares** (row 168):
+  3 980 092 → 91 944 bytes for 117 icons, byte-for-byte the same screens (0 differing pixels on the home and the
+  product list, before and after). `web/src/app/shared/icons/icons.ts` declares them, and `IconName` is the type every
+  `icon` field takes, so TypeScript refuses an undeclared one; it caught `bolt`, a fallback no search had found.
+  `scripts/gates/icons-declared.sh` checks the names a template writes out (a `mat-icon`'s text, a ternary's result
+  inside one, never a compared operand), with a floor of 30. `web/scripts/subset-icons.mjs` runs before `build` and
+  `start`. It shapes each name with harfbuzz to find its glyph, then keeps the letters and those glyphs with no layout
+  closure, which would otherwise bring back every icon. It fails the build naming any declared name the font cannot
+  draw, and the variation axes are kept. The tools are harfbuzzjs and wawoff2, both MIT and dev-only. `subset-font`
+  was not taken: through `fontverter` it pulls in `pako`, `(MIT AND Zlib)`, and adding Zlib would be a licensing decision.
+  The generated font is gitignored and hashed into `media/` like any stylesheet asset, so nginx still serves it
+  immutable. One licensing-adjacent change: the licence gate's font check now leaves out files git ignores, and a font
+  not yet staged is still checked. A font generated from a locked package is that package, and `material-symbols`
+  (Apache-2.0) is already recorded as a runtime dependency. Before, the check read the working tree, so a local
+  `make gate` failed after any build on a file CI never sees. `e2e/icons.spec.ts` walks six screens and fails on an
+  icon overflowing as letters; a build dropping `home` from the font made it red, naming it. That scenario failed
+  twice locally at its first `toBeVisible` right after a web rebuild at load 30, and passed four times out of four
+  otherwise. Not raised: CI arbitrates.
 
 ## 8. Status
 
@@ -3712,8 +3730,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 164 | Home summary as SQL (§ 7 2026-09-27 07:16, P1): aging, chase list, payments per month and the month's VAT as aggregates, same figures as today's fixtures | M | done | 101d649 | api/src/Module/Invoices/Application/SummarizeInvoices.php api/src/Module/Invoices/Application/InvoiceSummarySource.php api/src/Module/Invoices/Infrastructure/Doctrine/** api/tests/Integration/Invoices/** |
 | 165 | Sessions that do not lock read requests, and no write per GET (§ 7 2026-09-27 07:16) | S | done | a8c73da | api/src/Identity/Infrastructure/Session/** api/config/packages/framework.yaml api/tests/Integration/Identity/** |
 | 166 | Production image (§ 7 2026-09-27 07:16): prod mode, production php.ini, Symfony's OPcache values, preload, no dev packages | M | done | 7eedc46 | infra/api/** compose.yaml compose.prod.yaml scripts/gates/production-image.php scripts/gates/tests/production-image.test.sh |
-| 167 | FrankenPHP worker mode with its leak audit (§ 7 2026-09-27 07:16) | M | done | - | infra/api/Dockerfile api/src/Identity/Infrastructure/Session/** api/tests/Functional/WorkerModeTest.php scripts/gates/production-image.php |
-| 168 | Icon font cut to the icons used, with a gate (§ 7 2026-09-27 07:16) | S | todo | - | |
+| 167 | FrankenPHP worker mode with its leak audit (§ 7 2026-09-27 07:16) | M | done | a2fbb92 | infra/api/Dockerfile api/src/Identity/Infrastructure/Session/** api/tests/Functional/WorkerModeTest.php scripts/gates/production-image.php |
+| 168 | Icon font cut to the icons used, with a gate (§ 7 2026-09-27 07:16) | S | done | - | web/src/app/shared/icons/** web/scripts/subset-icons.mjs scripts/gates/icons-declared.sh scripts/lib/dependency-inventory.php web/e2e/icons.spec.ts |
 | 169 | Side effects in the change's transaction: a Messenger outbox (§ 7 2026-09-27 07:16, P2) | M | todo | - | |
 | 170 | Errors as codes: RFC 7807 code/field/params, one web mapper, required output fields (§ 7 2026-09-27 07:16, P2) | L | todo | - | |
 | 171 | One authorization decision point (§ 7 2026-09-27 07:16, P2) | M | todo | - | |

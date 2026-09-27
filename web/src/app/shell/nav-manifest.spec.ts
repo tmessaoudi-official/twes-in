@@ -48,7 +48,7 @@ const entries: readonly NavEntry[] = [
   {
     key: 'design',
     labelKey: 'nav.design',
-    icon: 'palette',
+    icon: 'contrast',
     route: '/design',
     section: 'sell',
     devOnly: true,
