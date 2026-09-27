@@ -59,6 +59,10 @@ class Expense implements CompanyOwned
     #[ORM\JoinColumn(name: 'vendor_id', nullable: true)]
     private ?Vendor $vendor = null;
 
+    /** Who was paid, in words, when no vendor record names them. */
+    #[ORM\Column(length: ExpenseDetails::PAYEE_MAX, nullable: true)]
+    private ?string $payee = null;
+
     #[ORM\ManyToOne(targetEntity: ExpenseCategory::class)]
     #[ORM\JoinColumn(name: 'category_id', nullable: true)]
     private ?ExpenseCategory $category = null;
@@ -258,6 +262,11 @@ class Expense implements CompanyOwned
         }
     }
 
+    public function getPayee(): ?string
+    {
+        return $this->payee;
+    }
+
     /** The vendor's payment terms counted from the expense's day; none without a vendor or its terms. */
     public function getDueDate(): ?\DateTimeImmutable
     {
@@ -275,6 +284,9 @@ class Expense implements CompanyOwned
         if (null !== $vendor && (!$vendor->getCompany()->getId()->equals($this->company->getId()) || (!$vendor->isActive() && $vendor !== $this->vendor))) {
             throw new InvalidExpense('vendorId', 'An expense names an active vendor of its company.');
         }
+        if (null !== $vendor && null !== $details->payee) {
+            throw new InvalidExpense('payee', 'A vendor already names who was paid.');
+        }
         if (null !== $category && (!$category->getCompany()->getId()->equals($this->company->getId()) || (!$category->isActive() && $category !== $this->category))) {
             throw new InvalidExpense('categoryId', 'An expense is filed under an active category of its company.');
         }
@@ -289,6 +301,7 @@ class Expense implements CompanyOwned
         $this->reference = $details->reference;
         $this->description = $details->description;
         $this->vendor = $vendor;
+        $this->payee = $details->payee;
         $this->category = $category;
         $this->amountNet = self::stored($net);
         $this->taxComponent = $tax;
@@ -307,6 +320,7 @@ class Expense implements CompanyOwned
             'description' => $this->description,
             'amountNet' => $this->amountNet,
             'vendorId' => $this->vendor?->getId()->toRfc4122(),
+            'payee' => $this->payee,
             'categoryId' => $this->category?->getId()->toRfc4122(),
             'taxComponentId' => $this->taxComponent?->getId()->toRfc4122(),
             'taxRate' => null === $this->taxComponent ? null : $this->taxRate,

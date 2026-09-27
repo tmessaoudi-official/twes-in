@@ -32,6 +32,7 @@ use App\Module\Expenses\Domain\InvalidExpense;
 use App\Module\Expenses\Domain\TejOperationCode;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorRepository;
+use App\ModuleRegistry\Application\ModuleStates;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
@@ -57,6 +58,8 @@ final readonly class ManageExpenses
     public const string DELETED = 'expense.deleted';
     public const string ATTACHMENT_ADDED = 'expense.attachment_added';
     public const string ATTACHMENT_REMOVED = 'expense.attachment_removed';
+    /** The module whose records an expense's vendor is: named by key, as the application layer knows no manifest. */
+    public const string VENDORS_MODULE = 'vendors';
 
     public function __construct(
         private ExpenseRepository $expenses,
@@ -68,6 +71,7 @@ final readonly class ManageExpenses
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        private ModuleStates $modules,
     ) {
     }
 
@@ -107,7 +111,7 @@ final readonly class ManageExpenses
     public function create(Company $company, ExpenseInput $input, ?Uuid $actorUserId): Expense
     {
         return $this->transactions->run(function () use ($company, $input, $actorUserId): Expense {
-            $expense = Expense::create($company, $input->details, $this->vendor($company, $input->vendorId), $this->category($company, $input->categoryId), $this->tax($company, $input->taxComponentId), $this->scales->of($company->getCurrency()), $this->clock->now());
+            $expense = Expense::create($company, $input->details, $this->vendor($company, $input->vendorId, null), $this->category($company, $input->categoryId), $this->tax($company, $input->taxComponentId), $this->scales->of($company->getCurrency()), $this->clock->now());
             $this->expenses->save($expense);
             $this->record($company, $expense->getId(), self::CREATED, [], $actorUserId);
 
@@ -125,7 +129,7 @@ final readonly class ManageExpenses
         return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): Expense {
             $expense = $this->get($company, $id);
             $expense->assertDraft('revised');
-            $changed = $expense->revise($input->details, $this->vendor($company, $input->vendorId), $this->category($company, $input->categoryId), $this->tax($company, $input->taxComponentId), $this->scales->of($company->getCurrency()), $this->clock->now());
+            $changed = $expense->revise($input->details, $this->vendor($company, $input->vendorId, $expense->getVendor()), $this->category($company, $input->categoryId), $this->tax($company, $input->taxComponentId), $this->scales->of($company->getCurrency()), $this->clock->now());
             if ([] !== $changed) {
                 $this->expenses->save($expense);
                 $this->record($company, $expense->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
@@ -321,9 +325,20 @@ final readonly class ManageExpenses
         return $this->attachments->find($company, self::ENTITY_TYPE, $this->get($company, $id)->getId(), $attachmentId) ?? throw new AttachmentNotFound();
     }
 
-    private function vendor(Company $company, ?Uuid $id): ?Vendor
+    /**
+     * The vendor an expense names. While Vendors is switched off it names no new one, and a draft keeps the one it has,
+     * since its form no longer shows the field but still sends what it read.
+     */
+    private function vendor(Company $company, ?Uuid $id, ?Vendor $kept): ?Vendor
     {
-        return null === $id ? null : ($this->vendors->ofIdInCompany($id, $company->getId()) ?? throw new InvalidExpense('vendorId', 'No vendor of this company has this id.'));
+        if (null === $id) {
+            return null;
+        }
+        if (!$id->equals($kept?->getId()) && !$this->modules->isEnabled($company->getId(), self::VENDORS_MODULE)) {
+            throw new InvalidExpense('vendorId', 'Vendors is switched off: an expense names no vendor it did not already.');
+        }
+
+        return $this->vendors->ofIdInCompany($id, $company->getId()) ?? throw new InvalidExpense('vendorId', 'No vendor of this company has this id.');
     }
 
     private function category(Company $company, ?Uuid $id): ?ExpenseCategory

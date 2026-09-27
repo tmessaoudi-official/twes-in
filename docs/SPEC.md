@@ -3737,6 +3737,14 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   the dev rebuild, so `make live-refresh` empties every pool, restarts the workers through FrankenPHP's admin endpoint
   and regenerates the web types. Live does not run nginx: its CSP, frame and cache headers are certified only by `make
   up-images` and CI. Revisit if the dev rebuild's seconds matter more than worker parity.
+- [2026-09-27 21:40] DECIDED (revisit): row 178, how expenses stand without vendors. The Expenses manifest requires no module.
+  While Vendors is off an expense names no NEW vendor (422 `vendorId`), but a draft keeps the one it has: its form no
+  longer shows the field, so the page sends the kept vendor back, and an expense recorded before the switch never loses
+  its supplier to an edit. The vendor picker answers 404 while Vendors is off. « Payé à » (`payee`, 160 characters) is
+  shown only while no vendor is picked and refused beside one, by the domain and by a database check. The list's column
+  reads the vendor, else the payee, and sorts by the same (`ListOrder` now takes a column's own emptiness test, since
+  DQL orders by a CASE but tests only a COALESCE for null). The TEJ declaration already reports a vendorless payment as
+  `vendor_missing`, so it needed no change. No demo expense names a payee yet.
 
 ## 8. Status
 
@@ -3922,7 +3930,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 175 | Legal texts over the screen (§ 7 2026-09-27 08:59): footer always centred; notice pinned, never covering content, app usable before « Compris »; legal text from the notice or footer opens in a panel, the full page gets « Retour » | S | done | ed2506d | web/src/app/legal/** web/src/app/shared/legal/** |
 | 176 | Mobile review (§ 7 2026-09-27 08:59, not urgent): bottom bar icon/label gap, settings list reachable from a settings page on a phone, a full pass for other anomalies | M | todo | - | |
 | 177 | Doctrine's sort direction as `SortDirection`, not a string: ~35 query builder calls, each logging a deprecation on every list, to production's STDERR among others (§ 7 2026-09-27 11:06, P2) | S | todo | - | |
-| 178 | Expenses without vendors (§ 7 2026-09-27 18:34): the Expenses module no longer requires Vendors, the vendor field shows when Vendors is on, an optional free-text « Payé à »; after 174 | S | todo | - | api/src/Module/Expenses/** api/migrations/** web/src/app/expenses/** |
+| 178 | Expenses without vendors (§ 7 2026-09-27 18:34 and 2026-09-27 21:40): the Expenses module no longer requires Vendors, the vendor field shows when Vendors is on, an optional free-text « Payé à »; after 174 | S | done | - | api/src/Module/Expenses/** api/migrations/** web/src/app/expenses/** |
 | 179 | Recurring expenses (§ 7 2026-09-27 18:34): rent, electricity, internet repeated from one model; after row 80 | M | todo | - | |
 | 180 | Trésorerie (§ 7 2026-09-27 18:34): cash and bank accounts, a balance, typed movements for what is not a purchase (drawings, contributions, loan principal, taxes paid, transfers); after row 80 | L | todo | - | |
 | 181 | Large-data run (§ 7 2026-09-27 18:59): `make scale-data` / `make up-scale` in steps of 100k to 10m invoices, a large company and a wide platform, real documents cloned, measured per list, screen and operation; after 178 | L | todo | - | api/src/DataFixtures/** Makefile docs/** |

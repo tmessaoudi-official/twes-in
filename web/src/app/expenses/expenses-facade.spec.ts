@@ -10,6 +10,7 @@ const input: ExpenseInput = {
   reference: null,
   description: 'Gasoil',
   vendorId: null,
+  payee: null,
   categoryId: 'k1',
   amountNet: '100.000',
   taxComponentId: null,

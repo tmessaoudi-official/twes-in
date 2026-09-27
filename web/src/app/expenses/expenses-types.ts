@@ -64,6 +64,8 @@ export interface ExpenseRow {
   description: string;
   vendorId: string | null;
   vendorName: string | null;
+  /** Who was paid, in words, when no vendor record names them: a car park, a notary. Never beside a vendor. */
+  payee: string | null;
   categoryId: string | null;
   categoryName: string | null;
   /** Decimal strings at the currency's scale. */
@@ -95,6 +97,7 @@ export interface ExpenseInput {
   reference: string | null;
   description: string;
   vendorId: string | null;
+  payee: string | null;
   categoryId: string | null;
   amountNet: string;
   taxComponentId: string | null;

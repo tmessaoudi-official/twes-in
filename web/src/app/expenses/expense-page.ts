@@ -104,7 +104,9 @@ export class ExpensePage {
   });
   protected readonly descriptor = computed(() => {
     const options = this.facade.options();
-    return options === null ? null : expenseForm(options, this.current() ?? null);
+    return options === null
+      ? null
+      : expenseForm(options, this.current() ?? null, this.auth.hasModule('vendors'));
   });
   /** The form is rebuilt for another expense, other fields or a status change; never over what is being typed. */
   private readonly formKey = computed(() => {
@@ -332,7 +334,7 @@ export class ExpensePage {
   protected async save(values: FormValues): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
-    const input = expenseInput(values);
+    const input = expenseInput(values, this.current()?.vendorId ?? null);
     const id = this.id();
     if (id === null) {
       const created = await this.facade.createExpense(companyId, input);
@@ -359,7 +361,11 @@ export class ExpensePage {
     form.markAllAsTouched();
     if (form.invalid) return;
     if (
-      (await this.facade.reviseExpense(companyId, id, expenseInput(form.getRawValue()))) === null
+      (await this.facade.reviseExpense(
+        companyId,
+        id,
+        expenseInput(form.getRawValue(), this.current()?.vendorId ?? null),
+      )) === null
     ) {
       return;
     }

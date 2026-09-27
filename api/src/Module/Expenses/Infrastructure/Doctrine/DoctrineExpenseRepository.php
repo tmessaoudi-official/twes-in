@@ -31,7 +31,8 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
     private const array SORTED_BY = [
         'date' => 'e.date',
         'description' => 'e.description',
-        'vendor' => 'v.name',
+        // Who was paid, as the list's column reads it: the vendor, else the payee written on the expense.
+        'vendor' => ['CASE WHEN v.id IS NULL THEN e.payee ELSE v.name END', 'COALESCE(v.name, e.payee) IS NULL'],
         'category' => 'k.name',
         'amountGross' => 'e.amountGross',
         'status' => 'e.status',

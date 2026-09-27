@@ -23,8 +23,8 @@
             {{ 'expenses.statuses.' + expense.status | translate }}
           </app-status-badge>
           · {{ expense.date | day }}
-          @if (expense.vendorName) {
-            · {{ expense.vendorName }}
+          @if (expense.vendorName ?? expense.payee; as paidTo) {
+            · {{ paidTo }}
           }
         </p>
       }

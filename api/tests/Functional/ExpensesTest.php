@@ -135,6 +135,46 @@ final class ExpensesTest extends ApiTestCase
         self::assertSame('[]', $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'expense.created'"));
     }
 
+    /**
+     * Not every payee is a vendor on file (docs/SPEC.md § 7, 2026-09-27 18:34): a car park, a notary. Expenses stand
+     * without the Vendors module, name such a payee in words, and never name one twice.
+     */
+    public function testAnExpenseNamesItsPayeeInWordsAndStandsWithoutTheVendorsModule(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write', 'company.read', 'company.settings']);
+
+        $this->postJson($this->path(), $this->expense(['payee' => 'Parking Lafayette']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a vendor and a payee together');
+        self::assertStringContainsString('payee', (string) $this->client->getResponse()->getContent());
+        $this->postJson($this->path(), $this->expense(['payee' => str_repeat('x', 161)]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a payee over 160 characters');
+        $this->postJson($this->path(), $this->expense());
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $fromVendor = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->companyPath().'/modules/vendors', ['enabled' => false]);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path(), $this->expense(['vendorId' => null, 'payee' => '  Parking Lafayette ']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'expenses stay on while Vendors is off');
+        $created = $this->json();
+        self::assertSame(['Parking Lafayette', null, null], [$created['payee'], $created['vendorId'], $created['vendorName']]);
+        $this->getJson($this->path($this->stringAt($created, 'id')));
+        self::assertSame('Parking Lafayette', $this->json()['payee']);
+
+        $this->postJson($this->path(), $this->expense());
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a vendor named while Vendors is off');
+        self::assertStringContainsString('vendorId', (string) $this->client->getResponse()->getContent());
+        $this->sendJson('PUT', $this->path($fromVendor), $this->expense(['description' => 'Gasoil octobre']));
+        self::assertResponseIsSuccessful();
+        self::assertSame(['Gasoil octobre', 'Sotumag'], [$this->json()['description'], $this->json()['vendorName']], 'a draft keeps the vendor it has');
+        $this->getJson($this->companyPath().'/expense-options/vendors');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'no vendor to pick while Vendors is off');
+
+        // The list's column reads the vendor, else the payee, and sorts by what it reads: Parking before Sotumag.
+        $this->getJson($this->path().'?order[vendor]=asc');
+        self::assertSame(['Parking Lafayette', 'Sotumag'], array_map(static fn (array $row): mixed => $row['payee'] ?? $row['vendorName'], $this->jsonList()));
+    }
+
     public function testWhatTheShapeOrTheCompanyRefusesAnswersUnprocessableNamingTheField(): void
     {
         $this->signedIn(['expense.read', 'expense.write']);

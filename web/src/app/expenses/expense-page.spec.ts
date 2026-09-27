@@ -79,6 +79,7 @@ const draft: ExpenseRow = {
   description: 'Gasoil',
   vendorId: 'v1',
   vendorName: 'Sotumag',
+  payee: null,
   categoryId: 'k2',
   categoryName: 'Carburant',
   amountNet: '100.000',
@@ -140,6 +141,7 @@ describe('ExpensePage', () => {
       company: { id: 'c1', name: 'Acme', timezone: 'America/New_York' },
     }),
     hasPermission: vi.fn(),
+    hasModule: vi.fn(),
   };
   let fixture: ComponentFixture<ExpensePage>;
 
@@ -208,6 +210,7 @@ describe('ExpensePage', () => {
     facade.attach.mockReset().mockResolvedValue(true);
     facade.detach.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    auth.hasModule.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [ExpensePage],
       providers: [
@@ -272,6 +275,35 @@ describe('ExpensePage', () => {
       expect(navigate).toHaveBeenCalledWith(['/expenses', 'e9'], { replaceUrl: true }),
     );
     expect(successToasts()).toContain('expenses.saved');
+  });
+
+  // docs/SPEC.md § 7, 2026-09-27 18:34: expenses stand without the Vendors module.
+  it('asks who was paid in words while Vendors is off, and keeps the vendor a draft already names', async () => {
+    auth.hasModule.mockImplementation((module: string) => module !== 'vendors');
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await open(undefined);
+    expect(q('field-vendorId')).toBeNull();
+    type('field-description', 'Stationnement');
+    type('field-amountNet', '4');
+    type('field-payee', 'Parking Lafayette');
+    q('record-save')!.click();
+    await settle();
+    expect(facade.createExpense).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ vendorId: null, payee: 'Parking Lafayette' }),
+    );
+
+    expense.set(draft);
+    await open('e1');
+    expect(q('expense-status')?.textContent).toContain('Sotumag');
+    type('field-amountNet', '120');
+    q('record-save')!.click();
+    await settle();
+    expect(facade.reviseExpense).toHaveBeenCalledWith(
+      'c1',
+      'e1',
+      expect.objectContaining({ amountNet: '120', vendorId: 'v1', payee: null }),
+    );
   });
 
   it('keeps a category already chosen when the vendor changes, and sends no amount of the wrong shape', async () => {

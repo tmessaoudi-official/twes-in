@@ -353,6 +353,7 @@ function toExpense(raw: ExpenseExpenseRead | ExpenseJsonldExpenseRead): ExpenseR
     description: raw.description ?? '',
     vendorId: raw.vendorId ?? null,
     vendorName: raw.vendorName ?? null,
+    payee: raw.payee ?? null,
     categoryId: raw.categoryId ?? null,
     categoryName: raw.categoryName ?? null,
     amountNet: raw.amountNet ?? '',

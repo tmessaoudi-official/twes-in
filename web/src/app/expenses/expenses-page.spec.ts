@@ -44,6 +44,7 @@ const fuel: ExpenseRow = {
   description: 'Gasoil',
   vendorId: 'v1',
   vendorName: 'Sotumag',
+  payee: null,
   categoryId: 'k1',
   categoryName: 'Carburant',
   amountNet: '100.000',

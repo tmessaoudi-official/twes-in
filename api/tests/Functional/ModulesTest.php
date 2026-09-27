@@ -50,7 +50,7 @@ final class ModulesTest extends ApiTestCase
         self::assertSame([
             ['key' => 'customers', 'labelKey' => 'modules.customers', 'dependencies' => [], 'permissions' => ['customer.read', 'customer.write'], 'enabled' => true],
             ['key' => 'delivery_notes', 'labelKey' => 'modules.delivery_notes', 'dependencies' => ['customers', 'products'], 'permissions' => ['delivery_note.read', 'delivery_note.write', 'delivery_note.validate'], 'enabled' => true],
-            ['key' => 'expenses', 'labelKey' => 'modules.expenses', 'dependencies' => ['vendors'], 'permissions' => ['expense.read', 'expense.write'], 'enabled' => true],
+            ['key' => 'expenses', 'labelKey' => 'modules.expenses', 'dependencies' => [], 'permissions' => ['expense.read', 'expense.write'], 'enabled' => true],
             ['key' => 'fixture_ledger', 'labelKey' => 'modules.fixture_ledger', 'dependencies' => ['customers'], 'permissions' => [], 'enabled' => true],
             ['key' => 'inventory', 'labelKey' => 'modules.inventory', 'dependencies' => ['products'], 'permissions' => ['stock.read', 'stock.write'], 'enabled' => true],
             ['key' => 'invoices', 'labelKey' => 'modules.invoices', 'dependencies' => ['customers', 'products'], 'permissions' => ['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write'], 'enabled' => true],

@@ -93,6 +93,18 @@ final class ExpenseTest extends TestCase
         $this->assertRefused('categoryId', fn () => Expense::create($this->acme, $this->details('10'), null, $closed, null, 3, $this->now), 'an inactive category');
     }
 
+    /** A payment with no vendor record (a car park, a notary) names who was paid in words; a vendor already names it. */
+    public function testAPayeeNamesWhoWasPaidWhenNoVendorDoesAndNeverBesideOne(): void
+    {
+        $parking = Expense::create($this->acme, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Parking', '5', payee: '  Parking du Lac  '), null, null, null, 3, $this->now);
+        self::assertSame('Parking du Lac', $parking->getPayee());
+        self::assertNull(Expense::create($this->acme, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Parking', '5', payee: '   '), null, null, null, 3, $this->now)->getPayee());
+
+        $vendor = Vendor::create($this->acme, 'FRN-0001', new VendorProfile('STEG'), $this->now);
+        $this->assertRefused('payee', fn () => Expense::create($this->acme, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Électricité', '80', payee: 'STEG'), $vendor, null, null, 3, $this->now), 'a payee beside a vendor');
+        $this->assertRefused('payee', static fn () => new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Parking', '5', payee: str_repeat('a', ExpenseDetails::PAYEE_MAX + 1)), 'a payee too long');
+    }
+
     public function testADraftIsRevisedThenRecordedOnceItHasACategoryAndNeverRevisedAgain(): void
     {
         $expense = Expense::create($this->acme, $this->details('10'), null, null, null, 3, $this->now);

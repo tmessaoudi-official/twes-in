@@ -12,9 +12,12 @@ namespace App\Module\Expenses\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\Vendors\Application\PickVendors;
+use App\Module\Vendors\Infrastructure\Module\VendorsModule;
+use App\ModuleRegistry\Application\ModuleStates;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * A few vendors for the expense form's picker, under the expense's own permission (see the resource beside this).
@@ -23,7 +26,7 @@ use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
  */
 final readonly class ExpenseVendorPickProvider implements ProviderInterface
 {
-    public function __construct(private CompanyGuard $guard, private PickVendors $vendors)
+    public function __construct(private CompanyGuard $guard, private PickVendors $vendors, private ModuleStates $modules)
     {
     }
 
@@ -31,6 +34,10 @@ final readonly class ExpenseVendorPickProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): array
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ExpensePermission::READ);
+        // Expenses stand without Vendors; while it is off there is no vendor to pick, as there is no vendor book.
+        if (!$this->modules->isEnabled($company->getId(), VendorsModule::KEY)) {
+            throw new NotFoundHttpException('No such company.');
+        }
 
         $ids = Paging::uuids($operation, 'ids');
 

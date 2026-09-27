@@ -17,7 +17,7 @@ import {
   paymentInput,
   paymentValues,
 } from './expense-forms';
-import type { ExpenseCategoryRow, ExpenseOptions } from './expenses-types';
+import type { ExpenseCategoryRow, ExpenseOptions, ExpenseRow } from './expenses-types';
 
 const vehicles: ExpenseCategoryRow = {
   id: 'k1',
@@ -132,6 +132,52 @@ describe('expense forms', () => {
     expect(byId.get('amountNet')?.pattern).toBe(amountPattern(3));
   });
 
+  it('asks who was paid, in words, only while no vendor is picked', () => {
+    const fields = expenseForm(options).sections.flatMap((section) => section.fields);
+    const payee = fields.find((field) => field.id === 'payee');
+    expect(payee).toMatchObject({ kind: 'text', maxLength: 160, hint: 'expenses.form.payee_hint' });
+    expect(payee?.visibleWhen).toEqual({ field: 'vendorId', oneOf: [''] });
+    // Right after the vendor, where the eye looks for who was paid.
+    const ids = fields.map((field) => field.id);
+    expect(ids.indexOf('payee')).toBe(ids.indexOf('vendorId') + 1);
+  });
+
+  it('asks no vendor while the Vendors module is off, and who was paid unconditionally', () => {
+    const fields = expenseForm(options, null, false).sections.flatMap((section) => section.fields);
+    expect(fields.some((field) => field.id === 'vendorId')).toBe(false);
+    expect(fields.find((field) => field.id === 'payee')?.visibleWhen).toBeUndefined();
+  });
+
+  it('sends a payee only when no vendor is named, and the vendor a draft keeps when the form asks none', () => {
+    const typed = {
+      date: '2026-09-10',
+      description: 'Stationnement',
+      amountNet: '4',
+      payee: ' Parking Lafayette ',
+    };
+    // A hidden field keeps what was typed in it: picking a vendor after typing a payee must not send both.
+    expect(expenseInput({ ...typed, vendorId: 'v1' })).toMatchObject({
+      vendorId: 'v1',
+      payee: null,
+    });
+    expect(expenseInput({ ...typed, vendorId: '' })).toMatchObject({
+      vendorId: null,
+      payee: 'Parking Lafayette',
+    });
+    // Vendors switched off: the form has no vendor field, and the draft's own vendor is sent back as it was.
+    expect(expenseInput(typed, 'v7')).toMatchObject({ vendorId: 'v7', payee: null });
+    expect(expenseInput(typed)).toMatchObject({ vendorId: null, payee: 'Parking Lafayette' });
+    expect(expenseValues(null, '2026-09-15')).toMatchObject({ payee: '' });
+  });
+
+  it('shows the vendor in the list, else who was paid', () => {
+    const paidTo = EXPENSES_LIST.columns.find((column) => column.id === 'vendor');
+    expect(paidTo?.label).toBe('expenses.fields.payee');
+    const row = { vendorName: null, payee: 'Parking Lafayette' } as ExpenseRow;
+    expect(paidTo?.value(row)).toBe('Parking Lafayette');
+    expect(paidTo?.value({ ...row, vendorName: 'Sotumag' })).toBe('Sotumag');
+  });
+
   it('dates a new expense today and sends empty fields as no value, a decimal comma as a point', () => {
     expect(expenseValues(null, '2026-09-15')).toMatchObject({ date: '2026-09-15', vendorId: '' });
     expect(
@@ -150,6 +196,7 @@ describe('expense forms', () => {
       reference: null,
       description: 'Gasoil',
       vendorId: null,
+      payee: null,
       categoryId: 'k2',
       amountNet: '100.5',
       taxComponentId: null,

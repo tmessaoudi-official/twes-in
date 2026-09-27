@@ -11,14 +11,15 @@ namespace App\Module\Expenses\Domain;
 
 /**
  * What an expense says on its own: its day, what was bought, a net amount above zero with at most three decimals, the
- * vendor's own reference for it and notes. Whether the amount fits the company's currency is the expense's to say.
- * Empty texts are absent.
+ * vendor's own reference for it, notes, and who was paid when no vendor record names them (a car park, a notary).
+ * Whether the amount fits the company's currency is the expense's to say. Empty texts are absent.
  */
 final readonly class ExpenseDetails
 {
     public const int DESCRIPTION_MAX = 200;
     public const int REFERENCE_MAX = 64;
     public const int NOTES_MAX = 5000;
+    public const int PAYEE_MAX = 160;
     private const string AMOUNT = '/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/';
 
     public \DateTimeImmutable $date;
@@ -27,9 +28,10 @@ final readonly class ExpenseDetails
     public string $amountNet;
     public ?string $reference;
     public ?string $notes;
+    public ?string $payee;
 
     /** @throws InvalidExpense */
-    public function __construct(\DateTimeImmutable $date, string $description, string $amountNet, ?string $reference = null, ?string $notes = null)
+    public function __construct(\DateTimeImmutable $date, string $description, string $amountNet, ?string $reference = null, ?string $notes = null, ?string $payee = null)
     {
         $this->date = new \DateTimeImmutable($date->format('Y-m-d'), new \DateTimeZone('UTC'));
         $description = trim($description);
@@ -40,6 +42,7 @@ final readonly class ExpenseDetails
         $this->amountNet = self::amount($amountNet);
         $this->reference = self::text('reference', $reference, self::REFERENCE_MAX);
         $this->notes = self::text('notes', $notes, self::NOTES_MAX);
+        $this->payee = self::text('payee', $payee, self::PAYEE_MAX);
     }
 
     private static function amount(string $amount): string

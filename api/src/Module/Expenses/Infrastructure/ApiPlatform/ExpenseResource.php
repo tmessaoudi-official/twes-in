@@ -51,7 +51,7 @@ use Symfony\Component\Validator\Constraints as Assert;
                 'categoryId' => new QueryParameter(schema: self::ID),
                 'order[date]' => new QueryParameter(schema: self::DIRECTION),
                 'order[description]' => new QueryParameter(schema: self::DIRECTION),
-                'order[vendor]' => new QueryParameter(schema: self::DIRECTION, description: 'By the vendor\'s current name; an expense with no vendor comes last whichever the direction.'),
+                'order[vendor]' => new QueryParameter(schema: self::DIRECTION, description: 'By who was paid: the vendor\'s current name, else the payee written on the expense; an expense naming neither comes last whichever the direction.'),
                 'order[category]' => new QueryParameter(schema: self::DIRECTION, description: 'By the category\'s own name, not its parents\'; an expense with no category comes last whichever the direction.'),
                 'order[amountGross]' => new QueryParameter(schema: self::DIRECTION),
                 'order[status]' => new QueryParameter(schema: self::DIRECTION),
@@ -164,6 +164,11 @@ final class ExpenseResource
     #[Groups([self::READ])]
     public ?string $vendorName = null;
 
+    /** Who was paid, in words, when no vendor record names them: a car park, a notary. Never beside a vendor. */
+    #[Assert\Length(max: ExpenseDetails::PAYEE_MAX, groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $payee = null;
+
     #[Assert\Uuid(groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $categoryId = null;
@@ -269,6 +274,7 @@ final class ExpenseResource
         $resource->description = $expense->getDescription();
         $resource->vendorId = $expense->getVendor()?->getId()->toRfc4122();
         $resource->vendorName = $expense->getVendor()?->getProfile()->name;
+        $resource->payee = $expense->getPayee();
         $resource->categoryId = $expense->getCategory()?->getId()->toRfc4122();
         $resource->categoryName = $expense->getCategory()?->getName();
         $resource->amountNet = $amount($expense->getAmountNet());
@@ -297,7 +303,7 @@ final class ExpenseResource
         $uuid = static fn (?string $id): ?Uuid => null === $id ? null : Uuid::fromString($id);
 
         return new ExpenseInput(
-            new ExpenseDetails(new \DateTimeImmutable($this->date, new \DateTimeZone('UTC')), $this->description, $this->amountNet, $this->reference, $this->notes),
+            new ExpenseDetails(new \DateTimeImmutable($this->date, new \DateTimeZone('UTC')), $this->description, $this->amountNet, $this->reference, $this->notes, $this->payee),
             $uuid($this->vendorId),
             $uuid($this->categoryId),
             $uuid($this->taxComponentId),

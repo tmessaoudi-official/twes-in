@@ -50,9 +50,10 @@ export const EXPENSES_LIST: ListDescriptor<ExpenseRow> = {
       hideable: false,
     },
     {
+      // Who was paid: the vendor, else the payee written on the expense; the API sorts by the same.
       id: 'vendor',
-      label: `${FIELDS}.vendorId`,
-      value: (row) => row.vendorName ?? '',
+      label: `${FIELDS}.payee`,
+      value: (row) => row.vendorName ?? row.payee ?? '',
       sortable: true,
       filterable: true,
     },
@@ -168,8 +169,9 @@ export function categoryLabels(
 export function expenseForm(
   options: ExpenseOptions,
   current: ExpenseChoices | null = null,
+  vendors = true,
 ): FormDescriptor {
-  const descriptor = offeredExpenseForm(options);
+  const descriptor = offeredExpenseForm(options, vendors);
   if (current === null) return descriptor;
   // The vendor is not here: a picker shows what the expense itself says, so nothing has to be added to its options.
   const chosen: Record<string, readonly [string | null, string]> = {
@@ -205,7 +207,7 @@ export type ExpenseChoices = Pick<
 >;
 
 /** The form over what the company offers today; a deactivated vendor or category is not among it. */
-function offeredExpenseForm(options: ExpenseOptions): FormDescriptor {
+function offeredExpenseForm(options: ExpenseOptions, vendors: boolean): FormDescriptor {
   const none = (label: string): FieldOption => ({ value: '', label });
   return {
     id: 'expense',
@@ -230,15 +232,29 @@ function offeredExpenseForm(options: ExpenseOptions): FormDescriptor {
             maxLength: 200,
             span: 2,
           },
+          // Asked only while the Vendors module is on: expenses stand without it (docs/SPEC.md § 7, 2026-09-27 18:34).
+          ...(vendors
+            ? [
+                {
+                  // A book of suppliers is not a dropdown: the form asks for the few that match what is typed, and
+                  // the page passes that search beside this descriptor (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+                  id: 'vendorId',
+                  label: `${FIELDS}.vendorId`,
+                  kind: 'pick' as const,
+                  noneLabel: 'expenses.form.no_vendor',
+                  noneFoundLabel: 'expenses.form.no_vendor_found',
+                  hint: 'expenses.form.vendor_hint',
+                },
+              ]
+            : []),
           {
-            // A book of suppliers is not a dropdown: the form asks for the few that match what is typed, and the
-            // page passes that search beside this descriptor (docs/SPEC.md § 7, 2026-09-17, ruling 3).
-            id: 'vendorId',
-            label: `${FIELDS}.vendorId`,
-            kind: 'pick',
-            noneLabel: 'expenses.form.no_vendor',
-            noneFoundLabel: 'expenses.form.no_vendor_found',
-            hint: 'expenses.form.vendor_hint',
+            // A car park, a notary: someone paid whom no vendor record names, and never beside one.
+            id: 'payee',
+            label: `${FIELDS}.payee`,
+            kind: 'text',
+            maxLength: 160,
+            hint: 'expenses.form.payee_hint',
+            ...(vendors ? { visibleWhen: { field: 'vendorId', oneOf: [''] } } : {}),
           },
           {
             id: 'categoryId',
@@ -307,6 +323,7 @@ export function expenseValues(row: ExpenseRow | null, today: string): FormValues
     reference: row?.reference ?? '',
     description: row?.description ?? '',
     vendorId: row?.vendorId ?? '',
+    payee: row?.payee ?? '',
     categoryId: row?.categoryId ?? '',
     amountNet: row?.amountNet ?? '',
     taxComponentId: row?.taxComponentId ?? '',
@@ -314,13 +331,19 @@ export function expenseValues(row: ExpenseRow | null, today: string): FormValues
   };
 }
 
-/** The form's values as the API takes them: trimmed, an empty field as no value, a decimal comma as a point. */
-export function expenseInput(values: FormValues): ExpenseInput {
+/**
+ * The form's values as the API takes them: trimmed, an empty field as no value, a decimal comma as a point. A form
+ * with no vendor field (Vendors switched off) sends back the vendor the draft keeps; a payee goes only without a
+ * vendor, since a hidden field keeps what was typed in it.
+ */
+export function expenseInput(values: FormValues, keptVendorId: string | null = null): ExpenseInput {
+  const vendorId = 'vendorId' in values ? text(values['vendorId']) : keptVendorId;
   return {
     date: String(values['date'] ?? '').trim(),
     reference: text(values['reference']),
     description: String(values['description'] ?? '').trim(),
-    vendorId: text(values['vendorId']),
+    vendorId,
+    payee: vendorId === null ? text(values['payee']) : null,
     categoryId: text(values['categoryId']),
     amountNet: String(values['amountNet'] ?? '').trim(),
     taxComponentId: text(values['taxComponentId']),
