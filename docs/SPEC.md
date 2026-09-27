@@ -3696,6 +3696,17 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   movements), run after generating and nightly once the worker exists (row 56), its findings reaching the operator as
   a notification.
 
+- [2026-09-27 19:16] AGREED (developer, asked): **the whole app through the LAN door, and a live development loop, both before
+  row 178.** The door `https://<LAN IP>:8443` already passes everything to the web container; it becomes first-class
+  (row 183): signing in through it is tested and fixed (the two proxies, the origin check, the secure cookie), the
+  detected address becomes the application's own (`DEFAULT_URI`, so mailed links open on a phone as on the computer),
+  and `make up` prints it. Passkeys stay on the computer: WebAuthn takes a host name, never an address, and the
+  authenticator code works on the phone. **`make dev`** (row 184) is added beside `make up`, which stays the
+  production-like images CI runs: the api source mounted, FrankenPHP's worker kept and restarted by its `watch` on any
+  change in `src`, `config` or `templates` (so worker-only bugs still show), OPcache on with `revalidate_freq = 0` and
+  never preloading (production only, as today), and Angular's development server with live reload, reachable from the
+  phone through the same door.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -3885,6 +3896,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 180 | Trésorerie (§ 7 2026-09-27 18:34): cash and bank accounts, a balance, typed movements for what is not a purchase (drawings, contributions, loan principal, taxes paid, transfers); after row 80 | L | todo | - | |
 | 181 | Large-data run (§ 7 2026-09-27 18:59): `make scale-data` / `make up-scale` in steps of 100k to 10m invoices, a large company and a wide platform, real documents cloned, measured per list, screen and operation; after 178 | L | todo | - | api/src/DataFixtures/** Makefile docs/** |
 | 182 | Data health check (§ 7 2026-09-27 18:59): `app:data:check` over the invariants, after generation, nightly with the worker and told to the operator | M | todo | - | |
+| 183 | The whole app from a phone (§ 7 2026-09-27 19:16): sign-in through the LAN door tested and fixed, the LAN address as the app's own when detected, `make up` prints it; before 178 | S | todo | - | compose.yaml Makefile infra/** api/config/** |
+| 184 | `make dev` (§ 7 2026-09-27 19:16): api source mounted with FrankenPHP watch, OPcache revalidating at once, Angular dev server with live reload, through the LAN door too; before 178 | M | todo | - | compose*.yaml Makefile infra/** web/** docs/START.md |
 <!-- /progress-block -->
 
 ### Delivered
