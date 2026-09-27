@@ -3669,6 +3669,16 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   bank) goes to a **« Trésorerie » module** (row 180): cash and bank accounts, a balance, typed movements, so the
   margin and the VAT stay right. Row 178 comes right after 174; 179 and 180 after Projets (row 80).
 
+- [2026-09-27 18:48] DECIDED (revisit): row 174: **a numbered document keeps how it printed.** Issuing an invoice keeps
+  its printed notes and the company's date and number formats (`PrintSettings`, beside the language, mentions and
+  footer it already kept); validating a delivery note also keeps its language, whether it shows prices and the
+  reception block (`DeliveryNotePrint`). Both are read from the same settings a draft reads (`DocumentFormats::print`,
+  `DeliveryNotePrinting::today`), so what issuing keeps is what the draft showed. A render prefers what was kept: a
+  cancelled note is stamped on what it said, and a PDF first rendered after the renderer failed prints what the
+  document said at issue. Documents issued before are **not** back-filled: their settings resolve through the chain
+  and the defaults the PHP declarations hold, which a migration in SQL would copy and let drift, so they keep reading
+  their settings live, as they did, and a stored PDF is served unchanged either way.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -3849,7 +3859,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 171 | One authorization decision point (§ 7 2026-09-27 07:16, P2) | M | todo | - | |
 | 172 | Pages on httpResource and linkedSignal instead of chains of effects, screen by screen (§ 7 2026-09-27 07:16, P2) | L | todo | - | |
 | 173 | Lighter list answers, watch counts, a shorter startup chain (§ 7 2026-09-27 07:16, P2) | M | todo | - | |
-| 174 | Print settings frozen at issue (§ 7 2026-09-27 08:18): the printed notes, date and number formats, and a delivery note's language, prices and reception block, kept when the document is issued, so a re-render (a cancelled note, a PDF first rendered after a renderer failure) prints what the document said | S | todo | - | |
+| 174 | Print settings frozen at issue (§ 7 2026-09-27 08:18): the printed notes, date and number formats, and a delivery note's language, prices and reception block, kept when the document is issued, so a re-render (a cancelled note, a PDF first rendered after a renderer failure) prints what the document said | S | done | 258957b | api/src/Module/Invoices/** api/src/Module/DeliveryNotes/** api/src/Shared/Domain/PrintSettings.php api/migrations/** |
 | 175 | Legal texts over the screen (§ 7 2026-09-27 08:59): footer always centred; notice pinned, never covering content, app usable before « Compris »; legal text from the notice or footer opens in a panel, the full page gets « Retour » | S | done | ed2506d | web/src/app/legal/** web/src/app/shared/legal/** |
 | 176 | Mobile review (§ 7 2026-09-27 08:59, not urgent): bottom bar icon/label gap, settings list reachable from a settings page on a phone, a full pass for other anomalies | M | todo | - | |
 | 177 | Doctrine's sort direction as `SortDirection`, not a string: ~35 query builder calls, each logging a deprecation on every list, to production's STDERR among others (§ 7 2026-09-27 11:06, P2) | S | todo | - | |
