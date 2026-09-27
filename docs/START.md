@@ -30,6 +30,12 @@ from Caddy's own local authority, so the first time the phone either:
 The root is kept in the `lan-data` volume, so the phone trusts it until `make reset`. Without a route (offline), or
 under a plain `docker compose up`, `lan` stays off and the QR code names the computer's own address.
 
+**The whole application from a phone.** The same door serves everything, not only the scanner: open the address
+`make up` prints at the end (`From a phone on this network: https://<address>:8443`) and sign in as on the computer,
+with the authenticator code. While `lan` is on, that address is also the application's own (`DEFAULT_URI`), so a
+mailed invitation or signup link opens on the phone as on the computer. Passkeys work on the computer only: a passkey
+belongs to a host name, and the phone reaches this machine by its address.
+
 **The API documentation is at <http://localhost:8090/api/docs>** (or `:8091/api/docs` on the API directly). `/api`
 on its own is the entrypoint, not the documentation, and answers 401 without a session. Development only: production
 sets `enable_docs: false`, and the contract ships inside the generated TypeScript client instead.

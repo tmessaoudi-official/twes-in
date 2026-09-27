@@ -15,6 +15,8 @@ export LAN_HOST LAN_ORIGIN COMPOSE_PROFILES
 up:            ## build and start the whole stack (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, a phone's HTTPS door :8443), then seed
 	docker compose up -d --build --wait
 	$(MAKE) seed
+	@echo "On this computer: http://localhost:$${WEB_PORT:-8090}"
+	@$(if $(LAN_ORIGIN),echo "From a phone on this network: $(LAN_ORIGIN) (trust once: http://$(LAN_HOST):8095/root.crt)",echo "No network address found: the phone door is off.")
 
 migrate:       ## apply pending migrations inside a running api container (the image entrypoint already did at start)
 	docker compose exec -T api bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
@@ -72,6 +74,7 @@ gate-licences:
 	bash scripts/gates/tests/production-image.test.sh
 	bash scripts/gates/tests/icons-declared.test.sh
 	bash infra/self-hosted/tests/logrotate.test.sh
+	bash infra/web/tests/forwarded-proto.test.sh
 	php scripts/gates/dependency-licences.php
 	bash scripts/gates/spdx-headers.sh
 	bash scripts/gates/executable-bits.sh

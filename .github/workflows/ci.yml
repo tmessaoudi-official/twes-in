@@ -42,6 +42,8 @@ jobs:
       # The self-hosted logrotate configuration, rotated for real (docs/SPEC.md § 7, 2026-09-17).
       - run: command -v logrotate || (sudo apt-get update && sudo apt-get install -y logrotate)
       - run: bash infra/self-hosted/tests/logrotate.test.sh
+      # The web server passes a TLS proxy's scheme to the API, run for real in its own image.
+      - run: bash infra/web/tests/forwarded-proto.test.sh
       - run: php scripts/gates/dependency-licences.php
       - run: bash scripts/gates/spdx-headers.sh
       - run: bash scripts/gates/executable-bits.sh
