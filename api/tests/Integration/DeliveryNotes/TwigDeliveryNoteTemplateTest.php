@@ -23,6 +23,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineDetails;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\SellerSnapshot;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryTaxComponents;
@@ -124,7 +125,9 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         self::assertInstanceOf(DeliveryNoteTemplate::class, $template);
         $snapshot = $this->note->getCustomerSnapshot();
         self::assertInstanceOf(CustomerSnapshot::class, $snapshot);
+        $seller = $this->note->getSellerSnapshot();
+        self::assertInstanceOf(SellerSnapshot::class, $seller);
 
-        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $snapshot, $watermark, $showPrices, $language, $printedNotes, $receptionBlock, $dateFormat, $numberFormat));
+        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $snapshot, $seller, $watermark, $showPrices, $language, $printedNotes, $receptionBlock, $dateFormat, $numberFormat));
     }
 }

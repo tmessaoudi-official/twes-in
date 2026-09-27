@@ -29,12 +29,10 @@ final readonly class TwigDeliveryNoteTemplate implements DeliveryNoteTemplate
             'page' => $page,
             'note' => $page->note,
             'header' => $page->note->getHeader(),
-            'company' => $company,
-            'profile' => $company->getProfile(),
-            'establishment' => $page->note->getEstablishment(),
+            'seller' => $page->seller,
             'customer' => $page->customer,
             'country' => strtolower($company->getCountryCode()),
-            'scale' => $this->scales->of($company->getCurrency()),
+            'scale' => $this->scales->of($page->seller->currency),
             'locale' => $page->language,
         ]);
     }

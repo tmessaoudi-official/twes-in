@@ -22,10 +22,11 @@ use App\Settings\Application\SettingContext;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\SellerSnapshot;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * An invoice's or a credit note's PDF (docs/SPEC.md § 7, 2026-09-14: stored at issue, as delivery notes are). An issued
+ * An invoice's or a credit note's PDF. An issued
  * document is served as it was stored when it was issued, rendered and stored on its first download when that failed,
  * and prints the language, mentions and texts issuing kept. A draft, and a cancelled draft, are rendered on request
  * across a watermark with what they would be issued with today, and never stored.
@@ -108,6 +109,7 @@ final readonly class PrintInvoice
             $invoice,
             $this->totals->figures($invoice),
             $invoice->getCustomerSnapshot() ?? CustomerSnapshot::of($customer),
+            $invoice->getSellerSnapshot() ?? SellerSnapshot::of($company, $invoice->getEstablishment()),
             $watermark,
             $language,
             \is_string($printedNotes) ? $printedNotes : '',

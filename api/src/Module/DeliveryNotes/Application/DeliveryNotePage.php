@@ -12,6 +12,7 @@ namespace App\Module\DeliveryNotes\Application;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
+use App\Tenancy\Domain\SellerSnapshot;
 
 /**
  * What a printed delivery note shows: the note, its figures, its customer as the note names it (as it was the day the
@@ -32,6 +33,7 @@ final readonly class DeliveryNotePage
         public DeliveryNote $note,
         public DocumentTotals $totals,
         public CustomerSnapshot $customer,
+        public SellerSnapshot $seller,
         public ?string $watermark,
         public bool $showPrices,
         public string $language,

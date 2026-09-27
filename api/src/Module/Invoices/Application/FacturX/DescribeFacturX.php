@@ -25,17 +25,18 @@ use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceType;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\SellerSnapshot;
 use BcMath\Number;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * An issued French invoice or credit note in the terms of EN 16931 (docs/SPEC.md § 8 row 145), for the Factur-X EN 16931
+ * An issued French invoice or credit note in the terms of EN 16931, for the Factur-X EN 16931
  * profile: read from what issuing fixed and never recomputed, a credit note's negative figures written positive under
  * type code 381. What the standard needs and the document or its company lacks is refused, every gap named at once, and
  * nothing is guessed: a line without VAT takes the category its regime declares in the fiscal preset, or none at all.
  *
- * The seller is the company as it reads now, at the address its invoice prints (the establishment's, else the
- * company's): nothing snapshots the company at issue yet.
+ * The seller is the company as issuing froze it (SellerSnapshot), so a company that moves or changes bank later rewrites
+ * no document it already issued.
  */
 final readonly class DescribeFacturX
 {
@@ -73,12 +74,14 @@ final readonly class DescribeFacturX
             throw new FacturXRefused(\sprintf('No Factur-X is written for a company on the %s preset.', $presetKey), 'preset_not_supported', ['preset' => $presetKey]);
         }
         $preset = $this->presets->get($presetKey);
-        $scale = $this->scales->of($company->getCurrency());
+        // Every document issued since the snapshot existed carries one, and the migration froze the older ones.
+        $seller = $invoice->getSellerSnapshot() ?? SellerSnapshot::of($company, $invoice->getEstablishment());
+        $scale = $this->scales->of($seller->currency);
         $figures = $this->totals->figures($invoice);
         $credit = InvoiceType::CreditNote === $invoice->getType();
         $amount = static fn (string $stored): string => Decimal::format(Decimal::of($stored)->mul($credit ? -1 : 1), $scale);
 
-        $companyRegime = self::regime($preset->companyVatRegimes, $company->getProfile()->vatRegime);
+        $companyRegime = self::regime($preset->companyVatRegimes, $seller->vatRegime);
         $customerRegime = self::regime($preset->customerTaxRegimes, $snapshot->taxRegimeCode);
         $withoutVat = null !== $companyRegime?->vatCategory ? $companyRegime : (null !== $customerRegime?->vatCategory ? $customerRegime : null);
 
@@ -99,32 +102,31 @@ final readonly class DescribeFacturX
         [$allowances, $breakdown, $breakdownGaps] = $this->vatGroups($figures, $lines, $vatCodeOfLine, $amount, $scale);
         $categories = array_values(array_unique(array_map(static fn (CiiLine $line): string => $line->vat->category, $lines)));
 
-        $seller = $this->seller($invoice, $company, $categories);
+        $sellerParty = self::seller($seller, $categories);
         $buyer = self::buyer($snapshot, $categories);
-        $gaps = [...$seller[1], ...$buyer[1], ...$lineGaps, ...$breakdownGaps];
+        $gaps = [...$sellerParty[1], ...$buyer[1], ...$lineGaps, ...$breakdownGaps];
         if ([] !== $gaps) {
             throw new FacturXRefused(\sprintf('The %s %s lacks what EN 16931 asks for: %s.', $invoice->getType()->value, $number, implode(', ', array_map(static fn (array $gap): string => $gap['code'], $gaps))), 'incomplete_document', ['count' => \count($gaps)], $gaps);
         }
 
         $header = $invoice->getHeader();
         $corrected = $invoice->getCorrectedInvoice();
-        $profile = $company->getProfile();
         $total = $amount($figures->total);
 
         return new CiiInvoice(
             $credit ? '381' : '380',
             $number,
             $issueDate,
-            $company->getCurrency(),
+            $seller->currency,
             array_values(array_filter([$invoice->getCreditNoteReason(), $header->notesPrinted], static fn (?string $note): bool => null !== $note && '' !== $note)),
-            $seller[0],
+            $sellerParty[0],
             $buyer[0],
             $header->customerReference,
             $header->supplyDate,
             $corrected?->getNumber(),
             $corrected?->getIssueDate(),
-            $profile->iban,
-            null === $profile->iban ? null : $profile->bic,
+            $seller->iban,
+            $seller->bic,
             $invoice->getDueDate(),
             $lines,
             $allowances,
@@ -271,16 +273,11 @@ final readonly class DescribeFacturX
      *
      * @return array{0: CiiParty, 1: list<array{code: string, params: array<string, string|int|list<string>>}>}
      */
-    private function seller(Invoice $invoice, Company $company, array $categories): array
+    private static function seller(SellerSnapshot $seller, array $categories): array
     {
-        $profile = $company->getProfile();
-        $establishment = $invoice->getEstablishment();
-        // The address the invoice prints: the establishment's when it has one, else the company's (templates/pdf/invoice.html.twig).
-        $address = null !== $establishment->getAddressLine1()
-            ? [$establishment->getAddressLine1(), $establishment->getAddressLine2(), $establishment->getPostalCode(), $establishment->getCity()]
-            : [$profile->addressLine1, $profile->addressLine2, $profile->postalCode, $profile->city];
-        $siren = $profile->identifiers['siren'] ?? null;
-        $vatNumber = $profile->identifiers['vat_number'] ?? null;
+        [$line1, $line2, $postalCode, $city, $country] = $seller->address->parts();
+        $siren = $seller->identifiers['siren'] ?? null;
+        $vatNumber = $seller->identifiers['vat_number'] ?? null;
 
         $gaps = [];
         if (null === $siren) {
@@ -290,12 +287,12 @@ final readonly class DescribeFacturX
         if (null === $vatNumber && [] !== array_diff($categories, ['O'])) {
             $gaps[] = self::gap('seller_vat_number_missing');
         }
-        $missing = self::missing(['line1' => $address[0], 'postalCode' => $address[2], 'city' => $address[3]]);
+        $missing = self::missing(['line1' => $line1, 'postalCode' => $postalCode, 'city' => $city]);
         if ([] !== $missing) {
             $gaps[] = self::gap('seller_address_incomplete', ['missing' => $missing]);
         }
 
-        return [new CiiParty($profile->legalName ?? $company->getName(), $siren, $vatNumber, $address[0], $address[1], $address[2], $address[3], $company->getCountryCode()), $gaps];
+        return [new CiiParty($seller->name, $siren, $vatNumber, $line1, $line2, $postalCode, $city, $country ?? ''), $gaps];
     }
 
     /**

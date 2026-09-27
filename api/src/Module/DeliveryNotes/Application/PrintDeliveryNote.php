@@ -22,10 +22,11 @@ use App\Settings\Application\SettingContext;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\SellerSnapshot;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A delivery note's PDF (docs/SPEC.md § 7, 2026-09-14: stored at issue). A validated or delivered note is served as it
+ * A delivery note's PDF. A validated or delivered note is served as it
  * was stored when it was issued, rendered and stored on its first download when that failed. A draft, and a cancelled
  * note, are rendered on request across a watermark and never stored. The customer's settings choose the language,
  * whether prices show and the printed notes.
@@ -99,6 +100,7 @@ final readonly class PrintDeliveryNote
             $note,
             $this->totals->of($note),
             $note->getCustomerSnapshot() ?? CustomerSnapshot::of($customer),
+            $note->getSellerSnapshot() ?? SellerSnapshot::of($note->getCompany(), $note->getEstablishment()),
             $watermark,
             true === $this->settings->value($context, 'delivery_note.show_prices'),
             \is_string($language) ? $language : 'fr',

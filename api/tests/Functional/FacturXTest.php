@@ -24,7 +24,7 @@ use App\Tests\Support\FakeFacturXPdf;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * An issued French invoice or credit note as its Factur-X file (docs/SPEC.md § 8 row 145): the EN 16931 CII XML alone,
+ * An issued French invoice or credit note as its Factur-X file: the EN 16931 CII XML alone,
  * or embedded in the invoice's PDF as PDF/A-3. Read with invoice.read, within the company.
  */
 final class FacturXTest extends ApiTestCase
@@ -135,10 +135,11 @@ final class FacturXTest extends ApiTestCase
         $this->client->request('GET', $this->path($draftId).'/factur-x.pdf');
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
 
-        $id = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
+        // What is judged is the seller as issuing froze it, so the gaps must be there when the invoice is issued.
         $this->company = $this->reloaded();
         $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siren' => '732829320'], addressLine1: '12 rue des Forges', city: 'Lyon'));
         $this->em()->flush();
+        $id = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
 
         $this->client->request('GET', $this->path($id).'/factur-x.xml');
 
@@ -152,6 +153,35 @@ final class FacturXTest extends ApiTestCase
         $this->client->request('GET', $this->path($id).'/factur-x.pdf');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertSame([], static::getContainer()->get(FakeFacturXPdf::class)->embedded, 'nothing refused reaches the PDF engine');
+    }
+
+    public function testAnInvoiceIssuedBeforeTheCompanyMovedAnswersTheSellerItWasIssuedBy(): void
+    {
+        $this->signedIn();
+        $id = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
+        $this->company = $this->reloaded();
+        $this->company->reviseProfile(new CompanyProfile(
+            legalName: 'Durand Industries SAS',
+            identifiers: ['siren' => '732829320', 'vat_number' => 'FR44732829320'],
+            addressLine1: '1 quai Nouveau',
+            postalCode: '13002',
+            city: 'Marseille',
+            iban: 'FR7612345000019876543210987',
+        ));
+        $this->em()->flush();
+
+        $this->client->request('GET', $this->path($id).'/factur-x.xml');
+
+        self::assertResponseIsSuccessful();
+        $read = self::xpath((string) $this->client->getResponse()->getContent());
+        self::assertSame(['Atelier Durand SARL', '12 rue des Forges', '69007', 'Lyon', 'FR7630006000011234567890189', 'AGRIFRPP'], [
+            $read->evaluate('string(//ram:SellerTradeParty/ram:Name)'),
+            $read->evaluate('string(//ram:SellerTradeParty/ram:PostalTradeAddress/ram:LineOne)'),
+            $read->evaluate('string(//ram:SellerTradeParty/ram:PostalTradeAddress/ram:PostcodeCode)'),
+            $read->evaluate('string(//ram:SellerTradeParty/ram:PostalTradeAddress/ram:CityName)'),
+            $read->evaluate('string(//ram:PayeePartyCreditorFinancialAccount/ram:IBANID)'),
+            $read->evaluate('string(//ram:PayeeSpecifiedCreditorFinancialInstitution/ram:BICID)'),
+        ]);
     }
 
     public function testThePdfCarriesTheXmlInTheInvoicesOwnPdf(): void

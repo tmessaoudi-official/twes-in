@@ -23,6 +23,7 @@ use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\CompanyProfile;
 use App\Tenancy\Domain\EstablishmentRepository;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -94,7 +95,7 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertSame([$this->establishmentId(), $this->customerId], [$note['establishmentId'], $note['customerId']]);
         self::assertSame(['2026-09-20', 'Rue de Marseille', 'Tunis', 'PO-77'], [$note['deliveryDate'], $note['deliveryAddressLine1'], $note['deliveryCity'], $note['customerReference']]);
         // The note carries the words for what it names, so a form that opens it need not be handed the company's
-        // whole book of customers or its catalogue (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+        // whole book of customers or its catalogue.
         self::assertNotSame('', $note['customerName']);
         $lines = $this->arrayAt($note, 'lines');
         self::assertSame([$this->productId, null], array_column($lines, 'productId'));
@@ -268,6 +269,28 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertStringContainsString($number, $issued);
         self::assertStringContainsString('Carthage Conseil', $issued);
         self::assertStringNotContainsString('BROUILLON', $issued);
+    }
+
+    public function testANoteCancelledAfterTheCompanyMovedStillNamesTheSellerAsItWasValidated(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $id = $this->draftWithALine();
+        $this->postJson($this->path($id).'/validate', null);
+        self::assertResponseIsSuccessful();
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $company->reviseProfile(new CompanyProfile(legalName: 'Acme Holding', addressLine1: '99 avenue Nouvelle', city: 'Sousse'));
+        $this->em()->flush();
+        $this->postJson($this->path($id).'/cancel', null);
+        self::assertResponseIsSuccessful();
+
+        $this->client->request('GET', $this->path($id).'/pdf');
+
+        self::assertResponseIsSuccessful();
+        $cancelled = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('<div class="company-name">Acme</div>', $cancelled);
+        self::assertStringNotContainsString('Acme Holding', $cancelled);
+        self::assertStringNotContainsString('avenue Nouvelle', $cancelled);
     }
 
     public function testACompanyThatHidesPricesPrintsNoneAndAReaderDownloads(): void

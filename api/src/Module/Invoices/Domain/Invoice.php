@@ -20,6 +20,7 @@ use App\Shared\Domain\CompanyOwned;
 use App\Shared\Domain\DomainEvent;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
+use App\Tenancy\Domain\SellerSnapshot;
 use BcMath\Number;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -28,7 +29,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * What an establishment of a company bills a customer (docs/SPEC.md § 4 invoice), or a credit note correcting such an
+ * What an establishment of a company bills a customer, or a credit note correcting such an
  * invoice. A draft names its establishment, its customer, its lines and its document taxes, every one of them its own
  * company's, and changes freely; issuing numbers it and fixes what it says.
  */
@@ -63,7 +64,7 @@ class Invoice implements CompanyOwned
     #[ORM\JoinColumn(name: 'corrects_invoice_id', nullable: true)]
     private ?Invoice $correctsInvoice = null;
 
-    /** Why a credit note corrects its invoice, stated when it is created (docs/SPEC.md § 7, 2026-09-24 22:51); null on an invoice. */
+    /** Why a credit note corrects its invoice, stated when it is created; null on an invoice. */
     #[ORM\Column(name: 'credit_note_reason', length: self::CREDIT_NOTE_REASON_MAX, nullable: true)]
     private ?string $creditNoteReason = null;
 
@@ -111,6 +112,10 @@ class Invoice implements CompanyOwned
     /** @var array<string, mixed>|null CustomerSnapshot::toArray(), written by issuing */
     #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
     private ?array $customerSnapshot = null;
+
+    /** @var array<string, mixed>|null SellerSnapshot::toArray(), written by issuing */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $sellerSnapshot = null;
 
     #[ORM\Column(name: 'footer_snapshot', type: Types::TEXT, nullable: true)]
     private ?string $footer = null;
@@ -273,12 +278,12 @@ class Invoice implements CompanyOwned
     }
 
     /**
-     * A credit note drafted for an issued invoice (docs/SPEC.md § 7, 2026-09-14): the invoice's establishment, customer,
+     * A credit note drafted for an issued invoice: the invoice's establishment, customer,
      * header, lines and document taxes, each tax charged as the invoice charged it. Its figures are the negative of
      * what it copies until it is revised.
      *
      * It states why, as EN 16931 asks a correction to (BG-3 names the invoice it corrects; the reason is required when
-     * it is created, docs/SPEC.md § 7, 2026-09-24 22:51).
+     * it is created).
      *
      * @throws InvoiceTransitionRefused when the document is not an issued invoice
      * @throws InvalidInvoice           when the reason is blank or longer than CREDIT_NOTE_REASON_MAX
@@ -305,7 +310,7 @@ class Invoice implements CompanyOwned
         $credit->establishment = $invoice->establishment;
         $credit->customer = $invoice->customer;
         $credit->apply($invoice->getHeader());
-        // The lot sold is the lot credited (docs/SPEC.md § 7, row 108); a duplicate, a new sale, names none.
+        // The lot sold is the lot credited; a duplicate, a new sale, names none.
         $credit->writeLines(array_map(static fn (InvoiceLine $line): InvoiceLineDetails => new InvoiceLineDetails(
             $line->getProduct(),
             $line->getDescription(),
@@ -381,7 +386,7 @@ class Invoice implements CompanyOwned
     }
 
     /**
-     * Numbers a draft with lines and fixes what it says (docs/SPEC.md § 7, 2026-09-14): its taxes take their rates of the
+     * Numbers a draft with lines and fixes what it says: its taxes take their rates of the
      * issue day, then the figures those give are written once and answered from then on; what the customer was called,
      * the language, the mentions, the footer and the due day (the issue day plus the terms) are kept as they stand.
      * Records `invoice.issued`.
@@ -419,6 +424,7 @@ class Invoice implements CompanyOwned
         $this->amountDue = $fixed->amountDue;
 
         $this->customerSnapshot = CustomerSnapshot::of($this->customer)->toArray();
+        $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
         $this->status = InvoiceStatus::Issued;
         $this->number = $issue->number;
         $this->issueDate = self::day($issue->issueDate);
@@ -449,7 +455,7 @@ class Invoice implements CompanyOwned
     }
 
     /**
-     * Money the customer paid (docs/SPEC.md § 7, 2026-09-14): an issued invoice takes a payment dated from its issue day
+     * Money the customer paid: an issued invoice takes a payment dated from its issue day
      * to the company's today, of an amount the currency can count and at most what is still due; what is due and the
      * status follow.
      *
@@ -488,7 +494,7 @@ class Invoice implements CompanyOwned
     }
 
     /**
-     * Takes an issued credit note of this invoice off what it still has due (docs/SPEC.md § 7, 2026-09-14): what the
+     * Takes an issued credit note of this invoice off what it still has due: what the
      * credit note comes to is added to what was credited, and the status follows.
      *
      * @throws InvalidInvoice on `amountDue` when the credit note comes to more than the invoice still has due
@@ -628,6 +634,12 @@ class Invoice implements CompanyOwned
         return null === $this->customerSnapshot ? null : CustomerSnapshot::fromArray($this->customerSnapshot);
     }
 
+    /** The seller as the document printed it the day it was issued; null while it is a draft or was cancelled as one. */
+    public function getSellerSnapshot(): ?SellerSnapshot
+    {
+        return null === $this->sellerSnapshot ? null : SellerSnapshot::fromArray($this->sellerSnapshot);
+    }
+
     public function getDueDate(): ?\DateTimeImmutable
     {
         return $this->dueDate;
@@ -673,7 +685,7 @@ class Invoice implements CompanyOwned
 
     /**
      * What is due is the total less what is withheld, paid and credited; nothing paid or credited is `issued`, nothing
-     * due `paid`, anything between `partially_paid` (docs/SPEC.md § 7, 2026-09-14).
+     * due `paid`, anything between `partially_paid`.
      */
     private function settle(\DateTimeImmutable $now): void
     {

@@ -1,7 +1,7 @@
 {# A delivery note on A4, rendered by Gotenberg's Chromium. Everything it says comes from translations/pdf and fiscal
    in the note's language; amounts go through the decimal filter, never through a float. Nothing here runs a script. #}
 {%- set t = 'pdf' -%}
-{#- The company's date and number format win over the language's (docs/SPEC.md § 7, 2026-09-25 12:45, row 130). -#}
+{#- The company's date and number format win over the language's. -#}
 {%- set dateFormat = date_pattern(page.dateFormat, 'format.date'|trans({}, t, locale)) -%}
 <!DOCTYPE html>
 <html lang="{{ locale }}">
@@ -45,23 +45,17 @@
 
   <div class="parties">
     <div class="party">
-      <div class="company-name">{{ profile.legalName ?? company.name }}{% if profile.legalForm %} {{ profile.legalForm }}{% endif %}</div>
-      {%- for key, value in profile.identifiers %}
+      <div class="company-name">{{ seller.name }}{% if seller.legalForm %} {{ seller.legalForm }}{% endif %}</div>
+      {%- for key, value in seller.identifiers %}
         <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : {{ value }}</div>
       {%- endfor %}
-      {%- if establishment.addressLine1 %}
-        <div>{{ establishment.addressLine1 }}</div>
-        {% if establishment.addressLine2 %}<div>{{ establishment.addressLine2 }}</div>{% endif %}
-        <div>{{ establishment.postalCode }} {{ establishment.city }}</div>
-      {%- elseif profile.addressLine1 %}
-        <div>{{ profile.addressLine1 }}</div>
-        {% if profile.addressLine2 %}<div>{{ profile.addressLine2 }}</div>{% endif %}
-        <div>{{ profile.postalCode }} {{ profile.city }}</div>
+      {%- if seller.address.line1 %}
+        <div>{{ seller.address.line1 }}</div>
+        {% if seller.address.line2 %}<div>{{ seller.address.line2 }}</div>{% endif %}
+        <div>{{ seller.address.postalCode }} {{ seller.address.city }}</div>
       {%- endif %}
-      {%- set phone = establishment.phone ?? profile.phone -%}
-      {%- set email = establishment.email ?? profile.email -%}
-      {% if phone %}<div>{{ 'company.phone'|trans({}, t, locale) }} {{ phone }}</div>{% endif %}
-      {% if email %}<div>{{ 'company.email'|trans({}, t, locale) }} {{ email }}</div>{% endif %}
+      {% if seller.phone %}<div>{{ 'company.phone'|trans({}, t, locale) }} {{ seller.phone }}</div>{% endif %}
+      {% if seller.email %}<div>{{ 'company.email'|trans({}, t, locale) }} {{ seller.email }}</div>{% endif %}
     </div>
     <div class="party">
       <h2>{{ 'delivery_note.customer'|trans({}, t, locale) }}</h2>
@@ -137,7 +131,7 @@
       <tr><td>{{ 'totals.total_tax'|trans({}, t, locale) }}</td><td class="number">{{ page.totals.totalTax|decimal(scale, locale, page.numberFormat) }}</td></tr>
       <tr class="grand"><td>{{ 'totals.total'|trans({}, t, locale) }}</td><td class="number">{{ page.totals.total|decimal(scale, locale, page.numberFormat) }}</td></tr>
     </table>
-    <p class="muted">{{ 'totals.currency'|trans({'%currency%': company.currency}, t, locale) }}</p>
+    <p class="muted">{{ 'totals.currency'|trans({'%currency%': seller.currency}, t, locale) }}</p>
   {%- endif %}
 
   {%- if customer.taxMentionKey %}
@@ -156,7 +150,7 @@
     </div>
   {%- endif %}
 
-  {#- The reception block (docs/SPEC.md § 7, 2026-09-24 22:51; design research R10): three cells and a line for réserves,
+  {#- The reception block: three cells and a line for réserves,
       a delivery setting, on by default. #}
   {%- if page.receptionBlock %}
     <section class="reception">

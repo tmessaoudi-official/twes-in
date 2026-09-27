@@ -186,6 +186,19 @@ final class PrintInvoiceTest extends TestCase
         self::assertSame($this->storage->contents[$this->records->files[0]->getStorageKey()], $printed->contents);
     }
 
+    public function testAPdfFirstRenderedAfterTheCompanyMovedPrintsTheSellerAsItWasIssued(): void
+    {
+        $invoice = $this->issued($this->customer('standard', null));
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme Holding', addressLine1: '99 avenue Nouvelle', city: 'Sousse'));
+        $draft = $this->draft($this->customer('standard', null));
+
+        $this->print->pdf($this->company, $invoice->getId());
+        $this->print->pdf($this->company, $draft->getId());
+
+        self::assertSame(['Acme', null], [$this->template->pages[0]->seller->name, $this->template->pages[0]->seller->address->line1]);
+        self::assertSame(['Acme Holding', '99 avenue Nouvelle'], [$this->template->pages[1]->seller->name, $this->template->pages[1]->seller->address->line1], 'a draft prints the company as it is today');
+    }
+
     public function testACancelledDraftIsRenderedStampedAndNeverStored(): void
     {
         $draft = $this->draft($this->customer('standard', null));

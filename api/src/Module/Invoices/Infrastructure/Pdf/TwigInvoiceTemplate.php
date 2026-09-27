@@ -30,12 +30,10 @@ final readonly class TwigInvoiceTemplate implements InvoiceTemplate
             'invoice' => $page->invoice,
             'header' => $page->invoice->getHeader(),
             'figures' => $page->figures,
-            'company' => $company,
-            'profile' => $company->getProfile(),
-            'establishment' => $page->invoice->getEstablishment(),
+            'seller' => $page->seller,
             'customer' => $page->customer,
             'country' => strtolower($company->getCountryCode()),
-            'scale' => $this->scales->of($company->getCurrency()),
+            'scale' => $this->scales->of($page->seller->currency),
             'locale' => $page->language,
         ]);
     }

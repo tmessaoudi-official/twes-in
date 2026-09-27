@@ -90,6 +90,20 @@ final class DeliveryNoteTest extends TestCase
         self::assertSame([2, null, '1.500', 'HUR', '80.0000', []], [$second->getPosition(), $second->getProduct(), $second->getQuantity(), $second->getUnit()->getCode(), $second->getUnitPriceNet(), $second->getTaxes()]);
     }
 
+    public function testValidatingFreezesTheSellerAsTheNotePrintsIt(): void
+    {
+        $this->company->reviseProfile(new \App\Tenancy\Domain\CompanyProfile(legalName: 'Acme SARL', addressLine1: '10 rue de Marseille', city: 'Tunis'));
+        $note = DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [
+            new DeliveryNoteLineDetails(null, 'Pose', '1', $this->unit('C62'), '40', []),
+        ], $this->now);
+        self::assertNull($note->getSellerSnapshot(), 'a draft prints the seller as it is today');
+
+        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $this->now);
+        $this->company->reviseProfile(new \App\Tenancy\Domain\CompanyProfile(legalName: 'Acme Holding SA', addressLine1: '1 avenue de France', city: 'Sousse'));
+
+        self::assertSame(['Acme SARL', 'Tunis'], [$note->getSellerSnapshot()?->name, $note->getSellerSnapshot()?->address->city]);
+    }
+
     public function testAQuantityIsPositiveAndNoFinerThanItsUnitCounts(): void
     {
         foreach (['0', '-1', '1.5', 'three', '1,0'] as $quantity) {

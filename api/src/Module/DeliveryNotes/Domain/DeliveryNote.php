@@ -17,6 +17,7 @@ use App\Shared\Domain\DomainEvent;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
+use App\Tenancy\Domain\SellerSnapshot;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -24,7 +25,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Goods an establishment of a company hands to a customer (docs/SPEC.md § 4 delivery_note). A draft names its
+ * Goods an establishment of a company hands to a customer. A draft names its
  * establishment, its customer and its lines, every one of them its own company's, and changes freely; the number,
  * the issue day and what the customer was called that day arrive with validation.
  */
@@ -81,6 +82,10 @@ class DeliveryNote implements CompanyOwned
     /** @var array<string, mixed>|null CustomerSnapshot::toArray(), written by validation */
     #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
     private ?array $customerSnapshot = null;
+
+    /** @var array<string, mixed>|null SellerSnapshot::toArray(), written by validation */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $sellerSnapshot = null;
 
     /** The PDF as the note was issued; null until it is stored. */
     #[ORM\ManyToOne(targetEntity: StoredFile::class)]
@@ -199,6 +204,7 @@ class DeliveryNote implements CompanyOwned
             $this->deliveryAddress = new PostalAddress(...$address->parts());
         }
         $this->customerSnapshot = CustomerSnapshot::of($this->customer)->toArray();
+        $this->sellerSnapshot = SellerSnapshot::of($this->company, $this->establishment)->toArray();
         $this->status = DeliveryNoteStatus::Validated;
         $this->number = $number;
         $this->issueDate = self::day($issueDate);
@@ -246,7 +252,7 @@ class DeliveryNote implements CompanyOwned
     }
 
     /**
-     * A validated or delivered note an invoice was issued for (docs/SPEC.md § 7, 2026-09-14). It is then neither delivered
+     * A validated or delivered note an invoice was issued for. It is then neither delivered
      * nor cancelled, and never invoiced again.
      *
      * @throws DeliveryNoteTransitionRefused
@@ -315,6 +321,12 @@ class DeliveryNote implements CompanyOwned
     public function getCustomerSnapshot(): ?CustomerSnapshot
     {
         return null === $this->customerSnapshot ? null : CustomerSnapshot::fromArray($this->customerSnapshot);
+    }
+
+    /** The seller as the document printed it the day the note was validated; null while it is a draft or was cancelled as one. */
+    public function getSellerSnapshot(): ?SellerSnapshot
+    {
+        return null === $this->sellerSnapshot ? null : SellerSnapshot::fromArray($this->sellerSnapshot);
     }
 
     public function getHeader(): DeliveryNoteHeader

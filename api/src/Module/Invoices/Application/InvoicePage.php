@@ -12,6 +12,7 @@ namespace App\Module\Invoices\Application;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceFigures;
+use App\Tenancy\Domain\SellerSnapshot;
 
 /**
  * What a printed invoice or credit note shows: the document, its figures, its customer, language, mentions and texts
@@ -35,6 +36,7 @@ final readonly class InvoicePage
         public Invoice $invoice,
         public InvoiceFigures $figures,
         public CustomerSnapshot $customer,
+        public SellerSnapshot $seller,
         public ?string $watermark,
         public string $language,
         public string $printedNotes,

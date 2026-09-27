@@ -385,10 +385,10 @@ no common `created_by`: the tables that record who acted carry their own column 
 | contact | customer_id, first_name, last_name, email, phone, role, is_primary |
 | product | reference, name, description, kind (goods, service), unit_id, unit_price_net, cost_price, category_id, barcode, is_active; `product_tax` = default tax components |
 | product_category | name, parent_id |
-| delivery_note | establishment_id, number, status (draft, validated, delivered, invoiced, cancelled), customer_id, customer_snapshot, issue_date, delivery_date, delivery_address, customer_reference, remarks_printed, notes_internal, invoiced_by_invoice_id |
+| delivery_note | establishment_id, number, status (draft, validated, delivered, invoiced, cancelled), customer_id, customer_snapshot, seller_snapshot, issue_date, delivery_date, delivery_address, customer_reference, remarks_printed, notes_internal, invoiced_by_invoice_id |
 | delivery_note_line | position, product_id, description, quantity, unit_id, unit_price_net; `delivery_note_line_tax` collection |
 | invoice_tax | invoice_id, tax_component_id (document-level: stamp, withholding), base, amount |
-| invoice | establishment_id, document_type (invoice or credit_note), corrects_invoice_id (a credit note's invoice, null otherwise), number, status (draft, issued, partially_paid, paid; cancelled while draft only), customer_id, customer_snapshot, issue_date, supply_date, due_date, payment_terms_days, currency, language, customer_reference, discount_amount, subtotal_net, total_net, tax_breakdown jsonb, total_tax, fixed_taxes, total_gross, withholding_amount, amount_paid, amount_due, notes_printed, terms_printed, footer_snapshot, mentions_snapshot, issued_at, issued_by, pdf_file_id, operation_category, vat_on_debits |
+| invoice | establishment_id, document_type (invoice or credit_note), corrects_invoice_id (a credit note's invoice, null otherwise), number, status (draft, issued, partially_paid, paid; cancelled while draft only), customer_id, customer_snapshot, seller_snapshot, issue_date, supply_date, due_date, payment_terms_days, currency, language, customer_reference, discount_amount, subtotal_net, total_net, tax_breakdown jsonb, total_tax, fixed_taxes, total_gross, withholding_amount, amount_paid, amount_due, notes_printed, terms_printed, footer_snapshot, mentions_snapshot, issued_at, issued_by, pdf_file_id, operation_category, vat_on_debits |
 | invoice_line | position, product_id, description, quantity, unit_id, unit_price_net, discount_rate, line_net, line_tax, line_gross, source_delivery_note_line_id; `invoice_line_tax` collection (component, base, rate snapshot, amount) |
 | payment | invoice_id, date, amount, method (transfer, cash, check, card, other), reference, notes, recorded_by, created_at |
 | vendor | vendor_number, name, legal_name, identifiers jsonb, email, phone, website, address, iban, bic, payment_terms_days, default_expense_category_id, notes, is_active |
@@ -3446,6 +3446,16 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-09-27 07:16] AGREED (developer, asked): **code comments say why, with no dates and no SPEC row numbers**; the record of a
   decision stays in § 7, found by searching the code's words. Existing comments are trimmed as their files are touched,
   never in one mass edit.
+- [2026-09-27 07:56] DECIDED (revisit): **an issued invoice or credit note and a validated delivery note keep the seller
+  as they printed it** (row 163): `seller_snapshot` jsonb (`SellerSnapshot`: name, legal form, identifiers, the
+  establishment's address and contacts where it has them else the company's, IBAN and BIC, currency, VAT regime),
+  written by `issue()` and `validate()` beside the customer snapshot. The PDF templates, `PrintInvoice`,
+  `PrintDeliveryNote` and `DescribeFacturX` read only the snapshot; a draft still prints the company as it is today.
+  The migration freezes every already-issued document as it prints now (the rows carrying a customer snapshot), the
+  only seller they can still be shown with, so no document is left reading live data. Two consequences: Factur-X
+  judges the seller as issued, so completing the company profile after issuing no longer fills an issued invoice's
+  gaps (a corrected document goes through a credit note); and the snapshot is not exposed on the API, which no screen
+  reads — expose it when one does.
 
 ## 8. Status
 
@@ -3606,7 +3616,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | done | b7a64532 | the line closes every page, signed out, in the shell and beside the settings list; /legal/<slug> placeholders until row 148 |
 | 148 | Legal pages (§ 7 2026-09-26 08:52): nine pages the platform operator edits per language and dates, fr/en/ar drafts marked « Brouillon — à faire valider », Arabic in RTL, security.txt | L | todo | - | |
 | 149 | Cookie banner and guard (§ 7 2026-09-26 08:52): an informational first-visit banner, and a CI gate refusing an undeclared cookie, storage key or third-party script | M | done | 1c5330d5 | the notice in the flow on a first visit, the Cookies page's table from stored-items.ts, stored-items.sh both ways, an e2e checking the live browser |
-| 153 | Sidebar folded rail (§ 7 2026-09-26 22:54): the rail never scrolls as a whole, the list's scroll contained, the folded gear centred, one nav-settings test id | S | done | - | the list contains its hidden names and its scroll; every folded icon on x=40; the defaults entry is nav-defaults |
+| 153 | Sidebar folded rail (§ 7 2026-09-26 22:54): the rail never scrolls as a whole, the list's scroll contained, the folded gear centred, one nav-settings test id | S | done | 5a9420c | the list contains its hidden names and its scroll; every folded icon on x=40; the defaults entry is nav-defaults |
 | 154 | Tooltips on hidden names (§ 7 2026-09-26 22:24): every icon-only control and every label cut with « … », menu entries included, a gate for both | M | todo | - | |
 | 155 | Legal line at the window's bottom on short pages (§ 7 2026-09-26 22:24) | S | todo | - | |
 | 156 | Build version (§ 7 2026-09-26 22:54): « v0.1.0 · commit · date » in the legal line and the menu foot, the API's in /api/health, a reload offer when they differ | M | todo | - | |
@@ -3616,7 +3626,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 160 | RGAA (§ 7 2026-09-26 22:24): the app fully RGAA-compliant; how it is audited to be asked | L | todo | - | |
 | 161 | Activity journal (§ 7 2026-09-26 23:04): « Journal d'activité » over the audit log, per person and per record, audit.read, CSV, 12 months by default, members told | L | todo | - | |
 | 162 | Undo first, preview the rest (§ 7 2026-09-26 23:04): undo for the reversible, a precise preview before the irreversible, dry-run on bulk actions, a 30-day Corbeille | L | todo | - | |
-| 163 | Seller snapshot (§ 7 2026-09-27 07:16, P1): issuing writes the seller as it is (name, legal form, identifiers, address, establishment, settings printed); PDF and Factur-X read only snapshots | M | todo | - | |
+| 163 | Seller snapshot (§ 7 2026-09-27 07:16, P1): issuing writes the seller as it is (name, legal form, identifiers, address, establishment, settings printed); PDF and Factur-X read only snapshots | M | done | - | |
 | 164 | Home summary as SQL (§ 7 2026-09-27 07:16, P1): aging, chase list, payments per month and the month's VAT as aggregates, same figures as today's fixtures | M | todo | - | |
 | 165 | Sessions that do not lock read requests, and no write per GET (§ 7 2026-09-27 07:16) | S | todo | - | |
 | 166 | Production image (§ 7 2026-09-27 07:16): prod mode, production php.ini, Symfony's OPcache values, preload, no dev packages | M | todo | - | |

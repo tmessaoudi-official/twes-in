@@ -223,6 +223,19 @@ final class InvoiceTest extends TestCase
         $invoice->cancel($this->now);
     }
 
+    public function testIssuingFreezesTheSellerAsTheDocumentPrintsIt(): void
+    {
+        $this->company->reviseProfile(new \App\Tenancy\Domain\CompanyProfile(legalName: 'Acme SARL', addressLine1: '10 rue de Marseille', city: 'Tunis'));
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine(taxes: [$this->tax('TVA19')])], [], $this->now);
+        self::assertNull($invoice->getSellerSnapshot(), 'a draft prints the seller as it is today');
+
+        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures(), $this->now);
+        $this->company->reviseProfile(new \App\Tenancy\Domain\CompanyProfile(legalName: 'Acme Holding SA', addressLine1: '1 avenue de France', city: 'Sousse'));
+
+        $seller = $invoice->getSellerSnapshot();
+        self::assertSame(['Acme SARL', '10 rue de Marseille', 'Tunis', 'TND'], [$seller?->name, $seller?->address->line1, $seller?->address->city, $seller?->currency]);
+    }
+
     public function testAnInvoiceIsIssuedWithAtLeastOneLineAndADraftHasNoFixedFigures(): void
     {
         $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [], [], $this->now);
