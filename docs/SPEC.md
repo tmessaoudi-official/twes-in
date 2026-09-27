@@ -3707,6 +3707,11 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   never preloading (production only, as today), and Angular's development server with live reload, reachable from the
   phone through the same door.
 
+- [2026-09-27 19:20] AGREED (developer, asked): **the live mode is the default in development**, so the developer sees the work
+  while it happens: `make up` starts it (a `compose.live.yaml` override the Makefile adds), and **`make up-images`**
+  keeps the built images exactly as CI runs them (CI calls `docker compose up` on `compose.yaml` and is unchanged), for
+  production-like checks and every timing, the large-data run's included. This replaces `make dev` in row 184.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -3897,7 +3902,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 181 | Large-data run (§ 7 2026-09-27 18:59): `make scale-data` / `make up-scale` in steps of 100k to 10m invoices, a large company and a wide platform, real documents cloned, measured per list, screen and operation; after 178 | L | todo | - | api/src/DataFixtures/** Makefile docs/** |
 | 182 | Data health check (§ 7 2026-09-27 18:59): `app:data:check` over the invariants, after generation, nightly with the worker and told to the operator | M | todo | - | |
 | 183 | The whole app from a phone (§ 7 2026-09-27 19:16): sign-in through the LAN door tested and fixed, the LAN address as the app's own when detected, `make up` prints it; before 178 | S | todo | - | compose.yaml Makefile infra/** api/config/** |
-| 184 | `make dev` (§ 7 2026-09-27 19:16): api source mounted with FrankenPHP watch, OPcache revalidating at once, Angular dev server with live reload, through the LAN door too; before 178 | M | todo | - | compose*.yaml Makefile infra/** web/** docs/START.md |
+| 184 | Live development by default (§ 7 2026-09-27 19:16 and 2026-09-27 19:20): `make up` mounts the api source with FrankenPHP watch, OPcache revalidating at once, Angular dev server with live reload, through the LAN door too; `make up-images` keeps the images CI runs; before 178 | M | todo | - | compose*.yaml Makefile infra/** web/** docs/START.md |
 <!-- /progress-block -->
 
 ### Delivered
