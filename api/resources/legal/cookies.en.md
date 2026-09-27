@@ -10,4 +10,4 @@ You can clear this site’s cookies and storage at any time from your browser’
 
 ## Contact us
 
-To be completed: the address to write to the service’s publisher at.
+{{publisher.email}}

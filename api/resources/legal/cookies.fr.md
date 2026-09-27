@@ -10,4 +10,4 @@ Vous pouvez effacer à tout moment les cookies et le stockage de ce site depuis 
 
 ## Nous contacter
 
-À compléter : l’adresse à laquelle écrire à l’éditeur du service.
+{{publisher.email}}
