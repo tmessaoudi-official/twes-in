@@ -31,6 +31,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   sentence each. "Tests pass" is not a claim about a container coming up.
 - Craft lessons go under § "Lessons" below, five lines at most, only when they change what to
   do next time.
+- **Comments say why**, with no dates and no SPEC row numbers (developer ruling, 2026-09-27): the decision's record is
+  § 7, found by the code's own words. Trim an old comment's dates and rows when its file is next edited, never in bulk.
 
 ## Licensing invariants — the cardinal rule
 

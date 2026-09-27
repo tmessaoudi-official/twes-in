@@ -3428,6 +3428,24 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
     (`position: relative; height: 4px`) loads after `styles.scss` and beat `.twes-activity-progress` at equal
     specificity, so every request pushed the whole app 4 px down and back; CI run 36267701194 (b7a64532) met the
     settings list 4 px off. `feedback.spec.ts` now asserts the bar is fixed and the page unmoved while it shows.
+- [2026-09-27 07:16] AGREED (developer, asked after two independent reviews: `var/claude/performance-2026-09-26.md`, measured, and
+  `var/claude/craft-review-2026-09-26.md`, read from the code): **keep PHP 8.5, Symfony, API Platform, Doctrine,
+  PostgreSQL and Angular, and fix in place.** Every slow or wrong thing found is configuration or design and would follow
+  the code into any language: the container runs dev mode, classic FrankenPHP, no production php.ini and no preload
+  (prod + worker measured 3-7× faster per endpoint); the home summary reads every invoice (~7 200 statements, 9-20 s on
+  3 011 invoices, against ~12 ms as SQL); sessions lock each person's requests one at a time.
+- [2026-09-27 07:16] AGREED (developer, asked): **a correctness-and-speed block now, before the legal pages (148)**, in this order:
+  a seller snapshot at issue so an issued invoice never changes (P1); the home summary as SQL (P1); sessions that do not
+  lock read requests; a production image (prod mode, production php.ini, OPcache preload); FrankenPHP worker mode with
+  its leak audit; the icon font cut to the icons used.
+- [2026-09-27 07:16] AGREED (developer, asked): **the five P2 design fixes are queued after that block**: side effects in the change's
+  transaction (a Messenger outbox); errors as codes the screens translate (RFC 7807 with `code`, `field`, `params`) and
+  required fields in the generated types; one authorization decision point; the richest pages on `httpResource` and
+  `linkedSignal` instead of chains of effects, screen by screen; lighter list answers, `watch` counts, a shorter
+  startup chain.
+- [2026-09-27 07:16] AGREED (developer, asked): **code comments say why, with no dates and no SPEC row numbers**; the record of a
+  decision stays in § 7, found by searching the code's words. Existing comments are trimmed as their files are touched,
+  never in one mass edit.
 
 ## 8. Status
 
@@ -3598,6 +3616,17 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 160 | RGAA (§ 7 2026-09-26 22:24): the app fully RGAA-compliant; how it is audited to be asked | L | todo | - | |
 | 161 | Activity journal (§ 7 2026-09-26 23:04): « Journal d'activité » over the audit log, per person and per record, audit.read, CSV, 12 months by default, members told | L | todo | - | |
 | 162 | Undo first, preview the rest (§ 7 2026-09-26 23:04): undo for the reversible, a precise preview before the irreversible, dry-run on bulk actions, a 30-day Corbeille | L | todo | - | |
+| 163 | Seller snapshot (§ 7 2026-09-27 07:16, P1): issuing writes the seller as it is (name, legal form, identifiers, address, establishment, settings printed); PDF and Factur-X read only snapshots | M | todo | - | |
+| 164 | Home summary as SQL (§ 7 2026-09-27 07:16, P1): aging, chase list, payments per month and the month's VAT as aggregates, same figures as today's fixtures | M | todo | - | |
+| 165 | Sessions that do not lock read requests, and no write per GET (§ 7 2026-09-27 07:16) | S | todo | - | |
+| 166 | Production image (§ 7 2026-09-27 07:16): prod mode, production php.ini, Symfony's OPcache values, preload, no dev packages | M | todo | - | |
+| 167 | FrankenPHP worker mode with its leak audit (§ 7 2026-09-27 07:16) | M | todo | - | |
+| 168 | Icon font cut to the icons used, with a gate (§ 7 2026-09-27 07:16) | S | todo | - | |
+| 169 | Side effects in the change's transaction: a Messenger outbox (§ 7 2026-09-27 07:16, P2) | M | todo | - | |
+| 170 | Errors as codes: RFC 7807 code/field/params, one web mapper, required output fields (§ 7 2026-09-27 07:16, P2) | L | todo | - | |
+| 171 | One authorization decision point (§ 7 2026-09-27 07:16, P2) | M | todo | - | |
+| 172 | Pages on httpResource and linkedSignal instead of chains of effects, screen by screen (§ 7 2026-09-27 07:16, P2) | L | todo | - | |
+| 173 | Lighter list answers, watch counts, a shorter startup chain (§ 7 2026-09-27 07:16, P2) | M | todo | - | |
 <!-- /progress-block -->
 
 ### Delivered
