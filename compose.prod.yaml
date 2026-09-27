@@ -1,0 +1,16 @@
+# The stack on the production API image (infra/api/Dockerfile, stage prod), over compose.yaml:
+#   docker compose -f compose.yaml -f compose.prod.yaml up -d --build --wait
+# What CI's prod-image job boots, and how to measure the API as it will run. Not a deployment: that brings its own
+# database, mail and addresses. Production refuses to start on the development keys compose.yaml defaults to
+# (api/src/Shared/Infrastructure/DevelopmentKeys.php), so each secret comes from the environment and compose stops
+# before starting anything when one is missing; centrifugo reads the same two realtime keys from it.
+services:
+  api:
+    build:
+      target: prod
+    environment:
+      APP_ENV: prod
+      APP_SECRET: "${APP_SECRET:?set APP_SECRET, a secret of this instance's own}"
+      APP_MFA_KEY: "${APP_MFA_KEY:?set APP_MFA_KEY, 32 random bytes in base64}"
+      REALTIME_TOKEN_KEY: "${REALTIME_TOKEN_KEY:?set REALTIME_TOKEN_KEY}"
+      REALTIME_API_KEY: "${REALTIME_API_KEY:?set REALTIME_API_KEY}"

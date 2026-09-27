@@ -14,6 +14,7 @@ make up          # web http://localhost:8090 · api http://localhost:8091/api ·
 ```
 
 - **`docs/START.md`**: bringing the stack up, signing in, creating every kind of user, what data a new stack
-  holds, starting clean (`make reset`) and running the checks (`make gate`, `make e2e`).
+  holds, starting clean (`make reset`) and running the checks (`make gate`, `make e2e`), and the production image
+  (§ 10, `compose.prod.yaml`).
 - **`docs/UPDATE.md`**: every version the project depends on, where it is written and how to bump it
   (`make versions` prints the current ones).

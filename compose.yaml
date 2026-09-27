@@ -32,6 +32,8 @@ services:
     build:
       context: .
       dockerfile: infra/api/Dockerfile
+      # The development stage; compose.prod.yaml switches to the production one.
+      target: dev
     environment:
       APP_ENV: dev
       DATABASE_URL: "postgresql://twes:${POSTGRES_PASSWORD:-twes}@postgres:5432/twes?serverVersion=18&charset=utf8"

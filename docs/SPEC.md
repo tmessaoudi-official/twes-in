@@ -3497,6 +3497,27 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   expiry as no session. The absolute limit stays in `SessionTimeoutListener`. Measured on the rebuilt image: ten
   GETs wrote the sessions table zero times (ten before) and left the row's version unchanged, and no advisory lock
   was held during ten parallel GETs.
+- [2026-09-27 11:06] DECIDED (revisit): **the API image has two targets, `dev` and `prod`, over one `base`**, laid out
+  as the official Symfony Docker image does (row 166). `prod` sets `APP_ENV=prod`, copies `php.ini-production`, adds
+  `infra/api/conf.d/20-app.prod.ini` (`opcache.validate_timestamps=0`, `opcache.preload` on `config/preload.php` as
+  `root`, FrankenPHP's user), installs `--no-dev`, runs `composer dump-env prod` and warms the cache at build. The warmup
+  goes at build, not at start: that way the preload list exists before the server does, and the web image built over
+  a prod api still finds `var/openapi.json`. The kernel refuses to boot in prod without secrets, so those two commands get placeholders
+  on their one `RUN` line; none reaches the image (grepped: 0 hits in `var/` and `.env.local.php`). Symfony's
+  recommended OPcache and realpath values (256 MB, 32 531 files, 32 MB strings, TTL 600) go in `10-app.ini`, for
+  every mode. `dev` now copies `php.ini-development` (before: no `php.ini`, compiled defaults), so `$_ENV` is no longer
+  filled (`variables_order=GPCS`). Nothing reads it: `DevelopmentKeys` reads `$_SERVER` too. `compose.yaml` names
+  `target: dev`. `compose.prod.yaml` switches to `prod` and makes compose itself stop when a secret is missing. CI's
+  new `prod-image` job boots the whole stack on it with random secrets and runs `scripts/gates/production-image.php`
+  inside it. Measured (direct to the api, the same session, the AUDIT company, p50, load 22-38, so a direction and
+  not a figure): health 207 → 33 ms, `/api/auth/me` 188 → 100, 25 invoices 559 → 225, the home summary 269 → 126, one
+  invoice 389 → 103. The four answers compared were byte-identical. The server preloads 2 822 classes (30 MB).
+  Classic mode, no JIT: worker mode is row 167. Found on the way: every list logs a Doctrine deprecation (a string
+  sort direction) to production's STDERR, queued as row 177.
+- [2026-09-27 11:06] AGREED (developer, asked): **outside production the footer says which environment it is**: a small
+  coloured chip, « dev », « test » or whatever `APP_ENV` is, beside the version line of row 156, in the signed-in
+  footer and the signed-out legal line alike, and nothing at all in prod. It comes from the API, since the static web
+  build cannot know where it runs. Part of row 156, which keeps its place in the order.
 
 ## 8. Status
 
@@ -3660,7 +3681,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 153 | Sidebar folded rail (§ 7 2026-09-26 22:54): the rail never scrolls as a whole, the list's scroll contained, the folded gear centred, one nav-settings test id | S | done | 5a9420c | the list contains its hidden names and its scroll; every folded icon on x=40; the defaults entry is nav-defaults |
 | 154 | Tooltips on hidden names (§ 7 2026-09-26 22:24): every icon-only control and every label cut with « … », menu entries included, a gate for both | M | todo | - | |
 | 155 | Legal line at the window's bottom on short pages (§ 7 2026-09-26 22:24) | S | todo | - | |
-| 156 | Build version (§ 7 2026-09-26 22:54): « v0.1.0 · commit · date » in the legal line and the menu foot, the API's in /api/health, a reload offer when they differ | M | todo | - | |
+| 156 | Build version (§ 7 2026-09-26 22:54): « v0.1.0 · commit · date » in the legal line and the menu foot, the API's in /api/health, a reload offer when they differ; outside prod a chip naming the environment (§ 7 2026-09-27 11:06) | M | todo | - | |
 | 157 | Counts (§ 7 2026-09-26 22:24 and 22:34): « À surveiller » live count on its menu entry; the switcher's total per company | M | todo | - | |
 | 158 | Company logo (§ 7 2026-09-26 22:24): uploaded in Paramètres › Entreprise, printed on invoices, credit notes and delivery notes, shown in the switcher | M | todo | - | |
 | 159 | Plans (§ 7 2026-09-26 22:54): the walkthrough of what « Découverte » and the paid plans include, then plans as data in Licensing and the « Émis avec » line | L | todo | - | |
@@ -3669,8 +3690,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 162 | Undo first, preview the rest (§ 7 2026-09-26 23:04): undo for the reversible, a precise preview before the irreversible, dry-run on bulk actions, a 30-day Corbeille | L | todo | - | |
 | 163 | Seller snapshot (§ 7 2026-09-27 07:16, P1; narrowed 08:18): issuing writes the seller as it is (name, legal form, identifiers, address, establishment's contacts, bank, currency, VAT regime); PDF and Factur-X read only snapshots | M | done | 3c29179 | api/src/Tenancy/Domain/SellerSnapshot.php api/src/Module/Invoices/** api/src/Module/DeliveryNotes/** api/templates/pdf/** api/migrations/** |
 | 164 | Home summary as SQL (§ 7 2026-09-27 07:16, P1): aging, chase list, payments per month and the month's VAT as aggregates, same figures as today's fixtures | M | done | 101d649 | api/src/Module/Invoices/Application/SummarizeInvoices.php api/src/Module/Invoices/Application/InvoiceSummarySource.php api/src/Module/Invoices/Infrastructure/Doctrine/** api/tests/Integration/Invoices/** |
-| 165 | Sessions that do not lock read requests, and no write per GET (§ 7 2026-09-27 07:16) | S | done | - | api/src/Identity/Infrastructure/Session/** api/config/packages/framework.yaml api/tests/Integration/Identity/** |
-| 166 | Production image (§ 7 2026-09-27 07:16): prod mode, production php.ini, Symfony's OPcache values, preload, no dev packages | M | todo | - | |
+| 165 | Sessions that do not lock read requests, and no write per GET (§ 7 2026-09-27 07:16) | S | done | a8c73da | api/src/Identity/Infrastructure/Session/** api/config/packages/framework.yaml api/tests/Integration/Identity/** |
+| 166 | Production image (§ 7 2026-09-27 07:16): prod mode, production php.ini, Symfony's OPcache values, preload, no dev packages | M | done | - | infra/api/** compose.yaml compose.prod.yaml scripts/gates/production-image.php scripts/gates/tests/production-image.test.sh |
 | 167 | FrankenPHP worker mode with its leak audit (§ 7 2026-09-27 07:16) | M | todo | - | |
 | 168 | Icon font cut to the icons used, with a gate (§ 7 2026-09-27 07:16) | S | todo | - | |
 | 169 | Side effects in the change's transaction: a Messenger outbox (§ 7 2026-09-27 07:16, P2) | M | todo | - | |
@@ -3681,6 +3702,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 174 | Print settings frozen at issue (§ 7 2026-09-27 08:18): the printed notes, date and number formats, and a delivery note's language, prices and reception block, kept when the document is issued, so a re-render (a cancelled note, a PDF first rendered after a renderer failure) prints what the document said | S | todo | - | |
 | 175 | Legal texts over the screen (§ 7 2026-09-27 08:59): footer always centred; notice pinned, never covering content, app usable before « Compris »; legal text from the notice or footer opens in a panel, the full page gets « Retour » | S | done | ed2506d | web/src/app/legal/** web/src/app/shared/legal/** |
 | 176 | Mobile review (§ 7 2026-09-27 08:59, not urgent): bottom bar icon/label gap, settings list reachable from a settings page on a phone, a full pass for other anomalies | M | todo | - | |
+| 177 | Doctrine's sort direction as `SortDirection`, not a string: ~35 query builder calls, each logging a deprecation on every list, to production's STDERR among others (§ 7 2026-09-27 11:06, P2) | S | todo | - | |
 <!-- /progress-block -->
 
 ### Delivered

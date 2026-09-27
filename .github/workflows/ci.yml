@@ -1,4 +1,4 @@
-# twes-in CI. Four jobs, each with the reason it exists; "done" in docs/SPEC.md § 5 means all four are green.
+# twes-in CI. Five jobs, each with the reason it exists; "done" in docs/SPEC.md § 5 means all five are green.
 name: ci
 
 on:
@@ -37,6 +37,7 @@ jobs:
       - run: bash scripts/gates/tests/presentation-settings-parity.test.sh
       - run: bash scripts/gates/tests/tour-anchors.test.sh
       - run: bash scripts/gates/tests/stored-items.test.sh
+      - run: bash scripts/gates/tests/production-image.test.sh
       # The self-hosted logrotate configuration, rotated for real (docs/SPEC.md § 7, 2026-09-17).
       - run: command -v logrotate || (sudo apt-get update && sudo apt-get install -y logrotate)
       - run: bash infra/self-hosted/tests/logrotate.test.sh
@@ -121,6 +122,31 @@ jobs:
           path: api/var
       - run: npm ci --no-audit --no-fund
       - run: npm run gate
+
+  # WHY: the production image (infra/api/Dockerfile, stage prod) is what a deployment runs, and nothing else here
+  # builds it: e2e runs the development stage. Each thing it promises can go quietly, a stage left in dev mode, the
+  # wrong ini, dev packages installed, a preload list never warmed, and every request would still be answered. This
+  # boots the stack on it with secrets of its own and checks it from inside (scripts/gates/production-image.php).
+  prod-image:
+    runs-on: ubuntu-latest
+    needs: [licences]
+    env:
+      COMPOSE_FILE: compose.yaml:compose.prod.yaml
+    steps:
+      - uses: actions/checkout@v7
+      # Production refuses the committed development keys, so this instance gets random ones.
+      - run: |
+          for name in APP_SECRET REALTIME_TOKEN_KEY REALTIME_API_KEY; do
+            value=$(openssl rand -hex 24); echo "::add-mask::$value"; echo "$name=$value" >> "$GITHUB_ENV"
+          done
+          value=$(openssl rand -base64 32); echo "::add-mask::$value"; echo "APP_MFA_KEY=$value" >> "$GITHUB_ENV"
+      - run: docker compose up -d --build --wait
+      - run: docker compose exec -T api php < scripts/gates/production-image.php
+      # Through nginx, as a browser reaches it: the health answer, and a refusal answered as JSON, not a debug page.
+      - run: curl -fsS http://localhost:8090/api/health | grep -q '"status":"ok"'
+      - run: test "$(curl -s -o /dev/null -w '%{http_code} %{content_type}' http://localhost:8090/api/auth/me)" = '401 application/json'
+      - if: failure()
+        run: docker compose logs --no-color
 
   # WHY: the parts passing says nothing about the whole. This boots the compose stack (nginx → FrankenPHP →
   # PostgreSQL) from the committed Dockerfiles and drives a real browser through it.

@@ -101,6 +101,9 @@ on. To bring up the committed code while work is in progress, use a separate che
 **The web container serves a static build.** A change under `web/src/` is not visible until the image is rebuilt:
 `docker compose up -d --build web`. An API change needs `docker compose up -d --build api`.
 
+**The api runs its development image.** `infra/api/Dockerfile` has two targets: `make up` builds `dev` (Symfony's
+dev mode, the profiler, `php.ini-development`, the dev packages). The production image is § 10.
+
 ## 3. Sign in as the platform operator
 
 | Field    | Value                                              |
@@ -374,9 +377,42 @@ the next build or gate.
 | e2e fails at `browserType.launch: Executable doesn't exist` | Playwright's browser is missing: § 1 |
 | The api image fails at `cache:clear` ("Cannot autowire service …") | Work in progress in the working tree went into the build (§ 2). Finish it, or bring up a clean worktree |
 | The api container restarts in a loop | A migration failed: `docker compose logs api` shows which, and the container refuses to serve until it passes |
+| The production api container stops at once, naming `APP_SECRET`, `APP_MFA_KEY` or a realtime key | Production refuses a missing secret and the development ones committed in `api/.env` (§ 10). Give it its own |
 | An API answer is wrong, slow or refused, and the log does not say why | Open the profiler, development only: <http://localhost:8091/_profiler> lists the last requests, and every answer carries an `X-Debug-Token-Link` header to its own. It shows which voter decided, the listeners in order and their time, every query and their count, and the timeline. Imports are not profiled (§ 7 of `docs/SPEC.md`, 2026-09-19) |
 
 **Measured on this machine** (2026-09-19, a fresh compose project from a clean checkout of the committed tree):
 `make reset CONFIRM=yes` to six healthy services and a seeded database took **104 s**, with the base images already
 downloaded and the PHP extensions already compiled in Docker's cache. On a machine with neither, add the download
 and compile time: the first attempt spent about 2 minutes on those alone.
+
+## 10. The production image
+
+`infra/api/Dockerfile`'s `prod` target is the API as a deployment runs it. Its build:
+
+- sets `APP_ENV=prod` and copies `php.ini-production`, which turns assertions off and never shows an error to a visitor;
+- keeps `infra/api/conf.d/10-app.ini`, the settings for every mode, which include Symfony's recommended OPcache values;
+- adds `infra/api/conf.d/20-app.prod.ini`, which stops OPcache checking files for changes and preloads the kernel's
+  classes (<https://symfony.com/doc/current/performance.html>);
+- installs no dev packages (`composer install --no-dev`) and warms the cache at build.
+
+`compose.prod.yaml` switches the api service to that target. Production refuses to start without secrets of its own,
+so give it four:
+
+```sh
+export COMPOSE_PROJECT_NAME=twes-prod WEB_PORT=18190 API_PORT=18191 MAILPIT_UI_PORT=18192 \
+       MAILPIT_SMTP_PORT=18193 POSTGRES_PORT=15533 GOTENBERG_PORT=18194 \
+       COMPOSE_FILE=compose.yaml:compose.prod.yaml \
+       APP_SECRET=$(openssl rand -hex 24) REALTIME_TOKEN_KEY=$(openssl rand -hex 24) \
+       REALTIME_API_KEY=$(openssl rand -hex 24) APP_MFA_KEY=$(openssl rand -base64 32)
+docker compose up -d --build --wait                                     # http://localhost:18190
+docker compose exec -T api php < scripts/gates/production-image.php     # what the image promises, checked inside it
+docker compose down --volumes --rmi local                               # when done, in the same shell
+```
+
+This is § 8's second stack on the production image, so your own stack keeps running. `make seed` and `make
+operator-code` work there too: seed it before signing in. The demo fixtures do not, because their bundle is a dev
+package. CI's `prod-image` job runs the same check on every push.
+
+A secret generated this way lives only in that shell. `APP_MFA_KEY` encrypts every authenticator secret stored, so a
+stack restarted with another key cannot read them: keep the four values if the stack is to outlive the shell.
+Profiler, dev logs and fixtures belong to `make up`'s development image.
