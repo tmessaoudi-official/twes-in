@@ -3669,7 +3669,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   bank) goes to a **« Trésorerie » module** (row 180): cash and bank accounts, a balance, typed movements, so the
   margin and the VAT stay right. Row 178 comes right after 174; 179 and 180 after Projets (row 80).
 
-- [2026-09-27 18:48] DECIDED (revisit): row 174: **a numbered document keeps how it printed.** Issuing an invoice keeps
+- [2026-09-27 18:46] DECIDED (revisit): row 174: **a numbered document keeps how it printed.** Issuing an invoice keeps
   its printed notes and the company's date and number formats (`PrintSettings`, beside the language, mentions and
   footer it already kept); validating a delivery note also keeps its language, whether it shows prices and the
   reception block (`DeliveryNotePrint`). Both are read from the same settings a draft reads (`DocumentFormats::print`,
@@ -3678,6 +3678,23 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   document said at issue. Documents issued before are **not** back-filled: their settings resolve through the chain
   and the defaults the PHP declarations hold, which a migration in SQL would copy and let drift, so they keep reading
   their settings live, as they did, and a stored PDF is served unchanged either way.
+
+- [2026-09-27 18:59] AGREED (developer, asked): **a large-data run, right after row 178** (row 181), to know the product
+  holds for years before more is built on it. Two profiles in their own database, `twes_scale`, so the development
+  data and CI are untouched: **one very large company** (about ten years of a wholesaler: invoices with their lines,
+  customers, products, expenses, stock movements, audit rows) and **a wide platform** (thousands of small companies).
+  Sizes are configurable, in steps of 100k, 1m, 5m and 10m invoices, every count overridable (customers, products,
+  lines per invoice, years, companies); 5m and 10m run only once 100k is measured and its size projected. Rows are **fake
+  but real**: a few hundred documents made through the use cases, with fake names and addresses from a fixed seed, then
+  cloned in PostgreSQL with new ids, numbers and dates, so every row is a state the application can produce, in
+  minutes rather than days. Measured: every list, search, the home summary, a PDF and an export (p50, p95, plan), every
+  screen at scale in the browser, a migration's time on the large tables, backup and restore, growth per year. The
+  developer tries it himself: `make up-scale SIZE=1m` generates what is missing and starts the stack on `twes_scale`,
+  signed in as the operator, who owns the large companies; `make up` returns to the usual data; the page says « scale »
+  meanwhile. And **a data health check** (row 182): `app:data:check` verifies the invariants on any database (an
+  invoice's totals equal its lines, numbers unique per series, every reference inside one company, stock equal to its
+  movements), run after generating and nightly once the worker exists (row 56), its findings reaching the operator as
+  a notification.
 
 ## 8. Status
 
@@ -3866,6 +3883,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 178 | Expenses without vendors (§ 7 2026-09-27 18:34): the Expenses module no longer requires Vendors, the vendor field shows when Vendors is on, an optional free-text « Payé à »; after 174 | S | todo | - | api/src/Module/Expenses/** api/migrations/** web/src/app/expenses/** |
 | 179 | Recurring expenses (§ 7 2026-09-27 18:34): rent, electricity, internet repeated from one model; after row 80 | M | todo | - | |
 | 180 | Trésorerie (§ 7 2026-09-27 18:34): cash and bank accounts, a balance, typed movements for what is not a purchase (drawings, contributions, loan principal, taxes paid, transfers); after row 80 | L | todo | - | |
+| 181 | Large-data run (§ 7 2026-09-27 18:59): `make scale-data` / `make up-scale` in steps of 100k to 10m invoices, a large company and a wide platform, real documents cloned, measured per list, screen and operation; after 178 | L | todo | - | api/src/DataFixtures/** Makefile docs/** |
+| 182 | Data health check (§ 7 2026-09-27 18:59): `app:data:check` over the invariants, after generation, nightly with the worker and told to the operator | M | todo | - | |
 <!-- /progress-block -->
 
 ### Delivered
