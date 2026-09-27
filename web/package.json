@@ -14,6 +14,7 @@
     "icons": "node scripts/subset-icons.mjs",
     "prebuild": "npm run icons",
     "prestart": "npm run icons",
+    "pretest": "npm run icons",
     "test": "ng test",
     "lint": "ng lint",
     "format:check": "prettier --check .",
