@@ -3518,6 +3518,26 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   coloured chip, « dev », « test » or whatever `APP_ENV` is, beside the version line of row 156, in the signed-in
   footer and the signed-out legal line alike, and nothing at all in prod. It comes from the API, since the static web
   build cannot know where it runs. Part of row 156, which keeps its place in the order.
+- [2026-09-27 12:12] DECIDED (revisit): **the API runs FrankenPHP in worker mode, in every target** (row 167):
+  `FRANKENPHP_CONFIG="worker ./public/index.php"` in the image's `base` stage. symfony/runtime's own
+  `FrankenPhpWorkerRunner` resets the services between requests and starts a fresh worker every 500. Worker mode is on in
+  development and CI's e2e too, so the whole suite runs against it: whatever one request left behind would show there
+  before production. The leak audit reflected over every class under `src/` outside `Domain/` for state kept past
+  construction. `StagedLiveChanges` already implements `ResetInterface`. The company filter is lifted at
+  `kernel.terminate` (`CompanyFilterLifter`, which the worker runner fires after each request). Three hold only
+  immutable data or file handles: `YamlFiscalPresets`, `ChannelStreams`, the Doctrine DQL functions. The
+  session handler's per-cycle state is set again on each `open()`. No code sets a locale or a timezone for the whole
+  process, and there is no function-level static. One gap was fixed: the session handler's own PostgreSQL connection
+  would have lived as long as the worker. It is now dropped after 600 s idle, which is DoctrineBundle's
+  `idle_connection_ttl` for the main connection, and it is named `twes-session` in `pg_stat_activity`.
+  `WorkerModeTest` runs requests on one kernel as the worker does and pins the filter. An HTTP probe alternated two
+  sessions working in two companies 80 times against the prod workers, on `/api/auth/me`: none was answered with the
+  other's company. That proves the security token and the session are reset, not the filter. Memory: the dev api
+  container held 269–276 MiB over 1 100 list requests, flat, but those spread over up to 16 workers, so no single worker
+  was taken past its 500-request restart. Measured direct to the
+  api, p50, load 26-30: prod classic → prod worker, health 33 → 6 ms, `/api/auth/me` 100 → 14, customers 121 → 48, 25
+  invoices 225 → 147; dev classic → dev worker, `/api/auth/me` 188 → 42. `production-image.php` now also refuses an
+  image without the worker.
 
 ## 8. Status
 
@@ -3691,8 +3711,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 163 | Seller snapshot (§ 7 2026-09-27 07:16, P1; narrowed 08:18): issuing writes the seller as it is (name, legal form, identifiers, address, establishment's contacts, bank, currency, VAT regime); PDF and Factur-X read only snapshots | M | done | 3c29179 | api/src/Tenancy/Domain/SellerSnapshot.php api/src/Module/Invoices/** api/src/Module/DeliveryNotes/** api/templates/pdf/** api/migrations/** |
 | 164 | Home summary as SQL (§ 7 2026-09-27 07:16, P1): aging, chase list, payments per month and the month's VAT as aggregates, same figures as today's fixtures | M | done | 101d649 | api/src/Module/Invoices/Application/SummarizeInvoices.php api/src/Module/Invoices/Application/InvoiceSummarySource.php api/src/Module/Invoices/Infrastructure/Doctrine/** api/tests/Integration/Invoices/** |
 | 165 | Sessions that do not lock read requests, and no write per GET (§ 7 2026-09-27 07:16) | S | done | a8c73da | api/src/Identity/Infrastructure/Session/** api/config/packages/framework.yaml api/tests/Integration/Identity/** |
-| 166 | Production image (§ 7 2026-09-27 07:16): prod mode, production php.ini, Symfony's OPcache values, preload, no dev packages | M | done | - | infra/api/** compose.yaml compose.prod.yaml scripts/gates/production-image.php scripts/gates/tests/production-image.test.sh |
-| 167 | FrankenPHP worker mode with its leak audit (§ 7 2026-09-27 07:16) | M | todo | - | |
+| 166 | Production image (§ 7 2026-09-27 07:16): prod mode, production php.ini, Symfony's OPcache values, preload, no dev packages | M | done | 7eedc46 | infra/api/** compose.yaml compose.prod.yaml scripts/gates/production-image.php scripts/gates/tests/production-image.test.sh |
+| 167 | FrankenPHP worker mode with its leak audit (§ 7 2026-09-27 07:16) | M | done | - | infra/api/Dockerfile api/src/Identity/Infrastructure/Session/** api/tests/Functional/WorkerModeTest.php scripts/gates/production-image.php |
 | 168 | Icon font cut to the icons used, with a gate (§ 7 2026-09-27 07:16) | S | todo | - | |
 | 169 | Side effects in the change's transaction: a Messenger outbox (§ 7 2026-09-27 07:16, P2) | M | todo | - | |
 | 170 | Errors as codes: RFC 7807 code/field/params, one web mapper, required output fields (§ 7 2026-09-27 07:16, P2) | L | todo | - | |

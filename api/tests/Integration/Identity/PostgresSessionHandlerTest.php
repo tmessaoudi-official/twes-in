@@ -12,6 +12,7 @@ namespace App\Tests\Integration\Identity;
 use App\Identity\Infrastructure\Session\PostgresSessionHandler;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -126,6 +127,79 @@ final class PostgresSessionHandlerTest extends KernelTestCase
         self::assertSame([], $this->rows($id));
     }
 
+    /**
+     * In worker mode the handler outlives the request, and so would its connection. It is dropped when it has been idle
+     * as long as Doctrine lets its own connection be (DoctrineBundle's idle_connection_ttl, 600 seconds), so a
+     * connection the server or a network timeout has closed meanwhile is not the one the next session runs on.
+     */
+    public function testAConnectionIdleAsLongAsDoctrineAllowsIsReplacedAtTheNextSession(): void
+    {
+        $id = $this->id();
+        $this->save($id, 'company|s:1:"A";', 'POST');
+        $clock = new MockClock();
+        $handler = new PostgresSessionHandler($this->url(), $this->requests('GET'), self::IDLE, $clock);
+
+        $this->cycle($handler, $id);
+        $first = $this->sessionBackends();
+        self::assertCount(1, $first, 'the handler names its connection');
+
+        $clock->sleep(599);
+        $this->cycle($handler, $id);
+        self::assertSame($first, $this->sessionBackends(), 'kept while it is in use');
+
+        $clock->sleep(600);
+        $this->cycle($handler, $id);
+        $replaced = $this->sessionBackends();
+        self::assertCount(1, $replaced, 'the idle one is closed, not left beside the new one');
+        self::assertNotSame($first, $replaced);
+    }
+
+    private function cycle(PostgresSessionHandler $handler, string $id): void
+    {
+        $handler->open('', 'twes_session');
+        self::assertSame('company|s:1:"A";', $handler->read($id));
+        $handler->close();
+    }
+
+    /** @return list<int> the server processes serving a session connection, polled until a closed one has gone */
+    private function sessionBackends(): array
+    {
+        $statement = $this->connection()->prepare("SELECT pid FROM pg_stat_activity WHERE application_name = 'twes-session' AND datname = current_database() ORDER BY pid");
+        for ($attempt = 0; $attempt < 20; ++$attempt) {
+            $statement->execute();
+            $pids = [];
+            foreach ($statement->fetchAll(\PDO::FETCH_COLUMN) as $pid) {
+                self::assertIsInt($pid);
+                $pids[] = $pid;
+            }
+            if (\count($pids) <= 1) {
+                break;
+            }
+            usleep(50_000);
+        }
+
+        return $pids;
+    }
+
+    /** The test database as the handler is configured in production: a URL it connects to itself. */
+    private function url(): string
+    {
+        $params = static::getContainer()->get(Connection::class)->getParams();
+
+        return \sprintf('postgresql://%s:%s@%s:%s/%s', ...array_map(
+            static fn (string $key): string => (string) (\is_scalar($params[$key] ?? null) ? $params[$key] : ''),
+            ['user', 'password', 'host', 'port', 'dbname'],
+        ));
+    }
+
+    private function requests(string $method): RequestStack
+    {
+        $requests = new RequestStack();
+        $requests->push(Request::create('/api/anything', $method));
+
+        return $requests;
+    }
+
     private function save(string $id, string $data, string $method, string $how = 'write'): void
     {
         $handler = $this->handler($method, $this->connection());
@@ -137,10 +211,7 @@ final class PostgresSessionHandlerTest extends KernelTestCase
 
     private function handler(string $method, \PDO $pdo): PostgresSessionHandler
     {
-        $requests = new RequestStack();
-        $requests->push(Request::create('/api/anything', $method));
-
-        return new PostgresSessionHandler($pdo, $requests, self::IDLE);
+        return new PostgresSessionHandler($pdo, $this->requests($method), self::IDLE, new MockClock());
     }
 
     /** A connection of its own to the test database, as the handler keeps its own beside Doctrine's. */

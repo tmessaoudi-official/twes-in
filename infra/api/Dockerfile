@@ -2,10 +2,13 @@
 # twes-in API on FrankenPHP (Caddy + PHP 8.5). Two targets over one base, as the official Symfony Docker image
 # lays them out: dev (compose.yaml, CI's e2e) and prod (compose.prod.yaml, a deployment). The last stage, prod, is
 # what a build that names no target gets.
-# Classic (non-worker) mode on purpose: worker mode keeps the kernel alive across requests and is a later, measured step.
 FROM dunglas/frankenphp:1.12.7-php8.5-trixie AS base
 
-ENV SERVER_NAME=:80
+# Worker mode (https://frankenphp.dev/docs/worker/): the kernel boots once per worker and serves request after request;
+# symfony/runtime's FrankenPhpWorkerRunner resets the services between them and starts a fresh worker every 500. In
+# every mode, so development and CI's e2e run what production runs; whatever a request leaves behind would show there.
+ENV SERVER_NAME=:80 \
+    FRANKENPHP_CONFIG="worker ./public/index.php"
 
 WORKDIR /app
 

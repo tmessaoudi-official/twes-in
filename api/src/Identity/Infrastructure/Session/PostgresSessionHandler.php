@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Identity\Infrastructure\Session;
 
 use Doctrine\DBAL\Tools\DsnParser;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler;
@@ -27,22 +28,31 @@ use Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler;
  * The row's expiry is the idle limit: every write sets it to now plus the idle time, a read pushes it forward at most
  * once a minute, and PdoSessionHandler reads a row past its expiry as no session at all. The absolute limit is the
  * session's creation time, checked by SessionTimeoutListener.
+ *
+ * In FrankenPHP's worker mode this handler, and the connection it opens, outlive the request. A connection idle as long as
+ * Doctrine lets its own be (DoctrineBundle's idle_connection_ttl) is dropped at the next session's start, so one the
+ * server or the network closed meanwhile is not the one the session runs on. It is named in pg_stat_activity.
  */
 final class PostgresSessionHandler implements \SessionHandlerInterface, \SessionUpdateTimestampHandlerInterface
 {
     /** How long a read may leave the expiry behind before it pushes it forward: the idle limit's precision. */
     private const int REFRESH_AFTER = 60;
 
+    /** DoctrineBundle's default idle_connection_ttl, which the application's own connection runs under. */
+    private const int CONNECTION_IDLE_TTL = 600;
+
     private ?\PDO $pdo = null;
     private ?PdoSessionHandler $locking = null;
     private ?PdoSessionHandler $reading = null;
     private ?PdoSessionHandler $current = null;
     private bool $onlyReads = false;
+    private int $lastUsed = 0;
 
     public function __construct(
         #[Autowire(env: 'DATABASE_URL')] #[\SensitiveParameter] private readonly \PDO|string $connection,
         private readonly RequestStack $requests,
         #[Autowire(param: 'app.session.idle_ttl')] private readonly int $idleTtl,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -50,6 +60,7 @@ final class PostgresSessionHandler implements \SessionHandlerInterface, \Session
     {
         // Chosen once for the whole session cycle: the lock is taken at the first read, which strict mode makes
         // validateId(), and released at close(), so every call in between must reach the same handler.
+        $this->dropIdleConnection();
         $request = $this->requests->getMainRequest();
         $this->onlyReads = null !== $request && $request->isMethodSafe();
         $this->current = $this->onlyReads ? $this->reading() : $this->locking();
@@ -106,6 +117,15 @@ final class PostgresSessionHandler implements \SessionHandlerInterface, \Session
         return true;
     }
 
+    private function dropIdleConnection(): void
+    {
+        $now = $this->clock->now()->getTimestamp();
+        if (null !== $this->pdo && $now - $this->lastUsed >= self::CONNECTION_IDLE_TTL) {
+            $this->pdo = $this->locking = $this->reading = null;
+        }
+        $this->lastUsed = $now;
+    }
+
     private function current(): PdoSessionHandler
     {
         return $this->current ?? throw new \LogicException('The session handler is used before it was opened.');
@@ -130,7 +150,7 @@ final class PostgresSessionHandler implements \SessionHandlerInterface, \Session
         if (null === $this->pdo) {
             $params = new DsnParser(['postgres' => 'pdo_pgsql', 'postgresql' => 'pdo_pgsql', 'pgsql' => 'pdo_pgsql'])->parse($this->connection);
             $this->pdo = new \PDO(
-                \sprintf('pgsql:host=%s;port=%d;dbname=%s', $params['host'] ?? 'localhost', $params['port'] ?? 5432, $params['dbname'] ?? ''),
+                \sprintf('pgsql:host=%s;port=%d;dbname=%s;application_name=twes-session', $params['host'] ?? 'localhost', $params['port'] ?? 5432, $params['dbname'] ?? ''),
                 $params['user'] ?? null,
                 $params['password'] ?? null,
                 [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION],

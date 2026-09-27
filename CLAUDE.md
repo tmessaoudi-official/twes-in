@@ -144,9 +144,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - `var/claude/**` — transient review output, gitignored.
 - `.claude/settings.json` — `defaultMode: auto`, allow-list, empty `deny`, no `ask`; one
   `PostToolUse` hook (`.claude/hooks/lint-on-write.sh`) running `php -l` / `bash -n` on writes.
-- `infra/api/Dockerfile` — two targets over one `base`: `dev` (`compose.yaml`, `make up`, CI's e2e) and `prod`
-  (`compose.prod.yaml`, CI's `prod-image`: `php.ini-production`, `infra/api/conf.d/20-app.prod.ini` with preload, no dev
-  packages, the cache warmed at build; `docs/START.md` § 10). PHP settings for every mode: `infra/api/conf.d/10-app.ini`.
+- `infra/api/Dockerfile` — FrankenPHP in worker mode in every target; two targets over one `base`: `dev`
+  (`compose.yaml`, `make up`, CI's e2e) and `prod` (`compose.prod.yaml`, CI's `prod-image`: `php.ini-production`,
+  `infra/api/conf.d/20-app.prod.ini` with preload, no dev packages, the cache warmed at build; `docs/START.md` § 10).
+  PHP settings for every mode: `infra/api/conf.d/10-app.ini`.
 - `Makefile` — `make up` (compose, web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, `lan` :8443 a phone's HTTPS door on this machine's network address, `infra/lan/Caddyfile`; the api image migrates at
   start, then `seed`: operator `operator@twes.local` / `twes-operator-dev`, authenticator secret
   `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`, `make operator-code` prints its current code; Playwright signs the operator in once, `web/e2e/session.ts`; `web/e2e/axe.ts` is the one WCAG scan, waiting for a fresh toast, and `web/e2e/toast.ts` the announced toast), `make gate` (licences + `composer gate`
@@ -193,6 +194,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - A field added to a shared type, or a column added to a list, reaches specs and e2e you did not open: an API spec's
   `toEqual` on the whole mapped row, and an e2e reading a cell by position (`nth(3)`). Run the whole web unit suite
   before committing such a change, and read list cells by `[data-column="<id>"]`, never by index (2026-09-23: two reds).
+- The API runs in FrankenPHP's worker mode: one kernel serves many requests. A service keeping anything a request set
+  after construction implements `ResetInterface`, or it reaches the next person's request; `WorkerModeTest` runs requests
+  on one kernel as the worker does (2026-09-27, row 167).
 - Never name a PHPUnit helper `run()` or `count()`: both are final on `TestCase` and the whole file fails to load.
 - `\DomainException` extends `\LogicException`, so a test catching `\LogicException` also passes on every domain refusal
   (`InvalidInvoice` and the like): assert the refusal is not the domain one, or the guard under test can vanish unseen

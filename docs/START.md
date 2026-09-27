@@ -102,7 +102,9 @@ on. To bring up the committed code while work is in progress, use a separate che
 `docker compose up -d --build web`. An API change needs `docker compose up -d --build api`.
 
 **The api runs its development image.** `infra/api/Dockerfile` has two targets: `make up` builds `dev` (Symfony's
-dev mode, the profiler, `php.ini-development`, the dev packages). The production image is § 10.
+dev mode, the profiler, `php.ini-development`, the dev packages). The production image is § 10. Both run FrankenPHP in
+worker mode: each worker boots the kernel once and serves request after request, so a configuration change reaches
+the api only with a rebuild or `docker compose restart api`.
 
 ## 3. Sign in as the platform operator
 
@@ -390,6 +392,7 @@ and compile time: the first attempt spent about 2 minutes on those alone.
 `infra/api/Dockerfile`'s `prod` target is the API as a deployment runs it. Its build:
 
 - sets `APP_ENV=prod` and copies `php.ini-production`, which turns assertions off and never shows an error to a visitor;
+- runs FrankenPHP in worker mode, as the development image does (§ 2);
 - keeps `infra/api/conf.d/10-app.ini`, the settings for every mode, which include Symfony's recommended OPcache values;
 - adds `infra/api/conf.d/20-app.prod.ini`, which stops OPcache checking files for changes and preloads the kernel's
   classes (<https://symfony.com/doc/current/performance.html>);

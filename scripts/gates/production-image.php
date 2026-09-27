@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 /*
  * What the production image promises (infra/api/Dockerfile, stage prod), read from inside a running container by
- * the PHP it runs on: prod mode, php.ini-production, Symfony's OPcache values, the kernel's preload list wired and
- * warmed at build, and no dev packages. Each can go quietly: a build argument left at dev, a stage copying the
- * wrong ini, a composer install without --no-dev all still serve every request, only slower or with more exposed.
+ * the PHP it runs on: prod mode, worker mode, php.ini-production, Symfony's OPcache values, the kernel's preload list
+ * wired and warmed at build, and no dev packages. Each can go quietly: a build argument left at dev, a stage copying
+ * the wrong ini, a composer install without --no-dev all still serve every request, only slower or with more exposed.
  *
  * Usage, against the prod compose stack: docker compose -f compose.yaml -f compose.prod.yaml exec -T api php < scripts/gates/production-image.php
  * or: php production-image.php [APP_DIR] (default: the current directory).
@@ -23,6 +23,12 @@ $problems = [];
 $env = $_SERVER['APP_ENV'] ?? getenv('APP_ENV');
 if ('prod' !== $env) {
     $problems[] = \sprintf('APP_ENV is "%s", not prod', is_string($env) ? $env : '');
+}
+
+// FrankenPHP's worker mode (infra/api/Dockerfile, stage base): the kernel boots once per worker, not per request.
+$worker = getenv('FRANKENPHP_CONFIG');
+if (!is_string($worker) || !preg_match('#\bworker\s+\./public/index\.php\b#', $worker)) {
+    $problems[] = \sprintf('FRANKENPHP_CONFIG is "%s": no worker on public/index.php, so every request boots the kernel', is_string($worker) ? $worker : '');
 }
 
 $off = static fn (string $key): bool => in_array(strtolower((string) ini_get($key)), ['', '0', 'off', 'false', 'no'], true);
@@ -63,4 +69,4 @@ if ([] !== $problems) {
     }
     exit(1);
 }
-fwrite(\STDOUT, "production-image: OK — prod mode, production ini, Symfony's OPcache values, preload warmed, no dev packages\n");
+fwrite(\STDOUT, "production-image: OK — prod mode, worker mode, production ini, Symfony's OPcache values, preload warmed, no dev packages\n");

@@ -26,12 +26,13 @@ run() {
   )
   local kv; for kv in "$@"; do ini[${kv%%=*}]=${kv#*=}; done
   local args=() k; for k in "${!ini[@]}"; do args+=(-d "$k=${ini[$k]}"); done
-  APP_ENV=${APP_ENV_UNDER_TEST:-prod} php -n "${args[@]}" "$GATE" "$d" 2>&1
+  FRANKENPHP_CONFIG=${WORKER_UNDER_TEST-worker ./public/index.php} APP_ENV=${APP_ENV_UNDER_TEST:-prod} php -n "${args[@]}" "$GATE" "$d" 2>&1
 }
 
 echo "production-image check"
 d=$(app); out=$(run "$d"); check "the production stage's settings pass" $? 0 "$out" "production-image: OK"
 out=$(APP_ENV_UNDER_TEST=dev run "$d"); check "an image left in dev mode is refused" $? 1 "$out" "APP_ENV"
+out=$(WORKER_UNDER_TEST= run "$d"); check "an image serving in classic mode, a kernel booted per request, is refused" $? 1 "$out" "worker"
 out=$(run "$d" zend.assertions=1); check "assertions still compiled in are refused" $? 1 "$out" "zend.assertions"
 out=$(run "$d" display_errors=1); check "errors shown to the visitor are refused" $? 1 "$out" "display_errors"
 out=$(run "$d" opcache.validate_timestamps=1); check "OPcache checking every file's time is refused" $? 1 "$out" "opcache.validate_timestamps"
