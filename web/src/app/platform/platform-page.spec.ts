@@ -2,6 +2,7 @@
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -187,6 +188,7 @@ describe('PlatformPage', () => {
     await TestBed.configureTestingModule({
       imports: [PlatformPage],
       providers: [
+        provideRouter([]),
         ...provideQuietFeedback(),
         { provide: PlatformFacade, useValue: facade },
         { provide: SubscriptionFacade, useValue: payments },

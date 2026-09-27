@@ -3582,6 +3582,18 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   validating a page never written. `GET /api/platform/legal-texts` lists the 27 page-and-language pairs with where each
   stands; `/versions` lists one pair's history, the latest first.
 
+- [2026-09-27 16:03] DECIDED (revisit): row 148, slice 3's screen, `/platform/legal`, linked from the platform page.
+  A table of the nine pages by the three languages says where each stands (« Pas écrite », « Brouillon du … »,
+  « Validée, du … »); a cell opens that page in that language under it: its latest text in a Markdown textarea laid out
+  in the text's own direction, a preview rendered by the same `LegalMarkdown` as the public page (what is previewed is
+  what is published), « Publier une nouvelle version » once the text differs from the latest, « Valider la dernière
+  version » while it is a draft, and the history, each version with who wrote and validated it and « Reprendre ce
+  texte ». What was typed for a page and not published stays with that page while another is opened, for as long as the
+  screen is; leaving the screen drops it (no guard yet). Validating asks no confirmation: it is a statement about a
+  version already public, and the next version starts unvalidated again. On the public page the version's date is
+  written in the interface's language, like the sentence around it: in Arabic it scrambled the French line with
+  right-to-left marks, which the screenshot showed and the spec now pins.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -3739,7 +3751,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 151 | Paramètres list fixed and foldable (§ 7 2026-09-26 11:17): pinned head and foot, 80 px rail from its foot, key ], presentation.settings-list | M | done | e0e900da | fixed beside the page from 1024 px, folds to the 80 px rail from its foot or with ] |
 | 152 | Menus by foldable sections (§ 7 2026-09-26 12:05): each section folds from its heading, remembered, the current one always open; a fade at an edge with more behind; the current entry kept in view — main menu and Paramètres | M | done | feace55f | the main menu and Paramètres fold by section, with the fade and the current entry in view (on Paramètres since row 151) |
 | 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | done | b7a64532 | the line closes every page, signed out, in the shell and beside the settings list; /legal/<slug> placeholders until row 148 |
-| 148 | Legal pages (§ 7 2026-09-26 08:52): nine pages the platform operator edits per language and dates, fr/en/ar drafts marked « Brouillon — à faire valider », Arabic in RTL, security.txt. Slice 1–2 (§ 7 2026-09-27 13:38): the `Legal` context, the public read, the page rendering it (b0465a4); slice 3 (15:37): the operator's API, then its screen; next the drafts of the other eight, security.txt | L | doing | b0465a4 | api/src/Legal/** api/resources/legal/** web/src/app/shared/legal/** |
+| 148 | Legal pages (§ 7 2026-09-26 08:52): nine pages the platform operator edits per language and dates, fr/en/ar drafts marked « Brouillon — à faire valider », Arabic in RTL, security.txt. Slice 1–2 (§ 7 2026-09-27 13:38): the `Legal` context, the public read, the page rendering it (b0465a4); slice 3 (15:37, 16:03): the operator's API (b3bf509) and its screen; next the drafts of the other eight, the publisher's identity, security.txt | L | doing | b3bf509 | api/src/Legal/** api/resources/legal/** web/src/app/shared/legal/** web/src/app/platform/platform-legal-* |
 | 149 | Cookie banner and guard (§ 7 2026-09-26 08:52): an informational first-visit banner, and a CI gate refusing an undeclared cookie, storage key or third-party script | M | done | 1c5330d5 | the notice in the flow on a first visit, the Cookies page's table from stored-items.ts, stored-items.sh both ways, an e2e checking the live browser |
 | 153 | Sidebar folded rail (§ 7 2026-09-26 22:54): the rail never scrolls as a whole, the list's scroll contained, the folded gear centred, one nav-settings test id | S | done | 5a9420c | the list contains its hidden names and its scroll; every folded icon on x=40; the defaults entry is nav-defaults |
 | 154 | Tooltips on hidden names (§ 7 2026-09-26 22:24): every icon-only control and every label cut with « … », menu entries included, a gate for both | M | todo | - | |

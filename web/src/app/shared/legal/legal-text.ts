@@ -61,7 +61,7 @@ import { STORED_ITEMS } from './stored-items';
         } @else {
           <p class="flex flex-wrap items-center gap-2">
             <span data-testid="legal-version">{{
-              'legal.version' | translate: { date: day(shown.publishedOn, shown.language) }
+              'legal.version' | translate: { date: day(shown.publishedOn) }
             }}</span>
             @if (!shown.validated) {
               <span class="twes-soon" data-testid="legal-draft">{{
@@ -127,7 +127,8 @@ export class LegalText {
     stream: ({ params }) => this.api.read(params.page, params.language),
   });
 
-  protected day(value: string, language: string): string {
-    return formatDay(value, language);
+  /** In the interface's language, like the sentence around it, whatever language the text is in. */
+  protected day(value: string): string {
+    return formatDay(value, this.interface.current());
   }
 }

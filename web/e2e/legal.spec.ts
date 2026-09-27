@@ -176,3 +176,40 @@ test('stores in the browser nothing the Cookies page does not declare', async ({
   );
   expect(undeclared).toEqual([]);
 });
+
+// docs/SPEC.md § 8 row 148: the operator publishes a page, which anyone then reads, marked a draft until validated.
+// It writes Security in Arabic, which no other scenario reads; each run's text carries its own mark, so the latest
+// version is always this run's, whatever an earlier run left (versions are only ever added).
+test('the operator publishes a legal page, which a visitor reads as a draft until it is validated', async ({
+  page,
+  browser,
+}) => {
+  test.setTimeout(90_000);
+  await signIn(page);
+  await page.goto('/platform/legal');
+  await page.getByTestId('legal-cell-security-ar').click();
+  await expect(page.getByTestId('legal-editor-body')).toHaveAttribute('dir', 'rtl');
+  const mark = `نسخة ${Date.now()}`;
+  await page.getByTestId('legal-editor-body').fill(`## الأمان\n\n${mark}`);
+  await page.getByTestId('legal-preview-toggle').click();
+  await expect(page.getByTestId('legal-body').locator('h2')).toHaveText('الأمان');
+  await page.getByTestId('legal-publish').click();
+  await expect(page.getByTestId('legal-cell-security-ar')).not.toContainText('Pas écrite');
+  await expect(page.getByTestId('legal-validate')).toBeVisible();
+  expect(await wcagViolations(page)).toEqual([]);
+
+  const visitor = await browser.newContext();
+  const reader = await visitor.newPage();
+  await reader.goto('/legal/security');
+  await reader.getByTestId('legal-language-ar').click();
+  await expect(reader.getByTestId('legal-body')).toContainText(mark);
+  await expect(reader.getByTestId('legal-draft')).toBeVisible();
+
+  await page.getByTestId('legal-validate').click();
+  await expect(page.getByTestId('legal-validate')).toHaveCount(0);
+  await reader.reload();
+  await reader.getByTestId('legal-language-ar').click();
+  await expect(reader.getByTestId('legal-body')).toContainText(mark);
+  await expect(reader.getByTestId('legal-draft')).toHaveCount(0);
+  await visitor.close();
+});

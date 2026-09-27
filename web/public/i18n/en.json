@@ -2179,6 +2179,28 @@
       "intro": "How many companies asked to be told when each module arrives.",
       "companies": "Companies: {{count}}",
       "empty": "No company is waiting for a module yet."
+    },
+    "legal": {
+      "title": "Legal pages",
+      "intro": "Every page, in every language, as anyone reads it. A new version is published at once and marked a draft until it is validated.",
+      "link": "Manage the legal pages",
+      "page": "Page",
+      "none": "Not written",
+      "draft": "Draft of {{date}}",
+      "validated": "Validated, of {{date}}",
+      "body": "Text (Markdown)",
+      "preview": "Preview",
+      "edit": "Edit",
+      "publish": "Publish a new version",
+      "validate": "Validate the latest version",
+      "published": "New version published, marked a draft.",
+      "validated_toast": "Latest version validated.",
+      "history": "Versions",
+      "shipped": "Shipped with the platform",
+      "by": "by {{who}}",
+      "validated_by": "validated by {{who}}",
+      "reuse": "Start from this text",
+      "failed": "The legal pages cannot be read right now."
     }
   },
   "appearance": {

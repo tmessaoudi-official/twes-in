@@ -2179,6 +2179,28 @@
       "intro": "Combien de sociétés ont demandé à être prévenues de l'arrivée de chaque module.",
       "companies": "Sociétés : {{count}}",
       "empty": "Aucune société n'attend encore de module."
+    },
+    "legal": {
+      "title": "Pages légales",
+      "intro": "Chaque page, dans chaque langue, telle que tout le monde la lit. Une nouvelle version est publiée tout de suite et marquée brouillon jusqu’à ce qu’elle soit validée.",
+      "link": "Gérer les pages légales",
+      "page": "Page",
+      "none": "Pas écrite",
+      "draft": "Brouillon du {{date}}",
+      "validated": "Validée, du {{date}}",
+      "body": "Texte (Markdown)",
+      "preview": "Aperçu",
+      "edit": "Modifier",
+      "publish": "Publier une nouvelle version",
+      "validate": "Valider la dernière version",
+      "published": "Nouvelle version publiée, marquée brouillon.",
+      "validated_toast": "Dernière version validée.",
+      "history": "Versions",
+      "shipped": "Livrée avec la plateforme",
+      "by": "par {{who}}",
+      "validated_by": "validée par {{who}}",
+      "reuse": "Reprendre ce texte",
+      "failed": "Les pages légales ne peuvent pas être lues pour le moment."
     }
   },
   "appearance": {

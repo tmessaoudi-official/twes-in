@@ -292,6 +292,13 @@ export const routes: Routes = [
         loadComponent: () => import('./platform/platform-page').then((m) => m.PlatformPage),
       },
       {
+        // The legal pages as the operators write them, per language (docs/SPEC.md § 8 row 148).
+        path: 'platform/legal',
+        canActivate: [operatorGuard],
+        loadComponent: () =>
+          import('./platform/platform-legal-page').then((m) => m.PlatformLegalPage),
+      },
+      {
         // The company settings, reached from the gear: a layout route with no path of its own, so the grouped
         // settings navigation sits beside each page and every page keeps its address.
         path: '',

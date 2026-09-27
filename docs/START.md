@@ -167,6 +167,11 @@ On an empty database it prints exactly that:
      customer tax regimes of TN, tax components of Demo, units of Demo, establishments of Demo, numbering series of Demo.
 ```
 
+Apart from the seed, the api writes the **legal pages' shipped drafts** at every start
+(`app:legal:seed-drafts`, from `api/resources/legal/<page>.<language>.md`), only where a page has no version yet in that
+language, so what an operator wrote is never replaced. The operator edits and validates them at `/platform/legal`
+(« Gérer les pages légales » on the platform page); anyone reads them at `/legal/<page>`.
+
 The seed loads no business rows. **`make fixtures`** adds two demo companies, which the operator owns:
 
 | Company | Country, currency | What it holds |

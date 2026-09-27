@@ -110,7 +110,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `Watch` (« À surveiller »: a module declares its live conditions with `DeclaresWatch` in its own
   `Infrastructure/Watch/`, one statement per kind, gated by its module and permission),
   `Legal` (the legal pages' versions, read by anyone at `GET /api/legal/{page}/{language}`; the shipped drafts are
-  `api/resources/legal/<page>.<language>.md`, written at start where a page has none),
+  `api/resources/legal/<page>.<language>.md`, written at start where a page has none; the operator writes a new
+  version and validates the latest through `/api/platform/legal-texts`, from `/platform/legal`),
   `FirstSteps` (« Premiers pas »: a context declares its step with `DeclaresFirstStep` in its own
   `Infrastructure/FirstSteps/`, done worked out from what is there, shown to whoever may do it),
   and the modules one level down in `api/src/Module/<Name>/`, `Shared` (docs/SPEC.md § 3

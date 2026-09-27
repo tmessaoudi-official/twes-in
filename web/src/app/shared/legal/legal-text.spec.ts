@@ -116,6 +116,9 @@ describe('LegalText', () => {
     expect(q('legal-body')?.getAttribute('lang')).toBe('ar');
     expect(q('legal-body')?.getAttribute('dir')).toBe('rtl');
     expect(q('legal-language-ar')?.getAttribute('aria-pressed')).toBe('true');
+    // The line around the date is in the interface's language, so the date is written in it too: an Arabic one would
+    // carry right-to-left marks into a left-to-right sentence and scramble it.
+    expect(q('legal-version')?.textContent?.trim()).toBe('Version du 20/09/2026');
   });
 
   it('says so when the page is not written in the language asked for and another answers', async () => {

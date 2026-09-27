@@ -483,4 +483,16 @@
       <p data-testid="platform-demand-empty">{{ 'platform.demand.empty' | translate }}</p>
     }
   </section>
+
+  <section class="flex flex-col gap-3" aria-labelledby="platform-legal-title">
+    <h2 id="platform-legal-title" class="text-xl font-semibold">
+      {{ 'platform.legal.title' | translate }}
+    </h2>
+    <p class="max-w-prose text-sm">{{ 'platform.legal.intro' | translate }}</p>
+    <p>
+      <a mat-stroked-button routerLink="/platform/legal" data-testid="platform-legal-link">{{
+        'platform.legal.link' | translate
+      }}</a>
+    </p>
+  </section>
 </section>

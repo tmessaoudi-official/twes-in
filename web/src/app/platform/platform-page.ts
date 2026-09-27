@@ -13,6 +13,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { PlatformFacade } from './platform-facade';
 import {
@@ -56,6 +57,7 @@ import { SubscriptionFacade } from '../licensing/subscription-facade';
     MatFormFieldModule,
     MatInputModule,
     MatSlideToggleModule,
+    RouterLink,
     TranslatePipe,
   ],
   templateUrl: './platform-page.html',

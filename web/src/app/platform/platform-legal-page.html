@@ -1,0 +1,142 @@
+<section class="flex max-w-6xl flex-col gap-6">
+  <p>
+    <a
+      routerLink="/platform"
+      class="inline-flex items-center gap-1"
+      data-testid="legal-to-platform"
+    >
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      <span>{{ 'platform.title' | translate }}</span>
+    </a>
+  </p>
+  <h1 class="text-2xl font-semibold">{{ 'platform.legal.title' | translate }}</h1>
+  <p>{{ 'platform.legal.intro' | translate }}</p>
+  @if (facade.failed()) {
+    <p role="alert" data-testid="legal-failed">{{ 'platform.legal.failed' | translate }}</p>
+  }
+
+  <div class="overflow-x-auto">
+    <table class="twes-legal-table" data-testid="legal-overview">
+      <thead>
+        <tr>
+          <th scope="col">{{ 'platform.legal.page' | translate }}</th>
+          @for (language of languages; track language) {
+            <th scope="col" [attr.lang]="language">{{ names[language] }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (page of pages; track page) {
+          <tr>
+            <th scope="row">{{ 'legal.pages.' + page | translate }}</th>
+            @for (language of languages; track language) {
+              @let row = statusOf(page, language);
+              <td>
+                <button
+                  mat-button
+                  type="button"
+                  [attr.aria-pressed]="isOpen(page, language)"
+                  (click)="open(page, language)"
+                  [attr.data-testid]="'legal-cell-' + page + '-' + language"
+                >
+                  @if (row === undefined || !row.written || row.publishedOn === null) {
+                    {{ 'platform.legal.none' | translate }}
+                  } @else if (row.validated) {
+                    {{ 'platform.legal.validated' | translate: { date: row.publishedOn | day } }}
+                  } @else {
+                    {{ 'platform.legal.draft' | translate: { date: row.publishedOn | day } }}
+                  }
+                </button>
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (opened(); as current) {
+    <section class="flex flex-col gap-3" aria-labelledby="legal-editor-title">
+      <h2 id="legal-editor-title" class="text-xl font-semibold" data-testid="legal-editor-title">
+        {{ 'legal.pages.' + current.page | translate }} — {{ names[current.language] }}
+      </h2>
+      <div class="flex flex-wrap gap-2">
+        <button
+          mat-stroked-button
+          type="button"
+          [attr.aria-pressed]="previewing()"
+          (click)="previewing.set(!previewing())"
+          data-testid="legal-preview-toggle"
+        >
+          {{ (previewing() ? 'platform.legal.edit' : 'platform.legal.preview') | translate }}
+        </button>
+      </div>
+      @if (previewing()) {
+        <app-legal-markdown [body]="text()" [language]="current.language" />
+      } @else {
+        <label class="flex flex-col gap-1">
+          <span>{{ 'platform.legal.body' | translate }}</span>
+          <textarea
+            class="twes-legal-editor"
+            rows="20"
+            [value]="text()"
+            (input)="typed($event)"
+            [attr.lang]="current.language"
+            [attr.dir]="current.language === 'ar' ? 'rtl' : 'ltr'"
+            data-testid="legal-editor-body"
+          ></textarea>
+        </label>
+      }
+      <div class="flex flex-wrap gap-2">
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="!changed() || facade.busy()"
+          (click)="publish()"
+          data-testid="legal-publish"
+        >
+          {{ 'platform.legal.publish' | translate }}
+        </button>
+        @if (latest(); as shown) {
+          @if (!shown.validated) {
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="facade.busy()"
+              (click)="validate()"
+              data-testid="legal-validate"
+            >
+              {{ 'platform.legal.validate' | translate }}
+            </button>
+          }
+        }
+      </div>
+
+      <h3 class="text-lg font-semibold">{{ 'platform.legal.history' | translate }}</h3>
+      <ol class="flex flex-col gap-2">
+        @for (version of facade.versions(); track version.id) {
+          <li class="flex flex-wrap items-center gap-2" data-testid="legal-version">
+            <span>{{ version.createdAt | moment }}</span>
+            <span>
+              @if (version.createdBy === null) {
+                {{ 'platform.legal.shipped' | translate }}
+              } @else {
+                {{ 'platform.legal.by' | translate: { who: version.createdBy } }}
+              }
+            </span>
+            @if (version.validated) {
+              <span>{{
+                'platform.legal.validated_by' | translate: { who: version.validatedBy }
+              }}</span>
+            } @else {
+              <span class="twes-soon">{{ 'legal.draft' | translate }}</span>
+            }
+            <button mat-button type="button" (click)="reuse(version)" data-testid="legal-reuse">
+              {{ 'platform.legal.reuse' | translate }}
+            </button>
+          </li>
+        }
+      </ol>
+    </section>
+  }
+</section>
