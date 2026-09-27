@@ -3557,6 +3557,21 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   twice locally at its first `toBeVisible` right after a web rebuild at load 30, and passed four times out of four
   otherwise. Not raised: CI arbitrates.
 
+- [2026-09-27 13:38] DECIDED (revisit): row 148, slices 1 and 2. The legal pages live in a `Legal` context: a
+  `legal_text` table of versions only ever added (page, language, Markdown body, the date shown, validated by whom and
+  when, created by whom — null for the seed's own), the platform's own and no company's. A page shows its LATEST
+  version, validated or not, with « Brouillon — à faire valider » until someone validates it, rather than an older
+  validated text: what the operator last wrote is what is published, and the mark says it was not checked. Validation is
+  per version: a new version starts unvalidated. A page missing in the language asked for is read in French, then
+  English, and says which language answered. The shipped drafts are files, `api/resources/legal/<page>.<language>.md`,
+  written by `app:legal:seed-drafts` at every start only where a page has no version in that language, so an operator's
+  text is never overwritten and a draft added in a release reaches existing platforms. Read by anyone at
+  `GET /api/legal/{page}/{language}` (firewall public, GET only). The SPA renders the Markdown with `marked` (MIT, no
+  dependency) through `[innerHTML]`, which Angular sanitizes: a script, an event handler or a `javascript:` link in a
+  text never runs, and `legal-text.spec.ts` reds when the sanitizer is bypassed. Each page has a fr / en / ar switch,
+  starting on the interface's language; Arabic lays out right to left. Only the Cookies page ships drafts so far, in
+  three languages; the Arabic text's equivalence with the French is not certified by anyone who reads Arabic.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -3714,7 +3729,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 151 | Paramètres list fixed and foldable (§ 7 2026-09-26 11:17): pinned head and foot, 80 px rail from its foot, key ], presentation.settings-list | M | done | e0e900da | fixed beside the page from 1024 px, folds to the 80 px rail from its foot or with ] |
 | 152 | Menus by foldable sections (§ 7 2026-09-26 12:05): each section folds from its heading, remembered, the current one always open; a fade at an edge with more behind; the current entry kept in view — main menu and Paramètres | M | done | feace55f | the main menu and Paramètres fold by section, with the fade and the current entry in view (on Paramètres since row 151) |
 | 147 | Legal footer (§ 7 2026-09-26 08:52): a slim « © year brand · AGPL-3.0 · links » line under every page's content, signed-out pages included | S | done | b7a64532 | the line closes every page, signed out, in the shell and beside the settings list; /legal/<slug> placeholders until row 148 |
-| 148 | Legal pages (§ 7 2026-09-26 08:52): nine pages the platform operator edits per language and dates, fr/en/ar drafts marked « Brouillon — à faire valider », Arabic in RTL, security.txt | L | todo | - | |
+| 148 | Legal pages (§ 7 2026-09-26 08:52): nine pages the platform operator edits per language and dates, fr/en/ar drafts marked « Brouillon — à faire valider », Arabic in RTL, security.txt. Slice 1–2 (§ 7 2026-09-27 13:38): the `Legal` context, the public read, the page rendering it; next the operator's editor, the drafts of the other eight, security.txt | L | doing | - | api/src/Legal/** api/resources/legal/** web/src/app/shared/legal/** |
 | 149 | Cookie banner and guard (§ 7 2026-09-26 08:52): an informational first-visit banner, and a CI gate refusing an undeclared cookie, storage key or third-party script | M | done | 1c5330d5 | the notice in the flow on a first visit, the Cookies page's table from stored-items.ts, stored-items.sh both ways, an e2e checking the live browser |
 | 153 | Sidebar folded rail (§ 7 2026-09-26 22:54): the rail never scrolls as a whole, the list's scroll contained, the folded gear centred, one nav-settings test id | S | done | 5a9420c | the list contains its hidden names and its scroll; every folded icon on x=40; the defaults entry is nav-defaults |
 | 154 | Tooltips on hidden names (§ 7 2026-09-26 22:24): every icon-only control and every label cut with « … », menu entries included, a gate for both | M | todo | - | |
@@ -3731,7 +3746,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 165 | Sessions that do not lock read requests, and no write per GET (§ 7 2026-09-27 07:16) | S | done | a8c73da | api/src/Identity/Infrastructure/Session/** api/config/packages/framework.yaml api/tests/Integration/Identity/** |
 | 166 | Production image (§ 7 2026-09-27 07:16): prod mode, production php.ini, Symfony's OPcache values, preload, no dev packages | M | done | 7eedc46 | infra/api/** compose.yaml compose.prod.yaml scripts/gates/production-image.php scripts/gates/tests/production-image.test.sh |
 | 167 | FrankenPHP worker mode with its leak audit (§ 7 2026-09-27 07:16) | M | done | a2fbb92 | infra/api/Dockerfile api/src/Identity/Infrastructure/Session/** api/tests/Functional/WorkerModeTest.php scripts/gates/production-image.php |
-| 168 | Icon font cut to the icons used, with a gate (§ 7 2026-09-27 07:16) | S | done | - | web/src/app/shared/icons/** web/scripts/subset-icons.mjs scripts/gates/icons-declared.sh scripts/lib/dependency-inventory.php web/e2e/icons.spec.ts |
+| 168 | Icon font cut to the icons used, with a gate (§ 7 2026-09-27 07:16) | S | done | 5f5ea69 | web/src/app/shared/icons/** web/scripts/subset-icons.mjs scripts/gates/icons-declared.sh scripts/lib/dependency-inventory.php web/e2e/icons.spec.ts |
 | 169 | Side effects in the change's transaction: a Messenger outbox (§ 7 2026-09-27 07:16, P2) | M | todo | - | |
 | 170 | Errors as codes: RFC 7807 code/field/params, one web mapper, required output fields (§ 7 2026-09-27 07:16, P2) | L | todo | - | |
 | 171 | One authorization decision point (§ 7 2026-09-27 07:16, P2) | M | todo | - | |

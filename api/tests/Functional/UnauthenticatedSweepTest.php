@@ -32,6 +32,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         '^/api/signup',
         '^/api/scan-pairings/claim$',
         '^/api/scan-pairings/[0-9a-f-]{36}/(scans|choices|realtime-token)$',
+        '^/api/legal/[a-z]+/[a-z]{2}$',
     ];
 
     /** A value each path placeholder accepts, so a request reaches the firewall rather than a 404 from the router. */
@@ -40,8 +41,10 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         'format' => 'csv',
         'index' => 'index',
         'key' => 'signup.enabled',
+        'language' => 'fr',
         'moduleKey' => 'customers',
         'month' => '09',
+        'page' => 'cookies',
         'status' => '404',
         'subject' => 'customers',
         'token' => 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',

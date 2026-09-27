@@ -25,6 +25,9 @@ if [ "$1" = 'frankenphp' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
 		# A module arrives with a release: tell the companies that asked « Me prévenir » (docs/SPEC.md § 7,
 		# 2026-09-26). Each wait is told once, so every start may run it.
 		php bin/console app:modules:announce-arrivals --no-interaction
+		# The legal pages' shipped drafts, where a page has no version yet (docs/SPEC.md § 8 row 148). Never over a
+		# version that exists, so every start may run it.
+		php bin/console app:legal:seed-drafts --no-interaction
 	fi
 fi
 

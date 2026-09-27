@@ -36,10 +36,16 @@ test('the legal line closes the sign-in page, centred, and opens each text over 
   await expect(page.getByTestId('email')).toHaveValue('typed@before.reading');
   await expect(line.getByTestId('legal-licence')).toHaveAttribute('href', '/legal/source');
 
-  // Opened directly, the page's « Retour » leads home, which sends a signed-out visitor to sign in.
-  await page.goto('/legal/mentions');
-  await expect(page.getByTestId('legal-title')).toHaveText('Mentions légales');
+  // Opened directly, the page shows the text the API seeded (docs/SPEC.md § 8 row 148), a draft until validated, in
+  // the interface's language or another; its « Retour » leads home, which sends a signed-out visitor to sign in.
+  await page.goto('/legal/cookies');
+  await expect(page.getByTestId('legal-title')).toHaveText('Cookies');
+  await expect(page.getByTestId('legal-body')).toContainText('un seul cookie');
   await expect(page.getByTestId('legal-draft')).toBeVisible();
+  expect(await wcagViolations(page)).toEqual([]);
+  await page.getByTestId('legal-language-ar').click();
+  await expect(page.getByTestId('legal-body')).toHaveAttribute('dir', 'rtl');
+  await expect(page.getByTestId('legal-body')).toHaveAttribute('lang', 'ar');
   expect(await wcagViolations(page)).toEqual([]);
   await page.getByTestId('legal-back').click();
   await expect(page).toHaveURL(/\/login$/);

@@ -37,6 +37,7 @@
     "@ngx-translate/http-loader": "^18.0.0",
     "centrifuge": "^5.7.4",
     "lean-qr": "^2.7.4",
+    "marked": "^18.0.14",
     "material-symbols": "^0.47.2",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

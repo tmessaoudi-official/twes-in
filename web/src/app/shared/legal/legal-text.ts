@@ -1,23 +1,96 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  linkedSignal,
+} from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
+import { marked } from 'marked';
+import { formatDay } from '../i18n/format';
+import { LanguageFacade } from '../i18n/language-facade';
+import { LEGAL_LANGUAGE_NAMES, LEGAL_LANGUAGES, LegalApi, type LegalLanguage } from './legal-api';
 import { STORED_ITEMS } from './stored-items';
 
 /**
  * The text of one legal page, under the title its container gives it: the full page and the panel opened over a
- * screen show the same words. Until the platform operator writes the texts, each says it is a draft.
+ * screen show the same words. The API answers the page's latest version, in Markdown, in the language chosen here
+ * (the interface's to begin with) or in the one it fell back to; the page says which, gives its date, and says it is a
+ * draft until someone validated it (docs/SPEC.md § 8 row 148). The Markdown is turned into HTML by `marked` and bound
+ * through `[innerHTML]`, which Angular sanitizes: a script, an event handler or a `javascript:` link in a text never runs.
  */
 @Component({
   selector: 'app-legal-text',
-  imports: [TranslatePipe],
+  imports: [MatButtonModule, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-4">
-      <p>
-        <span class="twes-soon" data-testid="legal-draft">{{ 'legal.draft' | translate }}</span>
-      </p>
-      <p data-testid="legal-drafting">{{ 'legal.drafting' | translate }}</p>
+      <div
+        class="flex flex-wrap gap-2"
+        role="group"
+        [attr.aria-label]="'legal.language' | translate"
+      >
+        @for (code of languages; track code) {
+          @if (language() === code) {
+            <button
+              mat-flat-button
+              type="button"
+              aria-pressed="true"
+              [attr.lang]="code"
+              [attr.data-testid]="'legal-language-' + code"
+            >
+              {{ names[code] }}
+            </button>
+          } @else {
+            <button
+              mat-stroked-button
+              type="button"
+              aria-pressed="false"
+              (click)="language.set(code)"
+              [attr.lang]="code"
+              [attr.data-testid]="'legal-language-' + code"
+            >
+              {{ names[code] }}
+            </button>
+          }
+        }
+      </div>
+      @if (text.error()) {
+        <p role="alert" data-testid="legal-unavailable">{{ 'legal.unavailable' | translate }}</p>
+      } @else if (text.hasValue()) {
+        @let shown = text.value();
+        @if (shown === null) {
+          <p data-testid="legal-drafting">{{ 'legal.drafting' | translate }}</p>
+        } @else {
+          <p class="flex flex-wrap items-center gap-2">
+            <span data-testid="legal-version">{{
+              'legal.version' | translate: { date: day(shown.publishedOn, shown.language) }
+            }}</span>
+            @if (!shown.validated) {
+              <span class="twes-soon" data-testid="legal-draft">{{
+                'legal.draft' | translate
+              }}</span>
+            }
+          </p>
+          @if (shown.language !== language()) {
+            <p data-testid="legal-fallback">
+              {{ 'legal.fallback' | translate: { language: names[shown.language] } }}
+            </p>
+          }
+          <div
+            class="twes-legal-body"
+            [attr.lang]="shown.language"
+            [attr.dir]="shown.language === 'ar' ? 'rtl' : 'ltr'"
+            [innerHTML]="html()"
+            data-testid="legal-body"
+          ></div>
+        }
+      }
       <!-- Rendered from the one declaration scripts/gates/stored-items.sh checks against the code. -->
       @if (slug() === 'cookies') {
         <section class="flex flex-col gap-3" data-testid="stored-items">
@@ -55,5 +128,25 @@ import { STORED_ITEMS } from './stored-items';
 })
 export class LegalText {
   readonly slug = input.required<string>();
+  private readonly api = inject(LegalApi);
+  private readonly interface = inject(LanguageFacade);
+  protected readonly languages = LEGAL_LANGUAGES;
+  protected readonly names = LEGAL_LANGUAGE_NAMES;
   protected readonly stored = STORED_ITEMS;
+  /** The interface's language until the reader picks another here. */
+  protected readonly language = linkedSignal<LegalLanguage>(() => this.interface.current());
+
+  protected readonly text = rxResource({
+    params: () => ({ page: this.slug(), language: this.language() }),
+    stream: ({ params }) => this.api.read(params.page, params.language),
+  });
+
+  protected readonly html = computed(() => {
+    const shown = this.text.hasValue() ? this.text.value() : null;
+    return shown === null ? '' : marked.parse(shown.body, { async: false });
+  });
+
+  protected day(value: string, language: string): string {
+    return formatDay(value, language);
+  }
 }

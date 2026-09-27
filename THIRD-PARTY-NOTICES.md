@@ -171,7 +171,7 @@ not compiled into what we distribute, and are not listed here.
 | webmozart/assert | 2.4.1 | MIT | runtime |
 | willdurand/negotiation | 3.1.0 | MIT | runtime |
 
-## web (npm) — 38 runtime, 626 dev
+## web (npm) — 39 runtime, 626 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -676,6 +676,7 @@ not compiled into what we distribute, and are not listed here.
 | lru-cache | 11.5.2 | BlueOak-1.0.0 | dev |
 | magic-string | 0.30.21 | MIT | dev |
 | magic-string | 1.0.0 | MIT | dev |
+| marked | 18.0.14 | MIT | runtime |
 | material-symbols | 0.47.2 | Apache-2.0 | runtime |
 | math-intrinsics | 1.1.0 | MIT | dev |
 | mdn-data | 2.27.1 | CC0-1.0 | dev |

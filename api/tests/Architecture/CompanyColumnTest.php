@@ -15,6 +15,7 @@ use App\Identity\Domain\Passkey;
 use App\Identity\Domain\RecoveryCodeEntry;
 use App\Identity\Domain\User;
 use App\Inbox\Domain\InboxItem;
+use App\Legal\Domain\LegalText;
 use App\Settings\Domain\Setting;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
@@ -40,6 +41,7 @@ final class CompanyColumnTest extends KernelTestCase
         Passkey::class => "one of an account's second factors",
         RecoveryCodeEntry::class => "one of an account's second factors",
         CustomerTaxRegime::class => "a country preset's reference data, which no company edits",
+        LegalText::class => "the platform's own legal pages, the same for every company",
     ];
 
     /** What carries a company_id the company filter leaves alone, and why. */

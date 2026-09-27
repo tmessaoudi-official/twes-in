@@ -9,8 +9,19 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import { signal } from '@angular/core';
+import { LanguageFacade } from '../i18n/language-facade';
+import { LegalApi } from './legal-api';
 import { LegalDialog } from './legal-dialog';
 import { STORED_ITEMS } from './stored-items';
+
+const draft = {
+  page: 'mentions',
+  language: 'fr',
+  body: 'Texte.',
+  publishedOn: '2026-09-27',
+  validated: false,
+} as const;
 
 // shared/ reads no feature's files, the translations included: the strings this panel shows, inline.
 const fr = {
@@ -43,6 +54,8 @@ describe('LegalDialog', () => {
         provideTranslateLoader(StaticLoader),
         { provide: MAT_DIALOG_DATA, useValue: { slug } },
         { provide: MatDialogRef, useValue: { close } },
+        { provide: LanguageFacade, useValue: { current: signal('fr') } },
+        { provide: LegalApi, useValue: { read: () => of(draft) } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(LegalDialog);

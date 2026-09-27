@@ -819,6 +819,48 @@ app-cookie-notice {
   display: block;
 }
 
+// A legal page's text, from its Markdown (shared/legal/legal-text.ts): Tailwind's reset leaves bare elements unstyled.
+.twes-legal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 70ch;
+  line-height: 1.6;
+
+  h1,
+  h2,
+  h3 {
+    margin-block-start: 0.75rem;
+    font-weight: 600;
+  }
+
+  h1 {
+    font-size: 1.25rem;
+  }
+
+  h2 {
+    font-size: 1.125rem;
+  }
+
+  ul,
+  ol {
+    padding-inline-start: 1.5rem;
+  }
+
+  ul {
+    list-style: disc;
+  }
+
+  ol {
+    list-style: decimal;
+  }
+
+  a {
+    color: var(--mat-sys-primary);
+    text-decoration: underline;
+  }
+}
+
 .twes-legal-table {
   width: 100%;
   border-collapse: collapse;

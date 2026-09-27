@@ -19,7 +19,16 @@ import { provideQuietFeedback } from '../shared/testing/feedback';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { LEGAL_PAGES } from '../shared/legal/legal-pages';
 import { STORED_ITEMS } from '../shared/legal/stored-items';
+import { LegalApi } from '../shared/legal/legal-api';
 import { LegalPage } from './legal-page';
+
+const draft = {
+  page: 'mentions',
+  language: 'fr',
+  body: 'Texte.',
+  publishedOn: '2026-09-27',
+  validated: false,
+} as const;
 
 @Component({ template: '<p data-testid="elsewhere">ailleurs</p>' })
 class Elsewhere {}
@@ -45,6 +54,7 @@ describe('LegalPage', () => {
         { provide: Brand, useValue: { name: signal('twes-in'), tagline: signal('') } },
         { provide: ThemeFacade, useValue: { preference: signal('auto'), setScheme: vi.fn() } },
         { provide: LanguageFacade, useValue: { current: signal('fr'), use: vi.fn() } },
+        { provide: LegalApi, useValue: { read: () => of(draft) } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(LegalPage);
