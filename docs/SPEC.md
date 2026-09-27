@@ -3660,6 +3660,15 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   has checked it), the drafts' legal adequacy (the lawyer's check, by design), and the nginx mapping on a production
   deployment (proved on the development compose and in CI's e2e, which build the same web image).
 
+- [2026-09-27 18:34] AGREED (developer, asked): **not all money going out is an expense.** An expense is a purchase:
+  it lowers the margin and may carry deductible VAT. Its vendor is already optional on the expense, but the Expenses
+  module still required the Vendors module; it no longer will (row 178): the vendor field shows when Vendors is on,
+  and an optional free-text « Payé à » names a one-off payee no vendor record fits. Monthly bills (rent, electricity,
+  internet) are expenses from a vendor, served by **recurring expenses** (row 179). What moves money without being a
+  purchase (the owner's drawings and contributions, a loan's principal, taxes paid to the State, cash carried to the
+  bank) goes to a **« Trésorerie » module** (row 180): cash and bank accounts, a balance, typed movements, so the
+  margin and the VAT stay right. Row 178 comes right after 174; 179 and 180 after Projets (row 80).
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -3844,6 +3853,9 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 175 | Legal texts over the screen (§ 7 2026-09-27 08:59): footer always centred; notice pinned, never covering content, app usable before « Compris »; legal text from the notice or footer opens in a panel, the full page gets « Retour » | S | done | ed2506d | web/src/app/legal/** web/src/app/shared/legal/** |
 | 176 | Mobile review (§ 7 2026-09-27 08:59, not urgent): bottom bar icon/label gap, settings list reachable from a settings page on a phone, a full pass for other anomalies | M | todo | - | |
 | 177 | Doctrine's sort direction as `SortDirection`, not a string: ~35 query builder calls, each logging a deprecation on every list, to production's STDERR among others (§ 7 2026-09-27 11:06, P2) | S | todo | - | |
+| 178 | Expenses without vendors (§ 7 2026-09-27 18:34): the Expenses module no longer requires Vendors, the vendor field shows when Vendors is on, an optional free-text « Payé à »; after 174 | S | todo | - | api/src/Module/Expenses/** api/migrations/** web/src/app/expenses/** |
+| 179 | Recurring expenses (§ 7 2026-09-27 18:34): rent, electricity, internet repeated from one model; after row 80 | M | todo | - | |
+| 180 | Trésorerie (§ 7 2026-09-27 18:34): cash and bank accounts, a balance, typed movements for what is not a purchase (drawings, contributions, loan principal, taxes paid, transfers); after row 80 | L | todo | - | |
 <!-- /progress-block -->
 
 ### Delivered
