@@ -2200,7 +2200,42 @@
       "by": "par {{who}}",
       "validated_by": "validée par {{who}}",
       "reuse": "Reprendre ce texte",
-      "failed": "Les pages légales ne peuvent pas être lues pour le moment."
+      "failed": "Les pages légales ne peuvent pas être lues pour le moment.",
+      "identity": {
+        "title": "Éditeur et hébergeur",
+        "intro": "Ce que les pages légales nomment, là où un texte écrit sa marque entre doubles accolades. Ce qui n’est pas rempli s’affiche « [à compléter] ».",
+        "save": "Enregistrer",
+        "saved": "Identité enregistrée.",
+        "publisher": {
+          "name": "Nom ou raison sociale de l’éditeur",
+          "address": "Adresse du siège",
+          "registration": "Immatriculation (RNE, RCS, matricule fiscal…)",
+          "email": "Adresse de contact",
+          "phone": "Téléphone",
+          "director": "Directeur ou directrice de la publication"
+        },
+        "host": {
+          "name": "Hébergeur",
+          "address": "Adresse de l’hébergeur",
+          "phone": "Téléphone de l’hébergeur"
+        },
+        "privacy": {
+          "email": "Contact pour les données personnelles"
+        },
+        "security": {
+          "email": "Contact pour signaler une faille"
+        },
+        "commercial": {
+          "email": "Contact pour la licence commerciale"
+        },
+        "mail": {
+          "provider": "Prestataire d’envoi des e-mails"
+        },
+        "source": {
+          "url": "Adresse du code source"
+        },
+        "jurisdiction": "Tribunaux compétents"
+      }
     }
   },
   "appearance": {

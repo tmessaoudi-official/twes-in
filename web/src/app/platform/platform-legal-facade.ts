@@ -17,17 +17,34 @@ export class PlatformLegalFacade {
   private readonly versionsSignal = signal<readonly LegalVersionRow[]>([]);
   private readonly busySignal = signal(false);
   private readonly failedSignal = signal(false);
+  private readonly identitySignal = signal<Readonly<Record<string, string>>>({});
   private opened: { page: LegalPage; language: LegalLanguage } | null = null;
 
   readonly overview = this.overviewSignal.asReadonly();
   /** The open page's versions in its language, the latest first. */
   readonly versions = this.versionsSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
+  /** The publisher's and host's identity, by placeholder, the empty ones included, in the API's order. */
+  readonly identity = this.identitySignal.asReadonly();
   /** Whether the last read or write did not reach the API. */
   readonly failed = this.failedSignal.asReadonly();
 
   async load(): Promise<void> {
-    await this.run(async () => this.overviewSignal.set(await this.api.overview()));
+    await this.run(async () => {
+      const [overview, identity] = await Promise.all([this.api.overview(), this.api.identity()]);
+      this.overviewSignal.set(overview);
+      this.identitySignal.set(identity);
+    });
+  }
+
+  /** @returns whether every change was saved */
+  async saveIdentity(changes: Readonly<Record<string, string>>): Promise<boolean> {
+    return this.run(async () => {
+      for (const [placeholder, value] of Object.entries(changes)) {
+        await this.api.setIdentity(placeholder, value);
+      }
+      this.identitySignal.set(await this.api.identity());
+    });
   }
 
   async open(page: LegalPage, language: LegalLanguage): Promise<void> {

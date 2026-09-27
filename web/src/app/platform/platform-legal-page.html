@@ -15,6 +15,39 @@
     <p role="alert" data-testid="legal-failed">{{ 'platform.legal.failed' | translate }}</p>
   }
 
+  <section class="flex flex-col gap-3" aria-labelledby="legal-identity-title">
+    <h2 id="legal-identity-title" class="text-xl font-semibold">
+      {{ 'platform.legal.identity.title' | translate }}
+    </h2>
+    <p class="max-w-prose text-sm">{{ 'platform.legal.identity.intro' | translate }}</p>
+    <div class="grid gap-3 md:grid-cols-2">
+      @for (placeholder of identityFields(); track placeholder) {
+        <label class="flex flex-col gap-1">
+          <span>{{ 'platform.legal.identity.' + placeholder | translate }}</span>
+          <input
+            class="twes-legal-editor"
+            type="text"
+            [value]="identityDraft()[placeholder] ?? ''"
+            (input)="typedIdentity(placeholder, $event)"
+            [attr.data-testid]="'legal-identity-' + placeholder"
+          />
+          <code class="text-xs">{{ written(placeholder) }}</code>
+        </label>
+      }
+    </div>
+    <p>
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="!identityChanged() || facade.busy()"
+        (click)="saveIdentity()"
+        data-testid="legal-identity-save"
+      >
+        {{ 'platform.legal.identity.save' | translate }}
+      </button>
+    </p>
+  </section>
+
   <div class="overflow-x-auto">
     <table class="twes-legal-table" data-testid="legal-overview">
       <thead>
@@ -72,7 +105,7 @@
         </button>
       </div>
       @if (previewing()) {
-        <app-legal-markdown [body]="text()" [language]="current.language" />
+        <app-legal-markdown [body]="text()" [language]="current.language" [values]="filled()" />
       } @else {
         <label class="flex flex-col gap-1">
           <span>{{ 'platform.legal.body' | translate }}</span>

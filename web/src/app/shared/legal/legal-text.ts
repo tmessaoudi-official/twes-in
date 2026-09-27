@@ -74,7 +74,11 @@ import { STORED_ITEMS } from './stored-items';
               {{ 'legal.fallback' | translate: { language: names[shown.language] } }}
             </p>
           }
-          <app-legal-markdown [body]="shown.body" [language]="shown.language" />
+          <app-legal-markdown
+            [body]="shown.body"
+            [language]="shown.language"
+            [values]="shown.values"
+          />
         }
       }
       <!-- Rendered from the one declaration scripts/gates/stored-items.sh checks against the code. -->

@@ -2200,7 +2200,42 @@
       "by": "by {{who}}",
       "validated_by": "validated by {{who}}",
       "reuse": "Start from this text",
-      "failed": "The legal pages cannot be read right now."
+      "failed": "The legal pages cannot be read right now.",
+      "identity": {
+        "title": "Publisher and host",
+        "intro": "What the legal pages name, where a text writes its mark in double braces. What is not filled in shows « [to be completed] ».",
+        "save": "Save",
+        "saved": "Identity saved.",
+        "publisher": {
+          "name": "Publisher’s name or company name",
+          "address": "Registered address",
+          "registration": "Registration (RNE, RCS, tax number…)",
+          "email": "Contact address",
+          "phone": "Phone",
+          "director": "Director of publication"
+        },
+        "host": {
+          "name": "Host",
+          "address": "Host’s address",
+          "phone": "Host’s phone"
+        },
+        "privacy": {
+          "email": "Contact for personal data"
+        },
+        "security": {
+          "email": "Contact to report a vulnerability"
+        },
+        "commercial": {
+          "email": "Contact for the commercial licence"
+        },
+        "mail": {
+          "provider": "E-mail sending provider"
+        },
+        "source": {
+          "url": "Source code address"
+        },
+        "jurisdiction": "Competent courts"
+      }
     }
   },
   "appearance": {

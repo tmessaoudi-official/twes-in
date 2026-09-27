@@ -38,6 +38,7 @@ const doc = (overrides: Partial<LegalDocument> = {}): LegalDocument => ({
   body: '## Ce qu’il n’y a pas\n\nAucun script tiers.',
   publishedOn: '2026-09-20',
   validated: false,
+  values: {},
   ...overrides,
 });
 
@@ -127,6 +128,24 @@ describe('LegalText', () => {
     await settle();
     expect(q('legal-body')?.getAttribute('dir')).toBe('ltr');
     expect(q('legal-fallback')?.textContent).toContain('Français');
+  });
+
+  it('fills in the publisher the operator named, and marks what is not filled in, in the text’s own language', async () => {
+    await show('mentions', (language) =>
+      of(
+        doc({
+          language,
+          body: 'Éditeur : {{publisher.name}}. Hébergeur : {{ host.name }}.',
+          values: { 'publisher.name': 'twes SAS' },
+        }),
+      ),
+    );
+    expect(q('legal-body')?.textContent).toContain(
+      'Éditeur : twes SAS. Hébergeur : [à compléter].',
+    );
+    q('legal-language-ar')!.click();
+    await settle();
+    expect(q('legal-body')?.textContent).toContain('Hébergeur : [يُستكمل].');
   });
 
   it('says a page never written is being written', async () => {

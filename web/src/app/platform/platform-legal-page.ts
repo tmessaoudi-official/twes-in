@@ -5,6 +5,7 @@ import {
   Component,
   computed,
   inject,
+  linkedSignal,
   type OnInit,
   signal,
 } from '@angular/core';
@@ -73,6 +74,26 @@ export class PlatformLegalPage implements OnInit {
     () => this.text().trim() !== '' && this.text() !== (this.latest()?.body ?? ''),
   );
 
+  /** The identity as typed, until saved: the saved one again after every load or save. */
+  protected readonly identityDraft = linkedSignal<Readonly<Record<string, string>>>(() => ({
+    ...this.facade.identity(),
+  }));
+  protected readonly identityFields = computed(() => Object.keys(this.facade.identity()));
+  private readonly identityChanges = computed(() => {
+    const saved = this.facade.identity();
+    const draft = this.identityDraft();
+    return Object.fromEntries(Object.entries(draft).filter(([key, value]) => value !== saved[key]));
+  });
+  protected readonly identityChanged = computed(
+    () => Object.keys(this.identityChanges()).length > 0,
+  );
+  /** What the preview fills the placeholders with: the saved identity, as the public page will. */
+  protected readonly filled = computed(() =>
+    Object.fromEntries(
+      Object.entries(this.facade.identity()).filter(([, value]) => value.trim() !== ''),
+    ),
+  );
+
   ngOnInit(): void {
     void this.facade.load();
   }
@@ -101,6 +122,22 @@ export class PlatformLegalPage implements OnInit {
     await this.facade.open(page, language);
     if (!this.isOpen(page, language)) return;
     this.text.set(this.drafts.get(key(page, language)) ?? this.latest()?.body ?? '');
+  }
+
+  /** How a text writes this fact, for the operator to copy. */
+  protected written(placeholder: string): string {
+    return `{{${placeholder}}}`;
+  }
+
+  protected typedIdentity(placeholder: string, event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.identityDraft.update((draft) => ({ ...draft, [placeholder]: value }));
+  }
+
+  protected async saveIdentity(): Promise<void> {
+    if (await this.facade.saveIdentity(this.identityChanges())) {
+      this.feedback.success('platform.legal.identity.saved');
+    }
   }
 
   protected typed(event: Event): void {

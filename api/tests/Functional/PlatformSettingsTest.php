@@ -29,8 +29,16 @@ final class PlatformSettingsTest extends ApiTestCase
         $rows = $this->jsonList();
         $keys = array_column($rows, 'key');
         sort($keys);
-        self::assertSame(['licensing.grace_days', 'licensing.hold_days', 'licensing.unpaid_mode', 'signup.approval_required', 'signup.enabled'], $keys);
+        self::assertSame([
+            // The publisher's and host's identity the legal pages name (Legal\Application\LegalSettings), empty until filled in.
+            'legal.commercial.email', 'legal.host.address', 'legal.host.name', 'legal.host.phone', 'legal.jurisdiction',
+            'legal.mail.provider', 'legal.privacy.email', 'legal.publisher.address', 'legal.publisher.director',
+            'legal.publisher.email', 'legal.publisher.name', 'legal.publisher.phone', 'legal.publisher.registration',
+            'legal.security.email', 'legal.source.url',
+            'licensing.grace_days', 'licensing.hold_days', 'licensing.unpaid_mode', 'signup.approval_required', 'signup.enabled',
+        ], $keys);
         $rows = array_column($rows, null, 'key');
+        self::assertSame('', $rows['legal.publisher.name']['value']);
         self::assertSame(7, $rows['licensing.grace_days']['value']);
         self::assertSame(7, $rows['licensing.hold_days']['value']);
         self::assertSame('read_only', $rows['licensing.unpaid_mode']['value']);

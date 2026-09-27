@@ -41,6 +41,13 @@ class StaticLoader implements TranslateLoader {
           by: 'par {{who}}',
           validated_by: 'validée par {{who}}',
           reuse: 'Reprendre ce texte',
+          identity: {
+            title: 'Éditeur et hébergeur',
+            save: 'Enregistrer',
+            saved: 'Identité enregistrée.',
+            publisher: { name: 'Nom de l’éditeur', address: 'Adresse' },
+            host: { name: 'Hébergeur' },
+          },
         },
       },
     });
@@ -82,7 +89,9 @@ describe('PlatformLegalPage', () => {
     versions: ReturnType<typeof signal<readonly LegalVersionRow[]>>;
     busy: ReturnType<typeof signal<boolean>>;
     failed: ReturnType<typeof signal<boolean>>;
+    identity: ReturnType<typeof signal<Readonly<Record<string, string>>>>;
     load: ReturnType<typeof vi.fn>;
+    saveIdentity: ReturnType<typeof vi.fn>;
     open: ReturnType<typeof vi.fn>;
     write: ReturnType<typeof vi.fn>;
     validate: ReturnType<typeof vi.fn>;
@@ -126,7 +135,13 @@ describe('PlatformLegalPage', () => {
       versions: signal<readonly LegalVersionRow[]>([]),
       busy: signal(false),
       failed: signal(false),
+      // Every legal.* setting, in the API's order, the empty ones included: the form's fields.
+      identity: signal<Readonly<Record<string, string>>>({
+        'publisher.name': 'twes SAS',
+        'host.name': '',
+      }),
       load: vi.fn(async () => undefined),
+      saveIdentity: vi.fn(async () => true),
       open: vi.fn(async (page: string, language: string) => {
         facade.versions.set(histories[`${page}.${language}`] ?? []);
       }),
@@ -225,6 +240,35 @@ describe('PlatformLegalPage', () => {
     q('legal-cell-mentions-fr')!.click();
     await settle();
     expect(body().value).toBe('pas encore publié');
+  });
+
+  it('fills in the publisher and host the legal texts name, and saves only what changed', async () => {
+    await render();
+    const name = q('legal-identity-publisher.name') as HTMLInputElement;
+    const host = q('legal-identity-host.name') as HTMLInputElement;
+    expect(name.value).toBe('twes SAS');
+    expect(host.value).toBe('');
+    host.value = 'OVH SAS';
+    host.dispatchEvent(new Event('input'));
+    await settle();
+    q('legal-identity-save')!.click();
+    await settle();
+    expect(facade.saveIdentity).toHaveBeenCalledWith({ 'host.name': 'OVH SAS' });
+    expect(said()).toContainEqual(
+      expect.objectContaining({ key: 'platform.legal.identity.saved' }),
+    );
+  });
+
+  it('previews a text with the publisher filled in, as the public page will show it', async () => {
+    await render();
+    q('legal-cell-mentions-fr')!.click();
+    await settle();
+    await type('Éditeur : {{publisher.name}}. Hébergeur : {{host.name}}.');
+    q('legal-preview-toggle')!.click();
+    await settle();
+    expect(q('legal-body')?.textContent).toContain(
+      'Éditeur : twes SAS. Hébergeur : [à compléter].',
+    );
   });
 
   it('lists the versions, the latest first, and takes an older one back into the editor', async () => {

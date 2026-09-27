@@ -21,6 +21,7 @@ const draft = {
   body: 'Texte.',
   publishedOn: '2026-09-27',
   validated: false,
+  values: {},
 } as const;
 
 // shared/ reads no feature's files, the translations included: the strings this panel shows, inline.

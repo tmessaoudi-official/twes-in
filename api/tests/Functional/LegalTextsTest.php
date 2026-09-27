@@ -26,12 +26,14 @@ final class LegalTextsTest extends ApiTestCase
         $this->client->request('GET', '/api/legal/cookies/en', server: ['HTTP_ACCEPT' => 'application/json']);
 
         self::assertResponseIsSuccessful();
+        self::assertStringContainsString('"values":{}', (string) $this->client->getResponse()->getContent(), 'an object even when empty');
         self::assertSame([
             'page' => 'cookies',
             'language' => 'en',
             'body' => "# Cookies\n\nWhat is stored.",
             'publishedOn' => '2026-09-20',
             'validated' => true,
+            'values' => [],
         ], $this->body());
     }
 
@@ -54,6 +56,22 @@ final class LegalTextsTest extends ApiTestCase
             $this->client->request('GET', $path, server: ['HTTP_ACCEPT' => 'application/json']);
             self::assertResponseStatusCodeSame(404, $path);
         }
+    }
+
+    public function testThePublishersIdentityTheOperatorSetFillsThePlaceholdersAndNothingElseIsSent(): void
+    {
+        $this->write(LegalPage::Mentions, LegalLanguage::Fr, 'Éditeur : {{publisher.name}}', '2026-09-20 10:00');
+        $this->createUser('op@twes.local', 'password-1234', operator: true);
+        $this->login('op@twes.local', 'password-1234');
+        $this->sendJson('PUT', '/api/platform/settings/legal.publisher.name', ['value' => 'twes SAS']);
+        self::assertResponseIsSuccessful();
+        $this->client->getCookieJar()->clear();
+
+        $this->client->request('GET', '/api/legal/mentions/fr', server: ['HTTP_ACCEPT' => 'application/json']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['publisher.name' => 'twes SAS'], $this->body()['values'], 'only what was filled in, by its placeholder');
+        self::assertSame('Éditeur : {{publisher.name}}', $this->body()['body'], 'the text itself is kept as written');
     }
 
     private function write(LegalPage $page, LegalLanguage $language, string $body, string $at): LegalText

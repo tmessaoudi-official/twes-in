@@ -28,7 +28,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             uriTemplate: '/legal/{page}/{language}',
             requirements: ['page' => '[a-z]+', 'language' => '[a-z]{2}'],
             provider: LegalTextProvider::class,
-            normalizationContext: ['groups' => [self::READ]],
+            normalizationContext: ['groups' => [self::READ], 'preserve_empty_objects' => true],
         ),
     ],
 )]
@@ -60,7 +60,20 @@ final class LegalTextResource
     #[Groups([self::READ])]
     public bool $validated = false;
 
-    public static function of(LegalText $text): self
+    /**
+     * The publisher's and host's identity the operator filled in, by the placeholder a text names it with
+     * (`{{publisher.name}}`); one not filled in is absent, and the page shows « à compléter » in its place.
+     *
+     * An object even when empty (`preserve_empty_objects`), never a JSON list.
+     *
+     * @var \ArrayObject<string, string>
+     */
+    #[ApiProperty(required: true, schema: ['type' => 'object', 'additionalProperties' => ['type' => 'string']])]
+    #[Groups([self::READ])]
+    public \ArrayObject $values;
+
+    /** @param array<string, string> $values */
+    public static function of(LegalText $text, array $values = []): self
     {
         $resource = new self();
         $resource->page = $text->getPage()->value;
@@ -68,6 +81,7 @@ final class LegalTextResource
         $resource->body = $text->getBody();
         $resource->publishedOn = $text->getPublishedOn()->format('Y-m-d');
         $resource->validated = $text->isValidated();
+        $resource->values = new \ArrayObject($values);
 
         return $resource;
     }

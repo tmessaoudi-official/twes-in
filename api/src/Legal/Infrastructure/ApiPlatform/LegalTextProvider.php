@@ -11,12 +11,13 @@ namespace App\Legal\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
+use App\Legal\Application\LegalIdentity;
 use App\Legal\Application\ReadLegalText;
 
 /** @implements ProviderInterface<LegalTextResource> */
 final readonly class LegalTextProvider implements ProviderInterface
 {
-    public function __construct(private ReadLegalText $read)
+    public function __construct(private ReadLegalText $read, private LegalIdentity $identity)
     {
     }
 
@@ -30,6 +31,6 @@ final readonly class LegalTextProvider implements ProviderInterface
         }
         $text = $this->read->read($page, $language);
 
-        return null === $text ? null : LegalTextResource::of($text);
+        return null === $text ? null : LegalTextResource::of($text, $this->identity->values());
     }
 }

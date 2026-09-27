@@ -28,6 +28,7 @@ const draft = {
   body: 'Texte.',
   publishedOn: '2026-09-27',
   validated: false,
+  values: {},
 } as const;
 
 @Component({ template: '<p data-testid="elsewhere">ailleurs</p>' })
