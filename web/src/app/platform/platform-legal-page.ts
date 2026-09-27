@@ -59,6 +59,8 @@ export class PlatformLegalPage implements OnInit {
 
   protected readonly opened = signal<Opened | null>(null);
   protected readonly text = signal('');
+  /** Until the open page's history arrives, which then fills the editor: anything typed sooner would be replaced. */
+  protected readonly loading = signal(false);
   protected readonly previewing = signal(false);
   /** The texts typed and not published, by page and language. */
   private readonly drafts = new Map<string, string>();
@@ -119,9 +121,11 @@ export class PlatformLegalPage implements OnInit {
     this.opened.set({ page, language });
     this.previewing.set(false);
     this.text.set('');
+    this.loading.set(true);
     await this.facade.open(page, language);
     if (!this.isOpen(page, language)) return;
     this.text.set(this.drafts.get(key(page, language)) ?? this.latest()?.body ?? '');
+    this.loading.set(false);
   }
 
   /** How a text writes this fact, for the operator to copy. */

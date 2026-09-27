@@ -160,6 +160,30 @@ describe('PlatformLegalPage', () => {
   };
   const said = () => (TestBed.inject(Feedback) as RecordedFeedback).said;
 
+  // A text typed before the page's history arrived was replaced by the latest version when it did (CI, 2026-09-27).
+  it("keeps the editor closed to typing until the page's history has arrived", async () => {
+    let arrive: () => void = () => undefined;
+    facade.open = vi.fn(
+      (page: string, language: string) =>
+        new Promise<void>((resolve) => {
+          arrive = () => {
+            facade.versions.set(histories[`${page}.${language}`] ?? []);
+            resolve();
+          };
+        }),
+    );
+    await render();
+
+    q('legal-cell-mentions-fr')!.click();
+    await settle();
+    expect(body().disabled).toBe(true);
+
+    arrive();
+    await settle();
+    expect(body().disabled).toBe(false);
+    expect(body().value).toBe('## Éditeur\n\ntwes');
+  });
+
   it('lists every page in every language with where it stands', async () => {
     facade.overview.set(
       overviewWith({

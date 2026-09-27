@@ -113,6 +113,7 @@
             class="twes-legal-editor"
             rows="20"
             [value]="text()"
+            [disabled]="loading()"
             (input)="typed($event)"
             [attr.lang]="current.language"
             [attr.dir]="current.language === 'ar' ? 'rtl' : 'ltr'"
