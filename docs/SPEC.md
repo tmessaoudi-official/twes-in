@@ -3605,6 +3605,33 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   missing fact is visible on the page rather than absent. The operator fills them in at the top of `/platform/legal`,
   the fields listed from the API's own `legal.*` settings (the SPA keeps no second list), saving only what changed.
 
+- [2026-09-27 17:05] AGREED (developer, asked): **the queue is judged by what people can see and use**, with no compromise
+  on security, performance, best practice or architecture: a foundation row goes first only where the feature after it
+  would be unsafe or reworked without it. Row 172 (pages on `httpResource` and `linkedSignal`) moves **screen by
+  screen**, each screen when a visible row touches it, with no block of its own. Rows 159 (plans walkthrough),
+  176 (mobile review) and 160 (RGAA) **join the queue**; their place is asked with the rest of the order.
+- [2026-09-27 17:12] AGREED (developer, asked): **the queue after row 148 alternates a foundation step with a visible
+  feature**, each sensitive feature after its prerequisite: 174 → 158 logo → 171 and 169 → 161 journal → 157 and
+  156 → 170 → 162 undo and Corbeille → 154 and 155 → 176 mobile → 159 plans (the walkthrough asked first) → 160 RGAA
+  (the audit method asked first) → 173 → 177. **Projects, tasks and time** (the developer's idea: timers, a quote
+  built from tasks, invoicing time as it runs, a kanban by status, reminders) come after 162, reusing its
+  foundations, with a **service core first**: projects, tasks with status, assignee and due date, the kanban, timers,
+  a quote from tasks, invoicing time and due-date reminders through the notification centre. A calendar, recurring
+  tasks, dependencies, sprints and custom workflows come later. How it relates to Travaux (row 80) is asked next.
+
+- [2026-09-27 17:20] AGREED (developer, asked): **one module, « Projets », replaces Travaux** (row 80) and holds the
+  developer's projects-and-tasks idea with every capability; two modules would build the quote → work → invoice flow
+  twice. A **task** is the unit of work: it may stand alone (a turner's quick job) or sit in a project, and « Projets »
+  opens on Projets / Tâches / Kanban. Tasks carry a status, an assignee, a due date and reminders through the
+  notification centre, and timers record time against them. **A task is billed through the existing quotes and
+  invoices**, never a flow of its own: by time (hours × a rate taken from the task, else the project, else the member)
+  or at a fixed price, chosen per task; each invoice line remembers the time entries it bills, so an hour is never
+  billed twice; a quote can be built from tasks and its acceptance creates them. Material consumed, output produced
+  and scrap (row 80's production order) are the same module's, shown only when the Stock module is on, so a
+  freelancer never sees them. The planned catalogue entry `works` (« Travaux ») becomes « Projets » when the module
+  is built, its recorded interest carried over. The first version is the service core of 17:12; a calendar, recurring
+  tasks, dependencies, sprints and custom workflows come later.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -3691,7 +3718,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 77 | Price lists (§ 7 2026-09-20): per customer or group, quantity breaks, validity dates, keyed to area and channel; they decide a line's unit price before any discount | M | todo | - | api/src/Module/Products/** api/src/Module/Customers/** api/migrations/** api/tests/** web/src/app/** |
 | 78 | Quote (§ 7 2026-09-20): issued, sent, accepted or refused, and acting as the order — what is delivered and what remains, partial delivery, no separate sales-order type | L | todo | - | api/src/Module/Quotes/** api/migrations/** api/tests/** web/src/app/quotes/** web/e2e/** |
 | 79 | Deposits (§ 7 2026-09-20): a deposit invoice with its own number and VAT, subtracted from the final invoice by the engine and never typed | M | todo | - | api/src/Module/Invoices/** api/migrations/** api/tests/** web/src/app/invoices/** |
-| 80 | Job (§ 7 2026-09-20): from an accepted quote, material consumed through the generic transformation, hours at a cost rate, output as a product or a one-off, scrap consumed by the job, closing into a delivery note and an invoice, quoted price against real cost | L | todo | - | api/src/Module/Jobs/** api/migrations/** api/tests/** web/src/app/jobs/** web/e2e/** |
+| 80 | Projets (§ 7 2026-09-27 17:20, replacing the job of 2026-09-20 01:18): tasks standing alone or in projects, status, assignee, due date and reminders, a kanban, timers, tasks billed on the existing quotes and invoices by time or at a fixed price with every hour billed once, a quote built from tasks; material, output and scrap when Stock is on; after row 162 | L | todo | - | api/src/Module/Projects/** api/migrations/** api/tests/** web/src/app/projects/** web/e2e/** |
 | 81 | Purchase order and goods receipt (§ 7 2026-09-20): an order sent to a vendor with expected dates, receipts against it (partial allowed) moving stock into a location and recording unit cost | L | todo | - | api/src/Module/Purchasing/** api/migrations/** api/tests/** web/src/app/purchasing/** web/e2e/** |
 | 82 | Register, the counter sale (§ 7 2026-09-20): one full screen on scanner and keyboard, receipt or invoice from the same sale, cash with change, card, on account and mixed payments, returns writing a credit note and restocking; sales idempotent and queued in shape so offline can be added later | L | todo | - | api/src/Module/Register/** api/migrations/** api/tests/** web/src/app/register/** web/e2e/** |
 | 83 | Venue and the drawn map (§ 7 2026-09-19 23:40, brought forward 2026-09-20; surface ruled 2026-09-21): areas and spots with their plan rectangle, height and level; a 2D SVG plan per floor with rack front views, edited grid-snapped over an optional floor image, and a Three.js 3D view for looking; search or scan highlights every location holding a product, a delivery note highlights its lines'. DONE: the API half (the `Venue` context, `DrawStockMap`, the module's three endpoints); the SCREEN — floors with their levels, the SVG plan in metres with each rectangle turned about its own centre, drawing and erasing through a FORM beside the plan; and the GESTURES of the approved canvas so far — a rectangle moved by dragging it, resized by its eight handles, a new one traced on bare floor once the `Tracer` tool is armed, and the PALETTE of ready-made shapes, whose sizes are the company's own settings in the new `venue` chain and reach the screen through `stock-options` — every gesture writing into the form and never to the API. A bin is refused by the surface, not only by the picker. and REPEAT-DOWN-AN-AISLE, which creates the stock locations as well as the rectangles, in one transaction, listing their codes and refusing a copy off the floor before anything is written. The walls-and-doors structure layer shipped 2026-09-22 (`5b9918b`, `ba79e5c`). LEFT, in the ruled order: the usability pass of the 09:24 ruling (zoom/pan/fit, the Consulter/Aménager split, one drawing model, structure's gestures and keyboard path, the permission hole, erase confirmations), the data-driven palette and `form: rect|round` of the 09:30 ruling; after those the floor image with its two calibration points, the Three.js 3D view and the `presentation.stock-map-view` key that only makes sense with it, search-highlight, and the rack front view | L | doing | - | api/src/Venue/** api/src/Module/Inventory/** api/migrations/** api/tests/** web/src/app/inventory/** web/public/i18n/** api/src/Settings/** web/src/app/settings/** web/src/app/shared/settings/** scripts/gates/** |
