@@ -3721,6 +3721,22 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   runs the real configuration in the web image's nginx, in CI beside the logrotate test. `DEFAULT_URI` is the LAN
   address while `lan` is on, so mailed links open on a phone; `make up` prints both addresses. Passkeys stay on the
   computer.
+- [2026-09-27 20:30] DECIDED (revisit): row 184, how live development is built. `compose.live.yaml`, added by the
+  Makefile's `COMPOSE_FILE` (never `.env`, which CI's plain `docker compose` reads), mounts `api/` and `web/`. The API
+  keeps worker mode, and FrankenPHP's watcher restarts the workers on `src/`, `config/`, `templates/`, `translations/`
+  and `.env*` only, not its default pattern, which covers `var/cache` too. Its `vendor/` and `var/` are volumes of their
+  own, because the host's copies are built for other paths and the container would write them as root; a
+  `composer install` at start follows the lock and replaces the image's class-map-authoritative autoloader, which misses
+  a class written after the build. The web tier is `ng serve` from a `live` stage of `infra/web/Dockerfile` over a
+  `node-base` stage, so Node is still named once (the version-pins gate now refuses a second `FROM node:`). It serves on
+  Alpine with its own `node_modules` volume and proxies the same four paths nginx does (`web/proxy.live.json`, checked
+  by `infra/web/tests/live-proxy.test.sh`), without `changeOrigin` or `xfwd`, so the LAN door's `X-Forwarded-Proto`
+  reaches the API as through nginx. Measured under load 17 to 34: a PHP edit answered in 6 to 18 s (0.15 s to notice,
+  the rest Symfony's dev rebuild); a template edit showed on the open page in 3 s through the phone door. An added
+  resource property does not reliably reach API Platform's answers: its metadata outlives both the worker restart and
+  the dev rebuild, so `make live-refresh` empties every pool, restarts the workers through FrankenPHP's admin endpoint
+  and regenerates the web types. Live does not run nginx: its CSP, frame and cache headers are certified only by `make
+  up-images` and CI. Revisit if the dev rebuild's seconds matter more than worker parity.
 
 ## 8. Status
 
@@ -3912,7 +3928,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 181 | Large-data run (§ 7 2026-09-27 18:59): `make scale-data` / `make up-scale` in steps of 100k to 10m invoices, a large company and a wide platform, real documents cloned, measured per list, screen and operation; after 178 | L | todo | - | api/src/DataFixtures/** Makefile docs/** |
 | 182 | Data health check (§ 7 2026-09-27 18:59): `app:data:check` over the invariants, after generation, nightly with the worker and told to the operator | M | todo | - | |
 | 183 | The whole app from a phone (§ 7 2026-09-27 19:16): sign-in through the LAN door tested and fixed, the LAN address as the app's own when detected, `make up` prints it; before 178 | S | done | 409ad73 | compose.yaml Makefile infra/** api/config/** |
-| 184 | Live development by default (§ 7 2026-09-27 19:16 and 2026-09-27 19:20): `make up` mounts the api source with FrankenPHP watch, OPcache revalidating at once, Angular dev server with live reload, through the LAN door too; `make up-images` keeps the images CI runs; before 178 | M | todo | - | compose*.yaml Makefile infra/** web/** docs/START.md |
+| 184 | Live development by default (§ 7 2026-09-27 19:16, 19:20 and 20:30): `make up` mounts the api source with FrankenPHP watch, OPcache revalidating at once, Angular dev server with live reload, through the LAN door too; `make up-images` keeps the images CI runs; before 178 | M | done | - | compose*.yaml Makefile infra/** web/** docs/START.md |
 <!-- /progress-block -->
 
 ### Delivered

@@ -81,6 +81,9 @@ out=$(run "$d"); check "an extension the image has and CI lacks is named" $? 1 "
 d=$(tree); sed -i 's/node:26.8.2/node:24.1.0/' "$d/infra/web/Dockerfile"
 out=$(run "$d"); check "the web image's Node major apart from .nvmrc is refused" $? 1 "$out" "Node"
 
+d=$(tree); sed -i '1a FROM node:24.1.0-alpine AS live' "$d/infra/web/Dockerfile"
+out=$(run "$d"); check "a second Node image in the web Dockerfile is refused, whatever its version" $? 1 "$out" "Node"
+
 d=$(tree); sed -i 's/>=26.0.0/>=24.0.0/' "$d/web/package.json"
 out=$(run "$d"); check "package.json engines apart from .nvmrc is refused" $? 1 "$out" "Node"
 

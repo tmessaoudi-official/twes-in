@@ -44,6 +44,7 @@ jobs:
       - run: bash infra/self-hosted/tests/logrotate.test.sh
       # The web server passes a TLS proxy's scheme to the API, run for real in its own image.
       - run: bash infra/web/tests/forwarded-proto.test.sh
+      - run: bash infra/web/tests/live-proxy.test.sh
       - run: php scripts/gates/dependency-licences.php
       - run: bash scripts/gates/spdx-headers.sh
       - run: bash scripts/gates/executable-bits.sh

@@ -69,11 +69,14 @@ fi
 # Node major
 nvmrc=$([[ -f "$root/web/.nvmrc" ]] && tr -d ' v\n' < "$root/web/.nvmrc"); nvmrc=${nvmrc%%.*}
 image_node=$(grab infra/web/Dockerfile 'FROM node:[0-9]+' | grep -oE '[0-9]+$' | head -1)
+# One Node image: every stage that runs Node starts from the stage that names it, so this is the only copy to read.
+node_images=$(grab infra/web/Dockerfile 'FROM node:[^ ]+' | wc -l)
 engines=$([[ -f "$root/web/package.json" ]] && jq -r '.engines.node // empty' "$root/web/package.json" | grep -oE '[0-9]+' | head -1)
 if [[ -z "$nvmrc" ]]; then problem "Node: found none in web/.nvmrc"
 else
   if [[ -z "$image_node" ]]; then problem "Node: found none in infra/web/Dockerfile (FROM node:<v>)"
   elif [[ "$image_node" != "$nvmrc" ]]; then problem "Node: infra/web/Dockerfile runs $image_node, web/.nvmrc says $nvmrc"; fi
+  ((node_images > 1)) && problem "Node: infra/web/Dockerfile names $node_images node images; start every stage from the one that names it"
   if [[ -z "$engines" ]]; then problem "Node: found none in web/package.json engines.node"
   elif [[ "$engines" != "$nvmrc" ]]; then problem "Node: web/package.json engines wants >=$engines, web/.nvmrc says $nvmrc"; fi
 fi

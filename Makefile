@@ -9,14 +9,26 @@ LAN_HOST := $(shell ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-
 endif
 LAN_ORIGIN := $(if $(LAN_HOST),https://$(LAN_HOST):$(or $(LAN_PORT),8443))
 COMPOSE_PROFILES ?= $(if $(LAN_HOST),lan)
-export LAN_HOST LAN_ORIGIN COMPOSE_PROFILES
-.PHONY: up down reset logs migrate seed fixtures operator-code versions api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e gallery notices
+# Live development by default (compose.live.yaml, docs/START.md § 1): every docker compose command below, and any a
+# recipe starts, sees the same services. Never set in .env, which a plain `docker compose` (CI's) reads too.
+COMPOSE_FILE ?= compose.yaml:compose.live.yaml
+export LAN_HOST LAN_ORIGIN COMPOSE_PROFILES COMPOSE_FILE
+.PHONY: up up-images live-refresh down reset logs migrate seed fixtures operator-code versions api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e gallery notices
 
-up:            ## build and start the whole stack (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, a phone's HTTPS door :8443), then seed
+up:            ## start the whole stack LIVE: an edit under api/ or web/ shows without a rebuild (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, a phone's HTTPS door :8443), then seed
+	@# The live volumes mount inside the host's api/ and web/; made here, as this user, or Docker makes them as root.
+	mkdir -p api/vendor api/var web/node_modules web/.angular
 	docker compose up -d --build --wait
 	$(MAKE) seed
 	@echo "On this computer: http://localhost:$${WEB_PORT:-8090}"
 	@$(if $(LAN_ORIGIN),echo "From a phone on this network: $(LAN_ORIGIN) (trust once: http://$(LAN_HOST):8095/root.crt)",echo "No network address found: the phone door is off.")
+
+up-images:     ## the same stack from the built images, exactly as CI runs it: nginx, the static bundle, no watcher. Every later make target follows it only with COMPOSE_FILE=compose.yaml
+	$(MAKE) up COMPOSE_FILE=compose.yaml
+
+live-refresh:  ## after changing an API resource's properties under make up: empties the API's metadata caches, restarts its workers and regenerates the web tier's types from what the API now serves
+	docker compose exec -T api sh -c 'bin/console cache:pool:clear --all && curl -fsS -o /dev/null -X POST http://localhost:2019/frankenphp/workers/restart'
+	docker compose exec -T web sh -c 'wget -q -O /tmp/openapi.json http://api/api/docs.jsonopenapi && OPENAPI_JSON=/tmp/openapi.json npm run api:types'
 
 migrate:       ## apply pending migrations inside a running api container (the image entrypoint already did at start)
 	docker compose exec -T api bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
@@ -75,6 +87,7 @@ gate-licences:
 	bash scripts/gates/tests/icons-declared.test.sh
 	bash infra/self-hosted/tests/logrotate.test.sh
 	bash infra/web/tests/forwarded-proto.test.sh
+	bash infra/web/tests/live-proxy.test.sh
 	php scripts/gates/dependency-licences.php
 	bash scripts/gates/spdx-headers.sh
 	bash scripts/gates/executable-bits.sh

@@ -151,7 +151,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   (`compose.yaml`, `make up`, CI's e2e) and `prod` (`compose.prod.yaml`, CI's `prod-image`: `php.ini-production`,
   `infra/api/conf.d/20-app.prod.ini` with preload, no dev packages, the cache warmed at build; `docs/START.md` § 10).
   PHP settings for every mode: `infra/api/conf.d/10-app.ini`.
-- `Makefile` — `make up` (compose, web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, `lan` :8443 a phone's HTTPS door on this machine's network address, `infra/lan/Caddyfile`; the api image migrates at
+- `Makefile` — `make up` (live: compose.yaml + `compose.live.yaml`, the source mounted, API workers restarted by
+  FrankenPHP's watcher, the web tier on `ng serve`; `make up-images` runs the built images as CI does; `make live-refresh`
+  after a resource property change; docs/START.md § 2), web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, `lan` :8443 a phone's HTTPS door on this machine's network address, `infra/lan/Caddyfile`; the api image migrates at
   start, then `seed`: operator `operator@twes.local` / `twes-operator-dev`, authenticator secret
   `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`, `make operator-code` prints its current code; Playwright signs the operator in once, `web/e2e/session.ts`; `web/e2e/axe.ts` is the one WCAG scan, waiting for a fresh toast, and `web/e2e/toast.ts` the announced toast), `make gate` (licences + `composer gate`
   + `npm run gate`, which starts by regenerating the types; `composer test` migrates the test database first),
@@ -230,10 +232,11 @@ tables, essay gotchas) was retired with the reset. What applies here:
   kernel boot (2026-09-15). Never run a sabotage batch in the same parallel block as a gate: it mutates what the gate reads.
 - Angular Material's `mat-card-content` overrides Tailwind layout utilities placed on it: put the flex or grid on a `div` inside
   it (2026-09-15: the platform page's switches ran together and its buttons wrapped under the company name).
-- The web container serves a STATIC nginx build, never a dev server (`infra/web/Dockerfile` builds and copies
-  `dist/web/browser` into nginx), so a `web/src/**` edit is invisible to the browser and to Playwright until
-  `docker compose up -d --build web`. Three rounds of measurement read as product defects before that was
-  identified (2026-09-16).
+- Know which stack is running before reading a measurement: `make up` is live (the dev server, the mounted source), while
+  `make up-images` and CI serve a STATIC nginx build, where a `web/src/**` edit stays invisible until
+  `docker compose up -d --build web`. Three rounds of measurement read as product defects before that was identified
+  (2026-09-16). Under `make up`, a resource property change needs `make live-refresh`: API Platform's metadata pools
+  outlive a worker restart.
 - A dead operator session makes `/api/auth/me` answer 401 with no `company` key AT ALL, so
   `forgetPresentationChoices`'s `me.company === null` guard passes `undefined` straight into `me.company.id`:
   a spec dying with `Cannot read properties of undefined (reading 'id')` on its first line needs the session
@@ -317,8 +320,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - Playwright's browsers DO install here, and running e2e locally is worth the ten minutes: `npx playwright install
   chromium --dry-run` prints the exact `cdn.playwright.dev/builds/cft/<version>/linux64/*.zip` URLs, which `curl -4`
   fetches (the installer itself hangs on IPv6); unzip each into `~/.cache/ms-playwright/<name>-<rev>/` and `touch
-  INSTALLATION_COMPLETE`. Both containers build from the working tree, so `docker compose up -d --build web api`
-  first, or the browser tests the last image. This caught two defects in one run that CI would have taken 28 minutes
+  INSTALLATION_COMPLETE`. Under `make up-images` both containers build from the working tree, so
+  `docker compose up -d --build web api` first, or the browser tests the last image; `make up` serves the tree as it is. This caught two defects in one run that CI would have taken 28 minutes
   to report, one of them in the test itself (2026-09-21).
 - A promoted `public readonly ?string $code` on an `\Exception` subclass is a FATAL redeclaration at class-load time
   (`\Exception::$code` is not readonly), reported nowhere near where it is written — and rtk condensed that fatal to

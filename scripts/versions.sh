@@ -15,7 +15,7 @@ wanted_js() { jq -r --arg n "$1" '(.dependencies + .devDependencies)[$n] // "-"'
 echo "Images (docker)"
 while read -r file line; do row "${line##* }" "$file" ""; done < <(
   grep -HoE '^[[:space:]]*image: [^[:space:]]+' compose.yaml .github/workflows/ci.yml | sed 's/:[[:space:]]*image:/ image:/' | sort -u
-  grep -HoE '^FROM [^[:space:]]+|COPY --from=[^[:space:]]+:[^[:space:]]+' infra/api/Dockerfile infra/web/Dockerfile \
+  grep -HoE '^FROM [^[:space:]]+:[^[:space:]]+|COPY --from=[^[:space:]]+:[^[:space:]]+' infra/api/Dockerfile infra/web/Dockerfile \
     | sed -E 's/:(FROM |COPY --from=)/ /')
 
 echo

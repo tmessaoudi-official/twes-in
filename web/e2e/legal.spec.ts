@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { NOTICE_CLOSED, OPERATOR_EMAIL, signIn } from './session';
+import { toast } from './toast';
 
 // The copyright and legal links close every page, signed out or in, centred, inside the page so they scroll with it;
 // each link opens its text over the page, and each text is also a page of its own, open to anyone.
@@ -225,7 +226,8 @@ test('the security contact the operator fills in is published in security.txt', 
   const address = `security+${Date.now()}@twes.test`;
   await page.getByTestId('legal-identity-security.email').fill(address);
   await page.getByTestId('legal-identity-save').click();
-  await expect(page.getByTestId('legal-identity-save')).toBeDisabled();
+  // The toast, not the button: the button is disabled while the save is still in flight, too.
+  await expect(toast(page)).toBeVisible();
 
   const answer = await page.request.get('/.well-known/security.txt');
   expect(answer.status()).toBe(200);

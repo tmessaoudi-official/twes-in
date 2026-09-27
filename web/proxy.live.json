@@ -1,0 +1,16 @@
+{
+  "/api": {
+    "target": "http://api:80"
+  },
+  "/bundles": {
+    "target": "http://api:80"
+  },
+  "/.well-known/security.txt": {
+    "target": "http://api:80",
+    "pathRewrite": { "^/.well-known/security.txt": "/api/legal/security.txt" }
+  },
+  "/connection/websocket": {
+    "target": "http://centrifugo:8000",
+    "ws": true
+  }
+}

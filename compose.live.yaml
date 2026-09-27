@@ -1,0 +1,40 @@
+# Live development, what `make up` runs on top of compose.yaml (docs/START.md § 1): the source is mounted from the host
+# and an edit shows without a rebuild or a restart. The API's workers restart when a watched file changes; the web tier
+# is the Angular dev server, which rebuilds and reloads the page. CI and `make up-images` run compose.yaml alone.
+services:
+  api:
+    entrypoint: ["live-entrypoint"]
+    command: ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile", "--adapter", "caddyfile"]
+    environment:
+      # Worker mode as in the images, restarted by FrankenPHP's watcher (https://frankenphp.dev/docs/worker/). The
+      # patterns name the sources only: the kernel's own cache under var/ is PHP too, and a restart would rewrite it.
+      FRANKENPHP_CONFIG: |
+        worker {
+          file ./public/index.php
+          watch ./src/**/*.php
+          watch ./config/**/*.{php,yaml}
+          watch ./templates/**/*.twig
+          watch ./translations/**/*.yaml
+          watch ./.env*
+        }
+    volumes:
+      - ./api:/app
+      # The container's own dependencies, cache and logs, never the host's: its paths are /app, the host's are not.
+      - api-vendor:/app/vendor
+      - api-var:/app/var
+      - ./infra/api/live-entrypoint.sh:/usr/local/bin/live-entrypoint:ro
+      - ./infra/api/conf.d/30-app.live.ini:/usr/local/etc/php/conf.d/30-app.live.ini:ro
+
+  web:
+    build:
+      target: live
+    volumes:
+      - ./web:/app
+      - web-node-modules:/app/node_modules
+      - web-angular-cache:/app/.angular
+
+volumes:
+  api-vendor:
+  api-var:
+  web-node-modules:
+  web-angular-cache:

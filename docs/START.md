@@ -85,8 +85,8 @@ make up
 
 This does three things, in order:
 
-1. **Builds the images and starts every service** (`docker compose up -d --build --wait`). It waits until each
-   one is healthy. The first build downloads and compiles everything (see § 9 for a measured time). Later builds
+1. **Builds the images and starts every service** (`docker compose up -d --build --wait`), live (below). It waits
+   until each one is healthy: the first time, the web tier installs its dependencies before it serves. The first build downloads and compiles everything (see § 9 for a measured time). Later builds
    reuse Docker's cache.
 2. **Migrates the database.** The `api` container applies pending migrations every time it starts, before
    serving (`infra/api/docker-entrypoint.sh`). A failed migration stops the container instead of serving a
@@ -98,19 +98,38 @@ This does three things, in order:
 `make down` stops everything and **keeps** the data. `make up` again brings it back as it was. `make logs` follows
 every service's output. `docker compose logs -f api` follows one.
 
-**The images are built from your working tree, not from the last commit.** Uncommitted and untracked files under
-`api/` and `web/` go into the build (`COPY api/ ./`). Half-finished code that does not compile yet fails `make up`,
-`make reset` and a rebuild, usually at the api image's `cache:clear` step with the error of the file you are working
-on. To bring up the committed code while work is in progress, use a separate checkout:
-`git worktree add ../twes-in-clean HEAD`, then run `make up` there (with § 8's variables if your own stack is up).
+**`make up` is live: an edit shows without a rebuild or a restart.** `compose.live.yaml`, which the Makefile adds to
+`compose.yaml`, mounts `api/` and `web/` from your working tree into the containers:
 
-**The web container serves a static build.** A change under `web/src/` is not visible until the image is rebuilt:
-`docker compose up -d --build web`. An API change needs `docker compose up -d --build api`.
+- **The API** runs in FrankenPHP's worker mode as in the images, and FrankenPHP's watcher restarts its workers when a
+  file under `src/`, `config/`, `templates/`, `translations/` or an `.env` file changes. The next request runs the
+  edited code; with Symfony's dev container to rebuild first, that took 6 to 18 seconds on this machine under heavy
+  load. `vendor/` and `var/` are volumes of the container's own (`api-vendor`, `api-var`), never your `api/vendor` or
+  `api/var`: it runs `composer install` at every start, so a lock change arrives with a restart, and its autoloader
+  finds a class the moment you write it. OPcache stays on and checks every file's time (`infra/api/conf.d/30-app.live.ini`).
+- **The web tier** is the Angular dev server (`ng serve`, the `live` stage of `infra/web/Dockerfile`), which rebuilds
+  what changed and updates the open page. Through the phone door too: 3 seconds from saving a template to the phone's
+  page showing it. `node_modules` and the build cache are volumes of their own, installed inside the container (Alpine,
+  not your system's libc), again when `web/package-lock.json` changes. The dev server proxies the API and Centrifugo on
+  the same paths nginx does (`web/proxy.live.json`; `infra/web/tests/live-proxy.test.sh` checks they stay the same).
+  At each start it regenerates `web/src/app/api` from the contract the API serves.
+- **A resource property added or removed** may not reach the API's answers and its OpenAPI document: API Platform
+  keeps resource metadata in cache pools that neither a worker restart nor Symfony's dev rebuild reliably empties.
+  `make live-refresh` empties them, restarts the workers and regenerates the web tier's types.
+- **What live development does not run**: nginx. Its security headers (the nonce CSP, `X-Frame-Options`, `nosniff`),
+  its cache headers and its compression exist only in the images, and the production bundle is only built there.
+  `make up-images` brings up the same stack from the built images, exactly as CI runs it; the next `make up` switches
+  back to live. The other targets work on whichever is running.
 
-**The api runs its development image.** `infra/api/Dockerfile` has two targets: `make up` builds `dev` (Symfony's
-dev mode, the profiler, `php.ini-development`, the dev packages). The production image is § 10. Both run FrankenPHP in
-worker mode: each worker boots the kernel once and serves request after request, so a configuration change reaches
-the api only with a rebuild or `docker compose restart api`.
+**The images are built from your working tree, not from the last commit.** Under `make up-images`, uncommitted and
+untracked files under `api/` and `web/` go into the build (`COPY api/ ./`), and a web or API change is visible only
+after `docker compose up -d --build web` (or `api`). Half-finished code that does not compile fails that build, usually
+at the api image's `cache:clear` step. To bring up the committed code while work is in progress, use a separate
+checkout: `git worktree add ../twes-in-clean HEAD`, then run `make up-images` there (with § 8's variables if your own
+stack is up).
+
+**The api runs its development image.** `infra/api/Dockerfile` has two targets: both `make up` and `make up-images`
+build `dev` (Symfony's dev mode, the profiler, `php.ini-development`, the dev packages). The production image is § 10.
 
 ## 3. Sign in as the platform operator
 
@@ -389,7 +408,7 @@ the next build or gate.
 |---|---|
 | `make up` fails with "port is already allocated" | Another program holds a port from § 0. Change it in your shell or `.env.local` (§ 0) |
 | The code is refused though it looks right | Five attempts in five minutes are spent (§ 3), or the clock of the machine drifted. Wait five minutes |
-| A web change does not show | The web image is a static build: `docker compose up -d --build web` (§ 2) |
+| A web change does not show | Under `make up-images` the web image is a static build: `docker compose up -d --build web`; under `make up`, `make logs` shows the dev server's compile error (§ 2) |
 | `make gate-web` fails on API types that CI accepts | Stale dev cache: `cd api && bin/console cache:clear && bin/console cache:pool:clear --all` |
 | Every e2e scenario lands on `/two-factor` | Demo's two-step switch is on (§ 4) |
 | e2e fails at `browserType.launch: Executable doesn't exist` | Playwright's browser is missing: § 1 |
