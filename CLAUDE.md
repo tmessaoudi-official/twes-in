@@ -13,10 +13,13 @@ The previous process (sixteen custom gates, per-commit mutants, review panels, e
 tables, essay gotchas) was retired with the reset. What applies here:
 
 - **Announce, then build.** One line stating the size (Small / Medium / Large) and a plan of at
-  most five bullets. No phase markers, no evidence tables. Ask only for a genuinely ambiguous
-  request, a user-visible product decision, or anything that would weaken an invariant below,
-  always through `AskUserQuestion` with the recommended option first and a visible
-  "none of these" escape.
+  most five bullets. Phase markers, evidence grades and the Rule 6 evidence table still SHOW —
+  output parity (developer ruling 2026-09-27, which supersedes this line's 2026-09-09 "no phase
+  markers, no evidence tables"); what LIGHT drops is the stops. Stops follow the global
+  `~/.claude/CLAUDE.md` § Mode: this tree is autonomous (ask-human gate bypassed), so an ambiguity
+  takes the recommended option, logged as `ASSUMED (review)` in the plan's Decisions Log. Ask only
+  for a user-visible product decision or anything that would weaken an invariant below, always
+  through `AskUserQuestion` with the recommended option first and a visible "none of these" escape.
 - **Official best practices, for every tool** (developer ruling, 2026-09-17): Symfony, PHP, Monolog, API Platform,
   Doctrine, Angular, TypeScript and the rest are used as their own documentation recommends; a departure is recorded
   in `docs/SPEC.md` § 7 with its reason, and a gap found is fixed, not worked around.
@@ -166,7 +169,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - Back a file up before applying a mutant and restore from the backup; `git restore` reverts the uncommitted fix with it.
   Restore with a plain copy, never `cp -p` or `shutil.copy2`: the backup's older mtime makes Symfony keep the mutant's
   compiled container, so a mutated attribute (a listener priority) stays live in the next clean run (2026-09-15).
-- A Bash `cd api` or `cd web` drifts the persistent cwd and re-arms every project-scoped gate hook; use absolute paths
+- A Bash `cd api` or `cd web` drifts the persistent cwd (every later relative path and cwd-keyed slug moves with it; the gate bypass is a recursive rule now, so it no longer re-arms the gates); use absolute paths
   or a subshell. Symfony's test client reboots the kernel between requests: re-find an entity after a request
   instead of `refresh()`. Angular's `whenStable()` covers pending HTTP, not the microtask after a flushed response.
 - Local Playwright and Vitest timing is not evidence while other projects load this machine (load average 20+ on 8
