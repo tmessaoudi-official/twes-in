@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { wcagViolations } from './axe';
-import { NOTICE_CLOSED, signIn } from './session';
+import { NOTICE_CLOSED, OPERATOR_EMAIL, signIn } from './session';
 
 // The copyright and legal links close every page, signed out or in, centred, inside the page so they scroll with it;
 // each link opens its text over the page, and each text is also a page of its own, open to anyone.
@@ -194,7 +194,8 @@ test('the operator publishes a legal page, which a visitor reads as a draft unti
   await page.getByTestId('legal-preview-toggle').click();
   await expect(page.getByTestId('legal-body').locator('h2')).toHaveText('الأمان');
   await page.getByTestId('legal-publish').click();
-  await expect(page.getByTestId('legal-cell-security-ar')).not.toContainText('Pas écrite');
+  // The page ships a seeded draft, so the table's cell reads a draft either way: the history says whose it is.
+  await expect(page.getByTestId('legal-version').first()).toContainText(OPERATOR_EMAIL);
   await expect(page.getByTestId('legal-validate')).toBeVisible();
   expect(await wcagViolations(page)).toEqual([]);
 
