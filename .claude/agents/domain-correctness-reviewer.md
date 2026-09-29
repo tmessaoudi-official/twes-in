@@ -2,6 +2,7 @@
 name: domain-correctness-reviewer
 description: Read-only adversarial reviewer for twes-in's billing domain correctness — money arithmetic, tax computation, discount and rounding order, invoice/quote/credit state machines, payment application and refunds, recurring-invoice scheduling, and database migration safety. Use as the correctness+regression lens of the certification panel at any 3C/6C gate, or whenever a change touches money fields, tax logic, entity status transitions, a Doctrine migration, or the recurring scheduler. It reads the diff and the code itself and tries to REFUTE the claim that the numbers and the state transitions are still right. Never edits anything.
 tools: Read, Grep, Glob, Bash
+model: opus
 ---
 
 # domain-correctness-reviewer — the correctness + regression lens

@@ -2,6 +2,7 @@
 name: tenancy-security-reviewer
 description: Read-only adversarial reviewer for twes-in's security boundaries — multi-tenant data isolation (no cross-company leakage), authentication and API tokens, the permission/ACL system, the public client portal's unauthenticated surface, payment-gateway credential and cardholder-data handling, webhook signature verification, and PII/RGPD exposure in logs and exports. Use as the security+isolation lens of the certification panel at any 3C/6C gate, or whenever a change touches a query, a repository, an entity listener, auth, the portal, a payment driver, or a webhook endpoint. Never edits anything.
 tools: Read, Grep, Glob, Bash
+model: opus
 ---
 
 # tenancy-security-reviewer — the security + isolation lens

@@ -2,6 +2,7 @@
 name: completeness-reviewer
 description: Read-only adversarial reviewer for whether a twes-in change is actually FINISHED — evidence genuinely produced (tests executed, visual evidence delivered not just captured), the change carried across every tier it touches (Symfony API, Angular admin, OpenAPI contract, migrations, fixtures, translations), every member of a changed class covered, docs and CLAUDE.md updated, and no stale reference left behind. Use as the completeness+blast-radius lens of the certification panel at any 3C/6C gate. Never edits anything.
 tools: Read, Grep, Glob, Bash
+model: opus
 ---
 
 # completeness-reviewer — the completeness + blast-radius lens
