@@ -3788,6 +3788,15 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   the next slice-2 step, not done here. `VACUUM ANALYZE` after generation is also missing from `make scale-data`: before
   it the first page read 3 to 4 s. Alternatives: page the watch list (a bigger UI change, wait for 1m to show whether the
   cap is enough). Numbers: `var/claude/scale-181-slice2-100k.md`.
+- [2026-09-30 23:41] ASSUMED (review): the watch cap, built and re-measured on `twes_scale`. The answer carries at most 50 conditions of
+  each kind (`WatchResource::MAX_PER_KIND`) in the catalogue's order, and `count` stays the whole, read from the full list:
+  the home and the bell read `count`, only the page shows the rest as « N de plus non affichés ». The cap is per kind, not
+  overall: the catalogue sorts modules by key, so an overall cap of 200 filled with late customers and would have dropped
+  every unsold-product and stock condition (found by the gate's reviewer before it shipped; `WatchResourceTest` pins it).
+  Measured at 100k: 871 KB to 10 KB, count 4437 kept, three kinds present. The server still builds every condition before
+  the cap (about 0.5 s under load), so a count that does not read the list is not built; measure it at 1m first. The
+  first commit of the cap (b19ee39f, an overall cap) is superseded by this one. Alternatives: page the list with a
+  cursor (more UI, wait for 1m); cap only `late_customer` (hides the next kind that grows).
 
 ## 8. Status
 

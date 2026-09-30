@@ -37,10 +37,12 @@ final class WatchResource
     public const string READ = 'watch:read';
 
     /**
-     * How many conditions one answer carries. A company grows its late customers with its customers (4437 items, 871 KB
-     * at 100k invoices, read by the home for a count), so the answer is a page of them and `count` stays the whole.
+     * How many conditions of one kind an answer carries. A company grows its late customers with its customers (4437
+     * items, 871 KB at 100k invoices, read by the home for a count), so the answer is a page of each kind and `count`
+     * stays the whole. The cap is per kind, never overall: the catalogue lists the invoices before the stock, so an
+     * overall cap would fill with late customers and drop every expired lot.
      */
-    public const int MAX_ITEMS = 200;
+    public const int MAX_PER_KIND = 50;
 
     #[ApiProperty(identifier: false)]
     #[Groups([self::READ])]
@@ -67,8 +69,27 @@ final class WatchResource
     {
         $resource = new self();
         $resource->count = \count($items);
-        $resource->items = array_map(static fn (WatchItem $item): array => ['kind' => $item->kind, 'subjectId' => $item->subjectId, 'params' => $item->params], \array_slice($items, 0, self::MAX_ITEMS));
+        $resource->items = array_map(static fn (WatchItem $item): array => ['kind' => $item->kind, 'subjectId' => $item->subjectId, 'params' => $item->params], self::pageOfEachKind($items));
 
         return $resource;
+    }
+
+    /**
+     * @param list<WatchItem> $items
+     *
+     * @return list<WatchItem> the first MAX_PER_KIND of each kind, in the order given
+     */
+    private static function pageOfEachKind(array $items): array
+    {
+        $seen = [];
+        $page = [];
+        foreach ($items as $item) {
+            $seen[$item->kind] = ($seen[$item->kind] ?? 0) + 1;
+            if ($seen[$item->kind] <= self::MAX_PER_KIND) {
+                $page[] = $item;
+            }
+        }
+
+        return $page;
     }
 }

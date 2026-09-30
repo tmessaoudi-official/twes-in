@@ -243,6 +243,8 @@ follow its dates through the real numbering series, so the next real issue conti
   rows. A clone has no stored PDF: it is rendered on first request, as an issued document without one already is.
 - **Older unpaid invoices stay unpaid**, so the open-invoice figures grow with the size; read the home summary at scale
   with that in mind.
+- **It ends with `VACUUM (ANALYZE)`**: the planner's statistics are what a measurement reads, and the first page of the invoices
+  read 3 to 4 s at 100k without them and 0.8 s with them.
 - Not wired to `make up` yet: point `DATABASE_URL` at `twes_scale` to look at it.
 
 ### One account per role
