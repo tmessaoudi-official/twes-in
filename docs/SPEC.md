@@ -3780,6 +3780,14 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   goal, and for a study of the configuration (attributes, `_defaults: bind:`). The dependency update runs after slice 1 is
   committed, as its own commits, by `docs/UPDATE.md`; the study is `var/claude/config-simplification.md` (10 to do, 5 for
   later, 10 not to do) and nothing in it is applied until the developer rules on it.
+- [2026-09-30 23:25] ASSUMED (review): row 181 slice 2, first measurement (100,062 invoices, dev API on `twes_scale`, statistics
+  refreshed; machine load 11 to 22, so times are upper bounds). Invoices page 1 785 ms, page 2000 1.5 s, search under 1 s,
+  customers (8320) 60 ms, home summary 470 ms: nothing to index at 100k. The finding is `GET watch`: it answers one item
+  per late customer with no cap, 4437 items and 871 KB, and the home loads it for a count. The fix to build is a cap on the
+  items (with the true `count` kept, and the page saying how many more) and a count that does not read the list; it is
+  the next slice-2 step, not done here. `VACUUM ANALYZE` after generation is also missing from `make scale-data`: before
+  it the first page read 3 to 4 s. Alternatives: page the watch list (a bigger UI change, wait for 1m to show whether the
+  cap is enough). Numbers: `var/claude/scale-181-slice2-100k.md`.
 
 ## 8. Status
 
