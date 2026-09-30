@@ -3746,6 +3746,41 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   DQL orders by a CASE but tests only a COALESCE for null). The TEJ declaration already reports a vendorless payment as
   `vendor_missing`, so it needed no change. No demo expense names a payee yet.
 
+- [2026-09-29 12:59] ASSUMED (review): row 181 slice 1. The large company is the demo's Carthage Conseil grown in place, in a
+  database named `twes_scale`, not a new company: the establishment, series, tax components, units and products a clone
+  points at stay valid, and the wide platform (thousands of companies) is slice 3, where a company's whole graph is
+  cloned. `app:scale:generate` refuses any database not named `*_scale` or `*_test*`. Alternatives: a purpose-built
+  company written through the use cases (days at 100k, rejected 2026-09-27 18:59); a generic clone read from
+  `information_schema` (hides the foreign-key remapping, where the bugs would sit).
+- [2026-09-29 12:59] ASSUMED (review): how a clone is made, so it is a state the application can produce. Copy-by-default: every
+  column is copied and only ids, foreign keys, dates, numbers, the customer snapshot and the stored PDF are overridden;
+  `ScaleGenerator::unaccounted` fails when a table reaching the invoice graph is neither cloned, shared nor named as left
+  out, or a foreign key of a cloned table is neither remapped nor shared. A clone's id is derived from its base id and
+  its copy number and carries UUID version 8 (the application's are 7), so a re-run inserts nothing twice and a clone is
+  told from a base row by its id. Progress lives in a `scale` schema created by the command, never a migration. Numbers
+  are assigned last, in one pass in issue-date order through the real `NumberingSeries::allocate`, which is what refuses
+  a number out of date order. Raising the target adds copies and renumbers; a different seed or span needs a fresh
+  database. A clone has no stored PDF: `PrintInvoice` renders an issued document without one on first request, and
+  the pass drops the stored PDF of every base invoice it renumbers, since that file prints the old number. It restarts
+  only the series it renumbers (a company's delivery notes keep counting after their own numbers), and a test snapshots
+  the rest.
+  Alternatives: random ids with a map table (doubles the writes); numbering by SQL (would need `NumberFormat` twice).
+- [2026-09-29 12:59] ASSUMED (review): what slice 1 leaves out, for the slice 2 measurement to read with care. Expenses, stock
+  movements, audit rows, delivery notes, contacts and stored files keep their base rows and do not grow; an older unpaid
+  invoice stays unpaid, so the open-invoice figures (the home summary's `openByDueDate`) grow with the size and must be
+  settled before that query is measured; `audit_log` has no `(company_id, at)` index and `invoice` none on
+  `(company_id, issue_date)`, which 100k rows are what will show. The base invoices are renumbered too, so the audit
+  rows written for them (68 in Carthage) name numbers that no longer exist; nothing else stores an invoice's number
+  outside `invoice.number` [Verified 2026-09-29: the invoice, line and payment text and JSON columns hold none].
+  Two limits to read before 1m: the numbering pass re-sorts every remaining placeholder per chunk, so its time grows
+  faster than the row count, and a `{SEQ:5}` format overflows past 99,999 numbers a year (about 100k a year at 1m over
+  ten years), after which a lexical `ORDER BY number` misorders (a product finding for slice 2, not a check to loosen).
+  Alternatives: settle old invoices in the clone (needs the amount checks read first).
+- [2026-09-29 12:59] ASSUMED (review): the developer asked, mid-run, for the dependencies and versions to be updated after this
+  goal, and for a study of the configuration (attributes, `_defaults: bind:`). The dependency update runs after slice 1 is
+  committed, as its own commits, by `docs/UPDATE.md`; the study is `var/claude/config-simplification.md` (10 to do, 5 for
+  later, 10 not to do) and nothing in it is applied until the developer rules on it.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -3933,7 +3968,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 178 | Expenses without vendors (§ 7 2026-09-27 18:34 and 2026-09-27 21:40): the Expenses module no longer requires Vendors, the vendor field shows when Vendors is on, an optional free-text « Payé à »; after 174 | S | done | - | api/src/Module/Expenses/** api/migrations/** web/src/app/expenses/** |
 | 179 | Recurring expenses (§ 7 2026-09-27 18:34): rent, electricity, internet repeated from one model; after row 80 | M | todo | - | |
 | 180 | Trésorerie (§ 7 2026-09-27 18:34): cash and bank accounts, a balance, typed movements for what is not a purchase (drawings, contributions, loan principal, taxes paid, transfers); after row 80 | L | todo | - | |
-| 181 | Large-data run (§ 7 2026-09-27 18:59): `make scale-data` / `make up-scale` in steps of 100k to 10m invoices, a large company and a wide platform, real documents cloned, measured per list, screen and operation; after 178 | L | todo | - | api/src/DataFixtures/** Makefile docs/** |
+| 181 | Large-data run (§ 7 2026-09-27 18:59): `make scale-data` / `make up-scale` in steps of 100k to 10m invoices, a large company and a wide platform, real documents cloned, measured per list, screen and operation; after 178; slice 1 (`app:scale:generate`, `make scale-data`: one company grown by cloning its invoice graph, resumable, numbered in date order) built, slice 2 (the measurement of every list, search, summary, PDF and export, then the two indexes it may show missing) and slice 3 (`make up-scale`, the wide platform, migration time, backup and restore) to do | L | doing | - | api/src/DataFixtures/** api/tests/Functional/ScaleGeneratorTest.php Makefile docs/** |
 | 182 | Data health check (§ 7 2026-09-27 18:59): `app:data:check` over the invariants, after generation, nightly with the worker and told to the operator | M | todo | - | |
 | 183 | The whole app from a phone (§ 7 2026-09-27 19:16): sign-in through the LAN door tested and fixed, the LAN address as the app's own when detected, `make up` prints it; before 178 | S | done | 409ad73 | compose.yaml Makefile infra/** api/config/** |
 | 184 | Live development by default (§ 7 2026-09-27 19:16, 19:20 and 20:30): `make up` mounts the api source with FrankenPHP watch, OPcache revalidating at once, Angular dev server with live reload, through the LAN door too; `make up-images` keeps the images CI runs; before 178 | M | done | - | compose*.yaml Makefile infra/** web/** docs/START.md |

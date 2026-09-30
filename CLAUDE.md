@@ -96,6 +96,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - `api/src/DataFixtures/` — the demo dataset (`make fixtures`, `docs/START.md` § 4), DoctrineFixturesBundle's own place,
   outside the contexts: `DemoCatalogue` is the data, `DemoCompanies` writes it through the use cases only, `Timeline`
   runs dated steps in order under a moved clock. A new workflow or state belongs in it; `DemoFixturesTest` loads it.
+  `DataFixtures/Scale/` is the large-data generator (`make scale-data`, docs/START.md § 4): it clones the demo company's
+  invoice graph in SQL, and `ScaleGenerator::unaccounted` fails when a new table reaching that graph is not classified.
 - `api/src/<Context>/{Domain,Application,Infrastructure}/` — `Identity`, `Tenancy`, `Audit`, `Inbox` (the notification
   centre behind the `Notifications` port), `Fiscal`, `Settings` (the settings engine: declarations collected from every
   `DeclaresSettings` service, the three chains, `ReadSetting`), `ModuleRegistry` (the catalogue collected from every
@@ -164,10 +166,15 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `/stack/tools/nvm/versions/node/v26.*/bin` (v26.8.2 on 2026-09-13; /stack's env-update bumps the patch), which a
   fresh shell does not have on PATH.
 - PHP 8.5 for the api tier, as in CI. The host's first `php` on PATH is phpbrew's `php-master` (8.6-dev), which
-  php-cs-fixer refuses to run on: prepend `/stack/tools/phpbrew/php/php-8.5.10/bin` before `composer gate`.
+  php-cs-fixer refuses to run on: prepend `/stack/tools/phpbrew/php/php-8.5.11/bin` (8.5.10 was replaced by /stack's env-update; `ls /stack/tools/phpbrew/php`) before `composer gate`.
 
 ## Lessons
 
+- A raw DBAL result is `mixed` under PHPStan max and a bare cast is refused: read it through a validating helper
+  (`DataFixtures/Scale/Rows`) that throws on the unexpected. A sort or uniqueness check over numbers must partition by
+  the series (company, establishment, document type), or another company's own numbers interleave (2026-09-29).
+- `doctrine:fixtures:load` from the host needs Mailpit (`docker compose up -d --wait mailpit`, SMTP on :8093), or it dies
+  mid-load with a connection refused; Centrifugo being down only warns (2026-09-29).
 - Stage first, then run the checks, then commit: the SPDX gate enumerates `git ls-files`, and this clone has
   `core.fileMode=false`, so a new script also needs `git update-index --chmod=+x` (the executable-bits gate catches it).
 - Use `git grep`, not `grep -rn`, for completeness sweeps; use `git --no-pager -c core.pager=cat diff --no-ext-diff`

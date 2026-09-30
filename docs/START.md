@@ -227,6 +227,24 @@ therefore also a smoke test of those workflows.
 
 Demo stays empty of business rows; the e2e suite writes into it.
 
+### A large company: `make scale-data`
+
+To know the product holds for years of use, **`make scale-data SIZE=100k`** (`1m`, `5m`, `10m`) grows Carthage Conseil
+to that many invoice rows in **its own database, `twes_scale`**: the development data and the tests are never touched,
+and the command refuses any database not named `*_scale` or `*_test`. It clones the company's invoice graph in SQL,
+spread over ten years: invoices with their lines, taxes and payments, credit notes, and the customers they name, each
+customer set with fake names from a fixed seed. Every clone is a state the application can produce, and its numbers
+follow its dates through the real numbering series, so the next real issue continues after them.
+
+- **Resumable.** It works in chunks and keeps its progress in the `scale` schema of that database (never a migration).
+  If a run stops, run it again; a run with nothing to add adds nothing; raising `SIZE` adds copies and renumbers.
+  A different seed or span needs a fresh database.
+- **Not grown yet:** expenses, stock movements, audit rows, delivery notes, contacts and stored files keep their base
+  rows. A clone has no stored PDF: it is rendered on first request, as an issued document without one already is.
+- **Older unpaid invoices stay unpaid**, so the open-invoice figures grow with the size; read the home summary at scale
+  with that in mind.
+- Not wired to `make up` yet: point `DATABASE_URL` at `twes_scale` to look at it.
+
 ### One account per role
 
 Each demo company also gets **one member of each built-in role**, so what a role may not do is something you can

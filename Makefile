@@ -13,7 +13,7 @@ COMPOSE_PROFILES ?= $(if $(LAN_HOST),lan)
 # recipe starts, sees the same services. Never set in .env, which a plain `docker compose` (CI's) reads too.
 COMPOSE_FILE ?= compose.yaml:compose.live.yaml
 export LAN_HOST LAN_ORIGIN COMPOSE_PROFILES COMPOSE_FILE
-.PHONY: up up-images live-refresh down reset logs migrate seed fixtures operator-code versions api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e gallery notices
+.PHONY: up up-images live-refresh down reset logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e gallery notices
 
 up:            ## start the whole stack LIVE: an edit under api/ or web/ shows without a rebuild (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, a phone's HTTPS door :8443), then seed
 	@# The live volumes mount inside the host's api/ and web/; made here, as this user, or Docker makes them as root.
@@ -38,6 +38,13 @@ seed:          ## built-in roles, the operator (operator@twes.local) with a know
 
 fixtures:      ## the demo companies Carthage Conseil (TN) and Atelier Mercier (FR), five months of activity written through the use cases; after make seed; appends, never empties the database; a company already there is left as it is
 	docker compose exec -T api bin/console doctrine:fixtures:load --append --no-interaction
+
+# A large company, in its own database (docs/SPEC.md § 7, 2026-09-27, row 181). SIZE is the invoice count: 100k, 1m, 5m, 10m.
+SIZE ?= 100k
+SCALE_INVOICES := $(subst m,000000,$(subst k,000,$(SIZE)))
+scale-data:    ## SIZE=100k|1m|5m|10m: a large company (the demo's Carthage Conseil, grown by cloning its invoice graph) in its own database twes_scale; the development data is never touched; resumable, so run it again if it stops
+	printf '%s\n' "SELECT 'CREATE DATABASE twes_scale OWNER twes' WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'twes_scale')\\gexec" | docker compose exec -T postgres psql -U twes -d postgres
+	docker compose exec -T -e DATABASE_URL="postgresql://twes:$${POSTGRES_PASSWORD:-twes}@postgres:5432/twes_scale?serverVersion=18" api sh -c 'bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration && bin/console app:seed --operator-password=twes-operator-dev --operator-totp-secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP && bin/console doctrine:fixtures:load --append --no-interaction && bin/console app:scale:generate --company="Carthage Conseil" --invoices=$(SCALE_INVOICES)'
 
 operator-code: ## the seeded operator's authenticator code, with how long it lives (a wrong, reused or EXPIRED one spends the 5-per-5-minutes budget e2e also spends)
 	docker compose exec -T api php -r 'require "vendor/autoload.php"; $$left = 30 - (time() % 30); if ($$left < 12) { fwrite(STDERR, "waiting {$$left}s: the code now would expire while you type it\n"); sleep($$left); $$left = 30; } echo (new App\Identity\Infrastructure\Mfa\OtphpTotpCodes())->codeAt("JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP", new DateTimeImmutable()), "  (valid {$$left}s)", PHP_EOL;'
