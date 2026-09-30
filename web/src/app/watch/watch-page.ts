@@ -41,6 +41,10 @@ export class WatchPage implements OnInit {
   protected readonly lines = computed(() =>
     (this.list()?.items ?? []).map((item) => watchLine(item, this.format)),
   );
+  /** The API sends a page of the conditions and the whole count (docs/SPEC.md § 7, 2026-09-30 23:25). */
+  protected readonly more = computed(() =>
+    Math.max(0, (this.list()?.count ?? 0) - (this.list()?.items.length ?? 0)),
+  );
 
   async ngOnInit(): Promise<void> {
     const companyId = this.auth.me()?.company?.id;

@@ -36,6 +36,12 @@ final class WatchResource
 {
     public const string READ = 'watch:read';
 
+    /**
+     * How many conditions one answer carries. A company grows its late customers with its customers (4437 items, 871 KB
+     * at 100k invoices, read by the home for a count), so the answer is a page of them and `count` stays the whole.
+     */
+    public const int MAX_ITEMS = 200;
+
     #[ApiProperty(identifier: false)]
     #[Groups([self::READ])]
     public int $count = 0;
@@ -61,7 +67,7 @@ final class WatchResource
     {
         $resource = new self();
         $resource->count = \count($items);
-        $resource->items = array_map(static fn (WatchItem $item): array => ['kind' => $item->kind, 'subjectId' => $item->subjectId, 'params' => $item->params], $items);
+        $resource->items = array_map(static fn (WatchItem $item): array => ['kind' => $item->kind, 'subjectId' => $item->subjectId, 'params' => $item->params], \array_slice($items, 0, self::MAX_ITEMS));
 
         return $resource;
     }

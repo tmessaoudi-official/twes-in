@@ -28,6 +28,11 @@
           </li>
         }
       </ul>
+      @if (more() > 0) {
+        <p class="text-sm text-on-surface-variant" data-testid="watch-more">
+          {{ 'watch.more' | translate: { count: more() } }}
+        </p>
+      }
     }
   }
 </section>

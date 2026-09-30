@@ -22,6 +22,7 @@ class StaticLoader implements TranslateLoader {
     return of({
       watch: {
         none: 'Rien à surveiller.',
+        more: '{{count}} de plus non affichés',
         kinds: {
           'invoices.late_customer':
             '{{customer}} : {{amount}} {{currency}} en retard de {{days}} jours',
@@ -133,6 +134,17 @@ describe('WatchPage', () => {
     const lot = q('watch-item-1')!;
     expect(lot.textContent).toContain('Lot L-1 de Colle : 3, le 05/10/2026');
     expect(lot.querySelector('a')?.getAttribute('href')).toBe('/products/p1');
+  });
+
+  // docs/SPEC.md § 7, 2026-09-30 23:25: the API sends a page of the conditions and the whole count.
+  it('says how many conditions the page leaves out, and nothing when it shows them all', async () => {
+    current.set({ ...list, count: 4437 });
+    await open();
+    expect(q('watch-more')?.textContent).toContain('4435 de plus non affichés');
+
+    current.set(list);
+    fixture.detectChanges();
+    expect(q('watch-more')).toBeNull();
   });
 
   // docs/SPEC.md § 7, 2026-09-25 12:45, row 130: its figures and days as the person chose them.

@@ -2610,6 +2610,7 @@
     "none": "Rien à surveiller.",
     "count": "À surveiller : {{count}}",
     "see": "Voir",
+    "more": "{{count}} de plus non affichés",
     "errors": {
       "unavailable": "La liste n'a pas pu être lue. Réessayez dans un instant."
     },

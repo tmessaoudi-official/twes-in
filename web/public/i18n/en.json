@@ -2610,6 +2610,7 @@
     "none": "Nothing to watch.",
     "count": "To watch: {{count}}",
     "see": "See",
+    "more": "{{count}} more not shown",
     "errors": {
       "unavailable": "The list could not be read. Try again in a moment."
     },
