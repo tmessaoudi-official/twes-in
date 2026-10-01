@@ -28,6 +28,7 @@ use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\MembershipRepository;
 use App\Tenancy\Domain\Role;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -59,7 +60,9 @@ final readonly class ManagePayments
         private AuditTrail $audit,
         private ClockInterface $clock,
         private Transactions $transactions,
+        #[Autowire(param: 'app.signup.login_url')]
         private string $loginUrl,
+        #[Autowire(param: 'app.platform_url')]
         private string $platformUrl,
     ) {
     }

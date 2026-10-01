@@ -12,6 +12,7 @@ namespace App\Identity\Application\Mfa;
 use App\Identity\Application\SecretCipher;
 use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\UserRepository;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -27,6 +28,7 @@ final readonly class BeginTotpEnrolment
         private UserRepository $users,
         private TotpCodes $totp,
         private SecretCipher $cipher,
+        #[Autowire(param: 'app.mfa.issuer')]
         private string $issuer,
     ) {
     }

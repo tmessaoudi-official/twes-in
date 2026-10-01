@@ -69,23 +69,6 @@ services:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
 
-    _instanceof:
-        # Every module's settings reach the one catalogue (docs/SPEC.md § 3 Settings).
-        App\Settings\Application\DeclaresSettings:
-            tags: ['app.settings.declarations']
-        # Every module's manifest reaches the one catalogue (docs/SPEC.md § 3 Modules).
-        App\ModuleRegistry\Application\DeclaresModule:
-            tags: ['app.modules.declarations']
-        # Every module's import subjects reach the one catalogue (docs/SPEC.md § 7, 2026-09-17).
-        App\ImportExport\Application\DeclaresImport:
-            tags: ['app.import.declarations']
-        # Every module's watch conditions reach the one catalogue (docs/SPEC.md § 7, 2026-09-24 12:10).
-        App\Watch\Application\DeclaresWatch:
-            tags: ['app.watch.declarations']
-        # Every context's step of « Premiers pas » reaches the one catalogue (docs/SPEC.md § 7, 2026-09-25 22:17).
-        App\FirstSteps\Application\DeclaresFirstStep:
-            tags: ['app.first_steps.declarations']
-
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
     App\:
@@ -94,64 +77,8 @@ services:
             - '../src/Kernel.php'
         # Domain/ is scanned too: its entities and value objects are never injected and are dropped as unused, while
         # its repository interfaces are the ports the resource aliases to their one adapter (Symfony aliases every
-        # interface with a single implementation). Application use cases carrying policy values get them here.
-
-    App\Settings\Application\SettingCatalog:
-        arguments:
-            $declarations: !tagged_iterator app.settings.declarations
-    App\ModuleRegistry\Application\ModuleCatalog:
-        arguments:
-            $declarations: !tagged_iterator app.modules.declarations
-    App\ImportExport\Application\ImportCatalogue:
-        arguments:
-            $declarations: !tagged_iterator app.import.declarations
-    App\Watch\Application\WatchCatalogue:
-        arguments:
-            $declarations: !tagged_iterator app.watch.declarations
-    App\FirstSteps\Application\FirstStepsCatalogue:
-        arguments:
-            $declarations: !tagged_iterator app.first_steps.declarations
-    App\ImportExport\Application\RunImport:
-        arguments:
-            $maxRows: '%app.import.max_rows%'
-    App\Identity\Application\Login\RecordFailedLogin:
-        arguments:
-            $lockAfterFailures: '%app.auth.lock_after_failures%'
-            $lockDuration: '%app.auth.lock_duration%'
-    App\Tenancy\Application\Invitation\InviteToCompany:
-        arguments:
-            $acceptUrlTemplate: '%app.invitation.accept_url%'
-            $validFor: '%app.invitation.valid_for%'
-    App\Tenancy\Application\Signup\RequestSignup:
-        arguments:
-            $linkUrlTemplate: '%app.signup.link_url%'
-            $loginUrl: '%app.signup.login_url%'
-            $validFor: '%app.signup.valid_for%'
-    App\Tenancy\Application\Company\DecideCompanyApproval:
-        arguments:
-            $loginUrl: '%app.signup.login_url%'
-    # security.txt names its own address and the Security page, on the origin the SPA is served from.
-    App\Legal\Application\SecurityTxt:
-        arguments:
-            $origin: '%env(DEFAULT_URI)%'
-    App\Licensing\Application\ManagePayments:
-        arguments:
-            $loginUrl: '%app.signup.login_url%'
-            $platformUrl: '%app.platform_url%'
-
-    App\Identity\Application\Mfa\BeginTotpEnrolment:
-        arguments:
-            $issuer: '%app.mfa.issuer%'
-
-    App\Files\Application\Attachments:
-        arguments:
-            $maxBytes: '%app.files.upload_max_bytes%'
-            $allowedTypes: '%app.files.attachment_types%'
-            $perSubject: '%app.files.attachments_per_subject%'
-
-    App\Inbox\Application\NotificationCentre:
-        arguments:
-            $pageSize: '%app.inbox.page_size%'
+        # interface with a single implementation). Values and tags are attributes on the classes and interfaces that
+        # take them (docs/SPEC.md § 7, 2026-10-01); what stays here is what no attribute can say.
 
     League\Flysystem\FilesystemOperator:
         factory: ['App\Files\Infrastructure\Flysystem\FilesystemFactory', 'create']

@@ -15,6 +15,7 @@ use App\Tenancy\Domain\Signup;
 use App\Tenancy\Domain\SignupRepository;
 use App\Tenancy\Domain\SignupToken;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * The first step of signup: an address asks, and a mail answers. An address with no account is sent a link; one that
@@ -29,8 +30,11 @@ final readonly class RequestSignup
         private SignupRepository $signups,
         private SignupMailer $mailer,
         private ClockInterface $clock,
+        #[Autowire(param: 'app.signup.link_url')]
         private string $linkUrlTemplate,
+        #[Autowire(param: 'app.signup.login_url')]
         private string $loginUrl,
+        #[Autowire(param: 'app.signup.valid_for')]
         private string $validFor,
     ) {
     }

@@ -12,12 +12,14 @@ namespace App\Watch\Application;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
+use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
  * A module's part of « À surveiller »: the subjects it asks a person to look at, each a kind of condition. The home reads
  * only `count`, so a subject's count is its own statement and never builds the rows; a subject's rows are read one page
  * at a time, when somebody opens it (docs/SPEC.md § 7, the subject pages).
  */
+#[AutoconfigureTag('app.watch.declarations')]
 interface DeclaresWatch
 {
     /** Stable, lowercase: the prefix of every kind it answers (`invoices`, `stock`), and the order of the list. */

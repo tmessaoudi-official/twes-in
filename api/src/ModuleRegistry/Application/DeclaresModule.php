@@ -9,10 +9,13 @@ declare(strict_types=1);
 
 namespace App\ModuleRegistry\Application;
 
+use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
+
 /**
  * A module, declared once, by a service inside its own directory `src/Module/<Name>/`. Every resource under that
  * directory belongs to the module: switched off, they answer 404.
  */
+#[AutoconfigureTag('app.modules.declarations')]
 interface DeclaresModule
 {
     public function manifest(): ModuleManifest;

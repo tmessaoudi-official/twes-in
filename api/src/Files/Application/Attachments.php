@@ -14,6 +14,7 @@ use App\Files\Domain\AttachmentRepository;
 use App\Files\Domain\StoredFile;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -28,8 +29,11 @@ final readonly class Attachments
         private Files $files,
         private AttachmentRepository $attachments,
         private ClockInterface $clock,
+        #[Autowire(param: 'app.files.upload_max_bytes')]
         private int $maxBytes,
+        #[Autowire(param: 'app.files.attachment_types')]
         private array $allowedTypes,
+        #[Autowire(param: 'app.files.attachments_per_subject')]
         private int $perSubject,
     ) {
     }

@@ -11,6 +11,7 @@ namespace App\ImportExport\Application;
 
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Domain\Company;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /** Every module's import declaration, collected once (docs/SPEC.md § 3, the same shape as settings and modules). */
 final readonly class ImportCatalogue
@@ -19,7 +20,7 @@ final readonly class ImportCatalogue
     private array $declarations;
 
     /** @param iterable<DeclaresImport> $declarations */
-    public function __construct(iterable $declarations, private ModuleStates $modules)
+    public function __construct(#[AutowireIterator('app.import.declarations')] iterable $declarations, private ModuleStates $modules)
     {
         $byKey = [];
         foreach ($declarations as $declaration) {

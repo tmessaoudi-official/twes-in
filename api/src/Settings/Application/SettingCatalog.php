@@ -11,6 +11,7 @@ namespace App\Settings\Application;
 
 use App\Settings\Domain\SettingChain;
 use App\Settings\Domain\SettingDefinition;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /** Every declared setting. A key it does not know can be neither read nor written. */
 final readonly class SettingCatalog
@@ -23,7 +24,7 @@ final readonly class SettingCatalog
      *
      * @throws \LogicException when two modules declare the same key
      */
-    public function __construct(iterable $declarations)
+    public function __construct(#[AutowireIterator('app.settings.declarations')] iterable $declarations)
     {
         $definitions = [];
         $keys = [];

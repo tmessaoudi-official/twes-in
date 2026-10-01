@@ -11,6 +11,7 @@ namespace App\FirstSteps\Application;
 
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Domain\Company;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /** Every context's first step, collected once (docs/SPEC.md § 3, the same shape as settings, imports and watches). */
 final readonly class FirstStepsCatalogue
@@ -19,7 +20,7 @@ final readonly class FirstStepsCatalogue
     private array $declarations;
 
     /** @param iterable<DeclaresFirstStep> $declarations */
-    public function __construct(iterable $declarations, private ModuleStates $modules)
+    public function __construct(#[AutowireIterator('app.first_steps.declarations')] iterable $declarations, private ModuleStates $modules)
     {
         $byKey = [];
         foreach ($declarations as $declaration) {

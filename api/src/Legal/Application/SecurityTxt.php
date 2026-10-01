@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Legal\Application;
 
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+
 /**
  * The platform's `/.well-known/security.txt` (RFC 9116), written from the security contact the operator filled in
  * (`legal.security.email`) and pointing at the Security page for the rest.
@@ -24,7 +26,7 @@ final readonly class SecurityTxt
 
     private string $origin;
 
-    public function __construct(string $origin)
+    public function __construct(#[Autowire(env: 'DEFAULT_URI')] string $origin)
     {
         $this->origin = rtrim($origin, '/');
     }

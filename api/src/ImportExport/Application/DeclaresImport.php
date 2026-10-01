@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\ImportExport\Application;
 
 use App\Tenancy\Domain\Company;
+use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -17,6 +18,7 @@ use Symfony\Component\Uid\Uuid;
  * settings and its manifest. Every implementation is collected into the one catalogue, so adding customers, products,
  * vendors or opening stock never touches the import engine.
  */
+#[AutoconfigureTag('app.import.declarations')]
 interface DeclaresImport
 {
     /** Stable, lowercase, plural: what the URL and the file name say — `customers`, `products`. */

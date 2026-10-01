@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * docs/SPEC.md § 3 "Architecture style": every bounded context under src/ has Domain/, Application/ and
  * Infrastructure/, and dependencies point inwards only. Domain and Application know nothing of Symfony, API
- * Platform or Doctrine beyond the ruled carve-outs (identifiers, PSR-20 clock, attribute mapping), and never of
+ * Platform or Doctrine beyond the ruled carve-outs (identifiers, PSR-20 clock, attribute mapping, and for Application the container's inert wiring attributes), and never of
  * any Infrastructure. The check reads `use` statements and inline fully-qualified names alike.
  */
 final class LayerDependenciesTest extends TestCase
@@ -33,6 +33,8 @@ final class LayerDependenciesTest extends TestCase
     private const array APPLICATION_ALLOWED = [
         'Symfony\Component\Uid\\',
         'Psr\Clock\\',
+        // Inert metadata that says where a value or a tag comes from (docs/SPEC.md § 7, 2026-10-01): the container reads it, the class never runs it.
+        'Symfony\Component\DependencyInjection\Attribute\\',
     ];
 
     private const array FRAMEWORKS = ['Symfony\\', 'ApiPlatform\\', 'Doctrine\\', 'Psr\\'];

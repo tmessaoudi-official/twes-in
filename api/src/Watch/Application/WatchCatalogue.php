@@ -11,6 +11,7 @@ namespace App\Watch\Application;
 
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Domain\Company;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /** The subjects of « À surveiller » every module declared, for one company and one member. */
 final readonly class WatchCatalogue
@@ -19,7 +20,7 @@ final readonly class WatchCatalogue
     private array $declarations;
 
     /** @param iterable<DeclaresWatch> $declarations */
-    public function __construct(iterable $declarations, private ModuleStates $modules)
+    public function __construct(#[AutowireIterator('app.watch.declarations')] iterable $declarations, private ModuleStates $modules)
     {
         $byKey = [];
         foreach ($declarations as $declaration) {

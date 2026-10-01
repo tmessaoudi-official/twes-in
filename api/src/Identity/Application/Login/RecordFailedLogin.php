@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Domain\UserRepository;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * The account lockout: consecutive wrong credentials lock the account for a while. A wrong password counts, and
@@ -28,7 +29,9 @@ final readonly class RecordFailedLogin
         private UserRepository $users,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        #[Autowire(param: 'app.auth.lock_after_failures')]
         private int $lockAfterFailures,
+        #[Autowire(param: 'app.auth.lock_duration')]
         private string $lockDuration,
     ) {
     }

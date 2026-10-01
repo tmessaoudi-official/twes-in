@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\FirstSteps\Application;
 
 use App\Tenancy\Domain\Company;
+use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
  * One step of « Premiers pas » (docs/SPEC.md § 7, 2026-09-25 22:17, row 139), declared by the context that owns what it
@@ -17,6 +18,7 @@ use App\Tenancy\Domain\Company;
  * there on every read — a customer exists, the registration number is filled in — never ticked by hand, so a step
  * undone (the only customer deleted) comes back by itself.
  */
+#[AutoconfigureTag('app.first_steps.declarations')]
 interface DeclaresFirstStep
 {
     /** Stable, lowercase, dotted: what the screen translates and links from (`customers.first`). */

@@ -154,7 +154,7 @@ reads Identity's `SecurityUser`.
 | Layer | Holds | May import |
 |---|---|---|
 | `Domain/` | entities and aggregates, value objects, domain events, repository interfaces, domain services, exceptions; every business rule | PHP, `Shared/…/Domain`, `Symfony\Component\Uid` (identifiers), `Doctrine\ORM\Mapping` and `Doctrine\DBAL\Types\Types` on entities (mapping by attributes, the driver Doctrine recommends; no XML), `Doctrine\Common\Collections` for a one-to-many an aggregate owns (2026-09-14) |
-| `Application/` | use cases (one class per command or query, invoked by a handler method), their plain input and output types, the ports the use cases need (clock, password hasher, audit trail, current company, event dispatch) | `Domain`, `Shared`, `Psr\Clock`, `Symfony\Component\Uid`, PHP |
+| `Application/` | use cases (one class per command or query, invoked by a handler method), their plain input and output types, the ports the use cases need (clock, password hasher, audit trail, current company, event dispatch) | `Domain`, `Shared`, `Psr\Clock`, `Symfony\Component\Uid`, `Symfony\Component\DependencyInjection\Attribute\` (inert wiring metadata, § 7 2026-10-01), PHP |
 | `Infrastructure/` | adapters: Doctrine repositories, Symfony security (user provider, authenticators, voters, listeners), API Platform resources with providers and processors, console commands, session handler, mailers | anything |
 
 An architecture test (`api/tests/Architecture/`) fails the suite when a `Domain/` or `Application/`
@@ -3837,7 +3837,17 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   factory, normalised from `App_KernelTestDebugContainer.xml`), and a sabotage swapping one parameter name shows in that
   diff; `lint:container` passes in dev; the 103 per-directory PHPUnit runs exit 0 (the one non-zero, `ApiTestCase.php`, is an
   abstract base with no tests); production's container is compiled by CI's `prod-image`, because `lint:container --env=prod`
-  refuses to run without `APP_SECRET` by design. Not done: slice B.
+  refuses to run without `APP_SECRET` by design. Slice B follows below.
+- [2026-10-01 22:57] AGREED (developer's ruling of 2026-10-01 10:56, slice B done): `Symfony\Component\DependencyInjection\Attribute\` is
+  a ruled carve-out for Application, with the reasoning of the Doctrine mapping carve-out: the attributes are inert
+  metadata that say where a constructor value or a tag comes from, the class never runs them, and no framework behaviour
+  enters the use case. `LayerDependenciesTest::APPLICATION_ALLOWED` names it. Fifteen Application classes take their
+  parameters, env values and tagged iterators through `#[Autowire]` and `#[AutowireIterator]`, and the five `Declares*`
+  interfaces carry `#[AutoconfigureTag]`, so `services.yaml` lost `_instanceof` and every per-service `arguments:`; it keeps
+  the parameters, the directory scan, the Flysystem factory and `when@test`. Proof: the whole compiled test container (3603
+  definitions with their arguments, tags and aliases) is identical before and after, except that `Attachments`' array
+  parameter is inlined instead of read through a placeholder (same value); removing one `#[AutoconfigureTag]` changes 14
+  lines of that comparison. Architecture tests and PHPStan are run on the result.
 
 ## 8. Status
 

@@ -11,6 +11,7 @@ namespace App\ImportExport\Application;
 
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -26,6 +27,7 @@ final readonly class RunImport
 {
     public function __construct(
         private Transactions $transactions,
+        #[Autowire(param: 'app.import.max_rows')]
         private int $maxRows,
     ) {
     }

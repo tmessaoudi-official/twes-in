@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\ModuleRegistry\Application;
 
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
+
 /** Every declared module. A declaration that could never be honoured stops the application from booting. */
 final readonly class ModuleCatalog
 {
@@ -21,7 +23,7 @@ final readonly class ModuleCatalog
      * @throws \LogicException when a key is declared twice, or a dependency is undeclared or circular (the module itself
      *                         included), or a module that ships depends on one only planned
      */
-    public function __construct(iterable $declarations, ?PlannedModules $planned = null)
+    public function __construct(#[AutowireIterator('app.modules.declarations')] iterable $declarations, ?PlannedModules $planned = null)
     {
         $manifests = [];
         $declared = [];

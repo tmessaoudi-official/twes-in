@@ -11,6 +11,7 @@ namespace App\Inbox\Application;
 
 use App\Inbox\Domain\InboxRepository;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /** What the bell shows and what reading does. Every call is scoped to the recipient: there is no other way in. */
@@ -19,6 +20,7 @@ final readonly class NotificationCentre
     public function __construct(
         private InboxRepository $inbox,
         private ClockInterface $clock,
+        #[Autowire(param: 'app.inbox.page_size')]
         private int $pageSize,
     ) {
         if ($pageSize < 1) {

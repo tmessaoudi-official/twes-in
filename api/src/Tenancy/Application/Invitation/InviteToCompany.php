@@ -28,6 +28,7 @@ use App\Tenancy\Domain\InvitationToken;
 use App\Tenancy\Domain\MembershipRepository;
 use App\Tenancy\Domain\RoleRepository;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -52,7 +53,9 @@ final readonly class InviteToCompany
         private Notifications $notifications,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        #[Autowire(param: 'app.invitation.accept_url')]
         private string $acceptUrlTemplate,
+        #[Autowire(param: 'app.invitation.valid_for')]
         private string $validFor,
         private Transactions $transactions,
     ) {

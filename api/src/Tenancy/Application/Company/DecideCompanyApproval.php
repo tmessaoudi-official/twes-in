@@ -17,6 +17,7 @@ use App\Tenancy\Domain\CompanyRepository;
 use App\Tenancy\Domain\MembershipRepository;
 use App\Tenancy\Domain\Role;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -35,6 +36,7 @@ final readonly class DecideCompanyApproval
         private CompanyApprovalMailer $mailer,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        #[Autowire(param: 'app.signup.login_url')]
         private string $loginUrl,
         private Transactions $transactions,
     ) {

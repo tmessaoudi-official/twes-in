@@ -10,11 +10,13 @@ declare(strict_types=1);
 namespace App\Settings\Application;
 
 use App\Settings\Domain\SettingDefinition;
+use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
  * A module's settings, declared in code (docs/SPEC.md § 3 Settings). Every implementation is collected into the
  * catalogue, so a module adds its settings without touching the engine.
  */
+#[AutoconfigureTag('app.settings.declarations')]
 interface DeclaresSettings
 {
     /** @return iterable<SettingDefinition> */
