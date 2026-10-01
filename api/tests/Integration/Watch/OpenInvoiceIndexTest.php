@@ -32,13 +32,14 @@ final class OpenInvoiceIndexTest extends KernelTestCase
         $connection->beginTransaction();
         try {
             // A test table is tiny, and PostgreSQL rightly prefers reading it whole: forbid that. It then picks whichever
-            // index is cheapest on an empty table, which says nothing about the one under test, so every other index
-            // that can be dropped is dropped inside this transaction, which rolls back. Only an index whose predicate
+            // index is cheapest on an empty table (on CI's fresh database the unique number index, locally ours), which
+            // says nothing about the one under test, so every other index but the primary key is dropped inside this
+            // transaction, which rolls back. Only an index whose predicate
             // the query implies can then answer it.
             $connection->executeStatement('SET LOCAL enable_seqscan = off');
             foreach ($connection->fetchFirstColumn(
                 "SELECT c.relname FROM pg_index x JOIN pg_class c ON c.oid = x.indexrelid
-                  WHERE x.indrelid = 'invoice'::regclass AND NOT x.indisprimary AND NOT x.indisunique AND c.relname <> 'idx_invoice_open_due'",
+                  WHERE x.indrelid = 'invoice'::regclass AND NOT x.indisprimary AND c.relname <> 'idx_invoice_open_due'",
             ) as $other) {
                 self::assertIsString($other);
                 $connection->executeStatement('DROP INDEX '.$other);

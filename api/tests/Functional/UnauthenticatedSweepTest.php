@@ -42,6 +42,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         'format' => 'csv',
         'index' => 'index',
         'key' => 'signup.enabled',
+        'kind' => 'invoices.late_customer',
         'language' => 'fr',
         'moduleKey' => 'customers',
         'month' => '09',
