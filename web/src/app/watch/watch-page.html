@@ -8,31 +8,44 @@
     </p>
   }
 
-  @if (list() !== null) {
-    @if (lines().length === 0) {
-      <p data-testid="watch-none">{{ 'watch.none' | translate }}</p>
+  @if (summary() !== null) {
+    @if (summary()?.count === 0) {
+      <p class="flex items-center gap-2" data-testid="watch-none">
+        <mat-icon aria-hidden="true">check_circle</mat-icon>{{ 'watch.none' | translate }}
+      </p>
     } @else {
-      <ul class="flex flex-col gap-2" data-testid="watch-list">
-        @for (line of lines(); track $index) {
-          <li
-            class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
-            [attr.data-testid]="'watch-item-' + $index"
-          >
-            <span>{{ line.key | translate: line.params }}</span>
+      <ul class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-testid="watch-subjects">
+        @for (card of cards(); track card.kind) {
+          <li>
             <a
-              class="flex items-center gap-1 font-medium text-primary"
-              [routerLink]="line.link"
-              [queryParams]="line.query"
-              >{{ 'watch.see' | translate }}<mat-icon aria-hidden="true">chevron_right</mat-icon></a
+              class="block h-full no-underline"
+              [routerLink]="['/watch', card.kind]"
+              [attr.data-testid]="'watch-subject-' + card.kind"
             >
+              <mat-card appearance="outlined" class="h-full">
+                <mat-card-content class="flex flex-col gap-2">
+                  <span class="flex items-center justify-between gap-3">
+                    <span class="flex items-center gap-2 text-lg font-medium">
+                      <mat-icon aria-hidden="true">{{ card.icon }}</mat-icon>
+                      {{ 'watch.subjects.' + card.kind + '.title' | translate }}
+                    </span>
+                    <span class="text-2xl font-semibold" data-testid="watch-subject-count">{{
+                      card.count
+                    }}</span>
+                  </span>
+                  <span class="text-sm text-on-surface-variant">{{
+                    'watch.subjects.' + card.kind + '.hint' | translate
+                  }}</span>
+                  <span class="flex items-center gap-1 font-medium text-primary"
+                    >{{ 'watch.open' | translate
+                    }}<mat-icon aria-hidden="true">chevron_right</mat-icon></span
+                  >
+                </mat-card-content>
+              </mat-card>
+            </a>
           </li>
         }
       </ul>
-      @if (more() > 0) {
-        <p class="text-sm text-on-surface-variant" data-testid="watch-more">
-          {{ 'watch.more' | translate: { count: more() } }}
-        </p>
-      }
     }
   }
 </section>

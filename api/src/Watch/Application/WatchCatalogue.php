@@ -12,7 +12,7 @@ namespace App\Watch\Application;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Domain\Company;
 
-/** Every module's watch declaration, collected once (docs/SPEC.md § 3, the same shape as settings and imports). */
+/** The subjects of « À surveiller » every module declared, for one company and one member. */
 final readonly class WatchCatalogue
 {
     /** @var list<DeclaresWatch> */
@@ -30,27 +30,55 @@ final readonly class WatchCatalogue
             $byKey[$key] = $declaration;
         }
         ksort($byKey);
-
         $this->declarations = array_values($byKey);
     }
 
     /**
-     * What this member should watch in the company now: the conditions of every module switched on whose permission
-     * the member's role grants, in a stable order.
+     * What this member should watch in the company now: each subject of every module switched on whose permission the
+     * member's role grants, with its count, in a stable order. A subject with nothing in it is left out.
      *
      * @param \Closure(string): bool $may whether the member's role in the company grants a permission
      *
-     * @return list<WatchItem>
+     * @return list<array{kind: string, count: int}>
      */
-    public function itemsFor(Company $company, \DateTimeImmutable $today, \Closure $may): array
+    public function counts(Company $company, \DateTimeImmutable $today, \Closure $may): array
     {
-        $items = [];
+        $counts = [];
         foreach ($this->declarations as $declaration) {
-            if ($this->modules->isEnabled($company->getId(), $declaration->module()) && $may($declaration->permission())) {
-                array_push($items, ...$declaration->itemsFor($company, $today));
+            if (!$this->shown($declaration, $company, $may)) {
+                continue;
+            }
+            foreach ($declaration->kinds() as $kind) {
+                $count = $declaration->count($kind, $company, $today);
+                if ($count > 0) {
+                    $counts[] = ['kind' => $kind, 'count' => $count];
+                }
             }
         }
 
-        return $items;
+        return $counts;
+    }
+
+    /**
+     * The module that answers a kind, or null when there is none this member may see: a kind nobody declared, one of a
+     * module switched off and one the role may not read are all the same absence, so asking by name learns nothing.
+     *
+     * @param \Closure(string): bool $may
+     */
+    public function declarationOf(string $kind, Company $company, \Closure $may): ?DeclaresWatch
+    {
+        foreach ($this->declarations as $declaration) {
+            if (\in_array($kind, $declaration->kinds(), true)) {
+                return $this->shown($declaration, $company, $may) ? $declaration : null;
+            }
+        }
+
+        return null;
+    }
+
+    /** @param \Closure(string): bool $may */
+    private function shown(DeclaresWatch $declaration, Company $company, \Closure $may): bool
+    {
+        return $this->modules->isEnabled($company->getId(), $declaration->module()) && $may($declaration->permission());
     }
 }

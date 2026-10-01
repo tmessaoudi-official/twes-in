@@ -75,13 +75,13 @@ final class WatchTest extends ApiTestCase
         $this->customerId = $customer->getId()->toRfc4122();
     }
 
-    public function testWhatNeedsWatchingIsListedNowWithItsFigureAndLeavesWhenDealtWith(): void
+    public function testWhatNeedsWatchingIsCountedBySubjectAndEachSubjectIsAPageOfRowsToActOn(): void
     {
         $this->signedIn(['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'product.read', 'product.write', 'stock.read', 'stock.write']);
 
         $this->getJson($this->watch());
         self::assertResponseIsSuccessful();
-        self::assertSame([0, []], [$this->json()['count'] ?? null, $this->items()], 'a quiet company: nothing to watch');
+        self::assertSame([0, []], [$this->json()['count'] ?? null, $this->subjects()], 'a quiet company: nothing to watch');
 
         // A customer 40 days late on one invoice, and VIS sold on it (so VIS is not "unsold").
         $invoiceId = $this->issuedInvoice('VIS');
@@ -93,28 +93,52 @@ final class WatchTest extends ApiTestCase
         $this->sendJson('PUT', $this->company().'/products/'.$this->products['VIS'].'/reorder-points/'.$this->establishmentId, ['quantity' => '5']);
         self::assertResponseIsSuccessful();
 
-        // COLLE by lot: one lot expiring in 10 days, one in 60 (outside the 30-day window).
+        // COLLE by lot: one lot expiring in 10 days, one in 60 (outside the 30-day window), one gone off yesterday.
         $this->track('COLLE');
         $this->receive('COLLE', '3', 'L-SOON', '+10 days');
         $this->receive('COLLE', '4', 'L-LATER', '+60 days');
+        $this->receive('COLLE', '2', 'L-OLD', '-1 days');
 
         // GANT running out: 10 received, 9 delivered this month, so 1 left at 0.3 a day, about 3 days.
         $this->receive('GANT', '10');
         $this->deliver('GANT', '9');
 
         // SCIE and the service POSE were created long ago and never sold; only goods count as unsold.
-        $this->em()->getConnection()->executeStatement("UPDATE product SET created_at = now() - interval '120 days' WHERE company_id = ?", [$this->company->getId()->toRfc4122()]);
+        $this->em()->getConnection()->executeStatement('UPDATE product SET created_at = ?::date - 120 WHERE company_id = ?', [$this->today, $this->company->getId()->toRfc4122()]);
 
         $this->getJson($this->watch());
         self::assertResponseIsSuccessful();
         self::assertSame([
+            ['invoices.late_customer', 1],
+            ['invoices.unsold_products', 3],
+            ['stock.reorder_point', 1],
+            ['stock.running_out', 1],
+            ['stock.lot_expired', 1],
+            ['stock.lot_expiring', 1],
+        ], $this->subjects());
+        self::assertSame(8, $this->json()['count'] ?? null, 'the count is every row of every subject');
+        self::assertArrayNotHasKey('items', $this->json(), 'the summary carries counts, never rows');
+
+        self::assertSame([
             ['invoices.late_customer', $this->customerId, ['customer' => 'Carthage Conseil', 'invoices' => 1, 'amount' => $amountDue, 'currency' => 'TND', 'days' => 40]],
-            ['invoices.unsold_products', null, ['products' => 3, 'days' => 90]],
+        ], $this->rows('invoices.late_customer'));
+        self::assertSame([
+            ['invoices.unsold_products', $this->products['COLLE'], ['product' => 'Colle forte', 'reference' => 'COLLE', 'days' => 120]],
+            ['invoices.unsold_products', $this->products['GANT'], ['product' => 'Gants', 'reference' => 'GANT', 'days' => 120]],
+            ['invoices.unsold_products', $this->products['SCIE'], ['product' => 'Scie égoïne', 'reference' => 'SCIE', 'days' => 120]],
+        ], $this->rows('invoices.unsold_products'));
+        self::assertSame([
             ['stock.reorder_point', $this->products['VIS'], ['product' => 'Vis 6x40', 'reference' => 'VIS', 'establishment' => 'Quincaillerie', 'onHand' => '5.000', 'point' => '5.000']],
+        ], $this->rows('stock.reorder_point'));
+        self::assertSame([
             ['stock.running_out', $this->products['GANT'], ['product' => 'Gants', 'reference' => 'GANT', 'onHand' => '1.000', 'days' => 3]],
+        ], $this->rows('stock.running_out'));
+        self::assertSame([
+            ['stock.lot_expired', $this->products['COLLE'], ['product' => 'Colle forte', 'reference' => 'COLLE', 'lot' => 'L-OLD', 'expiresOn' => new \DateTimeImmutable($this->today)->modify('-1 days')->format('Y-m-d'), 'quantity' => '2.000', 'days' => -1]],
+        ], $this->rows('stock.lot_expired'));
+        self::assertSame([
             ['stock.lot_expiring', $this->products['COLLE'], ['product' => 'Colle forte', 'reference' => 'COLLE', 'lot' => 'L-SOON', 'expiresOn' => new \DateTimeImmutable($this->today)->modify('+10 days')->format('Y-m-d'), 'quantity' => '3.000', 'days' => 10]],
-        ], $this->items());
-        self::assertSame(5, $this->json()['count'] ?? null);
+        ], $this->rows('stock.lot_expiring'));
 
         // Dealt with: the invoice paid, VIS restocked above its point. Both leave by themselves.
         $this->postJson('/api/companies/'.$this->company->getId()->toRfc4122().'/invoices/'.$invoiceId.'/payments', ['date' => $this->today, 'amount' => $amountDue, 'method' => 'cash', 'reference' => null, 'notes' => null]);
@@ -122,7 +146,36 @@ final class WatchTest extends ApiTestCase
         $this->receive('VIS', '1');
 
         $this->getJson($this->watch());
-        self::assertSame(['invoices.unsold_products', 'stock.running_out', 'stock.lot_expiring'], array_column($this->items(), 0));
+        self::assertSame(['invoices.unsold_products', 'stock.running_out', 'stock.lot_expired', 'stock.lot_expiring'], array_column($this->subjects(), 0));
+    }
+
+    public function testASubjectIsPagedInAStableOrderWithItsWholeTotal(): void
+    {
+        $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write']);
+        $this->track('COLLE');
+        // Five lots on one product expiring the same day: every sort key but the last ties, so only a total order
+        // keeps the pages from repeating or dropping one.
+        foreach (['L-A', 'L-B', 'L-C', 'L-D', 'L-E'] as $lot) {
+            $this->receive('COLLE', '1', $lot, '+5 days');
+        }
+
+        $seen = [];
+        foreach ([1, 2, 3] as $page) {
+            $this->getJson($this->watch().'/stock.lot_expiring?itemsPerPage=2&page='.$page);
+            self::assertResponseIsSuccessful();
+            self::assertSame(5, $this->jsonPage()['totalItems'], 'the total is the whole, whatever the page');
+            foreach ($this->jsonList() as $row) {
+                $lot = $this->section($row, 'params')['lot'] ?? null;
+                self::assertIsString($lot, 'every row names its lot');
+                $seen[] = $lot;
+            }
+        }
+        self::assertCount(5, $seen);
+        self::assertSame($seen, array_values(array_unique($seen)), 'no row on two pages');
+        self::assertEqualsCanonicalizing(['L-A', 'L-B', 'L-C', 'L-D', 'L-E'], $seen, 'no row on none');
+
+        $this->getJson($this->watch().'/stock.lot_expiring?itemsPerPage=2&page=4');
+        self::assertSame([], $this->jsonList(), 'past the last page: nothing, not an error');
     }
 
     public function testEachThresholdIsACompanySetting(): void
@@ -134,7 +187,7 @@ final class WatchTest extends ApiTestCase
         $this->receive('COLLE', '3', 'L-LATER', '+60 days');
         $this->receive('GANT', '10');
         $this->deliver('GANT', '9');
-        $this->em()->getConnection()->executeStatement("UPDATE product SET created_at = now() - interval '120 days' WHERE company_id = ?", [$this->company->getId()->toRfc4122()]);
+        $this->em()->getConnection()->executeStatement('UPDATE product SET created_at = ?::date - 120 WHERE company_id = ?', [$this->today, $this->company->getId()->toRfc4122()]);
 
         $now = new \DateTimeImmutable();
         foreach (['watch.late_after_days' => 60, 'watch.unsold_after_days' => 180, 'watch.lot_expiry_days' => 90, 'watch.lead_days' => 2] as $key => $value) {
@@ -144,10 +197,10 @@ final class WatchTest extends ApiTestCase
 
         $this->getJson($this->watch());
         self::assertResponseIsSuccessful();
-        self::assertSame(['stock.lot_expiring'], array_column($this->items(), 0), '40 days late is under 60; 120 days unsold is under 180; 3 days of gloves is over 2; a lot in 60 days is within 90');
+        self::assertSame(['stock.lot_expiring'], array_column($this->subjects(), 0), '40 days late is under 60; 120 days unsold is under 180; 3 days of gloves is over 2; a lot in 60 days is within 90');
     }
 
-    public function testEachConditionIsShownToWhoMayReadItsSubjectWhileItsModuleIsOn(): void
+    public function testEachSubjectIsShownToWhoMayReadItWhileItsModuleIsOn(): void
     {
         $this->signedIn(['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'stock.read', 'stock.write'], 'writer@twes.local');
         $invoiceId = $this->issuedInvoice('VIS');
@@ -158,33 +211,55 @@ final class WatchTest extends ApiTestCase
 
         $this->signedIn(['company.read', 'stock.read'], 'keeper@twes.local', 'keeper');
         $this->getJson($this->watch());
-        self::assertSame(['stock.lot_expiring'], array_column($this->items(), 0), 'no invoice.read: no late customer');
+        self::assertSame(['stock.lot_expiring'], array_column($this->subjects(), 0), 'no invoice.read: no late customer');
+        self::assertSame(1, $this->json()['count'] ?? null, 'and none in the count');
+        $this->getJson($this->watch().'/invoices.late_customer');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a subject the role may not read is not there, whoever asks by name');
+        $this->getJson($this->watch().'/stock.lot_expiring');
+        self::assertResponseIsSuccessful();
         $this->sendJson('POST', '/api/auth/logout');
 
         $this->signedIn(['company.read', 'invoice.read'], 'clerk@twes.local', 'clerk');
         $this->getJson($this->watch());
-        self::assertSame(['invoices.late_customer'], array_column($this->items(), 0), 'no stock.read: no lot');
+        self::assertSame(['invoices.late_customer'], array_column($this->subjects(), 0), 'no stock.read: no lot');
+        $this->getJson($this->watch().'/stock.lot_expiring');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson($this->watch().'/no.such_subject');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a subject that does not exist is a 404, never a 500');
         $this->sendJson('POST', '/api/auth/logout');
 
         $this->signedIn(['invoice.read'], 'outsider@twes.local', 'outsider');
         $this->getJson($this->watch());
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the list is read with company.read');
+        $this->getJson($this->watch().'/invoices.late_customer');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'and so is each subject');
         $this->sendJson('POST', '/api/auth/logout');
 
         $this->em()->persist(ModuleState::of($this->managed(), 'inventory', false, new \DateTimeImmutable()));
         $this->em()->flush();
         $this->login('writer@twes.local', 'password-1234');
         $this->getJson($this->watch());
-        self::assertSame(['invoices.late_customer'], array_column($this->items(), 0), 'inventory switched off: no stock condition');
+        self::assertSame(['invoices.late_customer'], array_column($this->subjects(), 0), 'inventory switched off: no stock subject');
+        $this->getJson($this->watch().'/stock.lot_expiring');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor by name');
     }
 
-    /** @return list<array{mixed, mixed, mixed}> each item as kind, subject and figures */
-    private function items(): array
+    /** @return list<array{mixed, mixed}> each subject of the summary as kind and count */
+    private function subjects(): array
     {
-        $items = $this->json()['items'] ?? null;
-        self::assertIsArray($items);
+        $subjects = $this->json()['subjects'] ?? null;
+        self::assertIsArray($subjects);
 
-        return array_values(array_map(static fn (mixed $item): array => \is_array($item) ? [$item['kind'] ?? null, $item['subjectId'] ?? null, $item['params'] ?? null] : [null, null, null], $items));
+        return array_values(array_map(static fn (mixed $subject): array => \is_array($subject) ? [$subject['kind'] ?? null, $subject['count'] ?? null] : [null, null], $subjects));
+    }
+
+    /** @return list<array{mixed, mixed, mixed}> the rows of one subject, as kind, subject and figures */
+    private function rows(string $kind): array
+    {
+        $this->getJson($this->watch().'/'.$kind);
+        self::assertResponseIsSuccessful();
+
+        return array_map(static fn (array $row): array => [$row['kind'] ?? null, $row['subjectId'] ?? null, $row['params'] ?? null], $this->jsonList());
     }
 
     private function issuedInvoice(string $reference): string

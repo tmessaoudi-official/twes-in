@@ -3811,6 +3811,23 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   the suspects, [Unverified]). No `{SEQ:5}` overflow appeared (longest sequence 5 digits). Not run: the full `composer
   test`, `app:scale:generate` re-run on the final code, 5m and 10m, slice 3. Alternatives for the deep pages: keyset
   paging on `(created_at, id)`.
+- [2026-10-01 10:56] AGREED (developer, asked): DI wiring moves from `api/config/services.yaml` to Symfony attributes, as the framework
+  recommends. Slice A, after the Watch rework lands: attributes on Infrastructure classes (`#[Autowire]`, `#[AsAlias]`), no
+  invariant change. Slice B: a narrow ruled carve-out for `Symfony\Component\DependencyInjection\Attribute\` in Application
+  (inert metadata, the Doctrine mapping carve-out's reasoning), recorded here, so `services.yaml` keeps only parameters. Bundle
+  configuration in `packages/*.yaml` stays. Proof for both: `debug:container` before and after equivalent, Architecture tests green.
+- [2026-10-01 21:47] AGREED (developer, asked, mockups validated): the Watch rework of « À surveiller ». The overview `/watch` is one card per
+  subject with its true count and carries no row; each subject has its own paged table at `/watch/<kind>` (the kind as the
+  API names it, e.g. `invoices.late_customer`), with columns per subject, switcher chips with counts when several are
+  visible, and a row action into the overdue invoices or the product page. The API answers a summary (`GET .../watch`: the
+  whole count and one count per subject, no row) and a paged collection per subject (`GET .../watch/{kind}`, 404 for a
+  subject that is gone, switched off or not for the role). This replaces the per-kind cap of 2026-09-30 23:41: nothing is
+  truncated any more. Migration `Version20261001100000` adds the partial covering index `idx_invoice_open_due`, so the
+  late-customers count is an index-only scan. The web adapter turns that 404 into `WatchSubjectGone`, because only
+  `*-api.ts` may import HTTP (the lint rule). Certified by execution: web lint, prettier, the 1930-test unit suite
+  (one invoice spec timed out once under load 12 and passes alone, 46/46) and the build; API php-cs-fixer and the 26 Watch
+  and Architecture tests (422 assertions); a sabotage of the 404 mapping reds its own test. Not certified: the screens
+  rendered in a browser, e2e, and the 1m timing of the new endpoints (the Watch build was 3.4 s at 1m before this).
 
 ## 8. Status
 

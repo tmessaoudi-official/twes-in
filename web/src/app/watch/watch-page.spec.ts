@@ -10,65 +10,41 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
-import { type DateFormat, formatAmount, formatDay, type NumberStyle } from '../shared/i18n/format';
-import { FormatFacade } from '../shared/i18n/format-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from './watch-facade';
 import { WatchPage } from './watch-page';
-import type { WatchList } from './watch-types';
+import type { WatchError, WatchSummary } from './watch-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       watch: {
         none: 'Rien à surveiller.',
-        more: '{{count}} de plus non affichés',
-        kinds: {
-          'invoices.late_customer':
-            '{{customer}} : {{amount}} {{currency}} en retard de {{days}} jours',
-          'stock.lot_expiring': 'Lot {{lot}} de {{product}} : {{quantity}}, le {{expiresOn}}',
-          'stock.lot_expired': 'Lot {{lot}} de {{product}} périmé',
+        open: 'Ouvrir',
+        errors: { unavailable: 'Indisponible.' },
+        subjects: {
+          'invoices.late_customer': { title: 'Clients en retard', hint: 'Relancez-les.' },
+          'stock.lot_expired': { title: 'Lots périmés', hint: 'À sortir du stock.' },
         },
       },
     });
   }
 }
 
-const list: WatchList = {
-  count: 2,
-  items: [
-    {
-      kind: 'invoices.late_customer',
-      subjectId: 'c1',
-      params: { customer: 'Carthage', invoices: 1, amount: '1190.000', currency: 'TND', days: 40 },
-    },
-    {
-      kind: 'stock.lot_expiring',
-      subjectId: 'p1',
-      params: {
-        product: 'Colle',
-        reference: 'COLLE',
-        lot: 'L-1',
-        expiresOn: '2026-10-05',
-        quantity: '3.000',
-        days: 10,
-      },
-    },
+const summary: WatchSummary = {
+  count: 4437,
+  subjects: [
+    { kind: 'invoices.late_customer', count: 212 },
+    { kind: 'stock.lot_expired', count: 9 },
+    { kind: 'future.kind', count: 4216 },
   ],
 };
 
-// docs/SPEC.md § 7, 2026-09-24 12:10: « À surveiller », the conditions true now, each with its figure and a link.
+// docs/SPEC.md § 7, the subject pages: « À surveiller » is one card per subject with its count; the rows are a page away.
 describe('WatchPage', () => {
-  const chosen = signal<{ date: DateFormat; number: NumberStyle }>({
-    date: 'auto',
-    number: 'auto',
-  });
-  const current = signal<WatchList | null>(null);
-  const facade = {
-    list: current.asReadonly(),
-    error: signal(null).asReadonly(),
-    load: vi.fn(),
-  };
+  const current = signal<WatchSummary | null>(null);
+  const failed = signal<WatchError | null>(null);
+  const facade = { summary: current.asReadonly(), error: failed.asReadonly(), load: vi.fn() };
   const live = { reloadOn: vi.fn() };
   let fixture: ComponentFixture<WatchPage>;
 
@@ -83,8 +59,8 @@ describe('WatchPage', () => {
   }
 
   beforeEach(() => {
-    chosen.set({ date: 'auto', number: 'auto' });
-    current.set(list);
+    current.set(summary);
+    failed.set(null);
     facade.load.mockReset().mockResolvedValue(undefined);
     live.reloadOn.mockReset();
     TestBed.configureTestingModule({
@@ -99,20 +75,11 @@ describe('WatchPage', () => {
         { provide: WatchFacade, useValue: facade },
         { provide: LiveChanges, useValue: live },
         { provide: AuthFacade, useValue: { me: () => ({ company: { id: 'k1' } }) } },
-        {
-          provide: FormatFacade,
-          useValue: {
-            locale: signal('fr-FR'),
-            amount: (value: string, scale: number | null) =>
-              formatAmount(value, scale, 'fr-FR', chosen().number),
-            day: (value: string) => formatDay(value, 'fr-FR', chosen().date),
-          },
-        },
       ],
     });
   });
 
-  it('reads the list for the working company and reads it again when what it watches changes', async () => {
+  it('reads the summary for the working company and again when what it watches changes', async () => {
     await open();
 
     expect(facade.load).toHaveBeenCalledWith('k1');
@@ -122,55 +89,39 @@ describe('WatchPage', () => {
     expect(facade.load).toHaveBeenCalledTimes(2);
   });
 
-  it('says each condition in a sentence, its figures in the locale, with a link to what it is about', async () => {
+  it('draws one card per subject it knows, with its count and a link to its table', async () => {
     await open();
 
-    const late = q('watch-item-0')!;
-    expect(late.textContent?.replace(/\s/g, '')).toContain('Carthage:1190,000TNDenretardde40jours');
-    expect(late.querySelector('a')?.getAttribute('href')).toBe(
-      '/invoices?status=overdue&q=Carthage',
+    const late = q('watch-subject-invoices.late_customer')!;
+    expect(late.textContent).toContain('Clients en retard');
+    expect(late.querySelector('[data-testid="watch-subject-count"]')?.textContent?.trim()).toBe(
+      '212',
     );
-
-    const lot = q('watch-item-1')!;
-    expect(lot.textContent).toContain('Lot L-1 de Colle : 3, le 05/10/2026');
-    expect(lot.querySelector('a')?.getAttribute('href')).toBe('/products/p1');
+    expect(late.getAttribute('href')).toBe('/watch/invoices.late_customer');
+    expect(q('watch-subject-stock.lot_expired')?.textContent).toContain('Lots périmés');
   });
 
-  // docs/SPEC.md § 7, 2026-09-30 23:25: the API sends a page of the conditions and the whole count.
-  it('says how many conditions the page leaves out, and nothing when it shows them all', async () => {
-    current.set({ ...list, count: 4437 });
-    await open();
-    expect(q('watch-more')?.textContent).toContain('4435 de plus non affichés');
-
-    current.set(list);
-    fixture.detectChanges();
-    expect(q('watch-more')).toBeNull();
-  });
-
-  // docs/SPEC.md § 7, 2026-09-25 12:45, row 130: its figures and days as the person chose them.
-  it('writes its figures and days in the formats the person chose', async () => {
-    chosen.set({ date: 'ymd', number: 'comma-dot' });
+  it('leaves out a subject this screen does not know yet, rather than drawing it blank', async () => {
     await open();
 
-    expect(q('watch-item-0')?.textContent?.replace(/\s/g, '')).toContain('Carthage:1,190.000TND');
-    expect(q('watch-item-1')?.textContent).toContain('le 2026-10-05');
-  });
-
-  it('says a lot already past its date is expired', async () => {
-    current.set({
-      count: 1,
-      items: [{ ...list.items[1]!, params: { ...list.items[1]!.params, days: -2 } }],
-    });
-    await open();
-
-    expect(q('watch-item-0')?.textContent).toContain('Lot L-1 de Colle périmé');
+    expect(q('watch-subject-future.kind')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('[data-testid="watch-subjects"] li').length).toBe(
+      2,
+    );
   });
 
   it('says there is nothing to watch when nothing is', async () => {
-    current.set({ count: 0, items: [] });
+    current.set({ count: 0, subjects: [] });
     await open();
 
     expect(q('watch-none')?.textContent).toContain('Rien à surveiller.');
-    expect(q('watch-item-0')).toBeNull();
+    expect(q('watch-subjects')).toBeNull();
+  });
+
+  it('says so when the summary cannot be read', async () => {
+    failed.set('unavailable');
+    await open();
+
+    expect(q('watch-error')?.textContent).toContain('Indisponible.');
   });
 });

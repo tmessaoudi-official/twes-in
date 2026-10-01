@@ -2609,22 +2609,63 @@
     "intro": "What needs your attention now. The list keeps itself up to date: anything dealt with leaves it.",
     "none": "Nothing to watch.",
     "count": "To watch: {{count}}",
-    "see": "See",
-    "more": "{{count}} more not shown",
     "errors": {
       "unavailable": "The list could not be read. Try again in a moment."
     },
-    "kinds": {
+    "open": "Open",
+    "gone": "Nothing left to watch here: everything has been dealt with.",
+    "unknown": "This subject does not exist or is not within your reach.",
+    "subjects": {
       "invoices": {
-        "late_customer": "{{customer}}: {{amount}} {{currency}} late, {{invoices}} invoice(s), the oldest for {{days}} days",
-        "unsold_products": "{{products}} product(s) not sold for {{days}} days"
+        "late_customer": {
+          "title": "Customers late paying",
+          "hint": "Customers with invoices past due for longer than the threshold. Chase them."
+        },
+        "unsold_products": {
+          "title": "Products not selling",
+          "hint": "Active goods that have not been sold for longer than the threshold."
+        }
       },
       "stock": {
-        "reorder_point": "{{product}} ({{reference}}): {{onHand}} in stock at {{establishment}}, reorder point {{point}}",
-        "running_out": "{{product}} ({{reference}}): {{onHand}} in stock, out in about {{days}} days at this pace",
-        "lot_expiring": "Lot {{lot}} of {{product}} ({{reference}}): {{quantity}} in stock, expires on {{expiresOn}}",
-        "lot_expired": "Lot {{lot}} of {{product}} ({{reference}}): {{quantity}} in stock, expired on {{expiresOn}}"
+        "reorder_point": {
+          "title": "To reorder",
+          "hint": "Products whose stock is at its reorder point, or under it."
+        },
+        "running_out": {
+          "title": "Running out soon",
+          "hint": "Products whose stock, at the pace of the last 30 days, lasts fewer days than it takes to restock."
+        },
+        "lot_expired": {
+          "title": "Expired lots",
+          "hint": "Lots still in stock whose expiry date has passed."
+        },
+        "lot_expiring": {
+          "title": "Lots expiring soon",
+          "hint": "Lots in stock whose expiry date is close: sell them first."
+        }
       }
+    },
+    "columns": {
+      "customer": "Customer",
+      "invoices": "Invoices",
+      "amount": "Amount due",
+      "late_days": "Late (days)",
+      "product": "Product",
+      "reference": "Reference",
+      "unsold_days": "Not sold for (days)",
+      "establishment": "Establishment",
+      "onHand": "On hand",
+      "point": "Reorder point",
+      "days_left": "Days left",
+      "lot": "Lot",
+      "quantity": "Quantity",
+      "expiresOn": "Expiry date",
+      "expired_days": "Expired for (days)",
+      "in_days": "In (days)"
+    },
+    "actions": {
+      "see_invoices": "See {{name}}'s overdue invoices",
+      "open_product": "Open {{name}}"
     }
   },
   "coming": {

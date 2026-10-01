@@ -1,0 +1,78 @@
+<section class="flex flex-col gap-4 p-4" data-testid="watch-subject-page">
+  <a
+    routerLink="/watch"
+    class="flex w-fit items-center gap-1 font-medium text-primary"
+    data-testid="watch-back"
+  >
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>{{ 'watch.title' | translate }}
+  </a>
+
+  @if (switcher().length > 1) {
+    <nav
+      class="twes-chips"
+      [attr.aria-label]="'watch.title' | translate"
+      data-testid="watch-switcher"
+    >
+      @for (subject of switcher(); track subject.kind) {
+        <a
+          class="twes-chip"
+          [routerLink]="['/watch', subject.kind]"
+          routerLinkActive
+          #active="routerLinkActive"
+          [attr.aria-current]="active.isActive ? 'page' : null"
+          [attr.data-testid]="'watch-switch-' + subject.kind"
+        >
+          {{ 'watch.subjects.' + subject.kind + '.title' | translate }}
+          <span class="twes-chip-count">{{ subject.count }}</span>
+        </a>
+      }
+    </nav>
+  }
+
+  @if (view(); as current) {
+    <header class="flex flex-col gap-1">
+      <h1 class="flex items-center gap-2 text-2xl font-semibold" data-testid="watch-subject-title">
+        <mat-icon aria-hidden="true">{{ current.icon }}</mat-icon>
+        {{ 'watch.subjects.' + kind() + '.title' | translate }}
+        @if (count() !== null) {
+          <span class="text-on-surface-variant" data-testid="watch-subject-total"
+            >({{ count() }})</span
+          >
+        }
+      </h1>
+      <p class="text-sm text-on-surface-variant">
+        {{ 'watch.subjects.' + kind() + '.hint' | translate }}
+      </p>
+    </header>
+
+    @switch (state().status) {
+      @case ('gone') {
+        <p class="flex items-center gap-2" data-testid="watch-gone">
+          <mat-icon aria-hidden="true">check_circle</mat-icon>{{ 'watch.gone' | translate }}
+        </p>
+      }
+      @case ('unavailable') {
+        <p role="alert" class="text-error" data-testid="watch-error">
+          {{ 'watch.errors.unavailable' | translate }}
+        </p>
+      }
+    }
+
+    @if (state().status !== 'gone') {
+      <!-- One table per subject: a new descriptor is a new table, which asks for its own first page. -->
+      @for (table of [kind()]; track table) {
+        <app-data-list
+          [descriptor]="current.list"
+          [rows]="rows()"
+          [total]="total()"
+          (queryChange)="onQuery($event)"
+          testId="watch-table"
+          emptyKey="watch.none"
+          emptyTestId="watch-empty"
+        />
+      }
+    }
+  } @else {
+    <p data-testid="watch-unknown">{{ 'watch.unknown' | translate }}</p>
+  }
+</section>

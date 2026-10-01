@@ -19,8 +19,8 @@ use Psr\Clock\ClockInterface;
 /** @implements ProviderInterface<WatchResource> */
 final readonly class WatchProvider implements ProviderInterface
 {
-    /** Anyone who may read the company may read what to watch in it; each condition then asks its own permission. */
-    private const string PERMISSION = 'company.read';
+    /** Anyone who may read the company may read what to watch in it; each subject then asks its own permission. */
+    public const string PERMISSION = 'company.read';
 
     public function __construct(private CompanyGuard $guard, private WatchCatalogue $catalogue, private ClockInterface $clock)
     {
@@ -31,6 +31,6 @@ final readonly class WatchProvider implements ProviderInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), self::PERMISSION);
         $today = new \DateTimeImmutable($this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'));
 
-        return WatchResource::of($this->catalogue->itemsFor($company, $today, fn (string $permission): bool => $this->guard->may($company, $permission)));
+        return WatchResource::of($this->catalogue->counts($company, $today, fn (string $permission): bool => $this->guard->may($company, $permission)));
     }
 }

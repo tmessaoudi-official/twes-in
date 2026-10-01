@@ -13,7 +13,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { WatchFacade } from './watch-facade';
 import { WatchHome } from './watch-home';
-import type { WatchList } from './watch-types';
+import type { WatchSummary } from './watch-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -27,10 +27,10 @@ class StaticLoader implements TranslateLoader {
   }
 }
 
-// docs/SPEC.md § 7, 2026-09-24 12:10: the home shows how many conditions « À surveiller » lists.
+// docs/SPEC.md § 7, 2026-09-24 12:10: the home shows how many conditions « À surveiller » holds, the whole count the API reports.
 describe('WatchHome', () => {
-  const current = signal<WatchList | null>(null);
-  const facade = { list: current.asReadonly(), load: vi.fn() };
+  const current = signal<WatchSummary | null>(null);
+  const facade = { summary: current.asReadonly(), load: vi.fn() };
   const live = { reloadOn: vi.fn() };
   let fixture: ComponentFixture<WatchHome>;
 
@@ -64,14 +64,7 @@ describe('WatchHome', () => {
   });
 
   it('shows how many things to watch, linked to the list, and keeps the count live', async () => {
-    current.set({
-      count: 3,
-      items: [
-        { kind: 'a', subjectId: null, params: {} },
-        { kind: 'b', subjectId: null, params: {} },
-        { kind: 'c', subjectId: null, params: {} },
-      ],
-    });
+    current.set({ count: 3, subjects: [{ kind: 'a', count: 3 }] });
     await open();
 
     expect(facade.load).toHaveBeenCalledWith('k1');
@@ -81,7 +74,7 @@ describe('WatchHome', () => {
   });
 
   it('says there is nothing to watch when nothing is', async () => {
-    current.set({ count: 0, items: [] });
+    current.set({ count: 0, subjects: [] });
     await open();
 
     expect(q('home-watch')?.textContent).toContain('Rien à surveiller.');

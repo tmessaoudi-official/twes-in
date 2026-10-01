@@ -2609,22 +2609,63 @@
     "intro": "Ce qui demande votre attention maintenant. La liste se met à jour d'elle-même : un point traité en sort.",
     "none": "Rien à surveiller.",
     "count": "À surveiller : {{count}}",
-    "see": "Voir",
-    "more": "{{count}} de plus non affichés",
     "errors": {
       "unavailable": "La liste n'a pas pu être lue. Réessayez dans un instant."
     },
-    "kinds": {
+    "open": "Ouvrir",
+    "gone": "Plus rien à surveiller ici : tout a été traité.",
+    "unknown": "Ce sujet n'existe pas ou n'est pas à votre portée.",
+    "subjects": {
       "invoices": {
-        "late_customer": "{{customer}} : {{amount}} {{currency}} en retard, {{invoices}} facture(s), la plus ancienne depuis {{days}} jours",
-        "unsold_products": "{{products}} produit(s) n'ont pas été vendus depuis {{days}} jours"
+        "late_customer": {
+          "title": "Clients en retard de paiement",
+          "hint": "Les clients dont des factures sont échues depuis plus longtemps que le seuil. Relancez-les."
+        },
+        "unsold_products": {
+          "title": "Produits sans vente",
+          "hint": "Des marchandises actives qui n'ont pas été vendues depuis plus longtemps que le seuil."
+        }
       },
       "stock": {
-        "reorder_point": "{{product}} ({{reference}}) : {{onHand}} en stock à {{establishment}}, seuil de réapprovisionnement {{point}}",
-        "running_out": "{{product}} ({{reference}}) : {{onHand}} en stock, épuisé dans environ {{days}} jours à ce rythme",
-        "lot_expiring": "Lot {{lot}} de {{product}} ({{reference}}) : {{quantity}} en stock, date limite le {{expiresOn}}",
-        "lot_expired": "Lot {{lot}} de {{product}} ({{reference}}) : {{quantity}} en stock, date limite dépassée le {{expiresOn}}"
+        "reorder_point": {
+          "title": "À réapprovisionner",
+          "hint": "Des produits dont le stock est au seuil de réapprovisionnement, ou en dessous."
+        },
+        "running_out": {
+          "title": "Bientôt en rupture",
+          "hint": "Des produits dont le stock, au rythme des 30 derniers jours, dure moins que le délai de réapprovisionnement."
+        },
+        "lot_expired": {
+          "title": "Lots périmés",
+          "hint": "Des lots encore en stock dont la date limite est dépassée."
+        },
+        "lot_expiring": {
+          "title": "Lots bientôt périmés",
+          "hint": "Des lots en stock dont la date limite approche : à vendre en priorité."
+        }
       }
+    },
+    "columns": {
+      "customer": "Client",
+      "invoices": "Factures",
+      "amount": "Montant dû",
+      "late_days": "Retard (jours)",
+      "product": "Produit",
+      "reference": "Référence",
+      "unsold_days": "Sans vente depuis (jours)",
+      "establishment": "Établissement",
+      "onHand": "En stock",
+      "point": "Seuil",
+      "days_left": "Jours restants",
+      "lot": "Lot",
+      "quantity": "Quantité",
+      "expiresOn": "Date limite",
+      "expired_days": "Dépassée depuis (jours)",
+      "in_days": "Dans (jours)"
+    },
+    "actions": {
+      "see_invoices": "Voir les factures en retard de {{name}}",
+      "open_product": "Ouvrir {{name}}"
     }
   },
   "coming": {

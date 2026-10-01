@@ -23,7 +23,7 @@ export class WatchHome implements OnInit {
   private readonly live = inject(LiveChanges);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly list = this.facade.list;
+  protected readonly summary = this.facade.summary;
 
   async ngOnInit(): Promise<void> {
     const companyId = this.auth.me()?.company?.id;
