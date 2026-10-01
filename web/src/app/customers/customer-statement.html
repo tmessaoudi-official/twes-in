@@ -137,5 +137,18 @@
         </tfoot>
       </table>
     </div>
+    @if (hasLimit()) {
+      <p
+        class="text-sm"
+        [class.text-error]="s.overCreditLimit"
+        [attr.role]="s.overCreditLimit ? 'alert' : null"
+        data-testid="statement-limit"
+      >
+        {{
+          (s.overCreditLimit ? 'customers.statement.over_limit' : 'customers.statement.limit')
+            | translate: { limit: s.creditLimit | amount: s.currencyScale, currency: s.currency }
+        }}
+      </p>
+    }
   }
 </section>

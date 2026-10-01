@@ -779,6 +779,9 @@
       "language": "Langue des documents",
       "printed_notes": "Notes imprimées sur les documents"
     },
+    "credit": {
+      "limit": "Plafond de crédit du client (0 : aucun)"
+    },
     "article": {
       "default_unit": "Unité par défaut",
       "stock_tracking": "Suivre le stock"
@@ -1060,6 +1063,8 @@
     "statement": {
       "title": "Relevé de compte",
       "pdf": "Télécharger le PDF",
+      "limit": "Plafond de crédit : {{limit}} {{currency}}.",
+      "over_limit": "Plafond de crédit dépassé : le solde dépasse {{limit}} {{currency}}.",
       "from": "Du",
       "to": "Au",
       "caption": "Relevé de compte de {{name}}, en {{currency}}",

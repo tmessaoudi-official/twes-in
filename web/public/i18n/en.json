@@ -779,6 +779,9 @@
       "language": "Document language",
       "printed_notes": "Notes printed on documents"
     },
+    "credit": {
+      "limit": "Customer credit limit (0: none)"
+    },
     "article": {
       "default_unit": "Default unit",
       "stock_tracking": "Track stock"
@@ -1060,6 +1063,8 @@
     "statement": {
       "title": "Statement of account",
       "pdf": "Download the PDF",
+      "limit": "Credit limit: {{limit}} {{currency}}.",
+      "over_limit": "Credit limit exceeded: the balance is above {{limit}} {{currency}}.",
       "from": "From",
       "to": "To",
       "caption": "Statement of account for {{name}}, in {{currency}}",

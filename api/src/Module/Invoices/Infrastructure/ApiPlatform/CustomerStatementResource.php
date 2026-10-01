@@ -79,6 +79,14 @@ final class CustomerStatementResource
     #[Groups([self::READ])]
     public string $closingBalance = '0';
 
+    /** What the customer may owe before a delivery warns: theirs, else their group's, else the company's; zero is no limit. */
+    #[Groups([self::READ])]
+    public string $creditLimit = '0';
+
+    /** Whether what the customer owes at the end of the period is more than their limit; never with no limit. */
+    #[Groups([self::READ])]
+    public bool $overCreditLimit = false;
+
     /**
      * What happened in the period, in order. `kind` is `invoice`, `credit_note` or `payment`; a payment names the
      * invoice it settles by that invoice's number and carries its own reference when it has one.
@@ -119,6 +127,8 @@ final class CustomerStatementResource
         $resource->totalDebit = $statement->totalDebit;
         $resource->totalCredit = $statement->totalCredit;
         $resource->closingBalance = $statement->closingBalance;
+        $resource->creditLimit = $statement->creditLimit;
+        $resource->overCreditLimit = $statement->overCreditLimit;
         $resource->lines = $statement->lines;
 
         return $resource;

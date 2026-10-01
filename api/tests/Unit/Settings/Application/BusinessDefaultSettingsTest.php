@@ -28,7 +28,7 @@ final class BusinessDefaultSettingsTest extends TestCase
     public function testThePartiesChainCarriesTheDocumentDefaults(): void
     {
         self::assertSame(
-            ['document.payment_terms_days', 'document.language', 'document.printed_notes'],
+            ['document.payment_terms_days', 'document.language', 'document.printed_notes', 'credit.limit'],
             array_map(static fn (SettingDefinition $definition) => $definition->key, $this->catalog->ofChain(SettingChain::Parties)),
         );
         $terms = $this->definition('document.payment_terms_days');
@@ -37,6 +37,18 @@ final class BusinessDefaultSettingsTest extends TestCase
         self::assertNull($terms->refusal(0));
         // A customer group, a customer and a document override the company, as their screens arrive.
         self::assertSame([SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer, SettingLevel::Document], $terms->overridableAt);
+    }
+
+    public function testACreditLimitIsAMoneyAmountWhereZeroMeansNoLimitAndOnlyAPartyHasOne(): void
+    {
+        $limit = $this->definition('credit.limit');
+        self::assertSame('0', $limit->default, 'no limit until one is set');
+        self::assertNull($limit->refusal('0'));
+        self::assertNull($limit->refusal('15000.500'));
+        self::assertNotNull($limit->refusal('-1'), 'a limit is never negative');
+        self::assertNotNull($limit->refusal(1500), 'money travels as text');
+        // A document has no limit of its own: the limit is about what the customer owes, not about one invoice.
+        self::assertSame([SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer], $limit->overridableAt);
     }
 
     public function testTheArticlesChainCarriesTheProductDefaults(): void

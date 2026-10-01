@@ -60,6 +60,8 @@ export class CustomerStatementView {
       hasCredit: !isZero(line.credit),
     })),
   );
+  /** A limit of zero is none, and says nothing. */
+  protected readonly hasLimit = computed(() => !isZero(this.statement()?.creditLimit ?? '0'));
   /** The days the person chose; empty leaves the period to the API. */
   protected readonly from = signal('');
   protected readonly to = signal('');

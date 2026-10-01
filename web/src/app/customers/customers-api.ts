@@ -396,6 +396,8 @@ function toStatement(raw: CustomerStatementCustomerStatementRead): CustomerState
     totalDebit: raw.totalDebit ?? '0',
     totalCredit: raw.totalCredit ?? '0',
     closingBalance: raw.closingBalance ?? '0',
+    creditLimit: raw.creditLimit ?? '0',
+    overCreditLimit: raw.overCreditLimit ?? false,
     lines: (raw.lines ?? []).map((line) => ({
       ...line,
       kind: STATEMENT_KINDS.find((kind) => kind === line.kind) ?? 'invoice',

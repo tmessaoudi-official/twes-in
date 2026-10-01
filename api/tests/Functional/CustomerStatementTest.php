@@ -17,9 +17,13 @@ use App\Fiscal\Domain\UnitRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\SettingLevel;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * The statement of account of a customer: its invoices, credit notes and payments over a period, in the order they
@@ -70,6 +74,33 @@ final class CustomerStatementTest extends ApiTestCase
             $this->stringAt($statement, 'closingBalance'),
             'what the statement ends on is what the customer\'s open invoices have due',
         );
+    }
+
+    public function testItStatesTheCreditLimitTheCustomerHasAndZeroWhenNoneIsSet(): void
+    {
+        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->getJson($this->path());
+        self::assertSame('0.000', $this->stringAt($this->json(), 'creditLimit'), 'no limit set: zero, at the currency\'s scale');
+
+        $this->setLimit('5000', null);
+        $this->getJson($this->path());
+        self::assertSame('5000.000', $this->stringAt($this->json(), 'creditLimit'), 'the company\'s limit applies to a customer with none of its own');
+
+        $this->setLimit('1200.500', Uuid::fromString($this->customerId));
+        $this->getJson($this->path());
+        self::assertSame('1200.500', $this->stringAt($this->json(), 'creditLimit'), 'the customer\'s own limit wins');
+        self::assertFalse($this->json()['overCreditLimit'], 'nothing owed yet');
+
+        $this->issue('1000');
+        $this->getJson($this->path());
+        self::assertFalse($this->json()['overCreditLimit'], 'owing exactly less than the limit');
+        $this->issue('300');
+        $this->getJson($this->path());
+        self::assertTrue($this->json()['overCreditLimit'], '1300 owed passes a limit of 1200.500');
+
+        $this->setLimit('0', Uuid::fromString($this->customerId));
+        $this->getJson($this->path());
+        self::assertFalse($this->json()['overCreditLimit'], 'a limit of zero is no limit, whatever is owed');
     }
 
     public function testThePeriodSplitsTheOpeningBalanceFromTheLines(): void
@@ -284,7 +315,7 @@ final class CustomerStatementTest extends ApiTestCase
         return $unit->getId()->toRfc4122();
     }
 
-    /** @param list<\Symfony\Component\Uid\Uuid> $defaultTaxes */
+    /** @param list<Uuid> $defaultTaxes */
     private function customer(string $number, string $name, array $defaultTaxes = []): Customer
     {
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
@@ -320,5 +351,18 @@ final class CustomerStatementTest extends ApiTestCase
         self::assertIsInt($count);
 
         return $count;
+    }
+
+    /** The kernel reboots between requests: the company and the service are found again each time. */
+    private function setLimit(string $amount, ?Uuid $customerId): void
+    {
+        $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
+        static::getContainer()->get(ChangeSettings::class)->change(
+            new SettingContext($company, customerId: $customerId),
+            'credit.limit',
+            null === $customerId ? SettingLevel::Company : SettingLevel::Customer,
+            $amount,
+            null,
+        );
     }
 }

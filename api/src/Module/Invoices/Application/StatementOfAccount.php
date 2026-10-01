@@ -12,7 +12,10 @@ namespace App\Module\Invoices\Application;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Customers\Application\CustomerNotFound;
+use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerRepository;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -30,6 +33,7 @@ final readonly class StatementOfAccount
         private CustomerRepository $customers,
         private ClockInterface $clock,
         private CurrencyScales $scales,
+        private ReadSetting $settings,
     ) {
     }
 
@@ -71,6 +75,8 @@ final readonly class StatementOfAccount
             ];
         }
 
+        $limit = $this->creditLimit($company, $customer);
+
         return new CustomerStatement(
             $customerId->toRfc4122(),
             $customer->getProfile()->name,
@@ -83,7 +89,17 @@ final readonly class StatementOfAccount
             Decimal::format($debits, $scale),
             Decimal::format($credits, $scale),
             Decimal::format($balance, $scale),
+            Decimal::format($limit, $scale),
+            $limit->compare(0) > 0 && $balance->compare($limit) > 0,
             $lines,
         );
+    }
+
+    /** What the customer may owe before a delivery warns, as set for them, their group or the company; zero is none. */
+    private function creditLimit(Company $company, Customer $customer): \BcMath\Number
+    {
+        $limit = $this->settings->value(new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId()), 'credit.limit');
+
+        return Decimal::of(\is_string($limit) ? $limit : '0');
     }
 }

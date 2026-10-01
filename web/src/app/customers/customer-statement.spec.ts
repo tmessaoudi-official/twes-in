@@ -25,6 +25,8 @@ class StaticLoader implements TranslateLoader {
           closing: 'Solde de clôture',
           totals: 'Totaux',
           kinds: { invoice: 'Facture', credit_note: 'Avoir', payment: 'Paiement' },
+          limit: 'Plafond {{limit}} {{currency}}',
+          over_limit: 'Plafond dépassé {{limit}} {{currency}}',
           errors: { invalid: 'Période refusée.' },
         },
       },
@@ -44,6 +46,8 @@ const account: CustomerStatement = {
   totalDebit: '120.000',
   totalCredit: '40.000',
   closingBalance: '150.000',
+  creditLimit: '0.000',
+  overCreditLimit: false,
   lines: [
     {
       day: '2026-03-05',
@@ -136,6 +140,22 @@ describe('CustomerStatementView', () => {
     await fixture.whenStable();
 
     expect(load).toHaveBeenLastCalledWith('c1', 'k1', { from: '2026-02-01', to: '' });
+  });
+
+  it('says nothing of a limit when there is none, states it when there is one and warns when it is passed', async () => {
+    const { fixture, el } = await render();
+    expect(el.querySelector('[data-testid="statement-limit"]')).toBeNull();
+
+    statement.set({ ...account, creditLimit: '1000.000' });
+    fixture.detectChanges();
+    const note = () => el.querySelector('[data-testid="statement-limit"]')!;
+    expect(note().textContent?.trim()).toBe('Plafond 1000.000 TND');
+    expect(note().getAttribute('role')).toBeNull();
+
+    statement.set({ ...account, creditLimit: '100.000', overCreditLimit: true });
+    fixture.detectChanges();
+    expect(note().textContent?.trim()).toBe('Plafond dépassé 100.000 TND');
+    expect(note().getAttribute('role')).toBe('alert');
   });
 
   it('links to the PDF of the period chosen', async () => {

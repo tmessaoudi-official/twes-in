@@ -30,6 +30,8 @@ final readonly class CustomerStatement
         public string $totalDebit,
         public string $totalCredit,
         public string $closingBalance,
+        public string $creditLimit,
+        public bool $overCreditLimit,
         public array $lines,
     ) {
     }

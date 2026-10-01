@@ -17,6 +17,8 @@ const statement = (closingBalance: string): CustomerStatement => ({
   totalDebit: closingBalance,
   totalCredit: '0.000',
   closingBalance,
+  creditLimit: '0.000',
+  overCreditLimit: false,
   lines: [],
 });
 

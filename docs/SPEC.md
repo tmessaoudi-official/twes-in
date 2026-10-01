@@ -3881,6 +3881,12 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   logo, and it is rendered on request and never stored: it is a picture of the account on the day it is asked for, unlike an issued
   invoice. The Relevé tab links to it for the period on screen. Alternatives: storing each printed statement (refused: nothing
   needs the old picture, the account can be re-read at any date).
+- [2026-10-02 01:38] ASSUMED (review): **the credit limit (row 85, second half), first slice** is the setting `credit.limit`, a money amount on the parties
+  chain at company, customer-group and customer level, and not at document level: it is about what a customer owes, not about one
+  invoice. Zero is no limit, so a customer is released from a group's limit by setting zero on it. The statement states the limit that
+  applies and whether the balance at the end of the period passes it, worked out by the API in exact decimals, and the Relevé tab says so
+  (an alert when passed). Not yet: the warning when a delivery would pass the limit, and the notification of row 97. Alternatives: a
+  nullable column on the customer (refused: the settings engine already gives the three levels, their screens and their audit trail).
 
 ## 8. Status
 

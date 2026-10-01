@@ -33,6 +33,10 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
         yield new SettingDefinition('document.language', SettingType::Enum, 'fr', SettingChain::Parties, $parties, 'settings.document.language', self::MODULE, choices: ['fr', 'en']);
         yield new SettingDefinition('document.printed_notes', SettingType::Text, '', SettingChain::Parties, $parties, 'settings.document.printed_notes', self::MODULE, maxLength: 2000);
 
+        // What a customer may owe before a new delivery warns, in the company's currency; zero is no limit, so a customer
+        // can be released from a group's limit by setting zero on it. A document has none: it is about the account.
+        yield new SettingDefinition('credit.limit', SettingType::Money, '0', SettingChain::Parties, [SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer], 'settings.credit.limit', self::MODULE, min: '0');
+
         yield new SettingDefinition('article.default_unit', SettingType::Text, 'C62', SettingChain::Articles, $articles, 'settings.article.default_unit', self::MODULE, pattern: '/^[A-Z0-9]{2,3}$/');
         yield new SettingDefinition('article.stock_tracking', SettingType::Bool, false, SettingChain::Articles, $articles, 'settings.article.stock_tracking', self::MODULE);
     }

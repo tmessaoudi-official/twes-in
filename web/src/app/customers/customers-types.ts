@@ -102,6 +102,10 @@ export interface CustomerStatement {
   totalDebit: string;
   totalCredit: string;
   closingBalance: string;
+  /** What the customer may owe before a delivery warns; zero is no limit. */
+  creditLimit: string;
+  /** The closing balance is more than the limit: the API decides, in exact decimals. */
+  overCreditLimit: boolean;
   lines: StatementLine[];
 }
 
