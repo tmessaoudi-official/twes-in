@@ -4,7 +4,7 @@ import { wcagViolations } from './axe';
 import { aProduct, forget, stockKept } from './catalogue';
 import { inACompany, signIn } from './session';
 
-// docs/SPEC.md § 7, 2026-09-24 12:10: « À surveiller », the conditions true now, and its count on the home.
+// docs/SPEC.md § 7, 2026-09-24 12:10: « À surveiller », an overview of subjects and one paged table per subject, and its count on the home.
 const CSRF = '0123456789abcdef0123456789abcdef';
 
 /** Sets the product's reorder point in every establishment, or clears it (clearing a cleared one is no error). */
@@ -45,22 +45,28 @@ test('a product at its reorder point shows on « À surveiller », counted on th
     await expect(page.getByTestId('home-watch')).toContainText('À surveiller :');
     await page.getByTestId('home-watch').getByRole('link').click();
 
+    // The overview names the subject with its count; the table behind it holds the product.
     await expect(page).toHaveURL(/\/watch$/);
-    const item = page
-      .getByTestId('watch-list')
-      .getByRole('listitem')
-      .filter({ hasText: reference });
-    await expect(item).toContainText('seuil de réapprovisionnement 1');
+    const card = page.getByTestId('watch-subject-stock.reorder_point');
+    await expect(card).toBeVisible();
+    expect(await wcagViolations(page)).toEqual([]);
+    await card.click();
+
+    await expect(page).toHaveURL(/\/watch\/stock\.reorder_point$/);
+    const row = page.getByTestId('watch-table').getByRole('row').filter({ hasText: reference });
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText('1');
     expect(await wcagViolations(page)).toEqual([]);
 
-    await item.getByRole('link').click();
+    await row.getByRole('link').first().click();
     await expect(page).toHaveURL(new RegExp(`/products/${ids[0]}$`));
 
+    // Once cleared, the product leaves the table.
     await reorderPoint(page, ids[0], null);
-    await page.goto('/watch');
-    await expect(page.getByTestId('watch-page')).toBeVisible();
+    await page.goto('/watch/stock.reorder_point');
+    await expect(page.getByTestId('watch-subject-page')).toBeVisible();
     await expect(
-      page.getByTestId('watch-page').getByRole('listitem').filter({ hasText: reference }),
+      page.getByTestId('watch-table').getByRole('row').filter({ hasText: reference }),
     ).toHaveCount(0);
   } finally {
     if (ids[0] !== undefined) await reorderPoint(page, ids[0], null);
