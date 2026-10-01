@@ -77,6 +77,18 @@ final readonly class Attachments
         return $this->attachments->countsOfEntities($company->getId(), $entityType, $entityIds);
     }
 
+    /**
+     * The stored file of each subject's oldest attachment, across companies, in one read.
+     *
+     * @param list<Uuid> $entityIds
+     *
+     * @return array<string, string> the file id by subject id, both RFC 4122
+     */
+    public function fileIdsOf(string $entityType, array $entityIds): array
+    {
+        return $this->attachments->fileIdsOfEntities($entityType, $entityIds);
+    }
+
     public function find(Company $company, string $entityType, Uuid $entityId, Uuid $id): ?Attachment
     {
         foreach ($this->of($company, $entityType, $entityId) as $attachment) {

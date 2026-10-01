@@ -12,12 +12,13 @@ namespace App\Module\DeliveryNotes\Infrastructure\Pdf;
 use App\Fiscal\Application\CurrencyScales;
 use App\Module\DeliveryNotes\Application\DeliveryNotePage;
 use App\Module\DeliveryNotes\Application\DeliveryNoteTemplate;
+use App\Tenancy\Application\Company\CompanyLogo;
 use Twig\Environment;
 
 /** `templates/pdf/delivery_note.html.twig`, worded from `translations/pdf.<language>.yaml`. */
 final readonly class TwigDeliveryNoteTemplate implements DeliveryNoteTemplate
 {
-    public function __construct(private Environment $twig, private CurrencyScales $scales)
+    public function __construct(private Environment $twig, private CurrencyScales $scales, private CompanyLogo $logo)
     {
     }
 
@@ -34,6 +35,7 @@ final readonly class TwigDeliveryNoteTemplate implements DeliveryNoteTemplate
             'country' => strtolower($company->getCountryCode()),
             'scale' => $this->scales->of($page->seller->currency),
             'locale' => $page->language,
+            'logo' => $this->logo->dataUri($company),
         ]);
     }
 }

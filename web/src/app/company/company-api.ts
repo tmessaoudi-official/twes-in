@@ -5,6 +5,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   CompanyProfileCompanyProfileRead,
+  UploadCompanyLogoResponse,
   CompanyProfileCompanyProfileWrite,
   EstablishmentEstablishmentRead,
   EstablishmentEstablishmentWrite,
@@ -119,6 +120,28 @@ export class CompanyApi {
         ),
       profileCodeOf,
     );
+  }
+
+  /** A multipart part named `file`; 422 for a picture the API does not keep. Answers the new logo's version. */
+  async uploadLogo(companyId: string, file: File): Promise<string> {
+    const body = new FormData();
+    body.append('file', file, file.name);
+    return this.guard(
+      async () =>
+        (
+          await firstValueFrom(
+            this.http.post<UploadCompanyLogoResponse>(companyLogoPath(companyId), body),
+          )
+        ).logoVersion,
+      logoCodeOf,
+    );
+  }
+
+  /** The company has no logo afterwards, whether or not it had one. */
+  async removeLogo(companyId: string): Promise<void> {
+    await this.guard(async () => {
+      await firstValueFrom(this.http.delete(companyLogoPath(companyId)));
+    }, logoCodeOf);
   }
 
   /** Answers the profile as the API kept it, normalised; 422 when the preset refuses a value. */
@@ -247,6 +270,7 @@ function toProfile(raw: CompanyProfileCompanyProfileRead): CompanyProfile {
     name: raw.name ?? '',
     countryCode: raw.countryCode ?? '',
     writable: raw.writable ?? false,
+    logoVersion: raw.logoVersion ?? null,
     legalName: raw.legalName ?? null,
     legalForm: raw.legalForm ?? null,
     identifiers: raw.identifiers ?? {},
@@ -273,6 +297,22 @@ function toProfile(raw: CompanyProfileCompanyProfileRead): CompanyProfile {
       label: regime.label,
     })),
   };
+}
+
+const companyLogoPath = (companyId: string): string =>
+  `/api/companies/${encodeURIComponent(companyId)}/logo`;
+
+/** Where the logo is read, by the version the profile names: a changed logo is a new address, so it can be cached. */
+export function companyLogoUrl(companyId: string, version: string): string {
+  return `${companyLogoPath(companyId)}?v=${encodeURIComponent(version)}`;
+}
+
+/** A picture the API does not keep (422, or 413 from the proxy) is said as such; the rest as everywhere. */
+function logoCodeOf(error: unknown): CompanyError {
+  if (error instanceof HttpErrorResponse && (error.status === 422 || error.status === 413)) {
+    return 'logo_refused';
+  }
+  return profileCodeOf(error);
 }
 
 /** A profile the API refuses is a value its preset does not accept; nothing to do with members. */
@@ -336,6 +376,7 @@ function toOption(row: WorkingCompanyWorkingCompanyRead): CompanyOption {
     status: row.status ?? '',
     role: row.role ?? '',
     pinned: row.pinned ?? false,
+    logoVersion: row.logoVersion ?? null,
   };
 }
 

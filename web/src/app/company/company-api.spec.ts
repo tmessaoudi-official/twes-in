@@ -3,7 +3,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { CompanyApi, CompanyRefused } from './company-api';
+import { CompanyApi, CompanyRefused, companyLogoUrl } from './company-api';
 import type { CompanyProfileChanges } from './company-types';
 
 const changes: CompanyProfileChanges = {
@@ -139,5 +139,72 @@ describe('CompanyApi, the company a sign-in opens', () => {
     expect(unpin.request.body).toEqual({ companyId: null });
     unpin.flush({ companyId: null });
     await unpinning;
+  });
+});
+
+describe('CompanyApi, the logo', () => {
+  let api: CompanyApi;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    api = TestBed.inject(CompanyApi);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('sends the picture as a multipart part named file and answers the new version', async () => {
+    const file = new File(['png'], 'logo.png', { type: 'image/png' });
+    const sending = api.uploadLogo('c1', file);
+    const request = http.expectOne({ method: 'POST', url: '/api/companies/c1/logo' });
+    expect((request.request.body as FormData).get('file')).toBeInstanceOf(File);
+    request.flush({ logoVersion: 'v2' }, { status: 201, statusText: 'Created' });
+
+    expect(await sending).toBe('v2');
+  });
+
+  it("says a picture the API does not keep is refused, from its 422 or the proxy's 413", async () => {
+    for (const status of [422, 413]) {
+      const sending = api.uploadLogo('c1', new File(['x'], 'logo.png'));
+      http
+        .expectOne({ method: 'POST', url: '/api/companies/c1/logo' })
+        .flush('', { status, statusText: 'Refused' });
+      await expect(sending).rejects.toEqual(new CompanyRefused('logo_refused'));
+    }
+  });
+
+  it('keeps the usual codes for the other failures', async () => {
+    const missing = api.removeLogo('c1');
+    http
+      .expectOne({ method: 'DELETE', url: '/api/companies/c1/logo' })
+      .flush('', { status: 404, statusText: 'Not Found' });
+    await expect(missing).rejects.toEqual(new CompanyRefused('not_found'));
+
+    const down = api.removeLogo('c1');
+    http
+      .expectOne({ method: 'DELETE', url: '/api/companies/c1/logo' })
+      .error(new ProgressEvent('error'));
+    await expect(down).rejects.toEqual(new CompanyRefused('network'));
+  });
+
+  it('names the logo by its version, so a changed one is a new address', () => {
+    expect(companyLogoUrl('c 1', 'v/2')).toBe('/api/companies/c%201/logo?v=v%2F2');
+  });
+
+  it('reads the version the profile names, and none when the company has no logo', async () => {
+    const reading = api.profile('c1');
+    http
+      .expectOne({ method: 'GET', url: '/api/companies/c1/profile' })
+      .flush({ name: 'Demo', countryCode: 'TN', logoVersion: 'v1' });
+    expect((await reading).logoVersion).toBe('v1');
+
+    const without = api.profile('c1');
+    http
+      .expectOne({ method: 'GET', url: '/api/companies/c1/profile' })
+      .flush({ name: 'Demo', countryCode: 'TN' });
+    expect((await without).logoVersion).toBeNull();
   });
 });

@@ -18,6 +18,8 @@ final readonly class CompanySummary
         public string $status,
         public string $role,
         public bool $pinned = false,
+        /** The id of the company's stored logo, which changes with the logo; null without one. */
+        public ?string $logoVersion = null,
     ) {
     }
 }

@@ -13,6 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { companyLogoUrl } from './company-api';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { liveRecord } from '../shared/form/live-record';
 import { RecordChanged } from '../shared/form/record-changed';
@@ -48,6 +49,12 @@ export class CompanyProfilePage implements OnInit {
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
   protected readonly busy = this.facade.busy;
+  /** Where the logo is read, or null while the company has none. */
+  protected readonly logoUrl = computed(() => {
+    const companyId = this.company()?.id;
+    const version = this.facade.profile()?.logoVersion;
+    return companyId && version ? companyLogoUrl(companyId, version) : null;
+  });
   protected readonly error = this.facade.error;
   protected readonly descriptor = computed(() => {
     const profile = this.facade.profile();
@@ -150,6 +157,24 @@ export class CompanyProfilePage implements OnInit {
     const form = this.form();
     const saved = this.savedValues();
     if (form !== null && saved !== null) revertToSaved(form, saved);
+  }
+
+  /** From the file input: a refused picture leaves the logo as it was. */
+  protected async uploadLogo(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const companyId = this.company()?.id;
+    input.value = '';
+    if (!file || !companyId || this.busy()) return;
+    if (await this.facade.uploadLogo(companyId, file))
+      this.feedback.success('company.profile.logo.saved');
+  }
+
+  protected async removeLogo(): Promise<void> {
+    const companyId = this.company()?.id;
+    if (!companyId || this.busy()) return;
+    if (await this.facade.removeLogo(companyId))
+      this.feedback.success('company.profile.logo.removed');
   }
 
   protected async save(values: FormValues): Promise<void> {

@@ -237,6 +237,17 @@
         "banking": "Where customers pay, printed below the totals.",
         "documents": "What every invoice prints in its footer."
       },
+      "logo": {
+        "title": "Logo",
+        "hint": "Printed at the head of invoices, credit notes and delivery notes, and shown in the company switcher. PNG, JPEG or WebP, at most 2 MB and 4000 pixels on a side.",
+        "none": "No logo yet",
+        "alt": "The company's logo",
+        "add": "Choose a picture",
+        "replace": "Choose another picture",
+        "remove": "Remove the logo",
+        "saved": "The logo was saved.",
+        "removed": "The logo was removed."
+      },
       "fields": {
         "legalName": "Legal name",
         "legalForm": "Legal form",
@@ -257,7 +268,8 @@
         "invalid": "The profile was refused. Check the registration numbers, the IBAN and the BIC.",
         "not_found": "Company not found.",
         "network": "The server could not be reached.",
-        "forbidden": "Your role in this company does not allow that."
+        "forbidden": "Your role in this company does not allow that.",
+        "logo_refused": "The picture was refused. Send a PNG, JPEG or WebP file of at most 2 MB and 4000 pixels on a side."
       }
     },
     "establishments": {

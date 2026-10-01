@@ -36,6 +36,20 @@ final class InMemoryAttachments implements AttachmentRepository
         return $counts;
     }
 
+    public function fileIdsOfEntities(string $entityType, array $entityIds): array
+    {
+        $files = [];
+        foreach ($entityIds as $entityId) {
+            foreach ($this->attachments as $attachment) {
+                if ($attachment->getEntityType() === $entityType && $attachment->getEntityId()->equals($entityId)) {
+                    $files[$entityId->toRfc4122()] ??= $attachment->getFile()->getId()->toRfc4122();
+                }
+            }
+        }
+
+        return $files;
+    }
+
     public function save(Attachment $attachment): void
     {
         if (!\in_array($attachment, $this->attachments, true)) {

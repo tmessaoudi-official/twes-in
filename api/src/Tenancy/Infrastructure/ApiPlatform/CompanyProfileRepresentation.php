@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Identity\Domain\UserRepository;
+use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Company;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -22,6 +23,7 @@ final readonly class CompanyProfileRepresentation
         private FiscalPresets $presets,
         private UserRepository $users,
         private TranslatorInterface $translator,
+        private CompanyLogo $logo,
     ) {
     }
 
@@ -35,6 +37,7 @@ final readonly class CompanyProfileRepresentation
         $resource->name = $company->getName();
         $resource->countryCode = $company->getCountryCode();
         $resource->writable = $this->guard->may($company, CompanyProfileResource::WRITE_PERMISSION);
+        $resource->logoVersion = $this->logo->current($company)?->getFile()->getId()->toRfc4122();
         $resource->legalName = $profile->legalName;
         $resource->legalForm = $profile->legalForm;
         $resource->identifiers = $profile->identifiers;

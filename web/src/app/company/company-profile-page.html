@@ -21,6 +21,59 @@
       </p>
     }
 
+    <mat-card data-testid="profile-logo">
+      <mat-card-content class="flex flex-wrap items-center gap-6">
+        <div
+          class="flex h-24 w-48 items-center justify-center rounded border border-outline-variant"
+        >
+          @if (logoUrl(); as url) {
+            <img
+              [src]="url"
+              [alt]="'company.profile.logo.alt' | translate"
+              class="max-h-20 max-w-44 object-contain"
+              data-testid="profile-logo-image"
+            />
+          } @else {
+            <span class="text-sm text-on-surface-variant" data-testid="profile-logo-none">{{
+              'company.profile.logo.none' | translate
+            }}</span>
+          }
+        </div>
+        <div class="flex flex-col gap-2">
+          <h2 class="text-lg font-semibold">{{ 'company.profile.logo.title' | translate }}</h2>
+          <p class="text-sm text-on-surface-variant">
+            {{ 'company.profile.logo.hint' | translate }}
+          </p>
+          <div class="flex flex-wrap items-center gap-3">
+            <label class="flex flex-col gap-1 text-sm">
+              <span>{{
+                (logoUrl() ? 'company.profile.logo.replace' : 'company.profile.logo.add')
+                  | translate
+              }}</span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                (change)="uploadLogo($event)"
+                [disabled]="busy()"
+                data-testid="profile-logo-input"
+              />
+            </label>
+            @if (logoUrl()) {
+              <button
+                mat-button
+                type="button"
+                (click)="removeLogo()"
+                [disabled]="busy()"
+                data-testid="profile-logo-remove"
+              >
+                {{ 'company.profile.logo.remove' | translate }}
+              </button>
+            }
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
     @if (descriptor(); as descriptor) {
       @if (form(); as form) {
         @if (sync.changedBy(); as changedBy) {

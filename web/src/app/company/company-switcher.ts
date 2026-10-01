@@ -7,6 +7,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../shared/a11y/label';
 import { LanguageFacade } from '../shared/i18n/language-facade';
+import { companyLogoUrl } from './company-api';
 import { CompanyFacade } from './company-facade';
 
 /**
@@ -48,6 +49,12 @@ export class CompanySwitcher implements OnInit {
     );
     return `${country ?? company.countryCode} · ${company.currency}`;
   });
+
+  /** Where the logo of a listed company is read, or null when it has none (or the list has not arrived). */
+  protected logoOf(company: { readonly id: string }): string | null {
+    const version = this.companies().find((option) => option.id === company.id)?.logoVersion;
+    return version == null ? null : companyLogoUrl(company.id, version);
+  }
 
   async ngOnInit(): Promise<void> {
     await this.companyFacade.load();

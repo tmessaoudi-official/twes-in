@@ -27,6 +27,7 @@ const profile: CompanyProfile = {
   name: 'Demo',
   countryCode: 'TN',
   writable: true,
+  logoVersion: null,
   legalName: null,
   legalForm: null,
   identifiers: { matricule_fiscal: '1234567A/B/M/000' },
@@ -62,6 +63,8 @@ describe('CompanyProfilePage', () => {
     load: vi.fn(),
     refresh: vi.fn(async () => undefined),
     save: vi.fn(),
+    uploadLogo: vi.fn(),
+    removeLogo: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Demo' } }),
@@ -102,6 +105,8 @@ describe('CompanyProfilePage', () => {
     profileSignal.set(profile);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.save.mockReset().mockResolvedValue(true);
+    facade.uploadLogo.mockReset().mockResolvedValue(true);
+    facade.removeLogo.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
   });
 
@@ -113,6 +118,60 @@ describe('CompanyProfilePage', () => {
     expect((q('field-identifier__matricule_fiscal') as HTMLInputElement).value).toBe(
       '1234567A/B/M/000',
     );
+  });
+
+  // docs/SPEC.md § 7, 2026-09-26 22:24: each company uploads its logo in Paramètres › Entreprise.
+  it('says there is no logo yet, and offers to choose a picture', async () => {
+    await open();
+
+    expect(q('profile-logo-none')).not.toBeNull();
+    expect(q('profile-logo-image')).toBeNull();
+    expect(q('profile-logo-remove')).toBeNull();
+  });
+
+  it('shows the logo by the version the profile names, and offers to remove it', async () => {
+    profileSignal.set({ ...profile, logoVersion: 'v1' });
+    await open();
+
+    expect(q('profile-logo-image')?.getAttribute('src')).toBe('/api/companies/c1/logo?v=v1');
+    expect(q('profile-logo-none')).toBeNull();
+    expect(q('profile-logo-remove')).not.toBeNull();
+  });
+
+  it('sends the chosen picture and says it was kept', async () => {
+    await open();
+    const input = q('profile-logo-input') as HTMLInputElement;
+    const file = new File(['x'], 'logo.png', { type: 'image/png' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    input.dispatchEvent(new Event('change'));
+    await settle();
+
+    expect(facade.uploadLogo).toHaveBeenCalledWith('c1', file);
+    expect(successToasts()).toContain('company.profile.logo.saved');
+  });
+
+  it('says nothing was kept when the picture is refused', async () => {
+    facade.uploadLogo.mockResolvedValue(false);
+    await open();
+    const input = q('profile-logo-input') as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [new File(['x'], 'logo.png')],
+      configurable: true,
+    });
+    input.dispatchEvent(new Event('change'));
+    await settle();
+
+    expect(successToasts()).not.toContain('company.profile.logo.saved');
+  });
+
+  it('removes the logo and says so', async () => {
+    profileSignal.set({ ...profile, logoVersion: 'v1' });
+    await open();
+    q('profile-logo-remove')!.click();
+    await settle();
+
+    expect(facade.removeLogo).toHaveBeenCalledWith('c1');
+    expect(successToasts()).toContain('company.profile.logo.removed');
   });
 
   it('saves what the form holds', async () => {

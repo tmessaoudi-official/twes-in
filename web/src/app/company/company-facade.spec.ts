@@ -15,6 +15,7 @@ const acme: CompanyOption = {
   status: 'active',
   role: 'owner',
   pinned: false,
+  logoVersion: null,
 };
 const globex: CompanyOption = {
   id: 'c2',
@@ -22,6 +23,7 @@ const globex: CompanyOption = {
   status: 'active',
   role: 'member',
   pinned: false,
+  logoVersion: null,
 };
 
 describe('CompanyFacade', () => {

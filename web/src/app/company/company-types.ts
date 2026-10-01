@@ -18,6 +18,8 @@ export interface CompanyOption {
   readonly role: string;
   /** Whether every sign-in opens this company (« Société à l'ouverture »). */
   readonly pinned: boolean;
+  /** The version of the company's logo, which changes with it; null when it has none. */
+  readonly logoVersion: string | null;
 }
 
 /** One person in the company being administered. */
@@ -74,6 +76,8 @@ export interface CompanyProfile extends CompanyProfileChanges {
   readonly name: string;
   readonly countryCode: string;
   readonly writable: boolean;
+  /** The id of the stored logo, which changes when the logo does; null without one. */
+  readonly logoVersion: string | null;
   readonly identifierFields: readonly IdentifierField[];
   readonly vatRegimes: readonly VatRegimeOption[];
 }
@@ -86,6 +90,7 @@ export type CompanyError =
   | 'code_taken'
   | 'not_found'
   | 'invalid'
+  | 'logo_refused'
   | 'network';
 
 /** One place the company issues documents from, as the establishments page lists it. */

@@ -17,6 +17,7 @@
     .parties { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
     .party { width: 48%; }
     .party h2 { margin: 0 0 4px; font-size: 9pt; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #57606a; }
+    .logo { display: block; max-width: 180px; max-height: 64px; object-fit: contain; margin-bottom: 8px; }
     .company-name { font-size: 14pt; font-weight: 700; }
     .title { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #1f2328; padding-bottom: 6px; margin-bottom: 12px; }
     .title h1 { margin: 0; font-size: 18pt; }
@@ -44,6 +45,7 @@
 
   <div class="parties">
     <div class="party">
+      {%- if logo %}<img class="logo" src="{{ logo }}" alt="">{% endif %}
       <div class="company-name">{{ seller.name }}{% if seller.legalForm %} {{ seller.legalForm }}{% endif %}</div>
       {%- for key, value in seller.identifiers %}
         <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : {{ value }}</div>

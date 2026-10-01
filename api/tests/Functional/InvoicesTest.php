@@ -23,6 +23,7 @@ use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductTracking;
+use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
 use Symfony\Component\HttpFoundation\Response;
@@ -281,6 +282,27 @@ final class InvoicesTest extends ApiTestCase
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1', 'lotCode' => ' L-1 ']]]));
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         self::assertSame([['L-1', 'lot']], array_map(static fn (array $line): array => [$line['lotCode'] ?? null, $line['productTracking'] ?? null], $this->lines($this->json())));
+    }
+
+    // docs/SPEC.md § 7, 2026-09-26 22:24: a company's documents carry its logo; an issued one keeps the logo it was issued with.
+    public function testTheCompanysLogoIsPrintedOnItsInvoicesAndAnIssuedOneKeepsItsOwn(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertStringNotContainsString('class="logo"', (string) $this->client->getResponse()->getContent(), 'no logo, no picture');
+
+        static::getContainer()->get(CompanyLogo::class)->set($this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company'), 'logo.png', (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true), null);
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertStringContainsString('<img class="logo" src="data:image/png;base64,', (string) $this->client->getResponse()->getContent());
+
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertResponseIsSuccessful();
+        static::getContainer()->get(CompanyLogo::class)->remove($this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company'), null);
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertStringContainsString('<img class="logo" src="data:image/png;base64,', (string) $this->client->getResponse()->getContent(), 'an issued invoice is served as it was issued, logo included');
     }
 
     public function testADraftPrintsOnRequestAndAnIssuedInvoicePrintsAsItWasIssued(): void

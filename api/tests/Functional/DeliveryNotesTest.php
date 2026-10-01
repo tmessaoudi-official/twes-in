@@ -22,6 +22,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
 use App\Tenancy\Domain\EstablishmentRepository;
@@ -235,6 +236,20 @@ final class DeliveryNotesTest extends ApiTestCase
 
         $this->getJson($this->path($id));
         self::assertSame(['draft', null, null], [$this->json()['status'], $this->json()['number'], $this->json()['customerSnapshot']]);
+    }
+
+    // docs/SPEC.md § 7, 2026-09-26 22:24: a company's documents carry its logo, as it was the day the document was issued.
+    public function testTheCompanysLogoIsPrintedOnItsDeliveryNotes(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $id = $this->draftWithALine();
+
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertStringNotContainsString('class="logo"', (string) $this->client->getResponse()->getContent(), 'no logo, no picture');
+
+        static::getContainer()->get(CompanyLogo::class)->set($this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company'), 'logo.png', (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true), null);
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertStringContainsString('<img class="logo" src="data:image/png;base64,', (string) $this->client->getResponse()->getContent());
     }
 
     public function testADraftPrintsOnRequestAndAValidatedNotePrintsAsItWasIssued(): void

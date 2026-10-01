@@ -25,6 +25,16 @@ interface AttachmentRepository
      */
     public function countsOfEntities(Uuid $companyId, string $entityType, array $entityIds): array;
 
+    /**
+     * The stored file of the oldest attachment of each of several subjects, in one read and across companies: a
+     * switcher names the logo of every company a person belongs to at once.
+     *
+     * @param list<Uuid> $entityIds
+     *
+     * @return array<string, string> the file id (RFC 4122) by subject id (RFC 4122), only for those that hold one
+     */
+    public function fileIdsOfEntities(string $entityType, array $entityIds): array;
+
     public function save(Attachment $attachment): void;
 
     public function remove(Attachment $attachment): void;

@@ -3848,6 +3848,24 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   definitions with their arguments, tags and aliases) is identical before and after, except that `Attachments`' array
   parameter is inlined instead of read through a placeholder (same value); removing one `#[AutoconfigureTag]` changes 14
   lines of that comparison. Architecture tests and PHPStan are run on the result.
+- [2026-10-01 23:30] AGREED (developer, asked): **the large-data run (row 181) is parked** (stack hard-restarted, `twes_scale` regenerated only
+  when asked; the generator is resumable) and **feature work follows this order**: clients, invoices, delivery notes,
+  products and stock (added by the developer the same day: "stock too is important"), settings (everything parametrable
+  and customizable), translations (everything translatable and changeable,
+  row 47), invoice design, then everything else. **Invoice design is to be customizable through parameters** (the PDF of an
+  invoice, a credit note and a delivery note: designs with parameters, everything changeable), which supersedes the
+  2026-09-21 19:20 refusal of a full template editor *in scope only*: the safety properties it protected stay code, namely
+  every legally required mention printed whatever the design does, issuing refused when one cannot be filled, and the DRAFT
+  watermark. Which parameters and which shipped designs is worked out per slice, starting with the logo (row 158).
+- [2026-10-02 00:20] ASSUMED (review): **the company logo (row 158)** is one raster picture (PNG, JPEG or WebP, at most 2 MB and
+  4000 px a side, checked from its bytes: a vector file can carry a script) kept as an `attachment` of the company in the
+  `Files` context, replaced rather than added to. `POST/GET/DELETE /api/companies/{id}/logo` (upload and removal need
+  `company.settings`, reading needs `company.read`); the bytes are served with `nosniff` and a CSP forbidding anything
+  but showing the picture. Its version is the id of its stored file, named by the profile and by `/api/me/companies`
+  (one read for all of a person's companies), so a changed logo is a new address and the response may be cached an hour.
+  The invoice, credit note and delivery note PDFs print it as a `data:` URI (the renderer has no network); an issued
+  invoice's PDF is stored when issued and keeps the logo it was issued with. Alternatives: an SVG logo (refused: script
+  risk), a URL field (refused: the renderer would fetch it).
 
 ## 8. Status
 
@@ -4013,7 +4031,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 155 | Legal line at the window's bottom on short pages (§ 7 2026-09-26 22:24) | S | todo | - | |
 | 156 | Build version (§ 7 2026-09-26 22:54): « v0.1.0 · commit · date » in the legal line and the menu foot, the API's in /api/health, a reload offer when they differ; outside prod a chip naming the environment (§ 7 2026-09-27 11:06) | M | todo | - | |
 | 157 | Counts (§ 7 2026-09-26 22:24 and 22:34): « À surveiller » live count on its menu entry; the switcher's total per company | M | todo | - | |
-| 158 | Company logo (§ 7 2026-09-26 22:24): uploaded in Paramètres › Entreprise, printed on invoices, credit notes and delivery notes, shown in the switcher | M | todo | - | |
+| 158 | Company logo (§ 7 2026-09-26 22:24): uploaded in Paramètres › Entreprise, printed on invoices, credit notes and delivery notes, shown in the switcher | M | doing | - | |
 | 159 | Plans (§ 7 2026-09-26 22:54): the walkthrough of what « Découverte » and the paid plans include, then plans as data in Licensing and the « Émis avec » line | L | todo | - | |
 | 160 | RGAA (§ 7 2026-09-26 22:24): the app fully RGAA-compliant; how it is audited to be asked | L | todo | - | |
 | 161 | Activity journal (§ 7 2026-09-26 23:04): « Journal d'activité » over the audit log, per person and per record, audit.read, CSV, 12 months by default, members told | L | todo | - | |

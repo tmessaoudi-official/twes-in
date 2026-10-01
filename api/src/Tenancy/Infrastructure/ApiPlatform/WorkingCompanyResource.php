@@ -67,6 +67,11 @@ final class WorkingCompanyResource
     #[Groups([self::READ])]
     public bool $pinned = false;
 
+    /** The id of the company's stored logo, which changes with the logo. Absent without one. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $logoVersion = null;
+
     public static function of(CompanySummary $summary): self
     {
         $resource = new self();
@@ -75,6 +80,7 @@ final class WorkingCompanyResource
         $resource->status = $summary->status;
         $resource->role = $summary->role;
         $resource->pinned = $summary->pinned;
+        $resource->logoVersion = $summary->logoVersion;
 
         return $resource;
     }

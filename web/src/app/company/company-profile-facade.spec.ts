@@ -27,12 +27,18 @@ const saved: CompanyProfile = {
   name: 'Demo',
   countryCode: 'TN',
   writable: true,
+  logoVersion: null,
   identifierFields: [],
   vatRegimes: [{ code: 'standard', label: 'Régime normal' }],
 };
 
 describe('CompanyProfileFacade', () => {
-  const api = { profile: vi.fn(), reviseProfile: vi.fn() };
+  const api = {
+    profile: vi.fn(),
+    reviseProfile: vi.fn(),
+    uploadLogo: vi.fn(),
+    removeLogo: vi.fn(),
+  };
   let facade: CompanyProfileFacade;
 
   beforeEach(() => {
@@ -69,5 +75,29 @@ describe('CompanyProfileFacade', () => {
 
     expect(facade.error()).toBe('invalid');
     expect(facade.profile()).toEqual(saved);
+  });
+
+  it('names the new logo on the profile it holds, and none once it is removed', async () => {
+    api.profile.mockResolvedValue(saved);
+    await facade.load('c1');
+    api.uploadLogo.mockResolvedValue('v2');
+    api.removeLogo.mockResolvedValue(undefined);
+
+    expect(await facade.uploadLogo('c1', new File(['x'], 'logo.png'))).toBe(true);
+    expect(facade.profile()?.logoVersion).toBe('v2');
+
+    expect(await facade.removeLogo('c1')).toBe(true);
+    expect(facade.profile()?.logoVersion).toBeNull();
+  });
+
+  it('keeps the logo it had when the picture is refused, and says why', async () => {
+    api.profile.mockResolvedValue({ ...saved, logoVersion: 'v1' });
+    await facade.load('c1');
+    api.uploadLogo.mockRejectedValue(new CompanyRefused('logo_refused'));
+
+    expect(await facade.uploadLogo('c1', new File(['x'], 'logo.png'))).toBe(false);
+
+    expect(facade.error()).toBe('logo_refused');
+    expect(facade.profile()?.logoVersion).toBe('v1');
   });
 });

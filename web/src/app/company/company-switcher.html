@@ -13,7 +13,13 @@
         matTooltipPosition="right"
         data-testid="company-switcher"
       >
-        <span class="twes-rail-company-mark" aria-hidden="true">{{ initial() }}</span>
+        <span class="twes-rail-company-mark" aria-hidden="true">
+          @if (logoOf(current); as url) {
+            <img class="twes-rail-company-logo" [src]="url" alt="" data-testid="company-logo" />
+          } @else {
+            {{ initial() }}
+          }
+        </span>
         <span class="twes-rail-company-text" [class.sr-only]="folded()">
           <span class="twes-rail-company-name truncate" data-testid="company-name">{{
             current.name
@@ -33,6 +39,9 @@
             [attr.data-testid]="'company-option-' + company.name"
             [attr.aria-current]="company.id === current.id ? 'true' : null"
           >
+            @if (logoOf(company); as url) {
+              <img class="twes-rail-company-logo-small" [src]="url" alt="" aria-hidden="true" />
+            }
             {{ company.name }}
             <span class="text-on-surface-variant">— {{ 'roles.' + company.role | translate }}</span>
           </button>
@@ -45,7 +54,13 @@
         [matTooltipDisabled]="!folded()"
         matTooltipPosition="right"
       >
-        <span class="twes-rail-company-mark" aria-hidden="true">{{ initial() }}</span>
+        <span class="twes-rail-company-mark" aria-hidden="true">
+          @if (logoOf(current); as url) {
+            <img class="twes-rail-company-logo" [src]="url" alt="" data-testid="company-logo" />
+          } @else {
+            {{ initial() }}
+          }
+        </span>
         <span class="twes-rail-company-text" [class.sr-only]="folded()">
           <span class="twes-rail-company-name truncate" data-testid="company-name">{{
             current.name

@@ -73,6 +73,11 @@ final class CompanyProfileResource
     #[Groups([self::READ])]
     public bool $writable = false;
 
+    /** The id of the stored logo file, which changes when the logo does: the screen caches the picture by it. Absent without a logo. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $logoVersion = null;
+
     #[Assert\Length(max: 200, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $legalName = null;

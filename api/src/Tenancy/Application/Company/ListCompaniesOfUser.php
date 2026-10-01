@@ -19,13 +19,16 @@ final readonly class ListCompaniesOfUser
     /** More companies than one person plausibly works in; the switcher is a menu, not a paginated list. */
     private const int LIMIT = 200;
 
-    public function __construct(private MembershipRepository $memberships)
+    public function __construct(private MembershipRepository $memberships, private CompanyLogo $logos)
     {
     }
 
     /** @return list<CompanySummary> */
     public function for(Uuid $userId): array
     {
+        $memberships = $this->memberships->ofUser($userId, self::LIMIT);
+        $logos = $this->logos->versionsOf(array_map(static fn (Membership $m): Uuid => $m->getCompany()->getId(), $memberships));
+
         return array_map(
             static fn (Membership $m) => new CompanySummary(
                 $m->getCompany()->getId()->toRfc4122(),
@@ -33,8 +36,9 @@ final readonly class ListCompaniesOfUser
                 $m->getCompany()->getStatus(),
                 $m->getRole()->getName(),
                 $m->isOpenedAtSignIn(),
+                $logos[$m->getCompany()->getId()->toRfc4122()] ?? null,
             ),
-            $this->memberships->ofUser($userId, self::LIMIT),
+            $memberships,
         );
     }
 }

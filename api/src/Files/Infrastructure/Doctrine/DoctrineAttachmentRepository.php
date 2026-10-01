@@ -53,6 +53,28 @@ final readonly class DoctrineAttachmentRepository implements AttachmentRepositor
         return $counts;
     }
 
+    public function fileIdsOfEntities(string $entityType, array $entityIds): array
+    {
+        if ([] === $entityIds) {
+            return [];
+        }
+        /** @var list<array{entityId: Uuid, fileId: string|Uuid}> $rows */
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('a.entityId', 'IDENTITY(a.file) AS fileId')->from(Attachment::class, 'a')
+            ->where('a.entityType = :type')->andWhere('a.entityId IN (:ids)')
+            ->orderBy('a.createdAt', 'DESC')->addOrderBy('a.id', 'DESC')
+            ->setParameter('type', $entityType)
+            ->setParameter('ids', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $entityIds), ArrayParameterType::STRING)
+            ->getQuery()->getResult();
+        $files = [];
+        foreach ($rows as $row) {
+            // Newest first: the last write per subject is the oldest one, as ofEntity() orders them.
+            $files[$row['entityId']->toRfc4122()] = (string) $row['fileId'];
+        }
+
+        return $files;
+    }
+
     public function save(Attachment $attachment): void
     {
         $this->entityManager->persist($attachment);

@@ -237,6 +237,17 @@
         "banking": "Où les clients paient, imprimé sous les totaux.",
         "documents": "Ce que chaque facture imprime en pied de page."
       },
+      "logo": {
+        "title": "Logo",
+        "hint": "Imprimé en tête des factures, avoirs et bons de livraison, et affiché dans le sélecteur d'entreprise. PNG, JPEG ou WebP, 2 Mo et 4000 pixels de côté au plus.",
+        "none": "Pas encore de logo",
+        "alt": "Le logo de l'entreprise",
+        "add": "Choisir une image",
+        "replace": "Choisir une autre image",
+        "remove": "Retirer le logo",
+        "saved": "Le logo est enregistré.",
+        "removed": "Le logo est retiré."
+      },
       "fields": {
         "legalName": "Raison sociale",
         "legalForm": "Forme juridique",
@@ -257,7 +268,8 @@
         "invalid": "Le profil a été refusé. Vérifiez les identifiants, l'IBAN et le BIC.",
         "not_found": "Société introuvable.",
         "network": "Le serveur est injoignable.",
-        "forbidden": "Votre rôle dans cette entreprise ne le permet pas."
+        "forbidden": "Votre rôle dans cette entreprise ne le permet pas.",
+        "logo_refused": "L'image est refusée. Envoyez un fichier PNG, JPEG ou WebP de 2 Mo et 4000 pixels de côté au plus."
       }
     },
     "establishments": {
