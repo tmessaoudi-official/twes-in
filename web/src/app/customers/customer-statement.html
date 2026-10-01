@@ -1,0 +1,130 @@
+<section
+  class="flex flex-col gap-4"
+  data-testid="customer-statement"
+  aria-labelledby="customer-statement-title"
+>
+  <h2 id="customer-statement-title" class="text-xl font-semibold">
+    {{ 'customers.statement.title' | translate }}
+  </h2>
+
+  <div class="flex flex-wrap items-start gap-4">
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ 'customers.statement.from' | translate }}</mat-label>
+      <input
+        matInput
+        type="date"
+        [value]="from() || (statement()?.from ?? '')"
+        (change)="onFrom($event)"
+        data-testid="statement-from"
+      />
+    </mat-form-field>
+    <mat-form-field subscriptSizing="dynamic">
+      <mat-label>{{ 'customers.statement.to' | translate }}</mat-label>
+      <input
+        matInput
+        type="date"
+        [value]="to() || (statement()?.to ?? '')"
+        (change)="onTo($event)"
+        data-testid="statement-to"
+      />
+    </mat-form-field>
+  </div>
+
+  @if (error(); as code) {
+    <p role="alert" class="text-error" data-testid="statement-error">
+      {{ 'customers.statement.errors.' + code | translate }}
+    </p>
+  }
+
+  @if (statement(); as s) {
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[40rem] border-collapse text-sm" data-testid="statement-table">
+        <caption class="sr-only">
+          {{
+            'customers.statement.caption'
+              | translate: { name: s.customerName, currency: s.currency }
+          }}
+        </caption>
+        <thead>
+          <tr class="text-start">
+            <th scope="col" class="p-2 text-start">{{ 'customers.statement.date' | translate }}</th>
+            <th scope="col" class="p-2 text-start">
+              {{ 'customers.statement.document' | translate }}
+            </th>
+            <th scope="col" class="p-2 text-end">{{ 'customers.statement.debit' | translate }}</th>
+            <th scope="col" class="p-2 text-end">{{ 'customers.statement.credit' | translate }}</th>
+            <th scope="col" class="p-2 text-end">
+              {{ 'customers.statement.balance' | translate }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="font-medium" data-testid="statement-opening">
+            <td class="p-2" colspan="4">
+              {{ 'customers.statement.opening' | translate }}
+            </td>
+            <td class="p-2 text-end tabular-nums">
+              {{ s.openingBalance | amount: s.currencyScale }}
+            </td>
+          </tr>
+          @for (line of rows(); track $index) {
+            <tr
+              class="border-t border-outline-variant"
+              [attr.data-testid]="'statement-line-' + $index"
+            >
+              <td class="p-2 whitespace-nowrap">{{ line.day | day }}</td>
+              <td class="p-2">
+                <a
+                  class="underline"
+                  [routerLink]="['/invoices', line.documentId]"
+                  [attr.data-testid]="'statement-document-' + $index"
+                  >{{ 'customers.statement.kinds.' + line.kind | translate }} {{ line.number }}</a
+                >
+                @if (line.reference) {
+                  <span class="text-on-surface-variant"> · {{ line.reference }}</span>
+                }
+              </td>
+              <td class="p-2 text-end tabular-nums">
+                @if (line.hasDebit) {
+                  {{ line.debit | amount: s.currencyScale }}
+                }
+              </td>
+              <td class="p-2 text-end tabular-nums">
+                @if (line.hasCredit) {
+                  {{ line.credit | amount: s.currencyScale }}
+                }
+              </td>
+              <td class="p-2 text-end tabular-nums">
+                {{ line.balance | amount: s.currencyScale }}
+              </td>
+            </tr>
+          } @empty {
+            <tr data-testid="statement-empty">
+              <td class="p-2 text-on-surface-variant" colspan="5">
+                {{ 'customers.statement.none' | translate }}
+              </td>
+            </tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr class="border-t border-outline font-medium" data-testid="statement-totals">
+            <th scope="row" class="p-2 text-start" colspan="2">
+              {{ 'customers.statement.totals' | translate }}
+            </th>
+            <td class="p-2 text-end tabular-nums">{{ s.totalDebit | amount: s.currencyScale }}</td>
+            <td class="p-2 text-end tabular-nums">{{ s.totalCredit | amount: s.currencyScale }}</td>
+            <td class="p-2"></td>
+          </tr>
+          <tr class="font-semibold" data-testid="statement-closing">
+            <th scope="row" class="p-2 text-start" colspan="4">
+              {{ 'customers.statement.closing' | translate }}
+            </th>
+            <td class="p-2 text-end tabular-nums">
+              {{ s.closingBalance | amount: s.currencyScale }} {{ s.currency }}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  }
+</section>

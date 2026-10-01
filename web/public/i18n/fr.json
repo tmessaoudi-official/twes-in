@@ -486,7 +486,7 @@
     "register": "Caisse",
     "reports": "Rapports",
     "service": "Service en salle",
-    "statements": "Relevés et plafonds de crédit",
+    "statements": "Plafonds de crédit",
     "stock_valuation": "Valorisation du stock",
     "venue": "Salle et plan",
     "whatsapp": "Envoi par WhatsApp",
@@ -921,7 +921,8 @@
     "tabs": {
       "record": "Fiche",
       "defaults": "Valeurs par défaut",
-      "contacts": "Contacts"
+      "contacts": "Contacts",
+      "statement": "Relevé"
     },
     "title": "Clients",
     "add": "Nouveau client",
@@ -1055,6 +1056,31 @@
     },
     "suggest": {
       "invoice": "Facturer ce client"
+    },
+    "statement": {
+      "title": "Relevé de compte",
+      "from": "Du",
+      "to": "Au",
+      "caption": "Relevé de compte de {{name}}, en {{currency}}",
+      "date": "Date",
+      "document": "Pièce",
+      "debit": "Débit",
+      "credit": "Crédit",
+      "balance": "Solde",
+      "opening": "Solde d’ouverture",
+      "closing": "Solde de clôture",
+      "totals": "Totaux de la période",
+      "none": "Aucun mouvement sur la période.",
+      "kinds": {
+        "invoice": "Facture",
+        "credit_note": "Avoir",
+        "payment": "Paiement"
+      },
+      "errors": {
+        "network": "Le serveur est injoignable.",
+        "not_found": "Client introuvable, ou relevé non accessible avec vos droits.",
+        "invalid": "La période est refusée : la fin ne peut précéder le début."
+      }
     }
   },
   "invoices": {
@@ -2826,10 +2852,10 @@
       "does": "Prendre la commande à table, l’envoyer en cuisine et au bar, suivre chaque table jusqu’à l’addition."
     },
     "statements": {
-      "heading": "Les relevés sont en construction",
-      "does": "Le relevé de compte d’un client sur une période et un plafond de crédit qui prévient avant qu’il soit dépassé.",
-      "plan": "§ 8 · 85 et 134 — le relevé et le plafond de crédit",
-      "settings": "Le plafond de crédit proposé à un nouveau client et la période que couvre un relevé."
+      "heading": "Les plafonds de crédit sont en construction",
+      "does": "Un plafond de crédit par client ou par groupe, qui prévient avant qu’une livraison dépasse ce qui est déjà dû.",
+      "plan": "§ 8 · 85 et 134 — le plafond de crédit",
+      "settings": "Le plafond de crédit proposé à un nouveau client."
     },
     "stock_valuation": {
       "heading": "La valorisation du stock est en construction",
@@ -2933,7 +2959,7 @@
     "send_whatsapp": "Envoyer par WhatsApp",
     "make_recurring": "Rendre récurrente",
     "new_quote": "Nouveau devis",
-    "statement": "Relevé de compte",
+    "credit_limit": "Plafond de crédit",
     "new_purchase": "Nouvelle commande fournisseur"
   },
   "legal": {

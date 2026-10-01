@@ -69,6 +69,42 @@ export interface CustomerGroupRow {
 
 export type CustomerGroupInput = Pick<CustomerGroupRow, 'name' | 'description'>;
 
+/** What a line of a statement is: an invoice or a credit note on the day it was issued, a payment on the day it was made. */
+export type StatementKind = 'invoice' | 'credit_note' | 'payment';
+
+export interface StatementLine {
+  /** YYYY-MM-DD. */
+  day: string;
+  kind: StatementKind;
+  /** The document's number; a payment carries the number of the invoice it settles. */
+  number: string;
+  /** The invoice or credit note the line is, or the invoice a payment settles. */
+  documentId: string;
+  /** A payment's own reference when it has one. */
+  reference: string | null;
+  debit: string;
+  credit: string;
+  /** What the customer owed after this line. */
+  balance: string;
+}
+
+/** A customer's account over a period (docs/SPEC.md § 7): amounts are the API's decimal strings at the currency's scale. */
+export interface CustomerStatement {
+  customerId: string;
+  customerName: string;
+  customerNumber: string;
+  currency: string;
+  currencyScale: number;
+  /** The period as the API resolved it, YYYY-MM-DD. */
+  from: string;
+  to: string;
+  openingBalance: string;
+  totalDebit: string;
+  totalCredit: string;
+  closingBalance: string;
+  lines: StatementLine[];
+}
+
 export interface ContactRow {
   id: string;
   firstName: string | null;

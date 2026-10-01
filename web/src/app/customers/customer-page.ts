@@ -32,6 +32,7 @@ import {
   customerValues,
 } from './customer-forms';
 import { CustomersFacade } from './customers-facade';
+import { CustomerStatementView } from './customer-statement';
 import { PartyDefaults } from './party-defaults';
 import type { ContactRow } from './customers-types';
 import { Feedback } from '../shared/feedback/feedback';
@@ -47,7 +48,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 /** What a customer will offer once its planned modules ship (docs/SPEC.md § 7, 2026-09-26 18:17, row 150), shown « Bientôt » beside what it offers today. */
 export const CUSTOMER_PLANNED: readonly PlannedAction[] = [
   { module: 'quotes', label: 'planned_actions.new_quote', icon: 'request_quote' },
-  { module: 'statements', label: 'planned_actions.statement', icon: 'account_balance_wallet' },
+  { module: 'statements', label: 'planned_actions.credit_limit', icon: 'account_balance_wallet' },
 ];
 
 @Component({
@@ -63,6 +64,7 @@ export const CUSTOMER_PLANNED: readonly PlannedAction[] = [
     MatTabsModule,
     RecordBar,
     PartyDefaults,
+    CustomerStatementView,
     RecordChanged,
   ],
   templateUrl: './customer-page.html',
@@ -84,6 +86,8 @@ export class CustomerPage {
   protected readonly contacts = this.facade.contacts;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('customer.write'));
+  /** The statement is a customer's money: it takes the right to read invoices as well as customers. */
+  protected readonly mayStatement = computed(() => this.auth.hasPermission('invoice.read'));
 
   /** Null while a new customer is filled in; undefined until the customer asked for has been read. */
   protected readonly current = computed(() => {

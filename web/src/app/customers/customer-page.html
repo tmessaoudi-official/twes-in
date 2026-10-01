@@ -152,5 +152,14 @@
         </div>
       </mat-tab>
     }
+    @if (mayStatement() && current(); as customer) {
+      @if (company(); as company) {
+        <mat-tab [label]="'customers.tabs.statement' | translate">
+          <div class="flex flex-col gap-6 pt-4" data-testid="customer-tab-statement">
+            <app-customer-statement [companyId]="company.id" [customerId]="customer.id" />
+          </div>
+        </mat-tab>
+      }
+    }
   </mat-tab-group>
 </section>

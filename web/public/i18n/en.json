@@ -486,7 +486,7 @@
     "register": "Till",
     "reports": "Reports",
     "service": "Table service",
-    "statements": "Statements and credit limits",
+    "statements": "Credit limits",
     "stock_valuation": "Stock valuation",
     "venue": "Venue and floor plan",
     "whatsapp": "WhatsApp sending",
@@ -921,7 +921,8 @@
     "tabs": {
       "record": "Record",
       "defaults": "Defaults",
-      "contacts": "Contacts"
+      "contacts": "Contacts",
+      "statement": "Statement"
     },
     "title": "Customers",
     "add": "New customer",
@@ -1055,6 +1056,31 @@
     },
     "suggest": {
       "invoice": "Invoice this customer"
+    },
+    "statement": {
+      "title": "Statement of account",
+      "from": "From",
+      "to": "To",
+      "caption": "Statement of account for {{name}}, in {{currency}}",
+      "date": "Date",
+      "document": "Document",
+      "debit": "Debit",
+      "credit": "Credit",
+      "balance": "Balance",
+      "opening": "Opening balance",
+      "closing": "Closing balance",
+      "totals": "Period totals",
+      "none": "No movement in this period.",
+      "kinds": {
+        "invoice": "Invoice",
+        "credit_note": "Credit note",
+        "payment": "Payment"
+      },
+      "errors": {
+        "network": "The server cannot be reached.",
+        "not_found": "Customer not found, or the statement is not available with your rights.",
+        "invalid": "The period is refused: it cannot end before it starts."
+      }
     }
   },
   "invoices": {
@@ -2826,10 +2852,10 @@
       "does": "Take the order at the table, send it to the kitchen and the bar, and follow each table to the bill."
     },
     "statements": {
-      "heading": "Statements are under construction",
-      "does": "A customer's statement of account over a period, and a credit limit that warns before it is exceeded.",
-      "plan": "§ 8 · 85 and 134 — the statement and the credit limit",
-      "settings": "The credit limit a new customer starts with and the period a statement covers."
+      "heading": "Credit limits are under construction",
+      "does": "A credit limit per customer or group, warning before a delivery would pass what is already owed.",
+      "plan": "§ 8 · 85 and 134 — the credit limit",
+      "settings": "The credit limit a new customer starts with."
     },
     "stock_valuation": {
       "heading": "Stock valuation is under construction",
@@ -2933,7 +2959,7 @@
     "send_whatsapp": "Send by WhatsApp",
     "make_recurring": "Make recurring",
     "new_quote": "New quote",
-    "statement": "Account statement",
+    "credit_limit": "Credit limit",
     "new_purchase": "New supplier order"
   },
   "legal": {

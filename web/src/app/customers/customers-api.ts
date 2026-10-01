@@ -14,6 +14,7 @@ import type {
   CustomerGroupCustomerGroupRead,
   CustomerGroupCustomerGroupWrite,
   CustomerOptionsCustomerOptionsRead,
+  CustomerStatementCustomerStatementRead,
 } from '../api/types.gen';
 import {
   CUSTOMER_KINDS,
@@ -27,6 +28,8 @@ import {
   type CustomerRow,
   type CustomerSearch,
   type CustomersError,
+  type CustomerStatement,
+  type StatementKind,
   type TaxFamily,
 } from './customers-types';
 
@@ -96,6 +99,30 @@ export class CustomersApi {
           this.http.put<CustomerCustomerRead>(
             path(companyId, 'customers', id),
             toCustomerBody(input),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /**
+   * The customer's account over a period; with no period, from the start of the company's year to its today. 404 for a
+   * customer the company does not have, or one the account may not see the money of.
+   */
+  async statement(
+    companyId: string,
+    customerId: string,
+    period: { from?: string; to?: string } = {},
+  ): Promise<CustomerStatement> {
+    let params = new HttpParams();
+    if (period.from) params = params.set('from', period.from);
+    if (period.to) params = params.set('to', period.to);
+    return this.guard(async () =>
+      toStatement(
+        await firstValueFrom(
+          this.http.get<CustomerStatementCustomerStatementRead>(
+            `${path(companyId, 'customers', customerId)}/statement`,
+            { params },
           ),
         ),
       ),
@@ -338,6 +365,28 @@ function toGroup(raw: CustomerGroupCustomerGroupRead): CustomerGroupRow {
     name: raw.name ?? '',
     description: raw.description ?? null,
     customerCount: raw.customerCount ?? 0,
+  };
+}
+
+const STATEMENT_KINDS: readonly StatementKind[] = ['invoice', 'credit_note', 'payment'];
+
+function toStatement(raw: CustomerStatementCustomerStatementRead): CustomerStatement {
+  return {
+    customerId: raw.customerId ?? '',
+    customerName: raw.customerName ?? '',
+    customerNumber: raw.customerNumber ?? '',
+    currency: raw.currency ?? '',
+    currencyScale: raw.currencyScale ?? 2,
+    from: raw.from ?? '',
+    to: raw.to ?? '',
+    openingBalance: raw.openingBalance ?? '0',
+    totalDebit: raw.totalDebit ?? '0',
+    totalCredit: raw.totalCredit ?? '0',
+    closingBalance: raw.closingBalance ?? '0',
+    lines: (raw.lines ?? []).map((line) => ({
+      ...line,
+      kind: STATEMENT_KINDS.find((kind) => kind === line.kind) ?? 'invoice',
+    })),
   };
 }
 

@@ -212,4 +212,95 @@ describe('CustomersApi', () => {
 
     await expect(pending).rejects.toMatchObject({ code: 'network' });
   });
+
+  describe('statement', () => {
+    const raw = {
+      customerId: 'k1',
+      customerName: 'Carthage Conseil',
+      customerNumber: 'CLI-0001',
+      currency: 'TND',
+      currencyScale: 3,
+      from: '2026-01-01',
+      to: '2026-10-01',
+      openingBalance: '70.000',
+      totalDebit: '20.000',
+      totalCredit: '0.000',
+      closingBalance: '90.000',
+      lines: [
+        {
+          day: '2026-03-05',
+          kind: 'invoice',
+          number: 'FA-0002',
+          documentId: 'i2',
+          reference: null,
+          debit: '20.000',
+          credit: '0.000',
+          balance: '90.000',
+        },
+      ],
+    };
+
+    it('asks for the period it is given and leaves out the one it is not', async () => {
+      const pending = api.statement('c 1', 'k1', { from: '2026-02-01', to: '2026-12-31' });
+      const request = http.expectOne(
+        (req) => req.url === '/api/companies/c%201/customers/k1/statement',
+      );
+      expect(request.request.params.toString()).toBe('from=2026-02-01&to=2026-12-31');
+      request.flush(raw);
+      expect((await pending).openingBalance).toBe('70.000');
+
+      const open = api.statement('c1', 'k1');
+      const bare = http.expectOne((req) => req.url === '/api/companies/c1/customers/k1/statement');
+      expect(bare.request.params.toString()).toBe('');
+      bare.flush(raw);
+      await open;
+
+      const blank = api.statement('c1', 'k1', { from: '', to: '' });
+      const empty = http.expectOne((req) => req.url === '/api/companies/c1/customers/k1/statement');
+      expect(empty.request.params.toString()).toBe('');
+      empty.flush(raw);
+      await blank;
+    });
+
+    it('reads the account as the API worked it out, every amount kept as the string it came as', async () => {
+      const pending = api.statement('c1', 'k1');
+      http.expectOne((req) => req.url.endsWith('/statement')).flush(raw);
+
+      const statement = await pending;
+      expect(statement).toMatchObject({
+        customerName: 'Carthage Conseil',
+        currency: 'TND',
+        currencyScale: 3,
+        closingBalance: '90.000',
+      });
+      expect(statement.lines).toEqual([
+        {
+          day: '2026-03-05',
+          kind: 'invoice',
+          number: 'FA-0002',
+          documentId: 'i2',
+          reference: null,
+          debit: '20.000',
+          credit: '0.000',
+          balance: '90.000',
+        },
+      ]);
+    });
+
+    it('says a customer is not found, a period is refused and the server cannot be reached', async () => {
+      for (const [status, code] of [
+        [404, 'not_found'],
+        [422, 'invalid'],
+      ] as const) {
+        const pending = api.statement('c1', 'k1');
+        http
+          .expectOne((req) => req.url.endsWith('/statement'))
+          .flush({}, { status, statusText: 'refused' });
+        await expect(pending).rejects.toMatchObject({ code });
+      }
+      const pending = api.statement('c1', 'k1');
+      http.expectOne((req) => req.url.endsWith('/statement')).error(new ProgressEvent('error'));
+      await expect(pending).rejects.toMatchObject({ code: 'network' });
+    });
+  });
 });

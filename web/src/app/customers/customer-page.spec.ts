@@ -24,6 +24,7 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { CustomerPage } from './customer-page';
+import { CustomerStatementFacade } from './customer-statement-facade';
 import { CustomersFacade } from './customers-facade';
 import { PartySettings } from './party-settings-facade';
 import type { SettingRow } from '../shared/settings/settings-types';
@@ -48,7 +49,12 @@ class StaticLoader implements TranslateLoader {
     return of({
       customers: {
         errors: { number_taken: 'Un autre client porte déjà ce numéro.' },
-        tabs: { record: 'Fiche', defaults: 'Valeurs par défaut', contacts: 'Contacts' },
+        tabs: {
+          record: 'Fiche',
+          defaults: 'Valeurs par défaut',
+          contacts: 'Contacts',
+          statement: 'Relevé',
+        },
         contacts: { remove_message: '{{name}} sera retiré de ce client.' },
       },
       live: { changed_by: '{{name}} a modifié cette fiche pendant votre saisie.' },
@@ -186,6 +192,12 @@ describe('CustomerPage', () => {
   }
 
   /** A long record is in tabs, so reaching a section means opening its tab, as a person does. */
+  function tabLabels(): string[] {
+    return Array.from(
+      fixture.nativeElement.querySelectorAll('[role="tab"]') as NodeListOf<HTMLElement>,
+    ).map((tab) => (tab.textContent ?? '').trim());
+  }
+
   async function openTab(label: string): Promise<void> {
     const tab = Array.from(
       fixture.nativeElement.querySelectorAll('[role="tab"]') as NodeListOf<HTMLElement>,
@@ -199,6 +211,13 @@ describe('CustomerPage', () => {
     input.value = value;
     input.dispatchEvent(new Event('input'));
   }
+
+  const statementFacade = {
+    statement: signal(null),
+    error: signal(null),
+    busy: signal(false),
+    load: vi.fn().mockResolvedValue(undefined),
+  };
 
   async function open(customerId: string | undefined): Promise<void> {
     fixture = TestBed.createComponent(CustomerPage);
@@ -244,6 +263,7 @@ describe('CustomerPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: CustomersFacade, useValue: facade },
+        { provide: CustomerStatementFacade, useValue: statementFacade },
         { provide: LiveChanges, useValue: live },
         { provide: PartySettings, useValue: partySettings },
         { provide: AuthFacade, useValue: auth },
@@ -465,6 +485,28 @@ describe('CustomerPage', () => {
     await openTab('Valeurs par défaut');
     expect(q('customer-tab-defaults')).not.toBeNull();
     expect(q('party-defaults')).not.toBeNull();
+  });
+
+  it("offers the customer's statement to whoever may read invoices, and reads it for this company and customer", async () => {
+    customer.set(carthage);
+    await open('k1');
+
+    await openTab('Relevé');
+
+    expect(q('customer-tab-statement')).not.toBeNull();
+    expect(statementFacade.load).toHaveBeenLastCalledWith('c1', 'k1', { from: '', to: '' });
+  });
+
+  it('leaves the statement out when invoices may not be read, and for a customer still new', async () => {
+    auth.hasPermission.mockImplementation((permission: string) => permission !== 'invoice.read');
+    customer.set(carthage);
+    await open('k1');
+    expect(tabLabels()).not.toContain('Relevé');
+
+    auth.hasPermission.mockReturnValue(true);
+    customer.set(null);
+    await open(undefined);
+    expect(tabLabels()).not.toContain('Relevé');
   });
 
   it('saves from the bar beside the title, which is inert until something changed', async () => {
