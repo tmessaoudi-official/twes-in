@@ -13,6 +13,7 @@ use App\Tenancy\Application\Signup\AccountExistsMail;
 use App\Tenancy\Application\Signup\SignupLinkMail;
 use App\Tenancy\Application\Signup\SignupMailer;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -22,7 +23,9 @@ final readonly class SymfonySignupMailer implements SignupMailer
     public function __construct(
         private MailerInterface $mailer,
         private TranslatorInterface $translator,
+        #[Autowire(param: 'app.mail.sender')]
         private string $sender,
+        #[Autowire(param: 'app.product_name')]
         private string $productName,
     ) {
     }

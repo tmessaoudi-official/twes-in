@@ -3828,6 +3828,16 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   (one invoice spec timed out once under load 12 and passes alone, 46/46) and the build; API php-cs-fixer and the 26 Watch
   and Architecture tests (422 assertions); a sabotage of the 404 mapping reds its own test. Not certified: the screens
   rendered in a browser, e2e, and the 1m timing of the new endpoints (the Watch build was 3.4 s at 1m before this).
+- [2026-10-01 22:51] AGREED (developer's ruling of 2026-10-01 10:56, slice A done): the Infrastructure classes that took values from
+  `api/config/services.yaml` now take them through `#[Autowire(param: …)]` / `#[Autowire(env: …)]` /
+  `#[AutowireIterator(…)]` on their constructor parameters (sixteen classes), and the invitation mailer's explicit alias is
+  `#[AsAlias]` on the adapter, with the reason in its docblock. `services.yaml` keeps the parameters, the Application-class
+  arguments and tags (slice B, which needs the ruled carve-out), the Flysystem factory and `when@test`. Proof: the compiled
+  test container's definitions of the 33 services `services.yaml` named are identical before and after (arguments, tags,
+  factory, normalised from `App_KernelTestDebugContainer.xml`), and a sabotage swapping one parameter name shows in that
+  diff; `lint:container` passes in dev; the 103 per-directory PHPUnit runs exit 0 (the one non-zero, `ApiTestCase.php`, is an
+  abstract base with no tests); production's container is compiled by CI's `prod-image`, because `lint:container --env=prod`
+  refuses to run without `APP_SECRET` by design. Not done: slice B.
 
 ## 8. Status
 

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Security;
 
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Uid\Uuid;
 
@@ -26,6 +27,7 @@ final readonly class PendingSecondFactor
 
     public function __construct(
         private RequestStack $requestStack,
+        #[Autowire(param: 'app.mfa.pending_ttl')]
         private string $ttl,
     ) {
     }

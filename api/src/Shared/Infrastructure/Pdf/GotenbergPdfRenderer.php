@@ -11,6 +11,7 @@ namespace App\Shared\Infrastructure\Pdf;
 
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mime\Part\DataPart;
 use Symfony\Component\Mime\Part\Multipart\FormDataPart;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
@@ -23,7 +24,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  */
 final readonly class GotenbergPdfRenderer implements PdfRenderer
 {
-    public function __construct(private HttpClientInterface $httpClient, private string $url, private float $timeoutSeconds = 30.0)
+    public function __construct(private HttpClientInterface $httpClient, #[Autowire(param: 'app.pdf.gotenberg_url')] private string $url, private float $timeoutSeconds = 30.0)
     {
     }
 

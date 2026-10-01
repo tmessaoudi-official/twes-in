@@ -11,6 +11,7 @@ namespace App\Shared\Infrastructure\Pdf;
 
 use App\Shared\Application\FacturXPdf;
 use App\Shared\Application\PdfRenderingFailed;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Mime\Part\DataPart;
 use Symfony\Component\Mime\Part\Multipart\FormDataPart;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
@@ -26,7 +27,7 @@ final readonly class GotenbergFacturXPdf implements FacturXPdf
     /** The Factur-X profile the XML is written in (CiiInvoiceXml::GUIDELINE), as the route names it. */
     public const string CONFORMANCE_LEVEL = 'EN 16931';
 
-    public function __construct(private HttpClientInterface $httpClient, private string $url, private float $timeoutSeconds = 60.0)
+    public function __construct(private HttpClientInterface $httpClient, #[Autowire(param: 'app.pdf.gotenberg_url')] private string $url, private float $timeoutSeconds = 60.0)
     {
     }
 

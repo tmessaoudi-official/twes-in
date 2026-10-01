@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\ModuleRegistry\Infrastructure\ApiPlatform;
 
 use App\ModuleRegistry\Application\DeclaresModule;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
  * Which module a class belongs to: the one declared in the same `App\Module\<Name>\` namespace. Ownership follows the
@@ -28,7 +29,7 @@ final readonly class ModuleOwnership
      *
      * @throws \LogicException when one module directory declares two modules
      */
-    public function __construct(iterable $declarations)
+    public function __construct(#[AutowireIterator('app.modules.declarations')] iterable $declarations)
     {
         $owners = [];
         foreach ($declarations as $declaration) {

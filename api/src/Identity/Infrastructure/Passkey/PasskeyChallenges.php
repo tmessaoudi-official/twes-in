@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Passkey;
 
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Uid\Uuid;
 
@@ -22,6 +23,7 @@ final readonly class PasskeyChallenges
 
     public function __construct(
         private RequestStack $requestStack,
+        #[Autowire(param: 'app.mfa.pending_ttl')]
         private string $ttl,
     ) {
     }

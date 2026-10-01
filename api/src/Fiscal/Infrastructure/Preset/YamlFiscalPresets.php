@@ -14,6 +14,7 @@ use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\UnknownFiscalPreset;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -25,7 +26,7 @@ final class YamlFiscalPresets implements FiscalPresets
     /** @var array<string, FiscalPreset> */
     private array $read = [];
 
-    public function __construct(private readonly string $directory)
+    public function __construct(#[Autowire('%kernel.project_dir%/config/fiscal')] private readonly string $directory)
     {
     }
 

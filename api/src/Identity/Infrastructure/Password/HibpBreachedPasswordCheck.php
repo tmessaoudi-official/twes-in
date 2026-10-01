@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Identity\Infrastructure\Password;
 
 use App\Identity\Application\BreachedPasswordCheck;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -27,6 +28,7 @@ final readonly class HibpBreachedPasswordCheck implements BreachedPasswordCheck
 
     public function __construct(
         private HttpClientInterface $http,
+        #[Autowire(param: 'app.password.breach_check_enabled')]
         private bool $enabled,
     ) {
     }

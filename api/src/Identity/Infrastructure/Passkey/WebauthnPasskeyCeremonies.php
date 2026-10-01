@@ -12,6 +12,7 @@ namespace App\Identity\Infrastructure\Passkey;
 use App\Identity\Application\Mfa\PasskeyRefused;
 use App\Identity\Application\PasskeyCeremonies;
 use App\Identity\Application\VerifiedPasskey;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Serializer\Encoder\JsonEncode;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
@@ -54,8 +55,11 @@ final readonly class WebauthnPasskeyCeremonies implements PasskeyCeremonies
 
     /** @param list<string> $origins */
     public function __construct(
+        #[Autowire(param: 'app.webauthn.rp_id')]
         private string $rpId,
+        #[Autowire(param: 'app.product_name')]
         private string $rpName,
+        #[Autowire(param: 'app.webauthn.origins')]
         array $origins,
     ) {
         $attestation = AttestationStatementSupportManager::create([NoneAttestationStatementSupport::create()]);

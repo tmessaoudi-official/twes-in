@@ -14,6 +14,7 @@ use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Level;
 use Monolog\LogRecord;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Where production logs are written (docs/SPEC.md § 7, 2026-09-17), behind the one `fingers_crossed` handler, so a
@@ -28,6 +29,7 @@ final class ChannelStreams extends AbstractProcessingHandler
     private array $streams = [];
 
     public function __construct(
+        #[Autowire(env: 'LOG_DIRECTORY')]
         private readonly string $directory,
         private readonly string $stream = 'php://stderr',
         int|string|Level $level = Level::Debug,

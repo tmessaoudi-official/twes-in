@@ -95,10 +95,6 @@ services:
         # Domain/ is scanned too: its entities and value objects are never injected and are dropped as unused, while
         # its repository interfaces are the ports the resource aliases to their one adapter (Symfony aliases every
         # interface with a single implementation). Application use cases carrying policy values get them here.
-    # Stated rather than inferred: the demo fixtures add a second implementation of this port (a dev/test decorator
-    # that remembers where each invitation was mailed), and a port with two implementations loses the alias Symfony
-    # writes for a port with one. Naming the adapter keeps the port resolving, decorated or not.
-    App\Tenancy\Application\Invitation\InvitationMailer: '@App\Tenancy\Infrastructure\Mail\SymfonyInvitationMailer'
 
     App\Settings\Application\SettingCatalog:
         arguments:
@@ -118,9 +114,6 @@ services:
     App\ImportExport\Application\RunImport:
         arguments:
             $maxRows: '%app.import.max_rows%'
-    App\ModuleRegistry\Infrastructure\ApiPlatform\ModuleOwnership:
-        arguments:
-            $declarations: !tagged_iterator app.modules.declarations
     App\Identity\Application\Login\RecordFailedLogin:
         arguments:
             $lockAfterFailures: '%app.auth.lock_after_failures%'
@@ -129,19 +122,11 @@ services:
         arguments:
             $acceptUrlTemplate: '%app.invitation.accept_url%'
             $validFor: '%app.invitation.valid_for%'
-    App\Tenancy\Infrastructure\Mail\SymfonyInvitationMailer:
-        arguments:
-            $sender: '%app.mail.sender%'
-            $productName: '%app.product_name%'
     App\Tenancy\Application\Signup\RequestSignup:
         arguments:
             $linkUrlTemplate: '%app.signup.link_url%'
             $loginUrl: '%app.signup.login_url%'
             $validFor: '%app.signup.valid_for%'
-    App\Tenancy\Infrastructure\Mail\SymfonySignupMailer:
-        arguments:
-            $sender: '%app.mail.sender%'
-            $productName: '%app.product_name%'
     App\Tenancy\Application\Company\DecideCompanyApproval:
         arguments:
             $loginUrl: '%app.signup.login_url%'
@@ -153,56 +138,10 @@ services:
         arguments:
             $loginUrl: '%app.signup.login_url%'
             $platformUrl: '%app.platform_url%'
-    App\Licensing\Infrastructure\Mail\SymfonySubscriptionMailer:
-        arguments:
-            $sender: '%app.mail.sender%'
-            $productName: '%app.product_name%'
-    App\Tenancy\Infrastructure\Mail\SymfonyCompanyApprovalMailer:
-        arguments:
-            $sender: '%app.mail.sender%'
-            $productName: '%app.product_name%'
-    App\Identity\Infrastructure\Password\HibpBreachedPasswordCheck:
-        arguments:
-            $enabled: '%app.password.breach_check_enabled%'
-
-    App\Identity\Infrastructure\Mfa\SodiumSecretCipher:
-        arguments:
-            $base64Key: '%app.mfa.key%'
-
-    App\Identity\Infrastructure\Security\PendingSecondFactor:
-        arguments:
-            $ttl: '%app.mfa.pending_ttl%'
 
     App\Identity\Application\Mfa\BeginTotpEnrolment:
         arguments:
             $issuer: '%app.mfa.issuer%'
-
-    App\Identity\Infrastructure\Passkey\WebauthnPasskeyCeremonies:
-        arguments:
-            $rpId: '%app.webauthn.rp_id%'
-            $rpName: '%app.product_name%'
-            $origins: '%app.webauthn.origins%'
-
-    App\Identity\Infrastructure\Passkey\PasskeyChallenges:
-        arguments:
-            $ttl: '%app.mfa.pending_ttl%'
-
-    App\Shared\Infrastructure\Realtime\CentrifugoTokens:
-        arguments:
-            $hmacKey: '%app.realtime.token_key%'
-            $lifetimeSeconds: '%app.realtime.token_lifetime%'
-
-    # Production's log writer (docs/SPEC.md § 7, 2026-09-17): JSON on STDERR in a container, or one JSON file per
-    # channel under LOG_DIRECTORY when self-hosted without containers (see api/.env and infra/self-hosted/).
-    App\Shared\Infrastructure\Logging\ChannelStreams:
-        arguments:
-            $directory: '%env(LOG_DIRECTORY)%'
-
-    App\Shared\Infrastructure\Realtime\CentrifugoPublisher:
-        arguments:
-            $apiUrl: '%app.realtime.api_url%'
-            $apiKey: '%app.realtime.api_key%'
-            $enabled: '%app.realtime.push_enabled%'
 
     App\Files\Application\Attachments:
         arguments:
@@ -226,20 +165,6 @@ services:
             $secretKey: '%env(FILES_S3_SECRET_KEY)%'
             $pathStyle: '%env(bool:FILES_S3_PATH_STYLE)%'
             $httpClient: '@Symfony\Contracts\HttpClient\HttpClientInterface'
-
-    App\Shared\Infrastructure\Pdf\GotenbergPdfRenderer:
-        arguments:
-            $url: '%app.pdf.gotenberg_url%'
-
-    # The same container writes Factur-X PDFs through its own route (docs/SPEC.md § 8 row 145).
-    App\Shared\Infrastructure\Pdf\GotenbergFacturXPdf:
-        arguments:
-            $url: '%app.pdf.gotenberg_url%'
-
-    # One validated file per country (docs/SPEC.md § 3 Fiscal presets).
-    App\Fiscal\Infrastructure\Preset\YamlFiscalPresets:
-        arguments:
-            $directory: '%kernel.project_dir%/config/fiscal'
 
 when@test:
     parameters:

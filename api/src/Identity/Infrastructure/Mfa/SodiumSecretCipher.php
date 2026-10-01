@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Identity\Infrastructure\Mfa;
 
 use App\Identity\Application\SecretCipher;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * libsodium's secretbox (XSalsa20-Poly1305), keyed from `APP_MFA_KEY` and deliberately not from `APP_SECRET`:
@@ -23,7 +24,7 @@ final class SodiumSecretCipher implements SecretCipher
 {
     private readonly string $key;
 
-    public function __construct(#[\SensitiveParameter] string $base64Key)
+    public function __construct(#[Autowire(param: 'app.mfa.key')] #[\SensitiveParameter] string $base64Key)
     {
         $key = base64_decode($base64Key, true);
 

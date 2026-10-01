@@ -12,6 +12,7 @@ namespace App\Shared\Infrastructure\Realtime;
 use App\Shared\Application\RealtimePublisher;
 use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -26,8 +27,11 @@ final readonly class CentrifugoPublisher implements RealtimePublisher
     public function __construct(
         private HttpClientInterface $httpClient,
         private LoggerInterface $logger,
+        #[Autowire(param: 'app.realtime.api_url')]
         private string $apiUrl,
+        #[Autowire(param: 'app.realtime.api_key')]
         private string $apiKey,
+        #[Autowire(param: 'app.realtime.push_enabled')]
         private bool $enabled,
         private float $timeoutSeconds = 2.0,
     ) {

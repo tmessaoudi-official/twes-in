@@ -12,6 +12,7 @@ namespace App\Shared\Infrastructure\Realtime;
 use App\Shared\Application\RealtimeToken;
 use App\Shared\Application\RealtimeTokens;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -22,8 +23,10 @@ use Symfony\Component\Uid\Uuid;
 final readonly class CentrifugoTokens implements RealtimeTokens
 {
     public function __construct(
+        #[Autowire(param: 'app.realtime.token_key')]
         private string $hmacKey,
         private ClockInterface $clock,
+        #[Autowire(param: 'app.realtime.token_lifetime')]
         private int $lifetimeSeconds,
     ) {
         if ($lifetimeSeconds <= 0) {
