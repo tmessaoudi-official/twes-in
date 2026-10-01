@@ -62,7 +62,7 @@ final readonly class DoctrineProductRepository implements ProductRepository
         ListOrder::apply($query, $search->order, self::SORTED_BY, ['category'], 'p.reference')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
-        $paginator = new Paginator($query, fetchJoinCollection: false);
+        $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);
         /** @var list<Product> $products */
         $products = iterator_to_array($paginator, false);
         $this->loadWhatARowShows($products);

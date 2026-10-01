@@ -55,7 +55,7 @@ final readonly class DoctrineVendorRepository implements VendorRepository
         ListOrder::apply($query, $search->order, self::SORTED_BY, ['city', 'paymentTermsDays'], 'v.number')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
-        $paginator = new Paginator($query, fetchJoinCollection: false);
+        $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);
         /** @var list<Vendor> $vendors */
         $vendors = iterator_to_array($paginator, false);
 

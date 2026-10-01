@@ -77,7 +77,7 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
             ->addOrderBy('e.id', 'DESC')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
-        $paginator = new Paginator($query, fetchJoinCollection: false);
+        $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);
         /** @var list<Expense> $expenses */
         $expenses = iterator_to_array($paginator, false);
 

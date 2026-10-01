@@ -37,6 +37,9 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: 'invoice')]
 #[ORM\Index(name: 'idx_invoice_company', columns: ['company_id'])]
+// The list's own order, the newest first, read from the end: without it a page sorts every invoice of the company (198,565
+// buffers for a million; docs/SPEC.md § 7).
+#[ORM\Index(name: 'idx_invoice_company_created', columns: ['company_id', 'created_at', 'id'])]
 #[ORM\Index(name: 'idx_invoice_establishment', columns: ['establishment_id'])]
 #[ORM\Index(name: 'idx_invoice_customer', columns: ['customer_id'])]
 #[ORM\Index(name: 'idx_invoice_corrects', columns: ['corrects_invoice_id'])]

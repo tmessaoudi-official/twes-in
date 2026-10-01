@@ -57,7 +57,7 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
             ->addOrderBy('n.id', 'DESC')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
-        $paginator = new Paginator($query, fetchJoinCollection: false);
+        $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);
         /** @var list<DeliveryNote> $notes */
         $notes = iterator_to_array($paginator, false);
         $this->loadWhatARowShows($notes);

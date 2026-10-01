@@ -90,7 +90,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->addOrderBy('m.id', 'DESC')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
-        $paginator = new Paginator($query, fetchJoinCollection: false);
+        $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);
         /** @var list<StockMovement> $movements */
         $movements = iterator_to_array($paginator, false);
 

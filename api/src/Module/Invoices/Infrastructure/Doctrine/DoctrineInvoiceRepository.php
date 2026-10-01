@@ -56,7 +56,9 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             ->addOrderBy('i.id', 'DESC')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
-        $paginator = new Paginator($query, fetchJoinCollection: false);
+        // Nothing is fetch-joined, so the count is COUNT(i.id): the default output walker counts a SELECT DISTINCT of every
+        // column of the row and its customer, 8.4 s at a million invoices.
+        $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);
         /** @var list<Invoice> $invoices */
         $invoices = iterator_to_array($paginator, false);
         $this->loadWhatARowShows($invoices);

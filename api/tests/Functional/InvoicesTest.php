@@ -818,6 +818,27 @@ final class InvoicesTest extends ApiTestCase
     }
 
     /**
+     * At 1m invoices the page's count took 8.4 s: Doctrine's default count wraps the whole entity select, every column
+     * of the invoice and its customer, in a SELECT DISTINCT and counts that. A list that is not fetch-joined counts ids.
+     */
+    public function testThePagesCountIsACountOfIdsAndNotASelectOfEveryColumn(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write']);
+        $this->postJson($this->path(), $this->invoice());
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->em()->clear();
+
+        $sql = $this->sqlForAPageOf($this->path());
+
+        $counts = array_values(array_filter($sql, static fn (string $statement): bool => str_contains($statement, 'COUNT(')));
+        self::assertNotSame([], $counts, 'the page counts its rows');
+        foreach ($counts as $count) {
+            self::assertStringNotContainsString('SELECT DISTINCT', $count, 'the count does not wrap a select of the row');
+            self::assertStringNotContainsString('customer_snapshot', $count, 'the count never reads the row\'s columns');
+        }
+    }
+
+    /**
      * The cost each line of an answered invoice froze at issue.
      *
      * @param array<string, mixed> $body

@@ -3797,6 +3797,20 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   the cap (about 0.5 s under load), so a count that does not read the list is not built; measure it at 1m first. The
   first commit of the cap (b19ee39f, an overall cap) is superseded by this one. Alternatives: page the list with a
   cursor (more UI, wait for 1m); cap only `late_customer` (hides the next kind that grows).
+- [2026-10-01 07:04] ASSUMED (review): row 181 slice 2 at 1,000,008 invoices (`make scale-data SIZE=1m`, 27 min resumed, Postgres crash-recovered
+  once mid-numbering, cause not established; the run resumes). Measured on a loaded machine, so times are upper bounds.
+  Two defects found and fixed. (1) The list's count was Doctrine's default output walker, a `SELECT DISTINCT` of every
+  column of the invoice and its customer: 8.4 s for the count alone. All seven paged lists now count ids
+  (`setUseOutputWalkers(false)`, no fetch join), guarded by `PaginatorCountTest` and, for invoices, by a test on the
+  captured SQL. (2) The list's order had no index: 198,565 buffers read for a page, 103 with
+  `idx_invoice_company_created (company_id, created_at, id)`, read from its end for `DESC, DESC` (migration
+  `Version20261001045856`). Also corrected: the invoice search parameter is `q`, not `search`; every earlier "search"
+  row was an unfiltered list. Selective `q` is fast (customer name 0.4 s, exact number 0.2 s). After the fixes at 1m:
+  page 1 2.5 s, search 0.9 s, overdue 1.0 s, customers 0.1 s, but deep pages (page 20000 and 40000) still 16 to 25 s,
+  the home summary 2.7 s and the watch build 3.4 s: OPEN, not fixed (OFFSET cost and the summary's open-invoice query are
+  the suspects, [Unverified]). No `{SEQ:5}` overflow appeared (longest sequence 5 digits). Not run: the full `composer
+  test`, `app:scale:generate` re-run on the final code, 5m and 10m, slice 3. Alternatives for the deep pages: keyset
+  paging on `(created_at, id)`.
 
 ## 8. Status
 

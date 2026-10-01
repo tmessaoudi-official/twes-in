@@ -191,6 +191,34 @@ abstract class ApiTestCase extends WebTestCase
         return $collector->getQueryCount();
     }
 
+    /**
+     * The SQL one page of a list runs, in order.
+     *
+     * @return list<string>
+     */
+    protected function sqlForAPageOf(string $path): array
+    {
+        $this->client->enableProfiler();
+        $this->getJson($path.(str_contains($path, '?') ? '&' : '?').'itemsPerPage=1');
+        self::assertResponseIsSuccessful();
+        $profile = $this->client->getProfile();
+        self::assertInstanceOf(Profile::class, $profile, 'the profiler recorded the request');
+        $collector = $profile->getCollector('db');
+        self::assertInstanceOf(DoctrineDataCollector::class, $collector);
+
+        $sql = [];
+        foreach ($collector->getQueries() as $connection) {
+            self::assertIsArray($connection);
+            foreach ($connection as $query) {
+                self::assertIsArray($query);
+                self::assertIsString($query['sql'] ?? null);
+                $sql[] = $query['sql'];
+            }
+        }
+
+        return $sql;
+    }
+
     /** An invitation and its acceptance resolve a role through RoleRepository::builtIn, which only ever returns a company-less role. */
     protected function seedBuiltInRoles(): void
     {

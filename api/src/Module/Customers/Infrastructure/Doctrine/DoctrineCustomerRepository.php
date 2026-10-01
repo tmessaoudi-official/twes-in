@@ -68,7 +68,7 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
         ListOrder::apply($query, $search->order, self::SORTED_BY, ['customerGroup', 'city'], 'c.number')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 
-        $paginator = new Paginator($query, fetchJoinCollection: false);
+        $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);
         /** @var list<Customer> $customers */
         $customers = iterator_to_array($paginator, false);
 
