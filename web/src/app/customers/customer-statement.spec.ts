@@ -88,7 +88,14 @@ describe('CustomerStatementView', () => {
         },
         {
           provide: CustomerStatementFacade,
-          useValue: { statement, error, busy: signal(false), load },
+          useValue: {
+            statement,
+            error,
+            busy: signal(false),
+            load,
+            pdfUrl: (c: string, k: string, p: { from: string; to: string }) =>
+              `/api/companies/${c}/customers/${k}/statement/pdf?from=${p.from}&to=${p.to}`,
+          },
         },
       ],
     }).compileComponents();
@@ -129,6 +136,24 @@ describe('CustomerStatementView', () => {
     await fixture.whenStable();
 
     expect(load).toHaveBeenLastCalledWith('c1', 'k1', { from: '2026-02-01', to: '' });
+  });
+
+  it('links to the PDF of the period chosen', async () => {
+    const { fixture, el } = await render();
+    const link = () => el.querySelector<HTMLAnchorElement>('[data-testid="statement-pdf"]')!;
+    expect(link().getAttribute('href')).toBe(
+      '/api/companies/c1/customers/k1/statement/pdf?from=&to=',
+    );
+
+    const to = el.querySelector<HTMLInputElement>('[data-testid="statement-to"]')!;
+    to.value = '2026-06-30';
+    to.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(link().getAttribute('href')).toBe(
+      '/api/companies/c1/customers/k1/statement/pdf?from=&to=2026-06-30',
+    );
   });
 
   it('lays out the opening balance, each line with what was owed after it, the totals and the closing balance', async () => {

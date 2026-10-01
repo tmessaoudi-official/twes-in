@@ -10,7 +10,9 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -28,7 +30,16 @@ const isZero = (amount: string): boolean => /^-?0*(\.0*)?$/.test(amount);
  */
 @Component({
   selector: 'app-customer-statement',
-  imports: [MatFormFieldModule, MatInputModule, RouterLink, TranslatePipe, AmountPipe, DayPipe],
+  imports: [
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    RouterLink,
+    TranslatePipe,
+    AmountPipe,
+    DayPipe,
+  ],
   templateUrl: './customer-statement.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -52,6 +63,11 @@ export class CustomerStatementView {
   /** The days the person chose; empty leaves the period to the API. */
   protected readonly from = signal('');
   protected readonly to = signal('');
+
+  /** The PDF of the period on screen: the days the person chose, else the API's own default period. */
+  protected readonly pdfUrl = computed(() =>
+    this.facade.pdfUrl(this.companyId(), this.customerId(), { from: this.from(), to: this.to() }),
+  );
 
   constructor() {
     effect(() => {

@@ -48,6 +48,28 @@ final readonly class InvoicesOpenApi implements OpenApiFactoryInterface
             parameters: [$uuid('companyId', 'The company'), $uuid('invoiceId', 'The invoice or credit note')],
         )));
 
+        $openApi->getPaths()->addPath('/api/companies/{companyId}/customers/{customerId}/statement/pdf', new PathItem(get: new Operation(
+            operationId: 'customerStatementPdf',
+            tags: ['Customer'],
+            responses: [
+                '200' => new Response(
+                    'The statement of account as a PDF, worked out on the day it is asked for and never stored',
+                    new \ArrayObject(['application/pdf' => new MediaType(new \ArrayObject(['type' => 'string', 'format' => 'binary']))]),
+                ),
+                '401' => new Response('Not signed in'),
+                '404' => new Response('No such customer in this company, no customer.read or invoice.read, or the module is switched off'),
+                '422' => new Response('A day not written YYYY-MM-DD, or a period ending before it starts'),
+                '503' => new Response('The renderer could not produce the PDF'),
+            ],
+            summary: 'A customer\'s statement of account as a PDF',
+            parameters: [
+                $uuid('companyId', 'The company'),
+                $uuid('customerId', 'The customer'),
+                new Parameter('from', 'query', 'First day of the period, YYYY-MM-DD; the company year to date when absent', false, schema: ['type' => 'string', 'format' => 'date']),
+                new Parameter('to', 'query', 'Last day of the period, YYYY-MM-DD; today when absent', false, schema: ['type' => 'string', 'format' => 'date']),
+            ],
+        )));
+
         $refused = new \ArrayObject(['application/json' => new MediaType(new \ArrayObject([
             'type' => 'object',
             'required' => ['code', 'params', 'message', 'gaps'],

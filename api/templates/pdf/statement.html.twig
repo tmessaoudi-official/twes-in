@@ -1,0 +1,107 @@
+{# A customer's statement of account on A4, rendered by Gotenberg's Chromium. Wording from translations/pdf in the
+   customer's language; amounts go through the decimal filter, never through a float. Nothing here runs a script. #}
+{%- set t = 'pdf' -%}
+{%- set dateFormat = date_pattern(page.dateFormat, 'format.date'|trans({}, t, locale)) -%}
+{%- set scale = statement.currencyScale -%}
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ 'statement.title'|trans({}, t, locale) }} {{ statement.customerNumber }}</title>
+  <style>
+    @page { size: A4; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Inter", "Helvetica Neue", Arial, sans-serif; font-size: 10pt; line-height: 1.4; color: #1f2328; }
+    .parties { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    .party { width: 48%; }
+    .party h2 { margin: 0 0 4px; font-size: 9pt; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #57606a; }
+    .logo { display: block; max-width: 180px; max-height: 64px; object-fit: contain; margin-bottom: 8px; }
+    .company-name { font-size: 14pt; font-weight: 700; }
+    .title { border-bottom: 2px solid #1f2328; padding-bottom: 6px; margin-bottom: 12px; }
+    .title h1 { margin: 0; font-size: 18pt; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: .04em; color: #57606a; border-bottom: 1px solid #d0d7de; padding: 4px; }
+    td { padding: 6px 4px; border-bottom: 1px solid #eaeef2; vertical-align: top; }
+    tr { break-inside: avoid; }
+    .number { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    th.number { text-align: right; }
+    .opening td, .totals td { font-weight: 600; }
+    .closing td { border-top: 2px solid #1f2328; border-bottom: 0; font-weight: 700; padding-top: 8px; }
+    .muted { color: #57606a; }
+  </style>
+</head>
+<body>
+  <div class="parties">
+    <div class="party">
+      {%- if logo %}<img class="logo" src="{{ logo }}" alt="">{% endif %}
+      <div class="company-name">{{ seller.name }}{% if seller.legalForm %} {{ seller.legalForm }}{% endif %}</div>
+      {%- for key, value in seller.identifiers %}
+        <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : {{ value }}</div>
+      {%- endfor %}
+      {%- if seller.address.line1 %}
+        <div>{{ seller.address.line1 }}</div>
+        {% if seller.address.line2 %}<div>{{ seller.address.line2 }}</div>{% endif %}
+        <div>{{ seller.address.postalCode }} {{ seller.address.city }}</div>
+      {%- endif %}
+      {% if seller.phone %}<div>{{ 'company.phone'|trans({}, t, locale) }} {{ seller.phone }}</div>{% endif %}
+      {% if seller.email %}<div>{{ 'company.email'|trans({}, t, locale) }} {{ seller.email }}</div>{% endif %}
+    </div>
+    <div class="party">
+      <h2>{{ 'statement.customer'|trans({}, t, locale) }}</h2>
+      <div class="company-name">{{ customer.legalName ?? customer.name }}</div>
+      {% if customer.legalName %}<div>{{ customer.name }}</div>{% endif %}
+      <div class="muted">{{ 'statement.number'|trans({}, t, locale) }} {{ customer.number }}</div>
+      {%- set billing = customer.billingAddress %}
+      {% if billing.line1 %}<div>{{ billing.line1 }}</div>{% endif %}
+      {% if billing.line2 %}<div>{{ billing.line2 }}</div>{% endif %}
+      {% if billing.postalCode or billing.city %}<div>{{ billing.postalCode }} {{ billing.city }}</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="title">
+    <h1>{{ 'statement.title'|trans({}, t, locale) }}</h1>
+    <div class="muted">{{ 'statement.period'|trans({'%from%': statement.from|date(dateFormat, 'UTC'), '%to%': statement.to|date(dateFormat, 'UTC')}, t, locale) }} · {{ 'company.currency'|trans({'%currency%': statement.currency}, t, locale) }}</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>{{ 'statement.date'|trans({}, t, locale) }}</th>
+        <th>{{ 'statement.document'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'statement.debit'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'statement.credit'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'statement.balance'|trans({}, t, locale) }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="opening">
+        <td colspan="4">{{ 'statement.opening'|trans({}, t, locale) }}</td>
+        <td class="number">{{ statement.openingBalance|decimal(scale, locale, page.numberFormat) }}</td>
+      </tr>
+      {%- for line in statement.lines %}
+        <tr>
+          <td>{{ line.day|date(dateFormat, 'UTC') }}</td>
+          <td>{{ ('statement.' ~ line.kind)|trans({}, t, locale) }} {{ line.number }}{% if line.reference %} <span class="muted">· {{ line.reference }}</span>{% endif %}</td>
+          <td class="number">{% if line.debit|trim('0.-', 'both') != '' %}{{ line.debit|decimal(scale, locale, page.numberFormat) }}{% endif %}</td>
+          <td class="number">{% if line.credit|trim('0.-', 'both') != '' %}{{ line.credit|decimal(scale, locale, page.numberFormat) }}{% endif %}</td>
+          <td class="number">{{ line.balance|decimal(scale, locale, page.numberFormat) }}</td>
+        </tr>
+      {%- else %}
+        <tr><td colspan="5" class="muted">{{ 'statement.none'|trans({}, t, locale) }}</td></tr>
+      {%- endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="totals">
+        <td colspan="2">{{ 'statement.totals'|trans({}, t, locale) }}</td>
+        <td class="number">{{ statement.totalDebit|decimal(scale, locale, page.numberFormat) }}</td>
+        <td class="number">{{ statement.totalCredit|decimal(scale, locale, page.numberFormat) }}</td>
+        <td></td>
+      </tr>
+      <tr class="closing">
+        <td colspan="4">{{ 'statement.closing'|trans({}, t, locale) }}</td>
+        <td class="number">{{ statement.closingBalance|decimal(scale, locale, page.numberFormat) }} {{ statement.currency }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</body>
+</html>

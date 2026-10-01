@@ -28,6 +28,17 @@
         data-testid="statement-to"
       />
     </mat-form-field>
+    <a
+      mat-stroked-button
+      class="mt-1"
+      [href]="pdfUrl()"
+      target="_blank"
+      rel="noopener"
+      data-testid="statement-pdf"
+    >
+      <mat-icon aria-hidden="true">picture_as_pdf</mat-icon>
+      {{ 'customers.statement.pdf' | translate }}
+    </a>
   </div>
 
   @if (error(); as code) {

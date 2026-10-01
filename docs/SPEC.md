@@ -3875,6 +3875,12 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   `invoice.read`), and the planned module `statements` now stands for the credit limit alone. Not yet: the printed PDF, a
   credit limit, and the customer's credit balance of row 128. Alternatives: a stored running account (row 134), which this
   read model can later be fed from; a separate page (refused: the customer page already splits into tabs).
+- [2026-10-02 01:24] ASSUMED (review): **the statement prints** at `GET /api/companies/{id}/customers/{id}/statement/pdf?from&to`, with the same
+  rights and period as the JSON one. It is a plain controller (documented in `InvoicesOpenApi`), laid out by
+  `templates/pdf/statement.html.twig` in the language the customer's documents use, the company's date and number formats and its
+  logo, and it is rendered on request and never stored: it is a picture of the account on the day it is asked for, unlike an issued
+  invoice. The Relevé tab links to it for the period on screen. Alternatives: storing each printed statement (refused: nothing
+  needs the old picture, the account can be re-read at any date).
 
 ## 8. Status
 

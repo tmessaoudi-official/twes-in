@@ -129,6 +129,19 @@ export class CustomersApi {
     );
   }
 
+  /** Where the statement's PDF is, over the period asked for: a plain link, the browser shows the file. */
+  statementPdfUrl(
+    companyId: string,
+    customerId: string,
+    period: { from?: string; to?: string } = {},
+  ): string {
+    let params = new HttpParams();
+    if (period.from) params = params.set('from', period.from);
+    if (period.to) params = params.set('to', period.to);
+    const query = params.toString();
+    return `${path(companyId, 'customers', customerId)}/statement/pdf${query ? `?${query}` : ''}`;
+  }
+
   async groups(companyId: string): Promise<CustomerGroupRow[]> {
     return this.guard(async () =>
       (

@@ -1059,6 +1059,7 @@
     },
     "statement": {
       "title": "Relevé de compte",
+      "pdf": "Télécharger le PDF",
       "from": "Du",
       "to": "Au",
       "caption": "Relevé de compte de {{name}}, en {{currency}}",

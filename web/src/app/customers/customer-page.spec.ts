@@ -217,6 +217,7 @@ describe('CustomerPage', () => {
     error: signal(null),
     busy: signal(false),
     load: vi.fn().mockResolvedValue(undefined),
+    pdfUrl: vi.fn().mockReturnValue('/pdf'),
   };
 
   async function open(customerId: string | undefined): Promise<void> {

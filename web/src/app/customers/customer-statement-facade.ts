@@ -40,4 +40,8 @@ export class CustomerStatementFacade {
       if (request === this.request) this.busySignal.set(false);
     }
   }
+
+  pdfUrl(companyId: string, customerId: string, period: { from?: string; to?: string }): string {
+    return this.api.statementPdfUrl(companyId, customerId, period);
+  }
 }

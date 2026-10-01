@@ -1059,6 +1059,7 @@
     },
     "statement": {
       "title": "Statement of account",
+      "pdf": "Download the PDF",
       "from": "From",
       "to": "To",
       "caption": "Statement of account for {{name}}, in {{currency}}",

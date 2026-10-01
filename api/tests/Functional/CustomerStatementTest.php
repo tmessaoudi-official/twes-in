@@ -17,6 +17,7 @@ use App\Fiscal\Domain\UnitRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
+use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -117,6 +118,48 @@ final class CustomerStatementTest extends ApiTestCase
         self::assertNotSame($this->stringAt($issued, 'total'), $this->stringAt($this->json(), 'closingBalance'));
     }
 
+    public function testItPrintsAsAPdfWithTheCompanyLogoAndEveryLine(): void
+    {
+        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $invoice = $this->issue('100');
+        $this->pay($invoice, '40');
+        static::getContainer()->get(CompanyLogo::class)->set($this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company'), 'logo.png', (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true), null);
+
+        $stored = $this->storedPdfs();
+        $this->client->request('GET', $this->path().'/pdf');
+
+        self::assertResponseIsSuccessful();
+        $response = $this->client->getResponse();
+        self::assertSame('application/pdf', $response->headers->get('content-type'));
+        self::assertStringContainsString('statement-CLI-0001.pdf', (string) $response->headers->get('content-disposition'));
+        $page = (string) $response->getContent();
+        self::assertStringStartsWith('%PDF-', $page);
+        foreach (['Relevé de compte', 'Carthage Conseil', 'Acme', '<img class="logo" src="data:image/png;base64,', '100,000', '40,000', '60,000'] as $expected) {
+            self::assertStringContainsString($expected, $page);
+        }
+        self::assertSame($stored, $this->storedPdfs(), 'a statement is rendered on request, never stored (issuing an invoice stores that invoice\'s own PDF)');
+    }
+
+    public function testThePdfTakesTheSamePeriodAndTheSameRights(): void
+    {
+        $this->signedIn(['customer.read', 'invoice.read']);
+        $this->client->request('GET', $this->path().'/pdf?from=2026-05-02&to=2026-05-01');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        $this->client->request('GET', $this->companyPath().'/customers/'.self::ABSENT.'/statement/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testThePdfNeedsBothRightsAndASignedInCaller(): void
+    {
+        $this->client->request('GET', $this->path().'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+
+        $this->signedIn(['invoice.read']);
+        $this->client->request('GET', $this->path().'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testAnotherCustomersDocumentsAndDraftsAreNotOnIt(): void
     {
         $other = $this->customer('CLI-0002', 'Autre')->getId()->toRfc4122();
@@ -202,7 +245,7 @@ final class CustomerStatementTest extends ApiTestCase
 
     private function pay(string $invoiceId, string $amount): void
     {
-        $this->postJson($this->companyPath().'/invoices/'.$invoiceId.'/payments', ['date' => (new \DateTimeImmutable())->format('Y-m-d'), 'amount' => $amount, 'method' => 'transfer']);
+        $this->postJson($this->companyPath().'/invoices/'.$invoiceId.'/payments', ['date' => (new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone())))->format('Y-m-d'), 'amount' => $amount, 'method' => 'transfer']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
     }
 
@@ -269,5 +312,13 @@ final class CustomerStatementTest extends ApiTestCase
     private function path(): string
     {
         return $this->companyPath().'/customers/'.$this->customerId.'/statement';
+    }
+
+    private function storedPdfs(): int
+    {
+        $count = $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM file WHERE mime = \'application/pdf\'');
+        self::assertIsInt($count);
+
+        return $count;
     }
 }
