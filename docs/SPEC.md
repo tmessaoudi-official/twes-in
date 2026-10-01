@@ -3887,6 +3887,13 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   applies and whether the balance at the end of the period passes it, worked out by the API in exact decimals, and the Relevé tab says so
   (an alert when passed). Not yet: the warning when a delivery would pass the limit, and the notification of row 97. Alternatives: a
   nullable column on the customer (refused: the settings engine already gives the three levels, their screens and their audit trail).
+- [2026-10-02 01:49] ASSUMED (review): **the credit limit warns on a delivery (row 85, second slice)** through `GET /api/companies/{id}/delivery-notes/{id}/credit`:
+  what the customer owes today across their issued invoices, plus the note's own total, against the limit that applies; `over` is true
+  only for a draft or validated note, with a limit set, when the sum passes it (exactly the limit is not past it). It is read with
+  `delivery_note.read` alone, because it is a control for whoever delivers, who need not read invoices. The note screen shows an alert
+  and delivers all the same: it warns, it never refuses. Goods already delivered and not yet invoiced are not on the account, so they
+  are not counted; counting them is the account of row 134. If the read fails the screen says nothing (the notice is advisory).
+  Not yet: the notification of row 97. Alternatives: refusing the delivery (refused: the ruling says warns).
 
 ## 8. Status
 

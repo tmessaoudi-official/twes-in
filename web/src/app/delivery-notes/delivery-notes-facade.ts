@@ -10,6 +10,7 @@ import type {
   DeliveryNoteRow,
   DeliveryNoteSearch,
   DeliveryNotesError,
+  DeliveryNoteCredit,
   DeliveryNoteStatusCounts,
   ProductOption,
 } from './delivery-notes-types';
@@ -78,6 +79,19 @@ export class DeliveryNotesFacade {
       const counts = await this.api.statusCounts(companyId, search);
       if (request === this.countsRequest) this.statusCountsSignal.set(counts);
     });
+  }
+
+  /**
+   * What delivering the note would do to its customer's credit limit, or null when that could not be read. The notice
+   * is advisory and sits beside a screen that reports the server's absence itself, so a failed read says nothing
+   * here rather than replacing the note with an error.
+   */
+  async credit(companyId: string, id: string): Promise<DeliveryNoteCredit | null> {
+    try {
+      return await this.api.credit(companyId, id);
+    } catch {
+      return null;
+    }
   }
 
   /** What the note screen needs: the form's options, and the note unless it is new. */

@@ -13,6 +13,17 @@ export type DeliveryNoteSortKey = 'number' | 'customer' | 'issueDate' | 'deliver
 
 /** One page of the delivery notes list as the API searches, narrows and sorts it (docs/SPEC.md § 7). */
 /** What each status chip of the list would show under the same search, as the API counted it (docs/SPEC.md § 7, 2026-09-26). */
+/** What delivering a note would do to its customer's credit limit (docs/SPEC.md § 7): the API's decimal strings. */
+export interface DeliveryNoteCredit {
+  /** Zero is no limit. */
+  limit: string;
+  owed: string;
+  noteTotal: string;
+  afterDelivery: string;
+  /** Still to deliver, a limit is set and `afterDelivery` passes it: the API decides, in exact decimals. */
+  over: boolean;
+}
+
 export interface DeliveryNoteStatusCounts {
   all: number;
   statuses: Record<DeliveryNoteStatus, number>;

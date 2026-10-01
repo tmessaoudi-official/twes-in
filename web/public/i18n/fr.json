@@ -1302,6 +1302,7 @@
     }
   },
   "delivery_notes": {
+    "credit_over": "Cette livraison porte ce que le client doit à {{owed}} + {{total}} {{currency}}, au-delà de son plafond de crédit de {{limit}} {{currency}}.",
     "title": "Bons de livraison",
     "add": "Nouveau bon de livraison",
     "none": "Aucun bon de livraison pour l'instant.",

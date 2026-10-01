@@ -40,6 +40,7 @@ import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { placedOutcome, scanIntoLines, scannedLot } from '../shared/scan/scan-lines';
 import { CustomerDisplay } from '../shared/customer-display/customer-display';
 import { PickField, type PickOption } from '../shared/form/pick-field';
+import { DeliveryNoteCreditNotice } from './delivery-note-credit-notice';
 import { DeliveryNoteLines } from './delivery-note-lines';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 import {
@@ -84,6 +85,7 @@ export const DELIVERY_NOTE_PLANNED: readonly PlannedAction[] = [
     DayPipe,
     DescriptorForm,
     DeliveryNoteLines,
+    DeliveryNoteCreditNotice,
     DocumentActions,
     RecordView,
     PartConflict,

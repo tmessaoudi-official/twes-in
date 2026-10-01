@@ -59,6 +59,7 @@ describe('DeliveryNotesFacade', () => {
     cancel: vi.fn(),
     invoice: vi.fn(),
     statusCounts: vi.fn(),
+    credit: vi.fn(),
   };
   let facade: DeliveryNotesFacade;
 
@@ -170,5 +171,21 @@ describe('DeliveryNotesFacade', () => {
     api.invoice.mockRejectedValue(new DeliveryNotesRefused('conflict'));
     expect(await facade.invoice('c1', 'n1')).toBeNull();
     expect(facade.error()).toBe('conflict');
+  });
+
+  it('answers the credit position of a note, and null when it could not be read, without raising the screen’s error', async () => {
+    const credit = {
+      limit: '10.000',
+      owed: '0.000',
+      noteTotal: '5.000',
+      afterDelivery: '5.000',
+      over: false,
+    };
+    api.credit.mockResolvedValue(credit);
+    expect(await facade.credit('c1', 'n1')).toEqual(credit);
+
+    api.credit.mockRejectedValue(new DeliveryNotesRefused('network'));
+    expect(await facade.credit('c1', 'n1')).toBeNull();
+    expect(facade.error()).toBeNull();
   });
 });

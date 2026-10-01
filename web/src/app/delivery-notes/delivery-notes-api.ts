@@ -12,6 +12,7 @@ import type {
   DeliveryNoteCustomerPickDeliveryNoteCustomerPickRead,
   DeliveryNoteOptionsDeliveryNoteOptionsRead,
   DeliveryNoteProductPickDeliveryNoteProductPickRead,
+  DeliveryNoteCreditDeliveryNoteCreditRead,
   DeliveryNoteStatusCountsDeliveryNoteStatusCountsRead,
   InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite,
   InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead,
@@ -24,6 +25,7 @@ import {
   type DeliveryNoteOptions,
   type DeliveryNoteRow,
   type DeliveryNoteSearch,
+  type DeliveryNoteCredit,
   type DeliveryNoteStatusCounts,
   type DeliveryNotesError,
   type CustomerOption,
@@ -115,6 +117,26 @@ export class DeliveryNotesApi {
       if (page.totalItems === undefined)
         throw new Error('A page of delivery notes came without its total.');
       return { rows: page.member.map(toNote), total: page.totalItems };
+    });
+  }
+
+  /** What delivering the note would do to its customer's credit limit. */
+  async credit(companyId: string, id: string): Promise<DeliveryNoteCredit> {
+    return this.guard(async () => {
+      const credit = await firstValueFrom(
+        this.http.get<DeliveryNoteCreditDeliveryNoteCreditRead>(
+          `${notePath(companyId, id)}/credit`,
+        ),
+      );
+      if (credit.limit === undefined || credit.over === undefined)
+        throw new Error('A credit position came without its figures.');
+      return {
+        limit: credit.limit,
+        owed: credit.owed ?? '0',
+        noteTotal: credit.noteTotal ?? '0',
+        afterDelivery: credit.afterDelivery ?? '0',
+        over: credit.over,
+      };
     });
   }
 

@@ -1302,6 +1302,7 @@
     }
   },
   "delivery_notes": {
+    "credit_over": "This delivery brings what the customer owes to {{owed}} + {{total}} {{currency}}, past their credit limit of {{limit}} {{currency}}.",
     "title": "Delivery notes",
     "add": "New delivery note",
     "none": "No delivery notes yet.",

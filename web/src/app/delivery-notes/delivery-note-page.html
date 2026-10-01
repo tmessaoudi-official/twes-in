@@ -54,6 +54,18 @@
       </p>
     }
   }
+  @if (current(); as note) {
+    @if ((note.status === 'draft' || note.status === 'validated') && options(); as opts) {
+      <app-delivery-note-credit-notice
+        [companyId]="company()?.id ?? ''"
+        [noteId]="note.id"
+        [status]="note.status"
+        [total]="note.total"
+        [currency]="opts.currency"
+        [scale]="opts.currencyScale"
+      />
+    }
+  }
   @if (error(); as code) {
     <p role="alert" data-testid="delivery-note-error" class="text-error">
       {{ 'delivery_notes.errors.' + code | translate }}

@@ -289,6 +289,33 @@ describe('DeliveryNotesApi', () => {
     await expect(pending).rejects.toThrow();
   });
 
+  it('reads what delivering a note would do to its customer’s credit limit', async () => {
+    const pending = api.credit('c1', 'n1');
+    const request = http.expectOne('/api/companies/c1/delivery-notes/n1/credit');
+    expect(request.request.method).toBe('GET');
+    request.flush({
+      deliveryNoteId: 'n1',
+      limit: '1200.000',
+      owed: '1000.000',
+      noteTotal: '300.000',
+      afterDelivery: '1300.000',
+      over: true,
+    });
+    expect(await pending).toEqual({
+      limit: '1200.000',
+      owed: '1000.000',
+      noteTotal: '300.000',
+      afterDelivery: '1300.000',
+      over: true,
+    });
+  });
+
+  it('refuses a credit position that came without its verdict, rather than showing none as under', async () => {
+    const pending = api.credit('c1', 'n1');
+    http.expectOne('/api/companies/c1/delivery-notes/n1/credit').flush({ limit: '0.000' });
+    await expect(pending).rejects.toThrow();
+  });
+
   it('validates, delivers on a day or today, and cancels', async () => {
     const validated = api.validate('c1', 'n1');
     const validate = http.expectOne('/api/companies/c1/delivery-notes/n1/validate');

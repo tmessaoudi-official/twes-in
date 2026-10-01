@@ -47,6 +47,7 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       delivery_notes: {
+        credit_over: 'Plafond de crédit dépassé',
         errors: { conflict: 'La note a changé d’état entre-temps.' },
         statuses: { draft: 'Brouillon', validated: 'Validé', invoiced: 'Facturé' },
         fixed_notes: {
@@ -150,6 +151,7 @@ describe('DeliveryNotePage', () => {
     cancel: vi.fn(),
     invoice: vi.fn(),
     clearError: vi.fn(),
+    credit: vi.fn(async () => null as unknown),
     pdfUrl: (companyId: string, id: string) =>
       `/api/companies/${companyId}/delivery-notes/${id}/pdf`,
   };
@@ -516,6 +518,25 @@ describe('DeliveryNotePage', () => {
     await open('n1');
     expect(q('delivery-note-form')).not.toBeNull();
     expect(q('delivery-note-view')).toBeNull();
+  });
+
+  it('warns of a credit limit passed on a note still to deliver, and on no other', async () => {
+    facade.credit.mockResolvedValue({
+      limit: '100.000',
+      owed: '90.000',
+      noteTotal: '20.000',
+      afterDelivery: '110.000',
+      over: true,
+    });
+    note.set(validated);
+    await open('n1');
+    expect(q('delivery-note-credit-over')?.textContent).toContain('Plafond de crédit dépassé');
+
+    facade.credit.mockClear();
+    note.set({ ...validated, status: 'delivered' });
+    await open('n1');
+    expect(q('delivery-note-credit-over')).toBeNull();
+    expect(facade.credit).not.toHaveBeenCalled();
   });
 
   it('shows a validated note as it was issued, with its PDF, its delivery and its cancellation', async () => {
