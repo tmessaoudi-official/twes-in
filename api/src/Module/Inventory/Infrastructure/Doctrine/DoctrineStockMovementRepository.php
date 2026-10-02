@@ -16,6 +16,9 @@ use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
+use App\Module\Inventory\Domain\StockValue;
+use App\Module\Inventory\Domain\WeightedAverageCost;
+use App\Module\Products\Domain\Product;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
@@ -49,10 +52,74 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
 
     public function save(StockMovement ...$movements): void
     {
+        $averages = [];
         foreach ($movements as $movement) {
+            if (null === $movement->getUnitCost()) {
+                $key = $movement->getProduct()->getId()->toRfc4122();
+                $averages[$key] ??= $this->averageCostOf($movement->getProduct());
+                if (null !== $averages[$key]) {
+                    $movement->valuedAt($averages[$key]);
+                }
+            }
             $this->entityManager->persist($movement);
         }
         $this->entityManager->flush();
+    }
+
+    public function valuation(Uuid $companyId): array
+    {
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select(
+                'IDENTITY(m.product) AS product',
+                'SUM(m.quantity) AS quantity',
+                'SUM(CASE WHEN m.unitCost IS NULL THEN 0 ELSE m.quantity * m.unitCost END) AS value',
+                'SUM(CASE WHEN m.unitCost IS NULL THEN m.quantity ELSE 0 END) AS unvalued',
+            )
+            ->from(StockMovement::class, 'm')
+            ->where('m.company = :company')
+            ->groupBy('m.product')
+            ->setParameter('company', $companyId, 'uuid')
+            ->getQuery()
+            ->getArrayResult();
+
+        $values = [];
+        foreach ($rows as $row) {
+            if (!\is_array($row) || !\is_string($row['product'] ?? null)) {
+                continue;
+            }
+            $quantity = self::decimal($row['quantity'] ?? 0);
+            $value = new Number('0.0000000')->add(self::amount($row['value'] ?? 0))->value;
+            if (0 === new Number($quantity)->compare(0) && 0 === new Number($value)->compare(0)) {
+                continue;
+            }
+            $values[] = new StockValue(Uuid::fromString($row['product']), $quantity, $value, self::decimal($row['unvalued'] ?? 0));
+        }
+
+        return $values;
+    }
+
+    /** @return numeric-string|null */
+    private function averageCostOf(Product $product): ?string
+    {
+        $row = $this->entityManager->createQueryBuilder()
+            ->select('SUM(m.quantity) AS quantity', 'SUM(m.quantity * m.unitCost) AS amount')
+            ->from(StockMovement::class, 'm')
+            ->where('m.product = :product')
+            ->andWhere('m.unitCost IS NOT NULL')
+            ->setParameter('product', $product->getId(), 'uuid')
+            ->getQuery()
+            ->getSingleResult();
+        if (!\is_array($row)) {
+            return null;
+        }
+
+        return WeightedAverageCost::of(self::decimal($row['quantity'] ?? 0), new Number('0.0000000')->add(self::amount($row['amount'] ?? 0))->value, $product->getDetails()->costPrice);
+    }
+
+    /** @return int|numeric-string */
+    private static function amount(mixed $sum): int|string
+    {
+        return \is_int($sum) || (\is_string($sum) && is_numeric($sum)) ? $sum : 0;
     }
 
     public function ofSource(string $sourceType, Uuid $sourceId, Uuid $companyId): array

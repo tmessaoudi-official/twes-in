@@ -18,6 +18,7 @@ import type {
   StockLocationStockLocationWrite,
   StockMovementStockMovementRead,
   StockMovementStockMovementWrite,
+  StockValuationStockValuationRead,
   StockOptionsStockOptionsRead,
   StockStructureStockStructureRead,
   StockStructureStockStructureWrite,
@@ -49,6 +50,7 @@ import {
   type StockProductOption,
   type StockMovementSearch,
   type StockSearch,
+  type StockValuation,
 } from './inventory-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
@@ -137,6 +139,28 @@ export class InventoryApi {
       if (page.totalItems === undefined)
         throw new Error('A page of movements came without its total.');
       return { rows: page.member.map(toMovement), total: page.totalItems };
+    });
+  }
+
+  /** What the stock is worth, per product and in all; needs the right to read what things cost. */
+  async valuation(companyId: string): Promise<StockValuation> {
+    return this.guard(async () => {
+      const raw = await firstValueFrom(
+        this.http.get<StockValuationStockValuationRead>(path(companyId, 'stock-valuation')),
+      );
+      return {
+        total: raw.total ?? '0.000',
+        lines: (raw.lines ?? []).map((line) => ({
+          productId: String(line['productId'] ?? ''),
+          productReference: String(line['productReference'] ?? ''),
+          productName: String(line['productName'] ?? ''),
+          unitCode: String(line['unitCode'] ?? ''),
+          quantity: String(line['quantity'] ?? '0.000'),
+          unitCost: line['unitCost'] == null ? null : String(line['unitCost']),
+          value: String(line['value'] ?? '0.000'),
+          unvaluedQuantity: String(line['unvaluedQuantity'] ?? '0.000'),
+        })),
+      };
     });
   }
 

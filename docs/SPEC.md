@@ -3963,6 +3963,28 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   is not kept reads zero everywhere, so it never raises the offer, and a person without stock.read sees nothing. Invoice
   lines do not offer it, an invoice moving no stock. Not run in a browser or an e2e scenario; the swap's effect on the
   line's unit and taxes is `applyProduct`'s, as when a product is picked.
+- [2026-10-02 05:24] ASSUMED (review): **stock valuation (row 87)**: one method, the weighted average, because the sourced
+  fiscal research in `docs/fiscal/` says nothing against it (it does not mention stock valuation at all; that Tunisia's
+  stock standard allows the weighted average is NOT sourced there, so the method is UNCERTIFIED — LEGAL until a citation
+  is added to `docs/fiscal/TN.md`). `stock_movement.unit_cost` (four decimals, null while no cost is known) is what a unit
+  was valued at WHEN it moved, and the stock's value is the sum of quantity times it. A receipt may carry `unitCost`
+  (write-only on the movement; 422 on a negative or a fifth decimal); every other movement, and a receipt without one, is
+  valued at the average of what the product's stock was valued at (the valued movements' amount over their quantity), or
+  at the product's cost price when none is valued, or stays unvalued. The valuing happens in `StockMovementRepository::save`
+  so no writer of stock (a count, a move, a delivery note, an import) can forget it; the policy is the pure
+  `WeightedAverageCost`. A move values both halves at the same average, so the value does not change; a cancelled
+  delivery's return comes back at the cost the goods left at. `GET .../stock-valuation` answers each product's quantity,
+  average cost, value and the part with no known cost, and the total; needs stock.read AND product.cost.read (404
+  otherwise), the web page being the « Valorisation » tab of the stock screens, and the receipt form asks the cost only
+  of someone who may read costs. Stock moved before this has no cost: it is counted apart and adds nothing to the value.
+  The average is read and written without a lock across locations, so two receipts of one product racing can each value
+  a following movement at an average that missed the other; that is not raced or tested. The planned module
+  `stock_valuation` is removed from the planned list (22 left): the valuation is part of inventory. Not built: choosing
+  first in, first out instead (the placeholder « the valuation method » settings card went with the planned module),
+  valuing losses and transformations (neither exists yet), a valuation at a past date, and a browser or e2e run.
+  Alternatives: valuing at report time by replaying every movement (refused: the replay is sequential and unbounded, and
+  an average computed later could differ from the one a movement was valued with); a separate valuation module (refused:
+  the data is the stock's own).
 
 ## 8. Status
 
@@ -4057,7 +4079,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 84 | Supplier bill and the three-way match (§ 7 2026-09-20): a bill with lines, matched automatically against order and receipt within a tolerance the settings engine holds, anything outside it waiting on an approval before the bill is payable | M | todo | - | api/src/Module/Purchasing/** api/migrations/** api/tests/** web/src/app/purchasing/** |
 | 85 | Statement of account and credit limit (§ 7 2026-09-20): a customer's documents and payments over a period, printed; a limit per customer or group warning when a delivery would pass what is already owed | M | doing | - | api/src/Module/Customers/** api/src/Module/Invoices/** api/tests/** web/src/app/customers/** |
 | 86 | Recurring invoices (§ 7 2026-09-20, off "out with no date"): a schedule generating drafts that an issue confirms, on the row-56 worker | M | todo | - | api/src/Module/Invoices/** api/migrations/** api/tests/** web/src/app/invoices/** |
-| 87 | Stock valuation (§ 7 2026-09-19 23:48): unit cost on receipts, weighted average unless the sourced fiscal research says otherwise, losses and transformations valued with it, a stock value report | M | todo | - | api/src/Module/Inventory/** api/migrations/** api/tests/** docs/fiscal/** web/src/app/inventory/** |
+| 87 | Stock valuation (§ 7 2026-09-19 23:48): unit cost on receipts, weighted average unless the sourced fiscal research says otherwise, losses and transformations valued with it, a stock value report | M | done | - | api/src/Module/Inventory/** api/migrations/** api/tests/** docs/fiscal/** web/src/app/inventory/** |
 | 88 | Shift and drawer (§ 7 2026-09-20): a shift opened with a float and closed on a counted drawer by note and coin, a Z report by means of payment and VAT rate, tips, cash in and out, the waiter's purse counted at a handover, a float carried to tomorrow | M | todo | - | api/src/Module/Register/** api/migrations/** api/tests/** web/src/app/register/** |
 | 89 | Reports (§ 7 2026-09-20): `DeclaresReport` beside the manifest, settings and import declarations; one engine giving every report the same period, comparison, filters, export and permission; drill-down on every figure; stored amounts never recomputed; the catalogue itself, module by module | L | todo | - | api/src/Reporting/** api/src/Module/** api/tests/** web/src/app/reports/** |
 | 90 | Daily digest (§ 7 2026-09-20): yesterday's takings, what is overdue, what to reorder, what expires, by email or WhatsApp on the row-56 worker | M | todo | - | api/src/Reporting/** api/tests/** api/templates/** |

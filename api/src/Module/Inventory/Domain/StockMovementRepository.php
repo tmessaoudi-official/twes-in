@@ -15,8 +15,18 @@ use Symfony\Component\Uid\Uuid;
 
 interface StockMovementRepository
 {
-    /** Stores the movements together. */
+    /**
+     * Stores the movements together. A movement that came with no cost is valued here, at the weighted average of what
+     * its product's stock was valued at (its cost price when none is), so no writer of stock can forget to value it.
+     */
     public function save(StockMovement ...$movements): void;
+
+    /**
+     * What the stock of each product of the company is worth, those holding nothing left out.
+     *
+     * @return list<StockValue>
+     */
+    public function valuation(Uuid $companyId): array;
 
     /** @return list<StockMovement> what one document moved in a company, in the order it was written */
     public function ofSource(string $sourceType, Uuid $sourceId, Uuid $companyId): array;

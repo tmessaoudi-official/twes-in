@@ -559,4 +559,40 @@ describe('InventoryApi', () => {
 
     await expect(pending).rejects.toMatchObject({ code: 'in_use' });
   });
+  // docs/SPEC.md § 7: what the stock is worth, read with the right to read costs.
+  it('reads the valuation: a total and each product with its average cost, none where no stock has one', async () => {
+    const pending = api.valuation('c1');
+    http.expectOne('/api/companies/c1/stock-valuation').flush({
+      total: '12000.000',
+      lines: [
+        {
+          productId: 'p1',
+          productReference: 'ART-001',
+          productName: 'Portable',
+          unitCode: 'C62',
+          quantity: '20.000',
+          unitCost: '600.0000',
+          value: '12000.000',
+          unvaluedQuantity: '0.000',
+        },
+        {
+          productId: 'p2',
+          productReference: 'ART-002',
+          productName: 'Souris',
+          unitCode: 'C62',
+          quantity: '3.000',
+          unitCost: null,
+          value: '0.000',
+          unvaluedQuantity: '3.000',
+        },
+      ],
+    });
+
+    const valuation = await pending;
+    expect(valuation.total).toBe('12000.000');
+    expect(valuation.lines.map((line) => [line.productReference, line.unitCost])).toEqual([
+      ['ART-001', '600.0000'],
+      ['ART-002', null],
+    ]);
+  });
 });

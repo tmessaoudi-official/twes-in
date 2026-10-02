@@ -35,7 +35,6 @@ final readonly class PlannedModules
             new ModuleManifest('portal', 'modules.portal', ['customers', 'invoices'], planned: 'later'),
             // Buying and stock.
             new ModuleManifest('purchases', 'modules.purchases', ['inventory', 'products', 'vendors'], planned: 'v1'),
-            new ModuleManifest('stock_valuation', 'modules.stock_valuation', ['inventory'], planned: 'v1'),
             new ModuleManifest('composites', 'modules.composites', ['products'], planned: 'later'),
             // Money and compliance.
             new ModuleManifest('reports', 'modules.reports', [], planned: 'v1'),

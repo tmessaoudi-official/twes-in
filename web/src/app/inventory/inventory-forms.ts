@@ -27,6 +27,8 @@ const STOCK_FIELDS = 'inventory.stock.fields';
 /** The API's shape of a location code. */
 const CODE_PATTERN = '[A-Za-z0-9._\\-]{1,32}';
 /** A quantity as the decimal field hands it over: at most eleven digits, then at most three decimals. */
+/** A cost: an amount from zero with at most four decimals, as the API takes it. */
+export const COST_PATTERN = '(0|[1-9][0-9]{0,10})([.][0-9]{1,4})?';
 export const QUANTITY_PATTERN = '(0|[1-9][0-9]{0,10})([.][0-9]{1,3})?';
 
 /** Each location's path of codes from its establishment's default, then its name, ordered by that path. */
@@ -478,6 +480,7 @@ export function movementForm(
   operation: StockOperation,
   locations: readonly StockLocationRow[],
   tracking: StockProductOption['tracking'] = 'none',
+  withCost = false,
 ): FormDescriptor {
   return {
     id: `stock-${operation}`,
@@ -526,6 +529,19 @@ export function movementForm(
             pattern: QUANTITY_PATTERN,
             hint: `inventory.movement.quantity_hint.${operation}`,
           },
+          // Asked only of someone who may read what things cost, and only of goods coming in.
+          ...(operation === 'receive' && withCost
+            ? [
+                {
+                  id: 'unitCost',
+                  label: `${STOCK_FIELDS}.unitCost`,
+                  kind: 'decimal' as const,
+                  maxLength: 16,
+                  pattern: COST_PATTERN,
+                  hint: 'inventory.movement.cost_hint',
+                },
+              ]
+            : []),
         ],
       },
     ],
@@ -548,6 +564,7 @@ export function movementValues(locations: readonly StockLocationRow[]): FormValu
     quantity: '',
     lotCode: '',
     lotExpiresOn: '',
+    unitCost: '',
   };
 }
 
@@ -592,6 +609,9 @@ export function movementInput(operation: StockOperation, values: FormValues): St
     // Named only by a move: an empty one on a receipt is a claim about a location nobody chose, answered 422.
     ...(operation === 'move' ? { toLocationId: text(values['toLocationId']) } : {}),
     quantity: text(values['quantity']),
+    ...(operation === 'receive' && text(values['unitCost']) !== ''
+      ? { unitCost: text(values['unitCost']) }
+      : {}),
     // Named only for a tracked product, whose form asked; a move never says a lot's date again.
     ...(text(values['lotCode']) === '' ? {} : { lotCode: text(values['lotCode']) }),
     ...(operation === 'move' || text(values['lotExpiresOn']) === ''

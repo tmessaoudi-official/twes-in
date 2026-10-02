@@ -487,7 +487,6 @@
     "reports": "Rapports",
     "service": "Service en salle",
     "statements": "Plafonds de crédit",
-    "stock_valuation": "Valorisation du stock",
     "venue": "Salle et plan",
     "whatsapp": "Envoi par WhatsApp",
     "works": "Travaux",
@@ -537,7 +536,8 @@
     "texts": "Textes",
     "short": {
       "delivery_notes": "Livraisons"
-    }
+    },
+    "stock_valuation": "Valorisation du stock"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -1703,7 +1703,8 @@
         "source": "Origine",
         "lot": "Lot",
         "useBy": "À utiliser avant",
-        "serial": "Numéro de série"
+        "serial": "Numéro de série",
+        "unitCost": "Coût unitaire"
       },
       "no_product_found": "Aucun produit trouvé.",
       "product_hint": "Tapez la référence ou le nom ; seuls les produits dont le stock est suivi sont proposés.",
@@ -1722,7 +1723,8 @@
         "lot": "Tel qu'il est imprimé sur l'étiquette ; un lot inconnu est ouvert à la réception.",
         "serial": "Une pièce par numéro ; il est en stock une seule fois dans l'entreprise."
       },
-      "use_by_hint": "Si l'étiquette en porte une ; une date différente de celle du lot est refusée."
+      "use_by_hint": "Si l'étiquette en porte une ; une date différente de celle du lot est refusée.",
+      "cost_hint": "Ce qu'une unité vous a coûté ; laissé vide, la moyenne de ce que vaut déjà le stock, ou le prix de revient du produit."
     },
     "movements": {
       "title": "Mouvements de stock",
@@ -1922,6 +1924,16 @@
       "print": "Imprimer",
       "empty": "Aucun emplacement à étiqueter.",
       "open": "Imprimer les étiquettes"
+    },
+    "valuation": {
+      "title": "Valorisation du stock",
+      "total": "Le stock vaut",
+      "forbidden": "Lire ce que vaut le stock demande le droit de lire ce que coûtent les choses.",
+      "unvalued_note": "Le stock sans coût connu est compté à part et laissé hors du total : donnez-lui un coût à sa prochaine réception, ou un prix de revient au produit.",
+      "unit_cost": "Coût moyen",
+      "value": "Valeur",
+      "unvalued": "Coût inconnu",
+      "none": "Aucun stock à valoriser."
     }
   },
   "vendors": {
@@ -2909,12 +2921,6 @@
       "does": "Un plafond de crédit par client ou par groupe, qui prévient avant qu’une livraison dépasse ce qui est déjà dû.",
       "plan": "§ 8 · 85 et 134 — le plafond de crédit",
       "settings": "Le plafond de crédit proposé à un nouveau client."
-    },
-    "stock_valuation": {
-      "heading": "La valorisation du stock est en construction",
-      "does": "La valeur du stock à une date, au coût moyen pondéré ou au premier entré, premier sorti, et le coût de ce qui a été vendu.",
-      "plan": "§ 8 · 87 — la valorisation du stock",
-      "settings": "La méthode de valorisation : coût moyen pondéré ou premier entré, premier sorti."
     },
     "venue": {
       "heading": "La salle est en construction",

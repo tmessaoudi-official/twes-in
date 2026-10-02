@@ -83,6 +83,14 @@ class StockMovement implements CompanyOwned
     private \DateTimeImmutable $at;
 
     /**
+     * What one unit was valued at when it moved, four decimals; null while no cost is known for the product.
+     *
+     * @var numeric-string|null
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 4, nullable: true)]
+    private ?string $unitCost = null;
+
+    /**
      * @param numeric-string $quantity signed, with three decimals
      *
      * @throws InvalidStockMovement
@@ -110,9 +118,21 @@ class StockMovement implements CompanyOwned
     }
 
     /** @throws InvalidStockMovement */
-    public static function receipt(Product $product, StockLocation $location, string $quantity, ?Uuid $recordedBy, \DateTimeImmutable $now, ?StockLot $lot = null): self
+    public static function receipt(Product $product, StockLocation $location, string $quantity, ?Uuid $recordedBy, \DateTimeImmutable $now, ?StockLot $lot = null, ?string $unitCost = null): self
     {
-        return new self($product, $location, $lot, StockMovementKind::In, self::onePieceOfASerial($product, self::quantity($quantity, $product, false)), self::SOURCE_RECEIPT, null, $recordedBy, $now);
+        $receipt = new self($product, $location, $lot, StockMovementKind::In, self::onePieceOfASerial($product, self::quantity($quantity, $product, false)), self::SOURCE_RECEIPT, null, $recordedBy, $now);
+        if (null !== $unitCost) {
+            if (1 !== preg_match('/^(0|[1-9][0-9]{0,10})(?:\.([0-9]{1,4}))?$/', trim($unitCost), $match)) {
+                throw new InvalidStockMovement('unitCost', 'A cost is an amount from zero with at most four decimals.');
+            }
+            $normalized = $match[1].'.'.str_pad($match[2] ?? '', 4, '0');
+            if (!is_numeric($normalized)) {
+                throw new \LogicException(\sprintf('The cost %s was not normalized to a number.', $normalized));
+            }
+            $receipt->unitCost = new Number($normalized)->value;
+        }
+
+        return $receipt;
     }
 
     /**
@@ -178,7 +198,11 @@ class StockMovement implements CompanyOwned
 
         $back = new Number($delivery->quantity)->mul(-1)->value;
 
-        return new self($delivery->product, $delivery->location, $delivery->lot, StockMovementKind::In, $back, self::SOURCE_DELIVERY_NOTE, $delivery->sourceId, null, $now);
+        $return = new self($delivery->product, $delivery->location, $delivery->lot, StockMovementKind::In, $back, self::SOURCE_DELIVERY_NOTE, $delivery->sourceId, null, $now);
+        // The goods come back worth what they left at, whatever the average has become since.
+        $return->unitCost = $delivery->unitCost;
+
+        return $return;
     }
 
     /**
@@ -274,6 +298,19 @@ class StockMovement implements CompanyOwned
     public function getKind(): StockMovementKind
     {
         return $this->kind;
+    }
+
+    /** Values a movement that came with no cost: what it moves is worth this much a unit. Never changes one that has it. */
+    /** @param numeric-string $unitCost */
+    public function valuedAt(string $unitCost): void
+    {
+        $this->unitCost ??= $unitCost;
+    }
+
+    /** @return numeric-string|null */
+    public function getUnitCost(): ?string
+    {
+        return $this->unitCost;
     }
 
     /**

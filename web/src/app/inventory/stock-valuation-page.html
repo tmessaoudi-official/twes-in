@@ -1,0 +1,90 @@
+<app-page-tabs [tabs]="tabs" label="nav.stock">
+  <section class="flex flex-col gap-6">
+    <h1 class="text-3xl font-semibold" data-testid="stock-valuation-title">
+      {{ 'inventory.valuation.title' | translate }}
+    </h1>
+
+    @if (!company()) {
+      <p data-testid="stock-valuation-no-company">{{ 'inventory.no_company' | translate }}</p>
+    }
+    @if (!mayRead()) {
+      <p data-testid="stock-valuation-forbidden">
+        {{ 'inventory.valuation.forbidden' | translate }}
+      </p>
+    }
+    @if (error(); as code) {
+      <p role="alert" data-testid="stock-valuation-error" class="text-error">
+        {{ 'inventory.errors.' + code | translate }}
+      </p>
+    }
+
+    @if (valuation(); as v) {
+      <p class="text-lg" data-testid="stock-valuation-total">
+        {{ 'inventory.valuation.total' | translate }}
+        <strong class="tabular-nums">{{ v.total | amount: 3 }}</strong>
+      </p>
+      @if (hasUnvalued()) {
+        <p class="text-sm opacity-80" data-testid="stock-valuation-unvalued-note">
+          {{ 'inventory.valuation.unvalued_note' | translate }}
+        </p>
+      }
+      <div class="overflow-x-auto">
+        <table
+          class="w-full min-w-[40rem] border-collapse text-sm"
+          data-testid="stock-valuation-table"
+        >
+          <thead>
+            <tr>
+              <th scope="col" class="p-2 text-start">
+                {{ 'inventory.stock.fields.product' | translate }}
+              </th>
+              <th scope="col" class="p-2 text-end">
+                {{ 'inventory.stock.fields.quantity' | translate }}
+              </th>
+              <th scope="col" class="p-2 text-end">
+                {{ 'inventory.valuation.unit_cost' | translate }}
+              </th>
+              <th scope="col" class="p-2 text-end">
+                {{ 'inventory.valuation.value' | translate }}
+              </th>
+              <th scope="col" class="p-2 text-end">
+                {{ 'inventory.valuation.unvalued' | translate }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (line of v.lines; track line.productId) {
+              <tr
+                class="border-t border-outline-variant"
+                [attr.data-testid]="'stock-valuation-' + line.productReference"
+              >
+                <td class="p-2">
+                  <span class="font-medium">{{ line.productName }}</span>
+                  <span class="opacity-80"> · {{ line.productReference }}</span>
+                </td>
+                <td class="p-2 text-end tabular-nums">{{ line.quantity }} {{ line.unitCode }}</td>
+                <td class="p-2 text-end tabular-nums">
+                  @if (line.unitCost !== null) {
+                    {{ line.unitCost | amount: 4 }}
+                  }
+                </td>
+                <td class="p-2 text-end tabular-nums">{{ line.value | amount: 3 }}</td>
+                <td class="p-2 text-end tabular-nums">
+                  @if (line.unvaluedQuantity !== '0.000') {
+                    {{ line.unvaluedQuantity }}
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr data-testid="stock-valuation-empty">
+                <td class="p-2 opacity-80" colspan="5">
+                  {{ 'inventory.valuation.none' | translate }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</app-page-tabs>

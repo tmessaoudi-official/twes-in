@@ -37,7 +37,7 @@ final readonly class RecordStockMovementProcessor implements ProcessorInterface
                 StockMovementResource::COUNT => $this->stock->count($company, $productId, $locationId, $data->quantity, $actor, $data->lot()),
                 // A move writes two movements; the answer is the one that LEFT, whose sourceId names the pair.
                 StockMovementResource::MOVE => $this->stock->move($company, $productId, $locationId, Uuid::fromString((string) $data->toLocationId), $data->quantity, $actor, $data->lot())[0],
-                default => $this->stock->receive($company, $productId, $locationId, $data->quantity, $actor, $data->lot()),
+                default => $this->stock->receive($company, $productId, $locationId, $data->quantity, $actor, $data->lot(), $data->unitCost),
             };
         } catch (InvalidStockMovement $refused) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);

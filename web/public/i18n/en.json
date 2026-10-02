@@ -487,7 +487,6 @@
     "reports": "Reports",
     "service": "Table service",
     "statements": "Credit limits",
-    "stock_valuation": "Stock valuation",
     "venue": "Venue and floor plan",
     "whatsapp": "WhatsApp sending",
     "works": "Works",
@@ -537,7 +536,8 @@
     "texts": "Texts",
     "short": {
       "delivery_notes": "Deliveries"
-    }
+    },
+    "stock_valuation": "Stock valuation"
   },
   "shell": {
     "skip": "Skip to content",
@@ -1703,7 +1703,8 @@
         "source": "Source",
         "lot": "Lot",
         "useBy": "Use by",
-        "serial": "Serial number"
+        "serial": "Serial number",
+        "unitCost": "Unit cost"
       },
       "no_product_found": "No product found.",
       "product_hint": "Type the reference or the name; only products whose stock is kept are offered.",
@@ -1722,7 +1723,8 @@
         "lot": "As printed on the label; an unknown lot is opened on receipt.",
         "serial": "One piece per number; it is in stock only once across the company."
       },
-      "use_by_hint": "If the label carries one; a date other than the lot's own is refused."
+      "use_by_hint": "If the label carries one; a date other than the lot's own is refused.",
+      "cost_hint": "What one unit cost you; left empty, the average of what the stock already is, or the product’s cost price."
     },
     "movements": {
       "title": "Stock movements",
@@ -1922,6 +1924,16 @@
       "print": "Print",
       "empty": "No location to label.",
       "open": "Print labels"
+    },
+    "valuation": {
+      "title": "Stock valuation",
+      "total": "The stock is worth",
+      "forbidden": "Reading what the stock is worth needs the right to read what things cost.",
+      "unvalued_note": "Stock with no known cost is counted apart and left out of the total: give it a cost on its next receipt, or a cost price on the product.",
+      "unit_cost": "Average cost",
+      "value": "Value",
+      "unvalued": "No cost known",
+      "none": "No stock to value."
     }
   },
   "vendors": {
@@ -2909,12 +2921,6 @@
       "does": "A credit limit per customer or group, warning before a delivery would pass what is already owed.",
       "plan": "§ 8 · 85 and 134 — the credit limit",
       "settings": "The credit limit a new customer starts with."
-    },
-    "stock_valuation": {
-      "heading": "Stock valuation is under construction",
-      "does": "The value of the stock on a date, at weighted average cost or first in, first out, and the cost of what was sold.",
-      "plan": "§ 8 · 87 — stock valuation",
-      "settings": "The valuation method: weighted average cost or first in, first out."
     },
     "venue": {
       "heading": "The venue is under construction",

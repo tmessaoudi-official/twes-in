@@ -21,6 +21,7 @@ import type {
   StockStructureInput,
   StockStructureRow,
   StockSearch,
+  StockValuation,
 } from './inventory-types';
 
 /** The stock of the company being worked in: what is on hand, how it moved, where it is kept, and the forms' options. */
@@ -36,6 +37,7 @@ export class InventoryFacade {
   private readonly locationsSignal = signal<readonly StockLocationRow[]>([]);
   private readonly movementsSignal = signal<readonly StockMovementRow[]>([]);
   private readonly movementsTotalSignal = signal(0);
+  private readonly valuationSignal = signal<StockValuation | null>(null);
   private movementsRequest = 0;
   /** What the movements list last asked for, so a movement arriving elsewhere reads that same page again. */
   private movementsSearch: StockMovementSearch | null = null;
@@ -59,6 +61,8 @@ export class InventoryFacade {
   readonly movements = this.movementsSignal.asReadonly();
   /** How many movements the last search found in all, the page shown being one part of them. */
   readonly movementsTotal = this.movementsTotalSignal.asReadonly();
+  /** What the stock is worth; null until read. */
+  readonly valuation = this.valuationSignal.asReadonly();
   readonly floors = this.floorsSignal.asReadonly();
   /** What is drawn on the floor being looked at, never on all of them at once. */
   readonly drawings = this.drawingsSignal.asReadonly();
@@ -122,6 +126,10 @@ export class InventoryFacade {
       this.movementsSignal.set(page.rows);
       this.movementsTotalSignal.set(page.total);
     });
+  }
+
+  async loadValuation(companyId: string): Promise<void> {
+    await this.read(async () => this.valuationSignal.set(await this.api.valuation(companyId)));
   }
 
   /** The movements page in hand, read again: what a live change brought belongs on that page or does not. */

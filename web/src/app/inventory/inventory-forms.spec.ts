@@ -305,6 +305,7 @@ describe('the movement form', () => {
       quantity: '',
       lotCode: '',
       lotExpiresOn: '',
+      unitCost: '',
     });
     expect(movementValues([])).toEqual({
       productId: '',
@@ -313,6 +314,7 @@ describe('the movement form', () => {
       quantity: '',
       lotCode: '',
       lotExpiresOn: '',
+      unitCost: '',
     });
     expect(
       movementInput('receive', { productId: 'p2', locationId: 'l2', quantity: ' 1.5 ' }),
@@ -422,5 +424,28 @@ describe('the movement form', () => {
       }),
     ).not.toHaveProperty('toLocationId');
     expect(movementValues([zone, depot, site])['toLocationId']).toBe('');
+  });
+});
+
+// docs/SPEC.md § 7: a receipt may say what a unit cost, asked only of someone who may read what things cost.
+describe('the cost of a receipt', () => {
+  const fieldsOf = (operation: 'receive' | 'count' | 'move', withCost: boolean) =>
+    movementForm(operation, [], 'none', withCost)
+      .sections.flatMap((section) => section.fields)
+      .map((field) => field.id);
+
+  it('is asked on a receipt for a person who may read costs, and nowhere else', () => {
+    expect(fieldsOf('receive', true)).toContain('unitCost');
+    expect(fieldsOf('receive', false)).not.toContain('unitCost');
+    expect(fieldsOf('count', true)).not.toContain('unitCost');
+    expect(fieldsOf('move', true)).not.toContain('unitCost');
+  });
+
+  it('is sent trimmed on a receipt when given, and left out when empty or on another operation', () => {
+    const values = { ...movementValues([]), productId: 'p1', locationId: 'l1', quantity: '2' };
+
+    expect(movementInput('receive', { ...values, unitCost: ' 12.5 ' }).unitCost).toBe('12.5');
+    expect(movementInput('receive', { ...values, unitCost: '' })).not.toHaveProperty('unitCost');
+    expect(movementInput('count', { ...values, unitCost: '12.5' })).not.toHaveProperty('unitCost');
   });
 });

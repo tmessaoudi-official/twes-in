@@ -47,6 +47,32 @@ final class StockMovementTest extends TestCase
         $this->support = Product::create($this->company, 'SRV-001', new ProductDetails('Assistance', null, ProductKind::Service, '50'), $piece, null, [], $this->now);
     }
 
+    public function testAReceiptCarriesItsCostAtFourDecimalsAndRefusesWhatIsNotAnAmount(): void
+    {
+        self::assertSame('12.5000', StockMovement::receipt($this->laptop, $this->site, '1', null, $this->now, null, '12.5')->getUnitCost());
+        self::assertNull(StockMovement::receipt($this->laptop, $this->site, '1', null, $this->now)->getUnitCost());
+
+        foreach (['-1', '1.23456', 'abc', ''] as $cost) {
+            try {
+                StockMovement::receipt($this->laptop, $this->site, '1', null, $this->now, null, $cost);
+                self::fail(\sprintf('The cost "%s" was accepted.', $cost));
+            } catch (InvalidStockMovement $refused) {
+                self::assertSame('unitCost', $refused->field);
+            }
+        }
+    }
+
+    public function testValuingNeverChangesACostAMovementAlreadyHasAndAReturnKeepsTheCostItLeftAt(): void
+    {
+        $receipt = StockMovement::receipt($this->laptop, $this->site, '1', null, $this->now, null, '10');
+        $receipt->valuedAt('99.0000');
+        self::assertSame('10.0000', $receipt->getUnitCost());
+
+        $delivery = StockMovement::delivery($this->laptop, $this->site, '1', Uuid::v7(), $this->now);
+        $delivery->valuedAt('7.0000');
+        self::assertSame('7.0000', StockMovement::returnOf($delivery, $this->now)->getUnitCost());
+    }
+
     public function testEveryMovementOfATrackedProductNamesItsLotAndOfAnUntrackedOneNone(): void
     {
         $this->laptop->track(ProductTracking::Lot, $this->now);

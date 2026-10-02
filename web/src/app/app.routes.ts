@@ -243,6 +243,12 @@ export const routes: Routes = [
           import('./inventory/stock-locations-page').then((m) => m.StockLocationsPage),
       },
       {
+        path: 'stock/valuation',
+        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        loadComponent: () =>
+          import('./inventory/stock-valuation-page').then((m) => m.StockValuationPage),
+      },
+      {
         path: 'stock/plan',
         canActivate: [moduleGuard(INVENTORY_MODULE)],
         loadComponent: () => import('./inventory/stock-map-page').then((m) => m.StockMapPage),

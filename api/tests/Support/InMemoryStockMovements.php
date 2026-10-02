@@ -15,6 +15,8 @@ use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
+use App\Module\Inventory\Domain\StockValue;
+use App\Module\Inventory\Domain\WeightedAverageCost;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
@@ -32,6 +34,20 @@ final class InMemoryStockMovements implements StockMovementRepository
     public function save(StockMovement ...$movements): void
     {
         foreach ($movements as $movement) {
+            if (null === $movement->getUnitCost()) {
+                $quantity = new Number('0.000');
+                $amount = new Number('0.0000000');
+                foreach ($this->movements as $earlier) {
+                    if ($earlier->getProduct() === $movement->getProduct() && null !== $earlier->getUnitCost()) {
+                        $quantity = $quantity->add($earlier->getQuantity());
+                        $amount = $amount->add(new Number($earlier->getQuantity())->mul($earlier->getUnitCost()));
+                    }
+                }
+                $average = WeightedAverageCost::of($quantity->value, $amount->value, $movement->getProduct()->getDetails()->costPrice);
+                if (null !== $average) {
+                    $movement->valuedAt($average);
+                }
+            }
             if (!\in_array($movement, $this->movements, true)) {
                 $this->movements[] = $movement;
             }
@@ -90,6 +106,35 @@ final class InMemoryStockMovements implements StockMovementRepository
         }
 
         return array_map(static fn (string $key): LotOnHand => new LotOnHand($lots[$key], $sums[$key]->value), array_keys($sums));
+    }
+
+    public function valuation(Uuid $companyId): array
+    {
+        $rows = [];
+        foreach ($this->movements as $movement) {
+            if (!$movement->getCompany()->getId()->equals($companyId)) {
+                continue;
+            }
+            $key = $movement->getProduct()->getId()->toRfc4122();
+            $cost = $movement->getUnitCost();
+            $row = $rows[$key] ?? ['q' => new Number('0.000'), 'v' => new Number('0.0000000'), 'u' => new Number('0.000')];
+            $row['q'] = $row['q']->add($movement->getQuantity());
+            if (null === $cost) {
+                $row['u'] = $row['u']->add($movement->getQuantity());
+            } else {
+                $row['v'] = $row['v']->add(new Number($movement->getQuantity())->mul($cost));
+            }
+            $rows[$key] = $row;
+        }
+
+        $values = [];
+        foreach ($rows as $key => $row) {
+            if (0 !== $row['q']->compare(0) || 0 !== $row['v']->compare(0)) {
+                $values[] = new StockValue(Uuid::fromString($key), $row['q']->value, $row['v']->value, $row['u']->value);
+            }
+        }
+
+        return $values;
     }
 
     public function totalsOf(Uuid $companyId, array $productIds): array

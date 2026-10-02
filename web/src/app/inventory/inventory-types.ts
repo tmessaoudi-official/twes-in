@@ -144,6 +144,26 @@ export interface StockMovementRow {
   at: string;
 }
 
+/** What the stock of one product is worth, at the weighted average of what came in. */
+export interface StockValuationLine {
+  productId: string;
+  productReference: string;
+  productName: string;
+  unitCode: string;
+  quantity: string;
+  /** The average cost of one unit, four decimals; null when no stock of it has a cost. */
+  unitCost: string | null;
+  value: string;
+  /** The part of the quantity with no known cost, left out of the value. */
+  unvaluedQuantity: string;
+}
+
+export interface StockValuation {
+  /** The total of every line's value. */
+  total: string;
+  lines: StockValuationLine[];
+}
+
 export interface StockMovementInput {
   operation: StockOperation;
   productId: string;
@@ -156,6 +176,8 @@ export interface StockMovementInput {
   lotCode?: string;
   /** The day the lot is used by (ISO), on a receipt or a count only: a move takes the lot's own. */
   lotExpiresOn?: string;
+  /** What one unit cost, on a receipt only; left out, the average of what the stock already is. */
+  unitCost?: string;
 }
 
 /** One stocked product as the picker answers it. */

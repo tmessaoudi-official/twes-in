@@ -89,7 +89,6 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
   { key: 'guests', icon: 'loyalty', section: 'sell', after: 'service' },
   { key: 'ratings', icon: 'reviews', section: 'sell', after: 'guests' },
   // Buying and stock.
-  { key: 'stock_valuation', icon: 'price_check', section: 'manage', after: 'stock', plan: true },
   {
     key: 'purchases',
     icon: 'shopping_cart',

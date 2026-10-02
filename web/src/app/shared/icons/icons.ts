@@ -86,7 +86,6 @@ export const ICONS = [
   'photo_camera',
   'picture_as_pdf',
   'point_of_sale',
-  'price_check',
   'print',
   'radio_button_checked',
   'radio_button_unchecked',

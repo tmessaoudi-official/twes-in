@@ -117,6 +117,15 @@ final class StockMovementResource
     public ?string $lotExpiresOn = null;
 
     /**
+     * What one unit cost, for a receipt: the stock is valued at the weighted average of what came in. Left out, the
+     * receipt is valued at the average of what the product's stock already is, or at its cost price. Written only; the
+     * valuation, read with product.cost.read, is where costs are shown.
+     */
+    #[ApiProperty(readable: false, schema: ['type' => ['string', 'null'], 'maxLength' => 16])]
+    #[Groups([self::WRITE])]
+    public ?string $unitCost = null;
+
+    /**
      * What the movement moved, named here rather than looked up elsewhere: a product or a location the company has
      * since stopped offering still has its movements, and a list of them has to say whose they are.
      */

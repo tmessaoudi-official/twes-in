@@ -104,7 +104,14 @@ export class StockPage implements OnInit {
   protected readonly descriptor = computed(() => {
     const operation = this.operation();
     const tracking = this.product()?.tracking ?? 'none';
-    return operation === null ? null : movementForm(operation, this.facade.locations(), tracking);
+    return operation === null
+      ? null
+      : movementForm(
+          operation,
+          this.facade.locations(),
+          tracking,
+          this.auth.hasPermission('product.cost.read'),
+        );
   });
 
   /**

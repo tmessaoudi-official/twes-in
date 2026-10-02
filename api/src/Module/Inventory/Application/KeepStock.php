@@ -20,6 +20,7 @@ use App\Module\Inventory\Domain\StockLotRepository;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
+use App\Module\Inventory\Domain\StockValue;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
@@ -72,12 +73,12 @@ final readonly class KeepStock
      *
      * @throws InvalidStockMovement
      */
-    public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null): StockMovement
+    public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null): StockMovement
     {
-        return $this->transactions->run(function () use ($company, $productId, $locationId, $quantity, $actorUserId, $named): StockMovement {
+        return $this->transactions->run(function () use ($company, $productId, $locationId, $quantity, $actorUserId, $named, $unitCost): StockMovement {
             [$product, $location] = $this->trackedAt($company, $productId, $locationId);
             $lot = $this->lotFor($product, $named, true);
-            $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now(), $lot);
+            $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now(), $lot, $unitCost);
             $this->inStockOnce($movement);
             $this->save($movement);
             $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.received', $actorUserId, $company->getId()));
@@ -157,6 +158,16 @@ final readonly class KeepStock
 
             return $lot;
         });
+    }
+
+    /**
+     * What the stock of each product is worth, at the weighted average of what came in.
+     *
+     * @return list<StockValue>
+     */
+    public function valuation(Company $company): array
+    {
+        return $this->movements->valuation($company->getId());
     }
 
     /**

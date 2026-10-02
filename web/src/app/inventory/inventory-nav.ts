@@ -25,5 +25,6 @@ export const INVENTORY_TABS: readonly PageTab[] = [
   { labelKey: 'nav.stock_movements', route: '/stock/movements', testId: 'stock-movements-tab' },
   { labelKey: 'nav.stock_count', route: '/stock/count', testId: 'stock-count-tab' },
   { labelKey: 'nav.stock_locations', route: '/stock/locations', testId: 'stock-locations-tab' },
+  { labelKey: 'nav.stock_valuation', route: '/stock/valuation', testId: 'stock-valuation-tab' },
   { labelKey: 'nav.stock_plan', route: '/stock/plan', testId: 'stock-plan-tab' },
 ];
