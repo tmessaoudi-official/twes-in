@@ -108,4 +108,8 @@ final class StockLevelResource
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
     #[Groups([self::READ])]
     public ?string $lotExpiresOn = null;
+
+    /** Whether a person let the lot leave although it is past its date. */
+    #[Groups([self::READ])]
+    public bool $lotReleased = false;
 }

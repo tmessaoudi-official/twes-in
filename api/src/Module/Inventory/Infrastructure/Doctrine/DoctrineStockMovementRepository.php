@@ -270,7 +270,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
     public function levels(Uuid $companyId): array
     {
         $rows = $this->entityManager->createQueryBuilder()
-            ->select('IDENTITY(m.product) AS product', 'IDENTITY(m.location) AS location', 'lt.id AS lot', 'lt.code AS lotCode', 'lt.expiresOn AS lotExpiresOn', 'SUM(m.quantity) AS quantity')
+            ->select('IDENTITY(m.product) AS product', 'IDENTITY(m.location) AS location', 'lt.id AS lot', 'lt.code AS lotCode', 'lt.expiresOn AS lotExpiresOn', 'lt.releasedAt AS lotReleasedAt', 'SUM(m.quantity) AS quantity')
             ->from(StockMovement::class, 'm')
             ->leftJoin('m.lot', 'lt')
             ->where('m.company = :company')
@@ -295,7 +295,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         // lot's other columns: they depend on a key it is already grouping by. An untracked product's movements name
         // no lot, and their NULLs group together, so its row is the one it always was.
         $rows = $this->levelsQuery($companyId, $search)
-            ->select('p.id AS product', 'l.id AS location', 'lt.id AS lot', 'lt.code AS lotCode', 'lt.expiresOn AS lotExpiresOn', 'SUM(m.quantity) AS quantity')
+            ->select('p.id AS product', 'l.id AS location', 'lt.id AS lot', 'lt.code AS lotCode', 'lt.expiresOn AS lotExpiresOn', 'lt.releasedAt AS lotReleasedAt', 'SUM(m.quantity) AS quantity')
             ->groupBy('p.id')->addGroupBy('l.id')->addGroupBy('lt.id')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
         foreach ($search->order as $sort => $direction) {
@@ -341,6 +341,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             self::identifier($row['lot'] ?? null),
             \is_string($code) ? $code : null,
             $expiresOn instanceof \DateTimeInterface ? $expiresOn->format('Y-m-d') : null,
+            ($row['lotReleasedAt'] ?? null) instanceof \DateTimeInterface,
         );
     }
 

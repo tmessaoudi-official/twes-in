@@ -252,6 +252,13 @@ export class InventoryApi {
     );
   }
 
+  /** Lets an expired lot leave after all; a lot still in date is refused. */
+  async releaseLot(companyId: string, lotId: string): Promise<void> {
+    await this.guard(async () =>
+      firstValueFrom(this.http.post(`${path(companyId, 'stock-lots', lotId)}/release`, null)),
+    );
+  }
+
   /** The rectangles go with the floor; what they were drawn for keeps its code, its tree and its stock. */
   async deleteFloor(companyId: string, id: string): Promise<void> {
     await this.guard(
@@ -511,6 +518,7 @@ function toLevel(raw: StockLevelJsonldStockLevelRead): StockLevelRow {
     lotId: raw.lotId ?? null,
     lotCode: raw.lotCode ?? null,
     lotExpiresOn: raw.lotExpiresOn ?? null,
+    lotReleased: raw.lotReleased ?? false,
   };
 }
 

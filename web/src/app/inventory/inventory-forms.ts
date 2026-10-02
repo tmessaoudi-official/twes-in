@@ -68,17 +68,21 @@ export type StockListRow = StockLevelRow & {
   id: string;
   locationLabel: string;
   negative: boolean;
+  /** Past its use-by day and not released: such a lot is left out of what a delivery note takes. */
+  expired: boolean;
 };
 
 export function stockListRows(
   levels: readonly StockLevelRow[],
   locations: readonly StockLocationRow[],
+  today: string,
 ): StockListRow[] {
   const labels = locationLabels(locations);
   return levels.map((level) => ({
     ...level,
     locationLabel: labels.get(level.locationId) ?? `${level.locationCode} — ${level.locationName}`,
     negative: Number(level.quantity) < 0,
+    expired: level.lotExpiresOn !== null && !level.lotReleased && level.lotExpiresOn < today,
   }));
 }
 

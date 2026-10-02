@@ -4005,6 +4005,16 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   reads a notice saying the screen is read-only instead of an inert form; the French label is « Comptage » there.
   Certified by execution: the stock-count specs and the full web suite; not run in a browser or e2e.
   Alternatives: saving the count as it is entered (refused: a count is one act, applied at once).
+- [2026-10-02 08:03] ASSUMED (review): **lots amendments (row 116), first slice, the expired marker and « Libérer »**: a stock level
+  says whether its lot was released (`lotReleased`); the stock list marks a lot past its day and not released as
+  « Périmé » and one released as « Libéré », and a member with stock.write releases an expired lot from its row behind a
+  confirmation naming the lot and the product, said afterwards as a définitif effect because a release is not undone.
+  The expiry is read against the company's own day in the browser, the last day still being in date. Not built yet in
+  this row: lot tracking as an articles-chain setting and « Traçabilité », the serial quantity fixed at 1, a re-scanned
+  serial refused, the form kept open after saving, the destination label. Certified by execution: InventoryTest, the
+  inventory web specs, a sabotage of the day comparison; not run in a browser or e2e.
+  Alternatives: the API computing `expired` (refused for now: it would need the company's day on every list read,
+  and the browser already holds it); a release button on the lot's own screen (no such screen exists).
 
 ## 8. Status
 
@@ -4128,7 +4138,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 113 | Home figures revised (§ 7 2026-09-24 11:55): margin headline, « Facturé ce mois » under it, the kept and added figures, the query-count test; after row 57 | M | todo | - | |
 | 114 | The ten reports and saved report views (§ 7 2026-09-24 12:05) on row 89's engine, « dû à 30 jours », the company switcher's per-company figures | L | todo | - | |
 | 115 | Insights and « À surveiller » (§ 7 2026-09-24 12:10): the ten insights as their data exists, thresholds as settings, the live screen and the home's count | M | done | - | |
-| 116 | Lots amendments (§ 7 2026-09-24 12:40, rows 8, 20, 21, 22): lot tracking on the articles chain and « Traçabilité », expired marker and « Libérer », serial quantity 1, re-scanned serial refused, form kept open, destination label | M | todo | - | |
+| 116 | Lots amendments (§ 7 2026-09-24 12:40, rows 8, 20, 21, 22): lot tracking on the articles chain and « Traçabilité », expired marker and « Libérer », serial quantity 1, re-scanned serial refused, form kept open, destination label | M | doing | - | |
 | 117 | Scanning and customer-facing amendments (§ 7 2026-09-24 12:40 and 12:55, rows 13, 14, 16, 17, 18): sound and re-count settings, key-gap setting and scanner test, pairing ends with its tab, customer view per device with step-up and a hide list, price-check restore and display, the display's line price, the customer-facing price rule and « Afficher aussi le prix HT », the phone's scan card | L | todo | - | |
 | 118 | Count mode amendments (§ 7 2026-09-24 12:40, row 23): leave guard, the no-`stock.write` notice, « Comptage » everywhere | S | done | - | |
 | 119 | Labels (§ 7 2026-09-24 12:40, rows 24, 25): location QR on the public address and a stable path, return after sign-in, a company label format, chosen locations; barcodes at ISO/IEC 15420 proportions | M | todo | - | |

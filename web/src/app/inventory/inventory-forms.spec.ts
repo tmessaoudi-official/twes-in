@@ -72,6 +72,7 @@ function level(productId: string, locationId: string, quantity: string): StockLe
     lotId: null,
     lotCode: null,
     lotExpiresOn: null,
+    lotReleased: false,
   };
 }
 
@@ -139,6 +140,7 @@ describe('the list rows', () => {
     const rows = stockListRows(
       [level('p1', 'l1', '-2.000'), level('p2', 'l1', '1.250'), level('p9', 'l1', '4.000')],
       [site],
+      '2026-10-02',
     );
 
     expect(
@@ -148,6 +150,24 @@ describe('the list rows', () => {
       ['ART-2', 3, false, '000 — Siège'],
       ['ART-9', 3, false, '000 — Siège'],
     ]);
+  });
+
+  it('marks a lot past its day unless a person released it', () => {
+    const lot = (expiresOn: string | null, released: boolean) => ({
+      ...level('p1', 'l1', '4.000'),
+      lotId: 'k1',
+      lotCode: 'L-07',
+      lotExpiresOn: expiresOn,
+      lotReleased: released,
+    });
+
+    const expired = (row: ReturnType<typeof lot>) =>
+      stockListRows([row], [site], '2026-10-02')[0]?.expired;
+
+    expect(expired(lot('2026-10-01', false))).toBe(true);
+    expect(expired(lot('2026-10-02', false))).toBe(false); // the last day is still in date
+    expect(expired(lot('2026-10-01', true))).toBe(false);
+    expect(expired(lot(null, false))).toBe(false);
   });
 
   it('lists locations by their path', () => {

@@ -22,6 +22,7 @@ import { DescriptorForm } from '../shared/form/descriptor-form';
 import type { PickOption } from '../shared/form/pick-field';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
+import { todayIn } from '../shared/i18n/format';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import { PageTabs } from '../shared/ui/page-tabs';
@@ -83,11 +84,28 @@ export class StockPage implements OnInit {
         link: () => ['/stock/movements'],
         linkQuery: (row) => ({ productId: row.productId }),
       },
+      {
+        id: 'release',
+        label: 'inventory.stock.release',
+        icon: 'lock_open',
+        run: (row) => void this.release(row),
+        disabled: () => this.busy(),
+        shown: (row) => this.mayWrite() && row.expired,
+        confirm: (row) => ({
+          kind: 'definitif',
+          title: 'inventory.stock.release_title',
+          message: 'inventory.stock.release_message',
+          messageParams: { lot: row.lotCode ?? '', product: row.productName },
+          confirmLabel: 'inventory.stock.release_confirm',
+          keepLabel: 'inventory.stock.release_keep',
+        }),
+      },
     ],
   }));
   protected readonly rows = computed(() =>
-    stockListRows(this.facade.levels(), this.facade.locations()),
+    stockListRows(this.facade.levels(), this.facade.locations(), this.today()),
   );
+  protected readonly today = computed(() => todayIn(this.company()?.timezone));
   protected readonly total = this.facade.total;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
@@ -160,6 +178,15 @@ export class StockPage implements OnInit {
       );
     },
   });
+
+  /** A person looked at the goods and let the lot leave: it is taken by delivery notes again. */
+  protected async release(row: StockListRow): Promise<void> {
+    const companyId = this.company()?.id;
+    if (!companyId || row.lotId === null) return;
+    if (await this.facade.releaseLot(companyId, row.lotId)) {
+      this.feedback.effect('inventory.stock.released', { lot: row.lotCode ?? '' }, 'definitif');
+    }
+  }
 
   constructor() {
     inject(ScanBus).handle((scan) => this.scanned(scan));

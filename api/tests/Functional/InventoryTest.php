@@ -505,6 +505,7 @@ final class InventoryTest extends ApiTestCase
         self::assertIsString($expiredId);
         $laterId = $this->em()->getConnection()->fetchOne("SELECT id FROM stock_lot WHERE code = 'LATER'");
         self::assertIsString($laterId);
+        self::assertSame(['EXPIRED' => false, 'LATER' => false, 'SOON' => false], $this->releasedByLot(), 'nothing released yet');
         $this->postJson($this->path('stock-lots', $laterId).'/release', null);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a lot in date is not released');
         $this->postJson($this->path('stock-lots', '0192f5c8-0000-7000-8000-000000000000').'/release', null);
@@ -514,6 +515,7 @@ final class InventoryTest extends ApiTestCase
         $releasedBy = $this->em()->getConnection()->fetchOne("SELECT id FROM \"user\" WHERE email = 'stock@twes.local'");
         self::assertSame(['EXPIRED', $releasedBy], [$this->json()['code'], $this->json()['releasedBy']]);
         self::assertNotNull($this->json()['releasedAt']);
+        self::assertSame(['EXPIRED' => true, 'LATER' => false, 'SOON' => false], $this->releasedByLot(), 'the stock levels say which lots were released');
 
         $this->validatedNote($customerId, '5');
         self::assertSame(['EXPIRED' => '0.000', 'LATER' => '3.000', 'SOON' => '0.000'], $this->levelsByLot(), 'released, the expired lot left first');
@@ -552,6 +554,18 @@ final class InventoryTest extends ApiTestCase
         ksort($levels);
 
         return $levels;
+    }
+
+    /** @return array<string, bool> */
+    private function releasedByLot(): array
+    {
+        $released = [];
+        foreach ($this->levels() as $row) {
+            $released[$this->stringAt($row, 'lotCode')] = true === $row['lotReleased'];
+        }
+        ksort($released);
+
+        return $released;
     }
 
     public function testWithoutThePermissionOrForAnotherCompanyNothingIsFound(): void

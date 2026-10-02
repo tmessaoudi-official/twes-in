@@ -182,7 +182,7 @@ final class InMemoryStockMovements implements StockMovementRepository
             [$product, $location] = explode('|', $key);
             $lot = $lots[$key];
 
-            return new StockLevel(Uuid::fromString($product), Uuid::fromString($location), $quantity->value, $lot?->getId(), $lot?->getCode(), $lot?->getExpiresOn()?->format('Y-m-d'));
+            return new StockLevel(Uuid::fromString($product), Uuid::fromString($location), $quantity->value, $lot?->getId(), $lot?->getCode(), $lot?->getExpiresOn()?->format('Y-m-d'), null !== $lot?->getReleasedAt());
         }, array_keys($sums), $sums);
     }
 

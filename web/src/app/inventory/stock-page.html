@@ -86,6 +86,21 @@
       emptyKey="inventory.stock.none"
       emptyTestId="stock-empty"
     >
+      <ng-template appDataListCell="useBy" let-row>
+        <span class="inline-flex items-center gap-2">
+          {{ row.lotExpiresOn }}
+          @if (row.expired) {
+            <app-status-badge tone="danger">{{
+              'inventory.stock.expired' | translate
+            }}</app-status-badge>
+          }
+          @if (row.lotReleased) {
+            <app-status-badge tone="neutral">{{
+              'inventory.stock.released_badge' | translate
+            }}</app-status-badge>
+          }
+        </span>
+      </ng-template>
       <ng-template appDataListCell="quantity" let-row>
         <span class="inline-flex items-center gap-2">
           @if (row.negative) {

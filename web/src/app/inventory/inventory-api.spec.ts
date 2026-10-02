@@ -100,15 +100,29 @@ describe('InventoryApi', () => {
       .flush({
         member: [
           level,
-          { ...level, id: 'p1:l1:k1', lotId: 'k1', lotCode: 'L-07', lotExpiresOn: '2027-05-31' },
+          {
+            ...level,
+            id: 'p1:l1:k1',
+            lotId: 'k1',
+            lotCode: 'L-07',
+            lotExpiresOn: '2027-05-31',
+            lotReleased: true,
+          },
         ],
         totalItems: 7,
       });
     // An untracked product's level carries no lot; a tracked one's names its lot and the day it is used by.
     expect(await levels).toEqual({
       rows: [
-        { ...level, lotId: null, lotCode: null, lotExpiresOn: null },
-        { ...level, id: 'p1:l1:k1', lotId: 'k1', lotCode: 'L-07', lotExpiresOn: '2027-05-31' },
+        { ...level, lotId: null, lotCode: null, lotExpiresOn: null, lotReleased: false },
+        {
+          ...level,
+          id: 'p1:l1:k1',
+          lotId: 'k1',
+          lotCode: 'L-07',
+          lotExpiresOn: '2027-05-31',
+          lotReleased: true,
+        },
       ],
       total: 7,
     });
@@ -540,6 +554,20 @@ describe('InventoryApi', () => {
       .flush('the code R3', { status: 409, statusText: 'Conflict' });
 
     await expect(pending).rejects.toBeInstanceOf(Error);
+  });
+
+  it('releases an expired lot, and says so when the lot is not in date', async () => {
+    const released = api.releaseLot('c1', 'k1');
+    const call = http.expectOne('/api/companies/c1/stock-lots/k1/release');
+    expect(call.request.method).toBe('POST');
+    call.flush({ id: 'k1' });
+    await released;
+
+    const refused = api.releaseLot('c1', 'k2');
+    http
+      .expectOne('/api/companies/c1/stock-lots/k2/release')
+      .flush({}, { status: 422, statusText: 'Unprocessable' });
+    await expect(refused).rejects.toMatchObject({ code: 'invalid' });
   });
 
   it('erases a rectangle without touching what it was drawn for', async () => {

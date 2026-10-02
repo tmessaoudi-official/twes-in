@@ -22,6 +22,7 @@ final readonly class StockLevel
         public ?Uuid $lotId = null,
         public ?string $lotCode = null,
         public ?string $lotExpiresOn = null,
+        public bool $lotReleased = false,
     ) {
     }
 }

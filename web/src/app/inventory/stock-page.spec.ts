@@ -39,7 +39,14 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       inventory: {
-        stock: { negative: 'Négatif', product_required: 'Nommez le produit concerné.' },
+        stock: {
+          negative: 'Négatif',
+          product_required: 'Nommez le produit concerné.',
+          expired: 'Périmé',
+          released_badge: 'Libéré',
+          release: 'Libérer',
+          release_message: 'Le lot {{lot}} de {{product}} est périmé.',
+        },
         errors: { invalid: 'La saisie a été refusée.' },
       },
     });
@@ -89,6 +96,7 @@ const shortage: StockLevelRow = {
   lotId: null,
   lotCode: null,
   lotExpiresOn: null,
+  lotReleased: false,
 };
 /** What the picker answers: the page holds no catalogue, so a product only exists here once it is picked. */
 const products: StockProductOption[] = [
@@ -123,11 +131,13 @@ const products: StockProductOption[] = [
   },
 ];
 
+const levelsSignal = signal<readonly StockLevelRow[]>([shortage]);
+
 describe('StockPage', () => {
   const error = signal<InventoryError | null>(null);
   const facade = {
     options: signal<StockOptions | null>(options).asReadonly(),
-    levels: signal<readonly StockLevelRow[]>([shortage]).asReadonly(),
+    levels: levelsSignal.asReadonly(),
     locations: signal<readonly StockLocationRow[]>([site, rack]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
@@ -138,6 +148,7 @@ describe('StockPage', () => {
       'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
     ),
     record: vi.fn(),
+    releaseLot: vi.fn(),
     clearError: vi.fn(),
   };
   const scans = { named: vi.fn(), piecesPerScan: vi.fn() };
@@ -179,9 +190,11 @@ describe('StockPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    levelsSignal.set([shortage]);
     facade.loadStockContext.mockReset().mockResolvedValue(undefined);
     facade.loadStock.mockReset().mockResolvedValue(undefined);
     facade.record.mockReset().mockResolvedValue(true);
+    facade.releaseLot.mockReset().mockResolvedValue(true);
     scans.named.mockReset().mockResolvedValue(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
@@ -222,6 +235,58 @@ describe('StockPage', () => {
     expect(row).toContain('000 — Siège');
     expect(row).toMatch(/[-−]2(?![,.\d])/);
     expect(row).toContain('Négatif');
+  });
+
+  it('marks a lot past its day, and releases it only after asking', async () => {
+    levelsSignal.set([
+      shortage,
+      {
+        ...shortage,
+        id: 'p1:l1:k1',
+        productReference: 'ART-3',
+        quantity: '4.000',
+        lotId: 'k1',
+        lotCode: 'L-07',
+        lotExpiresOn: '2020-01-31',
+      },
+    ]);
+    await settle();
+
+    const row = q('stock-ART-3-000')?.textContent ?? '';
+    expect(row).toContain('Périmé');
+    expect(q('row-action-release-p1:l1:k1')).not.toBeNull();
+    expect(q('row-action-release-p1:l1:k1')?.getAttribute('aria-label') ?? '').toContain('Libérer');
+    expect(q('stock-ART-1-000')?.textContent).not.toContain('Périmé');
+
+    q('row-action-release-p1:l1:k1')!.click();
+    await settle();
+    expect(facade.releaseLot).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'L-07',
+    );
+    (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
+    await settle();
+    expect(facade.releaseLot).toHaveBeenCalledWith('c1', 'k1');
+  });
+
+  it('shows a released lot as released, and offers nothing to release', async () => {
+    levelsSignal.set([
+      {
+        ...shortage,
+        id: 'p1:l1:k1',
+        productReference: 'ART-3',
+        lotId: 'k1',
+        lotCode: 'L-07',
+        lotExpiresOn: '2020-01-31',
+        lotReleased: true,
+      },
+    ]);
+    await settle();
+
+    const row = q('stock-ART-3-000')?.textContent ?? '';
+    expect(row).toContain('Libéré');
+    expect(row).not.toContain('Périmé');
+    expect(q('row-action-release-p1:l1:k1')).toBeNull();
   });
 
   it("leads to a product's movements, and to the other stock screens through the tabs", () => {

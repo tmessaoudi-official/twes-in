@@ -162,6 +162,17 @@ export class InventoryFacade {
     );
   }
 
+  /** Lets an expired lot leave; the page in hand is read again so its row stops saying expired. */
+  async releaseLot(companyId: string, lotId: string): Promise<boolean> {
+    return this.write(
+      () => this.api.releaseLot(companyId, lotId),
+      async () => {
+        const search = this.search;
+        if (search !== null) await this.loadStock(companyId, search);
+      },
+    );
+  }
+
   async createLocation(companyId: string, input: StockLocationInput): Promise<boolean> {
     return this.write(
       () => this.api.createLocation(companyId, input),

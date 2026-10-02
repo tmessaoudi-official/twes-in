@@ -119,6 +119,8 @@ export interface StockLevelRow {
   lotCode: string | null;
   /** The day the lot is used by (ISO), when it has one. */
   lotExpiresOn: string | null;
+  /** Whether a person let the lot leave although it is past its date. */
+  lotReleased: boolean;
 }
 
 export interface StockMovementRow {

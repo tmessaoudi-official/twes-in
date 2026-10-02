@@ -68,6 +68,7 @@ export const ICONS = [
   'light_mode',
   'local_shipping',
   'lock',
+  'lock_open',
   'logout',
   'loyalty',
   'mail',

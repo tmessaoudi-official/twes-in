@@ -94,6 +94,7 @@ final readonly class StockLevelCollectionProvider implements ProviderInterface
         $row->lotId = $level->lotId?->toRfc4122();
         $row->lotCode = $level->lotCode;
         $row->lotExpiresOn = $level->lotExpiresOn;
+        $row->lotReleased = $level->lotReleased;
         $row->id = $row->productId.':'.$row->locationId.(null === $row->lotId ? '' : ':'.$row->lotId);
 
         return $row;
