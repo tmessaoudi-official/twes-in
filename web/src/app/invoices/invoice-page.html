@@ -102,7 +102,7 @@
                   | translate
                     : {
                         paid: (invoice.amountPaid | amount: scale()),
-                        total: (invoice.total | amount: scale()),
+                        total: (netPayable(invoice) | amount: scale()),
                       }
               }}
             </p>
@@ -266,6 +266,12 @@
                 }}
               </dt>
               <dd class="text-end">{{ '-' + withholding.amount | amount: scale() }}</dd>
+            }
+            @if (invoice.withholdings.length > 0 && invoice.status !== 'draft' && !isCreditNote()) {
+              <dt class="font-semibold">{{ 'invoices.totals.net_due' | translate }}</dt>
+              <dd class="text-end font-semibold" data-testid="invoice-net-due">
+                {{ netPayable(invoice) | amount: scale() }}
+              </dd>
             }
             @if (invoice.status === 'draft' || isCreditNote()) {
               <dt class="font-semibold">{{ 'invoices.totals.net_due' | translate }}</dt>

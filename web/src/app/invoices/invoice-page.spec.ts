@@ -54,6 +54,7 @@ class StaticLoader implements TranslateLoader {
         credit_note_draft_title: 'Avoir en brouillon',
         credit_note: { reason_shown: 'Motif : {{reason}}' },
         fixed: { issued: 'Émis, il se corrige par un avoir.' },
+        due: { left: 'Reste à encaisser', paid_of: '{{paid}} payés sur {{total}}' },
         totals: {
           tax: '{{code}} {{rate}} % · base {{base}}',
           withholding: 'Retenue {{code}} {{rate}} %',
@@ -650,6 +651,16 @@ describe('InvoicePage', () => {
     expect(totals).toMatch(/[−-]21,430/);
     expect(text('invoice-net-due')).toContain('2 121,570');
     expect(text('line-0-net')).toContain('1 800,000');
+  });
+
+  it('shows an issued invoice’s net payable after its withholding, so the figures add up', async () => {
+    invoice.set(issued);
+    await open('i1');
+
+    // 2 143,000 less the 21,430 withheld: 1 000,000 paid and 1 121,570 left make exactly that.
+    expect(text('invoice-net-due')).toContain('2 121,570');
+    expect(text('invoice-due')).toContain('1 000,000');
+    expect(text('invoice-due')).toContain('sur 2 121,570');
   });
 
   it('issues exactly what is on screen, once the consequence is confirmed', async () => {
