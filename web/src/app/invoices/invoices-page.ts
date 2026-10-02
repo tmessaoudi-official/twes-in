@@ -10,6 +10,7 @@ import {
   inject,
   input,
   OnInit,
+  signal,
   untracked,
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
@@ -19,6 +20,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
+import type { ExportFormat } from '../shared/list/export-address';
+import { ListExport } from '../shared/list/list-export';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor, ListFacetCounts, ListQuery } from '../shared/list/list-types';
 import { keyName } from '../shared/actions/shortcuts-sheet';
@@ -55,6 +58,7 @@ import {
     DataListCell,
     StatusBadge,
     InvoiceSheet,
+    ListExport,
   ],
   templateUrl: './invoices-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -117,6 +121,15 @@ export class InvoicesPage implements OnInit {
 
   /** What the list last asked the API for; the page is not read until the list has said what it wants. */
   private search: InvoiceSearch | null = null;
+  private readonly searched = signal<InvoiceSearch | null>(null);
+  /** What the list shows now, as a file: null until the list has asked for its first page. */
+  protected readonly exporter = computed(() => {
+    const companyId = this.company()?.id;
+    const search = this.searched();
+    return companyId && search !== null
+      ? (format: ExportFormat) => this.facade.exportUrl(companyId, search, format)
+      : null;
+  });
 
   constructor() {
     // A sheet named on a phone — a link copied from a wider screen — opens the document at its own address instead.
@@ -147,6 +160,7 @@ export class InvoicesPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId) return;
     this.search = invoiceSearch(query);
+    this.searched.set(this.search);
     void this.facade.loadPage(companyId, this.search);
     void this.facade.loadStatusCounts(companyId, this.search);
   }

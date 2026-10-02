@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { exportAddress, type ExportFormat } from '../shared/list/export-address';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { ListPage } from '../shared/list/list-types';
@@ -63,9 +64,8 @@ export class CustomersApi {
    * Where the customers the search finds are downloaded as a file: the same words, choices and order as the list, over
    * every page of them. A plain address, so the browser saves it with the session it already holds.
    */
-  exportUrl(companyId: string, search: CustomerSearch, format: 'csv' | 'xlsx'): string {
-    const params = toSearchParams(search).delete('page').delete('itemsPerPage').toString();
-    return `/api/companies/${encodeURIComponent(companyId)}/exports/customers.${format}${params === '' ? '' : `?${params}`}`;
+  exportUrl(companyId: string, search: CustomerSearch, format: ExportFormat): string {
+    return exportAddress(companyId, 'customers', toSearchParams(search), format);
   }
 
   /** One page of the customers the search finds, as Hydra carries it: the rows and the total. */

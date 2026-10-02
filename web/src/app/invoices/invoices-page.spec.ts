@@ -115,6 +115,8 @@ describe('InvoicesPage', () => {
     loadPage: vi.fn(),
     loadStatusCounts: vi.fn(),
     peek: vi.fn(),
+    exportUrl: (companyId: string, _search: unknown, format: string) =>
+      `/api/companies/${companyId}/exports/invoices.${format}`,
     pdfUrl: (companyId: string, id: string) => `/api/companies/${companyId}/invoices/${id}/pdf`,
   };
   const windowClass = signal<WindowClass>('expanded');
@@ -189,6 +191,15 @@ describe('InvoicesPage', () => {
 
   // docs/SPEC.md § 7, 2026-09-24 22:51 (row 123) and 2026-09-26: from a tablet up, an issued document opens as a sheet
   // over its list, named in the list's own address; a draft opens its editor, and a phone the record itself.
+  it('offers what the list shows as a CSV or an Excel file', () => {
+    expect(q('invoices-export-csv')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/invoices.csv',
+    );
+    expect(q('invoices-export-xlsx')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/invoices.xlsx',
+    );
+  });
+
   it('opens an issued document as a sheet over the list, and a draft in its editor', async () => {
     expect(q('list-link-i1')?.getAttribute('href')).toBe('/invoices?open=i1');
     expect(q('list-link-i4')?.getAttribute('href')).toBe('/invoices?open=i4');

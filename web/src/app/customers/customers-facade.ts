@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { ExportFormat } from '../shared/list/export-address';
 import { inject, Injectable, signal } from '@angular/core';
 import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
@@ -70,7 +71,7 @@ export class CustomersFacade {
     });
   }
 
-  exportUrl(companyId: string, search: CustomerSearch, format: 'csv' | 'xlsx'): string {
+  exportUrl(companyId: string, search: CustomerSearch, format: ExportFormat): string {
     return this.api.exportUrl(companyId, search, format);
   }
 

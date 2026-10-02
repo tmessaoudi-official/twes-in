@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { exportAddress, type ExportFormat } from '../shared/list/export-address';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
@@ -264,6 +265,11 @@ export class InvoicesApi {
   }
 
   /** Where a document's PDF is downloaded from, with the session the browser already has. */
+  /** Where the invoices and credit notes the search finds are downloaded as a file, every page of them. */
+  exportUrl(companyId: string, search: InvoiceSearch, format: ExportFormat): string {
+    return exportAddress(companyId, 'invoices', toSearchParams(search), format);
+  }
+
   pdfUrl(companyId: string, id: string): string {
     return `${invoicePath(companyId, id)}/pdf`;
   }

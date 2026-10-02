@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { ExportFormat } from '../shared/list/export-address';
 import { inject, Injectable, signal } from '@angular/core';
 import { InvoicesApi, InvoicesRefused } from './invoices-api';
 import type { PickAsked } from '../shared/form/pick-api';
@@ -182,6 +183,10 @@ export class InvoicesFacade {
 
   async deletePayment(companyId: string, id: string, paymentId: string): Promise<boolean> {
     return this.paymentStep(companyId, id, () => this.api.deletePayment(companyId, id, paymentId));
+  }
+
+  exportUrl(companyId: string, search: InvoiceSearch, format: ExportFormat): string {
+    return this.api.exportUrl(companyId, search, format);
   }
 
   pdfUrl(companyId: string, id: string): string {

@@ -126,6 +126,50 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame('[]', $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'invoice.created'"));
     }
 
+    // docs/SPEC.md § 7, row 60: the list as a file, under the search, filters and order the screen shows.
+    public function testTheInvoicesListIsDownloadedAsAFileUnderWhatTheScreenShows(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->postJson($this->path(), $this->invoice(['customerReference' => 'PO-77', 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $issued = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($issued).'/issue', null);
+        [$total, $due, $number] = [$this->stringAt($this->json(), 'total'), $this->stringAt($this->json(), 'amountDue'), $this->stringAt($this->json(), 'number')];
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
+
+        $this->client->request('GET', $this->companyPath().'/exports/invoices.csv');
+
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('invoices.csv', (string) $this->client->getResponse()->headers->get('Content-Disposition'));
+        $lines = $this->exported();
+        $header = array_map(strval(...), str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"), escape: ''));
+        self::assertCount(3, $lines, 'the header, the issued invoice and the draft');
+        $byNumber = [];
+        foreach (\array_slice($lines, 1) as $line) {
+            $row = array_combine($header, array_map(strval(...), str_getcsv($line, escape: '')));
+            $byNumber[$row['number']] = $row;
+        }
+        $first = $byNumber[$number];
+        self::assertSame(['invoice', 'issued', 'CLI-0001', 'Carthage Conseil', 'TND', $total, $due, 'PO-77'], [$first['type'], $first['status'], $first['customer_number'], $first['customer'], $first['currency'], $first['total'], $first['amount_due'], $first['customer_reference']]);
+        self::assertNotSame($total, $due, 'the customer withholds, so what is due is not the total');
+        self::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', $first['issue_date']);
+        self::assertSame(['draft', 'CLI-0001', ''], [$byNumber['']['status'], $byNumber['']['customer_number'], $byNumber['']['issue_date']], 'a draft has no number or day yet');
+
+        self::assertCount(2, $this->exportedFrom('?status=draft'), 'the draft alone');
+        self::assertCount(2, $this->exportedFrom('?status=issued'));
+        self::assertCount(1, $this->exportedFrom('?documentType=credit_note'), 'no credit note: the header alone');
+        self::assertCount(2, $this->exportedFrom('?q='.$number));
+        self::assertSame($number, explode(',', $this->exportedFrom('?order[number]=asc')[1])[0]);
+    }
+
+    public function testWhoCannotReadInvoicesIsAnsweredAsAStrangerWhenExporting(): void
+    {
+        $this->signedIn(['customer.read']);
+
+        $this->client->request('GET', $this->companyPath().'/exports/invoices.csv');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testWhatTheShapeOrTheCompanyRefusesAnswersUnprocessableNamingTheField(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write']);
@@ -891,6 +935,20 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
 
         return $id;
+    }
+
+    /** @return list<string> the lines of the file a request just answered */
+    private function exported(): array
+    {
+        return array_values(array_filter(explode("\n", $this->client->getInternalResponse()->getContent()), static fn (string $line): bool => '' !== trim($line)));
+    }
+
+    /** @return list<string> */
+    private function exportedFrom(string $query): array
+    {
+        $this->client->request('GET', $this->companyPath().'/exports/invoices.csv'.$query);
+
+        return $this->exported();
     }
 
     /**

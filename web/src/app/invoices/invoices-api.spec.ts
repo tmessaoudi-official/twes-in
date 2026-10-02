@@ -176,6 +176,22 @@ describe('InvoicesApi', () => {
     expect(options.taxes[0]).toMatchObject({ kind: 'fixed_document', amount: '1.000' });
   });
 
+  it('names the file of what the list shows, with its words, choices and order and no page', () => {
+    const search = {
+      page: 3,
+      itemsPerPage: 50,
+      q: ' fac ',
+      status: 'overdue' as const,
+      documentType: 'credit_note' as const,
+      customerId: 'k1',
+      order: { key: 'dueDate' as const, direction: 'desc' as const },
+    };
+
+    expect(api.exportUrl('c/1', search, 'csv')).toBe(
+      '/api/companies/c%2F1/exports/invoices.csv?q=fac&status=overdue&documentType=credit_note&customerId=k1&order%5BdueDate%5D=desc',
+    );
+  });
+
   it('asks a picker for the few a person means, and by id for the ones a document already names', async () => {
     const searched = api.pickCustomers('c1', { words: '  carth ' });
     const search = http.expectOne(

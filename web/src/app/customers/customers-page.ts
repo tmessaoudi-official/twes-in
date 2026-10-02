@@ -9,6 +9,8 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
+import type { ExportFormat } from '../shared/list/export-address';
+import { ListExport } from '../shared/list/list-export';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
@@ -34,6 +36,7 @@ import { CUSTOMERS_TABS } from './customers-nav';
   imports: [
     PageTabs,
     MatButtonModule,
+    ListExport,
     RouterLink,
     TranslatePipe,
     DataList,
@@ -58,18 +61,19 @@ export class CustomersPage implements OnInit {
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('customer.write'));
-  /** What the list shows now, as a file: null until the list has asked for its first page. */
-  protected exportUrl(format: 'csv' | 'xlsx'): string | null {
-    const companyId = this.company()?.id;
-    const search = this.searched();
-    return companyId && search !== null ? this.facade.exportUrl(companyId, search, format) : null;
-  }
-
   protected readonly rowTestId = (row: CustomerListRow): string => `customer-${row.number}`;
 
   /** The page the list shows last asked for; a change elsewhere reads it again. */
   private search: CustomerSearch | null = null;
   private readonly searched = signal<CustomerSearch | null>(null);
+  /** What the list shows now, as a file: null until the list has asked for its first page. */
+  protected readonly exporter = computed(() => {
+    const companyId = this.company()?.id;
+    const search = this.searched();
+    return companyId && search !== null
+      ? (format: ExportFormat) => this.facade.exportUrl(companyId, search, format)
+      : null;
+  });
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;

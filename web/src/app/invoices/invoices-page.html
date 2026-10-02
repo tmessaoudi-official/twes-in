@@ -3,17 +3,20 @@
     <h1 class="text-3xl font-semibold" data-testid="invoices-title">
       {{ 'invoices.title' | translate }}
     </h1>
-    @if (mayWrite() && company()) {
-      <a
-        mat-flat-button
-        routerLink="/invoices/new"
-        data-testid="invoice-add"
-        [attr.aria-keyshortcuts]="newKey()"
-      >
-        {{ 'invoices.add' | translate }}
-        <kbd class="twes-button-key" aria-hidden="true">{{ keyName(newKey()) }}</kbd>
-      </a>
-    }
+    <div class="flex flex-wrap gap-2">
+      <app-list-export [address]="exporter()" testId="invoices-export" />
+      @if (mayWrite() && company()) {
+        <a
+          mat-flat-button
+          routerLink="/invoices/new"
+          data-testid="invoice-add"
+          [attr.aria-keyshortcuts]="newKey()"
+        >
+          {{ 'invoices.add' | translate }}
+          <kbd class="twes-button-key" aria-hidden="true">{{ keyName(newKey()) }}</kbd>
+        </a>
+      }
+    </div>
   </div>
 
   @if (!company()) {
