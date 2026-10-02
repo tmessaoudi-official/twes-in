@@ -149,6 +149,11 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - `var/claude/**` — transient review output, gitignored.
 - `.claude/settings.json` — `defaultMode: auto`, allow-list, empty `deny`, no `ask`; one
   `PostToolUse` hook (`.claude/hooks/lint-on-write.sh`) running `php -l` / `bash -n` on writes.
+- `.claude/rules/expertise-core.md` (loads at session start), `.claude/EXPERTISE-REFERENCE.md` (read by section) and the four
+  `domain-*` skills in `.claude/skills/` — what a generic engineer gets wrong here, the evidence surfaces and a trigger -> lesson
+  table routing to the packs. Curated from the recorded decisions, memories and docs, dated (`Review date:`); do not hand-append:
+  put a lesson under § "Lessons" and flag it for the next refresh. `bash ~/.claude/bin/expertise-verify.sh --dir .` checks them
+  against the tree.
 - `infra/api/Dockerfile` — FrankenPHP in worker mode in every target; two targets over one `base`: `dev`
   (`compose.yaml`, `make up`, CI's e2e) and `prod` (`compose.prod.yaml`, CI's `prod-image`: `php.ini-production`,
   `infra/api/conf.d/20-app.prod.ini` with preload, no dev packages, the cache warmed at build; `docs/START.md` § 10).
