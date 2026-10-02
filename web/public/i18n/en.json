@@ -1919,7 +1919,8 @@
       "incomplete": "Every line needs a quantity, and a tracked article its lot.",
       "recorded": "Count recorded: {{count}} line(s).",
       "at_location": "Counting at: {{name}}",
-      "tallied": "{{name}}: {{quantity}} counted"
+      "tallied": "{{name}}: {{quantity}} counted",
+      "read_only": "You may count, but not record: recording needs the right to write stock."
     },
     "labels": {
       "title": "Location labels",

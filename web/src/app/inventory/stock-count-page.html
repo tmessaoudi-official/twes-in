@@ -94,6 +94,11 @@
       </ol>
     }
 
+    @if (!mayWrite()) {
+      <p data-testid="stock-count-read-only" class="text-sm opacity-80">
+        {{ 'inventory.count.read_only' | translate }}
+      </p>
+    }
     @if (mayWrite()) {
       <div class="flex justify-end">
         <button

@@ -4000,6 +4000,11 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   alert to an already open tab, which is the centre's own and was not re-run here.
   Alternatives: telling only the keepers with the stock.read permission (refused: it is the people who can act, not read,
   who should be woken); alerting on every movement while under the point (refused: one alert per movement is noise).
+- [2026-10-02 07:25] ASSUMED (review): **count mode amendments (row 118)**: the stock count screen declares its counted lines to
+  the unsaved-changes guard, so leaving with lines counted and not saved asks first; a member without stock.write
+  reads a notice saying the screen is read-only instead of an inert form; the French label is « Comptage » there.
+  Certified by execution: the stock-count specs and the full web suite; not run in a browser or e2e.
+  Alternatives: saving the count as it is entered (refused: a count is one act, applied at once).
 
 ## 8. Status
 
@@ -4125,7 +4130,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 115 | Insights and « À surveiller » (§ 7 2026-09-24 12:10): the ten insights as their data exists, thresholds as settings, the live screen and the home's count | M | done | - | |
 | 116 | Lots amendments (§ 7 2026-09-24 12:40, rows 8, 20, 21, 22): lot tracking on the articles chain and « Traçabilité », expired marker and « Libérer », serial quantity 1, re-scanned serial refused, form kept open, destination label | M | todo | - | |
 | 117 | Scanning and customer-facing amendments (§ 7 2026-09-24 12:40 and 12:55, rows 13, 14, 16, 17, 18): sound and re-count settings, key-gap setting and scanner test, pairing ends with its tab, customer view per device with step-up and a hide list, price-check restore and display, the display's line price, the customer-facing price rule and « Afficher aussi le prix HT », the phone's scan card | L | todo | - | |
-| 118 | Count mode amendments (§ 7 2026-09-24 12:40, row 23): leave guard, the no-`stock.write` notice, « Comptage » everywhere | S | todo | - | |
+| 118 | Count mode amendments (§ 7 2026-09-24 12:40, row 23): leave guard, the no-`stock.write` notice, « Comptage » everywhere | S | done | - | |
 | 119 | Labels (§ 7 2026-09-24 12:40, rows 24, 25): location QR on the public address and a stable path, return after sign-in, a company label format, chosen locations; barcodes at ISO/IEC 15420 proportions | M | todo | - | |
 | 120 | Zakat (§ 7 2026-09-24 13:10): the second research pass (Shafi'i, Hanbali), then the module — settings, bundles, worksheet, reminder | L | todo | - | |
 | 121 | Document mentions (§ 7 2026-09-24 22:51): the paid-stamp option (computed, copy only, off by default), amount in words and « Comment payer » switches, a credit note's required reason and invoice reference, COPIE and DUPLICATA marks | M | doing | - | |

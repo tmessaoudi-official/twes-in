@@ -23,6 +23,7 @@ import { ProductScans } from '../products/product-scans';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
 import { DecimalInput } from '../shared/form/decimal-input';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { PageTabs } from '../shared/ui/page-tabs';
 import {
@@ -84,6 +85,8 @@ export class StockCountPage implements OnInit {
   protected readonly code = signal('');
 
   constructor() {
+    // What is counted and not yet recorded is unsaved work: leaving the page would lose it.
+    inject(UnsavedChanges).declare(computed(() => this.lines().length));
     this.bus.handle((scan) => this.scanned(scan));
     effect(() => {
       const locations = this.facade.locations();

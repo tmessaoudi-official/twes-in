@@ -21,6 +21,7 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import type { PickAsked } from '../shared/form/pick-api';
@@ -180,6 +181,30 @@ describe('StockCountPage', () => {
     expect((q('stock-count-0-counted') as HTMLInputElement).value).toBe('14');
     expect(q('stock-count-1')).toBeNull();
     expect(facade.pickProducts).toHaveBeenCalledWith('c1', { ids: ['p1'] });
+  });
+
+  // docs/SPEC.md § 7, 2026-09-24 12:40 (row 23): what is counted and not recorded is unsaved work.
+  it('counts what is tallied and not recorded as unsaved work, and nothing once it is recorded', async () => {
+    const unsaved = TestBed.inject(UnsavedChanges);
+    expect(unsaved.count()).toBe(0);
+
+    scans.named.mockResolvedValue(scanOf('p1'));
+    await scanned('3017620422003');
+    await settle();
+    expect(unsaved.count()).toBe(1);
+
+    q('stock-count-record')!.click();
+    await settle();
+    expect(unsaved.count()).toBe(0);
+  });
+
+  it('tells a member who may not write stock that they may count but not record', async () => {
+    granted.delete('stock.write');
+    fixture = TestBed.createComponent(StockCountPage);
+    await settle();
+
+    expect(q('stock-count-read-only')).not.toBeNull();
+    expect(q('stock-count-record')).toBeNull();
   });
 
   it("starts at the location a label's address named, which a phone's camera opens", async () => {

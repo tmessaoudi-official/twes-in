@@ -1687,7 +1687,7 @@
       "title": "Stock",
       "intro": "Le stock d’un produit est la somme de ses mouvements. Un bon de livraison validé sort les marchandises de l’emplacement par défaut de son établissement ; son annulation les y remet.",
       "receive": "Réceptionner",
-      "count": "Inventorier",
+      "count": "Compter",
       "move": "Déplacer",
       "recorded": "Le mouvement a été enregistré.",
       "none": "Aucun stock pour l’instant.",
@@ -1715,7 +1715,7 @@
     },
     "movement": {
       "receive": "Réception de marchandises",
-      "count": "Inventaire",
+      "count": "Comptage",
       "move": "Déplacement de marchandises",
       "quantity_hint": {
         "receive": "La quantité reçue, dans l’unité du produit.",
@@ -1747,7 +1747,7 @@
     },
     "sources": {
       "receipt": "Réception",
-      "count": "Inventaire",
+      "count": "Comptage",
       "move": "Déplacement",
       "delivery_note": "Bon de livraison"
     },
@@ -1919,7 +1919,8 @@
       "incomplete": "Chaque ligne a besoin d'une quantité, et d'un lot pour un article suivi.",
       "recorded": "Comptage enregistré : {{count}} ligne(s).",
       "at_location": "Comptage à : {{name}}",
-      "tallied": "{{name}} : {{quantity}} compté(s)"
+      "tallied": "{{name}} : {{quantity}} compté(s)",
+      "read_only": "Vous pouvez compter, mais pas enregistrer : l'enregistrement demande le droit d'écrire le stock."
     },
     "labels": {
       "title": "Étiquettes d'emplacements",
