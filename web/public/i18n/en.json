@@ -813,6 +813,7 @@
       "number_format": "Number format",
       "customer_view_cost": "In customer view, hide product costs",
       "customer_view_supplier_codes": "In customer view, hide suppliers' codes",
+      "customer_view_other_customers": "In customer view, hide other customers' names and amounts",
       "show_coming": "Show what is coming",
       "scan_feedback": "Beep and buzz on each scan",
       "scan_recount_ms": "Camera scan: delay before a code counts again (ms)",

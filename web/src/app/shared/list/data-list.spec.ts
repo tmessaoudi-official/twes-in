@@ -10,6 +10,7 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import { CUSTOMER_VIEW_STORAGE, CustomerView } from '../customer-view/customer-view';
 import { Session } from '../session/session';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
@@ -62,6 +63,7 @@ const descriptor: ListDescriptor<Customer> = {
       sortable: true,
       align: 'end',
       width: 120,
+      private: true,
     },
     { id: 'status', label: 'c.status', value: (row) => row.status },
   ],
@@ -306,6 +308,7 @@ describe('DataList', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: storage },
+        { provide: CUSTOMER_VIEW_STORAGE, useValue: new PageMemoryStorage() },
         { provide: Session, useValue: { me: () => ({ user: { id: 'u1' } }) } },
       ],
     });
@@ -336,6 +339,18 @@ describe('DataList', () => {
       ),
     ).map((cell) => cell.getAttribute('data-column'));
     expect(cells).toEqual(['name', 'city', 'balance', 'status']);
+  });
+
+  it('leaves out a column about other customers while customer view is on, and puts it back when it is off', async () => {
+    expect(headers()).toContain('balance');
+
+    TestBed.inject(CustomerView).on();
+    await settle();
+    expect(headers()).toEqual(['name', 'city', 'status']);
+
+    TestBed.inject(CustomerView).off();
+    await settle();
+    expect(headers()).toContain('balance');
   });
 
   it('renders a cell through the template the screen gave, and gives a list without actions no trailing column', () => {

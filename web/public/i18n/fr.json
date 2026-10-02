@@ -813,6 +813,7 @@
       "number_format": "Format des nombres",
       "customer_view_cost": "En vue client, masquer le coût des produits",
       "customer_view_supplier_codes": "En vue client, masquer les codes des fournisseurs",
+      "customer_view_other_customers": "En vue client, masquer les noms et les montants des autres clients",
       "show_coming": "Montrer ce qui arrive",
       "scan_feedback": "Bip et vibration à chaque scan",
       "scan_recount_ms": "Scan par caméra : délai avant de recompter un code (ms)",

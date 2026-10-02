@@ -127,6 +127,12 @@ export const PRESENTATION = {
     true,
     parseBool,
   ),
+  /** Other customers' names and amounts in the lists, kept from a customer looking at the screen. */
+  customerViewOtherCustomers: defineSetting<boolean>(
+    'presentation.customer-view.other-customers',
+    true,
+    parseBool,
+  ),
   /**
    * How days and figures are written (docs/SPEC.md § 7, 2026-09-25 12:45, row 130): the locale's until someone
    * chooses, person then role then company, as the API declares them.

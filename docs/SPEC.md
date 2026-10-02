@@ -4082,6 +4082,9 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-10-02 12:42] ASSUMED (review): closing the lending tab ends its pairing at once: `pagehide` sends the DELETE as a `keepalive` request carrying the CSRF header, which outlives the page, and the phone hears it through the end it already knows; a failure is ignored since the pairing lapses by itself after 90 seconds. The CSRF token moved to `shared/session/csrf-token.ts` so `shared/` can send it. The phone's claim window is unchanged.
   Alternatives: `sendBeacon` (refused: it cannot carry the CSRF header nor use DELETE).
 
+- [2026-10-02 12:43] ASSUMED (review): customer view also keeps other customers' names and amounts from the screen: a third company setting `presentation.customer-view.other-customers` (true until changed, beside cost and supplier codes), and a list column declared `private` is left out of the customers, invoices and delivery notes lists while it is on (customer, total and amount due there; name, city and email on the customers list, whose number stays and carries the link). It hides on screen only: the list's search and sort, and a paged list's API query, still read the hidden columns. Margin needed nothing: the price calculator already sits behind the cost.
+  Alternatives: masking each cell with dots (refused: a column of dots still shows how many customers there are and invites a click on it).
+
 ## 8. Status
 
 <!-- progress-block v1 -->

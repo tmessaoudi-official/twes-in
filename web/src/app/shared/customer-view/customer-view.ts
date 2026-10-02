@@ -10,7 +10,7 @@ import { PRESENTATION } from '../settings/settings-registry';
 import { StepUp } from '../step-up/step-up';
 
 /** What customer view may hide on screen. */
-export type SensitiveField = 'cost' | 'supplier-codes';
+export type SensitiveField = 'cost' | 'supplier-codes' | 'other-customers';
 
 /** Where this tab remembers that customer view is on: its session storage, so another tab is not affected. */
 export const CUSTOMER_VIEW_STORAGE = new InjectionToken<SettingsStorage>('CUSTOMER_VIEW_STORAGE', {
@@ -41,6 +41,7 @@ export class CustomerView {
   private readonly chosen = {
     cost: this.settings.value(PRESENTATION.customerViewCost),
     'supplier-codes': this.settings.value(PRESENTATION.customerViewSupplierCodes),
+    'other-customers': this.settings.value(PRESENTATION.customerViewOtherCustomers),
   } as const;
   private readonly on$ = signal(this.remembered());
 

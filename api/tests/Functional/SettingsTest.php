@@ -36,7 +36,7 @@ final class SettingsTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $rows = $this->jsonList();
         $keys = array_column($rows, 'key');
-        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.language', 'presentation.customer-view.cost', 'presentation.customer-view.supplier-codes', 'presentation.show-coming', 'presentation.scan-feedback', 'presentation.scan-recount-ms', 'presentation.shortcuts', 'presentation.date-format', 'presentation.number-format', 'presentation.folded-sections', 'presentation.settings-list'], $keys);
+        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.language', 'presentation.customer-view.cost', 'presentation.customer-view.supplier-codes', 'presentation.customer-view.other-customers', 'presentation.show-coming', 'presentation.scan-feedback', 'presentation.scan-recount-ms', 'presentation.shortcuts', 'presentation.date-format', 'presentation.number-format', 'presentation.folded-sections', 'presentation.settings-list'], $keys);
         // Read by key and not by position: what each case below is about is one setting's own default, and an
         // ordinal makes every future presentation setting shift assertions that have nothing to do with it.
         $row = static function (string $key) use ($rows, $keys): array {
@@ -55,6 +55,7 @@ final class SettingsTest extends ApiTestCase
         // What customer view hides, a company's choice (docs/SPEC.md § 7, 2026-09-23 slice 5): both, until it says otherwise.
         self::assertTrue($row('presentation.customer-view.cost')['value']);
         self::assertTrue($row('presentation.customer-view.supplier-codes')['value']);
+        self::assertTrue($row('presentation.customer-view.other-customers')['value']);
         // The interface language is remembered like any presentation choice, French until one is made.
         self::assertSame('fr', $row('presentation.language')['value']);
         self::assertSame(['fr', 'en'], $row('presentation.language')['choices']);
