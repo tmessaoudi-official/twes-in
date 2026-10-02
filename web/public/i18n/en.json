@@ -1217,7 +1217,8 @@
         "discountRate": "A percentage from 0 to 100, with at most three decimals.",
         "lotCode": "Up to 40 visible characters, no spaces."
       },
-      "no_product_found": "No product found."
+      "no_product_found": "No product found.",
+      "price_list": "Price list: {{name}}"
     },
     "document_taxes": {
       "title": "Document charges and withholdings",

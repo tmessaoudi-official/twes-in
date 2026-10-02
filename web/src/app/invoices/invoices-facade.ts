@@ -115,6 +115,16 @@ export class InvoicesFacade {
     return this.pick(() => this.api.pickProducts(companyId, asked));
   }
 
+  /** What the product sells at for that customer and quantity; null where the price cannot be read. */
+  async productPrice(
+    companyId: string,
+    productId: string,
+    customerId: string | null,
+    quantity: string,
+  ) {
+    return this.api.productPrice(companyId, productId, customerId, quantity);
+  }
+
   /** The draft as the API kept it, or null with the reason in `error`. */
   async create(companyId: string, input: InvoiceInput): Promise<InvoiceRow | null> {
     return this.step(() => this.api.create(companyId, input));

@@ -16,6 +16,7 @@ import type {
   InvoiceStatusCountsInvoiceStatusCountsRead,
   InvoiceSummaryInvoiceSummaryRead,
   PaymentPaymentWrite,
+  ProductPriceProductPriceRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
 import { trackingOf } from '../products/products-types';
@@ -36,6 +37,7 @@ import {
   type CustomerOption,
   type ProductOption,
   type PaymentInput,
+  type ResolvedPrice,
 } from './invoices-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
@@ -104,6 +106,32 @@ export class InvoicesApi {
         tracking: trackingOf(product.tracking),
       }));
     });
+  }
+
+  /**
+   * The net unit price a sale of the product starts at for that customer and quantity, and the price list that set it
+   * (null for the shelf price). A price that cannot be read, such as a module switched off meanwhile, is null: the
+   * line keeps the price it has.
+   */
+  async productPrice(
+    companyId: string,
+    productId: string,
+    customerId: string | null,
+    quantity: string,
+  ): Promise<ResolvedPrice | null> {
+    let params = new HttpParams().set('quantity', quantity);
+    if (customerId !== null) params = params.set('customerId', customerId);
+    try {
+      const read = await firstValueFrom(
+        this.http.get<ProductPriceProductPriceRead>(
+          `${companyPath(companyId)}/products/${encodeURIComponent(productId)}/price`,
+          { params },
+        ),
+      );
+      return { unitPriceNet: read.unitPriceNet, priceListName: read.priceListName ?? null };
+    } catch {
+      return null;
+    }
   }
 
   /** The home page's figures, worked out by the API on the company's day. */

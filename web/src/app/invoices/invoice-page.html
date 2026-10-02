@@ -185,6 +185,7 @@
             [options]="options"
             [companyId]="company()?.id ?? ''"
             [customer]="customer()"
+            [priceLists]="auth.hasModule('price_lists')"
             [nets]="nets()"
             [readOnly]="!editable()"
           />

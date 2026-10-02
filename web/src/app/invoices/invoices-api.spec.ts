@@ -438,6 +438,43 @@ describe('InvoicesApi', () => {
     await issued;
   });
 
+  it('asks for the price a product sells at for a customer and a quantity', async () => {
+    const price = api.productPrice('c1', 'p/1', 'k1', '10');
+
+    const request = http.expectOne((req) => req.url === '/api/companies/c1/products/p%2F1/price');
+    expect(request.request.params.get('customerId')).toBe('k1');
+    expect(request.request.params.get('quantity')).toBe('10');
+    request.flush({
+      productId: 'p/1',
+      unitPriceNet: '1500.0000',
+      priceListId: 'l1',
+      priceListName: 'Gros',
+      minQuantity: '10.000',
+    });
+
+    expect(await price).toEqual({ unitPriceNet: '1500.0000', priceListName: 'Gros' });
+  });
+
+  it('asks for the price without a customer, and has none where the price cannot be read', async () => {
+    const shelf = api.productPrice('c1', 'p1', null, '1');
+    const request = http.expectOne((req) => req.url === '/api/companies/c1/products/p1/price');
+    expect(request.request.params.has('customerId')).toBe(false);
+    request.flush({
+      productId: 'p1',
+      unitPriceNet: '1800.0000',
+      priceListId: null,
+      priceListName: null,
+      minQuantity: null,
+    });
+    expect(await shelf).toEqual({ unitPriceNet: '1800.0000', priceListName: null });
+
+    const gone = api.productPrice('c1', 'p1', 'k1', '1');
+    http
+      .expectOne((req) => req.url === '/api/companies/c1/products/p1/price')
+      .flush({}, { status: 404, statusText: 'Not Found' });
+    expect(await gone).toBeNull();
+  });
+
   it('names where a document is downloaded as a PDF', () => {
     expect(api.pdfUrl('c1', 'i 1')).toBe('/api/companies/c1/invoices/i%201/pdf');
   });

@@ -1217,7 +1217,8 @@
         "discountRate": "Un pourcentage de 0 à 100, avec au plus trois décimales.",
         "lotCode": "Jusqu’à 40 caractères visibles, sans espace."
       },
-      "no_product_found": "Aucun produit trouvé."
+      "no_product_found": "Aucun produit trouvé.",
+      "price_list": "Tarif : {{name}}"
     },
     "document_taxes": {
       "title": "Droits et retenues du document",

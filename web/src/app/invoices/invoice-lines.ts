@@ -16,6 +16,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
+import { atScale } from '../shared/i18n/format';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import {
   applyProduct,
@@ -84,6 +85,8 @@ export class InvoiceLines {
   readonly companyId = input.required<string>();
   readonly options = input.required<InvoiceOptions>();
   readonly customer = input<CustomerOption | null>(null);
+  /** Whether the company has price lists on: a line then starts from the price of the customer's list. */
+  readonly priceLists = input(false);
   readonly readOnly = input(false);
   /** Each line's net as last saved, by position; shown while the line is unchanged. */
   readonly nets = input<readonly string[]>([]);
@@ -92,6 +95,8 @@ export class InvoiceLines {
   private readonly revision = signal(0);
   /** Every product the pickers have answered, so what is chosen on a line can be found again from its id. */
   private readonly known = new Map<string, ProductOption>();
+  /** The price list that set each line's price, with the price it set. */
+  private readonly listed = new WeakMap<LineGroup, { name: string; price: string }>();
   private readonly excluded = computed<readonly TaxFamily[]>(
     () => this.customer()?.excludedFamilies ?? [],
   );
@@ -189,6 +194,48 @@ export class InvoiceLines {
     const product = option === null ? null : (this.known.get(option.id) ?? null);
     applyProduct(line, product, this.options(), this.excluded());
     line.markAsDirty();
+    this.listed.delete(line);
+    void this.reprice(line);
+  }
+
+  /** The price list that set a line's price, while the price on the line is still the one it set. */
+  protected listOf(line: LineGroup): string | null {
+    this.revision();
+    const set = this.listed.get(line);
+    return set !== undefined && set.price === line.controls.unitPriceNet.value ? set.name : null;
+  }
+
+  /**
+   * Starts the line at the price the customer's list gives for its quantity. A price the person typed is theirs and
+   * stays: only the shelf price, or the price a list set a moment ago, is replaced.
+   */
+  protected async reprice(line: LineGroup): Promise<void> {
+    const productId = line.controls.productId.value;
+    const product = this.known.get(productId);
+    if (!this.priceLists() || product === undefined) return;
+    const quantity = line.controls.quantity.value;
+    const resolved = await this.facade.productPrice(
+      this.companyId(),
+      productId,
+      this.customer()?.id ?? null,
+      quantity === '' ? '1' : quantity,
+    );
+    if (resolved === null || line.controls.productId.value !== productId) return;
+    const scale = this.options().currencyScale;
+    const current = line.controls.unitPriceNet.value;
+    if (
+      current !== atScale(product.unitPriceNet, scale) &&
+      current !== this.listed.get(line)?.price
+    )
+      return;
+    const next = atScale(resolved.unitPriceNet, scale);
+    if (next !== current) {
+      line.controls.unitPriceNet.setValue(next);
+      line.markAsDirty();
+    }
+    if (resolved.priceListName === null) this.listed.delete(line);
+    else this.listed.set(line, { name: resolved.priceListName, price: next });
+    this.revision.update((revision) => revision + 1);
   }
 
   protected toggleTax(line: LineGroup, taxId: string, checked: boolean): void {

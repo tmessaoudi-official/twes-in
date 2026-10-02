@@ -226,6 +226,7 @@ describe('InvoicePage', () => {
     pickCustomers: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? customers.filter((each) => asked.ids.includes(each.id)) : customers,
     ),
+    productPrice: vi.fn(),
     pickProducts: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
     ),
@@ -245,6 +246,7 @@ describe('InvoicePage', () => {
   const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
   const display = { show: vi.fn(), total: vi.fn(), clear: vi.fn(), openWindow: vi.fn() };
   const granted = new Set<string>();
+  const modulesOn = new Set<string>();
   const auth = {
     me: () => ({
       user: { id: 'u1' },
@@ -256,6 +258,7 @@ describe('InvoicePage', () => {
       ],
     }),
     hasPermission: (permission: string) => granted.has(permission),
+    hasModule: (module: string) => modulesOn.has(module),
   };
   let fixture: ComponentFixture<InvoicePage>;
 
@@ -319,6 +322,8 @@ describe('InvoicePage', () => {
     error.set(null);
     invoice.set(null);
     granted.clear();
+    modulesOn.clear();
+    facade.productPrice.mockReset().mockResolvedValue(null);
     ['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write'].forEach((each) =>
       granted.add(each),
     );
@@ -484,6 +489,73 @@ describe('InvoicePage', () => {
 
     expect((q('line-0-description') as HTMLInputElement).value).toBe('Conception');
     expect((q('line-0-quantity') as HTMLInputElement).value).toBe('3');
+  });
+
+  describe('price lists', () => {
+    it('starts a line at the price of the customer’s list and says which list set it', async () => {
+      modulesOn.add('price_lists');
+      facade.productPrice.mockResolvedValue({ unitPriceNet: '1700.0000', priceListName: 'Gros' });
+      await open(undefined);
+      await pick('invoice-customer', 'CLI-2 · Méditerranée');
+      await pick('line-0-product', 'ART-1 · Conception');
+
+      expect(facade.productPrice).toHaveBeenCalledWith('c1', 'p1', 'k2', '1');
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1700,000');
+      expect(q('line-0-price-list')?.textContent).toContain('invoices.lines.price_list');
+    });
+
+    it('asks again for the new quantity, whose break may price it lower', async () => {
+      modulesOn.add('price_lists');
+      facade.productPrice
+        .mockResolvedValueOnce({ unitPriceNet: '1700.0000', priceListName: 'Gros' })
+        .mockResolvedValueOnce({ unitPriceNet: '1500.0000', priceListName: 'Gros' });
+      await open(undefined);
+      await pick('invoice-customer', 'CLI-2 · Méditerranée');
+      await pick('line-0-product', 'ART-1 · Conception');
+
+      type('line-0-quantity', '10');
+      (q('line-0-quantity') as HTMLInputElement).dispatchEvent(new Event('blur'));
+      await settle();
+
+      expect(facade.productPrice).toHaveBeenLastCalledWith('c1', 'p1', 'k2', '10');
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1500,000');
+    });
+
+    it('leaves a price the person typed alone', async () => {
+      modulesOn.add('price_lists');
+      facade.productPrice.mockResolvedValueOnce({
+        unitPriceNet: '1700.0000',
+        priceListName: 'Gros',
+      });
+      await open(undefined);
+      await pick('invoice-customer', 'CLI-2 · Méditerranée');
+      await pick('line-0-product', 'ART-1 · Conception');
+      type('line-0-price', '1234');
+      facade.productPrice.mockResolvedValue({ unitPriceNet: '1500.0000', priceListName: 'Gros' });
+
+      type('line-0-quantity', '10');
+      (q('line-0-quantity') as HTMLInputElement).dispatchEvent(new Event('blur'));
+      await settle();
+
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1234');
+    });
+
+    it('keeps the shelf price, and asks nothing, where the company has no price lists', async () => {
+      await open(undefined);
+      await pick('line-0-product', 'ART-1 · Conception');
+
+      expect(facade.productPrice).not.toHaveBeenCalled();
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1800,000');
+    });
+
+    it('keeps the shelf price where the list gives none', async () => {
+      modulesOn.add('price_lists');
+      await open(undefined);
+      await pick('line-0-product', 'ART-1 · Conception');
+
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1800,000');
+      expect(q('line-0-price-list')).toBeNull();
+    });
   });
 
   // docs/SPEC.md § 7, 2026-09-19 21:55: a line's figures show the French decimal comma and take a comma or a point.

@@ -62,6 +62,7 @@
               formControlName="quantity"
               appDecimal
               required
+              (blur)="reprice(line)"
               [attr.data-testid]="'line-' + i + '-quantity'"
             />
           </mat-form-field>
@@ -131,9 +132,15 @@
               required
               [attr.data-testid]="'line-' + i + '-price'"
             />
-            <mat-hint>{{
-              'invoices.lines.price_hint' | translate: { currency: options().currency }
-            }}</mat-hint>
+            <mat-hint>
+              @if (listOf(line); as list) {
+                <span [attr.data-testid]="'line-' + i + '-price-list'">{{
+                  'invoices.lines.price_list' | translate: { name: list }
+                }}</span>
+              } @else {
+                {{ 'invoices.lines.price_hint' | translate: { currency: options().currency } }}
+              }
+            </mat-hint>
           </mat-form-field>
           @if (errorKey(line, 'unitPriceNet'); as key) {
             <span

@@ -115,7 +115,7 @@ export class InvoicePage {
   private readonly unsaved = inject(UnsavedChanges);
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
-  private readonly auth = inject(AuthFacade);
+  protected readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly productScans = inject(ProductScans);
   private readonly display = inject(CustomerDisplay);

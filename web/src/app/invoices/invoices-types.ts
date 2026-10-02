@@ -312,6 +312,12 @@ export interface VatCollected {
 }
 
 /** The home page's figures of the company's invoices, every one worked out by the API on the company's day. */
+/** What a sale of a product starts at: the net unit price, and the price list that set it, null for the shelf price. */
+export interface ResolvedPrice {
+  unitPriceNet: string;
+  priceListName: string | null;
+}
+
 export interface InvoiceSummary {
   readonly currency: string;
   readonly currencyScale: number;
