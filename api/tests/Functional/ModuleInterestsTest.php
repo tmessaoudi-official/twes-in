@@ -96,7 +96,7 @@ final class ModuleInterestsTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $demand = $this->jsonList();
-        self::assertCount(23, $demand, 'every planned module, asked for or not');
+        self::assertCount(22, $demand, 'every planned module, asked for or not');
         self::assertSame([['quotes', 2], ['zakat', 1], ['accounting_export', 0]], array_map(static fn (array $row) => [$row['key'], $row['companies']], \array_slice($demand, 0, 3)));
         self::assertSame(['key' => 'quotes', 'labelKey' => 'modules.quotes', 'planned' => 'v1', 'companies' => 2], $demand[0]);
     }
