@@ -11,8 +11,8 @@ namespace App\Scanning\Application;
 
 /**
  * What the computer tab tells the phone about one scan (docs/SPEC.md § 7, 2026-09-23 09:45, slice 4): the outcome as
- * a translation key with flat parameters, the product's name and customer price as the tab shows them, and the choices
- * the tab offers. Held to that shape here, so the phone's channel never carries a record, only what a customer at the
+ * a translation key with flat parameters, the product's name and customer price as the tab shows them, the choices
+ * the tab offers, and a few short lines the tab wrote about what was read (stock, use-by date, pack contents). Held to that shape here, so the phone's channel never carries a record, only what a customer at the
  * till could read off the screen.
  */
 final readonly class PairingEcho
@@ -23,6 +23,7 @@ final readonly class PairingEcho
     private const int TEXT_MAX = 200;
     private const int PARAMS_MAX = 6;
     private const int CHOICES_MAX = 8;
+    private const int DETAILS_MAX = 6;
 
     /** @var array<string, string|int> */
     public array $params;
@@ -33,12 +34,16 @@ final readonly class PairingEcho
     /** @var list<array{id: string, label: string}> */
     public array $choices;
 
+    /** @var list<string> */
+    public array $details;
+
     /**
      * Every array as it came, checked here rather than trusted: this is what the phone's channel will carry.
      *
      * @param array<mixed>      $params
      * @param array<mixed>|null $product
      * @param array<mixed>      $choices
+     * @param array<mixed>      $details
      */
     public function __construct(
         public string $id,
@@ -48,6 +53,7 @@ final readonly class PairingEcho
         array $params,
         ?array $product,
         array $choices,
+        array $details = [],
     ) {
         self::uuid($id, 'id');
         if (null !== $scan) {
@@ -60,6 +66,7 @@ final readonly class PairingEcho
         $this->params = self::params($params);
         $this->product = null === $product ? null : self::product($product);
         $this->choices = self::choices($choices);
+        $this->details = self::details($details);
     }
 
     /**
@@ -76,15 +83,16 @@ final readonly class PairingEcho
         $params = $data['params'] ?? [];
         $product = $data['product'] ?? null;
         $choices = $data['choices'] ?? [];
+        $details = $data['details'] ?? [];
         if (!\is_string($id) || !(null === $scan || \is_string($scan)) || !\is_string($outcome) || !\is_string($message)
-            || !\is_array($params) || !(null === $product || \is_array($product)) || !\is_array($choices)) {
+            || !\is_array($params) || !(null === $product || \is_array($product)) || !\is_array($choices) || !\is_array($details)) {
             throw new \InvalidArgumentException('An echo is id, scan, outcome, message, params, product and choices.');
         }
 
-        return new self($id, $scan, $outcome, $message, $params, $product, $choices);
+        return new self($id, $scan, $outcome, $message, $params, $product, $choices, $details);
     }
 
-    /** @return array{id: string, scan: string|null, outcome: string, message: string, params: array<string, string|int>, product: array{name: string, price: string}|null, choices: list<array{id: string, label: string}>} */
+    /** @return array{id: string, scan: string|null, outcome: string, message: string, params: array<string, string|int>, product: array{name: string, price: string}|null, choices: list<array{id: string, label: string}>, details: list<string>} */
     public function toArray(): array
     {
         return [
@@ -95,6 +103,7 @@ final readonly class PairingEcho
             'params' => $this->params,
             'product' => $this->product,
             'choices' => $this->choices,
+            'details' => $this->details,
         ];
     }
 
@@ -160,6 +169,27 @@ final readonly class PairingEcho
             }
             self::key($label, 'choices');
             $checked[] = ['id' => $id, 'label' => $label];
+        }
+
+        return $checked;
+    }
+
+    /**
+     * @param array<mixed> $details
+     *
+     * @return list<string>
+     */
+    private static function details(array $details): array
+    {
+        if (\count($details) > self::DETAILS_MAX || !array_is_list($details)) {
+            throw new \InvalidArgumentException(\sprintf('details: at most %d lines.', self::DETAILS_MAX));
+        }
+        $checked = [];
+        foreach ($details as $line) {
+            if (!\is_string($line) || !self::text($line)) {
+                throw new \InvalidArgumentException('details: short text lines.');
+            }
+            $checked[] = $line;
         }
 
         return $checked;

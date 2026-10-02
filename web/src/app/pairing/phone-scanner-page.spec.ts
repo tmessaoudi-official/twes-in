@@ -139,12 +139,15 @@ describe('PhoneScannerPage', () => {
       params: { name: 'Nutella' },
       product: { name: 'Nutella', price: '12,500 TND' },
       choices: [],
+      details: ['In stock: 14', 'Nearest use-by: 01/12/2026'],
     });
 
     const echo = q('phone-echo')!.textContent ?? '';
     expect(echo).toContain('scan.added');
     expect(echo).toContain('Nutella');
     expect(echo).toContain('12,500 TND');
+    expect(q('phone-echo')!.querySelectorAll('[data-testid="phone-detail"]')).toHaveLength(2);
+    expect(echo).toContain('In stock: 14');
   });
 
   it('shows the choices the computer offers, and a tap sends the one chosen', async () => {

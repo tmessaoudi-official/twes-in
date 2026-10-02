@@ -2692,6 +2692,15 @@
       }
     },
     "phone": {
+      "details": {
+        "pack": "A pack of {{count}}",
+        "use_by": "Use by {{date}}",
+        "stock": "In stock: {{count}}",
+        "none": "Out of stock",
+        "at": "{{place}}: {{count}}",
+        "nearest": "Nearest use-by: {{date}}",
+        "expired": "Nearest use-by: {{date}}, past"
+      },
       "pair": "Use a phone as a scanner",
       "paired": "Phone connected: open",
       "title": "Scan with a phone",

@@ -2692,6 +2692,15 @@
       }
     },
     "phone": {
+      "details": {
+        "pack": "Un lot de {{count}}",
+        "use_by": "À consommer avant le {{date}}",
+        "stock": "En stock : {{count}}",
+        "none": "Rupture de stock",
+        "at": "{{place}} : {{count}}",
+        "nearest": "Péremption la plus proche : {{date}}",
+        "expired": "Péremption la plus proche : {{date}}, dépassée"
+      },
       "pair": "Utiliser un téléphone comme scanner",
       "paired": "Téléphone relié : ouvrir",
       "title": "Scanner avec un téléphone",

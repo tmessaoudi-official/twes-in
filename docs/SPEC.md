@@ -4085,6 +4085,9 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-10-02 12:43] ASSUMED (review): customer view also keeps other customers' names and amounts from the screen: a third company setting `presentation.customer-view.other-customers` (true until changed, beside cost and supplier codes), and a list column declared `private` is left out of the customers, invoices and delivery notes lists while it is on (customer, total and amount due there; name, city and email on the customers list, whose number stays and carries the link). It hides on screen only: the list's search and sort, and a paged list's API query, still read the hidden columns. Margin needed nothing: the price calculator already sits behind the cost.
   Alternatives: masking each cell with dots (refused: a column of dots still shows how many customers there are and invites a click on it).
 
+- [2026-10-02 12:44] ASSUMED (review): what a phone is told about a scanned product grows from the sentence and the price to a few short lines, written by the computer tab in the person's language and carried as `details` on the echo (at most six lines of 200 characters, checked by `PairingEcho`; absent is none): what a pack holds, the use-by a GS1 code carried, the stock and where it is (the first three places holding some), and the nearest use-by of that stock, marked when it is past. `shared/` takes them through the `SCAN_DETAILS` port and the product feature provides it; a lookup that fails gives no lines and never fails the scan. Not built: a photo, and the price for the draft's customer, which waits on the draft being known to the tab; « here » against « elsewhere » is the list of places, since the tab knows no current establishment.
+  Alternatives: the phone calling the API itself for the product (refused: it holds a pairing key, not a session, and the tab already has the rights).
+
 ## 8. Status
 
 <!-- progress-block v1 -->

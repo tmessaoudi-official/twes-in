@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { ProductScanDetails } from './products/product-scan-details';
+import { SCAN_DETAILS } from './shared/scan/scan-details';
 import { tabInterceptor } from './shared/realtime/tab-interceptor';
 import { provideHttpClient, withInterceptors, withNoXsrfProtection } from '@angular/common/http';
 import {
@@ -53,6 +55,7 @@ export const appConfig: ApplicationConfig = {
     // shown before anyone signs in.
     // Shared code reads the session through its port; the auth feature answers it.
     { provide: Session, useExisting: AuthFacade },
+    { provide: SCAN_DETAILS, useExisting: ProductScanDetails },
     // Proving who is at the screen again is the auth feature's too.
     { provide: StepUpProof, useExisting: AuthFacade },
     { provide: SettingsFacade, useClass: ApiSettings },

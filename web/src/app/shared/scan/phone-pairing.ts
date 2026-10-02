@@ -8,6 +8,7 @@ import { tabId } from '../realtime/tab-interceptor';
 import { Session } from '../session/session';
 import { type PairingEcho, PairingApi, PairingRefused } from './pairing-api';
 import { ScanBus, type ScanOutcome } from './scan-bus';
+import { SCAN_DETAILS } from './scan-details';
 import { type ScanOffer, ScanOffers } from './scan-offers';
 
 /** How often the tab says it is still there; the API lets a pairing lapse after 90 seconds without a word. */
@@ -37,6 +38,7 @@ export class PhonePairing {
   private readonly api = inject(PairingApi);
   private readonly bus = inject(ScanBus);
   private readonly offers = inject(ScanOffers);
+  private readonly details = inject(SCAN_DETAILS);
   private readonly session = inject(Session);
   private readonly format = inject(FormatFacade);
   private readonly feedback = inject(Feedback);
@@ -123,9 +125,26 @@ export class PhonePairing {
     this.current.update((state) => (state === null ? null : { ...state, phone: 'connected' }));
     const outcome = await this.bus.receive(code, 'phone');
     const offer = outcome.kind === 'unclaimed' ? await this.offers.next(code, OFFER_WAIT_MS) : null;
-    const echo = this.echoOf(scanId, outcome, offer);
+    const lines = await this.detailsOf(code, outcome, offer);
+    const echo = { ...this.echoOf(scanId, outcome, offer), details: lines };
     this.offered = offer !== null && echo.choices.length > 0 ? { echo: echo.id, offer } : null;
     await this.send(echo);
+  }
+
+  /** What the phone is told of a product the scan named; nothing for a refusal or a code nobody holds. */
+  private async detailsOf(
+    code: string,
+    outcome: ScanOutcome,
+    offer: ScanOffer | null,
+  ): Promise<string[]> {
+    const named = outcome.kind === 'done' ? outcome.product : offer?.product;
+    if (!named) return [];
+    try {
+      return [...(await this.details.of(code))].slice(0, 6);
+    } catch {
+      // The lines are an extra: the sentence and the price already say what happened.
+      return [];
+    }
   }
 
   private chosen(echo: string, choice: string): void {

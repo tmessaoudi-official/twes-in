@@ -11,6 +11,7 @@ import { tabId } from '../realtime/tab-interceptor';
 import { PairingApi, PairingRefused } from './pairing-api';
 import { HEARTBEAT_MS, PhonePairing } from './phone-pairing';
 import { type ScanOutcome, ScanBus } from './scan-bus';
+import { SCAN_DETAILS } from './scan-details';
 import { ScanOffers } from './scan-offers';
 
 const SCAN = '0199aaaa-0000-4000-8000-000000000001';
@@ -141,7 +142,42 @@ describe('PhonePairing', () => {
       params: { name: 'Nutella', quantity: 2 },
       product: { name: 'Nutella', price: '~12.500 TND' },
       choices: [],
+      details: [],
     });
+  });
+
+  it('adds the lines the details port gives for a product, and none when it fails or the scan named nothing', async () => {
+    const details = {
+      of: vi
+        .spyOn(TestBed.inject(SCAN_DETAILS), 'of')
+        .mockResolvedValue(['Stock: 14', 'Use by 2026-12-01']),
+    };
+    outcome = {
+      kind: 'done',
+      key: 'scan.added',
+      params: {},
+      product: { name: 'Nutella', unitPrice: '12.500' },
+    };
+
+    pairing.receive(publication('scan', { scan: SCAN, code: '3017620422003' }));
+    await vi.waitFor(() => expect(api.echo).toHaveBeenCalledTimes(1));
+    expect(api.echo.mock.calls[0][2].details).toEqual(['Stock: 14', 'Use by 2026-12-01']);
+    expect(details.of).toHaveBeenCalledWith('3017620422003');
+
+    details.of.mockRejectedValue(new Error('offline'));
+    pairing.receive(
+      publication('scan', { scan: 'b'.repeat(8) + '-0000-4000-8000-000000000002', code: '1' }),
+    );
+    await vi.waitFor(() => expect(api.echo).toHaveBeenCalledTimes(2));
+    expect(api.echo.mock.calls[1][2].details).toEqual([]);
+
+    outcome = { kind: 'refused', key: 'scan.serial_present', params: {} };
+    details.of.mockClear();
+    pairing.receive(
+      publication('scan', { scan: 'c'.repeat(8) + '-0000-4000-8000-000000000003', code: '2' }),
+    );
+    await vi.waitFor(() => expect(api.echo).toHaveBeenCalledTimes(3));
+    expect(details.of).not.toHaveBeenCalled();
   });
 
   it('answers a scan no screen claims with what its card offers, and a tap on the phone runs the choice', async () => {

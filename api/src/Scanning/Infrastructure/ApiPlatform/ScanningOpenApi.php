@@ -71,6 +71,7 @@ final readonly class ScanningOpenApi implements OpenApiFactoryInterface
                     ['type' => 'object', 'required' => ['name', 'price'], 'properties' => ['name' => ['type' => 'string'], 'price' => ['type' => 'string']], 'additionalProperties' => false],
                     ['type' => 'null'],
                 ]],
+                'details' => ['type' => 'array', 'maxItems' => 6, 'items' => ['type' => 'string', 'maxLength' => 200], 'description' => 'Short lines the tab wrote about what was read.'],
                 'choices' => ['type' => 'array', 'maxItems' => 8, 'items' => [
                     'type' => 'object', 'required' => ['id', 'label'], 'additionalProperties' => false,
                     'properties' => ['id' => ['type' => 'string'], 'label' => ['type' => 'string', 'description' => 'A translation key.']],

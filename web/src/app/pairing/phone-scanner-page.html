@@ -60,6 +60,13 @@
               <span>{{ product.price }}</span>
             </p>
           }
+          @if (echo.details?.length) {
+            <ul class="m-0 flex list-none flex-col gap-0.5 p-0 text-sm">
+              @for (line of echo.details; track $index) {
+                <li data-testid="phone-detail">{{ line }}</li>
+              }
+            </ul>
+          }
           @if (first && echo.choices.length > 0) {
             <div class="flex flex-wrap gap-2">
               @for (choice of echo.choices; track choice.id) {

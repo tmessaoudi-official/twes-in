@@ -167,6 +167,7 @@ final class PhonePairingsTest extends TestCase
             params: ['name' => 'Nutella 400 g', 'count' => 2],
             product: ['name' => 'Nutella 400 g', 'price' => '12.500 TND'],
             choices: [],
+            details: ['In stock: 14', 'Use by 2026-12-01'],
         );
 
         $this->phones()->echo($this->user->getId(), $id, $echo);
@@ -174,6 +175,7 @@ final class PhonePairingsTest extends TestCase
         $last = $this->realtime->last();
         self::assertSame('scan:'.$id->toRfc4122(), $last['channel']);
         self::assertSame(['type' => 'echo'] + $echo->toArray(), $last['data']);
+        self::assertSame(['In stock: 14', 'Use by 2026-12-01'], $last['data']['details']);
     }
 
     public function testAnotherPersonCannotEchoToSomebodysPhoneNorKeepItAlive(): void
@@ -196,6 +198,10 @@ final class PhonePairingsTest extends TestCase
             static fn () => new PairingEcho(Uuid::v4()->toRfc4122(), null, 'done', 'scan.added', [], ['name' => 'X', 'price' => '1', 'cost' => '0.4'], []),
             static fn () => new PairingEcho(Uuid::v4()->toRfc4122(), null, 'unclaimed', 'scan.unknown', [], null, [['id' => 'invoice', 'label' => 'scan.x', 'extra' => 1]]),
             static fn () => new PairingEcho(Uuid::v4()->toRfc4122(), null, 'unclaimed', 'scan.unknown', [], null, array_fill(0, 9, ['id' => 'invoice', 'label' => 'scan.x'])),
+            static fn () => new PairingEcho(Uuid::v4()->toRfc4122(), null, 'done', 'scan.added', [], null, [], array_fill(0, 7, 'line')),
+            static fn () => new PairingEcho(Uuid::v4()->toRfc4122(), null, 'done', 'scan.added', [], null, [], [str_repeat('d', 201)]),
+            static fn () => new PairingEcho(Uuid::v4()->toRfc4122(), null, 'done', 'scan.added', [], null, [], ['key' => 'line']),
+            static fn () => new PairingEcho(Uuid::v4()->toRfc4122(), null, 'done', 'scan.added', [], null, [], [['nested']]),
         ];
         foreach ($bad as $index => $make) {
             try {
