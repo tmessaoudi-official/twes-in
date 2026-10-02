@@ -2539,6 +2539,10 @@
       }
     }
   },
+  "export": {
+    "csv": "Export as CSV",
+    "xlsx": "Export as Excel"
+  },
   "import": {
     "boolean_note": "yes or no (yes, y, true, 1, oui, o — no, n, false, 0).",
     "country_note": "Two-letter country code (TN, FR). Left empty, the company's own applies.",

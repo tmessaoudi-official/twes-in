@@ -7,6 +7,7 @@ import {
   DestroyRef,
   inject,
   OnInit,
+  signal,
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
@@ -57,10 +58,18 @@ export class CustomersPage implements OnInit {
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('customer.write'));
+  /** What the list shows now, as a file: null until the list has asked for its first page. */
+  protected exportUrl(format: 'csv' | 'xlsx'): string | null {
+    const companyId = this.company()?.id;
+    const search = this.searched();
+    return companyId && search !== null ? this.facade.exportUrl(companyId, search, format) : null;
+  }
+
   protected readonly rowTestId = (row: CustomerListRow): string => `customer-${row.number}`;
 
   /** The page the list shows last asked for; a change elsewhere reads it again. */
   private search: CustomerSearch | null = null;
+  private readonly searched = signal<CustomerSearch | null>(null);
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
@@ -78,6 +87,7 @@ export class CustomersPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId) return;
     this.search = customerSearch(query);
+    this.searched.set(this.search);
     void this.facade.loadPage(companyId, this.search);
   }
 

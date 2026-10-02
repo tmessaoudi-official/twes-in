@@ -76,6 +76,10 @@ describe('CustomersPage', () => {
     total: signal(1).asReadonly(),
     loadListContext: vi.fn(),
     loadPage: vi.fn(),
+    exportUrl: vi.fn(
+      (companyId: string, _search: unknown, format: string) =>
+        `/api/companies/${companyId}/exports/customers.${format}`,
+    ),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -159,6 +163,26 @@ describe('CustomersPage', () => {
     expect(q('customers-tab')?.getAttribute('href')).toBe('/customers');
     expect(q('customer-groups-link')?.getAttribute('href')).toBe('/customers/groups');
     expect(q('customer-groups-link')?.closest('nav')).not.toBeNull();
+  });
+
+  it('offers what the list shows as a CSV or an Excel file, to a reader as to a writer', async () => {
+    expect(q('customers-export-csv')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/customers.csv',
+    );
+    expect(q('customers-export-xlsx')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/customers.xlsx',
+    );
+    expect(facade.exportUrl).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ order: { key: 'number', direction: 'asc' } }),
+      'csv',
+    );
+
+    auth.hasPermission.mockReturnValue(false);
+    fixture = TestBed.createComponent(CustomersPage);
+    await settle();
+
+    expect(q('customers-export-csv')).not.toBeNull();
   });
 
   it('offers a new customer to a writer only', async () => {

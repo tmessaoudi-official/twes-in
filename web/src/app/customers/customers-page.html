@@ -5,6 +5,19 @@
         {{ 'customers.title' | translate }}
       </h1>
       <div class="flex flex-wrap gap-2">
+        @if (exportUrl('csv'); as csv) {
+          <a mat-stroked-button [href]="csv" download data-testid="customers-export-csv">
+            {{ 'export.csv' | translate }}
+          </a>
+          <a
+            mat-stroked-button
+            [href]="exportUrl('xlsx')"
+            download
+            data-testid="customers-export-xlsx"
+          >
+            {{ 'export.xlsx' | translate }}
+          </a>
+        }
         @if (mayWrite() && company()) {
           <a mat-stroked-button routerLink="/imports/customers" data-testid="customers-import">
             {{ 'import.action' | translate }}

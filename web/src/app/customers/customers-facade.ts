@@ -70,6 +70,10 @@ export class CustomersFacade {
     });
   }
 
+  exportUrl(companyId: string, search: CustomerSearch, format: 'csv' | 'xlsx'): string {
+    return this.api.exportUrl(companyId, search, format);
+  }
+
   async loadGroups(companyId: string): Promise<void> {
     await this.read(async () => this.groupsSignal.set(await this.api.groups(companyId)));
   }

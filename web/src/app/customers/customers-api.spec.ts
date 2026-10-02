@@ -116,6 +116,27 @@ describe('CustomersApi', () => {
     await expect(refused).rejects.toMatchObject({ code: 'invalid' });
   });
 
+  it('names the file of what the list shows, with its words, choices and order and no page', () => {
+    expect(
+      api.exportUrl(
+        'c/1',
+        {
+          ...everyCustomer,
+          q: ' mer ',
+          kind: 'company',
+          isActive: false,
+          order: { key: 'name', direction: 'desc' },
+        },
+        'xlsx',
+      ),
+    ).toBe(
+      '/api/companies/c%2F1/exports/customers.xlsx?q=mer&kind=company&isActive=false&order%5Bname%5D=desc',
+    );
+    expect(api.exportUrl('c1', everyCustomer, 'csv')).toBe(
+      '/api/companies/c1/exports/customers.csv',
+    );
+  });
+
   it('reads what the form offers', async () => {
     const pending = api.options('c1');
     http.expectOne('/api/companies/c1/customer-options').flush({

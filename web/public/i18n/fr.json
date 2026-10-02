@@ -2539,6 +2539,10 @@
       }
     }
   },
+  "export": {
+    "csv": "Exporter en CSV",
+    "xlsx": "Exporter en Excel"
+  },
   "import": {
     "boolean_note": "oui ou non (yes, y, true, 1, oui, o — non, n, false, 0).",
     "country_note": "Code pays à deux lettres (TN, FR). Laissé vide, celui de l'entreprise s'applique.",

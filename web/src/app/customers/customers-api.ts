@@ -59,6 +59,15 @@ export class CustomersApi {
     );
   }
 
+  /**
+   * Where the customers the search finds are downloaded as a file: the same words, choices and order as the list, over
+   * every page of them. A plain address, so the browser saves it with the session it already holds.
+   */
+  exportUrl(companyId: string, search: CustomerSearch, format: 'csv' | 'xlsx'): string {
+    const params = toSearchParams(search).delete('page').delete('itemsPerPage').toString();
+    return `/api/companies/${encodeURIComponent(companyId)}/exports/customers.${format}${params === '' ? '' : `?${params}`}`;
+  }
+
   /** One page of the customers the search finds, as Hydra carries it: the rows and the total. */
   async customers(companyId: string, search: CustomerSearch): Promise<ListPage<CustomerRow>> {
     return this.guard(async () => {
