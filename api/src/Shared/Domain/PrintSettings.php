@@ -22,19 +22,21 @@ final readonly class PrintSettings
         public string $dateFormat,
         /** A `presentation.number-format` choice; `auto` leaves it to the document's language. */
         public string $numberFormat,
+        /** Whether the total is also written out in words; a document issued before the setting existed has none. */
+        public bool $amountInWords = false,
     ) {
     }
 
-    /** @return array{printedNotes: string, dateFormat: string, numberFormat: string} */
+    /** @return array{printedNotes: string, dateFormat: string, numberFormat: string, amountInWords: bool} */
     public function toArray(): array
     {
-        return ['printedNotes' => $this->printedNotes, 'dateFormat' => $this->dateFormat, 'numberFormat' => $this->numberFormat];
+        return ['printedNotes' => $this->printedNotes, 'dateFormat' => $this->dateFormat, 'numberFormat' => $this->numberFormat, 'amountInWords' => $this->amountInWords];
     }
 
     /** @param array<string, mixed> $data */
     public static function fromArray(array $data): self
     {
-        return new self(self::text($data, 'printedNotes'), self::text($data, 'dateFormat'), self::text($data, 'numberFormat'));
+        return new self(self::text($data, 'printedNotes'), self::text($data, 'dateFormat'), self::text($data, 'numberFormat'), true === ($data['amountInWords'] ?? false));
     }
 
     /** @param array<string, mixed> $data */

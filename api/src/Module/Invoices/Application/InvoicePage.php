@@ -45,6 +45,8 @@ final readonly class InvoicePage
         public ?string $footer,
         public string $dateFormat = 'auto',
         public string $numberFormat = 'auto',
+        /** The total written out, null where the document does not carry it or there are no words for its currency or language. */
+        public ?string $amountInWords = null,
     ) {
     }
 }

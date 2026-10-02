@@ -781,7 +781,8 @@
     "document": {
       "payment_terms_days": "Délai de paiement (jours)",
       "language": "Langue des documents",
-      "printed_notes": "Notes imprimées sur les documents"
+      "printed_notes": "Notes imprimées sur les documents",
+      "amount_in_words": "Écrire le total en lettres sur les documents"
     },
     "credit": {
       "limit": "Plafond de crédit du client (0 : aucun)"

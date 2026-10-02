@@ -781,7 +781,8 @@
     "document": {
       "payment_terms_days": "Payment terms (days)",
       "language": "Document language",
-      "printed_notes": "Notes printed on documents"
+      "printed_notes": "Notes printed on documents",
+      "amount_in_words": "Write the total out in words on documents"
     },
     "credit": {
       "limit": "Customer credit limit (0: none)"

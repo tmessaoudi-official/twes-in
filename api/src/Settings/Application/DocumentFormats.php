@@ -38,6 +38,6 @@ final readonly class DocumentFormats
         $notes = $settings->value($atCustomer, 'document.printed_notes');
         $formats = self::of($settings, $company);
 
-        return new PrintSettings(\is_string($notes) ? $notes : '', $formats['dateFormat'], $formats['numberFormat']);
+        return new PrintSettings(\is_string($notes) ? $notes : '', $formats['dateFormat'], $formats['numberFormat'], true === $settings->value($atCustomer, 'document.amount_in_words'));
     }
 }

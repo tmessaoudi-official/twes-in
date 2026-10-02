@@ -145,6 +145,9 @@
     {%- endfor %}
     <tr class="due"><td>{{ 'totals.amount_due'|trans({}, t, locale) }}</td><td class="number">{{ figures.amountDue|decimal(scale, locale, page.numberFormat) }}</td></tr>
   </table>
+  {%- if page.amountInWords %}
+    <p data-testid="amount-in-words">{{ 'totals.in_words'|trans({}, t, locale) }} {{ page.amountInWords }}.</p>
+  {%- endif %}
   <p class="muted">{{ 'totals.currency'|trans({'%currency%': seller.currency}, t, locale) }}</p>
 
   {%- for key in page.mentionKeys %}

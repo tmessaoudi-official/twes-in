@@ -21,6 +21,7 @@ use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
+use App\Shared\Domain\AmountInWords;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\SellerSnapshot;
 use Symfony\Component\Uid\Uuid;
@@ -105,9 +106,11 @@ final readonly class PrintInvoice
             [$language, $mentionKeys, $latePenaltyText, $footer] = [$issuedLanguage, $invoice->getMentionKeys(), $invoice->getLatePenaltyText(), $invoice->getFooter()];
         }
 
+        $figures = $this->totals->figures($invoice);
+
         return $this->renderer->render($this->template->html(new InvoicePage(
             $invoice,
-            $this->totals->figures($invoice),
+            $figures,
             $invoice->getCustomerSnapshot() ?? CustomerSnapshot::of($customer),
             $invoice->getSellerSnapshot() ?? SellerSnapshot::of($company, $invoice->getEstablishment()),
             $watermark,
@@ -118,6 +121,7 @@ final readonly class PrintInvoice
             $footer,
             $print->dateFormat,
             $print->numberFormat,
+            $print->amountInWords ? AmountInWords::of($figures->total, $company->getCurrency(), $language) : null,
         )));
     }
 

@@ -216,6 +216,30 @@ final class PrintInvoiceTest extends TestCase
         self::assertSame(['Nouvelles notes', 'dmy', 'auto'], [$today->printedNotes, $today->dateFormat, $today->numberFormat], 'a draft prints today\'s settings');
     }
 
+    public function testTheTotalIsWrittenOutOnlyWhereTheSettingAsksForIt(): void
+    {
+        $draft = $this->draft($this->customer('standard', null));
+        $this->print->pdf($this->company, $draft->getId());
+        self::assertNull($this->template->pages[0]->amountInWords, 'off by default');
+
+        $this->change->change(new SettingContext($this->company), 'document.amount_in_words', SettingLevel::Company, true, null);
+        $this->print->pdf($this->company, $draft->getId());
+
+        $words = $this->template->pages[1]->amountInWords;
+        self::assertNotNull($words);
+        self::assertStringContainsString('dinars', $words);
+    }
+
+    public function testAnIssuedInvoiceKeepsWhetherItWroteTheTotalOutWhateverTheSettingSaysByThen(): void
+    {
+        $invoice = $this->issued($this->customer('standard', null), new PrintSettings('', 'auto', 'auto', true));
+        $this->change->change(new SettingContext($this->company), 'document.amount_in_words', SettingLevel::Company, false, null);
+
+        $this->print->pdf($this->company, $invoice->getId());
+
+        self::assertNotNull($this->template->pages[0]->amountInWords);
+    }
+
     public function testACancelledDraftIsRenderedStampedAndNeverStored(): void
     {
         $draft = $this->draft($this->customer('standard', null));
