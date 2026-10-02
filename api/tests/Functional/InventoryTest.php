@@ -701,6 +701,40 @@ final class InventoryTest extends ApiTestCase
     }
 
     /**
+     * A loss takes goods out WITH its reason (docs/SPEC.md § 7 2026-09-19 23:25): the reason is what tells a breakage
+     * from a theft in a report, so a loss without one is refused, and it never stands in for a count.
+     */
+    public function testAWriteOffTakesGoodsOutWithItsReasonAndNoteAndRefusesWhatCannotBeLost(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $site = $this->defaultLocationId();
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => '10']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->postJson($this->path('stock-movements'), ['operation' => 'loss', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => '3', 'reason' => 'broken', 'note' => 'Dropped at the counter']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(['out', '-3.000', 'loss', 'broken', 'Dropped at the counter'], [$this->json()['kind'], $this->json()['quantity'], $this->json()['sourceType'], $this->json()['reason'], $this->json()['note']]);
+        $this->getJson($this->path('stock-levels'));
+        self::assertSame(['7.000'], array_column($this->jsonList(), 'quantity'));
+        $this->getJson($this->path('stock-movements').'?sourceType=loss');
+        self::assertSame([['broken', 'Dropped at the counter']], array_map(static fn (array $row) => [$row['reason'], $row['note']], $this->jsonList()));
+
+        foreach ([
+            'reason' => ['quantity' => '1'],
+            'reason ' => ['quantity' => '1', 'reason' => 'vanished'],
+            'quantity' => ['quantity' => '8', 'reason' => 'lost'],
+            'note' => ['quantity' => '1', 'reason' => 'lost', 'note' => str_repeat('n', 501)],
+        ] as $field => $body) {
+            $this->postJson($this->path('stock-movements'), ['operation' => 'loss', 'productId' => $this->laptopId, 'locationId' => $site, ...$body]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertStringContainsString(trim($field), (string) $this->client->getResponse()->getContent());
+        }
+        $this->getJson($this->path('stock-levels'));
+        self::assertSame(['7.000'], array_column($this->jsonList(), 'quantity'), 'a refused loss wrote nothing');
+    }
+
+    /**
      * The two sides of one palette shape, as the answer carries them: a `SettingType::Decimal` crosses the wire as
      * a decimal string, so anything else is a contract the provider and this test no longer agree on.
      *

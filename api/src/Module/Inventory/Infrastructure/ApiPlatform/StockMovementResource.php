@@ -42,7 +42,7 @@ use Symfony\Component\Validator\Constraints as Assert;
                 'locationId' => new QueryParameter(schema: self::ID, description: 'Only what moved at this location.'),
                 'kind' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['in', 'out', 'adjustment']], description: 'Only what moved this way.'),
                 'lot' => new QueryParameter(description: 'Only what moved this lot or serial number, its code matched whole and whatever its case.'),
-                'sourceType' => new QueryParameter(schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_MOVE, StockMovement::SOURCE_DELIVERY_NOTE]], description: 'Only what this kind of document moved.'),
+                'sourceType' => new QueryParameter(schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_MOVE, StockMovement::SOURCE_LOSS, StockMovement::SOURCE_DELIVERY_NOTE]], description: 'Only what this kind of document moved.'),
                 'order[movedAt]' => new QueryParameter(schema: self::DIRECTION),
                 'order[product]' => new QueryParameter(schema: self::DIRECTION),
                 'order[location]' => new QueryParameter(schema: self::DIRECTION),
@@ -64,6 +64,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 final class StockMovementResource
 {
     private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
+    /** The reasons a loss may name; `StockLossReason` is the truth, and a test keeps the two equal. */
+    public const array REASONS = ['lost', 'broken', 'expired', 'stolen', 'internal_use', 'sample'];
     private const array ID = ['type' => 'string', 'format' => 'uuid'];
 
     public const string READ = 'stock_movement:read';
@@ -71,14 +73,15 @@ final class StockMovementResource
     public const string RECEIVE = 'receive';
     public const string COUNT = 'count';
     public const string MOVE = 'move';
+    public const string LOSS = 'loss';
 
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
     public ?string $id = null;
 
-    /** What a person records: goods received, a count of what is there, or a move to another location. */
-    #[ApiProperty(schema: ['type' => 'string', 'enum' => [self::RECEIVE, self::COUNT, self::MOVE]])]
-    #[Assert\Choice(choices: [self::RECEIVE, self::COUNT, self::MOVE], groups: [self::WRITE])]
+    /** What a person records: goods received, a count of what is there, a move to another location, or a loss. */
+    #[ApiProperty(schema: ['type' => 'string', 'enum' => [self::RECEIVE, self::COUNT, self::MOVE, self::LOSS]])]
+    #[Assert\Choice(choices: [self::RECEIVE, self::COUNT, self::MOVE, self::LOSS], groups: [self::WRITE])]
     #[Groups([self::WRITE])]
     public string $operation = '';
 
@@ -115,6 +118,19 @@ final class StockMovementResource
     #[Assert\Date(groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $lotExpiresOn = null;
+
+    /** Why the goods were written off, for a loss alone; read back on that movement and null on every other. */
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'enum' => [...self::REASONS, null]])]
+    #[Assert\Choice(choices: self::REASONS, groups: [self::WRITE])]
+    #[Assert\When(expression: 'this.operation === "'.self::LOSS.'"', constraints: [new Assert\NotBlank()], groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $reason = null;
+
+    /** What the person said about the loss, at most 500 characters. */
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'maxLength' => StockMovement::NOTE_MAX])]
+    #[Assert\Length(max: StockMovement::NOTE_MAX, groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $note = null;
 
     /**
      * What one unit cost, for a receipt: the stock is valued at the weighted average of what came in. Left out, the
@@ -166,7 +182,7 @@ final class StockMovementResource
     #[Groups([self::READ, self::WRITE])]
     public string $quantity = '';
 
-    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_MOVE, StockMovement::SOURCE_DELIVERY_NOTE]])]
+    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_MOVE, StockMovement::SOURCE_LOSS, StockMovement::SOURCE_DELIVERY_NOTE]])]
     #[Groups([self::READ])]
     public string $sourceType = '';
 
@@ -207,6 +223,8 @@ final class StockMovementResource
         $resource->kind = $movement->getKind()->value;
         $resource->quantity = $movement->getQuantity();
         $resource->sourceType = $movement->getSourceType();
+        $resource->reason = $movement->getReason()?->value;
+        $resource->note = $movement->getNote();
         $resource->sourceId = $movement->getSourceId()?->toRfc4122();
         $resource->recordedBy = $movement->getRecordedBy()?->toRfc4122();
         $resource->at = $movement->getAt()->format(\DATE_ATOM);

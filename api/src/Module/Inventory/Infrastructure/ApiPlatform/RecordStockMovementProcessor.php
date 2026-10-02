@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Domain\InvalidStockMovement;
+use App\Module\Inventory\Domain\StockLossReason;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
@@ -37,6 +38,7 @@ final readonly class RecordStockMovementProcessor implements ProcessorInterface
                 StockMovementResource::COUNT => $this->stock->count($company, $productId, $locationId, $data->quantity, $actor, $data->lot()),
                 // A move writes two movements; the answer is the one that LEFT, whose sourceId names the pair.
                 StockMovementResource::MOVE => $this->stock->move($company, $productId, $locationId, Uuid::fromString((string) $data->toLocationId), $data->quantity, $actor, $data->lot())[0],
+                StockMovementResource::LOSS => $this->stock->writeOff($company, $productId, $locationId, $data->quantity, StockLossReason::from((string) $data->reason), $data->note, $actor, $data->lot()),
                 default => $this->stock->receive($company, $productId, $locationId, $data->quantity, $actor, $data->lot(), $data->unitCost),
             };
         } catch (InvalidStockMovement $refused) {

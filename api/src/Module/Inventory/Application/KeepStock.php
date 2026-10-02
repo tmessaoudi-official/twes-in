@@ -15,6 +15,7 @@ use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationRepository;
+use App\Module\Inventory\Domain\StockLossReason;
 use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockLotRepository;
 use App\Module\Inventory\Domain\StockMovement;
@@ -139,6 +140,32 @@ final readonly class KeepStock
             $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.moved', $actorUserId, $company->getId()));
 
             return [$out, $in];
+        });
+    }
+
+    /**
+     * Goods written off with the reason they left under (§ 7 2026-09-19 23:25). The source stock is locked before it
+     * is read, as a move does, so two losses cannot both find enough there. An expired lot may be written off: that
+     * is the reason it exists, and no one is let to deliver it by that.
+     *
+     * @throws InvalidStockMovement
+     */
+    public function writeOff(Company $company, Uuid $productId, Uuid $locationId, string $quantity, StockLossReason $reason, ?string $note, ?Uuid $actorUserId, ?NamedLot $named = null): StockMovement
+    {
+        return $this->transactions->run(function () use ($company, $productId, $locationId, $quantity, $reason, $note, $actorUserId, $named): StockMovement {
+            [$product, $location] = $this->trackedAt($company, $productId, $locationId);
+            $lot = $this->lotFor($product, $named, false);
+            $this->movements->lockStockOf($product->getId(), $location->getId());
+            $movement = StockMovement::loss($product, $location, $quantity, $reason, $note, $actorUserId, $this->clock->now(), $lot);
+            $onHand = $this->movements->onHand($productId, $locationId, $lot?->getId());
+            if (1 === new Number(new Number($movement->getQuantity())->mul(-1)->value)->compare(new Number($onHand))) {
+                throw new InvalidStockMovement('quantity', \sprintf('Only %s is at that location.', $onHand));
+            }
+            $this->movements->save($movement);
+            $this->alerts?->raise([$movement]);
+            $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.written_off', $actorUserId, $company->getId()));
+
+            return $movement;
         });
     }
 

@@ -13,9 +13,11 @@ use App\Fiscal\Domain\Unit;
 use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationKind;
+use App\Module\Inventory\Domain\StockLossReason;
 use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementKind;
+use App\Module\Inventory\Infrastructure\ApiPlatform\StockMovementResource;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
@@ -268,5 +270,45 @@ final class StockMovementTest extends TestCase
         } catch (InvalidStockMovement $caught) {
             self::assertSame('quantity', $caught->field);
         }
+    }
+
+    public function testALossTakesGoodsOutWithItsReasonAndNoteAndAnswersToTheLossSource(): void
+    {
+        $loss = StockMovement::loss($this->flour, $this->site, '2.5', StockLossReason::Broken, '  dropped at the counter ', null, $this->now);
+
+        self::assertSame(StockMovementKind::Out, $loss->getKind());
+        self::assertSame('-2.500', $loss->getQuantity());
+        self::assertSame(StockMovement::SOURCE_LOSS, $loss->getSourceType());
+        self::assertSame(StockLossReason::Broken, $loss->getReason());
+        self::assertSame('dropped at the counter', $loss->getNote());
+        self::assertNull(StockMovement::loss($this->laptop, $this->site, '1', StockLossReason::Lost, '   ', null, $this->now)->getNote());
+    }
+
+    public function testALossIsRefusedForNothingForAWrongUnitForALongNoteAndForAServiceAndASerialLosesOnePiece(): void
+    {
+        $cases = [
+            'quantity' => static fn (self $t) => StockMovement::loss($t->laptop, $t->site, '0', StockLossReason::Lost, null, null, $t->now),
+            'quantity ' => static fn (self $t) => StockMovement::loss($t->laptop, $t->site, '1.5', StockLossReason::Lost, null, null, $t->now),
+            'note' => static fn (self $t) => StockMovement::loss($t->laptop, $t->site, '1', StockLossReason::Lost, str_repeat('n', 501), null, $t->now),
+            'productId' => static fn (self $t) => StockMovement::loss($t->support, $t->site, '1', StockLossReason::Lost, null, null, $t->now),
+        ];
+        foreach ($cases as $field => $make) {
+            try {
+                $make($this);
+                self::fail("loss $field was accepted");
+            } catch (InvalidStockMovement $refused) {
+                self::assertSame(trim($field), $refused->field);
+            }
+        }
+
+        $this->laptop->track(ProductTracking::Serial, $this->now);
+        $serial = StockLot::open($this->laptop, 'SN1', null, $this->now);
+        $this->expectException(InvalidStockMovement::class);
+        StockMovement::loss($this->laptop, $this->site, '2', StockLossReason::Stolen, null, null, $this->now, $serial);
+    }
+
+    public function testTheReasonsTheApiListsAreTheReasonsALossKnows(): void
+    {
+        self::assertSame(array_map(static fn (StockLossReason $reason) => $reason->value, StockLossReason::cases()), StockMovementResource::REASONS);
     }
 }

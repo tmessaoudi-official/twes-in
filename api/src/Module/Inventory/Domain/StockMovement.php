@@ -39,6 +39,8 @@ class StockMovement implements CompanyOwned
     public const string SOURCE_COUNT = 'count';
     public const string SOURCE_DELIVERY_NOTE = 'delivery_note';
     public const string SOURCE_MOVE = 'move';
+    public const string SOURCE_LOSS = 'loss';
+    public const int NOTE_MAX = 500;
     public const int QUANTITY_DECIMALS = 3;
     private const string QUANTITY = '/^(-?)(0|[1-9][0-9]{0,10})(?:\.([0-9]{1,3}))?$/';
 
@@ -81,6 +83,13 @@ class StockMovement implements CompanyOwned
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $at;
+
+    /** Why goods were written off; set on a loss alone. */
+    #[ORM\Column(length: 16, nullable: true, enumType: StockLossReason::class)]
+    private ?StockLossReason $reason = null;
+
+    #[ORM\Column(length: self::NOTE_MAX, nullable: true)]
+    private ?string $note = null;
 
     /**
      * What one unit was valued at when it moved, four decimals; null while no cost is known for the product.
@@ -187,6 +196,26 @@ class StockMovement implements CompanyOwned
             new self($product, $from, $lot, StockMovementKind::Out, new Number($moved)->mul(-1)->value, self::SOURCE_MOVE, $moveId, $recordedBy, $now),
             new self($product, $to, $lot, StockMovementKind::In, $moved, self::SOURCE_MOVE, $moveId, $recordedBy, $now),
         ];
+    }
+
+    /**
+     * Goods written off with the reason they left under (§ 7 2026-09-19 23:25): out of the stock with no document, so
+     * the reason and an optional note are what a report has to tell a breakage from a theft.
+     *
+     * @throws InvalidStockMovement
+     */
+    public static function loss(Product $product, StockLocation $location, string $quantity, StockLossReason $reason, ?string $note, ?Uuid $recordedBy, \DateTimeImmutable $now, ?StockLot $lot = null): self
+    {
+        $note = null === $note ? null : trim($note);
+        if (null !== $note && mb_strlen($note) > self::NOTE_MAX) {
+            throw new InvalidStockMovement('note', \sprintf('A note is at most %d characters.', self::NOTE_MAX));
+        }
+        $lost = self::onePieceOfASerial($product, self::quantity($quantity, $product, false));
+        $loss = new self($product, $location, $lot, StockMovementKind::Out, new Number($lost)->mul(-1)->value, self::SOURCE_LOSS, null, $recordedBy, $now);
+        $loss->reason = $reason;
+        $loss->note = '' === $note ? null : $note;
+
+        return $loss;
     }
 
     /** The goods a delivery took out, back where they were: its note was cancelled. */
@@ -321,6 +350,16 @@ class StockMovement implements CompanyOwned
     public function getQuantity(): string
     {
         return $this->quantity;
+    }
+
+    public function getReason(): ?StockLossReason
+    {
+        return $this->reason;
+    }
+
+    public function getNote(): ?string
+    {
+        return $this->note;
     }
 
     public function getSourceType(): string
