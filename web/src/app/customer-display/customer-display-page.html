@@ -10,7 +10,14 @@
         <p class="m-0 text-4xl" data-testid="customer-display-line">
           {{ item.quantity }} × {{ price(item.unitPrice, state.currency) }}
         </p>
-        <p class="m-0 text-lg opacity-80">{{ 'customer_display.taxes_included' | translate }}</p>
+        <p class="m-0 text-lg opacity-80" data-testid="customer-display-shelf">
+          {{ 'customer_display.shelf_price' | translate }}
+        </p>
+        @if (showsNet() && item.unitPriceNet; as net) {
+          <p class="m-0 text-xl opacity-80" data-testid="customer-display-net">
+            {{ 'customer_display.excl_tax' | translate }} {{ price(net, state.currency) }}
+          </p>
+        }
       </section>
       @if (state.total; as total) {
         <p class="m-0 text-6xl font-semibold" data-testid="customer-display-total">

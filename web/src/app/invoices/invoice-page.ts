@@ -535,6 +535,7 @@ export class InvoicePage {
       name: product.name,
       quantity: placed.quantity,
       unitPrice: named.unitPriceGross,
+      unitPriceNet: named.unitPriceNet,
     });
     return placedOutcome(
       {

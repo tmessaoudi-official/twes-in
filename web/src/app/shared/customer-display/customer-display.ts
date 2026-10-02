@@ -39,11 +39,16 @@ export const CUSTOMER_DISPLAY_CHANNEL = new InjectionToken<DisplayChannelOpener>
   { providedIn: 'root', factory: () => broadcastChannelOpener },
 );
 
-/** The line a scan last went onto: its product, how many the line now holds, and one's price, taxes included. */
+/**
+ * The line a scan last went onto: its product, how many the line now holds, and one's price, taxes included, which
+ * is the price shown on the shelf, since it is the product's own and not yet the line's.
+ */
 export interface DisplayItem {
   readonly name: string;
   readonly quantity: string;
   readonly unitPrice: string;
+  /** One's price without tax, shown beside the other only when the company asks. */
+  readonly unitPriceNet?: string;
 }
 
 /** What the customer display shows: the last line scanned and, once the sale was saved, what it comes to. */

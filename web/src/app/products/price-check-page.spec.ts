@@ -154,6 +154,7 @@ describe('PriceCheckPage', () => {
       name: 'Vis 6x40',
       quantity: '1',
       unitPrice: '120.190',
+      unitPriceNet: '100.0000',
     });
 
     fixture.destroy();

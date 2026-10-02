@@ -890,6 +890,7 @@ describe('DeliveryNotePage', () => {
         name: 'Portable 14"',
         quantity: '3',
         unitPrice: '1190.000',
+        unitPriceNet: '1000.0000',
       });
 
       TestBed.inject(ScanBus).undoLast();

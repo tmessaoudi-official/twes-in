@@ -1172,6 +1172,7 @@ describe('InvoicePage', () => {
         name: 'Conception',
         quantity: '2',
         unitPrice: '1.190',
+        unitPriceNet: '1.0000',
       });
 
       invoice.set({ ...draft, total: '2.380' });

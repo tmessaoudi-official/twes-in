@@ -42,5 +42,8 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
         // How a new product is followed when it does not say: by lot or by serial number, per company or per category. A
         // product keeps its own value in its own column, so the product level is not offered here.
         yield new SettingDefinition('article.traceability', SettingType::Enum, 'none', SettingChain::Articles, [SettingLevel::Company, SettingLevel::ProductCategory], 'settings.article.traceability', self::MODULE, choices: ['none', 'lot', 'serial']);
+        // What faces a customer (the customer display, a phone's scan) shows the price with tax; with this on, the price
+        // without tax is shown beside it, never instead.
+        yield new SettingDefinition('article.show_price_excl_tax', SettingType::Bool, false, SettingChain::Articles, [SettingLevel::Company], 'settings.article.show_price_excl_tax', self::MODULE);
     }
 }

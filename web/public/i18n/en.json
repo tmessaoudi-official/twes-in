@@ -788,7 +788,8 @@
     "article": {
       "default_unit": "Default unit",
       "stock_tracking": "Track stock",
-      "traceability": "Traceability of a new product"
+      "traceability": "Traceability of a new product",
+      "show_price_excl_tax": "Also show the price without tax to what faces a customer"
     },
     "watch": {
       "late_after_days": "Watch: a customer is flagged once an invoice is this many days late",
@@ -2754,7 +2755,8 @@
   "customer_display": {
     "title": "Customer display",
     "welcome": "Welcome",
-    "taxes_included": "Unit price, taxes included",
+    "shelf_price": "Price shown, taxes included",
+    "excl_tax": "Excluding tax:",
     "total": "Total:",
     "open": "Open the customer display"
   },

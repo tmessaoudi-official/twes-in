@@ -433,6 +433,7 @@ export class DeliveryNotePage {
       name: product.name,
       quantity: placed.quantity,
       unitPrice: named.unitPriceGross,
+      unitPriceNet: named.unitPriceNet,
     });
     return placedOutcome(
       {

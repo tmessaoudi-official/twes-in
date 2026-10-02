@@ -788,7 +788,8 @@
     "article": {
       "default_unit": "Unité par défaut",
       "stock_tracking": "Suivre le stock",
-      "traceability": "Traçabilité d’un nouvel article"
+      "traceability": "Traçabilité d’un nouvel article",
+      "show_price_excl_tax": "Afficher aussi le prix HT à ce qui fait face au client"
     },
     "watch": {
       "late_after_days": "À surveiller : un client est signalé quand une facture a ce nombre de jours de retard",
@@ -2754,7 +2755,8 @@
   "customer_display": {
     "title": "Affichage client",
     "welcome": "Bienvenue",
-    "taxes_included": "Prix unitaire TTC",
+    "shelf_price": "Prix affiché, toutes taxes comprises",
+    "excl_tax": "Hors taxes :",
     "total": "Total :",
     "open": "Ouvrir l'affichage client"
   },

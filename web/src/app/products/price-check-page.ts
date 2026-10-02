@@ -120,7 +120,12 @@ export class PriceCheckPage {
     }
     this.unknown.set(null);
     this.found.set(found);
-    this.display.show({ name: found.name, quantity: '1', unitPrice: found.unitPriceGross });
+    this.display.show({
+      name: found.name,
+      quantity: '1',
+      unitPrice: found.unitPriceGross,
+      unitPriceNet: found.unitPriceNet,
+    });
     return {
       kind: 'done',
       key: 'price_check.shown',

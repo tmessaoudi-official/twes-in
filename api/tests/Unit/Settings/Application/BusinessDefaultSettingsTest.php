@@ -54,7 +54,7 @@ final class BusinessDefaultSettingsTest extends TestCase
     public function testTheArticlesChainCarriesTheProductDefaults(): void
     {
         self::assertSame(
-            ['article.default_unit', 'article.stock_tracking', 'article.traceability'],
+            ['article.default_unit', 'article.stock_tracking', 'article.traceability', 'article.show_price_excl_tax'],
             array_map(static fn (SettingDefinition $definition) => $definition->key, $this->catalog->ofChain(SettingChain::Articles)),
         );
         $unit = $this->definition('article.default_unit');
@@ -62,6 +62,9 @@ final class BusinessDefaultSettingsTest extends TestCase
         self::assertNull($unit->refusal('KGM'));
         self::assertNotNull($unit->refusal('kilo'), 'a unit is a UN/ECE Recommendation 20 code');
         self::assertFalse($this->definition('article.stock_tracking')->default);
+        $shown = $this->definition('article.show_price_excl_tax');
+        self::assertFalse($shown->default, 'what faces a customer shows the price with tax alone unless the company says otherwise');
+        self::assertSame([SettingLevel::Company], $shown->overridableAt);
         $traceability = $this->definition('article.traceability');
         self::assertSame('none', $traceability->default);
         self::assertSame([SettingLevel::Company, SettingLevel::ProductCategory], $traceability->overridableAt, 'a product keeps its own value in its own column');
