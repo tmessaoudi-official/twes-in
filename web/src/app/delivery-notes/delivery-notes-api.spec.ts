@@ -380,6 +380,23 @@ describe('DeliveryNotesApi', () => {
     expect(await pending).toBe('i7');
   });
 
+  it('drafts an invoice for the quantities given, and says nothing of them when none are', async () => {
+    const pending = api.invoice('c1', ['n1'], { l1: '6' });
+    const request = http.expectOne('/api/companies/c1/invoices/from-delivery-notes');
+    expect(request.request.body).toEqual({ deliveryNoteIds: ['n1'], quantities: { l1: '6' } });
+    request.flush({ id: 'i8', status: 'draft' });
+    expect(await pending).toBe('i8');
+  });
+
+  it('reads what of a note is still to invoice', async () => {
+    const pending = api.left('c1', 'n1');
+    const request = http.expectOne('/api/companies/c1/delivery-notes/n1/left');
+    expect(request.request.method).toBe('GET');
+    const lines = [{ lineId: 'l1', quantity: '10.000', invoiced: '6.000', left: '4.000' }];
+    request.flush({ deliveryNoteId: 'n1', lines });
+    expect(await pending).toEqual({ lines });
+  });
+
   it('turns a refused conversion into a code the screen translates', async () => {
     const pending = api.invoice('c1', ['n1']);
     http

@@ -3894,6 +3894,15 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   and delivers all the same: it warns, it never refuses. Goods already delivered and not yet invoiced are not on the account, so they
   are not counted; counting them is the account of row 134. If the read fails the screen says nothing (the notice is advisory).
   Not yet: the notification of row 97. Alternatives: refusing the delivery (refused: the ruling says warns).
+- [2026-10-02 02:47] ASSUMED (review): **partial invoicing of delivery notes (row 129)**. What is left of a note line is its quantity less what the company's invoices
+  that are not cancelled already take, drafts included, so a draft holds what it took and two drafts cannot take the same goods.
+  `POST .../invoices/from-delivery-notes` takes an optional `quantities` map by delivery note line id: with none, every line is
+  invoiced for what is left of it; with some, only the lines named, each above zero and no more than is left (422 on `quantities`
+  otherwise); with nothing left at all it is 409. `GET .../delivery-notes/{id}/left` tells per line the quantity, what is taken
+  and what is left (`invoice.write`). A note turns invoiced only once the invoices ISSUED take all of every line, by the invoice that took
+  the last of it; until then it stays validated or delivered, and cannot be cancelled while an invoice carries part of it. The note
+  screen gains « Facturer une partie… », a dialog starting each line at what is left. Credit notes do not give quantities back.
+  Alternatives: marking a note invoiced at its first issued invoice (refused: the rest would never be invoiced).
 
 ## 8. Status
 
@@ -4030,7 +4039,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 126 | Signature, cachet and electronic PDF signature (§ 7 2026-09-24 22:51): research first, postponed | M | deferred | - | |
 | 127 | Insights pushed once (§ 7 2026-09-24 12:10 and 2026-09-25 08:31): a scheduler (Symfony Scheduler worker in compose), a record of what was pushed per subject and bucket, and the pushes through the Inbox | L | todo | - | |
 | 128 | Credit balance, write-off and crediting a paid invoice (§ 7 2026-09-21 17:35, 2026-09-25 12:45): an overpayment's excess moves to the customer's credit balance, applied to a later invoice and shown on the statement; a short-paid invoice closes on a credit note under a per-company tolerance; a credit note on a paid invoice sends what exceeds the due to a refund or to the credit balance | M | todo | - | |
-| 129 | Partial invoicing of delivery notes (§ 7 2026-09-25 12:45): a quantity left to invoice per line, an invoice taking all or part, the note invoiced once nothing is left | M | todo | - | |
+| 129 | Partial invoicing of delivery notes (§ 7 2026-09-25 12:45): a quantity left to invoice per line, an invoice taking all or part, the note invoiced once nothing is left | M | done | - | |
 | 130 | A date and number format of one's own (§ 7 2026-09-25 12:45): a presentation setting, person then company, defaulting to the language and country, followed by every screen and printed document | M | doing | - | |
 | 131 | What an issued document keeps (§ 7 2026-09-25 16:51, DP-05 / DP-49 / DP-60 / DP-66): name and reference frozen on the line at issue with the « Un brouillon suit les changements de l'article » setting, one typed « issu de » link replacing the separate columns with required steps as a setting, a fiscal code per product carried to the line, custom fields on documents and lines | L | todo | - | |
 | 132 | Numbering (§ 7 2026-09-25 16:51, DOC-45 / MON-08 / NAV-47): drafts unnumbered, the next number editable until a series first issues then locked, never stepped back; the option « avoirs dans la suite des factures », chosen once; receipts and payments numbered where a gap is allowed; year, month and counter reset per type | M | todo | - | |

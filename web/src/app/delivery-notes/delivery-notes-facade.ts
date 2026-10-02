@@ -11,6 +11,7 @@ import type {
   DeliveryNoteSearch,
   DeliveryNotesError,
   DeliveryNoteCredit,
+  DeliveryNoteLeft,
   DeliveryNoteStatusCounts,
   ProductOption,
 } from './delivery-notes-types';
@@ -144,12 +145,30 @@ export class DeliveryNotesFacade {
     return this.step(() => this.api.cancel(companyId, id));
   }
 
-  /** The id of the invoice drafted from the note, or null with the reason in `error`. */
-  async invoice(companyId: string, id: string): Promise<string | null> {
+  /** What of the note is still to invoice, or null with the reason in `error`. */
+  async left(companyId: string, id: string): Promise<DeliveryNoteLeft | null> {
+    this.errorSignal.set(null);
+    try {
+      return await this.api.left(companyId, id);
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return null;
+    }
+  }
+
+  /**
+   * The id of the invoice drafted from the note, or null with the reason in `error`. With no quantities the invoice
+   * takes what is left of every line; with some, only the lines named, each for its quantity.
+   */
+  async invoice(
+    companyId: string,
+    id: string,
+    quantities?: Readonly<Record<string, string>>,
+  ): Promise<string | null> {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
-      return await this.api.invoice(companyId, [id]);
+      return await this.api.invoice(companyId, [id], quantities);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
       return null;

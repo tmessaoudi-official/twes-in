@@ -29,7 +29,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Drafts an invoice from delivery notes: a note that is not validated or delivered, or already on an invoice that is not
- * cancelled, answers 409; notes that make no one invoice answer 422 on `deliveryNoteIds`.
+ * cancelled, answers 409; notes that make no one invoice answer 422 on `deliveryNoteIds`, and quantities that name a line the notes do not have
+ * or ask for more than is left answer 422 on `quantities`; with nothing left at all it is 409.
  *
  * @implements ProcessorInterface<InvoiceFromDeliveryNotesResource, InvoiceResource>
  */
@@ -48,7 +49,7 @@ final readonly class DraftInvoiceFromDeliveryNotesProcessor implements Processor
         }
 
         try {
-            $invoice = $this->invoicing->draftInvoice($company, array_map(static fn (string $id): Uuid => Uuid::fromString($id), $data->deliveryNoteIds), $this->guard->account()->getId());
+            $invoice = $this->invoicing->draftInvoice($company, array_map(static fn (string $id): Uuid => Uuid::fromString($id), $data->deliveryNoteIds), $this->guard->account()->getId(), $data->quantities);
         } catch (InvalidDeliveryNote|InvalidInvoice $refused) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         } catch (DeliveryNoteTransitionRefused $conflict) {

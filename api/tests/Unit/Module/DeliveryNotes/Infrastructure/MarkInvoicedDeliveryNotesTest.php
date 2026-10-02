@@ -24,7 +24,9 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Module\DeliveryNotes\Infrastructure\Invoicing\MarkInvoicedDeliveryNotes;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
+use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceIssued;
+use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceType;
 use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
@@ -84,7 +86,11 @@ final class MarkInvoicedDeliveryNotesTest extends TestCase
                 $this->records[] = [$level, $message, $context];
             }
         };
-        $listener = new MarkInvoicedDeliveryNotes(new InvoiceDeliveryNotes($notes, $invoices, $manage, $transactions, $audit, $clock), $logger);
+        $invoicing = new InvoiceDeliveryNotes($notes, $invoices, $manage, $transactions, $audit, $clock);
+        // The invoice the event tells of, issued, as the repository holds it by then.
+        new \ReflectionProperty(Invoice::class, 'status')->setValue($invoicing->draftInvoice($company, [$invoiced->getId()], null), InvoiceStatus::Issued);
+        $transactions->committed = 0;
+        $listener = new MarkInvoicedDeliveryNotes($invoicing, $logger);
 
         $listener(self::issued($company, [$invoiced->getLines()[0]->getId(), $cancelled->getLines()[0]->getId()]));
 

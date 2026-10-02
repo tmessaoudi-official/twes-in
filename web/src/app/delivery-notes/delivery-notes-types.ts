@@ -13,6 +13,11 @@ export type DeliveryNoteSortKey = 'number' | 'customer' | 'issueDate' | 'deliver
 
 /** One page of the delivery notes list as the API searches, narrows and sorts it (docs/SPEC.md § 7). */
 /** What each status chip of the list would show under the same search, as the API counted it (docs/SPEC.md § 7, 2026-09-26). */
+/** What of a delivery note is still to invoice, line by line in the note's own order: the API's decimal strings. */
+export interface DeliveryNoteLeft {
+  lines: { lineId: string; quantity: string; invoiced: string; left: string }[];
+}
+
 /** What delivering a note would do to its customer's credit limit (docs/SPEC.md § 7): the API's decimal strings. */
 export interface DeliveryNoteCredit {
   /** Zero is no limit. */

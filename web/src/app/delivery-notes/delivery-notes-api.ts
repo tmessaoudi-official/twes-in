@@ -13,6 +13,7 @@ import type {
   DeliveryNoteOptionsDeliveryNoteOptionsRead,
   DeliveryNoteProductPickDeliveryNoteProductPickRead,
   DeliveryNoteCreditDeliveryNoteCreditRead,
+  DeliveryNoteLeftDeliveryNoteLeftRead,
   DeliveryNoteStatusCountsDeliveryNoteStatusCountsRead,
   InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite,
   InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead,
@@ -26,6 +27,7 @@ import {
   type DeliveryNoteRow,
   type DeliveryNoteSearch,
   type DeliveryNoteCredit,
+  type DeliveryNoteLeft,
   type DeliveryNoteStatusCounts,
   type DeliveryNotesError,
   type CustomerOption,
@@ -120,6 +122,17 @@ export class DeliveryNotesApi {
     });
   }
 
+  /** What of the note is still to invoice, line by line: what the company's invoices already take, drafts included. */
+  async left(companyId: string, id: string): Promise<DeliveryNoteLeft> {
+    return this.guard(async () => {
+      const left = await firstValueFrom(
+        this.http.get<DeliveryNoteLeftDeliveryNoteLeftRead>(`${notePath(companyId, id)}/left`),
+      );
+      if (left.lines === undefined) throw new Error('A note came without what is left of it.');
+      return { lines: left.lines.map((line) => ({ ...line })) };
+    });
+  }
+
   /** What delivering the note would do to its customer's credit limit. */
   async credit(companyId: string, id: string): Promise<DeliveryNoteCredit> {
     return this.guard(async () => {
@@ -211,9 +224,14 @@ export class DeliveryNotesApi {
    * Drafts an invoice from validated or delivered notes of one customer and establishment, and answers its id; 409
    * when a note is not validated or delivered or is already on an invoice, 422 when the notes cannot share one.
    */
-  async invoice(companyId: string, deliveryNoteIds: readonly string[]): Promise<string> {
+  async invoice(
+    companyId: string,
+    deliveryNoteIds: readonly string[],
+    quantities?: Readonly<Record<string, string>>,
+  ): Promise<string> {
     const body: InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite = {
       deliveryNoteIds: [...deliveryNoteIds],
+      ...(quantities === undefined ? {} : { quantities: { ...quantities } }),
     };
     return this.guard(async () => {
       const draft = await firstValueFrom(

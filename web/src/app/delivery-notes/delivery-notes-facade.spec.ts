@@ -60,6 +60,7 @@ describe('DeliveryNotesFacade', () => {
     invoice: vi.fn(),
     statusCounts: vi.fn(),
     credit: vi.fn(),
+    left: vi.fn(),
   };
   let facade: DeliveryNotesFacade;
 
@@ -166,7 +167,9 @@ describe('DeliveryNotesFacade', () => {
   it('answers the id of the invoice drafted from a note, or null with the reason', async () => {
     api.invoice.mockResolvedValue('i7');
     expect(await facade.invoice('c1', 'n1')).toBe('i7');
-    expect(api.invoice).toHaveBeenCalledWith('c1', ['n1']);
+    expect(api.invoice).toHaveBeenCalledWith('c1', ['n1'], undefined);
+    await facade.invoice('c1', 'n1', { l1: '2' });
+    expect(api.invoice).toHaveBeenLastCalledWith('c1', ['n1'], { l1: '2' });
 
     api.invoice.mockRejectedValue(new DeliveryNotesRefused('conflict'));
     expect(await facade.invoice('c1', 'n1')).toBeNull();
@@ -187,5 +190,15 @@ describe('DeliveryNotesFacade', () => {
     api.credit.mockRejectedValue(new DeliveryNotesRefused('network'));
     expect(await facade.credit('c1', 'n1')).toBeNull();
     expect(facade.error()).toBeNull();
+  });
+
+  it('answers what is left of a note, or null with the reason in `error`', async () => {
+    const left = { lines: [{ lineId: 'l1', quantity: '2.000', invoiced: '0.000', left: '2.000' }] };
+    api.left.mockResolvedValue(left);
+    expect(await facade.left('c1', 'n1')).toEqual(left);
+
+    api.left.mockRejectedValue(new DeliveryNotesRefused('conflict'));
+    expect(await facade.left('c1', 'n1')).toBeNull();
+    expect(facade.error()).toBe('conflict');
   });
 });

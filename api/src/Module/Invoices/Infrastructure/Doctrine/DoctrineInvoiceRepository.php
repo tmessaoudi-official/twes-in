@@ -192,6 +192,38 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         return array_values(array_filter(\is_array($invoices) ? $invoices : [], static fn (mixed $invoice): bool => $invoice instanceof Invoice));
     }
 
+    public function invoicedQuantities(Uuid $companyId, array $deliveryNoteLineIds, bool $issuedOnly = false): array
+    {
+        if ([] === $deliveryNoteLineIds) {
+            return [];
+        }
+        $excluded = $issuedOnly ? [InvoiceStatus::Cancelled->value, InvoiceStatus::Draft->value] : [InvoiceStatus::Cancelled->value];
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('l.sourceDeliveryNoteLineId AS line', 'SUM(l.quantity) AS quantity')
+            ->from(InvoiceLine::class, 'l')
+            ->join('l.invoice', 'i')
+            ->where('i.company = :company')
+            ->andWhere('i.documentType = :type')
+            ->andWhere('i.status NOT IN (:excluded)')
+            ->andWhere('l.sourceDeliveryNoteLineId IN (:lines)')
+            ->groupBy('l.sourceDeliveryNoteLineId')
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('type', InvoiceType::Invoice->value)
+            ->setParameter('excluded', $excluded, ArrayParameterType::STRING)
+            ->setParameter('lines', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $deliveryNoteLineIds), ArrayParameterType::STRING)
+            ->getQuery()
+            ->getArrayResult();
+
+        $quantities = [];
+        foreach ($rows as $row) {
+            if (\is_array($row) && ($row['line'] ?? null) instanceof Uuid && (\is_string($row['quantity'] ?? null) || \is_int($row['quantity'] ?? null) || \is_float($row['quantity'] ?? null))) {
+                $quantities[$row['line']->toRfc4122()] = (string) $row['quantity'];
+            }
+        }
+
+        return $quantities;
+    }
+
     public function numberTaken(Uuid $companyId, InvoiceType $type, string $number): bool
     {
         return null !== $this->entityManager->getRepository(Invoice::class)->findOneBy(['company' => $companyId, 'documentType' => $type, 'number' => $number]);

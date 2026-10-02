@@ -48,4 +48,16 @@ final class InvoiceFromDeliveryNotesResource
     #[Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::WRITE])]
     public array $deliveryNoteIds = [];
+
+    /**
+     * How much of each line to invoice, by delivery note line id. With none, every line is invoiced for what is left of
+     * it; with some, only the lines named are, each for its quantity, which is more than nothing and no more than is left.
+     *
+     * @var array<string, string>|null
+     */
+    #[ApiProperty(schema: ['type' => ['object', 'null'], 'additionalProperties' => ['type' => 'string', 'description' => 'A decimal quantity, written with a dot.']])]
+    #[Assert\Type('array', groups: [self::WRITE])]
+    #[Assert\All([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE])]
+    #[Groups([self::WRITE])]
+    public ?array $quantities = null;
 }

@@ -1303,6 +1303,13 @@
   },
   "delivery_notes": {
     "credit_over": "This delivery brings what the customer owes to {{owed}} + {{total}} {{currency}}, past their credit limit of {{limit}} {{currency}}.",
+    "invoice_part": {
+      "title": "Quantities to invoice",
+      "help": "Each line starts at what is left of it; enter 0 to leave it off this invoice.",
+      "left": "{{left}} left",
+      "cancel": "Cancel",
+      "confirm": "Draft the invoice"
+    },
     "title": "Delivery notes",
     "add": "New delivery note",
     "none": "No delivery notes yet.",
@@ -1398,6 +1405,7 @@
       "validate": "Validate and number",
       "deliver": "Mark delivered",
       "invoice": "Invoice this note",
+      "invoice_part": "Invoice part…",
       "delivered_on": "Delivered on",
       "cancel": "Cancel the note",
       "cancel_title": "Cancel this delivery note?",

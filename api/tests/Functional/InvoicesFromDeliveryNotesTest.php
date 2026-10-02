@@ -130,6 +130,58 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         self::assertSame([null, null, null], array_column($this->arrayAt($this->json(), 'lines'), 'sourceDeliveryNoteLineId'), 'a credit note invoices no delivery note');
     }
 
+    /** docs/SPEC.md § 7: an invoice takes all or part of a note's lines, and the note is invoiced once nothing is left. */
+    public function testAnInvoiceTakesPartOfANoteAndTheNoteIsInvoicedOnceNothingIsLeft(): void
+    {
+        $this->signedIn();
+        $note = $this->validatedNote(['lines' => [
+            ['productId' => $this->productId, 'quantity' => '10'],
+            ['description' => 'Transport', 'quantity' => '4', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '30', 'taxComponentIds' => []],
+        ]]);
+        [$goods, $transport] = $this->lineIds($note);
+
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note], 'quantities' => [$goods => '6', $transport => '4']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $first = $this->json();
+        self::assertSame(['6.000', '4.000'], array_column($this->arrayAt($first, 'lines'), 'quantity'));
+        self::assertSame([$goods, $transport], array_column($this->arrayAt($first, 'lines'), 'sourceDeliveryNoteLineId'));
+
+        $this->getJson($this->notePath($note).'/left');
+        self::assertResponseIsSuccessful();
+        self::assertSame(
+            [[$goods, '10.000', '6.000', '4.000'], [$transport, '4.000', '4.000', '0.000']],
+            array_map(null, array_column($this->arrayAt($this->json(), 'lines'), 'lineId'), array_column($this->arrayAt($this->json(), 'lines'), 'quantity'), array_column($this->arrayAt($this->json(), 'lines'), 'invoiced'), array_column($this->arrayAt($this->json(), 'lines'), 'left')),
+            'what a draft holds is already taken',
+        );
+
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note], 'quantities' => [$goods => '7']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'only 4 are left: what a draft already holds is not offered again');
+        self::assertStringContainsString('quantities', (string) $this->client->getResponse()->getContent());
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note], 'quantities' => [self::ABSENT => '1']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a quantity names a line of the notes asked for');
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note], 'quantities' => [$goods => '0']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a quantity is more than nothing');
+
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'with no quantities, what is left of every line');
+        $second = $this->json();
+        self::assertSame(['4.000'], array_column($this->arrayAt($second, 'lines'), 'quantity'), 'the transport is fully on the first draft, so it is not on this one');
+        self::assertSame([$goods], array_column($this->arrayAt($second, 'lines'), 'sourceDeliveryNoteLineId'));
+
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'nothing is left to invoice');
+
+        $this->postJson($this->invoicePath($this->stringAt($first, 'id')).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $this->getJson($this->notePath($note));
+        self::assertSame([null, 'validated'], [$this->json()['invoicedByInvoiceId'], $this->json()['status']], 'part of it is still to invoice');
+
+        $this->postJson($this->invoicePath($this->stringAt($second, 'id')).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $this->getJson($this->notePath($note));
+        self::assertSame(['invoiced', $this->stringAt($second, 'id')], [$this->json()['status'], $this->json()['invoicedByInvoiceId']], 'invoiced by the invoice that took the last of it');
+    }
+
     public function testAnInvoiceDraftedFromNotesNamesTheLotEachLineHandedOverAndARevisionKeepsIt(): void
     {
         // docs/SPEC.md § 7, 2026-09-24 12:40 row 5: the lot handed over is the lot invoiced.

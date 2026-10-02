@@ -1303,6 +1303,13 @@
   },
   "delivery_notes": {
     "credit_over": "Cette livraison porte ce que le client doit à {{owed}} + {{total}} {{currency}}, au-delà de son plafond de crédit de {{limit}} {{currency}}.",
+    "invoice_part": {
+      "title": "Quantités à facturer",
+      "help": "Chaque ligne part de ce qu'il en reste ; mettez 0 pour l'écarter de cette facture.",
+      "left": "Il en reste {{left}}",
+      "cancel": "Annuler",
+      "confirm": "Créer le brouillon"
+    },
     "title": "Bons de livraison",
     "add": "Nouveau bon de livraison",
     "none": "Aucun bon de livraison pour l'instant.",
@@ -1398,6 +1405,7 @@
       "validate": "Valider et numéroter",
       "deliver": "Marquer livré",
       "invoice": "Facturer ce bon",
+      "invoice_part": "Facturer une partie…",
       "delivered_on": "Livré le",
       "cancel": "Annuler le bon",
       "cancel_title": "Annuler ce bon ?",

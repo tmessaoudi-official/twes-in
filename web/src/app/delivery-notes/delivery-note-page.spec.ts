@@ -152,6 +152,7 @@ describe('DeliveryNotePage', () => {
     invoice: vi.fn(),
     clearError: vi.fn(),
     credit: vi.fn(async () => null as unknown),
+    left: vi.fn(),
     pdfUrl: (companyId: string, id: string) =>
       `/api/companies/${companyId}/delivery-notes/${id}/pdf`,
   };
@@ -652,6 +653,48 @@ describe('DeliveryNotePage', () => {
     note.set({ ...validated, status: 'delivered' });
     await settle();
     expect(q('document-action-invoice')).not.toBeNull();
+  });
+
+  it('invoices part of a note: each line starts at what is left, and only the quantities kept are sent', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    facade.left.mockResolvedValue({
+      lines: [
+        { lineId: 'l1', quantity: '10.000', invoiced: '6.000', left: '4.000' },
+        { lineId: 'l2', quantity: '2.000', invoiced: '2.000', left: '0.000' },
+      ],
+    });
+    note.set(validated);
+    await open('n1');
+
+    q('document-action-invoice-part')!.click();
+    await settle();
+    expect(facade.left).toHaveBeenCalledWith('c1', 'n1');
+    const quantity = over('invoice-part-quantity-0') as HTMLInputElement;
+    expect(quantity.value).toBe('4.000');
+    expect(over('invoice-part-quantity-1'), 'a line with nothing left is not offered').toBeNull();
+    typeIn(quantity, '1,5');
+    over('invoice-part-confirm')!.click();
+
+    await vi.waitFor(() => expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', { l1: '1.5' }));
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']));
+  });
+
+  it('drafts nothing when the dialog is dismissed or every quantity is zero', async () => {
+    facade.left.mockResolvedValue({
+      lines: [{ lineId: 'l1', quantity: '10.000', invoiced: '0.000', left: '10.000' }],
+    });
+    facade.invoice.mockClear();
+    note.set(validated);
+    await open('n1');
+
+    q('document-action-invoice-part')!.click();
+    await settle();
+    typeIn(over('invoice-part-quantity-0') as HTMLInputElement, '0');
+    await settle();
+    expect((over('invoice-part-confirm') as HTMLButtonElement).disabled).toBe(true);
+    over('invoice-part-cancel')!.click();
+    await settle();
+    expect(facade.invoice).not.toHaveBeenCalled();
   });
 
   /** The picked row carries the regime, and nothing else does: no list is held to look one up in. */

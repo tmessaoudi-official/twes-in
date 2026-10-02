@@ -28,6 +28,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
+use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceLineTax;
 use App\Module\Invoices\Domain\InvoiceStatus;
@@ -185,7 +186,10 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $second = $this->note('BL-2026-00002');
         $cancelled = $this->note('BL-2026-00003');
         $cancelled->cancel($this->clock->now());
-        $invoiceId = Uuid::v7();
+        // The notes are invoiced once the invoices issued take all of them, so there is one, as there is when the event is told.
+        $invoice = $this->invoicing->draftInvoice($this->company, [$first->getId(), $second->getId()], null);
+        self::asIssued($invoice);
+        $invoiceId = $invoice->getId();
         $lines = array_map(static fn (DeliveryNoteLine $line): Uuid => $line->getId(), [...$first->getLines(), ...$second->getLines(), ...$cancelled->getLines()]);
         $this->clock->modify('+1 hour');
 
@@ -196,19 +200,31 @@ final class InvoiceDeliveryNotesTest extends TestCase
         self::assertEquals($this->clock->now(), $first->getUpdatedAt());
         self::assertCount(1, $left);
         self::assertStringContainsString('BL-2026-00003', $left[0]);
-        self::assertSame(1, $this->transactions->committed);
+        self::assertSame(2, $this->transactions->committed, 'one to draft the invoice, one to mark the notes');
         self::assertSame(
             [
                 ['delivery_note', $first->getId(), 'delivery_note.invoiced', null, ['invoiceId' => $invoiceId->toRfc4122(), 'number' => 'FAC-2026-00001'], $this->company->getId()],
                 ['delivery_note', $second->getId(), 'delivery_note.invoiced', null, ['invoiceId' => $invoiceId->toRfc4122(), 'number' => 'FAC-2026-00001'], $this->company->getId()],
             ],
-            array_map(static fn ($entry): array => [$entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $entry->changes, $entry->companyId], $this->audit->entries),
+            array_map(static fn ($entry): array => [$entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $entry->changes, $entry->companyId], $this->marked()),
         );
 
         self::assertSame([], $this->invoicing->markInvoiced($this->company->getId(), $invoiceId, 'FAC-2026-00001', \array_slice($lines, 0, 3)), 'told twice, the invoice marks nothing twice');
         self::assertSame([], $this->invoicing->markInvoiced($this->globex->getId(), Uuid::v7(), 'FAC-2026-00001', $lines), "another company's invoice marks none of this company's notes");
-        self::assertCount(2, $this->audit->entries);
+        self::assertCount(2, $this->marked());
         self::assertTrue($invoiceId->equals($first->getInvoicedByInvoiceId()));
+    }
+
+    /** @return list<\App\Audit\Application\AuditEntry> the notes marked invoiced, apart from the invoice drafted for them */
+    private function marked(): array
+    {
+        return array_values(array_filter($this->audit->entries, static fn ($entry): bool => InvoiceDeliveryNotes::INVOICED === $entry->action));
+    }
+
+    /** What issuing does to a draft, as far as these tests look: the notes' invoicing counts issued invoices only. */
+    private static function asIssued(Invoice $invoice): void
+    {
+        new \ReflectionProperty(Invoice::class, 'status')->setValue($invoice, InvoiceStatus::Issued);
     }
 
     /** @param list<DeliveryNoteLineDetails>|null $lines one line of one piece when left out */

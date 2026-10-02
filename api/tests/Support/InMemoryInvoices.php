@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceRepository;
@@ -108,6 +109,26 @@ final class InMemoryInvoices implements InvoiceRepository
         return array_values(array_filter($this->ofCompany($companyId), static fn (Invoice $invoice): bool => InvoiceType::Invoice === $invoice->getType()
             && InvoiceStatus::Cancelled !== $invoice->getStatus()
             && [] !== array_filter($invoice->getLines(), static fn (InvoiceLine $line): bool => \in_array($line->getSourceDeliveryNoteLineId()?->toRfc4122(), $wanted, true))));
+    }
+
+    public function invoicedQuantities(Uuid $companyId, array $deliveryNoteLineIds, bool $issuedOnly = false): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $deliveryNoteLineIds);
+        $excluded = $issuedOnly ? [InvoiceStatus::Cancelled, InvoiceStatus::Draft] : [InvoiceStatus::Cancelled];
+        $quantities = [];
+        foreach ($this->ofCompany($companyId) as $invoice) {
+            if (InvoiceType::Invoice !== $invoice->getType() || \in_array($invoice->getStatus(), $excluded, true)) {
+                continue;
+            }
+            foreach ($invoice->getLines() as $line) {
+                $source = $line->getSourceDeliveryNoteLineId()?->toRfc4122();
+                if (null !== $source && \in_array($source, $wanted, true)) {
+                    $quantities[$source] = (string) Decimal::of($quantities[$source] ?? '0')->add(Decimal::of($line->getQuantity()));
+                }
+            }
+        }
+
+        return $quantities;
     }
 
     public function numberTaken(Uuid $companyId, InvoiceType $type, string $number): bool

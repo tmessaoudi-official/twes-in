@@ -60,6 +60,7 @@ import type { PlannedAction } from '../shared/actions/planned-actions';
 import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { DeliverDialog } from './deliver-dialog';
+import { InvoicePartDialog, type InvoicePartLine } from './invoice-part-dialog';
 import { RecordView } from '../shared/form/record-view';
 
 /**
@@ -325,6 +326,14 @@ export class DeliveryNotePage {
         shown: this.canInvoice(),
       },
       {
+        id: 'invoice-part',
+        label: 'delivery_notes.actions.invoice_part',
+        icon: 'tune',
+        disabled: busy,
+        run: () => void this.invoicePart(),
+        shown: this.canInvoice(),
+      },
+      {
         id: 'pdf',
         label: 'delivery_notes.actions.pdf',
         icon: 'picture_as_pdf',
@@ -582,6 +591,30 @@ export class DeliveryNotePage {
     const id = this.id();
     if (!companyId || id === null || this.busy()) return;
     const invoiceId = await this.facade.invoice(companyId, id);
+    if (invoiceId !== null) {
+      await this.router.navigate(['/invoices', invoiceId]);
+    }
+  }
+
+  /** An invoice for part of the note: how much of each line is asked in a dialog, from what is left of it. */
+  protected async invoicePart(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    const current = this.current();
+    if (!companyId || id === null || !current || this.busy()) return;
+    const left = await this.facade.left(companyId, id);
+    if (left === null) return;
+    const lines: InvoicePartLine[] = left.lines.map((line, index) => ({
+      ...line,
+      description: current.lines[index]?.description ?? '',
+    }));
+    const quantities = await firstValueFrom(
+      this.dialog
+        .open(InvoicePartDialog, { data: lines, autoFocus: 'first-tabbable' })
+        .afterClosed(),
+    );
+    if (!quantities) return;
+    const invoiceId = await this.facade.invoice(companyId, id, quantities);
     if (invoiceId !== null) {
       await this.router.navigate(['/invoices', invoiceId]);
     }
