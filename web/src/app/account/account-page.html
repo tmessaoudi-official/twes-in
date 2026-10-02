@@ -131,6 +131,16 @@
                 >
               </div>
 
+              <div class="flex flex-col gap-2">
+                <h2 class="text-lg font-semibold">{{ 'account.scanning' | translate }}</h2>
+                <mat-slide-toggle
+                  data-testid="account-scan-feedback"
+                  [checked]="scanFeedback()"
+                  (change)="setScanFeedback($event.checked)"
+                  >{{ 'account.scan_feedback' | translate }}</mat-slide-toggle
+                >
+              </div>
+
               @if (canPin()) {
                 <div class="flex flex-col gap-2">
                   <h2 class="text-lg font-semibold">

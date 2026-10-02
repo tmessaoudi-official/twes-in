@@ -267,6 +267,16 @@ describe('AccountPage', () => {
     expect(theme.setShowComing).toHaveBeenCalledWith(false);
   });
 
+  it('turns the beep and the buzz of a camera scan off and on, for the person', async () => {
+    const root = await render('preferences');
+    const toggle = byTestId(root, 'account-scan-feedback')?.querySelector('button');
+    expect(toggle?.getAttribute('aria-checked')).toBe('true');
+
+    toggle?.click();
+
+    expect(TestBed.inject(SettingsFacade).value(PRESENTATION.scanFeedback)()).toBe(false);
+  });
+
   it('pins the company every sign-in opens, the working one first, and unpins it', async () => {
     const root = await render('preferences');
     expect(company.load).toHaveBeenCalled();

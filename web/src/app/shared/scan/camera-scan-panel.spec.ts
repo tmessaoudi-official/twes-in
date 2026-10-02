@@ -10,7 +10,9 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { PageMemoryStorage, SETTINGS_STORAGE } from '../settings/settings-facade';
+import { Session } from '../session/session';
+import { BrowserStorageSettings } from '../settings/browser-storage-settings';
+import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import { provideQuietFeedback } from '../testing/feedback';
 import { BarcodeReader } from './barcode-reader';
 import { Camera, type CameraDevice, CameraRefused } from './camera';
@@ -67,6 +69,8 @@ describe('CameraScanPanel', () => {
         { provide: MatDialogRef, useValue: { close: vi.fn() } },
         { provide: Camera, useValue: camera },
         { provide: SETTINGS_STORAGE, useValue: storage },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: Session, useValue: { me: () => null } },
         { provide: BarcodeReader, useValue: { read: vi.fn(async () => []) } },
       ],
     });

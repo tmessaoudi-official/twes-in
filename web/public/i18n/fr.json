@@ -814,6 +814,7 @@
       "customer_view_cost": "En vue client, masquer le coût des produits",
       "customer_view_supplier_codes": "En vue client, masquer les codes des fournisseurs",
       "show_coming": "Montrer ce qui arrive",
+      "scan_feedback": "Bip et vibration à chaque scan",
       "shortcuts": "Raccourcis clavier",
       "folded_sections": "Sections repliées des menus",
       "settings_list": "Liste des réglages"
@@ -3009,6 +3010,8 @@
     "format_preview": "Aperçu : {{ day }} · {{ amount }}",
     "coming": "Ce qui arrive",
     "show_coming": "Montrer ce qui arrive, marqué « Bientôt »",
+    "scanning": "Scan",
+    "scan_feedback": "Bip et vibration à chaque code lu par la caméra",
     "company_at_sign_in": "Société à l'ouverture",
     "company_at_sign_in_on": "Toujours ouvrir la même société",
     "company_at_sign_in_off": "Sinon, la dernière société utilisée s'ouvre.",

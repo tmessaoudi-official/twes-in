@@ -14,7 +14,9 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
-import { SETTINGS_STORAGE } from '../settings/settings-facade';
+import { SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
+import { PRESENTATION } from '../settings/settings-registry';
+import { signalRead } from './scan-signal';
 import { BarcodeReader } from './barcode-reader';
 import { Camera, type CameraDevice, CameraRefused, type CameraRefusal } from './camera';
 import { CameraScanning } from './camera-scanning';
@@ -44,6 +46,7 @@ export class CameraView implements OnInit {
   private readonly camera = inject(Camera);
   private readonly reader = inject(BarcodeReader);
   private readonly storage = inject(SETTINGS_STORAGE);
+  private readonly feedback = inject(SettingsFacade).value(PRESENTATION.scanFeedback);
   /** Each code as it comes into view, composed as a handheld scanner would type it. */
   readonly read = output<string>();
   private readonly video = viewChild.required<ElementRef<HTMLVideoElement>>('video');
@@ -146,7 +149,7 @@ export class CameraView implements OnInit {
 
   private accept(code: string): void {
     this.lastRead.set(code);
-    signalRead();
+    signalRead(this.feedback());
     this.read.emit(code);
   }
 
@@ -163,24 +166,4 @@ export class CameraView implements OnInit {
       this.wakeLock = null;
     }
   };
-}
-
-/** A short beep and a buzz, as a handheld scanner gives: the person looks at the goods, not the screen. */
-function signalRead(): void {
-  navigator.vibrate?.(40);
-  const Audio = (window as { AudioContext?: typeof AudioContext }).AudioContext;
-  if (Audio === undefined) return;
-  try {
-    const audio = new Audio();
-    const tone = audio.createOscillator();
-    const volume = audio.createGain();
-    tone.frequency.value = 1800;
-    volume.gain.value = 0.08;
-    tone.connect(volume).connect(audio.destination);
-    tone.start();
-    tone.stop(audio.currentTime + 0.08);
-    tone.onended = () => void audio.close();
-  } catch {
-    // No audio output: the buzz and the screen say it.
-  }
 }

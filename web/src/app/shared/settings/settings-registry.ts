@@ -131,6 +131,8 @@ export const PRESENTATION = {
     'auto',
     oneOf(...NUMBER_FORMATS),
   ),
+  /** The beep and the buzz a camera scan gives (docs/SPEC.md § 7, 2026-09-24 12:40 row 13): on until turned off. */
+  scanFeedback: defineSetting<boolean>('presentation.scan-feedback', true, parseBool),
   /** « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. */
   showComing: defineSetting<boolean>('presentation.show-coming', true, parseBool),
   /** The menu sections each person folded (docs/SPEC.md § 7, 2026-09-26 12:05, row 152), as `<menu>.<section>`. */

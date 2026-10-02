@@ -814,6 +814,7 @@
       "customer_view_cost": "In customer view, hide product costs",
       "customer_view_supplier_codes": "In customer view, hide suppliers' codes",
       "show_coming": "Show what is coming",
+      "scan_feedback": "Beep and buzz on each scan",
       "shortcuts": "Keyboard shortcuts",
       "folded_sections": "Folded menu sections",
       "settings_list": "Settings list"
@@ -3009,6 +3010,8 @@
     "format_preview": "Preview: {{ day }} · {{ amount }}",
     "coming": "What is coming",
     "show_coming": "Show what is coming, marked “Soon”",
+    "scanning": "Scanning",
+    "scan_feedback": "Beep and buzz each time the camera reads a code",
     "company_at_sign_in": "Company at sign-in",
     "company_at_sign_in_on": "Always open the same company",
     "company_at_sign_in_off": "Otherwise, the company used last opens.",

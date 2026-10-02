@@ -96,6 +96,7 @@ export class AccountPage implements OnInit {
   protected readonly twoFactorOn = computed(() => this.auth.me()?.mfa.enrolled === true);
 
   private readonly settings = inject(SettingsFacade);
+  protected readonly scanFeedback = this.settings.value(PRESENTATION.scanFeedback);
   /** The shell's single keys as this person has them (docs/SPEC.md § 7, 2026-09-24 22:51, row 125). */
   protected readonly keys = this.settings.value(PRESENTATION.shortcuts);
   protected readonly shellShortcuts = SHELL_SHORTCUTS;
@@ -120,6 +121,10 @@ export class AccountPage implements OnInit {
   protected readonly companies = this.company.companies;
   /** Pinning means something only to somebody in several companies. */
   protected readonly canPin = computed(() => this.companies().length > 1);
+
+  protected setScanFeedback(on: boolean): void {
+    this.settings.set(PRESENTATION.scanFeedback, on);
+  }
   protected readonly pinned = computed(
     () => this.companies().find((company) => company.pinned) ?? null,
   );
