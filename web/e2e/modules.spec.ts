@@ -43,6 +43,7 @@ test('a module switched off leaves the navigation, its pages and its API until i
   try {
     await switchModule(page, 'invoices', false);
     await switchModule(page, 'delivery_notes', false);
+    await switchModule(page, 'price_lists', false);
     await page.goto('/company/modules');
     await expect(page.getByTestId('nav-customers')).toBeVisible();
     expect(await wcagViolations(page)).toEqual([]);
@@ -60,6 +61,7 @@ test('a module switched off leaves the navigation, its pages and its API until i
   } finally {
     await switchModule(page, 'customers', true);
     await switchModule(page, 'delivery_notes', true);
+    await switchModule(page, 'price_lists', true);
     // Invoices were switched off first, like delivery notes, and need customers back before they come back on.
     await switchModule(page, 'invoices', true);
   }
