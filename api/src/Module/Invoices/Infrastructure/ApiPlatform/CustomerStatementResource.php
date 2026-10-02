@@ -92,7 +92,7 @@ final class CustomerStatementResource
     public string $creditBalance = '0';
 
     /**
-     * What happened in the period, in order. `kind` is `invoice`, `credit_note` or `payment`; a payment names the
+     * What happened in the period, in order. `kind` is `invoice`, `credit_note`, `payment` or `credit_transfer` (what a credit note gave back of money already paid, leaving the invoice for the credit balance or a refund); a payment names the
      * invoice it settles by that invoice's number and carries its own reference when it has one.
      *
      * @var list<array{day: string, kind: string, number: string, documentId: string, reference: ?string, debit: string, credit: string, balance: string}>
@@ -104,7 +104,7 @@ final class CustomerStatementResource
             'required' => ['day', 'kind', 'number', 'documentId', 'reference', 'debit', 'credit', 'balance'],
             'properties' => [
                 'day' => self::TEXT,
-                'kind' => ['type' => 'string', 'enum' => ['invoice', 'credit_note', 'payment']],
+                'kind' => ['type' => 'string', 'enum' => ['invoice', 'credit_note', 'payment', 'credit_transfer']],
                 'number' => self::TEXT,
                 'documentId' => self::TEXT,
                 'reference' => ['type' => ['string', 'null']],

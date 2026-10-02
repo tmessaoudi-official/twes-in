@@ -395,7 +395,12 @@ function toGroup(raw: CustomerGroupCustomerGroupRead): CustomerGroupRow {
   };
 }
 
-const STATEMENT_KINDS: readonly StatementKind[] = ['invoice', 'credit_note', 'payment'];
+const STATEMENT_KINDS: readonly StatementKind[] = [
+  'invoice',
+  'credit_note',
+  'payment',
+  'credit_transfer',
+];
 
 function toStatement(raw: CustomerStatementCustomerStatementRead): CustomerStatement {
   return {

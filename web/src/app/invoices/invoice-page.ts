@@ -68,6 +68,7 @@ import { DocumentActions } from '../shared/ui/document-actions';
 import type { PlannedAction } from '../shared/actions/planned-actions';
 import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
+import { CreditExcessDialog } from './credit-excess-dialog';
 import { CreditNoteDialog } from './credit-note-dialog';
 import { PaymentDialog } from './payment-dialog';
 import { RecordView } from '../shared/form/record-view';
@@ -743,7 +744,21 @@ export class InvoicePage {
     // Read before issuing: once issued, the screen declares what an issued document offers.
     const kind = kindAmong(this.actions(), 'issue');
     const key = this.isCreditNote() ? 'invoices.credit_note_issued' : 'invoices.issued';
-    const issued = await this.facade.reviseAndIssue(companyId, id, input);
+    let issued = await this.facade.reviseAndIssue(companyId, id, input);
+    if (issued === null && this.facade.error() === 'excess_to') {
+      // The credit note gives back money already paid: say where it goes, then issue it again with that.
+      this.facade.clearError();
+      const excessTo = await firstValueFrom(
+        this.dialog
+          .open(CreditExcessDialog, {
+            data: { invoiceNumber: this.current()?.number ?? null },
+            autoFocus: 'first-tabbable',
+          })
+          .afterClosed(),
+      );
+      if (!excessTo) return;
+      issued = await this.facade.reviseAndIssue(companyId, id, input, excessTo);
+    }
     if (issued === null || kind === undefined) return;
     // Its next step, to whoever may take it (docs/SPEC.md § 7, 2026-09-26, row 139).
     const next = this.owes(issued)

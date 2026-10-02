@@ -4,6 +4,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import { InvoicesApi, InvoicesRefused } from './invoices-api';
 import type { PickAsked } from '../shared/form/pick-api';
 import type {
+  CreditExcessTo,
   CustomerOption,
   InvoiceInput,
   InvoiceOptions,
@@ -128,10 +129,11 @@ export class InvoicesFacade {
     companyId: string,
     id: string,
     input: InvoiceInput,
+    excessTo?: CreditExcessTo,
   ): Promise<InvoiceRow | null> {
     return this.step(async () => {
       this.invoiceSignal.set(await this.api.revise(companyId, id, input));
-      return this.api.issue(companyId, id);
+      return this.api.issue(companyId, id, excessTo);
     });
   }
 

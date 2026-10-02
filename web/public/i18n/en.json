@@ -1080,7 +1080,8 @@
       "kinds": {
         "invoice": "Invoice",
         "credit_note": "Credit note",
-        "payment": "Payment"
+        "payment": "Payment",
+        "credit_transfer": "Credit note excess"
       },
       "errors": {
         "network": "The server cannot be reached.",
@@ -1281,7 +1282,8 @@
       "network": "The server cannot be reached.",
       "not_found": "Invoice not found.",
       "conflict": "The document changed state meanwhile, or its establishment has no invoice numbering series.",
-      "invalid": "Refused. Check the customer, the lines, the discount and, for a payment, its amount (at most what is due) and its day (between issue and today)."
+      "invalid": "Refused. Check the customer, the lines, the discount and, for a payment, its amount (at most what is due) and its day (between issue and today).",
+      "excess_to": "Say where the money already paid goes, to the customer’s credit or to a refund."
     },
     "home": {
       "outstanding": "To collect",
@@ -1314,6 +1316,14 @@
     "cancelled": "The document was cancelled.",
     "suggest": {
       "record_payment": "Record a payment"
+    },
+    "excess": {
+      "title": "Money already paid",
+      "message": "This credit note gives back money the invoice was already paid. Where does it go?",
+      "balance": "Keep it to the customer’s credit",
+      "refund": "Refund it to the customer",
+      "keep": "Keep it a draft",
+      "issue": "Issue the credit note"
     }
   },
   "delivery_notes": {

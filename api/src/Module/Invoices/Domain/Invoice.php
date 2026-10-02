@@ -507,7 +507,7 @@ class Invoice implements CompanyOwned
      * Takes an issued credit note of this invoice off what it still has due: what the
      * credit note comes to is added to what was credited, and the status follows.
      *
-     * @throws InvalidInvoice on `amountDue` when the credit note comes to more than the invoice still has due
+     * @throws InvalidInvoice on `amountDue` when the credit note comes to more than the invoice invoiced less its earlier credit notes
      */
     public function credit(self $creditNote, \DateTimeImmutable $now): void
     {
@@ -522,7 +522,21 @@ class Invoice implements CompanyOwned
     }
 
     /**
-     * The figures of a credit note of this invoice, once they fit what the invoice still has due.
+     * What a credit note of these figures takes beyond what the invoice still has due: money already paid that is the
+     * customer's again and has to go somewhere. Zero when the invoice still has due all the credit note comes to.
+     *
+     * @throws InvalidInvoice on `amountDue` when it comes to more than the invoice invoiced less its earlier credit notes
+     */
+    public function creditExcess(InvoiceFigures $figures): string
+    {
+        $amount = $this->creditThatFits($figures->amountDue);
+        $due = Decimal::of($this->amountDue ?? '0');
+
+        return Decimal::format($amount->compare($due) > 0 ? $amount->sub($due) : Decimal::zero(), self::STORED_SCALE);
+    }
+
+    /**
+     * The figures of a credit note of this invoice, once they fit what the invoice invoiced less its earlier credit notes.
      *
      * @throws InvalidInvoice on `amountDue`
      */
@@ -711,6 +725,10 @@ class Invoice implements CompanyOwned
         $paid = Decimal::sum(array_map(static fn (Payment $payment) => Decimal::of($payment->getAmount()), $this->getPayments()));
         $credited = Decimal::of($this->amountCredited);
         $due = Decimal::of($this->totalGross)->sub(Decimal::of($this->withholdingAmount))->sub($paid)->sub($credited);
+        // What was paid beyond what a credit note left due is the customer's again and lives in their credit balance.
+        if ($due->compare(0) < 0) {
+            $due = Decimal::zero();
+        }
 
         $this->amountPaid = Decimal::format($paid, self::STORED_SCALE);
         $this->amountDue = Decimal::format($due, self::STORED_SCALE);
@@ -727,12 +745,16 @@ class Invoice implements CompanyOwned
         return \in_array($this->status, [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid, InvoiceStatus::Paid], true);
     }
 
+    /**
+     * A credit note takes at most what the invoice invoiced to be paid less its earlier credit notes, paid or not: what
+     * was already paid beyond what is due after it is the excess, which `creditExcess` names.
+     */
     private function creditThatFits(string $creditNoteAmountDue): Number
     {
         $amount = Decimal::absolute(Decimal::of($creditNoteAmountDue));
-        $due = Decimal::of($this->amountDue ?? '0');
-        if ($amount->compare($due) > 0) {
-            throw new InvalidInvoice('amountDue', \sprintf('A credit note takes at most what the invoice %s still has due, %s.', $this->reference(), Decimal::format($due, self::STORED_SCALE)));
+        $creditable = Decimal::of($this->totalGross ?? '0')->sub(Decimal::of($this->withholdingAmount ?? '0'))->sub(Decimal::of($this->amountCredited));
+        if ($amount->compare($creditable) > 0) {
+            throw new InvalidInvoice('amountDue', \sprintf('A credit note takes at most what the invoice %s invoiced less its earlier credit notes, %s.', $this->reference(), Decimal::format($creditable, self::STORED_SCALE)));
         }
 
         return $amount;

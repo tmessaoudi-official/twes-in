@@ -1080,7 +1080,8 @@
       "kinds": {
         "invoice": "Facture",
         "credit_note": "Avoir",
-        "payment": "Paiement"
+        "payment": "Paiement",
+        "credit_transfer": "Excédent d’avoir"
       },
       "errors": {
         "network": "Le serveur est injoignable.",
@@ -1281,7 +1282,8 @@
       "network": "Le serveur est injoignable.",
       "not_found": "Facture introuvable.",
       "conflict": "Le document a changé d'état entre-temps, ou son établissement n'a pas de série de numérotation des factures.",
-      "invalid": "Refusé. Vérifiez le client, les lignes, la remise et, pour un paiement, son montant (au plus le reste à payer) et sa date (entre l'émission et aujourd'hui)."
+      "invalid": "Refusé. Vérifiez le client, les lignes, la remise et, pour un paiement, son montant (au plus le reste à payer) et sa date (entre l'émission et aujourd'hui).",
+      "excess_to": "Dites où va l’argent déjà payé : au crédit du client ou remboursé."
     },
     "home": {
       "outstanding": "À encaisser",
@@ -1314,6 +1316,14 @@
     "cancelled": "Le document a été annulé.",
     "suggest": {
       "record_payment": "Enregistrer un paiement"
+    },
+    "excess": {
+      "title": "Somme déjà payée",
+      "message": "Cet avoir rend de l’argent que la facture avait déjà reçu. Où va-t-il ?",
+      "balance": "Le garder au crédit du client",
+      "refund": "Le rembourser au client",
+      "keep": "Le garder en brouillon",
+      "issue": "Émettre l’avoir"
     }
   },
   "delivery_notes": {

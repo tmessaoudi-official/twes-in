@@ -46,6 +46,7 @@ use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
+use App\Tests\Support\InMemoryCustomerCredits;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryInvoices;
 use App\Tests\Support\InMemoryNumberingSeries;
@@ -103,6 +104,7 @@ final class InvoiceWorkflowTest extends TestCase
             $this->events,
             $this->audit,
             $this->clock,
+            new InMemoryCustomerCredits(),
         );
     }
 

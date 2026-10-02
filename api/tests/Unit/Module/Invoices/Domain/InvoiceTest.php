@@ -440,6 +440,28 @@ final class InvoiceTest extends TestCase
         self::assertSame([InvoiceStatus::Paid, '0.000', '0.000', '1178.100'], $this->settlement($invoice), 'a credit up to what is due settles the invoice');
     }
 
+    public function testAPaidInvoiceIsCreditedUpToWhatItInvoicedLessEarlierCreditsAndTheExcessBeyondWhatWasDueIsSaid(): void
+    {
+        $invoice = $this->issued(total: '1000.000', withheld: '0.000', due: '1000.000');
+        $today = new \DateTimeImmutable('2026-09-20');
+        $invoice->recordPayment(new PaymentDetails($today, '1000', PaymentMethod::Transfer), $today, 3, null, $this->now);
+        self::assertSame([InvoiceStatus::Paid, '1000.000', '0.000', '0.000'], $this->settlement($invoice));
+
+        self::assertSame('300.000', $invoice->creditExcess($this->issuedCreditNote($invoice, '-300.000')->getIssuedFigures() ?? throw new \LogicException('issued')), 'nothing is due, so all of it was paid');
+        $this->assertRefused('amountDue', fn () => $invoice->credit($this->issuedCreditNote($invoice, '-1000.001'), $this->now));
+
+        $invoice->credit($this->issuedCreditNote($invoice, '-300.000'), $this->now);
+        self::assertSame([InvoiceStatus::Paid, '1000.000', '0.000', '300.000'], $this->settlement($invoice), 'what is due never goes below nothing');
+        $this->assertRefused('amountDue', fn () => $invoice->credit($this->issuedCreditNote($invoice, '-700.001'), $this->now));
+        $invoice->credit($this->issuedCreditNote($invoice, '-700.000'), $this->now);
+        self::assertSame([InvoiceStatus::Paid, '1000.000', '0.000', '1000.000'], $this->settlement($invoice));
+
+        $partly = $this->issued(total: '1000.000', withheld: '0.000', due: '1000.000');
+        $partly->recordPayment(new PaymentDetails($today, '600', PaymentMethod::Transfer), $today, 3, null, $this->now);
+        self::assertSame('0.000', $partly->creditExcess($this->issuedCreditNote($partly, '-400.000')->getIssuedFigures() ?? throw new \LogicException('issued')), 'what is still due takes the whole credit');
+        self::assertSame('100.000', $partly->creditExcess($this->issuedCreditNote($partly, '-500.000')->getIssuedFigures() ?? throw new \LogicException('issued')), 'the part beyond the 400 still due was paid');
+    }
+
     public function testALineKeepsTheDeliveryNoteLineItCameFromAndIssuingNamesThemButACreditNoteCopiesNone(): void
     {
         [$first, $second] = [Uuid::v7(), Uuid::v7()];

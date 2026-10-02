@@ -415,6 +415,29 @@ describe('InvoicesApi', () => {
     }
   });
 
+  it('tells a credit note refused for the money already paid from any other refusal, and sends where it goes', async () => {
+    const refused = api.issue('c1', 'i1');
+    http
+      .expectOne('/api/companies/c1/invoices/i1/issue')
+      .flush(
+        { detail: 'excessTo: 600.000 of this credit note was already paid.' },
+        { status: 422, statusText: 'Unprocessable' },
+      );
+    await expect(refused).rejects.toEqual(new InvoicesRefused('excess_to'));
+
+    const elsewhere = api.issue('c1', 'i1');
+    http
+      .expectOne('/api/companies/c1/invoices/i1/issue')
+      .flush({ detail: 'amount: nope' }, { status: 422, statusText: 'Unprocessable' });
+    await expect(elsewhere).rejects.toEqual(new InvoicesRefused('invalid'));
+
+    const issued = api.issue('c1', 'i1', 'refund');
+    const request = http.expectOne((req) => req.url === '/api/companies/c1/invoices/i1/issue');
+    expect(request.request.params.get('excessTo')).toBe('refund');
+    request.flush({ id: 'i1' });
+    await issued;
+  });
+
   it('names where a document is downloaded as a PDF', () => {
     expect(api.pdfUrl('c1', 'i 1')).toBe('/api/companies/c1/invoices/i%201/pdf');
   });

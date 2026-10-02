@@ -117,6 +117,9 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             input: false,
+            parameters: [
+                'excessTo' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['balance', 'refund']], description: 'For a credit note of an invoice that was paid beyond what the credit note leaves due: where the part already paid goes, to the customer\'s credit balance or to a refund. Required then (422 on `excessTo`), ignored otherwise.'),
+            ],
             normalizationContext: self::NORMALIZATION,
         ),
     ],

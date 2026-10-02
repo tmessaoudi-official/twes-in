@@ -56,7 +56,7 @@ class CustomerCreditEntry implements CompanyOwned
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $notes;
 
-    /** The invoice credit was applied to; null for a deposit. */
+    /** The invoice credit was applied to, or the one a credit note gave money back from; null for a deposit. */
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $invoiceId;
 
@@ -98,6 +98,18 @@ class CustomerCreditEntry implements CompanyOwned
         $invoice = $payment->getInvoice();
 
         return new self($customer, CreditEntryKind::Applied, $payment->getDate(), '-'.$payment->getAmount(), null, null, $invoice->getId(), $payment->getId(), $recordedBy, $now);
+    }
+
+    /** What a credit note gave back of money its invoice was already paid: `$amount` joins the balance on `$date`. */
+    public static function credited(Customer $customer, Invoice $invoice, string $creditNoteNumber, string $amount, \DateTimeImmutable $date, ?Uuid $recordedBy, \DateTimeImmutable $now): self
+    {
+        return new self($customer, CreditEntryKind::Credited, $date, $amount, $creditNoteNumber, null, $invoice->getId(), null, $recordedBy, $now);
+    }
+
+    /** The same amount leaving the balance again, paid back to the customer rather than kept for them. */
+    public static function refunded(Customer $customer, Invoice $invoice, string $creditNoteNumber, string $amount, \DateTimeImmutable $date, ?Uuid $recordedBy, \DateTimeImmutable $now): self
+    {
+        return new self($customer, CreditEntryKind::Refunded, $date, '-'.$amount, $creditNoteNumber, null, $invoice->getId(), null, $recordedBy, $now);
     }
 
     public function getId(): Uuid

@@ -585,6 +585,51 @@ describe('InvoicePage', () => {
     await vi.waitFor(() => expect(effectToasts()).toEqual(['invoices.issued:corrigeable']));
   });
 
+  it('asks where the money already paid goes when a credit note is refused for it, and issues with the answer', async () => {
+    facade.reviseAndIssue.mockImplementationOnce(() => {
+      error.set('excess_to');
+      return Promise.resolve(null);
+    });
+    facade.reviseAndIssue.mockResolvedValue(issued);
+    invoice.set(draft);
+    await open('i1');
+    q('document-action-issue')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+
+    await vi.waitFor(() => expect(over('credit-excess-title')).not.toBeNull());
+    const refund = over('credit-excess-refund')!.querySelector('input')!;
+    refund.checked = true;
+    refund.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle();
+    over('credit-excess-issue')!.click();
+    await settle();
+
+    expect(facade.reviseAndIssue).toHaveBeenCalledTimes(2);
+    expect(facade.reviseAndIssue).toHaveBeenLastCalledWith('c1', 'i1', expect.anything(), 'refund');
+    error.set(null);
+  });
+
+  it('leaves the credit note a draft when no destination is chosen', async () => {
+    facade.reviseAndIssue.mockImplementationOnce(() => {
+      error.set('excess_to');
+      return Promise.resolve(null);
+    });
+    invoice.set(draft);
+    await open('i1');
+    q('document-action-issue')!.click();
+    await settle();
+    over('confirm-run')!.click();
+    await settle();
+    await vi.waitFor(() => expect(over('credit-excess-title')).not.toBeNull());
+    over('credit-excess-keep')!.click();
+    await settle();
+
+    expect(facade.reviseAndIssue).toHaveBeenCalledTimes(1);
+    error.set(null);
+  });
+
   // docs/SPEC.md § 7, 2026-09-26, row 139: what was just done offers its next step, to whoever may take it.
   it('offers to record a payment once an invoice is issued with money owed, and opens it', async () => {
     facade.reviseAndIssue.mockImplementation(() => {

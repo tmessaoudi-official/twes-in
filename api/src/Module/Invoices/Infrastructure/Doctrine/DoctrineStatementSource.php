@@ -21,7 +21,11 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DoctrineStatementSource implements StatementSource
 {
-    /** Invoices and credit notes on the day they were issued, payments on the day they were made. */
+    /**
+     * Invoices and credit notes on the day they were issued, payments on the day they were made, and what a credit note
+     * gave back of money already paid on the day it did: that leaves the invoice's account for the customer's credit
+     * balance or their own hands, so the account does not stay below what the invoices have due.
+     */
     private const string ACCOUNT = <<<'SQL'
         SELECT i.issue_date AS day, i.document_type AS kind, i.number, i.id AS document_id, NULL::text AS reference,
                i.total_gross - i.withholding_amount AS amount,
@@ -32,6 +36,10 @@ final readonly class DoctrineStatementSource implements StatementSource
         SELECT p.payment_date, 'payment', i.number, i.id, p.reference, -p.amount, 3
           FROM payment p JOIN invoice i ON i.id = p.invoice_id
          WHERE i.company_id = :company AND i.customer_id = :customer AND i.amount_due IS NOT NULL
+        UNION ALL
+        SELECT c.entry_date, 'credit_transfer', i.number, i.id, c.reference, c.amount, 4
+          FROM customer_credit_entry c JOIN invoice i ON i.id = c.invoice_id
+         WHERE c.company_id = :company AND c.customer_id = :customer AND c.kind = 'credited'
         SQL;
 
     private Connection $connection;

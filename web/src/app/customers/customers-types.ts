@@ -70,7 +70,7 @@ export interface CustomerGroupRow {
 export type CustomerGroupInput = Pick<CustomerGroupRow, 'name' | 'description'>;
 
 /** What a line of a statement is: an invoice or a credit note on the day it was issued, a payment on the day it was made. */
-export type StatementKind = 'invoice' | 'credit_note' | 'payment';
+export type StatementKind = 'invoice' | 'credit_note' | 'payment' | 'credit_transfer';
 
 export interface StatementLine {
   /** YYYY-MM-DD. */

@@ -27,6 +27,7 @@ import {
   type InvoiceInput,
   type InvoiceOptions,
   type InvoiceRow,
+  type CreditExcessTo,
   type InvoiceSearch,
   type InvoicesError,
   type InvoiceStatusCounts,
@@ -179,8 +180,8 @@ export class InvoicesApi {
   }
 
   /** Numbers a draft and fixes what it says; 409 when its establishment cannot number it, 422 without lines. */
-  async issue(companyId: string, id: string): Promise<InvoiceRow> {
-    return this.step(companyId, id, 'issue');
+  async issue(companyId: string, id: string, excessTo?: CreditExcessTo): Promise<InvoiceRow> {
+    return this.step(companyId, id, 'issue', null, excessTo);
   }
 
   /** Cancels a draft; an issued document is never cancelled (409). */
@@ -244,11 +245,16 @@ export class InvoicesApi {
     id: string,
     action: 'issue' | 'cancel' | 'credit-notes' | 'duplicate',
     body: InvoiceInvoiceCredit | null = null,
+    excessTo?: CreditExcessTo,
   ): Promise<InvoiceRow> {
+    const params =
+      excessTo === undefined ? new HttpParams() : new HttpParams().set('excessTo', excessTo);
     return this.guard(async () =>
       toInvoice(
         await firstValueFrom(
-          this.http.post<InvoiceInvoiceRead>(`${invoicePath(companyId, id)}/${action}`, body),
+          this.http.post<InvoiceInvoiceRead>(`${invoicePath(companyId, id)}/${action}`, body, {
+            params,
+          }),
         ),
       ),
     );
@@ -273,8 +279,14 @@ function codeOf(error: unknown): InvoicesError {
     case 409:
       return 'conflict';
     default:
-      return 'invalid';
+      // A credit note that gives back money already paid is refused until it says where that money goes.
+      return isExcessRefusal(error) ? 'excess_to' : 'invalid';
   }
+}
+
+function isExcessRefusal(error: HttpErrorResponse): boolean {
+  const detail = (error.error as { detail?: unknown } | null)?.detail;
+  return error.status === 422 && typeof detail === 'string' && detail.startsWith('excessTo:');
 }
 
 const companyPath = (companyId: string): string =>

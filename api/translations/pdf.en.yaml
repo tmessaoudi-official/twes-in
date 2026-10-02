@@ -31,6 +31,7 @@ invoice:
     supply_date: 'Supply date'
     customer_reference: 'Your reference'
     payment: 'Payment'
+    credit_transfer: 'Credit note excess'
     payment_terms: 'Within %days% days'
     remarks: 'Remarks'
 line:

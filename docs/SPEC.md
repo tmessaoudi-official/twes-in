@@ -3919,6 +3919,25 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   payment, which stays blocked on its legal basis (UNCERTIFIED — LEGAL, § 3 and docs/fiscal/TN.md).
   Alternatives: a single `credit` column on the customer (refused: no history, no way to give a deleted payment's credit
   back without guessing); applying through a payment method of its own (refused: every payment report would grow a case).
+- [2026-10-02 03:40] ASSUMED (review): **a paid invoice is credited (row 128, second slice)**, as the 2026-09-25 12:45 ruling says. A
+  credit note now takes at most what its invoice invoiced to be paid (total less withholding) less its earlier credit
+  notes, whatever was paid, where it took at most what was still due. `Invoice::creditExcess` names the part of the
+  credit beyond what is still due: money already paid, which is the customer's again. Issuing such a credit note needs
+  `?excessTo=balance|refund` on `POST .../invoices/{id}/issue` (422 on `excessTo` without it, or with another word, and
+  the refusal leaves the draft and its number untouched); the credit note's lines stay the issuer's to edit, so a part
+  is credited by editing the draft first. `balance` writes a `credited` entry of the excess to the customer's credit
+  entries; `refund` writes the same `credited` entry and a `refunded` entry of the same amount against it, so the
+  balance stays as it was and the ledger still says where the money went. The invoice's amount due is floored at zero
+  (its CHECK constraint says so too) and it reads `paid`; `amountCredited` keeps the whole credit. The statement gains a
+  line kind `credit_transfer`, a debit of the excess on the day of the credit note, so its closing balance stays the sum
+  of what the invoices have due, the credit balance being shown apart. The audit entry `invoice.credited` carries
+  `excess` and `excessTo`. The credit note's screen asks which when issuing is refused for it, then issues again. Known
+  limit: deleting the payment of an invoice whose excess already moved leaves the entries in place, so the credit
+  balance then holds money the invoice no longer shows as paid; a later slice may refuse that deletion. Not in this
+  slice: the write-off of a short payment, still blocked on its legal basis (UNCERTIFIED — LEGAL).
+  Alternatives: a negative payment as the refund (refused: every payment list, report and the delete action would grow
+  a case, for the same trace); deciding the destination at the credit note's creation (refused: the excess depends on
+  the payments at the moment of issue, which can change in between).
 
 ## 8. Status
 

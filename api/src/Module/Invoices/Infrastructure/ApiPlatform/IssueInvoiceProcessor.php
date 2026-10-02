@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Module\Invoices\Application\CreditExcessTo;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceNumberTaken;
 use App\Module\Invoices\Application\InvoiceTotals;
@@ -22,6 +23,7 @@ use App\Tenancy\Application\Numbering\NoNumberingSeries;
 use App\Tenancy\Domain\InvalidNumbering;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
@@ -42,8 +44,15 @@ final readonly class IssueInvoiceProcessor implements ProcessorInterface
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::ISSUE);
 
+        $request = $context['request'] ?? null;
+        $asked = $request instanceof Request ? $request->query->get('excessTo') : null;
+        $excessTo = \is_string($asked) ? CreditExcessTo::tryFrom($asked) : null;
+        if (null !== $asked && null === $excessTo) {
+            throw new UnprocessableEntityHttpException('excessTo: One of balance or refund.');
+        }
+
         try {
-            $invoice = $this->workflow->issue($company, CompanyPath::identifier($uriVariables, 'invoiceId'), $this->guard->account()->getId());
+            $invoice = $this->workflow->issue($company, CompanyPath::identifier($uriVariables, 'invoiceId'), $this->guard->account()->getId(), $excessTo);
         } catch (InvoiceNotFound $absent) {
             throw new NotFoundHttpException('No such invoice.', $absent);
         } catch (InvoiceNotDraft|NoNumberingSeries|InvalidNumbering|InvoiceNumberTaken $conflict) {
