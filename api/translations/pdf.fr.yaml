@@ -47,7 +47,7 @@ totals:
     total_net: 'Total HT après remise'
     withheld: 'Retenue à la source'
     amount_due: 'Net à payer'
-    in_words: 'Montant en lettres :'
+    in_words: 'Total TTC en lettres :'
     subtotal: 'Total HT'
     total_tax: 'Total des taxes'
     total: 'Total TTC'

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Shared\Infrastructure;
 
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * A printed amount carries its sign once. A template that writes a minus sign before a value prints two on a credit
@@ -46,6 +47,24 @@ final class PdfTemplateSignsTest extends TestCase
             self::assertStringContainsString("date_pattern(page.dateFormat, 'format.date'|trans({}, t, locale))", $source, basename($template));
         }
         self::assertGreaterThanOrEqual(20, $figures, 'both layouts (25 figures on 2026-09-26)\' figures are found, so an empty set cannot pass');
+    }
+
+    /**
+     * Written out, the amount is the invoice's total with its taxes, while the bold last row is what remains to pay after
+     * a withholding: the sentence names which one it spells, or a reader takes the two for a disagreement.
+     */
+    public function testTheAmountInWordsNamesTheTotalItSpells(): void
+    {
+        $dir = \dirname(__DIR__, 4).'/translations';
+        foreach (['fr' => 'Total TTC', 'en' => 'Total incl. tax'] as $language => $total) {
+            $messages = Yaml::parseFile($dir.'/pdf.'.$language.'.yaml');
+            self::assertIsArray($messages);
+            self::assertIsArray($messages['totals'] ?? null);
+            $label = $messages['totals']['in_words'] ?? null;
+            self::assertIsString($label);
+            self::assertStringContainsString($total, $label, 'the '.$language.' sentence says which total it writes out');
+            self::assertSame($total, $messages['totals']['total'] ?? null, 'and that is the name the totals table gives that row');
+        }
     }
 
     public function testTheInvoiceDeductsItsDiscountAndItsWithholdingsThroughTheFilter(): void
