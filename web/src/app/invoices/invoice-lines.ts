@@ -8,6 +8,7 @@ import {
   inject,
   input,
   signal,
+  untracked,
 } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -105,6 +106,15 @@ export class InvoiceLines {
   );
 
   constructor() {
+    // Another customer may pay another price: the lines picked on this screen start again from their lists.
+    let seen: string | null | undefined;
+    effect(() => {
+      const id = this.customer()?.id ?? null;
+      const changed = seen !== undefined && seen !== id;
+      seen = id;
+      if (changed)
+        untracked(() => this.lines().controls.forEach((line) => void this.reprice(line)));
+    });
     effect((onCleanup) => {
       const subscription = this.lines().events.subscribe(() =>
         this.revision.update((revision) => revision + 1),

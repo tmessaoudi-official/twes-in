@@ -504,6 +504,24 @@ describe('InvoicePage', () => {
       expect(q('line-0-price-list')?.textContent).toContain('invoices.lines.price_list');
     });
 
+    it('prices the lines again for another customer, who may have another list', async () => {
+      modulesOn.add('price_lists');
+      facade.productPrice
+        .mockResolvedValueOnce({ unitPriceNet: '1700.0000', priceListName: 'Gros' })
+        .mockResolvedValueOnce({ unitPriceNet: '1800.0000', priceListName: null });
+      await open(undefined);
+      await pick('invoice-customer', 'CLI-2 · Méditerranée');
+      await pick('line-0-product', 'ART-1 · Conception');
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1700,000');
+
+      await pick('invoice-customer', 'CLI-1 · Carthage');
+      await settle();
+
+      expect(facade.productPrice).toHaveBeenLastCalledWith('c1', 'p1', 'k1', '1');
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1800,000');
+      expect(q('line-0-price-list')).toBeNull();
+    });
+
     it('asks again for the new quantity, whose break may price it lower', async () => {
       modulesOn.add('price_lists');
       facade.productPrice
