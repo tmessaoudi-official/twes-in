@@ -1500,7 +1500,8 @@
       "price": "Net unit price",
       "costPrice": "Cost price",
       "description": "Description",
-      "tracking": "Stock tracking"
+      "tracking": "Stock tracking",
+      "substitutionGroup": "Substitution group"
     },
     "form": {
       "no_category": "No category",
@@ -1509,7 +1510,8 @@
       "price_hint": "In the company's currency, with up to four decimals.",
       "cost_hint": "What one unit costs you; never printed.",
       "description_hint": "Offered as the text of a new document line.",
-      "tracking_hint": "Chosen before the first stock movement; a service is not tracked."
+      "tracking_hint": "Chosen before the first stock movement; a service is not tracked.",
+      "substitution_group_hint": "Products sharing this name can stand in for one another when one is out of stock. Case is not told apart."
     },
     "errors": {
       "network": "The server could not be reached.",
@@ -1651,6 +1653,13 @@
       "print": "Print",
       "no_code": "This product answers to no code of its own: give it a unit or internal code to print its labels.",
       "open": "Print labels"
+    },
+    "substitutes": {
+      "title": "Substitutes",
+      "intro": "Other active products of the group “{{group}}”.",
+      "ungrouped": "This product has no substitution group: name one in its form to list the products that can replace it.",
+      "none": "No other active product in this group.",
+      "on_hand": "{{quantity}} on hand"
     }
   },
   "inventory": {

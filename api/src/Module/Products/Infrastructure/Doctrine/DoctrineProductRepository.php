@@ -41,6 +41,34 @@ final readonly class DoctrineProductRepository implements ProductRepository
     {
     }
 
+    public function substitutesOf(Product $product): array
+    {
+        $group = $product->getDetails()->substitutionGroup;
+        if (null === $group) {
+            return [];
+        }
+        $found = $this->entityManager->createQueryBuilder()
+            ->select('p')->from(Product::class, 'p')
+            ->where('p.company = :company')->setParameter('company', $product->getCompany()->getId(), 'uuid')
+            ->andWhere('LOWER(p.substitutionGroup) = :group')->setParameter('group', mb_strtolower($group))
+            ->andWhere('p.isActive = true')
+            ->andWhere('p.id <> :self')->setParameter('self', $product->getId(), 'uuid')
+            ->orderBy('p.reference')
+            ->getQuery()->getResult();
+
+        return array_values(array_filter(\is_array($found) ? $found : [], static fn (mixed $each): bool => $each instanceof Product));
+    }
+
+    public function substitutionGroups(Uuid $companyId): array
+    {
+        $rows = $this->entityManager->getConnection()->fetchAllAssociative(
+            'SELECT MIN(substitution_group COLLATE "C") AS name, COUNT(*) AS products FROM product WHERE company_id = :company AND substitution_group IS NOT NULL GROUP BY lower(substitution_group) ORDER BY lower(substitution_group)',
+            ['company' => $companyId->toRfc4122()],
+        );
+
+        return array_map(static fn (array $row): array => ['name' => \is_string($row['name']) ? $row['name'] : '', 'products' => is_numeric($row['products']) ? (int) $row['products'] : 0], $rows);
+    }
+
     public function ofCompany(Uuid $companyId): array
     {
         return $this->entityManager->getRepository(Product::class)->findBy(['company' => $companyId], ['reference' => 'ASC']);

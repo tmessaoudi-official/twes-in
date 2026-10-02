@@ -37,6 +37,7 @@ const input: ProductInput = {
   isActive: true,
   customFields: {},
   tracking: 'none',
+  substitutionGroup: null,
 };
 const laptop: ProductRow = { ...input, id: 'p1', unitPriceNet: '1250.0000', barcodes: [] };
 const hardware: ProductCategoryRow = {

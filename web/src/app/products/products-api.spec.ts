@@ -29,6 +29,7 @@ const laptop: ProductInput = {
   isActive: true,
   customFields: { warranty: 24 },
   tracking: 'none',
+  substitutionGroup: null,
 };
 
 describe('ProductsApi', () => {
@@ -44,6 +45,38 @@ describe('ProductsApi', () => {
   });
 
   afterEach(() => http.verify());
+
+  it('reads the substitutes of a product and the stock on hand of products, listing every id asked for', async () => {
+    const read = api.substitutes('c1', 'p1');
+    http
+      .expectOne('/api/companies/c1/products/p1/substitutes')
+      .flush([
+        { id: 'p2', reference: 'ART-002', name: 'Souris', isActive: true, unitPriceNet: '10.0000' },
+      ]);
+    expect(await read).toEqual([
+      {
+        id: 'p2',
+        reference: 'ART-002',
+        name: 'Souris',
+        isActive: true,
+        unitPriceNet: '10.0000',
+        onHand: null,
+      },
+    ]);
+
+    const totals = api.stockTotals('c1', ['p2', 'p3']);
+    http
+      .expectOne((request) => request.url === '/api/companies/c1/stock-totals')
+      .flush([
+        { productId: 'p2', quantity: '7.000' },
+        { productId: 'p3', quantity: '0.000' },
+      ]);
+    expect([...(await totals)]).toEqual([
+      ['p2', '7.000'],
+      ['p3', '0.000'],
+    ]);
+    expect((await api.stockTotals('c1', [])).size).toBe(0);
+  });
 
   // docs/SPEC.md § 7, 2026-09-24 11:40.
   it('reads, sets and clears a reorder point per establishment', async () => {
@@ -134,6 +167,7 @@ describe('ProductsApi', () => {
       isActive: false,
       customFields: {},
       tracking: 'none',
+      substitutionGroup: null,
     });
   });
 

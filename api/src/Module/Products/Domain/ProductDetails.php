@@ -19,6 +19,7 @@ final readonly class ProductDetails
 {
     public const int NAME_MAX = 200;
     public const int DESCRIPTION_MAX = 5000;
+    public const int GROUP_MAX = 80;
     public const int PRICE_DECIMALS = 4;
     private const string PRICE = '/^(0|[1-9][0-9]{0,9})(\.[0-9]{1,4})?$/';
 
@@ -26,6 +27,8 @@ final readonly class ProductDetails
     public ?string $description;
     public string $unitPriceNet;
     public ?string $costPrice;
+    /** The name of the group of products that replace one another, which the products themselves carry; null for none. */
+    public ?string $substitutionGroup;
 
     /** @throws InvalidProduct */
     public function __construct(
@@ -34,6 +37,7 @@ final readonly class ProductDetails
         public ProductKind $kind,
         string $unitPriceNet,
         ?string $costPrice = null,
+        ?string $substitutionGroup = null,
     ) {
         $name = trim($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
@@ -48,12 +52,17 @@ final readonly class ProductDetails
         $this->unitPriceNet = self::price('unitPriceNet', $unitPriceNet);
         $costPrice = trim($costPrice ?? '');
         $this->costPrice = '' === $costPrice ? null : self::price('costPrice', $costPrice);
+        $group = trim($substitutionGroup ?? '');
+        if (mb_strlen($group) > self::GROUP_MAX) {
+            throw new InvalidProduct('substitutionGroup', \sprintf('A substitution group is named in at most %d characters.', self::GROUP_MAX));
+        }
+        $this->substitutionGroup = '' === $group ? null : $group;
     }
 
     /** The same product at another cost: what a writer who may not read costs sends is given the stored one. */
     public function withCostPrice(?string $costPrice): self
     {
-        return new self($this->name, $this->description, $this->kind, $this->unitPriceNet, $costPrice);
+        return new self($this->name, $this->description, $this->kind, $this->unitPriceNet, $costPrice, $this->substitutionGroup);
     }
 
     /** @return list<string> the fields whose values differ from the other's, in the order a form shows them */
@@ -74,6 +83,7 @@ final readonly class ProductDetails
             'kind' => $this->kind->value,
             'unitPriceNet' => $this->unitPriceNet,
             'costPrice' => $this->costPrice,
+            'substitutionGroup' => $this->substitutionGroup,
         ];
     }
 

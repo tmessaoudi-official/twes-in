@@ -92,6 +92,22 @@ final class InMemoryStockMovements implements StockMovementRepository
         return array_map(static fn (string $key): LotOnHand => new LotOnHand($lots[$key], $sums[$key]->value), array_keys($sums));
     }
 
+    public function totalsOf(Uuid $companyId, array $productIds): array
+    {
+        $totals = [];
+        foreach ($productIds as $id) {
+            $totals[$id->toRfc4122()] = new Number('0.000');
+        }
+        foreach ($this->movements as $movement) {
+            $key = $movement->getProduct()->getId()->toRfc4122();
+            if ($movement->getCompany()->getId()->equals($companyId) && isset($totals[$key])) {
+                $totals[$key] = $totals[$key]->add($movement->getQuantity());
+            }
+        }
+
+        return array_map(static fn (Number $total): string => $total->value, $totals);
+    }
+
     public function levels(Uuid $companyId): array
     {
         $sums = [];

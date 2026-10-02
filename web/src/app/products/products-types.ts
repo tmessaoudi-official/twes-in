@@ -54,7 +54,23 @@ export interface ProductRow {
   customFields: Record<string, CustomFieldValue>;
   /** How its stock is told apart; the API keeps it once stock has moved (docs/SPEC.md § 7, 2026-09-23 02:40). */
   tracking: ProductTracking;
+  /** The name it shares with the products that can stand in for it; null when it has none. */
+  substitutionGroup: string | null;
 }
+
+/** A product that can stand in for another, with what is on hand of it when the person may read stock. */
+export interface ProductSubstituteRow {
+  id: string;
+  reference: string;
+  name: string;
+  isActive: boolean;
+  unitPriceNet: string;
+  /** Wherever it is, "12.000"; null when stock cannot be read here. */
+  onHand: string | null;
+}
+
+/** The longest a substitution group's name may be, as the API keeps it. */
+export const SUBSTITUTION_GROUP_MAX = 80;
 
 /** Not at all, by lot, or one piece at a time by its serial number (docs/SPEC.md § 7, 2026-09-22 11:10). */
 export type ProductTracking = 'none' | 'lot' | 'serial';

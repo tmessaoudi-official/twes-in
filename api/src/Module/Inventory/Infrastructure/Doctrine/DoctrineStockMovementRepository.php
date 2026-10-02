@@ -21,6 +21,7 @@ use App\Shared\Domain\PageRequest;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use BcMath\Number;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\Pagination\Paginator;
@@ -155,6 +156,34 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         }
 
         return $lots;
+    }
+
+    public function totalsOf(Uuid $companyId, array $productIds): array
+    {
+        $totals = [];
+        foreach ($productIds as $id) {
+            $totals[$id->toRfc4122()] = '0.000';
+        }
+        if ([] === $productIds) {
+            return $totals;
+        }
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('IDENTITY(m.product) AS product', 'SUM(m.quantity) AS quantity')
+            ->from(StockMovement::class, 'm')
+            ->where('m.company = :company')
+            ->andWhere('m.product IN (:products)')
+            ->groupBy('m.product')
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('products', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $productIds), ArrayParameterType::STRING)
+            ->getQuery()
+            ->getArrayResult();
+        foreach ($rows as $row) {
+            if (\is_array($row) && \is_string($row['product'] ?? null)) {
+                $totals[Uuid::fromString($row['product'])->toRfc4122()] = self::decimal($row['quantity'] ?? 0);
+            }
+        }
+
+        return $totals;
     }
 
     public function levels(Uuid $companyId): array

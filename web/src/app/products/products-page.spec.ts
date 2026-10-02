@@ -59,6 +59,7 @@ const laptop: ProductRow = {
   isActive: true,
   customFields: {},
   tracking: 'none',
+  substitutionGroup: null,
 };
 
 describe('ProductsPage', () => {

@@ -1,0 +1,43 @@
+<section class="flex flex-col gap-4" data-testid="product-substitutes">
+  <h3 class="text-base font-medium">{{ 'products.substitutes.title' | translate }}</h3>
+
+  @if (error(); as code) {
+    <p role="alert" data-testid="product-substitutes-error" class="text-error">
+      {{ 'products.errors.' + code | translate }}
+    </p>
+  }
+
+  @if (!grouped()) {
+    <p class="text-sm opacity-80" data-testid="product-substitutes-ungrouped">
+      {{ 'products.substitutes.ungrouped' | translate }}
+    </p>
+  } @else {
+    <p class="text-sm opacity-80">
+      {{ 'products.substitutes.intro' | translate: { group: group() } }}
+    </p>
+    <ul class="flex flex-col gap-2" data-testid="product-substitutes-list">
+      @for (row of rows(); track row.id) {
+        <li
+          class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
+          [attr.data-testid]="'product-substitute-' + row.reference"
+        >
+          <a class="flex min-w-40 flex-col underline" [routerLink]="['/products', row.id]">
+            <span class="font-medium">{{ row.name }}</span>
+            <span class="text-sm opacity-80">{{ row.reference }}</span>
+          </a>
+          @if (stockOf(row); as stock) {
+            <span [attr.data-testid]="'product-substitute-stock-' + row.reference">
+              {{ 'products.substitutes.on_hand' | translate: { quantity: stock } }}
+            </span>
+          }
+        </li>
+      } @empty {
+        @if (!busy()) {
+          <li class="text-sm opacity-80" data-testid="product-substitutes-none">
+            {{ 'products.substitutes.none' | translate }}
+          </li>
+        }
+      }
+    </ul>
+  }
+</section>

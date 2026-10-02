@@ -24,6 +24,31 @@ final class InMemoryProducts implements ProductRepository
     /** @var list<Product> */
     public array $products = [];
 
+    public function substitutesOf(Product $product): array
+    {
+        $group = $product->getDetails()->substitutionGroup;
+        if (null === $group) {
+            return [];
+        }
+
+        return array_values(array_filter($this->ofCompany($product->getCompany()->getId()), static fn (Product $p) => $p->isActive() && !$p->getId()->equals($product->getId()) && mb_strtolower($group) === mb_strtolower($p->getDetails()->substitutionGroup ?? '')));
+    }
+
+    public function substitutionGroups(Uuid $companyId): array
+    {
+        $groups = [];
+        foreach ($this->ofCompany($companyId) as $product) {
+            $name = $product->getDetails()->substitutionGroup;
+            if (null !== $name) {
+                $key = mb_strtolower($name);
+                $groups[$key] = ['name' => $groups[$key]['name'] ?? $name, 'products' => ($groups[$key]['products'] ?? 0) + 1];
+            }
+        }
+        ksort($groups);
+
+        return array_values($groups);
+    }
+
     public function ofCompany(Uuid $companyId): array
     {
         $mine = array_values(array_filter($this->products, static fn (Product $p) => $p->getCompany()->getId()->equals($companyId)));

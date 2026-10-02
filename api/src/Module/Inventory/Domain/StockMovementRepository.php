@@ -45,6 +45,15 @@ interface StockMovementRepository
     /** @return list<LotOnHand> each lot of the product something moved at the location, with its stock there */
     public function lotsAt(Uuid $productId, Uuid $locationId): array;
 
+    /**
+     * What is on hand of each of the products, every location and lot together; a product nothing moved for is "0.000".
+     *
+     * @param list<Uuid> $productIds
+     *
+     * @return array<string, numeric-string> by the product's id
+     */
+    public function totalsOf(Uuid $companyId, array $productIds): array;
+
     /** @return list<StockLevel> every product, location and lot of the company something moved in */
     public function levels(Uuid $companyId): array;
 

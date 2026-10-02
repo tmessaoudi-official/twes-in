@@ -21,6 +21,7 @@ import { withCustomColumns } from '../shared/list/list-view';
 import {
   PRODUCT_KINDS,
   PRODUCT_TRACKINGS,
+  SUBSTITUTION_GROUP_MAX,
   type ProductCategoryInput,
   type ProductCategoryRow,
   type ProductInput,
@@ -299,6 +300,13 @@ export function productForm(
           span: 2,
           hint: 'products.form.description_hint',
         },
+        {
+          id: 'substitutionGroup',
+          label: `${FIELDS}.substitutionGroup`,
+          kind: 'text',
+          maxLength: SUBSTITUTION_GROUP_MAX,
+          hint: 'products.form.substitution_group_hint',
+        },
       ]),
     ],
   };
@@ -334,6 +342,7 @@ export function productValues(
     costPrice:
       row?.costPrice === null || row === null ? '' : atScale(row.costPrice, options.currencyScale),
     description: row?.description ?? '',
+    substitutionGroup: row?.substitutionGroup ?? '',
     tracking: row?.tracking ?? 'none',
   };
   for (const tax of options.taxes) {
@@ -359,6 +368,7 @@ export function productInput(
     reference: String(values['reference'] ?? '').trim(),
     name: String(values['name'] ?? '').trim(),
     description: text(values['description']),
+    substitutionGroup: text(values['substitutionGroup']),
     kind,
     unitId: String(values['unitId'] ?? ''),
     unitPriceNet: String(values['unitPriceNet'] ?? '').trim(),

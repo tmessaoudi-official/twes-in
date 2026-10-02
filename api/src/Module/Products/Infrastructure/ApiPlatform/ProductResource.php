@@ -143,6 +143,14 @@ final class ProductResource
     public ?string $categoryId = null;
 
     /**
+     * The group of products that replace one another, as its name; the other members are this one's substitutes
+     * (GET .../substitutes). Null for none.
+     */
+    #[Assert\Length(max: ProductDetails::GROUP_MAX, groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $substitutionGroup = null;
+
+    /**
      * The codes it answers to (docs/SPEC.md § 7, 2026-09-22 11:05), written on their own: PUT .../barcodes. A
      * supplier's codes are left out for a caller without product.cost.read.
      *
@@ -180,6 +188,7 @@ final class ProductResource
         $resource->unitPriceNet = $details->unitPriceNet;
         $resource->costPrice = $withCosts ? $details->costPrice : null;
         $resource->categoryId = $product->getCategory()?->getId()->toRfc4122();
+        $resource->substitutionGroup = $details->substitutionGroup;
         $resource->barcodes = ProductBarcodeRow::listOf($product, $withCosts);
         $resource->defaultTaxComponentIds = $product->getDefaultTaxComponentIds();
         $resource->customFields = $product->getCustomFields();
@@ -193,7 +202,7 @@ final class ProductResource
     {
         return new ProductInput(
             $this->reference,
-            new ProductDetails($this->name, $this->description, ProductKind::from($this->kind), $this->unitPriceNet, $seesCosts ? $this->costPrice : null),
+            new ProductDetails($this->name, $this->description, ProductKind::from($this->kind), $this->unitPriceNet, $seesCosts ? $this->costPrice : null, $this->substitutionGroup),
             Uuid::fromString($this->unitId),
             null === $this->categoryId ? null : Uuid::fromString($this->categoryId),
             array_map(static fn (string $id): Uuid => Uuid::fromString($id), $this->defaultTaxComponentIds),

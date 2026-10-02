@@ -19,6 +19,8 @@ import type {
   ProductProductRead,
   ProductProductWrite,
   ProductScanProductScanRead,
+  ProductSubstituteProductSubstituteRead,
+  StockTotalStockTotalRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
 import {
@@ -32,6 +34,7 @@ import {
   type ProductCategoryRow,
   type ProductHomeRow,
   type ProductReorderPointRow,
+  type ProductSubstituteRow,
   type ProductInput,
   type ProductOptions,
   type ProductRow,
@@ -318,6 +321,44 @@ export class ProductsApi {
     );
   }
 
+  /** The other active products of the product's substitution group, by reference; empty when it has no group. */
+  async substitutes(companyId: string, productId: string): Promise<ProductSubstituteRow[]> {
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<ProductSubstituteProductSubstituteRead[]>(
+            `${path(companyId, 'products', productId)}/substitutes`,
+          ),
+        )
+      ).map((raw) => ({
+        id: raw.id ?? '',
+        reference: raw.reference ?? '',
+        name: raw.name ?? '',
+        isActive: raw.isActive ?? true,
+        unitPriceNet: raw.unitPriceNet ?? '',
+        onHand: null,
+      })),
+    );
+  }
+
+  /** What is on hand of each product asked for, by its id, every location together. */
+  async stockTotals(
+    companyId: string,
+    productIds: readonly string[],
+  ): Promise<Map<string, string>> {
+    if (productIds.length === 0) return new Map();
+    let params = new HttpParams();
+    for (const id of productIds) params = params.append('productId[]', id);
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<StockTotalStockTotalRead[]>(path(companyId, 'stock-totals'), {
+          params,
+        }),
+      );
+      return new Map(rows.map((row) => [row.productId ?? '', row.quantity ?? '0.000']));
+    });
+  }
+
   /** A 409 means what the endpoint makes it mean: a reference or a name another row has, or a category in use. */
   private async guard<T>(
     call: () => Promise<T>,
@@ -408,6 +449,7 @@ function toProduct(raw: ProductProductRead | ProductJsonldProductRead): ProductR
     isActive: raw.isActive ?? true,
     customFields: { ...(raw.customFields ?? {}) },
     tracking: PRODUCT_TRACKINGS.find((tracking) => tracking === raw.tracking) ?? 'none',
+    substitutionGroup: raw.substitutionGroup ?? null,
   };
 }
 

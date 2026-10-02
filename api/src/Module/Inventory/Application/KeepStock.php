@@ -159,6 +159,18 @@ final readonly class KeepStock
         });
     }
 
+    /**
+     * What is on hand of each product asked for, wherever it is; products of another company are never counted.
+     *
+     * @param list<Uuid> $productIds
+     *
+     * @return array<string, numeric-string> by the product's id
+     */
+    public function totalsOf(Company $company, array $productIds): array
+    {
+        return $this->movements->totalsOf($company->getId(), $productIds);
+    }
+
     /** @return list<StockLevel> */
     public function levels(Company $company): array
     {

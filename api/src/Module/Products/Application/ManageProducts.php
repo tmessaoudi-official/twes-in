@@ -78,6 +78,24 @@ final readonly class ManageProducts
         return $this->products->ofCompany($company->getId());
     }
 
+    /**
+     * The other active products that replace this one.
+     *
+     * @return list<Product>
+     *
+     * @throws ProductNotFound
+     */
+    public function substitutesOf(Company $company, Uuid $id): array
+    {
+        return $this->products->substitutesOf($this->get($company, $id));
+    }
+
+    /** @return list<array{name: string, products: int}> */
+    public function substitutionGroups(Company $company): array
+    {
+        return $this->products->substitutionGroups($company->getId());
+    }
+
     /** @throws ProductNotFound */
     public function get(Company $company, Uuid $id): Product
     {

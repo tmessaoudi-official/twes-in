@@ -28,6 +28,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_product_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_product_unit', columns: ['unit_id'])]
 #[ORM\Index(name: 'idx_product_category', columns: ['category_id'])]
+#[ORM\Index(name: 'idx_product_substitution_group', columns: ['company_id', 'substitution_group'])]
 #[ORM\UniqueConstraint(name: 'uniq_product_company_reference', columns: ['company_id', 'reference'])]
 class Product implements CompanyOwned
 {
@@ -52,6 +53,10 @@ class Product implements CompanyOwned
 
     #[ORM\Column(length: 16, enumType: ProductKind::class)]
     private ProductKind $kind;
+
+    /** The group of products that replace this one, as the company names it; the products carry it, nothing else holds it. */
+    #[ORM\Column(length: ProductDetails::GROUP_MAX, nullable: true)]
+    private ?string $substitutionGroup = null;
 
     /** How its stock is told apart; `none` until someone says otherwise, and only before its first movement. */
     #[ORM\Column(length: 8, enumType: ProductTracking::class, options: ['default' => 'none'])]
@@ -285,7 +290,7 @@ class Product implements CompanyOwned
 
     public function getDetails(): ProductDetails
     {
-        return new ProductDetails($this->name, $this->description, $this->kind, $this->unitPriceNet, $this->costPrice);
+        return new ProductDetails($this->name, $this->description, $this->kind, $this->unitPriceNet, $this->costPrice, $this->substitutionGroup);
     }
 
     private function apply(ProductDetails $details): void
@@ -295,6 +300,7 @@ class Product implements CompanyOwned
         $this->kind = $details->kind;
         $this->unitPriceNet = $details->unitPriceNet;
         $this->costPrice = $details->costPrice;
+        $this->substitutionGroup = $details->substitutionGroup;
     }
 
     private function unitOfThisCompany(Unit $unit): Unit

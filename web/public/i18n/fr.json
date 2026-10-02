@@ -1500,7 +1500,8 @@
       "price": "Prix unitaire HT",
       "costPrice": "Prix de revient",
       "description": "Description",
-      "tracking": "Suivi du stock"
+      "tracking": "Suivi du stock",
+      "substitutionGroup": "Groupe de substitution"
     },
     "form": {
       "no_category": "Aucune catégorie",
@@ -1509,7 +1510,8 @@
       "price_hint": "Dans la devise de l’entreprise, avec quatre décimales au plus.",
       "cost_hint": "Ce qu’une unité vous coûte ; jamais imprimé.",
       "description_hint": "Proposée comme texte d’une nouvelle ligne de document.",
-      "tracking_hint": "Choisi avant le premier mouvement de stock ; un service n'est pas suivi."
+      "tracking_hint": "Choisi avant le premier mouvement de stock ; un service n'est pas suivi.",
+      "substitution_group_hint": "Les produits qui portent ce nom peuvent se remplacer quand l'un est en rupture. La casse ne les distingue pas."
     },
     "errors": {
       "network": "Le serveur est injoignable.",
@@ -1651,6 +1653,13 @@
       "print": "Imprimer",
       "no_code": "Cet article ne répond à aucun code qui soit le sien : ajoutez-lui un code unitaire ou interne pour imprimer ses étiquettes.",
       "open": "Imprimer des étiquettes"
+    },
+    "substitutes": {
+      "title": "Substituts",
+      "intro": "Les autres produits actifs du groupe « {{group}} ».",
+      "ungrouped": "Ce produit n'a pas de groupe de substitution : nommez-en un dans sa fiche pour lister les produits qui peuvent le remplacer.",
+      "none": "Aucun autre produit actif dans ce groupe.",
+      "on_hand": "{{quantity}} en stock"
     }
   },
   "inventory": {

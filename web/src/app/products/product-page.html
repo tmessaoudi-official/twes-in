@@ -66,6 +66,16 @@
             </mat-card>
           }
         }
+        @if (current(); as product) {
+          <mat-card>
+            <mat-card-content>
+              <app-product-substitutes
+                [productId]="product.id"
+                [group]="product.substitutionGroup"
+              />
+            </mat-card-content>
+          </mat-card>
+        }
       </div>
     </mat-tab>
     @if (current(); as product) {

@@ -64,6 +64,7 @@ const laptop: ProductRow = {
   isActive: true,
   customFields: { warranty: 24 },
   tracking: 'lot',
+  substitutionGroup: null,
 };
 const warranty: CustomFieldDefinition = {
   id: 'f1',
@@ -268,6 +269,7 @@ describe('product forms', () => {
       isActive: true,
       customFields: { warranty: 24 },
       tracking: 'none',
+      substitutionGroup: null,
     });
   });
 
@@ -290,6 +292,24 @@ describe('product forms', () => {
     expect(productInput({ ...values, tracking: 'weird' }, options, [warranty]).tracking).toBe(
       'none',
     );
+  });
+
+  it('asks a substitution group by name, trimmed, an empty one as none, and fills it back', () => {
+    const field = productForm(options, [laptops, hardware])
+      .sections.flatMap((section) => section.fields)
+      .find((each) => each.id === 'substitutionGroup');
+    expect(field?.kind).toBe('text');
+    expect(field?.maxLength).toBe(80);
+
+    const values = productValues({ ...laptop, substitutionGroup: 'Portables' }, options);
+    expect(values['substitutionGroup']).toBe('Portables');
+    expect(
+      productInput({ ...values, substitutionGroup: '  Ultra  ' }, options).substitutionGroup,
+    ).toBe('Ultra');
+    expect(
+      productInput({ ...values, substitutionGroup: '   ' }, options).substitutionGroup,
+    ).toBeNull();
+    expect(productValues(null, options)['substitutionGroup']).toBe('');
   });
 
   it('never offers a category as a parent of itself or of its own subcategories', () => {

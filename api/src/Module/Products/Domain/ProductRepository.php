@@ -25,6 +25,17 @@ interface ProductRepository
     /** @return list<Product> one company's products, by reference */
     public function ofCompany(Uuid $companyId): array;
 
+    /**
+     * The other ACTIVE products of the company in the same substitution group, by reference; the group's name is matched
+     * whatever its case. None when the product is in no group.
+     *
+     * @return list<Product>
+     */
+    public function substitutesOf(Product $product): array;
+
+    /** @return list<array{name: string, products: int}> the company's groups by name, each with how many products carry it */
+    public function substitutionGroups(Uuid $companyId): array;
+
     /** @return Page<Product> one page of the company's products that the search finds, in its order */
     public function search(Uuid $companyId, ProductSearch $search, PageRequest $page): Page;
 
