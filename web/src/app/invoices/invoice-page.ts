@@ -388,6 +388,15 @@ export class InvoicePage {
         shown: this.canRecordPayment(),
       },
       {
+        id: 'apply-credit',
+        label: 'invoices.actions.apply_credit',
+        icon: 'savings',
+        rare: true,
+        disabled: busy,
+        run: () => void this.applyCredit(),
+        shown: this.canApplyCredit(),
+      },
+      {
         id: 'pdf',
         label:
           this.current()?.status === 'draft'
@@ -470,6 +479,11 @@ export class InvoicePage {
     () => this.mayWrite() && this.current() !== null && this.current() !== undefined,
   );
   protected readonly canRecordPayment = computed(() => this.owes(this.current()));
+  /** What the document's customer has to their credit, read each time the document is; "0" until then. */
+  protected readonly creditBalance = signal('0');
+  protected readonly canApplyCredit = computed(
+    () => this.canRecordPayment() && this.mayPay() && !this.isZero(this.creditBalance()),
+  );
 
   /**
    * A scan on a draft puts its product on the lines as a till does (docs/SPEC.md § 7, 2026-09-23 09:30): the same
@@ -538,6 +552,19 @@ export class InvoicePage {
     const scans = inject(ScanBus);
     scans.handle((scan) => this.scanned(scan));
     // What the sale comes to, each time it is read as saved; the display shows it only after a scan of this tab's.
+    effect(() => {
+      const companyId = this.company()?.id;
+      const current = this.current();
+      const mayPay = this.mayPay();
+      untracked(async () => {
+        const owes = current !== undefined && current !== null && this.owes(current);
+        this.creditBalance.set(
+          companyId && owes && mayPay
+            ? await this.facade.customerCredit(companyId, current.customerId)
+            : '0',
+        );
+      });
+    });
     effect(() => {
       const total = this.current()?.total;
       if (total !== undefined) untracked(() => this.display.total(total));
@@ -763,6 +790,16 @@ export class InvoicePage {
       this.dialog.open(PaymentDialog, { data: payment, autoFocus: 'first-tabbable' }).afterClosed(),
     );
     if (values) await this.recordPayment(values);
+  }
+
+  /** Pays as much of the invoice from the customer's credit as it holds and the invoice is due. */
+  protected async applyCredit(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    if (!companyId || id === null || this.busy()) return;
+    if (await this.facade.applyCredit(companyId, id)) {
+      this.feedback.success('invoices.payments.credit_applied');
+    }
   }
 
   protected async recordPayment(values: FormValues): Promise<void> {

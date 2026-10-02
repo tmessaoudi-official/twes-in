@@ -106,7 +106,17 @@ export interface CustomerStatement {
   creditLimit: string;
   /** The closing balance is more than the limit: the API decides, in exact decimals. */
   overCreditLimit: boolean;
+  /** What the customer has to their credit, money received that no invoice took; shown apart from the lines. */
+  creditBalance: string;
   lines: StatementLine[];
+}
+
+/** Money received from a customer that no invoice takes yet. */
+export interface CreditDepositInput {
+  date: string;
+  amount: string;
+  reference: string | null;
+  notes: string | null;
 }
 
 export interface ContactRow {

@@ -21,6 +21,7 @@ import {
   CUSTOMER_KINDS,
   type ContactInput,
   type ContactRow,
+  type CreditDepositInput,
   type CustomerAddress,
   type CustomerGroupInput,
   type CustomerGroupRow,
@@ -581,4 +582,61 @@ function address(values: FormValues, prefix: 'billing' | 'shipping'): CustomerAd
 function text(value: FieldValue | undefined): string | null {
   const trimmed = String(value ?? '').trim();
   return trimmed === '' ? null : trimmed;
+}
+
+const AMOUNT_PATTERN = '(0|[1-9][0-9]{0,11})([.][0-9]{1,3})?';
+
+/** Money received from a customer that no invoice takes yet, kept to their credit. */
+export function creditDepositForm(): FormDescriptor {
+  return {
+    id: 'customer-credit-deposit',
+    sections: [
+      {
+        id: 'deposit',
+        title: 'customers.credit.deposit_title',
+        fields: [
+          { id: 'date', label: 'customers.credit.date', kind: 'date', required: true },
+          {
+            id: 'amount',
+            label: 'customers.credit.amount',
+            kind: 'decimal',
+            required: true,
+            maxLength: 16,
+            pattern: AMOUNT_PATTERN,
+          },
+          {
+            id: 'reference',
+            label: 'customers.credit.reference',
+            kind: 'text',
+            maxLength: 120,
+            hint: 'customers.credit.reference_hint',
+          },
+          {
+            id: 'notes',
+            label: 'customers.credit.notes',
+            kind: 'textarea',
+            maxLength: 2000,
+            span: 2,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+export function creditDepositValues(today: string): FormValues {
+  return { date: today, amount: '', reference: '', notes: '' };
+}
+
+export function creditDepositInput(values: FormValues): CreditDepositInput {
+  const text = (value: FieldValue | undefined): string | null => {
+    const trimmed = String(value ?? '').trim();
+    return trimmed === '' ? null : trimmed;
+  };
+  return {
+    date: String(values['date'] ?? '').trim(),
+    amount: String(values['amount'] ?? '').trim(),
+    reference: text(values['reference']),
+    notes: text(values['notes']),
+  };
 }

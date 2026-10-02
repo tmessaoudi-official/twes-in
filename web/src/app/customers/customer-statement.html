@@ -137,6 +137,27 @@
         </tfoot>
       </table>
     </div>
+    @if (hasCredit()) {
+      <p class="text-sm" data-testid="statement-credit">
+        {{
+          'customers.statement.credit_balance'
+            | translate: { amount: s.creditBalance | amount: s.currencyScale, currency: s.currency }
+        }}
+      </p>
+    }
+    @if (mayDeposit()) {
+      <div>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="deposit()"
+          data-testid="statement-deposit"
+        >
+          <mat-icon aria-hidden="true">savings</mat-icon>
+          {{ 'customers.credit.deposit' | translate }}
+        </button>
+      </div>
+    }
     @if (hasLimit()) {
       <p
         class="text-sm"

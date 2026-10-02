@@ -31,6 +31,7 @@ use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
+use App\Tests\Support\InMemoryCustomerCredits;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryInvoices;
 use App\Tests\Support\InMemoryNumberingSeries;
@@ -66,7 +67,7 @@ final class ManagePaymentsTest extends TestCase
         $this->invoices = new InMemoryInvoices();
         $this->invoices->transactions = $this->transactions;
         $this->audit = new InMemoryAuditTrail($this->transactions);
-        $this->payments = new ManagePayments($this->invoices, $this->transactions, ShippedFiscalPresets::scales(), $this->audit, $this->clock);
+        $this->payments = new ManagePayments($this->invoices, new InMemoryCustomerCredits(), $this->transactions, ShippedFiscalPresets::scales(), $this->audit, $this->clock);
     }
 
     public function testAPaymentIsRecordedOnTheCompanysDayInOneTransactionAndAudited(): void

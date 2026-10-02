@@ -13,6 +13,7 @@ use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Customers\Application\CustomerNotFound;
 use App\Module\Customers\Domain\CustomerRepository;
+use App\Module\Invoices\Domain\CustomerCreditRepository;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -31,6 +32,7 @@ final readonly class StatementOfAccount
         private ClockInterface $clock,
         private CurrencyScales $scales,
         private CustomerCredit $credit,
+        private CustomerCreditRepository $balances,
     ) {
     }
 
@@ -88,6 +90,7 @@ final readonly class StatementOfAccount
             Decimal::format($balance, $scale),
             Decimal::format($limit, $scale),
             $limit->compare(0) > 0 && $balance->compare($limit) > 0,
+            Decimal::format(Decimal::of($this->balances->balance($company->getId(), $customerId)), $scale),
             $lines,
         );
     }

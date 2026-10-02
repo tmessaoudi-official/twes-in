@@ -19,15 +19,17 @@ const statement = (closingBalance: string): CustomerStatement => ({
   closingBalance,
   creditLimit: '0.000',
   overCreditLimit: false,
+  creditBalance: '0.000',
   lines: [],
 });
 
 describe('CustomerStatementFacade', () => {
-  const api = { statement: vi.fn() };
+  const api = { statement: vi.fn(), depositCredit: vi.fn() };
   let facade: CustomerStatementFacade;
 
   beforeEach(() => {
     api.statement.mockReset();
+    api.depositCredit.mockReset();
     TestBed.configureTestingModule({ providers: [{ provide: CustomersApi, useValue: api }] });
     facade = TestBed.inject(CustomerStatementFacade);
   });
@@ -67,5 +69,17 @@ describe('CustomerStatementFacade', () => {
 
     expect(facade.statement()?.closingBalance).toBe('200.000');
     expect(facade.busy()).toBe(false);
+  });
+
+  it('says a deposit was recorded, and why one was not', async () => {
+    const deposit = { date: '2026-10-02', amount: '50', reference: null, notes: null };
+    api.depositCredit.mockResolvedValue(undefined);
+    expect(await facade.deposit('c1', 'k1', deposit)).toBe(true);
+    expect(api.depositCredit).toHaveBeenCalledWith('c1', 'k1', deposit);
+    expect(facade.error()).toBeNull();
+
+    api.depositCredit.mockRejectedValue(new CustomersRefused('invalid'));
+    expect(await facade.deposit('c1', 'k1', deposit)).toBe(false);
+    expect(facade.error()).toBe('invalid');
   });
 });

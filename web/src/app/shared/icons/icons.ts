@@ -95,6 +95,7 @@ export const ICONS = [
   'reviews',
   'room_service',
   'save',
+  'savings',
   'schedule',
   'search',
   'security',

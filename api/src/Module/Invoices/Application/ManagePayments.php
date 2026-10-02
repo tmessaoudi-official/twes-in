@@ -12,6 +12,7 @@ namespace App\Module\Invoices\Application;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\CurrencyScales;
+use App\Module\Invoices\Domain\CustomerCreditRepository;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceRepository;
@@ -26,7 +27,7 @@ use Symfony\Component\Uid\Uuid;
 /**
  * Payments recorded on an issued invoice and deleted from it (docs/SPEC.md § 7, 2026-09-14), each in a transaction that
  * holds the invoice's row: two payments recorded at once never both fit what was due before either. Both are audited
- * on the invoice.
+ * on the invoice. Deleting a payment that applied the customer's credit (ManageCustomerCredit) gives the credit back.
  */
 final readonly class ManagePayments
 {
@@ -35,6 +36,7 @@ final readonly class ManagePayments
 
     public function __construct(
         private InvoiceRepository $invoices,
+        private CustomerCreditRepository $credits,
         private Transactions $transactions,
         private CurrencyScales $scales,
         private AuditTrail $audit,
@@ -72,6 +74,11 @@ final readonly class ManagePayments
             $payment = $invoice->payment($paymentId) ?? throw new PaymentNotFound();
             $invoice->removePayment($payment, $this->clock->now());
             $this->invoices->save($invoice);
+            // A payment made of the customer's credit gives it back when it is deleted.
+            $applied = $this->credits->appliedByPayment($company->getId(), $paymentId);
+            if (null !== $applied) {
+                $this->credits->remove($applied);
+            }
             $this->trail($company, $invoice, self::DELETED, $payment, $actorUserId);
         });
     }

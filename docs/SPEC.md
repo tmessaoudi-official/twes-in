@@ -3903,6 +3903,22 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   the last of it; until then it stays validated or delivered, and cannot be cancelled while an invoice carries part of it. The note
   screen gains « Facturer une partie… », a dialog starting each line at what is left. Credit notes do not give quantities back.
   Alternatives: marking a note invoiced at its first issued invoice (refused: the rest would never be invoiced).
+- [2026-10-02 03:25] ASSUMED (review): **a customer's credit balance (row 128, first slice)**. Money received that no
+  invoice takes is kept per customer as ledger entries (`customer_credit_entry`: a `deposit` adds, an `applied` takes),
+  never as one editable number, so every movement says when, how much, by whom and against which invoice. `POST
+  /api/companies/{id}/customers/{id}/credit-balance` records a deposit (`payment.write`; amount above zero at the currency's
+  scale, a day no later than the company's today) and `GET` reads the balance with its entries (`customer.read` and
+  `invoice.read`). `POST .../invoices/{id}/apply-credit` pays an issued invoice from it: an ordinary payment of method
+  other, reference `credit_balance`, with an `applied` entry for the same amount, both in one transaction under a lock on
+  the customer's balance so two applications cannot spend it twice; the amount is optional and left out means as much as
+  fits, the invoice's due or the whole balance if less (422 when nothing can be applied, or more than either is asked).
+  Deleting that payment gives the credit back. The statement states the balance apart from its lines, because its
+  closing balance stays what the customer's invoices still have due. The customer's Relevé tab offers « Enregistrer un
+  acompte », the invoice's menu « Appliquer le crédit » when the customer has credit and the invoice is due. Not in this
+  slice: a credit note on a paid invoice sending its excess to the balance or a refund, and the write-off of a short
+  payment, which stays blocked on its legal basis (UNCERTIFIED — LEGAL, § 3 and docs/fiscal/TN.md).
+  Alternatives: a single `credit` column on the customer (refused: no history, no way to give a deleted payment's credit
+  back without guessing); applying through a payment method of its own (refused: every payment report would grow a case).
 
 ## 8. Status
 
@@ -4038,7 +4054,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 125 | Configurable keyboard shortcuts (§ 7 2026-09-24 22:51): C, N, E, / and Ctrl K as defaults, changed and restored per person in Mon compte › Préférences | S | done | 42b92ccb | |
 | 126 | Signature, cachet and electronic PDF signature (§ 7 2026-09-24 22:51): research first, postponed | M | deferred | - | |
 | 127 | Insights pushed once (§ 7 2026-09-24 12:10 and 2026-09-25 08:31): a scheduler (Symfony Scheduler worker in compose), a record of what was pushed per subject and bucket, and the pushes through the Inbox | L | todo | - | |
-| 128 | Credit balance, write-off and crediting a paid invoice (§ 7 2026-09-21 17:35, 2026-09-25 12:45): an overpayment's excess moves to the customer's credit balance, applied to a later invoice and shown on the statement; a short-paid invoice closes on a credit note under a per-company tolerance; a credit note on a paid invoice sends what exceeds the due to a refund or to the credit balance | M | todo | - | |
+| 128 | Credit balance, write-off and crediting a paid invoice (§ 7 2026-09-21 17:35, 2026-09-25 12:45): an overpayment's excess moves to the customer's credit balance, applied to a later invoice and shown on the statement; a short-paid invoice closes on a credit note under a per-company tolerance; a credit note on a paid invoice sends what exceeds the due to a refund or to the credit balance | M | doing | - | |
 | 129 | Partial invoicing of delivery notes (§ 7 2026-09-25 12:45): a quantity left to invoice per line, an invoice taking all or part, the note invoiced once nothing is left | M | done | - | |
 | 130 | A date and number format of one's own (§ 7 2026-09-25 12:45): a presentation setting, person then company, defaulting to the language and country, followed by every screen and printed document | M | doing | - | |
 | 131 | What an issued document keeps (§ 7 2026-09-25 16:51, DP-05 / DP-49 / DP-60 / DP-66): name and reference frozen on the line at issue with the « Un brouillon suit les changements de l'article » setting, one typed « issu de » link replacing the separate columns with required steps as a setting, a fiscal code per product carried to the line, custom fields on documents and lines | L | todo | - | |

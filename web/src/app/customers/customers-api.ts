@@ -28,6 +28,7 @@ import {
   type CustomerRow,
   type CustomerSearch,
   type CustomersError,
+  type CreditDepositInput,
   type CustomerStatement,
   type StatementKind,
   type TaxFamily,
@@ -125,6 +126,19 @@ export class CustomersApi {
             { params },
           ),
         ),
+      ),
+    );
+  }
+
+  /** Records money received that no invoice takes; 422 for an amount that is not above zero or a day after today. */
+  async depositCredit(
+    companyId: string,
+    customerId: string,
+    deposit: CreditDepositInput,
+  ): Promise<void> {
+    await this.guard(() =>
+      firstValueFrom(
+        this.http.post(`${path(companyId, 'customers', customerId)}/credit-balance`, deposit),
       ),
     );
   }
@@ -398,6 +412,7 @@ function toStatement(raw: CustomerStatementCustomerStatementRead): CustomerState
     closingBalance: raw.closingBalance ?? '0',
     creditLimit: raw.creditLimit ?? '0',
     overCreditLimit: raw.overCreditLimit ?? false,
+    creditBalance: raw.creditBalance ?? '0',
     lines: (raw.lines ?? []).map((line) => ({
       ...line,
       kind: STATEMENT_KINDS.find((kind) => kind === line.kind) ?? 'invoice',

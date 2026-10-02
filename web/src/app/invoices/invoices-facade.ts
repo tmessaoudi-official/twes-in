@@ -154,6 +154,20 @@ export class InvoicesFacade {
     return this.paymentStep(companyId, id, () => this.api.recordPayment(companyId, id, payment));
   }
 
+  /** What the customer has to their credit; zero when it cannot be read, since it only decides whether to offer applying it. */
+  async customerCredit(companyId: string, customerId: string): Promise<string> {
+    try {
+      return await this.api.customerCredit(companyId, customerId);
+    } catch {
+      return '0';
+    }
+  }
+
+  /** True once applied, with the invoice read again. */
+  async applyCredit(companyId: string, id: string): Promise<boolean> {
+    return this.paymentStep(companyId, id, () => this.api.applyCredit(companyId, id));
+  }
+
   async deletePayment(companyId: string, id: string, paymentId: string): Promise<boolean> {
     return this.paymentStep(companyId, id, () => this.api.deletePayment(companyId, id, paymentId));
   }

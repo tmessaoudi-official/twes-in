@@ -236,6 +236,8 @@ describe('InvoicePage', () => {
     creditNote: vi.fn(),
     duplicate: vi.fn(),
     recordPayment: vi.fn(),
+    customerCredit: vi.fn(),
+    applyCredit: vi.fn(),
     deletePayment: vi.fn(),
     clearError: vi.fn(),
     pdfUrl: (companyId: string, id: string) => `/api/companies/${companyId}/invoices/${id}/pdf`,
@@ -333,6 +335,8 @@ describe('InvoicePage', () => {
     facade.creditNote.mockReset();
     facade.duplicate.mockReset();
     facade.recordPayment.mockReset().mockResolvedValue(true);
+    facade.customerCredit.mockReset().mockResolvedValue('0.000');
+    facade.applyCredit.mockReset().mockResolvedValue(true);
     facade.deletePayment.mockReset().mockResolvedValue(true);
     TestBed.configureTestingModule({
       imports: [InvoicePage],
@@ -799,6 +803,40 @@ describe('InvoicePage', () => {
     });
     // The dialog's answer adds an await between the click and the record, so the toast lands a tick later.
     await vi.waitFor(() => expect(successToasts()).toContain('invoices.payments.recorded'));
+  });
+
+  it('offers to apply the customer’s credit only when they have some and the invoice is due', async () => {
+    invoice.set(issued);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-apply-credit')).toBeNull();
+  });
+
+  it('applies the credit the customer has to an invoice that is due, and says so', async () => {
+    facade.customerCredit.mockResolvedValue('300.000');
+    invoice.set(issued);
+    await open('i1');
+    expect(facade.customerCredit).toHaveBeenCalledWith('c1', 'k1');
+
+    q('document-more')!.click();
+    await settle();
+    over('document-menu-apply-credit')!.click();
+    await settle();
+
+    expect(facade.applyCredit).toHaveBeenCalledWith('c1', 'i1');
+    await vi.waitFor(() => expect(successToasts()).toContain('invoices.payments.credit_applied'));
+  });
+
+  it('does not offer the credit to someone who may not record a payment', async () => {
+    facade.customerCredit.mockResolvedValue('300.000');
+    granted.delete('payment.write');
+    invoice.set(issued);
+    await open('i1');
+    expect(facade.customerCredit).not.toHaveBeenCalled();
+    q('document-more')?.click();
+    await settle();
+    expect(over('document-menu-apply-credit')).toBeNull();
   });
 
   it('deletes a payment only once confirmed', async () => {

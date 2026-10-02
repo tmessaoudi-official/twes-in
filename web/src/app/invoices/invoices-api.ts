@@ -5,6 +5,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIdinvoicesGetCollectionResponse,
+  CustomerCreditBalanceCustomerCreditBalanceRead,
   InvoiceInvoiceCredit,
   InvoiceInvoiceRead,
   InvoiceJsonldInvoiceRead,
@@ -203,6 +204,25 @@ export class InvoicesApi {
     const body: PaymentPaymentWrite = { ...payment };
     await this.guard(() =>
       firstValueFrom(this.http.post(`${invoicePath(companyId, id)}/payments`, body)),
+    );
+  }
+
+  /** What the customer has to their credit, as the API's decimal string; 404 for a customer the member may not see money of. */
+  async customerCredit(companyId: string, customerId: string): Promise<string> {
+    const raw = await this.guard(() =>
+      firstValueFrom(
+        this.http.get<CustomerCreditBalanceCustomerCreditBalanceRead>(
+          `${companyPath(companyId)}/customers/${encodeURIComponent(customerId)}/credit-balance`,
+        ),
+      ),
+    );
+    return raw.balance ?? '0';
+  }
+
+  /** Pays the invoice from the customer's credit, as much as fits; 422 when there is nothing to apply, 409 when not issued. */
+  async applyCredit(companyId: string, id: string): Promise<void> {
+    await this.guard(() =>
+      firstValueFrom(this.http.post(`${invoicePath(companyId, id)}/apply-credit`, {})),
     );
   }
 

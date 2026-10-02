@@ -87,6 +87,10 @@ final class CustomerStatementResource
     #[Groups([self::READ])]
     public bool $overCreditLimit = false;
 
+    /** What the customer has to their credit today (POST .../credit-balance), apart from the lines: money received that no invoice took. */
+    #[Groups([self::READ])]
+    public string $creditBalance = '0';
+
     /**
      * What happened in the period, in order. `kind` is `invoice`, `credit_note` or `payment`; a payment names the
      * invoice it settles by that invoice's number and carries its own reference when it has one.
@@ -129,6 +133,7 @@ final class CustomerStatementResource
         $resource->closingBalance = $statement->closingBalance;
         $resource->creditLimit = $statement->creditLimit;
         $resource->overCreditLimit = $statement->overCreditLimit;
+        $resource->creditBalance = $statement->creditBalance;
         $resource->lines = $statement->lines;
 
         return $resource;

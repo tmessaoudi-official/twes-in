@@ -1086,7 +1086,20 @@
         "network": "Le serveur est injoignable.",
         "not_found": "Client introuvable, ou relevé non accessible avec vos droits.",
         "invalid": "La période est refusée : la fin ne peut précéder le début."
-      }
+      },
+      "credit_balance": "À son crédit, sans facture pour l’instant : {{amount}} {{currency}}."
+    },
+    "credit": {
+      "deposit": "Enregistrer un acompte",
+      "deposit_title": "Somme reçue",
+      "date": "Date de réception",
+      "amount": "Montant",
+      "reference": "Référence",
+      "reference_hint": "Un numéro de virement ou de chèque, par exemple.",
+      "notes": "Notes",
+      "record": "Enregistrer l’acompte",
+      "keep": "Annuler",
+      "recorded": "L’acompte est gardé au crédit du client."
     }
   },
   "invoices": {
@@ -1241,7 +1254,8 @@
         "check": "Chèque",
         "card": "Carte",
         "other": "Autre"
-      }
+      },
+      "credit_applied": "Le crédit du client est appliqué à la facture."
     },
     "actions": {
       "save": "Enregistrer le brouillon",
@@ -1260,7 +1274,8 @@
       "issue_message": "Elle reçoit son numéro et ne se modifie plus : une erreur se corrige ensuite par un avoir.",
       "issue_credit_note_title": "Émettre cet avoir ?",
       "issue_credit_note_message": "Il reçoit son numéro et ne se modifie plus.",
-      "confirm_issue": "Émettre"
+      "confirm_issue": "Émettre",
+      "apply_credit": "Appliquer le crédit"
     },
     "errors": {
       "network": "Le serveur est injoignable.",
