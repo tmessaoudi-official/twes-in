@@ -8,6 +8,7 @@ import {
   inject,
   input,
   signal,
+  untracked,
 } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -26,7 +27,9 @@ import {
   offeredTaxes,
   pickedProduct,
 } from './delivery-note-forms';
+import { atScale } from '../shared/i18n/format';
 import type {
+  CustomerOption,
   DeliveryNoteOptions,
   LineTaxOption,
   ProductOption,
@@ -75,16 +78,30 @@ export class DeliveryNoteLines {
   readonly options = input.required<DeliveryNoteOptions>();
   readonly excludedFamilies = input<readonly TaxFamily[]>([]);
   readonly readOnly = input(false);
+  /** Whose note it is: their price lists decide what a line starts at. */
+  readonly customer = input<CustomerOption | null>(null);
+  readonly priceLists = input(false);
 
   /** Bumped on every value, status or touched change, so an OnPush template re-reads the lines. */
   private readonly revision = signal(0);
   /** Every product the pickers have answered, so what is chosen on a line can be found again from its id. */
   private readonly known = new Map<string, ProductOption>();
+  /** The price list that set each line's price, with the price it set. */
+  private readonly listed = new WeakMap<LineGroup, { name: string; price: string }>();
   private readonly offered = computed(
     () => new Set(offeredTaxes(this.options(), this.excludedFamilies()).map((tax) => tax.id)),
   );
 
   constructor() {
+    // Another customer may pay another price: the lines picked on this screen start again from their lists.
+    let seen: string | null | undefined;
+    effect(() => {
+      const id = this.customer()?.id ?? null;
+      const changed = seen !== undefined && seen !== id;
+      seen = id;
+      if (changed)
+        untracked(() => this.lines().controls.forEach((line) => void this.reprice(line)));
+    });
     effect((onCleanup) => {
       const subscription = this.lines().events.subscribe(() =>
         this.revision.update((revision) => revision + 1),
@@ -162,6 +179,48 @@ export class DeliveryNoteLines {
     const product = option === null ? null : (this.known.get(option.id) ?? null);
     applyProduct(line, product, this.options(), this.excludedFamilies());
     line.markAsDirty();
+    this.listed.delete(line);
+    void this.reprice(line);
+  }
+
+  /** The price list that set a line's price, while the price on the line is still the one it set. */
+  protected listOf(line: LineGroup): string | null {
+    this.revision();
+    const set = this.listed.get(line);
+    return set !== undefined && set.price === line.controls.unitPriceNet.value ? set.name : null;
+  }
+
+  /**
+   * Starts the line at the price the customer's list gives for its quantity. A price the person typed is theirs and
+   * stays: only the shelf price, or the price a list set a moment ago, is replaced.
+   */
+  protected async reprice(line: LineGroup): Promise<void> {
+    const productId = line.controls.productId.value;
+    const product = this.known.get(productId);
+    if (!this.priceLists() || product === undefined) return;
+    const quantity = line.controls.quantity.value;
+    const resolved = await this.facade.productPrice(
+      this.companyId(),
+      productId,
+      this.customer()?.id ?? null,
+      quantity === '' ? '1' : quantity,
+    );
+    if (resolved === null || line.controls.productId.value !== productId) return;
+    const scale = this.options().currencyScale;
+    const current = line.controls.unitPriceNet.value;
+    if (
+      current !== atScale(product.unitPriceNet, scale) &&
+      current !== this.listed.get(line)?.price
+    )
+      return;
+    const next = atScale(resolved.unitPriceNet, scale);
+    if (next !== current) {
+      line.controls.unitPriceNet.setValue(next);
+      line.markAsDirty();
+    }
+    if (resolved.priceListName === null) this.listed.delete(line);
+    else this.listed.set(line, { name: resolved.priceListName, price: next });
+    this.revision.update((revision) => revision + 1);
   }
 
   /** Puts a substitute on the line in place of its product, the quantity asked staying as it is. */

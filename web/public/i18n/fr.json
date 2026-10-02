@@ -1421,6 +1421,7 @@
       "lot_hint": "Celui qui est remis ; vide, le lot qui expire le premier sort du stock.",
       "unitPriceNet": "Prix unitaire HT",
       "price_hint": "En {{currency}}, avec au plus quatre décimales.",
+      "price_list": "Tarif : {{name}}",
       "taxes": "Taxes de la ligne",
       "add": "Ajouter une ligne",
       "remove": "Retirer la ligne {{position}}",

@@ -14,6 +14,12 @@ export interface PriceListItem {
   unitPriceNet: string;
 }
 
+/** What a sale of a product starts at: the net unit price, and the list that set it, null for the shelf price. */
+export interface ResolvedPrice {
+  unitPriceNet: string;
+  priceListName: string | null;
+}
+
 /** Whom a list is for. */
 export type PriceListScope = 'everyone' | 'group' | 'customer';
 

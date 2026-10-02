@@ -1,10 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { PriceListPriceListRead, PriceListPriceListWrite } from '../api/types.gen';
-import type { PriceListInput, PriceListRow, PriceListsError } from './price-lists-types';
+import type {
+  PriceListPriceListRead,
+  PriceListPriceListWrite,
+  ProductPriceProductPriceRead,
+} from '../api/types.gen';
+import type {
+  PriceListInput,
+  PriceListRow,
+  PriceListsError,
+  ResolvedPrice,
+} from './price-lists-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class PriceListsRefused extends Error {
@@ -22,6 +31,31 @@ const path = (companyId: string, id?: string): string =>
 @Injectable({ providedIn: 'root' })
 export class PriceListsApi {
   private readonly http = inject(HttpClient);
+
+  /**
+   * The net unit price a sale of the product starts at for that customer and quantity, and the list that set it (null
+   * for the shelf price). A price that cannot be read is null: the line keeps the price it has.
+   */
+  async productPrice(
+    companyId: string,
+    productId: string,
+    customerId: string | null,
+    quantity: string,
+  ): Promise<ResolvedPrice | null> {
+    let params = new HttpParams().set('quantity', quantity);
+    if (customerId !== null) params = params.set('customerId', customerId);
+    try {
+      const read = await firstValueFrom(
+        this.http.get<ProductPriceProductPriceRead>(
+          `/api/companies/${encodeURIComponent(companyId)}/products/${encodeURIComponent(productId)}/price`,
+          { params },
+        ),
+      );
+      return { unitPriceNet: read.unitPriceNet, priceListName: read.priceListName ?? null };
+    } catch {
+      return null;
+    }
+  }
 
   /** Every list, each with the number of its prices and none of them. */
   list(companyId: string): Promise<PriceListRow[]> {

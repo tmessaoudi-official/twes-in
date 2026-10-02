@@ -67,6 +67,7 @@
               appDecimal
               required
               [attr.data-testid]="'line-' + i + '-quantity'"
+              (blur)="reprice(line)"
             />
           </mat-form-field>
           @if (errorKey(line, 'quantity'); as key) {
@@ -136,9 +137,17 @@
               required
               [attr.data-testid]="'line-' + i + '-price'"
             />
-            <mat-hint>{{
-              'delivery_notes.lines.price_hint' | translate: { currency: options().currency }
-            }}</mat-hint>
+            <mat-hint>
+              @if (listOf(line); as list) {
+                <span [attr.data-testid]="'line-' + i + '-price-list'">{{
+                  'delivery_notes.lines.price_list' | translate: { name: list }
+                }}</span>
+              } @else {
+                {{
+                  'delivery_notes.lines.price_hint' | translate: { currency: options().currency }
+                }}
+              }
+            </mat-hint>
           </mat-form-field>
           @if (errorKey(line, 'unitPriceNet'); as key) {
             <span

@@ -144,6 +144,7 @@ describe('DeliveryNotePage', () => {
     pickProducts: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
     ),
+    productPrice: vi.fn(async () => null as unknown),
     create: vi.fn(),
     revise: vi.fn(),
     reviseAndValidate: vi.fn(),
@@ -948,6 +949,84 @@ describe('DeliveryNotePage', () => {
 
       expect(await scanned('3017620422003')).toEqual({ kind: 'unclaimed' });
       expect(scans.named).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('price lists', () => {
+    beforeEach(() => facade.productPrice.mockReset());
+
+    it('starts a line at the price of the customer’s list and says which list set it', async () => {
+      modules.add('price_lists');
+      facade.productPrice.mockResolvedValue({ unitPriceNet: '1100.0000', priceListName: 'Gros' });
+      await open(undefined);
+      await pick('delivery-note-customer', 'CLI-2 · Export SA');
+      await pick('line-0-product', 'ART-1 · Portable 14"');
+
+      expect(facade.productPrice).toHaveBeenCalledWith('c1', 'p1', 'k2', '1');
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1100,000');
+      expect(q('line-0-price-list')?.textContent).toContain('delivery_notes.lines.price_list');
+    });
+
+    it('prices the lines again for another customer, who may have another list', async () => {
+      modules.add('price_lists');
+      facade.productPrice
+        .mockResolvedValueOnce({ unitPriceNet: '1100.0000', priceListName: 'Gros' })
+        .mockResolvedValueOnce({ unitPriceNet: '1250.0000', priceListName: null });
+      await open(undefined);
+      await pick('delivery-note-customer', 'CLI-2 · Export SA');
+      await pick('line-0-product', 'ART-1 · Portable 14"');
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1100,000');
+
+      await pick('delivery-note-customer', 'CLI-1 · Carthage');
+      await settle();
+
+      expect(facade.productPrice).toHaveBeenLastCalledWith('c1', 'p1', 'k1', '1');
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1250,000');
+      expect(q('line-0-price-list')).toBeNull();
+    });
+
+    it('asks again for the new quantity, whose break may price it lower', async () => {
+      modules.add('price_lists');
+      facade.productPrice
+        .mockResolvedValueOnce({ unitPriceNet: '1100.0000', priceListName: 'Gros' })
+        .mockResolvedValueOnce({ unitPriceNet: '1000.0000', priceListName: 'Gros' });
+      await open(undefined);
+      await pick('delivery-note-customer', 'CLI-2 · Export SA');
+      await pick('line-0-product', 'ART-1 · Portable 14"');
+
+      type('line-0-quantity', '10');
+      (q('line-0-quantity') as HTMLInputElement).dispatchEvent(new Event('blur'));
+      await settle();
+
+      expect(facade.productPrice).toHaveBeenLastCalledWith('c1', 'p1', 'k2', '10');
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1000,000');
+    });
+
+    it('leaves a price the person typed alone', async () => {
+      modules.add('price_lists');
+      facade.productPrice.mockResolvedValueOnce({
+        unitPriceNet: '1100.0000',
+        priceListName: 'Gros',
+      });
+      await open(undefined);
+      await pick('delivery-note-customer', 'CLI-2 · Export SA');
+      await pick('line-0-product', 'ART-1 · Portable 14"');
+      type('line-0-price', '999');
+      facade.productPrice.mockResolvedValue({ unitPriceNet: '1000.0000', priceListName: 'Gros' });
+
+      type('line-0-quantity', '10');
+      (q('line-0-quantity') as HTMLInputElement).dispatchEvent(new Event('blur'));
+      await settle();
+
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('999');
+    });
+
+    it('keeps the shelf price, and asks nothing, where the company has no price lists', async () => {
+      await open(undefined);
+      await pick('line-0-product', 'ART-1 · Portable 14"');
+
+      expect(facade.productPrice).not.toHaveBeenCalled();
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1250,000');
     });
   });
 });

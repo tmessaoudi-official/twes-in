@@ -145,6 +145,8 @@
             [options]="options"
             [companyId]="company()?.id ?? ''"
             [excludedFamilies]="excludedFamilies()"
+            [customer]="customer()"
+            [priceLists]="auth.hasModule('price_lists')"
             [readOnly]="!editable()"
           />
         </mat-card-content>

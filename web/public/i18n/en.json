@@ -1421,6 +1421,7 @@
       "lot_hint": "The one handed over; left empty, the lot expiring first leaves the stock.",
       "unitPriceNet": "Net unit price",
       "price_hint": "In {{currency}}, with up to four decimals.",
+      "price_list": "Price list: {{name}}",
       "taxes": "Taxes on the line",
       "add": "Add a line",
       "remove": "Remove line {{position}}",

@@ -126,4 +126,19 @@ describe('PriceListsApi', () => {
       .error(new ProgressEvent('error'), { status: 0 });
     await expect(offline).rejects.toEqual(new PriceListsRefused('network'));
   });
+
+  it('asks for the price a product sells at for a customer and a quantity, null where unreadable', async () => {
+    const price = api.productPrice('c1', 'p/1', 'k1', '10');
+    const request = http.expectOne((req) => req.url === '/api/companies/c1/products/p%2F1/price');
+    expect(request.request.params.get('customerId')).toBe('k1');
+    expect(request.request.params.get('quantity')).toBe('10');
+    request.flush({ productId: 'p/1', unitPriceNet: '1500.0000', priceListName: 'Gros' });
+    expect(await price).toEqual({ unitPriceNet: '1500.0000', priceListName: 'Gros' });
+
+    const gone = api.productPrice('c1', 'p1', null, '1');
+    const second = http.expectOne((req) => req.url === '/api/companies/c1/products/p1/price');
+    expect(second.request.params.has('customerId')).toBe(false);
+    second.flush({}, { status: 404, statusText: 'Not Found' });
+    expect(await gone).toBeNull();
+  });
 });

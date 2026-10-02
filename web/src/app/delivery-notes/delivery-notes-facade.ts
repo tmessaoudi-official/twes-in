@@ -3,6 +3,8 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { DeliveryNotesApi, DeliveryNotesRefused } from './delivery-notes-api';
 import type { PickAsked } from '../shared/form/pick-api';
+import { PriceListsApi } from '../price-lists/price-lists-api';
+import type { ResolvedPrice } from '../price-lists/price-lists-types';
 import type {
   CustomerOption,
   DeliveryNoteInput,
@@ -20,6 +22,7 @@ import type {
 @Injectable({ providedIn: 'root' })
 export class DeliveryNotesFacade {
   private readonly api = inject(DeliveryNotesApi);
+  private readonly prices = inject(PriceListsApi);
   private readonly notesSignal = signal<readonly DeliveryNoteRow[]>([]);
   private readonly optionsSignal = signal<DeliveryNoteOptions | null>(null);
   private readonly noteSignal = signal<DeliveryNoteRow | null>(null);
@@ -53,6 +56,16 @@ export class DeliveryNotesFacade {
    */
   async pickCustomers(companyId: string, asked: PickAsked): Promise<CustomerOption[]> {
     return this.pick(() => this.api.pickCustomers(companyId, asked));
+  }
+
+  /** What the product sells at for that customer and quantity; null where the price cannot be read. */
+  productPrice(
+    companyId: string,
+    productId: string,
+    customerId: string | null,
+    quantity: string,
+  ): Promise<ResolvedPrice | null> {
+    return this.prices.productPrice(companyId, productId, customerId, quantity);
   }
 
   async pickProducts(companyId: string, asked: PickAsked): Promise<ProductOption[]> {
