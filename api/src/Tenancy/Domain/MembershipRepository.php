@@ -19,6 +19,25 @@ interface MembershipRepository
     /** @return list<Membership> every member of one company, oldest first */
     public function ofCompany(Uuid $companyId): array;
 
+    /**
+     * Every membership of these users, each with its company and role: one query for a whole page of accounts.
+     *
+     * @param list<Uuid> $userIds
+     *
+     * @return list<Membership>
+     */
+    public function ofUsers(array $userIds): array;
+
+    /**
+     * The owners of these companies, oldest first, each with its user: one query for a whole page of a list, where
+     * asking per company would be one per row.
+     *
+     * @param list<Uuid> $companyIds
+     *
+     * @return list<Membership>
+     */
+    public function ownersOfCompanies(array $companyIds): array;
+
     public function ofUserInCompany(Uuid $userId, Uuid $companyId): ?Membership;
 
     /**

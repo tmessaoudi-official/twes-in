@@ -9,10 +9,16 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Doctrine;
 
+use App\Identity\Domain\AccountSearch;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserRepository;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
+use App\Shared\Infrastructure\Doctrine\ListOrder;
+use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrineUserRepository implements UserRepository
@@ -39,20 +45,27 @@ final readonly class DoctrineUserRepository implements UserRepository
         return $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
     }
 
-    public function search(string $text, int $limit): array
+    public function search(AccountSearch $search, PageRequest $page): Page
     {
-        /** @var list<User> $users */
-        $users = $this->entityManager->createQueryBuilder()
-            ->select('u')
-            ->from(User::class, 'u')
-            ->where('LOWER(u.email) LIKE :text OR LOWER(u.displayName) LIKE :text')
-            ->setParameter('text', '%'.addcslashes(mb_strtolower(trim($text)), '%_\\').'%')
-            ->orderBy('u.email', 'ASC')
-            ->setMaxResults($limit)
-            ->getQuery()
-            ->getResult();
+        $query = $this->entityManager->createQueryBuilder()->select('u')->from(User::class, 'u');
+        $words = trim($search->text ?? '');
+        if ('' !== $words) {
+            $query->andWhere("SEARCH_TEXT(u.email, u.displayName) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')")->setParameter('text', SearchText::escapeLike($words));
+        }
+        if (null !== $search->active) {
+            $query->andWhere('u.isActive = :active')->setParameter('active', $search->active);
+        }
+        if (null !== $search->platformOperator) {
+            $query->andWhere('u.isPlatformOperator = :operator')->setParameter('operator', $search->platformOperator);
+        }
+        ListOrder::apply($query, $search->order, ['active' => 'u.isActive', 'platformOperator' => 'u.isPlatformOperator', 'createdAt' => 'u.createdAt', 'displayName' => 'u.displayName', 'email' => 'u.email'], [], 'u.email')
+            ->setFirstResult($page->offset())->setMaxResults($page->size);
 
-        return $users;
+        $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);
+        /** @var list<User> $users */
+        $users = iterator_to_array($paginator, false);
+
+        return new Page($users, \count($paginator), $page);
     }
 
     public function save(User $user): void

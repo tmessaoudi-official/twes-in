@@ -2247,7 +2247,8 @@
       "none": "No company is waiting for approval.",
       "owners": "Owners: {{owners}}",
       "approve": "Approve",
-      "reject": "Reject"
+      "reject": "Reject",
+      "all": "See all {{count}} waiting"
     },
     "companies": {
       "title": "Companies",
@@ -2266,7 +2267,10 @@
         "pending": "Waiting",
         "active": "Active",
         "suspended": "Suspended"
-      }
+      },
+      "new": "New company",
+      "close": "Close",
+      "no_owner": "No owner yet."
     },
     "accounts": {
       "title": "Accounts",
@@ -2278,7 +2282,14 @@
       "operator": "Operator",
       "end_sessions": "End sessions",
       "deactivate": "Deactivate",
-      "reactivate": "Reactivate"
+      "reactivate": "Reactivate",
+      "owner": "owner",
+      "member": "member",
+      "states": {
+        "active": "Active",
+        "inactive": "Deactivated",
+        "operator": "Operators"
+      }
     },
     "errors": {
       "not_found": "That company no longer exists.",
@@ -2397,6 +2408,30 @@
           "url": "Source code address"
         },
         "jurisdiction": "Competent courts"
+      }
+    },
+    "tabs": {
+      "overview": "Overview",
+      "companies": "Companies",
+      "accounts": "Accounts",
+      "payments": "Payments",
+      "demand": "Demand"
+    },
+    "list": {
+      "company": {
+        "name": "Company",
+        "country": "Country",
+        "status": "Status",
+        "owners": "Owners",
+        "subscription": "Subscription",
+        "created": "Created"
+      },
+      "account": {
+        "name": "Account",
+        "companies": "Companies",
+        "state": "State",
+        "created": "Created",
+        "actions": "Actions"
       }
     }
   },

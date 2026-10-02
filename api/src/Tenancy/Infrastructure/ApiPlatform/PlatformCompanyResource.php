@@ -13,14 +13,16 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\QueryParameter;
 use App\Licensing\Domain\Standing;
 use App\Licensing\Infrastructure\ApiPlatform\SubscriptionSummary;
 use App\Tenancy\Application\Company\PlatformCompanyView;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
- * Every company, as the platform's operators review it: the ones waiting for approval first of all
- * (?status=pending), and the two decisions on one. Only an operator reaches any of it.
+ * The companies, as the platform's operators review them, a page at a time (docs/SPEC.md § 7, lists at scale):
+ * searched by name or owner address, narrowed by status and country and sorted in the database; the ones waiting for
+ * approval are ?status=pending, oldest first with order[createdAt]=asc, and the two decisions on one. Only an operator reaches any of it.
  */
 #[ApiResource(
     shortName: 'PlatformCompany',
@@ -28,9 +30,19 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new GetCollection(
             uriTemplate: '/platform/companies',
             name: 'platform_companies',
+            outputFormats: ['jsonld' => ['application/ld+json']],
             provider: PlatformCompanyCollectionProvider::class,
             security: 'is_granted("platform.company.approve")',
             normalizationContext: ['groups' => [self::READ]],
+            parameters: [
+                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: "Words found in a company's name or in the address of one of its owners, whatever their case and accents."),
+                'status' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['pending', 'active', 'suspended']]),
+                'countryCode' => new QueryParameter(schema: ['type' => 'string', 'pattern' => '^[A-Z]{2}$'], description: 'The two-letter code of the country.'),
+                'order[name]' => new QueryParameter(schema: self::DIRECTION),
+                'order[countryCode]' => new QueryParameter(schema: self::DIRECTION),
+                'order[status]' => new QueryParameter(schema: self::DIRECTION),
+                'order[createdAt]' => new QueryParameter(schema: self::DIRECTION),
+            ],
         ),
         new Post(
             uriTemplate: '/platform/companies/{companyId}/approve',
@@ -54,6 +66,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 )]
 final class PlatformCompanyResource
 {
+    private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
     public const string READ = 'platform_company:read';
     public const string APPROVE = 'platform_company_approve';
     public const string REJECT = 'platform_company_reject';

@@ -40,13 +40,13 @@ final class CompanyApprovalTest extends ApiTestCase
         self::assertIsString($rows[0]['createdAt']);
     }
 
-    public function testAnUnknownStatusIsABadRequest(): void
+    public function testAnUnknownStatusIsRefused(): void
     {
         $this->signedInAsOperator();
 
         $this->getJson('/api/platform/companies?status=sleeping');
 
-        self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
     public function testApprovingOpensTheCompanyToItsOwnerAndTellsThem(): void

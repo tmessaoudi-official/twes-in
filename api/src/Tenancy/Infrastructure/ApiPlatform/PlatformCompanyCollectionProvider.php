@@ -10,38 +10,34 @@ declare(strict_types=1);
 namespace App\Tenancy\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
+use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\ProviderInterface;
 use App\Licensing\Application\CompanyStandings;
+use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Application\Company\PlatformCompanies;
 use App\Tenancy\Application\Company\PlatformCompanyView;
-use App\Tenancy\Application\Company\UnknownCompanyStatus;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use App\Tenancy\Domain\CompanySearch;
 use Symfony\Component\Uid\Uuid;
 
-/** @implements ProviderInterface<PlatformCompanyResource> */
+/**
+ * One page of the companies, searched, narrowed and sorted in the database. The query parameters are declared on the
+ * operation, which checks them before this runs.
+ *
+ * @implements ProviderInterface<PlatformCompanyResource>
+ */
 final readonly class PlatformCompanyCollectionProvider implements ProviderInterface
 {
-    public function __construct(private PlatformCompanies $companies, private CompanyStandings $standings)
+    public function __construct(private PlatformCompanies $companies, private CompanyStandings $standings, private Paging $paging)
     {
     }
 
-    /** @return list<PlatformCompanyResource> */
-    public function provide(Operation $operation, array $uriVariables = [], array $context = []): array
+    /** @return TraversablePaginator<PlatformCompanyResource> */
+    public function provide(Operation $operation, array $uriVariables = [], array $context = []): TraversablePaginator
     {
-        $filters = $context['filters'] ?? [];
-        $status = \is_array($filters) ? ($filters['status'] ?? null) : null;
-        if (null !== $status && !\is_string($status)) {
-            throw new BadRequestHttpException('status: expected a single value.');
-        }
+        $search = new CompanySearch(Paging::text($operation), Paging::text($operation, 'status'), Paging::text($operation, 'countryCode'), Paging::order($operation, CompanySearch::SORTS));
+        $page = $this->companies->search($search, $this->paging->request($operation, $context));
+        $standings = $this->standings->ofCompanies(array_map(static fn (PlatformCompanyView $view): Uuid => Uuid::fromString($view->id), $page->items));
 
-        try {
-            $views = $this->companies->byStatus($status);
-        } catch (UnknownCompanyStatus $unknown) {
-            throw new BadRequestHttpException($unknown->getMessage(), $unknown);
-        }
-
-        $standings = $this->standings->ofCompanies(array_map(static fn (PlatformCompanyView $view): Uuid => Uuid::fromString($view->id), $views));
-
-        return array_map(static fn (PlatformCompanyView $view): PlatformCompanyResource => PlatformCompanyResource::of($view, $standings[$view->id] ?? null), $views);
+        return $this->paging->paginator($page, static fn (PlatformCompanyView $view): PlatformCompanyResource => PlatformCompanyResource::of($view, $standings[$view->id] ?? null));
     }
 }

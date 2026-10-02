@@ -1,4 +1,4 @@
-<section class="flex max-w-6xl flex-col gap-6">
+<section class="flex max-w-7xl flex-col gap-6">
   <h1 class="text-3xl font-semibold" data-testid="platform-title">
     {{ 'platform.title' | translate }}
   </h1>
@@ -9,490 +9,657 @@
     </p>
   }
 
-  <mat-card appearance="outlined">
-    <mat-card-header>
-      <mat-card-title>{{ 'platform.signup.title' | translate }}</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <div class="mt-4 flex flex-col items-start gap-3">
-        <mat-slide-toggle
-          data-testid="platform-signup-enabled"
-          [checked]="signup()?.enabled ?? false"
-          [disabled]="signup() === null"
-          (change)="turn('signup.enabled', $event.checked)"
-          >{{ 'platform.signup.enabled' | translate }}</mat-slide-toggle
-        >
-        <mat-slide-toggle
-          data-testid="platform-approval-required"
-          [checked]="signup()?.approvalRequired ?? true"
-          [disabled]="signup() === null"
-          (change)="turn('signup.approval_required', $event.checked)"
-          >{{ 'platform.signup.approval_required' | translate }}</mat-slide-toggle
-        >
-      </div>
-    </mat-card-content>
-  </mat-card>
-
-  <section class="flex flex-col gap-3">
-    <h2 class="text-xl font-semibold">{{ 'platform.waiting.title' | translate }}</h2>
-    @for (company of waiting(); track company.id) {
-      <mat-card appearance="outlined" [attr.data-testid]="'waiting-' + company.name">
-        <mat-card-content>
-          <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="flex flex-col">
-              <span class="font-medium">{{ company.name }}</span>
-              <span class="text-sm text-on-surface-variant">
-                {{ company.countryCode }} ·
-                {{ 'platform.waiting.owners' | translate: { owners: company.owners.join(', ') } }}
-              </span>
-            </div>
-            <div class="flex gap-2">
-              <button
-                mat-flat-button
-                type="button"
-                (click)="approve(company.id)"
-                [disabled]="busy()"
-                [attr.data-testid]="'approve-' + company.name"
-              >
-                {{ 'platform.waiting.approve' | translate }}
-              </button>
-              <button
-                mat-stroked-button
-                type="button"
-                (click)="reject(company.id)"
-                [disabled]="busy()"
-                [attr.data-testid]="'reject-' + company.name"
-              >
-                {{ 'platform.waiting.reject' | translate }}
-              </button>
-            </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
-    } @empty {
-      <p data-testid="platform-waiting-empty">{{ 'platform.waiting.none' | translate }}</p>
+  <nav mat-tab-nav-bar [tabPanel]="panel" [attr.aria-label]="'platform.title' | translate">
+    @for (name of tabs; track name) {
+      <a
+        mat-tab-link
+        routerLink="."
+        [queryParams]="tabParams(name)"
+        [active]="tab() === name"
+        [attr.data-testid]="'platform-tab-' + name"
+      >
+        {{ 'platform.tabs.' + name | translate }}
+        @switch (name) {
+          @case ('overview') {
+            @if (waitingTotal() > 0) {
+              <span class="ml-2 text-sm" data-testid="platform-tab-count-overview">{{
+                waitingTotal()
+              }}</span>
+            }
+          }
+          @case ('companies') {
+            <span class="ml-2 text-sm" data-testid="platform-tab-count-companies">{{
+              companyCount()
+            }}</span>
+          }
+          @case ('accounts') {
+            <span class="ml-2 text-sm" data-testid="platform-tab-count-accounts">{{
+              accountCount()
+            }}</span>
+          }
+          @case ('payments') {
+            @if (waitingPayments().length > 0) {
+              <span class="ml-2 text-sm" data-testid="platform-tab-count-payments">{{
+                waitingPayments().length
+              }}</span>
+            }
+          }
+        }
+      </a>
     }
-  </section>
+  </nav>
 
-  <section class="flex flex-col gap-3">
-    <h2 class="text-xl font-semibold">{{ 'platform.companies.title' | translate }}</h2>
-    <mat-card appearance="outlined">
-      <mat-card-content>
-        <div class="mt-4 flex flex-wrap items-center gap-3">
-          <mat-form-field class="min-w-0 flex-1" subscriptSizing="dynamic">
-            <mat-label>{{ 'platform.companies.name' | translate }}</mat-label>
-            <input
-              matInput
-              [value]="companyName()"
-              (input)="companyName.set(typed($event))"
-              data-testid="platform-company-name"
-            />
-          </mat-form-field>
-          <mat-form-field subscriptSizing="dynamic">
-            <mat-label>{{ 'platform.companies.country' | translate }}</mat-label>
-            <select
-              matNativeControl
-              (change)="companyCountry.set(chosen($event))"
-              data-testid="platform-company-country"
-            >
-              @for (code of countries; track code) {
-                <option [value]="code" [selected]="code === companyCountry()">
-                  {{ 'platform.companies.countries.' + code | translate }}
-                </option>
+  <mat-tab-nav-panel #panel class="block">
+    @switch (tab()) {
+      @case ('overview') {
+        <div class="flex flex-col gap-6">
+          <mat-card appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>{{ 'platform.signup.title' | translate }}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="mt-4 flex flex-col items-start gap-3">
+                <mat-slide-toggle
+                  data-testid="platform-signup-enabled"
+                  [checked]="signup()?.enabled ?? false"
+                  [disabled]="signup() === null"
+                  (change)="turn('signup.enabled', $event.checked)"
+                  >{{ 'platform.signup.enabled' | translate }}</mat-slide-toggle
+                >
+                <mat-slide-toggle
+                  data-testid="platform-approval-required"
+                  [checked]="signup()?.approvalRequired ?? true"
+                  [disabled]="signup() === null"
+                  (change)="turn('signup.approval_required', $event.checked)"
+                  >{{ 'platform.signup.approval_required' | translate }}</mat-slide-toggle
+                >
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <section class="flex flex-col gap-3">
+            <div class="flex flex-wrap items-baseline justify-between gap-3">
+              <h2 class="text-xl font-semibold">{{ 'platform.waiting.title' | translate }}</h2>
+              @if (waitingTotal() > waiting().length) {
+                <a
+                  mat-stroked-button
+                  routerLink="."
+                  [queryParams]="{ tab: 'companies', status: 'pending' }"
+                  data-testid="platform-waiting-all"
+                >
+                  {{ 'platform.waiting.all' | translate: { count: waitingTotal() } }}
+                </a>
               }
-            </select>
-          </mat-form-field>
-          <mat-form-field class="min-w-0 flex-1" subscriptSizing="dynamic">
-            <mat-label>{{ 'platform.companies.owner' | translate }}</mat-label>
-            <input
-              matInput
-              type="email"
-              [value]="ownerEmail()"
-              (input)="ownerEmail.set(typed($event))"
-              data-testid="platform-company-owner"
-            />
-          </mat-form-field>
-          <button
-            mat-flat-button
-            type="button"
-            (click)="open()"
-            [disabled]="busy()"
-            data-testid="platform-company-create"
-          >
-            {{ 'platform.companies.create' | translate }}
-          </button>
+            </div>
+            @for (company of waiting(); track company.id) {
+              <mat-card appearance="outlined" [attr.data-testid]="'waiting-' + company.name">
+                <mat-card-content>
+                  <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex flex-col">
+                      <span class="font-medium">{{ company.name }}</span>
+                      <span class="text-sm text-on-surface-variant">
+                        {{ company.countryCode }} ·
+                        {{
+                          'platform.waiting.owners'
+                            | translate: { owners: company.owners.join(', ') }
+                        }}
+                      </span>
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        mat-flat-button
+                        type="button"
+                        (click)="approve(company.id)"
+                        [disabled]="busy()"
+                        [attr.data-testid]="'approve-' + company.name"
+                      >
+                        {{ 'platform.waiting.approve' | translate }}
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        (click)="reject(company.id)"
+                        [disabled]="busy()"
+                        [attr.data-testid]="'reject-' + company.name"
+                      >
+                        {{ 'platform.waiting.reject' | translate }}
+                      </button>
+                    </div>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            } @empty {
+              <p data-testid="platform-waiting-empty">{{ 'platform.waiting.none' | translate }}</p>
+            }
+          </section>
+
+          <section class="flex flex-col gap-3" aria-labelledby="platform-legal-title">
+            <h2 id="platform-legal-title" class="text-xl font-semibold">
+              {{ 'platform.legal.title' | translate }}
+            </h2>
+            <p class="max-w-prose text-sm">{{ 'platform.legal.intro' | translate }}</p>
+            <p>
+              <a
+                mat-stroked-button
+                routerLink="/platform/legal"
+                data-testid="platform-legal-link"
+                >{{ 'platform.legal.link' | translate }}</a
+              >
+            </p>
+          </section>
         </div>
-      </mat-card-content>
-    </mat-card>
-    @for (company of companies(); track company.id) {
-      <mat-card appearance="outlined" [attr.data-testid]="'company-' + company.name">
-        <mat-card-content>
-          <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="flex min-w-0 flex-col">
-              <span class="font-medium">{{ company.name }}</span>
-              <span class="text-sm text-on-surface-variant">
-                {{ company.countryCode }} ·
-                {{ 'platform.companies.statuses.' + company.status | translate }}
-                @if (company.owners.length > 0) {
-                  ·
-                  {{ 'platform.waiting.owners' | translate: { owners: company.owners.join(', ') } }}
+      }
+
+      @case ('companies') {
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-xl font-semibold">{{ 'platform.companies.title' | translate }}</h2>
+            <button
+              mat-flat-button
+              type="button"
+              (click)="creating.set(!creating())"
+              data-testid="platform-company-new"
+            >
+              {{ 'platform.companies.new' | translate }}
+            </button>
+          </div>
+
+          @if (creating()) {
+            <mat-card appearance="outlined">
+              <mat-card-content>
+                <div class="mt-4 flex flex-wrap items-center gap-3">
+                  <mat-form-field class="min-w-0 flex-1" subscriptSizing="dynamic">
+                    <mat-label>{{ 'platform.companies.name' | translate }}</mat-label>
+                    <input
+                      matInput
+                      [value]="companyName()"
+                      (input)="companyName.set(typed($event))"
+                      data-testid="platform-company-name"
+                    />
+                  </mat-form-field>
+                  <mat-form-field subscriptSizing="dynamic">
+                    <mat-label>{{ 'platform.companies.country' | translate }}</mat-label>
+                    <select
+                      matNativeControl
+                      (change)="companyCountry.set(chosen($event))"
+                      data-testid="platform-company-country"
+                    >
+                      @for (code of countries; track code) {
+                        <option [value]="code" [selected]="code === companyCountry()">
+                          {{ 'platform.companies.countries.' + code | translate }}
+                        </option>
+                      }
+                    </select>
+                  </mat-form-field>
+                  <mat-form-field class="min-w-0 flex-1" subscriptSizing="dynamic">
+                    <mat-label>{{ 'platform.companies.owner' | translate }}</mat-label>
+                    <input
+                      matInput
+                      type="email"
+                      [value]="ownerEmail()"
+                      (input)="ownerEmail.set(typed($event))"
+                      data-testid="platform-company-owner"
+                    />
+                  </mat-form-field>
+                  <button
+                    mat-flat-button
+                    type="button"
+                    (click)="open()"
+                    [disabled]="busy()"
+                    data-testid="platform-company-create"
+                  >
+                    {{ 'platform.companies.create' | translate }}
+                  </button>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          }
+
+          @if (opened(); as company) {
+            <mat-card appearance="outlined" [attr.data-testid]="'company-sheet-' + company.name">
+              <mat-card-content>
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                  <div class="flex min-w-0 flex-col gap-1">
+                    <h3 class="text-lg font-semibold">{{ company.name }}</h3>
+                    <span class="text-sm text-on-surface-variant">
+                      {{ 'platform.companies.countries.' + company.countryCode | translate }} ·
+                      {{ 'platform.companies.statuses.' + company.status | translate }}
+                    </span>
+                    <span class="text-sm">
+                      @if (company.owners.length > 0) {
+                        {{
+                          'platform.waiting.owners'
+                            | translate: { owners: company.owners.join(', ') }
+                        }}
+                      } @else {
+                        {{ 'platform.companies.no_owner' | translate }}
+                      }
+                    </span>
+                    @if (company.subscription; as standing) {
+                      <p class="text-sm" [attr.data-testid]="'standing-' + company.name">
+                        {{ 'platform.subscription.stages.' + standing.stage | translate }} ·
+                        {{ 'platform.subscription.accesses.' + standing.access | translate }}
+                        @if (standing.daysLeft !== null) {
+                          ·
+                          {{
+                            'platform.subscription.days_left'
+                              | translate: { days: standing.daysLeft }
+                          }}
+                        }
+                      </p>
+                    }
+                  </div>
+                  <a
+                    mat-stroked-button
+                    routerLink="."
+                    [queryParams]="{ company: null }"
+                    queryParamsHandling="merge"
+                    data-testid="platform-company-close"
+                  >
+                    {{ 'platform.companies.close' | translate }}
+                  </a>
+                </div>
+
+                <div class="mt-4 flex flex-wrap items-center gap-2">
+                  @if (company.status === 'pending') {
+                    <button
+                      mat-flat-button
+                      type="button"
+                      (click)="approve(company.id)"
+                      [disabled]="busy()"
+                      [attr.data-testid]="'approve-' + company.name"
+                    >
+                      {{ 'platform.waiting.approve' | translate }}
+                    </button>
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      (click)="reject(company.id)"
+                      [disabled]="busy()"
+                      [attr.data-testid]="'reject-' + company.name"
+                    >
+                      {{ 'platform.waiting.reject' | translate }}
+                    </button>
+                  }
+                  <mat-form-field subscriptSizing="dynamic">
+                    <mat-label>{{ 'platform.companies.owner' | translate }}</mat-label>
+                    <input
+                      matInput
+                      type="email"
+                      [value]="ownerEmails()[company.id] ?? ''"
+                      (input)="typedOwner(company.id, $event)"
+                      [attr.data-testid]="'owner-email-' + company.name"
+                    />
+                  </mat-form-field>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="invite(company.id)"
+                    [disabled]="busy()"
+                    [attr.data-testid]="'invite-owner-' + company.name"
+                  >
+                    {{ 'platform.companies.invite' | translate }}
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="toggleSubscription(company.id)"
+                    [disabled]="busy()"
+                    [attr.data-testid]="'subscription-' + company.name"
+                  >
+                    {{ 'platform.subscription.open' | translate }}
+                  </button>
+                </div>
+
+                @if (openedSubscription() === company.id) {
+                  <div
+                    class="mt-4 flex flex-col gap-3 border-t border-outline-variant pt-4"
+                    [attr.data-testid]="'subscription-panel-' + company.name"
+                  >
+                    <div class="flex flex-wrap gap-3">
+                      <mat-form-field subscriptSizing="dynamic">
+                        <mat-label>{{
+                          'platform.subscription.trial_ends_on' | translate
+                        }}</mat-label>
+                        <input
+                          matInput
+                          type="date"
+                          [value]="terms().trialEndsOn ?? ''"
+                          (input)="type('trialEndsOn', $event)"
+                          data-testid="subscription-trial-ends-on"
+                        />
+                      </mat-form-field>
+                      <mat-form-field subscriptSizing="dynamic">
+                        <mat-label>{{
+                          'platform.subscription.paid_through' | translate
+                        }}</mat-label>
+                        <input
+                          matInput
+                          type="date"
+                          [value]="terms().paidThrough ?? ''"
+                          (input)="type('paidThrough', $event)"
+                          data-testid="subscription-paid-through"
+                        />
+                      </mat-form-field>
+                      <mat-form-field subscriptSizing="dynamic">
+                        <mat-label>{{
+                          'platform.subscription.period_count' | translate
+                        }}</mat-label>
+                        <input
+                          matInput
+                          type="number"
+                          min="1"
+                          [value]="terms().periodCount"
+                          (input)="type('periodCount', $event)"
+                          data-testid="subscription-period-count"
+                        />
+                      </mat-form-field>
+                      <mat-form-field subscriptSizing="dynamic">
+                        <mat-label>{{ 'platform.subscription.period_unit' | translate }}</mat-label>
+                        <select
+                          matNativeControl
+                          (change)="type('periodUnit', $event)"
+                          data-testid="subscription-period-unit"
+                        >
+                          @for (unit of periodUnits; track unit) {
+                            <option [value]="unit" [selected]="unit === terms().periodUnit">
+                              {{ 'platform.subscription.units.' + unit | translate }}
+                            </option>
+                          }
+                        </select>
+                      </mat-form-field>
+                      <mat-form-field subscriptSizing="dynamic">
+                        <mat-label>{{ 'platform.subscription.price' | translate }}</mat-label>
+                        <input
+                          matInput
+                          [value]="terms().price ?? ''"
+                          (input)="type('price', $event)"
+                          data-testid="subscription-price"
+                        />
+                      </mat-form-field>
+                      <mat-form-field subscriptSizing="dynamic">
+                        <mat-label>{{ 'platform.subscription.currency' | translate }}</mat-label>
+                        <input
+                          matInput
+                          [value]="terms().currency ?? ''"
+                          (input)="type('currency', $event)"
+                          data-testid="subscription-currency"
+                        />
+                      </mat-form-field>
+                      <mat-form-field subscriptSizing="dynamic">
+                        <mat-label>{{ 'platform.subscription.grace_days' | translate }}</mat-label>
+                        <input
+                          matInput
+                          type="number"
+                          min="0"
+                          [value]="terms().graceDays ?? ''"
+                          (input)="type('graceDays', $event)"
+                          data-testid="subscription-grace-days"
+                        />
+                      </mat-form-field>
+                      <mat-form-field subscriptSizing="dynamic">
+                        <mat-label>{{ 'platform.subscription.hold_days' | translate }}</mat-label>
+                        <input
+                          matInput
+                          type="number"
+                          min="0"
+                          [value]="terms().holdDays ?? ''"
+                          (input)="type('holdDays', $event)"
+                          data-testid="subscription-hold-days"
+                        />
+                      </mat-form-field>
+                      <mat-form-field subscriptSizing="dynamic">
+                        <mat-label>{{ 'platform.subscription.unpaid_mode' | translate }}</mat-label>
+                        <select
+                          matNativeControl
+                          (change)="type('unpaidMode', $event)"
+                          data-testid="subscription-unpaid-mode"
+                        >
+                          <option value="" [selected]="terms().unpaidMode === null">
+                            {{ 'platform.subscription.modes.default' | translate }}
+                          </option>
+                          @for (mode of unpaidModes; track mode) {
+                            <option [value]="mode" [selected]="mode === terms().unpaidMode">
+                              {{ 'platform.subscription.modes.' + mode | translate }}
+                            </option>
+                          }
+                        </select>
+                      </mat-form-field>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <button
+                        mat-flat-button
+                        type="button"
+                        (click)="saveSubscription(company.id)"
+                        [disabled]="busy()"
+                        data-testid="subscription-save"
+                      >
+                        {{ 'platform.subscription.save' | translate }}
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        (click)="stopSubscription(company.id)"
+                        [disabled]="busy() || subscription() === null"
+                        data-testid="subscription-stop"
+                      >
+                        {{ 'platform.subscription.stop' | translate }}
+                      </button>
+                    </div>
+                  </div>
+                }
+              </mat-card-content>
+            </mat-card>
+          }
+
+          <app-data-list
+            [descriptor]="companiesList"
+            [rows]="companies()"
+            [total]="companiesTotal()"
+            (queryChange)="onCompaniesQuery($event)"
+            testId="platform-companies-table"
+            [rowTestId]="companyRowId"
+            emptyKey="platform.companies.none"
+            emptyTestId="platform-companies-empty"
+          >
+            <ng-template appDataListCell="country" let-row>
+              {{ 'platform.companies.countries.' + row.countryCode | translate }}
+            </ng-template>
+            <ng-template appDataListCell="status" let-row>
+              <app-status-badge [tone]="tone(row.status)">
+                {{ 'platform.companies.statuses.' + row.status | translate }}
+              </app-status-badge>
+            </ng-template>
+            <ng-template appDataListCell="subscription" let-row>
+              @if (row.subscription; as standing) {
+                {{ 'platform.subscription.stages.' + standing.stage | translate }}
+              }
+            </ng-template>
+          </app-data-list>
+        </div>
+      }
+
+      @case ('accounts') {
+        <div class="flex flex-col gap-4">
+          <h2 class="text-xl font-semibold">{{ 'platform.accounts.title' | translate }}</h2>
+          <app-data-list
+            [descriptor]="accountsList"
+            [rows]="accounts()"
+            [total]="accountsTotal()"
+            (queryChange)="onAccountsQuery($event)"
+            testId="platform-accounts-table"
+            [rowTestId]="accountRowId"
+            emptyKey="platform.accounts.none"
+            emptyTestId="platform-accounts-empty"
+          >
+            <ng-template appDataListCell="name" let-row>
+              <span class="flex min-w-0 flex-col">
+                <span class="font-medium">{{ row.displayName }}</span>
+                <span class="text-sm break-all text-on-surface-variant">{{ row.email }}</span>
+                @if (row.platformOperator) {
+                  <span class="text-sm">{{ 'platform.accounts.operator' | translate }}</span>
                 }
               </span>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <mat-form-field subscriptSizing="dynamic">
-                <mat-label>{{ 'platform.companies.owner' | translate }}</mat-label>
-                <input
-                  matInput
-                  type="email"
-                  [value]="ownerEmails()[company.id] ?? ''"
-                  (input)="typedOwner(company.id, $event)"
-                  [attr.data-testid]="'owner-email-' + company.name"
-                />
-              </mat-form-field>
-              <button
-                mat-stroked-button
-                type="button"
-                (click)="invite(company.id)"
-                [disabled]="busy()"
-                [attr.data-testid]="'invite-owner-' + company.name"
-              >
-                {{ 'platform.companies.invite' | translate }}
-              </button>
-              <button
-                mat-stroked-button
-                type="button"
-                (click)="toggleSubscription(company.id)"
-                [disabled]="busy()"
-                [attr.data-testid]="'subscription-' + company.name"
-              >
-                {{ 'platform.subscription.open' | translate }}
-              </button>
-            </div>
-          </div>
-
-          @if (company.subscription; as standing) {
-            <p class="text-sm" [attr.data-testid]="'standing-' + company.name">
-              {{ 'platform.subscription.stages.' + standing.stage | translate }} ·
-              {{ 'platform.subscription.accesses.' + standing.access | translate }}
-              @if (standing.daysLeft !== null) {
-                · {{ 'platform.subscription.days_left' | translate: { days: standing.daysLeft } }}
+            </ng-template>
+            <ng-template appDataListCell="companies" let-row>
+              @for (membership of row.companies; track membership.id) {
+                <span class="block text-sm">
+                  {{ membership.name }}
+                  ({{
+                    membership.role === 'owner'
+                      ? ('platform.accounts.owner' | translate)
+                      : membership.role === 'member'
+                        ? ('platform.accounts.member' | translate)
+                        : membership.role
+                  }})
+                </span>
               }
-            </p>
-          }
-
-          @if (openedSubscription() === company.id) {
-            <div
-              class="mt-4 flex flex-col gap-3 border-t border-outline-variant pt-4"
-              [attr.data-testid]="'subscription-panel-' + company.name"
-            >
-              <div class="flex flex-wrap gap-3">
-                <mat-form-field subscriptSizing="dynamic">
-                  <mat-label>{{ 'platform.subscription.trial_ends_on' | translate }}</mat-label>
-                  <input
-                    matInput
-                    type="date"
-                    [value]="terms().trialEndsOn ?? ''"
-                    (input)="type('trialEndsOn', $event)"
-                    data-testid="subscription-trial-ends-on"
-                  />
-                </mat-form-field>
-                <mat-form-field subscriptSizing="dynamic">
-                  <mat-label>{{ 'platform.subscription.paid_through' | translate }}</mat-label>
-                  <input
-                    matInput
-                    type="date"
-                    [value]="terms().paidThrough ?? ''"
-                    (input)="type('paidThrough', $event)"
-                    data-testid="subscription-paid-through"
-                  />
-                </mat-form-field>
-                <mat-form-field subscriptSizing="dynamic">
-                  <mat-label>{{ 'platform.subscription.period_count' | translate }}</mat-label>
-                  <input
-                    matInput
-                    type="number"
-                    min="1"
-                    [value]="terms().periodCount"
-                    (input)="type('periodCount', $event)"
-                    data-testid="subscription-period-count"
-                  />
-                </mat-form-field>
-                <mat-form-field subscriptSizing="dynamic">
-                  <mat-label>{{ 'platform.subscription.period_unit' | translate }}</mat-label>
-                  <select
-                    matNativeControl
-                    (change)="type('periodUnit', $event)"
-                    data-testid="subscription-period-unit"
-                  >
-                    @for (unit of periodUnits; track unit) {
-                      <option [value]="unit" [selected]="unit === terms().periodUnit">
-                        {{ 'platform.subscription.units.' + unit | translate }}
-                      </option>
-                    }
-                  </select>
-                </mat-form-field>
-                <mat-form-field subscriptSizing="dynamic">
-                  <mat-label>{{ 'platform.subscription.price' | translate }}</mat-label>
-                  <input
-                    matInput
-                    [value]="terms().price ?? ''"
-                    (input)="type('price', $event)"
-                    data-testid="subscription-price"
-                  />
-                </mat-form-field>
-                <mat-form-field subscriptSizing="dynamic">
-                  <mat-label>{{ 'platform.subscription.currency' | translate }}</mat-label>
-                  <input
-                    matInput
-                    [value]="terms().currency ?? ''"
-                    (input)="type('currency', $event)"
-                    data-testid="subscription-currency"
-                  />
-                </mat-form-field>
-                <mat-form-field subscriptSizing="dynamic">
-                  <mat-label>{{ 'platform.subscription.grace_days' | translate }}</mat-label>
-                  <input
-                    matInput
-                    type="number"
-                    min="0"
-                    [value]="terms().graceDays ?? ''"
-                    (input)="type('graceDays', $event)"
-                    data-testid="subscription-grace-days"
-                  />
-                </mat-form-field>
-                <mat-form-field subscriptSizing="dynamic">
-                  <mat-label>{{ 'platform.subscription.hold_days' | translate }}</mat-label>
-                  <input
-                    matInput
-                    type="number"
-                    min="0"
-                    [value]="terms().holdDays ?? ''"
-                    (input)="type('holdDays', $event)"
-                    data-testid="subscription-hold-days"
-                  />
-                </mat-form-field>
-                <mat-form-field subscriptSizing="dynamic">
-                  <mat-label>{{ 'platform.subscription.unpaid_mode' | translate }}</mat-label>
-                  <select
-                    matNativeControl
-                    (change)="type('unpaidMode', $event)"
-                    data-testid="subscription-unpaid-mode"
-                  >
-                    <option value="" [selected]="terms().unpaidMode === null">
-                      {{ 'platform.subscription.modes.default' | translate }}
-                    </option>
-                    @for (mode of unpaidModes; track mode) {
-                      <option [value]="mode" [selected]="mode === terms().unpaidMode">
-                        {{ 'platform.subscription.modes.' + mode | translate }}
-                      </option>
-                    }
-                  </select>
-                </mat-form-field>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <button
-                  mat-flat-button
-                  type="button"
-                  (click)="saveSubscription(company.id)"
-                  [disabled]="busy()"
-                  data-testid="subscription-save"
-                >
-                  {{ 'platform.subscription.save' | translate }}
-                </button>
-                <button
-                  mat-stroked-button
-                  type="button"
-                  (click)="stopSubscription(company.id)"
-                  [disabled]="busy() || subscription() === null"
-                  data-testid="subscription-stop"
-                >
-                  {{ 'platform.subscription.stop' | translate }}
-                </button>
-              </div>
-            </div>
-          }
-        </mat-card-content>
-      </mat-card>
-    } @empty {
-      <p data-testid="platform-companies-empty">{{ 'platform.companies.none' | translate }}</p>
-    }
-  </section>
-
-  <section class="flex flex-col gap-3">
-    <h2 class="text-xl font-semibold">{{ 'platform.payments.title' | translate }}</h2>
-    @for (payment of waitingPayments(); track payment.id) {
-      <mat-card appearance="outlined" [attr.data-testid]="'payment-' + payment.id">
-        <mat-card-content>
-          <div class="flex flex-col gap-3">
-            <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <span class="text-lg font-medium">{{ payment.companyName }}</span>
-              <span>{{ payment.amount }} {{ payment.currency }}</span>
-            </div>
-            <p class="text-sm">
-              {{ 'licensing.payment.methods.' + payment.method | translate }} ·
-              {{ payment.paidOn }}
-              @if (payment.reference) {
-                · {{ payment.reference }}
-              }
-            </p>
-            @if (payment.note) {
-              <p class="text-sm">{{ payment.note }}</p>
-            }
-            <div class="flex flex-wrap items-center gap-2">
-              <mat-form-field subscriptSizing="dynamic">
-                <mat-label>{{ 'platform.payments.periods' | translate }}</mat-label>
-                <input
-                  matInput
-                  type="number"
-                  min="1"
-                  [value]="periodsFor()[payment.id] ?? 1"
-                  (input)="typedPeriods(payment.id, $event)"
-                  [attr.data-testid]="'payment-periods-' + payment.id"
-                />
-              </mat-form-field>
-              <button
-                mat-flat-button
-                type="button"
-                [disabled]="busy()"
-                (click)="confirmPayment(payment.id)"
-                [attr.data-testid]="'payment-confirm-' + payment.id"
-              >
-                {{ 'platform.payments.confirm' | translate }}
-              </button>
-              <button
-                mat-stroked-button
-                type="button"
-                [disabled]="busy()"
-                (click)="rejectPayment(payment.id)"
-                [attr.data-testid]="'payment-reject-' + payment.id"
-              >
-                {{ 'platform.payments.reject' | translate }}
-              </button>
-            </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
-    } @empty {
-      <p data-testid="platform-payments-empty">{{ 'platform.payments.none' | translate }}</p>
-    }
-  </section>
-
-  <section class="flex flex-col gap-3">
-    <h2 class="text-xl font-semibold">{{ 'platform.accounts.title' | translate }}</h2>
-    <div class="flex flex-wrap items-center gap-3">
-      <mat-form-field class="min-w-0 flex-1" subscriptSizing="dynamic">
-        <mat-label>{{ 'platform.accounts.search' | translate }}</mat-label>
-        <input
-          matInput
-          type="search"
-          [value]="search()"
-          (input)="search.set(typed($event))"
-          (keydown.enter)="find()"
-          data-testid="platform-account-search"
-        />
-      </mat-form-field>
-      <button
-        mat-stroked-button
-        type="button"
-        (click)="find()"
-        [disabled]="busy()"
-        data-testid="platform-account-find"
-      >
-        {{ 'platform.accounts.find' | translate }}
-      </button>
-    </div>
-    @for (account of accounts(); track account.id) {
-      <mat-card appearance="outlined" [attr.data-testid]="'account-' + account.email">
-        <mat-card-content>
-          <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="flex min-w-0 flex-col">
-              <span class="font-medium">{{ account.displayName }}</span>
-              <span class="text-sm break-all text-on-surface-variant">{{ account.email }}</span>
-              <span class="text-sm">
+            </ng-template>
+            <ng-template appDataListCell="state" let-row>
+              <app-status-badge [tone]="row.active ? 'success' : 'neutral'">
                 {{
-                  (account.active ? 'platform.accounts.active' : 'platform.accounts.inactive')
+                  (row.active ? 'platform.accounts.active' : 'platform.accounts.inactive')
                     | translate
                 }}
-                @if (account.platformOperator) {
-                  · {{ 'platform.accounts.operator' | translate }}
+              </app-status-badge>
+            </ng-template>
+            <ng-template appDataListCell="actions" let-row>
+              <span class="flex flex-wrap gap-2">
+                @if (row.active) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="act(row.id, 'end-sessions')"
+                    [disabled]="busy()"
+                    [attr.data-testid]="'end-sessions-' + row.email"
+                  >
+                    {{ 'platform.accounts.end_sessions' | translate }}
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="act(row.id, 'deactivate')"
+                    [disabled]="busy()"
+                    [attr.data-testid]="'deactivate-' + row.email"
+                  >
+                    {{ 'platform.accounts.deactivate' | translate }}
+                  </button>
+                } @else {
+                  <button
+                    mat-flat-button
+                    type="button"
+                    (click)="act(row.id, 'reactivate')"
+                    [disabled]="busy()"
+                    [attr.data-testid]="'reactivate-' + row.email"
+                  >
+                    {{ 'platform.accounts.reactivate' | translate }}
+                  </button>
                 }
               </span>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              @if (account.active) {
-                <button
-                  mat-stroked-button
-                  type="button"
-                  (click)="act(account.id, 'end-sessions')"
-                  [disabled]="busy()"
-                  [attr.data-testid]="'end-sessions-' + account.email"
+            </ng-template>
+          </app-data-list>
+        </div>
+      }
+
+      @case ('payments') {
+        <section class="flex flex-col gap-3">
+          <h2 class="text-xl font-semibold">{{ 'platform.payments.title' | translate }}</h2>
+          @for (payment of waitingPayments(); track payment.id) {
+            <mat-card appearance="outlined" [attr.data-testid]="'payment-' + payment.id">
+              <mat-card-content>
+                <div class="flex flex-col gap-3">
+                  <div class="flex flex-wrap items-baseline justify-between gap-2">
+                    <span class="text-lg font-medium">{{ payment.companyName }}</span>
+                    <span>{{ payment.amount }} {{ payment.currency }}</span>
+                  </div>
+                  <p class="text-sm">
+                    {{ 'licensing.payment.methods.' + payment.method | translate }} ·
+                    {{ payment.paidOn }}
+                    @if (payment.reference) {
+                      · {{ payment.reference }}
+                    }
+                  </p>
+                  @if (payment.note) {
+                    <p class="text-sm">{{ payment.note }}</p>
+                  }
+                  <div class="flex flex-wrap items-center gap-2">
+                    <mat-form-field subscriptSizing="dynamic">
+                      <mat-label>{{ 'platform.payments.periods' | translate }}</mat-label>
+                      <input
+                        matInput
+                        type="number"
+                        min="1"
+                        [value]="periodsFor()[payment.id] ?? 1"
+                        (input)="typedPeriods(payment.id, $event)"
+                        [attr.data-testid]="'payment-periods-' + payment.id"
+                      />
+                    </mat-form-field>
+                    <button
+                      mat-flat-button
+                      type="button"
+                      [disabled]="busy()"
+                      (click)="confirmPayment(payment.id)"
+                      [attr.data-testid]="'payment-confirm-' + payment.id"
+                    >
+                      {{ 'platform.payments.confirm' | translate }}
+                    </button>
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      [disabled]="busy()"
+                      (click)="rejectPayment(payment.id)"
+                      [attr.data-testid]="'payment-reject-' + payment.id"
+                    >
+                      {{ 'platform.payments.reject' | translate }}
+                    </button>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          } @empty {
+            <p data-testid="platform-payments-empty">{{ 'platform.payments.none' | translate }}</p>
+          }
+        </section>
+      }
+
+      @case ('demand') {
+        <section class="flex flex-col gap-3" aria-labelledby="platform-demand-title">
+          <h2 id="platform-demand-title" class="text-xl font-semibold">
+            {{ 'platform.demand.title' | translate }}
+          </h2>
+          <p class="max-w-prose text-sm">{{ 'platform.demand.intro' | translate }}</p>
+          @if (awaited().length > 0) {
+            <ul class="flex flex-col gap-2">
+              @for (row of awaited(); track row.key) {
+                <li
+                  class="flex flex-wrap items-baseline justify-between gap-2 py-1"
+                  [attr.data-testid]="'demand-' + row.key"
                 >
-                  {{ 'platform.accounts.end_sessions' | translate }}
-                </button>
-                <button
-                  mat-stroked-button
-                  type="button"
-                  (click)="act(account.id, 'deactivate')"
-                  [disabled]="busy()"
-                  [attr.data-testid]="'deactivate-' + account.email"
-                >
-                  {{ 'platform.accounts.deactivate' | translate }}
-                </button>
-              } @else {
-                <button
-                  mat-flat-button
-                  type="button"
-                  (click)="act(account.id, 'reactivate')"
-                  [disabled]="busy()"
-                  [attr.data-testid]="'reactivate-' + account.email"
-                >
-                  {{ 'platform.accounts.reactivate' | translate }}
-                </button>
+                  <span class="font-medium">{{ row.labelKey | translate }}</span>
+                  <span class="text-sm">
+                    {{ 'coming.version.' + row.planned | translate }} ·
+                    {{ 'platform.demand.companies' | translate: { count: row.companies } }}
+                  </span>
+                </li>
               }
-            </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
-    } @empty {
-      <p data-testid="platform-accounts-empty">{{ 'platform.accounts.none' | translate }}</p>
-    }
-  </section>
+            </ul>
+          } @else {
+            <p data-testid="platform-demand-empty">{{ 'platform.demand.empty' | translate }}</p>
+          }
+        </section>
 
-  <section class="flex flex-col gap-3" aria-labelledby="platform-demand-title">
-    <h2 id="platform-demand-title" class="text-xl font-semibold">
-      {{ 'platform.demand.title' | translate }}
-    </h2>
-    <p class="max-w-prose text-sm">{{ 'platform.demand.intro' | translate }}</p>
-    @if (awaited().length > 0) {
-      <ul class="flex flex-col gap-2">
-        @for (row of awaited(); track row.key) {
-          <li
-            class="flex flex-wrap items-baseline justify-between gap-2 py-1"
-            [attr.data-testid]="'demand-' + row.key"
-          >
-            <span class="font-medium">{{ row.labelKey | translate }}</span>
-            <span class="text-sm">
-              {{ 'coming.version.' + row.planned | translate }} ·
-              {{ 'platform.demand.companies' | translate: { count: row.companies } }}
-            </span>
-          </li>
-        }
-      </ul>
-    } @else {
-      <p data-testid="platform-demand-empty">{{ 'platform.demand.empty' | translate }}</p>
+        <section class="flex flex-col gap-3" aria-labelledby="platform-legal-title">
+          <h2 id="platform-legal-title" class="text-xl font-semibold">
+            {{ 'platform.legal.title' | translate }}
+          </h2>
+          <p class="max-w-prose text-sm">{{ 'platform.legal.intro' | translate }}</p>
+          <p>
+            <a mat-stroked-button routerLink="/platform/legal" data-testid="platform-legal-link">{{
+              'platform.legal.link' | translate
+            }}</a>
+          </p>
+        </section>
+      }
     }
-  </section>
-
-  <section class="flex flex-col gap-3" aria-labelledby="platform-legal-title">
-    <h2 id="platform-legal-title" class="text-xl font-semibold">
-      {{ 'platform.legal.title' | translate }}
-    </h2>
-    <p class="max-w-prose text-sm">{{ 'platform.legal.intro' | translate }}</p>
-    <p>
-      <a mat-stroked-button routerLink="/platform/legal" data-testid="platform-legal-link">{{
-        'platform.legal.link' | translate
-      }}</a>
-    </p>
-  </section>
+  </mat-tab-nav-panel>
 </section>

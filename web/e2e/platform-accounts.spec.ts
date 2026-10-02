@@ -62,9 +62,7 @@ test('an operator ends the sessions of an account, deactivates it and reactivate
   await signIn(theirPage, managed, THEIR_PASSWORD);
 
   // The operator finds it.
-  await page.goto('/platform');
-  await page.getByTestId('platform-account-search').fill(managed);
-  await page.getByTestId('platform-account-find').click();
+  await page.goto(`/platform?tab=accounts&q=${encodeURIComponent(managed)}`);
   const line = page.getByTestId(`account-${managed}`);
   await expect(line).toContainText('Actif');
   await expectAccessible(page, 'platform accounts');

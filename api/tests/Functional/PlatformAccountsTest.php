@@ -40,6 +40,54 @@ final class PlatformAccountsTest extends ApiTestCase
         self::assertIsString($rows[0]['displayName']);
     }
 
+    public function testTheListIsAPageWithItsTotalFilteredAndSortedAndEachAccountNamesItsCompanies(): void
+    {
+        $acme = $this->createCompany('Acme');
+        $globex = $this->createCompany('Globex');
+        $zoe = $this->createUser('zoe@acme.test', self::PASSWORD, $acme);
+        $this->addMembership($zoe, $globex, 'member');
+        $this->createUser('amel@acme.test', self::PASSWORD, $acme, roleName: 'member');
+        $this->createUser('lost@nowhere.test', self::PASSWORD, active: false);
+        $this->signedInAsOperator();
+
+        $this->getJson('/api/platform/accounts?itemsPerPage=2&page=1');
+        self::assertResponseIsSuccessful();
+        self::assertSame(['amel@acme.test', 'lost@nowhere.test'], array_column($this->jsonList(), 'email'));
+        self::assertSame(4, $this->jsonPage()['totalItems'], 'the operator is one of the four');
+
+        $this->getJson('/api/platform/accounts?q=zoe');
+        $companies = $this->jsonList()[0]['companies'];
+        self::assertIsArray($companies);
+        $rows = [];
+        foreach ($companies as $company) {
+            self::assertIsArray($company);
+            $rows[] = [$company['name'], $company['role']];
+        }
+        self::assertSame([['Acme', 'owner'], ['Globex', 'member']], $rows, 'by company name, with the role held in each');
+
+        $this->getJson('/api/platform/accounts?q=lost');
+        self::assertSame([], $this->jsonList()[0]['companies'], 'an account of no company says so');
+
+        $this->getJson('/api/platform/accounts?active=false');
+        self::assertSame(['lost@nowhere.test'], array_column($this->jsonList(), 'email'));
+        $this->getJson('/api/platform/accounts?platformOperator=true');
+        self::assertSame(['op@twes.local'], array_column($this->jsonList(), 'email'));
+        $this->getJson('/api/platform/accounts?order[email]=desc&itemsPerPage=1');
+        self::assertSame(['zoe@acme.test'], array_column($this->jsonList(), 'email'));
+        $this->getJson('/api/platform/accounts?order[nope]=1&active=maybe');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    public function testAPageOfAccountsCostsTheSameNumberOfStatementsWhateverItsSize(): void
+    {
+        foreach (range(1, 10) as $n) {
+            $this->createUser(\sprintf('user%02d@acme.test', $n), self::PASSWORD, $this->createCompany(\sprintf('Acme %02d', $n)));
+        }
+        $this->signedInAsOperator();
+
+        self::assertSame($this->statementsForAPageOf('/api/platform/accounts', 3), $this->statementsForAPageOf('/api/platform/accounts', 10), 'companies are read once for the page, not once per account');
+    }
+
     public function testNobodyButAnOperatorReachesAccounts(): void
     {
         $this->createUser('owner@acme.test', self::PASSWORD, $this->createCompany('Acme'));

@@ -9,33 +9,36 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Application\Company;
 
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyRepository;
+use App\Tenancy\Domain\CompanySearch;
 use App\Tenancy\Domain\MembershipRepository;
 use App\Tenancy\Domain\Role;
+use Symfony\Component\Uid\Uuid;
 
 /** The companies as the platform's operators see them, across every tenant: only an operator's endpoint reaches this. */
 final readonly class PlatformCompanies
 {
-    private const array STATUSES = [Company::STATUS_PENDING, Company::STATUS_ACTIVE, Company::STATUS_SUSPENDED];
-
     public function __construct(private CompanyRepository $companies, private MembershipRepository $memberships)
     {
     }
 
     /**
-     * @return list<PlatformCompanyView> every company when no status is given, by name; otherwise those in it, oldest first
+     * One page of the companies, narrowed by words, status and country and sorted in the database.
      *
-     * @throws UnknownCompanyStatus
+     * @return Page<PlatformCompanyView>
      */
-    public function byStatus(?string $status): array
+    public function search(CompanySearch $search, PageRequest $page): Page
     {
-        if (null !== $status && !\in_array($status, self::STATUSES, true)) {
-            throw new UnknownCompanyStatus(\sprintf('status: expected %s.', implode(', ', self::STATUSES)));
+        $found = $this->companies->search($search, $page);
+        $owners = [];
+        foreach ($this->memberships->ownersOfCompanies(array_map(static fn (Company $company): Uuid => $company->getId(), $found->items)) as $membership) {
+            $owners[$membership->getCompany()->getId()->toRfc4122()][] = $membership->getUser()->getEmail()->value;
         }
-        $companies = null === $status ? $this->companies->all() : $this->companies->ofStatus($status);
 
-        return array_map($this->viewOf(...), $companies);
+        return $found->map(fn (Company $company): PlatformCompanyView => $this->viewWith($company, $owners[$company->getId()->toRfc4122()] ?? []));
     }
 
     public function viewOf(Company $company): PlatformCompanyView
@@ -47,6 +50,12 @@ final readonly class PlatformCompanies
             }
         }
 
+        return $this->viewWith($company, $owners);
+    }
+
+    /** @param list<string> $owners */
+    private function viewWith(Company $company, array $owners): PlatformCompanyView
+    {
         return new PlatformCompanyView(
             $company->getId()->toRfc4122(),
             $company->getName(),

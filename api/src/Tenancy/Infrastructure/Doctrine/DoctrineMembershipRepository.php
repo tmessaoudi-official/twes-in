@@ -11,6 +11,8 @@ namespace App\Tenancy\Infrastructure\Doctrine;
 
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Role;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -43,6 +45,35 @@ final readonly class DoctrineMembershipRepository implements MembershipRepositor
     public function ofCompany(Uuid $companyId): array
     {
         return $this->entityManager->getRepository(Membership::class)->findBy(['company' => $companyId], ['createdAt' => 'ASC']);
+    }
+
+    public function ofUsers(array $userIds): array
+    {
+        if ([] === $userIds) {
+            return [];
+        }
+        /** @var list<Membership> $memberships */
+        $memberships = $this->entityManager->createQueryBuilder()->select('m', 'c', 'r')->from(Membership::class, 'm')
+            ->join('m.company', 'c')->join('m.role', 'r')
+            ->where('m.user IN (:users)')->setParameter('users', $userIds, ArrayParameterType::STRING)
+            ->getQuery()->getResult();
+
+        return $memberships;
+    }
+
+    public function ownersOfCompanies(array $companyIds): array
+    {
+        if ([] === $companyIds) {
+            return [];
+        }
+        /** @var list<Membership> $owners */
+        $owners = $this->entityManager->createQueryBuilder()->select('m', 'u')->from(Membership::class, 'm')
+            ->join('m.user', 'u')->join('m.role', 'r')
+            ->where('m.company IN (:companies)')->andWhere('r.name = :owner')
+            ->setParameter('companies', $companyIds, ArrayParameterType::STRING)->setParameter('owner', Role::OWNER)
+            ->orderBy('m.createdAt', 'ASC')->getQuery()->getResult();
+
+        return $owners;
     }
 
     public function ofUserInCompany(Uuid $userId, Uuid $companyId): ?Membership

@@ -9,8 +9,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyRepository;
+use App\Tenancy\Domain\CompanySearch;
 
 final class InMemoryCompanies implements CompanyRepository
 {
@@ -44,9 +47,15 @@ final class InMemoryCompanies implements CompanyRepository
         return $this->companies;
     }
 
-    public function ofStatus(string $status): array
+    /** Narrows on the name only: the owners' addresses live in memberships, which this fake does not hold. */
+    public function search(CompanySearch $search, PageRequest $page): Page
     {
-        return array_values(array_filter($this->companies, static fn (Company $company) => $company->getStatus() === $status));
+        $found = array_values(array_filter($this->companies, static fn (Company $company): bool => (null === $search->status || $company->getStatus() === $search->status)
+            && (null === $search->countryCode || $company->getCountryCode() === $search->countryCode)
+            && (null === $search->text || '' === trim($search->text) || str_contains(mb_strtolower($company->getName()), mb_strtolower(trim($search->text))))));
+        usort($found, static fn (Company $a, Company $b): int => $a->getName() <=> $b->getName());
+
+        return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);
     }
 
     public function save(Company $company): void

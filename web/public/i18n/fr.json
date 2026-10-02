@@ -2247,7 +2247,8 @@
       "none": "Aucune entreprise n'attend d'approbation.",
       "owners": "Propriétaires : {{owners}}",
       "approve": "Approuver",
-      "reject": "Refuser"
+      "reject": "Refuser",
+      "all": "Voir les {{count}} en attente"
     },
     "companies": {
       "title": "Entreprises",
@@ -2266,7 +2267,10 @@
         "pending": "En attente",
         "active": "Active",
         "suspended": "Suspendue"
-      }
+      },
+      "new": "Nouvelle entreprise",
+      "close": "Fermer",
+      "no_owner": "Aucun propriétaire."
     },
     "accounts": {
       "title": "Comptes",
@@ -2278,7 +2282,14 @@
       "operator": "Opérateur",
       "end_sessions": "Terminer les sessions",
       "deactivate": "Désactiver",
-      "reactivate": "Réactiver"
+      "reactivate": "Réactiver",
+      "owner": "propriétaire",
+      "member": "membre",
+      "states": {
+        "active": "Actifs",
+        "inactive": "Désactivés",
+        "operator": "Opérateurs"
+      }
     },
     "errors": {
       "not_found": "Cette entreprise n'existe plus.",
@@ -2397,6 +2408,30 @@
           "url": "Adresse du code source"
         },
         "jurisdiction": "Tribunaux compétents"
+      }
+    },
+    "tabs": {
+      "overview": "Vue d'ensemble",
+      "companies": "Entreprises",
+      "accounts": "Comptes",
+      "payments": "Paiements",
+      "demand": "Demande"
+    },
+    "list": {
+      "company": {
+        "name": "Entreprise",
+        "country": "Pays",
+        "status": "Statut",
+        "owners": "Propriétaires",
+        "subscription": "Abonnement",
+        "created": "Créée le"
+      },
+      "account": {
+        "name": "Compte",
+        "companies": "Entreprises",
+        "state": "État",
+        "created": "Créé le",
+        "actions": "Actions"
       }
     }
   },

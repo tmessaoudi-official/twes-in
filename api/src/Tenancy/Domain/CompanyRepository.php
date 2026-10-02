@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Domain;
 
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 interface CompanyRepository
@@ -20,8 +22,12 @@ interface CompanyRepository
     /** @return list<Company> every company, by name */
     public function all(): array;
 
-    /** @return list<Company> the companies in that status, oldest first */
-    public function ofStatus(string $status): array;
+    /**
+     * One page of the companies the platform's operators list, narrowed and sorted in the database.
+     *
+     * @return Page<Company>
+     */
+    public function search(CompanySearch $search, PageRequest $page): Page;
 
     public function save(Company $company): void;
 }

@@ -40,13 +40,15 @@ test('an operator opens a company from the platform, and the switcher moves the 
   const owner = `globex-owner-${Date.now()}@twes.local`;
 
   // The operator opens the company and invites its first owner from the platform page, never joining it (C7).
-  await page.goto('/platform');
+  await page.goto('/platform?tab=companies');
+  await page.getByTestId('platform-company-new').click();
   await page.getByTestId('platform-company-name').fill(name);
   await page.getByTestId('platform-company-country').selectOption('TN');
   await page.getByTestId('platform-company-owner').fill(owner);
   await page.getByTestId('platform-company-create').click();
   await expect(toast(page)).toContainText(owner);
-  // A company an operator opens waits for its first owner.
+  // A company an operator opens waits for its first owner. The list is a page of many: search for it.
+  await page.goto(`/platform?tab=companies&q=${encodeURIComponent(name)}`);
   await expect(page.getByTestId(`company-${name}`)).toContainText('En attente');
   await page.getByTestId(`company-${name}`).scrollIntoViewIfNeeded();
   await page.screenshot({ path: test.info().outputPath('platform-company-opened.png') });

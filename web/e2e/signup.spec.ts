@@ -102,9 +102,12 @@ test('somebody signs up, their company waits, an operator approves it, and the o
     await expectAccessible(visitor, 'awaiting approval');
 
     // The operator sees it waiting and approves it.
-    await page.reload();
-    const line = page.getByTestId(`waiting-${company}`);
+    // The overview lists only the oldest few, so the company is found in the pending list, where its sheet opens.
+    await page.goto(`/platform?tab=companies&status=pending&q=${encodeURIComponent(company)}`);
+    const line = page.getByTestId(`company-${company}`);
     await expect(line).toContainText(email);
+    await line.getByRole('link').first().click();
+    await expect(page.getByTestId(`company-sheet-${company}`)).toContainText(email);
     await page.screenshot({ path: `${SHOTS}/signup-4-platform.png` });
     await expectAccessible(page, 'platform');
     await page.getByTestId(`approve-${company}`).click();

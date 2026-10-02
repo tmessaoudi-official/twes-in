@@ -13,12 +13,14 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\QueryParameter;
 use App\Identity\Application\Account\AccountView;
+use App\Tenancy\Application\Company\AccountCompany;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
- * Accounts, as the platform's operators look them up (?q= part of an address or a name) and the three things they
- * do about one. Only an operator reaches any of it (docs/SPEC.md § 7, 2026-09-15).
+ * Accounts, as the platform's operators look them up a page at a time (?q= words of an address or a name, narrowed by
+ * `active` and `platformOperator`, each with the companies it belongs to) and the three things they do about one. Only an operator reaches any of it (docs/SPEC.md § 7, 2026-09-15).
  */
 #[ApiResource(
     shortName: 'PlatformAccount',
@@ -26,9 +28,20 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new GetCollection(
             uriTemplate: '/platform/accounts',
             name: 'platform_accounts',
+            outputFormats: ['jsonld' => ['application/ld+json']],
             provider: PlatformAccountCollectionProvider::class,
             security: 'is_granted("platform.account.manage")',
             normalizationContext: ['groups' => [self::READ]],
+            parameters: [
+                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in an address or a name, whatever their case and accents.'),
+                'active' => new QueryParameter(schema: ['type' => 'boolean'], castToNativeType: true, description: 'Whether the account may sign in.'),
+                'platformOperator' => new QueryParameter(schema: ['type' => 'boolean'], castToNativeType: true, description: 'Whether the account runs the platform.'),
+                'order[email]' => new QueryParameter(schema: self::DIRECTION),
+                'order[displayName]' => new QueryParameter(schema: self::DIRECTION),
+                'order[createdAt]' => new QueryParameter(schema: self::DIRECTION),
+                'order[active]' => new QueryParameter(schema: self::DIRECTION),
+                'order[platformOperator]' => new QueryParameter(schema: self::DIRECTION),
+            ],
         ),
         new Post(
             uriTemplate: '/platform/accounts/{userId}/end-sessions',
@@ -61,6 +74,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 )]
 final class PlatformAccountResource
 {
+    private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
     public const string READ = 'platform_account:read';
     public const string END_SESSIONS = 'platform_account_end_sessions';
     public const string DEACTIVATE = 'platform_account_deactivate';
@@ -92,7 +106,18 @@ final class PlatformAccountResource
     #[Groups([self::READ])]
     public string $createdAt = '';
 
-    public static function of(AccountView $view): self
+    /**
+     * The companies the account belongs to with the role it holds in each, by name. Sent by the list, where a person
+     * is read beside their companies, and left out of the answer to an action on one account.
+     *
+     * @var list<PlatformAccountCompanyRow>|null
+     */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?array $companies = null;
+
+    /** @param list<AccountCompany>|null $companies */
+    public static function of(AccountView $view, ?array $companies = null): self
     {
         $resource = new self();
         $resource->id = $view->id;
@@ -101,6 +126,7 @@ final class PlatformAccountResource
         $resource->active = $view->active;
         $resource->platformOperator = $view->platformOperator;
         $resource->createdAt = $view->createdAt;
+        $resource->companies = null === $companies ? null : array_map(PlatformAccountCompanyRow::of(...), $companies);
 
         return $resource;
     }

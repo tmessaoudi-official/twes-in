@@ -12,8 +12,10 @@ namespace App\Tests\Unit\Identity\Application;
 use App\Identity\Application\Account\AccountNotFound;
 use App\Identity\Application\Account\ManageAccounts;
 use App\Identity\Application\Account\OwnAccount;
+use App\Identity\Domain\AccountSearch;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
+use App\Shared\Domain\PageRequest;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryUsers;
@@ -44,13 +46,16 @@ final class ManageAccountsTest extends TestCase
         $this->account('nadia@acme.test', 'Nadia');
         $this->account('sami@other.test', 'Sami');
 
-        $found = $this->accounts->find('ACME', 50);
+        $found = $this->accounts->search(new AccountSearch('ACME'), new PageRequest(1, 50));
 
-        self::assertSame(['nadia@acme.test', 'zoe@elsewhere.test'], array_map(static fn ($a) => $a->email, $found));
-        self::assertSame('Nadia', $found[0]->displayName);
-        self::assertTrue($found[0]->active);
-        self::assertFalse($found[0]->platformOperator);
-        self::assertCount(2, $this->accounts->find('', 2));
+        self::assertSame(['nadia@acme.test', 'zoe@elsewhere.test'], array_map(static fn ($a) => $a->email, $found->items));
+        self::assertSame(2, $found->total);
+        self::assertSame('Nadia', $found->items[0]->displayName);
+        self::assertTrue($found->items[0]->active);
+        self::assertFalse($found->items[0]->platformOperator);
+        $page = $this->accounts->search(new AccountSearch(), new PageRequest(1, 2));
+        self::assertCount(2, $page->items);
+        self::assertSame(4, $page->total, 'a page says how many rows the whole list holds');
     }
 
     public function testEndingAnAccountsSessionsRotatesItsStampAndIsAudited(): void

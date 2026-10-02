@@ -16,7 +16,17 @@ describe('PlatformApi', () => {
     active: true,
     platformOperator: false,
     createdAt: '2026-09-15T10:00:00+00:00',
+    companies: [{ id: 'c1', name: 'Acme', role: 'owner' }],
   };
+
+  const search = {
+    page: 1,
+    itemsPerPage: 25,
+    q: '',
+    status: null,
+    countryCode: null,
+    order: null,
+  } as const;
 
   const waiting = {
     id: 'c1',
@@ -120,15 +130,27 @@ describe('PlatformApi', () => {
     ]);
   });
 
-  it('finds accounts by a piece of their address or name', async () => {
-    const found = api.accounts('acme & co');
+  it('finds a page of accounts by a piece of their address or name, with the companies of each', async () => {
+    const found = api.accounts({
+      page: 2,
+      itemsPerPage: 50,
+      q: 'acme & co',
+      active: false,
+      platformOperator: null,
+      order: { key: 'displayName', direction: 'desc' },
+    });
 
     const request = http.expectOne((candidate) => candidate.url === '/api/platform/accounts');
     expect(request.request.method).toBe('GET');
     expect(request.request.params.get('q')).toBe('acme & co');
-    request.flush([account]);
+    expect(request.request.params.get('page')).toBe('2');
+    expect(request.request.params.get('itemsPerPage')).toBe('50');
+    expect(request.request.params.get('active')).toBe('false');
+    expect(request.request.params.has('platformOperator')).toBe(false);
+    expect(request.request.params.get('order[displayName]')).toBe('desc');
+    request.flush({ member: [account], totalItems: 61 });
 
-    expect(await found).toEqual([account]);
+    expect(await found).toEqual({ rows: [account], total: 61 });
   });
 
   it('acts on an account by its identifier and answers it as the platform holds it', async () => {
@@ -151,16 +173,37 @@ describe('PlatformApi', () => {
     await expect(done).rejects.toMatchObject({ code: 'own_account' });
   });
 
-  it('lists every company, whatever its status', async () => {
-    const rows = api.companies();
+  it('lists a page of companies, whatever their status, with the total the platform counts', async () => {
+    const rows = api.companies(search);
 
     const request = http.expectOne(
       (candidate) => candidate.url === '/api/platform/companies' && !candidate.params.has('status'),
     );
     expect(request.request.method).toBe('GET');
-    request.flush([waiting]);
+    expect(request.request.params.get('page')).toBe('1');
+    expect(request.request.params.get('itemsPerPage')).toBe('25');
+    request.flush({ member: [waiting], totalItems: 130 });
 
-    expect(await rows).toEqual([waiting]);
+    expect(await rows).toEqual({ rows: [waiting], total: 130 });
+  });
+
+  it('asks for the status, country and order a list is narrowed and sorted by', async () => {
+    const rows = api.companies({
+      ...search,
+      q: 'nadia@',
+      status: 'pending',
+      countryCode: 'TN',
+      order: { key: 'createdAt', direction: 'asc' },
+    });
+
+    const request = http.expectOne((candidate) => candidate.url === '/api/platform/companies');
+    expect(request.request.params.get('q')).toBe('nadia@');
+    expect(request.request.params.get('status')).toBe('pending');
+    expect(request.request.params.get('countryCode')).toBe('TN');
+    expect(request.request.params.get('order[createdAt]')).toBe('asc');
+    request.flush({ member: [], totalItems: 0 });
+
+    expect(await rows).toEqual({ rows: [], total: 0 });
   });
 
   it('opens a company and answers its identifier, or names a taken name', async () => {
@@ -196,16 +239,6 @@ describe('PlatformApi', () => {
       .expectOne('/api/platform/companies/c1/owners')
       .flush({}, { status: 409, statusText: 'Conflict' });
     await expect(already).rejects.toMatchObject({ code: 'already_member' });
-  });
-
-  it('lists the companies waiting for approval', async () => {
-    const rows = api.waitingCompanies();
-
-    const request = http.expectOne('/api/platform/companies?status=pending');
-    expect(request.request.method).toBe('GET');
-    request.flush([waiting]);
-
-    expect(await rows).toEqual([waiting]);
   });
 
   it('approves and rejects a company by its identifier', async () => {
@@ -251,9 +284,9 @@ describe('PlatformApi', () => {
       .flush({}, { status: 404, statusText: 'Not Found' });
     await expect(gone).rejects.toEqual(new PlatformRefused('not_found'));
 
-    const forbidden = api.waitingCompanies();
+    const forbidden = api.companies({ ...search, status: 'pending' });
     http
-      .expectOne('/api/platform/companies?status=pending')
+      .expectOne((candidate) => candidate.url === '/api/platform/companies')
       .flush({}, { status: 403, statusText: 'Forbidden' });
     await expect(forbidden).rejects.toEqual(new PlatformRefused('refused'));
 

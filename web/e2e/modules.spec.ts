@@ -104,7 +104,7 @@ test('a company asks to be told when a planned module arrives, the operator read
     await expect(notify).toHaveText(/Ne plus me prévenir|Stop notifying me/);
     expect(await wcagViolations(page)).toEqual([]);
 
-    await page.goto('/platform');
+    await page.goto('/platform?tab=demand');
     await expect(page.getByTestId('demand-zakat')).toContainText(/Zakat/);
 
     await page.goto('/company/modules');

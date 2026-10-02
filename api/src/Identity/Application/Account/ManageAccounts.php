@@ -11,9 +11,12 @@ namespace App\Identity\Application\Account;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Identity\Domain\AccountSearch;
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserRepository;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -32,10 +35,14 @@ final readonly class ManageAccounts
     {
     }
 
-    /** @return list<AccountView> the accounts whose address or name holds that text, in address order */
-    public function find(string $text, int $limit): array
+    /**
+     * One page of the accounts, narrowed by words and choices and sorted in the database.
+     *
+     * @return Page<AccountView>
+     */
+    public function search(AccountSearch $search, PageRequest $page): Page
     {
-        return array_map(AccountView::of(...), $this->users->search($text, $limit));
+        return $this->users->search($search, $page)->map(AccountView::of(...));
     }
 
     /** @throws AccountNotFound */

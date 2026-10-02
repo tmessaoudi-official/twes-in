@@ -64,7 +64,52 @@ export interface PlatformAccountRow {
   readonly active: boolean;
   readonly platformOperator: boolean;
   readonly createdAt: string;
+  /** The companies the account belongs to, with its role in each; empty where the platform did not read them. */
+  readonly companies: readonly PlatformAccountCompany[];
 }
+
+/** One company an account belongs to. */
+export interface PlatformAccountCompany {
+  readonly id: string;
+  readonly name: string;
+  /** `owner`, `member`, or a role of the company's own. */
+  readonly role: string;
+}
+
+export type SortDirection = 'asc' | 'desc';
+
+/** What the API is asked for one page of the companies list. */
+export interface PlatformCompanySearch {
+  readonly page: number;
+  readonly itemsPerPage: number;
+  readonly q: string;
+  readonly status: CompanyStatus | null;
+  readonly countryCode: string | null;
+  readonly order: {
+    readonly key: 'name' | 'countryCode' | 'status' | 'createdAt';
+    readonly direction: SortDirection;
+  } | null;
+}
+
+export const COMPANY_STATUSES = ['pending', 'active', 'suspended'] as const;
+export type CompanyStatus = (typeof COMPANY_STATUSES)[number];
+
+/** What the API is asked for one page of the accounts list. */
+export interface PlatformAccountSearch {
+  readonly page: number;
+  readonly itemsPerPage: number;
+  readonly q: string;
+  readonly active: boolean | null;
+  readonly platformOperator: boolean | null;
+  readonly order: {
+    readonly key: 'email' | 'displayName' | 'createdAt' | 'active' | 'platformOperator';
+    readonly direction: SortDirection;
+  } | null;
+}
+
+/** The tabs of the platform page, in the order they are shown. */
+export const PLATFORM_TABS = ['overview', 'companies', 'accounts', 'payments', 'demand'] as const;
+export type PlatformTab = (typeof PLATFORM_TABS)[number];
 
 /** What an operator does about an account: every action ends its sessions except reactivating it. */
 export type AccountAction = 'end-sessions' | 'deactivate' | 'reactivate';

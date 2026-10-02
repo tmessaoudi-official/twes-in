@@ -11,6 +11,7 @@ namespace App\Tests\Support;
 
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\MembershipRepository;
+use App\Tenancy\Domain\Role;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryMemberships implements MembershipRepository
@@ -50,6 +51,20 @@ final class InMemoryMemberships implements MembershipRepository
     public function ofCompany(Uuid $companyId): array
     {
         return array_values(array_filter($this->memberships, static fn (Membership $m) => $m->getCompany()->getId()->equals($companyId)));
+    }
+
+    public function ofUsers(array $userIds): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $userIds);
+
+        return array_values(array_filter($this->memberships, static fn (Membership $m) => \in_array($m->getUser()->getId()->toRfc4122(), $wanted, true)));
+    }
+
+    public function ownersOfCompanies(array $companyIds): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $companyIds);
+
+        return array_values(array_filter($this->memberships, static fn (Membership $m) => Role::OWNER === $m->getRole()->getName() && \in_array($m->getCompany()->getId()->toRfc4122(), $wanted, true)));
     }
 
     public function ofUserInCompany(Uuid $userId, Uuid $companyId): ?Membership

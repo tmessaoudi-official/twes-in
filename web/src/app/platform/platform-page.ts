@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   ChangeDetectionStrategy,
   Component,
   computed,
   inject,
+  linkedSignal,
   OnInit,
   signal,
 } from '@angular/core';
@@ -13,16 +15,34 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { RouterLink } from '@angular/router';
+import { MatTabsModule } from '@angular/material/tabs';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { map } from 'rxjs';
+import { DataList, DataListCell } from '../shared/list/data-list';
+import type { ListQuery } from '../shared/list/list-types';
+import { StatusBadge } from '../shared/ui/status-badge';
+import type { StatusTone } from '../shared/theme/accent-theme';
 import { PlatformFacade } from './platform-facade';
+import { ACCOUNTS_LIST, accountSearch, COMPANIES_LIST, companySearch } from './platform-forms';
 import {
   COMPANY_COUNTRIES,
+  PLATFORM_TABS,
   type AccountAction,
   type CompanyCountry,
+  type PlatformCompanyRow,
+  type PlatformTab,
   type SignupSwitch,
   type SubscriptionTerms,
 } from './platform-types';
+
+/** What a list keeps in the address besides the tab: switching tabs must not carry one list's words into the next. */
+const LIST_PARAMS = ['q', 'status', 'country', 'state', 'sort', 'page', 'size', 'company'] as const;
+const COMPANY_TONES: Readonly<Record<string, StatusTone>> = {
+  pending: 'warning',
+  active: 'success',
+  suspended: 'neutral',
+};
 
 const PERIOD_UNITS: readonly SubscriptionTerms['periodUnit'][] = ['day', 'month', 'year'];
 const UNPAID_MODES: readonly NonNullable<SubscriptionTerms['unpaidMode']>[] = [
@@ -57,8 +77,12 @@ import { SubscriptionFacade } from '../licensing/subscription-facade';
     MatFormFieldModule,
     MatInputModule,
     MatSlideToggleModule,
+    MatTabsModule,
     RouterLink,
     TranslatePipe,
+    DataList,
+    DataListCell,
+    StatusBadge,
   ],
   templateUrl: './platform-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -67,6 +91,50 @@ export class PlatformPage implements OnInit {
   private readonly platform = inject(PlatformFacade);
   private readonly payments = inject(SubscriptionFacade);
   private readonly feedback = inject(Feedback);
+  private readonly route = inject(ActivatedRoute);
+
+  protected readonly tabs = PLATFORM_TABS;
+  /** The tab the address names, the overview where it names none. */
+  protected readonly tab = toSignal(
+    this.route.queryParamMap.pipe(
+      map(
+        (params): PlatformTab =>
+          PLATFORM_TABS.find((known) => known === params.get('tab')) ?? 'overview',
+      ),
+    ),
+    { initialValue: 'overview' as PlatformTab },
+  );
+  /** The company whose sheet is open, named by the address. */
+  private readonly openedId = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('company'))),
+    { initialValue: null },
+  );
+  /**
+   * The row of that company: found in the page shown, and kept when a search moves the page on while the sheet is
+   * open, so reading a sheet does not lose it to the list behind.
+   */
+  protected readonly opened = linkedSignal<
+    { id: string | null; rows: readonly PlatformCompanyRow[] },
+    PlatformCompanyRow | null
+  >({
+    source: () => ({ id: this.openedId(), rows: this.platform.companies() }),
+    computation: (source, previous) =>
+      source.id === null
+        ? null
+        : (source.rows.find((row) => row.id === source.id) ??
+          (previous?.value?.id === source.id ? previous.value : null)),
+  });
+  protected readonly companiesList = COMPANIES_LIST;
+  protected readonly accountsList = ACCOUNTS_LIST;
+  protected readonly companiesTotal = this.platform.companiesTotal;
+  protected readonly accountsTotal = this.platform.accountsTotal;
+  protected readonly companyCount = this.platform.companyCount;
+  protected readonly accountCount = this.platform.accountCount;
+  protected readonly waitingTotal = this.platform.waitingTotal;
+  /** Whether the form that opens a company is shown. */
+  protected readonly creating = signal(false);
+  protected readonly companyRowId = (row: PlatformCompanyRow): string => `company-${row.name}`;
+  protected readonly accountRowId = (row: { email: string }): string => `account-${row.email}`;
 
   protected readonly waitingPayments = this.payments.waiting;
   /** « Me prévenir » (row 150): the planned modules at least one company waits for, the most asked for first. */
@@ -81,7 +149,6 @@ export class PlatformPage implements OnInit {
   protected readonly busy = this.platform.busy;
   protected readonly error = this.platform.error;
   protected readonly accounts = this.platform.accounts;
-  protected readonly search = signal('');
   protected readonly companies = this.platform.companies;
   protected readonly countries = Object.keys(COMPANY_COUNTRIES) as CompanyCountry[];
   protected readonly companyName = signal('');
@@ -128,8 +195,24 @@ export class PlatformPage implements OnInit {
     await this.platform.setSignup(key, value);
   }
 
-  protected async find(): Promise<void> {
-    await this.platform.findAccounts(this.search().trim());
+  /** The address a tab opens: its own name and none of the words another list left behind. */
+  protected tabParams(tab: PlatformTab): Record<string, string | null> {
+    return {
+      tab: tab === 'overview' ? null : tab,
+      ...Object.fromEntries(LIST_PARAMS.map((key) => [key, null])),
+    };
+  }
+
+  protected tone(status: string): StatusTone {
+    return COMPANY_TONES[status] ?? 'neutral';
+  }
+
+  protected onCompaniesQuery(query: ListQuery): void {
+    void this.platform.loadCompanies(companySearch(query));
+  }
+
+  protected onAccountsQuery(query: ListQuery): void {
+    void this.platform.loadAccounts(accountSearch(query));
   }
 
   protected async act(userId: string, action: AccountAction): Promise<void> {
@@ -142,6 +225,7 @@ export class PlatformPage implements OnInit {
       this.feedback.success('platform.companies.invited', { email });
       this.companyName.set('');
       this.ownerEmail.set('');
+      this.creating.set(false);
     }
   }
 

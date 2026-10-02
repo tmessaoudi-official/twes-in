@@ -2,7 +2,7 @@
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -11,6 +11,12 @@ import {
 import { of } from 'rxjs';
 import { SubscriptionFacade } from '../licensing/subscription-facade';
 import type { WaitingPayment } from '../licensing/subscription-types';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
 import { PlatformFacade } from './platform-facade';
 import { PlatformPage } from './platform-page';
 import type {
@@ -21,6 +27,8 @@ import type {
   ModuleDemandRow,
   PlatformSubscriptionRow,
 } from './platform-types';
+import { AuthFacade } from '../auth/auth-facade';
+import { Session } from '../shared/session/session';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
 
@@ -35,6 +43,30 @@ class StaticLoader implements TranslateLoader {
           empty: 'Aucune société n’attend encore de module.',
         },
         title: 'Plateforme',
+        tabs: {
+          overview: 'Vue d’ensemble',
+          companies: 'Entreprises',
+          accounts: 'Comptes',
+          payments: 'Paiements',
+          demand: 'Demande',
+        },
+        list: {
+          company: {
+            name: 'Entreprise',
+            country: 'Pays',
+            status: 'Statut',
+            owners: 'Propriétaires',
+            subscription: 'Abonnement',
+            created: 'Créée le',
+          },
+          account: {
+            name: 'Compte',
+            companies: 'Entreprises',
+            state: 'État',
+            created: 'Créé le',
+            actions: 'Actions',
+          },
+        },
         signup: {
           title: 'Inscriptions',
           enabled: 'Inscriptions ouvertes',
@@ -46,6 +78,7 @@ class StaticLoader implements TranslateLoader {
           owners: 'Propriétaires : {{owners}}',
           approve: 'Approuver',
           reject: 'Refuser',
+          all: 'Voir les {{count}} en attente',
         },
         accounts: {
           title: 'Comptes',
@@ -58,6 +91,9 @@ class StaticLoader implements TranslateLoader {
           end_sessions: 'Terminer les sessions',
           deactivate: 'Désactiver',
           reactivate: 'Réactiver',
+          owner: 'propriétaire',
+          member: 'membre',
+          states: { active: 'Actifs', inactive: 'Désactivés', operator: 'Opérateurs' },
         },
         companies: {
           title: 'Entreprises',
@@ -68,6 +104,9 @@ class StaticLoader implements TranslateLoader {
           invite: 'Inviter',
           invited: 'Invitation envoyée à {{email}}.',
           none: 'Aucune entreprise.',
+          new: 'Nouvelle entreprise',
+          close: 'Fermer',
+          no_owner: 'Aucun propriétaire.',
           countries: { TN: 'Tunisie', FR: 'France' },
           statuses: { pending: 'En attente', active: 'Active', suspended: 'Suspendue' },
         },
@@ -115,6 +154,10 @@ const account: PlatformAccountRow = {
   active: true,
   platformOperator: false,
   createdAt: '2026-09-15T10:00:00+00:00',
+  companies: [
+    { id: 'c1', name: 'Acme', role: 'owner' },
+    { id: 'c2', name: 'Globex', role: 'Comptable' },
+  ],
 };
 
 const row: PlatformCompanyRow = {
@@ -138,7 +181,17 @@ describe('PlatformPage', () => {
   const waitingPayments = signal<readonly WaitingPayment[]>([declared]);
   const openedSubscription = signal<string | null>(null);
   const demand = signal<readonly ModuleDemandRow[]>([]);
+  const waitingTotal = signal(1);
+  const companiesTotal = signal(1);
+  const accountsTotal = signal(1);
   const facade = {
+    waitingTotal: waitingTotal.asReadonly(),
+    companiesTotal: companiesTotal.asReadonly(),
+    accountsTotal: accountsTotal.asReadonly(),
+    companyCount: companiesTotal.asReadonly(),
+    accountCount: accountsTotal.asReadonly(),
+    loadCompanies: vi.fn(async () => undefined),
+    loadAccounts: vi.fn(async () => undefined),
     demand: demand.asReadonly(),
     waiting,
     companies,
@@ -153,7 +206,6 @@ describe('PlatformPage', () => {
     approve: vi.fn(),
     reject: vi.fn(),
     setSignup: vi.fn(),
-    findAccounts: vi.fn(),
     actOnAccount: vi.fn(),
     subscription: subscription.asReadonly(),
     openedSubscription: openedSubscription.asReadonly(),
@@ -179,6 +231,10 @@ describe('PlatformPage', () => {
     companies.set([row]);
     waitingPayments.set([declared]);
     demand.set([]);
+    waitingTotal.set(1);
+    companiesTotal.set(1);
+    accountsTotal.set(1);
+    openedSubscription.set(null);
     Object.values(payments)
       .filter((value) => typeof value === 'function' && 'mockReset' in value)
       .forEach((fn) => (fn as ReturnType<typeof vi.fn>).mockReset().mockResolvedValue(true));
@@ -192,6 +248,13 @@ describe('PlatformPage', () => {
         ...provideQuietFeedback(),
         { provide: PlatformFacade, useValue: facade },
         { provide: SubscriptionFacade, useValue: payments },
+        {
+          provide: AuthFacade,
+          useValue: { me: () => ({ user: { id: 'op1' }, company: null }), refresh: vi.fn() },
+        },
+        { provide: Session, useExisting: AuthFacade },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',
@@ -201,7 +264,9 @@ describe('PlatformPage', () => {
     }).compileComponents();
   });
 
-  async function render() {
+  /** The page on one of its tabs, as an address names it. */
+  async function render(address = '/') {
+    await TestBed.inject(Router).navigateByUrl(address);
     const fixture = TestBed.createComponent(PlatformPage);
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
@@ -213,7 +278,7 @@ describe('PlatformPage', () => {
   }
 
   it('opens a company subscription panel, saves its terms and closes it again', async () => {
-    const { fixture, query } = await render();
+    const { fixture, query } = await render('/?tab=companies&company=c1');
 
     query('subscription-Nouvelle Société')!.click();
     await fixture.whenStable();
@@ -288,20 +353,27 @@ describe('PlatformPage', () => {
     expect(facade.setSignup).toHaveBeenCalledWith('signup.enabled', true);
   });
 
-  it('finds accounts from what the operator typed', async () => {
-    const { fixture, query } = await render();
+  it('reads the accounts again from the query the list asks for, and says how many there are', async () => {
+    accountsTotal.set(41);
 
-    const search = query<HTMLInputElement>('platform-account-search')!;
-    search.value = 'acme';
-    search.dispatchEvent(new Event('input'));
-    query<HTMLButtonElement>('platform-account-find')!.click();
-    await fixture.whenStable();
+    const { query } = await render('/?tab=accounts');
 
-    expect(facade.findAccounts).toHaveBeenCalledWith('acme');
+    expect(facade.loadAccounts).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, q: '', active: null }),
+    );
+    expect(query('platform-tab-count-accounts')?.textContent).toContain('41');
+  });
+
+  it('shows the companies of an account with its role in each', async () => {
+    const { query } = await render('/?tab=accounts');
+
+    const line = query('account-nadia@acme.test')!.textContent!.replace(/\s+/g, ' ');
+    expect(line).toContain('Acme (propriétaire)');
+    expect(line).toContain('Globex (Comptable)');
   });
 
   it('ends the sessions of an active account or deactivates it', async () => {
-    const { fixture, query } = await render();
+    const { fixture, query } = await render('/?tab=accounts');
 
     const line = query('account-nadia@acme.test')!;
     expect(line.textContent).toContain('Nadia');
@@ -320,7 +392,7 @@ describe('PlatformPage', () => {
   it('only reactivates a deactivated account, which has no session left to end', async () => {
     accounts.set([{ ...account, active: false }]);
 
-    const { fixture, query } = await render();
+    const { fixture, query } = await render('/?tab=accounts');
 
     expect(query('account-nadia@acme.test')!.textContent).toContain('Désactivé');
     expect(query('deactivate-nadia@acme.test')).toBeNull();
@@ -331,7 +403,10 @@ describe('PlatformPage', () => {
   });
 
   it('opens a company from its name, country and first owner, and says the invitation went out', async () => {
-    const { fixture, query } = await render();
+    const { fixture, query } = await render('/?tab=companies');
+
+    query<HTMLButtonElement>('platform-company-new')!.click();
+    await fixture.whenStable();
 
     const name = query<HTMLInputElement>('platform-company-name')!;
     name.value = 'Globex';
@@ -355,13 +430,24 @@ describe('PlatformPage', () => {
     ]);
   });
 
-  it('lists every company with its status and invites an owner into one', async () => {
-    const { fixture, query } = await render();
+  it('lists a page of companies with their status, and reads the next one the list asks for', async () => {
+    companiesTotal.set(130);
+
+    const { query } = await render('/?tab=companies');
 
     const line = query('company-Nouvelle Société')!;
     expect(line.textContent).toContain('En attente');
     expect(line.textContent).toContain('nadia@example.test');
+    expect(facade.loadCompanies).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, status: null }),
+    );
+    expect(query('platform-tab-count-companies')?.textContent).toContain('130');
+  });
 
+  it('opens the sheet of the company the address names and invites an owner from it', async () => {
+    const { fixture, query } = await render('/?tab=companies&company=c1');
+
+    expect(query('company-sheet-Nouvelle Société')).not.toBeNull();
     const address = query<HTMLInputElement>('owner-email-Nouvelle Société')!;
     address.value = 'karim@example.test';
     address.dispatchEvent(new Event('input'));
@@ -371,8 +457,34 @@ describe('PlatformPage', () => {
     expect(facade.inviteOwner).toHaveBeenCalledWith('c1', 'karim@example.test');
   });
 
+  it('shows no sheet where the address names no company', async () => {
+    const { query } = await render('/?tab=companies');
+
+    expect(query('company-sheet-Nouvelle Société')).toBeNull();
+  });
+
+  it('shows one tab at a time, the overview where the address names none', async () => {
+    const { query, fixture } = await render();
+
+    expect(query('platform-signup-enabled')).not.toBeNull();
+    expect(query('platform-companies-table')).toBeNull();
+    expect(query('platform-accounts-table')).toBeNull();
+    expect(
+      fixture.nativeElement.querySelectorAll('[data-testid^="platform-tab-"]').length,
+    ).toBeGreaterThan(4);
+  });
+
+  it('counts the companies waiting on the overview tab and links to them', async () => {
+    waitingTotal.set(7);
+
+    const { query } = await render();
+
+    expect(query('platform-tab-count-overview')?.textContent).toContain('7');
+    expect(query('platform-waiting-all')?.textContent).toContain('Voir les 7 en attente');
+  });
+
   it('lists the payments waiting for a decision and answers one', async () => {
-    const { fixture, query } = await render();
+    const { fixture, query } = await render('/?tab=payments');
 
     const waiting = query('payment-p1')!;
     expect(waiting.textContent).toContain('Nouvelle Société');
@@ -395,7 +507,7 @@ describe('PlatformPage', () => {
   });
 
   it('rejects a payment without asking for periods', async () => {
-    const { fixture, query } = await render();
+    const { fixture, query } = await render('/?tab=payments');
 
     query<HTMLButtonElement>('payment-reject-p1')!.click();
     await fixture.whenStable();
@@ -406,7 +518,7 @@ describe('PlatformPage', () => {
   it('says so when no payment waits', async () => {
     waitingPayments.set([]);
 
-    const { query } = await render();
+    const { query } = await render('/?tab=payments');
 
     expect(query('platform-payments-empty')?.textContent).toContain('Aucun règlement en attente.');
   });
@@ -420,7 +532,7 @@ describe('PlatformPage', () => {
   });
   // « Me prévenir » (row 150): the operator reads which planned modules companies wait for, and how many.
   it('lists the planned modules companies wait for, the most asked for first, and says when none is', async () => {
-    const { fixture, query } = await render();
+    const { fixture, query } = await render('/?tab=demand');
     fixture.detectChanges();
     expect(query('platform-demand-empty')?.textContent).toContain('Aucune société');
 

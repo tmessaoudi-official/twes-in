@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
@@ -15,8 +15,11 @@ import type {
   PlatformOwnerInvitationPlatformOwnerInvitationWrite,
   SettingSettingRead,
 } from '../api/types.gen';
+import type { ListPage } from '../shared/list/list-types';
 import type {
   AccountAction,
+  PlatformAccountSearch,
+  PlatformCompanySearch,
   ModuleDemandRow,
   PlatformSubscriptionRow,
   SubscriptionTerms,
@@ -39,26 +42,17 @@ export class PlatformRefused extends Error {
 export class PlatformApi {
   private readonly http = inject(HttpClient);
 
-  waitingCompanies(): Promise<PlatformCompanyRow[]> {
+  /** One page of the companies the search finds, as Hydra carries it: the rows and the total. */
+  companies(search: PlatformCompanySearch): Promise<ListPage<PlatformCompanyRow>> {
     return this.guard(async () => {
-      const rows = await firstValueFrom(
-        this.http.get<PlatformCompanyPlatformCompanyRead[]>('/api/platform/companies', {
-          params: { status: 'pending' },
+      const page = await firstValueFrom(
+        this.http.get<HydraPage<PlatformCompanyPlatformCompanyRead>>('/api/platform/companies', {
+          headers: { Accept: 'application/ld+json' },
+          params: companyParams(search),
         }),
       );
-      return rows.map(toRow);
+      return { rows: page.member.map(toRow), total: totalOf(page) };
     });
-  }
-
-  /** Every company, whatever its status. */
-  companies(): Promise<PlatformCompanyRow[]> {
-    return this.guard(async () =>
-      (
-        await firstValueFrom(
-          this.http.get<PlatformCompanyPlatformCompanyRead[]>('/api/platform/companies'),
-        )
-      ).map(toRow),
-    );
   }
 
   /** Opens a company, which waits for its first owner; answers its identifier. A name already taken is refused. */
@@ -127,17 +121,17 @@ export class PlatformApi {
     );
   }
 
-  /** Accounts whose address or name holds that text, a few at most; an empty text lists the first of them all. */
-  accounts(text: string): Promise<PlatformAccountRow[]> {
-    return this.guard(async () =>
-      (
-        await firstValueFrom(
-          this.http.get<PlatformAccountPlatformAccountRead[]>('/api/platform/accounts', {
-            params: { q: text },
-          }),
-        )
-      ).map(toAccount),
-    );
+  /** One page of the accounts the search finds, each with the companies it belongs to. */
+  accounts(search: PlatformAccountSearch): Promise<ListPage<PlatformAccountRow>> {
+    return this.guard(async () => {
+      const page = await firstValueFrom(
+        this.http.get<HydraPage<PlatformAccountPlatformAccountRead>>('/api/platform/accounts', {
+          headers: { Accept: 'application/ld+json' },
+          params: accountParams(search),
+        }),
+      );
+      return { rows: page.member.map(toAccount), total: totalOf(page) };
+    });
   }
 
   actOnAccount(userId: string, action: AccountAction): Promise<PlatformAccountRow> {
@@ -220,6 +214,42 @@ export class PlatformApi {
   }
 }
 
+/** A collection as Hydra answers it. */
+interface HydraPage<T> {
+  readonly member: readonly T[];
+  readonly totalItems?: number;
+}
+
+function totalOf(page: HydraPage<unknown>): number {
+  if (page.totalItems === undefined) throw new Error('A page came without its total.');
+  return page.totalItems;
+}
+
+function pagingParams(page: number, itemsPerPage: number, q: string): HttpParams {
+  let params = new HttpParams().set('page', page).set('itemsPerPage', itemsPerPage);
+  if (q.trim() !== '') params = params.set('q', q.trim());
+  return params;
+}
+
+function companyParams(search: PlatformCompanySearch): HttpParams {
+  let params = pagingParams(search.page, search.itemsPerPage, search.q);
+  if (search.status !== null) params = params.set('status', search.status);
+  if (search.countryCode !== null) params = params.set('countryCode', search.countryCode);
+  if (search.order !== null)
+    params = params.set(`order[${search.order.key}]`, search.order.direction);
+  return params;
+}
+
+function accountParams(search: PlatformAccountSearch): HttpParams {
+  let params = pagingParams(search.page, search.itemsPerPage, search.q);
+  if (search.active !== null) params = params.set('active', search.active);
+  if (search.platformOperator !== null)
+    params = params.set('platformOperator', search.platformOperator);
+  if (search.order !== null)
+    params = params.set(`order[${search.order.key}]`, search.order.direction);
+  return params;
+}
+
 const subscriptionPath = (companyId: string): string =>
   `/api/platform/companies/${encodeURIComponent(companyId)}/subscription`;
 
@@ -274,6 +304,11 @@ function toAccount(read: PlatformAccountPlatformAccountRead): PlatformAccountRow
     active: read.active ?? false,
     platformOperator: read.platformOperator ?? false,
     createdAt: read.createdAt ?? '',
+    companies: (read.companies ?? []).map((company) => ({
+      id: company.id ?? '',
+      name: company.name ?? '',
+      role: company.role ?? '',
+    })),
   };
 }
 

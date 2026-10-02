@@ -9,9 +9,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
+use App\Identity\Domain\AccountSearch;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserRepository;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryUsers implements UserRepository
@@ -43,16 +46,19 @@ final class InMemoryUsers implements UserRepository
         return null;
     }
 
-    public function search(string $text, int $limit): array
+    /** Narrows on address and name, active and operator; in address order. */
+    public function search(AccountSearch $search, PageRequest $page): Page
     {
-        $needle = mb_strtolower(trim($text));
+        $needle = mb_strtolower(trim($search->text ?? ''));
         $found = array_values(array_filter(
             $this->users,
-            static fn (User $u) => str_contains($u->getEmail()->value, $needle) || str_contains(mb_strtolower($u->getDisplayName()), $needle),
+            static fn (User $u): bool => ('' === $needle || str_contains($u->getEmail()->value, $needle) || str_contains(mb_strtolower($u->getDisplayName()), $needle))
+                && (null === $search->active || $u->isActive() === $search->active)
+                && (null === $search->platformOperator || $u->isPlatformOperator() === $search->platformOperator),
         ));
         usort($found, static fn (User $a, User $b) => strcmp($a->getEmail()->value, $b->getEmail()->value));
 
-        return \array_slice($found, 0, $limit);
+        return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);
     }
 
     public function save(User $user): void

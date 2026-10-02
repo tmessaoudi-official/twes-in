@@ -121,14 +121,16 @@ test('a locked company declares what it paid and the operator confirms it back o
   });
 
   // The operator sees it in their queue, with the company it came from, and the list says the same.
-  await page.goto('/platform');
+  await page.goto('/platform?tab=payments');
   // The card, not one of the controls inside it: those carry data-testids beginning with "payment-" too.
   const waiting = page
     .locator('mat-card[data-testid^="payment-"]')
     .filter({ hasText: `Payante ${stamp}` });
   await expect(waiting.first()).toContainText('600.000');
   await page.screenshot({ path: test.info().outputPath('platform-payments.png'), fullPage: true });
+  await page.goto(`/platform?tab=companies&q=${encodeURIComponent(`Payante ${stamp}`)}`);
   await expect(page.getByTestId(`company-Payante ${stamp}`)).toContainText('Règlement en attente');
+  await page.goto('/platform?tab=payments');
 
   // Confirming carries the covered time forward, and the owner is back in the shell.
   const declarationId = await waiting

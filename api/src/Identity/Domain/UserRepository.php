@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Identity\Domain;
 
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 interface UserRepository
@@ -17,8 +19,12 @@ interface UserRepository
 
     public function ofEmail(Email $email): ?User;
 
-    /** @return list<User> the users whose address or display name holds that text, whatever its case, in address order */
-    public function search(string $text, int $limit): array;
+    /**
+     * One page of the accounts the platform's operators list, narrowed and sorted in the database.
+     *
+     * @return Page<User>
+     */
+    public function search(AccountSearch $search, PageRequest $page): Page;
 
     /**
      * The accounts that run the platform, in address order: who hears of what a company declares.
