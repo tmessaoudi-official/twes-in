@@ -23,6 +23,9 @@ parameters:
     app.signup.login_url: '%env(DEFAULT_URI)%/login'
     app.platform_url: '%env(DEFAULT_URI)%/platform'
     app.signup.valid_for: 'PT24H'
+    # Forgot password: the page a reset link opens, and how long it works.
+    app.password_reset.link_url: '%env(DEFAULT_URI)%/reset-password/{token}'
+    app.password_reset.valid_for: 'PT1H'
     # Rows one import takes, header excluded: one file is one unit of work, run inside the request, so it must finish
     # well within PHP's 30 seconds; 2500 rows measured 10.4 s on release PHP (docs/SPEC.md § 7, 2026-09-19).
     app.import.max_rows: 2000

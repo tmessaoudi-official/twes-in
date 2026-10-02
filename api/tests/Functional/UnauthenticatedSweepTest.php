@@ -30,6 +30,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         '^/api/auth/mfa/verify$',
         '^/api/auth/mfa/passkey-login(/options)?$',
         '^/api/signup',
+        '^/api/auth/password/(forgot|reset)$',
         '^/api/scan-pairings/claim$',
         '^/api/scan-pairings/[0-9a-f-]{36}/(scans|choices|realtime-token)$',
         '^/api/legal/[a-z]+/[a-z]{2}$',

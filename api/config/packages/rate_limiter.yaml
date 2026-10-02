@@ -17,6 +17,21 @@ framework:
             policy: 'fixed_window'
             limit: 1
             interval: '15 minutes'
+        # Forgot password mails whoever asks, so both ends are budgeted like signup: per client five asks an hour, then 429;
+        # per address one mail in fifteen minutes, and a second ask gets the same answer with nothing sent. Choosing the
+        # new password is budgeted per client too: the link is 256 random bits, so this only keeps the table from being hammered.
+        password_reset_client:
+            policy: 'fixed_window'
+            limit: 5
+            interval: '1 hour'
+        password_reset_address:
+            policy: 'fixed_window'
+            limit: 1
+            interval: '15 minutes'
+        password_reset_use:
+            policy: 'fixed_window'
+            limit: 20
+            interval: '15 minutes'
         # A phone pairing link is claimed with no session (docs/SPEC.md § 7, 2026-09-23 09:45, slice 4). Links are 256
         # random bits, so the budget is not what protects them; it keeps a client from hammering the table.
         scan_pairing_claim:

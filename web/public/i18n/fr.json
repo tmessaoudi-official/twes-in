@@ -21,6 +21,7 @@
       "submitting": "Connexion…",
       "signup": "Créer un compte",
       "no_account": "Pas encore de compte ?",
+      "forgot": "Mot de passe oublié ?",
       "session_expired": "Votre session a pris fin. Reconnectez-vous pour continuer."
     },
     "logout": "Se déconnecter",
@@ -2204,6 +2205,37 @@
         "withholding_rate_too_precise": "taux de retenue à plus de deux décimales",
         "tax_rate_too_precise": "taux de TVA à plus de deux décimales"
       }
+    }
+  },
+  "password_reset": {
+    "forgot": {
+      "title": "Mot de passe oublié ?",
+      "intro": "Saisissez l’adresse e-mail de votre compte. S’il en existe un, nous envoyons un lien pour choisir un nouveau mot de passe ; il vaut une heure.",
+      "email": "Adresse e-mail",
+      "email_invalid": "Cette adresse e-mail n’est pas valide.",
+      "submit": "Envoyer le lien",
+      "sent": "Si cette adresse a un compte, un lien est en route. Il vaut une heure."
+    },
+    "reset": {
+      "title": "Choisir un nouveau mot de passe",
+      "intro": "Au moins 12 caractères. Le choisir vous déconnecte partout.",
+      "password": "Nouveau mot de passe",
+      "again": "Nouveau mot de passe, encore",
+      "submit": "Changer le mot de passe",
+      "done": "Votre mot de passe est changé. Toutes les sessions ont pris fin.",
+      "sign_in": "Se connecter",
+      "ask_again": "Demander un nouveau lien"
+    },
+    "back_to_login": "Retour à la connexion",
+    "errors": {
+      "invalid_email": "Cette adresse e-mail n’est pas valide.",
+      "link_not_usable": "Ce lien n’est plus valable : il a servi, il a expiré, ou un plus récent l’a remplacé. Demandez-en un nouveau.",
+      "too_short": "Le mot de passe doit avoir au moins 12 caractères.",
+      "breached": "Ce mot de passe figure dans des fuites de données connues. Choisissez-en un autre.",
+      "mismatch": "Les deux mots de passe ne sont pas identiques.",
+      "too_many_attempts": "Trop de tentatives. Réessayez plus tard.",
+      "network": "Le serveur est injoignable.",
+      "refused": "La demande a été refusée."
     }
   },
   "signup": {

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Identity\Application;
 
 use App\Identity\Application\Password\ChangePassword;
+use App\Identity\Application\Password\NewPasswordPolicy;
 use App\Identity\Application\Password\NewPasswordRefused;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Email;
@@ -94,7 +95,7 @@ final class ChangePasswordTest extends TestCase
             }
         };
 
-        return new ChangePassword($this->users, $hasher, new FakeBreachedPasswordCheck($breached), $this->audit, $this->transactions, new MockClock('2026-10-02 12:00:00'));
+        return new ChangePassword($this->users, $hasher, new NewPasswordPolicy(new FakeBreachedPasswordCheck($breached)), $this->audit, $this->transactions, new MockClock('2026-10-02 12:00:00'));
     }
 
     private function assertRefused(string $reason, callable $act): void

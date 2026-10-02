@@ -20,6 +20,13 @@ signup:
         intro: "Quelqu'un a demandé à ouvrir un compte %product% avec cette adresse, qui en a déjà un."
         call_to_action: 'Se connecter'
         ignore: "Si ce n'était pas vous, ignorez ce message : rien n'a changé."
+password_reset:
+    subject: 'Réinitialisez votre mot de passe %product%'
+    heading: 'Choisissez un nouveau mot de passe'
+    intro: 'Quelqu''un, sans doute vous, a demandé à réinitialiser le mot de passe de votre compte %product%.'
+    call_to_action: 'Choisir un nouveau mot de passe'
+    expires: 'Ce lien est valable %minutes% minutes et ne sert qu''une fois.'
+    ignore: 'Si vous n''êtes pas à l''origine de cette demande, ignorez ce message : votre mot de passe n''a pas changé.'
 company_approved:
     subject: '%company% est ouverte sur %product%'
     heading: '%company% est approuvée'

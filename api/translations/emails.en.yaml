@@ -19,6 +19,13 @@ signup:
         intro: 'Someone asked to open a %product% account with this address, which already has one.'
         call_to_action: 'Sign in'
         ignore: 'If that was not you, ignore this message: nothing has changed.'
+password_reset:
+    subject: 'Reset your %product% password'
+    heading: 'Choose a new password'
+    intro: 'Someone, most likely you, asked to reset the password of your %product% account.'
+    call_to_action: 'Choose a new password'
+    expires: 'This link is valid for %minutes% minutes and works once.'
+    ignore: 'If you did not ask for this, ignore this message: your password has not changed.'
 company_approved:
     subject: '%company% is open on %product%'
     heading: '%company% is approved'

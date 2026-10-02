@@ -21,6 +21,7 @@
       "submitting": "Signing in…",
       "signup": "Create an account",
       "no_account": "No account yet?",
+      "forgot": "Forgot your password?",
       "session_expired": "Your session has ended. Sign in again to continue."
     },
     "logout": "Sign out",
@@ -2204,6 +2205,37 @@
         "withholding_rate_too_precise": "withholding rate with more than two decimals",
         "tax_rate_too_precise": "VAT rate with more than two decimals"
       }
+    }
+  },
+  "password_reset": {
+    "forgot": {
+      "title": "Forgot your password?",
+      "intro": "Enter the email address of your account. If it has one, we send a link to choose a new password; it works for one hour.",
+      "email": "Email address",
+      "email_invalid": "This email address is not valid.",
+      "submit": "Send the link",
+      "sent": "If this address has an account, a link is on its way. It works for one hour."
+    },
+    "reset": {
+      "title": "Choose a new password",
+      "intro": "At least 12 characters. Choosing it signs you out everywhere.",
+      "password": "New password",
+      "again": "New password again",
+      "submit": "Change the password",
+      "done": "Your password is changed. Every session was ended.",
+      "sign_in": "Sign in",
+      "ask_again": "Ask for a new link"
+    },
+    "back_to_login": "Back to sign in",
+    "errors": {
+      "invalid_email": "This email address is not valid.",
+      "link_not_usable": "This link is no longer valid: it was used, it expired, or a newer one replaced it. Ask for a new one.",
+      "too_short": "The password must have at least 12 characters.",
+      "breached": "This password appears in known data breaches. Choose another one.",
+      "mismatch": "The two passwords are not the same.",
+      "too_many_attempts": "Too many attempts. Try again later.",
+      "network": "The server cannot be reached.",
+      "refused": "The request was refused."
     }
   },
   "signup": {

@@ -123,6 +123,13 @@
     </form>
   }
 
+  @if (step() === 'password') {
+    <p twesAuthAfter class="twes-auth-after">
+      <a routerLink="/forgot-password" data-testid="login-forgot">{{
+        'auth.login.forgot' | translate
+      }}</a>
+    </p>
+  }
   @if (step() === 'password' && signupOpen()) {
     <p twesAuthAfter class="twes-auth-after">
       {{ 'auth.login.no_account' | translate }}

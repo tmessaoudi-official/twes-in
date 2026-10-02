@@ -11,7 +11,6 @@ namespace App\Identity\Application\Password;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Identity\Application\BreachedPasswordCheck;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\UserRepository;
 use App\Shared\Application\Transactions;
@@ -29,13 +28,11 @@ final readonly class ChangePassword
     public const string CHANGED = 'auth.password_changed';
     public const string REFUSED = 'auth.password_change_refused';
     public const string BREACH_CHECK_SKIPPED = 'auth.password_breach_check_skipped';
-    public const int MIN_LENGTH = 12;
-    public const int MAX_LENGTH = 4096;
 
     public function __construct(
         private UserRepository $users,
         private PasswordHasher $hasher,
-        private BreachedPasswordCheck $breached,
+        private NewPasswordPolicy $policy,
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
@@ -50,18 +47,15 @@ final readonly class ChangePassword
             throw $this->refuse($userId, NewPasswordRefused::CURRENT_PASSWORD);
         }
 
-        $length = mb_strlen($newPassword);
-        if ($length < self::MIN_LENGTH || $length > self::MAX_LENGTH) {
-            throw $this->refuse($userId, NewPasswordRefused::TOO_SHORT);
-        }
         if ($newPassword === $currentPassword) {
             throw $this->refuse($userId, NewPasswordRefused::UNCHANGED);
         }
 
-        // Asked before the transaction opens: it is a call to another service.
-        $breached = $this->breached->isBreached($newPassword);
-        if (true === $breached) {
-            throw $this->refuse($userId, NewPasswordRefused::BREACHED);
+        // Asked before the transaction opens: the breach check is a call to another service.
+        try {
+            $breached = $this->policy->check($newPassword);
+        } catch (NewPasswordRefused $refused) {
+            throw $this->refuse($userId, $refused->reason);
         }
 
         $this->transactions->run(function () use ($user, $newPassword, $breached): void {

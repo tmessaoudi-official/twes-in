@@ -85,6 +85,19 @@ export const routes: Routes = [
     loadComponent: () => import('./signup/finish-signup-page').then((m) => m.FinishSignupPage),
   },
   {
+    // Asking for a reset link is for somebody not signed in.
+    path: 'forgot-password',
+    canActivate: [anonymousGuard],
+    loadComponent: () =>
+      import('./password-reset/forgot-password-page').then((m) => m.ForgotPasswordPage),
+  },
+  {
+    // The far end of a reset link, opened from a mail client with no session: outside both guards, like a signup link.
+    path: 'reset-password/:token',
+    loadComponent: () =>
+      import('./password-reset/reset-password-page').then((m) => m.ResetPasswordPage),
+  },
+  {
     // A company its subscription locked: outside the shell like the page below, because the API refuses its members
     // everything but reading the subscription and declaring a payment — which is what this page is for.
     path: 'subscription',

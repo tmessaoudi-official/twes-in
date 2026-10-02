@@ -12,6 +12,7 @@ namespace App\Tests\Architecture;
 use App\Audit\Domain\AuditLog;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Identity\Domain\Passkey;
+use App\Identity\Domain\PasswordReset;
 use App\Identity\Domain\RecoveryCodeEntry;
 use App\Identity\Domain\User;
 use App\Inbox\Domain\InboxItem;
@@ -39,6 +40,7 @@ final class CompanyColumnTest extends KernelTestCase
         User::class => 'an account belongs to no company; memberships attach it to several',
         Signup::class => 'a request for a company that does not exist yet',
         Passkey::class => "one of an account's second factors",
+        PasswordReset::class => 'a link to an account, which belongs to no company',
         RecoveryCodeEntry::class => "one of an account's second factors",
         CustomerTaxRegime::class => "a country preset's reference data, which no company edits",
         LegalText::class => "the platform's own legal pages, the same for every company",
