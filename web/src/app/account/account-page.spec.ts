@@ -24,6 +24,7 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { PRESENTATION } from '../shared/settings/settings-registry';
+import { ScanGap } from '../shared/scan/scan-gap';
 import { AccountPage } from './account-page';
 
 class StaticLoader implements TranslateLoader {
@@ -275,6 +276,44 @@ describe('AccountPage', () => {
     toggle?.click();
 
     expect(TestBed.inject(SettingsFacade).value(PRESENTATION.scanFeedback)()).toBe(false);
+  });
+
+  /** A keydown as a wedge scanner sends it: the browser stamps it, so the test sets the stamp it wants. */
+  function keyAt(input: HTMLInputElement, key: string, at: number): void {
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'timeStamp', { value: at });
+    input.dispatchEvent(event);
+  }
+
+  it('measures the scanner typing into the test field, suggests a gap and keeps the one the person applies', async () => {
+    const root = await render('preferences');
+    const field = byTestId(root, 'account-scanner-test') as HTMLInputElement;
+    expect(TestBed.inject(ScanGap).gap()).toBe(30);
+
+    [...'3017620422003'].forEach((key, index) => keyAt(field, key, 1000 + index * 8));
+    keyAt(field, 'Enter', 1000 + 13 * 8);
+    fixture.detectChanges();
+
+    expect(byTestId(root, 'account-scanner-result')).not.toBeNull();
+    (byTestId(root, 'account-scanner-apply') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(TestBed.inject(ScanGap).gap()).toBe(25);
+    expect(byTestId(root, 'account-scanner-reset')).not.toBeNull();
+    expect(byTestId(root, 'account-scanner-result')).toBeNull();
+  });
+
+  it('says it read nothing from a hand, and offers nothing to apply', async () => {
+    const root = await render('preferences');
+    const field = byTestId(root, 'account-scanner-test') as HTMLInputElement;
+
+    [...'ABCDEF'].forEach((key, index) => keyAt(field, key, 1000 + index * 180));
+    keyAt(field, 'Enter', 1000 + 6 * 180);
+    fixture.detectChanges();
+
+    expect(byTestId(root, 'account-scanner-nothing')).not.toBeNull();
+    expect(byTestId(root, 'account-scanner-apply')).toBeNull();
+    expect(TestBed.inject(ScanGap).gap()).toBe(30);
   });
 
   it('pins the company every sign-in opens, the working one first, and unpins it', async () => {

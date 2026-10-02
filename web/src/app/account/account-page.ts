@@ -36,6 +36,7 @@ import {
 } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { LANGUAGE_NAMES, LanguageFacade } from '../shared/i18n/language-facade';
+import { ScanGap, SCAN_GAP_DEFAULT_MS, suggestGap } from '../shared/scan/scan-gap';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import {
   type Density,
@@ -121,6 +122,35 @@ export class AccountPage implements OnInit {
   protected readonly companies = this.company.companies;
   /** Pinning means something only to somebody in several companies. */
   protected readonly canPin = computed(() => this.companies().length > 1);
+
+  protected readonly scanGap = inject(ScanGap);
+  protected readonly defaultGap = SCAN_GAP_DEFAULT_MS;
+  /** The gap measured from the last burst typed into the test field, or null when it measured nothing yet. */
+  protected readonly suggestion = signal<number | null>(null);
+  /** Whether the last try read nothing from a scanner, such as keys a hand typed. */
+  protected readonly measuredNothing = signal(false);
+  private scannerKeys: number[] = [];
+
+  /** Times the keys typed into the test field; an Enter ends the try, as a scanner's does. */
+  protected measure(event: KeyboardEvent): void {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const suggested = suggestGap(this.scannerKeys);
+      this.suggestion.set(suggested);
+      this.measuredNothing.set(suggested === null);
+      this.scannerKeys = [];
+      (event.target as HTMLInputElement).value = '';
+      return;
+    }
+    if ([...event.key].length === 1) this.scannerKeys.push(event.timeStamp);
+  }
+
+  protected applySuggestion(): void {
+    const ms = this.suggestion();
+    if (ms === null) return;
+    this.scanGap.set(ms);
+    this.suggestion.set(null);
+  }
 
   protected setScanFeedback(on: boolean): void {
     this.settings.set(PRESENTATION.scanFeedback, on);

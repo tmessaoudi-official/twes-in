@@ -3013,6 +3013,15 @@
     "show_coming": "Montrer ce qui arrive, marqué « Bientôt »",
     "scanning": "Scan",
     "scan_feedback": "Bip et vibration à chaque code lu par la caméra",
+    "scanner": {
+      "title": "Mon scanner",
+      "gap": "Un caractère doit suivre l’autre en moins de {{ms}} ms pour être pris pour un scan.",
+      "test": "Tester mon scanner : scannez un code ici",
+      "result": "Votre scanner écrit un caractère toutes les quelques millisecondes ; réglage conseillé : {{ms}} ms.",
+      "apply": "Régler à {{ms}} ms",
+      "nothing": "Rien n’a été lu : ce sont des touches tapées à la main, ou trop peu de caractères.",
+      "reset": "Revenir à {{ms}} ms"
+    },
     "company_at_sign_in": "Société à l'ouverture",
     "company_at_sign_in_on": "Toujours ouvrir la même société",
     "company_at_sign_in_off": "Sinon, la dernière société utilisée s'ouvre.",
@@ -3129,6 +3138,7 @@
         "session": "Vous garder connecté. Strictement nécessaire.",
         "display": "Vos choix d’affichage : thème, couleur, disposition des menus.",
         "camera": "La caméra choisie pour scanner.",
+        "scan_gap": "Le délai entre deux touches qui distingue votre scanner d’une main.",
         "notice": "Que vous avez fermé le bandeau sur les cookies.",
         "customer_view": "Si la vue client est active dans cet onglet.",
         "price_check_view": "Si la vue client a été activée par le contrôle de prix.",

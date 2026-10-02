@@ -25,6 +25,7 @@ export const STORED_ITEMS: readonly StoredItem[] = [
   { id: 'session', name: 'twes_session', kind: 'cookie', lasts: 'session' },
   { id: 'display', name: 'twes.settings.<person>.<setting>', kind: 'local', lasts: 'kept' },
   { id: 'camera', name: 'twes.scan.camera', kind: 'local', lasts: 'kept' },
+  { id: 'scan_gap', name: 'twes.scan.gap', kind: 'local', lasts: 'kept' },
   { id: 'notice', name: 'twes.cookie-notice', kind: 'local', lasts: 'kept' },
   { id: 'customer_view', name: 'twes.customer-view', kind: 'session', lasts: 'tab' },
   { id: 'price_check_view', name: 'twes.price-check-view', kind: 'session', lasts: 'tab' },

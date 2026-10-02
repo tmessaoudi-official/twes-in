@@ -4076,6 +4076,9 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-10-02 12:40] ASSUMED (review): CI on 397869d8 failed one e2e (`lots.spec.ts`, shard 2) because row 116's form-stays-open rule hides the « Réception » button until « Annuler » closes the form, which the scenario, written when the form closed, never pressed; it timed out waiting for the button. The scenario now presses « Annuler » before opening the next receipt. The unit specs had not seen it, since the page spec opened one form per test; an e2e that records twice in one visit is the check. Certified by execution: none for the fix itself, e2e is left to CI, which also runs the scenario; the other two e2e shards and api, web, licences and prod-image were green on that commit.
   Alternatives: closing the form after a save when the product is lot-tracked (refused: a lot after a lot is the very case the ruling keeps open).
 
+- [2026-10-02 12:41] ASSUMED (review): how close two keystrokes must be to count as a scanner's burst is a per-browser setting (`twes.scan.gap`, 30 ms until changed, 10 to 100), since it is the scanner plugged into that machine that sets it; « Mon scanner » on the account page measures a burst and suggests three times its slowest interval, to the next 5 ms, kept between 20 and 60, and nothing from fewer than five keys or from a hand's. The shell's wedge, the hold timer and the pick field all read it. The fixed frame rate of a scanner is not built.
+  Alternatives: a company setting (refused: two tills of one company have different scanners); a fixed 30 ms (refused: a slow scanner or a laggy link then reads as typing).
+
 ## 8. Status
 
 <!-- progress-block v1 -->

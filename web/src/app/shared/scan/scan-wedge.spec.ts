@@ -28,6 +28,14 @@ describe('ScanWedge', () => {
     expect(results.slice(0, -1).every((code) => code === null)).toBe(true);
   });
 
+  it('reads a slower scanner once its browser widens the gap, and a hand still passes for none', () => {
+    const slow = burst('3017620422003', 1000, 50);
+
+    expect(feed(new ScanWedge(), slow).at(-1)).toBeNull();
+    expect(feed(new ScanWedge(() => 80), slow).at(-1)).toBe('3017620422003');
+    expect(feed(new ScanWedge(() => 80), burst('3017620422003', 1000, 200)).at(-1)).toBeNull();
+  });
+
   it('leaves a person typing alone, whatever they type', () => {
     const results = feed(new ScanWedge(), burst('3017620422003', 1000, SCAN_GAP_MS * 4));
 

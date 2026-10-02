@@ -3013,6 +3013,15 @@
     "show_coming": "Show what is coming, marked “Soon”",
     "scanning": "Scanning",
     "scan_feedback": "Beep and buzz each time the camera reads a code",
+    "scanner": {
+      "title": "My scanner",
+      "gap": "A character must follow the one before within {{ms}} ms to be taken for a scan.",
+      "test": "Test my scanner: scan a code here",
+      "result": "Your scanner types a character every few milliseconds; suggested setting: {{ms}} ms.",
+      "apply": "Set to {{ms}} ms",
+      "nothing": "Nothing was read: these are keys typed by hand, or too few characters.",
+      "reset": "Back to {{ms}} ms"
+    },
     "company_at_sign_in": "Company at sign-in",
     "company_at_sign_in_on": "Always open the same company",
     "company_at_sign_in_off": "Otherwise, the company used last opens.",
@@ -3129,6 +3138,7 @@
         "session": "Keeps you signed in. Strictly necessary.",
         "display": "Your display choices: scheme, colour, how the menus are laid out.",
         "camera": "The camera chosen for scanning.",
+        "scan_gap": "The time between two keys that tells your scanner from a hand.",
         "notice": "That you closed the cookie notice.",
         "customer_view": "Whether the customer view is on in this tab.",
         "price_check_view": "Whether the price check turned customer view on.",

@@ -23,7 +23,7 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { debounceTime } from 'rxjs';
-import { SCAN_GAP_MS } from '../scan/scan-wedge';
+import { ScanGap } from '../scan/scan-gap';
 
 /** One thing a person may pick: what they type to find it, and what they read to recognise it. */
 export interface PickOption {
@@ -154,6 +154,7 @@ export class PickField {
   protected readonly asked = signal(false);
   /** Whether the characters are arriving too fast for a hand — see `clocked` below. */
   protected readonly scanning = signal(false);
+  private readonly scanGap = inject(ScanGap);
   private lastKeyAt = Number.NEGATIVE_INFINITY;
   /** Counts the questions asked; an answer to any but the latest is dropped. */
   private asking = 0;
@@ -211,7 +212,7 @@ export class PickField {
     const now = event.timeStamp;
     const gap = now - this.lastKeyAt;
     this.lastKeyAt = now;
-    this.scanning.set(gap < SCAN_GAP_MS);
+    this.scanning.set(gap < this.scanGap.gap());
     if (this.scanning()) {
       // A question still out was asked before the scan — on focus, on no words — and its rows must not come back
       // mid-burst with the first one held ready for the scanner's Enter.

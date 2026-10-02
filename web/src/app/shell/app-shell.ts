@@ -65,7 +65,8 @@ import { PhonePairing } from '../shared/scan/phone-pairing';
 import { PhonePairingDialog } from '../shared/scan/phone-pairing-dialog';
 import { ScanBus } from '../shared/scan/scan-bus';
 import { ScanCount } from '../shared/scan/scan-count';
-import { SCAN_GAP_MS, ScanWedge } from '../shared/scan/scan-wedge';
+import { ScanGap } from '../shared/scan/scan-gap';
+import { ScanWedge } from '../shared/scan/scan-wedge';
 import { CommandPalette, type CommandPaletteData } from './command-palette';
 import { type Command, MODULE_COMMANDS, navCommands, screenCommands } from './commands';
 import {
@@ -166,7 +167,8 @@ export class AppShell {
   );
   private phoneOpen = false;
   private scanOpen = false;
-  private readonly wedge = new ScanWedge();
+  private readonly scanGap = inject(ScanGap);
+  private readonly wedge = new ScanWedge(() => this.scanGap.gap());
   private readonly scans = inject(ScanBus);
   /** The product whose page is on view, which the scan card offers a code nobody holds to first. */
   private readonly productOnView = inject(ProductOnView);
@@ -493,14 +495,14 @@ export class AppShell {
   /**
    * Runs a bare key's work after one scan gap: a supplier's or an internal code is free text, and its first letter
    * cannot be told from a hand's until the second arrives — `e` would issue the invoice on view (docs/SPEC.md § 7,
-   * 2026-09-23 02:05). Thirty milliseconds is below anything a person notices.
+   * 2026-09-23 02:05). The gap is this browser's own, thirty milliseconds unless it measured otherwise, below anything a person notices.
    */
   private hold(work: () => void): void {
     this.dropHeldShortcut();
     this.heldShortcut = setTimeout(() => {
       this.heldShortcut = null;
       work();
-    }, SCAN_GAP_MS);
+    }, this.scanGap.gap());
   }
 
   /** An action by the rule its button follows: asked first when it asks, nothing when refused for now. */

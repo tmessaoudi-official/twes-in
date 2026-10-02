@@ -32,12 +32,15 @@ export interface WedgeReading {
 
 /**
  * Tells a scan from typing on a page with no field focused (docs/SPEC.md § 7, 2026-09-23 01:10): a burst of
- * characters each within `SCAN_GAP_MS` of the one before, closed by an Enter as quick. Fed every keydown; answers the
+ * characters each within the scan gap of the one before, closed by an Enter as quick. Fed every keydown; answers the
  * code once the Enter closes a burst.
  */
 export class ScanWedge {
   private buffer = '';
   private lastAt = Number.NEGATIVE_INFINITY;
+
+  /** `gapMs` is read on every key: this browser's own measure of its scanner, `SCAN_GAP_MS` until it has one. */
+  constructor(private readonly gapMs: () => number = () => SCAN_GAP_MS) {}
 
   read(key: WedgeKey): WedgeReading {
     if (key.editable || key.modified) {
@@ -46,7 +49,7 @@ export class ScanWedge {
     }
     if (key.key === 'Enter') {
       const code =
-        this.buffer.length >= SCAN_MIN_LENGTH && key.at - this.lastAt < SCAN_GAP_MS
+        this.buffer.length >= SCAN_MIN_LENGTH && key.at - this.lastAt < this.gapMs()
           ? this.buffer
           : null;
       this.reset();
@@ -55,7 +58,7 @@ export class ScanWedge {
     // A named key (Shift, CapsLock) is not a character: it neither joins nor breaks a burst.
     if ([...key.key].length !== 1) return { code: null, claimed: false };
 
-    const inBurst = this.buffer !== '' && key.at - this.lastAt < SCAN_GAP_MS;
+    const inBurst = this.buffer !== '' && key.at - this.lastAt < this.gapMs();
     this.buffer = inBurst ? this.buffer + key.key : key.key;
     this.lastAt = key.at;
     return { code: null, claimed: inBurst };
