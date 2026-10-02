@@ -188,6 +188,23 @@ describe('AuthApi', () => {
     await expect(refused).rejects.toEqual(new AuthRefused('invalid_passkey'));
   });
 
+  it('changes the password with the current one, and says why it was refused', async () => {
+    const changed = api.changePassword('ancien-mot-de-passe', 'nouveau-mot-de-passe');
+    const request = http.expectOne({ method: 'PUT', url: '/api/auth/password' });
+    expect(request.request.body).toEqual({
+      currentPassword: 'ancien-mot-de-passe',
+      newPassword: 'nouveau-mot-de-passe',
+    });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await changed;
+
+    const refused = api.changePassword('faux', 'nouveau-mot-de-passe');
+    http
+      .expectOne('/api/auth/password')
+      .flush({ error: 'current_password' }, { status: 422, statusText: 'Unprocessable Content' });
+    await expect(refused).rejects.toEqual(new AuthRefused('current_password'));
+  });
+
   it('confirms who is at the screen with the password, or with a passkey', async () => {
     const confirmed = api.stepUpWithPassword('le-bon');
     const request = http.expectOne({ method: 'POST', url: '/api/auth/step-up' });

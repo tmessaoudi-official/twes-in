@@ -3064,6 +3064,25 @@
     }
   },
   "account": {
+    "password": {
+      "title": "Mot de passe",
+      "intro": "Un nouveau mot de passe déconnecte tous vos appareils, celui-ci compris.",
+      "current": "Mot de passe actuel",
+      "new": "Nouveau mot de passe (12 caractères au moins)",
+      "again": "Confirmer le nouveau mot de passe",
+      "submit": "Changer le mot de passe",
+      "changed": "Le mot de passe a été changé. Connectez-vous avec le nouveau.",
+      "problems": {
+        "current_password": "Le mot de passe actuel n'est pas le bon.",
+        "too_short": "Le nouveau mot de passe doit avoir au moins 12 caractères.",
+        "unchanged": "Choisissez un mot de passe différent de l'actuel.",
+        "breached": "Ce mot de passe apparaît dans une fuite de données : choisissez-en un autre.",
+        "mismatch": "Les deux saisies du nouveau mot de passe ne sont pas les mêmes.",
+        "too_many": "Trop d'essais. Réessayez dans quelques minutes.",
+        "network": "Le serveur ne répond pas. Réessayez.",
+        "refused": "Le mot de passe n'a pas pu être changé."
+      }
+    },
     "title": "Mon compte",
     "tabs": {
       "security": "Sécurité",

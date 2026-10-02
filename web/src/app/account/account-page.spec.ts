@@ -2,7 +2,7 @@
 
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -25,6 +25,8 @@ import {
 } from '../shared/settings/settings-facade';
 import { PRESENTATION } from '../shared/settings/settings-registry';
 import { ScanGap } from '../shared/scan/scan-gap';
+import { Feedback } from '../shared/feedback/feedback';
+import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
 import { AccountPage } from './account-page';
 
 class StaticLoader implements TranslateLoader {
@@ -134,7 +136,7 @@ describe('AccountPage', () => {
   const me = signal<{ mfa: MfaStatus }>({
     mfa: { enrolled: true, required: false, totp: true, passkeys: 0 },
   });
-  const auth = { me };
+  const auth = { me, changePassword: vi.fn() };
   let fixture: ComponentFixture<AccountPage>;
 
   async function render(tab?: string): Promise<HTMLElement> {
@@ -149,6 +151,7 @@ describe('AccountPage', () => {
         { provide: ThemeFacade, useValue: theme },
         { provide: LanguageFacade, useValue: language },
         { provide: CompanyFacade, useValue: company },
+        ...provideQuietFeedback(),
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useValue: { me: signal(null) } },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -229,6 +232,60 @@ describe('AccountPage', () => {
     const root = await render('device');
     const selected = root.querySelector('[role="tab"][aria-selected="true"]');
     expect(selected?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Sécurité');
+  });
+
+  describe('changing the password', () => {
+    function fill(root: HTMLElement, id: string, value: string): void {
+      const input = byTestId(root, id) as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    }
+    async function submit(root: HTMLElement, current: string, next: string, again: string) {
+      fill(root, 'account-password-current', current);
+      fill(root, 'account-password-new', next);
+      fill(root, 'account-password-again', again);
+      fixture.detectChanges();
+      byTestId(root, 'account-password-submit')!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    it('asks for the current password and the new one twice, and refuses two that differ without asking the API', async () => {
+      const root = await render('security');
+
+      await submit(root, 'ancien-mot-de-passe', 'nouveau-mot-de-passe', 'autre-mot-de-passe');
+
+      expect(auth.changePassword).not.toHaveBeenCalled();
+      expect(byTestId(root, 'account-password-problem')?.textContent).toContain('mismatch');
+    });
+
+    it('changes it, says so and goes to the sign-in page, since every session ended', async () => {
+      auth.changePassword.mockResolvedValue('changed');
+      const root = await render('security');
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+
+      await submit(root, 'ancien-mot-de-passe', 'nouveau-mot-de-passe', 'nouveau-mot-de-passe');
+
+      expect(auth.changePassword).toHaveBeenCalledWith(
+        'ancien-mot-de-passe',
+        'nouveau-mot-de-passe',
+      );
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+        { kind: 'success', key: 'account.password.changed', params: undefined },
+      ]);
+      expect(navigate).toHaveBeenCalledWith('/login');
+    });
+
+    it('says why a change was refused and stays on the page', async () => {
+      auth.changePassword.mockResolvedValue('current_password');
+      const root = await render('security');
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+
+      await submit(root, 'faux', 'nouveau-mot-de-passe', 'nouveau-mot-de-passe');
+
+      expect(byTestId(root, 'account-password-problem')?.textContent).toContain('current_password');
+      expect(navigate).not.toHaveBeenCalled();
+    });
   });
 
   it('sets the language, the scheme and the density', async () => {

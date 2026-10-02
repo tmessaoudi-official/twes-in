@@ -115,6 +115,11 @@ export class AuthApi {
     return [...answer.recoveryCodes];
   }
 
+  /** Replaces the password; the API then ends every session, this one included. Rejects with the reason it was refused. */
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await send(this.http.put<void>('/api/auth/password', { currentPassword, newPassword }));
+  }
+
   /** Confirms who is at the screen with the account's password; rejects when it is not the account's. */
   async stepUpWithPassword(password: string): Promise<void> {
     const body: StepUpPassword = { password };

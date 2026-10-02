@@ -3064,6 +3064,25 @@
     }
   },
   "account": {
+    "password": {
+      "title": "Password",
+      "intro": "A new password signs you out of all your devices, this one included.",
+      "current": "Current password",
+      "new": "New password (at least 12 characters)",
+      "again": "Confirm the new password",
+      "submit": "Change password",
+      "changed": "Your password was changed. Sign in with the new one.",
+      "problems": {
+        "current_password": "The current password is not the right one.",
+        "too_short": "The new password must be at least 12 characters long.",
+        "unchanged": "Choose a password different from the current one.",
+        "breached": "This password appears in a data breach: choose another.",
+        "mismatch": "The two entries of the new password differ.",
+        "too_many": "Too many attempts. Try again in a few minutes.",
+        "network": "The server is not answering. Try again.",
+        "refused": "The password could not be changed."
+      }
+    },
     "title": "My account",
     "tabs": {
       "security": "Security",

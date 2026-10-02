@@ -18,6 +18,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import type { PasswordChangeOutcome } from '../auth/auth-types';
 import { CompanyFacade } from '../company/company-facade';
 import {
   DEFAULT_SHORTCUTS,
@@ -34,6 +35,7 @@ import {
   type NumberStyle,
   todayIn,
 } from '../shared/i18n/format';
+import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { LANGUAGE_NAMES, LanguageFacade } from '../shared/i18n/language-facade';
 import { ScanGap, SCAN_GAP_DEFAULT_MS, suggestGap } from '../shared/scan/scan-gap';
@@ -80,6 +82,17 @@ export class AccountPage implements OnInit {
   private readonly company = inject(CompanyFacade);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
+  private readonly feedback = inject(Feedback);
+
+  protected readonly passwordCurrent = signal('');
+  protected readonly passwordNew = signal('');
+  protected readonly passwordAgain = signal('');
+  protected readonly passwordBusy = signal(false);
+  /** Why the last attempt did not go through: the API's reason, or the two new entries differing. */
+  protected readonly passwordProblem = signal<PasswordChangeOutcome | 'mismatch' | null>(null);
+  protected readonly passwordReady = computed(
+    () => this.passwordCurrent() !== '' && this.passwordNew() !== '' && this.passwordAgain() !== '',
+  );
 
   /** The tab from the address; an unknown one opens the first. */
   readonly tab = input<string | undefined>(undefined);
@@ -166,6 +179,28 @@ export class AccountPage implements OnInit {
 
   ngOnInit(): void {
     void this.company.load();
+  }
+
+  /**
+   * Changing the password ends every session, this one too, so the person goes to the sign-in page with the new one.
+   * Two entries that differ never reach the API: a typo would lock the person out of their own account.
+   */
+  protected async changePassword(): Promise<void> {
+    if (this.passwordBusy() || !this.passwordReady()) return;
+    if (this.passwordNew() !== this.passwordAgain()) {
+      this.passwordProblem.set('mismatch');
+      return;
+    }
+    this.passwordBusy.set(true);
+    this.passwordProblem.set(null);
+    const outcome = await this.auth.changePassword(this.passwordCurrent(), this.passwordNew());
+    this.passwordBusy.set(false);
+    if (outcome === 'changed') {
+      this.feedback.success('account.password.changed');
+      await this.router.navigateByUrl('/login');
+      return;
+    }
+    this.passwordProblem.set(outcome);
   }
 
   protected openTab(index: number): void {

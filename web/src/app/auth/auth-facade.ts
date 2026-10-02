@@ -16,6 +16,7 @@ import type {
   PasskeyAdded,
   PasskeyRemoved,
   PasskeysOutcome,
+  PasswordChangeOutcome,
   SignedInState,
 } from './auth-types';
 import { PasskeyClient } from './passkey-client';
@@ -154,6 +155,35 @@ export class AuthFacade implements Session, StepUpProof {
   /** Whether this browser can answer a passkey ceremony at all. */
   passkeySupported(): boolean {
     return this.passkeyClient.supported();
+  }
+
+  /**
+   * A new password for the signed-in account. It ends every session, this one too, so a change made here forgets the
+   * session at once and the person signs in again with the new password.
+   */
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<PasswordChangeOutcome> {
+    try {
+      await this.api.changePassword(currentPassword, newPassword);
+      this.signedOut();
+      return 'changed';
+    } catch (error) {
+      const code = codeOf(error);
+      switch (code) {
+        case 'current_password':
+        case 'too_short':
+        case 'unchanged':
+        case 'breached':
+        case 'network':
+          return code;
+        case 'too_many_attempts':
+          return 'too_many';
+        default:
+          return 'refused';
+      }
+    }
   }
 
   async withPassword(password: string): Promise<StepUpOutcome> {

@@ -24,6 +24,11 @@ export type LoginError =
   | 'invalid_passkey'
   | 'mfa_last_factor'
   | 'passkey_not_found'
+  // A password change that did not go through (the API's own reasons).
+  | 'current_password'
+  | 'too_short'
+  | 'unchanged'
+  | 'breached'
   // The browser produced no passkey: cancelled, timed out, or no authenticator to answer. Never sent by the API.
   | 'passkey_cancelled'
   // The browser refused because this device already holds a passkey for the account. Never sent by the API.
@@ -112,6 +117,17 @@ export type LoginOutcome =
   | { status: 'signed_in'; state: SignedInState }
   | { status: 'second_factor' }
   | { status: 'refused'; error: LoginError };
+
+/** How a password change came out: made, or the one reason it was not. */
+export type PasswordChangeOutcome =
+  | 'changed'
+  | 'current_password'
+  | 'too_short'
+  | 'unchanged'
+  | 'breached'
+  | 'too_many'
+  | 'network'
+  | 'refused';
 
 export type EnrolmentOutcome =
   { ok: true; enrolment: TotpEnrolment } | { ok: false; error: LoginError };

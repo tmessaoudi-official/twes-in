@@ -43,6 +43,7 @@ describe('AuthFacade', () => {
     recoveryCodesPasskeyOptions: vi.fn(),
     regenerateRecoveryCodesWithPasskey: vi.fn(),
     stepUpWithPassword: vi.fn(),
+    changePassword: vi.fn(),
     stepUpPasskeyOptions: vi.fn(),
     stepUpWithPasskey: vi.fn(),
     passkeyRegistrationOptions: vi.fn(),
@@ -227,6 +228,22 @@ describe('AuthFacade', () => {
     });
     expect(client.get).toHaveBeenCalledWith({ challenge: 'rst' });
     expect(api.regenerateRecoveryCodesWithPasskey).toHaveBeenCalledWith({ id: 'cred' });
+  });
+
+  it('forgets the session once the password is changed, which ended it, and says why a change was refused', async () => {
+    api.changePassword.mockResolvedValueOnce(undefined);
+    expect(await facade.changePassword('ancien', 'nouveau-long-mot')).toBe('changed');
+    expect(api.changePassword).toHaveBeenCalledWith('ancien', 'nouveau-long-mot');
+    expect(facade.me()).toBeNull();
+
+    for (const code of ['current_password', 'too_short', 'unchanged', 'breached'] as const) {
+      api.changePassword.mockRejectedValueOnce(new AuthRefused(code));
+      expect(await facade.changePassword('a', 'b')).toBe(code);
+    }
+    api.changePassword.mockRejectedValueOnce(new AuthRefused('too_many_attempts'));
+    expect(await facade.changePassword('a', 'b')).toBe('too_many');
+    api.changePassword.mockRejectedValueOnce(new AuthRefused('network'));
+    expect(await facade.changePassword('a', 'b')).toBe('network');
   });
 
   it('says how a proof of who is at the screen came out', async () => {
