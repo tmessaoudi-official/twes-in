@@ -72,6 +72,10 @@ final readonly class ManagePayments
         $this->transactions->run(function () use ($company, $invoiceId, $paymentId, $actorUserId): void {
             $invoice = $this->invoices->lockedOfIdInCompany($invoiceId, $company->getId()) ?? throw new InvoiceNotFound();
             $payment = $invoice->payment($paymentId) ?? throw new PaymentNotFound();
+            // The money a credit note gave back was paid: taking the payment away would count it twice.
+            if ($this->credits->hasGivenBack($company->getId(), $invoice->getId())) {
+                throw new InvoiceTransitionRefused(\sprintf('The invoice %s gave money back through a credit note: its payments are kept.', $invoice->getNumber() ?? $invoice->getId()->toRfc4122()));
+            }
             $invoice->removePayment($payment, $this->clock->now());
             $this->invoices->save($invoice);
             // A payment made of the customer's credit gives it back when it is deleted.

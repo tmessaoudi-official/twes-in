@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Fiscal\Domain\Calculation\Decimal;
+use App\Module\Invoices\Domain\CreditEntryKind;
 use App\Module\Invoices\Domain\CustomerCreditEntry;
 use App\Module\Invoices\Domain\CustomerCreditRepository;
 use Symfony\Component\Uid\Uuid;
@@ -58,6 +59,17 @@ final class InMemoryCustomerCredits implements CustomerCreditRepository
         }
 
         return null;
+    }
+
+    public function hasGivenBack(Uuid $companyId, Uuid $invoiceId): bool
+    {
+        foreach ($this->entries as $entry) {
+            if ($entry->getCompany()->getId()->equals($companyId) && CreditEntryKind::Credited === $entry->getKind() && $invoiceId->equals($entry->getInvoiceId())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function remove(CustomerCreditEntry $entry): void

@@ -128,6 +128,36 @@ final class CreditNoteOnPaidInvoiceTest extends ApiTestCase
         self::assertSame(['0.000', []], [$this->json()['balance'], $this->json()['entries']]);
     }
 
+    public function testAPaymentIsKeptOnceAnInvoiceHasGivenMoneyBackSoThatCreditIsNeverCountedTwice(): void
+    {
+        foreach (['balance', 'refund'] as $destination) {
+            $invoice = $this->paid('1000', '1000');
+            $credit = $this->draftCreditNote($invoice);
+            $this->postJson($this->path($credit).'/issue?excessTo='.$destination, null);
+            self::assertResponseStatusCodeSame(Response::HTTP_OK);
+            $this->getJson($this->path($invoice));
+            $payment = $this->stringAt($this->rowOf($this->arrayAt($this->json(), 'payments')[0]), 'id');
+
+            $this->sendJson('DELETE', $this->path($invoice).'/payments/'.$payment, null);
+
+            self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, $destination);
+            $this->getJson($this->path($invoice));
+            self::assertSame(['paid', '1000.000'], [$this->json()['status'], $this->json()['amountPaid']], 'the refused deletion changed nothing');
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function rowOf(mixed $row): array
+    {
+        self::assertIsArray($row);
+        $named = [];
+        foreach ($row as $key => $value) {
+            $named[(string) $key] = $value;
+        }
+
+        return $named;
+    }
+
     /** An issued invoice of $net with $paid of it paid, when above zero; its id. */
     private function paid(string $net, string $paid): string
     {

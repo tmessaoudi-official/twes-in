@@ -3931,10 +3931,13 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   (its CHECK constraint says so too) and it reads `paid`; `amountCredited` keeps the whole credit. The statement gains a
   line kind `credit_transfer`, a debit of the excess on the day of the credit note, so its closing balance stays the sum
   of what the invoices have due, the credit balance being shown apart. The audit entry `invoice.credited` carries
-  `excess` and `excessTo`. The credit note's screen asks which when issuing is refused for it, then issues again. Known
-  limit: deleting the payment of an invoice whose excess already moved leaves the entries in place, so the credit
-  balance then holds money the invoice no longer shows as paid; a later slice may refuse that deletion. Not in this
-  slice: the write-off of a short payment, still blocked on its legal basis (UNCERTIFIED — LEGAL).
+  `excess` and `excessTo`. The credit note's screen asks which when issuing is refused for it, then issues again. A
+  payment of an invoice that gave money back is kept (409 on its deletion), because taking it away would count the
+  credit twice: the invoice would owe again while the customer still held what the credit note gave back. Not in this
+  slice: the write-off of a short payment, still blocked on its legal basis (UNCERTIFIED — LEGAL), and a one-click
+  « move the excess » for a customer who paid more than an invoice's due: the payment stays capped at what is due, so
+  the extra money is recorded as a deposit on the customer and applied from there. Not run in a browser or an e2e
+  scenario: the deposit, apply-credit and excess dialogs; and the row locks were never raced.
   Alternatives: a negative payment as the refund (refused: every payment list, report and the delete action would grow
   a case, for the same trace); deciding the destination at the credit note's creation (refused: the excess depends on
   the payments at the moment of issue, which can change in between).

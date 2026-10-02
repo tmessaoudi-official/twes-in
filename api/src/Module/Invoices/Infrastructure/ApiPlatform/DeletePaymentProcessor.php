@@ -14,8 +14,10 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\ManagePayments;
 use App\Module\Invoices\Application\PaymentNotFound;
+use App\Module\Invoices\Domain\InvoiceTransitionRefused;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /** @implements ProcessorInterface<PaymentResource, null> */
@@ -33,6 +35,8 @@ final readonly class DeletePaymentProcessor implements ProcessorInterface
             $this->payments->delete($company, CompanyPath::identifier($uriVariables, 'invoiceId'), CompanyPath::identifier($uriVariables, 'paymentId'), $this->guard->account()->getId());
         } catch (InvoiceNotFound|PaymentNotFound $absent) {
             throw new NotFoundHttpException('No such payment.', $absent);
+        } catch (InvoiceTransitionRefused $kept) {
+            throw new ConflictHttpException($kept->getMessage(), $kept);
         }
 
         return null;

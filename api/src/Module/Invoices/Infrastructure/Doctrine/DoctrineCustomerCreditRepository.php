@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
 use App\Module\Customers\Domain\Customer;
+use App\Module\Invoices\Domain\CreditEntryKind;
 use App\Module\Invoices\Domain\CustomerCreditEntry;
 use App\Module\Invoices\Domain\CustomerCreditRepository;
 use Doctrine\DBAL\LockMode;
@@ -84,6 +85,11 @@ final readonly class DoctrineCustomerCreditRepository implements CustomerCreditR
         $entry = $this->entityManager->getRepository(CustomerCreditEntry::class)->findOneBy(['company' => $companyId, 'paymentId' => $paymentId]);
 
         return $entry instanceof CustomerCreditEntry ? $entry : null;
+    }
+
+    public function hasGivenBack(Uuid $companyId, Uuid $invoiceId): bool
+    {
+        return null !== $this->entityManager->getRepository(CustomerCreditEntry::class)->findOneBy(['company' => $companyId, 'invoiceId' => $invoiceId, 'kind' => CreditEntryKind::Credited]);
     }
 
     public function remove(CustomerCreditEntry $entry): void

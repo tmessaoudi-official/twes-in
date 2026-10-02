@@ -31,5 +31,8 @@ interface CustomerCreditRepository
     /** The entry a payment applied, if it applied credit. */
     public function appliedByPayment(Uuid $companyId, Uuid $paymentId): ?CustomerCreditEntry;
 
+    /** Whether a credit note of this invoice gave back money it had been paid, which a payment then cannot be taken away from. */
+    public function hasGivenBack(Uuid $companyId, Uuid $invoiceId): bool;
+
     public function remove(CustomerCreditEntry $entry): void;
 }
