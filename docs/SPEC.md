@@ -4030,6 +4030,16 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   browser, and no passkey was made on a real authenticator.
   Alternatives: gating on a short-lived server-side "elevated until" marker now (refused for this slice: customer view
   hides on screen only, so the check is the screen's; the marker belongs with the first API action that needs it).
+- [2026-10-02 08:43] AGREED: **work is finished module by module, in this order, and a module closes before the next opens
+  (developer, on being asked why the slices looked scattered).** 1 products and stock, 2 clients, 3 invoices,
+  4 delivery notes, 5 settings (everything parametrable), 6 translations, 7 invoice design, 8 quotes and orders
+  (rows 78, 81, 84), 9 the counter (82, 88, 98), 10 reports and the accountant (89, 90, 91, 92, 113, 114),
+  11 compliance (93, 103, 51, 75), 12 platform (56, 57, 58, 60, 67); parked until pulled in: scale (181), TTN (102),
+  zakat (120), projects (80), the venue map (83). A module is finished when every screen of it works from the browser,
+  each flow has an e2e scenario, and the developer gets one short list of what to click; cross-cutting items wait
+  unless the module needs them. Added to module 1 the same day: a **price calculator with the profit margin** on the
+  product (row 185) and **a label that prints every barcode** of a product, where it prints only the first (row 186),
+  "and every single detail".
 
 ## 8. Status
 
@@ -4222,6 +4232,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 182 | Data health check (§ 7 2026-09-27 18:59): `app:data:check` over the invariants, after generation, nightly with the worker and told to the operator | M | todo | - | |
 | 183 | The whole app from a phone (§ 7 2026-09-27 19:16): sign-in through the LAN door tested and fixed, the LAN address as the app's own when detected, `make up` prints it; before 178 | S | done | 409ad73 | compose.yaml Makefile infra/** api/config/** |
 | 184 | Live development by default (§ 7 2026-09-27 19:16, 19:20 and 20:30): `make up` mounts the api source with FrankenPHP watch, OPcache revalidating at once, Angular dev server with live reload, through the LAN door too; `make up-images` keeps the images CI runs; before 178 | M | done | - | compose*.yaml Makefile infra/** web/** docs/START.md |
+| 185 | Price calculator with the profit margin (§ 7 2026-10-02, module 1): on the product, from the cost price and a margin or a markup the selling price, or from the selling price the margin, with tax shown, per unit and per pack; for whoever may read costs and hidden in customer view | M | todo | - | web/src/app/products/**, api/src/Module/Products/** |
+| 186 | Labels print every barcode (§ 7 2026-10-02, module 1): a product with several barcodes shows only the first on its label; the label offers each one, or all of them, with the quantity each stands for | M | todo | - | web/src/app/products/** |
 <!-- /progress-block -->
 
 ### Delivered
