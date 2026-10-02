@@ -3956,7 +3956,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   Alternatives: a `substitution_group` table with members (refused: a rename or a merge then needs its own screen and
   rules for a thing that is only a label); symmetrical "A replaces B" pairs (refused: a group is transitive by nature,
   and the pairs would have to be kept so).
-- [2026-10-02 04:55] ASSUMED (review): **a delivery-note line short of stock offers its substitutes (row 62, second slice)**.
+- [2026-10-02 04:48] ASSUMED (review): **a delivery-note line short of stock offers its substitutes (row 62, second slice)**.
   On a draft note's line with a product, when the quantity asked exceeds what is on hand of that product (all locations)
   AND at least one active substitute has that much, the line lists those substitutes, each a button that puts it on the
   line in place of the product, the quantity staying. Short is judged on the stock totals alone: a product whose stock
