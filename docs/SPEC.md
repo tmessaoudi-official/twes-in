@@ -4059,6 +4059,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   execution: the math and component specs, the product page spec for who sees it, and a sabotage of the markup
   formula; not run in a browser.
   Alternatives: summing the ticked tax rates for a with-tax figure (refused: wrong whenever one compounds on another).
+- [2026-10-02 09:05] ASSUMED (review): row 116 slice 2: a serial product's movement quantity is fixed at 1 and read-only, and a recorded movement keeps the form open on the same product and locations with the lot code and note emptied, so a run of serial numbers is entered one after another; « Annuler » closes it. Row 22's "a location label names a move's destination" is taken as already met by the from and to location labels of the movement form. Certified by execution: the stock page spec and a sabotage of the kept form; not run in a browser. Not built: refusing a re-scanned serial on a document line, and lot tracking as an articles-chain setting.
+  Alternatives: closing the form after each save (refused: slow for a serial batch).
 
 ## 8. Status
 

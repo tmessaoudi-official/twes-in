@@ -1743,7 +1743,8 @@
       "quantity_hint": {
         "receive": "La quantité reçue, dans l’unité du produit.",
         "count": "La quantité trouvée ; l’écart avec le stock est enregistré, même nul.",
-        "move": "La quantité à déplacer ; elle ne peut pas dépasser ce qui se trouve à l’emplacement d’origine."
+        "move": "La quantité à déplacer ; elle ne peut pas dépasser ce qui se trouve à l’emplacement d’origine.",
+        "serial": "Un numéro de série désigne une pièce : la quantité est 1."
       },
       "lot_hint": {
         "lot": "Tel qu'il est imprimé sur l'étiquette ; un lot inconnu est ouvert à la réception.",

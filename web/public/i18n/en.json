@@ -1743,7 +1743,8 @@
       "quantity_hint": {
         "receive": "The quantity received, in the product’s unit.",
         "count": "The quantity found; the difference from the stock is recorded, even when nil.",
-        "move": "How much to move; it cannot be more than what is at the location it leaves."
+        "move": "How much to move; it cannot be more than what is at the location it leaves.",
+        "serial": "A serial number is one piece: the quantity is 1."
       },
       "lot_hint": {
         "lot": "As printed on the label; an unknown lot is opened on receipt.",

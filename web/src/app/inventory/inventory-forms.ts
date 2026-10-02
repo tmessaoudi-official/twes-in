@@ -531,7 +531,12 @@ export function movementForm(
             kind: 'decimal',
             required: true,
             pattern: QUANTITY_PATTERN,
-            hint: `inventory.movement.quantity_hint.${operation}`,
+            // A serial number is one piece, whatever the movement: the page puts the 1 there and nobody types another.
+            readOnly: tracking === 'serial',
+            hint:
+              tracking === 'serial'
+                ? 'inventory.movement.quantity_hint.serial'
+                : `inventory.movement.quantity_hint.${operation}`,
           },
           // Asked only of someone who may read what things cost, and only of goods coming in.
           ...(operation === 'receive' && withCost

@@ -172,10 +172,15 @@ export class StockPage implements OnInit {
         previous?.value && previous.source.operation === operation
           ? previous.value.getRawValue()
           : null;
-      return buildFormGroup(
+      const group = buildFormGroup(
         descriptor,
         typed ?? untracked(() => movementValues(this.facade.locations())),
       );
+      // A serial number is one piece: the quantity is fixed at 1 as soon as such a product is the one named.
+      if (untracked(() => this.product()?.tracking) === 'serial') {
+        group.get('quantity')?.setValue('1');
+      }
+      return group;
     },
   });
 
@@ -318,8 +323,19 @@ export class StockPage implements OnInit {
     const operation = this.operation();
     if (!companyId || operation === null || this.busy()) return;
     if (await this.facade.record(companyId, movementInput(operation, values))) {
-      this.operation.set(null);
+      // The form stays open for the next one — a serial number after a serial number, a lot after a lot — on the same
+      // product and where it goes; what names this movement alone is emptied. « Annuler » is how it is closed.
+      const form = this.form();
+      if (form !== null) this.startNext(form);
       this.feedback.success('inventory.stock.recorded');
+    }
+  }
+
+  private startNext(form: DescriptorFormGroup): void {
+    const kept = ['productId', 'locationId', 'toLocationId'];
+    const serial = this.product()?.tracking === 'serial';
+    for (const [id, control] of Object.entries(form.controls)) {
+      if (!kept.includes(id)) control.reset(id === 'quantity' && serial ? '1' : '');
     }
   }
 }

@@ -129,6 +129,16 @@ const products: StockProductOption[] = [
     homeLocationId: null,
     tracking: 'lot',
   },
+  // ART-4 is a headset kept by serial number: one piece each.
+  {
+    id: 'p4',
+    reference: 'ART-4',
+    name: 'Casque',
+    unitCode: 'C62',
+    unitDecimals: 0,
+    homeLocationId: null,
+    tracking: 'serial',
+  },
 ];
 
 const levelsSignal = signal<readonly StockLevelRow[]>([shortage]);
@@ -312,7 +322,37 @@ describe('StockPage', () => {
       quantity: '10',
     });
     expect(successToasts()).toContain('inventory.stock.recorded');
+    // The form stays open for the next movement, on the same product and place, with its quantity emptied.
+    expect(q('stock-movement-save')).not.toBeNull();
+    expect(form().get('productId')!.value).toBe('p1');
+    expect(form().get('locationId')!.value).toBe('l2');
+    expect(form().get('quantity')!.value).toBe('');
+    q('stock-movement-cancel')!.click();
+    await settle();
     expect(q('stock-movement-save')).toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-24 12:40, rows 21 and 22.
+  it('fixes the quantity of a serial number at 1, and keeps the form open for the next one', async () => {
+    q('stock-receive')!.click();
+    await settle();
+    await pick('field-productId', 'ART-4 · Casque');
+
+    const quantity = q('field-quantity') as HTMLInputElement;
+    expect(quantity.value).toBe('1');
+    expect(quantity.disabled).toBe(true);
+    type('field-lotCode', 'SN-001');
+    q('stock-movement-save')!.click();
+    await settle();
+
+    expect(facade.record).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ productId: 'p4', quantity: '1', lotCode: 'SN-001' }),
+    );
+    // The next serial number goes in the same form: the product stays, the number is empty, the quantity is still 1.
+    expect(form().get('productId')!.value).toBe('p4');
+    expect((q('field-lotCode') as HTMLInputElement).value).toBe('');
+    expect((q('field-quantity') as HTMLInputElement).value).toBe('1');
   });
 
   // docs/SPEC.md § 7, 2026-09-23 slice 7: a tracked product's movement names its lot.
