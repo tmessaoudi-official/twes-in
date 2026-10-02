@@ -4040,6 +4040,14 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   unless the module needs them. Added to module 1 the same day: a **price calculator with the profit margin** on the
   product (row 185) and **a label that prints every barcode** of a product, where it prints only the first (row 186),
   "and every single detail".
+- [2026-10-02 08:51] ASSUMED (review): **labels print every barcode (row 186)**: the labels page lists every code of the product as
+  a tick box, the unit code ticked to begin with and a supplier's code never ticked for you, and prints one label per
+  ticked code and per copy, each at its own price (a pack at the price of the pack) and saying « Colis de N » when
+  the code stands for several pieces. `?code=` still names the one code to start from. Certified by execution: the
+  labels page spec and a sabotage that let only one ticked code through; not printed on paper or run in a browser.
+  Alternatives: one label sheet mixing every code of one product on a single label (refused: a label carries one
+  barcode a scanner can read).
+
 
 ## 8. Status
 
@@ -4233,7 +4241,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 183 | The whole app from a phone (§ 7 2026-09-27 19:16): sign-in through the LAN door tested and fixed, the LAN address as the app's own when detected, `make up` prints it; before 178 | S | done | 409ad73 | compose.yaml Makefile infra/** api/config/** |
 | 184 | Live development by default (§ 7 2026-09-27 19:16, 19:20 and 20:30): `make up` mounts the api source with FrankenPHP watch, OPcache revalidating at once, Angular dev server with live reload, through the LAN door too; `make up-images` keeps the images CI runs; before 178 | M | done | - | compose*.yaml Makefile infra/** web/** docs/START.md |
 | 185 | Price calculator with the profit margin (§ 7 2026-10-02, module 1): on the product, from the cost price and a margin or a markup the selling price, or from the selling price the margin, with tax shown, per unit and per pack; for whoever may read costs and hidden in customer view | M | todo | - | web/src/app/products/**, api/src/Module/Products/** |
-| 186 | Labels print every barcode (§ 7 2026-10-02, module 1): a product with several barcodes shows only the first on its label; the label offers each one, or all of them, with the quantity each stands for | M | todo | - | web/src/app/products/** |
+| 186 | Labels print every barcode (§ 7 2026-10-02, module 1): a product with several barcodes shows only the first on its label; the label offers each one, or all of them, with the quantity each stands for | M | done | - | web/src/app/products/** |
 <!-- /progress-block -->
 
 ### Delivered

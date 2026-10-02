@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -31,7 +32,8 @@ const MOST_COPIES = 100;
  * Printed product labels (docs/SPEC.md § 7, 2026-09-23 slice 8): the product's name and reference, what a customer
  * pays for what the code enters, taxes included (the price check's count), and the code as a barcode — EAN when it
  * is a GTIN, Code 128 otherwise — with the code written under it. The unit code unless another is asked for, as
- * many copies as asked. The browser prints; the controls stay off the paper.
+ * many copies as asked; every code of the product can be ticked, each printing at its own price and with the pieces it
+ * stands for. The browser prints; the controls stay off the paper.
  */
 @Component({
   selector: 'app-product-labels-page',
@@ -39,6 +41,7 @@ const MOST_COPIES = 100;
     BarcodeSvg,
     FormsModule,
     MatButtonModule,
+    MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -59,7 +62,10 @@ export class ProductLabelsPage {
   readonly code = input<string>();
 
   protected readonly product = signal<ProductRow | null>(null);
-  protected readonly price = signal<string | null>(null);
+  /** What a customer pays for what each code enters, by code; a code the shelf does not answer to has none. */
+  protected readonly prices = signal<Readonly<Record<string, string>>>({});
+  /** The codes the person ticked; until they tick one, the default code alone. */
+  private readonly ticked = signal<readonly string[] | null>(null);
   protected readonly copies = signal(1);
 
   protected readonly printed = computed((): ProductBarcode | null => {
@@ -72,7 +78,30 @@ export class ProductLabelsPage {
     }
     return null;
   });
+  protected readonly codes = computed(() => this.product()?.barcodes ?? []);
+  /** What is printed: the ticked codes in the order the product holds them, else the default one. */
+  protected readonly chosen = computed((): readonly ProductBarcode[] => {
+    const ticked = this.ticked();
+    if (ticked === null) {
+      const first = this.printed();
+      return first === null ? [] : [first];
+    }
+    return this.codes().filter((barcode) => ticked.includes(barcode.code));
+  });
   protected readonly labels = computed(() => Array.from({ length: this.copies() }, (_, i) => i));
+
+  protected isChosen(barcode: ProductBarcode): boolean {
+    return this.chosen().some((held) => held.code === barcode.code);
+  }
+
+  protected tick(barcode: ProductBarcode, on: boolean): void {
+    const now = this.chosen().map((held) => held.code);
+    this.ticked.set(
+      on
+        ? [...now.filter((code) => code !== barcode.code), barcode.code]
+        : now.filter((code) => code !== barcode.code),
+    );
+  }
 
   constructor() {
     effect(() => {
@@ -94,13 +123,14 @@ export class ProductLabelsPage {
     const company = this.session.me()?.company;
     if (!company) return;
     this.product.set(await this.api.product(company.id, productId));
-    const printed = this.printed();
-    if (printed === null) return;
-    const scan = await this.api.scan(company.id, printed.code);
-    this.price.set(
-      scan === null
-        ? null
-        : `${this.format.amount(scan.priceGross, null)} ${company.currency}`.trim(),
-    );
+    const prices: Record<string, string> = {};
+    for (const barcode of this.codes()) {
+      const scan = await this.api.scan(company.id, barcode.code);
+      if (scan !== null) {
+        prices[barcode.code] =
+          `${this.format.amount(scan.priceGross, null)} ${company.currency}`.trim();
+      }
+    }
+    this.prices.set(prices);
   }
 }

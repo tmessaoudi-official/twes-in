@@ -118,6 +118,46 @@ describe('ProductLabelsPage', () => {
     );
   });
 
+  it('lists every code of the product and prints a label for each one ticked, each at its own price', async () => {
+    await open();
+    expect(all('product-label')).toHaveLength(1);
+    expect(q('product-labels-codes')?.textContent).toContain('FOURN-1');
+    expect(q('product-labels-codes')?.textContent).toContain('14006381333938');
+
+    const input = (code: string) =>
+      q(`product-labels-code-${code}`)!.querySelector('input') as HTMLInputElement;
+    expect(input('4006381333931').checked).toBe(true);
+    expect(input('14006381333938').checked).toBe(false);
+
+    input('14006381333938').click();
+    fixture.detectChanges();
+    const labels = all('product-label');
+    expect(labels).toHaveLength(2);
+    expect(labels[0].textContent).toContain('4006381333931');
+    expect(labels[0].textContent).toContain('~1.190 TND');
+    expect(labels[1].textContent).toContain('14006381333938');
+    expect(labels[1].textContent).toContain('~14.280 TND');
+    // The pack says how many pieces it stands for; the unit label says nothing of the kind.
+    expect(labels[1].textContent).toContain('products.labels.pack_of');
+    expect(labels[0].textContent).not.toContain('products.labels.pack_of');
+
+    // Copies multiply every ticked code, and unticking the first leaves the second alone.
+    const copies = q('product-labels-copies') as HTMLInputElement;
+    copies.value = '2';
+    copies.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(all('product-label')).toHaveLength(4);
+    input('4006381333931').click();
+    fixture.detectChanges();
+    expect(all('product-label')).toHaveLength(2);
+    expect(all('product-label')[0].textContent).toContain('14006381333938');
+
+    input('14006381333938').click();
+    fixture.detectChanges();
+    expect(all('product-label')).toHaveLength(0);
+    expect((q('product-labels-print') as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('prints as many copies as asked, and prints on asking with the controls left off the paper', async () => {
     await open();
     const copies = q('product-labels-copies') as HTMLInputElement;

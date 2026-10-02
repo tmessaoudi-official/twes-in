@@ -25,7 +25,7 @@
         type="button"
         class="mt-2"
         data-testid="product-labels-print"
-        [disabled]="printed() === null"
+        [disabled]="chosen().length === 0"
         (click)="print()"
       >
         <mat-icon>print</mat-icon>
@@ -35,23 +35,51 @@
   </header>
 
   @if (product(); as product) {
-    @if (printed(); as barcode) {
+    @if (codes().length > 1) {
+      <fieldset
+        class="m-0 flex flex-col gap-1 border-0 p-0 print:hidden"
+        data-testid="product-labels-codes"
+      >
+        <legend class="mb-1 font-medium">{{ 'products.labels.codes' | translate }}</legend>
+        @for (barcode of codes(); track barcode.code) {
+          <mat-checkbox
+            [checked]="isChosen(barcode)"
+            (change)="tick(barcode, $event.checked)"
+            [attr.data-testid]="'product-labels-code-' + barcode.code"
+          >
+            <span class="font-mono">{{ barcode.code }}</span>
+            · {{ 'products.barcodes.roles.' + barcode.role | translate }}
+            @if (barcode.quantity > 1) {
+              · {{ 'products.labels.pack_of' | translate: { quantity: barcode.quantity } }}
+            }
+          </mat-checkbox>
+        }
+      </fieldset>
+    }
+    @if (chosen().length > 0) {
       <ul
         class="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-4 p-0 print:gap-2"
       >
-        @for (copy of labels(); track copy) {
-          <li
-            class="flex break-inside-avoid flex-col gap-1 rounded-md border border-black bg-white p-3 text-black"
-            data-testid="product-label"
-          >
-            <span class="text-lg leading-tight font-semibold">{{ product.name }}</span>
-            <span class="text-sm">{{ product.reference }}</span>
-            @if (price(); as price) {
-              <span class="text-2xl font-bold">{{ price }}</span>
-            }
-            <app-barcode-svg class="block h-16" [value]="barcode.code" />
-            <span class="text-center font-mono text-sm tracking-widest">{{ barcode.code }}</span>
-          </li>
+        @for (barcode of chosen(); track barcode.code) {
+          @for (copy of labels(); track copy) {
+            <li
+              class="flex break-inside-avoid flex-col gap-1 rounded-md border border-black bg-white p-3 text-black"
+              data-testid="product-label"
+            >
+              <span class="text-lg leading-tight font-semibold">{{ product.name }}</span>
+              <span class="text-sm">{{ product.reference }}</span>
+              @if (prices()[barcode.code]; as price) {
+                <span class="text-2xl font-bold">{{ price }}</span>
+              }
+              @if (barcode.quantity > 1) {
+                <span class="text-sm">{{
+                  'products.labels.pack_of' | translate: { quantity: barcode.quantity }
+                }}</span>
+              }
+              <app-barcode-svg class="block h-16" [value]="barcode.code" />
+              <span class="text-center font-mono text-sm tracking-widest">{{ barcode.code }}</span>
+            </li>
+          }
         }
       </ul>
     } @else {

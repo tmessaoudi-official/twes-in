@@ -1657,6 +1657,8 @@
       "title": "Product labels",
       "intro": "The name, the reference, the price taxes included of what the code enters, and the code as a barcode (EAN for a GTIN, Code 128 otherwise).",
       "copies": "Copies",
+      "codes": "Codes to print",
+      "pack_of": "Pack of {{quantity}}",
       "print": "Print",
       "no_code": "This product answers to no code of its own: give it a unit or internal code to print its labels.",
       "open": "Print labels"
