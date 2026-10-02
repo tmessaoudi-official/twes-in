@@ -133,6 +133,33 @@ final class ManageInvoicesTest extends TestCase
         self::assertSame(['TIMBRE'], $this->documentTaxCodes($kept->getDocumentTaxes()), 'a retired tax stays on the draft that already names it');
     }
 
+    public function testAFreeLineThatStatesNoTaxesStartsFromTheCompanysDefaultVatAndNotFromNothing(): void
+    {
+        $free = new InvoiceLineInput(null, 'Main d\'œuvre', '1', $this->unit('C62')->getId(), '100');
+
+        $invoice = $this->manage->create($this->company, $this->input($this->customer(), [$free]), null);
+
+        self::assertSame(['TVA19'], array_map(static fn (InvoiceLineTax $tax): string => $tax->getCode(), $invoice->getLines()[0]->getTaxes()), 'labour is charged the default VAT, as a counter sale would be');
+    }
+
+    public function testAFreeLineKeepsWhatItStatesEvenWhenThatIsNoTaxAtAll(): void
+    {
+        $exempt = new InvoiceLineInput(null, 'Débours', '1', $this->unit('C62')->getId(), '100', null, []);
+
+        $invoice = $this->manage->create($this->company, $this->input($this->customer(), [$exempt]), null);
+
+        self::assertSame([], $invoice->getLines()[0]->getTaxes(), 'a person who clears the boxes means no VAT');
+    }
+
+    public function testTheDefaultVatOfAFreeLineIsLeftOutWhereTheCustomersRegimeRefusesVat(): void
+    {
+        $free = new InvoiceLineInput(null, 'Main d\'œuvre', '1', $this->unit('C62')->getId(), '100');
+
+        $invoice = $this->manage->create($this->company, $this->input($this->customer('export', [TaxFamily::Vat]), [$free]), null);
+
+        self::assertSame([], $invoice->getLines()[0]->getTaxes());
+    }
+
     public function testACompanyOnAVatFreeRegimeChargesNoVatToAnyCustomer(): void
     {
         $this->company = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris');

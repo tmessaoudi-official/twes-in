@@ -21,6 +21,7 @@ import { atScale } from '../shared/i18n/format';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import {
   applyProduct,
+  dropRefusedLineTaxes,
   type LineControls,
   type LineGroup,
   lineGroup,
@@ -112,8 +113,14 @@ export class InvoiceLines {
       const id = this.customer()?.id ?? null;
       const changed = seen !== undefined && seen !== id;
       seen = id;
-      if (changed)
-        untracked(() => this.lines().controls.forEach((line) => void this.reprice(line)));
+      if (changed) {
+        untracked(() =>
+          this.lines().controls.forEach((line) => {
+            dropRefusedLineTaxes(line, this.options(), this.excluded());
+            void this.reprice(line);
+          }),
+        );
+      }
     });
     effect((onCleanup) => {
       const subscription = this.lines().events.subscribe(() =>

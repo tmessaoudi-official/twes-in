@@ -279,8 +279,8 @@ final readonly class ManageInvoices
     }
 
     /**
-     * The taxes a line states, each checked; or, when it states none, its product's default line taxes its customer's
-     * regime charges and the company still has active.
+     * The taxes a line states, each checked; or, when it states none, its product's default line taxes (a line with no
+     * product, the company's) that its customer's regime charges and the company still has active.
      *
      * @param list<string>|null $productDefaults
      * @param list<string>      $kept
@@ -290,10 +290,25 @@ final readonly class ManageInvoices
     private function lineTaxes(Company $company, Customer $customer, InvoiceLineInput $line, ?array $productDefaults, array $kept): array
     {
         if (null === $line->taxComponentIds) {
-            return $this->chargeable($company, $customer, $productDefaults ?? [], TaxKind::PercentageLine);
+            return $this->chargeable($company, $customer, $productDefaults ?? $this->defaultLineTaxIds($company), TaxKind::PercentageLine);
         }
 
         return $this->stated($company, $customer, $line->taxComponentIds, $kept, 'taxComponentIds');
+    }
+
+    /**
+     * What a line naming no product is charged when it states no taxes: the company's default percentage taxes, the VAT
+     * a counter sale would carry, which the customer's regime then still filters. A line that states none at all, an
+     * empty list, keeps meaning no tax.
+     *
+     * @return list<string>
+     */
+    private function defaultLineTaxIds(Company $company): array
+    {
+        return array_values(array_map(
+            static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(),
+            array_filter($this->taxes->ofCompany($company->getId()), static fn (TaxComponent $tax): bool => $tax->isDefault() && TaxKind::PercentageLine === $tax->getKind()),
+        ));
     }
 
     /**

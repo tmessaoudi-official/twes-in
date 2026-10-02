@@ -19,6 +19,7 @@ import {
   daysLate,
   paidShare,
   stillOwed,
+  dropRefusedLineTaxes,
 } from './invoice-forms';
 import type { CustomerOption, InvoiceOptions, InvoiceRow, ProductOption } from './invoices-types';
 
@@ -292,6 +293,32 @@ describe('invoice forms', () => {
     it('discounts a new line by the customer’s default rate', () => {
       expect(lineGroup(null, options, carthage).controls.discountRate.value).toBe('5');
       expect(lineGroup(null, options, null).controls.discountRate.value).toBe('');
+    });
+
+    it('starts a new line with the company’s default VAT, as the API charges a free line, less what the regime refuses', () => {
+      const withDefaultVat: InvoiceOptions = {
+        ...options,
+        taxes: options.taxes.map((each) =>
+          each.id === 't1' ? { ...each, isDefault: true } : each,
+        ),
+      };
+      expect(lineGroup(null, withDefaultVat, null).controls.taxComponentIds.value).toEqual(['t1']);
+      expect(lineGroup(null, withDefaultVat, carthage).controls.taxComponentIds.value).toEqual([
+        't1',
+      ]);
+      expect(lineGroup(null, withDefaultVat, embassy).controls.taxComponentIds.value).toEqual([]);
+      expect(lineGroup(null, options, null).controls.taxComponentIds.value).toEqual([]);
+    });
+
+    it('takes off a line the taxes a newly chosen customer’s regime refuses, and adds none', () => {
+      const line = lineGroup(null, options, null);
+      line.controls.taxComponentIds.setValue(['t1', 'f1']);
+
+      dropRefusedLineTaxes(line, options, ['vat']);
+      expect(line.controls.taxComponentIds.value).toEqual(['f1']);
+
+      dropRefusedLineTaxes(line, options, []);
+      expect(line.controls.taxComponentIds.value).toEqual(['f1']);
     });
 
     it('fills a line from its product, less the taxes the customer’s regime refuses', () => {

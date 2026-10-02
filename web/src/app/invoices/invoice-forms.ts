@@ -449,9 +449,12 @@ export function lineGroup(
           : plainQuantity(line.discountRate ?? ''),
         { nonNullable: true, validators: [matches(RATE_PATTERN)] },
       ),
-      taxComponentIds: new FormControl<string[]>(line === null ? [] : [...line.taxComponentIds], {
-        nonNullable: true,
-      }),
+      taxComponentIds: new FormControl<string[]>(
+        line === null
+          ? defaultLineTaxes(options, excludedFor(customer))
+          : [...line.taxComponentIds],
+        { nonNullable: true },
+      ),
       sourceDeliveryNoteLineId: new FormControl(line?.sourceDeliveryNoteLineId ?? '', {
         nonNullable: true,
       }),
@@ -485,6 +488,40 @@ export function offeredLineTaxes(
   return options.taxes.filter(
     (tax) => tax.kind === 'percentage_line' && !excludedFamilies.includes(tax.family),
   );
+}
+
+/**
+ * A customer chosen after a line was drawn may be of a regime that refuses what the line carries: those taxes come off,
+ * so that the API does not refuse the draft for a box nobody ticked on purpose. Nothing is ever added by a change of
+ * customer.
+ */
+export function dropRefusedLineTaxes(
+  line: LineGroup,
+  options: InvoiceOptions,
+  excludedFamilies: readonly TaxFamily[],
+): void {
+  if (excludedFamilies.length === 0) return;
+  const refused = new Set(
+    options.taxes.filter((tax) => excludedFamilies.includes(tax.family)).map((tax) => tax.id),
+  );
+  const kept = line.controls.taxComponentIds.value.filter((id) => !refused.has(id));
+  if (kept.length !== line.controls.taxComponentIds.value.length) {
+    line.controls.taxComponentIds.setValue(kept);
+  }
+}
+
+/**
+ * What a new line is charged until a product is picked: the company's default percentage taxes, the VAT a counter sale
+ * carries, less the families the customer's regime refuses. The API charges a line that names no product and states no
+ * taxes the same, so a free line (labour, a service) is never silently untaxed.
+ */
+export function defaultLineTaxes(
+  options: InvoiceOptions,
+  excludedFamilies: readonly TaxFamily[],
+): string[] {
+  return offeredLineTaxes(options, excludedFamilies)
+    .filter((tax) => tax.isDefault)
+    .map((tax) => tax.id);
 }
 
 /**
