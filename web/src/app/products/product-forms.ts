@@ -30,6 +30,7 @@ import {
   type ProductRow,
   type ProductSearch,
   type ProductSortKey,
+  type ProductTracking,
 } from './products-types';
 
 const FIELDS = 'products.fields';
@@ -322,13 +323,15 @@ export function productForm(
 
 /**
  * Each field at the product's value. A new product is goods, active and without taxes, in the unit its company's
- * articles chain resolves (`article.default_unit`), or in the first unit the company offers when it offers not that one.
+ * articles chain resolves (`article.default_unit`), or in the first unit the company offers when it offers not that one,
+ * and followed as `article.traceability` says.
  */
 export function productValues(
   row: ProductRow | null,
   options: ProductOptions,
   fields: readonly CustomFieldDefinition[] = [],
   defaultUnitCode: string | null = null,
+  defaultTracking: ProductTracking = 'none',
 ): FormValues {
   const unit = options.units.find((each) => each.code === defaultUnitCode) ?? options.units[0];
   const values: FormValues = {
@@ -343,7 +346,7 @@ export function productValues(
       row?.costPrice === null || row === null ? '' : atScale(row.costPrice, options.currencyScale),
     description: row?.description ?? '',
     substitutionGroup: row?.substitutionGroup ?? '',
-    tracking: row?.tracking ?? 'none',
+    tracking: row?.tracking ?? defaultTracking,
   };
   for (const tax of options.taxes) {
     values[TAX_PREFIX + tax.id] = row?.defaultTaxComponentIds.includes(tax.id) ?? false;

@@ -83,6 +83,7 @@ describe('ProductPage', () => {
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     defaultUnitCode: signal<string | null>('C62').asReadonly(),
+    defaultTracking: signal<'none' | 'lot' | 'serial'>('none').asReadonly(),
     loadProduct: vi.fn(),
     createProduct: vi.fn(),
     reviseProduct: vi.fn(),

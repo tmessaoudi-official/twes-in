@@ -145,11 +145,13 @@ describe('ProductsFacade', () => {
     settingsApi.chain.mockResolvedValue([
       { key: 'article.stock_tracking', value: false } as SettingRow,
       { key: 'article.default_unit', value: 'HUR' } as SettingRow,
+      { key: 'article.traceability', value: 'serial' } as SettingRow,
     ]);
 
     await facade.loadProduct('c1', null);
     expect(settingsApi.chain).toHaveBeenCalledWith('c1', 'articles');
     expect(facade.defaultUnitCode()).toBe('HUR');
+    expect(facade.defaultTracking()).toBe('serial');
 
     api.product.mockResolvedValue(laptop);
     settingsApi.chain.mockClear();

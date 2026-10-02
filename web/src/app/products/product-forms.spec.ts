@@ -282,6 +282,8 @@ describe('product forms', () => {
     expect(tracking?.options?.map((option) => option.value)).toEqual(['none', 'lot', 'serial']);
 
     expect(productValues(null, options)['tracking']).toBe('none');
+    expect(productValues(null, options, [], null, 'lot')['tracking']).toBe('lot');
+    expect(productValues(laptop, options, [], null, 'serial')['tracking']).toBe('lot');
     const values = productValues(laptop, options, [warranty]);
     expect(values['tracking']).toBe('lot');
     expect(productInput(values, options, [warranty]).tracking).toBe('lot');

@@ -142,7 +142,13 @@ export class ProductPage {
       if (descriptor === null || options === null || current === undefined) return null;
       return buildFormGroup(
         descriptor,
-        productValues(current, options, this.facade.customFields(), this.facade.defaultUnitCode()),
+        productValues(
+          current,
+          options,
+          this.facade.customFields(),
+          this.facade.defaultUnitCode(),
+          this.facade.defaultTracking(),
+        ),
       );
     });
   });
@@ -161,7 +167,13 @@ export class ProductPage {
       const current = this.current();
       const options = this.facade.options();
       return current && options
-        ? productValues(current, options, this.facade.customFields(), this.facade.defaultUnitCode())
+        ? productValues(
+            current,
+            options,
+            this.facade.customFields(),
+            this.facade.defaultUnitCode(),
+            this.facade.defaultTracking(),
+          )
         : null;
     },
   });
@@ -171,7 +183,13 @@ export class ProductPage {
     const current = this.current();
     const options = this.facade.options();
     return current && options
-      ? productValues(current, options, this.facade.customFields(), this.facade.defaultUnitCode())
+      ? productValues(
+          current,
+          options,
+          this.facade.customFields(),
+          this.facade.defaultUnitCode(),
+          this.facade.defaultTracking(),
+        )
       : null;
   });
   protected readonly changes = unsavedChanges(this.form, this.savedValues);

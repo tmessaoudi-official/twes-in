@@ -28,6 +28,13 @@ use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductTracking;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorProfile;
+use App\Settings\Application\BusinessDefaultSettings;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\ResolveSettings;
+use App\Settings\Application\SettingCatalog;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\SettingLevel;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
@@ -37,6 +44,7 @@ use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryProductCategories;
 use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemoryProductStockHistory;
+use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\InMemoryVendors;
@@ -55,6 +63,7 @@ final class ManageProductsTest extends TestCase
     private InMemoryProductStockHistory $stockHistory;
     private InMemoryVendors $vendors;
     private ManageProducts $manage;
+    private ChangeSettings $changeSettings;
     private Company $company;
     private Company $globex;
 
@@ -70,7 +79,11 @@ final class ManageProductsTest extends TestCase
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->stockHistory = new InMemoryProductStockHistory();
         $this->vendors = new InMemoryVendors();
-        $this->manage = new ManageProducts(new InMemoryProducts(), $this->categories, $this->units, $this->taxes, $this->audit, $clock, $this->fields, $this->stockHistory, $transactions, $this->vendors);
+        $settings = new InMemorySettings();
+        $catalog = new SettingCatalog([new BusinessDefaultSettings()]);
+        $resolve = new ResolveSettings($catalog, $settings);
+        $this->changeSettings = new ChangeSettings($catalog, $settings, $resolve, $this->audit, $clock, $transactions);
+        $this->manage = new ManageProducts(new InMemoryProducts(), $this->categories, $this->units, $this->taxes, $this->audit, $clock, $this->fields, $this->stockHistory, $transactions, $this->vendors, new ReadSetting($resolve));
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $provision->handle($this->company);
@@ -218,6 +231,25 @@ final class ManageProductsTest extends TestCase
         $fresh = $this->manage->create($this->company, $this->input(reference: 'ART-002', unit: 'KGM'), null);
         $this->manage->revise($this->company, $fresh->getId(), $this->input(reference: 'ART-002', unit: 'C62', kind: ProductKind::Service), null);
         self::assertSame(['C62', ProductKind::Service], [$fresh->getUnit()->getCode(), $fresh->getDetails()->kind], 'without movements both change');
+    }
+
+    /** A product that does not say how it is followed takes what its category, else its company, says. */
+    public function testAProductNotSayingHowItIsFollowedTakesItsCategorysThenItsCompanysTraceability(): void
+    {
+        $category = ProductCategory::create($this->company, 'Informatique', null, new \DateTimeImmutable());
+        $this->categories->save($category);
+        $context = new SettingContext($this->company, productCategoryId: $category->getId());
+
+        self::assertSame(ProductTracking::None, $this->manage->create($this->company, $this->input(reference: 'A-1'), null)->getTracking(), 'nothing said anywhere');
+
+        $this->changeSettings->change($context, 'article.traceability', SettingLevel::Company, 'lot', null);
+        self::assertSame(ProductTracking::Lot, $this->manage->create($this->company, $this->input(reference: 'A-2'), null)->getTracking(), 'the company says lot');
+
+        $this->changeSettings->change($context, 'article.traceability', SettingLevel::ProductCategory, 'serial', null);
+        self::assertSame(ProductTracking::Serial, $this->manage->create($this->company, $this->input(reference: 'A-3', categoryId: $category->getId()), null)->getTracking(), 'the category overrides the company');
+        self::assertSame(ProductTracking::Lot, $this->manage->create($this->company, $this->input(reference: 'A-4'), null)->getTracking(), 'a product outside the category keeps the company value');
+        self::assertSame(ProductTracking::None, $this->manage->create($this->company, $this->input(reference: 'A-5', categoryId: $category->getId(), tracking: ProductTracking::None), null)->getTracking(), 'what the product says wins');
+        self::assertSame(ProductTracking::None, $this->manage->create($this->company, $this->input(reference: 'S-1', unit: 'HUR', kind: ProductKind::Service, categoryId: $category->getId()), null)->getTracking(), 'a service tracks nothing, whatever the default');
     }
 
     /**

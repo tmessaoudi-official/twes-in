@@ -32,6 +32,8 @@ use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Domain\ProductSearch;
 use App\Module\Products\Domain\ProductTracking;
 use App\Module\Vendors\Domain\VendorRepository;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
@@ -63,6 +65,7 @@ final readonly class ManageProducts
         private ProductStockHistory $stockHistory,
         private Transactions $transactions,
         private VendorRepository $vendors,
+        private ReadSetting $settings,
     ) {
     }
 
@@ -117,7 +120,7 @@ final readonly class ManageProducts
             $rows = $input->barcodes ?? [];
             $lines = $this->barcodeLines($company, $input->seesCosts ? $rows : $this->unseenCodesKept($rows, null), null);
             [$unit, $category] = $this->checked($company, $input, null);
-            $tracking = Product::trackingFor($input->tracking ?? ProductTracking::None, $input->details->kind);
+            $tracking = Product::trackingFor($input->tracking ?? $this->defaultTracking($company, $category, $input->details->kind), $input->details->kind);
             $values = $this->customFieldValues($company, $input, null);
             $now = $this->clock->now();
             $product = Product::create($company, $input->reference, $details, $unit, $category, $input->defaultTaxComponentIds, $now);
@@ -276,6 +279,17 @@ final readonly class ManageProducts
         }
 
         throw new InvalidProduct('kind', \sprintf('Stock of %s was moved, so it stays goods.', $product->getReference()));
+    }
+
+    /** What the company, else the category the product is filed in, says a product not saying is followed by. */
+    private function defaultTracking(Company $company, ?ProductCategory $category, ProductKind $kind): ProductTracking
+    {
+        if (ProductKind::Goods !== $kind) {
+            return ProductTracking::None;
+        }
+        $value = $this->settings->value(new SettingContext($company, productCategoryId: $category?->getId()), 'article.traceability');
+
+        return \is_string($value) ? ProductTracking::tryFrom($value) ?? ProductTracking::None : ProductTracking::None;
     }
 
     /**

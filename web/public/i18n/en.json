@@ -787,7 +787,8 @@
     },
     "article": {
       "default_unit": "Default unit",
-      "stock_tracking": "Track stock"
+      "stock_tracking": "Track stock",
+      "traceability": "Traceability of a new product"
     },
     "watch": {
       "late_after_days": "Watch: a customer is flagged once an invoice is this many days late",
@@ -817,6 +818,13 @@
       "settings_list": "Settings list"
     },
     "choices": {
+      "article": {
+        "traceability": {
+          "none": "Not followed",
+          "lot": "By lot",
+          "serial": "By serial number"
+        }
+      },
       "document": {
         "language": {
           "fr": "French",
@@ -1507,7 +1515,7 @@
       "price": "Net unit price",
       "costPrice": "Cost price",
       "description": "Description",
-      "tracking": "Stock tracking",
+      "tracking": "Traceability",
       "substitutionGroup": "Substitution group"
     },
     "form": {

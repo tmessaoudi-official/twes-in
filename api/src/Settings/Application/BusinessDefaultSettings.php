@@ -39,5 +39,8 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
 
         yield new SettingDefinition('article.default_unit', SettingType::Text, 'C62', SettingChain::Articles, $articles, 'settings.article.default_unit', self::MODULE, pattern: '/^[A-Z0-9]{2,3}$/');
         yield new SettingDefinition('article.stock_tracking', SettingType::Bool, false, SettingChain::Articles, $articles, 'settings.article.stock_tracking', self::MODULE);
+        // How a new product is followed when it does not say: by lot or by serial number, per company or per category. A
+        // product keeps its own value in its own column, so the product level is not offered here.
+        yield new SettingDefinition('article.traceability', SettingType::Enum, 'none', SettingChain::Articles, [SettingLevel::Company, SettingLevel::ProductCategory], 'settings.article.traceability', self::MODULE, choices: ['none', 'lot', 'serial']);
     }
 }

@@ -6,6 +6,7 @@ import type { CustomFieldDefinition } from '../shared/custom-fields/custom-field
 import { SettingsApi } from '../shared/settings/settings-api';
 import type { SettingRow } from '../shared/settings/settings-types';
 import { ProductsApi, ProductsRefused } from './products-api';
+import { trackingOf } from './products-types';
 import type {
   ProductBarcode,
   ProductCategoryInput,
@@ -15,6 +16,7 @@ import type {
   ProductRow,
   ProductSearch,
   ProductsError,
+  ProductTracking,
 } from './products-types';
 
 /** The products of the company being worked in, their categories, the form's options and the company's fields for products. */
@@ -31,6 +33,7 @@ export class ProductsFacade {
   private readonly customFieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
   private readonly productSignal = signal<ProductRow | null>(null);
   private readonly defaultUnitCodeSignal = signal<string | null>(null);
+  private readonly defaultTrackingSignal = signal<ProductTracking>('none');
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<ProductsError | null>(null);
 
@@ -44,6 +47,8 @@ export class ProductsFacade {
   readonly product = this.productSignal.asReadonly();
   /** The unit code `article.default_unit` resolves to for the company, read with a new product's form. */
   readonly defaultUnitCode = this.defaultUnitCodeSignal.asReadonly();
+  /** How `article.traceability` says a new product is followed, read with a new product's form. */
+  readonly defaultTracking = this.defaultTrackingSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
@@ -92,6 +97,7 @@ export class ProductsFacade {
       ]);
       if (articles !== null) {
         this.defaultUnitCodeSignal.set(unitCodeOf(articles));
+        this.defaultTrackingSignal.set(trackingOfRows(articles));
       }
       this.optionsSignal.set(options);
       this.categoriesSignal.set(categories);
@@ -199,6 +205,12 @@ export class ProductsFacade {
 function unitCodeOf(rows: readonly SettingRow[]): string | null {
   const value = rows.find((row) => row.key === 'article.default_unit')?.value;
   return typeof value === 'string' ? value : null;
+}
+
+/** The tracking the articles chain resolves for a new product; none when it names no known one. */
+function trackingOfRows(rows: readonly SettingRow[]): ProductTracking {
+  const value = rows.find((row) => row.key === 'article.traceability')?.value;
+  return typeof value === 'string' ? trackingOf(value) : 'none';
 }
 
 function codeOf(error: unknown): ProductsError {
