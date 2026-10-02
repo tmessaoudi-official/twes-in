@@ -35,8 +35,8 @@ use Symfony\Component\Uid\Uuid;
  *  - numbers are assigned last, in one pass over the company in issue-date order through the real
  *    `NumberingSeries::allocate`, so they follow the dates and the series stands where the next real issue continues.
  *
- * Left out of this slice and named in LEFT_OUT: expenses, stock movements, audit rows, delivery notes, contacts and
- * files. They keep their base rows and do not grow.
+ * Left out of this slice and named in LEFT_OUT: expenses, stock movements, audit rows, delivery notes, contacts, credit
+ * balances and files. They keep their base rows and do not grow.
  */
 #[When('dev')]
 #[When('test')]
@@ -58,6 +58,7 @@ final class ScaleGenerator
         'attachment' => 'files attached to documents are not cloned',
         'audit_log' => 'the audit trail of a clone is not written; a follow-up slice grows it',
         'contact' => 'people of a customer: a follow-up slice',
+        'customer_credit_entry' => 'what a customer has to their credit: a clone starts with none',
         'delivery_note' => 'delivery notes: a follow-up slice',
         'delivery_note_line' => 'delivery notes: a follow-up slice',
         'delivery_note_line_tax' => 'delivery notes: a follow-up slice',
