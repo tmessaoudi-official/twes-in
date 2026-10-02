@@ -21,6 +21,8 @@ use Symfony\Component\HttpKernel\KernelEvents;
 #[AsEventListener(event: KernelEvents::REQUEST, priority: 15)]
 final readonly class RevokedSessionListener
 {
+    public const string RECORDED = '_twes_recorded_session';
+
     public function __construct(private ManageSessions $sessions)
     {
     }
@@ -35,8 +37,13 @@ final readonly class RevokedSessionListener
         if (!$session->isStarted()) {
             $session->start();
         }
-        if ($this->sessions->isRevoked($session->getId())) {
+        $recorded = $this->sessions->recorded($session->getId());
+        if ($recorded?->isRevoked() ?? false) {
             $session->invalidate();
+
+            return;
         }
+        // Read once here, handed on to the recorder after the firewall: a request costs one statement for its session.
+        $request->attributes->set(self::RECORDED, $recorded);
     }
 }

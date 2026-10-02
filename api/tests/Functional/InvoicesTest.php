@@ -880,7 +880,8 @@ final class InvoicesTest extends ApiTestCase
         // Measured 13 on 2026-09-24, the session and the company's checks included; the page itself is its count, its
         // ids, its rows and one statement per relation a row shows. 14 since 2026-09-25: whether the caller may read
         // the costs issued lines froze (product.cost.read) is one more membership read, once a page.
-        self::assertLessThanOrEqual(14, $statements[6]);
+        // One more for the read of whether the person ended this session, made on every signed-in request.
+        self::assertLessThanOrEqual(15, $statements[6]);
     }
 
     /**

@@ -447,8 +447,9 @@ final class DeliveryNotesTest extends ApiTestCase
         $statements = [1 => $this->statementsForAPageOf($this->path(), 1), 6 => $this->statementsForAPageOf($this->path(), 6)];
 
         self::assertSame($statements[1], $statements[6], 'six rows cost what one does (audit PF-07)');
-        // Measured 11 on 2026-09-25 (15 for one row, 35 for six before), the session and the company's checks included.
-        self::assertLessThanOrEqual(11, $statements[6]);
+        // Measured 11 on 2026-09-25 (15 for one row, 35 for six before), the session and the company's checks included, plus one:
+        // the read of whether the person ended this session (the connected devices screen), made on every signed-in request.
+        self::assertLessThanOrEqual(12, $statements[6]);
     }
 
     /** A draft delivering one unit of the product; its id. */

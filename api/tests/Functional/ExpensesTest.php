@@ -357,8 +357,9 @@ final class ExpensesTest extends ApiTestCase
         $statements = [1 => $this->statementsForAPageOf($this->path(), 1), 6 => $this->statementsForAPageOf($this->path(), 6)];
 
         self::assertSame($statements[1], $statements[6], 'six rows cost what one does (audit PF-07)');
-        // Measured 11 on 2026-09-25 (16 for six rows before), the session and the company's checks included.
-        self::assertLessThanOrEqual(11, $statements[6]);
+        // Measured 11 on 2026-09-25 (16 for six rows before), the session and the company's checks included, plus one:
+        // the read of whether the person ended this session (the connected devices screen), made on every signed-in request.
+        self::assertLessThanOrEqual(12, $statements[6]);
         $counts = array_column($this->jsonList(), 'attachmentCount', 'reference');
         ksort($counts);
         self::assertSame(['F-2026-101' => 0, 'F-2026-102' => 1, 'F-2026-103' => 0, 'F-2026-104' => 1, 'F-2026-105' => 0, 'F-2026-106' => 1], $counts, 'each row still counts its own');

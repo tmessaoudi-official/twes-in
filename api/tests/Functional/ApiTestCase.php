@@ -179,6 +179,7 @@ abstract class ApiTestCase extends WebTestCase
      */
     protected function statementsForAPageOf(string $path, int $rows): int
     {
+        $this->warmSession();
         $this->client->enableProfiler();
         $this->getJson($path.(str_contains($path, '?') ? '&' : '?').'itemsPerPage='.$rows);
         self::assertResponseIsSuccessful();
@@ -192,12 +193,22 @@ abstract class ApiTestCase extends WebTestCase
     }
 
     /**
+     * The first request of a session records it for the person's list of devices, which is a cost of that request and not
+     * of the page it asked for; a request made first leaves the pages measured after it at what they cost every time.
+     */
+    private function warmSession(): void
+    {
+        $this->client->request('GET', '/api/auth/me');
+    }
+
+    /**
      * The SQL one page of a list runs, in order.
      *
      * @return list<string>
      */
     protected function sqlForAPageOf(string $path): array
     {
+        $this->warmSession();
         $this->client->enableProfiler();
         $this->getJson($path.(str_contains($path, '?') ? '&' : '?').'itemsPerPage=1');
         self::assertResponseIsSuccessful();

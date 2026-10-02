@@ -44,10 +44,16 @@ final readonly class ManageSessions
     ) {
     }
 
-    public function seen(Uuid $userId, string $sessionId, string $device, string $address): SessionStanding
+    /** The record of a session, or null when none was recorded yet; one read, which the caller may hand on to `seen`. */
+    public function recorded(string $sessionId): ?UserSession
+    {
+        return $this->sessions->ofSessionId($sessionId);
+    }
+
+    /** @param ?UserSession $known what `recorded` answered for this session, so a request reads it once */
+    public function seen(Uuid $userId, string $sessionId, ?UserSession $known, string $device, string $address): SessionStanding
     {
         $now = $this->clock->now();
-        $known = $this->sessions->ofSessionId($sessionId);
         if (null === $known) {
             // Only a session not yet recorded needs the account itself, so the usual request reads one row and no more.
             $user = $this->users->ofId($userId);
@@ -68,12 +74,6 @@ final readonly class ManageSessions
         }
 
         return SessionStanding::Active;
-    }
-
-    /** Whether the person ended this session, asked before the firewall reads it so that a revoked cookie finds no account. */
-    public function isRevoked(string $sessionId): bool
-    {
-        return $this->sessions->ofSessionId($sessionId)?->isRevoked() ?? false;
     }
 
     /** @return list<SessionEntry> the sessions still within their absolute limit, newest use first */
