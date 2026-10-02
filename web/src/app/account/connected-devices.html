@@ -1,0 +1,62 @@
+<section class="flex max-w-xl flex-col gap-3" data-testid="devices">
+  <h2 class="text-lg font-semibold">{{ 'account.devices.title' | translate }}</h2>
+  <p class="m-0 text-sm text-on-surface-variant">{{ 'account.devices.intro' | translate }}</p>
+
+  @if (unreachable()) {
+    <p role="alert" class="m-0 text-sm text-error" data-testid="devices-unreachable">
+      {{ 'account.devices.unreachable' | translate }}
+    </p>
+  }
+
+  @if (devices(); as list) {
+    <ul class="m-0 flex list-none flex-col gap-2 p-0">
+      @for (device of list; track device.id; let i = $index) {
+        <li
+          class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-outline-variant p-3"
+          [attr.data-testid]="'device-' + i"
+        >
+          <div class="flex min-w-0 flex-col">
+            <span class="font-medium" [attr.data-testid]="'device-' + i + '-label'">
+              {{ labelOf(device) || ('account.devices.unknown' | translate) }}
+              @if (device.current) {
+                <span class="text-sm text-primary" [attr.data-testid]="'device-' + i + '-current'">
+                  · {{ 'account.devices.this_one' | translate }}
+                </span>
+              }
+            </span>
+            <span class="text-sm text-on-surface-variant">
+              {{
+                'account.devices.seen'
+                  | translate: { address: device.address, when: format.moment(device.lastSeenAt) }
+              }}
+            </span>
+          </div>
+          @if (!device.current) {
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="busy()"
+              (click)="end(device)"
+              [attr.data-testid]="'device-' + i + '-end'"
+            >
+              {{ 'account.devices.end' | translate }}
+            </button>
+          }
+        </li>
+      }
+    </ul>
+    @if (others().length > 0) {
+      <div>
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="busy()"
+          (click)="endOthers()"
+          data-testid="devices-end-others"
+        >
+          {{ 'account.devices.end_others' | translate }}
+        </button>
+      </div>
+    }
+  }
+</section>

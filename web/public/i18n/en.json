@@ -3096,6 +3096,19 @@
     }
   },
   "account": {
+    "devices": {
+      "title": "Connected devices",
+      "intro": "The browsers this account is signed in on. End a session you do not recognise, or one left open on a shared computer: that browser is asked to sign in again.",
+      "this_one": "This device",
+      "unknown": "Unknown device",
+      "seen": "{{address}} · last seen {{when}}",
+      "end": "Sign out",
+      "end_others": "Sign out of all the others",
+      "ended": "{{device}} is signed out.",
+      "others_ended": "Other devices signed out: {{count}}.",
+      "failed": "The session could not be ended.",
+      "unreachable": "The list of devices could not be read."
+    },
     "password": {
       "title": "Password",
       "intro": "A new password signs you out of all your devices, this one included.",

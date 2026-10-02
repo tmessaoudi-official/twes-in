@@ -3096,6 +3096,19 @@
     }
   },
   "account": {
+    "devices": {
+      "title": "Appareils connectés",
+      "intro": "Les navigateurs sur lesquels ce compte est connecté. Mettez fin à une session que vous ne reconnaissez pas, ou laissée ouverte sur un ordinateur partagé : ce navigateur devra se reconnecter.",
+      "this_one": "Cet appareil",
+      "unknown": "Appareil inconnu",
+      "seen": "{{address}} · vu {{when}}",
+      "end": "Déconnecter",
+      "end_others": "Déconnecter tous les autres",
+      "ended": "{{device}} est déconnecté.",
+      "others_ended": "Autres appareils déconnectés : {{count}}.",
+      "failed": "La session n’a pas pu être terminée.",
+      "unreachable": "La liste des appareils n’a pas pu être lue."
+    },
     "password": {
       "title": "Mot de passe",
       "intro": "Un nouveau mot de passe déconnecte tous vos appareils, celui-ci compris.",

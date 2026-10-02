@@ -20,6 +20,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import type { PasswordChangeOutcome } from '../auth/auth-types';
 import { CompanyFacade } from '../company/company-facade';
+import { ConnectedDevices } from './connected-devices';
 import {
   DEFAULT_SHORTCUTS,
   SHELL_SHORTCUTS,
@@ -64,6 +65,7 @@ const COMING_TABS: readonly AccountTab[] = ['device', 'notifications'];
 @Component({
   selector: 'app-account-page',
   imports: [
+    ConnectedDevices,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
