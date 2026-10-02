@@ -22,6 +22,7 @@ import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
 import { PriceListsFacade } from './price-lists-facade';
 import { PriceListsPage } from './price-lists-page';
+import type { ProductFigures } from './price-lists-figures';
 import type { PriceListRow } from './price-lists-types';
 
 class StaticLoader implements TranslateLoader {
@@ -37,6 +38,11 @@ class StaticLoader implements TranslateLoader {
         active: 'Actif',
         inactive: 'Désactivé',
         errors: { name_taken: 'Un autre tarif porte déjà ce nom.' },
+        prices: {
+          figures: 'Prix actuel {{shelf}} · {{change}}',
+          figures_cost: 'Prix actuel {{shelf}} · coût {{cost}} · marge {{margin}} · {{change}}',
+          below_cost: 'Sous le coût',
+        },
       },
     });
   }
@@ -68,6 +74,7 @@ describe('PriceListsPage', () => {
   const busy = signal(false);
   const error = signal<string | null>(null);
   const permissions = signal(true);
+  const figures = signal<ReadonlyMap<string, ProductFigures>>(new Map());
   const facade = {
     lists: lists.asReadonly(),
     groups: signal([
@@ -75,6 +82,8 @@ describe('PriceListsPage', () => {
     ]).asReadonly(),
     busy: busy.asReadonly(),
     error: error.asReadonly(),
+    figures: figures.asReadonly(),
+    loadFigures: vi.fn(),
     load: vi.fn(),
     open: vi.fn(),
     create: vi.fn(),
@@ -93,6 +102,7 @@ describe('PriceListsPage', () => {
     facade.pickProducts.mockResolvedValue([{ id: 'p1', code: 'REF-1', name: 'Stylo' }]);
     facade.pickCustomerIds.mockResolvedValue([]);
     lists.set([everyone, wholesale]);
+    figures.set(new Map());
     permissions.set(true);
     await TestBed.configureTestingModule({
       imports: [PriceListsPage],
@@ -272,5 +282,74 @@ describe('PriceListsPage', () => {
 
     expect(query('price-list-customer')).not.toBeNull();
     expect(query('price-list-group')).toBeNull();
+  });
+
+  describe("starting a price from the product's own", () => {
+    interface Row {
+      controls: { unitPriceNet: { value: string; setValue(value: string): void } };
+    }
+    interface Inside {
+      form: { controls: { items: { at(index: number): Row } } };
+      chooseProduct(row: Row, option: { id: string; code: string; name: string } | null): void;
+    }
+    const stylo = { id: 'p1', code: 'REF-1', name: 'Stylo' };
+
+    async function withARow() {
+      const view = await render();
+      view.query<HTMLButtonElement>('price-list-add')!.click();
+      await view.settle();
+      view.query<HTMLButtonElement>('price-row-add')!.click();
+      await view.settle();
+      const page = view.fixture.componentInstance as unknown as Inside;
+      return { ...view, page, row: page.form.controls.items.at(0) };
+    }
+
+    it("fills the price with the product's price when it is picked, to be edited", async () => {
+      figures.set(new Map([['p1', { unitPriceNet: '890.0000', costPrice: '534.0000' }]]));
+      const { page, row, settle, query } = await withARow();
+
+      page.chooseProduct(row, stylo);
+      await settle();
+
+      expect(row.controls.unitPriceNet.value).toBe('890.0000');
+      expect(query('price-row-0-figures')?.textContent).toContain('coût');
+    });
+
+    it('keeps a price already typed on the row when a product is picked', async () => {
+      figures.set(new Map([['p1', { unitPriceNet: '890.0000', costPrice: '534.0000' }]]));
+      const { page, row, settle } = await withARow();
+      row.controls.unitPriceNet.setValue('700');
+
+      page.chooseProduct(row, stylo);
+      await settle();
+
+      expect(row.controls.unitPriceNet.value).toBe('700');
+    });
+
+    it('warns when the price is under the cost, and only then', async () => {
+      figures.set(new Map([['p1', { unitPriceNet: '890.0000', costPrice: '534.0000' }]]));
+      const { page, row, settle, query } = await withARow();
+      page.chooseProduct(row, stylo);
+      await settle();
+      expect(query('price-row-0-below-cost')).toBeNull();
+
+      row.controls.unitPriceNet.setValue('400');
+      await settle();
+
+      expect(query('price-row-0-below-cost')?.textContent).toContain('Sous le coût');
+    });
+
+    it('shows no cost and no warning to someone who may not read costs', async () => {
+      figures.set(new Map([['p1', { unitPriceNet: '890.0000', costPrice: null }]]));
+      const { page, row, settle, query } = await withARow();
+      page.chooseProduct(row, stylo);
+      row.controls.unitPriceNet.setValue('400');
+      await settle();
+
+      const line = query('price-row-0-figures')?.textContent ?? '';
+      expect(line).toContain('Prix actuel');
+      expect(line).not.toContain('coût');
+      expect(query('price-row-0-below-cost')).toBeNull();
+    });
   });
 });

@@ -6,10 +6,14 @@ import type { CustomerGroupRow } from '../customers/customers-types';
 import { ProductsApi } from '../products/products-api';
 import type { PickOption } from '../shared/form/pick-field';
 import { PriceListsApi, PriceListsRefused } from './price-lists-api';
+import type { ProductFigures } from './price-lists-figures';
 import type { PriceListInput, PriceListRow, PriceListsError } from './price-lists-types';
 
 /** How many products or customers a picker offers for the words typed. */
 const PICK_SIZE = 10;
+
+/** How many products a list being opened is asked the figures of; a longer list shows none beside its rows. */
+const FIGURES_CAP = 100;
 
 /** The price lists of the company being worked in, the customer groups they can be for, and the pickers an editor uses. */
 @Injectable({ providedIn: 'root' })
@@ -19,11 +23,14 @@ export class PriceListsFacade {
   private readonly customers = inject(CustomersApi);
   private readonly listsSignal = signal<readonly PriceListRow[]>([]);
   private readonly groupsSignal = signal<readonly CustomerGroupRow[]>([]);
+  private readonly figuresSignal = signal<ReadonlyMap<string, ProductFigures>>(new Map());
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<PriceListsError | null>(null);
 
   readonly lists = this.listsSignal.asReadonly();
   readonly groups = this.groupsSignal.asReadonly();
+  /** The price and cost of each product seen so far, which a row's price is read beside. */
+  readonly figures = this.figuresSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
@@ -75,7 +82,30 @@ export class PriceListsFacade {
       isActive: true,
       order: null,
     });
+    this.remember(page.rows);
     return page.rows.map((row) => ({ id: row.id, code: row.reference, name: row.name }));
+  }
+
+  /** The figures of the products a list holds, read once each; a product that cannot be read shows none. */
+  async loadFigures(companyId: string, productIds: readonly string[]): Promise<void> {
+    const known = this.figuresSignal();
+    const missing = [...new Set(productIds)].filter((id) => !known.has(id)).slice(0, FIGURES_CAP);
+    const read = await Promise.all(
+      missing.map((id) => this.products.product(companyId, id).catch(() => null)),
+    );
+    this.remember(read.filter((row): row is NonNullable<typeof row> => row !== null));
+  }
+
+  private remember(
+    rows: readonly { id: string; unitPriceNet: string; costPrice: string | null }[],
+  ): void {
+    this.figuresSignal.update((known) => {
+      const next = new Map(known);
+      for (const row of rows) {
+        next.set(row.id, { unitPriceNet: row.unitPriceNet, costPrice: row.costPrice });
+      }
+      return next;
+    });
   }
 
   /** The few customers the words name, as a picker shows them. */

@@ -28,7 +28,7 @@ describe('PriceListsFacade', () => {
     revise: vi.fn(),
     remove: vi.fn(),
   };
-  const products = { products: vi.fn() };
+  const products = { products: vi.fn(), product: vi.fn() };
   const customers = { groups: vi.fn(), customers: vi.fn(), customer: vi.fn() };
   let facade: PriceListsFacade;
 
@@ -120,5 +120,36 @@ describe('PriceListsFacade', () => {
     expect(await facade.pickCustomerIds('c1', ['k1', 'gone'])).toEqual([
       { id: 'k1', code: 'CLI-0001', name: 'Acme' },
     ]);
+  });
+
+  it('remembers the price and cost of the products a picker offered', async () => {
+    products.products.mockResolvedValue({
+      rows: [
+        {
+          id: 'p1',
+          reference: 'REF-1',
+          name: 'Stylo',
+          unitPriceNet: '890.0000',
+          costPrice: '534.0000',
+        },
+      ],
+    });
+
+    await facade.pickProducts('c1', 'sty');
+
+    expect(facade.figures().get('p1')).toEqual({ unitPriceNet: '890.0000', costPrice: '534.0000' });
+  });
+
+  it("reads the figures of a list's products once each, and shows none for one it cannot read", async () => {
+    products.product.mockImplementation(async (_company: string, id: string) => {
+      if (id === 'p2') throw new Error('gone');
+      return { id, unitPriceNet: '10.0000', costPrice: null };
+    });
+
+    await facade.loadFigures('c1', ['p1', 'p1', 'p2']);
+    await facade.loadFigures('c1', ['p1']);
+
+    expect(products.product).toHaveBeenCalledTimes(2);
+    expect([...facade.figures().keys()]).toEqual(['p1']);
   });
 });

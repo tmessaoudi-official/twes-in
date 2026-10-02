@@ -18,11 +18,13 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { PRICE_LISTS_LIST } from './price-lists-forms';
+import { rowFigures, type RowFigures } from './price-lists-figures';
 import { PriceListsFacade } from './price-lists-facade';
 import {
   scopeOf,
@@ -80,6 +82,7 @@ export class PriceListsPage implements OnInit {
   private readonly facade = inject(PriceListsFacade);
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
+  private readonly format = inject(FormatFacade);
 
   protected readonly scopes = SCOPES;
   protected readonly lists = this.facade.lists;
@@ -163,6 +166,12 @@ export class PriceListsPage implements OnInit {
     });
     this.form.controls.items.clear();
     for (const item of row?.items ?? []) this.form.controls.items.push(itemGroup(item));
+    if (companyId && row?.items) {
+      void this.facade.loadFigures(
+        companyId,
+        row.items.map((item) => item.productId),
+      );
+    }
     this.scope.set(row === null ? 'everyone' : scopeOf(row));
     this.customer.set(null);
     if (row?.customerId && companyId) {
@@ -201,13 +210,43 @@ export class PriceListsPage implements OnInit {
     return productId === '' ? null : { id: productId, code: productReference, name: productName };
   }
 
+  /**
+   * Picking a product starts its price at the product's own, to be edited: a new price is made from the old one, never
+   * typed from memory. A price already typed on the row is kept.
+   */
   protected chooseProduct(row: ItemGroup, option: PickOption | null): void {
     row.patchValue({
       productId: option?.id ?? '',
       productReference: option?.code ?? '',
       productName: option?.name ?? '',
     });
+    const shelf = option === null ? undefined : this.facade.figures().get(option.id);
+    if (shelf !== undefined && row.controls.unitPriceNet.value.trim() === '') {
+      row.controls.unitPriceNet.setValue(shelf.unitPriceNet);
+    }
     row.markAsDirty();
+  }
+
+  /** What the row's price means beside its product's: the shelf price, the change, the margin, a sale at a loss. */
+  protected figuresOf(row: ItemGroup): RowFigures | null {
+    const { productId, unitPriceNet } = row.getRawValue();
+    return rowFigures(unitPriceNet, this.facade.figures().get(productId) ?? null);
+  }
+
+  /** The sentence under a row's price: the translation key and its words, with the cost only for who may read it. */
+  protected lineOf(figures: RowFigures): { key: string; params: Record<string, string> } {
+    const percent = (value: number | null): string =>
+      value === null ? '—' : `${this.format.decimal((Math.round(value * 10) / 10).toFixed(1))} %`;
+    const params = {
+      shelf: this.format.amount(figures.shelf, null),
+      change: percent(figures.changePercent),
+      cost: figures.cost === null ? '' : this.format.amount(figures.cost, null),
+      margin: percent(figures.marginPercent),
+    };
+    return {
+      key: figures.cost === null ? 'price_lists.prices.figures' : 'price_lists.prices.figures_cost',
+      params,
+    };
   }
 
   protected async save(): Promise<void> {

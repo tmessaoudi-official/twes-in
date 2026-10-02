@@ -141,6 +141,23 @@
                     {{ 'price_lists.prices.remove' | translate }}
                   </button>
                 </div>
+                @if (figuresOf(row); as figures) {
+                  @let line = lineOf(figures);
+                  <p
+                    class="m-0 pb-2 text-sm opacity-80 sm:col-span-12"
+                    [attr.data-testid]="'price-row-' + i + '-figures'"
+                  >
+                    {{ line.key | translate: line.params }}
+                  </p>
+                  @if (figures.belowCost) {
+                    <p
+                      class="m-0 pb-2 text-sm font-medium text-error sm:col-span-12"
+                      [attr.data-testid]="'price-row-' + i + '-below-cost'"
+                    >
+                      {{ 'price_lists.prices.below_cost' | translate }}
+                    </p>
+                  }
+                }
               </div>
             } @empty {
               <p class="text-sm" data-testid="price-rows-empty">

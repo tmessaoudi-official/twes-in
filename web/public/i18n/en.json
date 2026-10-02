@@ -3238,7 +3238,7 @@
       "name": "Price list",
       "scope": "For",
       "validity": "Period",
-      "item_count": "Prices",
+      "item_count": "Number of prices",
       "state": "State"
     },
     "fields": {
@@ -3260,6 +3260,9 @@
       "product": "Product",
       "min_quantity": "From quantity",
       "unit_price": "Net unit price",
+      "figures": "Current price {{shelf}} · {{change}} against the current price",
+      "figures_cost": "Current price {{shelf}} · cost {{cost}} · margin {{margin}} (on this price) · {{change}} against the current price",
+      "below_cost": "Below cost: this price sells at a loss.",
       "add": "Add a price",
       "remove": "Remove",
       "none": "No price: the list changes nothing."

@@ -3238,7 +3238,7 @@
       "name": "Tarif",
       "scope": "Pour",
       "validity": "Période",
-      "item_count": "Prix",
+      "item_count": "Nombre de prix",
       "state": "État"
     },
     "fields": {
@@ -3260,6 +3260,9 @@
       "product": "Produit",
       "min_quantity": "À partir de",
       "unit_price": "Prix net unitaire",
+      "figures": "Prix actuel {{shelf}} · {{change}} par rapport au prix actuel",
+      "figures_cost": "Prix actuel {{shelf}} · coût {{cost}} · marge {{margin}} (sur ce prix) · {{change}} par rapport au prix actuel",
+      "below_cost": "Sous le coût : ce prix vend à perte.",
       "add": "Ajouter un prix",
       "remove": "Retirer",
       "none": "Aucun prix : le tarif ne change rien."
