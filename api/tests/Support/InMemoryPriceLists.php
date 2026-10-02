@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Module\Products\Domain\PriceList;
-use App\Module\Products\Domain\PriceListRepository;
+use App\Module\PriceLists\Domain\PriceList;
+use App\Module\PriceLists\Domain\PriceListRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryPriceLists implements PriceListRepository

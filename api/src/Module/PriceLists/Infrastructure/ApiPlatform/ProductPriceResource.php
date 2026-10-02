@@ -7,13 +7,13 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Infrastructure\ApiPlatform;
+namespace App\Module\PriceLists\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\QueryParameter;
-use App\Module\Products\Application\ResolvedPrice;
+use App\Module\PriceLists\Application\ResolvedPrice;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**

@@ -7,10 +7,10 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Infrastructure\Doctrine;
+namespace App\Module\PriceLists\Infrastructure\Doctrine;
 
-use App\Module\Products\Domain\PriceList;
-use App\Module\Products\Domain\PriceListRepository;
+use App\Module\PriceLists\Domain\PriceList;
+use App\Module\PriceLists\Domain\PriceListRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 

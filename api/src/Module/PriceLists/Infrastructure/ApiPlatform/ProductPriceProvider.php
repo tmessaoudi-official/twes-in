@@ -7,13 +7,14 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Infrastructure\ApiPlatform;
+namespace App\Module\PriceLists\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
+use App\Module\PriceLists\Application\ResolveUnitPrice;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductNotFound;
-use App\Module\Products\Application\ResolveUnitPrice;
+use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;

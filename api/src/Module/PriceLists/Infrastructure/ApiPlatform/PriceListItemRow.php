@@ -7,10 +7,10 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Infrastructure\ApiPlatform;
+namespace App\Module\PriceLists\Infrastructure\ApiPlatform;
 
-use App\Module\Products\Application\PriceListItemInput;
-use App\Module\Products\Domain\PriceListItem;
+use App\Module\PriceLists\Application\PriceListItemInput;
+use App\Module\PriceLists\Domain\PriceListItem;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;

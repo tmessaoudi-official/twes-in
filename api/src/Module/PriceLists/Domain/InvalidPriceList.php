@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Domain;
+namespace App\Module\PriceLists\Domain;
 
 /** A price list or one of its rows was refused; the field names where. */
 final class InvalidPriceList extends \DomainException

@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Infrastructure\ApiPlatform;
+namespace App\Module\PriceLists\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
@@ -16,8 +16,8 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
-use App\Module\Products\Application\PriceListInput;
-use App\Module\Products\Domain\PriceList;
+use App\Module\PriceLists\Application\PriceListInput;
+use App\Module\PriceLists\Domain\PriceList;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;

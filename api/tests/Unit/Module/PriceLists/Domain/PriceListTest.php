@@ -7,12 +7,12 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Module\Products\Domain;
+namespace App\Tests\Unit\Module\PriceLists\Domain;
 
 use App\Fiscal\Domain\Unit;
-use App\Module\Products\Domain\InvalidPriceList;
-use App\Module\Products\Domain\PriceList;
-use App\Module\Products\Domain\PriceListItem;
+use App\Module\PriceLists\Domain\InvalidPriceList;
+use App\Module\PriceLists\Domain\PriceList;
+use App\Module\PriceLists\Domain\PriceListItem;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;

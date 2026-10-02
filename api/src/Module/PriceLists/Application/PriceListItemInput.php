@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Application;
+namespace App\Module\PriceLists\Application;
 
 use Symfony\Component\Uid\Uuid;
 

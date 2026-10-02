@@ -7,20 +7,23 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Infrastructure\ApiPlatform;
+namespace App\Module\PriceLists\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
-use App\Module\Products\Application\ManagePriceLists;
-use App\Module\Products\Application\PriceListNameTaken;
-use App\Module\Products\Domain\InvalidPriceList;
+use App\Module\PriceLists\Application\ManagePriceLists;
+use App\Module\PriceLists\Application\PriceListNameTaken;
+use App\Module\PriceLists\Application\PriceListNotFound;
+use App\Module\PriceLists\Domain\InvalidPriceList;
+use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<PriceListResource, PriceListResource> */
-final readonly class CreatePriceListProcessor implements ProcessorInterface
+final readonly class RevisePriceListProcessor implements ProcessorInterface
 {
     public function __construct(private ManagePriceLists $manage, private CompanyGuard $guard)
     {
@@ -31,7 +34,9 @@ final readonly class CreatePriceListProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ProductPermission::WRITE);
 
         try {
-            $list = $this->manage->create($company, $data->input(), $this->guard->account()->getId());
+            $list = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'priceListId'), $data->input(), $this->guard->account()->getId());
+        } catch (PriceListNotFound $absent) {
+            throw new NotFoundHttpException('No such price list.', $absent);
         } catch (PriceListNameTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidPriceList $refused) {

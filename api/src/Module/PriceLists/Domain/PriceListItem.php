@@ -7,8 +7,9 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Domain;
+namespace App\Module\PriceLists\Domain;
 
+use App\Module\Products\Domain\Product;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;

@@ -268,9 +268,9 @@ final class AuthTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $planned = $this->arrayAt($this->json(), 'plannedModules');
         self::assertSame($atLogin, $planned);
-        self::assertCount(22, $planned);
+        self::assertCount(21, $planned);
         self::assertSame(['key' => 'accounting_export', 'planned' => 'v1'], $planned[0]);
-        self::assertSame(['key' => 'zakat', 'planned' => 'later'], $planned[21]);
+        self::assertSame(['key' => 'zakat', 'planned' => 'later'], $planned[20]);
         self::assertNotContains('customers', array_column($planned, 'key'), 'a module that ships is never planned');
     }
 

@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Domain;
+namespace App\Module\PriceLists\Domain;
 
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;

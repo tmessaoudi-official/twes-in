@@ -7,16 +7,16 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Application;
+namespace App\Module\PriceLists\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Module\Customers\Domain\CustomerGroupRepository;
 use App\Module\Customers\Domain\CustomerRepository;
-use App\Module\Products\Domain\InvalidPriceList;
-use App\Module\Products\Domain\PriceList;
-use App\Module\Products\Domain\PriceListItem;
-use App\Module\Products\Domain\PriceListRepository;
+use App\Module\PriceLists\Domain\InvalidPriceList;
+use App\Module\PriceLists\Domain\PriceList;
+use App\Module\PriceLists\Domain\PriceListItem;
+use App\Module\PriceLists\Domain\PriceListRepository;
 use App\Module\Products\Domain\ProductRepository;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;

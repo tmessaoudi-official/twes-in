@@ -7,12 +7,13 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Infrastructure\ApiPlatform;
+namespace App\Module\PriceLists\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
-use App\Module\Products\Application\ManagePriceLists;
-use App\Module\Products\Domain\PriceList;
+use App\Module\PriceLists\Application\ManagePriceLists;
+use App\Module\PriceLists\Domain\PriceList;
+use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 

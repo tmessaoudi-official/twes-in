@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Module\Products\Application;
+namespace App\Tests\Unit\Module\PriceLists\Application;
 
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Fiscal\Domain\Unit;
@@ -15,9 +15,9 @@ use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerGroup;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
-use App\Module\Products\Application\ResolveUnitPrice;
-use App\Module\Products\Domain\PriceList;
-use App\Module\Products\Domain\PriceListItem;
+use App\Module\PriceLists\Application\ResolveUnitPrice;
+use App\Module\PriceLists\Domain\PriceList;
+use App\Module\PriceLists\Domain\PriceListItem;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;

@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Application;
+namespace App\Module\PriceLists\Application;
 
 /** Another price list of the company already has the name. */
 final class PriceListNameTaken extends \RuntimeException

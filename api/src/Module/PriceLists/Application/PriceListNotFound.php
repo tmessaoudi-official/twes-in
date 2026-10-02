@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Products\Application;
+namespace App\Module\PriceLists\Application;
 
 /** No price list of this company has the id: another company's list is not found either. */
 final class PriceListNotFound extends \RuntimeException
