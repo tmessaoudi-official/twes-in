@@ -2663,6 +2663,7 @@
     "failed": "The scan could not be handled. Try again.",
     "not_editable": "This document can no longer be changed: the scan adds nothing.",
     "retired": "{{name}} is no longer sold: it is not added.",
+    "serial_present": "{{name}}: this serial number is already on a line, it is not added a second time.",
     "camera": {
       "open": "Scan with the camera",
       "title": "Camera",

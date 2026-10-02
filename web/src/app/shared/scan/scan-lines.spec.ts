@@ -41,6 +41,28 @@ describe('scanIntoLines', () => {
     expect(lines.at(0).dirty).toBe(true);
   });
 
+  it('does not count a serial number twice: a repeat changes nothing and says so', () => {
+    const lines = new FormArray([line('phone', 'pc', '1')]);
+    const withLot = new FormGroup({
+      ...lines.at(0).controls,
+      lotCode: new FormControl('SN-1', { nonNullable: true }),
+    });
+    const serialLines = new FormArray([withLot]);
+    const lotFields = (each: typeof withLot): LineFields => each.controls;
+
+    const placed = scanIntoLines(
+      serialLines,
+      lotFields,
+      { productId: 'phone', unitId: 'pc', count: 1, lot: 'SN-1', serial: true },
+      () => withLot,
+    );
+
+    expect(placed).toMatchObject({ repeated: true, added: false, quantity: '1', index: 0 });
+    expect(serialLines.length).toBe(1);
+    expect(withLot.controls.quantity.value).toBe('1');
+    expect(withLot.dirty).toBe(false);
+  });
+
   it('adds a line for the same product in another unit, and a pack enters its count', () => {
     const lines = new FormArray([line('screws', 'pc', '5')]);
 

@@ -1141,6 +1141,24 @@ describe('InvoicePage', () => {
       expect((q('line-1-lot') as HTMLInputElement).value).toBe('SN-2');
     });
 
+    it('refuses a serial already on a line instead of counting the same unit twice', async () => {
+      invoice.set({ ...draft, lines: [] });
+      await open('i1');
+      facade.pickProducts.mockResolvedValue([{ ...products[0], tracking: 'serial' }]);
+      scans.named.mockResolvedValue({ ...coffee, lot: null, serial: 'SN-1' });
+
+      await scanned('0103017620422003' + '21SN-1');
+      await settle();
+      expect(await scanned('0103017620422003' + '21SN-1')).toMatchObject({
+        kind: 'refused',
+        key: 'scan.serial_present',
+      });
+      await settle();
+
+      expect(quantityOf(0)).toBe('1');
+      expect(q('line-1-lot')).toBeNull();
+    });
+
     // docs/SPEC.md § 7, 2026-09-23 slice 6: the customer display.
     it('shows the customer display the line a scan went onto, priced taxes included, then the total once saved', async () => {
       invoice.set(draft);

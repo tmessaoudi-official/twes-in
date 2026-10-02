@@ -520,6 +520,7 @@ export class InvoicePage {
         unitId: product.unitId,
         count: Math.max(named.quantity, 1) * scan.times,
         lot: scannedLot(product.tracking, named),
+        serial: product.tracking === 'serial',
       },
       () => {
         const line = lineGroup(null, options, customer);
@@ -527,6 +528,8 @@ export class InvoicePage {
         return line;
       },
     );
+    if (placed.repeated === true)
+      return { kind: 'refused', key: 'scan.serial_present', params: { name: product.name } };
     // The customer sees the line the scan went onto, at the price they pay for one (docs/SPEC.md § 7, slice 6).
     this.display.show({
       name: product.name,

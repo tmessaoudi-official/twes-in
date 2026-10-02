@@ -34,6 +34,8 @@ export interface ScannedLine {
   readonly count: number;
   /** The lot or serial a GS1 label named, for a product tracked by one; none otherwise. */
   readonly lot?: string | null;
+  /** The product is followed piece by piece: one serial number is one unit, so it can be on a line only once. */
+  readonly serial?: boolean;
 }
 
 /**
@@ -56,6 +58,8 @@ export interface ScanPlacement {
   readonly index: number;
   /** Whether the scan started a line rather than adding to one. */
   readonly added: boolean;
+  /** A serial number already on this line: nothing was changed, and the screen says so rather than count it twice. */
+  readonly repeated?: boolean;
   /** The line's quantity once the scan landed. */
   readonly quantity: string;
   /** Takes back exactly what the scan did, and nothing another change did since. */
@@ -69,7 +73,8 @@ export interface ScanPlacement {
  * product already applied, since what a product fills in (price, taxes) is each document's own rule.
  *
  * On a document whose lines carry a lot, the lot joins the product and the unit (docs/SPEC.md § 7, 2026-09-24 12:40
- * row 5): another lot of the same product starts its own line, and a scan naming none adds to a line naming none.
+ * row 5): another lot of the same product starts its own line, and a scan naming none adds to a line naming none. A
+ * serial number already on a line is not counted twice: the placement says it was `repeated` and changes nothing.
  */
 export function scanIntoLines<L extends AbstractControl>(
   lines: LineList<L>,
@@ -86,6 +91,15 @@ export function scanIntoLines<L extends AbstractControl>(
       (lotCode === undefined || lotCode.value.trim() === lot)
     );
   });
+  if (same !== -1 && scanned.serial === true && lot !== '') {
+    return {
+      index: same,
+      added: false,
+      repeated: true,
+      quantity: fields(lines.at(same)).quantity.value,
+      undo: () => undefined,
+    };
+  }
   if (same !== -1) {
     const line = lines.at(same);
     const quantity = fields(line).quantity;

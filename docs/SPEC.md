@@ -4061,6 +4061,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   Alternatives: summing the ticked tax rates for a with-tax figure (refused: wrong whenever one compounds on another).
 - [2026-10-02 09:05] ASSUMED (review): row 116 slice 2: a serial product's movement quantity is fixed at 1 and read-only, and a recorded movement keeps the form open on the same product and locations with the lot code and note emptied, so a run of serial numbers is entered one after another; « Annuler » closes it. Row 22's "a location label names a move's destination" is taken as already met by the from and to location labels of the movement form. Certified by execution: the stock page spec and a sabotage of the kept form; not run in a browser. Not built: refusing a re-scanned serial on a document line, and lot tracking as an articles-chain setting.
   Alternatives: closing the form after each save (refused: slow for a serial batch).
+- [2026-10-02 09:30] ASSUMED (review): row 116 slice 3: a serial number already on a delivery-note or invoice line is refused (« déjà sur une ligne ») rather than counted twice, since one serial is one unit; `scanIntoLines` reports it as `repeated` and changes nothing, both pages turn that into a refused scan. A lot-tracked product still adds to its line. Certified by execution: the scan-lines, invoice-page and delivery-note-page specs (100 pass), and a sabotage of the guard; the delivery-note page has no case of its own for it, the code being the invoice's. Not run in a browser.
+  Alternatives: refusing only on a draft's saved lines (refused: the unsaved line is where the repeat happens).
 
 ## 8. Status
 

@@ -2663,6 +2663,7 @@
     "failed": "Le scan n’a pas pu être traité. Réessayez.",
     "not_editable": "Ce document n’est plus modifiable : le scan n’ajoute rien.",
     "retired": "{{name}} est retiré de la vente : il n’est pas ajouté.",
+    "serial_present": "{{name}} : ce numéro de série est déjà sur une ligne, il n’est pas ajouté une seconde fois.",
     "camera": {
       "open": "Scanner avec la caméra",
       "title": "Caméra",
