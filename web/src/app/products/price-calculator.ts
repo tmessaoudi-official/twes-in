@@ -101,6 +101,14 @@ import {
               <span class="text-xl font-semibold" data-testid="price-calculator-target">
                 {{ target }} {{ currency() }}
               </span>
+              @if (other(); as other) {
+                <span class="max-w-prose text-sm opacity-80" data-testid="price-calculator-other">
+                  {{
+                    'products.calculator.other_' + basis()
+                      | translate: { percent: wantedShown(), price: other, currency: currency() }
+                  }}
+                </span>
+              }
               @if (!readOnly()) {
                 <button
                   mat-flat-button
@@ -156,6 +164,19 @@ export class PriceCalculator {
     const price = priceFor(cost, percent, this.basis());
     return price === null ? null : atCurrencyScale(price, this.scale());
   });
+
+  /** The price the same percentage gives on the other basis, so « 30 % » is never read as the wrong one of the two. */
+  protected readonly other = computed(() => {
+    const cost = this.cost();
+    const percent = amountOf(this.wanted().replace(',', '.'));
+    if (cost === null || percent === null) return null;
+    const price = priceFor(cost, percent, this.basis() === 'margin' ? 'markup' : 'margin');
+    return price === null ? null : atCurrencyScale(price, this.scale());
+  });
+
+  protected wantedShown(): string {
+    return this.wanted().trim().replace('.', ',');
+  }
 
   constructor() {
     effect((onCleanup) => {

@@ -1680,6 +1680,8 @@
       "wanted": "Percentage wanted",
       "price_to_ask": "Net price to ask",
       "apply": "Use this price",
+      "other_margin": "Adding {{percent}} % to the cost (markup) would make the price {{price}} {{currency}}.",
+      "other_markup": "A margin of {{percent}} % on the price would make the price {{price}} {{currency}}.",
       "no_price": "No price gives that percentage: a margin stays under 100 %."
     },
     "labels": {

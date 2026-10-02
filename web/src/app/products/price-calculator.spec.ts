@@ -87,6 +87,19 @@ describe('PriceCalculator', () => {
     expect(text('price-calculator-markup')).toBe('12.50 %');
   });
 
+  it('also says the price the same percentage gives on the other basis, so 30 % is not read as the wrong one', async () => {
+    await open('45.000', '60.000');
+
+    await want('30');
+    expect(text('price-calculator-target')).toBe('64.286 TND');
+    expect(text('price-calculator-other')).toContain('products.calculator.other_margin');
+
+    (q('price-calculator-basis-markup') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(text('price-calculator-target')).toBe('58.500 TND');
+    expect(text('price-calculator-other')).toContain('products.calculator.other_markup');
+  });
+
   it('says no price gives a margin of a hundred percent, and offers no button to a reader', async () => {
     await open('60.000', '70.000');
     await want('100');

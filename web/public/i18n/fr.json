@@ -1680,6 +1680,8 @@
       "wanted": "Pourcentage voulu",
       "price_to_ask": "Prix HT à demander",
       "apply": "Appliquer ce prix",
+      "other_margin": "Pour ajouter {{percent}} % au coût (majoration), le prix serait {{price}} {{currency}}.",
+      "other_markup": "Pour une marge de {{percent}} % sur le prix, le prix serait {{price}} {{currency}}.",
       "no_price": "Aucun prix ne donne ce pourcentage : une marge reste sous 100 %."
     },
     "labels": {
