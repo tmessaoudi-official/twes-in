@@ -6,7 +6,7 @@
     [selectedIndex]="selected()"
     (selectedIndexChange)="openTab($event)"
   >
-    @for (tab of tabs; track tab) {
+    @for (tab of tabs(); track tab) {
       <mat-tab>
         <ng-template mat-tab-label>
           <span class="flex items-center gap-2">

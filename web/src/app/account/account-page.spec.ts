@@ -214,6 +214,23 @@ describe('AccountPage', () => {
     expect(byTestId(root, 'account-two-factor')?.textContent).toContain('Désactivée');
   });
 
+  it('leaves out the two tabs not built yet once what is coming is hidden, and keeps the toggle that brings them back', async () => {
+    showComing.set(false);
+    const root = await render();
+    const labels = [...root.querySelectorAll('[role="tab"]')].map((tab) =>
+      tab.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(labels).toEqual(['Sécurité', 'Préférences']);
+    expect(root.querySelector('.twes-soon')).toBeNull();
+  });
+
+  it('opens the first tab when the address names one that is hidden', async () => {
+    showComing.set(false);
+    const root = await render('device');
+    const selected = root.querySelector('[role="tab"][aria-selected="true"]');
+    expect(selected?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Sécurité');
+  });
+
   it('sets the language, the scheme and the density', async () => {
     const root = await render('preferences');
     expect((byTestId(root, 'account-language') as HTMLSelectElement).value).toBe('fr');

@@ -84,7 +84,12 @@ export class AccountPage implements OnInit {
   /** The tab from the address; an unknown one opens the first. */
   readonly tab = input<string | undefined>(undefined);
 
-  protected readonly tabs = ACCOUNT_TABS;
+  /** The tabs shown: the two not built yet go with « Montrer ce qui arrive », as every other « Bientôt » does. */
+  protected readonly tabs = computed(() =>
+    this.theme.showComing()
+      ? ACCOUNT_TABS
+      : ACCOUNT_TABS.filter((tab) => !COMING_TABS.includes(tab)),
+  );
   protected readonly comingTabs = COMING_TABS;
   protected readonly languages = SUPPORTED_LANGUAGES;
   protected readonly languageNames = LANGUAGE_NAMES;
@@ -92,7 +97,7 @@ export class AccountPage implements OnInit {
   protected readonly densities: readonly Density[] = ['comfortable', 'compact'];
 
   protected readonly selected = computed(() =>
-    Math.max(0, ACCOUNT_TABS.indexOf(this.tab() as AccountTab)),
+    Math.max(0, this.tabs().indexOf(this.tab() as AccountTab)),
   );
   protected readonly twoFactorOn = computed(() => this.auth.me()?.mfa.enrolled === true);
 
@@ -165,7 +170,7 @@ export class AccountPage implements OnInit {
 
   protected openTab(index: number): void {
     void this.router.navigate([], {
-      queryParams: { tab: ACCOUNT_TABS[index] },
+      queryParams: { tab: this.tabs()[index] },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });

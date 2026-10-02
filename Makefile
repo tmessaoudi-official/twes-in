@@ -91,6 +91,7 @@ gate-licences:
 	bash scripts/gates/tests/setting-labels.test.sh
 	bash scripts/gates/tests/presentation-settings-parity.test.sh
 	bash scripts/gates/tests/tour-anchors.test.sh
+	bash scripts/gates/tests/coming-gated.test.sh
 	bash scripts/gates/tests/stored-items.test.sh
 	bash scripts/gates/tests/production-image.test.sh
 	bash scripts/gates/tests/icons-declared.test.sh
@@ -110,6 +111,7 @@ gate-licences:
 	bash scripts/gates/setting-labels.sh
 	bash scripts/gates/presentation-settings-parity.sh
 	bash scripts/gates/tour-anchors.sh
+	bash scripts/gates/coming-gated.sh
 	bash scripts/gates/stored-items.sh
 	bash scripts/gates/icons-declared.sh
 
