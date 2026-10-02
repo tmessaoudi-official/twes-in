@@ -411,16 +411,20 @@ describe('ProductPage', () => {
 
     expect(q('field-unitPriceNet')).not.toBeNull();
     expect(q('field-costPrice')).toBeNull();
+    expect(q('price-calculator')).toBeNull();
   });
 
   it('hides the cost in customer view, and a save there keeps the stored cost', async () => {
     product.set({ ...laptop, costPrice: '900.1250' });
     await open('p1');
     expect(q('field-costPrice')).not.toBeNull();
+    // What a unit earns is read from that cost, so it follows the cost: shown with it, gone with it.
+    expect(q('price-calculator')).not.toBeNull();
 
     TestBed.inject(CustomerView).on();
     await settle();
     expect(q('field-costPrice')).toBeNull();
+    expect(q('price-calculator')).toBeNull();
     type('field-unitPriceNet', '1300');
     await settle();
     q('record-save')!.click();

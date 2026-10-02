@@ -1653,6 +1653,19 @@
       "lot": "By lot",
       "serial": "By serial number"
     },
+    "calculator": {
+      "title": "Price calculator",
+      "intro": "What a unit earns, from the cost and the net price in the form, and the price to ask for the margin or markup wanted. Amounts before tax.",
+      "missing": "Enter the cost and the net price to see what a unit earns.",
+      "profit": "Profit per unit",
+      "margin": "Margin (on the price)",
+      "markup": "Markup (on the cost)",
+      "basis": "Count on",
+      "wanted": "Percentage wanted",
+      "price_to_ask": "Net price to ask",
+      "apply": "Use this price",
+      "no_price": "No price gives that percentage: a margin stays under 100 %."
+    },
     "labels": {
       "title": "Product labels",
       "intro": "The name, the reference, the price taxes included of what the code enters, and the code as a barcode (EAN for a GTIN, Code 128 otherwise).",

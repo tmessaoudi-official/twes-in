@@ -1653,6 +1653,19 @@
       "lot": "Par lot",
       "serial": "Par numéro de série"
     },
+    "calculator": {
+      "title": "Calculateur de prix",
+      "intro": "Ce que rapporte une unité, d'après le coût et le prix HT du formulaire, et le prix à demander pour la marge ou la majoration voulue. Montants hors taxes.",
+      "missing": "Saisissez le coût et le prix HT pour voir ce que rapporte une unité.",
+      "profit": "Bénéfice par unité",
+      "margin": "Marge (sur le prix)",
+      "markup": "Majoration (sur le coût)",
+      "basis": "Calculer sur",
+      "wanted": "Pourcentage voulu",
+      "price_to_ask": "Prix HT à demander",
+      "apply": "Appliquer ce prix",
+      "no_price": "Aucun prix ne donne ce pourcentage : une marge reste sous 100 %."
+    },
     "labels": {
       "title": "Étiquettes produit",
       "intro": "Le nom, la référence, le prix TTC de ce que le code fait entrer, et le code en code-barres (EAN pour un GTIN, Code 128 sinon).",

@@ -65,6 +65,18 @@
               </mat-card-content>
             </mat-card>
           }
+          @if (showsCost()) {
+            <mat-card>
+              <mat-card-content>
+                <app-price-calculator
+                  [form]="form"
+                  [scale]="currencyScale()"
+                  [currency]="currency()"
+                  [readOnly]="!mayWrite()"
+                />
+              </mat-card-content>
+            </mat-card>
+          }
         }
         @if (current(); as product) {
           <mat-card>

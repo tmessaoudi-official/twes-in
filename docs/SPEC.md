@@ -4047,7 +4047,18 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   labels page spec and a sabotage that let only one ticked code through; not printed on paper or run in a browser.
   Alternatives: one label sheet mixing every code of one product on a single label (refused: a label carries one
   barcode a scanner can read).
-
+- [2026-10-02 08:56] ASSUMED (review): **price calculator with the profit margin (row 185)**: on the record tab of a product, below
+  its form, for whoever holds product.cost.read and gone in customer view like the cost field it reads. From the cost
+  and the net price in the form, live, it says the profit per unit, the margin on the price and the markup on the cost;
+  from a margin or a markup typed (a comma or a point), it says the net price to ask at the currency's scale and puts
+  it in the form on « Appliquer ce prix » (dirty, not saved), a reader seeing the figure without the button. A margin
+  of 100 % or more, or a negative percentage, has no price and says so. Amounts before tax only: a price with tax is
+  not previewed, because the line taxes compound and round in the API's calculator and a client-side guess would be
+  wrong, and the saved product's with-tax price stays in the price check. Not built: the calculator on a pack price,
+  a margin by customer group or price list (row 77), and a with-tax preview through an API call. Certified by
+  execution: the math and component specs, the product page spec for who sees it, and a sabotage of the markup
+  formula; not run in a browser.
+  Alternatives: summing the ticked tax rates for a with-tax figure (refused: wrong whenever one compounds on another).
 
 ## 8. Status
 
@@ -4240,7 +4251,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 182 | Data health check (§ 7 2026-09-27 18:59): `app:data:check` over the invariants, after generation, nightly with the worker and told to the operator | M | todo | - | |
 | 183 | The whole app from a phone (§ 7 2026-09-27 19:16): sign-in through the LAN door tested and fixed, the LAN address as the app's own when detected, `make up` prints it; before 178 | S | done | 409ad73 | compose.yaml Makefile infra/** api/config/** |
 | 184 | Live development by default (§ 7 2026-09-27 19:16, 19:20 and 20:30): `make up` mounts the api source with FrankenPHP watch, OPcache revalidating at once, Angular dev server with live reload, through the LAN door too; `make up-images` keeps the images CI runs; before 178 | M | done | - | compose*.yaml Makefile infra/** web/** docs/START.md |
-| 185 | Price calculator with the profit margin (§ 7 2026-10-02, module 1): on the product, from the cost price and a margin or a markup the selling price, or from the selling price the margin, with tax shown, per unit and per pack; for whoever may read costs and hidden in customer view | M | todo | - | web/src/app/products/**, api/src/Module/Products/** |
+| 185 | Price calculator with the profit margin (§ 7 2026-10-02, module 1): on the product, from the cost price and a margin or a markup the selling price, or from the selling price the margin, with tax shown, per unit and per pack; for whoever may read costs and hidden in customer view | M | done | - | web/src/app/products/**, api/src/Module/Products/** |
 | 186 | Labels print every barcode (§ 7 2026-10-02, module 1): a product with several barcodes shows only the first on its label; the label offers each one, or all of them, with the quantity each stands for | M | done | - | web/src/app/products/** |
 <!-- /progress-block -->
 

@@ -23,6 +23,7 @@ import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import { ArticleDefaults } from './article-defaults';
+import { PriceCalculator } from './price-calculator';
 import { ProductBarcodesSection } from './product-barcodes';
 import { ProductHomes } from './product-homes-facade';
 import { ProductHomesSection } from './product-homes';
@@ -59,6 +60,7 @@ import { MatTabsModule } from '@angular/material/tabs';
     ProductReorderPointsSection,
     ProductSubstitutesSection,
     ProductBarcodesSection,
+    PriceCalculator,
   ],
   templateUrl: './product-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -107,12 +109,18 @@ export class ProductPage {
     source: this.tabKey,
     computation: (key: string) => (key === 'codes|true' ? 1 : 0),
   });
+  /** The cost is read by whoever holds product.cost.read, and kept from a customer looking at the screen. */
+  protected readonly showsCost = computed(
+    () => this.auth.hasPermission('product.cost.read') && !this.customerView.hides('cost'),
+  );
+  protected readonly currencyScale = computed(() => this.facade.options()?.currencyScale ?? 2);
+  protected readonly currency = computed(() => this.facade.options()?.currency ?? '');
   protected readonly descriptor = computed(() => {
     const options = this.facade.options();
     return options === null
       ? null
       : productForm(options, this.facade.categories(), this.facade.customFields(), {
-          cost: this.auth.hasPermission('product.cost.read') && !this.customerView.hides('cost'),
+          cost: this.showsCost(),
         });
   });
   /**
