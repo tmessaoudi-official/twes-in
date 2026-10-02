@@ -4094,6 +4094,9 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-10-02 12:46] ASSUMED (review): the write-off reaches the screen. The stock page has « Déclarer une perte » beside Move: the same form as the other movements with the reason (required, the six reasons in the API's order) and an optional note after the quantity, the location proposed from the product's home as a count's is, and a lot asked for a tracked product without a use-by day, since the lot exists already. The movements list says « Perte — Cassée » and shows the note under it, and `loss` joins the source filter. Certified by execution: the form and page specs, a sabotage of the reason sent, and the API functional test; the e2e scenario in `inventory.spec.ts` is written but runs only in CI.
   Alternatives: a reason column of its own in the movements list (refused: only a loss has one, and a source cell that says it keeps the list's columns as they are).
 
+- [2026-10-02 12:47] ASSUMED (review): « quarantine » is a location kind beside site, building, floor, zone, rack and bin, so goods awaiting a decision have a place to be moved to. It is a word for people, as the others are: nothing yet treats its stock differently, so it still counts as on hand and in the valuation, and a drawable place on the plan. Excluding quarantined stock from what a delivery may take is a rule the returns work (row 74's returns) will state when it needs it.
+  Alternatives: making quarantined stock unavailable now (refused: the first cut would invent a rule no screen explains).
+
 ## 8. Status
 
 <!-- progress-block v1 -->

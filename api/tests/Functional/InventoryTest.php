@@ -652,6 +652,17 @@ final class InventoryTest extends ApiTestCase
         return $company;
     }
 
+    /** « Quarantaine » (docs/SPEC.md § 7 2026-09-19 23:25): a place for goods awaiting a decision, a kind like any other. */
+    public function testAQuarantineIsAKindOfLocationGoodsAwaitingADecisionAreKeptIn(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+
+        $this->postJson($this->path('stock-locations'), $this->location(['kind' => 'quarantine', 'code' => 'QRT', 'name' => 'Quarantaine']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame('quarantine', $this->json()['kind']);
+    }
+
     /**
      * A move is ONE operation that writes TWO movements (docs/SPEC.md § 5 G10, row 74): the goods leave one location
      * and arrive at another in the same transaction, sharing a move id, so no reading of the stock ever sees half of it.

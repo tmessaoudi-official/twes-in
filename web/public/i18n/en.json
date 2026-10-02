@@ -1809,7 +1809,8 @@
       "floor": "Floor",
       "zone": "Zone",
       "rack": "Rack",
-      "bin": "Bin"
+      "bin": "Bin",
+      "quarantine": "Quarantine"
     },
     "locations": {
       "title": "Locations",

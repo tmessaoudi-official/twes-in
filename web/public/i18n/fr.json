@@ -1809,7 +1809,8 @@
       "floor": "Étage",
       "zone": "Zone",
       "rack": "Rayonnage",
-      "bin": "Casier"
+      "bin": "Casier",
+      "quarantine": "Quarantaine"
     },
     "locations": {
       "title": "Emplacements",

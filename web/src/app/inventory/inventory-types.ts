@@ -5,7 +5,8 @@ export type InventoryError =
   'network' | 'not_found' | 'code_taken' | 'in_use' | 'invalid' | 'level_taken';
 
 /** Where stock is kept, from the whole site down to one bin (docs/SPEC.md § 7, 2026-09-14). */
-export type StockLocationKind = 'site' | 'building' | 'floor' | 'zone' | 'rack' | 'bin';
+export type StockLocationKind =
+  'site' | 'building' | 'floor' | 'zone' | 'rack' | 'bin' | 'quarantine';
 export const STOCK_LOCATION_KINDS: readonly StockLocationKind[] = [
   'site',
   'building',
@@ -13,6 +14,7 @@ export const STOCK_LOCATION_KINDS: readonly StockLocationKind[] = [
   'zone',
   'rack',
   'bin',
+  'quarantine',
 ];
 
 /**

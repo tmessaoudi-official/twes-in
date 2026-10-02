@@ -80,7 +80,7 @@ final class StockLocationResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $parentId = null;
 
-    #[ApiProperty(schema: ['type' => 'string', 'enum' => ['site', 'building', 'floor', 'zone', 'rack', 'bin']])]
+    #[ApiProperty(schema: ['type' => 'string', 'enum' => ['site', 'building', 'floor', 'zone', 'rack', 'bin', 'quarantine']])]
     #[Assert\Choice(callback: [self::class, 'kinds'], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public string $kind = '';

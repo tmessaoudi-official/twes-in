@@ -18,6 +18,8 @@ enum StockLocationKind: string
     case Zone = 'zone';
     case Rack = 'rack';
     case Bin = 'bin';
+    /** Goods awaiting a decision: a returned item, a recalled lot (§ 7 2026-09-19 23:25). A word for people, like the others. */
+    case Quarantine = 'quarantine';
 
     /**
      * Whether this kind can be a rectangle on a floor plan (docs/SPEC.md § 7, 2026-09-21, decision 2). A bin cannot:
