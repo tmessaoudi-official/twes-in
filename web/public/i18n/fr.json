@@ -1671,7 +1671,7 @@
     },
     "calculator": {
       "title": "Calculateur de prix",
-      "intro": "Ce que rapporte une unité, d'après le coût et le prix HT du formulaire, et le prix à demander pour la marge ou la majoration voulue. Montants hors taxes.",
+      "intro": "Hors taxes. La marge et la majoration disent la même chose de deux façons : toutes deux partent du bénéfice (prix − coût), mais la marge le compare au prix de vente et la majoration au coût. C'est pourquoi une marge de 30 % donne un prix plus haut que 30 % ajoutés au coût.",
       "missing": "Saisissez le coût et le prix HT pour voir ce que rapporte une unité.",
       "profit": "Bénéfice par unité",
       "margin": "Marge (sur le prix)",
@@ -1682,6 +1682,10 @@
       "apply": "Appliquer ce prix",
       "other_margin": "Pour ajouter {{percent}} % au coût (majoration), le prix serait {{price}} {{currency}}.",
       "other_markup": "Pour une marge de {{percent}} % sur le prix, le prix serait {{price}} {{currency}}.",
+      "margin_how": "Bénéfice {{profit}} ÷ prix de vente {{price}}",
+      "markup_how": "Bénéfice {{profit}} ÷ coût {{cost}}",
+      "target_margin": "Coût {{cost}} ÷ (1 − {{percent}} %) = {{price}} : le bénéfice représente {{percent}} % de ce prix.",
+      "target_markup": "Coût {{cost}} × (1 + {{percent}} %) = {{price}} : le bénéfice représente {{percent}} % du coût.",
       "no_price": "Aucun prix ne donne ce pourcentage : une marge reste sous 100 %."
     },
     "labels": {

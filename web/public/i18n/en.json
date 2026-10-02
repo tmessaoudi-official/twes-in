@@ -1671,7 +1671,7 @@
     },
     "calculator": {
       "title": "Price calculator",
-      "intro": "What a unit earns, from the cost and the net price in the form, and the price to ask for the margin or markup wanted. Amounts before tax.",
+      "intro": "Before tax. Margin and markup say the same thing two ways: both start from the profit (price − cost), but margin compares it with the selling price and markup with the cost. That is why a 30 % margin gives a higher price than adding 30 % to the cost.",
       "missing": "Enter the cost and the net price to see what a unit earns.",
       "profit": "Profit per unit",
       "margin": "Margin (on the price)",
@@ -1682,6 +1682,10 @@
       "apply": "Use this price",
       "other_margin": "Adding {{percent}} % to the cost (markup) would make the price {{price}} {{currency}}.",
       "other_markup": "A margin of {{percent}} % on the price would make the price {{price}} {{currency}}.",
+      "margin_how": "Profit {{profit}} ÷ selling price {{price}}",
+      "markup_how": "Profit {{profit}} ÷ cost {{cost}}",
+      "target_margin": "Cost {{cost}} ÷ (1 − {{percent}} %) = {{price}}: the profit is {{percent}} % of this price.",
+      "target_markup": "Cost {{cost}} × (1 + {{percent}} %) = {{price}}: the profit is {{percent}} % of the cost.",
       "no_price": "No price gives that percentage: a margin stays under 100 %."
     },
     "labels": {

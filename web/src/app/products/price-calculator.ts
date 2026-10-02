@@ -51,11 +51,23 @@ import {
             <dd class="m-0 text-xl font-semibold" data-testid="price-calculator-margin">
               {{ percentShown(margin()) }}
             </dd>
+            <dd class="m-0 text-sm opacity-80" data-testid="price-calculator-margin-how">
+              {{
+                'products.calculator.margin_how'
+                  | translate: { profit: shown(profit()), price: shown(price()) }
+              }}
+            </dd>
           </div>
           <div>
             <dt class="text-sm opacity-80">{{ 'products.calculator.markup' | translate }}</dt>
             <dd class="m-0 text-xl font-semibold" data-testid="price-calculator-markup">
               {{ percentShown(markup()) }}
+            </dd>
+            <dd class="m-0 text-sm opacity-80" data-testid="price-calculator-markup-how">
+              {{
+                'products.calculator.markup_how'
+                  | translate: { profit: shown(profit()), cost: shown(cost()) }
+              }}
             </dd>
           </div>
         </dl>
@@ -100,6 +112,15 @@ import {
               }}</span>
               <span class="text-xl font-semibold" data-testid="price-calculator-target">
                 {{ target }} {{ currency() }}
+              </span>
+              <span
+                class="max-w-prose text-sm opacity-80"
+                data-testid="price-calculator-target-how"
+              >
+                {{
+                  'products.calculator.target_' + basis()
+                    | translate: { cost: shown(cost()), percent: wantedShown(), price: target }
+                }}
               </span>
               @if (other(); as other) {
                 <span class="max-w-prose text-sm opacity-80" data-testid="price-calculator-other">

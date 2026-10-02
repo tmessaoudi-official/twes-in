@@ -100,6 +100,18 @@ describe('PriceCalculator', () => {
     expect(text('price-calculator-other')).toContain('products.calculator.other_markup');
   });
 
+  it('shows, under each figure and under the price to ask, the sum it comes from', async () => {
+    await open('45.000', '64.286');
+    await want('30');
+
+    expect(text('price-calculator-margin-how')).toContain('products.calculator.margin_how');
+    expect(text('price-calculator-markup-how')).toContain('products.calculator.markup_how');
+    expect(text('price-calculator-target-how')).toContain('products.calculator.target_margin');
+    (q('price-calculator-basis-markup') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(text('price-calculator-target-how')).toContain('products.calculator.target_markup');
+  });
+
   it('says no price gives a margin of a hundred percent, and offers no button to a reader', async () => {
     await open('60.000', '70.000');
     await want('100');
