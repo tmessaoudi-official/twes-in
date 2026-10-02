@@ -355,3 +355,4 @@ tables, essay gotchas) was retired with the reset. What applies here:
   green. `vendor/bin/phpstan clear-result-cache` and the same file came back clean. Clear it before believing a red
   in a file you did not edit, and run PHPStan through `composer stan`, never bare — the script warms the test
   container XML first, without which the Symfony extension resolves service types as `mixed` (2026-09-22).
+- A spec that turns customer view on without its own `CUSTOMER_VIEW_STORAGE` writes the real session storage, which outlives the spec and hides the private list columns in whichever spec runs next: CI and a full local run failed `customers-page.spec`, a two-file run did not. Give any spec that calls `CustomerView.on()` a `PageMemoryStorage` for it.

@@ -21,7 +21,7 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
-import { CustomerView } from '../shared/customer-view/customer-view';
+import { CUSTOMER_VIEW_STORAGE, CustomerView } from '../shared/customer-view/customer-view';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { ProductPage } from './product-page';
 import { ProductOnView } from './product-on-view';
@@ -167,6 +167,8 @@ describe('ProductPage', () => {
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+        // Customer view is remembered per tab: on the real session storage it outlives this spec and hides columns in others.
+        { provide: CUSTOMER_VIEW_STORAGE, useValue: new PageMemoryStorage() },
       ],
     });
   });
