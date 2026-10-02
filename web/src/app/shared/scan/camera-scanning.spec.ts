@@ -4,13 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { CAMERA_ABSENT_MS, CameraScanning } from './camera-scanning';
 
 /** A camera whose frames are the codes a test says it sees, and a clock the test moves. */
-function rig(seen: (at: number) => readonly string[]) {
+function rig(seen: (at: number) => readonly string[], absentMs?: () => number) {
   let now = 0;
   const accepted: string[] = [];
   const scanning = new CameraScanning({
     now: () => now,
     read: () => Promise.resolve(seen(now)),
     accept: (code) => accepted.push(code),
+    ...(absentMs === undefined ? {} : { absentMs }),
   });
   const at = async (time: number) => {
     now = time;
@@ -36,6 +37,20 @@ describe('CameraScanning', () => {
     for (let time = 0; time <= 1000 + CAMERA_ABSENT_MS + 500; time += 100) await at(time);
 
     expect(accepted).toEqual(['3017620422003', '3017620422003']);
+  });
+
+  it('waits as long as the company says before a code counts again', async () => {
+    const away = (time: number) => (time >= 1000 && time < 1000 + 1500 ? [] : ['ABC-1']);
+    const patient = rig(away, () => 2000);
+    const quick = rig(away, () => 1000);
+
+    for (let time = 0; time <= 4000; time += 100) {
+      await patient.at(time);
+      await quick.at(time);
+    }
+
+    expect(patient.accepted).toEqual(['ABC-1']);
+    expect(quick.accepted).toEqual(['ABC-1', 'ABC-1']);
   });
 
   it('does not count a code that only flickered out for a frame or two', async () => {

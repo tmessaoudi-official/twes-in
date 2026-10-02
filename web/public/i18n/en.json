@@ -815,6 +815,7 @@
       "customer_view_supplier_codes": "In customer view, hide suppliers' codes",
       "show_coming": "Show what is coming",
       "scan_feedback": "Beep and buzz on each scan",
+      "scan_recount_ms": "Camera scan: delay before a code counts again (ms)",
       "shortcuts": "Keyboard shortcuts",
       "folded_sections": "Folded menu sections",
       "settings_list": "Settings list"

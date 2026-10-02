@@ -14,6 +14,8 @@ export interface CameraScanningPorts {
   /** The codes on the frame showing now, composed as a handheld scanner would type them. */
   readonly read: () => Promise<readonly string[]>;
   readonly accept: (code: string) => void;
+  /** How long a code must have been out of view before it counts again; `CAMERA_ABSENT_MS` unless a company chose. */
+  readonly absentMs?: () => number;
 }
 
 /**
@@ -38,7 +40,8 @@ export class CameraScanning {
     for (const code of new Set(codes)) {
       const last = this.lastSeen.get(code);
       this.lastSeen.set(code, now);
-      if (last === undefined || now - last >= CAMERA_ABSENT_MS) this.ports.accept(code);
+      if (last === undefined || now - last >= (this.ports.absentMs?.() ?? CAMERA_ABSENT_MS))
+        this.ports.accept(code);
     }
   }
 }

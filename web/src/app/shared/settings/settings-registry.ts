@@ -46,6 +46,12 @@ function parseBool(raw: unknown): boolean | undefined {
 }
 
 /** Section names, each `<menu>.<section>`; anything else in the list is dropped rather than failing the whole list. */
+/** A whole number of milliseconds within the range the API declares; anything else falls back to the default. */
+function parseWholeWithin(min: number, max: number) {
+  return (raw: unknown): number | undefined =>
+    typeof raw === 'number' && Number.isInteger(raw) && raw >= min && raw <= max ? raw : undefined;
+}
+
 function parseSectionNames(raw: unknown): readonly string[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   return raw.filter(
@@ -133,6 +139,15 @@ export const PRESENTATION = {
   ),
   /** The beep and the buzz a camera scan gives (docs/SPEC.md § 7, 2026-09-24 12:40 row 13): on until turned off. */
   scanFeedback: defineSetting<boolean>('presentation.scan-feedback', true, parseBool),
+  /**
+   * How long a code must have left the camera's view before it counts again, in milliseconds (docs/SPEC.md § 7,
+   * 2026-09-24 12:40 row 13): the company's pace at the counter.
+   */
+  scanRecountMs: defineSetting<number>(
+    'presentation.scan-recount-ms',
+    700,
+    parseWholeWithin(200, 5000),
+  ),
   /** « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. */
   showComing: defineSetting<boolean>('presentation.show-coming', true, parseBool),
   /** The menu sections each person folded (docs/SPEC.md § 7, 2026-09-26 12:05, row 152), as `<menu>.<section>`. */

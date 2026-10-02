@@ -815,6 +815,7 @@
       "customer_view_supplier_codes": "En vue client, masquer les codes des fournisseurs",
       "show_coming": "Montrer ce qui arrive",
       "scan_feedback": "Bip et vibration à chaque scan",
+      "scan_recount_ms": "Scan par caméra : délai avant de recompter un code (ms)",
       "shortcuts": "Raccourcis clavier",
       "folded_sections": "Sections repliées des menus",
       "settings_list": "Liste des réglages"

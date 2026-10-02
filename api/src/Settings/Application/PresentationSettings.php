@@ -48,6 +48,9 @@ final readonly class PresentationSettings implements DeclaresSettings
         // The beep and the buzz a scan gives when the camera reads a code (docs/SPEC.md § 7, 2026-09-24 12:40 row 13): on until
         // a company, a role or a person turns it off, since a quiet counter and a loud warehouse differ.
         yield new SettingDefinition('presentation.scan-feedback', SettingType::Bool, true, $chain, $shared, 'settings.presentation.scan_feedback', self::MODULE);
+        // How long a code must have left the camera's view before it counts again (docs/SPEC.md § 7, 2026-09-24 12:40 row 13): a
+        // company's pace at the counter, in milliseconds, within a range a frame or two of blur cannot undercut.
+        yield new SettingDefinition('presentation.scan-recount-ms', SettingType::Int, 700, $chain, [SettingLevel::Company], 'settings.presentation.scan_recount_ms', self::MODULE, min: 200, max: 5000);
         // Each person's single-key shortcuts (docs/SPEC.md § 7, 2026-09-24 22:51, row 125): C, N, E and / until they choose.
         // Nothing but the person sets them, and the web reads each key defensively, as it reads a list layout.
         yield new SettingDefinition('presentation.shortcuts', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.shortcuts', self::MODULE);

@@ -46,7 +46,9 @@ export class CameraView implements OnInit {
   private readonly camera = inject(Camera);
   private readonly reader = inject(BarcodeReader);
   private readonly storage = inject(SETTINGS_STORAGE);
-  private readonly feedback = inject(SettingsFacade).value(PRESENTATION.scanFeedback);
+  private readonly settings = inject(SettingsFacade);
+  private readonly feedback = this.settings.value(PRESENTATION.scanFeedback);
+  private readonly recountMs = this.settings.value(PRESENTATION.scanRecountMs);
   /** Each code as it comes into view, composed as a handheld scanner would type it. */
   readonly read = output<string>();
   private readonly video = viewChild.required<ElementRef<HTMLVideoElement>>('video');
@@ -66,6 +68,7 @@ export class CameraView implements OnInit {
     now: () => performance.now(),
     read: () => this.readFrame(),
     accept: (code) => this.accept(code),
+    absentMs: () => this.recountMs(),
   });
 
   constructor() {
