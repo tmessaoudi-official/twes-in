@@ -105,6 +105,23 @@ class PriceListItem implements CompanyOwned
         return $normalized;
     }
 
+    /**
+     * Moves the price of this break, which is the only thing a row holds that its list may change: its product and
+     * minimum are its identity (the unique key), so a different one is another row.
+     *
+     * @return bool whether the price changed
+     */
+    public function reprice(string $unitPriceNet): bool
+    {
+        $price = self::price($unitPriceNet);
+        if ($price === $this->unitPriceNet) {
+            return false;
+        }
+        $this->unitPriceNet = $price;
+
+        return true;
+    }
+
     public function getCompany(): Company
     {
         return $this->company;

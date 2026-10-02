@@ -105,7 +105,9 @@ class PriceList implements CompanyOwned
     }
 
     /**
-     * Makes the rows exactly these, whatever they were: a price moves from one row to another in one save.
+     * Makes the rows exactly these, whatever they were. A row is kept by its product and minimum and only repriced, so
+     * a save changing a price, or swapping two, never inserts beside the row it replaces: the database holds one row
+     * per product and minimum and checks it before a delete in the same flush could free the key.
      *
      * @param list<PriceListItem> $items
      *
@@ -126,21 +128,33 @@ class PriceList implements CompanyOwned
             }
             $seen[$key] = true;
         }
-        $keep = static fn (PriceListItem $item): string => $item->getProduct()->getId()->toRfc4122().'@'.$item->getMinQuantity().'='.$item->getUnitPriceNet();
-        $before = array_map($keep, $this->items->toArray());
-        $after = array_map($keep, $items);
-        sort($before);
-        sort($after);
-        if ($before === $after) {
-            return false;
+        $key = static fn (PriceListItem $item): string => $item->getProduct()->getId()->toRfc4122().'@'.$item->getMinQuantity();
+        $held = [];
+        foreach ($this->items as $row) {
+            $held[$key($row)] = $row;
         }
-        $this->items->clear();
+        $changed = false;
+        $wanted = [];
         foreach ($items as $item) {
-            $this->items->add($item);
+            $wanted[$key($item)] = true;
+            if (isset($held[$key($item)])) {
+                $changed = $held[$key($item)]->reprice($item->getUnitPriceNet()) || $changed;
+            } else {
+                $this->items->add($item);
+                $changed = true;
+            }
         }
-        $this->updatedAt = $now;
+        foreach ($held as $heldKey => $row) {
+            if (!isset($wanted[$heldKey])) {
+                $this->items->removeElement($row);
+                $changed = true;
+            }
+        }
+        if ($changed) {
+            $this->updatedAt = $now;
+        }
 
-        return true;
+        return $changed;
     }
 
     /** @throws InvalidPriceList */

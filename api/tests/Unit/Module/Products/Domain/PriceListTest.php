@@ -62,6 +62,21 @@ final class PriceListTest extends TestCase
         self::assertTrue($list->replaceItems([new PriceListItem($list, $b, '1', '6'), new PriceListItem($list, $a, '1', '4')], $this->now));
     }
 
+    public function testARepricedBreakKeepsItsRowAndAnAbsentOneLeaves(): void
+    {
+        $list = PriceList::create($this->company, 'Public', null, null, null, null, true, $this->now);
+        $screw = $this->product($this->company, 'ART-001');
+        $nut = $this->product($this->company, 'ART-002');
+        $list->replaceItems([new PriceListItem($list, $screw, '1', '5'), new PriceListItem($list, $screw, '10', '4'), new PriceListItem($list, $nut, '1', '6')], $this->now);
+        [$one, $ten] = $list->getItems();
+
+        self::assertTrue($list->replaceItems([new PriceListItem($list, $screw, '1', '4'), new PriceListItem($list, $screw, '10', '5')], $this->now));
+
+        $kept = $list->getItems();
+        self::assertSame([$one, $ten], $kept, 'a row whose product and minimum stand is the same row');
+        self::assertSame(['4.0000', '5.0000'], [$one->getUnitPriceNet(), $ten->getUnitPriceNet()]);
+    }
+
     public function testAListHoldsAtMostItsLimitOfPrices(): void
     {
         $list = PriceList::create($this->company, 'Public', null, null, null, null, true, $this->now);
