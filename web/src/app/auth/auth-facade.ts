@@ -2,6 +2,7 @@
 
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Session } from '../shared/session/session';
+import { type StepUpOutcome, StepUpProof } from '../shared/step-up/step-up-proof';
 import { AuthApi, AuthRefused } from './auth-api';
 import { ALWAYS_PERMITTED } from './auth-types';
 import type {
@@ -24,7 +25,7 @@ import { PasskeyClient } from './passkey-client';
  * what the API last said. Components depend on it and never on the API adapter.
  */
 @Injectable({ providedIn: 'root' })
-export class AuthFacade implements Session {
+export class AuthFacade implements Session, StepUpProof {
   private readonly api = inject(AuthApi);
   private readonly passkeyClient = inject(PasskeyClient);
   private readonly stateSignal = signal<SignedInState | null>(null);
@@ -150,6 +151,31 @@ export class AuthFacade implements Session {
     }
   }
 
+  /** Whether this browser can answer a passkey ceremony at all. */
+  passkeySupported(): boolean {
+    return this.passkeyClient.supported();
+  }
+
+  async withPassword(password: string): Promise<StepUpOutcome> {
+    try {
+      await this.api.stepUpWithPassword(password);
+      return 'confirmed';
+    } catch (error) {
+      return stepUpOutcome(error);
+    }
+  }
+
+  async withPasskey(): Promise<StepUpOutcome> {
+    try {
+      const options = await this.api.stepUpPasskeyOptions();
+      const credential = await fromBrowser(() => this.passkeyClient.get(options));
+      await this.api.stepUpWithPasskey(credential);
+      return 'confirmed';
+    } catch (error) {
+      return stepUpOutcome(error);
+    }
+  }
+
   async listPasskeys(): Promise<PasskeysOutcome> {
     try {
       return { ok: true, passkeys: await this.api.listPasskeys() };
@@ -270,6 +296,21 @@ async function fromBrowser<T>(ceremony: () => Promise<T>): Promise<T> {
         ? 'passkey_already_registered'
         : 'passkey_cancelled',
     );
+  }
+}
+
+/** What the dialog says about a proof that did not hold; a passkey the account lacks and one the browser did not give read alike. */
+function stepUpOutcome(error: unknown): StepUpOutcome {
+  switch (codeOf(error)) {
+    case 'too_many_attempts':
+      return 'too_many';
+    case 'network':
+      return 'network';
+    case 'invalid_passkey':
+    case 'passkey_cancelled':
+      return 'no_passkey';
+    default:
+      return 'refused';
   }
 }
 

@@ -2701,6 +2701,20 @@
     "leave": "Quitter la vue client",
     "banner": "Vue client : ce que l'entreprise réserve à l'équipe est masqué sur cet onglet."
   },
+  "step_up": {
+    "title": "Confirmez que c'est bien vous",
+    "intro": "Pour quitter cette vue, saisissez votre mot de passe ou utilisez une clé d'accès.",
+    "password": "Mot de passe",
+    "passkey": "Clé d'accès",
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "errors": {
+      "refused": "Ce n'est pas le bon mot de passe.",
+      "too_many": "Trop de tentatives : réessayez dans quelques minutes.",
+      "no_passkey": "Aucune clé d'accès n'a pu être utilisée.",
+      "network": "Le serveur ne répond pas : réessayez."
+    }
+  },
   "price_check": {
     "title": "Contrôle des prix",
     "hint": "Scannez un article, ou saisissez son code, pour voir ce qu'il coûte.",

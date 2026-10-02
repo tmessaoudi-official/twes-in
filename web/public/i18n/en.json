@@ -2701,6 +2701,20 @@
     "leave": "Leave customer view",
     "banner": "Customer view: what the company keeps for its team is hidden on this tab."
   },
+  "step_up": {
+    "title": "Confirm it is you",
+    "intro": "To leave this view, enter your password or use a passkey.",
+    "password": "Password",
+    "passkey": "Passkey",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "errors": {
+      "refused": "That is not the right password.",
+      "too_many": "Too many attempts: try again in a few minutes.",
+      "no_passkey": "No passkey could be used.",
+      "network": "The server is not answering: try again."
+    }
+  },
   "price_check": {
     "title": "Price check",
     "hint": "Scan an item, or type its code, to see what it costs.",

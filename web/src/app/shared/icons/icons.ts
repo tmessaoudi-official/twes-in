@@ -81,6 +81,7 @@ export const ICONS = [
   'notifications',
   'notifications_active',
   'output',
+  'passkey',
   'payments',
   'percent',
   'person_add',

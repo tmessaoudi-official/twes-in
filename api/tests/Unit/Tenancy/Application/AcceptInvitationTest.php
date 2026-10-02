@@ -263,6 +263,11 @@ final class AcceptInvitationTest extends TestCase
             {
                 return 'hashed:'.$plainPassword;
             }
+
+            public function verify(string $hash, string $plainPassword): bool
+            {
+                return 'hashed:'.$plainPassword === $hash;
+            }
         };
 
         return new AcceptInvitation(

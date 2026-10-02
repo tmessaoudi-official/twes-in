@@ -4015,6 +4015,21 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   inventory web specs, a sabotage of the day comparison; not run in a browser or e2e.
   Alternatives: the API computing `expired` (refused for now: it would need the company's day on every list read,
   and the browser already holds it); a release button on the lot's own screen (no such screen exists).
+- [2026-10-02 08:17] ASSUMED (review): **step-up exists, and leaving customer view is its first use (row 117, from the developer's
+  remark that anyone at the screen could press « Quitter »)**: `POST /api/auth/step-up` (the password),
+  `POST /api/auth/step-up/passkey/options` and `/passkey` (one of the account's passkeys, through the same WebAuthn
+  validators as the login) answer 204 or 422, share the login's budget of five attempts per account (the right
+  password does not get round it) and audit both outcomes as `auth.step_up` and `auth.step_up_refused`. The web asks
+  through a `StepUpProof` port the auth facade answers and a dialog (password, or « Clé d'accès » where the browser
+  has them); `CustomerView.leave()` asks it, and both the banner button and the top-bar toggle go through it. Entering
+  stays one click. Not built: the server remembering that a person just confirmed, so no API action is gated yet; the
+  ruled list (bank details, members, a role's permissions, exports) still has to call it; and `CustomerView.off()`
+  stays unasked for the price-check screen that turned the view on itself, which a customer leaving that screen can
+  reach. Certified by execution: StepUpTest (password, passkey through the PHP authenticator, budget, CSRF, session),
+  a sabotage of the password check, the web specs of the dialog, the facade, the adapter and customer view; not run in a
+  browser, and no passkey was made on a real authenticator.
+  Alternatives: gating on a short-lived server-side "elevated until" marker now (refused for this slice: customer view
+  hides on screen only, so the check is the screen's; the marker belongs with the first API action that needs it).
 
 ## 8. Status
 
@@ -4139,7 +4154,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 114 | The ten reports and saved report views (§ 7 2026-09-24 12:05) on row 89's engine, « dû à 30 jours », the company switcher's per-company figures | L | todo | - | |
 | 115 | Insights and « À surveiller » (§ 7 2026-09-24 12:10): the ten insights as their data exists, thresholds as settings, the live screen and the home's count | M | done | - | |
 | 116 | Lots amendments (§ 7 2026-09-24 12:40, rows 8, 20, 21, 22): lot tracking on the articles chain and « Traçabilité », expired marker and « Libérer », serial quantity 1, re-scanned serial refused, form kept open, destination label | M | doing | - | |
-| 117 | Scanning and customer-facing amendments (§ 7 2026-09-24 12:40 and 12:55, rows 13, 14, 16, 17, 18): sound and re-count settings, key-gap setting and scanner test, pairing ends with its tab, customer view per device with step-up and a hide list, price-check restore and display, the display's line price, the customer-facing price rule and « Afficher aussi le prix HT », the phone's scan card | L | todo | - | |
+| 117 | Scanning and customer-facing amendments (§ 7 2026-09-24 12:40 and 12:55, rows 13, 14, 16, 17, 18): sound and re-count settings, key-gap setting and scanner test, pairing ends with its tab, customer view per device with step-up and a hide list, price-check restore and display, the display's line price, the customer-facing price rule and « Afficher aussi le prix HT », the phone's scan card | L | doing | - | |
 | 118 | Count mode amendments (§ 7 2026-09-24 12:40, row 23): leave guard, the no-`stock.write` notice, « Comptage » everywhere | S | done | - | |
 | 119 | Labels (§ 7 2026-09-24 12:40, rows 24, 25): location QR on the public address and a stable path, return after sign-in, a company label format, chosen locations; barcodes at ISO/IEC 15420 proportions | M | todo | - | |
 | 120 | Zakat (§ 7 2026-09-24 13:10): the second research pass (Shafi'i, Hanbali), then the module — settings, bundles, worksheet, reminder | L | todo | - | |

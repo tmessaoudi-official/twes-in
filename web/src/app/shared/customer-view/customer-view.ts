@@ -7,6 +7,7 @@ import {
   type SettingsStorage,
 } from '../settings/settings-facade';
 import { PRESENTATION } from '../settings/settings-registry';
+import { StepUp } from '../step-up/step-up';
 
 /** What customer view may hide on screen. */
 export type SensitiveField = 'cost' | 'supplier-codes';
@@ -36,6 +37,7 @@ const KEY = 'twes.customer-view';
 export class CustomerView {
   private readonly storage = inject(CUSTOMER_VIEW_STORAGE);
   private readonly settings = inject(SettingsFacade);
+  private readonly stepUp = inject(StepUp);
   private readonly chosen = {
     cost: this.settings.value(PRESENTATION.customerViewCost),
     'supplier-codes': this.settings.value(PRESENTATION.customerViewSupplierCodes),
@@ -48,12 +50,26 @@ export class CustomerView {
     this.set(true);
   }
 
+  /**
+   * Switches it off with no question. For a screen that turned it on itself and puts it back as it found it; a
+   * button a person can press is `leave()`, since a customer looking at the screen would otherwise only have to
+   * press it.
+   */
   off(): void {
     this.set(false);
   }
 
+  /** Leaving takes the password or a passkey; true once it is off, false when the person gave up. */
+  async leave(): Promise<boolean> {
+    if (!this.on$()) return true;
+    if (!(await this.stepUp.request())) return false;
+    this.set(false);
+    return true;
+  }
+
   toggle(): void {
-    this.set(!this.on$());
+    if (this.on$()) void this.leave();
+    else this.set(true);
   }
 
   /** Whether a screen leaves this field out now; read in a template or a `computed`, it follows both answers. */

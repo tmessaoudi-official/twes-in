@@ -184,6 +184,11 @@ describe('AppShell', () => {
     active: customerActive.asReadonly(),
     toggle: () => customerActive.update((on) => !on),
     off: () => customerActive.set(false),
+    // Leaving asks who is at the screen first; the real service is specified in customer-view.spec.ts.
+    leave: vi.fn(async () => {
+      customerActive.set(false);
+      return true;
+    }),
   };
   const width = new BehaviorSubject(1280);
   const me = signal<SignedInState | null>(owner);
@@ -1289,6 +1294,7 @@ describe('AppShell', () => {
 
     await click('customer-view-leave');
     fixture.detectChanges();
+    expect(customerView.leave).toHaveBeenCalledTimes(1);
     expect(customerActive()).toBe(false);
     expect(byTestId('customer-view-banner')).toBeNull();
   });

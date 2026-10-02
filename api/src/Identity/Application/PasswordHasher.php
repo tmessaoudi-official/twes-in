@@ -13,4 +13,7 @@ namespace App\Identity\Application;
 interface PasswordHasher
 {
     public function hash(string $plainPassword): string;
+
+    /** Whether this plain password is the one the stored hash was made from. */
+    public function verify(string $hash, string $plainPassword): bool;
 }

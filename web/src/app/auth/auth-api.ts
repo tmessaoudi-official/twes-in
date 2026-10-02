@@ -18,6 +18,7 @@ import type {
   PasskeyRegistered,
   PasskeyRegistration,
   PublicKeyCredentialOptionsJson,
+  StepUpPassword,
 } from '../api/types.gen';
 import type {
   CompanyAccess,
@@ -112,6 +113,27 @@ export class AuthApi {
       this.http.post<MfaRecoveryCodes>('/api/auth/mfa/recovery-codes/passkey', body),
     );
     return [...answer.recoveryCodes];
+  }
+
+  /** Confirms who is at the screen with the account's password; rejects when it is not the account's. */
+  async stepUpWithPassword(password: string): Promise<void> {
+    const body: StepUpPassword = { password };
+    await send(this.http.post<void>('/api/auth/step-up', body));
+  }
+
+  /** Request options naming the account's passkeys, to confirm who is at the screen against one. */
+  async stepUpPasskeyOptions(): Promise<PasskeyOptions> {
+    return {
+      ...(await send(
+        this.http.post<PublicKeyCredentialOptionsJson>('/api/auth/step-up/passkey/options', {}),
+      )),
+    };
+  }
+
+  /** Confirms who is at the screen with one of the account's passkeys; rejects when it does not verify. */
+  async stepUpWithPasskey(credential: PasskeyCredential): Promise<void> {
+    const body: PasskeyAssertion = { credential };
+    await send(this.http.post<void>('/api/auth/step-up/passkey', body));
   }
 
   /** Creation options for a new passkey; the API keeps them to verify the answer against, once. */

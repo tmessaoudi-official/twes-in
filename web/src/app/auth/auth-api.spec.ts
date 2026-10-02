@@ -188,6 +188,35 @@ describe('AuthApi', () => {
     await expect(refused).rejects.toEqual(new AuthRefused('invalid_passkey'));
   });
 
+  it('confirms who is at the screen with the password, or with a passkey', async () => {
+    const confirmed = api.stepUpWithPassword('le-bon');
+    const request = http.expectOne({ method: 'POST', url: '/api/auth/step-up' });
+    expect(request.request.body).toEqual({ password: 'le-bon' });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    await confirmed;
+
+    const refused = api.stepUpWithPassword('autre');
+    http
+      .expectOne('/api/auth/step-up')
+      .flush(
+        { error: 'invalid_credentials' },
+        { status: 422, statusText: 'Unprocessable Content' },
+      );
+    await expect(refused).rejects.toEqual(new AuthRefused('invalid_credentials'));
+
+    const options = api.stepUpPasskeyOptions();
+    http
+      .expectOne({ method: 'POST', url: '/api/auth/step-up/passkey/options' })
+      .flush({ challenge: 'rst' });
+    expect(await options).toEqual({ challenge: 'rst' });
+
+    const answered = api.stepUpWithPasskey({ id: 'cred' });
+    const passkeyCall = http.expectOne({ method: 'POST', url: '/api/auth/step-up/passkey' });
+    expect(passkeyCall.request.body).toEqual({ credential: { id: 'cred' } });
+    passkeyCall.flush(null, { status: 204, statusText: 'No Content' });
+    await answered;
+  });
+
   const passkey = {
     id: '0190e6f5-0000-7000-8000-000000000001',
     name: 'Work laptop',

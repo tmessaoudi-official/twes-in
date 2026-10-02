@@ -56,6 +56,11 @@ final class SeedPlatformTest extends TestCase
             {
                 return 'hashed:'.$plainPassword;
             }
+
+            public function verify(string $hash, string $plainPassword): bool
+            {
+                return 'hashed:'.$plainPassword === $hash;
+            }
         };
         $clock = new MockClock('2026-09-09 12:00:00');
         $presets = ShippedFiscalPresets::presets();

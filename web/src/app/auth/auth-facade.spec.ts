@@ -42,6 +42,9 @@ describe('AuthFacade', () => {
     regenerateRecoveryCodes: vi.fn(),
     recoveryCodesPasskeyOptions: vi.fn(),
     regenerateRecoveryCodesWithPasskey: vi.fn(),
+    stepUpWithPassword: vi.fn(),
+    stepUpPasskeyOptions: vi.fn(),
+    stepUpWithPasskey: vi.fn(),
     passkeyRegistrationOptions: vi.fn(),
     registerPasskey: vi.fn(),
     listPasskeys: vi.fn(),
@@ -224,6 +227,32 @@ describe('AuthFacade', () => {
     });
     expect(client.get).toHaveBeenCalledWith({ challenge: 'rst' });
     expect(api.regenerateRecoveryCodesWithPasskey).toHaveBeenCalledWith({ id: 'cred' });
+  });
+
+  it('says how a proof of who is at the screen came out', async () => {
+    api.stepUpWithPassword.mockResolvedValueOnce(undefined);
+    expect(await facade.withPassword('le-bon')).toBe('confirmed');
+    api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused('invalid_credentials'));
+    expect(await facade.withPassword('autre')).toBe('refused');
+    api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused('too_many_attempts'));
+    expect(await facade.withPassword('encore')).toBe('too_many');
+    api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused('network'));
+    expect(await facade.withPassword('x')).toBe('network');
+
+    api.stepUpPasskeyOptions.mockResolvedValue({ challenge: 'rst' });
+    client.get.mockRejectedValueOnce(new DOMException('Not allowed.', 'NotAllowedError'));
+    expect(await facade.withPasskey()).toBe('no_passkey');
+    expect(api.stepUpWithPasskey).not.toHaveBeenCalled();
+
+    client.get.mockResolvedValue({ id: 'cred' });
+    api.stepUpWithPasskey.mockResolvedValueOnce(undefined);
+    expect(await facade.withPasskey()).toBe('confirmed');
+    expect(api.stepUpWithPasskey).toHaveBeenCalledWith({ id: 'cred' });
+    api.stepUpWithPasskey.mockRejectedValueOnce(new AuthRefused('invalid_passkey'));
+    expect(await facade.withPasskey()).toBe('no_passkey');
+
+    client.supported.mockReturnValue(true);
+    expect(facade.passkeySupported()).toBe(true);
   });
 
   const laptop = {

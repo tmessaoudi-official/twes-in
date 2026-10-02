@@ -99,6 +99,13 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
                 'code' => ['type' => 'string', 'description' => 'A six-digit code, or a recovery code.'],
             ],
         ]);
+        $schemas['StepUpPassword'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['password'],
+            'properties' => [
+                'password' => ['type' => 'string', 'description' => "The signed-in account's own password."],
+            ],
+        ]);
         $schemas['MfaPending'] = new \ArrayObject([
             'type' => 'object',
             'required' => ['mfaRequired'],
@@ -302,6 +309,42 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
                 '429' => $errorResponse('Too many attempts'),
             ],
             summary: 'Replace the recovery codes, proven by a passkey',
+            requestBody: $bodyOf('PasskeyAssertion', 'The assertion'),
+        )));
+
+        // Step-up: the signed-in person proves who they are again before something a stranger at the screen must not do.
+        $openApi->getPaths()->addPath('/api/auth/step-up', new PathItem(post: new Operation(
+            operationId: 'stepUpWithPassword',
+            tags: ['Auth'],
+            responses: [
+                '204' => new Response('The password is the account\'s'),
+                '401' => $errorResponse('Not signed in'),
+                '422' => $errorResponse('The password is not the account\'s'),
+                '429' => $errorResponse('Too many attempts'),
+            ],
+            summary: 'Confirm who is at the screen with the password',
+            requestBody: new RequestBody('The password', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/StepUpPassword']))]), true),
+        )));
+        $openApi->getPaths()->addPath('/api/auth/step-up/passkey/options', new PathItem(post: new Operation(
+            operationId: 'stepUpPasskeyOptions',
+            tags: ['Auth'],
+            responses: [
+                '200' => $jsonOf('PublicKeyCredentialOptionsJson', "Request options naming the account's passkeys"),
+                '401' => $errorResponse('Not signed in'),
+                '422' => $errorResponse('The account has no passkey'),
+            ],
+            summary: 'Start confirming who is at the screen with a passkey',
+        )));
+        $openApi->getPaths()->addPath('/api/auth/step-up/passkey', new PathItem(post: new Operation(
+            operationId: 'stepUpWithPasskey',
+            tags: ['Auth'],
+            responses: [
+                '204' => new Response('The passkey is one of the account\'s and answered the options'),
+                '401' => $errorResponse('Not signed in'),
+                '422' => $errorResponse("No options to answer, or the passkey is not one of the account's or does not verify"),
+                '429' => $errorResponse('Too many attempts'),
+            ],
+            summary: 'Confirm who is at the screen with a passkey',
             requestBody: $bodyOf('PasskeyAssertion', 'The assertion'),
         )));
 

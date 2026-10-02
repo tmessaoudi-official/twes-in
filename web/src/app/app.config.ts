@@ -17,6 +17,7 @@ import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { routes } from './app.routes';
 import { AuthFacade } from './auth/auth-facade';
 import { Session } from './shared/session/session';
+import { StepUpProof } from './shared/step-up/step-up-proof';
 import { csrfInterceptor } from './auth/csrf-interceptor';
 import { ApiSettings } from './shared/settings/api-settings';
 import { BrowserStorageSettings } from './shared/settings/browser-storage-settings';
@@ -52,6 +53,8 @@ export const appConfig: ApplicationConfig = {
     // shown before anyone signs in.
     // Shared code reads the session through its port; the auth feature answers it.
     { provide: Session, useExisting: AuthFacade },
+    // Proving who is at the screen again is the auth feature's too.
+    { provide: StepUpProof, useExisting: AuthFacade },
     { provide: SettingsFacade, useClass: ApiSettings },
     // Outcomes are said in toasts; what the application waits for, in the activity bar (docs/SPEC.md § 8 row 48).
     { provide: Feedback, useExisting: MaterialFeedback },

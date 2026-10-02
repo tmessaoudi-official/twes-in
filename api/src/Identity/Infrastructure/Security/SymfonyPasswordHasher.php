@@ -23,4 +23,9 @@ final readonly class SymfonyPasswordHasher implements PasswordHasher
     {
         return $this->factory->getPasswordHasher(SecurityUser::class)->hash($plainPassword);
     }
+
+    public function verify(string $hash, string $plainPassword): bool
+    {
+        return $this->factory->getPasswordHasher(SecurityUser::class)->verify($hash, $plainPassword);
+    }
 }
