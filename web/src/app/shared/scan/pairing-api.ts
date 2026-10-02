@@ -10,6 +10,7 @@ import type {
   ScanPairingOpened,
   ScanPairingRefusal,
 } from '../../api/types.gen';
+import { CSRF_HEADER, csrfToken } from '../session/csrf-token';
 import { SILENT } from '../feedback/activity-interceptor';
 
 export type PairingEcho = ScanPairingEcho;
@@ -54,6 +55,19 @@ export class PairingApi {
     return this.call(
       this.http.delete<void>(`${pairings(companyId)}/${id}`, { context: BACKGROUND() }),
     );
+  }
+
+  /**
+   * The same end, sent as the tab closes: a request the page started normally is cancelled with the page, a keepalive
+   * one is let finish. Nothing is awaited and a failure is nothing to tell: the pairing lapses by itself in 90 seconds.
+   */
+  endOnLeave(companyId: string, id: string): void {
+    void fetch(`${pairings(companyId)}/${id}`, {
+      method: 'DELETE',
+      keepalive: true,
+      credentials: 'same-origin',
+      headers: { [CSRF_HEADER]: csrfToken() },
+    }).catch(() => undefined);
   }
 
   echo(companyId: string, id: string, echo: ScanPairingEcho): Promise<void> {

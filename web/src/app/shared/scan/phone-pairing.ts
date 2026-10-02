@@ -50,6 +50,11 @@ export class PhonePairing {
 
   readonly state = this.current.asReadonly();
 
+  constructor() {
+    // Closing the tab ends the lending now, so the phone is told and stops instead of scanning into nothing.
+    inject(DOCUMENT).defaultView?.addEventListener('pagehide', () => this.leave());
+  }
+
   /** A new link; a phone already lent by this tab is let go first. */
   async open(): Promise<void> {
     const companyId = this.session.me()?.company?.id;
@@ -74,6 +79,13 @@ export class PhonePairing {
     if (state !== null && companyId !== null) {
       void this.api.end(companyId, state.id).catch(() => undefined);
     }
+  }
+
+  private leave(): void {
+    const state = this.current();
+    const companyId = this.companyId;
+    this.stop();
+    if (state !== null && companyId !== null) this.api.endOnLeave(companyId, state.id);
   }
 
   /**

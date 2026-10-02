@@ -4079,6 +4079,9 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-10-02 12:41] ASSUMED (review): how close two keystrokes must be to count as a scanner's burst is a per-browser setting (`twes.scan.gap`, 30 ms until changed, 10 to 100), since it is the scanner plugged into that machine that sets it; « Mon scanner » on the account page measures a burst and suggests three times its slowest interval, to the next 5 ms, kept between 20 and 60, and nothing from fewer than five keys or from a hand's. The shell's wedge, the hold timer and the pick field all read it. The fixed frame rate of a scanner is not built.
   Alternatives: a company setting (refused: two tills of one company have different scanners); a fixed 30 ms (refused: a slow scanner or a laggy link then reads as typing).
 
+- [2026-10-02 12:42] ASSUMED (review): closing the lending tab ends its pairing at once: `pagehide` sends the DELETE as a `keepalive` request carrying the CSRF header, which outlives the page, and the phone hears it through the end it already knows; a failure is ignored since the pairing lapses by itself after 90 seconds. The CSRF token moved to `shared/session/csrf-token.ts` so `shared/` can send it. The phone's claim window is unchanged.
+  Alternatives: `sendBeacon` (refused: it cannot carry the CSRF header nor use DELETE).
+
 ## 8. Status
 
 <!-- progress-block v1 -->

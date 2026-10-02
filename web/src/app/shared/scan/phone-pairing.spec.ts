@@ -20,6 +20,7 @@ describe('PhonePairing', () => {
     open: ReturnType<typeof vi.fn>;
     renew: ReturnType<typeof vi.fn>;
     end: ReturnType<typeof vi.fn>;
+    endOnLeave: ReturnType<typeof vi.fn>;
     echo: ReturnType<typeof vi.fn>;
   };
   let pairing: PhonePairing;
@@ -49,6 +50,7 @@ describe('PhonePairing', () => {
       })),
       renew: vi.fn(async () => undefined),
       end: vi.fn(async () => undefined),
+      endOnLeave: vi.fn(),
       echo: vi.fn(async () => undefined),
     };
     TestBed.configureTestingModule({
@@ -188,5 +190,22 @@ describe('PhonePairing', () => {
     expect(pairing.state()).toBeNull();
     await vi.advanceTimersByTimeAsync(HEARTBEAT_MS * 2);
     expect(api.renew).not.toHaveBeenCalled();
+  });
+
+  it('lets the phone go through a keepalive call when the tab is closed, which a normal request would not outlive', () => {
+    window.dispatchEvent(new Event('pagehide'));
+
+    expect(api.endOnLeave).toHaveBeenCalledWith('c-1', 'p-1');
+    expect(api.end).not.toHaveBeenCalled();
+    expect(pairing.state()).toBeNull();
+  });
+
+  it('says nothing when the tab is closed with no phone lent', () => {
+    pairing.end();
+    api.endOnLeave.mockClear();
+
+    window.dispatchEvent(new Event('pagehide'));
+
+    expect(api.endOnLeave).not.toHaveBeenCalled();
   });
 });
