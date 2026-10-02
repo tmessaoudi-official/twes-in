@@ -2745,7 +2745,7 @@
     "hint": "Scannez un article, ou saisissez son code, pour voir ce qu'il coûte.",
     "waiting": "En attente d'un article…",
     "taxes_included": "Taxes comprises",
-    "pack": "Le lot de {{quantity}} :",
+    "pack": "Le colis de {{quantity}} :",
     "unknown": "Aucun article ne porte le code {{code}}.",
     "shown": "Prix affiché : {{name}}",
     "code": "Code de l'article",
@@ -3125,6 +3125,7 @@
         "camera": "La caméra choisie pour scanner.",
         "notice": "Que vous avez fermé le bandeau sur les cookies.",
         "customer_view": "Si la vue client est active dans cet onglet.",
+        "price_check_view": "Si la vue client a été activée par le contrôle de prix.",
         "phone": "Le lien d’un téléphone prêté comme scanner."
       },
       "third_party": "Aucun script tiers, aucune mesure d’audience, aucune publicité."

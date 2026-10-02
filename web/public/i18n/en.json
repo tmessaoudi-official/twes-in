@@ -3125,6 +3125,7 @@
         "camera": "The camera chosen for scanning.",
         "notice": "That you closed the cookie notice.",
         "customer_view": "Whether the customer view is on in this tab.",
+        "price_check_view": "Whether the price check turned customer view on.",
         "phone": "The link of a phone lent as a scanner."
       },
       "third_party": "No third-party script, no audience measurement, no advertising."

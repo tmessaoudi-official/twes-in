@@ -10,7 +10,9 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CustomerView } from '../shared/customer-view/customer-view';
+import { CUSTOMER_VIEW_STORAGE, CustomerView } from '../shared/customer-view/customer-view';
+import { CustomerDisplay } from '../shared/customer-display/customer-display';
+import type { SettingsStorage } from '../shared/settings/settings-facade';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { ScanBus } from '../shared/scan/scan-bus';
 import { Session } from '../shared/session/session';
@@ -50,6 +52,13 @@ describe('PriceCheckPage', () => {
     on: vi.fn(() => active.set(true)),
     off: vi.fn(() => active.set(false)),
   };
+  const display = { show: vi.fn(), clear: vi.fn() };
+  const kept = new Map<string, string>();
+  const storage: SettingsStorage = {
+    getItem: (key) => kept.get(key) ?? null,
+    setItem: (key, value) => void kept.set(key, value),
+    removeItem: (key) => void kept.delete(key),
+  };
   let fixture: ComponentFixture<PriceCheckPage>;
   let bus: ScanBus;
 
@@ -72,6 +81,9 @@ describe('PriceCheckPage', () => {
     active.set(false);
     customerView.on.mockClear();
     customerView.off.mockClear();
+    display.show.mockClear();
+    display.clear.mockClear();
+    kept.clear();
     TestBed.configureTestingModule({
       imports: [PriceCheckPage],
       providers: [
@@ -81,6 +93,8 @@ describe('PriceCheckPage', () => {
         provideTranslateLoader(StaticLoader),
         { provide: ProductsApi, useValue: api },
         { provide: CustomerView, useValue: customerView },
+        { provide: CustomerDisplay, useValue: display },
+        { provide: CUSTOMER_VIEW_STORAGE, useValue: storage },
         {
           provide: Session,
           useValue: { me: () => ({ user: { id: 'u1' }, company: { id: 'c1', currency: 'TND' } }) },
@@ -107,6 +121,43 @@ describe('PriceCheckPage', () => {
     await open();
     fixture.destroy();
     expect(active()).toBe(true);
+  });
+
+  it('puts customer view back after a reload, from a marker it wrote, and not when the counter had it on', async () => {
+    await open();
+    expect(kept.get('twes.price-check-view')).toBe('1');
+
+    // A reload: the new page finds customer view on, and the marker says this screen is what turned it on.
+    fixture.destroy();
+    active.set(true);
+    kept.set('twes.price-check-view', '1');
+    await open();
+    fixture.destroy();
+    expect(active()).toBe(false);
+    expect(kept.has('twes.price-check-view')).toBe(false);
+
+    // A counter that already had it on writes no marker and keeps it.
+    active.set(true);
+    await open();
+    expect(kept.has('twes.price-check-view')).toBe(false);
+    fixture.destroy();
+    expect(active()).toBe(true);
+  });
+
+  it('sends a checked item to the customer display and takes it away on leaving', async () => {
+    api.scan.mockResolvedValue(pack);
+    await open();
+
+    await bus.receive(pack.code, 'wedge');
+    await settle();
+    expect(display.show).toHaveBeenCalledWith({
+      name: 'Vis 6x40',
+      quantity: '1',
+      unitPrice: '120.190',
+    });
+
+    fixture.destroy();
+    expect(display.clear).toHaveBeenCalled();
   });
 
   it('shows what a scan names and what a customer pays for it, taxes included, and for the pack it enters', async () => {
