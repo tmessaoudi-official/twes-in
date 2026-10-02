@@ -1716,6 +1716,7 @@
       "receive": "Receive",
       "count": "Count",
       "move": "Move",
+      "loss": "Write off",
       "recorded": "The movement was recorded.",
       "none": "No stock yet.",
       "negative": "Negative",
@@ -1741,6 +1742,8 @@
         "source": "Source",
         "lot": "Lot",
         "useBy": "Use by",
+        "reason": "Reason",
+        "note": "Note",
         "serial": "Serial number",
         "unitCost": "Unit cost"
       },
@@ -1752,10 +1755,12 @@
       "receive": "Goods received",
       "count": "Stock count",
       "move": "Moving goods",
+      "loss": "Writing off goods",
       "quantity_hint": {
         "receive": "The quantity received, in the product’s unit.",
         "count": "The quantity found; the difference from the stock is recorded, even when nil.",
         "move": "How much to move; it cannot be more than what is at the location it leaves.",
+        "loss": "How much to write off; it cannot be more than what is at the location.",
         "serial": "A serial number is one piece: the quantity is 1."
       },
       "lot_hint": {
@@ -1781,10 +1786,21 @@
       "out": "Out",
       "adjustment": "Adjustment"
     },
+    "loss": {
+      "reasons": {
+        "lost": "Lost",
+        "broken": "Broken",
+        "expired": "Expired",
+        "stolen": "Stolen",
+        "internal_use": "Internal use",
+        "sample": "Sample"
+      }
+    },
     "sources": {
       "receipt": "Receipt",
       "count": "Count",
       "move": "Move",
+      "loss": "Write-off",
       "delivery_note": "Delivery note"
     },
     "kinds": {

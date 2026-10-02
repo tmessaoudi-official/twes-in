@@ -62,6 +62,14 @@
       </ng-template>
       <ng-template appDataListCell="source" let-row>
         {{ 'inventory.sources.' + row.sourceType | translate }}
+        @if (row.reason; as reason) {
+          <span data-testid="movement-reason">
+            — {{ 'inventory.loss.reasons.' + reason | translate }}</span
+          >
+        }
+        @if (row.note; as note) {
+          <span class="block text-sm" data-testid="movement-note">{{ note }}</span>
+        }
       </ng-template>
     </app-data-list>
   </section>

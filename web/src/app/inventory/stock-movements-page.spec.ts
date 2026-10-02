@@ -39,7 +39,8 @@ class StaticLoader implements TranslateLoader {
     return of({
       inventory: {
         movement_kinds: { out: 'Sortie' },
-        sources: { delivery_note: 'Bon de livraison' },
+        sources: { delivery_note: 'Bon de livraison', loss: 'Perte' },
+        loss: { reasons: { stolen: 'Volée' } },
         movements: { of_lot: 'Mouvements du lot {{code}}.' },
       },
     });
@@ -77,16 +78,19 @@ const delivered: StockMovementRow = {
   sourceType: 'delivery_note',
   sourceId: 'n1',
   lotCode: 'L-2408',
+  reason: null,
+  note: null,
   recordedBy: null,
   at: '2026-09-15T09:00:00+00:00',
 };
 
 describe('StockMovementsPage', () => {
+  const shown = signal<readonly StockMovementRow[]>([delivered]);
   const facade = {
     options: signal<StockOptions | null>(options).asReadonly(),
     levels: signal<readonly StockLevelRow[]>([]).asReadonly(),
     locations: signal<readonly StockLocationRow[]>([site]).asReadonly(),
-    movements: signal<readonly StockMovementRow[]>([delivered]).asReadonly(),
+    movements: shown.asReadonly(),
     movementsTotal: signal(1).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal<InventoryError | null>(null).asReadonly(),
@@ -177,6 +181,20 @@ describe('StockMovementsPage', () => {
       'c1',
       expect.objectContaining({ productId: 'p1', page: 1 }),
     );
+  });
+
+  it('says why a loss left, and what was written beside it', async () => {
+    shown.set([{ ...delivered, sourceType: 'loss', reason: 'stolen', note: 'Vitrine forcée' }]);
+    await settle();
+
+    const row = q('stock-movement-m1')?.textContent ?? '';
+    expect(row).toContain('Perte');
+    expect(q('movement-reason')?.textContent).toContain('Volée');
+    expect(q('movement-note')?.textContent).toContain('Vitrine forcée');
+
+    shown.set([delivered]);
+    await settle();
+    expect(q('movement-reason')).toBeNull();
   });
 
   it('names the lot a row moved', async () => {

@@ -1716,6 +1716,7 @@
       "receive": "Réceptionner",
       "count": "Compter",
       "move": "Déplacer",
+      "loss": "Déclarer une perte",
       "recorded": "Le mouvement a été enregistré.",
       "none": "Aucun stock pour l’instant.",
       "negative": "Négatif",
@@ -1741,6 +1742,8 @@
         "source": "Origine",
         "lot": "Lot",
         "useBy": "À utiliser avant",
+        "reason": "Motif",
+        "note": "Note",
         "serial": "Numéro de série",
         "unitCost": "Coût unitaire"
       },
@@ -1752,10 +1755,12 @@
       "receive": "Réception de marchandises",
       "count": "Comptage",
       "move": "Déplacement de marchandises",
+      "loss": "Perte de marchandises",
       "quantity_hint": {
         "receive": "La quantité reçue, dans l’unité du produit.",
         "count": "La quantité trouvée ; l’écart avec le stock est enregistré, même nul.",
         "move": "La quantité à déplacer ; elle ne peut pas dépasser ce qui se trouve à l’emplacement d’origine.",
+        "loss": "La quantité à sortir du stock ; elle ne peut pas dépasser ce qui se trouve à l’emplacement.",
         "serial": "Un numéro de série désigne une pièce : la quantité est 1."
       },
       "lot_hint": {
@@ -1781,10 +1786,21 @@
       "out": "Sortie",
       "adjustment": "Ajustement"
     },
+    "loss": {
+      "reasons": {
+        "lost": "Perdue",
+        "broken": "Cassée",
+        "expired": "Périmée",
+        "stolen": "Volée",
+        "internal_use": "Usage interne",
+        "sample": "Échantillon"
+      }
+    },
     "sources": {
       "receipt": "Réception",
       "count": "Comptage",
       "move": "Déplacement",
+      "loss": "Perte",
       "delivery_note": "Bon de livraison"
     },
     "kinds": {

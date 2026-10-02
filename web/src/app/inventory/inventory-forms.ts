@@ -5,6 +5,7 @@ import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
   STOCK_LOCATION_KINDS,
   STOCK_MOVEMENT_KINDS,
+  STOCK_LOSS_REASONS,
   STOCK_SOURCE_TYPES,
   type StockLevelRow,
   type StockLocationInput,
@@ -538,6 +539,28 @@ export function movementForm(
                 ? 'inventory.movement.quantity_hint.serial'
                 : `inventory.movement.quantity_hint.${operation}`,
           },
+          // A loss says why: a report tells a breakage from a theft by it, and a count never stands in for either.
+          ...(operation === 'loss'
+            ? [
+                {
+                  id: 'reason',
+                  label: `${STOCK_FIELDS}.reason`,
+                  kind: 'select' as const,
+                  required: true,
+                  options: STOCK_LOSS_REASONS.map((reason) => ({
+                    value: reason,
+                    label: `inventory.loss.reasons.${reason}`,
+                  })),
+                },
+                {
+                  id: 'note',
+                  label: `${STOCK_FIELDS}.note`,
+                  kind: 'text' as const,
+                  maxLength: 500,
+                  span: 2 as const,
+                },
+              ]
+            : []),
           // Asked only of someone who may read what things cost, and only of goods coming in.
           ...(operation === 'receive' && withCost
             ? [
@@ -574,6 +597,8 @@ export function movementValues(locations: readonly StockLocationRow[]): FormValu
     lotCode: '',
     lotExpiresOn: '',
     unitCost: '',
+    reason: '',
+    note: '',
   };
 }
 
@@ -597,7 +622,7 @@ function lotFields(
       pattern: '[!-~]{1,40}',
       hint: `inventory.movement.lot_hint.${tracking}`,
     },
-    ...(operation === 'move'
+    ...(operation === 'move' || operation === 'loss'
       ? []
       : [
           {
@@ -621,9 +646,15 @@ export function movementInput(operation: StockOperation, values: FormValues): St
     ...(operation === 'receive' && text(values['unitCost']) !== ''
       ? { unitCost: text(values['unitCost']) }
       : {}),
+    ...(operation === 'loss'
+      ? {
+          reason: STOCK_LOSS_REASONS.find((reason) => reason === values['reason']) ?? undefined,
+          ...(text(values['note']) === '' ? {} : { note: text(values['note']) }),
+        }
+      : {}),
     // Named only for a tracked product, whose form asked; a move never says a lot's date again.
     ...(text(values['lotCode']) === '' ? {} : { lotCode: text(values['lotCode']) }),
-    ...(operation === 'move' || text(values['lotExpiresOn']) === ''
+    ...(operation === 'move' || operation === 'loss' || text(values['lotExpiresOn']) === ''
       ? {}
       : { lotExpiresOn: text(values['lotExpiresOn']) }),
   };

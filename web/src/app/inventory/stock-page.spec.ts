@@ -541,6 +541,39 @@ describe('StockPage', () => {
     expect(successToasts()).toContain('inventory.stock.recorded');
   });
 
+  // The product's home proposes the location, as it does for a count: goods are usually lost where they are kept.
+  it('writes goods off with the reason they left under, and sends the note beside it', async () => {
+    q('stock-loss')!.click();
+    await settle();
+    await pick('field-productId', 'ART-1 · Portable');
+    form().get('reason')!.setValue('broken');
+    type('field-quantity', '2');
+    type('field-note', 'Dropped at the counter');
+    q('stock-movement-save')!.click();
+    await settle();
+
+    expect(facade.record).toHaveBeenCalledWith('c1', {
+      operation: 'loss',
+      productId: 'p1',
+      locationId: 'l2',
+      quantity: '2',
+      reason: 'broken',
+      note: 'Dropped at the counter',
+    });
+    expect(successToasts()).toContain('inventory.stock.recorded');
+  });
+
+  it('refuses a loss with no reason before asking the API', async () => {
+    q('stock-loss')!.click();
+    await settle();
+    await pick('field-productId', 'ART-1 · Portable');
+    type('field-quantity', '2');
+    q('stock-movement-save')!.click();
+    await settle();
+
+    expect(facade.record).not.toHaveBeenCalled();
+  });
+
   /**
    * A home is a proposal, so it fills the box and never overwrites a choice: a screen that replaces what a person
    * chose teaches them to distrust it (docs/SPEC.md row 101).

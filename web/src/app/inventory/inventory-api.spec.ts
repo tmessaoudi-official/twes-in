@@ -43,6 +43,8 @@ const received: StockMovementRow = {
   sourceType: 'receipt',
   sourceId: null,
   lotCode: null,
+  reason: null,
+  note: null,
   recordedBy: 'u1',
   at: '2026-09-15T09:00:00+00:00',
 };

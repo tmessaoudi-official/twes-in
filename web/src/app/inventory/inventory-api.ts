@@ -39,6 +39,7 @@ import {
   STOCK_LOCATION_KINDS,
   STRUCTURE_KINDS,
   STOCK_MOVEMENT_KINDS,
+  STOCK_LOSS_REASONS,
   STOCK_SOURCE_TYPES,
   type StockLevelRow,
   type StockLocationInput,
@@ -618,6 +619,8 @@ function toMovement(
     sourceType: STOCK_SOURCE_TYPES.find((type) => type === raw.sourceType) ?? 'receipt',
     sourceId: raw.sourceId ?? null,
     lotCode: raw.lotCode ?? null,
+    reason: STOCK_LOSS_REASONS.find((reason) => reason === raw.reason) ?? null,
+    note: raw.note ?? null,
     recordedBy: raw.recordedBy ?? null,
     at: raw.at ?? '',
   };

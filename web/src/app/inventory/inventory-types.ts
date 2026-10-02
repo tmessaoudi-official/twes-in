@@ -26,16 +26,28 @@ export const DRAWABLE_STOCK_LOCATION_KINDS: readonly StockLocationKind[] =
 export type StockMovementKind = 'in' | 'out' | 'adjustment';
 export const STOCK_MOVEMENT_KINDS: readonly StockMovementKind[] = ['in', 'out', 'adjustment'];
 
-export type StockSourceType = 'receipt' | 'count' | 'move' | 'delivery_note';
+export type StockSourceType = 'receipt' | 'count' | 'move' | 'loss' | 'delivery_note';
 export const STOCK_SOURCE_TYPES: readonly StockSourceType[] = [
   'receipt',
   'count',
   'move',
+  'loss',
   'delivery_note',
 ];
 
-/** What a person records: goods received, what a count found on the shelf, or goods moved to another location. */
-export type StockOperation = 'receive' | 'count' | 'move';
+/** What a person records: goods received, what a count found on the shelf, goods moved, or goods written off. */
+export type StockOperation = 'receive' | 'count' | 'move' | 'loss';
+
+/** Why goods were written off: the API's list, in the order the form offers them. */
+export const STOCK_LOSS_REASONS = [
+  'lost',
+  'broken',
+  'expired',
+  'stolen',
+  'internal_use',
+  'sample',
+] as const;
+export type StockLossReason = (typeof STOCK_LOSS_REASONS)[number];
 
 export interface StockLocationRow {
   id: string;
@@ -142,6 +154,9 @@ export interface StockMovementRow {
   sourceId: string | null;
   /** The lot or serial number it moved, for a tracked product; null for an untracked one. */
   lotCode: string | null;
+  /** Why the goods were written off; null on every movement but a loss. */
+  reason: StockLossReason | null;
+  note: string | null;
   recordedBy: string | null;
   at: string;
 }
@@ -180,6 +195,9 @@ export interface StockMovementInput {
   lotExpiresOn?: string;
   /** What one unit cost, on a receipt only; left out, the average of what the stock already is. */
   unitCost?: string;
+  /** Why the goods were written off, and what was said about it; on a loss only. */
+  reason?: StockLossReason;
+  note?: string;
 }
 
 /** One stocked product as the picker answers it. */

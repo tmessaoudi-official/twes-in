@@ -100,6 +100,8 @@ function movement(
     sourceType,
     sourceId,
     lotCode: null,
+    reason: null,
+    note: null,
     recordedBy: null,
     at: '2026-09-15T09:00:00+00:00',
   };
@@ -326,6 +328,8 @@ describe('the movement form', () => {
       lotCode: '',
       lotExpiresOn: '',
       unitCost: '',
+      reason: '',
+      note: '',
     });
     expect(movementValues([])).toEqual({
       productId: '',
@@ -335,6 +339,8 @@ describe('the movement form', () => {
       lotCode: '',
       lotExpiresOn: '',
       unitCost: '',
+      reason: '',
+      note: '',
     });
     expect(
       movementInput('receive', { productId: 'p2', locationId: 'l2', quantity: ' 1.5 ' }),
@@ -383,6 +389,61 @@ describe('the movement form', () => {
     const code = new RegExp(`^(?:${lot?.pattern})$`);
     expect(['L-07', 'A'.repeat(40)].every((value) => code.test(value))).toBe(true);
     expect(['L 07', 'Lé', 'A'.repeat(41)].some((value) => code.test(value))).toBe(false);
+  });
+
+  // docs/SPEC.md § 7, 2026-10-02 row 74 (b): a loss names why the goods left, so a report can tell a breakage from a theft.
+  it('asks a loss its reason and an optional note, and sends both with the lot and no use-by day', () => {
+    const shape = (form: ReturnType<typeof movementForm>) =>
+      fieldsOf(form).map((field) => [field.id, field.kind, field.required ?? false]);
+
+    expect(shape(movementForm('loss', [site], 'lot'))).toEqual([
+      ['productId', 'pick', true],
+      ['locationId', 'select', true],
+      ['lotCode', 'text', true],
+      ['quantity', 'decimal', true],
+      ['reason', 'select', true],
+      ['note', 'text', false],
+    ]);
+    const reasons = fieldsOf(movementForm('loss', [site])).find((f) => f.id === 'reason');
+    expect(reasons?.options?.map((option) => option.value)).toEqual([
+      'lost',
+      'broken',
+      'expired',
+      'stolen',
+      'internal_use',
+      'sample',
+    ]);
+    expect(reasons?.options?.[4]?.label).toBe('inventory.loss.reasons.internal_use');
+
+    expect(
+      movementInput('loss', {
+        productId: 'p2',
+        locationId: 'l2',
+        quantity: '2',
+        reason: 'broken',
+        note: ' dropped ',
+        lotCode: 'L1',
+        lotExpiresOn: '2026-12-01',
+      }),
+    ).toEqual({
+      operation: 'loss',
+      productId: 'p2',
+      locationId: 'l2',
+      quantity: '2',
+      reason: 'broken',
+      note: 'dropped',
+      lotCode: 'L1',
+    });
+    // Nothing of a reason is sent for any other movement, whatever was left in the values.
+    expect(
+      movementInput('receive', {
+        productId: 'p2',
+        locationId: 'l2',
+        quantity: '2',
+        reason: 'broken',
+        note: 'x',
+      }),
+    ).toEqual({ operation: 'receive', productId: 'p2', locationId: 'l2', quantity: '2' });
   });
 
   it('sends the lot a person named, and nothing of a lot nobody named', () => {

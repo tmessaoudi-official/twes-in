@@ -303,11 +303,30 @@ test('stock received at a location leaves with a validated delivery note and ret
     await find();
     await expect(quantity(row)).toHaveText('10');
 
+    // A loss takes goods out under a reason, which the movements then say.
+    await page.getByTestId('stock-loss').click();
+    await page.getByTestId('field-productId').fill(reference);
+    await page.getByRole('option', { name: `${reference} · Carton ${reference}` }).click();
+    await page.getByTestId('field-locationId').click();
+    await page.getByRole('option', { name: defaultLocation, exact: true }).click();
+    await page.getByTestId('field-quantity').fill('2');
+    await page.getByTestId('field-reason').click();
+    await page.getByRole('option', { name: 'Cassée', exact: true }).click();
+    await page.getByTestId('field-note').fill('Tombé du comptoir');
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('stock-movement-save').click();
+    await expect(toast(page)).toContainText('Le mouvement a été enregistré.');
+    await page.reload();
+    await find();
+    await expect(quantity(row)).toHaveText('8');
+
     await rowAction(page, `stock-${reference}-${code}`, 'movements').click();
     await expect(page).toHaveURL(new RegExp(`/stock/movements\\?productId=${fixture.productId}$`));
     const movements = page.getByTestId('stock-movements-table');
-    await expect(movements.getByRole('row')).toHaveCount(4);
+    await expect(movements.getByRole('row')).toHaveCount(5);
     await expect(movements).toContainText(/Bon de livraison|Delivery note/);
+    await expect(page.getByTestId('movement-reason')).toContainText('Cassée');
+    await expect(page.getByTestId('movement-note')).toContainText('Tombé du comptoir');
     expect(await wcagViolations(page)).toEqual([]);
   } finally {
     await retire(page, reference, customerNumber, locationCode);
