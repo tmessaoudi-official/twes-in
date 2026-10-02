@@ -8,7 +8,7 @@
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
-# The page states: the session that ended, the sign-up request sent in place of its form, the slow request, an empty
+# The page states: the session that ended, the sign-up or password-link request sent, and a password chosen, in place of its form, the slow request, an empty
 # palette search, a record another person saved while it was being edited here, and a declared payment waiting for the
 # operator's decision — that one is what the subscription IS until it is answered, days after the toast that said the
 # declaration was recorded (2026-09-17) — and how much of the open record is unsaved, which is what the form IS until
@@ -25,7 +25,7 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # of something the person did there (2026-09-23 01:10). `phone-loading`, `phone-ended`, `phone-pair-opening` and
 # `phone-pair-status` are what a phone lent as a scanner IS, on the phone and in the computer's dialog: being linked,
 # no longer linked, the link being made, waiting for the phone or connected to it (2026-09-23 13:07, slice 4).
-page_states=' login-expired signup-sent activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status '
+page_states=' login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {
