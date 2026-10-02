@@ -26,6 +26,17 @@
           />
         </div>
 
+        @if (!readOnly() && line.controls.productId.value !== '') {
+          <div class="sm:col-span-4">
+            <app-line-substitutes
+              [companyId]="companyId()"
+              [productId]="line.controls.productId.value"
+              [quantity]="line.controls.quantity.value"
+              (swap)="swapTo(line, $event)"
+            />
+          </div>
+        }
+
         <div class="flex flex-col sm:col-span-2">
           <mat-form-field>
             <mat-label>{{ 'delivery_notes.lines.description' | translate }}</mat-label>

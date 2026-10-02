@@ -3956,6 +3956,13 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   Alternatives: a `substitution_group` table with members (refused: a rename or a merge then needs its own screen and
   rules for a thing that is only a label); symmetrical "A replaces B" pairs (refused: a group is transitive by nature,
   and the pairs would have to be kept so).
+- [2026-10-02 04:55] ASSUMED (review): **a delivery-note line short of stock offers its substitutes (row 62, second slice)**.
+  On a draft note's line with a product, when the quantity asked exceeds what is on hand of that product (all locations)
+  AND at least one active substitute has that much, the line lists those substitutes, each a button that puts it on the
+  line in place of the product, the quantity staying. Short is judged on the stock totals alone: a product whose stock
+  is not kept reads zero everywhere, so it never raises the offer, and a person without stock.read sees nothing. Invoice
+  lines do not offer it, an invoice moving no stock. Not run in a browser or an e2e scenario; the swap's effect on the
+  line's unit and taxes is `applyProduct`'s, as when a product is picked.
 
 ## 8. Status
 
@@ -4026,7 +4033,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 68 | Operating guides (§ 7 2026-09-19): `docs/START.md` (bring-up, users, seed, clean start, checks) and `docs/UPDATE.md` (every pin, its copies, how to bump it), `make versions`, `make reset`, and the version-pins gate | M | done | 2d70b43 | docs/START.md docs/UPDATE.md scripts/versions.sh scripts/gates/version-pins.sh scripts/gates/tests/version-pins.test.sh Makefile |
 | 69 | Demo fixtures (§ 7 2026-09-19): DoctrineFixturesBundle alone, every row written through the use cases, a fixed dataset of two companies (Carthage Conseil, TN; Atelier Mercier, FR) with five months of activity, loaded by `make fixtures` (append only) and described in `docs/START.md` § 4; `make gallery` shows Carthage Conseil | M | done | 9389371 | api/src/DataFixtures/** api/tests/Functional/DemoFixturesTest.php api/composer.json api/composer.lock api/symfony.lock api/config/bundles.php THIRD-PARTY-NOTICES.md Makefile docs/START.md |
 | 61 | Product identity (§ 7 2026-09-17): an optional reference generated from a numbering series when left empty (previewed in the form, proposal to confirm), a barcode unique within the company when set, an EAN/UPC check digit verified | M | doing | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
-| 62 | Substitution groups (§ 7 2026-09-17): the business groups products that replace each other; the product page and a document line short of stock show the in-stock substitutes and swap in one click | M | doing | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
+| 62 | Substitution groups (§ 7 2026-09-17): the business groups products that replace each other; the product page and a document line short of stock show the in-stock substitutes and swap in one click | M | done | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
 | 63 | Scanner (§ 7 2026-09-17): a camera scan for the barcode field, a list's search and a document's lines; a phone paired to a laptop tab by a single-use, scan-only QR code, codes sent over the tab's realtime channel; iPhone Safari, HTTPS and the decoder's licence researched first | L | doing | - | api/src/** api/tests/** web/src/app/** web/e2e/** docs/** |
 | 65 | Subscriptions, slice 1 (§ 7 2026-09-17): the `Licensing` context, a subscription per company with its trial, billing period, price and paid-through date, the standing computed from those dates, the operator's platform endpoints and panel, an unpaid company read-only or locked in both access checks, the notice above every page | L | done | 50d5494 | api/src/Licensing/** api/src/Tenancy/Infrastructure/** api/src/Identity/Infrastructure/ApiPlatform/** api/migrations/** api/tests/** web/src/app/** |
 | 66 | Subscriptions, slice 2 (§ 7 2026-09-17): a company declares a cash payment with its method, date, reference and receipt; the operator is told in the app and by mail and confirms or rejects it from the platform page; a declaration holds the lock off for the configured days; the ledger is audited; the page a locked company reaches outside the shell is its only way back | L | done | 1daa4bb | api/src/Licensing/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |

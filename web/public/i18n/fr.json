@@ -1416,7 +1416,11 @@
         "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales.",
         "lotCode": "Jusqu’à 40 caractères visibles, sans espace."
       },
-      "no_product_found": "Aucun produit trouvé."
+      "no_product_found": "Aucun produit trouvé.",
+      "substitutes": {
+        "short": "Seulement {{quantity}} en stock de ce produit. En stock à la place :",
+        "use": "{{reference}} ({{quantity}} en stock)"
+      }
     },
     "totals": {
       "title": "Totaux",

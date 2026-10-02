@@ -34,6 +34,7 @@ import type {
 } from './delivery-notes-types';
 import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
+import { LineSubstitutes } from './delivery-note-line-substitutes';
 import { ProductScans } from '../products/product-scans';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 
@@ -59,6 +60,7 @@ type CheckedField = keyof Omit<
     TranslatePipe,
     DecimalInput,
     PickField,
+    LineSubstitutes,
   ],
   templateUrl: './delivery-note-lines.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -160,6 +162,14 @@ export class DeliveryNoteLines {
     const product = option === null ? null : (this.known.get(option.id) ?? null);
     applyProduct(line, product, this.options(), this.excludedFamilies());
     line.markAsDirty();
+  }
+
+  /** Puts a substitute on the line in place of its product, the quantity asked staying as it is. */
+  protected async swapTo(line: LineGroup, productId: string): Promise<void> {
+    const [product] = await this.facade.pickProducts(this.companyId(), { ids: [productId] });
+    if (product === undefined) return;
+    this.known.set(product.id, product);
+    this.chooseProduct(line, { id: product.id, code: product.reference, name: product.name });
   }
 
   protected toggleTax(line: LineGroup, taxId: string, checked: boolean): void {
