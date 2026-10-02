@@ -3,6 +3,7 @@
 import en from '../../../public/i18n/en.json';
 import fr from '../../../public/i18n/fr.json';
 import { CUSTOMERS_NAV } from '../customers/customers-nav';
+import { PRICE_LISTS_NAV } from '../price-lists/price-lists-nav';
 import { DELIVERY_NOTES_NAV } from '../delivery-notes/delivery-notes-nav';
 import { INVOICES_NAV } from '../invoices/invoices-nav';
 import { INVENTORY_NAV } from '../inventory/inventory-nav';
@@ -178,7 +179,7 @@ describe('the navigation manifest', () => {
     expect(SIDEBAR_SECTIONS).toEqual(['sell', 'manage']);
     expect(navSections(sidebar, SIDEBAR_SECTIONS).map((g) => [g.section, keys(g.entries)])).toEqual(
       [
-        ['sell', ['home', 'invoices', 'delivery-notes', 'customers', 'products']],
+        ['sell', ['home', 'invoices', 'delivery-notes', 'customers', 'products', 'price_lists']],
         ['manage', ['stock', 'vendors', 'expenses', 'watch']],
       ],
     );
@@ -263,6 +264,9 @@ describe('the navigation manifest', () => {
       ['products', 'products', 'product.read'],
     ]);
     expect(
+      PRICE_LISTS_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
+    ).toEqual([['price_lists', 'price_lists', 'product.read', '/price-lists']]);
+    expect(
       DELIVERY_NOTES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
     ).toEqual([['delivery-notes', 'delivery_notes', 'delivery_note.read', '/delivery-notes']]);
     // Movements and locations are tabs of the stock screen.
@@ -281,6 +285,7 @@ describe('the navigation manifest', () => {
       ...DELIVERY_NOTES_NAV,
       ...CUSTOMERS_NAV,
       ...PRODUCTS_NAV,
+      ...PRICE_LISTS_NAV,
       ...INVENTORY_NAV,
       ...VENDORS_NAV,
       ...EXPENSES_NAV,

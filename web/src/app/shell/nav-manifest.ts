@@ -4,6 +4,7 @@ import { CUSTOMERS_NAV } from '../customers/customers-nav';
 import { DELIVERY_NOTES_NAV } from '../delivery-notes/delivery-notes-nav';
 import { INVENTORY_NAV } from '../inventory/inventory-nav';
 import { INVOICES_NAV } from '../invoices/invoices-nav';
+import { PRICE_LISTS_NAV } from '../price-lists/price-lists-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
 import { VENDORS_NAV } from '../vendors/vendors-nav';
 import { EXPENSES_NAV } from '../expenses/expenses-nav';
@@ -289,6 +290,7 @@ export const MODULE_NAV: readonly NavEntry[] = [
   ...DELIVERY_NOTES_NAV,
   ...CUSTOMERS_NAV,
   ...PRODUCTS_NAV,
+  ...PRICE_LISTS_NAV,
   ...INVENTORY_NAV,
   ...VENDORS_NAV,
   ...EXPENSES_NAV,

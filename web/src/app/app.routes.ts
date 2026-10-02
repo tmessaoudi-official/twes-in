@@ -14,6 +14,7 @@ import { DELIVERY_NOTES_MODULE } from './delivery-notes/delivery-notes-nav';
 import { INVOICES_MODULE } from './invoices/invoices-nav';
 import { EXPENSES_MODULE } from './expenses/expenses-nav';
 import { INVENTORY_MODULE } from './inventory/inventory-nav';
+import { PRICE_LISTS_MODULE } from './price-lists/price-lists-nav';
 import { PRODUCTS_MODULE } from './products/products-nav';
 import { VENDORS_MODULE } from './vendors/vendors-nav';
 import { guardUnsaved } from './shared/form/unsaved-changes';
@@ -150,6 +151,11 @@ export const routes: Routes = [
         path: 'customers/:customerId',
         canActivate: [moduleGuard(CUSTOMERS_MODULE)],
         loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
+      },
+      {
+        path: 'price-lists',
+        canActivate: [moduleGuard(PRICE_LISTS_MODULE)],
+        loadComponent: () => import('./price-lists/price-lists-page').then((m) => m.PriceListsPage),
       },
       {
         path: 'products',

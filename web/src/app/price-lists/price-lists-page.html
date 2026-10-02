@@ -1,0 +1,201 @@
+<section class="flex max-w-6xl flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-3xl font-semibold" data-testid="price-lists-title">
+      {{ 'price_lists.title' | translate }}
+    </h1>
+    @if (mayWrite() && editing() === null && company()) {
+      <button mat-flat-button type="button" (click)="open('new')" data-testid="price-list-add">
+        {{ 'price_lists.add' | translate }}
+      </button>
+    }
+  </div>
+  <p class="max-w-prose">{{ 'price_lists.intro' | translate }}</p>
+
+  @if (!company()) {
+    <p data-testid="price-lists-no-company">{{ 'customers.no_company' | translate }}</p>
+  }
+  @if (error(); as code) {
+    <p role="alert" data-testid="price-lists-error" class="text-error">
+      {{ 'price_lists.errors.' + code | translate }}
+    </p>
+  }
+
+  @if (editing() !== null) {
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <form
+          class="mt-4 flex flex-col gap-4"
+          [formGroup]="form"
+          (ngSubmit)="save()"
+          data-testid="price-list-form"
+        >
+          <div class="flex flex-wrap items-start gap-3">
+            <mat-form-field class="min-w-0 flex-1" subscriptSizing="dynamic">
+              <mat-label>{{ 'price_lists.fields.name' | translate }}</mat-label>
+              <input matInput formControlName="name" required data-testid="price-list-name" />
+            </mat-form-field>
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>{{ 'price_lists.fields.scope' | translate }}</mat-label>
+              <select
+                matNativeControl
+                (change)="chooseScope($event)"
+                data-testid="price-list-scope"
+              >
+                @for (known of scopes; track known) {
+                  <option [value]="known" [selected]="known === scope()">
+                    {{ 'price_lists.scopes.' + known | translate }}
+                  </option>
+                }
+              </select>
+            </mat-form-field>
+            @if (scope() === 'group') {
+              <mat-form-field subscriptSizing="dynamic">
+                <mat-label>{{ 'price_lists.fields.group' | translate }}</mat-label>
+                <select
+                  matNativeControl
+                  formControlName="customerGroupId"
+                  data-testid="price-list-group"
+                >
+                  <option value="">—</option>
+                  @for (group of groups(); track group.id) {
+                    <option [value]="group.id">{{ group.name }}</option>
+                  }
+                </select>
+              </mat-form-field>
+            }
+            @if (scope() === 'customer') {
+              <div class="min-w-64">
+                <app-pick-field
+                  [label]="'price_lists.fields.customer' | translate"
+                  testId="price-list-customer"
+                  [search]="searchCustomers"
+                  [value]="customer()"
+                  [noneFoundLabel]="'price_lists.no_customer_found' | translate"
+                  (picked)="customer.set($event)"
+                />
+              </div>
+            }
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>{{ 'price_lists.fields.valid_from' | translate }}</mat-label>
+              <input
+                matInput
+                type="date"
+                formControlName="validFrom"
+                data-testid="price-list-from"
+              />
+            </mat-form-field>
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>{{ 'price_lists.fields.valid_to' | translate }}</mat-label>
+              <input matInput type="date" formControlName="validTo" data-testid="price-list-to" />
+            </mat-form-field>
+            <mat-slide-toggle formControlName="isActive" data-testid="price-list-active">{{
+              'price_lists.fields.active' | translate
+            }}</mat-slide-toggle>
+          </div>
+
+          <h2 class="text-lg font-semibold">{{ 'price_lists.prices.title' | translate }}</h2>
+          <div class="flex flex-col gap-3" formArrayName="items">
+            @for (row of form.controls.items.controls; track row; let i = $index) {
+              <div
+                class="grid items-start gap-x-3 sm:grid-cols-12"
+                [formGroupName]="i"
+                [attr.data-testid]="'price-row-' + i"
+              >
+                <div class="sm:col-span-5">
+                  <app-pick-field
+                    [label]="'price_lists.prices.product' | translate"
+                    [testId]="'price-row-' + i + '-product'"
+                    [search]="searchProducts"
+                    [value]="productOf(row)"
+                    [noneFoundLabel]="'price_lists.no_product_found' | translate"
+                    (picked)="chooseProduct(row, $event)"
+                  />
+                </div>
+                <mat-form-field class="sm:col-span-3">
+                  <mat-label>{{ 'price_lists.prices.min_quantity' | translate }}</mat-label>
+                  <input
+                    matInput
+                    formControlName="minQuantity"
+                    appDecimal
+                    [attr.data-testid]="'price-row-' + i + '-min'"
+                  />
+                </mat-form-field>
+                <mat-form-field class="sm:col-span-3">
+                  <mat-label>{{ 'price_lists.prices.unit_price' | translate }}</mat-label>
+                  <input
+                    matInput
+                    formControlName="unitPriceNet"
+                    appDecimal
+                    [attr.data-testid]="'price-row-' + i + '-price'"
+                  />
+                </mat-form-field>
+                <div class="pt-2 sm:col-span-1">
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="removeRow(i)"
+                    [attr.data-testid]="'price-row-' + i + '-remove'"
+                  >
+                    {{ 'price_lists.prices.remove' | translate }}
+                  </button>
+                </div>
+              </div>
+            } @empty {
+              <p class="text-sm" data-testid="price-rows-empty">
+                {{ 'price_lists.prices.none' | translate }}
+              </p>
+            }
+          </div>
+          <div>
+            <button mat-stroked-button type="button" (click)="addRow()" data-testid="price-row-add">
+              {{ 'price_lists.prices.add' | translate }}
+            </button>
+          </div>
+
+          <div class="flex flex-wrap justify-end gap-2">
+            <button mat-button type="button" (click)="cancel()" data-testid="price-list-cancel">
+              {{ 'customers.cancel' | translate }}
+            </button>
+            <button mat-flat-button type="submit" [disabled]="busy()" data-testid="price-list-save">
+              {{ 'customers.save' | translate }}
+            </button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <app-data-list
+    [descriptor]="list()"
+    [rows]="lists()"
+    testId="price-lists-table"
+    [rowTestId]="rowTestId"
+    emptyKey="price_lists.none"
+    emptyTestId="price-lists-empty"
+  >
+    <ng-template appDataListCell="scope" let-row>
+      @switch (scopeOf(row)) {
+        @case ('group') {
+          {{ 'price_lists.scopes.group' | translate }} · {{ groupName(row) }}
+        }
+        @default {
+          {{ 'price_lists.scopes.' + scopeOf(row) | translate }}
+        }
+      }
+    </ng-template>
+    <ng-template appDataListCell="validity" let-row>
+      @if (row.validFrom || row.validTo) {
+        {{ row.validFrom ?? '…' }} → {{ row.validTo ?? '…' }}
+      } @else {
+        {{ 'price_lists.always' | translate }}
+      }
+    </ng-template>
+    <ng-template appDataListCell="state" let-row>
+      <app-status-badge [tone]="row.isActive ? 'success' : 'neutral'">
+        {{ (row.isActive ? 'price_lists.active' : 'price_lists.inactive') | translate }}
+      </app-status-badge>
+    </ng-template>
+  </app-data-list>
+</section>

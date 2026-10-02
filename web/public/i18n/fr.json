@@ -537,7 +537,8 @@
     "short": {
       "delivery_notes": "Livraisons"
     },
-    "stock_valuation": "Valorisation du stock"
+    "stock_valuation": "Valorisation du stock",
+    "price_lists": "Tarifs"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -2997,13 +2998,6 @@
       "does": "Vos clients consultent leurs factures, téléchargent leurs documents et passent commande depuis un espace qui leur est réservé.",
       "settings": "Ce qu'un client voit dans son espace : ses factures, ses devis, ses relevés, et s'il peut payer en ligne."
     },
-    "price_lists": {
-      "heading": "Les tarifs sont en construction",
-      "does": "Des prix par client ou par groupe de clients, par quantité et sur une période, appliqués d’eux-mêmes sur chaque document.",
-      "plan": "§ 8 · 77 — les tarifs",
-      "create": "Nouveau tarif",
-      "settings": "Le tarif qu'un nouveau client reçoit par défaut."
-    },
     "purchases": {
       "heading": "Les commandes fournisseurs sont en construction",
       "does": "Commander aux fournisseurs, recevoir la marchandise en stock et rapprocher la commande, la réception et la facture.",
@@ -3207,6 +3201,62 @@
         "phone": "Le lien d’un téléphone prêté comme scanner."
       },
       "third_party": "Aucun script tiers, aucune mesure d’audience, aucune publicité."
+    }
+  },
+  "price_lists": {
+    "title": "Tarifs",
+    "intro": "Un prix par client, par groupe de clients ou pour tous, par quantité et sur une période, qui fixe le prix de départ d'une ligne avant toute remise.",
+    "add": "Nouveau tarif",
+    "edit": "Modifier",
+    "saved": "Le tarif a été enregistré.",
+    "deleted": "Le tarif a été supprimé.",
+    "none": "Aucun tarif.",
+    "always": "Toujours",
+    "active": "Actif",
+    "inactive": "Désactivé",
+    "no_customer_found": "Aucun client trouvé.",
+    "no_product_found": "Aucun produit trouvé.",
+    "delete_named": "Supprimer {{name}}",
+    "delete_title": "Supprimer ce tarif ?",
+    "delete_message": "Le tarif {{name}} et ses prix seront supprimés. Les documents déjà émis ne changent pas.",
+    "delete_confirm": "Supprimer",
+    "keep": "Garder",
+    "list": {
+      "name": "Tarif",
+      "scope": "Pour",
+      "validity": "Période",
+      "item_count": "Prix",
+      "state": "État"
+    },
+    "fields": {
+      "name": "Nom",
+      "scope": "Pour",
+      "group": "Groupe de clients",
+      "customer": "Client",
+      "valid_from": "Du",
+      "valid_to": "Au",
+      "active": "Actif"
+    },
+    "scopes": {
+      "everyone": "Tous les clients",
+      "group": "Un groupe de clients",
+      "customer": "Un client"
+    },
+    "prices": {
+      "title": "Prix",
+      "product": "Produit",
+      "min_quantity": "À partir de",
+      "unit_price": "Prix net unitaire",
+      "add": "Ajouter un prix",
+      "remove": "Retirer",
+      "none": "Aucun prix : le tarif ne change rien."
+    },
+    "errors": {
+      "network": "Le serveur est injoignable.",
+      "not_found": "Ce tarif n’existe plus.",
+      "name_taken": "Un autre tarif porte déjà ce nom.",
+      "invalid": "Le tarif est refusé : vérifiez le nom, les dates, le client ou le groupe et les prix.",
+      "refused": "Vous n’avez pas le droit de faire cela."
     }
   }
 }

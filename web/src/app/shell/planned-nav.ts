@@ -56,14 +56,6 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
   { key: 'mailing', icon: 'forward_to_inbox', section: 'sell', after: 'statements', plan: true },
   { key: 'whatsapp', icon: 'chat', section: 'sell', after: 'mailing', plan: true },
   { key: 'portal', icon: 'web', section: 'sell', after: 'whatsapp' },
-  {
-    key: 'price_lists',
-    icon: 'sell',
-    section: 'sell',
-    after: 'products',
-    plan: true,
-    create: true,
-  },
   { key: 'composites', icon: 'widgets', section: 'sell', after: 'price_lists' },
   {
     key: 'register',

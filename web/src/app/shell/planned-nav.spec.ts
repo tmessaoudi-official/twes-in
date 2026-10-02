@@ -118,7 +118,7 @@ describe('the planned modules in the menu', () => {
   });
 
   it('names each, says what it will do, and its plan row and meanwhile where it has them, in both languages', () => {
-    expect(PLANNED_NAV.length).toBe(22);
+    expect(PLANNED_NAV.length).toBe(21);
     for (const entry of plannedNav(catalogue)) {
       for (const json of [fr, en]) {
         for (const key of [
@@ -159,7 +159,6 @@ describe('the planned modules in the menu', () => {
     expect(creations.map((c) => c.key)).toEqual([
       'new-quotes',
       'new-recurring',
-      'new-price_lists',
       'new-register',
       'new-works',
       'new-purchases',

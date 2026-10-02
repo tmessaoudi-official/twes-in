@@ -537,7 +537,8 @@
     "short": {
       "delivery_notes": "Deliveries"
     },
-    "stock_valuation": "Stock valuation"
+    "stock_valuation": "Stock valuation",
+    "price_lists": "Price lists"
   },
   "shell": {
     "skip": "Skip to content",
@@ -2997,13 +2998,6 @@
       "does": "Your customers see their invoices, download their documents and place orders from a space of their own.",
       "settings": "What a customer sees in their space: invoices, quotes, statements, and whether they can pay online."
     },
-    "price_lists": {
-      "heading": "Price lists are under construction",
-      "does": "Prices per customer or customer group, per quantity and over a period, applied by themselves on every document.",
-      "plan": "§ 8 · 77 — price lists",
-      "create": "New price list",
-      "settings": "The price list a new customer gets by default."
-    },
     "purchases": {
       "heading": "Purchase orders are under construction",
       "does": "Order from suppliers, receive the goods into stock and match the order, the receipt and the supplier's invoice.",
@@ -3207,6 +3201,62 @@
         "phone": "The link of a phone lent as a scanner."
       },
       "third_party": "No third-party script, no audience measurement, no advertising."
+    }
+  },
+  "price_lists": {
+    "title": "Price lists",
+    "intro": "A price per customer, per customer group or for everyone, by quantity and over a period, which sets the price a line starts at before any discount.",
+    "add": "New price list",
+    "edit": "Edit",
+    "saved": "The price list was saved.",
+    "deleted": "The price list was deleted.",
+    "none": "No price list.",
+    "always": "Always",
+    "active": "Active",
+    "inactive": "Deactivated",
+    "no_customer_found": "No customer found.",
+    "no_product_found": "No product found.",
+    "delete_named": "Delete {{name}}",
+    "delete_title": "Delete this price list?",
+    "delete_message": "The price list {{name}} and its prices will be deleted. Documents already issued do not change.",
+    "delete_confirm": "Delete",
+    "keep": "Keep",
+    "list": {
+      "name": "Price list",
+      "scope": "For",
+      "validity": "Period",
+      "item_count": "Prices",
+      "state": "State"
+    },
+    "fields": {
+      "name": "Name",
+      "scope": "For",
+      "group": "Customer group",
+      "customer": "Customer",
+      "valid_from": "From",
+      "valid_to": "To",
+      "active": "Active"
+    },
+    "scopes": {
+      "everyone": "Every customer",
+      "group": "A customer group",
+      "customer": "One customer"
+    },
+    "prices": {
+      "title": "Prices",
+      "product": "Product",
+      "min_quantity": "From quantity",
+      "unit_price": "Net unit price",
+      "add": "Add a price",
+      "remove": "Remove",
+      "none": "No price: the list changes nothing."
+    },
+    "errors": {
+      "network": "The server cannot be reached.",
+      "not_found": "This price list no longer exists.",
+      "name_taken": "Another price list already has this name.",
+      "invalid": "The price list is refused: check the name, the dates, the customer or group and the prices.",
+      "refused": "You are not allowed to do this."
     }
   }
 }
