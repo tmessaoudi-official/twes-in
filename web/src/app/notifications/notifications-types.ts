@@ -32,6 +32,9 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'invitation.accepted',
   'stock.delivery_note_lines_left_out',
   'stock.delivery_note_moved_no_stock',
+  'stock.count_difference',
+  'stock.low',
+  'invoice.credit_limit_passed',
   'subscription.payment_declared',
   'subscription.payment_decided',
   'module.arrived',
@@ -67,6 +70,18 @@ const RECORDS = new Map<string, NotificationRecord>([
   [
     'stock.delivery_note_moved_no_stock',
     { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
+  ],
+  // A count that found a difference leads to the movements, where the adjustment it wrote is; a product fallen to its
+  // reorder point leads to the stock it is reordered from.
+  [
+    'stock.count_difference',
+    { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
+  ],
+  ['stock.low', { icon: 'inventory_2', route: '/stock', permission: 'stock.read' }],
+  // An invoice that took a customer past their credit limit leads to the invoices, where the account is read.
+  [
+    'invoice.credit_limit_passed',
+    { icon: 'credit_score', route: '/invoices', permission: 'invoice.read' },
   ],
   // An operator's: the company that declared it is not one of theirs, so it leads to the platform queue.
   [

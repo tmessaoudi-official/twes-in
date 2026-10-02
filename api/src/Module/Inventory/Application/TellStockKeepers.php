@@ -28,8 +28,25 @@ final readonly class TellStockKeepers
     /** Moving a note's stock failed and nothing moved; `app:stock:replay-delivery-note` moves it again. */
     public const string MOVED_NO_STOCK = 'stock.delivery_note_moved_no_stock';
 
+    /** A count found a different quantity from the one expected: told to the other keepers, the counter knowing. */
+    public const string COUNT_DIFFERENCE = 'stock.count_difference';
+    /** A product's stock fell to its reorder point in an establishment. */
+    public const string LOW = 'stock.low';
+
     public function __construct(private MembershipRepository $memberships, private Notifications $notifications)
     {
+    }
+
+    /** @param array<string, scalar|null> $payload what the notification says, without the company */
+    public function countDifference(Uuid $companyId, ?Uuid $counter, array $payload): void
+    {
+        $this->tellAll($companyId, self::COUNT_DIFFERENCE, $payload, $counter);
+    }
+
+    /** @param array<string, scalar|null> $payload what the notification says, without the company */
+    public function low(Uuid $companyId, array $payload): void
+    {
+        $this->tellAll($companyId, self::LOW, $payload, null);
     }
 
     public function deliveryNoteLeftLinesOut(Uuid $companyId, Uuid $deliveryNoteId, string $number): void
@@ -44,13 +61,16 @@ final readonly class TellStockKeepers
 
     private function tell(Uuid $companyId, string $type, Uuid $deliveryNoteId, string $number): void
     {
+        $this->tellAll($companyId, $type, ['delivery_note_id' => $deliveryNoteId->toRfc4122(), 'number' => $number], null);
+    }
+
+    /** @param array<string, scalar|null> $payload */
+    private function tellAll(Uuid $companyId, string $type, array $payload, ?Uuid $except): void
+    {
         foreach ($this->memberships->ofCompany($companyId) as $membership) {
-            if ($membership->getRole()->grants(self::PERMISSION)) {
-                $this->notifications->publish(new Notification(
-                    'user:'.$membership->getUser()->getId()->toRfc4122(),
-                    $type,
-                    ['delivery_note_id' => $deliveryNoteId->toRfc4122(), 'number' => $number, 'company' => self::company($membership)],
-                ));
+            $user = $membership->getUser()->getId();
+            if ($membership->getRole()->grants(self::PERMISSION) && !$user->equals($except)) {
+                $this->notifications->publish(new Notification('user:'.$user->toRfc4122(), $type, [...$payload, 'company' => self::company($membership)]));
             }
         }
     }

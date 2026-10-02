@@ -54,6 +54,7 @@ final readonly class KeepStock
         private Transactions $transactions,
         private ClockInterface $clock,
         private LiveChanges $liveChanges,
+        private ?RaiseStockAlerts $alerts = null,
     ) {
     }
 
@@ -101,6 +102,7 @@ final readonly class KeepStock
             $movement = StockMovement::count($product, $location, $counted, $this->movements->onHand($productId, $locationId, $lot?->getId()), $actorUserId, $this->clock->now(), $lot);
             $this->inStockOnce($movement);
             $this->save($movement);
+            $this->alerts?->raise([$movement]);
             $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.counted', $actorUserId, $company->getId()));
 
             return $movement;

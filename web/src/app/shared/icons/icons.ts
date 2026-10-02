@@ -35,6 +35,7 @@ export const ICONS = [
   'contacts',
   'content_copy',
   'contrast',
+  'credit_score',
   'currency_exchange',
   'dark_mode',
   'delete',

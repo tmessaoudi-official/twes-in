@@ -190,6 +190,20 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return self::decimal($query->getQuery()->getSingleScalarResult());
     }
 
+    public function onHandInEstablishment(Uuid $productId, Uuid $establishmentId): string
+    {
+        return self::decimal($this->entityManager->createQueryBuilder()
+            ->select('SUM(m.quantity)')
+            ->from(StockMovement::class, 'm')
+            ->join('m.location', 'l')
+            ->where('m.product = :product')
+            ->andWhere('l.establishment = :establishment')
+            ->setParameter('product', $productId, 'uuid')
+            ->setParameter('establishment', $establishmentId, 'uuid')
+            ->getQuery()
+            ->getSingleScalarResult());
+    }
+
     public function onHandOfLot(Uuid $lotId): string
     {
         return self::decimal($this->entityManager->createQueryBuilder()

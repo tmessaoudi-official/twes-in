@@ -80,6 +80,18 @@ final class InMemoryStockMovements implements StockMovementRepository
         return $sum->value;
     }
 
+    public function onHandInEstablishment(Uuid $productId, Uuid $establishmentId): string
+    {
+        $sum = new Number('0.000');
+        foreach ($this->movements as $movement) {
+            if ($movement->getProduct()->getId()->equals($productId) && $movement->getLocation()->getEstablishment()->getId()->equals($establishmentId)) {
+                $sum = $sum->add($movement->getQuantity());
+            }
+        }
+
+        return $sum->value;
+    }
+
     public function onHandOfLot(Uuid $lotId): string
     {
         $sum = new Number('0.000');

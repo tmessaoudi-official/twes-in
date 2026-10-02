@@ -47,6 +47,7 @@ final readonly class MoveStockForDeliveryNotes
         private ModuleStates $modules,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private ?RaiseStockAlerts $alerts = null,
     ) {
     }
 
@@ -135,6 +136,7 @@ final readonly class MoveStockForDeliveryNotes
             }
             if ([] !== $written) {
                 $this->movements->save(...$written);
+                $this->alerts?->raise($written);
             }
 
             return $skipped;

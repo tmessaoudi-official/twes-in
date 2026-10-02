@@ -15,6 +15,7 @@ describe('stock notifications', () => {
     for (const type of [
       'stock.delivery_note_lines_left_out',
       'stock.delivery_note_moved_no_stock',
+      'stock.count_difference',
     ]) {
       expect(notificationKey(type)).toBe(`notifications.types.${type.replace('.', '_')}`);
       expect(notificationRecord(type)).toEqual({
@@ -23,6 +24,30 @@ describe('stock notifications', () => {
         permission: 'stock.read',
       });
     }
+  });
+});
+
+describe('stock alerts', () => {
+  it('a product fallen to its reorder point has words and leads to the stock', () => {
+    expect(notificationKey('stock.low')).toBe('notifications.types.stock_low');
+    expect(notificationRecord('stock.low')).toEqual({
+      icon: 'inventory_2',
+      route: '/stock',
+      permission: 'stock.read',
+    });
+  });
+});
+
+describe('credit limit notifications', () => {
+  it('have words and lead to the invoices for whoever may read them', () => {
+    expect(notificationKey('invoice.credit_limit_passed')).toBe(
+      'notifications.types.invoice_credit_limit_passed',
+    );
+    expect(notificationRecord('invoice.credit_limit_passed')).toEqual({
+      icon: 'credit_score',
+      route: '/invoices',
+      permission: 'invoice.read',
+    });
   });
 });
 

@@ -611,7 +611,10 @@
       "unknown": "New notification.",
       "subscription_payment_declared": "{{company}} declared a payment of {{amount}} {{currency}}.",
       "subscription_payment_decided": "Your payment of {{amount}} {{currency}} was answered.",
-      "module_arrived": "« {{label}} » has arrived: you can switch it on for {{company}} in Modules."
+      "module_arrived": "« {{label}} » has arrived: you can switch it on for {{company}} in Modules.",
+      "stock_count_difference": "The count of {{product}} ({{reference}}) at {{location}} found a difference of {{difference}}.",
+      "stock_low": "{{product}} ({{reference}}) is down to {{on_hand}} at {{establishment}}, at or under its reorder point of {{point}}.",
+      "invoice_credit_limit_passed": "{{customer}} is over their credit limit: {{owed}} {{currency}} owed against {{limit}} after invoice {{number}}."
     }
   },
   "invitation": {

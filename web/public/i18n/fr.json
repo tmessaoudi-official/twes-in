@@ -611,7 +611,10 @@
       "unknown": "Nouvelle notification.",
       "subscription_payment_declared": "{{company}} a déclaré un règlement de {{amount}} {{currency}}.",
       "subscription_payment_decided": "Votre règlement de {{amount}} {{currency}} a reçu une réponse.",
-      "module_arrived": "« {{label}} » est arrivé : vous pouvez l'activer pour {{company}} dans Modules."
+      "module_arrived": "« {{label}} » est arrivé : vous pouvez l'activer pour {{company}} dans Modules.",
+      "stock_count_difference": "Le comptage de {{product}} ({{reference}}) à {{location}} a trouvé un écart de {{difference}}.",
+      "stock_low": "{{product}} ({{reference}}) est tombé à {{on_hand}} à {{establishment}}, au niveau ou sous son seuil de réapprovisionnement de {{point}}.",
+      "invoice_credit_limit_passed": "{{customer}} dépasse sa limite de crédit : {{owed}} {{currency}} dus pour {{limit}} après la facture {{number}}."
     }
   },
   "invitation": {

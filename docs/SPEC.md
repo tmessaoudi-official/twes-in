@@ -3985,6 +3985,21 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   Alternatives: valuing at report time by replaying every movement (refused: the replay is sequential and unbounded, and
   an average computed later could differ from the one a movement was valued with); a separate valuation module (refused:
   the data is the stock's own).
+- [2026-10-02 06:47] ASSUMED (review): **alerts, not reports (row 97, first slice)**: three notifications through the existing
+  centre, each told on the recipient's own channel so a member who cannot act on it never sees it. `stock.count_difference`:
+  a count whose difference is not zero tells the other members holding stock.write (the one who counted knows).
+  `stock.low`: stock that FALLS to or under the product's reorder point in an establishment (the sum over its locations,
+  an active product, the point being that establishment's) tells every member holding stock.write, once per fall: the
+  stock before the movement was over the point and after it is at or under, so a product sitting at its point raises
+  nothing for the movements after, and a move between locations (no change in the establishment) raises nothing.
+  `invoice.credit_limit_passed`: an issued invoice that takes the customer's account from at or under their limit to over
+  it (the limit that applies, zero meaning none; credit notes never raise it) tells every member holding invoice.issue,
+  from a listener on `invoice.issued`, best effort and logged like the delivery-note stock listener. The two stock alerts are
+  raised in the transaction of the count or of the delivery note's stock movement. Not in this slice: an alert a person
+  can switch off or route elsewhere (email, WhatsApp), a count-difference threshold, and the real-time delivery of the
+  alert to an already open tab, which is the centre's own and was not re-run here.
+  Alternatives: telling only the keepers with the stock.read permission (refused: it is the people who can act, not read,
+  who should be woken); alerting on every movement while under the point (refused: one alert per movement is noise).
 
 ## 8. Status
 
@@ -4089,7 +4104,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 94 | Profiles and module dependencies (§ 7 2026-09-20): the shop and workshop profiles as data (modules on, defaults, a starter catalogue); a manifest declaring what its module needs and a registry refusing an impossible combination | M | todo | - | api/src/ModuleRegistry/** api/config/** api/tests/** web/src/app/company/** |
 | 95 | WhatsApp delivery (§ 7 2026-09-20): a signed expiring link to one document and a ready-written message, opened from the phone | S | todo | - | api/src/** api/tests/** web/src/app/** |
 | 96 | Arabic and right-to-left (§ 7 2026-09-20): the interface in Arabic with RTL, the document language defaulting from the customer and overridable per document, bilingual printing, every pack's mentions in each language it can print | L | todo | - | api/translations/** api/templates/pdf/** api/tests/** web/public/i18n/** web/src/app/** |
-| 97 | Alerts, not reports (§ 7 2026-09-20): low stock, a credit limit reached and a count difference raised through the notification centre and the realtime channel that already exist | S | todo | - | api/src/Inbox/** api/src/Module/** api/tests/** |
+| 97 | Alerts, not reports (§ 7 2026-09-20): low stock, a credit limit reached and a count difference raised through the notification centre and the realtime channel that already exist | S | done | - | api/src/Inbox/** api/src/Module/** api/tests/** |
 | 98 | A foreign note at the counter (§ 7 2026-09-20): a payment taken in another currency at a manual rate with change given in local money; the per-customer default currency waits for the foreign-currency milestone | S | todo | - | api/src/Module/Register/** api/tests/** web/src/app/register/** |
 | 99 | The brand mark (§ 7 2026-09-20 09:30): the treatment chosen from the four on the Look canvas, shipped as the favicon, the sidebar mark and the app icon, drawn from vendored OFL type and recoloured by the installation's accent — ahead of row 36, which makes it configurable | S | todo | - | web/src/app/shell/** web/public/** web/src/index.html |
 | 100 | Role accounts and an empty start (§ 7 2026-09-20 09:30): `make up` leaves an installation with one operator and no companies; `make fixtures` adds one owner, admin and member to each demo company, written through the invitation use cases | M | todo | - | api/src/DataFixtures/** api/tests/** docs/START.md |
