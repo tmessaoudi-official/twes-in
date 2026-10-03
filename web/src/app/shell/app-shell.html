@@ -93,6 +93,7 @@
             [attr.aria-labelledby]="'nav-section-' + group.section"
           >
             @for (entry of group.entries; track entry.key) {
+              @let count = counts()[entry.key] ?? 0;
               <a
                 mat-list-item
                 [routerLink]="entry.route"
@@ -104,12 +105,22 @@
                 [attr.data-testid]="'nav-' + entry.key"
                 (click)="handset() && drawer.close()"
               >
-                <mat-icon matListItemIcon aria-hidden="true">{{ entry.icon }}</mat-icon>
+                <mat-icon
+                  matListItemIcon
+                  aria-hidden="true"
+                  [matBadge]="badge(count)"
+                  [matBadgeHidden]="count === 0 || !rail()"
+                  matBadgeSize="small"
+                  >{{ entry.icon }}</mat-icon
+                >
                 <!-- Folded, the rail keeps a short label under the icon (docs/SPEC.md § 8 row 123). Each branch has ONE root,
                    the title, or Angular projects it into the default slot and Material draws it two lines tall. -->
                 @if (rail()) {
                   <span matListItemTitle class="twes-rail-short"
                     >{{ entry.shortLabelKey ?? entry.labelKey | translate }}
+                    @if (count > 0) {
+                      <span class="sr-only">{{ 'nav.count' | translate: { count } }}</span>
+                    }
                     @if (entry.coming) {
                       <span class="sr-only" data-testid="soon">{{ 'shell.soon' | translate }}</span>
                       <span class="twes-soon-dot" aria-hidden="true"></span>
@@ -118,6 +129,15 @@
                 } @else {
                   <span matListItemTitle class="twes-rail-title"
                     ><span>{{ entry.labelKey | translate }}</span>
+                    @if (count > 0) {
+                      <span
+                        class="twes-rail-count"
+                        aria-hidden="true"
+                        [attr.data-testid]="'nav-count-' + entry.key"
+                        >{{ badge(count) }}</span
+                      >
+                      <span class="sr-only">{{ 'nav.count' | translate: { count } }}</span>
+                    }
                     @if (entry.coming) {
                       <span class="twes-soon" data-testid="soon">{{
                         'shell.soon' | translate

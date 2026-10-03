@@ -496,6 +496,7 @@
   },
   "nav": {
     "watch": "To watch",
+    "count": "{{count}} to review",
     "home": "Home",
     "modules": "Modules",
     "members": "Members",

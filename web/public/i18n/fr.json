@@ -496,6 +496,7 @@
   },
   "nav": {
     "watch": "À surveiller",
+    "count": "{{count}} à traiter",
     "home": "Accueil",
     "modules": "Modules",
     "members": "Membres",

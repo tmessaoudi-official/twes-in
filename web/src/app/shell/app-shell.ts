@@ -16,6 +16,7 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -46,6 +47,8 @@ import { keyName, ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { ActivityBar } from '../shared/feedback/activity-bar';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { WatchFacade } from '../watch/watch-facade';
+import { WATCHED_KINDS } from '../watch/watch-types';
 import { RequestActivity } from '../shared/feedback/request-activity';
 import {
   LANGUAGE_NAMES,
@@ -121,6 +124,7 @@ const BOTTOM_BAR_HEIGHT = '--twes-bottom-bar-height';
     MatToolbarModule,
     MatListModule,
     MatIconModule,
+    MatBadgeModule,
     MatButtonModule,
     NgTemplateOutlet,
     MatMenuModule,
@@ -174,6 +178,15 @@ export class AppShell {
   private heldShortcut: ReturnType<typeof setTimeout> | null = null;
   private readonly activity = inject(RequestActivity);
   protected readonly theme = inject(ThemeFacade);
+  private readonly watch = inject(WatchFacade);
+  /** The company whose « À surveiller » this person may read, or null: the count is read for no one else. */
+  private readonly watchedCompany = computed(() =>
+    this.auth.hasPermission('company.read') ? (this.auth.me()?.company?.id ?? null) : null,
+  );
+  /** What a menu entry says beside its name, by entry key: « À surveiller » holds the things to act on. */
+  protected readonly counts = computed<Readonly<Record<string, number>>>(() => ({
+    watch: this.watch.summary()?.count ?? 0,
+  }));
   protected readonly language = inject(LanguageFacade);
 
   protected readonly languages = SUPPORTED_LANGUAGES;
@@ -183,6 +196,10 @@ export class AppShell {
   protected readonly signingOut = signal(false);
   protected readonly windowClass = inject(WINDOW_CLASS);
   protected readonly handset = computed(() => this.windowClass() === 'compact');
+  /** The count as the bell writes it: past nine, 9+. */
+  protected badge(count: number): string {
+    return count > 9 ? '9+' : String(count);
+  }
   protected readonly sections = computed(() =>
     navSections(
       withComing(
@@ -342,6 +359,18 @@ export class AppShell {
     // or its subscription changed) shows at once. Not the company's name: nothing writes it — `reviseProfile`
     // sets `legalName` and the name is constructor-only (sweep, 2026-09-20). A change made in THIS tab never
     // arrives here at all, so each screen that writes something global refreshes the session itself.
+    effect(() => {
+      const companyId = this.watchedCompany();
+      if (companyId) untracked(() => void this.watch.load(companyId));
+    });
+    inject(LiveChanges).reloadOn(
+      WATCHED_KINDS,
+      () => {
+        const companyId = this.watchedCompany();
+        return companyId ? this.watch.load(companyId) : Promise.resolve();
+      },
+      inject(DestroyRef),
+    );
     inject(LiveChanges).reloadOn(
       ['membership', 'role', 'module', 'company'],
       () => this.auth.refresh(),

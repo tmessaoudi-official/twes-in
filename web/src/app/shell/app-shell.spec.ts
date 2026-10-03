@@ -16,6 +16,8 @@ import { Session } from '../shared/session/session';
 import type { SignedInState } from '../auth/auth-types';
 import { CompanyFacade } from '../company/company-facade';
 import { NotificationsFacade } from '../notifications/notifications-facade';
+import { WatchFacade } from '../watch/watch-facade';
+import type { WatchSummary } from '../watch/watch-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { RequestActivity } from '../shared/feedback/request-activity';
 import { RecordedFeedback } from '../shared/testing/feedback';
@@ -55,6 +57,7 @@ class StaticLoader implements TranslateLoader {
       modules: { register: 'Caisse', reports: 'Rapports' },
       coming: { register: { create: 'Nouvelle vente au comptoir' } },
       nav: {
+        count: '{{count}} à traiter',
         home: 'Accueil',
         members: 'Membres',
         customers: 'Clients',
@@ -183,6 +186,8 @@ describe('AppShell', () => {
   const width = new BehaviorSubject(1280);
   const me = signal<SignedInState | null>(owner);
   const permissions = signal<readonly string[]>(['user.read']);
+  const watchSummary = signal<WatchSummary | null>(null);
+  const watch = { summary: watchSummary.asReadonly(), load: vi.fn(async () => undefined) };
   const modules = signal<readonly string[]>(['customers']);
   const auth = {
     me: me.asReadonly(),
@@ -237,6 +242,7 @@ describe('AppShell', () => {
     theme.settingsList.set('expanded');
     theme.toggleSettingsList.mockClear();
     sessionExpired.set(false);
+    watchSummary.set(null);
     width.next(1280);
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
@@ -253,6 +259,7 @@ describe('AppShell', () => {
         { provide: BreakpointObserver, useValue: viewport(width) },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
+        { provide: WatchFacade, useValue: watch },
         { provide: CompanyFacade, useValue: companies },
         { provide: ThemeFacade, useValue: theme },
         { provide: LanguageFacade, useValue: language },
@@ -344,6 +351,47 @@ describe('AppShell', () => {
     expect(sell?.contains(byTestId('nav-home'))).toBe(true);
     expect(sell?.contains(byTestId('nav-customers'))).toBe(true);
     expect(manage?.contains(byTestId('nav-watch'))).toBe(true);
+  });
+
+  // docs/SPEC.md § 8 row 157: « À surveiller » says how many things it holds on its menu entry, as Notifications does.
+  it('says how many things « À surveiller » holds beside its entry, and reads the count for the company', async () => {
+    permissions.set(['customer.read', 'company.read']);
+    watchSummary.set({ count: 4, subjects: [] });
+    const { byTestId } = await render();
+    expect(watch.load).toHaveBeenCalledWith('c1');
+    expect(byTestId('nav-count-watch')?.textContent?.trim()).toBe('4');
+    expect(byTestId('nav-watch')?.textContent).toContain('4 à traiter');
+  });
+
+  it('writes 9+ past nine, as the bell does, and nothing at zero or before the count is read', async () => {
+    permissions.set(['customer.read', 'company.read']);
+    watchSummary.set({ count: 12, subjects: [] });
+    const { byTestId } = await render();
+    expect(byTestId('nav-count-watch')?.textContent?.trim()).toBe('9+');
+
+    watchSummary.set({ count: 0, subjects: [] });
+    TestBed.tick();
+    expect(byTestId('nav-count-watch')).toBeNull();
+    watchSummary.set(null);
+    TestBed.tick();
+    expect(byTestId('nav-count-watch')).toBeNull();
+  });
+
+  it('puts the count on the icon once the rail is folded, where no pill fits', async () => {
+    permissions.set(['customer.read', 'company.read']);
+    watchSummary.set({ count: 4, subjects: [] });
+    theme.sidebar.set('rail');
+    const { byTestId } = await render();
+    expect(byTestId('nav-count-watch')).toBeNull();
+    expect(byTestId('nav-watch')?.querySelector('.mat-badge-content')?.textContent?.trim()).toBe(
+      '4',
+    );
+  });
+
+  it('does not read what a person may not see', async () => {
+    permissions.set(['customer.read']);
+    await render();
+    expect(watch.load).not.toHaveBeenCalled();
   });
 
   // docs/SPEC.md § 7, 2026-09-26 12:05 (row 152): each section folds from its heading, remembered per person.
