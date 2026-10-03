@@ -70,30 +70,6 @@ uid 1000 and the current directory but not to a temporary directory the Makefile
 The Docker-driving gates (`compose-log-rotation`, `forwarded-proto`, `live-proxy`) start containers through the host's
 socket, which is why the tree is mounted at its own path: a path the gate gives the daemon is one the daemon sees.
 
-### Obsolete since the toolchain moved to Docker (kept until the developer agrees to delete them)
-
-Nothing below is used by any command above. It is what installing PHP and Node on the host used to need.
-
-**On this machine (`/stack`)** neither is on a fresh shell's PATH, and the first `php` found is phpbrew's
-`php-master` (8.6-dev), which php-cs-fixer refuses. Put these first:
-
-```sh
-export PATH="$(echo /stack/tools/phpbrew/php/php-8.5.*/bin):$(echo /stack/tools/nvm/versions/node/v26.*/bin):$PATH"
-```
-
-The globs pick the one PHP 8.5 and Node 26 installed there (`ls /stack/tools/phpbrew/php/` shows them). After a major
-or minor bump (`docs/UPDATE.md`), change the two numbers in the globs.
-
-**If `npx playwright install chromium` hangs** (the IPv6 route to Google's storage is dead on this machine), install the
-browser by hand:
-
-1. Read the revision and version: `jq '.browsers[] | select(.name=="chromium")' web/node_modules/playwright-core/browsers.json`
-2. Download both zips over IPv4:
-   `curl -4 -fLO https://cdn.playwright.dev/builds/cft/<browserVersion>/linux64/chrome-linux64.zip` and the same for
-   `chrome-headless-shell-linux64.zip`.
-3. Unzip them into `~/.cache/ms-playwright/chromium-<revision>/` and `~/.cache/ms-playwright/chromium_headless_shell-<revision>/`,
-   then `touch INSTALLATION_COMPLETE` in each of the two directories.
-
 ## 2. Bring it up
 
 ```sh
