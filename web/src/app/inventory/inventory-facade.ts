@@ -17,6 +17,7 @@ import type {
   StockMovementSearch,
   StockOptions,
   StockProductOption,
+  ReceiptCostView,
   StockRepeatInput,
   StockStructureInput,
   StockStructureRow,
@@ -95,6 +96,23 @@ export class InventoryFacade {
     } catch (error) {
       this.errorSignal.set(codeOf(error));
       return [];
+    }
+  }
+
+  /**
+   * What a receipt would do to the product's cost, or nothing when it cannot be told: this is a hint beside a form,
+   * so a refusal neither marks the screen busy nor fills its error line.
+   */
+  async receiptCost(
+    companyId: string,
+    productId: string,
+    quantity: string,
+    unitCost: string,
+  ): Promise<ReceiptCostView | null> {
+    try {
+      return await this.api.receiptCost(companyId, productId, quantity, unitCost);
+    } catch {
+      return null;
     }
   }
 

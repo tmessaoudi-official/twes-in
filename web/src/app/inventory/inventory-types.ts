@@ -198,9 +198,29 @@ export interface StockMovementInput {
   lotExpiresOn?: string;
   /** What one unit cost, on a receipt only; left out, the average of what the stock already is. */
   unitCost?: string;
+  /** What a receipt does to the product's cost, where the company lets the person choose; never without a cost typed. */
+  applyCost?: CostBasis;
   /** Why the goods were written off, and what was said about it; on a loss only. */
   reason?: StockLossReason;
   note?: string;
+}
+
+/** What a receipt does to a product's cost: the company decides, or leaves the choice to the person. */
+export type CostOnReceive = 'suggest' | 'average' | 'last' | 'manual';
+
+/** The two figures a receipt can move the cost to: the average it leaves, or the cost typed on it. */
+export type CostBasis = 'average' | 'last';
+export const COST_BASES: readonly CostBasis[] = ['average', 'last'];
+
+/** What a receipt of a product would do to its cost, as the form shows it before anything is saved. */
+export interface ReceiptCostView {
+  mode: CostOnReceive;
+  costNow: string | null;
+  /** The weighted average as this receipt would leave it. */
+  average: string | null;
+  /** The latest cost somebody typed on a receipt, and when. */
+  lastCost: string | null;
+  lastAt: string | null;
 }
 
 /** One stocked product as the picker answers it. */

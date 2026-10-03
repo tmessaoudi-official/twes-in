@@ -157,6 +157,7 @@ describe('StockPage', () => {
     pickProducts: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
     ),
+    receiptCost: vi.fn(),
     record: vi.fn(),
     releaseLot: vi.fn(),
     clearError: vi.fn(),
@@ -203,6 +204,7 @@ describe('StockPage', () => {
     levelsSignal.set([shortage]);
     facade.loadStockContext.mockReset().mockResolvedValue(undefined);
     facade.loadStock.mockReset().mockResolvedValue(undefined);
+    facade.receiptCost.mockReset().mockResolvedValue(null);
     facade.record.mockReset().mockResolvedValue(true);
     facade.releaseLot.mockReset().mockResolvedValue(true);
     scans.named.mockReset().mockResolvedValue(null);
@@ -330,6 +332,67 @@ describe('StockPage', () => {
     q('stock-movement-cancel')!.click();
     await settle();
     expect(q('stock-movement-save')).toBeNull();
+  });
+
+  describe('the cost of a receipt', () => {
+    const view = {
+      mode: 'suggest' as const,
+      costNow: '1200.0000',
+      average: '1280.0000',
+      lastCost: '1100.0000',
+      lastAt: '2026-10-01T09:00:00+00:00',
+    };
+    const later = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 320));
+
+    it('shows the three figures beside the receipt and sends the choice made on them', async () => {
+      facade.receiptCost.mockResolvedValue(view);
+      q('stock-receive')!.click();
+      await settle();
+      await pick('field-productId', 'ART-1 · Portable');
+      type('field-quantity', '10');
+      type('field-unitCost', '1400');
+      await later();
+      await settle();
+
+      expect(facade.receiptCost).toHaveBeenLastCalledWith('c1', 'p1', '10', '1400');
+      expect(q('receipt-cost-now')?.textContent).toMatch(/1[\s\u202f\u00a0.,]?200/);
+      expect(q('receipt-cost-average')?.textContent).toMatch(/1[\s\u202f\u00a0.,]?280/);
+      expect(q('receipt-cost-last')?.textContent).toMatch(/1[\s\u202f\u00a0.,]?100/);
+      expect(q('field-applyCost')).not.toBeNull();
+
+      form().get('applyCost')!.setValue('average');
+      q('stock-movement-save')!.click();
+      await settle();
+      expect(facade.record).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({ unitCost: '1400', applyCost: 'average' }),
+      );
+    });
+
+    it('asks no choice where the company has decided, and nothing without the cost permission', async () => {
+      facade.receiptCost.mockResolvedValue({ ...view, mode: 'last' });
+      q('stock-receive')!.click();
+      await settle();
+      await pick('field-productId', 'ART-1 · Portable');
+      await later();
+      await settle();
+      expect(q('receipt-cost')).not.toBeNull();
+      expect(q('field-applyCost')).toBeNull();
+      q('stock-movement-cancel')!.click();
+      await settle();
+
+      auth.hasPermission.mockImplementation(
+        (permission: string) => permission !== 'product.cost.read',
+      );
+      facade.receiptCost.mockClear();
+      q('stock-receive')!.click();
+      await settle();
+      await pick('field-productId', 'ART-1 · Portable');
+      await later();
+      await settle();
+      expect(facade.receiptCost).not.toHaveBeenCalled();
+      expect(q('receipt-cost')).toBeNull();
+    });
   });
 
   // docs/SPEC.md § 7, 2026-09-24 12:40, rows 21 and 22.

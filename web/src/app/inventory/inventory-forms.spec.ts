@@ -16,6 +16,7 @@ import {
   stockListRows,
 } from './inventory-forms';
 import type {
+  CostOnReceive,
   StockLevelRow,
   StockLocationKind,
   StockLocationRow,
@@ -329,6 +330,7 @@ describe('the movement form', () => {
       lotCode: '',
       lotExpiresOn: '',
       unitCost: '',
+      applyCost: '',
       reason: '',
       note: '',
     });
@@ -340,6 +342,7 @@ describe('the movement form', () => {
       lotCode: '',
       lotExpiresOn: '',
       unitCost: '',
+      applyCost: '',
       reason: '',
       note: '',
     });
@@ -529,5 +532,41 @@ describe('the cost of a receipt', () => {
     expect(movementInput('receive', { ...values, unitCost: ' 12.5 ' }).unitCost).toBe('12.5');
     expect(movementInput('receive', { ...values, unitCost: '' })).not.toHaveProperty('unitCost');
     expect(movementInput('count', { ...values, unitCost: '12.5' })).not.toHaveProperty('unitCost');
+  });
+
+  it('offers the choice of what the receipt does to the cost only where the company leaves it to the person', () => {
+    const asked = (operation: 'receive' | 'count', withCost: boolean, mode: CostOnReceive | null) =>
+      movementForm(operation, [], 'none', withCost, mode)
+        .sections.flatMap((section) => section.fields)
+        .map((field) => field.id);
+
+    expect(asked('receive', true, 'suggest')).toContain('applyCost');
+    for (const mode of ['average', 'last', 'manual', null] as const) {
+      expect(asked('receive', true, mode)).not.toContain('applyCost');
+    }
+    expect(asked('receive', false, 'suggest')).not.toContain('applyCost');
+    expect(asked('count', true, 'suggest')).not.toContain('applyCost');
+  });
+
+  it('sends the chosen basis only on a receipt with a cost typed, and never a value that is not one', () => {
+    const values = {
+      ...movementValues([]),
+      productId: 'p1',
+      locationId: 'l1',
+      quantity: '2',
+      unitCost: '12.5',
+    };
+
+    expect(movementInput('receive', { ...values, applyCost: 'last' }).applyCost).toBe('last');
+    expect(movementInput('receive', { ...values, applyCost: 'average' }).applyCost).toBe('average');
+    for (const applyCost of ['', 'manual', 'suggest']) {
+      expect(movementInput('receive', { ...values, applyCost })).not.toHaveProperty('applyCost');
+    }
+    expect(
+      movementInput('receive', { ...values, unitCost: '', applyCost: 'last' }),
+    ).not.toHaveProperty('applyCost');
+    expect(movementInput('count', { ...values, applyCost: 'last' })).not.toHaveProperty(
+      'applyCost',
+    );
   });
 });

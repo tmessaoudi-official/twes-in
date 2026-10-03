@@ -134,6 +134,48 @@ describe('InventoryApi', () => {
     expect(await locations).toEqual([{ ...zone, kind: 'zone' }]);
   });
 
+  it('asks what a receipt would do to a cost, leaving out what is not typed yet', async () => {
+    const typed = api.receiptCost('c1', 'p1', '10', '1400');
+    const asked = http.expectOne(
+      (request) => request.url === '/api/companies/c1/stock-options/receipt-cost',
+    );
+    expect([
+      asked.request.params.get('productId'),
+      asked.request.params.get('quantity'),
+      asked.request.params.get('unitCost'),
+    ]).toEqual(['p1', '10', '1400']);
+    asked.flush({
+      mode: 'suggest',
+      costNow: '1200.0000',
+      average: '1300.0000',
+      lastCost: '1200.0000',
+      lastAt: '2026-10-03T13:20:24+00:00',
+    });
+    expect(await typed).toEqual({
+      mode: 'suggest',
+      costNow: '1200.0000',
+      average: '1300.0000',
+      lastCost: '1200.0000',
+      lastAt: '2026-10-03T13:20:24+00:00',
+    });
+
+    const bare = api.receiptCost('c1', 'p1', '', '');
+    const nothing = http.expectOne(
+      (request) => request.url === '/api/companies/c1/stock-options/receipt-cost',
+    );
+    expect(nothing.request.params.has('quantity')).toBe(false);
+    expect(nothing.request.params.has('unitCost')).toBe(false);
+    nothing.flush({ mode: 'last' });
+    // Nothing known reads as null, and an API that does not name the mode reads as the default one.
+    expect(await bare).toEqual({
+      mode: 'last',
+      costNow: null,
+      average: null,
+      lastCost: null,
+      lastAt: null,
+    });
+  });
+
   it('asks the picker for the few stocked products a person means, and by id for a named one', async () => {
     const searched = api.pickProducts('c1', { words: '  port ' });
     const search = http.expectOne(

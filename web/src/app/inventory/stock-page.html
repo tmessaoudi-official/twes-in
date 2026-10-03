@@ -55,6 +55,30 @@
               testId="stock-movement-form"
               (submitted)="save($event)"
             >
+              @if (operation() === 'receive' && receiptCost(); as cost) {
+                <dl
+                  class="mb-4 grid max-w-prose grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm"
+                  data-testid="receipt-cost"
+                >
+                  <dt>{{ 'inventory.movement.receipt_cost.now' | translate }}</dt>
+                  <dd class="tabular-nums" data-testid="receipt-cost-now">
+                    {{ cost.costNow === null ? '—' : (cost.costNow | amount: 4) }}
+                  </dd>
+                  <dt>{{ 'inventory.movement.receipt_cost.average' | translate }}</dt>
+                  <dd class="tabular-nums" data-testid="receipt-cost-average">
+                    {{ cost.average === null ? '—' : (cost.average | amount: 4) }}
+                  </dd>
+                  <dt>{{ 'inventory.movement.receipt_cost.last' | translate }}</dt>
+                  <dd class="tabular-nums" data-testid="receipt-cost-last">
+                    @if (cost.lastCost !== null && cost.lastAt !== null) {
+                      {{ cost.lastCost | amount: 4 }}
+                      <span class="opacity-80">({{ cost.lastAt | day }})</span>
+                    } @else {
+                      —
+                    }
+                  </dd>
+                </dl>
+              }
               <div class="flex flex-wrap justify-end gap-2">
                 <button
                   mat-button

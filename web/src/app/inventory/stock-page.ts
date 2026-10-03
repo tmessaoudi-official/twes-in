@@ -17,13 +17,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { debounceTime, startWith } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import type { PickOption } from '../shared/form/pick-field';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { todayIn } from '../shared/i18n/format';
-import { AmountPipe } from '../shared/i18n/format-pipes';
+import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { StatusBadge } from '../shared/ui/status-badge';
@@ -39,7 +40,12 @@ import {
   stockSearch,
 } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
-import type { StockOperation, StockProductOption, StockSearch } from './inventory-types';
+import type {
+  ReceiptCostView,
+  StockOperation,
+  StockProductOption,
+  StockSearch,
+} from './inventory-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { ProductScans } from '../products/product-scans';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
@@ -55,6 +61,7 @@ import { addCount } from '../shared/scan/scan-lines';
     RouterLink,
     TranslatePipe,
     AmountPipe,
+    DayPipe,
     DataList,
     DataListCell,
     DescriptorForm,
@@ -129,8 +136,24 @@ export class StockPage implements OnInit {
           this.facade.locations(),
           tracking,
           this.auth.hasPermission('product.cost.read'),
+          this.costMode(),
         );
   });
+
+  /**
+   * What a receipt of the chosen product would do to its cost, asked while the receipt is being typed: the figures a
+   * person decides on, and whether the company leaves the deciding to them. Nothing without the cost permission.
+   */
+  private readonly costView = signal<ReceiptCostView | null>(null);
+  /** What was asked for an earlier form is never shown on another: a receipt, and a person who may read costs. */
+  protected readonly receiptCost = computed(() =>
+    this.operation() === 'receive' && this.auth.hasPermission('product.cost.read')
+      ? this.costView()
+      : null,
+  );
+  /** Only the mode shapes the form, so only a change of it rebuilds the form over what was typed. */
+  private readonly costMode = computed(() => this.receiptCost()?.mode ?? null);
+  private costRequest = 0;
 
   /**
    * Which product the form names, as the picker answered it — the catalogue is never held here. The form owns the
@@ -206,6 +229,40 @@ export class StockPage implements OnInit {
       });
       onCleanup(() => subscription?.unsubscribe());
     });
+    // The figures follow what is typed, a moment after the last key; only the latest answer is shown.
+    effect((onCleanup) => {
+      const form = this.form();
+      if (
+        form === null ||
+        this.operation() !== 'receive' ||
+        !this.auth.hasPermission('product.cost.read')
+      ) {
+        return;
+      }
+      const subscription = form.valueChanges
+        .pipe(startWith(null), debounceTime(250))
+        .subscribe(() => void this.askCost(form));
+      onCleanup(() => subscription.unsubscribe());
+    });
+  }
+
+  private async askCost(form: DescriptorFormGroup): Promise<void> {
+    const companyId = this.company()?.id;
+    const values = form.getRawValue();
+    const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+    const productId = text(values['productId']);
+    if (!companyId || productId === '') {
+      this.costView.set(null);
+      return;
+    }
+    const request = ++this.costRequest;
+    const cost = await this.facade.receiptCost(
+      companyId,
+      productId,
+      text(values['quantity']),
+      text(values['unitCost']),
+    );
+    if (request === this.costRequest) this.costView.set(cost);
   }
 
   /**

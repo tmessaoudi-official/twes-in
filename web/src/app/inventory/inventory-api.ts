@@ -23,6 +23,7 @@ import type {
   StockStructureStockStructureRead,
   StockStructureStockStructureWriteValidationStockStructureWrite as StockStructureStockStructureWrite,
   StockProductPickStockProductPickRead,
+  ReceiptCostReceiptCostRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
@@ -49,6 +50,7 @@ import {
   API_DECIMALS,
   type StockOptions,
   type StockProductOption,
+  type ReceiptCostView,
   type StockMovementSearch,
   type StockSearch,
   type StockValuation,
@@ -97,6 +99,38 @@ export class InventoryApi {
         homeLocationId: product.homeLocationId ?? null,
         tracking: product.tracking ?? 'none',
       }));
+    });
+  }
+
+  /**
+   * What a receipt of the product would do to its cost, before it is saved: a quantity or a cost that is not typed yet
+   * is simply left out of the question. A person who may not read costs is answered 404, which reads as no answer.
+   */
+  async receiptCost(
+    companyId: string,
+    productId: string,
+    quantity: string,
+    unitCost: string,
+  ): Promise<ReceiptCostView> {
+    return this.guard(async () => {
+      let params = new HttpParams().set('productId', productId);
+      if (quantity !== '') params = params.set('quantity', quantity);
+      if (unitCost !== '') params = params.set('unitCost', unitCost);
+      const cost = await firstValueFrom(
+        this.http.get<ReceiptCostReceiptCostRead>(
+          `${path(companyId, 'stock-options')}/receipt-cost`,
+          {
+            params,
+          },
+        ),
+      );
+      return {
+        mode: cost.mode ?? 'suggest',
+        costNow: cost.costNow ?? null,
+        average: cost.average ?? null,
+        lastCost: cost.lastCost ?? null,
+        lastAt: cost.lastAt ?? null,
+      };
     });
   }
 

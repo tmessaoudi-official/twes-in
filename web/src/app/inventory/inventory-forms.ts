@@ -6,6 +6,8 @@ import {
   STOCK_LOCATION_KINDS,
   STOCK_MOVEMENT_KINDS,
   STOCK_LOSS_REASONS,
+  COST_BASES,
+  type CostOnReceive,
   STOCK_SOURCE_TYPES,
   type StockLevelRow,
   type StockLocationInput,
@@ -486,6 +488,7 @@ export function movementForm(
   locations: readonly StockLocationRow[],
   tracking: StockProductOption['tracking'] = 'none',
   withCost = false,
+  costMode: CostOnReceive | null = null,
 ): FormDescriptor {
   return {
     id: `stock-${operation}`,
@@ -574,6 +577,22 @@ export function movementForm(
                 },
               ]
             : []),
+          // Only where the company leaves it to the person: the other modes decide, and a form never asks what is decided.
+          ...(operation === 'receive' && withCost && costMode === 'suggest'
+            ? [
+                {
+                  id: 'applyCost',
+                  label: `${STOCK_FIELDS}.applyCost`,
+                  kind: 'select' as const,
+                  options: [
+                    { value: '', label: 'inventory.movement.apply_cost.none' },
+                    { value: 'last', label: 'inventory.movement.apply_cost.last' },
+                    { value: 'average', label: 'inventory.movement.apply_cost.average' },
+                  ],
+                  hint: 'inventory.movement.apply_cost_hint',
+                },
+              ]
+            : []),
         ],
       },
     ],
@@ -597,6 +616,7 @@ export function movementValues(locations: readonly StockLocationRow[]): FormValu
     lotCode: '',
     lotExpiresOn: '',
     unitCost: '',
+    applyCost: '',
     reason: '',
     note: '',
   };
@@ -636,6 +656,7 @@ function lotFields(
 }
 
 export function movementInput(operation: StockOperation, values: FormValues): StockMovementInput {
+  const basis = COST_BASES.find((candidate) => candidate === values['applyCost']);
   return {
     operation,
     productId: text(values['productId']),
@@ -645,6 +666,10 @@ export function movementInput(operation: StockOperation, values: FormValues): St
     quantity: text(values['quantity']),
     ...(operation === 'receive' && text(values['unitCost']) !== ''
       ? { unitCost: text(values['unitCost']) }
+      : {}),
+    // Only with a cost typed: the API ignores a choice with nothing to apply, and a stale one is not sent.
+    ...(operation === 'receive' && text(values['unitCost']) !== '' && basis !== undefined
+      ? { applyCost: basis }
       : {}),
     ...(operation === 'loss'
       ? {
