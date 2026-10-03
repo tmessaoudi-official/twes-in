@@ -6,7 +6,7 @@ import { provideRouter, Router } from '@angular/router';
 import { trackNavigation } from './navigation-activity';
 import { RequestActivity } from './request-activity';
 
-@Component({ template: '' })
+@Component({ selector: 'app-navigation-activity-blank', template: '' })
 class Blank {}
 
 describe('trackNavigation', () => {

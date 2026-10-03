@@ -144,11 +144,13 @@ function viewport(width: BehaviorSubject<number>) {
   };
 }
 
-@Component({ template: '' })
+// A component with no selector gets Angular's implicit one, and two such components with an empty template share an
+// ID with each other and with Material's style loaders (NG0912): each one names itself.
+@Component({ selector: 'app-blank-page', template: '' })
 class BlankPage {}
 
 /** Counts how many times it was built, which is how a rebuilt screen is told from a kept one. */
-@Component({ template: '' })
+@Component({ selector: 'app-counting-page', template: '' })
 class CountingPage {
   static built = 0;
   constructor() {

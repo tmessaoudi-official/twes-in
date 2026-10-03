@@ -47,7 +47,7 @@ class StaticLoader implements TranslateLoader {
   }
 }
 
-@Component({ template: '' })
+@Component({ selector: 'app-bell-blank', template: '' })
 class Blank {}
 
 const inCompany = (id: string): SignedInState =>

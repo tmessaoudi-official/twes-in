@@ -63,7 +63,7 @@ class StaticLoader implements TranslateLoader {
   }
 }
 
-@Component({ template: '' })
+@Component({ selector: 'app-settings-area-blank', template: '' })
 class Blank {}
 
 describe('SettingsArea', () => {

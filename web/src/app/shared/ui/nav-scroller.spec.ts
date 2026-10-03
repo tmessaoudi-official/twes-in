@@ -5,7 +5,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { NavScroller } from './nav-scroller';
 
-@Component({ template: '' })
+@Component({ selector: 'app-nav-scroller-blank', template: '' })
 class Blank {}
 
 @Component({

@@ -17,7 +17,7 @@ class StaticLoader implements TranslateLoader {
   }
 }
 
-@Component({ template: '' })
+@Component({ selector: 'app-page-tabs-blank', template: '' })
 class Blank {}
 
 @Component({

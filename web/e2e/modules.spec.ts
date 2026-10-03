@@ -117,3 +117,23 @@ test('a company asks to be told when a planned module arrives, the operator read
     await setInterest(page, 'zakat', false);
   }
 });
+
+// A value of the wrong type answers 422 with its violations (API Platform 5; it was 400 before), through the real
+// session and CSRF header a screen uses. Nothing is switched: the refusal happens before any module changes.
+test('a wrong-typed value is refused with 422 and names the field, and changes nothing', async ({
+  page,
+}) => {
+  await signIn(page);
+  const answer = await page.evaluate(async (csrf) => {
+    const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+    const refused = await fetch(`/api/companies/${me.company.id}/modules/customers`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+      body: JSON.stringify({ enabled: 'no' }),
+    });
+    return { status: refused.status, body: await refused.text() };
+  }, CSRF);
+  expect(answer.status).toBe(422);
+  expect(answer.body).toContain('enabled');
+  expect(await customersStatus(page)).toBe(200);
+});
