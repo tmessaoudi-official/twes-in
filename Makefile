@@ -12,12 +12,44 @@ COMPOSE_PROFILES ?= $(if $(LAN_HOST),lan)
 # Live development by default (compose.live.yaml, docs/START.md § 1): every docker compose command below, and any a
 # recipe starts, sees the same services. Never set in .env, which a plain `docker compose` (CI's) reads too.
 COMPOSE_FILE ?= compose.yaml:compose.live.yaml
+# Everything that parses, tests or builds the project runs in a container, never on the host's PHP, Composer or Node
+# (docs/SPEC.md § 7): the host needs Docker, make, bash and git, nothing else. The services are `tools` (PHP, the gates'
+# own tools, the Docker CLI) and `web-tools` (Node, Playwright's Chromium), compose.yaml, profile `tools`. They run as
+# the host user, with the working tree mounted at its own path (see compose.yaml for why); these are what they read.
+HOST_REPO := $(CURDIR)
+HOST_UID := $(shell id -u)
+HOST_GID := $(shell id -g)
+DOCKER_GID := $(shell stat -c %g /var/run/docker.sock 2>/dev/null)
+TOOLS_TMP := /tmp/twes-in-tools-$(HOST_UID)
+export HOST_REPO HOST_UID HOST_GID DOCKER_GID TOOLS_TMP
 export LAN_HOST LAN_ORIGIN COMPOSE_PROFILES COMPOSE_FILE
-.PHONY: up up-images live-refresh down reset logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e gallery notices
+# A directory of the host's own for the toolchain's temporary files, made here as this user or Docker makes it as root.
+TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T tools
+WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
+# `npm ci` only when package-lock.json is newer than the last one that finished here.
+NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e gallery notices tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
+
+php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
+	@$(TOOLS) php -l $(FILE)
+
+tools:         ## CMD='…' in the PHP toolchain container, from the repo root: what used to run on the host's PHP, e.g. make tools CMD='cd api && bin/console cache:clear'
+tools: tools-image
+	$(TOOLS) sh -c '$(CMD)'
+
+web-tools:     ## CMD='…' in the Node toolchain container, from web/: e.g. make web-tools CMD='npm run icons'
+web-tools: web-tools-image
+	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && $(CMD)'
+
+tools-image:   ## build the PHP toolchain image (a no-op when nothing under infra/api changed)
+	docker compose --profile tools build -q tools
+
+web-tools-image: ## build the Node + Playwright toolchain image
+	docker build -q --load -f infra/web/tools.Dockerfile -t twes-in-web-tools infra/web >/dev/null
 
 up:            ## start the whole stack LIVE: an edit under api/ or web/ shows without a rebuild (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, a phone's HTTPS door :8443), then seed
 	@# The live volumes mount inside the host's api/ and web/; made here, as this user, or Docker makes them as root.
-	mkdir -p api/vendor api/var web/node_modules web/.angular
+	mkdir -p api/vendor api/var web/node_modules web/.angular var/tmp var/cache
 	docker compose up -d --build --wait
 	$(MAKE) seed
 	@echo "On this computer: http://localhost:$${WEB_PORT:-8090}"
@@ -52,10 +84,15 @@ operator-code: ## the seeded operator's authenticator code, with how long it liv
 	docker compose exec -T api php -r 'require "vendor/autoload.php"; $$left = 30 - (time() % 30); if ($$left < 12) { fwrite(STDERR, "waiting {$$left}s: the code now would expire while you type it\n"); sleep($$left); $$left = 30; } echo (new App\Identity\Infrastructure\Mfa\OtphpTotpCodes())->codeAt("JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP", new DateTimeImmutable()), "  (valid {$$left}s)", PHP_EOL;'
 
 api-openapi:   ## export the OpenAPI document the TypeScript types are generated from
+api-openapi: tools-image
+	$(TOOLS) make --no-print-directory in-api-openapi
+in-api-openapi:
+	mkdir -p api/vendor api/var var/tmp var/cache
+	cd api && composer install --no-interaction --no-progress --prefer-dist
 	cd api && bin/console api:openapi:export --output=var/openapi.json
 
-api-types: api-openapi   ## regenerate web/src/app/api (types only, gitignored)
-	cd web && npm run api:types
+api-types: api-openapi web-tools-image   ## regenerate web/src/app/api (types only, gitignored)
+	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run api:types'
 
 down:          ## stop it, keep the database volume
 	docker compose down
@@ -70,6 +107,9 @@ reset:         ## DESTRUCTIVE clean start (docs/START.md): deletes the database 
 	$(MAKE) up
 
 versions:      ## every version pin, read from the file that holds it (docs/UPDATE.md says where each is copied and how to bump it)
+versions: tools-image
+	$(TOOLS) make --no-print-directory in-versions
+in-versions:
 	bash scripts/versions.sh
 
 logs:
@@ -77,7 +117,9 @@ logs:
 
 gate: gate-licences gate-api gate-web   ## everything CI checks except e2e
 
-gate-licences:
+gate-licences: tools-image
+	$(TOOLS) make --no-print-directory in-gate-licences
+in-gate-licences:
 	bash scripts/gates/tests/dependency-licences.test.sh
 	bash scripts/gates/tests/spdx-headers.test.sh
 	bash scripts/gates/tests/executable-bits.test.sh
@@ -115,23 +157,43 @@ gate-licences:
 	bash scripts/gates/stored-items.sh
 	bash scripts/gates/icons-declared.sh
 
-gate-api:      ## needs the postgres service up (make up, or docker compose up -d postgres)
+gate-api:      ## the postgres service is started for it (the tests need a real database)
+gate-api: tools-image
+	docker compose up -d --wait postgres
+	$(TOOLS) make --no-print-directory in-gate-api
+in-gate-api:
+	mkdir -p api/vendor api/var var/tmp var/cache
+	cd api && composer install --no-interaction --no-progress --prefer-dist
 	cd api && composer gate
 
-gate-web: api-openapi   ## npm run gate starts with api:types, which reads api/var/openapi.json
-	cd web && npm run gate
+gate-web: api-openapi web-tools-image   ## npm run gate starts with api:types, which reads api/var/openapi.json
+	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run gate'
 
-test-api:
+test-api: tools-image
+	docker compose up -d --wait postgres
+	$(TOOLS) make --no-print-directory in-test-api
+in-test-api:
 	cd api && vendor/bin/phpunit
 
-test-web:
-	cd web && npx ng test --watch=false
+test-web: web-tools-image
+	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx ng test --watch=false'
 
-e2e:           ## needs the full stack up
-	cd web && npx playwright test
+E2E_ARGS ?=
+# The browser build the project's own @playwright/test names (the image installs the same version: scripts/gates/version-pins.sh),
+# kept in var/cache/ms-playwright (gitignored). Downloaded on Docker's default network, NOT the host's the toolchain runs on:
+# on the host network the download timed out in every try here (this machine's IPv6 route to Google's storage is dead,
+# docs/START.md); on the default network it took 23 s (measured 2026-10-03, no environment variable needed).
+playwright-browser: web-tools-image
+	mkdir -p var/cache/ms-playwright
+	docker run --rm -u $(HOST_UID):$(HOST_GID) -e HOME=/tmp -e PLAYWRIGHT_BROWSERS_PATH=$(HOST_REPO)/var/cache/ms-playwright -v $(HOST_REPO)/var/cache/ms-playwright:$(HOST_REPO)/var/cache/ms-playwright twes-in-web-tools playwright install chromium >/dev/null
 
-gallery:       ## every screen, desktop and phone, light and dark, into var/claude/gallery (needs the full stack up and make fixtures; GALLERY_COMPANY picks the company)
-	cd web && npx playwright test -c playwright.gallery.config.ts
+e2e: playwright-browser   ## needs the full stack up; E2E_ARGS passes options through, e.g. E2E_ARGS=--shard=1/3
+	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx playwright test $(E2E_ARGS)'
 
-notices:       ## regenerate THIRD-PARTY-NOTICES.md after any dependency change
+gallery: playwright-browser   ## every screen, desktop and phone, light and dark, into var/claude/gallery (needs the full stack up and make fixtures; GALLERY_COMPANY picks the company)
+	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx playwright test -c playwright.gallery.config.ts'
+
+notices: tools-image   ## regenerate THIRD-PARTY-NOTICES.md after any dependency change
+	$(TOOLS) make --no-print-directory in-notices
+in-notices:
 	php scripts/notices/generate-third-party-notices.php

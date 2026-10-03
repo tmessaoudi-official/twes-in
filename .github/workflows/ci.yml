@@ -19,118 +19,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5'
-          coverage: none
-      - run: bash scripts/gates/tests/dependency-licences.test.sh
-      - run: bash scripts/gates/tests/spdx-headers.test.sh
-      - run: bash scripts/gates/tests/executable-bits.test.sh
-      - run: bash scripts/gates/tests/icon-buttons-named.test.sh
-      - run: bash scripts/gates/tests/outcomes-as-toasts.test.sh
-      - run: bash scripts/gates/tests/compose-log-rotation.test.sh
-      - run: bash scripts/gates/tests/version-pins.test.sh
-      - run: bash scripts/gates/tests/design-tokens.test.sh
-      - run: bash scripts/gates/tests/permission-labels.test.sh
-      - run: bash scripts/gates/tests/planned-module-labels.test.sh
-      - run: bash scripts/gates/tests/setting-labels.test.sh
-      - run: bash scripts/gates/tests/presentation-settings-parity.test.sh
-      - run: bash scripts/gates/tests/tour-anchors.test.sh
-      - run: bash scripts/gates/tests/coming-gated.test.sh
-      - run: bash scripts/gates/tests/stored-items.test.sh
-      - run: bash scripts/gates/tests/production-image.test.sh
-      - run: bash scripts/gates/tests/icons-declared.test.sh
-      # The self-hosted logrotate configuration, rotated for real (docs/SPEC.md § 7, 2026-09-17).
-      - run: command -v logrotate || (sudo apt-get update && sudo apt-get install -y logrotate)
-      - run: bash infra/self-hosted/tests/logrotate.test.sh
-      # The web server passes a TLS proxy's scheme to the API, run for real in its own image.
-      - run: bash infra/web/tests/forwarded-proto.test.sh
-      - run: bash infra/web/tests/live-proxy.test.sh
-      - run: php scripts/gates/dependency-licences.php
-      - run: bash scripts/gates/spdx-headers.sh
-      - run: bash scripts/gates/executable-bits.sh
-      - run: bash scripts/gates/icon-buttons-named.sh
-      - run: bash scripts/gates/outcomes-as-toasts.sh
-      - run: bash scripts/gates/compose-log-rotation.sh
-      # Every copy of a version pin agrees: a bump that moves one copy builds one thing and tests another (docs/UPDATE.md).
-      - run: bash scripts/gates/version-pins.sh
-      - run: bash scripts/gates/design-tokens.sh
-      # Every permission a role may be given has a label a person can read, in both languages (row 104).
-      - run: bash scripts/gates/permission-labels.sh
-      - run: bash scripts/gates/planned-module-labels.sh
-      - run: bash scripts/gates/setting-labels.sh
-      # A preference the SPA writes but the API never declares is silently lost on reload (docs/SPEC.md § 7, 2026-09-22).
-      - run: bash scripts/gates/presentation-settings-parity.sh
-      - run: bash scripts/gates/tour-anchors.sh
-      # A « Bientôt » chip drawn without reading showComing stays after a person hid what is coming (docs/SPEC.md § 7, row 150).
-      - run: bash scripts/gates/coming-gated.sh
-      - run: bash scripts/gates/stored-items.sh
-      # The icon font is cut to the declared icons: a name written in a template must be one of them (docs/SPEC.md § 8 row 168).
-      - run: bash scripts/gates/icons-declared.sh
+      # Everything runs in the project's own containers (docs/SPEC.md § 7): the runner needs Docker and nothing else.
+      # The Makefile hands the services the runner's uid and the checkout's path; docs/START.md § 1.
+      - run: make gate-licences
 
   # WHY: the API tier's gate — code style, PHPStan at level max, PHPUnit against a REAL PostgreSQL 18,
   # because money and tenancy bugs live in SQL and a mocked database cannot show them.
   api:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:18.6-trixie
-        env:
-          POSTGRES_DB: twes_test
-          POSTGRES_USER: twes
-          POSTGRES_PASSWORD: twes
-        ports: ['5433:5432']
-        options: >-
-          --health-cmd "pg_isready -U twes -d twes_test"
-          --health-interval 3s --health-timeout 3s --health-retries 20
-    env:
-      DATABASE_URL: "postgresql://twes:twes@127.0.0.1:5433/twes?serverVersion=18&charset=utf8"
-    defaults:
-      run:
-        working-directory: api
     steps:
       - uses: actions/checkout@v7
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5'
-          extensions: pdo_pgsql, intl, zip, opcache, bcmath
-          ini-values: date.timezone=UTC
-          coverage: none
-      - uses: actions/cache@v6
-        with:
-          path: ~/.cache/composer
-          key: composer-${{ hashFiles('api/composer.lock') }}
-      - run: composer install --no-interaction --no-progress --prefer-dist
-      - run: composer gate
-      # The OpenAPI document is the contract the web job generates its TypeScript types from.
-      - run: bin/console api:openapi:export --output=var/openapi.json
-      - uses: actions/upload-artifact@v7
-        with:
-          name: openapi
-          path: api/var/openapi.json
-          retention-days: 7
+      # Starts the compose postgres service and runs the gate in the tools image: the same PostgreSQL 18 and PHP 8.5 as
+      # the stack, never the runner's.
+      - run: make gate-api
 
   # WHY: lint, formatting, the component tests, and the production build the web image is made from. Needs
   # the api job's OpenAPI artifact: the gate starts by generating the TypeScript types from it.
   web:
     runs-on: ubuntu-latest
-    needs: [api]
-    defaults:
-      run:
-        working-directory: web
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: web/.nvmrc
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-      - uses: actions/download-artifact@v8
-        with:
-          name: openapi
-          path: api/var
-      - run: npm ci --no-audit --no-fund
-      - run: npm run gate
+      # The gate starts by generating the TypeScript types from the OpenAPI document, which `make gate-web` exports
+      # itself, from the same tools image the api job uses, so the two jobs cannot read different contracts.
+      - run: make gate-web
 
   # WHY: the production image (infra/api/Dockerfile, stage prod) is what a deployment runs, and nothing else here
   # builds it: e2e runs the development stage. Each thing it promises can go quietly, a stage left in dev mode, the
@@ -177,21 +88,9 @@ jobs:
       - run: docker compose up -d --build --wait
       # The operator must carry a second factor; the scenarios compute its codes from this known dev secret.
       - run: docker compose exec -T api bin/console app:seed --operator-password=twes-operator-dev --operator-totp-secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: web/.nvmrc
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-      - run: npm ci --no-audit --no-fund
-        working-directory: web
-      # WHY: --with-deps runs apt-get update over every source on the runner, and the preinstalled Google Chrome
-      # source answered "Hash Sum mismatch" twice in a row on 2026-09-09 (run 34384052255 and its re-run),
-      # failing the job before a test ran. Playwright brings its own Chromium; that source is never needed here.
-      - run: sudo rm -f /etc/apt/sources.list.d/google-chrome*.list /etc/apt/sources.list.d/google-chrome*.sources
-      - run: npx playwright install --with-deps chromium
-        working-directory: web
-      - run: npx playwright test --shard=${{ matrix.shard }}/3
-        working-directory: web
+      # Playwright and its Chromium run in the web-tools container on the host's network (docs/START.md § 1), so
+      # 127.0.0.1:8090 is the stack's published port, as on a developer's machine.
+      - run: make e2e E2E_ARGS=--shard=${{ matrix.shard }}/3
       - if: failure()
         run: docker compose logs --no-color
       # WHY: the dot reporter CI uses writes no HTML report, so web/playwright-report alone uploaded nothing and a

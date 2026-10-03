@@ -163,18 +163,50 @@ tables, essay gotchas) was retired with the reset. What applies here:
   after a resource property change; docs/START.md § 2), web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, `lan` :8443 a phone's HTTPS door on this machine's network address, `infra/lan/Caddyfile`; the api image migrates at
   start, then `seed`: operator `operator@twes.local` / `twes-operator-dev`, authenticator secret
   `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`, `make operator-code` prints its current code; Playwright signs the operator in once, `web/e2e/session.ts`; `web/e2e/axe.ts` is the one WCAG scan, waiting for a fresh toast, and `web/e2e/toast.ts` the announced toast), `make gate` (licences + `composer gate`
-  + `npm run gate`, which starts by regenerating the types; `composer test` migrates the test database first),
+  + `npm run gate`, each in its toolchain container, below; `npm run gate` starts by regenerating the types and `composer test` migrates the test database first),
   `make e2e` (Playwright against the running stack), `make fixtures` (the demo companies, appended after `seed`).
   These are exactly CI's jobs; run the gate chain AFTER `git add -A`, because the SPDX gate and
   `git ls-files` see staged files and a cached-only enumeration misses a brand-new one.
-- Node 26 for the web tier (`web/.nvmrc`). On this machine it is nvm's
-  `/stack/tools/nvm/versions/node/v26.*/bin` (v26.8.2 on 2026-09-13; /stack's env-update bumps the patch), which a
-  fresh shell does not have on PATH.
-- PHP 8.5 for the api tier, as in CI. The host's first `php` on PATH is phpbrew's `php-master` (8.6-dev), which
-  php-cs-fixer refuses to run on: prepend `/stack/tools/phpbrew/php/php-8.5.11/bin` (8.5.10 was replaced by /stack's env-update; `ls /stack/tools/phpbrew/php`) before `composer gate`.
+- **No PHP, Composer or Node runs on the host** (developer ruling, 2026-10-02: every project but `/stack` runs its
+  stages in Docker). The host needs Docker, `make`, `bash` and `git`. Use the table below; never `composer …`, `php …`,
+  `npm …`, `npx …` or `node …` on the host, and never prepend a phpbrew or nvm directory to `PATH`.
+- FLAGGED, obsolete once nothing runs on the host, awaiting the developer's OK to delete: the PATH notes this file
+  carried for the host's toolchain: Node 26 was nvm's `/stack/tools/nvm/versions/node/v26.*/bin`, and the host's first
+  `php` was phpbrew's `php-master` (8.6-dev), which php-cs-fixer refuses, so `/stack/tools/phpbrew/php/php-8.5.*/bin` went
+  first. The same applies to `docs/START.md` § 1's "Obsolete" block, `.claude/rules/expertise-core.md` § 4's debug-PHP
+  line, and the Playwright manual-install and IPv6 lessons.
+
+## Run everything in Docker
+
+The toolchain is two images, `tools` (`infra/api/Dockerfile` stage `tools`: PHP 8.5, Composer, git, jq, perl, python3,
+logrotate, the Docker CLI) and `web-tools` (`infra/web/tools.Dockerfile`: Node 26 and Playwright's system libraries),
+run by `compose.yaml` under the `tools` profile as the host user, on the host's network, with the working tree mounted at
+its own path and a temporary directory outside it (`/tmp/twes-in-tools-<uid>`). `docs/START.md` § 1 says why each of
+those three is needed. Run them through `make`, which hands compose the uid, the path and the socket's group.
+
+| Command | Service | What it replaces |
+|---|---|---|
+| `make gate` (`gate-licences`, `gate-api`, `gate-web`) | `tools`, `web-tools` | `make gate` on host PHP and Node |
+| `make gate-licences` | `tools` | the gate chain's `php` and `bash` lines, with `logrotate`, `jq`, `perl`, `python3`, `docker` |
+| `make gate-api`, `make test-api` | `tools` (+ compose `postgres`) | `cd api && composer gate`, `vendor/bin/phpunit` |
+| `make gate-web`, `make test-web`, `make api-types` | `web-tools` | `cd web && npm run gate`, `npx ng test`, `npm run api:types` |
+| `make api-openapi` | `tools` | `bin/console api:openapi:export` on host PHP |
+| `make e2e`, `make gallery` (`E2E_ARGS=…`) | `web-tools` | `npx playwright test` and a host-installed Chromium |
+| `make notices`, `make versions` | `tools` | `php scripts/notices/…`, `bash scripts/versions.sh` |
+| `make php-lint FILE=…` | `tools` | `php -l`, what `.claude/hooks/lint-on-write.sh` runs after every edit |
+| `make tools CMD='…'`, `make web-tools CMD='…'` | `tools`, `web-tools` | any other `composer`, `bin/console`, `npm`, `npx` command |
+| CI jobs `licences`, `api`, `web`, `e2e` | the same | `setup-php`, `setup-node`, a postgres service container, `apt-get install logrotate` |
+
+Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Makefile and the hook call on their own
+(`id`, `stat`, `mkdir`, `rm`, `ip`, `sed`, `jq`). The `prod-image` CI job and `make up` already ran in Docker.
 
 ## Lessons
 
+- Read a build's or download's exit code on its own (`cmd >log 2>&1; echo exit=$?`), never through `| tail`: the pipe's
+  status is tail's, and three failed `docker build`s read as passes (2026-10-03). Playwright's browser download passes
+  on Docker's default network and times out on the host's (dead IPv6 route), so `make playwright-browser` runs it there.
+- The toolchain's `TMPDIR` is outside the working tree: `vendoredFonts` asks git which paths are ignored, and a fixture
+  built under `var/` (ignored) is invisible to it, which read as four gate-test failures that passed on the host.
 - A raw DBAL result is `mixed` under PHPStan max and a bare cast is refused: read it through a validating helper
   (`DataFixtures/Scale/Rows`) that throws on the unexpected. A sort or uniqueness check over numbers must partition by
   the series (company, establishment, document type), or another company's own numbers interleave (2026-09-29).

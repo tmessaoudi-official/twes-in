@@ -44,6 +44,27 @@ RUN composer dump-autoload --optimize --classmap-authoritative \
 # build takes this image as an additional context). Exported here, at build time, so a fresh clone needs
 # nothing outside git to build the web image; it is the same command the CI api job runs for the web job.
 
+# Every command the developer and CI run on this project, in one image (compose.yaml, service `tools`): the dev stage's
+# PHP plus what the gates call. Nothing of the repo is copied in; the working tree is mounted, so a gate reads what is
+# on disk. The dependencies it installs are the working tree's own (api/vendor), made by the host user.
+FROM base AS tools
+ENV APP_ENV=dev
+RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+# php.ini-development caps a CLI process at 128M, and the functional suite alone peaks at 216M: the first container run
+# died with "Allowed memory size of 134217728 bytes exhausted" in the DOM crawler. A test runner is not a web worker.
+RUN printf 'memory_limit=-1\n' > "$PHP_INI_DIR/conf.d/40-tools.ini"
+# hadolint ignore=DL3008
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends bash ca-certificates git jq logrotate make perl python3 \
+ && rm -rf /var/lib/apt/lists/*
+# The Docker CLI and Compose, for the gates that drive containers through the host's socket.
+COPY --from=docker:29.8.2-cli /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=docker:29.8.2-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
+# A one-off command, not a server: no migrations, no worker, no health check.
+ENTRYPOINT []
+CMD ["bash"]
+HEALTHCHECK NONE
+
 FROM base AS prod
 
 ENV APP_ENV=prod

@@ -63,6 +63,7 @@ Review date: 2026-10-02   Validation mode: advisory   Core: .claude/rules/expert
 - Stock under concurrency (advisory locks) is NOT certified under two connections; login throttle counters are per-container (filesystem cache).  [D known issues, via v2]
 
 ## Evidence surfaces (what counts as proof)
+- Everything runs in the `tools` container through `make` (CLAUDE.md § Run everything in Docker), never on a host PHP.
 - Behaviour: the phpunit run's own tally line (`OK (n tests...)`), never a pipeline exit; `composer gate` green = lint+stan+test; PHPStan only via `composer stan`.  [T 7; C]
 - Architecture/tenancy: the named Architecture test red under a sabotage that lands (breaks the condition, not the feature), green after byte-exact restore.  [C Lessons; global sabotage-check]
 - Scale: measured numbers on `twes_scale` (count time, query count), not reasoning.  [D scale findings]

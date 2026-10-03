@@ -67,7 +67,7 @@ Review date: 2026-10-02   Validation mode: advisory   Core: .claude/rules/expert
 - Contradictions to not re-apply: quiet-ledger tones/direction, gear in top bar, `accent`/`green` tones: all superseded/withdrawn; the current settings fold default and `presentation.settings-list` moved several times, read SPEC before touching  [r2-decisions contradictions]
 
 ## Evidence surfaces (what counts as proof)
-- `cd web && npm run gate` (`api:types`, `lint`, `format:check`, `test`, `build`) read from its own exit/`[OK]`, never a pipe; repo gates `scripts/gates/*.sh` (each with a test).
+- `make gate-web` (runs `npm run gate` in the `web-tools` container, never on a host Node; `api:types`, `lint`, `format:check`, `test`, `build`) read from its own exit/`[OK]`, never a pipe; repo gates `scripts/gates/*.sh` (each with a test).
 - `make e2e` through the real stack with axe; local timing is not evidence under load (see CLAUDE.md).
 - Visible change: BEFORE and AFTER screenshots of the real rendered result (live `make up`, or `make gallery` desktop+phone, light+dark into `var/claude/gallery`); jsdom/green tests alone are incomplete. Non-visual change: state "no visual surface".
 - Contrast and focus claims are certified only by an axe scan or a measured value, never by reading CSS.

@@ -3,18 +3,18 @@
 # Several versions are written in more than one file, and a bump that moves only one copy builds one thing locally and
 # tests another in CI (docs/UPDATE.md lists every pin and its copies; docs/SPEC.md § 7, 2026-09-19). This gate
 # refuses any copy that disagrees, and any copy that disappeared: a pin found nowhere is a failure, never a skip.
-#   postgres image         compose.yaml = .github/workflows/ci.yml
-#   serverVersion          every DATABASE_URL (compose.yaml, ci.yml, api/.env*) = the postgres image's major
-#   PHP                    infra/api/Dockerfile's frankenphp tag = every php-version in ci.yml = composer.json's floor
-#   PHP extensions         infra/api/Dockerfile install-php-extensions = ci.yml extensions
-#   Node major             web/.nvmrc = infra/web/Dockerfile's node image = web/package.json engines
+#   postgres image         compose.yaml (the one copy: CI runs the compose service, never a pin of its own)
+#   serverVersion          every DATABASE_URL (compose.yaml, api/.env*) = the postgres image's major
+#   PHP                    infra/api/Dockerfile's frankenphp tag = composer.json's floor
+#   Node                   web/.nvmrc = infra/web/Dockerfile's node image = web/package.json engines; and the
+#                          tools image (infra/web/tools.Dockerfile) runs the same full version
+#   Playwright             web/package-lock.json's @playwright/test = infra/web/tools.Dockerfile's ARG
 #   Symfony minor          every symfony/* pinned "X.Y.*" = composer.json extra.symfony.require
 #   Angular major          every @angular/* in web/package.json = @angular/core's
 # Usage: version-pins.sh [--root DIR]
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
-ci=.github/workflows/ci.yml
 problems=()
 problem() { problems+=("$1"); }
 # grab FILE ERE: every match of ERE in FILE, one per line (nothing when the file is absent).
@@ -24,47 +24,28 @@ inline() { tr '\n' ' ' <<<"$1" | sed 's/ *$//'; }
 
 # postgres image
 compose_pg=$(grab compose.yaml 'image: postgres:[^[:space:]"]+' | sed 's/^image: //' | sort -u)
-ci_pg=$(grab "$ci" 'image: postgres:[^[:space:]"]+' | sed 's/^image: //' | sort -u)
 pg_major=
 if [[ -z "$compose_pg" ]]; then problem "postgres image: found none in compose.yaml"
-elif [[ -z "$ci_pg" ]]; then problem "postgres image: found none in $ci"
-elif [[ "$(printf '%s\n%s\n' "$compose_pg" "$ci_pg" | sort -u | wc -l)" -ne 1 ]]; then
-  problem "postgres image: compose.yaml has $(inline "$compose_pg"), $ci has $(inline "$ci_pg")"
+elif [[ "$(wc -l <<<"$compose_pg")" -ne 1 ]]; then problem "postgres image: compose.yaml names more than one ($(inline "$compose_pg"))"
 else pg_major=${compose_pg#postgres:}; pg_major=${pg_major%%[.-]*}; fi
 
 # serverVersion follows the image's major
 found=0
-for file in compose.yaml "$ci" api/.env api/.env.*; do
+for file in compose.yaml api/.env api/.env.*; do
   [[ -f "$root/$file" ]] || continue
   while read -r v; do
     found=$((found + 1))
     [[ -n "$pg_major" && "${v%%.*}" != "$pg_major" ]] && problem "serverVersion=$v in $file, the postgres image is $pg_major"
   done < <(grep -oE 'serverVersion=[0-9.]+' "$root/$file" | sed 's/^serverVersion=//')
 done
-((found)) || problem "serverVersion: found none in compose.yaml, $ci or api/.env*"
+((found)) || problem "serverVersion: found none in compose.yaml or api/.env*"
 
 # PHP minor
 image_php=$(grab infra/api/Dockerfile 'frankenphp:[^[:space:]]*-php[0-9]+\.[0-9]+' | sed 's/.*-php//' | head -1)
-mapfile -t ci_php < <(grab "$ci" "php-version: *['\"]?[0-9]+\.[0-9]+" | grep -oE '[0-9]+\.[0-9]+$')
 composer_php=$([[ -f "$root/api/composer.json" ]] && jq -r '.require.php // empty' "$root/api/composer.json" | grep -oE '[0-9]+\.[0-9]+' | head -1)
 if [[ -z "$image_php" ]]; then problem "PHP: found none in infra/api/Dockerfile (dunglas/frankenphp:<v>-php<X.Y>-<os>)"
-else
-  ((${#ci_php[@]})) || problem "PHP: found no php-version in $ci"
-  for v in "${ci_php[@]}"; do [[ "$v" == "$image_php" ]] || problem "PHP: $ci says $v, infra/api/Dockerfile says $image_php"; done
-  if [[ -z "$composer_php" ]]; then problem "PHP: found none in api/composer.json require.php"
-  elif [[ "$composer_php" != "$image_php" ]]; then problem "PHP: api/composer.json requires >=$composer_php, infra/api/Dockerfile runs $image_php"; fi
-fi
-
-# PHP extensions
-image_ext=$(grab infra/api/Dockerfile 'install-php-extensions[^\\&]*' | sed 's/^install-php-extensions//' | tr -s ' ' '\n' | sed '/^$/d' | sort -u)
-ci_ext=$(grab "$ci" 'extensions: .*' | sed 's/^extensions: //' | sed 's/[, ][, ]*/\n/g' | sed '/^$/d' | sort -u)
-if [[ -z "$image_ext" ]]; then problem "PHP extensions: found none in infra/api/Dockerfile"
-elif [[ -z "$ci_ext" ]]; then problem "PHP extensions: found none in $ci"
-else
-  only_image=$(comm -23 <(echo "$image_ext") <(echo "$ci_ext")); only_ci=$(comm -13 <(echo "$image_ext") <(echo "$ci_ext"))
-  [[ -n "$only_image" ]] && problem "PHP extensions: in infra/api/Dockerfile only: $(inline "$only_image")"
-  [[ -n "$only_ci" ]] && problem "PHP extensions: in $ci only: $(inline "$only_ci")"
-fi
+elif [[ -z "$composer_php" ]]; then problem "PHP: found none in api/composer.json require.php"
+elif [[ "$composer_php" != "$image_php" ]]; then problem "PHP: api/composer.json requires >=$composer_php, infra/api/Dockerfile runs $image_php"; fi
 
 # Node major
 nvmrc=$([[ -f "$root/web/.nvmrc" ]] && tr -d ' v\n' < "$root/web/.nvmrc"); nvmrc=${nvmrc%%.*}
@@ -80,6 +61,22 @@ else
   if [[ -z "$engines" ]]; then problem "Node: found none in web/package.json engines.node"
   elif [[ "$engines" != "$nvmrc" ]]; then problem "Node: web/package.json engines wants >=$engines, web/.nvmrc says $nvmrc"; fi
 fi
+
+# The tools image runs the web image's Node, to the patch: a gate that passes on one and ships on another proves nothing.
+image_node_full=$(grab infra/web/Dockerfile 'FROM node:[0-9]+\.[0-9]+\.[0-9]+' | head -1 | sed 's/^FROM node://')
+tools_node_full=$(grab infra/web/tools.Dockerfile 'FROM node:[0-9]+\.[0-9]+\.[0-9]+' | head -1 | sed 's/^FROM node://')
+if [[ -z "$tools_node_full" ]]; then problem "Node: found none in infra/web/tools.Dockerfile (FROM node:<X.Y.Z>-...)"
+elif [[ -n "$image_node_full" && "$tools_node_full" != "$image_node_full" ]]; then
+  problem "Node: infra/web/tools.Dockerfile runs $tools_node_full, infra/web/Dockerfile runs $image_node_full"
+elif [[ -n "$nvmrc" && "${tools_node_full%%.*}" != "$nvmrc" ]]; then
+  problem "Node: infra/web/tools.Dockerfile runs $tools_node_full, web/.nvmrc says $nvmrc"; fi
+
+# Playwright: the browser build the tools image's system libraries are installed for is the one the tests run
+pw_lock=$([[ -f "$root/web/package-lock.json" ]] && jq -r '.packages["node_modules/@playwright/test"].version // empty' "$root/web/package-lock.json")
+pw_image=$(grab infra/web/tools.Dockerfile 'ARG PLAYWRIGHT_VERSION=[0-9.]+' | head -1 | sed 's/.*=//')
+if [[ -z "$pw_lock" ]]; then problem "Playwright: found no @playwright/test in web/package-lock.json"
+elif [[ -z "$pw_image" ]]; then problem "Playwright: found no ARG PLAYWRIGHT_VERSION in infra/web/tools.Dockerfile"
+elif [[ "$pw_lock" != "$pw_image" ]]; then problem "Playwright: infra/web/tools.Dockerfile installs $pw_image, web/package-lock.json locks $pw_lock"; fi
 
 # Symfony minor
 if [[ -f "$root/api/composer.json" ]]; then
@@ -103,5 +100,5 @@ if ((${#problems[@]})); then
   printf '  %s\n' "${problems[@]}"
   exit 1
 fi
-printf 'version-pins: OK — 7 pins agree across their copies (postgres %s, PHP %s, Node %s, Symfony %s, Angular %s)\n' \
-  "${compose_pg#postgres:}" "$image_php" "$nvmrc" "$sf" "$core"
+printf 'version-pins: OK — 7 pins agree across their copies (postgres %s, PHP %s, Node %s, Playwright %s, Symfony %s, Angular %s)\n' \
+  "${compose_pg#postgres:}" "$image_php" "$nvmrc" "$pw_lock" "$sf" "$core"

@@ -8,7 +8,9 @@
 # 5 variants x 2 models — ~/.claude review-remediation row 33). Findings also go to stderr for humans.
 set -uo pipefail
 SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lint-on-write.sh"
-TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+# Under the working tree's var/ (gitignored): the PHP check runs in a container that sees the tree and nothing else.
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+mkdir -p "$ROOT/var/tmp"; TMP=$(mktemp -d "$ROOT/var/tmp/lint-hook.XXXXXX"); trap 'rm -rf "$TMP"' EXIT
 PASS=0; FAIL=0
 ok()  { PASS=$((PASS+1)); echo "  ok   $1"; }
 bad() { FAIL=$((FAIL+1)); echo "  FAIL $1"; }
@@ -42,6 +44,11 @@ for f in good.php good.sh n.txt; do
   run "$TMP/$f"
   [[ $RC == 0 && -z "$OUT" && -z "$ERR" ]] && ok "silent on $f" || bad "noise on $f: rc=$RC out='$OUT' err='$ERR'"
 done
+
+# A file the container cannot see is skipped silently, not misreported as a syntax error.
+printf '<?php\nfunction f( {\n' > /tmp/lint-hook-outside-$$.php
+run "/tmp/lint-hook-outside-$$.php"; rm -f "/tmp/lint-hook-outside-$$.php"
+[[ $RC == 0 && -z "$OUT" ]] && ok "a PHP file outside the working tree is skipped" || bad "outside file: rc=$RC out='${OUT:0:80}'"
 
 echo "$PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]]

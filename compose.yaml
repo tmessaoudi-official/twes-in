@@ -138,6 +138,65 @@ services:
       - "127.0.0.1:${MAILPIT_UI_PORT:-8092}:8025"
       - "127.0.0.1:${MAILPIT_SMTP_PORT:-8093}:1025"
 
+  # The toolchain: every test, gate and console command of this project runs in the next two services, never on the
+  # host's PHP, Composer or Node (docs/SPEC.md § 7). Off unless the `tools` profile is named, so `up` never starts them;
+  # the Makefile runs them (`make gate`). Three properties are what lets a command behave as it did on the host:
+  #  - the working tree is mounted at its OWN host path, so a path a gate hands the Docker socket is one the daemon sees;
+  #  - host networking, so 127.0.0.1:5433 (api/.env) and 127.0.0.1:8090 (Playwright) mean what they meant on the host;
+  #  - the developer's uid, so a file written into the tree is theirs. HOST_UID, HOST_GID, DOCKER_GID and HOST_REPO
+  #    come from the Makefile (docs/START.md § 1); a bare `docker compose` falls back to uid 1000 and the current directory.
+  tools:
+    logging: *logging
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: infra/api/Dockerfile
+      target: tools
+    image: twes-in-tools
+    network_mode: host
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    group_add: ["${DOCKER_GID:-0}"]
+    working_dir: "${HOST_REPO:-${PWD}}"
+    environment:
+      HOME: /tmp
+      IN_TOOLS: "1"
+      HOST_REPO: "${HOST_REPO:-${PWD}}"
+      HOST_UID: "${HOST_UID:-1000}"
+      HOST_GID: "${HOST_GID:-1000}"
+      DOCKER_GID: "${DOCKER_GID:-0}"
+      # A gate's temporary directory is bind-mounted into containers it starts: it must be a path the daemon sees too, and
+      # outside the working tree, whose .gitignore would otherwise hide every fixture a gate builds there from `git`.
+      TMPDIR: "${TOOLS_TMP:-/tmp/twes-in-tools}"
+      COMPOSER_HOME: "${HOST_REPO:-${PWD}}/var/cache/composer-home"
+      COMPOSER_CACHE_DIR: "${HOST_REPO:-${PWD}}/var/cache/composer"
+      COMPOSER_ALLOW_SUPERUSER: "0"
+    volumes:
+      - "${HOST_REPO:-${PWD}}:${HOST_REPO:-${PWD}}"
+      - "${TOOLS_TMP:-/tmp/twes-in-tools}:${TOOLS_TMP:-/tmp/twes-in-tools}"
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # The web tier's toolchain: Node and Playwright's Chromium (infra/web/tools.Dockerfile). Same properties as `tools`.
+  web-tools:
+    logging: *logging
+    profiles: [tools]
+    # Built by `make web-tools-image` (docker build, not compose: see the Makefile for why).
+    image: twes-in-web-tools
+    network_mode: host
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    working_dir: "${HOST_REPO:-${PWD}}/web"
+    environment:
+      HOME: /tmp
+      IN_TOOLS: "1"
+      TMPDIR: "${TOOLS_TMP:-/tmp/twes-in-tools}"
+      npm_config_cache: "${HOST_REPO:-${PWD}}/var/cache/npm"
+      # The browser build @playwright/test names, put there by `make playwright-browser` and kept in the tree's gitignored var/.
+      # Passed through only when the caller sets it (`BASE_URL=… make e2e`): an empty one would defeat the config's default.
+      BASE_URL:
+      PLAYWRIGHT_BROWSERS_PATH: "${HOST_REPO:-${PWD}}/var/cache/ms-playwright"
+    volumes:
+      - "${HOST_REPO:-${PWD}}:${HOST_REPO:-${PWD}}"
+      - "${TOOLS_TMP:-/tmp/twes-in-tools}:${TOOLS_TMP:-/tmp/twes-in-tools}"
+
 volumes:
   postgres-data:
   api-files:

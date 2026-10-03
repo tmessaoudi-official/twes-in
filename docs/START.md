@@ -45,17 +45,34 @@ the links in the mails point to `localhost`.
 
 ## 1. What to install
 
-**To run the application only:** Docker with Compose v2, and `make`. Nothing else: PHP, Node and every dependency
-are inside the images.
+**On the host: Docker with Compose v2, `make`, `bash` and `git`.** Nothing else. No PHP, Composer or Node is installed
+on the host and none is used: every test, gate, console command and the browser tests run in containers, as your own
+uid, with the working tree mounted at its own path (`compose.yaml`, services `tools` and `web-tools`, profile `tools`).
+The Makefile is the one entry point:
 
-**To develop and run the checks** (`make gate`, `make e2e`): also PHP 8.5 with the extensions `pdo_pgsql intl zip
-opcache bcmath`, Composer, and Node at the major in `web/.nvmrc`. Then, once and after every lock file change:
+| You want | Run | Where it runs |
+|---|---|---|
+| the whole stack | `make up` | the stack's own services |
+| every gate | `make gate` (= `gate-licences`, `gate-api`, `gate-web`) | `tools` (PHP 8.5, the gates' own tools, the Docker CLI) and `web-tools` (Node 26, Playwright's system libraries) |
+| one API suite | `make test-api` (starts postgres first), or `docker compose --profile tools run --rm tools sh -c 'cd api && vendor/bin/phpunit tests/Unit'` | `tools` |
+| the web unit tests | `make test-web` | `web-tools` |
+| the browser tests | `make e2e` (`E2E_ARGS=--shard=1/3` passes options), `make gallery` | `web-tools`, on the host's network so `127.0.0.1:8090` is the stack's published port |
+| the OpenAPI document, the types, the notices, the pins | `make api-openapi`, `make api-types`, `make notices`, `make versions` | `tools`, `web-tools` |
+| a PHP syntax check | `make php-lint FILE=<path>` | `tools` |
 
-```sh
-(cd api && composer install)
-(cd web && npm ci)
-(cd web && npx playwright install chromium)
-```
+The first run of each builds its image (`make tools-image`, `make web-tools-image`; both are no-ops when nothing
+changed) and installs the dependencies into the working tree's own `api/vendor` and `web/node_modules`, which are
+gitignored; Chromium is downloaded once into `var/cache/ms-playwright`. `make` hands the services your uid, the
+checkout's path, the Docker socket's group and a temporary directory outside the tree (`/tmp/twes-in-tools-<uid>`:
+a gate that builds a fixture in a directory git ignores would see nothing in it). A bare `docker compose` falls back to
+uid 1000 and the current directory.
+
+The Docker-driving gates (`compose-log-rotation`, `forwarded-proto`, `live-proxy`) start containers through the host's
+socket, which is why the tree is mounted at its own path: a path the gate gives the daemon is one the daemon sees.
+
+### Obsolete since the toolchain moved to Docker (kept until the developer agrees to delete them)
+
+Nothing below is used by any command above. It is what installing PHP and Node on the host used to need.
 
 **On this machine (`/stack`)** neither is on a fresh shell's PATH, and the first `php` found is phpbrew's
 `php-master` (8.6-dev), which php-cs-fixer refuses. Put these first:
@@ -390,15 +407,15 @@ make e2e              # Playwright against the running stack (make up first)
 ```
 
 - **Stage new files before running the gates** (`git add`): the SPDX and executable-bit gates read `git ls-files`.
-- After changing an API resource, run `cd api && bin/console cache:clear && bin/console cache:pool:clear --all`
+- After changing an API resource, run `make tools CMD='cd api && bin/console cache:clear && bin/console cache:pool:clear --all'`
   before `make gate-web`, or the OpenAPI export is stale.
 - `make e2e` targets http://127.0.0.1:8090. For another port: `BASE_URL=http://127.0.0.1:<port> make e2e`.
 - CI splits the e2e suite into three shards, each on its own runner with its own stack and database. To rerun the
-  files of a red shard locally: `cd web && npx playwright test --shard=2/3` (the job's name gives the shard). A
+  files of a red shard locally: `make e2e E2E_ARGS=--shard=2/3` (the job's name gives the shard). A
   scenario that only passes after another file ran has a hidden dependency the split will expose.
 - The web stylesheet needs the icon font cut to the declared icons (`web/scripts/subset-icons.mjs`), which
   `npm test`, `npm start` and `npm run build` generate first. A bare `npx ng test` skips those hooks: on a fresh clone,
-  run `cd web && npm run icons` once, or it fails with `Could not resolve "./generated/material-symbols-outlined.woff2"`.
+  run `make web-tools CMD='npm run icons'` once, or it fails with `Could not resolve "./generated/material-symbols-outlined.woff2"`.
 - `make versions` prints every version pin (see `docs/UPDATE.md`).
 - `make gallery` screenshots every screen of the running stack, desktop and phone, light and dark, into
   `var/claude/gallery/` with a `manifest.json` (what was captured, and what could not be opened). It checks nothing;
@@ -429,9 +446,9 @@ the next build or gate.
 | `make up` fails with "port is already allocated" | Another program holds a port from § 0. Change it in your shell or `.env.local` (§ 0) |
 | The code is refused though it looks right | Five attempts in five minutes are spent (§ 3), or the clock of the machine drifted. Wait five minutes |
 | A web change does not show | Under `make up-images` the web image is a static build: `docker compose up -d --build web`; under `make up`, `make logs` shows the dev server's compile error (§ 2) |
-| `make gate-web` fails on API types that CI accepts | Stale dev cache: `cd api && bin/console cache:clear && bin/console cache:pool:clear --all` |
+| `make gate-web` fails on API types that CI accepts | Stale dev cache: `make tools CMD='cd api && bin/console cache:clear && bin/console cache:pool:clear --all'` |
 | Every e2e scenario lands on `/two-factor` | Demo's two-step switch is on (§ 4) |
-| e2e fails at `browserType.launch: Executable doesn't exist` | Playwright's browser is missing: § 1 |
+| e2e fails at `browserType.launch: Executable doesn't exist` | Playwright's browser is missing: `make e2e` downloads it into `var/cache/ms-playwright` on its first run |
 | The api image fails at `cache:clear` ("Cannot autowire service …") | Work in progress in the working tree went into the build (§ 2). Finish it, or bring up a clean worktree |
 | The api container restarts in a loop | A migration failed: `docker compose logs api` shows which, and the container refuses to serve until it passes |
 | The production api container stops at once, naming `APP_SECRET`, `APP_MFA_KEY` or a realtime key | Production refuses a missing secret and the development ones committed in `api/.env` (§ 10). Give it its own |
