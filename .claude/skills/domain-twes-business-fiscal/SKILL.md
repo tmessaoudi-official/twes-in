@@ -51,7 +51,7 @@ Review date: 2026-10-02   Validation mode: advisory   Core: .claude/rules/expert
 - Official XSDs: `TEJRSCodesOperations_v1.0.xsd` / DeclarationRS (TEJ), TEIF 1.8.8, EN 16931 CII (Factur-X); validate generated XML against them; PA sandboxes (Iopole; SUPER PDP) for FR e-invoicing.  [R tax-data-*]
 - Primary portals: Legifrance, BOFiP, JORT, finances.gov.tn, teledecgo.finances.gov.tn (monthly TN form, no API), impots.gouv.fr.  [TN, FR]
 - Till hardware via browser only: Epson ePOS-Print XML over HTTP to the printer, ESC/POS drawer pulse `1B 70 m t1 t2`, ZXing-wasm camera scan, `/customer-display` on screen 2; no QZ Tray (LGPL), no Star/Sunmi SDKs; card: FR via provider cloud API (SumUp/Stripe/Adyen), TN manual "carte" tender. Printer voltage and hardware behaviour NOT tested [Unverified].  [R till-hardware]
-- `bin/console app:stock:replay-delivery-note <company> <dn>`; `make notices`; `--dump-rules` of the licence gate.  [SPEC §8, LICENSING.md]
+- `make tools CMD='cd api && bin/console app:stock:replay-delivery-note <company> <dn>'`; `make notices`; `--dump-rules` of the licence gate.  [SPEC §8, LICENSING.md]
 
 ## What "good" looks like (acceptance criteria)
 - Pricing vectors green incl. TND (3 decimals) and per-rate-group rounding; no float on money; NUMERIC(14,3).

@@ -71,7 +71,7 @@ Review date: 2026-10-02   Validation mode: advisory   Core: .claude/rules/expert
 - A contrast "defect" can be phantom: refute it with a sabotage that worsens the number (10.92 vs 14.42). [SPEC §7 2026-09-16]
 - Certification covered behaviour, never usability: a lens cannot see what the developer cannot use; walk the running stack. [SPEC §7 2026-09-21]
 - e2e on one shared DB: assume non-empty lists, run-unique names, cleanup via in-page fetch that throws on `!ok`. [r2-tech §8.15]
-- Entity change with no migration: no schema-diff check exists (Unverified beyond a grep of Makefile/ci.yml/tests); `composer test` migrates from files. [r2-tech §8.6]
+- Entity change with no migration: no schema-diff check exists (Unverified beyond a grep of Makefile/ci.yml/tests); `composer test` (in the `tools` container) migrates from files. [r2-tech §8.6]
 - Local PHP is ZTS DEBUG GCOV: exit 134 `zend_hash.h:1658` is not a test failure; rerun once, investigate only a recurring abort on the same test; CI runs release PHP. [memories §3]
 - Stale e2e container: web serves a STATIC build; `docker compose up -d --build web api` first, images build from the WORKING TREE (a worktree-at-HEAD bring-up proves a clean clone). [memories §3]
 - Plain `docker compose up` forgets what `make up` exports (LIVE override via Makefile `COMPOSE_FILE`, never `.env`); use `make up`/`make up-images`. [SPEC §7 2026-09-23]
@@ -90,7 +90,7 @@ Review date: 2026-10-02   Validation mode: advisory   Core: .claude/rules/expert
 | Level | Counts as evidence | Does NOT prove |
 |---|---|---|
 | Unit (PHPUnit, Vitest) | named test run with tally, seen RED first for the stated reason | wiring, layout, worker-mode state, anything the in-memory fake hides |
-| Integration/Functional | real container + Postgres test DB (`composer test`) | DB state outside DAMA (rate-limiter, files, sessions) |
+| Integration/Functional | real container + Postgres test DB (`composer test`, in the `tools` container) | DB state outside DAMA (rate-limiter, files, sessions) |
 | Architecture | `tests/Architecture` green; sabotage a forbidden import to see red | runtime behaviour |
 | Repo gates | `make gate-licences` tail lines per gate + the gate's own test + a sabotage | a grep gate over interpolated keys or an unreached branch |
 | Licence/SPDX | `dependency-licences.php` (`--dump-rules` lists the rules) and `spdx-headers.sh` on the STAGED tree | a runtime-reachable licence not in a lock file (vendored wasm: COMPONENTS.json) |

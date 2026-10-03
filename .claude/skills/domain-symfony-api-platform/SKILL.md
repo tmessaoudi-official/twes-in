@@ -34,7 +34,7 @@ Review date: 2026-10-02   Validation mode: advisory   Core: .claude/rules/expert
 | Comments say WHY, no dates, no SPEC row numbers; official docs for every tool, departure recorded in SPEC section 7 | any edit | D 2026-09 process | 2026-10-02 |
 
 ## Tools of the trade (as configured)
-- `composer gate` = `lint` (php-cs-fixer `@Symfony`+`@Symfony:risky`, strict_types, forced two-line SPDX header) -> `stan` (`cache:warmup --env=test`, phpstan `level: max` on src/ AND tests/, phpstan-symfony reading the test container XML, no baseline, 0 ignores) -> `test` (migrate test DB, phpunit).  [T 7]
+- `composer gate` (run it as `make gate-api`, in the `tools` container) = `lint` (php-cs-fixer `@Symfony`+`@Symfony:risky`, strict_types, forced two-line SPDX header) -> `stan` (`cache:warmup --env=test`, phpstan `level: max` on src/ AND tests/, phpstan-symfony reading the test container XML, no baseline, 0 ignores) -> `test` (migrate test DB, phpunit).  [T 7]
 - PHPUnit 13: `failOnDeprecation/Notice/Warning`, `error_reporting=-1`, DAMA per-test rollback (static connection). Kinds: Unit (plain TestCase, hand-written `InMemory*`/`Fake*`/`Fixed*`/`Capturing*` doubles in tests/Support, NOT mocks), Integration (KernelTestCase, real Postgres), Functional (`ApiTestCase`, KernelBrowser), Architecture (rules as tests).  [T 4]
 - Architecture tests are the deptrac equivalent: LayerDependenciesTest, CompanyColumnTest, AuditedChangesTest, ApiResourceStateTest, DoctrineMappingTest, SchemaInSyncTest, UnauthenticatedSweepTest (walks the router: every `/api` route 401 without session, public list must equal firewall PUBLIC_ACCESS, never 5xx), PaginatorCountTest, ComposePortsTest, WorkerModeTest, SearchIndexesTest.  [T 4,7; D]
 - Repo gates `scripts/gates/*.sh` (each with a test in scripts/gates/tests, run before the gate): version-pins (one version, several files), permission-labels, setting-labels, licences, spdx-headers, executable-bits, production-image.  [T 1,8.11]
@@ -64,7 +64,7 @@ Review date: 2026-10-02   Validation mode: advisory   Core: .claude/rules/expert
 
 ## Evidence surfaces (what counts as proof)
 - Everything runs in the `tools` container through `make` (CLAUDE.md § Run everything in Docker), never on a host PHP.
-- Behaviour: the phpunit run's own tally line (`OK (n tests...)`), never a pipeline exit; `composer gate` green = lint+stan+test; PHPStan only via `composer stan`.  [T 7; C]
+- Behaviour: the phpunit run's own tally line (`OK (n tests...)`), never a pipeline exit; `make gate-api` green = lint+stan+test; PHPStan only via `make tools CMD='cd api && composer stan'`.  [T 7; C]
 - Architecture/tenancy: the named Architecture test red under a sabotage that lands (breaks the condition, not the feature), green after byte-exact restore.  [C Lessons; global sabotage-check]
 - Scale: measured numbers on `twes_scale` (count time, query count), not reasoning.  [D scale findings]
 - CI is the arbiter for PHP release vs local debug build; `/api/health` + `production-image.php` prove the prod image; OpenAPI exported by the api job is the web job's input.  [T 1 CI; C]
