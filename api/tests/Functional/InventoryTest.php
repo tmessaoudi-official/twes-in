@@ -369,6 +369,20 @@ final class InventoryTest extends ApiTestCase
             $this->getJson($path);
             self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, $path);
         }
+
+        $this->createUser('buyer@twes.local', 'password-1234', $this->company(), ['product.read', 'product.cost.read'], 'buyer');
+        $this->login('buyer@twes.local', 'password-1234');
+        $this->getJson($ask);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the cost permission alone does not open the receipt read');
+        $this->getJson($this->path('products', $this->laptopId).'/cost-history');
+        self::assertResponseIsSuccessful();
+
+        $this->login('stock@twes.local', 'password-1234');
+        $other = $this->createCompany('Globex');
+        $this->getJson('/api/companies/'.$other->getId()->toRfc4122().'/stock-options/receipt-cost?productId='.$this->laptopId);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company');
+        $this->getJson('/api/companies/'.$other->getId()->toRfc4122().'/products/'.$this->laptopId.'/cost-history');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company');
     }
 
     public function testANoteWhoseStockNeverMovedIsReplayedOnceByTheCommand(): void
