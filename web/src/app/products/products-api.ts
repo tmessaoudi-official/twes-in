@@ -23,6 +23,7 @@ import type {
   ProductSubstituteProductSubstituteRead,
   StockTotalStockTotalRead,
 } from '../api/types.gen';
+import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import type { ListPage } from '../shared/list/list-types';
 import {
   BARCODE_ROLES,
@@ -93,6 +94,11 @@ export class ProductsApi {
         throw new Error('A page of products came without its total.');
       return { rows: page.member.map(toProduct), total: page.totalItems };
     });
+  }
+
+  /** Where the products the search finds are downloaded as a file, every page of them. */
+  exportUrl(companyId: string, search: ProductSearch, format: ExportFormat): string {
+    return exportAddress(companyId, 'products', toSearchParams(search), format);
   }
 
   async product(companyId: string, id: string): Promise<ProductRow> {

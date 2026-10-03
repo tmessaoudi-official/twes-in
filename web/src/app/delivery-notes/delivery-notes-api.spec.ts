@@ -248,6 +248,21 @@ describe('DeliveryNotesApi', () => {
     expect(page.total).toBe(91);
   });
 
+  it('names the file of what the list shows, with its words, choices and order and no page', () => {
+    const search = {
+      page: 3,
+      itemsPerPage: 50,
+      q: ' po ',
+      status: 'validated' as const,
+      customerId: 'k1',
+      order: { key: 'number' as const, direction: 'desc' as const },
+    };
+
+    expect(api.exportUrl('c/1', search, 'xlsx')).toBe(
+      '/api/companies/c%2F1/exports/delivery-notes.xlsx?q=po&status=validated&customerId=k1&order%5Bnumber%5D=desc',
+    );
+  });
+
   it('refuses a page that came without its total, rather than showing one page as the whole list', async () => {
     const pending = api.notes('c1', SEARCH);
     const request = http.expectOne(

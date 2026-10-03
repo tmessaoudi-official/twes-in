@@ -5,6 +5,7 @@
         {{ 'products.title' | translate }}
       </h1>
       <div class="flex flex-wrap gap-2">
+        <app-list-export [address]="exporter()" testId="products-export" />
         @if (mayWrite() && company()) {
           <a mat-stroked-button routerLink="/imports/products" data-testid="products-import">
             {{ 'import.action' | translate }}

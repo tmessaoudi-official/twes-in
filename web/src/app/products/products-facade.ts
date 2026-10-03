@@ -5,6 +5,7 @@ import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import { SettingsApi } from '../shared/settings/settings-api';
 import type { SettingRow } from '../shared/settings/settings-types';
+import type { ExportFormat } from '../shared/list/export-address';
 import { ProductsApi, ProductsRefused } from './products-api';
 import { trackingOf } from './products-types';
 import type {
@@ -64,6 +65,10 @@ export class ProductsFacade {
       this.optionsSignal.set(options);
       this.customFieldsSignal.set(customFields);
     });
+  }
+
+  exportUrl(companyId: string, search: ProductSearch, format: ExportFormat): string {
+    return this.api.exportUrl(companyId, search, format);
   }
 
   /**

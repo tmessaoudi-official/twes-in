@@ -80,6 +80,10 @@ describe('ProductsPage', () => {
     error: error.asReadonly(),
     loadListContext: vi.fn(),
     loadPage: vi.fn(),
+    exportUrl: vi.fn(
+      (companyId: string, _search: unknown, format: string) =>
+        `/api/companies/${companyId}/exports/products.${format}`,
+    ),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -123,6 +127,15 @@ describe('ProductsPage', () => {
     });
     fixture = TestBed.createComponent(ProductsPage);
     await settle();
+  });
+
+  it('offers what the list shows as a CSV or an Excel file', () => {
+    expect(q('products-export-csv')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/products.csv',
+    );
+    expect(q('products-export-xlsx')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/products.xlsx',
+    );
   });
 
   it('lists the products with their kind, category, unit and price at the currency scale', () => {

@@ -3,6 +3,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { DeliveryNotesApi, DeliveryNotesRefused } from './delivery-notes-api';
 import type { PickAsked } from '../shared/form/pick-api';
+import type { ExportFormat } from '../shared/list/export-address';
 import { PriceListsApi } from '../price-lists/price-lists-api';
 import type { ResolvedPrice } from '../price-lists/price-lists-types';
 import type {
@@ -84,6 +85,10 @@ export class DeliveryNotesFacade {
       this.notesSignal.set(page.rows);
       this.totalSignal.set(page.total);
     });
+  }
+
+  exportUrl(companyId: string, search: DeliveryNoteSearch, format: ExportFormat): string {
+    return this.api.exportUrl(companyId, search, format);
   }
 
   /** The chips' counts for the search, the latest search's answer only, as for its page. */

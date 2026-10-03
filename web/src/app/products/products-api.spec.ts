@@ -82,6 +82,21 @@ describe('ProductsApi', () => {
     ]);
   });
 
+  it('names the file of what the list shows, with its words, choices and order and no page', () => {
+    const search = {
+      page: 2,
+      itemsPerPage: 50,
+      q: ' vis ',
+      kind: 'goods' as const,
+      isActive: false,
+      order: { key: 'name' as const, direction: 'asc' as const },
+    };
+
+    expect(api.exportUrl('c/1', search, 'csv')).toBe(
+      '/api/companies/c%2F1/exports/products.csv?q=vis&kind=goods&isActive=false&order%5Bname%5D=asc',
+    );
+  });
+
   it('reads the substitutes of a product and the stock on hand of products, listing every id asked for', async () => {
     const read = api.substitutes('c1', 'p1');
     http

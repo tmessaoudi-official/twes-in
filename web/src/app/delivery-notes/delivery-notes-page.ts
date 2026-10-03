@@ -8,6 +8,7 @@ import {
   DestroyRef,
   inject,
   OnInit,
+  signal,
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,6 +17,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell } from '../shared/list/data-list';
+import type { ExportFormat } from '../shared/list/export-address';
+import { ListExport } from '../shared/list/list-export';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { StatusBadge } from '../shared/ui/status-badge';
 import type { ListFacetCounts, ListQuery } from '../shared/list/list-types';
@@ -47,6 +50,7 @@ import {
     DayPipe,
     DataList,
     DataListCell,
+    ListExport,
     StatusBadge,
   ],
   templateUrl: './delivery-notes-page.html',
@@ -83,6 +87,15 @@ export class DeliveryNotesPage implements OnInit {
 
   /** What the list last asked the API for; the page is not read until the list has said what it wants. */
   private search: DeliveryNoteSearch | null = null;
+  private readonly searched = signal<DeliveryNoteSearch | null>(null);
+  /** What the list shows now, as a file: null until the list has asked for its first page. */
+  protected readonly exporter = computed(() => {
+    const companyId = this.company()?.id;
+    const search = this.searched();
+    return companyId && search !== null
+      ? (format: ExportFormat) => this.facade.exportUrl(companyId, search, format)
+      : null;
+  });
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
@@ -100,6 +113,7 @@ export class DeliveryNotesPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId) return;
     this.search = deliveryNoteSearch(query);
+    this.searched.set(this.search);
     void this.facade.loadPage(companyId, this.search);
     void this.facade.loadStatusCounts(companyId, this.search);
   }

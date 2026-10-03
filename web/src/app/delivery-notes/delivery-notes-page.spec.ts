@@ -83,6 +83,10 @@ describe('DeliveryNotesPage', () => {
     loadListContext: vi.fn(),
     loadPage: vi.fn(),
     loadStatusCounts: vi.fn(),
+    exportUrl: vi.fn(
+      (companyId: string, _search: unknown, format: string) =>
+        `/api/companies/${companyId}/exports/delivery-notes.${format}`,
+    ),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -134,6 +138,15 @@ describe('DeliveryNotesPage', () => {
     expect(facade.loadPage).toHaveBeenCalledWith(
       'c1',
       expect.objectContaining({ page: 1, itemsPerPage: 25, q: '', status: null }),
+    );
+  });
+
+  it('offers what the list shows as a CSV or an Excel file', () => {
+    expect(q('delivery-notes-export-csv')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/delivery-notes.csv',
+    );
+    expect(q('delivery-notes-export-xlsx')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/delivery-notes.xlsx',
     );
   });
 

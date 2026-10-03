@@ -18,6 +18,7 @@ import type {
   InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWriteValidationInvoiceFromDeliveryNotesWrite as InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite,
   InvoiceFromDeliveryNotesInvoiceResourceInvoiceReadValidationInvoiceFromDeliveryNotesWrite as InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead,
 } from '../api/types.gen';
+import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import type { ListPage } from '../shared/list/list-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import {
@@ -120,6 +121,11 @@ export class DeliveryNotesApi {
         throw new Error('A page of delivery notes came without its total.');
       return { rows: page.member.map(toNote), total: page.totalItems };
     });
+  }
+
+  /** Where the delivery notes the search finds are downloaded as a file, every page of them. */
+  exportUrl(companyId: string, search: DeliveryNoteSearch, format: ExportFormat): string {
+    return exportAddress(companyId, 'delivery-notes', toSearchParams(search), format);
   }
 
   /** What of the note is still to invoice, line by line: what the company's invoices already take, drafts included. */

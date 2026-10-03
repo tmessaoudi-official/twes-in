@@ -7,6 +7,7 @@ import {
   DestroyRef,
   inject,
   OnInit,
+  signal,
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,6 +16,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell } from '../shared/list/data-list';
+import type { ExportFormat } from '../shared/list/export-address';
+import { ListExport } from '../shared/list/list-export';
 import { StatusBadge } from '../shared/ui/status-badge';
 import type { ListQuery } from '../shared/list/list-types';
 import { type ProductListRow, productListRows, productSearch, productsList } from './product-forms';
@@ -34,6 +37,7 @@ import type { ProductSearch } from './products-types';
     AmountPipe,
     DataList,
     DataListCell,
+    ListExport,
     StatusBadge,
   ],
   templateUrl: './products-page.html',
@@ -59,6 +63,15 @@ export class ProductsPage implements OnInit {
 
   /** The page the list shows last asked for; a change elsewhere reads it again. */
   private search: ProductSearch | null = null;
+  private readonly searched = signal<ProductSearch | null>(null);
+  /** What the list shows now, as a file: null until the list has asked for its first page. */
+  protected readonly exporter = computed(() => {
+    const companyId = this.company()?.id;
+    const search = this.searched();
+    return companyId && search !== null
+      ? (format: ExportFormat) => this.facade.exportUrl(companyId, search, format)
+      : null;
+  });
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
@@ -76,6 +89,7 @@ export class ProductsPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId) return;
     this.search = productSearch(query);
+    this.searched.set(this.search);
     void this.facade.loadPage(companyId, this.search);
   }
 
