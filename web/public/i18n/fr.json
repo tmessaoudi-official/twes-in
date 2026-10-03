@@ -1498,6 +1498,7 @@
       "record": "Fiche",
       "defaults": "Valeurs par défaut",
       "homes": "Où il est rangé",
+      "costs": "Historique des coûts",
       "barcodes": "Codes-barres"
     },
     "title": "Produits",
@@ -1719,6 +1720,15 @@
       "ungrouped": "Ce produit n'a pas de groupe de substitution : nommez-en un dans sa fiche pour lister les produits qui peuvent le remplacer.",
       "none": "Aucun autre produit actif dans ce groupe.",
       "on_hand": "{{quantity}} en stock"
+    },
+    "costs": {
+      "title": "Historique des coûts",
+      "none": "Aucun changement de coût pour l’instant.",
+      "source": {
+        "created": "Fixé à la création du produit",
+        "edited": "Modifié sur le produit",
+        "receipt": "Appliqué par une réception de stock"
+      }
     }
   },
   "inventory": {

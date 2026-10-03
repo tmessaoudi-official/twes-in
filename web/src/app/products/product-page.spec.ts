@@ -404,6 +404,26 @@ describe('ProductPage', () => {
     expect(q('product-tab-homes')).toBeNull();
   });
 
+  it('keeps the cost history to a saved product, for whoever may read costs and sees them', async () => {
+    const hasTab = (): boolean =>
+      Array.from(
+        fixture.nativeElement.querySelectorAll('[role="tab"]') as NodeListOf<HTMLElement>,
+      ).some((tab) => (tab.textContent ?? '').includes('products.tabs.costs'));
+
+    await open(undefined);
+    expect(hasTab()).toBe(false);
+
+    product.set(laptop);
+    await open('p1');
+    expect(hasTab()).toBe(true);
+
+    auth.hasPermission.mockImplementation(
+      (permission: string) => permission !== 'product.cost.read',
+    );
+    await open('p1');
+    expect(hasTab()).toBe(false);
+  });
+
   // docs/SPEC.md § 7, 2026-09-23 slice 5.
   it('asks no cost of someone who may not read costs', async () => {
     auth.hasPermission.mockImplementation(

@@ -19,6 +19,7 @@ import type {
   ProductProductRead,
   ProductProductWriteValidationProductWrite as ProductProductWrite,
   ProductScanProductScanRead,
+  ProductCostChangeProductCostChangeRead,
   ProductSubstituteProductSubstituteRead,
   StockTotalStockTotalRead,
 } from '../api/types.gen';
@@ -34,6 +35,7 @@ import {
   type ProductCategoryRow,
   type ProductHomeRow,
   type ProductReorderPointRow,
+  type ProductCostChangeRow,
   type ProductSubstituteRow,
   type ProductInput,
   type ProductOptions,
@@ -318,6 +320,25 @@ export class ProductsApi {
           `${reorderPointsPath(companyId, productId)}/${encodeURIComponent(establishmentId)}`,
         ),
       ),
+    );
+  }
+
+  /** What the product has cost the company over time, the latest changes first; a 404 for whoever may not read costs. */
+  async costHistory(companyId: string, productId: string): Promise<ProductCostChangeRow[]> {
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<ProductCostChangeProductCostChangeRead[]>(
+            `${path(companyId, 'products', productId)}/cost-history`,
+          ),
+        )
+      ).map((raw) => ({
+        id: raw.id ?? '',
+        oldCost: raw.oldCost ?? null,
+        newCost: raw.newCost ?? null,
+        source: raw.source ?? 'edited',
+        at: raw.at ?? '',
+      })),
     );
   }
 

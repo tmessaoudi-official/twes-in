@@ -46,6 +46,42 @@ describe('ProductsApi', () => {
 
   afterEach(() => http.verify());
 
+  it('reads the cost history of a product, the latest first, naming what a missing field means', async () => {
+    const read = api.costHistory('c1', 'p1');
+    http.expectOne('/api/companies/c1/products/p1/cost-history').flush([
+      {
+        id: 'h2',
+        oldCost: '1000.0000',
+        newCost: '1300.0000',
+        source: 'receipt',
+        at: '2026-10-03T13:20:24+00:00',
+      },
+      {
+        id: 'h1',
+        oldCost: null,
+        newCost: '1000.0000',
+        source: 'created',
+        at: '2026-10-01T09:00:00+00:00',
+      },
+    ]);
+    expect(await read).toEqual([
+      {
+        id: 'h2',
+        oldCost: '1000.0000',
+        newCost: '1300.0000',
+        source: 'receipt',
+        at: '2026-10-03T13:20:24+00:00',
+      },
+      {
+        id: 'h1',
+        oldCost: null,
+        newCost: '1000.0000',
+        source: 'created',
+        at: '2026-10-01T09:00:00+00:00',
+      },
+    ]);
+  });
+
   it('reads the substitutes of a product and the stock on hand of products, listing every id asked for', async () => {
     const read = api.substitutes('c1', 'p1');
     http

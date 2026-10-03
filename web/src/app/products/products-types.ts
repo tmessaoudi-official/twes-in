@@ -58,6 +58,20 @@ export interface ProductRow {
   substitutionGroup: string | null;
 }
 
+/** What moved a product's cost price: its creation, a person's edit, or a stock receipt that applied one. */
+export type ProductCostSource = 'created' | 'edited' | 'receipt';
+
+/** One change of what a product costs the company, as the history lists it, the newest first. */
+export interface ProductCostChangeRow {
+  id: string;
+  /** The cost before and after, four decimals; null when the product had none, or lost it. */
+  oldCost: string | null;
+  newCost: string | null;
+  source: ProductCostSource;
+  /** An instant, ISO. */
+  at: string;
+}
+
 /** A product that can stand in for another, with what is on hand of it when the person may read stock. */
 export interface ProductSubstituteRow {
   id: string;

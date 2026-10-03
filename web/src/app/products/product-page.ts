@@ -29,6 +29,8 @@ import { ProductHomes } from './product-homes-facade';
 import { ProductHomesSection } from './product-homes';
 import { ProductReorderPoints } from './product-reorder-points-facade';
 import { ProductReorderPointsSection } from './product-reorder-points';
+import { ProductCostHistory } from './product-cost-history-facade';
+import { ProductCostHistorySection } from './product-cost-history';
 import { ProductSubstitutes } from './product-substitutes-facade';
 import { ProductSubstitutesSection } from './product-substitutes';
 import { CustomerView } from '../shared/customer-view/customer-view';
@@ -59,13 +61,14 @@ import { MatTabsModule } from '@angular/material/tabs';
     ProductHomesSection,
     ProductReorderPointsSection,
     ProductSubstitutesSection,
+    ProductCostHistorySection,
     ProductBarcodesSection,
     PriceCalculator,
   ],
   templateUrl: './product-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   // Its own instance per product screen: what one product's homes are is not shared state.
-  providers: [ProductHomes, ProductReorderPoints, ProductSubstitutes],
+  providers: [ProductHomes, ProductReorderPoints, ProductSubstitutes, ProductCostHistory],
 })
 export class ProductPage {
   private readonly facade = inject(ProductsFacade);
@@ -200,6 +203,11 @@ export class ProductPage {
    * are not allowed to see. Setting one is the PRODUCT's own permission, so `product.write` decides whether the
    * tab is editable — a reader sees where the product lives and changes nothing.
    */
+  /** The saved product whose cost history may be read: where the cost itself is shown, so never to a customer looking on. */
+  protected readonly costsOf = computed(() => {
+    const current = this.current();
+    return current && this.showsCost() ? current.id : null;
+  });
   protected readonly homesOf = computed(() => {
     const current = this.current();
     if (!current || !this.auth.hasModule('inventory') || !this.auth.hasPermission('stock.read')) {

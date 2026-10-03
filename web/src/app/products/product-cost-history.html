@@ -1,0 +1,33 @@
+<section class="flex flex-col gap-4" data-testid="product-cost-history">
+  <h3 class="text-base font-medium">{{ 'products.costs.title' | translate }}</h3>
+
+  @if (error(); as code) {
+    <p role="alert" data-testid="product-cost-history-error" class="text-error">
+      {{ 'products.errors.' + code | translate }}
+    </p>
+  }
+
+  <ul class="flex flex-col gap-2" data-testid="product-cost-history-list">
+    @for (row of rows(); track row.id) {
+      <li
+        class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
+        [attr.data-testid]="'product-cost-change-' + row.id"
+      >
+        <span class="tabular-nums">
+          {{ row.oldCost === null ? '—' : (row.oldCost | amount: 4) }}
+          →
+          {{ row.newCost === null ? '—' : (row.newCost | amount: 4) }}
+        </span>
+        <span class="text-sm opacity-80">
+          {{ 'products.costs.source.' + row.source | translate }} · {{ row.at | moment }}
+        </span>
+      </li>
+    } @empty {
+      @if (!busy()) {
+        <li class="text-sm opacity-80" data-testid="product-cost-history-none">
+          {{ 'products.costs.none' | translate }}
+        </li>
+      }
+    }
+  </ul>
+</section>
