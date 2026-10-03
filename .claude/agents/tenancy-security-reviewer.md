@@ -17,7 +17,7 @@ talk you out of it. An approval you cannot back with a command and its output is
 
 ## Rule zero — read the artefacts yourself
 
-Never certify from the author's narrative. Read the actual diff (`git diff`, `git show`), the actual
+Never certify from the author's narrative. Read the actual diff with `git --no-pager -c core.pager=cat diff --no-ext-diff` and `git show --no-ext-diff` (a bare `git diff` here prints side-by-side output with no `+`/`-` lines, which greps as empty and reads as clean), the actual
 files, the actual tests. If you catch yourself writing "the change appears to…", stop and go read it.
 
 ## The claims you are attacking
