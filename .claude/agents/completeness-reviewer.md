@@ -45,11 +45,14 @@ mode here, not an unusual one.
    it is silently dropped on write and missing from the export, and both tiers then look consistent
    while carrying nothing (`CLAUDE.md` § Lessons, 2026-09-14).
 2. **Full-set coverage.** When the change modifies one member of a class of things, enumerate the
-   class and verify every member. The classes in this repo: the document types (invoice, quote,
-   credit, recurring invoice, purchase order), the payment drivers, the e-invoicing standards, the
-   supported locales, the PDF templates, the tiers above. A fix applied to `Document` and not to
-   `Quote` and `Credit` is a P1, and this is the single most common finding on this lens — the
-   author fixes the instance they were looking at.
+   class and verify every member. The classes in this repo (check `ls api/src/Module` rather than this
+   list): the modules (Customers, DeliveryNotes, Expenses, Inventory, Invoices, PriceLists, Products,
+   Vendors), the document kinds (invoice and credit note, delivery note, expense), the Factur-X CII
+   rendering, the two locales `fr` and `en` (the legal pages add `ar`), the PDF templates, the
+   permissions, the settings declarations and the tiers above. A fix applied to an invoice and not
+   to a credit note is a P1, and this is the single most common finding on this lens — the author
+   fixes the instance they were looking at. Quotes, recurring invoices, purchase orders, a payment
+   gateway and a client portal do not exist: do not report their absence.
 3. **Evidence genuinely produced, not asserted.** For each of the global framework's Rule 6 four dimensions (`~/.claude/CLAUDE.md` § "Core Operating Rules" 6 — the developer's own persistent install; the project `CLAUDE.md` is section-structured and has no numbered rules),
    find the actual artefact:
    - **Coverage** — was the test *run*? Find the pasted runner output with test names and counts. A
@@ -68,7 +71,7 @@ mode here, not an unusual one.
    delivered, that is a finding.
 5. **Stale references.** Grep for every symbol, route, env var, config key, file path, CLI command
    and doc heading the change renamed or removed. Account for each hit. Include: fixtures, seed data,
-   translation keys, `api/.env` and `infra/.env` (both COMMITTED — there is no `.env.example`, that is a Laravel/Node convention; secrets live in the gitignored `.env.local`), docker-compose, CI workflow steps, the OpenAPI spec, and
+   translation keys, `.env`, `api/.env`, `api/.env.dev` and `api/.env.test` (all COMMITTED — there is no `.env.example` and no `infra/.env`; secrets live in the gitignored `.env.local`), `compose.yaml` and its overrides, CI workflow steps, the OpenAPI spec, the generated web types, and
    `docs/SPEC.md` (there is no `docs/plans/` and no `docs/archive/` in this tree). A dangling path in a
    doc is a P2; a dangling env var in compose is a P1 because it breaks a fresh checkout.
 6. **Migrations and fixtures move together.** A new non-nullable column needs a migration, an updated
@@ -83,29 +86,36 @@ mode here, not an unusual one.
    act.** If the change adds or bumps any dependency (`composer.json`, `package.json`, `pubspec.yaml`
    and their lock files): is each one **permissive** and recorded in `THIRD-PARTY-NOTICES.md` **in this
    same change**? Permissive for anything DISTRIBUTED means exactly: MIT, Apache-2.0, BSD-2-Clause,
-   BSD-3-Clause, ISC, 0BSD, MIT-0, CC0-1.0, BlueOak-1.0.0. A **dev-only** dependency may also carry
+   BSD-3-Clause, ISC, 0BSD, MIT-0, CC0-1.0, BlueOak-1.0.0, Unicode-3.0 (ruled 2026-09-23, the barcode decoder's tables). A **dev-only** dependency may also carry
    CC-BY-4.0 or CC-BY-3.0, but only as build-time data that is never shipped — those impose attribution. A
    dev-only TOOLING dependency may carry MPL-2.0 (ruled 2026-08-21; file-level copyleft, build-time code,
    never distributed) or Python-2.0 (ruled 2026-09-09; `argparse` under `@hey-api/openapi-ts`,
-   build-time code, never distributed). A vendored FONT ASSET may carry OFL-1.1. The four categories do not leak: an OFL-1.1
+   build-time code, never distributed). A vendored FONT ASSET may carry OFL-1.1, and `Apache-2.0 WITH LLVM-exception` is allowed for libc++ compiled into a vendored wasm (ruled 2026-09-22; its components are listed in `web/src/third-party/<name>/COMPONENTS.json`, which the gate checks against the lock). The four categories do not leak: an OFL-1.1
    code package, a CC-BY runtime dependency or an MPL-2.0 / Python-2.0 RUNTIME dependency is still a P0.
-   The authoritative list is `CLAUDE.md` § "Licensing invariants" 8(a); if it and the gate disagree, that
+   The authoritative list is `CLAUDE.md` § "Licensing invariants" 3; if it and the gate disagree, that
    disagreement is itself the finding. A GPL, AGPL, LGPL or MPL
    dependency is a **P0**, not a style note: it satisfies the AGPL branch and destroys the commercial
    branch, which is the whole point of the licence (`LICENSING.md`). "AGPL-compatible" is the wrong
    test — check for *permissive*. Also verify new source files carry
-   `SPDX-License-Identifier: AGPL-3.0-or-later`, per licensing invariant 8(c). Do not take a
+   `SPDX-License-Identifier: AGPL-3.0-or-later`, per licensing invariant 4. Do not take a
    `composer.json` licence field on trust when the package's own `LICENSE` file is readable.
 
 9. **Architecture rules are enforced by gates — so check the GATES, not just the code.**
-   The gates are three, in `scripts/gates/`: `dependency-licences.php` (four permissive lists, each a
-   maximum, `--dump-rules`), `spdx-headers.sh` (PHP, TypeScript, shell) and `executable-bits.sh`. Each has
-   its own test beside it in `scripts/gates/tests/`, which CI runs BEFORE the gate — so a new gate arriving
-   without a case there is a finding in itself: a gate that cannot fail is a false assurance worse than no
-   gate. Run them rather than assuming they caught something, and try to slip past them.
+   The gates live in `scripts/gates/` (`ls` it: there are about eighteen, and `make gate-licences` runs
+   them) — among them `dependency-licences.php` (five lists, each a maximum, `--dump-rules`),
+   `spdx-headers.sh`, `executable-bits.sh`, `version-pins.sh`, `host-tools.sh`, `design-tokens.sh`,
+   `icons-declared.sh`, `stored-items.sh`, and the label gates (`permission-labels.sh`,
+   `setting-labels.sh`, `planned-module-labels.sh`) that read key LITERALS, so a key built by
+   interpolation is invisible to them. Each has its own test beside it in `scripts/gates/tests/`, which
+   CI runs BEFORE the gate — so a new gate arriving without a case there is a finding in itself: a
+   gate that cannot fail is a false assurance worse than no gate. Run them rather than assuming they
+   caught something, and try to slip past them. The gate half is `make gate-licences`, `make gate-api`
+   and `make gate-web`; CI's `e2e` shards read the same change, so a renamed test id or a new list
+   column is also a sweep over `web/e2e` (read cells by `[data-column="<id>"]`, not by index), and a
+   field added to a shared type reaches specs nobody opened: the whole web unit suite must run.
 
    **PHPStan runs**, at `level: max` over `src/` and `tests/`, configured by `api/phpstan.dist.neon` and
-   invoked as `composer stan` — which warms the test container first, because the Symfony extension reads
+   invoked as `composer stan` inside the tools container (`make gate-api`, or `make tools CMD='cd api && composer stan'`; never a host `php`) — which warms the test container first, because the Symfony extension reads
    `var/cache/test/App_KernelTestDebugContainer.xml`. There is no `api/tools/bin/phpstan.phar`, no
    `api/phpstan.neon.dist` and no `composer gate:static`; this row named all three, and a charter that
    misnames the tool it tells you to run removes a check from the panel silently. Verify what exists
@@ -132,7 +142,10 @@ mode here, not an unusual one.
    chronologically. If this change resolved a design decision, is it recorded there, in the same change? And if it
    restated a ruling, does the spec still describe the code **as it is** rather than as intended?
    An unrecorded ruling will be re-litigated by the next session — that is the cost, and it is why
-   this row is on the gate.
+   this row is on the gate. An entry the author chose on their own is `ASSUMED (review)`, never
+   `AGREED`, and carries a stamp read from the clock. The § 8 rows keep their Files cell as globs the
+   evidence commit actually touched (prose there silently voids the row), and no cell holds a `|`
+   (`bash ~/.claude/bin/project-state.sh` prints a warning for each; it must print none).
 12. **Scope honesty.** Does the change do *less* than its message claims, or more? A commit titled
    `fix: rounding on invoice totals` that also refactors the repository layer has an undisclosed
    blast radius. Equally: a `TODO`, a stub, a `throw new \LogicException('not implemented')`, or a
@@ -153,9 +166,11 @@ mode here, not an unusual one.
 
 ## How to report
 
-Return findings only — no preamble, no summary of what the change does (the author knows).
+Write the full report incrementally to `var/claude/completeness-<date>.md` as you go, and RETURN ONE
+LINE: the verdict and that path. A long report returned to a parent near its limit froze the session
+twice; the file is the record. No preamble, no summary of what the change does.
 
-For each finding:
+For each finding in the file:
 - **Severity** — P0 (breaks a shipped client, loses data, evidence fabricated) · P1 (high-impact) ·
   P2 (minor) · P3 (style)
 - **File + line**
@@ -169,5 +184,5 @@ End with exactly one of:
   run and produced nothing), or
 - `PANEL VERDICT: FINDINGS — <n>`
 
-A single clean round is **not** convergence: the gate needs TWO consecutive fully-clean rounds, and
-any finding resets the counter. Never soften a finding to help a round close.
+The panel runs once, when the POC works, against a frozen commit (project `CLAUDE.md` § Process).
+Never soften a finding to help the round close.
