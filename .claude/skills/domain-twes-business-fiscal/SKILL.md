@@ -2,7 +2,7 @@
 name: domain-twes-business-fiscal
 description: Use when a task touches invoices, credit notes, delivery notes, VAT/FODEC/timbre/retenue, TN or FR fiscal presets, numbering, stock valuation, subscriptions/licensing, tills/cash registers, TEJ/Factur-X/TEIF e-invoicing in twes-in. How an expert in small-business invoicing and POS compliance for Tunisia and France works: rules, sources, evidence, failure modes, reviewer lenses.
 ---
-Review date: 2026-10-03   Validation mode: advisory   Core: .claude/rules/expertise-core.md
+Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/expertise-core.md
 
 <!-- Tags: [TN]=docs/fiscal/TN.md, [FR]=FR.md, [TC]=docs/research/till-certification.md, [SPEC]=docs/SPEC.md §7 date, [R]=research doc. Every fiscal rule is UNVALIDATED by an accountant: use as hypothesis, cite, never assert. Ratified vs ASSUMED/PROVISIONAL SPEC entries: only ratified ones are rulings. -->
 
@@ -113,10 +113,3 @@ Review date: 2026-10-03   Validation mode: advisory   Core: .claude/rules/expert
 
 ## Canonical sources
 - docs/fiscal/TN.md, FR.md (source lists: Code TVA, CGI, CIRPP/IS, Legifrance, BOFiP, finances.gov.tn, EN 16931-1:2017); docs/research/till-certification.md, till-hardware.md, tax-data-tunisia.md, tax-data-france.md; LICENSING.md; docs/SPEC.md §7-8. Read 2026-10-02 (digests of 2026-09-25 research). Unsourced entries stay [Unverified].
-
-## Changes vs v2
-- Added TEJ (mandatory since 2026-01-01), FR e-invoicing calendar, Factur-X, TTN/TEIF status, retention and FEC caveat.
-- Added till training mode, fiscal-journal requirement, attestation/major-version/self-hoster-editor nuance (TC), hardware tools.
-- Fixed: rounding is preset-only (not a setting); TTC entry refusal; credit note of paid invoice allowed; `withholdingCompleting` supersedes `withholdingAsCharged`.
-- Added licensing/dual-licence dependency rule, subscription-from-dates invariant, stock valuation (uncertified), margin-unknown rule.
-- Added ratified-vs-ASSUMED caution; mentions-refusal at issue; dropped lens "licence lawyer" as its own (merged); 5 lenses -> 4.

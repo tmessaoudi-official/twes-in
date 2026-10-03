@@ -1,5 +1,5 @@
 # EXPERTISE - twes-in   (L4 core; loaded every session in this project)
-Review date: 2026-10-03   Validation mode: advisory   Packs (project skills in .claude/skills/): domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci
+Review date: 2026-10-03 12:16   Validation mode: advisory   Packs (project skills in .claude/skills/): domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci
 Scope: the DELTA over CLAUDE.md (its Process, Licensing invariants, Git rules and ~70 "Lessons" are loaded every session and are NOT repeated). This core keeps only what prevents the worst mistakes. The full 18-section file (~236 tagged entries, ~76 KB) is EXPERTISE-REFERENCE.md: read the section named in the pointer table below WHEN the task touches that topic; do not load it whole. Tags: [Ruled: user <date>] = AGREED in SPEC §7; [Source: ...] = a document; [Observed: ...]; [Unverified]. `SPEC §7 <date>` = the Decisions Log entry of that date.
 
 ## Domains this project touches

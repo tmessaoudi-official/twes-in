@@ -1,5 +1,5 @@
 # EXPERTISE REFERENCE - twes-in   (full L4 detail; READ ON DEMAND by section, NOT loaded every session: the always-loaded part is .claude/rules/expertise-core.md, which points here)
-Review date: 2026-10-03   Validation mode: advisory   Packs: domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci
+Review date: 2026-10-03 12:16   Validation mode: advisory   Packs: domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci
 Scope: the DELTA over CLAUDE.md. Its Process, Licensing invariants, Git rules and ~70 "Lessons" are loaded every session and are NOT repeated here. Entries come from the round-2 digests (r2-decisions = SPEC §7 log, r2-memories, r2-research-ops). Tags: [Ruled: user <date>] = AGREED in SPEC §7; [Source: ...] = a document; [Observed: ...]; [Unverified]. Entries the log marks ASSUMED/PROVISIONAL are tagged [Source] not [Ruled]. `SPEC §7 <date>` means the Decisions Log entry of that date.
 
 ## Domains this project touches

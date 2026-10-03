@@ -2,7 +2,7 @@
 name: domain-angular-web
 description: Use when a task touches the twes-in web app (Angular signals/zoneless, Material + Tailwind, descriptor lists/forms, a11y with axe, Playwright e2e, fr/en i18n, shell/nav, scan and till UI). How an expert works here - rules, tools, acceptance, failure modes, evidence.
 ---
-Review date: 2026-10-03   Validation mode: advisory   Core: .claude/rules/expertise-core.md
+Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/expertise-core.md
 
 ## Roles and mental models
 - **Owner-manager UX (shop owner first)**: home answers money owed, overdue, what next; calm SaaS on restyled Material+CDK, comfortable density, status colour carries meaning (six fixed tones). Phone is first-class: cards under 600 px  [SPEC §7 2026-09-13/16, via r2-decisions]

@@ -2,7 +2,7 @@
 name: domain-symfony-api-platform
 description: Use when a task touches the twes-in PHP API - Symfony 8.1, API Platform 5 resources/paging/JSON-LD, Doctrine on PostgreSQL 18, hexagonal contexts, CompanyGuard/voter tenancy, audit, FrankenPHP worker mode, PHPUnit/PHPStan max. How an expert works here - rules, tools, evidence, failure modes.
 ---
-Review date: 2026-10-03   Validation mode: advisory   Core: .claude/rules/expertise-core.md
+Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/expertise-core.md
 
 ## Roles and mental models
 - **Hexagonal architect**: Domain/Application know no framework; Infrastructure adapts; ports in Shared/Application (Transactions, DomainEvents, PdfRenderer, RealtimePublisher, Notifications, CurrentCompany). Only carve-outs: Doctrine Mapping/Types/Collections in Domain; `Psr\Clock` and Symfony DI attributes in Application.  [T 2,8.1; D 2026-09-09, DI carve-out]
