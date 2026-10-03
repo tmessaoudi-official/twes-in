@@ -13,15 +13,10 @@
 
     <div class="flex flex-wrap items-start gap-3">
       <div class="flex min-w-64 flex-col gap-1.5">
-        <label
-          id="stock-count-location-label"
-          class="twes-field-label"
-          for="stock-count-location-input"
-          >{{ 'inventory.count.location' | translate }}</label
-        >
         <app-select
+          [label]="'inventory.count.location' | translate"
+          [labelInside]="true"
           inputId="stock-count-location-input"
-          labelledBy="stock-count-location-label"
           testId="stock-count-location"
           [options]="locationOptions()"
           [ngModel]="locationId()"

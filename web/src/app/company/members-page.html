@@ -40,15 +40,25 @@
     <mat-card>
       <mat-card-content>
         <form [formGroup]="form" (ngSubmit)="add()" class="flex flex-wrap items-start gap-4">
-          <mat-form-field>
-            <mat-label>{{ 'members.email' | translate }}</mat-label>
-            <input matInput type="email" formControlName="email" data-testid="member-email" />
-            @if (form.controls.email.touched && form.controls.email.invalid) {
-              <mat-error data-testid="member-email-error">
-                {{ 'members.email_invalid' | translate }}
-              </mat-error>
-            }
-          </mat-form-field>
+          <div class="flex min-w-64 flex-col gap-1.5">
+            <label id="member-email-label" class="twes-field-label" for="member-email-input">{{
+              'members.email' | translate
+            }}</label>
+            <mat-form-field>
+              <input
+                matInput
+                id="member-email-input"
+                type="email"
+                formControlName="email"
+                data-testid="member-email"
+              />
+              @if (form.controls.email.touched && form.controls.email.invalid) {
+                <mat-error data-testid="member-email-error">
+                  {{ 'members.email_invalid' | translate }}
+                </mat-error>
+              }
+            </mat-form-field>
+          </div>
           <div class="flex min-w-48 flex-col gap-1.5">
             <label id="member-role-label" class="twes-field-label" for="member-role-input">{{
               'members.role' | translate
@@ -62,9 +72,11 @@
               [translateLabels]="true"
             />
           </div>
-          <button mat-flat-button type="submit" [disabled]="busy()" data-testid="member-add">
-            {{ 'members.add' | translate }}
-          </button>
+          <div class="pt-7">
+            <button mat-flat-button type="submit" [disabled]="busy()" data-testid="member-add">
+              {{ 'members.add' | translate }}
+            </button>
+          </div>
         </form>
       </mat-card-content>
     </mat-card>

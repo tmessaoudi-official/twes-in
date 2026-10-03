@@ -109,18 +109,13 @@
           >
         }
 
-        <div class="flex flex-col">
-          <label
-            class="twes-field-label"
-            [id]="'line-' + i + '-unit-label'"
-            [for]="'line-' + i + '-unit-input'"
-            >{{ 'invoices.lines.unit' | translate }}</label
-          >
+        <div class="flex min-w-0 flex-col">
           <app-select
             formControlName="unitId"
             [required]="true"
+            [label]="('invoices.lines.unit' | translate) + '*'"
+            [labelInside]="true"
             [inputId]="'line-' + i + '-unit-input'"
-            [labelledBy]="'line-' + i + '-unit-label'"
             [testId]="'line-' + i + '-unit'"
             [options]="unitOptions()"
           />

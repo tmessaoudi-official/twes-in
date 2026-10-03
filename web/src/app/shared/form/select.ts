@@ -57,16 +57,23 @@ function fold(text: string): string {
   providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => Select), multi: true }],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    @if (labelInside() && label() !== '') {
+      <span
+        [id]="labelId"
+        class="pointer-events-none absolute -top-2 left-3 z-10 bg-surface px-1 text-xs leading-4 text-on-surface-variant"
+        >{{ label() }}</span
+      >
+    }
     <button
       #trigger
       type="button"
       role="combobox"
-      class="flex min-h-14 w-full items-center gap-2 rounded border border-outline bg-surface px-4 py-2 text-left text-on-surface hover:border-on-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent disabled:opacity-60"
+      class="flex min-h-10 w-full items-center gap-1 rounded-control border border-outline bg-surface py-1.5 pr-2 pl-4 text-left text-base text-on-surface hover:border-on-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent disabled:opacity-60"
       aria-haspopup="listbox"
       [id]="inputId() || null"
       [attr.aria-expanded]="open()"
       [attr.aria-controls]="open() ? listId : null"
-      [attr.aria-labelledby]="labelledBy() ? labelledBy() + ' ' + valueId : null"
+      [attr.aria-labelledby]="ownLabel() ? ownLabel() + ' ' + valueId : null"
       [attr.aria-required]="required() || null"
       [attr.data-testid]="testId() || null"
       [disabled]="disabled()"
@@ -98,7 +105,7 @@ function fold(text: string): string {
 
     <ng-template #panel>
       <div
-        class="flex max-h-[60vh] flex-col overflow-hidden rounded-lg border border-outline-variant bg-surface-container shadow-lg"
+        class="flex max-h-[60vh] flex-col overflow-hidden rounded-card border border-outline-variant bg-surface-container shadow-lg"
         tabindex="-1"
         (keydown)="panelKey($event)"
       >
@@ -178,12 +185,15 @@ function fold(text: string): string {
       </div>
     </ng-template>
   `,
-  host: { class: 'block min-w-0' },
+  host: { class: 'relative block min-w-0' },
 })
 export class Select implements ControlValueAccessor {
   readonly options = input.required<readonly SelectOption[]>();
   readonly multiple = input(false);
   readonly labelledBy = input('');
+  /** The label drawn on the control's top edge, as a Material outlined field does, for a row of such fields. */
+  readonly label = input('');
+  readonly labelInside = input(false);
   readonly inputId = input('');
   readonly testId = input('');
   readonly required = input(false);
@@ -199,6 +209,10 @@ export class Select implements ControlValueAccessor {
   private readonly uid = nextId++;
   protected readonly listId = `app-select-${this.uid}-list`;
   protected readonly valueId = `app-select-${this.uid}-value`;
+  protected readonly labelId = `app-select-${this.uid}-label`;
+  protected readonly ownLabel = computed(() =>
+    this.labelInside() && this.label() !== '' ? this.labelId : this.labelledBy(),
+  );
 
   private readonly trigger = viewChild.required<ElementRef<HTMLButtonElement>>('trigger');
   private readonly panel = viewChild.required<TemplateRef<unknown>>('panel');

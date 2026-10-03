@@ -86,15 +86,10 @@
                 />
               </mat-form-field>
               <div class="flex min-w-40 flex-1 flex-col gap-1.5">
-                <label
-                  class="twes-field-label"
-                  [id]="'product-barcode-role-' + index + '-label'"
-                  [for]="'product-barcode-role-' + index + '-input'"
-                  >{{ 'products.barcodes.role' | translate }}</label
-                >
                 <app-select
+                  [label]="'products.barcodes.role' | translate"
+                  [labelInside]="true"
                   [inputId]="'product-barcode-role-' + index + '-input'"
-                  [labelledBy]="'product-barcode-role-' + index + '-label'"
                   [testId]="'product-barcode-role-' + index"
                   [options]="roleOptions()"
                   [translateLabels]="true"
@@ -120,15 +115,10 @@
               </mat-form-field>
               @if (row.role === 'supplier') {
                 <div class="flex min-w-56 flex-[2] flex-col gap-1.5">
-                  <label
-                    class="twes-field-label"
-                    [id]="'product-barcode-supplier-' + index + '-label'"
-                    [for]="'product-barcode-supplier-' + index + '-input'"
-                    >{{ 'products.barcodes.supplier' | translate }}</label
-                  >
                   <app-select
+                    [label]="'products.barcodes.supplier' | translate"
+                    [labelInside]="true"
                     [inputId]="'product-barcode-supplier-' + index + '-input'"
-                    [labelledBy]="'product-barcode-supplier-' + index + '-label'"
                     [testId]="'product-barcode-supplier-' + index"
                     [options]="supplierOptions()"
                     [ngModel]="row.supplierId"

@@ -36,6 +36,8 @@ const many: SelectOption[] = [
     <span id="lbl">Currency</span>
     <app-select
       [formControl]="control"
+      [label]="label()"
+      [labelInside]="labelInside()"
       [options]="options()"
       [multiple]="multiple()"
       labelledBy="lbl"
@@ -47,6 +49,8 @@ class Host {
   readonly control = new FormControl<string | string[] | null>(null);
   readonly options = signal<SelectOption[]>(few);
   readonly multiple = signal(false);
+  readonly label = signal('');
+  readonly labelInside = signal(false);
 }
 
 class StaticLoader implements TranslateLoader {
@@ -168,6 +172,18 @@ describe('Select', () => {
     expect(document.body.querySelector('[role="listbox"]')).toBeNull();
     expect(document.activeElement).toBe(q('sel'));
     expect(fixture.componentInstance.control.value).toBe('eur');
+  });
+
+  it('can draw its label on its own top edge, and is then named by that label rather than the outside one', async () => {
+    fixture.componentInstance.label.set('Unité*');
+    fixture.componentInstance.labelInside.set(true);
+    await settle();
+
+    const trigger = q('sel')!;
+    const label = trigger.parentElement!.querySelector('span[id$="-label"]')!;
+    expect(label.textContent?.trim()).toBe('Unité*');
+    expect(trigger.getAttribute('aria-labelledby')).toContain(label.id);
+    expect(trigger.getAttribute('aria-labelledby')).not.toContain('lbl');
   });
 
   it('has no search box up to seven options', async () => {
