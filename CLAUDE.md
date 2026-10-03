@@ -210,7 +210,8 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - A raw DBAL result is `mixed` under PHPStan max and a bare cast is refused: read it through a validating helper
   (`DataFixtures/Scale/Rows`) that throws on the unexpected. A sort or uniqueness check over numbers must partition by
   the series (company, establishment, document type), or another company's own numbers interleave (2026-09-29).
-- `doctrine:fixtures:load` from the host needs Mailpit (`docker compose up -d --wait mailpit`, SMTP on :8093), or it dies
+- `doctrine:fixtures:load` (`make fixtures`; or `make tools CMD='cd api && bin/console doctrine:fixtures:load --append'`, on the
+  host's network) needs Mailpit (`docker compose up -d --wait mailpit`, SMTP on :8093), or it dies
   mid-load with a connection refused; Centrifugo being down only warns (2026-09-29).
 - Stage first, then run the checks, then commit: the SPDX gate enumerates `git ls-files`, and this clone has
   `core.fileMode=false`, so a new script also needs `git update-index --chmod=+x` (the executable-bits gate catches it).
@@ -224,13 +225,12 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   instead of `refresh()`. Angular's `whenStable()` covers pending HTTP, not the microtask after a flushed response.
 - Local Playwright and Vitest timing is not evidence while other projects load this machine (load average 20+ on 8
   cores fails a different 5-second wait each run): check `uptime`, measure the server with curl, let CI arbitrate.
-  A pipe hides a failing `composer gate`: read the tool's own exit or its `[OK]` line, never the pipeline's status.
+  A pipe hides a failing `make gate-api`: read the tool's own exit or its `[OK]` line, never the pipeline's status.
 - `make api-openapi` exports from the dev cache, so a stale `api/var/cache/dev` exports an OLD schema and the web gate
-  fails locally while CI (fresh cache) passes, or the reverse. After an API resource change: `bin/console cache:clear`
+  fails locally while CI (fresh cache) passes, or the reverse. After an API resource change: `make tools CMD='cd api && bin/console cache:clear'`
   before `make gate-web` (2026-09-13: `Me` exported without `mfa`, three days after `MeMfa` landed).
 - API Platform's metadata pools survive `cache:clear`: a property added to a resource is then silently dropped on write and
-  missing from the OpenAPI export. After a resource property change run `bin/console cache:pool:clear --all` in dev and
-  with `--env=test` (2026-09-14: `customFields` arrived empty until the pools were cleared).
+  missing from the OpenAPI export. After a resource property change run `make tools CMD='cd api && bin/console cache:pool:clear --all && bin/console cache:pool:clear --all --env=test'` (dev and test) (2026-09-14: `customFields` arrived empty until the pools were cleared).
 - A `@var list<string>` on an API Platform property refuses nothing: a JSON object is denormalized with its keys and
   stored as a JSON object. A writable list property carries `#[Assert\Type('list')]` (2026-09-14: `choices` and
   `defaultTaxComponentIds` both accepted `{"first": …}` with 201).
@@ -361,10 +361,10 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   Assert over what is there rather than clearing first (2026-09-21, `KeepStockTest`).
 - A stock location that has seen a movement is KEPT (409), so an e2e that moves goods into a location it created
   cannot delete it and leaks one per run into the shared company. Say the dimension is uncertified instead.
-- Playwright's browsers DO install here, and running e2e locally is worth the ten minutes: `npx playwright install
-  chromium --dry-run` prints the exact `cdn.playwright.dev/builds/cft/<version>/linux64/*.zip` URLs, which `curl -4`
-  fetches (the installer itself hangs on IPv6); unzip each into `~/.cache/ms-playwright/<name>-<rev>/` and `touch
-  INSTALLATION_COMPLETE`. Under `make up-images` both containers build from the working tree, so
+- Running e2e locally is worth the ten minutes (`make e2e`; `make playwright-browser` fetches Chromium into
+  `var/cache/ms-playwright` over Docker's default network, because the host network's IPv6 route to Google's storage is dead).
+  FLAGGED obsolete, awaiting the developer's OK to delete: the hand install this lesson used to give (`--dry-run` URLs,
+  `curl -4`, unzip into `~/.cache/ms-playwright`, `touch INSTALLATION_COMPLETE`). Under `make up-images` both containers build from the working tree, so
   `docker compose up -d --build web api` first, or the browser tests the last image; `make up` serves the tree as it is. This caught two defects in one run that CI would have taken 28 minutes
   to report, one of them in the test itself (2026-09-21).
 - A promoted `public readonly ?string $code` on an `\Exception` subclass is a FATAL redeclaration at class-load time
@@ -387,10 +387,10 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - An `aria-disabled="true"` control is disabled to Playwright AND to axe: `click()` waits forever for it to be enabled
   (activate it with `focus()` then `keyboard.press('Enter')`, which also proves the keyboard reaches it), and axe's
   `color-contrast` skips it and everything inside it, so no scan certifies its colours (2026-09-26, row 150).
-- PHPStan's result cache sits in the SHARED `/tmp/phpstan` on this box and goes stale across projects: a run
-  reported nine errors in delivery-note test files the change never touched, on the exact commit CI had just passed
-  green. `vendor/bin/phpstan clear-result-cache` and the same file came back clean. Clear it before believing a red
-  in a file you did not edit, and run PHPStan through `composer stan`, never bare — the script warms the test
+- PHPStan's result cache sat in the SHARED `/tmp/phpstan` of the host and went stale across projects (before the toolchain
+  moved to Docker: each `--rm` tools run now starts with its own empty `/tmp`, so this should not recur; re-check if a red
+  appears in a file you did not edit): a run reported nine errors in delivery-note test files the change never touched, on the exact commit CI had just passed
+  green. `vendor/bin/phpstan clear-result-cache` and the same file came back clean. Run PHPStan through `composer stan` (what `make gate-api` does), never bare — the script warms the test
   container XML first, without which the Symfony extension resolves service types as `mixed` (2026-09-22).
 - A spec that turns customer view on without its own `CUSTOMER_VIEW_STORAGE` writes the real session storage, which outlives the spec and hides the private list columns in whichever spec runs next: CI and a full local run failed `customers-page.spec`, a two-file run did not. Give any spec that calls `CustomerView.on()` a `PageMemoryStorage` for it.
 - `DateTimeImmutable::createFromFormat('!Y-m-d', '2026-13-45')` does not fail, it rolls into the next year: compare `format()` with the input before trusting a day a request sent. A functional test probing database constraints runs inside the suite's own transaction, where the first violation aborts the rest: open a nested `beginTransaction()` (a savepoint) per probe and `rollBack()` it (2026-10-02, price lists).

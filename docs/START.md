@@ -54,7 +54,7 @@ The Makefile is the one entry point:
 |---|---|---|
 | the whole stack | `make up` | the stack's own services |
 | every gate | `make gate` (= `gate-licences`, `gate-api`, `gate-web`) | `tools` (PHP 8.5, the gates' own tools, the Docker CLI) and `web-tools` (Node 26, Playwright's system libraries) |
-| one API suite | `make test-api` (starts postgres first), or `docker compose --profile tools run --rm tools sh -c 'cd api && vendor/bin/phpunit tests/Unit'` | `tools` |
+| one API suite | `make test-api` (starts postgres first), or `make tools CMD='cd api && vendor/bin/phpunit tests/Unit'` (start postgres first: `docker compose up -d --wait postgres`) | `tools` |
 | the web unit tests | `make test-web` | `web-tools` |
 | the browser tests | `make e2e` (`E2E_ARGS=--shard=1/3` passes options), `make gallery` | `web-tools`, on the host's network so `127.0.0.1:8090` is the stack's published port |
 | the OpenAPI document, the types, the notices, the pins | `make api-openapi`, `make api-types`, `make notices`, `make versions` | `tools`, `web-tools` |
@@ -64,8 +64,8 @@ The first run of each builds its image (`make tools-image`, `make web-tools-imag
 changed) and installs the dependencies into the working tree's own `api/vendor` and `web/node_modules`, which are
 gitignored; Chromium is downloaded once into `var/cache/ms-playwright`. `make` hands the services your uid, the
 checkout's path, the Docker socket's group and a temporary directory outside the tree (`/tmp/twes-in-tools-<uid>`:
-a gate that builds a fixture in a directory git ignores would see nothing in it). A bare `docker compose` falls back to
-uid 1000 and the current directory.
+a gate that builds a fixture in a directory git ignores would see nothing in it). A bare `docker compose --profile tools run …` falls back to
+uid 1000 and the current directory but not to a temporary directory the Makefile made: use `make`.
 
 The Docker-driving gates (`compose-log-rotation`, `forwarded-proto`, `live-proxy`) start containers through the host's
 socket, which is why the tree is mounted at its own path: a path the gate gives the daemon is one the daemon sees.

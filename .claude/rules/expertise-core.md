@@ -71,7 +71,7 @@ UI and product:
 - CORRECTION 2026-09-19: never pass a Makefile to bash; re-read compound commands for leftover fragments; no `2>/dev/null` on unpredicted commands. CORRECTION 2026-09-22/23: a CI monitor on an invented SHA stays empty with exit 0: `SHA=$(git rev-parse HEAD)` in the same command, FULL 40-char SHA, read every job's conclusion. CORRECTION: read the body, not the signature; prove session-buffer claims against `git reflog`/`git stash list`.  [Observed: 2026-09-01/19/22]
 
 ## 4. Machine facts that mislead (REFERENCE §12)
-- Local PHP is a ZTS DEBUG GCOV build: a full `make gate-api` can abort exit 134 on a `zend_hash` assertion; rerun once, then one phpunit process per directory. The api container and CI run release PHP.  [Observed: 2026-09-15]
+- OBSOLETE since the toolchain moved to Docker (CLAUDE.md § Run everything in Docker; awaiting the developer's OK to delete): local PHP was a ZTS DEBUG GCOV build: a full `make gate-api` can abort exit 134 on a `zend_hash` assertion; rerun once, then one phpunit process per directory. The api container and CI run release PHP.  [Observed: 2026-09-15]
 - `make up` is LIVE mode (source mounted): the first e2e after it can time out on route compilation: rerun. A stack that is down at resume is expected (wiped on purpose 2026-09-27): `make up`, then `make fixtures`.  [Observed: 2026-09-26/27]
 - Recovery of a frozen session: `git stash create` + `git update-ref refs/recovery/<date> <sha>`; a drafted file is recoverable from the dead session's `tool_use` input; a reboot wipes /tmp.  [Observed: 2026-09-26]
 
