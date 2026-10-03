@@ -29,7 +29,8 @@ use Symfony\Component\Uid\Uuid;
  * quantity on one line of a document at its net price, with the line taxes the product starts a line with, counted by
  * the calculator every document uses, at the company's currency scale and VAT rounding. So a pack is priced as twelve
  * units on one line, exactly as the invoice for it would be, and a tax entering the VAT base (FODEC) is counted there.
- * No document tax (a stamp) and no customer's regime: this is the shelf price, for anyone.
+ * No document tax (a stamp) and no customer's regime: this is the shelf price, for anyone. A price other than the shelf's
+ * (a promotion's) is counted the same way when `$unitPriceNet` names it.
  */
 final readonly class CustomerPrice
 {
@@ -44,7 +45,7 @@ final readonly class CustomerPrice
      * @throws InvalidDocument           when the price cannot be totalled
      * @throws UnsupportedTaxCombination when the product's taxes combine in a way the calculator does not count
      */
-    public function of(Product $product, int $quantity): string
+    public function of(Product $product, int $quantity, ?string $unitPriceNet = null): string
     {
         $company = $product->getCompany();
         $taxes = [];
@@ -64,7 +65,7 @@ final readonly class CustomerPrice
             false,
             TaxBasis::Exclusive,
             $this->presets->get($company->getFiscalPreset())->vatRoundingPoint,
-            [new LineInput((string) $quantity, $product->getDetails()->unitPriceNet, null, $taxes)],
+            [new LineInput((string) $quantity, $unitPriceNet ?? $product->getDetails()->unitPriceNet, null, $taxes)],
         ))->total;
     }
 }

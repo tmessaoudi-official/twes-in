@@ -802,6 +802,9 @@
     "stock": {
       "cost_on_receive": "What a stock receipt does to a product's cost"
     },
+    "customer_screen": {
+      "show_stock": "Say on the customer screen whether a product is in stock or not"
+    },
     "watch": {
       "late_after_days": "Watch: a customer is flagged once an invoice is this many days late",
       "unsold_after_days": "Watch: a product is flagged once it has not been sold for this many days",
