@@ -24,19 +24,27 @@ final readonly class PrintSettings
         public string $numberFormat,
         /** Whether the total is also written out in words; a document issued before the setting existed has none. */
         public bool $amountInWords = false,
+        /** Whether the seller's bank details are printed as the way to pay; a document issued before the setting existed has none. */
+        public bool $howToPay = false,
     ) {
     }
 
-    /** @return array{printedNotes: string, dateFormat: string, numberFormat: string, amountInWords: bool} */
+    /** A delivery note asks for no payment: it carries goods, not a bill. */
+    public function withoutHowToPay(): self
+    {
+        return new self($this->printedNotes, $this->dateFormat, $this->numberFormat, $this->amountInWords, false);
+    }
+
+    /** @return array{printedNotes: string, dateFormat: string, numberFormat: string, amountInWords: bool, howToPay: bool} */
     public function toArray(): array
     {
-        return ['printedNotes' => $this->printedNotes, 'dateFormat' => $this->dateFormat, 'numberFormat' => $this->numberFormat, 'amountInWords' => $this->amountInWords];
+        return ['printedNotes' => $this->printedNotes, 'dateFormat' => $this->dateFormat, 'numberFormat' => $this->numberFormat, 'amountInWords' => $this->amountInWords, 'howToPay' => $this->howToPay];
     }
 
     /** @param array<string, mixed> $data */
     public static function fromArray(array $data): self
     {
-        return new self(self::text($data, 'printedNotes'), self::text($data, 'dateFormat'), self::text($data, 'numberFormat'), true === ($data['amountInWords'] ?? false));
+        return new self(self::text($data, 'printedNotes'), self::text($data, 'dateFormat'), self::text($data, 'numberFormat'), true === ($data['amountInWords'] ?? false), true === ($data['howToPay'] ?? false));
     }
 
     /** @param array<string, mixed> $data */

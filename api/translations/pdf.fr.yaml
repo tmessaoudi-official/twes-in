@@ -52,6 +52,11 @@ totals:
     total_tax: 'Total des taxes'
     total: 'Total TTC'
     currency: 'Montants en %currency%'
+payment:
+    how_to_pay: 'Comment payer'
+    iban: 'IBAN :'
+    bic: 'BIC :'
+    reference: 'Référence à indiquer :'
 watermark:
     draft: 'BROUILLON'
     cancelled: 'ANNULÉ'

@@ -789,6 +789,7 @@
       "payment_terms_days": "Payment terms (days)",
       "language": "Document language",
       "printed_notes": "Notes printed on documents",
+      "how_to_pay": "Print how to pay on invoices (IBAN, BIC, number to quote)",
       "amount_in_words": "Write the total out in words on documents"
     },
     "credit": {

@@ -789,6 +789,7 @@
       "payment_terms_days": "Délai de paiement (jours)",
       "language": "Langue des documents",
       "printed_notes": "Notes imprimées sur les documents",
+      "how_to_pay": "Imprimer sur les factures comment payer (IBAN, BIC, numéro à rappeler)",
       "amount_in_words": "Écrire le total en lettres sur les documents"
     },
     "credit": {

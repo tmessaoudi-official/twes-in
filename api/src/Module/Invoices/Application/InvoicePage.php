@@ -47,6 +47,8 @@ final readonly class InvoicePage
         public string $numberFormat = 'auto',
         /** The total written out, null where the document does not carry it or there are no words for its currency or language. */
         public ?string $amountInWords = null,
+        /** Whether the seller's IBAN and BIC are printed as the way to pay, the invoice's number being the reference. */
+        public bool $howToPay = false,
     ) {
     }
 }

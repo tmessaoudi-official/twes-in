@@ -33,6 +33,9 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
         yield new SettingDefinition('document.language', SettingType::Enum, 'fr', SettingChain::Parties, $parties, 'settings.document.language', self::MODULE, choices: ['fr', 'en']);
         yield new SettingDefinition('document.printed_notes', SettingType::Text, '', SettingChain::Parties, $parties, 'settings.document.printed_notes', self::MODULE, maxLength: 2000);
 
+        // The seller's bank details printed on an invoice as the way to pay it, its number the reference to give.
+        yield new SettingDefinition('document.how_to_pay', SettingType::Bool, true, SettingChain::Parties, $parties, 'settings.document.how_to_pay', self::MODULE);
+
         // The total of an invoice or credit note written out in words beneath its figures, as many Tunisian invoices carry.
         yield new SettingDefinition('document.amount_in_words', SettingType::Bool, false, SettingChain::Parties, $parties, 'settings.document.amount_in_words', self::MODULE);
 

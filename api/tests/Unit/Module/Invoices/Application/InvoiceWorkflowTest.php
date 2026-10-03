@@ -148,7 +148,7 @@ final class InvoiceWorkflowTest extends TestCase
 
         $invoice = $this->workflow->issue($this->company, $this->draft($customer)->getId(), null);
 
-        self::assertEquals(new PrintSettings('Virement à 30 jours.', 'ymd', 'auto'), $invoice->getPrintSettings());
+        self::assertEquals(new PrintSettings('Virement à 30 jours.', 'ymd', 'auto', false, true), $invoice->getPrintSettings(), 'how to pay is on by default and frozen with the rest');
     }
 
     public function testIssuingACreditNoteNumbersItInItsOwnSeriesAndTakesItOffItsInvoiceInTheSameTransaction(): void

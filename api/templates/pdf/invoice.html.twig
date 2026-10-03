@@ -148,6 +148,15 @@
   {%- if page.amountInWords %}
     <p data-testid="amount-in-words">{{ 'totals.in_words'|trans({}, t, locale) }} {{ page.amountInWords }}.</p>
   {%- endif %}
+  {%- if page.howToPay and invoice.type.value != 'credit_note' and seller.iban %}
+    <div class="mention" data-testid="how-to-pay">
+      <strong>{{ 'payment.how_to_pay'|trans({}, t, locale) }}</strong>
+      <div>{{ 'payment.iban'|trans({}, t, locale) }} {{ seller.iban }}{% if seller.bic %} · {{ 'payment.bic'|trans({}, t, locale) }} {{ seller.bic }}{% endif %}</div>
+      {%- if invoice.number %}
+        <div>{{ 'payment.reference'|trans({}, t, locale) }} {{ invoice.number }}</div>
+      {%- endif %}
+    </div>
+  {%- endif %}
   <p class="muted">{{ 'totals.currency'|trans({'%currency%': seller.currency}, t, locale) }}</p>
 
   {%- for key in page.mentionKeys %}

@@ -52,6 +52,11 @@ totals:
     total_tax: 'Total tax'
     total: 'Total incl. tax'
     currency: 'Amounts in %currency%'
+payment:
+    how_to_pay: 'How to pay'
+    iban: 'IBAN:'
+    bic: 'BIC:'
+    reference: 'Payment reference:'
 watermark:
     draft: 'DRAFT'
     cancelled: 'CANCELLED'

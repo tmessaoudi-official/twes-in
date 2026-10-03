@@ -240,6 +240,37 @@ final class PrintInvoiceTest extends TestCase
         self::assertNotNull($this->template->pages[0]->amountInWords);
     }
 
+    public function testHowToPayIsPrintedOnInvoicesUnlessTheSettingTurnsItOff(): void
+    {
+        $draft = $this->draft($this->customer('standard', null));
+        $this->print->pdf($this->company, $draft->getId());
+        self::assertTrue($this->template->pages[0]->howToPay, 'on by default');
+
+        $this->change->change(new SettingContext($this->company), 'document.how_to_pay', SettingLevel::Company, false, null);
+        $this->print->pdf($this->company, $draft->getId());
+
+        self::assertFalse($this->template->pages[1]->howToPay);
+    }
+
+    public function testAnIssuedInvoiceKeepsWhetherItPrintedHowToPayWhateverTheSettingSaysByThen(): void
+    {
+        $kept = $this->issued($this->customer('standard', null), new PrintSettings('', 'auto', 'auto', false, true));
+        $this->change->change(new SettingContext($this->company), 'document.how_to_pay', SettingLevel::Company, false, null);
+
+        $this->print->pdf($this->company, $kept->getId());
+
+        self::assertTrue($this->template->pages[0]->howToPay);
+    }
+
+    public function testAnInvoiceIssuedBeforeTheSettingExistedPrintsNoPaymentBlock(): void
+    {
+        $older = $this->issued($this->customer('standard', null));
+
+        $this->print->pdf($this->company, $older->getId());
+
+        self::assertFalse($this->template->pages[0]->howToPay, 'the setting is on today, the document was issued without it');
+    }
+
     public function testACancelledDraftIsRenderedStampedAndNeverStored(): void
     {
         $draft = $this->draft($this->customer('standard', null));

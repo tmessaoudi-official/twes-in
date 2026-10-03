@@ -31,7 +31,7 @@ final readonly class DeliveryNotePrinting
             \is_string($language) ? $language : 'fr',
             true === $settings->value($context, 'delivery_note.show_prices'),
             true === $settings->value($context, 'delivery_note.reception_block'),
-            DocumentFormats::print($settings, $context, $note->getCompany()),
+            DocumentFormats::print($settings, $context, $note->getCompany())->withoutHowToPay(),
         );
     }
 }

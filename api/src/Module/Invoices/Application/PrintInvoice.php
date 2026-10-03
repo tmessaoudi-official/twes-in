@@ -122,6 +122,7 @@ final readonly class PrintInvoice
             $print->dateFormat,
             $print->numberFormat,
             $print->amountInWords ? AmountInWords::of($figures->total, $company->getCurrency(), $language) : null,
+            $print->howToPay,
         )));
     }
 
