@@ -2519,6 +2519,12 @@
         "created": "Created",
         "actions": "Actions"
       }
+    },
+    "tab_counts": {
+      "overview": "To handle: {{count}}",
+      "companies": "Companies: {{count}}",
+      "accounts": "Accounts: {{count}}",
+      "payments": "Payments to confirm: {{count}}"
     }
   },
   "appearance": {

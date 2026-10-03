@@ -21,6 +21,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { map } from 'rxjs';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListQuery } from '../shared/list/list-types';
+import { CountBadge } from '../shared/ui/count-badge';
 import { StatusBadge } from '../shared/ui/status-badge';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { PlatformFacade } from './platform-facade';
@@ -83,6 +84,7 @@ import { SubscriptionFacade } from '../licensing/subscription-facade';
     DataList,
     DataListCell,
     StatusBadge,
+    CountBadge,
   ],
   templateUrl: './platform-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

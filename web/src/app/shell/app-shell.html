@@ -130,13 +130,13 @@
                   <span matListItemTitle class="twes-rail-title"
                     ><span>{{ entry.labelKey | translate }}</span>
                     @if (count > 0) {
-                      <span
-                        class="twes-rail-count"
-                        aria-hidden="true"
+                      <app-count-badge
+                        kind="attention"
+                        [max]="9"
                         [attr.data-testid]="'nav-count-' + entry.key"
-                        >{{ badge(count) }}</span
-                      >
-                      <span class="sr-only">{{ 'nav.count' | translate: { count } }}</span>
+                        [count]="count"
+                        [label]="'nav.count' | translate: { count }"
+                      />
                     }
                     @if (entry.coming) {
                       <span class="twes-soon" data-testid="soon">{{

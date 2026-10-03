@@ -40,6 +40,7 @@ import type { ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { CookieNotice } from '../shared/legal/cookie-notice';
 import { LegalFooter } from '../shared/legal/legal-footer';
+import { CountBadge } from '../shared/ui/count-badge';
 import { NavScroller } from '../shared/ui/nav-scroller';
 import { sectionFolds } from '../shared/ui/section-folds';
 import { isBareKeystroke, isTypingTarget, matchesShortcut } from '../shared/actions/shortcuts';
@@ -117,6 +118,7 @@ const BOTTOM_BAR_HEIGHT = '--twes-bottom-bar-height';
 @Component({
   selector: 'app-shell',
   imports: [
+    CountBadge,
     RouterOutlet,
     RouterLink,
     RouterLinkActive,

@@ -359,15 +359,18 @@ describe('AppShell', () => {
     watchSummary.set({ count: 4, subjects: [] });
     const { byTestId } = await render();
     expect(watch.load).toHaveBeenCalledWith('c1');
-    expect(byTestId('nav-count-watch')?.textContent?.trim()).toBe('4');
-    expect(byTestId('nav-watch')?.textContent).toContain('4 à traiter');
+    const pill = byTestId('nav-count-watch');
+    expect(pill?.querySelector('[data-count]')?.textContent?.trim()).toBe('4');
+    expect(pill?.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('4 à traiter');
   });
 
   it('writes 9+ past nine, as the bell does, and nothing at zero or before the count is read', async () => {
     permissions.set(['customer.read', 'company.read']);
     watchSummary.set({ count: 12, subjects: [] });
     const { byTestId } = await render();
-    expect(byTestId('nav-count-watch')?.textContent?.trim()).toBe('9+');
+    expect(byTestId('nav-count-watch')?.querySelector('[data-count]')?.textContent?.trim()).toBe(
+      '9+',
+    );
 
     watchSummary.set({ count: 0, subjects: [] });
     TestBed.tick();

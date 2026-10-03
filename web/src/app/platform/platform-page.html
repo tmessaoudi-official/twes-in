@@ -21,28 +21,42 @@
         {{ 'platform.tabs.' + name | translate }}
         @switch (name) {
           @case ('overview') {
-            @if (waitingTotal() > 0) {
-              <span class="ml-2 text-sm" data-testid="platform-tab-count-overview">{{
-                waitingTotal()
-              }}</span>
-            }
+            <app-count-badge
+              class="ml-2"
+              kind="waiting"
+              data-testid="platform-tab-count-overview"
+              [count]="waitingTotal()"
+              [label]="'platform.tab_counts.overview' | translate: { count: waitingTotal() }"
+            />
           }
           @case ('companies') {
-            <span class="ml-2 text-sm" data-testid="platform-tab-count-companies">{{
-              companyCount()
-            }}</span>
+            <app-count-badge
+              class="ml-2"
+              kind="total"
+              data-testid="platform-tab-count-companies"
+              [count]="companyCount()"
+              [label]="'platform.tab_counts.companies' | translate: { count: companyCount() }"
+            />
           }
           @case ('accounts') {
-            <span class="ml-2 text-sm" data-testid="platform-tab-count-accounts">{{
-              accountCount()
-            }}</span>
+            <app-count-badge
+              class="ml-2"
+              kind="total"
+              data-testid="platform-tab-count-accounts"
+              [count]="accountCount()"
+              [label]="'platform.tab_counts.accounts' | translate: { count: accountCount() }"
+            />
           }
           @case ('payments') {
-            @if (waitingPayments().length > 0) {
-              <span class="ml-2 text-sm" data-testid="platform-tab-count-payments">{{
-                waitingPayments().length
-              }}</span>
-            }
+            <app-count-badge
+              class="ml-2"
+              kind="waiting"
+              data-testid="platform-tab-count-payments"
+              [count]="waitingPayments().length"
+              [label]="
+                'platform.tab_counts.payments' | translate: { count: waitingPayments().length }
+              "
+            />
           }
         }
       </a>
