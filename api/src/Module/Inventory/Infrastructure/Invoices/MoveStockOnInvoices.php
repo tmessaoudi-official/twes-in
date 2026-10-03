@@ -33,11 +33,14 @@ final readonly class MoveStockOnInvoices
 
     public function __invoke(InvoiceIssued $event): void
     {
-        if (InvoiceType::CreditNote === $event->type) {
-            $this->returned($event);
+        match ($event->type) {
+            InvoiceType::CreditNote => $this->returned($event),
+            InvoiceType::Invoice => $this->sold($event),
+        };
+    }
 
-            return;
-        }
+    private function sold(InvoiceIssued $event): void
+    {
         if ([] === $event->directLines) {
             return;
         }
