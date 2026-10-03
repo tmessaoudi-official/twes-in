@@ -451,7 +451,11 @@ class Invoice implements CompanyOwned
             static fn (InvoiceLine $line): ?InvoicedQuantity => null === $line->getProduct() || null !== $line->getSourceDeliveryNoteLineId() ? null : new InvoicedQuantity($line->getProduct()->getId(), $line->getQuantity(), $line->getUnit()->getId(), $line->getLotCode()),
             $this->getLines(),
         )));
-        $this->events[] = new InvoiceIssued($this->id, $this->company->getId(), $this->establishment->getId(), $this->documentType, $issue->number, $this->issueDate, $sources, $direct);
+        $returned = InvoiceType::CreditNote !== $this->documentType ? [] : array_values(array_filter(array_map(
+            static fn (InvoiceLine $line): ?InvoicedQuantity => null === $line->getProduct() || !$line->isReturned() ? null : new InvoicedQuantity($line->getProduct()->getId(), $line->getQuantity(), $line->getUnit()->getId(), $line->getLotCode()),
+            $this->getLines(),
+        )));
+        $this->events[] = new InvoiceIssued($this->id, $this->company->getId(), $this->establishment->getId(), $this->documentType, $issue->number, $this->issueDate, $sources, $direct, $this->correctsInvoice?->getId(), $returned);
     }
 
     /**
@@ -906,6 +910,9 @@ class Invoice implements CompanyOwned
         $companyId = $this->company->getId();
         $sources = [];
         foreach ($lines as $index => $line) {
+            if ($line->returned && InvoiceType::CreditNote !== $this->documentType) {
+                throw new InvalidInvoice("lines[$index].returned", 'Only a credit note returns goods to stock.');
+            }
             $source = $line->sourceDeliveryNoteLineId?->toRfc4122();
             if (null !== $source && isset($sources[$source])) {
                 throw new InvalidInvoice("lines[$index].sourceDeliveryNoteLineId", 'A document invoices a delivery note line once.');

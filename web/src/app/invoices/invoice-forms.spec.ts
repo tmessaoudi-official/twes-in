@@ -384,6 +384,25 @@ describe('invoice forms', () => {
       ).toBeNull();
     });
 
+    it("says a credit note's goods came back only for a line that names a product", () => {
+      const lines = linesArray([], options, null);
+      const line = lines.at(0);
+      line.patchValue({ returned: true });
+      expect(invoiceInput(invoiceValues(null, options), lines, [], 'k1').lines[0].returned).toBe(
+        false,
+      );
+
+      applyProduct(line, design, options, []);
+      line.patchValue({ returned: true });
+      expect(invoiceInput(invoiceValues(null, options), lines, [], 'k1').lines[0].returned).toBe(
+        true,
+      );
+
+      // The product taken off again: what was ticked for it goes with it.
+      applyProduct(line, null, options, []);
+      expect(line.controls.returned.value).toBe(false);
+    });
+
     it('keeps where a line came from through the form', () => {
       const lines = linesArray(
         [
@@ -400,6 +419,7 @@ describe('invoice forms', () => {
             productName: null,
             productTracking: null,
             lotCode: null,
+            returned: false,
             net: '70.000',
           },
         ],

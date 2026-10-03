@@ -385,6 +385,41 @@ final class InventoryTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company');
     }
 
+    public function testACreditNoteBringsBackOnlyTheGoodsOfTheLinesMarkedReturnedToTheLotsTheSaleTookThemFrom(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '10']);
+        $customerId = $this->customer();
+        $direct = $this->issuedInvoice($customerId, [['productId' => $this->laptopId, 'quantity' => '3']]);
+        self::assertSame(['7.000'], array_column($this->levels(), 'quantity'));
+        $revise = fn (string $id, bool $returned, string $quantity) => $this->sendJson('PUT', $this->path('invoices', $id), ['customerId' => $customerId, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null, 'lines' => [['productId' => $this->laptopId, 'quantity' => $quantity, 'returned' => $returned]]]);
+        $creditNote = function (bool $returned, string $quantity) use ($direct, $revise): string {
+            $this->postJson($this->path('invoices', $direct).'/credit-notes', ['creditNoteReason' => 'Retour']);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            $id = $this->stringAt($this->json(), 'id');
+            $revise($id, $returned, $quantity);
+            self::assertResponseIsSuccessful();
+            $this->postJson($this->path('invoices', $id).'/issue', null);
+            self::assertResponseStatusCodeSame(Response::HTTP_OK);
+
+            return $id;
+        };
+
+        $creditNote(false, '1');
+        self::assertSame(['7.000'], array_column($this->levels(), 'quantity'), 'a price correction returns nothing');
+
+        $second = $creditNote(true, '1');
+        self::assertSame(['8.000'], array_column($this->levels(), 'quantity'));
+        $this->getJson($this->path('stock-movements').'?productId='.$this->laptopId);
+        self::assertSame([['in', 'credit_note', $second], ['out', 'invoice', $direct], ['in', 'receipt', null]], array_map(static fn (array $m) => [$m['kind'], $m['sourceType'], $m['sourceId']], $this->jsonList()));
+
+        $this->getJson($this->path('invoices', $second));
+        self::assertSame([true], array_column($this->arrayAt($this->json(), 'lines'), 'returned'));
+        $this->postJson($this->path('invoices'), ['customerId' => $customerId, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null, 'lines' => [['productId' => $this->laptopId, 'quantity' => '1', 'returned' => true]]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'an invoice returns nothing');
+        self::assertStringContainsString('lines[0].returned', (string) $this->client->getResponse()->getContent());
+    }
+
     public function testANoteWhoseStockNeverMovedIsReplayedOnceByTheCommand(): void
     {
         $this->signedIn(['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);

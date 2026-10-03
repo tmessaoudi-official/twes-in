@@ -34,6 +34,8 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'stock.delivery_note_moved_no_stock',
   'stock.invoice_lines_left_out',
   'stock.invoice_moved_no_stock',
+  'stock.credit_lines_not_returned',
+  'stock.credit_moved_no_stock',
   'stock.count_difference',
   'stock.low',
   'invoice.credit_limit_passed',
@@ -79,6 +81,14 @@ const RECORDS = new Map<string, NotificationRecord>([
   ],
   [
     'stock.invoice_moved_no_stock',
+    { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
+  ],
+  [
+    'stock.credit_lines_not_returned',
+    { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
+  ],
+  [
+    'stock.credit_moved_no_stock',
     { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
   ],
   // A count that found a difference leads to the movements, where the adjustment it wrote is; a product fallen to its

@@ -151,6 +151,11 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return $this->entityManager->getRepository(StockMovement::class)->findBy(['sourceType' => $sourceType, 'sourceId' => $sourceId, 'company' => $companyId], ['at' => 'ASC', 'id' => 'ASC']);
     }
 
+    public function ofReversing(Uuid $invoiceId, Uuid $companyId): array
+    {
+        return $this->entityManager->getRepository(StockMovement::class)->findBy(['reversesSourceId' => $invoiceId, 'company' => $companyId], ['at' => 'ASC', 'id' => 'ASC']);
+    }
+
     public function searchMovements(Uuid $companyId, StockMovementSearch $search, PageRequest $page): Page
     {
         // The product, the location and the lot are joined and SELECTED whatever the search asks: every row names them,

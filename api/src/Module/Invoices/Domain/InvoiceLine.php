@@ -87,9 +87,13 @@ class InvoiceLine implements CompanyOwned
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $sourceDeliveryNoteLineId;
 
-    /** The lot or serial sold, for a product tracked by one (docs/SPEC.md § 7, 2026-09-24 12:40 row 5); a record only: an invoice moves no stock. */
+    /** The lot or serial sold, for a product tracked by one: a direct invoice line takes its goods from it, and a credit note's returned line gives them back to it. */
     #[ORM\Column(length: LotCode::MAX, nullable: true)]
     private ?string $lotCode;
+
+    /** On a credit note's line: whether its goods came back to stock. Nothing else reads it. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $returned;
 
     /** @var Collection<int, InvoiceLineTax> */
     #[ORM\OneToMany(targetEntity: InvoiceLineTax::class, mappedBy: 'line', cascade: ['persist'], orphanRemoval: true)]
@@ -111,6 +115,7 @@ class InvoiceLine implements CompanyOwned
         $this->discountRate = $details->discountRate;
         $this->sourceDeliveryNoteLineId = $details->sourceDeliveryNoteLineId;
         $this->lotCode = $details->lotCode;
+        $this->returned = $details->returned;
         $this->taxes = new ArrayCollection();
         foreach ($details->taxes as $index => $tax) {
             $this->taxes->add(new InvoiceLineTax($this, $index + 1, $tax));
@@ -147,7 +152,7 @@ class InvoiceLine implements CompanyOwned
         return ['net' => $this->lineNet, 'tax' => $this->lineTax, 'gross' => $this->lineGross];
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null} compared the way InvoiceLineDetails::values() is */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool} compared the way InvoiceLineDetails::values() is */
     public function values(): array
     {
         return [
@@ -160,7 +165,14 @@ class InvoiceLine implements CompanyOwned
             array_map(static fn (InvoiceLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $this->getTaxes()),
             $this->sourceDeliveryNoteLineId?->toRfc4122(),
             $this->lotCode,
+            $this->returned,
         ];
+    }
+
+    /** Whether the goods of this line of a credit note came back to stock when it was issued. */
+    public function isReturned(): bool
+    {
+        return $this->returned;
     }
 
     public function getId(): Uuid

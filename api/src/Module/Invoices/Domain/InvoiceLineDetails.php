@@ -21,7 +21,8 @@ use Symfony\Component\Uid\Uuid;
  * One line as it is written: what is sold, how much of it in which unit, its net unit price, a discount rate reducing
  * its tax base, and the taxes charged on it. A quantity is positive and never finer than its unit counts; the quantity
  * is kept with three decimals, the price with four, the discount as a percentage with three. Only a line tax sits on a
- * line, each at most once. A line drafted from a delivery note names the delivery note line it invoices.
+ * line, each at most once. A line drafted from a delivery note names the delivery note line it invoices. On a credit
+ * note, a line with a product may say its goods came back to stock.
  */
 final readonly class InvoiceLineDetails
 {
@@ -46,11 +47,15 @@ final readonly class InvoiceLineDetails
      * @param list<TaxComponent> $taxes
      * @param Uuid|null          $sourceDeliveryNoteLineId the delivery note line it invoices; null for a line written by hand
      * @param string|null        $lotCode                  the lot or serial sold; blank or null for none
+     * @param bool               $returned                 the goods of a credit note's line came back to stock; only a credit note may say so, which its document checks
      *
      * @throws InvalidInvoice
      */
-    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, public ?Uuid $sourceDeliveryNoteLineId = null, ?string $lotCode = null)
+    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, public ?Uuid $sourceDeliveryNoteLineId = null, ?string $lotCode = null, public bool $returned = false)
     {
+        if ($returned && null === $product) {
+            throw new InvalidInvoice('returned', 'A line returns goods to stock only when it names a product.');
+        }
         $description = trim($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
             throw new InvalidInvoice('description', \sprintf('A line says what it sells in 1 to %d characters.', self::DESCRIPTION_MAX));
@@ -75,7 +80,7 @@ final readonly class InvoiceLineDetails
         $this->lotCode = self::lotCode($product, $lotCode);
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null} what two lines are compared on */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool} what two lines are compared on */
     public function values(): array
     {
         return [
@@ -88,6 +93,7 @@ final readonly class InvoiceLineDetails
             array_map(static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(), $this->taxes),
             $this->sourceDeliveryNoteLineId?->toRfc4122(),
             $this->lotCode,
+            $this->returned,
         ];
     }
 

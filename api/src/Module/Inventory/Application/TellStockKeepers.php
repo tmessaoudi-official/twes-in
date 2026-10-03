@@ -32,6 +32,10 @@ final readonly class TellStockKeepers
     public const string INVOICE_LINES_LEFT_OUT = 'stock.invoice_lines_left_out';
     /** Moving an invoice's stock failed and nothing moved. */
     public const string INVOICE_MOVED_NO_STOCK = 'stock.invoice_moved_no_stock';
+    /** A credit note's returned lines brought back nothing, or less than they said. */
+    public const string CREDIT_LINES_NOT_RETURNED = 'stock.credit_lines_not_returned';
+    /** Returning a credit note's goods failed and nothing came back. */
+    public const string CREDIT_MOVED_NO_STOCK = 'stock.credit_moved_no_stock';
 
     /** A count found a different quantity from the one expected: told to the other keepers, the counter knowing. */
     public const string COUNT_DIFFERENCE = 'stock.count_difference';
@@ -72,6 +76,16 @@ final readonly class TellStockKeepers
     public function invoiceMovedNoStock(Uuid $companyId, Uuid $invoiceId, string $number): void
     {
         $this->tellAll($companyId, self::INVOICE_MOVED_NO_STOCK, ['invoice_id' => $invoiceId->toRfc4122(), 'number' => $number], null);
+    }
+
+    public function creditLinesNotReturned(Uuid $companyId, Uuid $creditNoteId, string $number): void
+    {
+        $this->tellAll($companyId, self::CREDIT_LINES_NOT_RETURNED, ['invoice_id' => $creditNoteId->toRfc4122(), 'number' => $number], null);
+    }
+
+    public function creditMovedNoStock(Uuid $companyId, Uuid $creditNoteId, string $number): void
+    {
+        $this->tellAll($companyId, self::CREDIT_MOVED_NO_STOCK, ['invoice_id' => $creditNoteId->toRfc4122(), 'number' => $number], null);
     }
 
     private function tell(Uuid $companyId, string $type, Uuid $deliveryNoteId, string $number): void

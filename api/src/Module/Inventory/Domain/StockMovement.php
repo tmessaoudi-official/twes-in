@@ -32,6 +32,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_stock_movement_product', columns: ['product_id'])]
 #[ORM\Index(name: 'idx_stock_movement_location', columns: ['location_id'])]
 #[ORM\Index(name: 'idx_stock_movement_lot', columns: ['lot_id'])]
+#[ORM\Index(name: 'idx_stock_movement_reverses', columns: ['reverses_source_id'], options: ['where' => '(reverses_source_id IS NOT NULL)'])]
 #[ORM\UniqueConstraint(name: 'uniq_stock_movement_source', columns: ['source_type', 'source_id', 'product_id', 'location_id', 'kind', 'lot_id'], options: ['where' => '(source_id IS NOT NULL)'])]
 class StockMovement implements CompanyOwned
 {
@@ -39,6 +40,7 @@ class StockMovement implements CompanyOwned
     public const string SOURCE_COUNT = 'count';
     public const string SOURCE_DELIVERY_NOTE = 'delivery_note';
     public const string SOURCE_INVOICE = 'invoice';
+    public const string SOURCE_CREDIT_NOTE = 'credit_note';
     public const string SOURCE_MOVE = 'move';
     public const string SOURCE_LOSS = 'loss';
     public const int NOTE_MAX = 500;
@@ -103,6 +105,10 @@ class StockMovement implements CompanyOwned
     /** Whether somebody typed the cost, as opposed to the average a movement without one is valued at. */
     #[ORM\Column(options: ['default' => false])]
     private bool $costTyped = false;
+
+    /** The invoice whose sale this movement takes back, for the goods a credit note returned; none otherwise. */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $reversesSourceId = null;
 
     /**
      * @param numeric-string $quantity signed, with three decimals
@@ -257,6 +263,30 @@ class StockMovement implements CompanyOwned
     }
 
     /**
+     * Part of what an invoice sold, back where it left from: a credit note returned it. It goes to the lot and the
+     * location the sale took it from, worth what it left at, and names the invoice so what was already returned can be
+     * counted. A credit note returns a product at most once per location and lot, which the unique source key holds.
+     *
+     * @throws InvalidStockMovement when the quantity is not a positive number the unit counts, or is more than the sale took
+     */
+    public static function saleReturn(self $sale, string $quantity, Uuid $creditNoteId, \DateTimeImmutable $now): self
+    {
+        if (StockMovementKind::Out !== $sale->kind || self::SOURCE_INVOICE !== $sale->sourceType || null === $sale->sourceId) {
+            throw new \LogicException('Only what an invoice sold is returned by a credit note.');
+        }
+        $back = self::quantity($quantity, $sale->product, false);
+        if (1 === new Number($back)->compare(new Number($sale->quantity)->mul(-1))) {
+            throw new InvalidStockMovement('quantity', 'A sale is returned for no more than it took out.');
+        }
+
+        $return = new self($sale->product, $sale->location, $sale->lot, StockMovementKind::In, $back, self::SOURCE_CREDIT_NOTE, $creditNoteId, null, $now);
+        $return->unitCost = $sale->unitCost;
+        $return->reversesSourceId = $sale->sourceId;
+
+        return $return;
+    }
+
+    /**
      * A tracked product's movement names its lot, and an untracked one's names none: the table cannot hold this, since
      * it cannot see the product's tracking, so every movement is made through here.
      *
@@ -354,6 +384,12 @@ class StockMovement implements CompanyOwned
     public function isCostTyped(): bool
     {
         return $this->costTyped;
+    }
+
+    /** The invoice whose sale this movement takes back; none for any other movement. */
+    public function getReversesSourceId(): ?Uuid
+    {
+        return $this->reversesSourceId;
     }
 
     /** Values a movement that came with no cost: what it moves is worth this much a unit. Never changes one that has it. */

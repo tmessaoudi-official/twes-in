@@ -90,6 +90,8 @@ export class InvoiceLines {
   /** Whether the company has price lists on: a line then starts from the price of the customer's list. */
   readonly priceLists = input(false);
   readonly readOnly = input(false);
+  /** Whether the document is a credit note, whose lines may say their goods came back to stock. */
+  readonly returnable = input(false);
   /** Each line's net as last saved, by position; shown while the line is unchanged. */
   readonly nets = input<readonly string[]>([]);
 
@@ -253,6 +255,11 @@ export class InvoiceLines {
     if (resolved.priceListName === null) this.listed.delete(line);
     else this.listed.set(line, { name: resolved.priceListName, price: next });
     this.revision.update((revision) => revision + 1);
+  }
+
+  protected toggleReturned(line: LineGroup, checked: boolean): void {
+    line.controls.returned.setValue(checked);
+    line.controls.returned.markAsDirty();
   }
 
   protected toggleTax(line: LineGroup, taxId: string, checked: boolean): void {

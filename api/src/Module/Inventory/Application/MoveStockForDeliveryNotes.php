@@ -206,6 +206,115 @@ final readonly class MoveStockForDeliveryNotes
         return \sprintf('%s of %s lot %s was not at %s, so it moved no stock: receive it under that lot, or name the lot handed over', $short, $reference, $code, $location);
     }
 
+    /**
+     * What a credit note returns of an invoice's sale goes back to the lots and the location the sale took it from,
+     * worth what it left at, once per credit note, and never more than the sale took out less what earlier credit notes
+     * of the same invoice already brought back. Like a cancelled note's return, it does not ask whether the module or
+     * the product's tracking are still on: the sale is the proof that stock was kept.
+     *
+     * @param list<DeliveredQuantity> $lines the product lines the person marked as returned
+     *
+     * @return list<string> why a line brought back nothing, or less than it said
+     */
+    public function returned(Uuid $creditNoteId, Uuid $invoiceId, Uuid $companyId, array $lines): array
+    {
+        if ([] === $lines || [] !== $this->movements->ofSource(StockMovement::SOURCE_CREDIT_NOTE, $creditNoteId, $companyId)) {
+            return [];
+        }
+        $sales = array_values(array_filter(
+            $this->movements->ofSource(StockMovement::SOURCE_INVOICE, $invoiceId, $companyId),
+            static fn (StockMovement $movement): bool => StockMovementKind::Out === $movement->getKind(),
+        ));
+
+        $skipped = [];
+        $asked = [];
+        foreach ($lines as $line) {
+            $product = null === $line->productId ? null : $this->products->ofIdInCompany($line->productId, $companyId);
+            if (null === $product) {
+                continue;
+            }
+            if (!$product->getUnit()->getId()->equals($line->unitId)) {
+                $skipped[] = \sprintf('a line of %s is counted in another unit than its stock, so it returned no stock', $product->getReference());
+                continue;
+            }
+            if (!is_numeric($line->quantity)) {
+                $skipped[] = \sprintf('a line of %s has no quantity, so it returned no stock', $product->getReference());
+                continue;
+            }
+            $lot = ProductTracking::None === $product->getTracking() ? null : $line->lotCode;
+            $key = $product->getId()->toRfc4122().(null === $lot ? '' : "\0".mb_strtolower($lot));
+            $asked[$key] = [$product, ($asked[$key][1] ?? new Number(0))->add($line->quantity), $lot];
+        }
+        if ([] === $asked) {
+            return $skipped;
+        }
+        $now = $this->clock->now();
+
+        return $this->transactions->run(function () use ($asked, $sales, $creditNoteId, $invoiceId, $companyId, $now, $skipped): array {
+            // Locked as a sale is, so two credit notes of one invoice cannot both be told the same goods are left to return.
+            $locks = [];
+            foreach ($sales as $sale) {
+                foreach ($asked as [$product]) {
+                    if ($sale->getProduct()->getId()->equals($product->getId())) {
+                        $locks[$sale->getProduct()->getId()->toRfc4122().' '.$sale->getLocation()->getId()->toRfc4122()] = [$sale->getProduct()->getId(), $sale->getLocation()->getId()];
+                    }
+                }
+            }
+            ksort($locks);
+            foreach ($locks as [$productId, $locationId]) {
+                $this->movements->lockStockOf($productId, $locationId);
+            }
+
+            $left = [];
+            foreach ($sales as $sale) {
+                $left[self::stockKey($sale)] = new Number($sale->getQuantity())->mul(-1);
+            }
+            foreach ($this->movements->ofReversing($invoiceId, $companyId) as $back) {
+                $key = self::stockKey($back);
+                if (isset($left[$key])) {
+                    $left[$key] = $left[$key]->sub($back->getQuantity());
+                }
+            }
+
+            $give = [];
+            foreach ($asked as [$product, $quantity, $lot]) {
+                $want = $quantity;
+                $named = null === $lot ? '' : ' lot '.$lot;
+                foreach ($sales as $sale) {
+                    if (!$sale->getProduct()->getId()->equals($product->getId()) || (null !== $lot && 0 !== strcasecmp((string) $sale->getLot()?->getCode(), $lot))) {
+                        continue;
+                    }
+                    $key = self::stockKey($sale);
+                    $take = 1 === $left[$key]->compare($want) ? $want : $left[$key];
+                    if (1 !== $take->compare(0)) {
+                        continue;
+                    }
+                    $give[$sale->getId()->toRfc4122()] = [$sale, ($give[$sale->getId()->toRfc4122()][1] ?? new Number(0))->add($take)];
+                    $left[$key] = $left[$key]->sub($take);
+                    $want = $want->sub($take);
+                }
+                if (1 === $want->compare(0)) {
+                    $skipped[] = \sprintf('%s of %s%s was not sold by this invoice, or had already been returned, so it returned no stock', new Number('0.000')->add($want)->value, $product->getReference(), $named);
+                }
+            }
+
+            if ([] !== $give) {
+                $this->movements->save(...array_map(
+                    static fn (array $each): StockMovement => StockMovement::saleReturn($each[0], new Number('0.000')->add($each[1])->value, $creditNoteId, $now),
+                    array_values($give),
+                ));
+            }
+
+            return $skipped;
+        });
+    }
+
+    /** What a sale and its returns share: the product, the place and the lot its goods are counted under. */
+    private static function stockKey(StockMovement $movement): string
+    {
+        return $movement->getProduct()->getId()->toRfc4122().' '.$movement->getLocation()->getId()->toRfc4122().' '.($movement->getLot()?->getId()->toRfc4122() ?? '-');
+    }
+
     public function cancelled(Uuid $deliveryNoteId, Uuid $companyId): void
     {
         $written = $this->movements->ofSource(StockMovement::SOURCE_DELIVERY_NOTE, $deliveryNoteId, $companyId);

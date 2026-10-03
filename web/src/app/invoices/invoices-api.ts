@@ -389,6 +389,7 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
       productName: line.productName ?? null,
       productTracking: line.productTracking == null ? null : trackingOf(line.productTracking),
       lotCode: line.lotCode ?? null,
+      returned: line.returned ?? false,
       net: line.net ?? '',
     })),
     subtotalNet: raw.subtotalNet ?? '0',

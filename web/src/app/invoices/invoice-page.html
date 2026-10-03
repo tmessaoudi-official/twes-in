@@ -188,6 +188,7 @@
             [priceLists]="auth.hasModule('price_lists')"
             [nets]="nets()"
             [readOnly]="!editable()"
+            [returnable]="isCreditNote()"
           />
         </mat-card-content>
       </mat-card>

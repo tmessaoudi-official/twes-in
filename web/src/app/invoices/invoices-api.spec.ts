@@ -27,6 +27,7 @@ const input: InvoiceInput = {
       taxComponentIds: ['t1'],
       sourceDeliveryNoteLineId: null,
       lotCode: null,
+      returned: false,
     },
   ],
 };

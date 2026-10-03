@@ -536,6 +536,37 @@ final class InvoiceTest extends TestCase
         self::assertSame([], $returned->directLines, 'a credit note takes nothing out');
     }
 
+    public function testACreditNoteLineSaysWhetherItsGoodsCameBackAndIssuingNamesThemWithTheInvoiceTheyLeftWith(): void
+    {
+        $goods = $this->product($this->company);
+        $other = Product::create($this->company, 'ART-004', new ProductDetails('Souris', null, ProductKind::Goods, '10'), $this->unit('C62'), null, [], $this->now);
+        $line = fn (?Product $product, bool $returned = false): InvoiceLineDetails => new InvoiceLineDetails($product, 'Pièce', '2', $this->unit('C62'), '10', null, [], null, null, $returned);
+        $issue = static fn (string $number): \App\Module\Invoices\Domain\InvoiceIssue => new \App\Module\Invoices\Domain\InvoiceIssue($number, new \DateTimeImmutable('2026-09-15'), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'));
+
+        $this->assertRefused('lines[0].returned', fn () => Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$line($goods, true)], [], $this->now), 'an invoice returns nothing');
+        $this->assertRefused('returned', static fn () => $line(null, true), 'a line with no product has no goods to return');
+
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$line($goods), $line($other), $line(null)], [], $this->now);
+        $invoice->issue($issue('FAC-2026-00001'), fn (Invoice $i) => $this->figures(lines: 3), $this->now);
+        $invoice->releaseEvents();
+
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
+        self::assertSame([false, false, false], array_map(static fn ($copied): bool => $copied->isReturned(), $credit->getLines()), 'nothing comes back until a person says so');
+        $marked = [$line($goods, true), $line($other), $line(null)];
+        self::assertSame(['lines'], $credit->revise($credit->getEstablishment(), $credit->getCustomer(), $credit->getHeader(), $marked, [], $this->now), 'whether the goods came back is part of what a line says');
+        self::assertSame([], $credit->revise($credit->getEstablishment(), $credit->getCustomer(), $credit->getHeader(), $marked, [], $this->now));
+        self::assertSame([true, false, false], array_map(static fn ($kept): bool => $kept->isReturned(), $credit->getLines()));
+
+        $credit->issue($issue('AV-2026-00001'), fn (Invoice $i) => $this->figures(lines: 3), $this->now);
+        $event = $credit->releaseEvents()[0];
+        self::assertInstanceOf(\App\Module\Invoices\Domain\InvoiceIssued::class, $event);
+        self::assertEquals(
+            [$invoice->getId(), [[$goods->getId(), '2.000', null]]],
+            [$event->correctsInvoiceId, array_map(static fn (\App\Module\Invoices\Domain\InvoicedQuantity $each): array => [$each->productId, $each->quantity, $each->lotCode], $event->returnedLines)],
+        );
+        self::assertSame([], $event->directLines);
+    }
+
     private function issuedCreditNote(Invoice $invoice, string $due): Invoice
     {
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);

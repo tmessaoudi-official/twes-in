@@ -178,6 +178,7 @@ const draft: InvoiceRow = {
       productName: 'Conception',
       productTracking: 'none',
       lotCode: null,
+      returned: false,
       net: '1800.000',
     },
   ],
@@ -419,6 +420,7 @@ describe('InvoicePage', () => {
             taxComponentIds: ['t1'],
             sourceDeliveryNoteLineId: null,
             lotCode: null,
+            returned: false,
           },
         ],
       }),
@@ -1093,6 +1095,33 @@ describe('InvoicePage', () => {
     expect(q('invoice-payments')).toBeNull();
     expect(q('invoice-due')).toBeNull();
     expect(over('document-menu-credit-note')).toBeNull();
+  });
+
+  it("asks of a credit note's goods, and of nothing else, whether they came back to stock", async () => {
+    invoice.set({
+      ...draft,
+      type: 'credit_note',
+      correctsInvoiceId: 'i0',
+      creditNoteReason: 'Retour',
+    });
+    await open('i1');
+    expect(q('line-0-returned')).not.toBeNull();
+
+    (q('line-0-returned')?.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    expect(
+      (
+        fixture.componentInstance as unknown as {
+          lines: () => { getRawValue(): { returned: boolean }[] };
+        }
+      )
+        .lines()
+        .getRawValue()[0].returned,
+    ).toBe(true);
+
+    invoice.set(draft);
+    await open('i1');
+    expect(q('line-0-returned')).toBeNull();
   });
 
   // docs/SPEC.md § 7, 2026-09-26 10:08 and 18:17 (row 150, slice 5).

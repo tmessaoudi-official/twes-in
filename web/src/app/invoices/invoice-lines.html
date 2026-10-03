@@ -99,6 +99,16 @@
           </div>
         }
 
+        @if (returnable() && line.controls.productId.value !== '') {
+          <mat-checkbox
+            [checked]="line.controls.returned.value"
+            [disabled]="readOnly()"
+            (change)="toggleReturned(line, $event.checked)"
+            [attr.data-testid]="'line-' + i + '-returned'"
+            >{{ 'invoices.lines.returned' | translate }}</mat-checkbox
+          >
+        }
+
         <div class="flex flex-col">
           <mat-form-field>
             <mat-label>{{ 'invoices.lines.unit' | translate }}</mat-label>

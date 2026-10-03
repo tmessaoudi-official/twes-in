@@ -374,6 +374,8 @@ export interface LineControls {
   sourceDeliveryNoteLineId: FormControl<string>;
   /** The lot or serial sold; asked only for a product tracked by one (docs/SPEC.md § 7, 2026-09-24 12:40 row 5). */
   lotCode: FormControl<string>;
+  /** On a credit note: whether the line's goods come back to stock when it is issued. */
+  returned: FormControl<boolean>;
   /** How the line's product is tracked, which decides whether the lot is asked; '' for a line naming no product. */
   productTracking: FormControl<ProductTracking | ''>;
 }
@@ -462,6 +464,7 @@ export function lineGroup(
         nonNullable: true,
         validators: [matches(LOT_CODE_PATTERN)],
       }),
+      returned: new FormControl(line?.returned ?? false, { nonNullable: true }),
       productTracking: new FormControl<ProductTracking | ''>(line?.productTracking ?? '', {
         nonNullable: true,
       }),
@@ -543,6 +546,7 @@ export function applyProduct(
       productReference: '',
       productName: '',
       lotCode: '',
+      returned: false,
       productTracking: '',
     });
     return;
@@ -612,6 +616,8 @@ export function invoiceInput(
         line.productTracking === 'lot' || line.productTracking === 'serial'
           ? text(line.lotCode)
           : null,
+      // Only goods come back, so a line with no product never says so, whatever was ticked before the product went.
+      returned: line.returned && line.productId !== '',
     })),
   };
 }

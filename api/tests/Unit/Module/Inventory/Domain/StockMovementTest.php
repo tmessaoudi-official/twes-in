@@ -224,6 +224,44 @@ final class StockMovementTest extends TestCase
         StockMovement::returnOf(StockMovement::receipt($this->laptop, $this->site, '1', null, $this->now), $this->now);
     }
 
+    public function testAReturnOfASaleGoesBackToItsLotAtItsCostAndNamesTheInvoiceItReverses(): void
+    {
+        $this->laptop->track(ProductTracking::Lot, $this->now);
+        $lot = StockLot::open($this->laptop, 'L-07', null, $this->now);
+        $invoiceId = Uuid::v7();
+        $creditNoteId = Uuid::v7();
+        $sale = StockMovement::sale($this->laptop, $this->site, '5', $invoiceId, $this->now, $lot);
+        $sale->valuedAt('7.0000');
+
+        $back = StockMovement::saleReturn($sale, '2', $creditNoteId, $this->now);
+
+        self::assertSame([StockMovementKind::In, '2.000', StockMovement::SOURCE_CREDIT_NOTE, $creditNoteId, $invoiceId], [$back->getKind(), $back->getQuantity(), $back->getSourceType(), $back->getSourceId(), $back->getReversesSourceId()]);
+        self::assertSame([$this->laptop, $this->site, $lot, '7.0000', false], [$back->getProduct(), $back->getLocation(), $back->getLot(), $back->getUnitCost(), $back->isCostTyped()]);
+        self::assertNull($sale->getReversesSourceId());
+    }
+
+    public function testOnlyASaleIsReturnedAndNeverMoreThanItTook(): void
+    {
+        $sale = StockMovement::sale($this->laptop, $this->site, '5', Uuid::v7(), $this->now);
+
+        foreach ([StockMovement::receipt($this->laptop, $this->site, '5', null, $this->now), StockMovement::delivery($this->laptop, $this->site, '5', Uuid::v7(), $this->now)] as $notASale) {
+            try {
+                StockMovement::saleReturn($notASale, '1', Uuid::v7(), $this->now);
+                self::fail('Something that is not a sale was returned.');
+            } catch (\LogicException) {
+                self::addToAssertionCount(1);
+            }
+        }
+        foreach (['6', '0', '-1', 'abc'] as $quantity) {
+            try {
+                StockMovement::saleReturn($sale, $quantity, Uuid::v7(), $this->now);
+                self::fail(\sprintf('A return of "%s" was accepted.', $quantity));
+            } catch (InvalidStockMovement $refused) {
+                self::assertSame('quantity', $refused->field);
+            }
+        }
+    }
+
     public function testOnlyGoodsMoveAndOnlyInALocationOfTheirCompany(): void
     {
         $theirs = StockLocation::defaultOf(Establishment::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), '000', 'Globex', true, $this->now), $this->now);

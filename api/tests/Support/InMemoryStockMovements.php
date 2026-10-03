@@ -55,6 +55,14 @@ final class InMemoryStockMovements implements StockMovementRepository
         return WeightedAverageCost::of($totals['quantity'], $totals['amount'], $product->getDetails()->costPrice);
     }
 
+    public function ofReversing(Uuid $invoiceId, Uuid $companyId): array
+    {
+        return array_values(array_filter(
+            $this->movements,
+            static fn (StockMovement $movement): bool => (true === $movement->getReversesSourceId()?->equals($invoiceId)) && $movement->getCompany()->getId()->equals($companyId),
+        ));
+    }
+
     public function valuedTotalsOf(Product $product): array
     {
         $quantity = new Number('0.000');

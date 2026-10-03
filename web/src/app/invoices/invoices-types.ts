@@ -79,6 +79,8 @@ export interface InvoiceLine {
   productTracking: ProductTracking | null;
   /** The lot or serial sold, for a product tracked by one (docs/SPEC.md § 7, 2026-09-24 12:40 row 5). */
   lotCode: string | null;
+  /** On a credit note's line: its goods came back to stock when the note was issued. */
+  returned: boolean;
   /** The line after its own discount, at the currency's scale, worked out by the API. */
   net: string;
 }

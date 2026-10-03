@@ -240,6 +240,80 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         self::assertSame(['0.000', '0.000'], array_map(static fn ($level) => $level->quantity, $this->movements->levels($this->company->getId())));
     }
 
+    public function testACreditNoteReturnsGoodsToTheLotsTheSaleTookThemFromAtTheirCostOnceOnly(): void
+    {
+        $this->laptop->track(ProductTracking::Lot, $this->clock->now());
+        $depot = $this->manage->defaultOf($this->depot)->getId();
+        foreach ([['NOVEMBER', '2026-11-01', '5'], ['OCTOBER', '2026-10-01', '2']] as [$code, $date, $quantity]) {
+            $this->keep->receive($this->company, $this->laptop->getId(), $depot, $quantity, null, new NamedLot($code, new \DateTimeImmutable($date)), '700');
+        }
+        $invoice = Uuid::v7();
+        $this->move->invoiced($invoice, $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '4.000', $this->piece)]);
+        $sold = \count($this->movements->movements);
+        $creditNote = Uuid::v7();
+
+        $skipped = $this->move->returned($creditNote, $invoice, $this->company->getId(), [$this->line($this->laptop, '3.000', $this->piece)]);
+        $again = $this->move->returned($creditNote, $invoice, $this->company->getId(), [$this->line($this->laptop, '3.000', $this->piece)]);
+
+        self::assertSame([[], []], [$skipped, $again]);
+        self::assertSame([['OCTOBER', '2.000'], ['NOVEMBER', '1.000']], $this->lotsWritten($sold), 'back to the lots the sale left, in the order it took them, once');
+        $back = \array_slice($this->movements->movements, $sold);
+        self::assertSame([StockMovement::SOURCE_CREDIT_NOTE, $creditNote->toRfc4122(), $invoice->toRfc4122(), '700.0000', false], [$back[0]->getSourceType(), $back[0]->getSourceId()?->toRfc4122(), $back[0]->getReversesSourceId()?->toRfc4122(), $back[0]->getUnitCost(), $back[0]->isCostTyped()]);
+    }
+
+    public function testASaleIsReturnedForNoMoreThanItTookOutLessWhatEarlierCreditNotesReturnedAndSaysWhatCameBackShort(): void
+    {
+        $invoice = Uuid::v7();
+        $this->move->invoiced($invoice, $this->company->getId(), $this->depot->getId(), [$this->line($this->untracked, '4.000', $this->piece), $this->line($this->laptop, '4.000', $this->piece)]);
+        $sold = \count($this->movements->movements);
+
+        $first = $this->move->returned(Uuid::v7(), $invoice, $this->company->getId(), [$this->line($this->laptop, '3.000', $this->piece)]);
+        $second = $this->move->returned(Uuid::v7(), $invoice, $this->company->getId(), [$this->line($this->laptop, '3.000', $this->piece)]);
+        $third = $this->move->returned(Uuid::v7(), $invoice, $this->company->getId(), [$this->line($this->laptop, '1.000', $this->piece)]);
+
+        self::assertSame([[], 1, 1], [$first, \count($second), \count($third)]);
+        self::assertStringContainsString('2.000 of ART-001', $second[0]);
+        self::assertSame([['', '3.000'], ['', '1.000']], $this->lotsWritten($sold), 'the second note got back the one piece left, the third nothing');
+    }
+
+    public function testALineNamingALotOrAProductTheInvoiceNeverSoldReturnsNothingAndIsSaid(): void
+    {
+        $this->laptop->track(ProductTracking::Lot, $this->clock->now());
+        $depot = $this->manage->defaultOf($this->depot)->getId();
+        foreach ([['NOVEMBER', '2026-11-01', '5'], ['OCTOBER', '2026-10-01', '2']] as [$code, $date, $quantity]) {
+            $this->keep->receive($this->company, $this->laptop->getId(), $depot, $quantity, null, new NamedLot($code, new \DateTimeImmutable($date)));
+        }
+        $invoice = Uuid::v7();
+        $this->move->invoiced($invoice, $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '4.000', $this->piece, 'NOVEMBER')]);
+        $sold = \count($this->movements->movements);
+
+        $skipped = $this->move->returned(Uuid::v7(), $invoice, $this->company->getId(), [
+            $this->line($this->laptop, '1.000', $this->piece, 'OCTOBER'),
+            $this->line($this->flour, '1.000', $this->kilogram),
+            $this->line($this->laptop, '2.500', $this->kilogram, 'NOVEMBER'),
+            $this->line($this->laptop, '1.000', $this->piece, 'november'),
+        ]);
+
+        self::assertSame([['NOVEMBER', '1.000']], $this->lotsWritten($sold), 'only the line that names a lot the sale took, whatever its case');
+        self::assertCount(3, $skipped);
+        // A line the unit refuses is said while the lines are read, the others once the stock is, so the order is not the lines'.
+        $said = static fn (string $part): bool => array_any($skipped, static fn (string $reason): bool => str_contains($reason, $part));
+        self::assertSame([true, true, true], [$said('1.000 of ART-001 lot OCTOBER'), $said('1.000 of ART-002'), $said('a line of ART-001 is counted in another unit')]);
+        self::assertSame([], $this->move->returned(Uuid::v7(), Uuid::v7(), $this->company->getId(), []), 'a credit note with no returned line moves nothing and says nothing');
+    }
+
+    public function testWhatASaleTookOutComesBackEvenOnceTheModuleIsOff(): void
+    {
+        $invoice = Uuid::v7();
+        $this->move->invoiced($invoice, $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '2.000', $this->piece)]);
+        $this->states->save(ModuleState::of($this->company, InventoryModule::KEY, false, $this->clock->now()));
+
+        $skipped = $this->move->returned(Uuid::v7(), $invoice, $this->company->getId(), [$this->line($this->laptop, '2.000', $this->piece)]);
+
+        self::assertSame([], $skipped);
+        self::assertSame(['0.000'], array_map(static fn ($level) => $level->quantity, $this->movements->levels($this->company->getId())));
+    }
+
     private function line(?Product $product, string $quantity, Unit $unit, ?string $lotCode = null): DeliveredQuantity
     {
         return new DeliveredQuantity($product?->getId(), $quantity, $unit->getId(), $lotCode);

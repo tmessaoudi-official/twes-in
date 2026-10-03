@@ -36,6 +36,13 @@ interface StockMovementRepository
      */
     public function valuedTotalsOf(Product $product): array;
 
+    /**
+     * What credit notes have already returned of an invoice's sale.
+     *
+     * @return list<StockMovement>
+     */
+    public function ofReversing(Uuid $invoiceId, Uuid $companyId): array;
+
     /** The cost on the latest receipt of the product that came with one typed; none when no receipt did. */
     public function lastTypedCostOf(Product $product): ?TypedCost;
 

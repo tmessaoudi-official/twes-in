@@ -140,6 +140,68 @@ final class MoveStockOnInvoicesTest extends TestCase
         self::assertSame([TellStockKeepers::INVOICE_LINES_LEFT_OUT], array_map(static fn ($n) => $n->type, $this->notifications->published));
     }
 
+    public function testACreditNoteReturnsOnlyWhatItsReturnedLinesNameToTheInvoiceItCorrectsOnce(): void
+    {
+        $invoiceId = Uuid::v7();
+        [$listener] = $this->listener(new FakeTransactions());
+        $listener($this->issued([new InvoicedQuantity($this->laptop->getId(), '5.000', $this->piece->getId())], $invoiceId));
+        $sold = \count($this->movements->movements);
+        $note = $this->issued([], type: InvoiceType::CreditNote, corrects: $invoiceId, returned: [new InvoicedQuantity($this->laptop->getId(), '2.000', $this->piece->getId())]);
+
+        $listener($note);
+        $listener($note);
+
+        self::assertCount($sold + 1, $this->movements->movements, 'an event handled twice moves nothing the second time');
+        $back = $this->movements->movements[$sold];
+        self::assertSame([StockMovementKind::In, '2.000', StockMovement::SOURCE_CREDIT_NOTE], [$back->getKind(), $back->getQuantity(), $back->getSourceType()]);
+        self::assertTrue($note->invoiceId->equals($back->getSourceId()));
+        self::assertTrue($invoiceId->equals($back->getReversesSourceId()));
+        self::assertSame([], $this->notifications->published);
+    }
+
+    public function testACreditNoteWithNoReturnedLineOrNoInvoiceItCorrectsMovesNothing(): void
+    {
+        [$listener] = $this->listener(new FakeTransactions());
+        $line = [new InvoicedQuantity($this->laptop->getId(), '1.000', $this->piece->getId())];
+
+        $listener($this->issued([], type: InvoiceType::CreditNote, corrects: Uuid::v7()));
+        $listener($this->issued([], type: InvoiceType::CreditNote, returned: $line));
+
+        self::assertSame([], $this->movements->movements);
+    }
+
+    public function testAReturnThatBroughtNothingBackIsLoggedAndItsStockKeepersToldAndAFailedOneNeverThrows(): void
+    {
+        $invoiceId = Uuid::v7();
+        [$listener, $logger] = $this->listener(new FakeTransactions());
+
+        $listener($this->issued([], type: InvoiceType::CreditNote, corrects: $invoiceId, returned: [new InvoicedQuantity($this->laptop->getId(), '1.000', $this->piece->getId())]));
+
+        self::assertSame([], $this->movements->movements);
+        self::assertSame('warning', $logger->logged[0][0]);
+        self::assertStringContainsString('FAC-2026-00001', $logger->logged[0][1]);
+        self::assertSame([TellStockKeepers::CREDIT_LINES_NOT_RETURNED], array_map(static fn ($n) => $n->type, $this->notifications->published));
+
+        $failing = new class implements Transactions {
+            public function run(callable $work): mixed
+            {
+                throw new \RuntimeException('connection lost');
+            }
+
+            public function active(): bool
+            {
+                return false;
+            }
+        };
+        $this->notifications->published = [];
+        [$broken, $brokenLogger] = $this->listener($failing);
+
+        $broken($this->issued([], type: InvoiceType::CreditNote, corrects: $invoiceId, returned: [new InvoicedQuantity($this->laptop->getId(), '1.000', $this->piece->getId())]));
+
+        self::assertSame('error', $brokenLogger->logged[0][0]);
+        self::assertSame([TellStockKeepers::CREDIT_MOVED_NO_STOCK], array_map(static fn ($n) => $n->type, $this->notifications->published));
+    }
+
     protected function setUp(): void
     {
         $this->notifications = new InMemoryNotifications();
@@ -188,9 +250,12 @@ final class MoveStockOnInvoicesTest extends TestCase
         return [new MoveStockOnInvoices($move, new TellStockKeepers($memberships, $this->notifications), $logger), $logger];
     }
 
-    /** @param list<InvoicedQuantity> $lines */
-    private function issued(array $lines, ?Uuid $invoiceId = null, InvoiceType $type = InvoiceType::Invoice): InvoiceIssued
+    /**
+     * @param list<InvoicedQuantity> $lines
+     * @param list<InvoicedQuantity> $returned
+     */
+    private function issued(array $lines, ?Uuid $invoiceId = null, InvoiceType $type = InvoiceType::Invoice, ?Uuid $corrects = null, array $returned = []): InvoiceIssued
     {
-        return new InvoiceIssued($invoiceId ?? Uuid::v7(), $this->company->getId(), $this->establishment->getId(), $type, 'FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), [], $lines);
+        return new InvoiceIssued($invoiceId ?? Uuid::v7(), $this->company->getId(), $this->establishment->getId(), $type, 'FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), [], $lines, $corrects, $returned);
     }
 }
