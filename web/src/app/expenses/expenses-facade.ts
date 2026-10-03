@@ -3,6 +3,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { ExpensesApi, ExpensesRefused } from './expenses-api';
 import type { PickAsked } from '../shared/form/pick-api';
+import type { ExportFormat } from '../shared/list/export-address';
 import type {
   ExpenseAttachment,
   ExpenseCategoryInput,
@@ -46,6 +47,10 @@ export class ExpensesFacade {
   readonly categories = this.categoriesSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
+
+  exportUrl(companyId: string, search: ExpenseSearch, format: ExportFormat): string {
+    return this.api.exportUrl(companyId, search, format);
+  }
 
   /**
    * One page of the expenses the search finds. Only the latest search's answer is shown: typing sends one search per

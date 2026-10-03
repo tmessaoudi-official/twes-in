@@ -4,8 +4,9 @@
       <h1 class="text-3xl font-semibold" data-testid="stock-title">
         {{ 'inventory.stock.title' | translate }}
       </h1>
-      @if (mayWrite() && company() && operation() === null) {
-        <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap gap-2">
+        <app-list-export [address]="exporter()" testId="stock-export" />
+        @if (mayWrite() && company() && operation() === null) {
           <a mat-stroked-button routerLink="/imports/opening-stock" data-testid="stock-import">
             {{ 'import.action' | translate }}
           </a>
@@ -31,8 +32,8 @@
           <button mat-stroked-button type="button" (click)="open('loss')" data-testid="stock-loss">
             {{ 'inventory.stock.loss' | translate }}
           </button>
-        </div>
-      }
+        }
+      </div>
     </div>
     <p class="max-w-prose">{{ 'inventory.stock.intro' | translate }}</p>
 

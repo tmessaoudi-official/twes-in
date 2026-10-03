@@ -26,6 +26,8 @@ import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell } from '../shared/list/data-list';
+import type { ExportFormat } from '../shared/list/export-address';
+import { ListExport } from '../shared/list/list-export';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { InventoryFacade } from './inventory-facade';
@@ -64,6 +66,7 @@ import { addCount } from '../shared/scan/scan-lines';
     DayPipe,
     DataList,
     DataListCell,
+    ListExport,
     DescriptorForm,
     StatusBadge,
   ],
@@ -337,6 +340,15 @@ export class StockPage implements OnInit {
 
   /** What the list last asked the API for; the page is not read until the list has said what it wants. */
   private search: StockSearch | null = null;
+  private readonly searched = signal<StockSearch | null>(null);
+  /** What the list shows now, as a file: null until the list has asked for its first page. */
+  protected readonly exporter = computed(() => {
+    const companyId = this.company()?.id;
+    const search = this.searched();
+    return companyId && search !== null
+      ? (format: ExportFormat) => this.facade.exportLevelsUrl(companyId, search, format)
+      : null;
+  });
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
@@ -354,6 +366,7 @@ export class StockPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId) return;
     this.search = stockSearch(query);
+    this.searched.set(this.search);
     void this.facade.loadStock(companyId, this.search);
   }
 

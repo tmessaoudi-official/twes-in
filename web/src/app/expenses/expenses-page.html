@@ -5,6 +5,7 @@
         {{ 'expenses.title' | translate }}
       </h1>
       <div class="flex flex-wrap gap-2">
+        <app-list-export [address]="exporter()" testId="expenses-export" />
         @if (declaresToTej()) {
           <button
             mat-stroked-button

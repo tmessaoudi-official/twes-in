@@ -77,6 +77,22 @@ describe('ExpensesApi', () => {
     });
   });
 
+  it('names the file of what the list shows, with its words, choices and order and no page', () => {
+    const search = {
+      page: 2,
+      itemsPerPage: 50,
+      q: ' gasoil ',
+      status: 'recorded' as const,
+      vendorId: 'v1',
+      categoryId: null,
+      order: { key: 'date' as const, direction: 'desc' as const },
+    };
+
+    expect(api.exportUrl('c/1', search, 'csv')).toBe(
+      '/api/companies/c%2F1/exports/expenses.csv?q=gasoil&status=recorded&vendorId=v1&order%5Bdate%5D=desc',
+    );
+  });
+
   it('asks the API for one page of expenses, with what it searches, narrows and sorts by', async () => {
     const pending = api.expenses('c1', {
       page: 2,

@@ -7,6 +7,7 @@ import {
   DestroyRef,
   inject,
   OnInit,
+  signal,
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
@@ -14,6 +15,8 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DataList, DataListCell } from '../shared/list/data-list';
+import type { ExportFormat } from '../shared/list/export-address';
+import { ListExport } from '../shared/list/list-export';
 import { StatusBadge } from '../shared/ui/status-badge';
 import type { ListQuery } from '../shared/list/list-types';
 import { VENDORS_LIST, vendorSearch } from './vendor-forms';
@@ -23,7 +26,15 @@ import type { VendorRow, VendorSearch } from './vendors-types';
 /** The vendors of the company being worked in. */
 @Component({
   selector: 'app-vendors-page',
-  imports: [MatButtonModule, RouterLink, TranslatePipe, DataList, DataListCell, StatusBadge],
+  imports: [
+    MatButtonModule,
+    RouterLink,
+    TranslatePipe,
+    DataList,
+    DataListCell,
+    ListExport,
+    StatusBadge,
+  ],
   templateUrl: './vendors-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -43,6 +54,15 @@ export class VendorsPage implements OnInit {
 
   /** The page the list shows last asked for; a change elsewhere reads it again. */
   private search: VendorSearch | null = null;
+  private readonly searched = signal<VendorSearch | null>(null);
+  /** What the list shows now, as a file: null until the list has asked for its first page. */
+  protected readonly exporter = computed(() => {
+    const companyId = this.company()?.id;
+    const search = this.searched();
+    return companyId && search !== null
+      ? (format: ExportFormat) => this.facade.exportUrl(companyId, search, format)
+      : null;
+  });
 
   ngOnInit(): void {
     const companyId = this.company()?.id;
@@ -61,6 +81,7 @@ export class VendorsPage implements OnInit {
     const companyId = this.company()?.id;
     if (!companyId) return;
     this.search = vendorSearch(query);
+    this.searched.set(this.search);
     void this.facade.loadPage(companyId, this.search);
   }
 }

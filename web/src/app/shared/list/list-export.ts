@@ -22,6 +22,8 @@ import type { ExportFormat } from './export-address';
       </a>
     }
   `,
+  // Two links in a bare inline host touch; the host keeps them a gap apart, and wraps them on a narrow screen.
+  host: { class: 'inline-flex flex-wrap gap-2' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ListExport {

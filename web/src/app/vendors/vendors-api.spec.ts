@@ -44,6 +44,20 @@ describe('VendorsApi', () => {
 
   afterEach(() => http.verify());
 
+  it('names the file of what the list shows, with its words, choice and order and no page', () => {
+    const search = {
+      page: 2,
+      itemsPerPage: 50,
+      q: ' acier ',
+      isActive: true,
+      order: { key: 'city' as const, direction: 'desc' as const },
+    };
+
+    expect(api.exportUrl('c/1', search, 'csv')).toBe(
+      '/api/companies/c%2F1/exports/vendors.csv?q=acier&isActive=true&order%5Bcity%5D=desc',
+    );
+  });
+
   it('reads a vendor, gathering its address', async () => {
     const pending = api.vendor('c1', 'v 1');
     http.expectOne('/api/companies/c1/vendors/v%201').flush({

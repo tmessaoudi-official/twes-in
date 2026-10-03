@@ -10,6 +10,7 @@ import type {
   VendorVendorRead,
   VendorVendorWriteValidationVendorWrite as VendorVendorWrite,
 } from '../api/types.gen';
+import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import type { ListPage } from '../shared/list/list-types';
 import type {
   VendorInput,
@@ -40,6 +41,11 @@ export class VendorsApi {
         ),
       ),
     );
+  }
+
+  /** Where the vendors the search finds are downloaded as a file, every page of them. */
+  exportUrl(companyId: string, search: VendorSearch, format: ExportFormat): string {
+    return exportAddress(companyId, 'vendors', toSearchParams(search), format);
   }
 
   /** One page of the vendors the search finds, as Hydra carries it: the rows and the total. */

@@ -1,8 +1,11 @@
 <app-page-tabs [tabs]="tabs" label="nav.stock">
   <section class="flex flex-col gap-6">
-    <h1 class="text-3xl font-semibold" data-testid="stock-movements-title">
-      {{ 'inventory.movements.title' | translate }}
-    </h1>
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="text-3xl font-semibold" data-testid="stock-movements-title">
+        {{ 'inventory.movements.title' | translate }}
+      </h1>
+      <app-list-export [address]="exporter()" testId="stock-movements-export" />
+    </div>
 
     <mat-form-field class="max-w-sm" subscriptSizing="dynamic">
       <mat-label>{{ 'inventory.movements.lot_search' | translate }}</mat-label>

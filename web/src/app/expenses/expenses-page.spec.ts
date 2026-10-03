@@ -76,6 +76,10 @@ describe('ExpensesPage', () => {
     options: options.asReadonly(),
     statusCounts: statusCounts.asReadonly(),
     loadPage: vi.fn(),
+    exportUrl: vi.fn(
+      (companyId: string, _search: unknown, format: string) =>
+        `/api/companies/${companyId}/exports/expenses.${format}`,
+    ),
     loadOptions: vi.fn(),
     loadStatusCounts: vi.fn(),
   };
@@ -133,6 +137,16 @@ describe('ExpensesPage', () => {
     expect(row).toContain('Comptabilisée');
     expect(q('list-link-e1')?.getAttribute('href')).toBe('/expenses/e1');
     expect(q('expense-add')?.getAttribute('href')).toBe('/expenses/new');
+  });
+
+  it('offers what the list shows as a CSV or an Excel file', async () => {
+    await create();
+    expect(q('expenses-export-csv')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/expenses.csv',
+    );
+    expect(q('expenses-export-xlsx')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/expenses.xlsx',
+    );
   });
 
   it('asks the API for the page the list wants, rather than reading the whole ledger', async () => {

@@ -17,6 +17,7 @@ import type {
   ExpenseExpenseClassifyValidationExpenseClassify as ExpenseExpenseClassify,
   ExpenseVendorPickExpenseVendorPickRead,
 } from '../api/types.gen';
+import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import type { ListPage } from '../shared/list/list-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import type {
@@ -87,6 +88,11 @@ export class ExpensesApi {
         defaultExpenseCategoryId: vendor.defaultExpenseCategoryId ?? null,
       }));
     });
+  }
+
+  /** Where the expenses the search finds are downloaded as a file, every page of them. */
+  exportUrl(companyId: string, search: ExpenseSearch, format: ExportFormat): string {
+    return exportAddress(companyId, 'expenses', toSearchParams(search), format);
   }
 
   /** One page of the company's expenses, searched, narrowed and sorted by the API. */

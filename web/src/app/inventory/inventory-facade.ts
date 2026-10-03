@@ -3,6 +3,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { InventoryApi, InventoryRefused } from './inventory-api';
 import type { PickAsked } from '../shared/form/pick-api';
+import type { ExportFormat } from '../shared/list/export-address';
 import type {
   InventoryError,
   StockDrawingInput,
@@ -114,6 +115,14 @@ export class InventoryFacade {
     } catch {
       return null;
     }
+  }
+
+  exportLevelsUrl(companyId: string, search: StockSearch, format: ExportFormat): string {
+    return this.api.exportLevelsUrl(companyId, search, format);
+  }
+
+  exportMovementsUrl(companyId: string, search: StockMovementSearch, format: ExportFormat): string {
+    return this.api.exportMovementsUrl(companyId, search, format);
   }
 
   /**

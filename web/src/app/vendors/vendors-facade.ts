@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
+import type { ExportFormat } from '../shared/list/export-address';
 import { VendorsApi, VendorsRefused } from './vendors-api';
 import type {
   VendorInput,
@@ -29,6 +30,10 @@ export class VendorsFacade {
   readonly vendor = this.vendorSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
+
+  exportUrl(companyId: string, search: VendorSearch, format: ExportFormat): string {
+    return this.api.exportUrl(companyId, search, format);
+  }
 
   /**
    * One page of the vendors the search finds. Only the latest search's answer is shown: typing sends one search per

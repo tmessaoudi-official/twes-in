@@ -62,6 +62,10 @@ describe('VendorsPage', () => {
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
     loadPage: vi.fn(),
+    exportUrl: vi.fn(
+      (companyId: string, _search: unknown, format: string) =>
+        `/api/companies/${companyId}/exports/vendors.${format}`,
+    ),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -103,6 +107,15 @@ describe('VendorsPage', () => {
     });
     fixture = TestBed.createComponent(VendorsPage);
     await settle();
+  });
+
+  it('offers what the list shows as a CSV or an Excel file', () => {
+    expect(q('vendors-export-csv')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/vendors.csv',
+    );
+    expect(q('vendors-export-xlsx')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/vendors.xlsx',
+    );
   });
 
   it("lists the company's vendors with their city, terms and status in words", () => {

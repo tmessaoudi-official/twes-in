@@ -229,6 +229,42 @@ describe('InventoryApi', () => {
     expect(await named).toEqual([]);
   });
 
+  it('names the files of the stock and of its movements, with their words, choices and order and no page', () => {
+    expect(
+      api.exportLevelsUrl(
+        'c/1',
+        {
+          page: 3,
+          itemsPerPage: 50,
+          q: ' vis ',
+          locationId: 'l1',
+          establishmentId: null,
+          order: { key: 'quantity', direction: 'desc' },
+        },
+        'csv',
+      ),
+    ).toBe(
+      '/api/companies/c%2F1/exports/stock-levels.csv?q=vis&locationId=l1&order%5Bquantity%5D=desc',
+    );
+    expect(
+      api.exportMovementsUrl(
+        'c/1',
+        {
+          page: 2,
+          itemsPerPage: 25,
+          q: '',
+          productId: 'p1',
+          locationId: null,
+          kind: 'in',
+          sourceType: null,
+          lot: ' L-1 ',
+          order: null,
+        },
+        'xlsx',
+      ),
+    ).toBe('/api/companies/c%2F1/exports/stock-movements.xlsx?productId=p1&kind=in&lot=L-1');
+  });
+
   it('asks for one page of movements, sending only what the search narrows to', async () => {
     const narrowed = api.movements('c1', {
       page: 2,

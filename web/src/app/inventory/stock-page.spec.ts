@@ -154,6 +154,10 @@ describe('StockPage', () => {
     total: signal(1).asReadonly(),
     loadStockContext: vi.fn(),
     loadStock: vi.fn(),
+    exportLevelsUrl: vi.fn(
+      (companyId: string, _search: unknown, format: string) =>
+        `/api/companies/${companyId}/exports/stock-levels.${format}`,
+    ),
     pickProducts: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
     ),
@@ -239,6 +243,15 @@ describe('StockPage', () => {
     expect(facade.loadStock).toHaveBeenCalledWith(
       'c1',
       expect.objectContaining({ page: 1, itemsPerPage: 25, q: '' }),
+    );
+  });
+
+  it('offers what the list shows as a CSV or an Excel file', () => {
+    expect(q('stock-export-csv')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/stock-levels.csv',
+    );
+    expect(q('stock-export-xlsx')?.getAttribute('href')).toBe(
+      '/api/companies/c1/exports/stock-levels.xlsx',
     );
   });
 

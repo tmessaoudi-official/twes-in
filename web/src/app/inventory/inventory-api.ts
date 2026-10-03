@@ -25,6 +25,7 @@ import type {
   StockProductPickStockProductPickRead,
   ReceiptCostReceiptCostRead,
 } from '../api/types.gen';
+import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import type { ListPage } from '../shared/list/list-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import {
@@ -157,6 +158,16 @@ export class InventoryApi {
         )
       ).map(toLocation),
     );
+  }
+
+  /** Where the stock levels the search finds are downloaded as a file, every page of them. */
+  exportLevelsUrl(companyId: string, search: StockSearch, format: ExportFormat): string {
+    return exportAddress(companyId, 'stock-levels', toSearchParams(search), format);
+  }
+
+  /** Where the movements the search finds are downloaded as a file, every page of them. */
+  exportMovementsUrl(companyId: string, search: StockMovementSearch, format: ExportFormat): string {
+    return exportAddress(companyId, 'stock-movements', toMovementParams(search), format);
   }
 
   /** One page of the company's movements, narrowed, sorted and paged by the API; newest first by default. */

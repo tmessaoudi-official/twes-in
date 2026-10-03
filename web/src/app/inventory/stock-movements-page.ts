@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   input,
+  signal,
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,6 +22,8 @@ import { LiveChanges } from '../shared/realtime/live-changes';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { AmountPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell } from '../shared/list/data-list';
+import type { ExportFormat } from '../shared/list/export-address';
+import { ListExport } from '../shared/list/list-export';
 import type { ListQuery } from '../shared/list/list-types';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { InventoryFacade } from './inventory-facade';
@@ -31,6 +34,7 @@ import {
   type StockMovementListRow,
 } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
+import type { StockMovementSearch } from './inventory-types';
 
 /**
  * How stock moved: one product's movements when the address names it, one lot's or serial number's when it names that
@@ -50,6 +54,7 @@ import { INVENTORY_TABS } from './inventory-nav';
     MomentPipe,
     DataList,
     DataListCell,
+    ListExport,
   ],
   templateUrl: './stock-movements-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -79,6 +84,15 @@ export class StockMovementsPage {
 
   /** What the list last asked the API for; the page is not read until the list has said what it wants. */
   private query: ListQuery | null = null;
+  private readonly searched = signal<StockMovementSearch | null>(null);
+  /** What the list shows now, as a file: null until the list has asked for its first page. */
+  protected readonly exporter = computed(() => {
+    const companyId = this.company()?.id;
+    const search = this.searched();
+    return companyId && search !== null
+      ? (format: ExportFormat) => this.facade.exportMovementsUrl(companyId, search, format)
+      : null;
+  });
 
   constructor() {
     // The page stays when only the query changes, as when leaving one product for all of them, so the product it
@@ -88,8 +102,7 @@ export class StockMovementsPage {
       this.lot();
       const companyId = untracked(this.company)?.id;
       const query = untracked(() => this.query);
-      if (companyId && query !== null)
-        void this.facade.loadMovements(companyId, this.search(query));
+      if (companyId && query !== null) this.load(companyId, query);
     });
     inject(ScanBus).handle((scan) => this.scanned(scan));
     void this.start();
@@ -104,7 +117,13 @@ export class StockMovementsPage {
   protected onQuery(query: ListQuery): void {
     this.query = query;
     const companyId = this.company()?.id;
-    if (companyId) void this.facade.loadMovements(companyId, this.search(query));
+    if (companyId) this.load(companyId, query);
+  }
+
+  private load(companyId: string, query: ListQuery): void {
+    const search = this.search(query);
+    this.searched.set(search);
+    void this.facade.loadMovements(companyId, search);
   }
 
   /** The address names the product or the lot; the list names everything else. */
