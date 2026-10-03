@@ -29,8 +29,8 @@ final readonly class DoctrineProductCostChangeRepository implements ProductCostC
         $this->entityManager->detach($change);
     }
 
-    public function ofProduct(Uuid $productId, Uuid $companyId): array
+    public function ofProduct(Uuid $productId, Uuid $companyId, int $limit): array
     {
-        return $this->entityManager->getRepository(ProductCostChange::class)->findBy(['product' => $productId, 'company' => $companyId], ['at' => 'DESC', 'id' => 'DESC']);
+        return $this->entityManager->getRepository(ProductCostChange::class)->findBy(['product' => $productId, 'company' => $companyId], ['at' => 'DESC', 'id' => 'DESC'], $limit);
     }
 }

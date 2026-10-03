@@ -17,6 +17,7 @@ use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Module\Inventory\Domain\StockValue;
+use App\Module\Inventory\Domain\TypedCost;
 use App\Module\Inventory\Domain\WeightedAverageCost;
 use App\Module\Products\Domain\Product;
 use App\Shared\Domain\Page;
@@ -101,6 +102,13 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
     /** @return numeric-string|null */
     public function averageCostOf(Product $product): ?string
     {
+        $totals = $this->valuedTotalsOf($product);
+
+        return WeightedAverageCost::of($totals['quantity'], $totals['amount'], $product->getDetails()->costPrice);
+    }
+
+    public function valuedTotalsOf(Product $product): array
+    {
         $row = $this->entityManager->createQueryBuilder()
             ->select('SUM(m.quantity) AS quantity', 'SUM(m.quantity * m.unitCost) AS amount')
             ->from(StockMovement::class, 'm')
@@ -109,11 +117,27 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->setParameter('product', $product->getId(), 'uuid')
             ->getQuery()
             ->getSingleResult();
-        if (!\is_array($row)) {
-            return null;
-        }
+        $row = \is_array($row) ? $row : [];
 
-        return WeightedAverageCost::of(self::decimal($row['quantity'] ?? 0), new Number('0.0000000')->add(self::amount($row['amount'] ?? 0))->value, $product->getDetails()->costPrice);
+        return ['quantity' => self::decimal($row['quantity'] ?? 0), 'amount' => new Number('0.0000000')->add(self::amount($row['amount'] ?? 0))->value];
+    }
+
+    public function lastTypedCostOf(Product $product): ?TypedCost
+    {
+        $receipt = $this->entityManager->createQueryBuilder()
+            ->select('m')
+            ->from(StockMovement::class, 'm')
+            ->where('m.product = :product')
+            ->andWhere('m.costTyped = true')
+            ->orderBy('m.at', 'DESC')
+            ->addOrderBy('m.id', 'DESC')
+            ->setMaxResults(1)
+            ->setParameter('product', $product->getId(), 'uuid')
+            ->getQuery()
+            ->getOneOrNullResult();
+        $cost = $receipt instanceof StockMovement ? $receipt->getUnitCost() : null;
+
+        return null === $cost ? null : new TypedCost($cost, $receipt->getAt());
     }
 
     /** @return int|numeric-string */

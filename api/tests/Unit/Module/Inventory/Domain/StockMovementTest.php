@@ -75,6 +75,16 @@ final class StockMovementTest extends TestCase
         self::assertSame('7.0000', StockMovement::returnOf($delivery, $this->now)->getUnitCost());
     }
 
+    public function testAReceiptRemembersWhetherItsCostWasTypedAndValuingNeverMakesAnAverageLookTyped(): void
+    {
+        $typed = StockMovement::receipt($this->laptop, $this->site, '1', null, $this->now, null, '10');
+        $untyped = StockMovement::receipt($this->laptop, $this->site, '1', null, $this->now);
+        $untyped->valuedAt('99.0000');
+
+        self::assertSame([true, false, false], [$typed->isCostTyped(), $untyped->isCostTyped(), StockMovement::delivery($this->laptop, $this->site, '1', Uuid::v7(), $this->now)->isCostTyped()]);
+        self::assertSame('99.0000', $untyped->getUnitCost(), 'it is valued, and it still is not a price somebody typed');
+    }
+
     public function testEveryMovementOfATrackedProductNamesItsLotAndOfAnUntrackedOneNone(): void
     {
         $this->laptop->track(ProductTracking::Lot, $this->now);

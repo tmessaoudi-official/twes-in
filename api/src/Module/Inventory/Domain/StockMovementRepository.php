@@ -30,6 +30,16 @@ interface StockMovementRepository
     public function valuation(Uuid $companyId): array;
 
     /**
+     * The quantity and the worth of the product's movements that carry a cost, signed: what its average is made of.
+     *
+     * @return array{quantity: numeric-string, amount: numeric-string}
+     */
+    public function valuedTotalsOf(Product $product): array;
+
+    /** The cost on the latest receipt of the product that came with one typed; none when no receipt did. */
+    public function lastTypedCostOf(Product $product): ?TypedCost;
+
+    /**
      * What one unit of the product is worth, the weighted average of the movements that carry a cost, or its cost price
      * while none does; null when it has neither.
      *

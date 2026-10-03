@@ -29,6 +29,7 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 final class InventoryTest extends ApiTestCase
 {
@@ -332,6 +333,42 @@ final class InventoryTest extends ApiTestCase
         $receive('5', '9000', 'last');
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         self::assertSame(['1275.0000', 2], [$cost(), $rows()], 'a writer who cannot read costs neither types one nor applies one');
+    }
+
+    public function testTheReceiptCostAndTheCostHistoryAreReadOnlyWithTheCostPermission(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.cost.read']);
+        $site = $this->defaultLocationId();
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => '10', 'unitCost' => '1200', 'applyCost' => 'last']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $typedAt = $this->em()->getConnection()->fetchOne('SELECT at FROM stock_movement WHERE cost_typed');
+        self::assertIsString($typedAt);
+        // Received later with no cost: valued at the average, so nobody paid that and it is no last price.
+        $this->em()->getConnection()->executeStatement("UPDATE stock_movement SET at = at - interval '1 hour' WHERE cost_typed");
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => '5']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $ask = $this->path('stock-options/receipt-cost').'?productId='.$this->laptopId.'&quantity=10&unitCost=1400';
+
+        $this->getJson($ask);
+        self::assertResponseIsSuccessful();
+        $cost = $this->json();
+        self::assertSame(['suggest', '1200.0000', '1280.0000', '1200.0000'], [$cost['mode'] ?? null, $cost['costNow'] ?? null, $cost['average'] ?? null, $cost['lastCost'] ?? null]);
+        self::assertEquals(new \DateTimeImmutable($typedAt.' UTC')->modify('-1 hour'), new \DateTimeImmutable(\is_string($cost['lastAt'] ?? null) ? $cost['lastAt'] : 'invalid'), 'the receipt somebody typed, not the later one');
+
+        $this->getJson($this->path('products', $this->laptopId).'/cost-history');
+        self::assertResponseIsSuccessful();
+        $history = $this->jsonList();
+        self::assertSame([[null, '1200.0000', 'receipt']], array_map(static fn (array $row): array => [$row['oldCost'] ?? null, $row['newCost'] ?? null, $row['source'] ?? null], $history));
+
+        $this->getJson($this->path('stock-options/receipt-cost').'?productId='.Uuid::v7()->toRfc4122());
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a product of nobody');
+
+        $this->createUser('clerk@twes.local', 'password-1234', $this->company(), ['stock.read', 'stock.write', 'product.read'], 'counter');
+        $this->login('clerk@twes.local', 'password-1234');
+        foreach ([$ask, $this->path('products', $this->laptopId).'/cost-history'] as $path) {
+            $this->getJson($path);
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, $path);
+        }
     }
 
     public function testANoteWhoseStockNeverMovedIsReplayedOnceByTheCommand(): void

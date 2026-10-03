@@ -100,6 +100,10 @@ class StockMovement implements CompanyOwned
     #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 4, nullable: true)]
     private ?string $unitCost = null;
 
+    /** Whether somebody typed the cost, as opposed to the average a movement without one is valued at. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $costTyped = false;
+
     /**
      * @param numeric-string $quantity signed, with three decimals
      *
@@ -140,6 +144,7 @@ class StockMovement implements CompanyOwned
                 throw new \LogicException(\sprintf('The cost %s was not normalized to a number.', $normalized));
             }
             $receipt->unitCost = new Number($normalized)->value;
+            $receipt->costTyped = true;
         }
 
         return $receipt;
@@ -344,6 +349,11 @@ class StockMovement implements CompanyOwned
     public function getKind(): StockMovementKind
     {
         return $this->kind;
+    }
+
+    public function isCostTyped(): bool
+    {
+        return $this->costTyped;
     }
 
     /** Values a movement that came with no cost: what it moves is worth this much a unit. Never changes one that has it. */

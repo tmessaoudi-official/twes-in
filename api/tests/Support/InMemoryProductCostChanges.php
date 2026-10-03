@@ -23,11 +23,11 @@ final class InMemoryProductCostChanges implements ProductCostChangeRepository
         $this->changes[] = $change;
     }
 
-    public function ofProduct(Uuid $productId, Uuid $companyId): array
+    public function ofProduct(Uuid $productId, Uuid $companyId, int $limit): array
     {
-        return array_values(array_reverse(array_filter(
+        return \array_slice(array_values(array_reverse(array_filter(
             $this->changes,
             static fn (ProductCostChange $change): bool => $change->getProduct()->getId()->equals($productId) && $change->getProduct()->getCompany()->getId()->equals($companyId),
-        )));
+        ))), 0, $limit);
     }
 }

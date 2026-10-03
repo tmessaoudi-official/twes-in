@@ -15,6 +15,6 @@ interface ProductCostChangeRepository
 {
     public function save(ProductCostChange $change): void;
 
-    /** @return list<ProductCostChange> a product's changes of cost in its company, the newest first */
-    public function ofProduct(Uuid $productId, Uuid $companyId): array;
+    /** @return list<ProductCostChange> the latest changes of a product's cost in its company, the newest first */
+    public function ofProduct(Uuid $productId, Uuid $companyId, int $limit): array;
 }

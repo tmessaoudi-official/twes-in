@@ -16,6 +16,7 @@ use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Module\Inventory\Domain\StockValue;
+use App\Module\Inventory\Domain\TypedCost;
 use App\Module\Inventory\Domain\WeightedAverageCost;
 use App\Module\Products\Domain\Product;
 use App\Shared\Application\Transactions;
@@ -49,6 +50,13 @@ final class InMemoryStockMovements implements StockMovementRepository
 
     public function averageCostOf(Product $product): ?string
     {
+        $totals = $this->valuedTotalsOf($product);
+
+        return WeightedAverageCost::of($totals['quantity'], $totals['amount'], $product->getDetails()->costPrice);
+    }
+
+    public function valuedTotalsOf(Product $product): array
+    {
         $quantity = new Number('0.000');
         $amount = new Number('0.0000000');
         foreach ($this->movements as $earlier) {
@@ -58,7 +66,20 @@ final class InMemoryStockMovements implements StockMovementRepository
             }
         }
 
-        return WeightedAverageCost::of($quantity->value, $amount->value, $product->getDetails()->costPrice);
+        return ['quantity' => $quantity->value, 'amount' => $amount->value];
+    }
+
+    public function lastTypedCostOf(Product $product): ?TypedCost
+    {
+        $latest = null;
+        foreach ($this->movements as $movement) {
+            if ($movement->getProduct() === $product && $movement->isCostTyped() && (null === $latest || $movement->getAt() >= $latest->getAt())) {
+                $latest = $movement;
+            }
+        }
+        $cost = $latest?->getUnitCost();
+
+        return null === $latest || null === $cost ? null : new TypedCost($cost, $latest->getAt());
     }
 
     public function ofSource(string $sourceType, Uuid $sourceId, Uuid $companyId): array

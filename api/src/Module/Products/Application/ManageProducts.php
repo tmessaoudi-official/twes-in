@@ -56,6 +56,7 @@ final readonly class ManageProducts
     public const string ENTITY_TYPE = 'product';
     public const string CREATED = 'product.created';
     public const string REVISED = 'product.revised';
+    public const int COST_HISTORY_LIMIT = 200;
 
     public function __construct(
         private ProductRepository $products,
@@ -101,6 +102,18 @@ final readonly class ManageProducts
     public function substitutionGroups(Company $company): array
     {
         return $this->products->substitutionGroups($company->getId());
+    }
+
+    /**
+     * The latest changes of what a product costs the company, the newest first.
+     *
+     * @return list<ProductCostChange>
+     *
+     * @throws ProductNotFound
+     */
+    public function costHistoryOf(Company $company, Uuid $id): array
+    {
+        return $this->costChanges->ofProduct($this->get($company, $id)->getId(), $company->getId(), self::COST_HISTORY_LIMIT);
     }
 
     /** @throws ProductNotFound */
