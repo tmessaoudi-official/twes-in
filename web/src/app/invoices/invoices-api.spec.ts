@@ -495,4 +495,11 @@ describe('InvoicesApi', () => {
   it('names where a document is downloaded as a PDF', () => {
     expect(api.pdfUrl('c1', 'i 1')).toBe('/api/companies/c1/invoices/i%201/pdf');
   });
+
+  it('names where a duplicate or an up-to-date copy is printed', () => {
+    expect(api.pdfCopyUrl('c1', 'i 1', 'duplicate')).toBe(
+      '/api/companies/c1/invoices/i%201/pdf/duplicate',
+    );
+    expect(api.pdfCopyUrl('c1', 'i1', 'current')).toBe('/api/companies/c1/invoices/i1/pdf/current');
+  });
 });

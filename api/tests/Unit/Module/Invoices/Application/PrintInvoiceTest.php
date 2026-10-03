@@ -17,15 +17,18 @@ use App\Fiscal\Domain\TaxFamily;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
+use App\Module\Invoices\Application\InvoiceCopy;
 use App\Module\Invoices\Application\InvoiceMentions;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoicePage;
 use App\Module\Invoices\Application\InvoiceTotals;
+use App\Module\Invoices\Application\NoCopyOfADraft;
 use App\Module\Invoices\Application\PrintInvoice;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceIssue;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
+use App\Module\Invoices\Domain\PaymentDetails;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\PresentationSettings;
@@ -35,6 +38,7 @@ use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\SettingLevel;
 use App\Shared\Application\PdfRenderingFailed;
+use App\Shared\Domain\PaymentMethod;
 use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
@@ -97,6 +101,7 @@ final class PrintInvoiceTest extends TestCase
             $this->renderer,
             new Files($this->storage, $this->records, $this->clock),
             new ReadSetting($resolve),
+            $this->clock,
         );
     }
 
@@ -269,6 +274,58 @@ final class PrintInvoiceTest extends TestCase
         $this->print->pdf($this->company, $older->getId());
 
         self::assertFalse($this->template->pages[0]->howToPay, 'the setting is on today, the document was issued without it');
+    }
+
+    public function testADuplicateIsASecondOutputAndLeavesTheStoredOriginalAlone(): void
+    {
+        $invoice = $this->issued($this->customer('standard', null));
+        $original = $this->print->pdf($this->company, $invoice->getId());
+        $stored = $invoice->getPdfFile();
+        $this->clock->sleep(86400);
+
+        $copy = $this->print->copy($this->company, $invoice->getId(), InvoiceCopy::Duplicate);
+
+        $page = array_last($this->template->pages);
+        self::assertNotNull($page);
+        self::assertSame([InvoiceCopy::Duplicate, '2026-09-16', null], [$page->copy, $page->copiedOn?->format('Y-m-d'), $page->paidStamp]);
+        self::assertNotSame($original->contents, $copy->contents, 'a second output, never the stored bytes');
+        self::assertSame($stored, $invoice->getPdfFile(), 'the original stays what issuing stored');
+        self::assertStringContainsString('duplicate', $copy->contents);
+    }
+
+    public function testAnUpToDateCopyStampsWhatTheInvoiceHasBecome(): void
+    {
+        $invoice = $this->issued($this->customer('standard', null));
+        $this->print->copy($this->company, $invoice->getId(), InvoiceCopy::UpToDate);
+        self::assertNull($this->template->pages[0]->paidStamp, 'nothing paid, no stamp');
+
+        $invoice->recordPayment(new PaymentDetails(new \DateTimeImmutable('2026-09-15'), '1', PaymentMethod::Cash), new \DateTimeImmutable('2026-09-15'), 3, null, $this->clock->now());
+        $this->print->copy($this->company, $invoice->getId(), InvoiceCopy::UpToDate);
+        self::assertSame('partial', $this->template->pages[1]->paidStamp);
+
+        $rest = $this->totals->figures($invoice)->amountDue;
+        $invoice->recordPayment(new PaymentDetails(new \DateTimeImmutable('2026-09-15'), $rest, PaymentMethod::Cash), new \DateTimeImmutable('2026-09-15'), 3, null, $this->clock->now());
+        $this->print->copy($this->company, $invoice->getId(), InvoiceCopy::UpToDate);
+        self::assertSame('paid', $this->template->pages[2]->paidStamp);
+        self::assertSame(InvoiceCopy::UpToDate, $this->template->pages[2]->copy);
+    }
+
+    public function testADuplicateNeverCarriesAPaidStampEvenOnAPaidInvoice(): void
+    {
+        $invoice = $this->issued($this->customer('standard', null));
+        $invoice->recordPayment(new PaymentDetails(new \DateTimeImmutable('2026-09-15'), '1', PaymentMethod::Cash), new \DateTimeImmutable('2026-09-15'), 3, null, $this->clock->now());
+
+        $this->print->copy($this->company, $invoice->getId(), InvoiceCopy::Duplicate);
+
+        self::assertNull($this->template->pages[0]->paidStamp, 'a duplicate shows the document as issued');
+    }
+
+    public function testADraftHasNoCopy(): void
+    {
+        $draft = $this->draft($this->customer('standard', null));
+
+        $this->expectException(NoCopyOfADraft::class);
+        $this->print->copy($this->company, $draft->getId(), InvoiceCopy::Duplicate);
     }
 
     public function testACancelledDraftIsRenderedStampedAndNeverStored(): void

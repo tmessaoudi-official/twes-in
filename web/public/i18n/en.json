@@ -1309,6 +1309,8 @@
       "keep": "Keep the draft",
       "pdf": "Download the PDF",
       "pdf_draft": "Preview the PDF",
+      "print_duplicate": "Print a duplicate",
+      "print_current": "Print an up-to-date copy",
       "issue_title": "Issue this invoice?",
       "issue_message": "It receives its number and no longer changes: a mistake is then corrected with a credit note.",
       "issue_credit_note_title": "Issue this credit note?",

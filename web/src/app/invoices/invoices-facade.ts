@@ -193,6 +193,10 @@ export class InvoicesFacade {
     return this.api.pdfUrl(companyId, id);
   }
 
+  pdfCopyUrl(companyId: string, id: string, kind: 'duplicate' | 'current'): string {
+    return this.api.pdfCopyUrl(companyId, id, kind);
+  }
+
   clearError(): void {
     this.errorSignal.set(null);
   }

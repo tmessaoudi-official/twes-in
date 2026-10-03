@@ -416,6 +416,22 @@ export class InvoicePage {
         shown: this.pdfUrl() !== null,
       },
       {
+        id: 'print-duplicate',
+        label: 'invoices.actions.print_duplicate',
+        icon: 'file_copy',
+        rare: true,
+        href: this.copyUrl('duplicate') ?? undefined,
+        shown: this.isOpen() && this.copyUrl('duplicate') !== null,
+      },
+      {
+        id: 'print-current',
+        label: 'invoices.actions.print_current',
+        icon: 'receipt_long',
+        rare: true,
+        href: this.copyUrl('current') ?? undefined,
+        shown: this.isOpen() && this.copyUrl('current') !== null,
+      },
+      {
         id: 'duplicate',
         label: 'invoices.actions.duplicate',
         icon: 'content_copy',
@@ -464,6 +480,12 @@ export class InvoicePage {
     const current = this.current();
     return companyId && current ? this.facade.pdfUrl(companyId, current.id) : null;
   });
+  private copyUrl(kind: 'duplicate' | 'current'): string | null {
+    const companyId = this.company()?.id;
+    const current = this.current();
+    return companyId && current ? this.facade.pdfCopyUrl(companyId, current.id, kind) : null;
+  }
+
   protected readonly canIssue = computed(
     () =>
       this.current()?.status === 'draft' &&

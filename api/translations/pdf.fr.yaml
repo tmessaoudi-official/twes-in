@@ -60,6 +60,14 @@ payment:
 watermark:
     draft: 'BROUILLON'
     cancelled: 'ANNULÉ'
+    duplicate: 'DUPLICATA'
+    copy: 'COPIE'
+copy:
+    duplicate: 'DUPLICATA — réimprimé le %date%'
+    current: 'COPIE — état au %date%'
+stamp:
+    paid: 'ACQUITTÉE'
+    partial: 'RÉGLÉE PARTIELLEMENT'
 statement:
     title: 'Relevé de compte'
     period: 'Période du %from% au %to%'

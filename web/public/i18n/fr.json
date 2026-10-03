@@ -1309,6 +1309,8 @@
       "keep": "Garder le brouillon",
       "pdf": "Télécharger le PDF",
       "pdf_draft": "Aperçu du PDF",
+      "print_duplicate": "Imprimer un duplicata",
+      "print_current": "Imprimer une copie à jour",
       "issue_title": "Émettre cette facture ?",
       "issue_message": "Elle reçoit son numéro et ne se modifie plus : une erreur se corrige ensuite par un avoir.",
       "issue_credit_note_title": "Émettre cet avoir ?",

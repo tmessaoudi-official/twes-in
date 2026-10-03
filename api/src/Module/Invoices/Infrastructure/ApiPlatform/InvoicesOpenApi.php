@@ -48,6 +48,23 @@ final readonly class InvoicesOpenApi implements OpenApiFactoryInterface
             parameters: [$uuid('companyId', 'The company'), $uuid('invoiceId', 'The invoice or credit note')],
         )));
 
+        $openApi->getPaths()->addPath('/api/companies/{companyId}/invoices/{invoiceId}/pdf/{kind}', new PathItem(get: new Operation(
+            operationId: 'invoicePdfCopy',
+            tags: ['Invoice'],
+            responses: [
+                '200' => new Response(
+                    'A duplicate (the document as issued, marked DUPLICATA with the day it was reprinted) or an up-to-date copy (marked COPIE, stamped paid or partly paid), printed on request and never stored',
+                    new \ArrayObject(['application/pdf' => new MediaType(new \ArrayObject(['type' => 'string', 'format' => 'binary']))]),
+                ),
+                '401' => new Response('Not signed in'),
+                '404' => new Response('No such invoice in this company, a kind other than duplicate or current, no invoice.read, or the module is switched off'),
+                '409' => new Response('A draft or a cancelled draft has no original to copy'),
+                '503' => new Response('The renderer could not produce the PDF'),
+            ],
+            summary: 'A duplicate or an up-to-date copy of an issued invoice or credit note as a PDF',
+            parameters: [$uuid('companyId', 'The company'), $uuid('invoiceId', 'The invoice or credit note'), new Parameter('kind', 'path', 'duplicate or current', true, schema: ['type' => 'string', 'enum' => ['duplicate', 'current']])],
+        )));
+
         $openApi->getPaths()->addPath('/api/companies/{companyId}/customers/{customerId}/statement/pdf', new PathItem(get: new Operation(
             operationId: 'customerStatementPdf',
             tags: ['Customer'],

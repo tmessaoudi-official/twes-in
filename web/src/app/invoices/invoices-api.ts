@@ -274,6 +274,11 @@ export class InvoicesApi {
     return `${invoicePath(companyId, id)}/pdf`;
   }
 
+  /** A duplicate (the document as issued) or an up-to-date copy (with what was paid since), printed on request. */
+  pdfCopyUrl(companyId: string, id: string, kind: 'duplicate' | 'current'): string {
+    return `${invoicePath(companyId, id)}/pdf/${kind}`;
+  }
+
   private async step(
     companyId: string,
     id: string,

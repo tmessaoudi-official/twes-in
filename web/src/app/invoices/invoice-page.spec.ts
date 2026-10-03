@@ -244,6 +244,8 @@ describe('InvoicePage', () => {
     deletePayment: vi.fn(),
     clearError: vi.fn(),
     pdfUrl: (companyId: string, id: string) => `/api/companies/${companyId}/invoices/${id}/pdf`,
+    pdfCopyUrl: (companyId: string, id: string, kind: string) =>
+      `/api/companies/${companyId}/invoices/${id}/pdf/${kind}`,
   };
   const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
   const display = { show: vi.fn(), total: vi.fn(), clear: vi.fn(), openWindow: vi.fn() };
@@ -930,6 +932,26 @@ describe('InvoicePage', () => {
     );
   });
 
+  it('offers a duplicate and an up-to-date copy of an issued invoice, and none of a draft', async () => {
+    invoice.set(issued);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-print-duplicate')?.getAttribute('href')).toBe(
+      '/api/companies/c1/invoices/i1/pdf/duplicate',
+    );
+    expect(over('document-menu-print-current')?.getAttribute('href')).toBe(
+      '/api/companies/c1/invoices/i1/pdf/current',
+    );
+
+    invoice.set(draft);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-print-duplicate')).toBeNull();
+    expect(over('document-menu-print-current')).toBeNull();
+  });
+
   it('records a payment on the company’s today, for what is still due unless changed', async () => {
     invoice.set(issued);
     await open('i1');
@@ -1060,8 +1082,11 @@ describe('InvoicePage', () => {
     granted.delete('invoice.credit');
     invoice.set(issued);
     await open('i1');
-    // Nothing else lives in that menu for this clerk, so it is not drawn at all.
-    expect(q('document-more')).toBeNull();
+    // The menu holds the copies for this clerk, and no credit note.
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-credit-note')).toBeNull();
+    expect(over('document-menu-print-duplicate')).not.toBeNull();
 
     invoice.set({
       ...draft,

@@ -35,12 +35,21 @@
     .mention, .remarks { margin-top: 16px; }
     .footer { margin-top: 32px; padding-top: 8px; border-top: 1px solid #d0d7de; font-size: 8pt; color: #57606a; text-align: center; }
     .muted { color: #57606a; }
+    .copy-mark { margin: 0 0 8px; font-weight: 700; letter-spacing: .05em; color: #cf222e; }
+    .paid-stamp { display: inline-block; margin: 8px 0; padding: 4px 14px; border: 3px solid #1a7f37; color: #1a7f37; font-size: 18pt; font-weight: 800; letter-spacing: .1em; transform: rotate(-4deg); }
     .watermark { position: fixed; top: 45%; left: 0; right: 0; text-align: center; transform: rotate(-30deg); font-size: 96pt; font-weight: 800; color: rgba(207, 34, 46, .14); letter-spacing: .1em; }
   </style>
 </head>
 <body>
   {%- if page.watermark %}
     <div class="watermark">{{ ('watermark.' ~ page.watermark)|trans({}, t, locale) }}</div>
+  {%- endif %}
+
+  {%- if page.copy %}
+    <p class="copy-mark" data-testid="copy-mark">{{ ('copy.' ~ page.copy.value)|trans({'%date%': page.copiedOn|date(dateFormat)}, t, locale) }}</p>
+  {%- endif %}
+  {%- if page.paidStamp %}
+    <div class="paid-stamp" data-testid="paid-stamp">{{ ('stamp.' ~ page.paidStamp)|trans({}, t, locale) }}</div>
   {%- endif %}
 
   <div class="parties">

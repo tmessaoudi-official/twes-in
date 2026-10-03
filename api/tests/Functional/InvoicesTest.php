@@ -349,6 +349,41 @@ final class InvoicesTest extends ApiTestCase
         self::assertStringContainsString('<img class="logo" src="data:image/png;base64,', (string) $this->client->getResponse()->getContent(), 'an issued invoice is served as it was issued, logo included');
     }
 
+    public function testACopyOfAnIssuedInvoiceSaysSoAndNeverTouchesTheStoredOriginal(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->client->request('GET', $this->path($id).'/pdf/duplicate');
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft has no original to copy');
+
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertResponseIsSuccessful();
+        $number = $this->stringAt($this->json(), 'number');
+        $sha = $this->em()->getConnection()->fetchOne('SELECT f.sha256 FROM file f JOIN invoice i ON i.pdf_file_id = f.id WHERE i.id = ?', [$id]);
+
+        $this->client->request('GET', $this->path($id).'/pdf/duplicate');
+        self::assertResponseIsSuccessful();
+        $duplicate = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('DUPLICATA', $duplicate);
+        self::assertStringContainsString(str_replace('/', '-', $number).'-duplicate.pdf', (string) $this->client->getResponse()->headers->get('content-disposition'));
+        self::assertNotSame($sha, hash('sha256', $duplicate));
+
+        $this->client->request('GET', $this->path($id).'/pdf/current');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('COPIE', (string) $this->client->getResponse()->getContent());
+
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertSame($sha, hash('sha256', (string) $this->client->getResponse()->getContent()), 'the original is still the stored file');
+        self::assertSame($sha, $this->em()->getConnection()->fetchOne('SELECT f.sha256 FROM file f JOIN invoice i ON i.pdf_file_id = f.id WHERE i.id = ?', [$id]));
+
+        $this->client->request('GET', $this->path($id).'/pdf/other');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'only the two kinds exist');
+        $this->client->request('GET', $this->path(self::ABSENT).'/pdf/duplicate');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testADraftPrintsOnRequestAndAnIssuedInvoicePrintsAsItWasIssued(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);

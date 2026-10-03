@@ -24,13 +24,16 @@ final readonly class InvoicePage
     public const string DRAFT = 'draft';
     /** Printed across a draft that will never be one. */
     public const string CANCELLED = 'cancelled';
+    /** Printed across a duplicate of an issued document, and across its up-to-date copy. */
+    public const string DUPLICATE = 'duplicate';
+    public const string COPY = 'copy';
 
     /**
-     * @param self::DRAFT|self::CANCELLED|null $watermark
-     * @param string                           $language     fr or en
-     * @param list<string>                     $mentionKeys  translation keys
-     * @param string                           $dateFormat   the company's `presentation.date-format`, `auto` for the language's
-     * @param string                           $numberFormat the company's `presentation.number-format`, `auto` for the language's
+     * @param self::DRAFT|self::CANCELLED|self::DUPLICATE|self::COPY|null $watermark
+     * @param string                                                      $language     fr or en
+     * @param list<string>                                                $mentionKeys  translation keys
+     * @param string                                                      $dateFormat   the company's `presentation.date-format`, `auto` for the language's
+     * @param string                                                      $numberFormat the company's `presentation.number-format`, `auto` for the language's
      */
     public function __construct(
         public Invoice $invoice,
@@ -49,6 +52,12 @@ final readonly class InvoicePage
         public ?string $amountInWords = null,
         /** Whether the seller's IBAN and BIC are printed as the way to pay, the invoice's number being the reference. */
         public bool $howToPay = false,
+        /** Set on a copy of an issued document, null on the original. */
+        public ?InvoiceCopy $copy = null,
+        /** The day the copy was printed, in the company's time zone. */
+        public ?\DateTimeImmutable $copiedOn = null,
+        /** What an up-to-date copy shows of the payments: `partial` or `paid`; null on every other output. */
+        public ?string $paidStamp = null,
     ) {
     }
 }

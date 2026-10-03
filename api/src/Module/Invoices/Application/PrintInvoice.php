@@ -24,6 +24,7 @@ use App\Shared\Application\PdfRenderingFailed;
 use App\Shared\Domain\AmountInWords;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\SellerSnapshot;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -42,6 +43,7 @@ final readonly class PrintInvoice
         private PdfRenderer $renderer,
         private Files $files,
         private ReadSetting $settings,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -60,6 +62,31 @@ final readonly class PrintInvoice
             InvoiceStatus::Cancelled => $this->render($invoice, InvoicePage::CANCELLED),
             InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid, InvoiceStatus::Paid => $this->issued($invoice),
         });
+    }
+
+    /**
+     * A second output of an issued document, rendered again from what issuing kept (its language, texts, seller and
+     * print settings) and marked as a copy. Never stored: the original stays the one file issuing wrote.
+     *
+     * @throws InvoiceNotFound
+     * @throws NoCopyOfADraft
+     * @throws PdfRenderingFailed
+     */
+    public function copy(Company $company, Uuid $id, InvoiceCopy $kind): PrintedInvoice
+    {
+        $invoice = $this->invoices->ofIdInCompany($id, $company->getId()) ?? throw new InvoiceNotFound();
+        if (!\in_array($invoice->getStatus(), [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid, InvoiceStatus::Paid], true)) {
+            throw new NoCopyOfADraft();
+        }
+        $stamp = InvoiceCopy::UpToDate === $kind ? match ($invoice->getStatus()) {
+            InvoiceStatus::Paid => 'paid',
+            InvoiceStatus::PartiallyPaid => 'partial',
+            default => null,
+        } : null;
+        $watermark = InvoiceCopy::Duplicate === $kind ? InvoicePage::DUPLICATE : InvoicePage::COPY;
+        $today = \DateTimeImmutable::createFromInterface($this->clock->now())->setTimezone(new \DateTimeZone($company->getTimezone()));
+
+        return new PrintedInvoice(self::fileName($invoice, $kind), $this->render($invoice, $watermark, $kind, $today, $stamp));
     }
 
     /**
@@ -90,8 +117,8 @@ final readonly class PrintInvoice
         return $contents;
     }
 
-    /** @param InvoicePage::DRAFT|InvoicePage::CANCELLED|null $watermark */
-    private function render(Invoice $invoice, ?string $watermark): string
+    /** @param InvoicePage::DRAFT|InvoicePage::CANCELLED|InvoicePage::DUPLICATE|InvoicePage::COPY|null $watermark */
+    private function render(Invoice $invoice, ?string $watermark, ?InvoiceCopy $copy = null, ?\DateTimeImmutable $copiedOn = null, ?string $paidStamp = null): string
     {
         $company = $invoice->getCompany();
         $customer = $invoice->getCustomer();
@@ -123,14 +150,18 @@ final readonly class PrintInvoice
             $print->numberFormat,
             $print->amountInWords ? AmountInWords::of($figures->total, $company->getCurrency(), $language) : null,
             $print->howToPay,
+            $copy,
+            $copiedOn,
+            $paidStamp,
         )));
     }
 
-    private static function fileName(Invoice $invoice): string
+    private static function fileName(Invoice $invoice, ?InvoiceCopy $copy = null): string
     {
         $number = $invoice->getNumber();
+        $suffix = null === $copy ? '' : '-'.$copy->value;
 
         // A numbering format may carry slashes, which a file name may not.
-        return null === $number ? \sprintf('invoice-%s.pdf', $invoice->getId()->toRfc4122()) : str_replace('/', '-', $number).'.pdf';
+        return null === $number ? \sprintf('invoice-%s.pdf', $invoice->getId()->toRfc4122()) : str_replace('/', '-', $number).$suffix.'.pdf';
     }
 }

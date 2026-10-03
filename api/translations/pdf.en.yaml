@@ -60,6 +60,14 @@ payment:
 watermark:
     draft: 'DRAFT'
     cancelled: 'CANCELLED'
+    duplicate: 'DUPLICATE'
+    copy: 'COPY'
+copy:
+    duplicate: 'DUPLICATE — reprinted on %date%'
+    current: 'COPY — status on %date%'
+stamp:
+    paid: 'PAID'
+    partial: 'PARTLY PAID'
 statement:
     title: 'Statement of account'
     period: 'Period from %from% to %to%'
