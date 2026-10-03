@@ -411,7 +411,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
     {
         $this->createUser('sales@twes.local', 'password-1234', $this->company, [
             'delivery_note.read', 'delivery_note.write', 'delivery_note.validate',
-            'invoice.read', 'invoice.write', 'invoice.issue',
+            'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit',
             'company.read', 'company.settings',
         ], 'member');
     }

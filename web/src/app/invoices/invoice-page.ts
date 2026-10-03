@@ -156,6 +156,8 @@ export class InvoicePage {
   protected readonly mayWrite = computed(() => this.auth.hasPermission('invoice.write'));
   protected readonly mayIssue = computed(() => this.auth.hasPermission('invoice.issue'));
   protected readonly mayPay = computed(() => this.auth.hasPermission('payment.write'));
+  /** A credit note reverses revenue, so drafting and issuing one is a manager's, where issuing an invoice is a clerk's. */
+  protected readonly mayCredit = computed(() => this.auth.hasPermission('invoice.credit'));
   protected readonly confirmingCancel = signal(false);
   protected readonly confirmingPaymentDelete = signal<string | null>(null);
 
@@ -463,7 +465,11 @@ export class InvoicePage {
     return companyId && current ? this.facade.pdfUrl(companyId, current.id) : null;
   });
   protected readonly canIssue = computed(
-    () => this.current()?.status === 'draft' && this.mayWrite() && this.mayIssue(),
+    () =>
+      this.current()?.status === 'draft' &&
+      this.mayWrite() &&
+      this.mayIssue() &&
+      (!this.isCreditNote() || this.mayCredit()),
   );
   protected readonly canCancel = computed(
     () => this.current()?.status === 'draft' && this.mayWrite(),
@@ -477,7 +483,7 @@ export class InvoicePage {
     () =>
       !this.isCreditNote() &&
       this.isOpen() &&
-      this.mayWrite() &&
+      this.mayCredit() &&
       !this.isZero(this.current()?.amountDue ?? '0'),
   );
   protected readonly showsPayments = computed(() => !this.isCreditNote() && this.isOpen());

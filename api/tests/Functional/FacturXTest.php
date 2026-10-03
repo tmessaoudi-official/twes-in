@@ -354,7 +354,7 @@ final class FacturXTest extends ApiTestCase
 
     private function signedIn(): void
     {
-        $this->createUser('sales@twes.local', 'password-1234', $this->company, ['invoice.read', 'invoice.write', 'invoice.issue'], 'member');
+        $this->createUser('sales@twes.local', 'password-1234', $this->company, ['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit'], 'member');
         $this->login('sales@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
     }

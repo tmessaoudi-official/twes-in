@@ -36,7 +36,7 @@ final readonly class CreateCreditNoteProcessor implements ProcessorInterface
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): InvoiceResource
     {
-        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::WRITE);
+        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::CREDIT);
 
         try {
             $credit = $this->manage->draftCreditNote($company, CompanyPath::identifier($uriVariables, 'invoiceId'), (string) $data->creditNoteReason, $this->guard->account()->getId());

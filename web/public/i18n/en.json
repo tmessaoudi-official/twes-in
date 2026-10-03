@@ -155,7 +155,8 @@
     "invoice": {
       "read": "See invoices",
       "write": "Create and edit drafts",
-      "issue": "Issue an invoice"
+      "issue": "Issue an invoice",
+      "credit": "Create and issue a credit note"
     },
     "payment": {
       "write": "Record and delete payments"

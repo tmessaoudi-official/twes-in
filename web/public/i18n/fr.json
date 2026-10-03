@@ -155,7 +155,8 @@
     "invoice": {
       "read": "Voir les factures",
       "write": "Créer et modifier les brouillons",
-      "issue": "Émettre une facture"
+      "issue": "Émettre une facture",
+      "credit": "Créer et émettre un avoir"
     },
     "payment": {
       "write": "Enregistrer et supprimer les règlements"

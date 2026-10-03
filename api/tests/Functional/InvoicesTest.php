@@ -129,7 +129,7 @@ final class InvoicesTest extends ApiTestCase
     // docs/SPEC.md § 7, row 60: the list as a file, under the search, filters and order the screen shows.
     public function testTheInvoicesListIsDownloadedAsAFileUnderWhatTheScreenShows(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $this->postJson($this->path(), $this->invoice(['customerReference' => 'PO-77', 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
         $issued = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path($issued).'/issue', null);
@@ -228,7 +228,7 @@ final class InvoicesTest extends ApiTestCase
 
     public function testAnIssuerNumbersAnInvoiceWithoutGapsAndItThenAnswersWhatIssuingWrote(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
         $number = static fn (int $sequence): string => \sprintf('FAC-%s-%05d', substr($today, 0, 4), $sequence);
         $inDays = static fn (int $days): string => new \DateTimeImmutable($today)->modify("+$days days")->format('Y-m-d');
@@ -291,7 +291,7 @@ final class InvoicesTest extends ApiTestCase
     public function testAnIssuedLineKeepsItsProductsCostForWhoMayReadCosts(): void
     {
         $this->createUser('reader@twes.local', 'password-1234', $this->company, ['invoice.read'], 'reader');
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'product.cost.read']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'product.cost.read']);
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
         $id = $this->stringAt($this->json(), 'id');
         self::assertSame([null], $this->costs($this->json()), 'a draft freezes nothing');
@@ -331,7 +331,7 @@ final class InvoicesTest extends ApiTestCase
     // docs/SPEC.md § 7, 2026-09-26 22:24: a company's documents carry its logo; an issued one keeps the logo it was issued with.
     public function testTheCompanysLogoIsPrintedOnItsInvoicesAndAnIssuedOneKeepsItsOwn(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
         $id = $this->stringAt($this->json(), 'id');
 
@@ -351,7 +351,7 @@ final class InvoicesTest extends ApiTestCase
 
     public function testADraftPrintsOnRequestAndAnIssuedInvoicePrintsAsItWasIssued(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
         $id = $this->stringAt($this->json(), 'id');
 
@@ -393,7 +393,7 @@ final class InvoicesTest extends ApiTestCase
 
     public function testAPaymentHolderRecordsAndDeletesPaymentsAndTheInvoiceSaysWhatIsStillDue(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
         $id = $this->issuedInvoice();
         $due = $this->stringAt($this->json(), 'amountDue');
@@ -452,7 +452,7 @@ final class InvoicesTest extends ApiTestCase
 
     public function testDuplicatingADocumentGivesANewDraftCarryingWhatWasTypedAndNothingItEarned(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $supply = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->modify('-40 days')->format('Y-m-d');
         $this->postJson($this->path(), $this->invoice([
             'supplyDate' => $supply,
@@ -501,7 +501,7 @@ final class InvoicesTest extends ApiTestCase
     public function testACreditNoteTakesWhatItCorrectsOffWhatItsInvoiceStillHasDue(): void
     {
         $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
         $number = static fn (int $sequence): string => \sprintf('AV-%s-%05d', substr($today, 0, 4), $sequence);
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
@@ -584,7 +584,7 @@ final class InvoicesTest extends ApiTestCase
 
     public function testTheCreditNotesOfEveryLineOfAWithheldInvoiceCloseIt(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $line = fn (): array => ['description' => 'Conseil', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '505', 'taxComponentIds' => [$this->taxId('TVA19')]];
         $taxes = [$this->taxId('TIMBRE'), $this->taxId('RS1')];
         $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => $taxes, 'lines' => [$line(), $line()]]));
@@ -613,7 +613,7 @@ final class InvoicesTest extends ApiTestCase
 
     public function testPaymentsNeedPaymentWriteAndStayInTheirCompany(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
         $id = $this->issuedInvoice();
 
@@ -675,7 +675,7 @@ final class InvoicesTest extends ApiTestCase
     {
         $globex = $this->createCompany('Globex');
         $this->createUser('summary-reader@twes.local', 'password-1234', $this->company, ['invoice.read'], 'reader');
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
         $id = $this->issuedInvoice();
         $total = $this->stringAt($this->json(), 'amountDue');
@@ -729,7 +729,7 @@ final class InvoicesTest extends ApiTestCase
 
     public function testTheListIsAPageSearchedNarrowedAndSortedByTheApi(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
 
         $this->issuedInvoice();
@@ -793,7 +793,7 @@ final class InvoicesTest extends ApiTestCase
      */
     public function testEachStatusChipCountsWhatItsFilterWouldList(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
         $this->issuedInvoice();
         $overdueId = $this->issuedInvoice();
@@ -849,7 +849,7 @@ final class InvoicesTest extends ApiTestCase
      */
     public function testAPageOfTheListCostsTheSameStatementsWhateverTheRowsItHolds(): void
     {
-        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
         // A product per document, so the identity map cannot hide a read per row; made before the first request,
         // which reboots the kernel and leaves the company detached.

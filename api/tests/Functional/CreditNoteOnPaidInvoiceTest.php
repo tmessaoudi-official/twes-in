@@ -41,7 +41,7 @@ final class CreditNoteOnPaidInvoiceTest extends ApiTestCase
         $this->em()->persist($customer);
         $this->em()->flush();
         $this->customerId = $customer->getId()->toRfc4122();
-        $this->createUser('sales@twes.local', 'password-1234', $this->company, ['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write'], 'member');
+        $this->createUser('sales@twes.local', 'password-1234', $this->company, ['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write'], 'member');
         $this->login('sales@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
     }

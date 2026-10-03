@@ -48,7 +48,7 @@ final class CustomerStatementTest extends ApiTestCase
     /** Within a day: invoices, then credit notes, then payments. */
     public function testItListsWhatHappenedAndWhatTheCustomerOwedAfterEach(): void
     {
-        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $first = $this->issue('100');
         $this->pay($first, '40');
         $this->creditNote($first, '10');
@@ -78,7 +78,7 @@ final class CustomerStatementTest extends ApiTestCase
 
     public function testItStatesTheCreditLimitTheCustomerHasAndZeroWhenNoneIsSet(): void
     {
-        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $this->getJson($this->path());
         self::assertSame('0.000', $this->stringAt($this->json(), 'creditLimit'), 'no limit set: zero, at the currency\'s scale');
 
@@ -105,7 +105,7 @@ final class CustomerStatementTest extends ApiTestCase
 
     public function testThePeriodSplitsTheOpeningBalanceFromTheLines(): void
     {
-        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $old = $this->issue('100');
         $this->pay($old, '30');
         $recent = $this->issue('20');
@@ -133,7 +133,7 @@ final class CustomerStatementTest extends ApiTestCase
         $withholding = static::getContainer()->get(TaxComponentRepository::class)->ofCodeInCompany('RS1', $this->company->getId());
         self::assertNotNull($withholding);
         $holder = $this->customer('CLI-0003', 'Retenue', [$withholding->getId()])->getId()->toRfc4122();
-        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $body = $this->invoiceBody('1000', $holder);
         $body['documentTaxComponentIds'] = null;
         $this->postJson($this->companyPath().'/invoices', $body);
@@ -151,7 +151,7 @@ final class CustomerStatementTest extends ApiTestCase
 
     public function testItPrintsAsAPdfWithTheCompanyLogoAndEveryLine(): void
     {
-        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $invoice = $this->issue('100');
         $this->pay($invoice, '40');
         static::getContainer()->get(CompanyLogo::class)->set($this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company'), 'logo.png', (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true), null);
@@ -194,7 +194,7 @@ final class CustomerStatementTest extends ApiTestCase
     public function testAnotherCustomersDocumentsAndDraftsAreNotOnIt(): void
     {
         $other = $this->customer('CLI-0002', 'Autre')->getId()->toRfc4122();
-        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $this->issue('100', $other);
         $this->postJson($this->companyPath().'/invoices', $this->invoiceBody('30', $this->customerId));
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);

@@ -325,8 +325,8 @@ describe('InvoicePage', () => {
     granted.clear();
     modulesOn.clear();
     facade.productPrice.mockReset().mockResolvedValue(null);
-    ['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write'].forEach((each) =>
-      granted.add(each),
+    ['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write'].forEach(
+      (each) => granted.add(each),
     );
     facade.loadInvoice.mockReset().mockResolvedValue(undefined);
     facade.pickCustomers.mockClear();
@@ -1052,6 +1052,27 @@ describe('InvoicePage', () => {
 
     expect(facade.duplicate).toHaveBeenCalledWith('c1', 'i1');
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i2']));
+  });
+
+  it('leaves a credit note to a manager: a clerk who issues invoices is offered neither its drafting nor its issuing', async () => {
+    granted.delete('invoice.credit');
+    invoice.set(issued);
+    await open('i1');
+    // Nothing else lives in that menu for this clerk, so it is not drawn at all.
+    expect(q('document-more')).toBeNull();
+
+    invoice.set({
+      ...draft,
+      type: 'credit_note',
+      correctsInvoiceId: 'i0',
+      creditNoteReason: 'Retour',
+    });
+    await open('i1');
+    expect(q('document-action-issue')).toBeNull();
+
+    granted.add('invoice.credit');
+    await open('i1');
+    expect(q('document-action-issue')).not.toBeNull();
   });
 
   it('shows a credit note as one: its title, its invoice, no payments and no credit note of its own', async () => {

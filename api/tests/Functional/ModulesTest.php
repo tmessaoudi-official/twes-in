@@ -53,7 +53,7 @@ final class ModulesTest extends ApiTestCase
             ['key' => 'expenses', 'labelKey' => 'modules.expenses', 'dependencies' => [], 'permissions' => ['expense.read', 'expense.write'], 'enabled' => true],
             ['key' => 'fixture_ledger', 'labelKey' => 'modules.fixture_ledger', 'dependencies' => ['customers'], 'permissions' => [], 'enabled' => true],
             ['key' => 'inventory', 'labelKey' => 'modules.inventory', 'dependencies' => ['products'], 'permissions' => ['stock.read', 'stock.write'], 'enabled' => true],
-            ['key' => 'invoices', 'labelKey' => 'modules.invoices', 'dependencies' => ['customers', 'products'], 'permissions' => ['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write'], 'enabled' => true],
+            ['key' => 'invoices', 'labelKey' => 'modules.invoices', 'dependencies' => ['customers', 'products'], 'permissions' => ['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'invoice.credit'], 'enabled' => true],
             ['key' => 'price_lists', 'labelKey' => 'modules.price_lists', 'dependencies' => ['customers', 'products'], 'permissions' => [], 'enabled' => true],
             ['key' => 'products', 'labelKey' => 'modules.products', 'dependencies' => [], 'permissions' => ['product.read', 'product.write', 'product.cost.read'], 'enabled' => true],
             ['key' => 'vendors', 'labelKey' => 'modules.vendors', 'dependencies' => [], 'permissions' => ['vendor.read', 'vendor.write'], 'enabled' => true],
