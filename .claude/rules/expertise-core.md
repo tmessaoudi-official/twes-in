@@ -1,5 +1,5 @@
 # EXPERTISE - twes-in   (L4 core; loaded every session in this project)
-Review date: 2026-10-02   Validation mode: advisory   Packs (project skills in .claude/skills/): domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci
+Review date: 2026-10-03   Validation mode: advisory   Packs (project skills in .claude/skills/): domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci
 Scope: the DELTA over CLAUDE.md (its Process, Licensing invariants, Git rules and ~70 "Lessons" are loaded every session and are NOT repeated). This core keeps only what prevents the worst mistakes. The full 18-section file (~236 tagged entries, ~76 KB) is EXPERTISE-REFERENCE.md: read the section named in the pointer table below WHEN the task touches that topic; do not load it whole. Tags: [Ruled: user <date>] = AGREED in SPEC §7; [Source: ...] = a document; [Observed: ...]; [Unverified]. `SPEC §7 <date>` = the Decisions Log entry of that date.
 
 ## Domains this project touches
@@ -44,7 +44,7 @@ Tenancy and security:
 - Tenancy: Doctrine `CompanyFilter` is turned on by `CompanyGuard::companyForActing` with the company in the URL PATH; the browser never chooses a realtime channel; plain SQL escapes the filter, so any raw read must name its company.  [Ruled: user 2026-09-16, 2026-09-27]
 - A non-active company answers members and `PermissionVoter` with the SAME 404 as a stranger; operators hold ONLY platform endpoints, keep NO standing access; support access is owner-granted, time-boxed, read-only, audited.  [Ruled: user 2026-09-15, 2026-09-17]
 - Audit records field NAMES only, never values; auth events are rows of the single `audit_log`.  [Ruled: user 2026-09-09, 2026-09-13]
-- `product.cost.read` is the ONLY way to cost: without it `costPrice` is null, supplier codes left out, margin withheld; "Customer view" hides fields on screen only.  [Ruled: user 2026-09-23]
+- `product.cost.read` is the ONLY way to cost: without it `costPrice` is null, supplier codes left out, margin withheld; "Customer view" hides fields on screen only (PENDING, SPEC 2026-10-03 08:20: to be replaced by a locked allow-list screen; NOT built, `hides()` is still the code).  [Ruled: user 2026-09-23]
 - Signup and invitation answers never reveal whether an address is registered; MFA operator reset REFUSED; passkey PIN REFUSED; the breach-password check fails OPEN (audited).  [Ruled: user 2026-09-15, 2026-09-22]
 - `UnauthenticatedSweepTest` walks the ROUTER: a new public route must be added to its listed set deliberately.  [Ruled: user 2026-09-16]
 Architecture:

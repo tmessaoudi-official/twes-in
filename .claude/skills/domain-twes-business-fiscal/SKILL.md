@@ -2,7 +2,7 @@
 name: domain-twes-business-fiscal
 description: Use when a task touches invoices, credit notes, delivery notes, VAT/FODEC/timbre/retenue, TN or FR fiscal presets, numbering, stock valuation, subscriptions/licensing, tills/cash registers, TEJ/Factur-X/TEIF e-invoicing in twes-in. How an expert in small-business invoicing and POS compliance for Tunisia and France works: rules, sources, evidence, failure modes, reviewer lenses.
 ---
-Review date: 2026-10-02   Validation mode: advisory   Core: .claude/rules/expertise-core.md
+Review date: 2026-10-03   Validation mode: advisory   Core: .claude/rules/expertise-core.md
 
 <!-- Tags: [TN]=docs/fiscal/TN.md, [FR]=FR.md, [TC]=docs/research/till-certification.md, [SPEC]=docs/SPEC.md §7 date, [R]=research doc. Every fiscal rule is UNVALIDATED by an accountant: use as hypothesis, cite, never assert. Ratified vs ASSUMED/PROVISIONAL SPEC entries: only ratified ones are rulings. -->
 
@@ -43,7 +43,7 @@ Review date: 2026-10-02   Validation mode: advisory   Core: .claude/rules/expert
 | TN till: on-site food/drink only; Ministry-HOMOLOGATED register from accredited supplier, permanent MF connection, QR, numbered copies; CDPF art. 94 16 days-3 yrs + 1,000-50,000 TND; twes-in path BLOCKED (homologation spec unreachable) | cafes/restaurants TN | TC; decret 2019-1126; arrete MF 2025-10-14 | 2026-09-25 |
 | Training mode (FR/TN/DE alike): journalled, chained, `training` flag, watermark, no payment, excluded from totals/Z; separate sandbox company OK for demos | tills, practice company | TC; SPEC 2026-09-24 | 2026-09-25 |
 | Dual licence AGPL-3.0-or-later + commercial; deps must be PERMISSIVE (MIT/Apache/BSD/ISC/0BSD/MIT-0/CC0/BlueOak/Unicode-3.0); CLA before first external patch; gate `scripts/gates/dependency-licences.php`; Invoice Ninja (ELv2) unusable as a base | any dependency/asset | LICENSING.md; R | 2026-09-23 |
-| Stock valuation: weighted average (UNCERTIFIED, TN stock standard allowance unsourced); unknown cost reads UNKNOWN never zero | stock, margin | SPEC 2026-09-25 | 2026-09-25 |
+| Stock valuation: weighted average (UNCERTIFIED, TN stock standard allowance unsourced); unknown cost reads UNKNOWN never zero; PENDING SPEC 2026-10-03 C-02: current cost + estimated flag, not built | stock, margin | SPEC 2026-09-25 | 2026-09-25 |
 
 ## Tools of the trade
 - `docs/spec/pricing-vectors.json` + calculator on `BcMath\Number` (24-decimal intermediates): proves arithmetic and rounding incl. TND; a rule change = vector change.  [SPEC 2026-09-13]

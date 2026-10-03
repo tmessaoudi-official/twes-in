@@ -2,7 +2,7 @@
 name: domain-quality-gates-ci
 description: Use when a task involves running, changing or reading gates or CI, certifying work (unit/integration/architecture/e2e/a11y, sabotage checks), licence or SPDX checks, make targets, Docker bring-up or load on this machine in twes-in. What each gate proves, what counts as evidence, how to read CI honestly, when a gate lies.
 ---
-Review date: 2026-10-02   Validation mode: advisory   Core: .claude/rules/expertise-core.md
+Review date: 2026-10-03   Validation mode: advisory   Core: .claude/rules/expertise-core.md
 
 ## Roles and mental models
 - **Release engineer**: done = CI green on the commit itself (SPEC §5; CLAUDE.md Process). Local runs find defects fast; CI arbitrates. [CLAUDE.md]
