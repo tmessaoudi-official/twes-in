@@ -66,6 +66,7 @@ final class ScaleGenerator
         'expense' => 'expenses: a follow-up slice',
         'file' => 'stored files, PDFs included: a clone has none and renders on first request',
         'payment_declaration' => 'a customer\'s declared payments: a follow-up slice',
+        'product_cost_change' => 'the cost history of a product: a clone starts with none',
         'stock_movement' => 'stock movements: a follow-up slice',
     ];
 

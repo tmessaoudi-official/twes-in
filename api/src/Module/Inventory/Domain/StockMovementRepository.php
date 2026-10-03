@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Domain;
 
+use App\Module\Products\Domain\Product;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
@@ -27,6 +28,14 @@ interface StockMovementRepository
      * @return list<StockValue>
      */
     public function valuation(Uuid $companyId): array;
+
+    /**
+     * What one unit of the product is worth, the weighted average of the movements that carry a cost, or its cost price
+     * while none does; null when it has neither.
+     *
+     * @return numeric-string|null four decimals
+     */
+    public function averageCostOf(Product $product): ?string;
 
     /** @return list<StockMovement> what one document moved in a company, in the order it was written */
     public function ofSource(string $sourceType, Uuid $sourceId, Uuid $companyId): array;

@@ -797,6 +797,9 @@
       "traceability": "Traçabilité d’un nouvel article",
       "show_price_excl_tax": "Afficher aussi le prix HT à ce qui fait face au client"
     },
+    "stock": {
+      "cost_on_receive": "Ce que fait une réception de stock au coût d'un produit"
+    },
     "watch": {
       "late_after_days": "À surveiller : un client est signalé quand une facture a ce nombre de jours de retard",
       "unsold_after_days": "À surveiller : un produit est signalé quand il n'a pas été vendu depuis ce nombre de jours",
@@ -828,6 +831,14 @@
       "settings_list": "Liste des réglages"
     },
     "choices": {
+      "stock": {
+        "cost_on_receive": {
+          "suggest": "Proposer le choix à chaque réception",
+          "average": "Appliquer la moyenne pondérée",
+          "last": "Appliquer le coût de la dernière réception",
+          "manual": "Ne jamais changer le coût"
+        }
+      },
       "article": {
         "traceability": {
           "none": "Sans suivi",

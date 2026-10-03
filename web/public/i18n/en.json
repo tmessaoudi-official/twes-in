@@ -797,6 +797,9 @@
       "traceability": "Traceability of a new product",
       "show_price_excl_tax": "Also show the price without tax to what faces a customer"
     },
+    "stock": {
+      "cost_on_receive": "What a stock receipt does to a product's cost"
+    },
     "watch": {
       "late_after_days": "Watch: a customer is flagged once an invoice is this many days late",
       "unsold_after_days": "Watch: a product is flagged once it has not been sold for this many days",
@@ -828,6 +831,14 @@
       "settings_list": "Settings list"
     },
     "choices": {
+      "stock": {
+        "cost_on_receive": {
+          "suggest": "Offer the choice at each receipt",
+          "average": "Apply the weighted average",
+          "last": "Apply the cost of the last receipt",
+          "manual": "Never change the cost"
+        }
+      },
       "article": {
         "traceability": {
           "none": "Not followed",

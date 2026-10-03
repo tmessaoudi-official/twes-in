@@ -21,6 +21,7 @@ use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Application\ProductNotFound;
 use App\Module\Products\Application\ProductReferenceTaken;
+use App\Module\Products\Domain\CostChangeSource;
 use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductDetails;
@@ -42,6 +43,7 @@ use App\Tests\Support\InMemoryCustomFieldDefinitions;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryProductCategories;
+use App\Tests\Support\InMemoryProductCostChanges;
 use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemoryProductStockHistory;
 use App\Tests\Support\InMemorySettings;
@@ -63,6 +65,7 @@ final class ManageProductsTest extends TestCase
     private InMemoryProductStockHistory $stockHistory;
     private InMemoryVendors $vendors;
     private ManageProducts $manage;
+    private InMemoryProductCostChanges $costHistory;
     private ChangeSettings $changeSettings;
     private Company $company;
     private Company $globex;
@@ -83,7 +86,8 @@ final class ManageProductsTest extends TestCase
         $catalog = new SettingCatalog([new BusinessDefaultSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
         $this->changeSettings = new ChangeSettings($catalog, $settings, $resolve, $this->audit, $clock, $transactions);
-        $this->manage = new ManageProducts(new InMemoryProducts(), $this->categories, $this->units, $this->taxes, $this->audit, $clock, $this->fields, $this->stockHistory, $transactions, $this->vendors, new ReadSetting($resolve));
+        $this->costHistory = new InMemoryProductCostChanges();
+        $this->manage = new ManageProducts(new InMemoryProducts(), $this->categories, $this->units, $this->taxes, $this->audit, $clock, $this->fields, $this->stockHistory, $transactions, $this->vendors, new ReadSetting($resolve), $this->costHistory);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $provision->handle($this->company);
@@ -336,6 +340,25 @@ final class ManageProductsTest extends TestCase
         $this->manage->revise($this->company, $theirs->getId(), $this->input(), null);
     }
 
+    public function testEveryChangeOfAProductsCostIsKeptWhetherItIsSetAtCreationOrRevisedAndNothingElseIs(): void
+    {
+        $actor = Uuid::v7();
+        $product = $this->manage->create($this->company, $this->input(cost: '10'), $actor);
+        self::assertSame([[null, '10.0000', CostChangeSource::Created]], array_map(static fn ($kept): array => [$kept->getOldCost(), $kept->getNewCost(), $kept->getSource()], $this->costHistory->changes));
+
+        $this->manage->revise($this->company, $product->getId(), $this->input(name: 'Portable', cost: '10.00'), $actor);
+        self::assertCount(1, $this->costHistory->changes, 'a revision of the name, and of a cost to the same figure, keeps no cost row');
+
+        $this->manage->revise($this->company, $product->getId(), $this->input(cost: '12'), $actor);
+        $kept = $this->costHistory->changes[1];
+        self::assertSame(['10.0000', '12.0000', CostChangeSource::Edited], [$kept->getOldCost(), $kept->getNewCost(), $kept->getSource()]);
+        self::assertTrue($actor->equals($kept->getChangedBy()));
+        self::assertNull($kept->getSourceId());
+
+        $this->manage->revise($this->company, $product->getId(), $this->input(cost: '99', seesCosts: false), $actor);
+        self::assertSame(['12.0000', 2], [$product->getDetails()->costPrice, \count($this->costHistory->changes)], 'a writer who cannot see costs changes none');
+    }
+
     /**
      * A code is unique across the company, every role together (docs/SPEC.md § 7, 2026-09-22 11:05): a pack of one
      * product may not carry the unit code of another, or a scan would find both.
@@ -411,12 +434,14 @@ final class ManageProductsTest extends TestCase
         ProductKind $kind = ProductKind::Goods,
         array $barcodes = [],
         ?ProductTracking $tracking = null,
+        ?string $cost = null,
+        bool $seesCosts = true,
     ): ProductInput {
         $company ??= $this->company;
 
         return new ProductInput(
             $reference,
-            new ProductDetails($name, null, $kind, $price, null),
+            new ProductDetails($name, null, $kind, $price, $cost),
             $unitId ?? $this->unit($unit, $company)->getId(),
             $categoryId,
             $taxIds ?? array_map(fn (string $code): Uuid => $this->tax($code, $company)->getId(), $taxes ?? ['TVA19']),
@@ -424,6 +449,7 @@ final class ManageProductsTest extends TestCase
             $customFields,
             $barcodes,
             $tracking,
+            $seesCosts,
         );
     }
 

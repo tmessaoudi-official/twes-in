@@ -99,7 +99,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
     }
 
     /** @return numeric-string|null */
-    private function averageCostOf(Product $product): ?string
+    public function averageCostOf(Product $product): ?string
     {
         $row = $this->entityManager->createQueryBuilder()
             ->select('SUM(m.quantity) AS quantity', 'SUM(m.quantity * m.unitCost) AS amount')

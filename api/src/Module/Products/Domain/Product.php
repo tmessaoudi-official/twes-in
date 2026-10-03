@@ -293,6 +293,23 @@ class Product implements CompanyOwned
         return new ProductDetails($this->name, $this->description, $this->kind, $this->unitPriceNet, $this->costPrice, $this->substitutionGroup);
     }
 
+    /**
+     * Sets what the product costs the company, and nothing else about it.
+     *
+     * @return bool whether the cost changed: the same figure said with other decimals is no change
+     */
+    public function reviseCost(?string $cost, \DateTimeImmutable $now): bool
+    {
+        $details = $this->getDetails()->withCostPrice($cost);
+        if ([] === $details->differencesFrom($this->getDetails())) {
+            return false;
+        }
+        $this->apply($details);
+        $this->updatedAt = $now;
+
+        return true;
+    }
+
     private function apply(ProductDetails $details): void
     {
         $this->name = $details->name;

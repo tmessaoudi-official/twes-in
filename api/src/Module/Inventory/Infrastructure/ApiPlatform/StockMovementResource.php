@@ -133,6 +133,16 @@ final class StockMovementResource
     public ?string $note = null;
 
     /**
+     * For a receipt, where the company's setting offers the choice: the figure to make the product's cost, the weighted
+     * average of what came in or the cost typed on this receipt. Ignored where the setting decides, and for a writer
+     * who cannot read costs. Written only.
+     */
+    #[ApiProperty(readable: false, schema: ['type' => ['string', 'null'], 'enum' => ['average', 'last', null]])]
+    #[Assert\Choice(choices: ['average', 'last'], groups: [self::WRITE])]
+    #[Groups([self::WRITE])]
+    public ?string $applyCost = null;
+
+    /**
      * What one unit cost, for a receipt: the stock is valued at the weighted average of what came in. Left out, the
      * receipt is valued at the average of what the product's stock already is, or at its cost price. Written only; the
      * valuation, read with product.cost.read, is where costs are shown.

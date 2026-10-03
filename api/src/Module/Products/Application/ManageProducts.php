@@ -23,10 +23,13 @@ use App\Fiscal\Domain\UnitRepository;
 use App\Module\Products\Domain\Barcode;
 use App\Module\Products\Domain\BarcodeLine;
 use App\Module\Products\Domain\BarcodeRole;
+use App\Module\Products\Domain\CostChangeSource;
 use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductCategoryRepository;
+use App\Module\Products\Domain\ProductCostChange;
+use App\Module\Products\Domain\ProductCostChangeRepository;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Domain\ProductSearch;
@@ -66,6 +69,7 @@ final readonly class ManageProducts
         private Transactions $transactions,
         private VendorRepository $vendors,
         private ReadSetting $settings,
+        private ProductCostChangeRepository $costChanges,
     ) {
     }
 
@@ -132,6 +136,7 @@ final readonly class ManageProducts
             }
             $this->products->save($product);
             $this->record($company, $product->getId(), self::CREATED, [], $actorUserId);
+            $this->keepCostChange($product, null, CostChangeSource::Created, $actorUserId, $now);
 
             return $product;
         });
@@ -160,6 +165,7 @@ final readonly class ManageProducts
             $values = $this->customFieldValues($company, $input, $product);
 
             $now = $this->clock->now();
+            $costBefore = $product->getDetails()->costPrice;
             $changed = $product->revise($input->reference, $details, $unit, $category, $input->defaultTaxComponentIds, $input->isActive, $now);
             if ($product->track($tracking, $now)) {
                 $changed[] = 'tracking';
@@ -171,6 +177,9 @@ final readonly class ManageProducts
             if ([] !== $changed) {
                 $this->products->save($product);
                 $this->record($company, $product->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+                if (\in_array('costPrice', $changed, true)) {
+                    $this->keepCostChange($product, $costBefore, CostChangeSource::Edited, $actorUserId, $now);
+                }
             }
 
             return $product;
@@ -353,6 +362,15 @@ final readonly class ManageProducts
             return CustomFieldValues::checked($rules, $input->customFields, $current?->getCustomFields() ?? []);
         } catch (InvalidCustomFieldValue $refused) {
             throw new InvalidProduct($refused->field, $refused->getMessage());
+        }
+    }
+
+    /** The cost a product now has, kept against the one it had; nothing when there is no cost to keep. */
+    private function keepCostChange(Product $product, ?string $before, CostChangeSource $source, ?Uuid $actorUserId, \DateTimeImmutable $now): void
+    {
+        $after = $product->getDetails()->costPrice;
+        if ((null === $before || is_numeric($before)) && (null === $after || is_numeric($after)) && $before !== $after) {
+            $this->costChanges->save(new ProductCostChange($product, $before, $after, $source, null, $actorUserId, $now));
         }
     }
 

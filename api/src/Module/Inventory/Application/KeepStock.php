@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Application;
 
+use App\Module\Inventory\Domain\CostBasis;
+use App\Module\Inventory\Domain\CostOnReceive;
 use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\NamedLot;
 use App\Module\Inventory\Domain\StockLevel;
@@ -22,6 +24,9 @@ use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Module\Inventory\Domain\StockValue;
+use App\Module\Products\Application\ChangeProductCost;
+use App\Module\Products\Domain\CostChangeSource;
+use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
@@ -56,6 +61,7 @@ final readonly class KeepStock
         private ClockInterface $clock,
         private LiveChanges $liveChanges,
         private ?RaiseStockAlerts $alerts = null,
+        private ?ChangeProductCost $changeCost = null,
     ) {
     }
 
@@ -71,22 +77,60 @@ final readonly class KeepStock
 
     /**
      * Goods arriving at a location. A product tracked by lot or serial number names the lot they came in: its code
-     * opens the lot the first time it is seen, and its date fills a lot that had none (docs/SPEC.md § 7, 2026-09-23).
+     * opens the lot the first time it is seen, and its date fills a lot that had none. A receipt that comes with a cost
+     * may move the product's own cost to the weighted average or to that cost, as the company's setting says; `$apply` is
+     * the person's choice, honoured only where the setting offers one.
      *
      * @throws InvalidStockMovement
      */
-    public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null): StockMovement
+    public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null): StockMovement
     {
-        return $this->transactions->run(function () use ($company, $productId, $locationId, $quantity, $actorUserId, $named, $unitCost): StockMovement {
+        return $this->transactions->run(function () use ($company, $productId, $locationId, $quantity, $actorUserId, $named, $unitCost, $apply): StockMovement {
             [$product, $location] = $this->trackedAt($company, $productId, $locationId);
             $lot = $this->lotFor($product, $named, true);
             $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now(), $lot, $unitCost);
+            // Read before saving: a receipt typed with no cost is valued at the average when it is saved, and that
+            // figure is not a price anybody typed.
+            $typed = $movement->getUnitCost();
             $this->inStockOnce($movement);
             $this->save($movement);
+            $this->moveCost($company, $product, $movement, $typed, $apply, $actorUserId);
             $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.received', $actorUserId, $company->getId()));
 
             return $movement;
         });
+    }
+
+    /**
+     * @param numeric-string|null $typed the cost the receipt came with, none when nobody typed one
+     *
+     * @throws InvalidStockMovement
+     */
+    private function moveCost(Company $company, Product $product, StockMovement $receipt, ?string $typed, ?CostBasis $asked, ?Uuid $actorUserId): void
+    {
+        if (null === $this->changeCost || null === $typed) {
+            return;
+        }
+        $context = new SettingContext($company, productCategoryId: $product->getCategory()?->getId(), productId: $product->getId());
+        $chosen = $this->settings->value($context, StockCostSettings::COST_ON_RECEIVE);
+        $mode = (\is_string($chosen) ? CostOnReceive::tryFrom($chosen) : null) ?? CostOnReceive::Suggest;
+        $basis = match ($mode) {
+            CostOnReceive::Suggest => $asked,
+            CostOnReceive::Average => CostBasis::Average,
+            CostOnReceive::Last => CostBasis::Last,
+            CostOnReceive::Manual => null,
+        };
+        if (null === $basis) {
+            return;
+        }
+        $cost = CostBasis::Last === $basis ? $typed : $this->movements->averageCostOf($product);
+        if (null !== $cost) {
+            try {
+                $this->changeCost->handle($company, $product, $cost, CostChangeSource::Receipt, $receipt->getId(), $actorUserId);
+            } catch (InvalidProduct $refused) {
+                throw new InvalidStockMovement('unitCost', $refused->getMessage(), $refused);
+            }
+        }
     }
 
     /**

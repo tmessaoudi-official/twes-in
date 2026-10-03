@@ -17,6 +17,7 @@ use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Module\Inventory\Domain\StockValue;
 use App\Module\Inventory\Domain\WeightedAverageCost;
+use App\Module\Products\Domain\Product;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
@@ -35,15 +36,7 @@ final class InMemoryStockMovements implements StockMovementRepository
     {
         foreach ($movements as $movement) {
             if (null === $movement->getUnitCost()) {
-                $quantity = new Number('0.000');
-                $amount = new Number('0.0000000');
-                foreach ($this->movements as $earlier) {
-                    if ($earlier->getProduct() === $movement->getProduct() && null !== $earlier->getUnitCost()) {
-                        $quantity = $quantity->add($earlier->getQuantity());
-                        $amount = $amount->add(new Number($earlier->getQuantity())->mul($earlier->getUnitCost()));
-                    }
-                }
-                $average = WeightedAverageCost::of($quantity->value, $amount->value, $movement->getProduct()->getDetails()->costPrice);
+                $average = $this->averageCostOf($movement->getProduct());
                 if (null !== $average) {
                     $movement->valuedAt($average);
                 }
@@ -52,6 +45,20 @@ final class InMemoryStockMovements implements StockMovementRepository
                 $this->movements[] = $movement;
             }
         }
+    }
+
+    public function averageCostOf(Product $product): ?string
+    {
+        $quantity = new Number('0.000');
+        $amount = new Number('0.0000000');
+        foreach ($this->movements as $earlier) {
+            if ($earlier->getProduct() === $product && null !== $earlier->getUnitCost()) {
+                $quantity = $quantity->add($earlier->getQuantity());
+                $amount = $amount->add(new Number($earlier->getQuantity())->mul($earlier->getUnitCost()));
+            }
+        }
+
+        return WeightedAverageCost::of($quantity->value, $amount->value, $product->getDetails()->costPrice);
     }
 
     public function ofSource(string $sourceType, Uuid $sourceId, Uuid $companyId): array

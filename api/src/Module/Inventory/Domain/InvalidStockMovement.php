@@ -12,8 +12,8 @@ namespace App\Module\Inventory\Domain;
 /** A stock movement refused by its own rules; names the field. */
 final class InvalidStockMovement extends \DomainException
 {
-    public function __construct(public readonly string $field, string $message)
+    public function __construct(public readonly string $field, string $message, ?\Throwable $previous = null)
     {
-        parent::__construct($message);
+        parent::__construct($message, 0, $previous);
     }
 }

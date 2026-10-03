@@ -305,6 +305,35 @@ final class InventoryTest extends ApiTestCase
         self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM stock_movement WHERE source_type = 'invoice'"));
     }
 
+    public function testAReceiptMovesTheProductsCostAsTheCompanysSettingSaysAndKeepsItsHistory(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.cost.read']);
+        $site = $this->defaultLocationId();
+        $receive = fn (string $quantity, string $cost, ?string $apply = null) => $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => $quantity, 'unitCost' => $cost, 'applyCost' => $apply]);
+        $cost = fn (): mixed => $this->em()->getConnection()->fetchOne('SELECT cost_price FROM product WHERE id = ?', [$this->laptopId]);
+        $rows = fn (): mixed => $this->em()->getConnection()->fetchOne('SELECT count(*) FROM product_cost_change WHERE product_id = ?', [$this->laptopId]);
+
+        $receive('10', '1000');
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame([null, 0], [$cost(), $rows()], 'the default offers a choice and nothing was chosen');
+        $receive('10', '1300', 'last');
+        self::assertSame(['1300.0000', 1], [$cost(), $rows()]);
+
+        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'average', new \DateTimeImmutable()));
+        $this->em()->flush();
+        $receive('20', '1400');
+        self::assertSame(['1275.0000', 2], [$cost(), $rows()], '(10 x 1000 + 10 x 1300 + 20 x 1400) over 40, worked out in SQL');
+        $history = $this->em()->getConnection()->fetchAssociative('SELECT old_cost, new_cost, source FROM product_cost_change ORDER BY at DESC, id DESC LIMIT 1');
+        self::assertIsArray($history);
+        self::assertSame(['1300.0000', '1275.0000', 'receipt'], [$history['old_cost'] ?? null, $history['new_cost'] ?? null, $history['source'] ?? null]);
+
+        $this->createUser('clerk@twes.local', 'password-1234', $this->company(), ['stock.read', 'stock.write'], 'counter');
+        $this->login('clerk@twes.local', 'password-1234');
+        $receive('5', '9000', 'last');
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(['1275.0000', 2], [$cost(), $rows()], 'a writer who cannot read costs neither types one nor applies one');
+    }
+
     public function testANoteWhoseStockNeverMovedIsReplayedOnceByTheCommand(): void
     {
         $this->signedIn(['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
