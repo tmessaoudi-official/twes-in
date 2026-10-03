@@ -60,7 +60,6 @@ import { PRODUCTS_MODULE } from '../products/products-nav';
 import { ProductOnView } from '../products/product-on-view';
 import { Camera } from '../shared/scan/camera';
 import { CameraScanPanel } from '../shared/scan/camera-scan-panel';
-import { CustomerView } from '../shared/customer-view/customer-view';
 import { PhonePairing } from '../shared/scan/phone-pairing';
 import { PhonePairingDialog } from '../shared/scan/phone-pairing-dialog';
 import { ScanBus } from '../shared/scan/scan-bus';
@@ -153,13 +152,9 @@ export class AppShell {
   protected readonly cameraAvailable = inject(Camera).available();
   /** A phone lent to this tab as a scanner (slice 4): it lives with the shell, so leaving or signing out ends it. */
   protected readonly phone = inject(PhonePairing);
-  /**
-   * Customer view (docs/SPEC.md § 7, 2026-09-23 slice 5): offered to whoever has a cost to hide, and always to whoever
-   * has it on, so it can be turned off.
-   */
-  protected readonly customerView = inject(CustomerView);
-  protected readonly mayHide = computed(
-    () => this.auth.hasPermission('product.cost.read') || this.customerView.active(),
+  /** The customer screen (docs/SPEC.md § 7, 2026-10-03 08:20) reads products, so it is offered to whoever may. */
+  protected readonly mayOpenCustomerScreen = computed(
+    () => this.auth.me() !== null && this.auth.hasPermission('product.read'),
   );
   /** Every scan handler needs product.read, so a phone scanning for somebody without it would do nothing. */
   protected readonly mayScan = computed(

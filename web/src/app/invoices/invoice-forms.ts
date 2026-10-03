@@ -141,7 +141,6 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
     },
     {
       id: 'customer',
-      private: true,
       label: `${FIELDS}.customer`,
       value: (row) => row.customer,
       sortable: true,
@@ -164,7 +163,6 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
     },
     {
       id: 'total',
-      private: true,
       label: `${FIELDS}.total`,
       value: (row) => row.total,
       align: 'end',
@@ -172,7 +170,6 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
     },
     {
       id: 'amountDue',
-      private: true,
       label: `${FIELDS}.amountDue`,
       value: (row) => row.amountDue,
       align: 'end',

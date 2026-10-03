@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { CustomerView } from '../customer-view/customer-view';
 import {
   type CdkDragDrop,
   CdkDrag,
@@ -152,19 +151,10 @@ export class DataList<Row> implements OnInit {
   private readonly cells = contentChildren(DataListCell);
   private readonly windowClass = inject(WINDOW_CLASS);
 
-  private readonly customerView = inject(CustomerView);
-  /** The descriptor as drawn: without the columns about customers while customer view hides them. */
-  private readonly effective = computed(() => {
-    const descriptor = this.descriptor();
-    return this.customerView.hides('other-customers')
-      ? { ...descriptor, columns: descriptor.columns.filter((column) => column.private !== true) }
-      : descriptor;
-  });
-
-  private readonly setting = computed(() => listPreferencesSetting(this.effective().id));
+  private readonly setting = computed(() => listPreferencesSetting(this.descriptor().id));
   private readonly stored = computed(() => this.settings.value(this.setting()));
   protected readonly preferences = computed(() => this.stored()());
-  private readonly viewsSetting = computed(() => listViewsSetting(this.effective().id));
+  private readonly viewsSetting = computed(() => listViewsSetting(this.descriptor().id));
   protected readonly views = computed(() => this.settings.value(this.viewsSetting())());
 
   protected readonly query = signal('');
@@ -177,35 +167,37 @@ export class DataList<Row> implements OnInit {
   protected readonly viewsOpen = signal(false);
   protected readonly viewName = signal('');
   protected readonly pageIndex = signal(0);
-  protected readonly pageSize = linkedSignal(() => this.effective().pageSizes[0] ?? 25);
+  protected readonly pageSize = linkedSignal(() => this.descriptor().pageSizes[0] ?? 25);
   protected readonly chooserOpen = signal(false);
   private readonly liveWidth = signal<{ id: string; width: number } | null>(null);
 
-  protected readonly columns = computed(() => resolveColumns(this.effective(), this.preferences()));
+  protected readonly columns = computed(() =>
+    resolveColumns(this.descriptor(), this.preferences()),
+  );
   /**
    * The row's declared actions, split the way the trailing column draws them: the frequent ones as buttons, the
    * rare and the destructive ones behind "⋮" (design review finding 1). Destructive is never a button, whatever
    * its frequency — a button under the pointer is the wrong place for it.
    */
   protected readonly buttonActions = computed(() =>
-    (this.effective().actions ?? []).filter(
+    (this.descriptor().actions ?? []).filter(
       (action) => action.rare !== true && action.destructive !== true,
     ),
   );
   protected readonly menuActions = computed(() =>
-    (this.effective().actions ?? []).filter(
+    (this.descriptor().actions ?? []).filter(
       (action) => action.rare === true || action.destructive === true,
     ),
   );
   /** Whether the row has a trailing column at all: a list that declares no action does not pay for one. */
-  protected readonly hasRowControls = computed(() => (this.effective().actions ?? []).length > 0);
+  protected readonly hasRowControls = computed(() => (this.descriptor().actions ?? []).length > 0);
 
   /**
    * Which column carries the link that opens the record: the one the list named, else the first that cannot be
    * hidden — a link a person can hide is a record they can no longer open.
    */
   protected readonly linkColumnId = computed(() => {
-    const descriptor = this.effective();
+    const descriptor = this.descriptor();
     if (descriptor.link === undefined) return null;
     return (
       descriptor.linkColumn ??
@@ -268,7 +260,7 @@ export class DataList<Row> implements OnInit {
     );
   }
   protected readonly chooser = computed(() =>
-    orderColumns(this.effective(), this.preferences()).map((column) => ({
+    orderColumns(this.descriptor(), this.preferences()).map((column) => ({
       column,
       visible: isColumnVisible(column, this.preferences()),
     })),
@@ -276,12 +268,12 @@ export class DataList<Row> implements OnInit {
   /** A sort the address named: it wins over the one a person saved until they pick another. */
   private readonly addressSort = signal<ListSort | null>(null);
   protected readonly sort = computed<ListSort | null>(
-    () => this.addressSort() ?? this.preferences().sort ?? this.effective().defaultSort ?? null,
+    () => this.addressSort() ?? this.preferences().sort ?? this.descriptor().defaultSort ?? null,
   );
   protected readonly filterable = computed(() =>
-    this.effective().columns.some((column) => column.filterable),
+    this.descriptor().columns.some((column) => column.filterable),
   );
-  protected readonly filters = computed(() => this.effective().filters ?? []);
+  protected readonly filters = computed(() => this.descriptor().filters ?? []);
   /**
    * Each filter's choices with how many rows each would show: counted over the rows the text filter and the other
    * filters leave, so a number never promises rows the next click cannot deliver. The rows are all on the page, so
@@ -302,7 +294,7 @@ export class DataList<Row> implements OnInit {
         })),
       }));
     }
-    const searched = filterRows(this.rows(), this.effective().columns, this.query());
+    const searched = filterRows(this.rows(), this.descriptor().columns, this.query());
     return this.filters().map((filter) => {
       const others = Object.fromEntries(Object.entries(chosen).filter(([id]) => id !== filter.id));
       const base = applyFilters(searched, this.filters(), others);
@@ -333,13 +325,13 @@ export class DataList<Row> implements OnInit {
     if (total !== null) {
       return { rows: this.rows(), pageIndex: this.pageIndex(), total };
     }
-    const columns = this.effective().columns;
+    const columns = this.descriptor().columns;
     const narrowed = applyFilters(this.rows(), this.filters(), this.chosenFilters());
     const shown = sortRows(filterRows(narrowed, columns, this.query()), columns, this.sort());
     return paginate(shown, this.pageIndex(), this.pageSize());
   });
   protected readonly paged = computed(
-    () => this.page().total > (this.effective().pageSizes[0] ?? Infinity),
+    () => this.page().total > (this.descriptor().pageSizes[0] ?? Infinity),
   );
   /** Nothing to show because there is nothing at all, not because of what a person asked for. */
   protected readonly empty = computed(
@@ -367,7 +359,7 @@ export class DataList<Row> implements OnInit {
   protected readonly arrivedElsewhere = computed(() => {
     const arrived = this.arrived();
     if (arrived.size === 0 || this.byApi()) return 0;
-    const rowId = this.effective().rowId;
+    const rowId = this.descriptor().rowId;
     const onPage = new Set(this.page().rows.map(rowId));
     return this.rows().filter((row) => arrived.has(rowId(row)) && !onPage.has(rowId(row))).length;
   });
@@ -398,7 +390,7 @@ export class DataList<Row> implements OnInit {
   ngOnInit(): void {
     const params = this.route?.snapshot.queryParamMap;
     if (!this.byApi() || !params) return;
-    const descriptor = this.effective();
+    const descriptor = this.descriptor();
     const words = params.get('q') ?? '';
     this.query.set(words);
     this.searched.set(words);
@@ -444,7 +436,7 @@ export class DataList<Row> implements OnInit {
   /** Writes the state into the address, leaving it untouched when it already says so (as on opening). */
   private keepInAddress(query: ListQuery): void {
     if (!this.router || !this.route) return;
-    const descriptor = this.effective();
+    const descriptor = this.descriptor();
     const defaultSort = descriptor.defaultSort ?? null;
     const sorted =
       query.sort === null ||
@@ -488,22 +480,22 @@ export class DataList<Row> implements OnInit {
 
   protected isActive(row: Row): boolean {
     const active = this.activeRowId();
-    return active !== null && this.effective().rowId(row) === active;
+    return active !== null && this.descriptor().rowId(row) === active;
   }
 
   protected isArrived(row: Row): boolean {
-    return this.arrived().has(this.effective().rowId(row));
+    return this.arrived().has(this.descriptor().rowId(row));
   }
 
   /** Shows the page holding the first row that arrived out of sight, clearing the filters if they hide it. */
   protected showArrivals(): void {
-    const rowId = this.effective().rowId;
+    const rowId = this.descriptor().rowId;
     const onPage = new Set(this.page().rows.map(rowId));
     const target = this.rows().find(
       (row) => this.arrived().has(rowId(row)) && !onPage.has(rowId(row)),
     );
     if (target === undefined) return;
-    const columns = this.effective().columns;
+    const columns = this.descriptor().columns;
     const shownWith = (query: string, chosen: ListFilterValues): readonly Row[] =>
       sortRows(
         filterRows(applyFilters(this.rows(), this.filters(), chosen), columns, query),
@@ -520,7 +512,7 @@ export class DataList<Row> implements OnInit {
   }
 
   private noteArrivals(rows: readonly Row[]): void {
-    const ids = rows.map(this.effective().rowId);
+    const ids = rows.map(this.descriptor().rowId);
     if (this.seen === null) {
       if (ids.length > 0) this.seen = new Set(ids);
       return;
@@ -535,7 +527,7 @@ export class DataList<Row> implements OnInit {
     return this.rowTestId()?.(row) ?? null;
   }
 
-  protected trackRow = (_index: number, row: Row): string => this.effective().rowId(row);
+  protected trackRow = (_index: number, row: Row): string => this.descriptor().rowId(row);
 
   /** The width a column occupies: a live drag, then the chosen or declared width, then the fallback. */
   protected widthOf(column: ListColumn<Row>): number {

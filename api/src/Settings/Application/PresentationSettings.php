@@ -38,11 +38,6 @@ final readonly class PresentationSettings implements DeclaresSettings
         yield new SettingDefinition('presentation.sidebar-settings', SettingType::Enum, 'expanded', $chain, $shared, 'settings.presentation.sidebar_settings', self::MODULE, choices: ['expanded', 'rail']);
         yield new SettingDefinition('presentation.plan-labels', SettingType::Enum, 'code', $chain, $shared, 'settings.presentation.plan_labels', self::MODULE, choices: ['code', 'name', 'both']);
         yield new SettingDefinition('presentation.language', SettingType::Enum, 'fr', $chain, $shared, 'settings.presentation.language', self::MODULE, choices: ['fr', 'en']);
-        // What customer view hides on screen (docs/SPEC.md § 7, 2026-09-23 slice 5): the company's choice alone, since a
-        // customer standing at the counter is not one person's preference. What the API sends is product.cost.read's.
-        yield new SettingDefinition('presentation.customer-view.cost', SettingType::Bool, true, $chain, [SettingLevel::Company], 'settings.presentation.customer_view_cost', self::MODULE);
-        yield new SettingDefinition('presentation.customer-view.supplier-codes', SettingType::Bool, true, $chain, [SettingLevel::Company], 'settings.presentation.customer_view_supplier_codes', self::MODULE);
-        yield new SettingDefinition('presentation.customer-view.other-customers', SettingType::Bool, true, $chain, [SettingLevel::Company], 'settings.presentation.customer_view_other_customers', self::MODULE);
         // « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. The
         // company may hide them for everyone; a member for themself.
         yield new SettingDefinition('presentation.show-coming', SettingType::Bool, true, $chain, $shared, 'settings.presentation.show_coming', self::MODULE);

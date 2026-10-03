@@ -33,7 +33,6 @@ import { ProductCostHistory } from './product-cost-history-facade';
 import { ProductCostHistorySection } from './product-cost-history';
 import { ProductSubstitutes } from './product-substitutes-facade';
 import { ProductSubstitutesSection } from './product-substitutes';
-import { CustomerView } from '../shared/customer-view/customer-view';
 import { productForm, productInput, productValues } from './product-forms';
 import { ProductsFacade } from './products-facade';
 import { ProductOnView } from './product-on-view';
@@ -75,7 +74,6 @@ export class ProductPage {
   private readonly unsaved = inject(UnsavedChanges);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
-  protected readonly customerView = inject(CustomerView);
   private readonly router = inject(Router);
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `products/new`. */
@@ -112,10 +110,8 @@ export class ProductPage {
     source: this.tabKey,
     computation: (key: string) => (key === 'codes|true' ? 1 : 0),
   });
-  /** The cost is read by whoever holds product.cost.read, and kept from a customer looking at the screen. */
-  protected readonly showsCost = computed(
-    () => this.auth.hasPermission('product.cost.read') && !this.customerView.hides('cost'),
-  );
+  /** The cost is read by whoever holds product.cost.read. */
+  protected readonly showsCost = computed(() => this.auth.hasPermission('product.cost.read'));
   protected readonly currencyScale = computed(() => this.facade.options()?.currencyScale ?? 2);
   protected readonly currency = computed(() => this.facade.options()?.currency ?? '');
   protected readonly descriptor = computed(() => {

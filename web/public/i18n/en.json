@@ -825,9 +825,6 @@
       "language": "Language",
       "date_format": "Date format",
       "number_format": "Number format",
-      "customer_view_cost": "In customer view, hide product costs",
-      "customer_view_supplier_codes": "In customer view, hide suppliers' codes",
-      "customer_view_other_customers": "In customer view, hide other customers' names and amounts",
       "show_coming": "Show what is coming",
       "scan_feedback": "Beep and buzz on each scan",
       "scan_recount_ms": "Camera scan: delay before a code counts again (ms)",
@@ -2875,10 +2872,26 @@
       }
     }
   },
-  "customer_view": {
-    "enter": "Switch to customer view",
-    "leave": "Leave customer view",
-    "banner": "Customer view: what the company keeps for its team is hidden on this tab."
+  "customer_screen": {
+    "open": "Open the customer screen",
+    "title": "Customer screen",
+    "leave": "Leave the customer screen",
+    "search": "Scan an item, or type its name or reference",
+    "hint": "Press Enter to look it up.",
+    "look": "Look up",
+    "welcome": "Scan an item to see its price.",
+    "none": "Nothing was found for “{{words}}”.",
+    "failed": "The screen could not look that up. Please ask a member of the team.",
+    "taxes_included": "Taxes included",
+    "reference": "Ref.",
+    "barcode": "Barcode",
+    "in_stock": "In stock",
+    "out_of_stock": "Out of stock",
+    "offer": "Offer",
+    "from_quantity": "from {{quantity}} units",
+    "between": "{{from}} to {{to}}",
+    "until": "until {{date}}",
+    "since": "since {{date}}"
   },
   "step_up": {
     "title": "Confirm it is you",
@@ -2893,17 +2906,6 @@
       "no_passkey": "No passkey could be used.",
       "network": "The server is not answering: try again."
     }
-  },
-  "price_check": {
-    "title": "Price check",
-    "hint": "Scan an item, or type its code, to see what it costs.",
-    "waiting": "Waiting for an item…",
-    "taxes_included": "Taxes included",
-    "pack": "The pack of {{quantity}}:",
-    "unknown": "No item carries the code {{code}}.",
-    "shown": "Price shown: {{name}}",
-    "code": "Item code",
-    "check": "Check"
   },
   "customer_display": {
     "title": "Customer display",
@@ -3316,8 +3318,7 @@
         "camera": "The camera chosen for scanning.",
         "scan_gap": "The time between two keys that tells your scanner from a hand.",
         "notice": "That you closed the cookie notice.",
-        "customer_view": "Whether the customer view is on in this tab.",
-        "price_check_view": "Whether the price check turned customer view on.",
+        "customer_view": "Whether the customer screen is open in this tab.",
         "phone": "The link of a phone lent as a scanner."
       },
       "third_party": "No third-party script, no audience measurement, no advertising."

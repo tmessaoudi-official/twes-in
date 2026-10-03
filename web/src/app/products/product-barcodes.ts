@@ -55,11 +55,6 @@ export class ProductBarcodesSection implements OnInit {
   readonly readOnly = input(false);
   /** A code a scan card sent here to be added (`?add=`), listed as a new row the person saves like any other. */
   readonly adding = input<string | undefined>(undefined);
-  /**
-   * Customer view (docs/SPEC.md § 7, 2026-09-23 slice 5): the suppliers' codes stay off the screen, and in the list a
-   * save sends, so hiding them never erases them.
-   */
-  readonly hideSupplierCodes = input(false);
 
   protected readonly busy = this.facade.busy;
   protected readonly suppliers = this.facade.suppliers;
@@ -95,11 +90,9 @@ export class ProductBarcodesSection implements OnInit {
       }),
   });
 
-  /** The supplier's role is offered only where there is somebody to name, and outside customer view. */
+  /** The supplier's role is offered only where there is somebody to name. */
   protected readonly roles = computed<readonly BarcodeRole[]>(() =>
-    this.mayName() && !this.hideSupplierCodes()
-      ? BARCODE_ROLES
-      : BARCODE_ROLES.filter((role) => role !== 'supplier'),
+    this.mayName() ? BARCODE_ROLES : BARCODE_ROLES.filter((role) => role !== 'supplier'),
   );
   protected readonly problems = computed(() => this.rows().map(rowProblem));
   protected readonly changed = computed(() => !sameCodes(this.rows(), this.saved()));

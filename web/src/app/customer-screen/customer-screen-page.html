@@ -1,0 +1,132 @@
+<main class="flex min-h-dvh flex-col gap-8 p-6" data-testid="customer-screen">
+  <header class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="m-0 text-3xl font-medium">{{ 'customer_screen.title' | translate }}</h1>
+    <button mat-stroked-button type="button" (click)="leave()" data-testid="customer-screen-leave">
+      <mat-icon aria-hidden="true">lock_open</mat-icon>
+      {{ 'customer_screen.leave' | translate }}
+    </button>
+  </header>
+
+  <form
+    class="flex flex-wrap items-start gap-3"
+    data-testid="customer-screen-form"
+    (submit)="search($event)"
+  >
+    <mat-form-field class="min-w-0 flex-1">
+      <mat-label>{{ 'customer_screen.search' | translate }}</mat-label>
+      <input
+        #field
+        matInput
+        name="words"
+        autocomplete="off"
+        data-testid="customer-screen-words"
+        [ngModel]="words()"
+        (ngModelChange)="words.set($event)"
+      />
+      <mat-hint>{{ 'customer_screen.hint' | translate }}</mat-hint>
+    </mat-form-field>
+    <button mat-flat-button type="submit" data-testid="customer-screen-submit">
+      {{ 'customer_screen.look' | translate }}
+    </button>
+  </form>
+
+  <section class="flex flex-col gap-4" aria-live="polite">
+    @if (failed()) {
+      <p class="m-0 text-xl text-error" data-testid="customer-screen-failed">
+        {{ 'customer_screen.failed' | translate }}
+      </p>
+    } @else if (results(); as products) {
+      @if (products.length === 0) {
+        <p class="m-0 text-xl opacity-80" data-testid="customer-screen-none">
+          {{ 'customer_screen.none' | translate: { words: asked() } }}
+        </p>
+      } @else {
+        <ul class="m-0 flex list-none flex-col gap-4 p-0" data-testid="customer-screen-results">
+          @for (product of products; track product.id) {
+            <li>
+              <mat-card appearance="outlined" [attr.data-testid]="'customer-screen-' + product.id">
+                <mat-card-content>
+                  <div class="flex flex-col gap-3 py-2">
+                    <h2 class="m-0 text-2xl font-medium" data-testid="customer-screen-name">
+                      {{ product.name }}
+                    </h2>
+                    <p class="m-0 text-5xl font-semibold" data-testid="customer-screen-price">
+                      {{ product.finalPrice | amount: null }} {{ currency() }}
+                    </p>
+                    <p class="m-0 text-sm opacity-80">
+                      {{ 'customer_screen.taxes_included' | translate }}
+                    </p>
+                    <p class="m-0 opacity-80" data-testid="customer-screen-codes">
+                      {{ 'customer_screen.reference' | translate }} {{ product.reference }}
+                      @if (product.barcode; as barcode) {
+                        · {{ 'customer_screen.barcode' | translate }} {{ barcode }}
+                      }
+                    </p>
+                    @if (product.inStock !== null) {
+                      <p
+                        class="m-0 flex items-center gap-2 text-lg"
+                        data-testid="customer-screen-stock"
+                      >
+                        <mat-icon aria-hidden="true">{{
+                          product.inStock ? 'check_circle' : 'cancel'
+                        }}</mat-icon>
+                        {{
+                          (product.inStock
+                            ? 'customer_screen.in_stock'
+                            : 'customer_screen.out_of_stock'
+                          ) | translate
+                        }}
+                      </p>
+                    }
+                    @for (offer of product.promotions; track $index) {
+                      <p
+                        class="m-0 flex flex-wrap items-baseline gap-x-3 text-xl"
+                        data-testid="customer-screen-promotion"
+                      >
+                        <span class="font-semibold text-primary">
+                          {{ offer.price | amount: null }} {{ currency() }}
+                        </span>
+                        <span class="text-base opacity-80">
+                          {{ 'customer_screen.offer' | translate }}
+                          @if (offer.minQuantity !== '1.000') {
+                            ·
+                            {{
+                              'customer_screen.from_quantity'
+                                | translate: { quantity: quantity(offer.minQuantity) }
+                            }}
+                          }
+                          @if (offer.startsOn && offer.endsOn) {
+                            ·
+                            {{
+                              'customer_screen.between'
+                                | translate
+                                  : { from: (offer.startsOn | day), to: (offer.endsOn | day) }
+                            }}
+                          } @else if (offer.endsOn) {
+                            ·
+                            {{
+                              'customer_screen.until' | translate: { date: (offer.endsOn | day) }
+                            }}
+                          } @else if (offer.startsOn) {
+                            ·
+                            {{
+                              'customer_screen.since' | translate: { date: (offer.startsOn | day) }
+                            }}
+                          }
+                        </span>
+                      </p>
+                    }
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </li>
+          }
+        </ul>
+      }
+    } @else {
+      <p class="m-0 text-3xl opacity-80" data-testid="customer-screen-welcome">
+        {{ 'customer_screen.welcome' | translate }}
+      </p>
+    }
+  </section>
+</main>

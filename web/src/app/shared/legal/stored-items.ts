@@ -28,6 +28,5 @@ export const STORED_ITEMS: readonly StoredItem[] = [
   { id: 'scan_gap', name: 'twes.scan.gap', kind: 'local', lasts: 'kept' },
   { id: 'notice', name: 'twes.cookie-notice', kind: 'local', lasts: 'kept' },
   { id: 'customer_view', name: 'twes.customer-view', kind: 'session', lasts: 'tab' },
-  { id: 'price_check_view', name: 'twes.price-check-view', kind: 'session', lasts: 'tab' },
   { id: 'phone', name: 'twes.scan.phone', kind: 'session', lasts: 'tab' },
 ];

@@ -37,7 +37,6 @@ import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { ProductScanCard, type ProductScanCardData } from '../products/product-scan-card';
 import { ProductOnView } from '../products/product-on-view';
 import { Camera } from '../shared/scan/camera';
-import { CustomerView } from '../shared/customer-view/customer-view';
 import { PhonePairing } from '../shared/scan/phone-pairing';
 import { PhonePairingDialog } from '../shared/scan/phone-pairing-dialog';
 import { ScanBus } from '../shared/scan/scan-bus';
@@ -181,17 +180,6 @@ describe('AppShell', () => {
     open: vi.fn(async () => undefined),
     end: vi.fn(),
   };
-  const customerActive = signal(false);
-  const customerView = {
-    active: customerActive.asReadonly(),
-    toggle: () => customerActive.update((on) => !on),
-    off: () => customerActive.set(false),
-    // Leaving asks who is at the screen first; the real service is specified in customer-view.spec.ts.
-    leave: vi.fn(async () => {
-      customerActive.set(false);
-      return true;
-    }),
-  };
   const width = new BehaviorSubject(1280);
   const me = signal<SignedInState | null>(owner);
   const permissions = signal<readonly string[]>(['user.read']);
@@ -241,7 +229,6 @@ describe('AppShell', () => {
 
   beforeEach(async () => {
     me.set(owner);
-    customerActive.set(false);
     permissions.set(['user.read']);
     modules.set(['customers']);
     theme.sidebar.set('expanded');
@@ -273,7 +260,6 @@ describe('AppShell', () => {
         { provide: Feedback, useClass: RecordedFeedback },
         { provide: Camera, useValue: { available: () => true } },
         { provide: PhonePairing, useValue: pairing },
-        { provide: CustomerView, useValue: customerView },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         {
@@ -1281,31 +1267,19 @@ describe('AppShell', () => {
     expect(pairing.end).toHaveBeenCalled();
   });
 
-  // docs/SPEC.md § 7, 2026-09-23 slice 5: one click hides, on this tab, what a customer must not read.
-  it('turns customer view on in one click, says so above the page, and turns it off from there', async () => {
-    permissions.set(['product.read', 'product.cost.read']);
-    const { click, byTestId, fixture } = await render();
-    expect(byTestId('customer-view-banner')).toBeNull();
-    expect(byTestId('customer-view-toggle')?.getAttribute('aria-pressed')).toBe('false');
-
-    await click('customer-view-toggle');
-
-    expect(customerActive()).toBe(true);
-    expect(byTestId('customer-view-toggle')?.getAttribute('aria-pressed')).toBe('true');
-    expect(byTestId('customer-view-banner')).not.toBeNull();
-
-    await click('customer-view-leave');
-    fixture.detectChanges();
-    expect(customerView.leave).toHaveBeenCalledTimes(1);
-    expect(customerActive()).toBe(false);
-    expect(byTestId('customer-view-banner')).toBeNull();
-  });
-
-  it('offers no customer view to somebody with no cost to hide', async () => {
+  // docs/SPEC.md § 7, 2026-10-03 08:20: the customer screen is one click from any page, for whoever may read products.
+  it('offers the customer screen to somebody who may read products, as a link to it', async () => {
     permissions.set(['product.read']);
     const { byTestId } = await render();
 
-    expect(byTestId('customer-view-toggle')).toBeNull();
+    expect(byTestId('customer-screen-open')?.getAttribute('href')).toBe('/customer-screen');
+  });
+
+  it('offers no customer screen to somebody who may not read products', async () => {
+    permissions.set(['customer.read']);
+    const { byTestId } = await render();
+
+    expect(byTestId('customer-screen-open')).toBeNull();
   });
 
   it('offers no phone to somebody who may not read the products', async () => {

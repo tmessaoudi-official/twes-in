@@ -18,6 +18,7 @@ import { PRICE_LISTS_MODULE } from './price-lists/price-lists-nav';
 import { PRODUCTS_MODULE } from './products/products-nav';
 import { VENDORS_MODULE } from './vendors/vendors-nav';
 import { guardUnsaved } from './shared/form/unsaved-changes';
+import { customerScreenLock } from './customer-screen/customer-screen-lock';
 import { moduleGuard } from './shell/module-guard';
 
 export const routes: Routes = [
@@ -49,7 +50,7 @@ export const routes: Routes = [
     // The customer display (docs/SPEC.md § 7, 2026-09-23 slice 6): a second window of a signed-in browser, turned
     // towards the customer. Outside the shell, so it shows no menu and no scan card opens on it.
     path: 'customer-display',
-    canActivate: [authGuard],
+    canActivate: [authGuard, customerScreenLock],
     loadComponent: () =>
       import('./customer-display/customer-display-page').then((m) => m.CustomerDisplayPage),
   },
@@ -57,7 +58,7 @@ export const routes: Routes = [
     // Sheets of location and product labels (docs/SPEC.md § 7, 2026-09-23 slice 8): outside the shell, so the paper carries
     // nothing but the labels. The module guard sits on the child, as in the shell, so the session is read first.
     path: 'print',
-    canActivate: [authGuard],
+    canActivate: [authGuard, customerScreenLock],
     children: [
       {
         path: 'location-labels',
@@ -113,9 +114,18 @@ export const routes: Routes = [
       import('./auth/awaiting-approval-page').then((m) => m.AwaitingApprovalPage),
   },
   {
+    // The customer screen (docs/SPEC.md § 7, 2026-10-03 08:20): the one screen a customer may be left in front of.
+    // Outside the shell, so it carries no menu, no palette and no scan card; `customerScreenLock` on every other
+    // signed-in route sends the tab back here while it is open.
+    path: 'customer-screen',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./customer-screen/customer-screen-page').then((m) => m.CustomerScreenPage),
+  },
+  {
     // Every signed-in page is a child of the shell, which carries the navigation and the account menu.
     path: '',
-    canActivate: [authGuard],
+    canActivate: [authGuard, customerScreenLock],
     loadComponent: () => import('./shell/app-shell').then((m) => m.AppShell),
     // Guarded as one list, not one route at a time: a record page added below would otherwise be able to be
     // left with unsaved changes, and nothing would say so (row 45).
@@ -180,11 +190,6 @@ export const routes: Routes = [
         path: 'products/new',
         canActivate: [moduleGuard(PRODUCTS_MODULE)],
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
-      },
-      {
-        path: 'products/price-check',
-        canActivate: [moduleGuard(PRODUCTS_MODULE)],
-        loadComponent: () => import('./products/price-check-page').then((m) => m.PriceCheckPage),
       },
       {
         path: 'products/categories',

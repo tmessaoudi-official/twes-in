@@ -97,7 +97,6 @@ export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {
     },
     {
       id: 'customer',
-      private: true,
       label: `${FIELDS}.customer`,
       value: (row) => row.customer,
       sortable: true,
@@ -120,7 +119,6 @@ export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {
     },
     {
       id: 'total',
-      private: true,
       label: `${FIELDS}.total`,
       value: (row) => row.total,
       align: 'end',

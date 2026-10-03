@@ -20,11 +20,6 @@ export interface ListColumn<Row> {
   filterable?: boolean;
   /** False keeps the column on screen whatever a person hid; defaults to true. */
   hideable?: boolean;
-  /**
-   * Says something about customers or their money, so customer view leaves it out while it is on
-   * (`presentation.customer-view.other-customers`): the list must not show one customer another's name or amount.
-   */
-  private?: boolean;
   /** Hidden until a person places it. */
   defaultHidden?: boolean;
   width?: number;

@@ -118,22 +118,6 @@ export const PRESENTATION = {
     oneOf(...SUPPORTED_LANGUAGES),
   ),
   /**
-   * What customer view hides on screen (docs/SPEC.md § 7, 2026-09-23 slice 5), set by the company alone: a
-   * product's cost, and the codes its suppliers print. Both, until the company says otherwise.
-   */
-  customerViewCost: defineSetting<boolean>('presentation.customer-view.cost', true, parseBool),
-  customerViewSupplierCodes: defineSetting<boolean>(
-    'presentation.customer-view.supplier-codes',
-    true,
-    parseBool,
-  ),
-  /** Other customers' names and amounts in the lists, kept from a customer looking at the screen. */
-  customerViewOtherCustomers: defineSetting<boolean>(
-    'presentation.customer-view.other-customers',
-    true,
-    parseBool,
-  ),
-  /**
    * How days and figures are written (docs/SPEC.md § 7, 2026-09-25 12:45, row 130): the locale's until someone
    * chooses, person then role then company, as the API declares them.
    */

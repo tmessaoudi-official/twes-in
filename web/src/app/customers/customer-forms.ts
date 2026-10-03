@@ -72,7 +72,6 @@ export const CUSTOMERS_LIST: ListDescriptor<CustomerListRow> = {
     },
     {
       id: 'name',
-      private: true,
       label: `${FIELDS}.name`,
       value: (row) => row.name,
       sortable: true,
@@ -89,7 +88,6 @@ export const CUSTOMERS_LIST: ListDescriptor<CustomerListRow> = {
     },
     {
       id: 'city',
-      private: true,
       label: `${FIELDS}.billingCity`,
       value: (row) => row.billingAddress.city ?? '',
       sortable: true,
@@ -97,7 +95,6 @@ export const CUSTOMERS_LIST: ListDescriptor<CustomerListRow> = {
     },
     {
       id: 'email',
-      private: true,
       label: `${FIELDS}.email`,
       value: (row) => row.email ?? '',
       filterable: true,

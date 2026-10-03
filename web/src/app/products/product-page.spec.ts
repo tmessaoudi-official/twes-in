@@ -21,7 +21,6 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
-import { CUSTOMER_VIEW_STORAGE, CustomerView } from '../shared/customer-view/customer-view';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { ProductPage } from './product-page';
 import { ProductOnView } from './product-on-view';
@@ -168,7 +167,6 @@ describe('ProductPage', () => {
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         // Customer view is remembered per tab: on the real session storage it outlives this spec and hides columns in others.
-        { provide: CUSTOMER_VIEW_STORAGE, useValue: new PageMemoryStorage() },
       ],
     });
   });
@@ -435,29 +433,6 @@ describe('ProductPage', () => {
     expect(q('field-unitPriceNet')).not.toBeNull();
     expect(q('field-costPrice')).toBeNull();
     expect(q('price-calculator')).toBeNull();
-  });
-
-  it('hides the cost in customer view, and a save there keeps the stored cost', async () => {
-    product.set({ ...laptop, costPrice: '900.1250' });
-    await open('p1');
-    expect(q('field-costPrice')).not.toBeNull();
-    // What a unit earns is read from that cost, so it follows the cost: shown with it, gone with it.
-    expect(q('price-calculator')).not.toBeNull();
-
-    TestBed.inject(CustomerView).on();
-    await settle();
-    expect(q('field-costPrice')).toBeNull();
-    expect(q('price-calculator')).toBeNull();
-    type('field-unitPriceNet', '1300');
-    await settle();
-    q('record-save')!.click();
-    await settle();
-
-    expect(facade.reviseProduct).toHaveBeenCalledWith(
-      'c1',
-      'p1',
-      expect.objectContaining({ unitPriceNet: '1300', costPrice: '900.1250' }),
-    );
   });
 
   it('keeps what was typed when the product and its options are read again', async () => {
