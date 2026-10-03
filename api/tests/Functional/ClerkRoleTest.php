@@ -51,8 +51,10 @@ final class ClerkRoleTest extends ApiTestCase
         $this->login('clerk@twes.local', 'password-1234');
 
         $id = $this->issued();
+        // The company's day, not the server's: the two differ for an hour or two each night.
+        $issueDay = $this->stringAt($this->json(), 'issueDate');
 
-        $this->postJson($this->path($id).'/payments', ['date' => (new \DateTimeImmutable())->format('Y-m-d'), 'amount' => '10', 'method' => 'cash', 'reference' => null, 'notes' => null]);
+        $this->postJson($this->path($id).'/payments', ['date' => $issueDay, 'amount' => '10', 'method' => 'cash', 'reference' => null, 'notes' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
     }
 
