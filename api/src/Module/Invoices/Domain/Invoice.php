@@ -447,7 +447,11 @@ class Invoice implements CompanyOwned
         $this->issuedBy = $issue->issuedBy;
         $this->updatedAt = $now;
         $sources = array_values(array_filter(array_map(static fn (InvoiceLine $line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $this->getLines())));
-        $this->events[] = new InvoiceIssued($this->id, $this->company->getId(), $this->establishment->getId(), $this->documentType, $issue->number, $this->issueDate, $sources);
+        $direct = InvoiceType::Invoice !== $this->documentType ? [] : array_values(array_filter(array_map(
+            static fn (InvoiceLine $line): ?InvoicedQuantity => null === $line->getProduct() || null !== $line->getSourceDeliveryNoteLineId() ? null : new InvoicedQuantity($line->getProduct()->getId(), $line->getQuantity(), $line->getUnit()->getId(), $line->getLotCode()),
+            $this->getLines(),
+        )));
+        $this->events[] = new InvoiceIssued($this->id, $this->company->getId(), $this->establishment->getId(), $this->documentType, $issue->number, $this->issueDate, $sources, $direct);
     }
 
     /**

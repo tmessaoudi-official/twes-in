@@ -17,7 +17,7 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Tells the people who keep a company's stock (its members whose role grants `stock.write`) what a delivery note did not
- * move (docs/SPEC.md § 7, 2026-09-16): the note is already committed, so a log line alone would reach nobody. Each is
+ * move: the note is already committed, so a log line alone would reach nobody. Each is
  * told on their own channel, so a member who cannot act on it never sees it.
  */
 final readonly class TellStockKeepers
@@ -27,6 +27,11 @@ final readonly class TellStockKeepers
     public const string LINES_LEFT_OUT = 'stock.delivery_note_lines_left_out';
     /** Moving a note's stock failed and nothing moved; `app:stock:replay-delivery-note` moves it again. */
     public const string MOVED_NO_STOCK = 'stock.delivery_note_moved_no_stock';
+
+    /** Some lines of an issued invoice moved no stock, for the reasons a delivery note's lines may not. */
+    public const string INVOICE_LINES_LEFT_OUT = 'stock.invoice_lines_left_out';
+    /** Moving an invoice's stock failed and nothing moved. */
+    public const string INVOICE_MOVED_NO_STOCK = 'stock.invoice_moved_no_stock';
 
     /** A count found a different quantity from the one expected: told to the other keepers, the counter knowing. */
     public const string COUNT_DIFFERENCE = 'stock.count_difference';
@@ -57,6 +62,16 @@ final readonly class TellStockKeepers
     public function deliveryNoteMovedNoStock(Uuid $companyId, Uuid $deliveryNoteId, string $number): void
     {
         $this->tell($companyId, self::MOVED_NO_STOCK, $deliveryNoteId, $number);
+    }
+
+    public function invoiceLeftLinesOut(Uuid $companyId, Uuid $invoiceId, string $number): void
+    {
+        $this->tellAll($companyId, self::INVOICE_LINES_LEFT_OUT, ['invoice_id' => $invoiceId->toRfc4122(), 'number' => $number], null);
+    }
+
+    public function invoiceMovedNoStock(Uuid $companyId, Uuid $invoiceId, string $number): void
+    {
+        $this->tellAll($companyId, self::INVOICE_MOVED_NO_STOCK, ['invoice_id' => $invoiceId->toRfc4122(), 'number' => $number], null);
     }
 
     private function tell(Uuid $companyId, string $type, Uuid $deliveryNoteId, string $number): void

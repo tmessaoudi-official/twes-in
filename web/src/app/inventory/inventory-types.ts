@@ -28,13 +28,14 @@ export const DRAWABLE_STOCK_LOCATION_KINDS: readonly StockLocationKind[] =
 export type StockMovementKind = 'in' | 'out' | 'adjustment';
 export const STOCK_MOVEMENT_KINDS: readonly StockMovementKind[] = ['in', 'out', 'adjustment'];
 
-export type StockSourceType = 'receipt' | 'count' | 'move' | 'loss' | 'delivery_note';
+export type StockSourceType = 'receipt' | 'count' | 'move' | 'loss' | 'delivery_note' | 'invoice';
 export const STOCK_SOURCE_TYPES: readonly StockSourceType[] = [
   'receipt',
   'count',
   'move',
   'loss',
   'delivery_note',
+  'invoice',
 ];
 
 /** What a person records: goods received, what a count found on the shelf, goods moved, or goods written off. */

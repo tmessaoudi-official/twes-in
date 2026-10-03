@@ -509,6 +509,33 @@ final class InvoiceTest extends TestCase
         self::assertSame(['L-13', null], array_map(static fn ($copied): ?string => $copied->getLotCode(), Invoice::creditNoteFor($invoice, 'Retour', $this->now)->getLines()), 'a credit note corrects the goods its invoice named');
     }
 
+    public function testIssuingNamesTheProductLinesDrawnByHandAndNeverThoseOfADeliveryNoteOrOfACreditNote(): void
+    {
+        $goods = $this->product($this->company);
+        $lotted = Product::create($this->company, 'ART-003', new ProductDetails('Lot', null, ProductKind::Goods, '10'), $this->unit('C62'), null, [], $this->now);
+        $lotted->track(ProductTracking::Lot, $this->now);
+        $service = Product::create($this->company, 'ART-002', new ProductDetails('Pose', null, ProductKind::Service, '40'), $this->unit('C62'), null, [], $this->now);
+        $line = fn (?Product $product, ?string $lot = null, ?Uuid $from = null): InvoiceLineDetails => new InvoiceLineDetails($product, 'Pièce', '2', $this->unit('C62'), '10', null, [], $from, $lot);
+        $issue = new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto'));
+
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$line($goods, null, Uuid::v7()), $line($goods), $line($lotted, 'L-12'), $line(null), $line($service)], [], $this->now);
+        $invoice->issue($issue, fn (Invoice $i) => $this->figures(lines: 5), $this->now);
+
+        $event = $invoice->releaseEvents()[0];
+        self::assertInstanceOf(\App\Module\Invoices\Domain\InvoiceIssued::class, $event);
+        self::assertEquals(
+            [[$goods->getId(), '2.000', null], [$lotted->getId(), '2.000', 'L-12'], [$service->getId(), '2.000', null]],
+            array_map(static fn (\App\Module\Invoices\Domain\InvoicedQuantity $each): array => [$each->productId, $each->quantity, $each->lotCode], $event->directLines),
+            'a line from a delivery note, and a line with no product, name no stock to move',
+        );
+
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);
+        $credit->issue(new \App\Module\Invoices\Domain\InvoiceIssue('AV-2026-00001', $this->now, 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $i) => $this->figures(lines: 5), $this->now);
+        $returned = $credit->releaseEvents()[0];
+        self::assertInstanceOf(\App\Module\Invoices\Domain\InvoiceIssued::class, $returned);
+        self::assertSame([], $returned->directLines, 'a credit note takes nothing out');
+    }
+
     private function issuedCreditNote(Invoice $invoice, string $due): Invoice
     {
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->now);

@@ -133,7 +133,7 @@ export class StockMovementsPage {
     const companyId = this.company()?.id;
     if (!companyId) return;
     this.live.reloadOn(
-      ['stock', 'delivery_note'],
+      ['stock', 'delivery_note', 'invoice'],
       () => this.facade.reloadMovements(companyId),
       this.destroyRef,
     );

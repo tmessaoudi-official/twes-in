@@ -285,7 +285,7 @@ export class StockPage implements OnInit {
     const companyId = this.company()?.id;
     if (companyId) {
       this.live.reloadOn(
-        ['stock', 'delivery_note', 'product', 'stock_location'],
+        ['stock', 'delivery_note', 'invoice', 'product', 'stock_location'],
         () => this.reload(companyId),
         this.destroyRef,
       );

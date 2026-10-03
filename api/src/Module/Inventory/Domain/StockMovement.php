@@ -38,6 +38,7 @@ class StockMovement implements CompanyOwned
     public const string SOURCE_RECEIPT = 'receipt';
     public const string SOURCE_COUNT = 'count';
     public const string SOURCE_DELIVERY_NOTE = 'delivery_note';
+    public const string SOURCE_INVOICE = 'invoice';
     public const string SOURCE_MOVE = 'move';
     public const string SOURCE_LOSS = 'loss';
     public const int NOTE_MAX = 500;
@@ -165,9 +166,25 @@ class StockMovement implements CompanyOwned
     /** @throws InvalidStockMovement */
     public static function delivery(Product $product, StockLocation $location, string $quantity, Uuid $deliveryNoteId, \DateTimeImmutable $now, ?StockLot $lot = null): self
     {
+        return self::goodsOut($product, $location, $quantity, self::SOURCE_DELIVERY_NOTE, $deliveryNoteId, $now, $lot);
+    }
+
+    /**
+     * Goods an invoice sold that no delivery note handed over.
+     *
+     * @throws InvalidStockMovement
+     */
+    public static function sale(Product $product, StockLocation $location, string $quantity, Uuid $invoiceId, \DateTimeImmutable $now, ?StockLot $lot = null): self
+    {
+        return self::goodsOut($product, $location, $quantity, self::SOURCE_INVOICE, $invoiceId, $now, $lot);
+    }
+
+    /** @throws InvalidStockMovement */
+    private static function goodsOut(Product $product, StockLocation $location, string $quantity, string $sourceType, Uuid $sourceId, \DateTimeImmutable $now, ?StockLot $lot): self
+    {
         $out = new Number(self::quantity($quantity, $product, false))->mul(-1)->value;
 
-        return new self($product, $location, $lot, StockMovementKind::Out, $out, self::SOURCE_DELIVERY_NOTE, $deliveryNoteId, null, $now);
+        return new self($product, $location, $lot, StockMovementKind::Out, $out, $sourceType, $sourceId, null, $now);
     }
 
     /**

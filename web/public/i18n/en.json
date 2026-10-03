@@ -611,6 +611,8 @@
       "invitation_received": "An invitation to join {{company}} is waiting in your email.",
       "stock_delivery_note_lines_left_out": "Delivery note {{number}} is validated, but some of its lines moved no stock (another unit, or no quantity).",
       "stock_delivery_note_moved_no_stock": "The stock of delivery note {{number}} could not be updated. Nothing moved: tell the platform administrator, who can replay it.",
+      "stock_invoice_lines_left_out": "Invoice {{number}} is issued, but some of its lines moved no stock (another unit, or no quantity).",
+      "stock_invoice_moved_no_stock": "The stock of invoice {{number}} could not be updated. Nothing moved: record a stock adjustment, or tell the platform administrator.",
       "unknown": "New notification.",
       "subscription_payment_declared": "{{company}} declared a payment of {{amount}} {{currency}}.",
       "subscription_payment_decided": "Your payment of {{amount}} {{currency}} was answered.",
@@ -1813,7 +1815,8 @@
       "count": "Count",
       "move": "Move",
       "loss": "Write-off",
-      "delivery_note": "Delivery note"
+      "delivery_note": "Delivery note",
+      "invoice": "Invoice"
     },
     "kinds": {
       "site": "Site",

@@ -10,11 +10,15 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Application;
 
 use App\Module\DeliveryNotes\Domain\DeliveredQuantity;
+use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\LotOnHand;
 use App\Module\Inventory\Domain\LotPicking;
+use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementKind;
 use App\Module\Inventory\Domain\StockMovementRepository;
+use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Domain\ProductTracking;
 use App\ModuleRegistry\Application\ModuleStates;
@@ -25,14 +29,15 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * What a delivery note does to stock (docs/SPEC.md § 7, 2026-09-14: the goods leave with validation). A validated note
+ * What a delivery note does to stock (the goods leave with validation). A validated note
  * takes each product it delivers out of its establishment's default location, once per product, while the company has
  * inventory on and keeps stock of that product; a line counted in another unit than its product moves nothing and is
  * said, because no unit converts into another. A product tracked by lot or serial number leaves from its lots, the first
  * to expire first, and never from an expired lot nobody released; what no lot in date holds is said and not moved
- * (docs/SPEC.md § 7, 2026-09-23 02:40). A cancelled note returns exactly what its validation took out, to the lots it
+ *. A cancelled note returns exactly what its validation took out, to the lots it
  * took it from, whatever the tracking or the module say since. Both are idempotent: an event handled twice moves
- * nothing the second time.
+ * nothing the second time. An invoice's own product lines, those no delivery note handed over, leave through the same
+ * path under their own source, which is why one class holds both.
  */
 final readonly class MoveStockForDeliveryNotes
 {
@@ -58,7 +63,30 @@ final readonly class MoveStockForDeliveryNotes
      */
     public function validated(Uuid $deliveryNoteId, Uuid $companyId, Uuid $establishmentId, array $lines): array
     {
-        if (!$this->modules->isEnabled($companyId, self::MODULE) || [] !== $this->movements->ofSource(StockMovement::SOURCE_DELIVERY_NOTE, $deliveryNoteId, $companyId)) {
+        return $this->takeOut(StockMovement::SOURCE_DELIVERY_NOTE, $deliveryNoteId, $companyId, $establishmentId, $lines);
+    }
+
+    /**
+     * What an issued invoice sold that no delivery note handed over leaves the same way a delivery does, once, and for
+     * the same reasons a line may move nothing.
+     *
+     * @param list<DeliveredQuantity> $lines
+     *
+     * @return list<string> why a line of a product whose stock is kept moved nothing
+     */
+    public function invoiced(Uuid $invoiceId, Uuid $companyId, Uuid $establishmentId, array $lines): array
+    {
+        return $this->takeOut(StockMovement::SOURCE_INVOICE, $invoiceId, $companyId, $establishmentId, $lines);
+    }
+
+    /**
+     * @param list<DeliveredQuantity> $lines
+     *
+     * @return list<string>
+     */
+    private function takeOut(string $sourceType, Uuid $sourceId, Uuid $companyId, Uuid $establishmentId, array $lines): array
+    {
+        if (!$this->modules->isEnabled($companyId, self::MODULE) || [] !== $this->movements->ofSource($sourceType, $sourceId, $companyId)) {
             return [];
         }
 
@@ -100,7 +128,7 @@ final readonly class MoveStockForDeliveryNotes
         // The company's day decides which lots have expired: a lot used by today still leaves today, wherever the server is.
         $today = $now->setTimezone(new \DateTimeZone($establishment->getCompany()->getTimezone()));
 
-        return $this->transactions->run(function () use ($establishment, $out, $deliveryNoteId, $now, $today, $skipped): array {
+        return $this->transactions->run(function () use ($establishment, $out, $sourceType, $sourceId, $now, $today, $skipped): array {
             $location = $this->locations->defaultOf($establishment);
             $products = [];
             foreach ($out as [$product]) {
@@ -114,7 +142,7 @@ final readonly class MoveStockForDeliveryNotes
             $taking = [];
             foreach ($out as [$product, $quantity, $named]) {
                 if (ProductTracking::None === $product->getTracking()) {
-                    $written[] = StockMovement::delivery($product, $location, $quantity->value, $deliveryNoteId, $now);
+                    $written[] = self::leaving($sourceType, $product, $location, $quantity->value, $sourceId, $now);
                     continue;
                 }
                 // Read after the lock, as a count reads: what is picked is what no other delivery is taking. What an
@@ -124,7 +152,7 @@ final readonly class MoveStockForDeliveryNotes
                     ? LotPicking::firstExpiring($onHand, $quantity->value, $today)
                     : LotPicking::named($onHand, $named, $quantity->value, $today);
                 foreach ($picked->taken as [$lot, $taken]) {
-                    $written[] = StockMovement::delivery($product, $location, $taken, $deliveryNoteId, $now, $lot);
+                    $written[] = self::leaving($sourceType, $product, $location, $taken, $sourceId, $now, $lot);
                     $key = $lot->getId()->toRfc4122();
                     $taking[$key] = ($taking[$key] ?? new Number(0))->add($taken);
                 }
@@ -141,6 +169,14 @@ final readonly class MoveStockForDeliveryNotes
 
             return $skipped;
         });
+    }
+
+    /** @throws InvalidStockMovement */
+    private static function leaving(string $sourceType, Product $product, StockLocation $location, string $quantity, Uuid $sourceId, \DateTimeImmutable $now, ?StockLot $lot = null): StockMovement
+    {
+        return StockMovement::SOURCE_INVOICE === $sourceType
+            ? StockMovement::sale($product, $location, $quantity, $sourceId, $now, $lot)
+            : StockMovement::delivery($product, $location, $quantity, $sourceId, $now, $lot);
     }
 
     /**

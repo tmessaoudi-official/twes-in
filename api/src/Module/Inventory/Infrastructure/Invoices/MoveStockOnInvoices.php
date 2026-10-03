@@ -1,0 +1,64 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Module\Inventory\Infrastructure\Invoices;
+
+use App\Module\DeliveryNotes\Domain\DeliveredQuantity;
+use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
+use App\Module\Inventory\Application\TellStockKeepers;
+use App\Module\Invoices\Domain\InvoicedQuantity;
+use App\Module\Invoices\Domain\InvoiceIssued;
+use App\Module\Invoices\Domain\InvoiceType;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+
+/**
+ * Takes an invoice's own goods out of stock when it is issued. The invoice is already committed, so nothing here throws:
+ * a line that moved no stock, or a move that failed, is logged and told to the people who keep the company's stock. A
+ * credit note takes nothing out, and the lines a delivery note handed over are not in the event at all.
+ */
+#[AsEventListener(event: InvoiceIssued::class)]
+final readonly class MoveStockOnInvoices
+{
+    public function __construct(private MoveStockForDeliveryNotes $move, private TellStockKeepers $tell, private LoggerInterface $logger)
+    {
+    }
+
+    public function __invoke(InvoiceIssued $event): void
+    {
+        if (InvoiceType::Invoice !== $event->type || [] === $event->directLines) {
+            return;
+        }
+        $lines = array_map(static fn (InvoicedQuantity $line): DeliveredQuantity => new DeliveredQuantity($line->productId, $line->quantity, $line->unitId, $line->lotCode), $event->directLines);
+        try {
+            $reasons = $this->move->invoiced($event->invoiceId, $event->companyId, $event->establishmentId, $lines);
+        } catch (\Throwable $failure) {
+            $this->logger->error('Invoice {number} was issued, but its stock could not be moved: {failure}.', ['number' => $event->number, 'failure' => $failure->getMessage(), 'exception' => $failure]);
+            $this->told(fn () => $this->tell->invoiceMovedNoStock($event->companyId, $event->invoiceId, $event->number));
+
+            return;
+        }
+        foreach ($reasons as $reason) {
+            $this->logger->warning('Invoice {number} was issued, but {reason}.', ['number' => $event->number, 'reason' => $reason]);
+        }
+        if ([] !== $reasons) {
+            $this->told(fn () => $this->tell->invoiceLeftLinesOut($event->companyId, $event->invoiceId, $event->number));
+        }
+    }
+
+    /** Telling is best effort too: a notification that cannot be written leaves the log line as the record. */
+    private function told(\Closure $tell): void
+    {
+        try {
+            $tell();
+        } catch (\Throwable $failure) {
+            $this->logger->error('Stock keepers could not be told: {failure}.', ['failure' => $failure->getMessage(), 'exception' => $failure]);
+        }
+    }
+}

@@ -88,8 +88,8 @@ final class WatchTest extends ApiTestCase
         $amountDue = $this->stringAt($this->json(), 'amountDue');
         $this->em()->getConnection()->executeStatement('UPDATE invoice SET due_date = ?::date - 40 WHERE id = ?', [$this->today, $invoiceId]);
 
-        // VIS at its reorder point: 5 on hand, a point of 5.
-        $this->receive('VIS', '5');
+        // VIS at its reorder point: 5 on hand, a point of 5. The invoice above already took one out, so six come in.
+        $this->receive('VIS', '6');
         $this->sendJson('PUT', $this->company().'/products/'.$this->products['VIS'].'/reorder-points/'.$this->establishmentId, ['quantity' => '5']);
         self::assertResponseIsSuccessful();
 

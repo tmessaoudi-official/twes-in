@@ -149,7 +149,7 @@ export class StockLocationsPage implements OnInit {
     const companyId = this.company()?.id;
     if (companyId) {
       this.live.reloadOn(
-        ['stock_location', 'stock', 'delivery_note'],
+        ['stock_location', 'stock', 'delivery_note', 'invoice'],
         () => this.facade.loadLocations(companyId),
         this.destroyRef,
       );

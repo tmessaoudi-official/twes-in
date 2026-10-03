@@ -15,6 +15,8 @@ describe('stock notifications', () => {
     for (const type of [
       'stock.delivery_note_lines_left_out',
       'stock.delivery_note_moved_no_stock',
+      'stock.invoice_lines_left_out',
+      'stock.invoice_moved_no_stock',
       'stock.count_difference',
     ]) {
       expect(notificationKey(type)).toBe(`notifications.types.${type.replace('.', '_')}`);

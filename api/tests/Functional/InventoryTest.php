@@ -281,6 +281,30 @@ final class InventoryTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testADirectInvoiceTakesItsGoodsOutWhenIssuedAndOneBuiltFromANoteTakesNothingMore(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '10']);
+        $customerId = $this->customer();
+
+        $direct = $this->issuedInvoice($customerId, [['productId' => $this->laptopId, 'quantity' => '3'], ['productId' => $this->supportId, 'quantity' => '1']]);
+        self::assertSame(['7.000'], array_column($this->levels(), 'quantity'), 'the goods leave, the service has no stock to leave');
+        $this->getJson($this->path('stock-movements').'?productId='.$this->laptopId);
+        self::assertSame([['out', 'invoice', $direct], ['in', 'receipt', null]], array_map(static fn (array $m) => [$m['kind'], $m['sourceType'], $m['sourceId']], $this->jsonList()));
+        self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM stock_movement WHERE product_id = ?', [$this->supportId]));
+
+        $note = $this->validatedNote($customerId, '2');
+        self::assertSame(['5.000'], array_column($this->levels(), 'quantity'));
+        $this->postJson($this->path('invoices/from-delivery-notes'), ['deliveryNoteIds' => [$note]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $fromNote = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('invoices', $fromNote).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+
+        self::assertSame(['5.000'], array_column($this->levels(), 'quantity'), 'the note took those goods out already');
+        self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM stock_movement WHERE source_type = 'invoice'"));
+    }
+
     public function testANoteWhoseStockNeverMovedIsReplayedOnceByTheCommand(): void
     {
         $this->signedIn(['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
@@ -606,6 +630,33 @@ final class InventoryTest extends ApiTestCase
         self::assertResponseIsSuccessful();
 
         return $noteId;
+    }
+
+    /**
+     * Drafts and issues an invoice of the given lines; its id.
+     *
+     * @param list<array<string, mixed>> $lines
+     */
+    private function issuedInvoice(string $customerId, array $lines): string
+    {
+        $this->postJson($this->path('invoices'), [
+            'customerId' => $customerId,
+            'establishmentId' => null,
+            'supplyDate' => null,
+            'paymentTermsDays' => null,
+            'customerReference' => null,
+            'notesPrinted' => null,
+            'notesInternal' => null,
+            'discountAmount' => null,
+            'documentTaxComponentIds' => null,
+            'lines' => $lines,
+        ]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('invoices', $id).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+
+        return $id;
     }
 
     /** A draft note delivering the laptop to the customer; its id. */
