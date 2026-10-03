@@ -15,7 +15,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import { atScale } from '../shared/i18n/format';
 import { AmountPipe } from '../shared/i18n/format-pipes';
@@ -39,6 +38,7 @@ import type {
 } from './invoices-types';
 import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
+import { Select } from '../shared/form/select';
 import { ProductScans } from '../products/product-scans';
 import { InvoicesFacade } from './invoices-facade';
 
@@ -69,7 +69,7 @@ type CheckedField = keyof Omit<
     MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
+    Select,
     TranslatePipe,
     DecimalInput,
     PickField,
@@ -85,6 +85,9 @@ export class InvoiceLines {
   readonly lines = input.required<LinesArray>();
   /** Whose company's catalogue the pickers ask; a line is never offered another company's products. */
   readonly companyId = input.required<string>();
+  protected readonly unitOptions = computed(() =>
+    this.options().units.map((unit) => ({ value: unit.id, label: `${unit.code} · ${unit.name}` })),
+  );
   readonly options = input.required<InvoiceOptions>();
   readonly customer = input<CustomerOption | null>(null);
   /** Whether the company has price lists on: a line then starts from the price of the customer's list. */

@@ -11,15 +11,16 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
+import { Select } from '../shared/form/select';
 import { addScanned, BARCODE_QUANTITY_MAX, rowProblem, sameCodes, withRole } from './barcode-rows';
 import { ProductBarcodes } from './product-barcodes-facade';
 import { BARCODE_ROLES, type BarcodeRole, type ProductBarcode } from './products-types';
@@ -36,7 +37,8 @@ import { BARCODE_ROLES, type BarcodeRole, type ProductBarcode } from './products
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatSelectModule,
+    FormsModule,
+    Select,
     TranslatePipe,
     Label,
   ],
@@ -93,6 +95,12 @@ export class ProductBarcodesSection implements OnInit {
   /** The supplier's role is offered only where there is somebody to name. */
   protected readonly roles = computed<readonly BarcodeRole[]>(() =>
     this.mayName() ? BARCODE_ROLES : BARCODE_ROLES.filter((role) => role !== 'supplier'),
+  );
+  protected readonly roleOptions = computed(() =>
+    this.roles().map((role) => ({ value: role, label: `products.barcodes.roles.${role}` })),
+  );
+  protected readonly supplierOptions = computed(() =>
+    this.suppliers().map((supplier) => ({ value: supplier.id, label: supplier.label })),
   );
   protected readonly problems = computed(() => this.rows().map(rowProblem));
   protected readonly changed = computed(() => !sameCodes(this.rows(), this.saved()));

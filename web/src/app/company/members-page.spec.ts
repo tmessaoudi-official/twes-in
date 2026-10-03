@@ -162,7 +162,9 @@ describe('MembersPage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    const offered = [...document.querySelectorAll('mat-option')].map((o) => o.textContent?.trim());
+    const offered = [...document.querySelectorAll('[role="option"] [data-option-label]')].map((o) =>
+      o.textContent?.trim(),
+    );
     expect(offered).toEqual(['propriétaire', 'administrateur', 'membre', 'barista']);
   });
 

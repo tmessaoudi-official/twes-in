@@ -49,14 +49,19 @@
               </mat-error>
             }
           </mat-form-field>
-          <mat-form-field>
-            <mat-label>{{ 'members.role' | translate }}</mat-label>
-            <mat-select formControlName="role" data-testid="member-role">
-              @for (role of roles(); track role.id) {
-                <mat-option [value]="role.name">{{ roleLabel(role) | translate }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
+          <div class="flex min-w-48 flex-col gap-1.5">
+            <label id="member-role-label" class="twes-field-label" for="member-role-input">{{
+              'members.role' | translate
+            }}</label>
+            <app-select
+              inputId="member-role-input"
+              labelledBy="member-role-label"
+              testId="member-role"
+              formControlName="role"
+              [options]="roleOptions()"
+              [translateLabels]="true"
+            />
+          </div>
           <button mat-flat-button type="submit" [disabled]="busy()" data-testid="member-add">
             {{ 'members.add' | translate }}
           </button>

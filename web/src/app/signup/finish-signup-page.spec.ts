@@ -128,7 +128,7 @@ describe('FinishSignupPage', () => {
     type(query<HTMLInputElement>('signup-password')!, 'a-long-enough-password');
     type(query<HTMLInputElement>('signup-company')!, 'Nouvelle Société');
     type(query<HTMLInputElement>('signup-timezone')!, 'Africa/Tunis');
-    // A mat-select is set through its control, as a person picking an option would.
+    // The country select is set through its control, as a person picking an option would.
     (
       fixture.componentInstance as unknown as {
         form: { controls: { countryCode: { setValue(v: string): void } } };

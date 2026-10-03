@@ -16,11 +16,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import { FormatFacade } from '../i18n/format-facade';
 import { DecimalInput } from './decimal-input';
 import { PickField, type PickOption } from './pick-field';
+import { Select } from './select';
 import { type DescriptorFormGroup, type FieldError, fieldError } from './form-builder';
 import type { FieldConflict } from './form-merge';
 import type { FieldValue, FormDescriptor, FormField, FormSection, FormValues } from './form-types';
@@ -47,10 +47,10 @@ export interface PickSource {
     MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
     TranslatePipe,
     DecimalInput,
     PickField,
+    Select,
   ],
   templateUrl: './descriptor-form.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

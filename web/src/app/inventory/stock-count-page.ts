@@ -16,13 +16,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { ProductScans } from '../products/product-scans';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
 import { DecimalInput } from '../shared/form/decimal-input';
+import { Select } from '../shared/form/select';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { PageTabs } from '../shared/ui/page-tabs';
@@ -53,7 +53,7 @@ import { INVENTORY_TABS } from './inventory-nav';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatSelectModule,
+    Select,
     DecimalInput,
     Label,
     PageTabs,
@@ -78,6 +78,9 @@ export class StockCountPage implements OnInit {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly locations = computed(() => [...locationLabels(this.facade.locations())]);
+  protected readonly locationOptions = computed(() =>
+    this.locations().map(([value, label]) => ({ value, label })),
+  );
   /** The location being counted; empty until the locations are read, then the first default one. */
   protected readonly locationId = signal('');
   protected readonly lines = signal<readonly CountLine[]>([]);

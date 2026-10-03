@@ -3386,5 +3386,13 @@
       "invalid": "Le tarif est refusé : vérifiez le nom, les dates, le client ou le groupe et les prix.",
       "refused": "Vous n’avez pas le droit de faire cela."
     }
+  },
+  "select": {
+    "placeholder": "Choisir",
+    "search": "Rechercher",
+    "none_found": "Aucun résultat",
+    "select_all": "Tout sélectionner",
+    "clear_all": "Tout effacer",
+    "more": "+{{count}}"
   }
 }

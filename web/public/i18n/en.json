@@ -3386,5 +3386,13 @@
       "invalid": "The price list is refused: check the name, the dates, the customer or group and the prices.",
       "refused": "You are not allowed to do this."
     }
+  },
+  "select": {
+    "placeholder": "Choose",
+    "search": "Search",
+    "none_found": "Nothing found",
+    "select_all": "Select all",
+    "clear_all": "Clear all",
+    "more": "+{{count}}"
   }
 }

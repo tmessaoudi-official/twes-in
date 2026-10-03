@@ -15,7 +15,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import {
   applyProduct,
@@ -37,6 +36,7 @@ import type {
 } from './delivery-notes-types';
 import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
+import { Select } from '../shared/form/select';
 import { LineSubstitutes } from './delivery-note-line-substitutes';
 import { ProductScans } from '../products/product-scans';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
@@ -59,7 +59,7 @@ type CheckedField = keyof Omit<
     MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
+    Select,
     TranslatePipe,
     DecimalInput,
     PickField,
@@ -75,6 +75,9 @@ export class DeliveryNoteLines {
   readonly lines = input.required<LinesArray>();
   /** Whose company's catalogue the pickers ask; a line is never offered another company's products. */
   readonly companyId = input.required<string>();
+  protected readonly unitOptions = computed(() =>
+    this.options().units.map((unit) => ({ value: unit.id, label: `${unit.code} · ${unit.name}` })),
+  );
   readonly options = input.required<DeliveryNoteOptions>();
   readonly excludedFamilies = input<readonly TaxFamily[]>([]);
   readonly readOnly = input(false);

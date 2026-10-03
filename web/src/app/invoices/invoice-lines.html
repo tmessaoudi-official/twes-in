@@ -110,22 +110,24 @@
         }
 
         <div class="flex flex-col">
-          <mat-form-field>
-            <mat-label>{{ 'invoices.lines.unit' | translate }}</mat-label>
-            <mat-select
-              formControlName="unitId"
-              required
-              [attr.data-testid]="'line-' + i + '-unit'"
-            >
-              @for (unit of options().units; track unit.id) {
-                <mat-option [value]="unit.id">{{ unit.code }} · {{ unit.name }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
+          <label
+            class="twes-field-label"
+            [id]="'line-' + i + '-unit-label'"
+            [for]="'line-' + i + '-unit-input'"
+            >{{ 'invoices.lines.unit' | translate }}</label
+          >
+          <app-select
+            formControlName="unitId"
+            [required]="true"
+            [inputId]="'line-' + i + '-unit-input'"
+            [labelledBy]="'line-' + i + '-unit-label'"
+            [testId]="'line-' + i + '-unit'"
+            [options]="unitOptions()"
+          />
           @if (errorKey(line, 'unitId'); as key) {
             <span
               role="alert"
-              class="-mt-4 px-4 pb-2 text-xs text-error"
+              class="px-4 pb-2 text-xs text-error"
               [attr.data-testid]="'line-' + i + '-unit-error'"
               >{{ key | translate }}</span
             >

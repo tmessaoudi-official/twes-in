@@ -116,8 +116,9 @@ describe('TejFileDialog', () => {
     const fixture = open();
     q(fixture.nativeElement, 'tej-month')!.click();
     fixture.detectChanges();
-    const july = Array.from(document.body.querySelectorAll<HTMLElement>('mat-option')).find(
-      (option) => option.textContent?.trim() === 'juillet 2026',
+    const july = Array.from(document.body.querySelectorAll<HTMLElement>('[role="option"]')).find(
+      (option) =>
+        option.querySelector('[data-option-label]')?.textContent?.trim() === 'juillet 2026',
     );
     july!.click();
     fixture.detectChanges();

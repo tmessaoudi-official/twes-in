@@ -38,22 +38,25 @@
 
   @if (!readOnly()) {
     <div class="flex flex-wrap items-end gap-3">
-      <mat-form-field class="min-w-64 flex-1">
-        <mat-label>{{ 'products.homes.location' | translate }}</mat-label>
-        <mat-select
+      <div class="flex min-w-64 flex-1 flex-col gap-1.5">
+        <label
+          id="product-home-location-label"
+          class="twes-field-label"
+          for="product-home-location-input"
+          >{{ 'products.homes.location' | translate }}</label
+        >
+        <app-select
+          inputId="product-home-location-input"
+          labelledBy="product-home-location-label"
+          testId="product-home-location"
+          [options]="choices()"
           [ngModel]="chosen()"
           (ngModelChange)="chosen.set($event)"
-          data-testid="product-home-location"
-        >
-          @for (choice of choices(); track choice.value) {
-            <mat-option [value]="choice.value">{{ choice.label }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
+        />
+      </div>
       <button
         mat-flat-button
         type="button"
-        class="mb-5"
         [disabled]="busy() || chosen() === ''"
         data-testid="product-home-set"
         (click)="set()"

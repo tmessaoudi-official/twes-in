@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { FileSaver } from '../shared/files/save-file';
 import type { FieldOption } from '../shared/form/form-types';
+import { Select } from '../shared/form/select';
 import { DayPipe } from '../shared/i18n/format-pipes';
 import { ExpensesFacade } from './expenses-facade';
 import type { TejFileAnswer } from './expenses-types';
@@ -29,8 +29,8 @@ export interface TejFileDialogData {
   imports: [
     MatButtonModule,
     MatDialogModule,
-    MatFormFieldModule,
-    MatSelectModule,
+    FormsModule,
+    Select,
     RouterLink,
     TranslatePipe,
     DayPipe,
@@ -43,14 +43,19 @@ export interface TejFileDialogData {
     <mat-dialog-content class="flex flex-col gap-4">
       <p class="text-sm text-on-surface-variant">{{ 'expenses.tej_file.intro' | translate }}</p>
       <!-- One question, so one field: the month, the last one over first. -->
-      <mat-form-field appearance="outline" class="mt-2 w-full">
-        <mat-label>{{ 'expenses.tej_file.month' | translate }}</mat-label>
-        <mat-select [value]="month()" (valueChange)="month.set($event)" data-testid="tej-month">
-          @for (option of months; track option.value) {
-            <mat-option [value]="option.value">{{ option.label }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
+      <div class="mt-2 flex w-full flex-col gap-1.5">
+        <label id="tej-month-label" class="twes-field-label" for="tej-month-input">{{
+          'expenses.tej_file.month' | translate
+        }}</label>
+        <app-select
+          inputId="tej-month-input"
+          labelledBy="tej-month-label"
+          testId="tej-month"
+          [options]="months"
+          [ngModel]="month()"
+          (ngModelChange)="month.set($event)"
+        />
+      </div>
       @if (refusal(); as refused) {
         <div role="alert" class="flex flex-col gap-2" data-testid="tej-refusal">
           <p class="font-semibold text-error">

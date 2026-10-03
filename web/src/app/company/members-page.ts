@@ -14,8 +14,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
+import { Select } from '../shared/form/select';
 import { AuthFacade } from '../auth/auth-facade';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
@@ -86,7 +86,7 @@ export const membersList = (roles: readonly RoleRow[]): ListDescriptor<MemberRow
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
+    Select,
     MatButtonModule,
     TranslatePipe,
     DataList,
@@ -104,7 +104,9 @@ export class MembersPage implements OnInit {
   private readonly feedback = inject(Feedback);
 
   protected readonly roles = this.rolesFacade.roles;
-  protected readonly roleLabel = roleLabel;
+  protected readonly roleOptions = computed(() =>
+    this.roles().map((role) => ({ value: role.name, label: roleLabel(role) })),
+  );
   /**
    * Removing somebody is destructive, so it sits behind "⋮" rather than under the pointer; an invitation is
    * withdrawn from where it was sent rather than here, so the action is absent on a row nobody has joined at.

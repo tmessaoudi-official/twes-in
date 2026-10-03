@@ -5,9 +5,9 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { Select } from '../shared/form/select';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { SignupFacade } from './signup-facade';
 import { SignedOutLayout } from '../auth/signed-out-layout';
@@ -24,7 +24,7 @@ import { SignedOutLayout } from '../auth/signed-out-layout';
     RouterLink,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
+    Select,
     MatButtonModule,
     TranslatePipe,
   ],
@@ -43,6 +43,13 @@ export class FinishSignupPage implements OnInit {
   protected readonly busy = this.signup.busy;
   protected readonly error = this.signup.error;
   protected readonly countries = computed(() => this.signup.availability()?.countries ?? []);
+  protected readonly countryOptions = computed(() =>
+    this.countries().map((code) => ({
+      value: code,
+      label: this.countryName(code),
+      testId: `signup-country-${code}`,
+    })),
+  );
   protected readonly form = new FormGroup({
     displayName: new FormControl('', {
       nonNullable: true,

@@ -95,23 +95,19 @@
           >{{ 'signup.finish.country' | translate }}</label
         >
 
-        <mat-form-field>
-          <mat-select
-            id="signup-country-input"
-            aria-labelledby="signup-country-input-label"
-            formControlName="countryCode"
-            data-testid="signup-country"
-          >
-            @for (code of countries(); track code) {
-              <mat-option [value]="code" [attr.data-testid]="'signup-country-' + code">
-                {{ countryName(code) }}
-              </mat-option>
-            }
-          </mat-select>
-          @if (form.controls.countryCode.touched && form.controls.countryCode.invalid) {
-            <mat-error>{{ 'signup.finish.required' | translate }}</mat-error>
-          }
-        </mat-form-field>
+        <app-select
+          formControlName="countryCode"
+          inputId="signup-country-input"
+          labelledBy="signup-country-input-label"
+          testId="signup-country"
+          [required]="true"
+          [options]="countryOptions()"
+        />
+        @if (form.controls.countryCode.touched && form.controls.countryCode.invalid) {
+          <span role="alert" class="px-2 text-xs text-error">{{
+            'signup.finish.required' | translate
+          }}</span>
+        }
       </div>
 
       <div class="twes-auth-field">

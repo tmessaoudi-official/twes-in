@@ -187,11 +187,11 @@ describe('DescriptorForm', () => {
   });
 
   it('offers the translated options of a select', async () => {
-    (q('field-currency')?.querySelector('.mat-mdc-select-trigger') as HTMLElement).click();
+    q('field-currency')!.click();
     await settle();
 
-    const options = Array.from(document.body.querySelectorAll('mat-option')).map((option) =>
-      option.textContent?.trim(),
+    const options = Array.from(document.body.querySelectorAll('[role="option"]')).map((option) =>
+      option.querySelector('[data-option-label]')?.textContent?.trim(),
     );
     expect(options).toEqual(['Tunisian dinar', 'Euro']);
   });

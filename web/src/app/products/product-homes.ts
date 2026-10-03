@@ -11,14 +11,13 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { locationLabels } from '../inventory/inventory-forms';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
+import { Select } from '../shared/form/select';
 import { ProductHomes } from './product-homes-facade';
 
 /**
@@ -30,15 +29,7 @@ import { ProductHomes } from './product-homes-facade';
  */
 @Component({
   selector: 'app-product-homes',
-  imports: [
-    FormsModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatSelectModule,
-    TranslatePipe,
-    Label,
-  ],
+  imports: [FormsModule, MatButtonModule, MatIconModule, Select, TranslatePipe, Label],
   templateUrl: './product-homes.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

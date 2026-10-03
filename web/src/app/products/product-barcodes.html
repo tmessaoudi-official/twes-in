@@ -85,20 +85,24 @@
                   #code
                 />
               </mat-form-field>
-              <mat-form-field class="min-w-40 flex-1" subscriptSizing="dynamic">
-                <mat-label>{{ 'products.barcodes.role' | translate }}</mat-label>
-                <mat-select
-                  [attr.data-testid]="'product-barcode-role-' + index"
-                  [value]="row.role"
-                  (selectionChange)="setRole(index, $event.value)"
+              <div class="flex min-w-40 flex-1 flex-col gap-1.5">
+                <label
+                  class="twes-field-label"
+                  [id]="'product-barcode-role-' + index + '-label'"
+                  [for]="'product-barcode-role-' + index + '-input'"
+                  >{{ 'products.barcodes.role' | translate }}</label
                 >
-                  @for (role of roles(); track role) {
-                    <mat-option [value]="role">{{
-                      'products.barcodes.roles.' + role | translate
-                    }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
+                <app-select
+                  [inputId]="'product-barcode-role-' + index + '-input'"
+                  [labelledBy]="'product-barcode-role-' + index + '-label'"
+                  [testId]="'product-barcode-role-' + index"
+                  [options]="roleOptions()"
+                  [translateLabels]="true"
+                  [ngModel]="row.role"
+                  [ngModelOptions]="{ standalone: true }"
+                  (ngModelChange)="setRole(index, $event)"
+                />
+              </div>
               <mat-form-field class="w-44" subscriptSizing="dynamic">
                 <mat-label>{{ 'products.barcodes.quantity' | translate }}</mat-label>
                 <input
@@ -115,18 +119,23 @@
                 />
               </mat-form-field>
               @if (row.role === 'supplier') {
-                <mat-form-field class="min-w-56 flex-[2]" subscriptSizing="dynamic">
-                  <mat-label>{{ 'products.barcodes.supplier' | translate }}</mat-label>
-                  <mat-select
-                    [attr.data-testid]="'product-barcode-supplier-' + index"
-                    [value]="row.supplierId"
-                    (selectionChange)="setSupplier(index, $event.value)"
+                <div class="flex min-w-56 flex-[2] flex-col gap-1.5">
+                  <label
+                    class="twes-field-label"
+                    [id]="'product-barcode-supplier-' + index + '-label'"
+                    [for]="'product-barcode-supplier-' + index + '-input'"
+                    >{{ 'products.barcodes.supplier' | translate }}</label
                   >
-                    @for (supplier of suppliers(); track supplier.id) {
-                      <mat-option [value]="supplier.id">{{ supplier.label }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
+                  <app-select
+                    [inputId]="'product-barcode-supplier-' + index + '-input'"
+                    [labelledBy]="'product-barcode-supplier-' + index + '-label'"
+                    [testId]="'product-barcode-supplier-' + index"
+                    [options]="supplierOptions()"
+                    [ngModel]="row.supplierId"
+                    [ngModelOptions]="{ standalone: true }"
+                    (ngModelChange)="setSupplier(index, $event)"
+                  />
+                </div>
               }
               <button
                 mat-icon-button
