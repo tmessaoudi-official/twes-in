@@ -32,7 +32,7 @@
     "@angular/material": "^22.2.1",
     "@angular/platform-browser": "^22.2.1",
     "@angular/router": "^22.2.1",
-    "@material/material-color-utilities": "0.3.0",
+    "@material/material-color-utilities": "0.4.0",
     "@ngx-translate/core": "^18.0.0",
     "@ngx-translate/http-loader": "^18.0.0",
     "centrifuge": "^5.7.4",

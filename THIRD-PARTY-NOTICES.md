@@ -307,7 +307,7 @@ not compiled into what we distribute, and are not listed here.
 | @lmdb/lmdb-win32-arm64 | 3.5.6 | MIT | dev |
 | @lmdb/lmdb-win32-x64 | 3.5.6 | MIT | dev |
 | @lukeed/ms | 2.0.2 | MIT | dev |
-| @material/material-color-utilities | 0.3.0 | Apache-2.0 | runtime |
+| @material/material-color-utilities | 0.4.0 | Apache-2.0 | runtime |
 | @modelcontextprotocol/core | 2.0.0 | MIT | dev |
 | @modelcontextprotocol/server | 2.0.0 | MIT | dev |
 | @msgpackr-extract/msgpackr-extract-darwin-arm64 | 3.0.4 | MIT | dev |
