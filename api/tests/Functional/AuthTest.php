@@ -74,7 +74,7 @@ final class AuthTest extends ApiTestCase
 
         $this->client->request('GET', '/api/auth/me');
         self::assertResponseStatusCodeSame(200);
-        self::assertResponseHeaderSame('content-type', 'application/json; charset=utf-8');
+        self::assertResponseHeaderSame('content-type', 'application/json');
         self::assertSame($afterLogin, $this->json());
     }
 

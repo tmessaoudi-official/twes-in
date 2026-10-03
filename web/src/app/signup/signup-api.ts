@@ -5,7 +5,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   SignupSignupAvailability,
-  SignupSignupCompleted,
+  SignupSignupCompletedValidationSignupComplete as SignupSignupCompleted,
   SignupSignupLink,
 } from '../api/types.gen';
 import type {

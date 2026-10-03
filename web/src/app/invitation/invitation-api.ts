@@ -3,7 +3,10 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { InvitationInvitationRead, InvitationInvitationWrite } from '../api/types.gen';
+import type {
+  InvitationInvitationRead,
+  InvitationInvitationWriteValidationAccept as InvitationInvitationWrite,
+} from '../api/types.gen';
 import type { InvitationError, InvitationOffer } from './invitation-types';
 
 export class InvitationRefused extends Error {

@@ -8,12 +8,12 @@ import type { ListPage } from '../shared/list/list-types';
 import type {
   ApiCompaniesCompanyIdcustomersGetCollectionResponse,
   ContactContactRead,
-  ContactContactWrite,
+  ContactContactWriteValidationContactWrite as ContactContactWrite,
   CustomerCustomerRead,
-  CustomerCustomerWrite,
+  CustomerCustomerWriteValidationCustomerWrite as CustomerCustomerWrite,
   CustomerJsonldCustomerRead,
   CustomerGroupCustomerGroupRead,
-  CustomerGroupCustomerGroupWrite,
+  CustomerGroupCustomerGroupWriteValidationCustomerGroupWrite as CustomerGroupCustomerGroupWrite,
   CustomerOptionsCustomerOptionsRead,
   CustomerStatementCustomerStatementRead,
 } from '../api/types.gen';

@@ -78,7 +78,7 @@ copyright line and its licence text beside the manifest, which the build copies 
 licence must be on the distributed list; after `WITH`, only `LLVM-exception` is accepted (developer ruling
 2026-09-22 22:38: it only waives attribution for compiled-in libc++). A version or integrity that differs from the
 lock fails the gate: a new wasm is read before it ships. The first is the camera's barcode decoder, `zxing-wasm`
-3.1.3, reader build only (`docs/SPEC.md` § 7, 2026-09-22 22:38 and 2026-09-23 08:05).
+3.1.4, reader build only (`docs/SPEC.md` § 7, 2026-09-22 22:38 and 2026-09-23 08:05).
 
 Enforced by `scripts/gates/dependency-licences.php`, which keeps the five lists separate (distributed,
 dev-only data, dev-only tooling, font assets, exceptions — `--dump-rules` prints them) and asserts a **maximum** on

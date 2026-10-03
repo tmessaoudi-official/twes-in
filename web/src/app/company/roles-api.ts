@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import type {
   PermissionGroupPermissionGroupRead,
   RoleRoleRead,
-  RoleRoleWrite,
+  RoleRoleWriteValidationRoleWrite as RoleRoleWrite,
 } from '../api/types.gen';
 import type { PermissionGroupRow, RoleRow } from './roles-types';
 

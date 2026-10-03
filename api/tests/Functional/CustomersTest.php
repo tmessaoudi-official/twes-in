@@ -190,7 +190,7 @@ final class CustomersTest extends ApiTestCase
         $this->client->request('GET', $this->path($id), [], [], ['HTTP_ACCEPT' => 'application/ld+json']);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_ACCEPTABLE, 'a single record is plain JSON only');
         $this->getJson($this->path($id));
-        self::assertResponseHeaderSame('Content-Type', 'application/json; charset=utf-8');
+        self::assertResponseHeaderSame('Content-Type', 'application/json');
         $this->client->request('GET', '/api/docs.jsonld');
         self::assertResponseIsSuccessful('the documentation every Hydra answer links to exists');
     }

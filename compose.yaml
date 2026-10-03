@@ -71,7 +71,7 @@ services:
   # and a phone paired to a tab as a scanner (docs/SPEC.md § 7, 2026-09-23 09:45).
   centrifugo:
     logging: *logging
-    image: centrifugo/centrifugo:v6.9.5
+    image: centrifugo/centrifugo:v6.9.7
     environment:
       CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: "${REALTIME_TOKEN_KEY:-twes-in-development-realtime-token-key-0001}"
       CENTRIFUGO_HTTP_API_KEY: "${REALTIME_API_KEY:-twes-in-development-realtime-api-key}"
@@ -106,7 +106,7 @@ services:
   # `docker compose up` leaves it off. Development only.
   lan:
     logging: *logging
-    image: caddy:2.11.4-alpine
+    image: caddy:2.11.6-alpine
     profiles: [lan]
     environment:
       LAN_HOST: "${LAN_HOST:-localhost}"
@@ -133,7 +133,7 @@ services:
 
   mailpit:
     logging: *logging
-    image: axllent/mailpit:v1.31.1
+    image: axllent/mailpit:v1.31.4
     ports:
       - "127.0.0.1:${MAILPIT_UI_PORT:-8092}:8025"
       - "127.0.0.1:${MAILPIT_SMTP_PORT:-8093}:1025"

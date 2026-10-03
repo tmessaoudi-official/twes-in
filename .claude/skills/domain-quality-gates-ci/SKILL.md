@@ -34,7 +34,7 @@ Review date: 2026-10-03   Validation mode: advisory   Core: .claude/rules/expert
 | Dev-only exceptions: MPL-2.0 (axe), Python-2.0 (tooling), CC-BY build data; OFL-1.1 for font FILES only, with a LICENSE beside | dev tooling; never runtime | SPEC §7 2026-09-09/13 | 2026-10-02 |
 | Refused for licence, not technique: PrimeNG (PrimeUI), Mercure hub (AGPL), Transloco/ng-openapi-gen (argparse Python-2.0), zbar (LGPL) | proposing a dependency | SPEC §7 | 2026-10-02 |
 | THIRD-PARTY-NOTICES.md is generated (`make notices`) in the change that adds a dependency | dependency change | Makefile:134 | 2026-10-02 |
-| Held back deliberately: TypeScript 7, Vitest 5, material-color-utilities 0.4.0 (peer ranges); "latest everywhere" has these exceptions | upgrades | SPEC §7 2026-09-13 | 2026-10-02 |
+| Held back deliberately: TypeScript 7, material-color-utilities 0.4.0 (peer ranges); "latest everywhere" has these exceptions | upgrades | SPEC §7 2026-09-13 | 2026-10-02 |
 | A discovery that yields nothing must red; a floor set to exactly what passes is not a floor | writing/changing a grep gate | SPEC §7 2026-09-20 | 2026-10-02 |
 | Every gate has `scripts/gates/tests/<x>.test.sh`, run before the gate | adding a gate (also add it to ci.yml AND Makefile) | r2-tech §4; ci.yml | 2026-10-02 |
 | Master only, plain `git push`, no force, no PR; one exception: builder worktrees on a LOCAL never-pushed branch | commits | CLAUDE.md Git; SPEC §7 2026-09-25 | 2026-10-02 |

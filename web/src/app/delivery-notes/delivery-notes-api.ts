@@ -5,9 +5,9 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIddeliveryNotesGetCollectionResponse,
-  DeliveryNoteDeliveryNoteDeliver,
+  DeliveryNoteDeliveryNoteDeliverValidationDeliveryNoteDeliver as DeliveryNoteDeliveryNoteDeliver,
   DeliveryNoteDeliveryNoteRead,
-  DeliveryNoteDeliveryNoteWrite,
+  DeliveryNoteDeliveryNoteWriteValidationDeliveryNoteWrite as DeliveryNoteDeliveryNoteWrite,
   DeliveryNoteJsonldDeliveryNoteRead,
   DeliveryNoteCustomerPickDeliveryNoteCustomerPickRead,
   DeliveryNoteOptionsDeliveryNoteOptionsRead,
@@ -15,8 +15,8 @@ import type {
   DeliveryNoteCreditDeliveryNoteCreditRead,
   DeliveryNoteLeftDeliveryNoteLeftRead,
   DeliveryNoteStatusCountsDeliveryNoteStatusCountsRead,
-  InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite,
-  InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead,
+  InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWriteValidationInvoiceFromDeliveryNotesWrite as InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite,
+  InvoiceFromDeliveryNotesInvoiceResourceInvoiceReadValidationInvoiceFromDeliveryNotesWrite as InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';

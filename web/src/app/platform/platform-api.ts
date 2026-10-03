@@ -4,15 +4,15 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
-  CompanyCompanyRead,
-  CompanyCompanyWrite,
+  CompanyCompanyReadValidationCreate as CompanyCompanyRead,
+  CompanyCompanyWriteValidationCreate as CompanyCompanyWrite,
   ModuleDemandModuleDemandRead,
   PlatformAccountPlatformAccountRead,
   PlatformCompanyPlatformCompanyRead,
   PlatformSubscriptionPlatformSubscriptionRead,
   PlatformSubscriptionPlatformSubscriptionWrite,
-  PlatformOwnerInvitationPlatformOwnerInvitationRead,
-  PlatformOwnerInvitationPlatformOwnerInvitationWrite,
+  PlatformOwnerInvitationPlatformOwnerInvitationReadValidationInvite as PlatformOwnerInvitationPlatformOwnerInvitationRead,
+  PlatformOwnerInvitationPlatformOwnerInvitationWriteValidationInvite as PlatformOwnerInvitationPlatformOwnerInvitationWrite,
   SettingSettingRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';

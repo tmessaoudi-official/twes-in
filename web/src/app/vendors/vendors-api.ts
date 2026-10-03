@@ -8,7 +8,7 @@ import type {
   VendorJsonldVendorRead,
   VendorOptionsVendorOptionsRead,
   VendorVendorRead,
-  VendorVendorWrite,
+  VendorVendorWriteValidationVendorWrite as VendorVendorWrite,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
 import type {

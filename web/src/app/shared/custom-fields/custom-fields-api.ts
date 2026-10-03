@@ -3,7 +3,10 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { CustomFieldCustomFieldRead, CustomFieldCustomFieldWrite } from '../../api/types.gen';
+import type {
+  CustomFieldCustomFieldRead,
+  CustomFieldCustomFieldWriteValidationCustomFieldWrite as CustomFieldCustomFieldWrite,
+} from '../../api/types.gen';
 import {
   CUSTOM_FIELD_ENTITIES,
   CUSTOM_FIELD_TYPES,

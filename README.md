@@ -1,6 +1,6 @@
 # twes-in
 
-Invoicing and billing for small companies, Tunisia first and France second. A Symfony 8.1 / API Platform 4
+Invoicing and billing for small companies, Tunisia first and France second. A Symfony 8.1 / API Platform 5
 API and an Angular 22 web app over PostgreSQL 18. AGPL-3.0-or-later with a commercial licence
 (`LICENSING.md`).
 

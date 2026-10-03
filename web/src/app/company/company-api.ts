@@ -6,12 +6,12 @@ import { firstValueFrom } from 'rxjs';
 import type {
   CompanyProfileCompanyProfileRead,
   UploadCompanyLogoResponse,
-  CompanyProfileCompanyProfileWrite,
+  CompanyProfileCompanyProfileWriteValidationCompanyProfileWrite as CompanyProfileCompanyProfileWrite,
   EstablishmentEstablishmentRead,
-  EstablishmentEstablishmentWrite,
+  EstablishmentEstablishmentWriteValidationEstablishmentWrite as EstablishmentEstablishmentWrite,
   MemberMemberRead,
   NumberingSeriesNumberingSeriesRead,
-  NumberingSeriesNumberingSeriesWrite,
+  NumberingSeriesNumberingSeriesWriteValidationNumberingSeriesWrite as NumberingSeriesNumberingSeriesWrite,
   WorkingCompanyWorkingCompanyRead,
 } from '../api/types.gen';
 import {

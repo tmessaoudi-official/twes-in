@@ -7,14 +7,14 @@ import type {
   ApiCompaniesCompanyIdexpensesGetCollectionResponse,
   ExpenseAttachmentExpenseAttachmentRead,
   ExpenseCategoryExpenseCategoryRead,
-  ExpenseCategoryExpenseCategoryWrite,
-  ExpenseExpensePay,
+  ExpenseCategoryExpenseCategoryWriteValidationExpenseCategoryWrite as ExpenseCategoryExpenseCategoryWrite,
+  ExpenseExpensePayValidationExpensePay as ExpenseExpensePay,
   ExpenseExpenseRead,
-  ExpenseExpenseWrite,
+  ExpenseExpenseWriteValidationExpenseWrite as ExpenseExpenseWrite,
   ExpenseJsonldExpenseRead,
   ExpenseOptionsExpenseOptionsRead,
   ExpenseStatusCountsExpenseStatusCountsRead,
-  ExpenseExpenseClassify,
+  ExpenseExpenseClassifyValidationExpenseClassify as ExpenseExpenseClassify,
   ExpenseVendorPickExpenseVendorPickRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';

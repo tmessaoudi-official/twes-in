@@ -3,7 +3,7 @@
 # Playwright. It is Debian, not the Alpine of infra/web/Dockerfile, because Playwright's Chromium does not run on
 # Alpine's libc. The Node version and the Playwright version are each written once more here, and
 # scripts/gates/version-pins.sh refuses a copy that disagrees with infra/web/Dockerfile and web/package-lock.json.
-FROM node:26.8.2-trixie-slim
+FROM node:26.10.0-trixie-slim
 
 ARG PLAYWRIGHT_VERSION=1.63.0
 

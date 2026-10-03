@@ -16,7 +16,7 @@ WORKDIR /app
 RUN install-php-extensions pdo_pgsql intl zip opcache bcmath
 COPY infra/api/conf.d/10-app.ini "$PHP_INI_DIR/conf.d/"
 
-COPY --from=composer:2.10.2 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.10.3 /usr/bin/composer /usr/bin/composer
 
 # Migrations run at container start, once the database answers (infra/api/docker-entrypoint.sh), as the official
 # Symfony Docker image does; the healthcheck below therefore also says "migrated".

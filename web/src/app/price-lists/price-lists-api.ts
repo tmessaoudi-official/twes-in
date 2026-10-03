@@ -5,7 +5,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   PriceListPriceListRead,
-  PriceListPriceListWrite,
+  PriceListPriceListWriteValidationPriceListWrite as PriceListPriceListWrite,
   ProductPriceProductPriceRead,
 } from '../api/types.gen';
 import type {

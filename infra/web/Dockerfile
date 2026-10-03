@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # twes-in web: the Angular bundle built once, then served by nginx, which also proxies /api to the API container.
 # Node is named once here (scripts/gates/version-pins.sh reads this line); both stages that run it start from it.
-FROM node:26.8.2-alpine AS node-base
+FROM node:26.10.0-alpine AS node-base
 
 FROM node-base AS build
 WORKDIR /app
@@ -30,7 +30,7 @@ CMD ["web-live"]
 HEALTHCHECK --interval=5s --timeout=3s --start-period=600s --retries=5 \
   CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1
 
-FROM nginx:1.31.5-alpine
+FROM nginx:1.31.6-alpine
 COPY infra/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist/web/browser /usr/share/nginx/html
 HEALTHCHECK --interval=5s --timeout=3s --start-period=5s --retries=5 \

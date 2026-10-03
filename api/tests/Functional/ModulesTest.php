@@ -221,7 +221,8 @@ final class ModulesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('enabled', (string) $this->client->getResponse()->getContent());
         $this->sendJson('PUT', $this->path('fixture_ledger'), ['enabled' => 'no']);
-        self::assertResponseStatusCodeSame(Response::HTTP_BAD_REQUEST);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('enabled', (string) $this->client->getResponse()->getContent());
     }
 
     public function testAnAnonymousCallerIsAskedToSignInWhateverTheCompanysModules(): void

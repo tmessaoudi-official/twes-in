@@ -269,7 +269,7 @@ abstract class ApiTestCase extends WebTestCase
      */
     protected function jsonPage(): array
     {
-        self::assertResponseHeaderSame('Content-Type', 'application/ld+json; charset=utf-8');
+        self::assertResponseHeaderSame('Content-Type', 'application/ld+json');
         $body = $this->json();
         self::assertIsInt($body['totalItems'] ?? null, 'a page carries its total');
         $page = ['totalItems' => $body['totalItems']];

@@ -7,16 +7,16 @@ import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIdinvoicesGetCollectionResponse,
   CustomerCreditBalanceCustomerCreditBalanceRead,
-  InvoiceInvoiceCredit,
+  InvoiceInvoiceCreditValidationInvoiceCredit as InvoiceInvoiceCredit,
   InvoiceInvoiceRead,
   InvoiceJsonldInvoiceRead,
-  InvoiceInvoiceWrite,
+  InvoiceInvoiceWriteValidationInvoiceWrite as InvoiceInvoiceWrite,
   InvoiceCustomerPickInvoiceCustomerPickRead,
   InvoiceOptionsInvoiceOptionsRead,
   InvoiceProductPickInvoiceProductPickRead,
   InvoiceStatusCountsInvoiceStatusCountsRead,
   InvoiceSummaryInvoiceSummaryRead,
-  PaymentPaymentWrite,
+  PaymentPaymentWriteValidationPaymentWrite as PaymentPaymentWrite,
   ProductPriceProductPriceRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';

@@ -3,7 +3,11 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { ModuleModuleInterest, ModuleModuleRead, ModuleModuleWrite } from '../api/types.gen';
+import type {
+  ModuleModuleInterestValidationModuleInterest as ModuleModuleInterest,
+  ModuleModuleRead,
+  ModuleModuleWriteValidationModuleWrite as ModuleModuleWrite,
+} from '../api/types.gen';
 import type { ModuleRow } from './modules-types';
 
 /**
