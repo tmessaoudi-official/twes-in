@@ -1010,7 +1010,8 @@
       "billingCity": "City",
       "taxRegime": "Tax regime",
       "defaultDiscountRate": "Default discount (%)",
-      "notes": "Notes"
+      "notes": "Notes",
+      "defaultTaxComponentIds": "Default taxes"
     },
     "form": {
       "no_group": "No group",
@@ -1547,7 +1548,8 @@
       "costPrice": "Cost price",
       "description": "Description",
       "tracking": "Traceability",
-      "substitutionGroup": "Substitution group"
+      "substitutionGroup": "Substitution group",
+      "defaultTaxComponentIds": "Default taxes"
     },
     "form": {
       "no_category": "No category",

@@ -75,6 +75,13 @@ describe('dirtyCount', () => {
     expect(dirtyCount(form.getRawValue(), SAVED)).toBe(1);
   });
 
+  it('counts a list of chosen ids as one field, however many of them changed', () => {
+    expect(dirtyCount({ taxes: ['t1', 't2'] }, { taxes: ['t1', 't2'] })).toBe(0);
+    expect(dirtyCount({ taxes: ['t1', 't2'] }, { taxes: ['t1'] })).toBe(1);
+    expect(dirtyCount({ taxes: [] }, { taxes: ['t1', 't2', 't3'] })).toBe(1);
+    expect(dirtyCount({ taxes: ['t2'] }, { taxes: ['t1'] })).toBe(1);
+  });
+
   it('counts against what was last SAVED, which a save moves on', () => {
     const form = customer();
     form.controls['name']!.setValue('Carthage SA');

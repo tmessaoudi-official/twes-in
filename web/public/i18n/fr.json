@@ -1010,7 +1010,8 @@
       "billingCity": "Ville",
       "taxRegime": "Régime fiscal",
       "defaultDiscountRate": "Remise par défaut (%)",
-      "notes": "Notes"
+      "notes": "Notes",
+      "defaultTaxComponentIds": "Taxes par défaut"
     },
     "form": {
       "no_group": "Aucun groupe",
@@ -1547,7 +1548,8 @@
       "costPrice": "Prix de revient",
       "description": "Description",
       "tracking": "Traçabilité",
-      "substitutionGroup": "Groupe de substitution"
+      "substitutionGroup": "Groupe de substitution",
+      "defaultTaxComponentIds": "Taxes par défaut"
     },
     "form": {
       "no_category": "Aucune catégorie",

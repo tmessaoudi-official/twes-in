@@ -186,8 +186,11 @@ describe('product forms', () => {
       { value: 'k1', label: 'Matériel' },
       { value: 'k2', label: 'Matériel › Portables' },
     ]);
+    expect(fields.find((field) => field.id === 'defaultTaxComponentIds')).toMatchObject({
+      kind: 'multiselect',
+    });
     expect(
-      fields.filter((field) => field.id.startsWith('tax__')).map((field) => field.label),
+      fields.find((field) => field.id === 'defaultTaxComponentIds')?.options?.map((o) => o.label),
     ).toEqual(['FODEC 1 %', 'TVA 19 %']);
     expect(fields.find((field) => field.id === 'unitPriceNet')).toEqual(
       expect.objectContaining({ required: true, pattern: '(0|[1-9][0-9]{0,9})([.][0-9]{1,4})?' }),
@@ -208,7 +211,7 @@ describe('product forms', () => {
         unitPriceNet: '',
         categoryId: '',
         isActive: true,
-        'tax__t-vat': false,
+        defaultTaxComponentIds: [],
       }),
     );
     expect(productValues(laptop, options, [warranty])).toEqual(
@@ -217,8 +220,7 @@ describe('product forms', () => {
         unitPriceNet: '1250.500',
         costPrice: '900.125',
         categoryId: 'k2',
-        'tax__t-vat': true,
-        'tax__t-fodec': false,
+        defaultTaxComponentIds: ['t-vat'],
         custom__warranty: 24,
       }),
     );
@@ -253,7 +255,7 @@ describe('product forms', () => {
       costPrice: '',
       categoryId: '',
       kind: 'service',
-      'tax__t-fodec': true,
+      defaultTaxComponentIds: ['t-vat', 't-fodec'],
     };
 
     expect(productInput(values, options, [warranty])).toEqual({

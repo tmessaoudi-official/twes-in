@@ -10,6 +10,8 @@ export type FieldKind =
   | 'date'
   | 'textarea'
   | 'select'
+  /** Several of a select's options, kept as a list of their values in the order they are offered. */
+  | 'multiselect'
   /**
    * One record out of a book too long to offer whole: the form asks the API for the few that match what is typed
    * (docs/SPEC.md § 7, 2026-09-17, ruling 3). The control holds the chosen record's id, as a select's would; where
@@ -21,7 +23,7 @@ export type FieldKind =
   /** A `#rrggbb` colour, picked with the browser's colour control. */
   | 'colour';
 
-export type FieldValue = string | number | boolean | null;
+export type FieldValue = string | number | boolean | readonly string[] | null;
 
 export interface FieldOption {
   value: string;
@@ -53,7 +55,7 @@ export interface FormField {
   max?: number;
   /** A regular expression the whole value must match. */
   pattern?: string;
-  /** Required for `select`. */
+  /** Required for `select`; the choices of a `multiselect`. */
   options?: FieldOption[];
   /** For a `pick` that may name nothing: what that answer reads as, and what an empty answer reads as. */
   noneLabel?: string;

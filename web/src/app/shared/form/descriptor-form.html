@@ -116,7 +116,7 @@
                       {{ error.key | translate: error.params }}
                     </span>
                   }
-                } @else if (field.kind === 'select') {
+                } @else if (field.kind === 'select' || field.kind === 'multiselect') {
                   <app-select
                     [inputId]="controlId(field)"
                     [labelledBy]="controlId(field) + '-label'"
@@ -124,6 +124,7 @@
                     [required]="field.required ?? false"
                     [options]="field.options ?? []"
                     [translateLabels]="true"
+                    [multiple]="field.kind === 'multiselect'"
                     [testId]="'field-' + field.id"
                   />
                   @if (errorFor(field); as error) {

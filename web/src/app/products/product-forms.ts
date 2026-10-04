@@ -34,7 +34,6 @@ import {
 } from './products-types';
 
 const FIELDS = 'products.fields';
-const TAX_PREFIX = 'tax__';
 /** The API's shape of a price, anchored by the form: at most ten digits, then at most four decimals. */
 const PRICE_PATTERN = '(0|[1-9][0-9]{0,9})([.][0-9]{1,4})?';
 
@@ -197,11 +196,15 @@ export function productForm(
   shown: { readonly cost: boolean } = { cost: true },
 ): FormDescriptor {
   const labels = categoryLabels(categories);
-  const taxes = options.taxes.map((tax): FormField => ({
-    id: TAX_PREFIX + tax.id,
-    label: tax.name,
-    kind: 'checkbox',
-  }));
+  const taxes: FormField[] = [
+    {
+      id: 'defaultTaxComponentIds',
+      label: `${FIELDS}.defaultTaxComponentIds`,
+      kind: 'multiselect',
+      span: 2,
+      options: options.taxes.map((tax) => ({ value: tax.id, label: tax.name })),
+    },
+  ];
 
   const descriptor: FormDescriptor = {
     id: 'product',
@@ -348,9 +351,7 @@ export function productValues(
     substitutionGroup: row?.substitutionGroup ?? '',
     tracking: row?.tracking ?? defaultTracking,
   };
-  for (const tax of options.taxes) {
-    values[TAX_PREFIX + tax.id] = row?.defaultTaxComponentIds.includes(tax.id) ?? false;
-  }
+  values['defaultTaxComponentIds'] = offeredTaxes(options, row?.defaultTaxComponentIds ?? []);
   return { ...values, ...customFieldValues(fields, row?.customFields ?? {}) };
 }
 
@@ -377,9 +378,7 @@ export function productInput(
     unitPriceNet: String(values['unitPriceNet'] ?? '').trim(),
     costPrice: 'costPrice' in values ? text(values['costPrice']) : (kept?.costPrice ?? null),
     categoryId: text(values['categoryId']),
-    defaultTaxComponentIds: options.taxes
-      .filter((tax) => values[TAX_PREFIX + tax.id] === true)
-      .map((tax) => tax.id),
+    defaultTaxComponentIds: offeredTaxes(options, values['defaultTaxComponentIds']),
     isActive: values['isActive'] === true,
     customFields: customFieldInput(fields, values),
     // A service holds no stock, so it tracks nothing; the API says the same.
@@ -388,6 +387,12 @@ export function productInput(
         ? 'none'
         : (PRODUCT_TRACKINGS.find((tracking) => tracking === values['tracking']) ?? 'none'),
   };
+}
+
+/** The taxes the company offers that are held, in the order it offers them: a list a person ticked in any order. */
+function offeredTaxes(options: ProductOptions, held: FieldValue | undefined): string[] {
+  const chosen = Array.isArray(held) ? held : [];
+  return options.taxes.filter((tax) => chosen.includes(tax.id)).map((tax) => tax.id);
 }
 
 const CATEGORY_FIELDS = 'products.categories.fields';

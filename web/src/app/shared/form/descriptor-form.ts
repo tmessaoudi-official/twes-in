@@ -16,7 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FormatFacade } from '../i18n/format-facade';
 import { DecimalInput } from './decimal-input';
 import { PickField, type PickOption } from './pick-field';
@@ -122,6 +122,18 @@ export class DescriptorForm {
   /** A value as the field shows it: a choice by its label, a box as ticked or not, a decimal as the locale writes it. */
   protected shown(field: FormField, value: FieldValue): string {
     if (value === null || value === '') return '—';
+    if (Array.isArray(value)) {
+      if (value.length === 0) return '—';
+      // Several choices read as their labels, which are keys or a company's own words: translated here, since the
+      // template translates what it is given as one key.
+      const translate = this.injector.get(TranslateService);
+      return (
+        field.options
+          ?.filter((candidate) => value.includes(candidate.value))
+          .map((candidate) => translate.instant(candidate.label))
+          .join(', ') ?? value.join(', ')
+      );
+    }
     if (field.kind === 'checkbox') return value === true ? '✓' : '✗';
     // Asked for only here, so a form with no decimal field never needs the session behind the format.
     if (field.kind === 'decimal')

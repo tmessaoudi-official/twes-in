@@ -81,4 +81,21 @@ describe('mergeSavedVersion', () => {
     expect(form.controls['name'].dirty).toBe(false);
     expect(form.controls['phone'].dirty).toBe(true);
   });
+
+  it('reads a list of chosen options by what it holds: an untouched one takes the other list, both changed conflict', () => {
+    const lists = { taxes: ['t1'] };
+    const untouched = group(lists);
+    const merge = mergeSavedVersion(untouched, lists, { taxes: ['t1', 't2'] });
+    expect(untouched.getRawValue()).toEqual({ taxes: ['t1', 't2'] });
+    expect(merge.updated).toEqual(['taxes']);
+
+    const typed = group(lists);
+    typed.controls['taxes'].setValue(['t2']);
+    const clash = mergeSavedVersion(typed, lists, { taxes: ['t1', 't3'] });
+    expect(typed.getRawValue()).toEqual({ taxes: ['t2'] });
+    expect(clash.conflicts).toEqual([{ field: 'taxes', mine: ['t2'], theirs: ['t1', 't3'] }]);
+
+    const same = group(lists);
+    expect(mergeSavedVersion(same, lists, { taxes: ['t1'] }).updated).toEqual([]);
+  });
 });

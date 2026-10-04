@@ -82,6 +82,51 @@ describe('buildFormGroup', () => {
   });
 });
 
+const taxes: FormField = {
+  id: 'taxes',
+  label: 'c.taxes',
+  kind: 'multiselect',
+  options: [
+    { value: 't1', label: 'TVA' },
+    { value: 't2', label: 'FODEC' },
+  ],
+};
+const needTaxes: FormField = { ...taxes, id: 'needTaxes', required: true };
+
+describe('multiselect', () => {
+  const group = buildFormGroup({
+    id: 'tax',
+    sections: [{ id: 's', title: 's', fields: [taxes, needTaxes] }],
+  });
+  const errorOf = (field: FormField, value: FieldValue) => {
+    const control = group.controls[field.id];
+    control.setValue(value);
+    return fieldError(control, field);
+  };
+
+  it('starts as an empty list, never a blank string', () => {
+    expect(
+      buildFormGroup({
+        id: 'tax',
+        sections: [{ id: 's', title: 's', fields: [taxes] }],
+      }).getRawValue(),
+    ).toEqual({
+      taxes: [],
+    });
+  });
+
+  it('asks for at least one when it is required, and for none when it is not', () => {
+    expect(errorOf(needTaxes, [])).toEqual({ key: 'form.errors.required' });
+    expect(errorOf(needTaxes, ['t1'])).toBeNull();
+    expect(errorOf(taxes, [])).toBeNull();
+  });
+
+  it('accepts only options it offers, each of them', () => {
+    expect(errorOf(taxes, ['t1', 't2'])).toBeNull();
+    expect(errorOf(taxes, ['t1', 'zz'])).toEqual({ key: 'form.errors.option' });
+  });
+});
+
 describe('fieldError', () => {
   const errorOf = (field: FormField, value: FieldValue) => {
     const group = buildFormGroup(customer);

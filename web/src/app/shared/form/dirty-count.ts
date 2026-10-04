@@ -24,6 +24,10 @@ import { UnsavedChanges } from './unsaved-changes';
  * as changed from the moment the page opened.
  */
 export function dirtyCount(current: unknown, saved: unknown): number {
+  // A list of chosen ids is one answer, not one per position: ticking a third option changes one field.
+  if (isChoices(current) && isChoices(saved)) {
+    return current.length === saved.length && current.every((id, i) => id === saved[i]) ? 0 : 1;
+  }
   if (Array.isArray(current) || Array.isArray(saved)) {
     const now = Array.isArray(current) ? current : [];
     const was = Array.isArray(saved) ? saved : [];
@@ -56,6 +60,10 @@ function same(current: unknown, saved: unknown): boolean {
   const blank = (candidate: unknown): boolean =>
     candidate === null || candidate === undefined || candidate === '';
   return blank(current) && blank(saved);
+}
+
+function isChoices(candidate: unknown): candidate is readonly string[] {
+  return Array.isArray(candidate) && candidate.every((each) => typeof each === 'string');
 }
 
 function isRecord(candidate: unknown): candidate is Record<string, unknown> {

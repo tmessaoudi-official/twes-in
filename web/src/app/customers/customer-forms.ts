@@ -35,7 +35,6 @@ import {
 
 const FIELDS = 'customers.fields';
 const IDENTIFIER_PREFIX = 'identifier__';
-const TAX_PREFIX = 'tax__';
 const PHONE_PATTERN = '\\+?[0-9 ().\\-]{3,40}';
 
 /** A customer as the list shows it: with the name of its group rather than the group's id. */
@@ -310,11 +309,17 @@ export function customerForm(
           pattern: '[0-9]{1,3}([.][0-9]{1,3})?',
           hint: 'customers.form.discount_hint',
         },
-        ...options.taxes.map((tax): FormField => ({
-          id: TAX_PREFIX + tax.id,
-          label: tax.name,
-          kind: 'checkbox',
-        })),
+        ...(options.taxes.length > 0
+          ? [
+              {
+                id: 'defaultTaxComponentIds',
+                label: `${FIELDS}.defaultTaxComponentIds`,
+                kind: 'multiselect',
+                span: 2,
+                options: options.taxes.map((tax) => ({ value: tax.id, label: tax.name })),
+              } satisfies FormField,
+            ]
+          : []),
       ]),
       section('notes', [
         {
@@ -367,9 +372,7 @@ export function customerValues(
   for (const identifier of options.identifiers) {
     values[IDENTIFIER_PREFIX + identifier.key] = row?.identifiers[identifier.key] ?? '';
   }
-  for (const tax of options.taxes) {
-    values[TAX_PREFIX + tax.id] = row?.defaultTaxComponentIds.includes(tax.id) ?? false;
-  }
+  values['defaultTaxComponentIds'] = offeredTaxes(options, row?.defaultTaxComponentIds ?? []);
   return { ...values, ...customFieldValues(fields, row?.customFields ?? {}) };
 }
 
@@ -406,9 +409,7 @@ export function customerInput(
     website: text(values['website']),
     billingAddress: address(values, 'billing'),
     shippingAddress: Object.values(shipping).every((part) => part === null) ? null : shipping,
-    defaultTaxComponentIds: options.taxes
-      .filter((tax) => values[TAX_PREFIX + tax.id] === true)
-      .map((tax) => tax.id),
+    defaultTaxComponentIds: offeredTaxes(options, values['defaultTaxComponentIds']),
     defaultDiscountRate: text(values['defaultDiscountRate']),
     notes: text(values['notes']),
     isActive: values['isActive'] === true,
@@ -577,6 +578,12 @@ function address(values: FormValues, prefix: 'billing' | 'shipping'): CustomerAd
     city: text(values[`${prefix}City`]),
     countryCode: country === null ? null : country.toUpperCase(),
   };
+}
+
+/** The taxes the company offers that are held, in the order it offers them: a list a person ticked in any order. */
+function offeredTaxes(options: CustomerOptions, held: FieldValue | undefined): string[] {
+  const chosen = Array.isArray(held) ? held : [];
+  return options.taxes.filter((tax) => chosen.includes(tax.id)).map((tax) => tax.id);
 }
 
 function text(value: FieldValue | undefined): string | null {

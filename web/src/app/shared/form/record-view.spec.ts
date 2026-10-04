@@ -27,6 +27,7 @@ class StaticLoader implements TranslateLoader {
         notes: 'Notes',
         printed: 'Printed on the document',
         family: 'Family',
+        taxes: 'Taxes',
         vat: 'VAT',
         stamp: 'Stamp',
         rate: 'Rate',
@@ -63,6 +64,15 @@ const descriptor: FormDescriptor = {
           id: 'family',
           label: 'd.family',
           kind: 'select',
+          options: [
+            { value: 'vat', label: 'd.vat' },
+            { value: 'stamp', label: 'd.stamp' },
+          ],
+        },
+        {
+          id: 'taxes',
+          label: 'd.taxes',
+          kind: 'multiselect',
           options: [
             { value: 'vat', label: 'd.vat' },
             { value: 'stamp', label: 'd.stamp' },
@@ -133,6 +143,17 @@ describe('RecordView', () => {
     expect(text('view-label-customerReference')).toBe('Their reference');
     expect(text('view-customerReference')).toBe('BC-77');
     expect(text('view-supplyDate')).toBe('14/09/2026');
+  });
+
+  it('reads a list of chosen options as their labels, in the order the field offers them', async () => {
+    await show({ taxes: ['stamp', 'vat'] });
+
+    expect(text('view-label-taxes')).toBe('Taxes');
+    // Whitespace between the loop's items collapses where it is drawn, as in any HTML.
+    expect(text('view-taxes').replace(/\s+/g, ' ')).toBe('VAT, Stamp');
+
+    await show({ taxes: [] });
+    expect(q('view-taxes')).toBeNull();
   });
 
   it('leaves out what the document does not say, and the section that then holds nothing', async () => {

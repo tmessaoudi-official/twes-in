@@ -4,6 +4,7 @@ import { inACompany, signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
 import { rowAction } from './rows';
+import { choose } from './select';
 import { aProduct, forget, gtin } from './catalogue';
 import { cardHasFocus, scan as scanned } from './scan';
 
@@ -93,7 +94,7 @@ test('a product is filed in a category, priced at the currency scale and revised
     await page.getByRole('option', { name: /^HUR · / }).click();
     // docs/SPEC.md § 7, 2026-09-19 21:55: a decimal comma is a price, whatever the interface language.
     await page.getByTestId('field-unitPriceNet').fill('120,5');
-    await page.getByRole('checkbox', { name: /19/ }).check();
+    await choose(page, 'field-defaultTaxComponentIds', /19/);
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('record-save').click();
 

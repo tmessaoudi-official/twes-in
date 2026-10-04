@@ -50,7 +50,10 @@ export interface FieldError {
 export type DescriptorFormGroup = FormGroup<Record<string, FormControl<FieldValue>>>;
 
 const isBlank = (value: unknown): boolean =>
-  value === null || value === undefined || (typeof value === 'string' && value.trim() === '');
+  value === null ||
+  value === undefined ||
+  (typeof value === 'string' && value.trim() === '') ||
+  (Array.isArray(value) && value.length === 0);
 
 /** Unlike Validators.required, a value made only of spaces is missing too. */
 const requiredValue: ValidatorFn = (control) =>
@@ -58,8 +61,13 @@ const requiredValue: ValidatorFn = (control) =>
 
 function oneOf(field: FormField): ValidatorFn {
   const allowed = new Set((field.options ?? []).map((option) => option.value));
-  return (control) =>
-    isBlank(control.value) || allowed.has(String(control.value)) ? null : { option: true };
+  return (control) => {
+    const value: unknown = control.value;
+    if (isBlank(value)) return null;
+    // A multiselect holds a list, and every one of its values must be offered.
+    const held = Array.isArray(value) ? value.map(String) : [String(value)];
+    return held.every((each) => allowed.has(each)) ? null : { option: true };
+  };
 }
 
 function validatorsFor(field: FormField): ValidatorFn[] {
@@ -68,7 +76,7 @@ function validatorsFor(field: FormField): ValidatorFn[] {
   if (field.required)
     validators.push(field.kind === 'checkbox' ? Validators.requiredTrue : requiredValue);
   if (field.kind === 'email') validators.push(Validators.email);
-  if (field.kind === 'select') validators.push(oneOf(field));
+  if (field.kind === 'select' || field.kind === 'multiselect') validators.push(oneOf(field));
   // A string pattern is anchored at both ends by Validators.pattern, so it matches the whole value.
   if (field.pattern !== undefined) validators.push(Validators.pattern(field.pattern));
   if (field.minLength !== undefined) validators.push(Validators.minLength(field.minLength));
@@ -86,6 +94,7 @@ function assertValidField(field: FormField): void {
 
 function emptyValue(field: FormField): FieldValue {
   if (field.kind === 'number') return null;
+  if (field.kind === 'multiselect') return [];
   return field.kind === 'checkbox' ? false : '';
 }
 

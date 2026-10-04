@@ -12,6 +12,8 @@ interface ShownField {
   /** How to read it: the kind decides, and the pipes already tested do the reading. */
   kind: FieldKind;
   value: string;
+  /** The labels of a multiselect's chosen options, one translation key each. */
+  parts: string[];
   span: 1 | 2;
 }
 
@@ -53,6 +55,11 @@ interface ShownSection {
                     @case ('decimal') {
                       {{ field.value | amount: null }}
                     }
+                    @case ('multiselect') {
+                      @for (part of field.parts; track part; let last = $last) {
+                        {{ part | translate }}{{ last ? '' : ',' }}
+                      }
+                    }
                     @default {
                       {{ field.value | translate }}
                     }
@@ -93,12 +100,24 @@ export class RecordView {
             label: field.label,
             kind: field.kind,
             value: this.shown(field.id, field.kind, values[field.id], field.options),
+            parts: this.chosenLabels(field.kind, values[field.id], field.options),
             span: field.span ?? 1,
           }))
           .filter((field) => field.value !== ''),
       }))
       .filter((section) => section.fields.length > 0);
   });
+
+  /** The chosen options of a multiselect, in the order the field offers them. */
+  private chosenLabels(
+    kind: FieldKind,
+    value: unknown,
+    options?: readonly { value: string; label: string }[],
+  ): string[] {
+    if (kind !== 'multiselect' || !Array.isArray(value)) return [];
+    const chosen = new Set(value.map(String));
+    return (options ?? []).filter((option) => chosen.has(option.value)).map((o) => o.label);
+  }
 
   /**
    * The text to read, or '' for what the document does not say. A translation key is returned where the value is
@@ -114,6 +133,7 @@ export class RecordView {
     // A box left unticked is an answer, not a blank — but a field this document has no value for at all is.
     if (kind === 'checkbox' && typeof value === 'boolean') return value ? 'form.yes' : 'form.no';
     if (value === null || value === undefined || value === '') return '';
+    if (kind === 'multiselect') return this.chosenLabels(kind, value, options).join(',');
     if (kind === 'pick') return this.picked()[id] ?? String(value);
     if (kind === 'select') {
       return options?.find((option) => option.value === String(value))?.label ?? String(value);

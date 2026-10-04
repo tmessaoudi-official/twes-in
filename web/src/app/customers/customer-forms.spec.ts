@@ -178,7 +178,12 @@ describe('customer forms', () => {
       'standard',
       'exempt',
     ]);
-    expect(field('tax__t-vat')).toMatchObject({ kind: 'checkbox', label: 'TVA 19 %' });
+    expect(field('defaultTaxComponentIds')).toMatchObject({ kind: 'multiselect' });
+    expect(field('defaultTaxComponentIds')?.options?.map((option) => option.value)).toEqual([
+      't-vat',
+      't-fodec',
+    ]);
+    expect(field('defaultTaxComponentIds')?.options?.[0]?.label).toBe('TVA 19 %');
     expect(field('number')).toMatchObject({ required: true, maxLength: 32 });
   });
 
@@ -191,7 +196,7 @@ describe('customer forms', () => {
       billingCountryCode: 'TN',
       customerGroupId: '',
       isActive: true,
-      'tax__t-vat': false,
+      defaultTaxComponentIds: [],
     });
   });
 
@@ -201,8 +206,7 @@ describe('customer forms', () => {
       number: 'CLI-0001',
       identifier__matricule_fiscal: '1234567A/B/M/000',
       customerGroupId: 'g1',
-      'tax__t-vat': true,
-      'tax__t-fodec': false,
+      defaultTaxComponentIds: ['t-vat'],
       defaultDiscountRate: '5.000',
       shippingCity: '',
     });
