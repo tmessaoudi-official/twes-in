@@ -127,6 +127,26 @@ final class NotificationsTest extends ApiTestCase
         self::assertSame(0, $this->json()['unread']);
     }
 
+    public function testTheUnreadAreCountedPerCompanyForTheSignedInUserOnly(): void
+    {
+        $globex = $this->createCompany('Globex');
+        $other = $this->createUser('other@twes.local', 'password-1234');
+        $this->item($this->owner, 'invitation.accepted', '2026-09-13 09:00:00', $this->company);
+        $this->item($this->owner, 'invitation.accepted', '2026-09-13 09:10:00', $this->company);
+        $read = $this->item($this->owner, 'invitation.accepted', '2026-09-13 09:20:00', $this->company);
+        $read->markRead(new \DateTimeImmutable('2026-09-13 10:00:00'));
+        $this->item($this->owner, 'invitation.accepted', '2026-09-13 09:30:00', $globex);
+        $this->item($this->owner, 'membership.added', '2026-09-13 09:40:00');
+        $this->item($other, 'invitation.accepted', '2026-09-13 09:50:00', $this->company);
+        $this->em()->flush();
+        $this->login('owner@twes.local', 'password-1234');
+
+        $this->getJson('/api/me/notifications/unread-by-company');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([$this->company->getId()->toRfc4122() => 2, $globex->getId()->toRfc4122() => 1], $this->json()['counts']);
+    }
+
     public function testMarkingWithoutTheCsrfHeaderIsRefused(): void
     {
         $this->login('owner@twes.local', 'password-1234');

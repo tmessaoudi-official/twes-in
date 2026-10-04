@@ -49,6 +49,13 @@ final readonly class NotificationsController
         ]);
     }
 
+    /** What each of the user's companies has waiting, which the company switcher shows beside its name. */
+    #[Route('/api/me/notifications/unread-by-company', name: 'api_me_notifications_unread_by_company', methods: ['GET'])]
+    public function unreadByCompany(): JsonResponse
+    {
+        return new JsonResponse(['counts' => (object) $this->centre->unreadByCompany($this->currentUserId())]);
+    }
+
     #[Route('/api/me/notifications/read-all', name: 'api_me_notifications_read_all', methods: ['POST'])]
     public function readAll(): Response
     {

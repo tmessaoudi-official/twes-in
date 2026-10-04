@@ -216,6 +216,8 @@
   },
   "company": {
     "choose": "Choisir une entreprise",
+    "unread": "{{count}} notification(s) non lue(s)",
+    "unread_elsewhere": "{{count}} notification(s) non lue(s) dans vos autres entreprises",
     "profile": {
       "title": "Profil de la société",
       "intro": "Ce que les documents de la société disent d'elle : identité, identifiants, adresse, coordonnées, banque et mentions imprimées.",

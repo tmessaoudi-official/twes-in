@@ -578,6 +578,7 @@ body {
 }
 
 .twes-rail-company {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.625rem;
@@ -603,6 +604,13 @@ body {
     margin-inline-start: auto;
     color: var(--mat-sys-on-surface-variant);
   }
+}
+
+/* Folded to the mark, the pill of what waits in the other companies sits on the mark's corner. */
+.twes-rail-company-badge-folded {
+  position: absolute;
+  top: -0.125rem;
+  inset-inline-end: 0;
 }
 
 .twes-rail-company-mark {

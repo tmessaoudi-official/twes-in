@@ -50,6 +50,15 @@ describe('NotificationsApi', () => {
     });
   });
 
+  it('reads how many unread each company has', async () => {
+    const counted = api.unreadByCompany();
+    http
+      .expectOne({ method: 'GET', url: '/api/me/notifications/unread-by-company' })
+      .flush({ counts: { c1: 2, c2: 1 } });
+
+    await expect(counted).resolves.toEqual({ c1: 2, c2: 1 });
+  });
+
   it('marks one read at its own address', async () => {
     const marked = api.markRead('0198f0c4-8a3e-7b2c-9d1e-2f3a4b5c6d7e');
     http

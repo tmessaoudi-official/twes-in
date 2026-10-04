@@ -27,6 +27,7 @@ describe('NotificationsFacade', () => {
     markRead: vi.fn(),
     markAllRead: vi.fn(),
     realtimeToken: vi.fn(),
+    unreadByCompany: vi.fn(),
   };
   const opened: {
     url: string;
@@ -47,6 +48,7 @@ describe('NotificationsFacade', () => {
     Object.values(api).forEach((fn) => fn.mockReset());
     live.receive.mockReset();
     pairing.receive.mockClear();
+    api.unreadByCompany.mockResolvedValue({});
     opened.length = 0;
     TestBed.configureTestingModule({
       providers: [
@@ -57,6 +59,19 @@ describe('NotificationsFacade', () => {
       ],
     });
     facade = TestBed.inject(NotificationsFacade);
+  });
+
+  it("keeps each company's unread count beside the list, and the last counts when asking fails", async () => {
+    api.list.mockResolvedValue(page([added], 3));
+    api.unreadByCompany.mockResolvedValue({ c1: 2, c2: 1 });
+
+    await facade.refresh();
+    expect(facade.unreadByCompany()).toEqual({ c1: 2, c2: 1 });
+
+    api.unreadByCompany.mockRejectedValue(new Error('offline'));
+    await facade.refresh();
+    expect(facade.unreadByCompany()).toEqual({ c1: 2, c2: 1 });
+    expect(facade.error()).toBe(false);
   });
 
   it('shows what the API returned', async () => {

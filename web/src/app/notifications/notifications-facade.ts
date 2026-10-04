@@ -23,11 +23,14 @@ export class NotificationsFacade {
   private readonly document = inject(DOCUMENT);
   private readonly itemsSignal = signal<readonly InboxEntry[]>([]);
   private readonly unreadSignal = signal(0);
+  private readonly unreadByCompanySignal = signal<Readonly<Record<string, number>>>({});
   private readonly errorSignal = signal(false);
   private connection: RealtimeConnection | null = null;
 
   readonly items = this.itemsSignal.asReadonly();
   readonly unread = this.unreadSignal.asReadonly();
+  /** What waits in each of the person's companies, which the company switcher shows beside each name. */
+  readonly unreadByCompany = this.unreadByCompanySignal.asReadonly();
   /** The last request failed; what is shown is the last list that loaded. */
   readonly error = this.errorSignal.asReadonly();
 
@@ -39,6 +42,13 @@ export class NotificationsFacade {
       this.errorSignal.set(false);
     } catch {
       this.errorSignal.set(true);
+    }
+    // Secondary to the bell: when only this request fails, the switcher keeps the counts it last had and the bell is
+    // not marked in error, since the list it draws did load.
+    try {
+      this.unreadByCompanySignal.set(await this.api.unreadByCompany());
+    } catch {
+      /* the last counts stay */
     }
   }
 

@@ -21,6 +21,13 @@ interface InboxRepository
 
     public function unreadCountFor(Uuid $recipientId): int;
 
+    /**
+     * The recipient's unread notifications by the company they concern, those of no company left out.
+     *
+     * @return array<string, int> company id => count, only the companies with something unread
+     */
+    public function unreadByCompanyFor(Uuid $recipientId): array;
+
     /** The item only when it belongs to that recipient: nobody reads or marks another person's notifications. */
     public function ofRecipient(Uuid $recipientId, Uuid $itemId): ?InboxItem;
 

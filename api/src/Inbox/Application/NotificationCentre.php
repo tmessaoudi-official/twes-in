@@ -36,6 +36,12 @@ final readonly class NotificationCentre
         );
     }
 
+    /** @return array<string, int> company id => unread notifications about it, for the company switcher */
+    public function unreadByCompany(Uuid $recipientId): array
+    {
+        return $this->inbox->unreadByCompanyFor($recipientId);
+    }
+
     /** @throws InboxItemNotFound when the item does not exist or belongs to somebody else, which look the same */
     public function markRead(Uuid $recipientId, Uuid $itemId): void
     {

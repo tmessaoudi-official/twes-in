@@ -38,6 +38,20 @@ final class InMemoryInbox implements InboxRepository
         return \count(array_filter($this->of($recipientId), static fn (InboxItem $item) => !$item->isRead()));
     }
 
+    public function unreadByCompanyFor(Uuid $recipientId): array
+    {
+        $counts = [];
+        foreach ($this->of($recipientId) as $item) {
+            $company = $item->getCompany();
+            if (!$item->isRead() && null !== $company) {
+                $key = $company->getId()->toRfc4122();
+                $counts[$key] = ($counts[$key] ?? 0) + 1;
+            }
+        }
+
+        return $counts;
+    }
+
     public function ofRecipient(Uuid $recipientId, Uuid $itemId): ?InboxItem
     {
         foreach ($this->of($recipientId) as $item) {

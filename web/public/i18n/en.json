@@ -216,6 +216,8 @@
   },
   "company": {
     "choose": "Choose a company",
+    "unread": "{{count}} unread notification(s)",
+    "unread_elsewhere": "{{count}} unread notification(s) in your other companies",
     "profile": {
       "title": "Company profile",
       "intro": "What the company's documents say about it: identity, registration numbers, address, contact, banking and printed texts.",

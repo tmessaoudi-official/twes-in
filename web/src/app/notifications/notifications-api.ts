@@ -3,7 +3,12 @@
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { NotificationItem, NotificationPage, RealtimeToken } from '../api/types.gen';
+import type {
+  NotificationItem,
+  NotificationPage,
+  RealtimeToken,
+  UnreadByCompany,
+} from '../api/types.gen';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 import type { InboxEntry, InboxPage } from './notifications-types';
 
@@ -20,6 +25,16 @@ export class NotificationsApi {
       this.http.get<NotificationPage>('/api/me/notifications', { context: BACKGROUND() }),
     );
     return { items: page.items.map(toEntry), unread: page.unread };
+  }
+
+  /** How many unread notifications each company has, for the company switcher. */
+  async unreadByCompany(): Promise<Readonly<Record<string, number>>> {
+    const answer = await firstValueFrom(
+      this.http.get<UnreadByCompany>('/api/me/notifications/unread-by-company', {
+        context: BACKGROUND(),
+      }),
+    );
+    return { ...answer.counts };
   }
 
   async markRead(id: string): Promise<void> {

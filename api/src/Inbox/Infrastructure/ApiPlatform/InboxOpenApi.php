@@ -54,6 +54,13 @@ final readonly class InboxOpenApi implements OpenApiFactoryInterface
                 'unread' => ['type' => 'integer', 'description' => 'Every unread notification, not only those on this page.'],
             ],
         ]);
+        $schemas['UnreadByCompany'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['counts'],
+            'properties' => [
+                'counts' => ['type' => 'object', 'additionalProperties' => ['type' => 'integer'], 'description' => 'Company id => unread notifications about it; a company with none is absent.'],
+            ],
+        ]);
         $schemas['RealtimeToken'] = new \ArrayObject([
             'type' => 'object',
             'required' => ['token', 'expiresAt'],
@@ -73,6 +80,12 @@ final readonly class InboxOpenApi implements OpenApiFactoryInterface
             tags: ['Notifications'],
             responses: ['200' => $json('NotificationPage', 'The newest notifications and the unread count'), '401' => $signedOut],
             summary: 'The signed-in user\'s notification centre',
+        )));
+        $paths->addPath('/api/me/notifications/unread-by-company', new PathItem(get: new Operation(
+            operationId: 'unreadNotificationsByCompany',
+            tags: ['Notifications'],
+            responses: ['200' => $json('UnreadByCompany', 'The unread count of each company'), '401' => $signedOut],
+            summary: 'The unread notifications of each of the user\'s companies',
         )));
         $paths->addPath('/api/me/notifications/read-all', new PathItem(post: new Operation(
             operationId: 'markAllNotificationsRead',

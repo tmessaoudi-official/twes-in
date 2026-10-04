@@ -5,8 +5,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { TranslatePipe } from '@ngx-translate/core';
+import { NotificationsFacade } from '../notifications/notifications-facade';
 import { Label } from '../shared/a11y/label';
 import { LanguageFacade } from '../shared/i18n/language-facade';
+import { CountBadge } from '../shared/ui/count-badge';
 import { companyLogoUrl } from './company-api';
 import { CompanyFacade } from './company-facade';
 
@@ -16,7 +18,7 @@ import { CompanyFacade } from './company-facade';
  */
 @Component({
   selector: 'app-company-switcher',
-  imports: [Label, MatButtonModule, MatIconModule, MatMenuModule, TranslatePipe],
+  imports: [CountBadge, Label, MatButtonModule, MatIconModule, MatMenuModule, TranslatePipe],
   templateUrl: './company-switcher.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -28,6 +30,20 @@ export class CompanySwitcher implements OnInit {
   protected readonly canSwitch = this.companyFacade.canSwitch;
   protected readonly switching = this.companyFacade.switching;
   private readonly language = inject(LanguageFacade);
+  private readonly notifications = inject(NotificationsFacade);
+
+  /** What each company has waiting (docs/SPEC.md § 7, 2026-09-26 22:34), a company with nothing absent. */
+  protected readonly unread = this.notifications.unreadByCompany;
+
+  /** What waits in the companies other than the one in use, on the closed button so it is noticed from here. */
+  protected readonly elsewhere = computed(() => {
+    const current = this.current()?.id;
+    const counts = this.unread();
+    return this.companies().reduce(
+      (sum, company) => (company.id === current ? sum : sum + (counts[company.id] ?? 0)),
+      0,
+    );
+  });
 
   /** In a bar, the name alone; at the head of the rail, a block with the company's mark, country and currency. */
   readonly variant = input<'bar' | 'rail'>('bar');

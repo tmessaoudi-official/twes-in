@@ -26,6 +26,15 @@
           }}</span>
           <span class="twes-rail-company-sub">{{ where() }}</span>
         </span>
+        @if (elsewhere() > 0) {
+          <app-count-badge
+            [class]="folded() ? 'twes-rail-company-badge-folded' : ''"
+            [count]="elsewhere()"
+            [max]="9"
+            [label]="'company.unread_elsewhere' | translate: { count: elsewhere() }"
+            data-testid="company-unread-elsewhere"
+          />
+        }
         @if (!folded()) {
           <mat-icon aria-hidden="true">unfold_more</mat-icon>
         }
@@ -44,6 +53,12 @@
             }
             {{ company.name }}
             <span class="text-on-surface-variant">— {{ 'roles.' + company.role | translate }}</span>
+            <app-count-badge
+              class="ms-auto ps-3"
+              [count]="unread()[company.id] ?? 0"
+              [max]="9"
+              [label]="'company.unread' | translate: { count: unread()[company.id] ?? 0 }"
+            />
           </button>
         }
       </mat-menu>

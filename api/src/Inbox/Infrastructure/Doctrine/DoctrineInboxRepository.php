@@ -45,6 +45,22 @@ final readonly class DoctrineInboxRepository implements InboxRepository
         )->setParameter('recipient', $recipientId, 'uuid')->getSingleScalarResult();
     }
 
+    public function unreadByCompanyFor(Uuid $recipientId): array
+    {
+        $rows = $this->entityManager->createQuery(
+            'SELECT IDENTITY(i.company) AS company, COUNT(i.id) AS unread FROM '.InboxItem::class.' i
+             WHERE i.recipient = :recipient AND i.readAt IS NULL AND i.company IS NOT NULL GROUP BY i.company',
+        )->setParameter('recipient', $recipientId, 'uuid')->getArrayResult();
+
+        $counts = [];
+        foreach ($rows as $row) {
+            \assert(\is_array($row) && \is_string($row['company'] ?? null) && is_numeric($row['unread'] ?? null));
+            $counts[Uuid::fromString($row['company'])->toRfc4122()] = (int) $row['unread'];
+        }
+
+        return $counts;
+    }
+
     public function ofRecipient(Uuid $recipientId, Uuid $itemId): ?InboxItem
     {
         return $this->entityManager->getRepository(InboxItem::class)->findOneBy(['id' => $itemId, 'recipient' => $recipientId]);
