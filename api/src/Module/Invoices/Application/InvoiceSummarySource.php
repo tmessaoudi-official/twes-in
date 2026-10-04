@@ -46,4 +46,17 @@ interface InvoiceSummarySource
      * @return list<array{code: string, rate: string, amount: string}>
      */
     public function vatIssued(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): array;
+
+    /**
+     * What the company's issued invoices were paid between two days (from included, until excluded).
+     */
+    public function paidBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): string;
+
+    /**
+     * What the documents issued from a day to before another came to before tax, credit notes counted negative, and, over
+     * the lines whose frozen cost is known only, what those lines sold for, what they cost and how many they are.
+     *
+     * @return array{net: string, costedNet: string, cost: string, costedLines: int}
+     */
+    public function invoicedBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): array;
 }

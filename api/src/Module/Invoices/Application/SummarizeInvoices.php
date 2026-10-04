@@ -22,6 +22,8 @@ use Psr\Clock\ClockInterface;
  *   corrects is already off its invoice's amount due. Late means due before today; due today is not late.
  * - To chase: the late invoices, the latest first, then those due within a week, the soonest first.
  * - Collected: the payments by the month of their day, which is already a company day.
+ * - Invoiced and collected so far this month are read against the same days of last month; the margin is what the lines
+ *   with a frozen cost sold for less that cost, shown only to a reader of costs.
  * - VAT: the VAT-family taxes of the documents issued this month, credit notes included, so a correction nets out. It
  *   is the VAT invoiced, not the VAT cashed: the basis a company declares on is not modelled yet.
  *
@@ -39,7 +41,7 @@ final readonly class SummarizeInvoices
     {
     }
 
-    public function handle(Company $company): InvoiceSummary
+    public function handle(Company $company, bool $withCosts = false): InvoiceSummary
     {
         $scale = $this->scales->of($company->getCurrency());
         $today = new \DateTimeImmutable($this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'));
@@ -86,6 +88,13 @@ final readonly class SummarizeInvoices
         $vat = $this->source->vatIssued($company->getId(), $thisMonth, $thisMonth->modify('+1 month'));
         usort($vat, static fn (array $a, array $b): int => Decimal::of($b['rate'])->compare(Decimal::of($a['rate'])) ?: $a['code'] <=> $b['code']);
 
+        // The month so far and the same number of days of last month, which may be shorter: it stops where this month starts.
+        $tomorrow = $today->modify('+1 day');
+        $lastFrom = $thisMonth->modify('-1 month');
+        $lastUntil = min($lastFrom->modify(\sprintf('+%d days', (int) $today->format('j'))), $thisMonth);
+        $now = $this->source->invoicedBetween($company->getId(), $thisMonth, $tomorrow);
+        $before = $this->source->invoicedBetween($company->getId(), $lastFrom, $lastUntil);
+
         $amount = static fn (Number $value): string => Decimal::format($value, $scale);
 
         return new InvoiceSummary(
@@ -104,6 +113,14 @@ final readonly class SummarizeInvoices
             array_map(static fn (string $month, Number $sum): array => ['month' => $month, 'amount' => $amount($sum)], array_keys($collected), $collected),
             array_map(static fn (array $tax): array => ['code' => $tax['code'], 'rate' => $tax['rate'], 'amount' => $amount(Decimal::of($tax['amount']))], $vat),
             $amount(Decimal::sum(array_map(static fn (array $tax): Number => Decimal::of($tax['amount']), $vat))),
+            $amount(Decimal::of($now['net'])),
+            $amount(Decimal::of($before['net'])),
+            $amount(Decimal::of($this->source->paidBetween($company->getId(), $thisMonth, $tomorrow))),
+            $amount(Decimal::of($this->source->paidBetween($company->getId(), $lastFrom, $lastUntil))),
+            $withCosts && $now['costedLines'] > 0 ? $amount(Decimal::of($now['costedNet'])->sub(Decimal::of($now['cost']))) : null,
+            $withCosts && $before['costedLines'] > 0 ? $amount(Decimal::of($before['costedNet'])->sub(Decimal::of($before['cost']))) : null,
+            $withCosts && $now['costedLines'] > 0 ? $amount(Decimal::of($now['costedNet'])) : null,
+            $withCosts,
         );
     }
 

@@ -150,6 +150,56 @@ final class SummarizeInvoicesTest extends KernelTestCase
         self::assertSame(['2026-04', '2026-09', '0.000'], [$summary->collected[0]['month'], $summary->collected[5]['month'], $summary->collected[5]['amount']]);
     }
 
+    public function testTheMonthSoFarIsInvoicedAndCollectedAgainstTheSameDaysOfLastMonthAndTheMarginReadsTheFrozenCosts(): void
+    {
+        // Today is the 21st: this month is 1–21 September, the days to compare with are 1–21 August.
+        $now = $this->issued('FAC-N', 'Nabeul Bois', '2026-09-15', 30, '1200.000');
+        $this->costed($now, '700');
+        $this->issued('FAC-X', 'Sans coût', '2026-09-16', 30, '300.000');
+        $old = $this->issued('FAC-O3', 'Transports Sahel', '2026-06-01', 30, '1190.000');
+        $credit = $this->credit($old, 'AV-1', '2026-09-10', '-119.000', []);
+        $this->costed($credit, '60');
+        // Last month's first 21 days: one with a cost, one without; the 25th is outside the comparison.
+        $lastMonth = $this->issued('FAC-O1', 'Pharmacie Ennasr', '2026-08-12', 30, '850.050');
+        $this->costed($lastMonth, '800');
+        $this->pay($lastMonth, '2026-08-22', '50');
+        $paid = $this->issued('FAC-P', 'Hôtel Dar Zarrouk', '2026-08-20', 0, '1000.000');
+        $this->pay($paid, '2026-08-20', '400');
+        $this->pay($paid, '2026-09-05', '600');
+        $this->issued('FAC-S', 'Sousse Print', '2026-08-25', 30, '500.000');
+        $soon = $this->issued('FAC-S2', 'Sousse Deux', '2026-09-02', 30, '500.000');
+        $this->pay($soon, '2026-09-02', '200');
+        $this->issued('GLX-1', 'Autre', '2026-09-03', 0, '9999.000', company: $this->globex);
+        $this->em()->clear();
+
+        $summary = $this->summarize->handle($this->company, true);
+
+        // Invoiced: 1200 + 300 + 500 − 119 this month; 850.050 + 1000 last month (the 25th is not yet reached).
+        self::assertSame(['1881.000', '1850.050'], [$summary->invoicedMonth, $summary->invoicedLastMonth]);
+        // Collected: 600 + 200 this month, 400 last month (the payment of 22 August is past the days compared).
+        self::assertSame(['800.000', '400.000'], [$summary->collectedMonth, $summary->collectedLastMonth]);
+        // Margin over the lines that have a cost: (1200 − 700) + (−119 − (−60)) this month, 850.050 − 800 last month.
+        self::assertSame(['441.000', '50.050', '1081.000'], [$summary->margin, $summary->marginLastMonth, $summary->marginBasis]);
+    }
+
+    public function testTheMarginIsWithheldWithoutTheCostPermissionAndBlankUntilALineHasACost(): void
+    {
+        $this->issued('FAC-N', 'Nabeul Bois', '2026-09-15', 30, '1200.000');
+        self::assertSame([null, null, null], $this->marginOf($this->summarize->handle($this->company, true)));
+
+        $this->costed($this->issued('FAC-C', 'Avec coût', '2026-09-16', 30, '100.000'), '40');
+
+        self::assertSame(['60.000', null, '100.000'], $this->marginOf($this->summarize->handle($this->company, true)));
+        $withheld = $this->summarize->handle($this->company, false);
+        self::assertSame([null, null, null, false], [...$this->marginOf($withheld), $withheld->costsVisible]);
+    }
+
+    /** @return array{0: ?string, 1: ?string, 2: ?string} */
+    private function marginOf(\App\Module\Invoices\Application\InvoiceSummary $summary): array
+    {
+        return [$summary->margin, $summary->marginLastMonth, $summary->marginBasis];
+    }
+
     private function draft(): void
     {
         $invoice = Invoice::create($this->company, $this->establishment($this->company), $this->customer($this->company, 'Brouillon'), new InvoiceHeader(), [$this->line($this->company, [])], [], $this->clock->now());
@@ -168,7 +218,7 @@ final class SummarizeInvoicesTest extends KernelTestCase
     }
 
     /** @param array<string, string> $taxes */
-    private function credit(Invoice $invoice, string $number, string $day, string $total, array $taxes): void
+    private function credit(Invoice $invoice, string $number, string $day, string $total, array $taxes): Invoice
     {
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
         $credit->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (): InvoiceFigures => $this->figures($total, $taxes), $this->clock->now());
@@ -176,6 +226,14 @@ final class SummarizeInvoicesTest extends KernelTestCase
         $invoices = static::getContainer()->get(InvoiceRepository::class);
         $invoices->save($credit);
         $invoices->save($invoice);
+
+        return $credit;
+    }
+
+    /** What one unit cost when the line was issued: frozen at issue from the product, set here since these lines have none. */
+    private function costed(Invoice $invoice, string $unitCost): void
+    {
+        $this->em()->getConnection()->executeStatement('UPDATE invoice_line SET unit_cost = :cost WHERE invoice_id = :invoice', ['cost' => $unitCost, 'invoice' => $invoice->getId()->toRfc4122()]);
     }
 
     private function pay(Invoice $invoice, string $day, string $amount): void

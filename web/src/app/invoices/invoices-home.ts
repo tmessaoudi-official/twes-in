@@ -15,7 +15,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { formatMonth } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { AmountPipe } from '../shared/i18n/format-pipes';
-import { agingBars, chaseDue, collectedBars, initials } from './invoice-summary-view';
+import { agingBars, chaseDue, collectedBars, initials, versus } from './invoice-summary-view';
 import { InvoicesFacade } from './invoices-facade';
 import type { AgingBucket } from './invoices-types';
 
@@ -53,7 +53,21 @@ export class InvoicesHome {
     const summary = this.summary();
     return summary === null ? '' : formatMonth(summary.today, this.format.locale());
   });
-  protected readonly thisMonth = computed(() => this.summary()?.collected.at(-1)?.amount ?? '0');
+  protected readonly thisMonth = computed(() => this.summary()?.collectedMonth ?? '0');
+  protected readonly collectedVersus = computed(() => {
+    const s = this.summary();
+    return s === null ? null : versus(s.collectedMonth, s.collectedLastMonth);
+  });
+  protected readonly invoicedVersus = computed(() => {
+    const s = this.summary();
+    return s === null ? null : versus(s.invoicedMonth, s.invoicedLastMonth);
+  });
+  protected readonly marginVersus = computed(() => {
+    const s = this.summary();
+    return s?.margin == null || s.marginLastMonth == null
+      ? null
+      : versus(s.margin, s.marginLastMonth);
+  });
   protected readonly bars = computed(() =>
     collectedBars(this.summary()?.collected ?? [], this.format.locale()),
   );

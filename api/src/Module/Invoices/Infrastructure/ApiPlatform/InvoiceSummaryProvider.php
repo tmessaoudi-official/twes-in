@@ -12,6 +12,7 @@ namespace App\Module\Invoices\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\Invoices\Application\SummarizeInvoices;
+use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 
@@ -26,6 +27,6 @@ final readonly class InvoiceSummaryProvider implements ProviderInterface
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::READ);
 
-        return InvoiceSummaryResource::of($this->summarize->handle($company));
+        return InvoiceSummaryResource::of($this->summarize->handle($company, $this->guard->may($company, ProductPermission::COST_READ)));
     }
 }

@@ -453,6 +453,14 @@ function toSummary(raw: InvoiceSummaryInvoiceSummaryRead): InvoiceSummary {
     collected: (raw.collected ?? []).map(({ month, amount }) => ({ month, amount })),
     vat: (raw.vat ?? []).map(({ code, rate, amount }) => ({ code, rate, amount })),
     vatTotal: raw.vatTotal ?? '0',
+    invoicedMonth: raw.invoicedMonth ?? '0',
+    invoicedLastMonth: raw.invoicedLastMonth ?? '0',
+    collectedMonth: raw.collectedMonth ?? '0',
+    collectedLastMonth: raw.collectedLastMonth ?? '0',
+    margin: raw.margin ?? null,
+    marginLastMonth: raw.marginLastMonth ?? null,
+    marginBasis: raw.marginBasis ?? null,
+    costsVisible: raw.costsVisible ?? false,
   };
 }
 

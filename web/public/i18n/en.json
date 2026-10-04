@@ -1383,6 +1383,16 @@
         "days_16_30": "16–30 d",
         "days_31_45": "31–45 d",
         "days_over_45": "> 45 d"
+      },
+      "margin": "Margin · {{month}}",
+      "margin_basis": "on {{amount}} {{currency}} of sales that have a cost",
+      "margin_blank": "The margin appears as soon as an issued line has a cost.",
+      "invoiced": "Invoiced · {{month}}",
+      "invoiced_note": "before tax, credit notes taken off",
+      "versus": {
+        "up": "+{{amount}} on the same days of last month",
+        "down": "−{{amount}} on the same days of last month",
+        "same": "Same as the same days of last month"
       }
     },
     "issued": "The invoice was issued.",

@@ -37,6 +37,16 @@ class StaticLoader implements TranslateLoader {
           see: 'Voir',
           collected: 'Encaissé en {{month}}',
           vat: 'TVA collectée · {{month}}',
+          margin: 'Marge · {{month}}',
+          margin_basis: 'sur {{amount}} {{currency}} de ventes avec un coût',
+          margin_blank: 'La marge apparaît dès qu’une ligne émise a un coût.',
+          invoiced: 'Facturé · {{month}}',
+          invoiced_note: 'hors taxes, avoirs déduits',
+          versus: {
+            up: '+{{amount}} sur les mêmes jours du mois dernier',
+            down: '−{{amount}} sur les mêmes jours du mois dernier',
+            same: 'Comme les mêmes jours du mois dernier',
+          },
           to_chase: 'À relancer',
           to_chase_detail: '{{count}} factures · {{amount}} {{currency}}',
           to_chase_none: 'Rien à relancer',
@@ -105,6 +115,14 @@ const summary: InvoiceSummary = {
   ],
   vat: [{ code: 'TVA19', rate: '19.000', amount: '171.000' }],
   vatTotal: '171.000',
+  invoicedMonth: '1881.000',
+  invoicedLastMonth: '1850.050',
+  collectedMonth: '800.000',
+  collectedLastMonth: '1200.000',
+  margin: '441.000',
+  marginLastMonth: '50.050',
+  marginBasis: '1081.000',
+  costsVisible: true,
 };
 
 describe('InvoicesHome', () => {
@@ -173,6 +191,34 @@ describe('InvoicesHome', () => {
     expect(text('home-collected')).toContain('800,000');
     expect(text('home-vat')).toContain('171,000');
     expect(text('home-vat')).toContain('TVA19');
+  });
+
+  it('puts the margin first, against the same days of last month, with the sales it speaks of', () => {
+    expect(text('home-margin')).toContain('Marge · septembre');
+    expect(text('home-margin')).toContain('441,000');
+    expect(text('home-margin')).toContain('+390,950 sur les mêmes jours du mois dernier');
+    expect(text('home-margin')).toContain('sur 1 081,000 TND de ventes avec un coût');
+    expect(text('home-invoiced')).toContain('1 881,000');
+    expect(text('home-invoiced')).toContain('+30,950 sur les mêmes jours du mois dernier');
+    expect(text('home-collected')).toContain('−400,000 sur les mêmes jours du mois dernier');
+  });
+
+  it('leaves the margin blank with a note until a line has a cost, and draws no card for a reader without costs', async () => {
+    current.set({ ...summary, margin: null, marginLastMonth: null, marginBasis: null });
+    await settle();
+    expect(text('home-margin')).toContain('La marge apparaît dès qu’une ligne émise a un coût.');
+    expect(text('home-margin')).not.toContain('sur les mêmes jours');
+
+    current.set({
+      ...summary,
+      margin: null,
+      marginLastMonth: null,
+      marginBasis: null,
+      costsVisible: false,
+    });
+    await settle();
+    expect(q('home-margin')).toBeNull();
+    expect(q('home-invoiced')).not.toBeNull();
   });
 
   it('lists the invoices to chase, each opening its invoice, with how late or how soon', () => {

@@ -135,6 +135,14 @@ describe('InvoicesApi', () => {
       collected: [{ month: '2026-09', amount: '800.000' }],
       vat: [{ code: 'TVA19', rate: '19.000', amount: '171.000' }],
       vatTotal: '171.000',
+      invoicedMonth: '1881.000',
+      invoicedLastMonth: '1850.050',
+      collectedMonth: '800.000',
+      collectedLastMonth: '400.000',
+      margin: '441.000',
+      marginLastMonth: null,
+      marginBasis: '1081.000',
+      costsVisible: true,
     });
     const summary = await pending;
     expect(summary.aging.map((each) => each.bucket)).toEqual(['not_due', 'days_over_45']);
@@ -145,6 +153,11 @@ describe('InvoicesApi', () => {
       toChaseCount: 4,
       collected: [{ month: '2026-09', amount: '800.000' }],
       vatTotal: '171.000',
+      invoicedMonth: '1881.000',
+      collectedLastMonth: '400.000',
+      margin: '441.000',
+      marginLastMonth: null,
+      costsVisible: true,
     });
   });
 

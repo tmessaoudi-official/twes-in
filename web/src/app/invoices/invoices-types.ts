@@ -339,4 +339,15 @@ export interface InvoiceSummary {
   readonly collected: readonly MonthCollected[];
   readonly vat: readonly VatCollected[];
   readonly vatTotal: string;
+  /** Before tax, credit notes taken off, so far this month and over the same days of last month. */
+  readonly invoicedMonth: string;
+  readonly invoicedLastMonth: string;
+  readonly collectedMonth: string;
+  readonly collectedLastMonth: string;
+  /** Over the lines with a frozen cost; null without the cost permission or while no line has one. */
+  readonly margin: string | null;
+  readonly marginLastMonth: string | null;
+  /** What those lines sold for. */
+  readonly marginBasis: string | null;
+  readonly costsVisible: boolean;
 }

@@ -86,6 +86,34 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
         return $paid;
     }
 
+    public function paidBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): string
+    {
+        return self::text($this->connection->fetchOne(
+            'SELECT COALESCE(SUM(p.amount), 0) FROM payment p JOIN invoice i ON i.id = p.invoice_id
+             WHERE i.company_id = :company AND i.document_type = :invoice AND i.status <> :cancelled AND i.amount_due IS NOT NULL
+               AND p.payment_date >= :from AND p.payment_date < :until',
+            ['company' => $companyId->toRfc4122(), 'invoice' => InvoiceType::Invoice->value, 'cancelled' => InvoiceStatus::Cancelled->value, 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d')],
+        ));
+    }
+
+    public function invoicedBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): array
+    {
+        // A credit note's lines keep their positive quantity while their figures are negative: its cost is counted the same way.
+        $row = $this->connection->fetchAssociative(
+            'SELECT COALESCE(SUM(l.line_net), 0) AS net,
+                    COALESCE(SUM(l.line_net) FILTER (WHERE l.unit_cost IS NOT NULL), 0) AS costed_net,
+                    COALESCE(SUM(CASE WHEN i.document_type = :credit THEN -1 ELSE 1 END * l.quantity * l.unit_cost), 0) AS cost,
+                    COUNT(*) FILTER (WHERE l.unit_cost IS NOT NULL) AS costed_lines
+             FROM invoice i JOIN invoice_line l ON l.invoice_id = i.id
+             WHERE i.company_id = :company AND i.status <> :cancelled AND i.amount_due IS NOT NULL
+               AND i.issue_date >= :from AND i.issue_date < :until',
+            ['company' => $companyId->toRfc4122(), 'credit' => InvoiceType::CreditNote->value, 'cancelled' => InvoiceStatus::Cancelled->value, 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d')],
+        );
+        \assert(false !== $row);
+
+        return ['net' => self::text($row['net']), 'costedNet' => self::text($row['costed_net']), 'cost' => self::text($row['cost']), 'costedLines' => (int) self::text($row['costed_lines'])];
+    }
+
     public function vatIssued(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): array
     {
         $rows = $this->connection->fetchAllAssociative(

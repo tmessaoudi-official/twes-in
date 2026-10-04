@@ -133,6 +133,38 @@ final class InvoiceSummaryResource
     #[Groups([self::READ])]
     public string $vatTotal = '0';
 
+    /** What was invoiced before tax so far this month, credit notes taken off, and over the same days of last month. */
+    #[Groups([self::READ])]
+    public string $invoicedMonth = '0';
+
+    #[Groups([self::READ])]
+    public string $invoicedLastMonth = '0';
+
+    /** What was paid so far this month, and over the same days of last month. */
+    #[Groups([self::READ])]
+    public string $collectedMonth = '0';
+
+    #[Groups([self::READ])]
+    public string $collectedLastMonth = '0';
+
+    /** What the lines with a frozen cost sold for less that cost this month; null without product.cost.read or while no line has a cost. */
+    #[ApiProperty(schema: ['type' => ['string', 'null']])]
+    #[Groups([self::READ])]
+    public ?string $margin = null;
+
+    #[ApiProperty(schema: ['type' => ['string', 'null']])]
+    #[Groups([self::READ])]
+    public ?string $marginLastMonth = null;
+
+    /** What those lines sold for, the part of the month's invoicing the margin speaks of; null when the margin is. */
+    #[ApiProperty(schema: ['type' => ['string', 'null']])]
+    #[Groups([self::READ])]
+    public ?string $marginBasis = null;
+
+    /** Whether the reader may see costs: the margin card is drawn for them only, with a note while it is blank. */
+    #[Groups([self::READ])]
+    public bool $costsVisible = false;
+
     public static function of(InvoiceSummary $summary): self
     {
         $resource = new self();
@@ -151,6 +183,14 @@ final class InvoiceSummaryResource
         $resource->collected = $summary->collected;
         $resource->vat = $summary->vat;
         $resource->vatTotal = $summary->vatTotal;
+        $resource->invoicedMonth = $summary->invoicedMonth;
+        $resource->invoicedLastMonth = $summary->invoicedLastMonth;
+        $resource->collectedMonth = $summary->collectedMonth;
+        $resource->collectedLastMonth = $summary->collectedLastMonth;
+        $resource->margin = $summary->margin;
+        $resource->marginLastMonth = $summary->marginLastMonth;
+        $resource->marginBasis = $summary->marginBasis;
+        $resource->costsVisible = $summary->costsVisible;
 
         return $resource;
     }

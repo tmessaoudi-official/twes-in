@@ -12,7 +12,8 @@ namespace App\Module\Invoices\Application;
 /**
  * What the home page shows of a company's invoices on its own day: what is still to collect and how late, what was
  * collected month by month, the VAT its documents charged this month, and the invoices to chase first. Amounts are
- * decimal strings at the currency's scale; a day count is positive when late, negative when still ahead.
+ * decimal strings at the currency's scale; the month so far is read against the same days of last month, and the margin,
+ * over the lines whose cost was frozen at issue, is null for a reader without the cost permission or while no line has a cost; a day count is positive when late, negative when still ahead.
  */
 final readonly class InvoiceSummary
 {
@@ -38,6 +39,14 @@ final readonly class InvoiceSummary
         public array $collected,
         public array $vat,
         public string $vatTotal,
+        public string $invoicedMonth,
+        public string $invoicedLastMonth,
+        public string $collectedMonth,
+        public string $collectedLastMonth,
+        public ?string $margin,
+        public ?string $marginLastMonth,
+        public ?string $marginBasis,
+        public bool $costsVisible,
     ) {
     }
 }
