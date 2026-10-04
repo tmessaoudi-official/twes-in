@@ -11,6 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DayInput } from '../shared/form/day-input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -80,6 +81,7 @@ import { SubscriptionFacade } from '../licensing/subscription-facade';
     FormsModule,
     MatFormFieldModule,
     MatInputModule,
+    DayInput,
     MatSlideToggleModule,
     MatTabsModule,
     RouterLink,
@@ -305,6 +307,11 @@ export class PlatformPage implements OnInit {
   /** One field of the terms being edited; an emptied field is null, which is what "follow the platform" means. */
   protected type(field: keyof SubscriptionTerms, event: Event): void {
     this.set(field, (event.target as HTMLInputElement).value);
+  }
+
+  /** A day term once it is a day, or emptied; text still being typed leaves the term as it was. */
+  protected setDay(field: 'trialEndsOn' | 'paidThrough', value: string): void {
+    if (value === '' || /^\d{4}-\d{2}-\d{2}$/.test(value)) this.set(field, value);
   }
 
   /** One term, from what an input holds or a Select chose. */

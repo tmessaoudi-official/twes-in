@@ -12,9 +12,12 @@
       <mat-label>{{ 'customers.statement.from' | translate }}</mat-label>
       <input
         matInput
-        type="date"
-        [value]="from() || (statement()?.from ?? '')"
-        (change)="onFrom($event)"
+        appDay
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        [ngModel]="from() || (statement()?.from ?? '')"
+        (ngModelChange)="onFrom($event)"
         data-testid="statement-from"
       />
     </mat-form-field>
@@ -22,9 +25,12 @@
       <mat-label>{{ 'customers.statement.to' | translate }}</mat-label>
       <input
         matInput
-        type="date"
-        [value]="to() || (statement()?.to ?? '')"
-        (change)="onTo($event)"
+        appDay
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        [ngModel]="to() || (statement()?.to ?? '')"
+        (ngModelChange)="onTo($event)"
         data-testid="statement-to"
       />
     </mat-form-field>

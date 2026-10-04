@@ -10,6 +10,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,12 +21,15 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { DayInput } from '../shared/form/day-input';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { todayIn } from '../shared/i18n/format';
 import { CreditDepositDialog } from './credit-deposit-dialog';
 import { creditDepositForm, creditDepositInput, creditDepositValues } from './customer-forms';
 import { CustomerStatementFacade } from './customer-statement-facade';
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** A decimal string with nothing in it: "0", "0.000", "-0.00". */
 const isZero = (amount: string): boolean => /^-?0*(\.0*)?$/.test(amount);
@@ -39,6 +43,8 @@ const isZero = (amount: string): boolean => /^-?0*(\.0*)?$/.test(amount);
 @Component({
   selector: 'app-customer-statement',
   imports: [
+    FormsModule,
+    DayInput,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
@@ -116,11 +122,12 @@ export class CustomerStatementView {
     }
   }
 
-  protected onFrom(event: Event): void {
-    this.from.set((event.target as HTMLInputElement).value);
+  /** A day once it is one (or nothing, to clear the limit); what is still being typed waits. */
+  protected onFrom(day: string): void {
+    if (day === '' || ISO_DAY.test(day)) this.from.set(day);
   }
 
-  protected onTo(event: Event): void {
-    this.to.set((event.target as HTMLInputElement).value);
+  protected onTo(day: string): void {
+    if (day === '' || ISO_DAY.test(day)) this.to.set(day);
   }
 }

@@ -333,9 +333,12 @@
                         }}</mat-label>
                         <input
                           matInput
-                          type="date"
-                          [value]="terms().trialEndsOn ?? ''"
-                          (input)="type('trialEndsOn', $event)"
+                          appDay
+                          type="text"
+                          inputmode="numeric"
+                          autocomplete="off"
+                          [ngModel]="terms().trialEndsOn ?? ''"
+                          (ngModelChange)="setDay('trialEndsOn', $event)"
                           data-testid="subscription-trial-ends-on"
                         />
                       </mat-form-field>
@@ -345,9 +348,12 @@
                         }}</mat-label>
                         <input
                           matInput
-                          type="date"
-                          [value]="terms().paidThrough ?? ''"
-                          (input)="type('paidThrough', $event)"
+                          appDay
+                          type="text"
+                          inputmode="numeric"
+                          autocomplete="off"
+                          [ngModel]="terms().paidThrough ?? ''"
+                          (ngModelChange)="setDay('paidThrough', $event)"
                           data-testid="subscription-paid-through"
                         />
                       </mat-form-field>

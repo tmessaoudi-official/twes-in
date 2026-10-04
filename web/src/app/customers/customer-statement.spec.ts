@@ -97,7 +97,12 @@ describe('CustomerStatementView', () => {
         }),
         {
           provide: FormatFacade,
-          useValue: { amount: (v: string) => v, day: (v: string) => v, locale: () => 'fr' },
+          useValue: {
+            amount: (v: string) => v,
+            day: (v: string) => v,
+            locale: () => 'fr',
+            dateFormat: () => 'auto',
+          },
         },
         {
           provide: AuthFacade,
@@ -158,7 +163,7 @@ describe('CustomerStatementView', () => {
     const from = el.querySelector<HTMLInputElement>('[data-testid="statement-from"]')!;
     expect(from.value).toBe('2026-01-01');
     from.value = '2026-02-01';
-    from.dispatchEvent(new Event('change'));
+    from.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -190,7 +195,7 @@ describe('CustomerStatementView', () => {
 
     const to = el.querySelector<HTMLInputElement>('[data-testid="statement-to"]')!;
     to.value = '2026-06-30';
-    to.dispatchEvent(new Event('change'));
+    to.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     await fixture.whenStable();
 
