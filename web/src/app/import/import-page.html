@@ -80,16 +80,15 @@
     <div class="flex flex-col gap-4">
       <h2 class="text-xl font-semibold">{{ 'import.file_title' | translate }}</h2>
 
-      <label class="flex flex-col gap-1 text-sm">
-        <span>{{ 'import.choose_file' | translate }}</span>
-        <input
-          type="file"
-          accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          (change)="chooseFile($event)"
-          [disabled]="busy()"
-          data-testid="import-file"
-        />
-      </label>
+      <app-file-drop
+        class="w-full max-w-md"
+        [label]="'import.choose_file' | translate"
+        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        [chosenName]="file()?.name ?? null"
+        [disabled]="busy()"
+        testId="import-file"
+        (picked)="chooseFile($event)"
+      />
 
       <mat-radio-group
         class="flex flex-col gap-1"

@@ -728,6 +728,14 @@
       "pink": "Rose",
       "slate": "Ardoise",
       "custom": "Couleur au format #rrggbb"
+    },
+    "file": {
+      "drop": "ou déposez-le ici",
+      "limits": "{{types}} · {{size}} au plus",
+      "refused": "Ce type de fichier n’est pas accepté ({{types}}).",
+      "too_large": "Ce fichier dépasse {{size}}.",
+      "mb": "{{count}} Mo",
+      "kb": "{{count}} Ko"
     }
   },
   "fiscal": {

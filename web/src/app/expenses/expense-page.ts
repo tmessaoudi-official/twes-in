@@ -47,6 +47,7 @@ import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
+import { FileDrop } from '../shared/form/file-drop';
 
 /**
  * One expense: a draft to fill in, revise, attach receipts to and record; a recorded one to pay. A new expense takes
@@ -55,6 +56,7 @@ import { RecordBar } from '../shared/form/record-bar';
 @Component({
   selector: 'app-expense-page',
   imports: [
+    FileDrop,
     MatButtonModule,
     MatCardModule,
     RouterLink,
@@ -406,14 +408,11 @@ export class ExpensePage {
     }
   }
 
-  protected async upload(event: Event): Promise<void> {
-    const control = event.target as HTMLInputElement;
-    const file = control.files?.item(0);
+  protected async upload(file: File): Promise<void> {
     const companyId = this.company()?.id;
     const id = this.id();
-    if (!file || !companyId || id === null) return;
+    if (!companyId || id === null) return;
     await this.facade.attach(companyId, id, file);
-    control.value = '';
   }
 
   protected async detach(attachment: ExpenseAttachment): Promise<void> {

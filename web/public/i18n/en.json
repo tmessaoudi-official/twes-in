@@ -728,6 +728,14 @@
       "pink": "Pink",
       "slate": "Slate",
       "custom": "Colour written as #rrggbb"
+    },
+    "file": {
+      "drop": "or drop it here",
+      "limits": "{{types}} · up to {{size}}",
+      "refused": "This type of file is not accepted ({{types}}).",
+      "too_large": "This file is over {{size}}.",
+      "mb": "{{count}} MB",
+      "kb": "{{count}} KB"
     }
   },
   "fiscal": {

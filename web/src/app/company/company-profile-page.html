@@ -45,19 +45,18 @@
             {{ 'company.profile.logo.hint' | translate }}
           </p>
           <div class="flex flex-wrap items-center gap-3">
-            <label class="flex flex-col gap-1 text-sm">
-              <span>{{
+            <app-file-drop
+              class="w-full max-w-sm"
+              [label]="
                 (logoUrl() ? 'company.profile.logo.replace' : 'company.profile.logo.add')
                   | translate
-              }}</span>
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                (change)="uploadLogo($event)"
-                [disabled]="busy()"
-                data-testid="profile-logo-input"
-              />
-            </label>
+              "
+              accept="image/png,image/jpeg,image/webp"
+              [maxBytes]="2097152"
+              [disabled]="busy()"
+              testId="profile-logo-input"
+              (picked)="uploadLogo($event)"
+            />
             @if (logoUrl()) {
               <button
                 mat-button

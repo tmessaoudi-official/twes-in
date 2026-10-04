@@ -235,16 +235,15 @@
         <div class="flex flex-wrap items-center justify-between gap-4">
           <h2 class="text-xl font-semibold">{{ 'expenses.attachments.title' | translate }}</h2>
           @if (mayWrite()) {
-            <label class="flex flex-col gap-1 text-sm">
-              <span>{{ 'expenses.attachments.add' | translate }}</span>
-              <input
-                type="file"
-                accept="application/pdf,image/png,image/jpeg,image/webp"
-                (change)="upload($event)"
-                [disabled]="busy()"
-                data-testid="expense-attach"
-              />
-            </label>
+            <app-file-drop
+              class="w-full max-w-sm"
+              [label]="'expenses.attachments.add' | translate"
+              accept="application/pdf,image/png,image/jpeg,image/webp"
+              [maxBytes]="10485760"
+              [disabled]="busy()"
+              testId="expense-attach"
+              (picked)="upload($event)"
+            />
           }
         </div>
         <p class="text-sm text-on-surface-variant">{{ 'expenses.attachments.hint' | translate }}</p>

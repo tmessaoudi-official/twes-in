@@ -122,6 +122,7 @@ export const ICONS = [
   'tune',
   'undo',
   'unfold_more',
+  'upload_file',
   'view_column',
   'visibility',
   'volunteer_activism',

@@ -26,11 +26,13 @@ import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
+import { FileDrop } from '../shared/form/file-drop';
 
 /** What the company's documents say about it, revised by whoever holds the settings permission. */
 @Component({
   selector: 'app-company-profile-page',
   imports: [
+    FileDrop,
     MatButtonModule,
     MatCardModule,
     TranslatePipe,
@@ -160,12 +162,9 @@ export class CompanyProfilePage implements OnInit {
   }
 
   /** From the file input: a refused picture leaves the logo as it was. */
-  protected async uploadLogo(event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+  protected async uploadLogo(file: File): Promise<void> {
     const companyId = this.company()?.id;
-    input.value = '';
-    if (!file || !companyId || this.busy()) return;
+    if (!companyId || this.busy()) return;
     if (await this.facade.uploadLogo(companyId, file))
       this.feedback.success('company.profile.logo.saved');
   }

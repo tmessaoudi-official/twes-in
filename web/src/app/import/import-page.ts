@@ -18,6 +18,7 @@ import { StatusBadge } from '../shared/ui/status-badge';
 import { ImportApi } from './import-api';
 import { ImportFacade } from './import-facade';
 import type { ImportMode, ImportRejection } from './import-types';
+import { FileDrop } from '../shared/form/file-drop';
 
 /**
  * One screen for every subject a module declares as importable (docs/SPEC.md § 8 row 59). It is driven entirely by
@@ -30,7 +31,7 @@ import type { ImportMode, ImportRejection } from './import-types';
  */
 @Component({
   selector: 'app-import-page',
-  imports: [TranslatePipe, MatButtonModule, MatIconModule, MatRadioModule, StatusBadge],
+  imports: [FileDrop, TranslatePipe, MatButtonModule, MatIconModule, MatRadioModule, StatusBadge],
   templateUrl: './import-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -91,9 +92,8 @@ export class ImportPage {
     return companyId === undefined ? '' : this.api.templateUrl(companyId, this.subject(), format);
   }
 
-  protected chooseFile(event: Event): void {
-    const control = event.target as HTMLInputElement;
-    this.file.set(control.files?.item(0) ?? null);
+  protected chooseFile(file: File): void {
+    this.file.set(file);
     this.previewed.set(false);
     this.facade.forget();
   }
