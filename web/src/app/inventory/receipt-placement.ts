@@ -55,6 +55,8 @@ export class ReceiptPlacement {
   readonly places = input.required<readonly SelectOption[]>();
   /** Where what is left goes, for the establishment. */
   readonly defaultPlace = input<string | null>(null);
+  /** How many decimals the product's unit keeps: a piece is whole, a kilogram has three. */
+  readonly decimals = input(3);
   /** A save was refused for what is unplaced: the line says so. */
   readonly refused = input(false);
   readonly partsChange = output<readonly Part[]>();
@@ -63,6 +65,7 @@ export class ReceiptPlacement {
     placement(
       this.received(),
       this.parts().map((part) => part.quantity),
+      this.decimals(),
     ),
   );
   protected readonly tone = computed(() => TONES[this.stand().state]);
@@ -96,6 +99,7 @@ export class ReceiptPlacement {
 
   protected rest(): void {
     const place = this.restTo();
-    if (place !== null) this.partsChange.emit(restToDefault(this.parts(), this.received(), place));
+    if (place !== null)
+      this.partsChange.emit(restToDefault(this.parts(), this.received(), place, this.decimals()));
   }
 }

@@ -159,6 +159,8 @@ export class StockPage implements OnInit {
   protected readonly received = signal('');
   /** A save was refused for what was left unplaced; the next change to the rows takes the line away. */
   protected readonly unplaced = signal(false);
+  /** The decimals the chosen product's unit keeps, which the rows are read to. */
+  protected readonly decimals = computed(() => this.product()?.unitDecimals ?? 3);
   protected readonly splitOffered = computed(
     () => this.operation() === 'receive' && this.product()?.tracking !== 'serial',
   );
@@ -489,12 +491,15 @@ export class StockPage implements OnInit {
     const stand = placement(
       this.received(),
       this.parts().map((part) => part.quantity),
+      this.decimals(),
     );
     if (stand.state !== 'done') {
       this.unplaced.set(true);
       return;
     }
-    if (await this.facade.receiveSplit(companyId, receiptInput(values, this.parts()))) {
+    if (
+      await this.facade.receiveSplit(companyId, receiptInput(values, this.parts(), this.decimals()))
+    ) {
       const form = this.form();
       if (form !== null) this.startNext(form);
       this.parts.update((parts) => parts.map((part) => ({ ...part, quantity: '' })));

@@ -106,6 +106,19 @@ describe('ReceiptPlacement', () => {
     expect(q('placement-status')!.textContent).toContain('Saisissez la quantité reçue');
   });
 
+  it('reads the rows to the decimals of the unit: ten pieces in halves is not placed', async () => {
+    fixture.componentRef.setInput('decimals', 0);
+    await show('10', [
+      { locationId: 'l1', quantity: '6.5' },
+      { locationId: 'l2', quantity: '3.5' },
+    ]);
+    expect(q('placement-status')!.textContent).toContain('Saisissez la quantité reçue');
+
+    fixture.componentRef.setInput('decimals', 1);
+    await settle();
+    expect(q('placement-status')!.textContent).toContain('Tout est placé');
+  });
+
   it('says why a save was refused only once it was', async () => {
     await show('5', [{ locationId: 'l1', quantity: '2' }]);
     expect(q('placement-refused')).toBeNull();

@@ -119,3 +119,27 @@ describe('the places of a receipt', () => {
     ).toEqual([{ locationId: 'l1', quantity: '60.5' }]);
   });
 });
+
+describe('a unit that keeps fewer decimals than the API stores', () => {
+  it('reads a quantity only to the decimals the unit keeps: a piece is whole', () => {
+    expect(unitsOf('6', 0)).toBe(6000n);
+    expect(unitsOf('6.5', 0)).toBeNull();
+    expect(unitsOf('6.5', 1)).toBe(6500n);
+    expect(unitsOf('6.25', 1)).toBeNull();
+    expect(unitsOf('6.250')).toBe(6250n);
+  });
+
+  it('calls 6.5 + 3.5 of ten pieces unreadable rather than done, since the API would refuse it', () => {
+    expect(placement('10', ['6.5', '3.5'], 0).state).toBe('invalid');
+    expect(placement('10', ['6.5', '3.5'], 1).state).toBe('done');
+    expect(placement('10.5', ['6', '4'], 0).state).toBe('invalid');
+  });
+
+  it('puts the rest on the default place in whole units, and sends only what the unit keeps', () => {
+    expect(restToDefault([{ locationId: 'l2', quantity: '4' }], '10', 'l1', 0)).toEqual([
+      { locationId: 'l2', quantity: '4' },
+      { locationId: 'l1', quantity: '6' },
+    ]);
+    expect(toReceiptParts([{ locationId: 'l1', quantity: '6.5' }], 0)).toEqual([]);
+  });
+});

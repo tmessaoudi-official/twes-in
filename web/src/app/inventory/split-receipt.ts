@@ -5,11 +5,15 @@
  * here is whole thousandths: `0.1 + 0.2` as floats is not `0.3`, and « il reste N à placer » must reach zero.
  */
 const SCALE = 3;
-const QUANTITY = /^\d+(\.\d{1,3})?$/;
 
-/** A quantity in thousandths, or null where the text is not one: no sign, a point and not a comma, three decimals. */
-export function unitsOf(quantity: string): bigint | null {
-  if (!QUANTITY.test(quantity)) return null;
+/**
+ * A quantity in thousandths, or null where the text is not one: no sign, a point and not a comma, and no more decimals
+ * than the unit keeps (`decimals`, the product's `unitDecimals`; the API stores three, but it refuses a piece in halves).
+ */
+export function unitsOf(quantity: string, decimals = SCALE): bigint | null {
+  const places = Math.min(Math.max(decimals, 0), SCALE);
+  const shape = places === 0 ? /^\d+$/ : new RegExp(`^\\d+(\\.\\d{1,${places}})?$`);
+  if (!shape.test(quantity)) return null;
   const [whole, fraction = ''] = quantity.split('.');
   return BigInt(whole + fraction.padEnd(SCALE, '0'));
 }
@@ -38,16 +42,16 @@ export interface Placement {
  * that is not a quantity, no quantity received, or a received quantity of zero makes it `invalid`, so the form refuses
  * to save and says nothing false about what is left.
  */
-export function placement(received: string, parts: readonly string[]): Placement {
+export function placement(received: string, parts: readonly string[], decimals = SCALE): Placement {
   let placed = 0n;
   let readable = true;
   for (const part of parts) {
     if (part === '') continue;
-    const units = unitsOf(part);
+    const units = unitsOf(part, decimals);
     if (units === null) readable = false;
     else placed += units;
   }
-  const total = unitsOf(received);
+  const total = unitsOf(received, decimals);
   if (!readable || total === null || total === 0n) {
     return { state: 'invalid', left: '0', placed: quantityOf(placed) };
   }
@@ -105,23 +109,28 @@ export function restToDefault(
   parts: readonly Part[],
   received: string,
   defaultLocationId: string,
+  decimals = SCALE,
 ): readonly Part[] {
   const stand = placement(
     received,
     parts.map((part) => part.quantity),
+    decimals,
   );
   const rest = unitsOf(stand.left);
   if (stand.state !== 'short' || rest === null) return parts;
   const at = parts.findIndex((part) => part.locationId === defaultLocationId);
   if (at === -1) return [...parts, { locationId: defaultLocationId, quantity: stand.left }];
-  const had = unitsOf(parts[at].quantity) ?? 0n;
+  const had = unitsOf(parts[at].quantity, decimals) ?? 0n;
   return setPlaceQuantity(parts, at, quantityOf(had + rest));
 }
 
 /** What the API is sent: the rows given a quantity above zero, each written the way it reads it. */
-export function toReceiptParts(parts: readonly Part[]): { locationId: string; quantity: string }[] {
+export function toReceiptParts(
+  parts: readonly Part[],
+  decimals = SCALE,
+): { locationId: string; quantity: string }[] {
   return parts.flatMap((part) => {
-    const units = unitsOf(part.quantity);
+    const units = unitsOf(part.quantity, decimals);
     return units === null || units === 0n
       ? []
       : [{ locationId: part.locationId, quantity: quantityOf(units) }];

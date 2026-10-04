@@ -705,11 +705,12 @@ export function movementInput(operation: StockOperation, values: FormValues): St
 export function receiptInput(
   values: FormValues,
   parts: readonly { readonly locationId: string; readonly quantity: string }[],
+  decimals = 3,
 ): StockReceiptInput {
   const basis = COST_BASES.find((candidate) => candidate === values['applyCost']);
   return {
     productId: text(values['productId']),
-    parts: toReceiptParts(parts),
+    parts: toReceiptParts(parts, decimals),
     ...(text(values['lotCode']) === '' ? {} : { lotCode: text(values['lotCode']) }),
     ...(text(values['lotExpiresOn']) === '' ? {} : { lotExpiresOn: text(values['lotExpiresOn']) }),
     ...(text(values['unitCost']) === '' ? {} : { unitCost: text(values['unitCost']) }),
