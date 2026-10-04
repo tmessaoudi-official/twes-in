@@ -49,7 +49,9 @@ const HEX = /^#[0-9a-f]{6}$/;
           [disabled]="disabled()"
           (click)="choose(preset.hex)"
           [attr.data-testid]="testId() + '-swatch-' + preset.id"
-        ></button>
+        >
+          <span class="sr-only">{{ 'form.colour.' + preset.id | translate }}</span>
+        </button>
       }
     </div>
     <div class="flex items-center gap-2">
