@@ -46,6 +46,10 @@ const received: StockMovementRow = {
   reason: null,
   note: null,
   recordedBy: 'u1',
+  vendorId: null,
+  vendorName: null,
+  supplierReference: null,
+  receivedOn: null,
   at: '2026-09-15T09:00:00+00:00',
 };
 
@@ -174,6 +178,47 @@ describe('InventoryApi', () => {
       lastCost: null,
       lastAt: null,
     });
+  });
+
+  it('reads the document a receipt came with, and asks the vendor picker for the few vendors a person means', async () => {
+    const recorded = api.record('c1', {
+      operation: 'receive',
+      productId: 'p1',
+      locationId: 'l1',
+      quantity: '10',
+      vendorId: 'v1',
+      supplierReference: 'BL-2210',
+      receivedOn: '2026-10-02',
+    });
+    const post = http.expectOne('/api/companies/c1/stock-movements');
+    expect(post.request.body).toMatchObject({
+      vendorId: 'v1',
+      supplierReference: 'BL-2210',
+      receivedOn: '2026-10-02',
+    });
+    post.flush({
+      ...received,
+      vendorId: 'v1',
+      vendorName: 'Quincaillerie Ben Salah',
+      supplierReference: 'BL-2210',
+      receivedOn: '2026-10-02',
+    });
+    expect(await recorded).toMatchObject({
+      vendorId: 'v1',
+      vendorName: 'Quincaillerie Ben Salah',
+      supplierReference: 'BL-2210',
+      receivedOn: '2026-10-02',
+    });
+
+    const searched = api.pickVendors('c1', { words: ' ben ' });
+    const search = http.expectOne(
+      (request) => request.url === '/api/companies/c1/stock-options/vendors',
+    );
+    expect(search.request.params.get('q')).toBe('ben');
+    search.flush([{ id: 'v1', number: 'F-001', name: 'Quincaillerie Ben Salah' }]);
+    expect(await searched).toEqual([
+      { id: 'v1', number: 'F-001', name: 'Quincaillerie Ben Salah' },
+    ]);
   });
 
   it('asks the picker for the few stocked products a person means, and by id for a named one', async () => {

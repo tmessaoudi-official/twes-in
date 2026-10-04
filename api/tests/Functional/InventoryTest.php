@@ -211,6 +211,37 @@ final class InventoryTest extends ApiTestCase
         self::assertStringContainsString('vendorId', (string) $this->client->getResponse()->getContent());
     }
 
+    public function testTheReceiveFormsVendorPickerFindsTheCompanysVendorsForAWriterWhileVendorsIsOn(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $sotumag = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), new \DateTimeImmutable());
+        $other = Vendor::create($this->company, 'FRN-0002', new VendorProfile('Quincaillerie Ben Salah'), new \DateTimeImmutable());
+        $this->em()->persist($sotumag);
+        $this->em()->persist($other);
+        $this->em()->flush();
+
+        $this->getJson($this->path('stock-options/vendors').'?q=sotum');
+        self::assertResponseIsSuccessful();
+        self::assertSame([[$sotumag->getId()->toRfc4122(), 'FRN-0001', 'Sotumag']], array_map(static fn (array $row): array => [$row['id'], $row['number'], $row['name']], $this->jsonList()));
+
+        $this->getJson($this->path('stock-options/vendors').'?ids[]='.$other->getId()->toRfc4122());
+        self::assertSame(['Quincaillerie Ben Salah'], array_column($this->jsonList(), 'name'), 'the vendor a receipt names is read back by id');
+
+        $this->em()->persist(ModuleState::of($this->company(), 'vendors', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->getJson($this->path('stock-options/vendors'));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'no vendor book, nothing to pick from');
+    }
+
+    public function testTheVendorPickerIsForSomebodyWhoMayReceiveNotJustReadStock(): void
+    {
+        $this->signedIn(['stock.read']);
+
+        $this->getJson($this->path('stock-options/vendors'));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testASplitReceiptNeedsTheStockWritePermission(): void
     {
         $this->signedIn(['stock.read']);

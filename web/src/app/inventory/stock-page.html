@@ -52,7 +52,10 @@
             <app-descriptor-form
               [descriptor]="descriptor"
               [form]="form"
-              [pickers]="{ productId: { search: searchProducts, value: productShown() } }"
+              [pickers]="{
+                productId: { search: searchProducts, value: productShown() },
+                vendorId: { search: searchVendors, value: vendorShown() },
+              }"
               testId="stock-movement-form"
               (submitted)="save($event)"
             >

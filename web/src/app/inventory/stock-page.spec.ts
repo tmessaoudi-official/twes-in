@@ -161,6 +161,7 @@ describe('StockPage', () => {
     pickProducts: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
     ),
+    pickVendors: vi.fn(async () => [{ id: 'v1', number: 'F-001', name: 'Ben Salah' }]),
     receiptCost: vi.fn(),
     record: vi.fn(),
     receiveSplit: vi.fn(),
@@ -171,6 +172,7 @@ describe('StockPage', () => {
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
+    hasModule: vi.fn(),
   };
   let fixture: ComponentFixture<StockPage>;
 
@@ -215,6 +217,7 @@ describe('StockPage', () => {
     facade.releaseLot.mockReset().mockResolvedValue(true);
     scans.named.mockReset().mockResolvedValue(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    auth.hasModule.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [StockPage],
       providers: [
@@ -430,6 +433,31 @@ describe('StockPage', () => {
         locationId: 'l2',
         quantity: '10',
       });
+    });
+  });
+
+  describe('the document a receipt came with', () => {
+    it('sends the vendor picked and the supplier reference typed, and offers no vendor where vendors are off', async () => {
+      q('stock-receive')!.click();
+      await settle();
+      await pick('field-productId', 'ART-1 · Portable');
+      await pick('field-vendorId', 'F-001 · Ben Salah');
+      type('field-supplierReference', 'BL-2210');
+      type('field-quantity', '10');
+      q('stock-movement-save')!.click();
+      await settle();
+      expect(facade.record).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({ vendorId: 'v1', supplierReference: 'BL-2210' }),
+      );
+      q('stock-movement-cancel')!.click();
+      await settle();
+
+      auth.hasModule.mockReturnValue(false);
+      q('stock-receive')!.click();
+      await settle();
+      expect(q('field-vendorId')).toBeNull();
+      expect(q('field-supplierReference')).not.toBeNull();
     });
   });
 

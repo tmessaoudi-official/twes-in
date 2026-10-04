@@ -81,6 +81,10 @@ const delivered: StockMovementRow = {
   reason: null,
   note: null,
   recordedBy: null,
+  vendorId: null,
+  vendorName: null,
+  supplierReference: null,
+  receivedOn: null,
   at: '2026-09-15T09:00:00+00:00',
 };
 

@@ -50,6 +50,7 @@ import type {
   ReceiptCostView,
   StockOperation,
   StockProductOption,
+  StockVendorOption,
   StockSearch,
 } from './inventory-types';
 import { Feedback } from '../shared/feedback/feedback';
@@ -146,6 +147,7 @@ export class StockPage implements OnInit {
           this.auth.hasPermission('product.cost.read'),
           this.costMode(),
           this.split(),
+          this.auth.hasModule('vendors'),
         );
   });
 
@@ -217,6 +219,22 @@ export class StockPage implements OnInit {
     }));
   };
 
+  /** Which vendor the form names, as the picker answered it; the form carries the id, this is what the box reads. */
+  private readonly vendor = signal<StockVendorOption | null>(null);
+  protected readonly vendorShown = computed(() => {
+    const vendor = this.vendor();
+    return vendor === null ? null : { id: vendor.id, code: vendor.number, name: vendor.name };
+  });
+  /** Every vendor the picker has answered, so what the form names can be read back from its id. */
+  private readonly knownVendors = new Map<string, StockVendorOption>();
+  protected readonly searchVendors = async (words: string): Promise<readonly PickOption[]> => {
+    const companyId = this.company()?.id;
+    if (!companyId) return [];
+    const found = await this.facade.pickVendors(companyId, { words });
+    for (const vendor of found) this.knownVendors.set(vendor.id, vendor);
+    return found.map((vendor) => ({ id: vendor.id, code: vendor.number, name: vendor.name }));
+  };
+
   /**
    * The form of the movement being recorded. Options or locations arriving while it is open rebuild it over what was
    * typed; switching between a receipt and a count starts afresh.
@@ -264,6 +282,17 @@ export class StockPage implements OnInit {
         this.product.set(product);
         this.proposeHome(form, product);
         if (product?.tracking === 'serial') this.stopSplit();
+      });
+      onCleanup(() => subscription?.unsubscribe());
+    });
+    // The vendor's box shows what the form names, as the product's does.
+    effect((onCleanup) => {
+      const form = this.form();
+      if (form === null) return;
+      const subscription = form.get('vendorId')?.valueChanges.subscribe((vendorId) => {
+        this.vendor.set(
+          typeof vendorId === 'string' ? (this.knownVendors.get(vendorId) ?? null) : null,
+        );
       });
       onCleanup(() => subscription?.unsubscribe());
     });

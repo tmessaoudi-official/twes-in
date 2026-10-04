@@ -161,6 +161,11 @@ export interface StockMovementRow {
   reason: StockLossReason | null;
   note: string | null;
   recordedBy: string | null;
+  /** The document a receipt came with (docs/SPEC.md row 190): who supplied it, their own reference, the day it arrived. */
+  vendorId: string | null;
+  vendorName: string | null;
+  supplierReference: string | null;
+  receivedOn: string | null;
   at: string;
 }
 
@@ -200,6 +205,10 @@ export interface StockMovementInput {
   unitCost?: string;
   /** What a receipt does to the product's cost, where the company lets the person choose; never without a cost typed. */
   applyCost?: CostBasis;
+  /** The document a receipt came with, all optional; a receipt only. */
+  vendorId?: string;
+  supplierReference?: string;
+  receivedOn?: string;
   /** Why the goods were written off, and what was said about it; on a loss only. */
   reason?: StockLossReason;
   note?: string;
@@ -217,6 +226,9 @@ export interface StockReceiptInput {
   lotExpiresOn?: string;
   unitCost?: string;
   applyCost?: CostBasis;
+  vendorId?: string;
+  supplierReference?: string;
+  receivedOn?: string;
 }
 
 /** What a receipt does to a product's cost: the company decides, or leaves the choice to the person. */
@@ -235,6 +247,13 @@ export interface ReceiptCostView {
   /** The latest cost somebody typed on a receipt, and when. */
   lastCost: string | null;
   lastAt: string | null;
+}
+
+/** One vendor as the receive form's picker answers it. */
+export interface StockVendorOption {
+  id: string;
+  number: string;
+  name: string;
 }
 
 /** One stocked product as the picker answers it. */

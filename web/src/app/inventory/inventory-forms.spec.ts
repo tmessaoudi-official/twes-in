@@ -105,6 +105,10 @@ function movement(
     reason: null,
     note: null,
     recordedBy: null,
+    vendorId: null,
+    vendorName: null,
+    supplierReference: null,
+    receivedOn: null,
     at: '2026-09-15T09:00:00+00:00',
   };
 }
@@ -218,6 +222,9 @@ describe('the list rows', () => {
       'kind',
       'quantity',
       'source',
+      'vendor',
+      'supplierReference',
+      'receivedOn',
     ]);
     expect(LOCATIONS_LIST.columns.map((column) => column.id)).toEqual([
       'path',
@@ -332,6 +339,9 @@ describe('the movement form', () => {
       lotExpiresOn: '',
       unitCost: '',
       applyCost: '',
+      vendorId: '',
+      supplierReference: '',
+      receivedOn: '',
       reason: '',
       note: '',
     });
@@ -344,6 +354,9 @@ describe('the movement form', () => {
       lotExpiresOn: '',
       unitCost: '',
       applyCost: '',
+      vendorId: '',
+      supplierReference: '',
+      receivedOn: '',
       reason: '',
       note: '',
     });
@@ -368,6 +381,8 @@ describe('the movement form', () => {
       ['lotCode', 'text', true],
       ['lotExpiresOn', 'date', false],
       ['quantity', 'decimal', true],
+      ['supplierReference', 'text', false],
+      ['receivedOn', 'date', false],
     ]);
     expect(shape(movementForm('count', [site], 'lot')).map(([id]) => id)).toContain('lotExpiresOn');
     // A move takes goods of a lot that exists; its date is the lot's own, never said again.
@@ -624,5 +639,63 @@ describe('a receipt shared over several places', () => {
         { locationId: 'l1', quantity: '4' },
       ],
     });
+  });
+  it('asks a receipt its supplier reference and arrival day, and its vendor only where vendors are kept', () => {
+    const ids = (operation: 'receive' | 'count', vendors: boolean) =>
+      movementForm(operation, [], 'none', false, null, false, vendors).sections[0].fields.map(
+        (field) => field.id,
+      );
+    expect(ids('receive', true)).toEqual(
+      expect.arrayContaining(['vendorId', 'supplierReference', 'receivedOn']),
+    );
+    expect(ids('receive', false)).toEqual(
+      expect.arrayContaining(['supplierReference', 'receivedOn']),
+    );
+    expect(ids('receive', false)).not.toContain('vendorId');
+    expect(ids('count', true)).not.toEqual(
+      expect.arrayContaining(['vendorId', 'supplierReference', 'receivedOn']),
+    );
+    expect(
+      movementForm('receive', [], 'none', false, null, false, true).sections[0].fields.find(
+        (field) => field.id === 'vendorId',
+      )?.kind,
+    ).toBe('pick');
+  });
+
+  it('sends the document of a receipt trimmed, and nothing of it when empty or on another operation', () => {
+    const values = {
+      ...movementValues([]),
+      productId: 'p1',
+      locationId: 'l1',
+      quantity: '2',
+      vendorId: 'v1',
+      supplierReference: ' BL-2210 ',
+      receivedOn: '2026-10-02',
+    };
+    expect(movementInput('receive', values)).toMatchObject({
+      vendorId: 'v1',
+      supplierReference: 'BL-2210',
+      receivedOn: '2026-10-02',
+    });
+    const none = movementInput('receive', movementValues([]));
+    expect(none).not.toHaveProperty('vendorId');
+    expect(none).not.toHaveProperty('supplierReference');
+    expect(none).not.toHaveProperty('receivedOn');
+    expect(movementInput('count', values)).not.toHaveProperty('supplierReference');
+    expect(receiptInput(values, [{ locationId: 'l2', quantity: '6' }])).toMatchObject({
+      vendorId: 'v1',
+      supplierReference: 'BL-2210',
+      receivedOn: '2026-10-02',
+    });
+    expect(
+      receiptInput({ productId: 'p1' }, [{ locationId: 'l2', quantity: '6' }]),
+    ).not.toHaveProperty('vendorId');
+  });
+
+  it('keeps the vendor, reference and day in the movements list, hidden until asked for', () => {
+    const columns = MOVEMENTS_LIST.columns;
+    for (const id of ['vendor', 'supplierReference', 'receivedOn']) {
+      expect(columns.find((column) => column.id === id)?.defaultHidden).toBe(true);
+    }
   });
 });

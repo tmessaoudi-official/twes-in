@@ -292,6 +292,26 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
       sortable: true,
       width: 180,
     },
+    {
+      id: 'vendor',
+      label: `${STOCK_FIELDS}.vendor`,
+      value: (row) => row.vendorName ?? '',
+      defaultHidden: true,
+    },
+    {
+      id: 'supplierReference',
+      label: `${STOCK_FIELDS}.supplierReference`,
+      value: (row) => row.supplierReference ?? '',
+      defaultHidden: true,
+      width: 160,
+    },
+    {
+      id: 'receivedOn',
+      label: `${STOCK_FIELDS}.receivedOn`,
+      value: (row) => row.receivedOn ?? '',
+      defaultHidden: true,
+      width: 140,
+    },
   ],
   filters: [
     {
@@ -492,6 +512,7 @@ export function movementForm(
   withCost = false,
   costMode: CostOnReceive | null = null,
   split = false,
+  withVendor = false,
 ): FormDescriptor {
   return {
     id: `stock-${operation}`,
@@ -606,6 +627,37 @@ export function movementForm(
                 },
               ]
             : []),
+          // What the delivery came with, asked of a receipt only: the vendor where vendors are kept, the supplier's own
+          // reference and the day it arrived, none of them required.
+          ...(operation === 'receive'
+            ? [
+                ...(withVendor
+                  ? [
+                      {
+                        id: 'vendorId',
+                        label: `${STOCK_FIELDS}.vendor`,
+                        kind: 'pick' as const,
+                        span: 2 as const,
+                        noneLabel: 'inventory.movement.no_vendor',
+                        noneFoundLabel: 'inventory.movement.no_vendor_found',
+                        hint: 'inventory.movement.vendor_hint',
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'supplierReference',
+                  label: `${STOCK_FIELDS}.supplierReference`,
+                  kind: 'text' as const,
+                  maxLength: 60,
+                  hint: 'inventory.movement.supplier_reference_hint',
+                },
+                {
+                  id: 'receivedOn',
+                  label: `${STOCK_FIELDS}.receivedOn`,
+                  kind: 'date' as const,
+                },
+              ]
+            : []),
         ],
       },
     ],
@@ -630,6 +682,9 @@ export function movementValues(locations: readonly StockLocationRow[]): FormValu
     lotExpiresOn: '',
     unitCost: '',
     applyCost: '',
+    vendorId: '',
+    supplierReference: '',
+    receivedOn: '',
     reason: '',
     note: '',
   };
@@ -684,6 +739,7 @@ export function movementInput(operation: StockOperation, values: FormValues): St
     ...(operation === 'receive' && text(values['unitCost']) !== '' && basis !== undefined
       ? { applyCost: basis }
       : {}),
+    ...(operation === 'receive' ? documentOf(values) : {}),
     ...(operation === 'loss'
       ? {
           reason: STOCK_LOSS_REASONS.find((reason) => reason === values['reason']) ?? undefined,
@@ -715,6 +771,20 @@ export function receiptInput(
     ...(text(values['lotExpiresOn']) === '' ? {} : { lotExpiresOn: text(values['lotExpiresOn']) }),
     ...(text(values['unitCost']) === '' ? {} : { unitCost: text(values['unitCost']) }),
     ...(text(values['unitCost']) !== '' && basis !== undefined ? { applyCost: basis } : {}),
+    ...documentOf(values),
+  };
+}
+
+/** The vendor, reference and arrival day a person typed on a receipt; what was left empty is not sent. */
+function documentOf(
+  values: FormValues,
+): Pick<StockMovementInput, 'vendorId' | 'supplierReference' | 'receivedOn'> {
+  return {
+    ...(text(values['vendorId']) === '' ? {} : { vendorId: text(values['vendorId']) }),
+    ...(text(values['supplierReference']) === ''
+      ? {}
+      : { supplierReference: text(values['supplierReference']) }),
+    ...(text(values['receivedOn']) === '' ? {} : { receivedOn: text(values['receivedOn']) }),
   };
 }
 

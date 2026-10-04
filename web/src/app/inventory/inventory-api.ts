@@ -23,6 +23,7 @@ import type {
   StockStructureStockStructureRead,
   StockStructureStockStructureWriteValidationStockStructureWrite as StockStructureStockStructureWrite,
   StockProductPickStockProductPickRead,
+  StockVendorPickStockVendorPickRead,
   StockReceiptStockReceiptReadValidationStockReceiptWrite as StockReceiptStockReceiptRead,
   StockReceiptStockReceiptWriteValidationStockReceiptWrite as StockReceiptStockReceiptWrite,
   ReceiptCostReceiptCostRead,
@@ -54,6 +55,7 @@ import {
   API_DECIMALS,
   type StockOptions,
   type StockProductOption,
+  type StockVendorOption,
   type ReceiptCostView,
   type StockMovementSearch,
   type StockSearch,
@@ -102,6 +104,26 @@ export class InventoryApi {
         unitDecimals: product.unitDecimals,
         homeLocationId: product.homeLocationId ?? null,
         tracking: product.tracking ?? 'none',
+      }));
+    });
+  }
+
+  /**
+   * The few vendors a person means, or — given ids — exactly the ones a movement names. A person without the right to
+   * receive stock is answered 404 and reads as none; the book is never read whole.
+   */
+  async pickVendors(companyId: string, asked: PickAsked): Promise<StockVendorOption[]> {
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<StockVendorPickStockVendorPickRead[]>(
+          `${path(companyId, 'stock-options')}/vendors`,
+          { params: pickParams(asked) },
+        ),
+      );
+      return rows.map((vendor) => ({
+        id: vendor.id ?? '',
+        number: vendor.number,
+        name: vendor.name,
       }));
     });
   }
@@ -687,6 +709,10 @@ function toMovement(
     reason: STOCK_LOSS_REASONS.find((reason) => reason === raw.reason) ?? null,
     note: raw.note ?? null,
     recordedBy: raw.recordedBy ?? null,
+    vendorId: raw.vendorId ?? null,
+    vendorName: raw.vendorName ?? null,
+    supplierReference: raw.supplierReference ?? null,
+    receivedOn: raw.receivedOn ?? null,
     at: raw.at ?? '',
   };
 }

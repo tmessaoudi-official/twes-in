@@ -18,6 +18,7 @@ import type {
   StockMovementSearch,
   StockOptions,
   StockProductOption,
+  StockVendorOption,
   StockReceiptInput,
   ReceiptCostView,
   StockRepeatInput,
@@ -95,6 +96,16 @@ export class InventoryFacade {
     // A picker never marks the screen busy, because a person is typing while it runs.
     try {
       return await this.api.pickProducts(companyId, asked);
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return [];
+    }
+  }
+
+  /** The few vendors a person means while typing, by id the ones a movement names; never marks the screen busy. */
+  async pickVendors(companyId: string, asked: PickAsked): Promise<StockVendorOption[]> {
+    try {
+      return await this.api.pickVendors(companyId, asked);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
       return [];
