@@ -133,6 +133,7 @@ export function fieldError(control: AbstractControl, field: FormField): FieldErr
   if (!errors) return null;
   if (errors['required']) return { key: 'form.errors.required' };
   if (errors['email']) return { key: 'form.errors.email' };
+  if (errors['date']) return { key: 'form.errors.date' };
   if (errors['option']) return { key: 'form.errors.option' };
   if (errors['pattern'])
     return field.hint

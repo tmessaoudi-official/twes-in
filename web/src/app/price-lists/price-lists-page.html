@@ -71,14 +71,27 @@
               <mat-label>{{ 'price_lists.fields.valid_from' | translate }}</mat-label>
               <input
                 matInput
-                type="date"
+                appDay
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
                 formControlName="validFrom"
                 data-testid="price-list-from"
               />
+              <mat-error>{{ 'form.errors.date' | translate }}</mat-error>
             </mat-form-field>
             <mat-form-field subscriptSizing="dynamic">
               <mat-label>{{ 'price_lists.fields.valid_to' | translate }}</mat-label>
-              <input matInput type="date" formControlName="validTo" data-testid="price-list-to" />
+              <input
+                matInput
+                appDay
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                formControlName="validTo"
+                data-testid="price-list-to"
+              />
+              <mat-error>{{ 'form.errors.date' | translate }}</mat-error>
             </mat-form-field>
             <mat-slide-toggle formControlName="isActive" data-testid="price-list-active">{{
               'price_lists.fields.active' | translate

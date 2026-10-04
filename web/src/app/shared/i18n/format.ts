@@ -142,6 +142,48 @@ export function formatDay(value: string, locale: string, style: DateFormat = 'au
   }).format(date);
 }
 
+type DayOrder = 'dmy' | 'mdy' | 'ymd';
+
+/** The order a style writes a day in; « auto » is the locale's own, which the platform's formatter tells. */
+function dayOrder(locale: string, style: DateFormat): DayOrder {
+  if (style === 'dmy-dots') return 'dmy';
+  if (style !== 'auto') return style;
+  const letters = new Intl.DateTimeFormat(locale, { timeZone: 'UTC' })
+    .formatToParts(new Date(Date.UTC(2026, 2, 4)))
+    .flatMap((part) =>
+      part.type === 'day'
+        ? ['d']
+        : part.type === 'month'
+          ? ['m']
+          : part.type === 'year'
+            ? ['y']
+            : [],
+    )
+    .join('');
+  return letters === 'mdy' || letters === 'ymd' ? letters : 'dmy';
+}
+
+/**
+ * A day a person typed, as the API writes it ("2026-09-05"), or null where it is not one. The order is the chosen
+ * format's (the locale's for « auto »); any separator is taken, a day or month may lack its zero, the year has four
+ * digits, and a day that starts with a four-digit year is read as year-first whatever the style, so a pasted ISO day
+ * is never taken for another. An impossible date is refused, never rolled over into the next month.
+ */
+export function parseDay(text: string, locale: string, style: DateFormat = 'auto'): string | null {
+  const parts = text.trim().split(/[\s/.-]+/);
+  if (parts.length !== 3 || parts.some((part) => !/^\d{1,4}$/.test(part))) return null;
+  const order = parts[0]!.length === 4 ? 'ymd' : dayOrder(locale, style);
+  const byLetter: Record<string, string> = {};
+  for (const [index, letter] of [...order].entries()) byLetter[letter] = parts[index]!;
+  if (byLetter['y']!.length !== 4) return null;
+  const [year, month, day] = [Number(byLetter['y']), Number(byLetter['m']), Number(byLetter['d'])];
+  const date = new Date(Date.UTC(year, month - 1, day));
+  // A month or day past its end rolls into the next year or month, so the year and day comparisons refuse both.
+  if (date.getUTCFullYear() !== year || date.getUTCDate() !== day) return null;
+  const two = (value: number): string => String(value).padStart(2, '0');
+  return `${String(year).padStart(4, '0')}-${two(month)}-${two(day)}`;
+}
+
 /** A calendar day written out in full, "mercredi 16 septembre 2026" in French; what is not a day shows as it came. */
 export function formatLongDay(value: string, locale: string): string {
   return formatDayParts(value, locale, {

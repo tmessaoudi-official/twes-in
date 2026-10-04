@@ -24,6 +24,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Select, type SelectOption } from '../shared/form/select';
 import { DecimalInput } from '../shared/form/decimal-input';
+import { DayInput } from '../shared/form/day-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { Feedback } from '../shared/feedback/feedback';
@@ -81,6 +82,7 @@ function itemGroup(item: PriceListItem | null): ItemGroup {
     DataList,
     DataListCell,
     DecimalInput,
+    DayInput,
     PickField,
     StatusBadge,
   ],
@@ -275,6 +277,10 @@ export class PriceListsPage implements OnInit {
     const companyId = this.company()?.id;
     const editing = this.editing();
     if (!companyId || editing === null || this.busy()) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
     const value = this.form.getRawValue();
     const scope = this.scope();
     const input: PriceListInput = {

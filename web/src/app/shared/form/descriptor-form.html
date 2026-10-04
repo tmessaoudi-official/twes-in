@@ -176,6 +176,19 @@
                           [attr.data-testid]="'field-' + field.id"
                         />
                       }
+                      @case ('date') {
+                        <input
+                          matInput
+                          appDay
+                          [id]="controlId(field)"
+                          type="text"
+                          inputmode="numeric"
+                          autocomplete="off"
+                          [formControlName]="field.id"
+                          [required]="field.required ?? false"
+                          [attr.data-testid]="'field-' + field.id"
+                        />
+                      }
                       @case ('colour') {
                         <input
                           matInput

@@ -12,6 +12,7 @@ import {
   formatYearMonth,
   formatLocale,
   formatMoment,
+  parseDay,
   todayIn,
 } from './format';
 
@@ -127,6 +128,47 @@ describe('formatDay', () => {
   it('shows what is not a day as it came', () => {
     expect(formatDay('soon', 'fr')).toBe('soon');
     expect(formatDay('2026-13-40', 'fr')).toBe('2026-13-40');
+  });
+});
+
+describe('parseDay', () => {
+  it('reads a typed day in the order the locale writes it, day-first in French and month-first in English', () => {
+    expect(parseDay('05/09/2026', 'fr-TN')).toBe('2026-09-05');
+    expect(parseDay('09/05/2026', 'en')).toBe('2026-09-05');
+    expect(parseDay('2026/09/05', 'ja')).toBe('2026-09-05');
+  });
+
+  it('reads a day in the order a chosen format writes it, whatever the locale', () => {
+    expect(parseDay('05/09/2026', 'en', 'dmy')).toBe('2026-09-05');
+    expect(parseDay('09/05/2026', 'fr', 'mdy')).toBe('2026-09-05');
+    expect(parseDay('05.09.2026', 'en', 'dmy-dots')).toBe('2026-09-05');
+    expect(parseDay('2026-09-05', 'fr', 'ymd')).toBe('2026-09-05');
+  });
+
+  it('takes any separator and a day or month without its zero, and an ISO day in whatever style', () => {
+    expect(parseDay('5-9-2026', 'fr')).toBe('2026-09-05');
+    expect(parseDay(' 5 9 2026 ', 'fr')).toBe('2026-09-05');
+    expect(parseDay('2026-09-05', 'fr', 'dmy')).toBe('2026-09-05');
+  });
+
+  it('refuses what is not a day: an impossible date, a two-digit year, words, nothing', () => {
+    expect(parseDay('31/02/2026', 'fr')).toBeNull();
+    expect(parseDay('05/09/26', 'fr')).toBeNull();
+    expect(parseDay('05/09', 'fr')).toBeNull();
+    expect(parseDay('demain', 'fr')).toBeNull();
+    expect(parseDay('', 'fr')).toBeNull();
+    expect(parseDay('0/0/2026', 'fr')).toBeNull();
+    expect(parseDay('05/13/2026', 'fr')).toBeNull();
+    expect(parseDay('13/12/2026', 'en')).toBeNull();
+    expect(parseDay('30/02/2024', 'fr')).toBeNull();
+    expect(parseDay('29/02/2024', 'fr')).toBe('2024-02-29');
+  });
+
+  it('round-trips with formatDay in every style', () => {
+    for (const style of ['auto', 'dmy', 'mdy', 'ymd', 'dmy-dots'] as const) {
+      expect(parseDay(formatDay('2026-12-31', 'fr', style), 'fr', style)).toBe('2026-12-31');
+      expect(parseDay(formatDay('2026-03-04', 'en', style), 'en', style)).toBe('2026-03-04');
+    }
   });
 });
 

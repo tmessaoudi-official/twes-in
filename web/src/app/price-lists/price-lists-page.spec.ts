@@ -198,6 +198,34 @@ describe('PriceListsPage', () => {
     expect(query('price-list-form')).toBeNull();
   });
 
+  it('takes the validity days as typed in the company format, sends them as ISO, and refuses what is not a day', async () => {
+    const { query, settle } = await render();
+
+    query<HTMLButtonElement>('price-list-add')!.click();
+    await settle();
+    const name = query<HTMLInputElement>('price-list-name')!;
+    name.value = 'Soldes';
+    name.dispatchEvent(new Event('input'));
+    const from = query<HTMLInputElement>('price-list-from')!;
+    from.value = '31/02/2026';
+    from.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('price-row-add')!.click();
+    await settle();
+    query<HTMLButtonElement>('price-list-save')!.click();
+    await settle();
+    expect(facade.create).not.toHaveBeenCalled();
+
+    from.value = '5/1/2027';
+    from.dispatchEvent(new Event('input'));
+    await settle();
+    query<HTMLButtonElement>('price-list-save')!.click();
+    await settle();
+    expect(facade.create).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ validFrom: '2027-01-05', validTo: null }),
+    );
+  });
+
   it('creates a list for a customer group, chosen from the groups the company has', async () => {
     const { query, settle } = await render();
 

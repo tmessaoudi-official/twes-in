@@ -13,7 +13,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
-import { todayIn } from '../shared/i18n/format';
+import { formatDay, todayIn } from '../shared/i18n/format';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -977,7 +977,9 @@ describe('InvoicePage', () => {
     q('document-action-record-payment')!.click();
     await settle();
     expect((over('field-amount') as HTMLInputElement).value).toBe('1121,570');
-    expect((over('field-date') as HTMLInputElement).value).toBe(todayIn('Africa/Tunis'));
+    expect((over('field-date') as HTMLInputElement).value).toBe(
+      formatDay(todayIn('Africa/Tunis'), 'fr-TN'),
+    );
 
     typeIn(over('field-amount') as HTMLInputElement, '500,5');
     typeIn(over('field-reference') as HTMLInputElement, 'CHQ 12');

@@ -696,7 +696,8 @@
       "min_length": "At least {{min}} characters.",
       "max_length": "At most {{max}} characters.",
       "min": "At least {{min}}.",
-      "max": "At most {{max}}."
+      "max": "At most {{max}}.",
+      "date": "Enter a valid day, such as 05/09/2026."
     },
     "leave": {
       "title": "Leave without saving?",

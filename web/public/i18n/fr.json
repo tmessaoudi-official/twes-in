@@ -696,7 +696,8 @@
       "min_length": "Au moins {{min}} caractères.",
       "max_length": "Au plus {{max}} caractères.",
       "min": "Au moins {{min}}.",
-      "max": "Au plus {{max}}."
+      "max": "Au plus {{max}}.",
+      "date": "Saisissez un jour valide, par exemple 05/09/2026."
     },
     "leave": {
       "title": "Quitter sans enregistrer ?",
