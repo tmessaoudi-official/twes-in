@@ -13,11 +13,18 @@ import type { PermissionGroupRow, RoleRow } from './roles-types';
 /**
  * Why the API refused, as the screen translates it.
  *
- * `in_use`, `built_in` and `unknown_permission` all arrive as a 422 and are told apart by the stable token the
+ * `in_use`, `built_in` and `unknown_permission` all arrive as a 422 (`not_held` as a 403) and are told apart by the stable token the
  * API's `detail` begins with — never by its sentence, which is reworded and one day translated.
  */
 export type RolesError =
-  'network' | 'not_found' | 'name_taken' | 'in_use' | 'built_in' | 'unknown_permission' | 'invalid';
+  | 'network'
+  | 'not_found'
+  | 'name_taken'
+  | 'in_use'
+  | 'built_in'
+  | 'unknown_permission'
+  | 'not_held'
+  | 'invalid';
 
 /** Thrown when the API refuses; carries the code the UI translates and, for a role in use, who holds it. */
 export class RolesRefused extends Error {
@@ -112,6 +119,12 @@ function refusalOf(error: unknown): RolesRefused {
   switch (error.status) {
     case 404:
       return new RolesRefused('not_found', detail);
+    case 403:
+      // A 403 here is the one refusal that is not a bare permission miss: the editor tried to give what they do not hold.
+      return new RolesRefused(
+        detail.startsWith('role_permission_not_held:') ? 'not_held' : 'invalid',
+        detail,
+      );
     case 409:
       return new RolesRefused('name_taken', detail);
     case 422:

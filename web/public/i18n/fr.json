@@ -449,6 +449,7 @@
         "in_use": "Des membres ont encore ce rôle. Changez leur rôle avant de le supprimer.",
         "built_in": "Ce rôle est fourni avec le produit et ne peut pas être modifié.",
         "unknown_permission": "Un des droits cochés n'existe pas. Rechargez la page.",
+        "not_held": "Vous ne pouvez donner à un rôle que les droits que vous avez vous-même.",
         "invalid": "Cet enregistrement a été refusé."
       }
     },

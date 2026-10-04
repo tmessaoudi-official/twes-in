@@ -12,8 +12,10 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Tenancy\Application\Role\ManageRoles;
+use App\Tenancy\Application\Role\PermissionNotHeld;
 use App\Tenancy\Application\Role\RoleNameTaken;
 use App\Tenancy\Application\Role\UnknownPermission;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
@@ -29,9 +31,11 @@ final readonly class CreateRoleProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CompanyProfileResource::WRITE_PERMISSION);
 
         try {
-            return RoleResource::of($this->roles->create($company, $data->name, $data->permissions, $this->guard->account()->getId()));
+            return RoleResource::of($this->roles->create($company, $data->name, $data->permissions, $this->guard->account()->getId(), fn (string $permission): bool => $this->guard->holds($company, $permission)));
         } catch (RoleNameTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
+        } catch (PermissionNotHeld $refused) {
+            throw new AccessDeniedHttpException(\sprintf('%s: %s', RoleResource::PERMISSION_NOT_HELD, $refused->getMessage()), $refused);
         } catch (UnknownPermission $refused) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', RoleResource::UNKNOWN_PERMISSION, $refused->getMessage()), $refused);
         }

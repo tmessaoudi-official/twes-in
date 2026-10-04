@@ -12,10 +12,12 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Tenancy\Application\Role\ManageRoles;
+use App\Tenancy\Application\Role\PermissionNotHeld;
 use App\Tenancy\Application\Role\RoleNameTaken;
 use App\Tenancy\Application\Role\RoleNotEditable;
 use App\Tenancy\Application\Role\RoleNotFound;
 use App\Tenancy\Application\Role\UnknownPermission;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
@@ -38,6 +40,7 @@ final readonly class ReviseRoleProcessor implements ProcessorInterface
                 $data->name,
                 $data->permissions,
                 $this->guard->account()->getId(),
+                fn (string $permission): bool => $this->guard->holds($company, $permission),
             ));
         } catch (RoleNotFound $missing) {
             throw new NotFoundHttpException($missing->getMessage(), $missing);
@@ -45,6 +48,8 @@ final readonly class ReviseRoleProcessor implements ProcessorInterface
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (RoleNotEditable $refused) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', RoleResource::BUILT_IN, $refused->getMessage()), $refused);
+        } catch (PermissionNotHeld $refused) {
+            throw new AccessDeniedHttpException(\sprintf('%s: %s', RoleResource::PERMISSION_NOT_HELD, $refused->getMessage()), $refused);
         } catch (UnknownPermission $refused) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', RoleResource::UNKNOWN_PERMISSION, $refused->getMessage()), $refused);
         }

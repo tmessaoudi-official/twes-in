@@ -144,7 +144,12 @@ final class NotificationsTest extends ApiTestCase
         $this->getJson('/api/me/notifications/unread-by-company');
 
         self::assertResponseIsSuccessful();
-        self::assertSame([$this->company->getId()->toRfc4122() => 2, $globex->getId()->toRfc4122() => 1], $this->json()['counts']);
+        $counts = $this->json()['counts'];
+        self::assertIsArray($counts);
+        ksort($counts);
+        $expected = [$this->company->getId()->toRfc4122() => 2, $globex->getId()->toRfc4122() => 1];
+        ksort($expected);
+        self::assertSame($expected, $counts, 'a JSON object has no order, so the keys are sorted before comparing');
     }
 
     public function testMarkingWithoutTheCsrfHeaderIsRefused(): void

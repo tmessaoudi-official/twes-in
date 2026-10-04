@@ -71,6 +71,7 @@ final readonly class ManageEstablishments
             }
             $now = $this->clock->now();
             $template = $this->defaultOf($company);
+            $others = [] !== $this->establishments->ofCompany($company->getId());
 
             $establishment = Establishment::create($company, $code, $details->name, false, $now);
             $establishment->revise($code, $details->name, $details->addressLine1, $details->addressLine2, $details->postalCode, $details->city, $details->phone, $details->email, $now);
@@ -79,7 +80,12 @@ final readonly class ManageEstablishments
             }
             $this->establishments->save($establishment);
 
+            // A company's numbers are unique across all its establishments: a copy that counts from 1 under a format
+            // without the site code would repeat the first site's numbers, and its first issue would be refused.
             foreach ($this->seriesToCopy($company, $template) as $documentType => [$format, $reset]) {
+                if ($others && !str_contains($format, '{EST}')) {
+                    $format = '{EST}-'.$format;
+                }
                 $this->series->save(NumberingSeries::create($company, $establishment, $documentType, new NumberFormat($format), $reset, true, $now));
             }
             $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $establishment->getId(), self::CREATED, $actorUserId, ['code' => $establishment->getCode(), 'name' => $establishment->getName(), 'is_default' => $establishment->isDefault()], $company->getId()));

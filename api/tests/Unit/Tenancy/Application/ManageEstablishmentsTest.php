@@ -82,6 +82,23 @@ final class ManageEstablishmentsTest extends TestCase
         self::assertSame('establishment.created', $this->audit->entries[0]->action);
     }
 
+    public function testANewEstablishmentGetsItsCodeInTheNumbersItCopiedWhenTheyHadNone(): void
+    {
+        $default = $this->manage->list($this->company)[0];
+        $invoices = $this->seriesOf($default, 'invoice');
+        $invoices->revise(new \App\Tenancy\Domain\NumberFormat('FAC-{YYYY}-{SEQ:5}'), $invoices->getResetPeriod(), 1, new \DateTimeImmutable());
+
+        $sfax = $this->manage->create($this->company, self::details('001', 'Agence de Sfax', city: 'Sfax'), null);
+
+        // Two sites counting from 1 under a format without a site code would both issue FAC-2026-00001: the second refused at issue.
+        $day = new \DateTimeImmutable('2026-09-13');
+        $copy = $this->seriesOf($sfax, 'invoice');
+        self::assertSame('{EST}-FAC-{YYYY}-{SEQ:5}', $copy->getFormat());
+        self::assertSame('001-FAC-2026-00001', $copy->preview($day));
+        self::assertNotSame($invoices->preview($day), $copy->preview($day));
+        self::assertSame('FAC-{YYYY}-{SEQ:5}', $invoices->getFormat(), 'the first site keeps the numbers it has');
+    }
+
     public function testTwoEstablishmentsOfOneCompanyCannotShareACode(): void
     {
         $this->expectException(EstablishmentCodeTaken::class);

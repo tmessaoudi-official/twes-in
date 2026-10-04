@@ -39,7 +39,8 @@ final class RolesTest extends ApiTestCase
 
     public function testTheListCarriesTheBuiltInRolesAndTheCompanysOwn(): void
     {
-        $this->signedIn(['company.settings']);
+        // Not an owner: the case reads the owner role's member count as nobody's.
+        $this->signedIn(['company.settings', 'customer.read']);
 
         $this->postJson($this->path(), ['name' => 'barista', 'permissions' => ['customer.read']]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -71,7 +72,7 @@ final class RolesTest extends ApiTestCase
 
     public function testACustomRoleIsCreatedRevisedAndDeleted(): void
     {
-        $this->signedIn(['company.settings']);
+        $this->signedInAsOwner();
 
         $this->postJson($this->path(), ['name' => 'waiter', 'permissions' => ['customer.read', 'product.read']]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -96,7 +97,7 @@ final class RolesTest extends ApiTestCase
         // A role is what decides who may do what, so it is the last thing that should change unrecorded. The audit
         // row is also what an open screen hears: DoctrineAuditTrail stages each entry as a live change whose kind is
         // the entity type, which is why roles-page listens for `role` (docs/SPEC.md § 7, 2026-09-17).
-        $this->signedIn(['company.settings']);
+        $this->signedInAsOwner();
 
         $this->postJson($this->path(), ['name' => 'waiter', 'permissions' => ['customer.read']]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -155,7 +156,7 @@ final class RolesTest extends ApiTestCase
 
     public function testABuiltInRoleIsNeverEditedOrDeleted(): void
     {
-        $this->signedIn(['company.settings']);
+        $this->signedInAsOwner();
 
         $this->getJson($this->path());
         $ownerId = $this->roleNamed($this->jsonList(), Role::OWNER)['id'];
@@ -174,7 +175,7 @@ final class RolesTest extends ApiTestCase
     {
         // The developer's ruling (2026-09-20 13:10 gate): refuse and name who holds it, rather than quietly moving
         // three people to another role — a demotion, or worse a promotion, that nobody would notice until it bit.
-        $this->signedIn(['company.settings']);
+        $this->signedInAsOwner();
 
         $this->postJson($this->path(), ['name' => 'cashier', 'permissions' => ['customer.read']]);
         $role = $this->json();
@@ -194,7 +195,7 @@ final class RolesTest extends ApiTestCase
         // An invitation stores its role by NAME and carries no foreign key, so deleting the role raises nothing at
         // the database and the refusal above never fires — the invitation simply becomes unacceptable, and the
         // person finds that out when they click the link. Counted with the holders, and named the same way.
-        $this->signedIn(['company.settings']);
+        $this->signedInAsOwner();
 
         $this->postJson($this->path(), ['name' => 'runner', 'permissions' => ['customer.read']]);
         $role = $this->json();
@@ -210,9 +211,35 @@ final class RolesTest extends ApiTestCase
         self::assertStringContainsString('invited@twes.local', (string) $this->client->getResponse()->getContent());
     }
 
+    public function testNobodyPutsInARoleAPermissionTheyDoNotHoldAndAnOwnerMay(): void
+    {
+        $this->signedIn(['company.settings', 'customer.read']);
+
+        // An editor of roles could otherwise mint any permission, the right to issue invoices, and give it to themselves.
+        $this->postJson($this->path(), ['name' => 'payer', 'permissions' => ['customer.read', 'invoice.issue']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertRefusedWith(RoleResource::PERMISSION_NOT_HELD, $this->json());
+
+        $this->postJson($this->path(), ['name' => 'viewer', 'permissions' => ['customer.read']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), ['name' => 'viewer', 'permissions' => ['customer.read', 'invoice.issue']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, 'adding what the editor does not hold is refused on a revision too');
+        $this->sendJson('PUT', $this->path($id), ['name' => 'viewer', 'permissions' => []]);
+        self::assertResponseIsSuccessful();
+
+        $this->sendJson('POST', '/api/auth/logout');
+        // The kernel was rebooted by the requests above: the company is read again rather than reused detached.
+        $this->createUser('boss@twes.local', 'password-1234', $this->em()->find(Company::class, $this->company->getId()));
+        $this->login('boss@twes.local', 'password-1234');
+        $this->postJson($this->path(), ['name' => 'payer', 'permissions' => ['invoice.issue']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'an owner holds everything, so may grant everything');
+    }
+
     public function testAPermissionTheCatalogueDoesNotKnowIsRefused(): void
     {
-        $this->signedIn(['company.settings']);
+        $this->signedInAsOwner();
 
         // A typo, or a permission removed in a later release: either way it would sit in the role for ever, granting
         // nothing and showing nowhere, which is the drift the collected catalogue exists to prevent.
@@ -229,7 +256,7 @@ final class RolesTest extends ApiTestCase
 
     public function testTwoRolesOfOneCompanyCannotShareAName(): void
     {
-        $this->signedIn(['company.settings']);
+        $this->signedInAsOwner();
 
         $this->postJson($this->path(), ['name' => 'barista', 'permissions' => ['customer.read']]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -247,7 +274,7 @@ final class RolesTest extends ApiTestCase
         $other = $this->createCompany('Globex');
         $this->createUser('intruder@twes.local', 'password-1234', $other, ['company.settings'], 'member');
 
-        $this->signedIn(['company.settings']);
+        $this->signedInAsOwner();
         $this->postJson($this->path(), ['name' => 'barista', 'permissions' => ['customer.read']]);
         $role = $this->json();
         self::assertIsString($role['id']);
@@ -329,6 +356,14 @@ final class RolesTest extends ApiTestCase
         }
 
         self::fail(\sprintf('no role named "%s" in the list', $name));
+    }
+
+    /** An owner holds everything, so what these cases grant to roles is never refused as not held. */
+    private function signedInAsOwner(): void
+    {
+        $this->createUser('admin@twes.local', 'password-1234', $this->company);
+        $this->login('admin@twes.local', 'password-1234');
+        self::assertResponseIsSuccessful();
     }
 
     /** @param list<string> $permissions */

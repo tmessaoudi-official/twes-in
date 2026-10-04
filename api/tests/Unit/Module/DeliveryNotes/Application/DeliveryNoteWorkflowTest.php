@@ -188,6 +188,12 @@ final class DeliveryNoteWorkflowTest extends TestCase
     {
         $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions)
             ->create($this->company, new EstablishmentDetails('001', 'Sfax', null, null, null, null, null, null, false), null);
+        // A new site gets its code into the format it copies; someone revising it back out is what this refusal still guards.
+        foreach ($this->series->series as $series) {
+            if ($series->getEstablishment()->getId()->equals($branch->getId()) && 'delivery_note' === $series->getDocumentType()) {
+                $series->revise(new \App\Tenancy\Domain\NumberFormat('BL-{YYYY}-{SEQ:5}'), $series->getResetPeriod(), 1, new \DateTimeImmutable());
+            }
+        }
         $this->workflow->validate($this->company, $this->draft()->getId(), null);
         $fromTheBranch = $this->draft(establishment: $branch);
 

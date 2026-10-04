@@ -83,6 +83,15 @@ final readonly class CompanyGuard
         return $this->roleGrants($company, $permission) && $this->access->accessOf($company->getId())->permits($permission);
     }
 
+    /**
+     * Whether the signed-in member's ROLE grants a permission, whatever the subscription says: what a role editor may
+     * hand on is what they hold, and a lapsed subscription does not make them hold less.
+     */
+    public function holds(Company $company, string $permission): bool
+    {
+        return $this->roleGrants($company, $permission);
+    }
+
     private function roleGrants(Company $company, string $permission): bool
     {
         $account = $this->account();

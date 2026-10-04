@@ -78,16 +78,19 @@ final readonly class ManageRoles
     }
 
     /**
-     * @param list<string> $permissions
+     * @param list<string>           $permissions
+     * @param \Closure(string): bool $actorMay    whether the person editing holds a permission in this company
      *
      * @throws RoleNameTaken
      * @throws UnknownPermission
+     * @throws PermissionNotHeld
      */
-    public function create(Company $company, string $name, array $permissions, ?Uuid $actorUserId): RoleView
+    public function create(Company $company, string $name, array $permissions, ?Uuid $actorUserId, \Closure $actorMay): RoleView
     {
-        return $this->transactions->run(function () use ($company, $name, $permissions, $actorUserId): RoleView {
+        return $this->transactions->run(function () use ($company, $name, $permissions, $actorUserId, $actorMay): RoleView {
             $name = $this->cleanName($company, $name);
             $this->assertKnown($permissions);
+            $this->assertHeld($permissions, $actorMay);
 
             $role = new Role($name, $permissions, $company);
             $this->roles->save($role);
@@ -98,19 +101,23 @@ final readonly class ManageRoles
     }
 
     /**
-     * @param list<string> $permissions
+     * @param list<string>           $permissions
+     * @param \Closure(string): bool $actorMay    whether the person editing holds a permission in this company
      *
      * @throws RoleNotFound
      * @throws RoleNotEditable
      * @throws RoleNameTaken
      * @throws UnknownPermission
+     * @throws PermissionNotHeld
      */
-    public function revise(Company $company, Uuid $roleId, string $name, array $permissions, ?Uuid $actorUserId): RoleView
+    public function revise(Company $company, Uuid $roleId, string $name, array $permissions, ?Uuid $actorUserId, \Closure $actorMay): RoleView
     {
-        return $this->transactions->run(function () use ($company, $roleId, $name, $permissions, $actorUserId): RoleView {
+        return $this->transactions->run(function () use ($company, $roleId, $name, $permissions, $actorUserId, $actorMay): RoleView {
             $role = $this->editable($company, $roleId);
             $name = $this->cleanName($company, $name, $roleId);
             $this->assertKnown($permissions);
+            // Only what is being ADDED must be held: a role may already carry what its editor lacks, and keeping it is not granting it.
+            $this->assertHeld(array_values(array_diff($permissions, $role->getPermissions())), $actorMay);
 
             $role->rename($name);
             $role->redefine($permissions);
@@ -221,6 +228,16 @@ final readonly class ManageRoles
      *
      * @throws UnknownPermission
      */
+    private function assertHeld(array $permissions, \Closure $actorMay): void
+    {
+        foreach ($permissions as $permission) {
+            if (!$actorMay($permission)) {
+                throw new PermissionNotHeld(\sprintf('"%s" cannot be given to a role by someone who does not hold it.', $permission));
+            }
+        }
+    }
+
+    /** @param list<string> $permissions */
     private function assertKnown(array $permissions): void
     {
         foreach ($permissions as $permission) {

@@ -74,6 +74,7 @@ final class RoleResource
     public const string BUILT_IN = 'role_built_in';
     public const string IN_USE = 'role_in_use';
     public const string UNKNOWN_PERMISSION = 'role_unknown_permission';
+    public const string PERMISSION_NOT_HELD = 'role_permission_not_held';
 
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]

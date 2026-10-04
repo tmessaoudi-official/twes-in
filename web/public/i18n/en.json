@@ -449,6 +449,7 @@
         "in_use": "Members still hold this role. Move them to another one before deleting it.",
         "built_in": "This role is shipped with the product and cannot be changed.",
         "unknown_permission": "One of the ticked rights does not exist. Reload the page.",
+        "not_held": "You can only give a role the permissions you hold yourself.",
         "invalid": "That save was refused."
       }
     },
