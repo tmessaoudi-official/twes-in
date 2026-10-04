@@ -223,6 +223,24 @@ describe('Select', () => {
     expect(optionLabels()).toEqual(['+3']);
   });
 
+  it('shows how many rows an option stands for, at the end of its row and beside the chosen label', async () => {
+    fixture.componentInstance.options.set([
+      { value: 'a', label: 'All', count: 30 },
+      { value: 'b', label: 'Active', count: 0 },
+      { value: 'c', label: 'Archived' },
+    ]);
+    await settle();
+    await open();
+
+    const counts = Array.from(document.body.querySelectorAll('[role="option"]')).map(
+      (option) => option.querySelector('[data-option-count]')?.textContent?.trim() ?? null,
+    );
+    expect(counts).toEqual(['30', '0', null]);
+    document.body.querySelector<HTMLElement>('[role="option"]')!.click();
+    await settle();
+    expect(q('sel')!.querySelector('[data-trigger-count]')?.textContent?.trim()).toBe('30');
+  });
+
   it('goes to the option a typed letter begins, opening from the trigger as a native select did', async () => {
     press(q('sel')!, 'e');
     await settle();

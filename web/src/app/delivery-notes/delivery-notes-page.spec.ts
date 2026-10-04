@@ -187,9 +187,20 @@ describe('DeliveryNotesPage', () => {
       statuses: { draft: 2, validated: 4, delivered: 3, cancelled: 1, invoiced: 2 },
     });
     await settle();
-    const count = (id: string) => q(id)?.querySelector('.twes-chip-count')?.textContent;
-    expect(count('list-facet-status-all')).toBe('12');
-    expect(count('list-facet-status-delivered')).toBe('3');
+    // The counts are in the Select's panel: open the facet, read the option, close it.
+    const count = async (id: string): Promise<string | null | undefined> => {
+      const trigger = q(`list-facet-${id.split('-')[2]}`)!;
+      trigger.click();
+      await settle();
+      const text = document.body
+        .querySelector(`[data-testid="${id}"] [data-option-count]`)
+        ?.textContent?.trim();
+      trigger.click();
+      await settle();
+      return text;
+    };
+    expect(await count('list-facet-status-all')).toBe('12');
+    expect(await count('list-facet-status-delivered')).toBe('3');
   });
 
   it('names the key that opens a new note from here (docs/SPEC.md § 7, 2026-09-24 22:51)', () => {

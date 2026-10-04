@@ -43,6 +43,8 @@ import type {
   ListColumn,
   ListDescriptor,
   ListFacetCounts,
+  ListFilter,
+  ListFilterOption,
   ListFilterValues,
   ListPreferences,
   ListQuery,
@@ -62,6 +64,8 @@ import {
   sortRows,
 } from './list-view';
 import { Label } from '../a11y/label';
+import { FormsModule } from '@angular/forms';
+import { Select, type SelectOption } from '../form/select';
 import { runAction } from '../actions/run-action';
 import { ConfirmDialog } from '../ui/confirm-dialog';
 import { WINDOW_CLASS } from '../ui/window-class';
@@ -74,6 +78,8 @@ export class DataListCell {
 }
 
 const ACTIONS_COLUMN = '__actions';
+/** The Select's value for « all » of a facet, which no option value is. */
+const ANY_FACET = '*';
 const RESIZE_STEP = 16;
 const MIN_WIDTH = 48;
 const MAX_WIDTH = 960;
@@ -107,6 +113,8 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
   selector: 'app-data-list',
   imports: [
     Label,
+    FormsModule,
+    Select,
     NgTemplateOutlet,
     CdkDropList,
     CdkDrag,
@@ -544,6 +552,31 @@ export class DataList<Row> implements OnInit {
   }
 
   /** Picks one option of a filter; the empty value shows every row again. */
+  protected readonly ANY_FACET = ANY_FACET;
+
+  /** A facet as the Select offers it: « all » first with the total, then each option with its count. */
+  protected facetOptions(facet: {
+    filter: ListFilter<Row>;
+    total: number | null;
+    options: { option: ListFilterOption; count: number | null }[];
+  }): SelectOption[] {
+    const id = facet.filter.id;
+    return [
+      {
+        value: ANY_FACET,
+        label: 'list.filter_any',
+        count: facet.total,
+        testId: `list-facet-${id}-all`,
+      },
+      ...facet.options.map((entry) => ({
+        value: entry.option.value,
+        label: entry.option.label,
+        count: entry.count,
+        testId: `list-facet-${id}-${entry.option.value}`,
+      })),
+    ];
+  }
+
   protected onFacet(filterId: string, value: string): void {
     this.chosenFilters.update((chosen) => ({
       ...Object.fromEntries(Object.entries(chosen).filter(([id]) => id !== filterId)),

@@ -2,7 +2,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import { inACompany, signIn } from './session';
 import { wcagViolations } from './axe';
-import { choose } from './select';
+import { choose, expectFacetCount } from './select';
 
 // G6 delivery notes through the real stack: in the seeded Tunisian company, the owner drafts a note for a customer
 // made for the run, two laptops at 1250 under the 19 % VAT, validates it and finds it numbered, downloads its PDF
@@ -165,10 +165,9 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
     await expect(page.getByTestId('delivery-notes-table')).toContainText(noteNumber);
     // Each status chip says how many it would list under that search (docs/SPEC.md § 7, 2026-09-26): this run's
     // note, found by its number, is delivered.
-    const count = (id: string) => page.getByTestId(id).locator('.twes-chip-count');
-    await expect(count('list-facet-status-all')).toHaveText('1');
-    await expect(count('list-facet-status-delivered')).toHaveText('1');
-    await expect(count('list-facet-status-draft')).toHaveText('0');
+    await expectFacetCount(page, 'list-facet-status-all', '1');
+    await expectFacetCount(page, 'list-facet-status-delivered', '1');
+    await expectFacetCount(page, 'list-facet-status-draft', '0');
   } finally {
     await retire(page, customerNumber);
   }

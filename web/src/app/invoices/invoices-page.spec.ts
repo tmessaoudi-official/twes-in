@@ -279,12 +279,23 @@ describe('InvoicesPage', () => {
     });
     await settle();
 
-    const count = (id: string) => q(id)?.querySelector('.twes-chip-count')?.textContent;
-    expect(count('list-facet-status-all')).toBe('48');
-    expect(count('list-facet-status-overdue')).toBe('3');
-    expect(count('list-facet-status-paid')).toBe('34');
+    // The counts are in the Select's panel: open the facet, read the option, close it.
+    const count = async (id: string): Promise<string | null | undefined> => {
+      const trigger = q(`list-facet-${id.split('-')[2]}`)!;
+      trigger.click();
+      await settle();
+      const text = document.body
+        .querySelector(`[data-testid="${id}"] [data-option-count]`)
+        ?.textContent?.trim();
+      trigger.click();
+      await settle();
+      return text;
+    };
+    expect(await count('list-facet-status-all')).toBe('48');
+    expect(await count('list-facet-status-overdue')).toBe('3');
+    expect(await count('list-facet-status-paid')).toBe('34');
     // The kind has no counts from the API, so it shows none rather than the page's.
-    expect(count('list-facet-type-invoice')).toBeUndefined();
+    expect(await count('list-facet-type-invoice')).toBeUndefined();
   });
 
   it('names the key that opens a new invoice from here (docs/SPEC.md § 7, 2026-09-24 22:51)', () => {

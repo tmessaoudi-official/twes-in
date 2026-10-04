@@ -32,6 +32,8 @@ export interface SelectOption {
   lang?: string;
   /** What a translated label is told, when it has a placeholder: « Camera {{number}} ». */
   params?: Record<string, unknown>;
+  /** How many rows the option stands for, drawn at the end of its row and beside the chosen label. */
+  count?: number | null;
 }
 
 /** How long typed letters count as one word before they are forgotten. */
@@ -105,6 +107,13 @@ function fold(text: string): string {
           }
         } @else {
           <span class="truncate">{{ chosen()[0].label }}</span>
+          @if (hasCount(chosen()[0].count)) {
+            <span
+              class="shrink-0 text-sm tabular-nums text-on-surface-variant"
+              data-trigger-count
+              >{{ chosen()[0].count }}</span
+            >
+          }
         }
       </span>
       <mat-icon aria-hidden="true" class="shrink-0 text-on-surface-variant">expand_more</mat-icon>
@@ -186,6 +195,13 @@ function fold(text: string): string {
                 >check</mat-icon
               >
               <span data-option-label class="min-w-0 flex-1">{{ option.label }}</span>
+              @if (hasCount(option.count)) {
+                <span
+                  class="shrink-0 text-sm tabular-nums text-on-surface-variant"
+                  data-option-count
+                  >{{ option.count }}</span
+                >
+              }
             </li>
           } @empty {
             <li class="px-4 py-3 text-on-surface-variant" role="presentation">
@@ -408,6 +424,10 @@ export class Select implements ControlValueAccessor {
   protected typed(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);
     this.active.set(this.shown().length > 0 ? 0 : -1);
+  }
+
+  protected hasCount(count: number | null | undefined): boolean {
+    return count !== null && count !== undefined;
   }
 
   protected pick(option: SelectOption): void {

@@ -284,6 +284,37 @@ describe('DataList', () => {
     await settle();
   }
 
+  /** Opens a facet's Select and takes one of its options, as a person does. */
+  async function chooseFacet(
+    value: string,
+    settleFn: () => Promise<void> = settle,
+    filter = 'status',
+  ): Promise<void> {
+    q(`list-facet-${filter}`)!.click();
+    await settleFn();
+    q(`list-facet-${filter}-${value}`)!.click();
+    await settleFn();
+  }
+
+  /** What a facet's Select reads as: its trigger, then each option as « label count ». */
+  async function facetReads(filter = 'status'): Promise<{ trigger: string; options: string[] }> {
+    const trigger = q(`list-facet-${filter}`)!;
+    const words = (el: Element, selectors: string[]) =>
+      selectors
+        .map((selector) => el.querySelector(selector)?.textContent?.trim() ?? '')
+        .filter((part) => part !== '')
+        .join(' ');
+    trigger.click();
+    await settle();
+    const options = Array.from(document.body.querySelectorAll('[role="option"]')).map((option) =>
+      words(option, ['[data-option-label]', '[data-option-count]']),
+    );
+    const reads = { trigger: words(trigger, ['.truncate', '[data-trigger-count]']), options };
+    trigger.click();
+    await settle();
+    return reads;
+  }
+
   async function mount(
     saved?: ListPreferences,
     savedViews?: ListView[],
@@ -465,42 +496,28 @@ describe('DataList', () => {
     expect(q('customers-table')!.style.minWidth).toBe('600px');
   });
 
-  it('offers each filter as a group of choices, each saying how many rows it would show', async () => {
-    const chip = (value: string) => q(`list-facet-status-${value}`)!;
-    const label = (value: string) => chip(value).textContent?.replace(/\s+/g, ' ').trim();
-
-    expect(q('list-facet-status')?.getAttribute('role')).toBe('group');
-    expect(q('list-facet-status')?.getAttribute('aria-label')).toBe('Status');
-    expect([label('all'), label('active'), label('archived')]).toEqual([
-      'All 30',
-      'Active 15',
-      'Archived 15',
-    ]);
-    expect(chip('all').getAttribute('aria-pressed')).toBe('true');
-    expect(chip('archived').getAttribute('aria-pressed')).toBe('false');
+  it('offers each filter as a Select of choices, each saying how many rows it would show', async () => {
+    expect(q('list-facet-status')?.getAttribute('role')).toBe('combobox');
+    expect(document.body.textContent).toContain('Status');
+    expect(await facetReads()).toEqual({
+      trigger: 'All 30',
+      options: ['All 30', 'Active 15', 'Archived 15'],
+    });
 
     await type('list-filter', 'sfax');
-    expect([label('all'), label('active'), label('archived')]).toEqual([
-      'All 10',
-      'Active 5',
-      'Archived 5',
-    ]);
+    expect((await facetReads()).options).toEqual(['All 10', 'Active 5', 'Archived 5']);
 
-    chip('archived').click();
-    await settle();
-    expect(chip('archived').getAttribute('aria-pressed')).toBe('true');
-    expect(chip('all').getAttribute('aria-pressed')).toBe('false');
-    expect(label('all')).toBe('All 10');
+    await chooseFacet('archived');
+    expect((await facetReads()).trigger).toBe('Archived 5');
+    expect((await facetReads()).options[0]).toBe('All 10');
 
-    chip('all').click();
-    await settle();
+    await chooseFacet('all');
     expect(rowIds()).toHaveLength(10);
-    expect(chip('all').getAttribute('aria-pressed')).toBe('true');
+    expect((await facetReads()).trigger).toBe('All 10');
   });
 
   it('narrows the rows to the option picked in a filter, and says when the filters match nothing', async () => {
-    q('list-facet-status-archived')!.click();
-    await settle();
+    await chooseFacet('archived');
 
     expect(rowIds()).toEqual(['2', '4', '6', '8', '10', '12', '14', '16', '18', '20']);
 
@@ -560,7 +577,7 @@ describe('DataList', () => {
     q('list-view-apply-v1')!.click();
     await settle();
 
-    expect(q('list-facet-status-archived')!.getAttribute('aria-pressed')).toBe('true');
+    expect((await facetReads()).trigger).toContain('Archived');
     expect(rowIds()[0]).toBe('2');
   });
 
@@ -637,9 +654,8 @@ describe('DataList', () => {
       await settleServer();
       expect(lastQuery()?.sort).toEqual({ column: 'name', direction: 'asc' });
 
-      expect(q('list-facet-status-active')?.querySelector('.twes-chip-count')).toBeNull();
-      q('list-facet-status-active')!.click();
-      await settleServer();
+      expect((await facetReads()).options[1]).toBe('Active');
+      await chooseFacet('active', settleServer);
       expect(lastQuery()).toMatchObject({ filters: { status: 'active' }, pageIndex: 0 });
 
       (
@@ -656,19 +672,14 @@ describe('DataList', () => {
       server.componentInstance.facetCounts.set({ status: { total: 30, options: { active: 21 } } });
       await settleServer();
 
-      expect(q('list-facet-status-all')?.querySelector('.twes-chip-count')?.textContent).toBe('30');
-      expect(q('list-facet-status-active')?.querySelector('.twes-chip-count')?.textContent).toBe(
-        '21',
-      );
-      expect(q('list-facet-status-archived')?.querySelector('.twes-chip-count')).toBeNull();
+      expect((await facetReads()).options).toEqual(['All 30', 'Active 21', 'Archived']);
     });
 
     it('asks nothing again for what it already asked, such as an option picked twice', async () => {
-      q('list-facet-status-active')!.click();
-      await settleServer();
+      await chooseFacet('active', settleServer);
       expect(queries()).toHaveLength(2);
 
-      q('list-facet-status-active')!.click();
+      await chooseFacet('active', settleServer);
       q('list-resize-city')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
       await settleServer();
 
@@ -717,13 +728,13 @@ describe('DataList', () => {
         },
       ]);
       expect((q('list-filter') as HTMLInputElement).value).toBe('sfax');
-      expect(q('list-facet-status-archived')?.getAttribute('aria-pressed')).toBe('true');
+      expect((await facetReads()).trigger).toContain('Archived');
     });
 
     it('keeps what a person chose in the address, in place of the previous one', async () => {
       const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
-      q('list-facet-status-active')!.click();
+      await chooseFacet('active', settleServer);
       q('list-header-name')!.click();
       await settleServer();
 
@@ -741,8 +752,7 @@ describe('DataList', () => {
       await settleServer();
       expect(q('customers-empty')).not.toBeNull();
 
-      q('list-facet-status-archived')!.click();
-      await settleServer();
+      await chooseFacet('archived', settleServer);
       expect(q('customers-empty')).toBeNull();
       expect(q('list-no-match')).not.toBeNull();
     });

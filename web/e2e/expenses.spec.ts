@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 import { inACompany, signIn } from './session';
+import { expectFacetCount } from './select';
 import { wcagViolations } from './axe';
 
 // G9 through the real stack: in the seeded Tunisian company, the owner files a category, adds an expense under it with
@@ -122,10 +123,9 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
     await expect(page.getByTestId('expenses-table')).toContainText(description);
     // Each status chip says how many it would list under that search (docs/SPEC.md § 7, 2026-09-26): this run's
     // expense, found by what it is for, is paid.
-    const count = (id: string) => page.getByTestId(id).locator('.twes-chip-count');
-    await expect(count('list-facet-status-all')).toHaveText('1');
-    await expect(count('list-facet-status-paid')).toHaveText('1');
-    await expect(count('list-facet-status-draft')).toHaveText('0');
+    await expectFacetCount(page, 'list-facet-status-all', '1');
+    await expectFacetCount(page, 'list-facet-status-paid', '1');
+    await expectFacetCount(page, 'list-facet-status-draft', '0');
   } finally {
     await retire(page, category);
   }

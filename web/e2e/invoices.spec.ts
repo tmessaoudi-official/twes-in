@@ -3,7 +3,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
-import { choose } from './select';
+import { choose, expectFacetCount } from './select';
 
 // G7 invoices through the real stack (docs/SPEC.md § 8 row 10): in the seeded Tunisian company, the owner drafts an
 // invoice for a customer made for the run, two days of consulting at 500 under the 19 % VAT, issues it and finds it
@@ -251,9 +251,8 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await expect(page.getByTestId('invoices-table')).toContainText(invoiceNumber);
     // Each status chip says how many it would list, as the API counts them (docs/SPEC.md § 7, 2026-09-26): this run's
     // invoice is settled, so « Soldée » counts at least it.
-    const count = (id: string) => page.getByTestId(id).locator('.twes-chip-count');
-    await expect(count('list-facet-status-all')).toHaveText(/^\d+$/);
-    await expect(count('list-facet-status-paid')).toHaveText(/^[1-9]\d*$/);
+    await expectFacetCount(page, 'list-facet-status-all', /^\d+$/);
+    await expectFacetCount(page, 'list-facet-status-paid', /^[1-9]\d*$/);
 
     // The home page lays out the API's own summary: the same digits, whatever the locale does with separators.
     await page.goto('/');

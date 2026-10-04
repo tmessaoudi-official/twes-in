@@ -166,9 +166,25 @@ describe('ExpensesPage', () => {
     );
     statusCounts.set({ all: 16, statuses: { draft: 2, recorded: 5, paid: 9 } });
     fixture.detectChanges();
-    const count = (id: string) => q(id)?.querySelector('.twes-chip-count')?.textContent;
-    expect(count('list-facet-status-all')).toBe('16');
-    expect(count('list-facet-status-paid')).toBe('9');
+    const settle = async (): Promise<void> => {
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    };
+    // The counts are in the Select's panel: open the facet, read the option, close it.
+    const count = async (id: string): Promise<string | null | undefined> => {
+      const trigger = q(`list-facet-${id.split('-')[2]}`)!;
+      trigger.click();
+      await settle();
+      const text = document.body
+        .querySelector(`[data-testid="${id}"] [data-option-count]`)
+        ?.textContent?.trim();
+      trigger.click();
+      await settle();
+      return text;
+    };
+    expect(await count('list-facet-status-all')).toBe('16');
+    expect(await count('list-facet-status-paid')).toBe('9');
   });
 
   it('names the key that opens a new expense from here (docs/SPEC.md § 7, 2026-09-24 22:51)', async () => {

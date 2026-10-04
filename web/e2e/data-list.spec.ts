@@ -4,6 +4,7 @@ import { wcagViolations } from './axe';
 import { forgetPresentationChoices } from './presentation';
 import { OPERATOR_EMAIL as EMAIL, inACompany, signIn as logIn } from './session';
 import { sidewaysOverflow } from './overflow';
+import { holds, pickOption } from './select';
 
 // G2b and G3b: presentation preferences survive a reload, and a fresh browser, through the API's presentation
 // chain, and the list chrome every screen shares stays accessible with its column chooser open, at desktop and
@@ -115,7 +116,7 @@ test('a saved view brings back its filters and columns after a reload', async ({
   await openMembers(page);
 
   await page.getByTestId('list-filter').fill('operator');
-  await page.getByTestId('list-facet-role-owner').click();
+  await pickOption(page, 'list-facet-role', 'list-facet-role-owner');
   await page.getByTestId('list-columns').click();
   await page.getByTestId('list-column-toggle-email').click();
   await page.getByTestId('list-views').click();
@@ -136,7 +137,7 @@ test('a saved view brings back its filters and columns after a reload', async ({
   await saved.click();
   await expect(page.getByTestId('list-header-email')).toHaveCount(0);
   await expect(page.getByTestId('list-filter')).toHaveValue('operator');
-  await expect(page.getByTestId('list-facet-role-owner')).toHaveAttribute('aria-pressed', 'true');
+  expect(await holds(page, 'list-facet-role', 'list-facet-role-owner')).toBe(true);
   await expect(page.getByTestId(`member-${EMAIL}`)).toBeVisible();
 });
 

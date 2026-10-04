@@ -1,44 +1,16 @@
 <div class="flex flex-col gap-3">
   <div class="twes-list-toolbar">
     @for (facet of facets(); track facet.filter.id) {
-      <div
-        role="group"
-        class="twes-chips"
-        [attr.aria-label]="facet.filter.label | translate"
-        [attr.data-testid]="'list-facet-' + facet.filter.id"
-      >
-        @if (facets().length > 1) {
-          <span class="twes-chips-label" aria-hidden="true">{{
-            facet.filter.label | translate
-          }}</span>
-        }
-        <button
-          type="button"
-          class="twes-chip"
-          [attr.aria-pressed]="facet.chosen === ''"
-          (click)="onFacet(facet.filter.id, '')"
-          [attr.data-testid]="'list-facet-' + facet.filter.id + '-all'"
-        >
-          {{ 'list.filter_any' | translate }}
-          @if (facet.total !== null) {
-            <span class="twes-chip-count">{{ facet.total }}</span>
-          }
-        </button>
-        @for (entry of facet.options; track entry.option.value) {
-          <button
-            type="button"
-            class="twes-chip"
-            [attr.aria-pressed]="facet.chosen === entry.option.value"
-            (click)="onFacet(facet.filter.id, entry.option.value)"
-            [attr.data-testid]="'list-facet-' + facet.filter.id + '-' + entry.option.value"
-          >
-            {{ entry.option.label | translate }}
-            @if (entry.count !== null) {
-              <span class="twes-chip-count">{{ entry.count }}</span>
-            }
-          </button>
-        }
-      </div>
+      <app-select
+        class="w-60"
+        [label]="facet.filter.label | translate"
+        [labelInside]="true"
+        [options]="facetOptions(facet)"
+        [translateLabels]="true"
+        [ngModel]="facet.chosen === '' ? ANY_FACET : facet.chosen"
+        (ngModelChange)="onFacet(facet.filter.id, $event === ANY_FACET ? '' : $event)"
+        [testId]="'list-facet-' + facet.filter.id"
+      />
     }
     <div class="twes-list-tools">
       @if (filterable()) {
