@@ -10,6 +10,7 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import { WINDOW_CLASS, type WindowClass } from '../ui/window-class';
 import { Select, type SelectOption } from './select';
 
 const few: SelectOption[] = [
@@ -265,6 +266,36 @@ describe('Select', () => {
       expect(chips()).toEqual(['Algeria', 'Belgium', 'France']);
       expect(q('sel')!.textContent).toContain('+2');
     });
+  });
+
+  it('opens as a sheet at the bottom of a phone window, over a backdrop that closes it', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [Host],
+      providers: [
+        provideTranslateService({
+          lang: 'en',
+          loader: provideTranslateLoader(() => new StaticLoader()),
+        }),
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+        { provide: WINDOW_CLASS, useValue: signal<WindowClass>('compact') },
+      ],
+    });
+    fixture = TestBed.createComponent(Host);
+    await settle();
+    await open();
+
+    expect(document.body.querySelector('.twes-select-sheet')).not.toBeNull();
+    expect(document.body.querySelector('.twes-select-panel')).toBeNull();
+    const backdrop = document.body.querySelector<HTMLElement>('.cdk-overlay-backdrop');
+    expect(backdrop).not.toBeNull();
+    expect(
+      document.body.querySelector('[role="listbox"]')!.closest('div.rounded-b-none'),
+    ).not.toBeNull();
+
+    backdrop!.click();
+    await settle();
+    expect(document.body.querySelector('[role="listbox"]')).toBeNull();
   });
 
   it('cannot be opened while disabled', async () => {

@@ -106,6 +106,9 @@ function fold(text: string): string {
     <ng-template #panel>
       <div
         class="flex max-h-[60vh] flex-col overflow-hidden rounded-card border border-outline-variant bg-surface-container shadow-lg"
+        [class.rounded-b-none]="sheetMode()"
+        [class.border-b-0]="sheetMode()"
+        [class.pb-[env(safe-area-inset-bottom)]]="sheetMode()"
         tabindex="-1"
         (keydown)="panelKey($event)"
       >
@@ -209,6 +212,7 @@ export class Select implements ControlValueAccessor {
   private readonly uid = nextId++;
   protected readonly listId = `app-select-${this.uid}-list`;
   protected readonly valueId = `app-select-${this.uid}-value`;
+  protected readonly sheetMode = signal(false);
   protected readonly labelId = `app-select-${this.uid}-label`;
   protected readonly ownLabel = computed(() =>
     this.labelInside() && this.label() !== '' ? this.labelId : this.labelledBy(),
@@ -404,6 +408,7 @@ export class Select implements ControlValueAccessor {
     this.active.set(index);
 
     const sheet = this.windowClass() === 'compact';
+    this.sheetMode.set(sheet);
     const origin = this.trigger().nativeElement;
     this.ref = this.overlay.create({
       positionStrategy: sheet
