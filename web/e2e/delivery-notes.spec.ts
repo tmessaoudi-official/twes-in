@@ -2,6 +2,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import { inACompany, signIn } from './session';
 import { wcagViolations } from './axe';
+import { choose } from './select';
 
 // G6 delivery notes through the real stack: in the seeded Tunisian company, the owner drafts a note for a customer
 // made for the run, two laptops at 1250 under the 19 % VAT, validates it and finds it numbered, downloads its PDF
@@ -123,9 +124,7 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
     await page.getByTestId('line-0-description').fill('Portable 14 pouces');
     await page.getByTestId('line-0-quantity').fill('2');
     await page.getByTestId('line-0-price').fill('1250');
-    await page.getByTestId('line-0-taxes').click();
-    await page.getByRole('option', { name: /19/ }).click();
-    await page.keyboard.press('Escape');
+    await choose(page, 'line-0-taxes', /19/);
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('document-action-save').click();
 

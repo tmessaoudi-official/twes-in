@@ -3,6 +3,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
+import { choose } from './select';
 
 // G7 invoices through the real stack (docs/SPEC.md § 8 row 10): in the seeded Tunisian company, the owner drafts an
 // invoice for a customer made for the run, two days of consulting at 500 under the 19 % VAT, issues it and finds it
@@ -136,9 +137,7 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.getByTestId('line-0-description').fill('Conseil, deux jours');
     await page.getByTestId('line-0-quantity').fill('2');
     await page.getByTestId('line-0-price').fill('500');
-    await page.getByTestId('line-0-taxes').click();
-    await page.getByRole('option', { name: /19/ }).click();
-    await page.keyboard.press('Escape');
+    await choose(page, 'line-0-taxes', /19/);
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('document-action-save').click();
 
