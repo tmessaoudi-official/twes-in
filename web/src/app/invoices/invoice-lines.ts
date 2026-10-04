@@ -38,7 +38,7 @@ import type {
 } from './invoices-types';
 import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
-import { Select } from '../shared/form/select';
+import { Select, type SelectOption } from '../shared/form/select';
 import { ProductScans } from '../products/product-scans';
 import { InvoicesFacade } from './invoices-facade';
 
@@ -93,6 +93,7 @@ export class InvoiceLines {
   /** Whether the company has price lists on: a line then starts from the price of the customer's list. */
   readonly priceLists = input(false);
   readonly readOnly = input(false);
+  private readonly taxChoices = new Map<string, SelectOption[]>();
   /** Whether the document is a credit note, whose lines may say their goods came back to stock. */
   readonly returnable = input(false);
   /** Each line's net as last saved, by position; shown while the line is unchanged. */
@@ -155,9 +156,23 @@ export class InvoiceLines {
     );
   }
 
-  protected charges(line: LineGroup, taxId: string): boolean {
-    this.revision();
-    return line.controls.taxComponentIds.value.includes(taxId);
+  /**
+   * What a line's taxes Select offers. The array is the same one while the offer is, so the Select is not handed a
+   * new input at every check.
+   */
+  protected taxOptionsOf(line: LineGroup, index: number): SelectOption[] {
+    const taxes = this.taxesOf(line);
+    const key = `${index}|${taxes.map((tax) => `${tax.id}:${tax.name}`).join(',')}`;
+    let options = this.taxChoices.get(key);
+    if (options === undefined) {
+      options = taxes.map((tax) => ({
+        value: tax.id,
+        label: tax.name,
+        testId: `line-${index}-tax-${tax.code}`,
+      }));
+      this.taxChoices.set(key, options);
+    }
+    return options;
   }
 
   protected fromDeliveryNote(line: LineGroup): boolean {
@@ -263,11 +278,5 @@ export class InvoiceLines {
   protected toggleReturned(line: LineGroup, checked: boolean): void {
     line.controls.returned.setValue(checked);
     line.controls.returned.markAsDirty();
-  }
-
-  protected toggleTax(line: LineGroup, taxId: string, checked: boolean): void {
-    const others = line.controls.taxComponentIds.value.filter((id) => id !== taxId);
-    line.controls.taxComponentIds.setValue(checked ? [...others, taxId] : others);
-    line.controls.taxComponentIds.markAsDirty();
   }
 }

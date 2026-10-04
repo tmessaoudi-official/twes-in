@@ -129,6 +129,8 @@ describe('Select', () => {
     expect(q('sel')!.getAttribute('aria-expanded')).toBe('true');
     expect(document.body.querySelector('[role="listbox"]')).not.toBeNull();
     expect(optionLabels()).toEqual(['Tunisian dinar', 'Euro', 'US dollar']);
+    // The box fills the overlay pane, which is as wide as the trigger: left to its content it shrinks under it.
+    expect(document.body.querySelector('[role="listbox"]')!.closest('div.w-full')).not.toBeNull();
   });
 
   it('takes the clicked option as the control value, shows it and closes', async () => {

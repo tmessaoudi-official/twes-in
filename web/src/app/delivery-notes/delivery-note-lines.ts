@@ -12,7 +12,6 @@ import {
 } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -36,7 +35,7 @@ import type {
 } from './delivery-notes-types';
 import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
-import { Select } from '../shared/form/select';
+import { Select, type SelectOption } from '../shared/form/select';
 import { LineSubstitutes } from './delivery-note-line-substitutes';
 import { ProductScans } from '../products/product-scans';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
@@ -56,7 +55,6 @@ type CheckedField = keyof Omit<
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
-    MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
     Select,
@@ -81,6 +79,7 @@ export class DeliveryNoteLines {
   readonly options = input.required<DeliveryNoteOptions>();
   readonly excludedFamilies = input<readonly TaxFamily[]>([]);
   readonly readOnly = input(false);
+  private readonly taxChoices = new Map<string, SelectOption[]>();
   /** Whose note it is: their price lists decide what a line starts at. */
   readonly customer = input<CustomerOption | null>(null);
   readonly priceLists = input(false);
@@ -131,9 +130,23 @@ export class DeliveryNoteLines {
     return this.options().taxes.filter((tax) => offered.has(tax.id) || charged.includes(tax.id));
   }
 
-  protected charges(line: LineGroup, taxId: string): boolean {
-    this.revision();
-    return line.controls.taxComponentIds.value.includes(taxId);
+  /**
+   * What a line's taxes Select offers. The array is the same one while the offer is, so the Select is not handed a
+   * new input at every check.
+   */
+  protected taxOptionsOf(line: LineGroup, index: number): SelectOption[] {
+    const taxes = this.taxesOf(line);
+    const key = `${index}|${taxes.map((tax) => `${tax.id}:${tax.name}`).join(',')}`;
+    let options = this.taxChoices.get(key);
+    if (options === undefined) {
+      options = taxes.map((tax) => ({
+        value: tax.id,
+        label: tax.name,
+        testId: `line-${index}-tax-${tax.code}`,
+      }));
+      this.taxChoices.set(key, options);
+    }
+    return options;
   }
 
   protected errorKey(line: LineGroup, field: CheckedField): string | null {
@@ -232,11 +245,5 @@ export class DeliveryNoteLines {
     if (product === undefined) return;
     this.known.set(product.id, product);
     this.chooseProduct(line, { id: product.id, code: product.reference, name: product.name });
-  }
-
-  protected toggleTax(line: LineGroup, taxId: string, checked: boolean): void {
-    const others = line.controls.taxComponentIds.value.filter((id) => id !== taxId);
-    line.controls.taxComponentIds.setValue(checked ? [...others, taxId] : others);
-    line.controls.taxComponentIds.markAsDirty();
   }
 }

@@ -157,22 +157,17 @@
         </div>
       </div>
 
-      @if (taxesOf(line); as taxes) {
+      @if (taxOptionsOf(line, i); as taxes) {
         @if (taxes.length > 0) {
-          <div
-            class="flex flex-wrap gap-x-6"
-            role="group"
-            [attr.aria-label]="'delivery_notes.lines.taxes' | translate"
-          >
-            @for (tax of taxes; track tax.id) {
-              <mat-checkbox
-                [checked]="charges(line, tax.id)"
-                [disabled]="readOnly()"
-                (change)="toggleTax(line, tax.id, $event.checked)"
-                [attr.data-testid]="'line-' + i + '-tax-' + tax.code"
-                >{{ tax.name }}</mat-checkbox
-              >
-            }
+          <div class="min-w-64 max-w-md flex-1">
+            <app-select
+              [multiple]="true"
+              formControlName="taxComponentIds"
+              [options]="taxes"
+              [label]="'delivery_notes.lines.taxes' | translate"
+              [labelInside]="true"
+              [testId]="'line-' + i + '-taxes'"
+            />
           </div>
         }
       }

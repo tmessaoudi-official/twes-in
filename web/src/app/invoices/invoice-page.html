@@ -203,20 +203,18 @@
           <p class="text-sm text-on-surface-variant">
             {{ 'invoices.document_taxes.hint' | translate }}
           </p>
-          <div
-            class="flex flex-wrap gap-x-6"
-            role="group"
-            [attr.aria-label]="'invoices.document_taxes.title' | translate"
-          >
-            @for (tax of documentTaxChoices(); track tax.id) {
-              <mat-checkbox
-                [checked]="chargesDocumentTax(tax.id)"
-                [disabled]="!editable()"
-                (change)="toggleDocumentTax(tax.id, $event.checked)"
-                [attr.data-testid]="'document-tax-' + tax.code"
-                >{{ tax.name }}</mat-checkbox
-              >
-            }
+          <div class="max-w-md">
+            <app-select
+              [multiple]="true"
+              [ngModel]="documentTaxes()"
+              (ngModelChange)="documentTaxes.set($event)"
+              [ngModelOptions]="{ standalone: true }"
+              [disabled]="!editable()"
+              [options]="documentTaxSelectOptions()"
+              [label]="'invoices.document_taxes.title' | translate"
+              [labelInside]="true"
+              testId="document-taxes"
+            />
           </div>
         </div>
       </mat-card-content>

@@ -105,7 +105,7 @@ function fold(text: string): string {
 
     <ng-template #panel>
       <div
-        class="flex max-h-[60vh] flex-col overflow-hidden rounded-card border border-outline-variant bg-surface-container shadow-lg"
+        class="flex max-h-[60vh] w-full flex-col overflow-hidden rounded-card border border-outline-variant bg-surface-container shadow-lg"
         [class.rounded-b-none]="sheetMode()"
         [class.border-b-0]="sheetMode()"
         [class.pb-[env(safe-area-inset-bottom)]]="sheetMode()"

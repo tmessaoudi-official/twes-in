@@ -123,7 +123,9 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
     await page.getByTestId('line-0-description').fill('Portable 14 pouces');
     await page.getByTestId('line-0-quantity').fill('2');
     await page.getByTestId('line-0-price').fill('1250');
-    await page.getByTestId('line-0').getByRole('checkbox', { name: /19/ }).check();
+    await page.getByTestId('line-0-taxes').click();
+    await page.getByRole('option', { name: /19/ }).click();
+    await page.keyboard.press('Escape');
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('document-action-save').click();
 

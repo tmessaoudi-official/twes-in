@@ -136,7 +136,9 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.getByTestId('line-0-description').fill('Conseil, deux jours');
     await page.getByTestId('line-0-quantity').fill('2');
     await page.getByTestId('line-0-price').fill('500');
-    await page.getByTestId('line-0').getByRole('checkbox', { name: /19/ }).check();
+    await page.getByTestId('line-0-taxes').click();
+    await page.getByRole('option', { name: /19/ }).click();
+    await page.keyboard.press('Escape');
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('document-action-save').click();
 

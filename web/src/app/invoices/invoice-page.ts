@@ -11,13 +11,14 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { Select, type SelectOption } from '../shared/form/select';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import { todayIn } from '../shared/i18n/format';
@@ -94,12 +95,13 @@ export const INVOICE_PLANNED: readonly PlannedAction[] = [
   imports: [
     MatButtonModule,
     MatCardModule,
-    MatCheckboxModule,
+    FormsModule,
     RouterLink,
     TranslatePipe,
     AmountPipe,
     DayPipe,
     DescriptorForm,
+    Select,
     DocumentActions,
     RecordView,
     InvoiceLines,
@@ -324,6 +326,14 @@ export class InvoicePage {
       ? []
       : documentTaxOptions(options, this.customer(), this.documentTaxes());
   });
+
+  protected readonly documentTaxSelectOptions = computed<SelectOption[]>(() =>
+    this.documentTaxChoices().map((tax) => ({
+      value: tax.id,
+      label: tax.name,
+      testId: `document-tax-${tax.code}`,
+    })),
+  );
 
   protected readonly payment = computed(() => {
     const current = this.current();
@@ -741,15 +751,6 @@ export class InvoicePage {
 
   protected isZero(amount: string): boolean {
     return /^-?[0.]+$/.test(amount);
-  }
-
-  protected chargesDocumentTax(taxId: string): boolean {
-    return this.documentTaxes().includes(taxId);
-  }
-
-  protected toggleDocumentTax(taxId: string, checked: boolean): void {
-    const others = this.documentTaxes().filter((id) => id !== taxId);
-    this.documentTaxes.set(checked ? [...others, taxId] : others);
   }
 
   protected async save(): Promise<void> {

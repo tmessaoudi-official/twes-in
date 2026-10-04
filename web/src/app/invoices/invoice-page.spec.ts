@@ -275,9 +275,26 @@ describe('InvoicePage', () => {
       `.cdk-overlay-container [data-testid="${testId}"]`,
     ) as HTMLElement | null;
   const text = (testId: string): string => (q(testId)?.textContent ?? '').replace(/\s+/g, ' ');
-  const checked = (testId: string): boolean =>
-    (q(testId)?.querySelector('input[type="checkbox"]') as HTMLInputElement | null)?.checked ??
-    false;
+  /** What a multiple Select shows as chosen: the chips of its trigger. */
+  const chosen = (testId: string): (string | undefined)[] =>
+    Array.from(q(testId)?.querySelectorAll('[data-chip]') ?? []).map((chip) =>
+      chip.textContent?.trim(),
+    );
+
+  /** What a multiple Select offers: opened, its options' test ids read, closed. Nothing when it is not there. */
+  async function offered(testId: string): Promise<string[]> {
+    const trigger = q(testId);
+    if (trigger === null) return [];
+    trigger.click();
+    await settle();
+    const listbox = document.body.querySelector('[role="listbox"]');
+    const ids = Array.from(listbox?.querySelectorAll('[role="option"]') ?? []).map(
+      (option) => option.getAttribute('data-testid') ?? '',
+    );
+    listbox?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle();
+    return ids;
+  }
 
   async function settle(): Promise<void> {
     fixture.detectChanges();
@@ -398,8 +415,9 @@ describe('InvoicePage', () => {
     expect(q('document-action-issue')).toBeNull();
 
     await pick('invoice-customer', 'CLI-2 · Méditerranée');
-    expect(checked('document-tax-TIMBRE')).toBe(true);
-    expect(checked('document-tax-RS1')).toBe(true);
+    expect(chosen('document-taxes')).toEqual(
+      expect.arrayContaining(['Timbre fiscal', 'Retenue à la source 1 %']),
+    );
     await pick('line-0-product', 'ART-1 · Conception');
     expect((q('line-0-discount') as HTMLInputElement).value).toBe('5');
     q('document-action-save')!.click();
@@ -440,7 +458,7 @@ describe('InvoicePage', () => {
     fixture = TestBed.createComponent(InvoicePage);
     fixture.componentRef.setInput('billTo', 'k2');
     await settle();
-    await vi.waitFor(() => expect(checked('document-tax-TIMBRE')).toBe(true));
+    await vi.waitFor(() => expect(chosen('document-taxes')).toContain('Timbre fiscal'));
     expect((q('invoice-customer') as HTMLInputElement).value).toContain('Méditerranée');
     expect(navigate).toHaveBeenCalledWith(
       [],
@@ -623,24 +641,25 @@ describe('InvoicePage', () => {
   it('keeps the document taxes a draft names, and resets them when its customer changes', async () => {
     invoice.set({ ...draft, documentTaxComponentIds: [] });
     await open('i1');
-    expect(checked('document-tax-TIMBRE')).toBe(false);
+    expect(chosen('document-taxes')).not.toContain('Timbre fiscal');
 
     await pick('invoice-customer', 'CLI-2 · Méditerranée');
-    expect(checked('document-tax-TIMBRE')).toBe(true);
-    expect(checked('document-tax-RS1')).toBe(true);
+    expect(chosen('document-taxes')).toEqual(
+      expect.arrayContaining(['Timbre fiscal', 'Retenue à la source 1 %']),
+    );
   });
 
   /** The picked row carries the regime, and nothing else does: no list is held to look one up in. */
   it('stops offering a line tax and a document charge once a customer whose regime refuses them is named', async () => {
     await open(undefined);
     await pick('invoice-customer', 'CLI-2 · Méditerranée');
-    expect(q('line-0-tax-TVA19')).not.toBeNull();
-    expect(q('document-tax-TIMBRE')).not.toBeNull();
+    expect(await offered('line-0-taxes')).toContain('line-0-tax-TVA19');
+    expect(await offered('document-taxes')).toContain('document-tax-TIMBRE');
 
     await pick('invoice-customer', 'CLI-3 · Ambassade');
 
-    expect(q('line-0-tax-TVA19')).toBeNull();
-    expect(q('document-tax-TIMBRE')).toBeNull();
+    expect(await offered('line-0-taxes')).not.toContain('line-0-tax-TVA19');
+    expect(await offered('document-taxes')).not.toContain('document-tax-TIMBRE');
   });
 
   it('shows a draft’s totals as the API works them out, withholding and net payable included', async () => {

@@ -178,6 +178,21 @@ describe('DeliveryNotePage', () => {
   };
   let fixture: ComponentFixture<DeliveryNotePage>;
 
+  /** What a multiple Select offers: opened, its options' test ids read, closed. Nothing when it is not there. */
+  async function offered(testId: string): Promise<string[]> {
+    const trigger = q(testId);
+    if (trigger === null) return [];
+    trigger.click();
+    await settle();
+    const listbox = document.body.querySelector('[role="listbox"]');
+    const ids = Array.from(listbox?.querySelectorAll('[role="option"]') ?? []).map(
+      (option) => option.getAttribute('data-testid') ?? '',
+    );
+    listbox?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle();
+    return ids;
+  }
+
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
 
@@ -702,11 +717,11 @@ describe('DeliveryNotePage', () => {
   it('stops offering a line tax once a customer whose regime refuses it is named', async () => {
     await open(undefined);
     await pick('delivery-note-customer', 'CLI-1 · Carthage');
-    expect(q('line-0-tax-TVA19')).not.toBeNull();
+    expect(await offered('line-0-taxes')).toContain('line-0-tax-TVA19');
 
     await pick('delivery-note-customer', 'CLI-2 · Export SA');
 
-    expect(q('line-0-tax-TVA19')).toBeNull();
+    expect(await offered('line-0-taxes')).not.toContain('line-0-tax-TVA19');
   });
 
   // docs/SPEC.md § 7, 2026-09-26, row 139: what was just done offers its next step, to whoever may take it.
