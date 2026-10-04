@@ -27,6 +27,7 @@ import { MatDatepickerIntl, MatCalendar } from '@angular/material/datepicker';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateService, TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../a11y/label';
+import { todayIn } from '../i18n/format';
 import { FormatFacade } from '../i18n/format-facade';
 import { DayAdapter, dateOfDay, dayOfDate } from './day-adapter';
 import { DayInput } from './day-input';
@@ -93,7 +94,7 @@ class TranslatedDatepickerIntl extends MatDatepickerIntl {
       >
         <mat-calendar
           [selected]="selected()"
-          [startAt]="selected()"
+          [startAt]="startAt()"
           (selectedChange)="pick($event)"
         />
       </div>
@@ -109,13 +110,17 @@ export class DayCalendarButton implements OnDestroy {
   private readonly panel = viewChild.required<TemplateRef<unknown>>('panel');
   private ref: OverlayRef | null = null;
   protected readonly selected = signal<Date | null>(null);
+  protected readonly startAt = signal<Date>(new Date());
 
   protected toggle(): void {
     if (this.ref) {
       this.close();
       return;
     }
-    this.selected.set(dateOfDay(this.field().day()) ?? new Date());
+    const held = dateOfDay(this.field().day());
+    this.selected.set(held);
+    // An empty field opens on today without marking it as the value.
+    this.startAt.set(held ?? dateOfDay(todayIn(null)) ?? new Date());
     const origin = this.opener().nativeElement;
     this.ref = this.overlay.create({
       positionStrategy: this.overlay

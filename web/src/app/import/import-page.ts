@@ -19,6 +19,7 @@ import { ImportApi } from './import-api';
 import { ImportFacade } from './import-facade';
 import type { ImportMode, ImportRejection } from './import-types';
 import { FileDrop } from '../shared/form/file-drop';
+import { IMPORT_MAX_BYTES } from '../shared/form/file-limits';
 
 /**
  * One screen for every subject a module declares as importable (docs/SPEC.md § 8 row 59). It is driven entirely by
@@ -36,6 +37,7 @@ import { FileDrop } from '../shared/form/file-drop';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ImportPage {
+  protected readonly maxBytes = IMPORT_MAX_BYTES;
   /** Bound from the route parameter by withComponentInputBinding(): `customers`, `products`, `opening-stock`… */
   readonly subject = input.required<string>();
 

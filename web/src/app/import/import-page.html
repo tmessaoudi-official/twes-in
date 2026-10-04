@@ -84,6 +84,7 @@
         class="w-full max-w-md"
         [label]="'import.choose_file' | translate"
         accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        [maxBytes]="maxBytes"
         [chosenName]="file()?.name ?? null"
         [disabled]="busy()"
         testId="import-file"

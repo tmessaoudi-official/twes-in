@@ -46,6 +46,32 @@ describe('ColourField', () => {
     expect(q('accent-swatch-blue').getAttribute('aria-checked')).toBe('false');
   });
 
+  it('is one Tab stop: the chosen swatch, and the arrow keys move and choose among the rest', async () => {
+    const stops = () =>
+      Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+          '[role="radio"][tabindex="0"]',
+        ),
+      ).map((swatch) => swatch.dataset['swatch']);
+    expect(stops()).toEqual(['blue']);
+
+    q('accent-swatch-blue').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }),
+    );
+    await settle();
+    expect(fixture.componentInstance.control.value).toBe('#b3261e');
+    expect(stops()).toEqual(['red']);
+
+    q('accent-swatch-red').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }),
+    );
+    q('accent-swatch-blue').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }),
+    );
+    await settle();
+    expect(fixture.componentInstance.control.value).toBe('#455a64');
+  });
+
   it('takes a written colour, and flags text that is not one without dropping it', async () => {
     const input = q('accent') as HTMLInputElement;
     input.value = '#ABCDEF';

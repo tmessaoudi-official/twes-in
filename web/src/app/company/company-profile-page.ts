@@ -27,6 +27,7 @@ import { ScreenActions } from '../shared/actions/screen-actions';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
 import { FileDrop } from '../shared/form/file-drop';
+import { LOGO_MAX_BYTES } from '../shared/form/file-limits';
 
 /** What the company's documents say about it, revised by whoever holds the settings permission. */
 @Component({
@@ -44,6 +45,7 @@ import { FileDrop } from '../shared/form/file-drop';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CompanyProfilePage implements OnInit {
+  protected readonly maxBytes = LOGO_MAX_BYTES;
   private readonly facade = inject(CompanyProfileFacade);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);

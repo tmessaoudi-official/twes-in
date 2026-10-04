@@ -496,7 +496,7 @@ body {
   .mdc-list-item--activated {
     background-color: var(--mat-sys-surface);
     box-shadow:
-      inset 3px 0 0 var(--twes-accent),
+      inset 3px 0 0 var(--twes-accent-text),
       var(--twes-shadow-1);
 
     .mdc-list-item__primary-text {
@@ -1005,7 +1005,7 @@ app-cookie-notice {
 .twes-rail-member.is-current {
   background-color: var(--mat-sys-surface);
   box-shadow:
-    inset 3px 0 0 var(--twes-accent),
+    inset 3px 0 0 var(--twes-accent-text),
     var(--twes-shadow-1);
 }
 

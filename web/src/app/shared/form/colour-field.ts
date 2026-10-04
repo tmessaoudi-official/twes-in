@@ -45,9 +45,12 @@ const HEX = /^#[0-9a-f]{6}$/;
           [class.ring-on-surface]="isChosen(preset.hex)"
           [style.background-color]="preset.hex"
           [attr.aria-checked]="isChosen(preset.hex)"
+          [attr.tabindex]="stop(preset.hex) ? 0 : -1"
           [appLabel]="'form.colour.' + preset.id | translate"
           [disabled]="disabled()"
           (click)="choose(preset.hex)"
+          (keydown)="arrow($event)"
+          [attr.data-swatch]="preset.id"
           [attr.data-testid]="testId() + '-swatch-' + preset.id"
         >
           <span class="sr-only">{{ 'form.colour.' + preset.id | translate }}</span>
@@ -90,6 +93,30 @@ export class ColourField implements ControlValueAccessor, Validator {
 
   protected valid(): boolean {
     return HEX.test(this.text());
+  }
+
+  /** The one swatch Tab reaches: the chosen one, else the first; arrow keys move among the rest. */
+  protected stop(hex: string): boolean {
+    const chosen = this.presets.some((preset) => preset.hex === this.text());
+    return chosen ? this.isChosen(hex) : hex === this.presets[0].hex;
+  }
+
+  protected arrow(event: KeyboardEvent): void {
+    const step =
+      event.key === 'ArrowRight' || event.key === 'ArrowDown'
+        ? 1
+        : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+          ? -1
+          : 0;
+    if (step === 0 || this.disabled()) return;
+    event.preventDefault();
+    const from = this.presets.findIndex((preset) => preset.hex === this.text());
+    const next =
+      this.presets[(Math.max(from, 0) + step + this.presets.length) % this.presets.length]!;
+    this.choose(next.hex);
+    (event.currentTarget as HTMLElement).parentElement
+      ?.querySelector<HTMLElement>(`[data-swatch="${next.id}"]`)
+      ?.focus();
   }
 
   protected isChosen(hex: string): boolean {

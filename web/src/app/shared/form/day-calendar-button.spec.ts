@@ -77,6 +77,16 @@ describe('DayCalendarButton', () => {
     expect(calendar()).toBeNull();
   });
 
+  it('opens an empty field on today without marking it as chosen', async () => {
+    fixture.componentInstance.control.setValue('');
+    await settle();
+    fixture.nativeElement.querySelector('[data-testid="day-calendar-open"]').click();
+    await settle();
+
+    expect(document.body.querySelector('.mat-calendar-body-selected')).toBeNull();
+    expect(document.body.querySelector('.mat-calendar-body-today')).not.toBeNull();
+  });
+
   it('closes on Escape without changing the day', async () => {
     fixture.nativeElement.querySelector('[data-testid="day-calendar-open"]').click();
     await settle();

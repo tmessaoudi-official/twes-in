@@ -48,6 +48,7 @@ import { ScreenActions } from '../shared/actions/screen-actions';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
 import { FileDrop } from '../shared/form/file-drop';
+import { ATTACHMENT_MAX_BYTES } from '../shared/form/file-limits';
 
 /**
  * One expense: a draft to fill in, revise, attach receipts to and record; a recorded one to pay. A new expense takes
@@ -73,6 +74,7 @@ import { FileDrop } from '../shared/form/file-drop';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ExpensePage {
+  protected readonly maxBytes = ATTACHMENT_MAX_BYTES;
   private readonly facade = inject(ExpensesFacade);
   private readonly unsaved = inject(UnsavedChanges);
   private readonly feedback = inject(Feedback);

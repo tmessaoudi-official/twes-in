@@ -52,7 +52,7 @@
                   | translate
               "
               accept="image/png,image/jpeg,image/webp"
-              [maxBytes]="2097152"
+              [maxBytes]="maxBytes"
               [disabled]="busy()"
               testId="profile-logo-input"
               (picked)="uploadLogo($event)"

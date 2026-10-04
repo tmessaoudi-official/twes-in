@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { ACCENT_PRESETS } from './accent-presets';
 import {
   accentTokens,
   applyColourTokens,
@@ -234,6 +235,25 @@ describe('accentTokens', () => {
         const surface = colourTokens(accent, scheme)['--mat-sys-surface'];
         const text = accentTokens(accent, scheme)['--twes-accent-text'];
         expect(contrast(text, surface), `${scheme} ${accent}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it('keeps every swatch the colour field offers, and the extremes a person could type, readable in both schemes', () => {
+    const extremes = ['#ffffff', '#000000', '#ffff00', '#00ffff', '#808080'];
+    for (const accent of [...ACCENT_PRESETS.map((preset) => preset.hex), ...extremes]) {
+      for (const scheme of ['light', 'dark'] as const) {
+        const tokens = accentTokens(accent, scheme);
+        const surface = colourTokens(accent, scheme)['--mat-sys-surface'];
+        expect(
+          contrast(tokens['--twes-on-accent'], tokens['--twes-accent']),
+          `${accent} ${scheme}: ink on the accent`,
+        ).toBeGreaterThanOrEqual(4.5);
+        // The accent text also draws the selected-destination bar, a 3:1 non-text mark, so 4.5:1 clears both.
+        expect(
+          contrast(tokens['--twes-accent-text'], surface),
+          `${accent} ${scheme}: accent text and bar on the surface`,
+        ).toBeGreaterThanOrEqual(4.5);
       }
     }
   });
