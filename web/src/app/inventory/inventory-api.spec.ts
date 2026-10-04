@@ -339,6 +339,28 @@ describe('InventoryApi', () => {
     await expect(deleted).rejects.toMatchObject({ code: 'in_use' });
   });
 
+  it('records a delivery shared over several places in one request, whole or refused', async () => {
+    const input = {
+      productId: 'p1',
+      parts: [
+        { locationId: 'l1', quantity: '6' },
+        { locationId: 'l2', quantity: '4' },
+      ],
+      unitCost: '4.25',
+    };
+    const recorded = api.receiveSplit('c1', input);
+    const post = http.expectOne('/api/companies/c1/stock-receipts');
+    expect([post.request.method, post.request.body]).toEqual(['POST', input]);
+    post.flush({ id: 'm1', productId: 'p1', parts: input.parts, movementIds: ['m1', 'm2'] });
+    expect(await recorded).toEqual(['m1', 'm2']);
+
+    const refused = api.receiveSplit('c1', input);
+    http
+      .expectOne('/api/companies/c1/stock-receipts')
+      .flush({ detail: 'locationId' }, { status: 422, statusText: 'Unprocessable Entity' });
+    await expect(refused).rejects.toMatchObject({ code: 'invalid' });
+  });
+
   it('records a receipt or a count, and says why one was refused', async () => {
     const recorded = api.record('c1', {
       operation: 'receive',

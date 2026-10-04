@@ -205,6 +205,20 @@ export interface StockMovementInput {
   note?: string;
 }
 
+/**
+ * One delivery shared out over several places (docs/SPEC.md § 7, 2026-10-04 09:04): a receipt per place, stored whole
+ * or refused whole, so what the shelves hold is the sum of the movements. The parts are in the order the person gave
+ * them and each place appears once; the lot and the cost apply to every part.
+ */
+export interface StockReceiptInput {
+  productId: string;
+  parts: readonly { locationId: string; quantity: string }[];
+  lotCode?: string;
+  lotExpiresOn?: string;
+  unitCost?: string;
+  applyCost?: CostBasis;
+}
+
 /** What a receipt does to a product's cost: the company decides, or leaves the choice to the person. */
 export type CostOnReceive = 'suggest' | 'average' | 'last' | 'manual';
 

@@ -23,6 +23,8 @@ import type {
   StockStructureStockStructureRead,
   StockStructureStockStructureWriteValidationStockStructureWrite as StockStructureStockStructureWrite,
   StockProductPickStockProductPickRead,
+  StockReceiptStockReceiptReadValidationStockReceiptWrite as StockReceiptStockReceiptRead,
+  StockReceiptStockReceiptWriteValidationStockReceiptWrite as StockReceiptStockReceiptWrite,
   ReceiptCostReceiptCostRead,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
@@ -47,6 +49,7 @@ import {
   type StockLocationInput,
   type StockLocationRow,
   type StockMovementInput,
+  type StockReceiptInput,
   type StockMovementRow,
   API_DECIMALS,
   type StockOptions,
@@ -470,6 +473,23 @@ export class InventoryApi {
         ),
       ),
     );
+  }
+
+  /**
+   * One delivery shared over several places, all stored or none: the ids of the movements written, one per place, in
+   * the order given. 422 naming the field refused, a place the company does not have or one named twice.
+   */
+  async receiveSplit(companyId: string, input: StockReceiptInput): Promise<string[]> {
+    const body: StockReceiptStockReceiptWrite = {
+      ...input,
+      parts: input.parts.map((part) => ({ ...part })),
+    };
+    return this.guard(async () => {
+      const receipt = await firstValueFrom(
+        this.http.post<StockReceiptStockReceiptRead>(path(companyId, 'stock-receipts'), body),
+      );
+      return receipt.movementIds ?? [];
+    });
   }
 
   private async guard<T>(call: () => Promise<T>, conflict: InventoryError = 'invalid'): Promise<T> {
