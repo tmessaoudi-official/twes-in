@@ -105,6 +105,59 @@ final class InventoryTest extends ApiTestCase
         self::assertEqualsCanonicalizing(['stock_location.created', 'stock_location.created', 'stock_location.revised', 'stock_location.deleted'], $actions);
     }
 
+    public function testADeliveryIsSharedOutOverSeveralPlacesInOneRequestAndRefusedWholeWhenAnyPartIs(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $siteId = $this->defaultLocationId();
+        $this->postJson($this->path('stock-locations'), $this->location(['kind' => 'zone', 'code' => 'Z1', 'name' => 'Zone froide']));
+        $zoneId = $this->stringAt($this->json(), 'id');
+
+        $this->postJson($this->path('stock-receipts'), ['productId' => $this->laptopId, 'parts' => [
+            ['locationId' => $siteId, 'quantity' => '6'],
+            ['locationId' => $zoneId, 'quantity' => '4'],
+        ]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $parts = $this->json()['parts'];
+        $movementIds = $this->json()['movementIds'];
+        self::assertIsArray($parts);
+        self::assertIsArray($movementIds);
+        self::assertSame([$siteId, $zoneId], array_column($parts, 'locationId'));
+        self::assertSame(['6.000', '4.000'], array_column($parts, 'quantity'));
+        self::assertCount(2, $movementIds);
+        self::assertEqualsCanonicalizing(
+            [[$siteId, '6.000'], [$zoneId, '4.000']],
+            array_map(static fn (array $row): array => [$row['locationId'], $row['quantity']], $this->levels()),
+        );
+
+        // One part the company does not have: the other part is not written either.
+        $this->postJson($this->path('stock-receipts'), ['productId' => $this->laptopId, 'parts' => [
+            ['locationId' => $siteId, 'quantity' => '5'],
+            ['locationId' => Uuid::v7()->toRfc4122(), 'quantity' => '1'],
+        ]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $this->postJson($this->path('stock-receipts'), ['productId' => $this->laptopId, 'parts' => [
+            ['locationId' => $siteId, 'quantity' => '1'],
+            ['locationId' => $siteId, 'quantity' => '2'],
+        ]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $this->postJson($this->path('stock-receipts'), ['productId' => $this->laptopId, 'parts' => []]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertEqualsCanonicalizing(
+            [[$siteId, '6.000'], [$zoneId, '4.000']],
+            array_map(static fn (array $row): array => [$row['locationId'], $row['quantity']], $this->levels()),
+            'no refused receipt left anything behind',
+        );
+    }
+
+    public function testASplitReceiptNeedsTheStockWritePermission(): void
+    {
+        $this->signedIn(['stock.read']);
+
+        $this->postJson($this->path('stock-receipts'), ['productId' => $this->laptopId, 'parts' => [['locationId' => $this->defaultLocationId(), 'quantity' => '1']]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testTrackedGoodsAreReceivedAndCountedAndTheirStockListedByLocation(): void
     {
         $this->signedIn(['stock.read', 'stock.write']);

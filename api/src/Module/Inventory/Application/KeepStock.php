@@ -85,20 +85,56 @@ final readonly class KeepStock
      */
     public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null): StockMovement
     {
-        return $this->transactions->run(function () use ($company, $productId, $locationId, $quantity, $actorUserId, $named, $unitCost, $apply): StockMovement {
-            [$product, $location] = $this->trackedAt($company, $productId, $locationId);
-            $lot = $this->lotFor($product, $named, true);
-            $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now(), $lot, $unitCost);
-            // Read before saving: a receipt typed with no cost is valued at the average when it is saved, and that
-            // figure is not a price anybody typed.
-            $typed = $movement->getUnitCost();
-            $this->inStockOnce($movement);
-            $this->save($movement);
-            $this->moveCost($company, $product, $movement, $typed, $apply, $actorUserId);
-            $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.received', $actorUserId, $company->getId()));
+        return $this->transactions->run(fn (): StockMovement => $this->receiptAt($company, $productId, $locationId, $quantity, $actorUserId, $named, $unitCost, $apply));
+    }
 
-            return $movement;
-        });
+    /**
+     * One delivery shared out over several places of a company, each place with its own quantity: one receipt per place,
+     * stored whole or not at all, so the total on the shelves is always the sum of the movements and never half of
+     * a delivery. Every place is checked before any is written, and a place may appear once.
+     *
+     * @param list<array{locationId: Uuid, quantity: string}> $parts in the order the person gave them
+     *
+     * @return list<StockMovement> the receipts, in the same order
+     *
+     * @throws InvalidStockMovement
+     */
+    public function receiveSplit(Company $company, Uuid $productId, array $parts, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null): array
+    {
+        if ([] === $parts) {
+            throw new InvalidStockMovement('parts', 'A receipt needs at least one place.');
+        }
+        $seen = [];
+        foreach ($parts as $part) {
+            $key = $part['locationId']->toRfc4122();
+            if (isset($seen[$key])) {
+                throw new InvalidStockMovement('locationId', 'A place may appear once in a receipt: add its quantities together.');
+            }
+            $seen[$key] = true;
+            $this->trackedAt($company, $productId, $part['locationId']);
+        }
+
+        return $this->transactions->run(fn (): array => array_map(
+            fn (array $part): StockMovement => $this->receiptAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named, $unitCost, $apply),
+            $parts,
+        ));
+    }
+
+    /** @throws InvalidStockMovement */
+    private function receiptAt(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?CostBasis $apply): StockMovement
+    {
+        [$product, $location] = $this->trackedAt($company, $productId, $locationId);
+        $lot = $this->lotFor($product, $named, true);
+        $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now(), $lot, $unitCost);
+        // Read before saving: a receipt typed with no cost is valued at the average when it is saved, and that
+        // figure is not a price anybody typed.
+        $typed = $movement->getUnitCost();
+        $this->inStockOnce($movement);
+        $this->save($movement);
+        $this->moveCost($company, $product, $movement, $typed, $apply, $actorUserId);
+        $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.received', $actorUserId, $company->getId()));
+
+        return $movement;
     }
 
     /**

@@ -125,6 +125,62 @@ final class KeepStockTest extends TestCase
         self::assertSame([[$this->laptop->getId()->toRfc4122(), $this->site->getId()->toRfc4122(), '7.000']], $this->levels());
     }
 
+    public function testASplitReceiptWritesOneMovementPerLocationAndTheTotalIsTheirSum(): void
+    {
+        $this->track(SettingAddress::company($this->company), true);
+        $actor = Uuid::v7();
+        $rack = $this->rack();
+
+        $written = $this->keep->receiveSplit($this->company, $this->laptop->getId(), [
+            ['locationId' => $this->site->getId(), 'quantity' => '6'],
+            ['locationId' => $rack->getId(), 'quantity' => '4'],
+        ], $actor);
+
+        self::assertSame(['6.000', '4.000'], array_map(static fn ($movement) => $movement->getQuantity(), $written), 'one receipt per place, in the order given');
+        self::assertSame(
+            [[$this->laptop->getId()->toRfc4122(), $this->site->getId()->toRfc4122(), '6.000'], [$this->laptop->getId()->toRfc4122(), $rack->getId()->toRfc4122(), '4.000']],
+            $this->levels(),
+        );
+        // One transaction for the whole receipt: half of it placed is stock the delivery note never showed.
+        self::assertSame(1, $this->transactions->committed);
+    }
+
+    public function testASplitReceiptWithAPlaceThatIsNotTheCompanysWritesNothing(): void
+    {
+        $this->track(SettingAddress::company($this->company), true);
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $theirs = StockLocation::defaultOf(Establishment::create($globex, '000', 'Globex', true, $this->clock->now()), $this->clock->now());
+
+        try {
+            $this->keep->receiveSplit($this->company, $this->laptop->getId(), [
+                ['locationId' => $this->site->getId(), 'quantity' => '6'],
+                ['locationId' => $theirs->getId(), 'quantity' => '4'],
+            ], null);
+            self::fail('The receipt was accepted.');
+        } catch (InvalidStockMovement $refused) {
+            self::assertSame('locationId', $refused->field);
+        }
+        self::assertSame([], $this->movements->movements, 'the first place was not written before the second was refused');
+    }
+
+    public function testASplitReceiptNamesEachPlaceOnceAndNeedsAtLeastOne(): void
+    {
+        $this->track(SettingAddress::company($this->company), true);
+
+        foreach (['parts' => [], 'locationId' => [
+            ['locationId' => $this->site->getId(), 'quantity' => '1'],
+            ['locationId' => $this->site->getId(), 'quantity' => '2'],
+        ]] as $field => $parts) {
+            try {
+                $this->keep->receiveSplit($this->company, $this->laptop->getId(), $parts, null);
+                self::fail('The receipt was accepted.');
+            } catch (InvalidStockMovement $refused) {
+                self::assertSame($field, $refused->field);
+            }
+        }
+        self::assertSame([], $this->movements->movements);
+    }
+
     public function testEachMovementIsSaidAsAChangeToTheProductsStockInsideItsTransaction(): void
     {
         $this->track(SettingAddress::company($this->company), true);
