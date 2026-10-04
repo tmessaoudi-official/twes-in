@@ -19,6 +19,7 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FormatFacade } from '../i18n/format-facade';
 import { DecimalInput } from './decimal-input';
+import { DayCalendarButton } from './day-calendar-button';
 import { DayInput } from './day-input';
 import { PickField, type PickOption } from './pick-field';
 import { Select } from './select';
@@ -51,6 +52,7 @@ export interface PickSource {
     TranslatePipe,
     DecimalInput,
     DayInput,
+    DayCalendarButton,
     PickField,
     Select,
   ],

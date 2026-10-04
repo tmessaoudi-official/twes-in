@@ -704,6 +704,18 @@
       "message": "Vos modifications seront perdues.",
       "leave": "Quitter",
       "stay": "Rester"
+    },
+    "calendar": {
+      "calendar": "Calendrier",
+      "open": "Ouvrir le calendrier",
+      "previous_month": "Mois précédent",
+      "next_month": "Mois suivant",
+      "previous_year": "Année précédente",
+      "next_year": "Année suivante",
+      "previous_years": "24 années précédentes",
+      "next_years": "24 années suivantes",
+      "choose_date": "Choisir une année et un mois",
+      "choose_month_and_year": "Choisir une année"
     }
   },
   "fiscal": {

@@ -136,6 +136,30 @@
                       {{ error.key | translate: error.params }}
                     </span>
                   }
+                } @else if (field.kind === 'date') {
+                  <mat-form-field>
+                    <input
+                      matInput
+                      appDay
+                      #day="appDay"
+                      [id]="controlId(field)"
+                      type="text"
+                      inputmode="numeric"
+                      autocomplete="off"
+                      [formControlName]="field.id"
+                      [required]="field.required ?? false"
+                      [attr.data-testid]="'field-' + field.id"
+                    />
+                    <app-day-calendar-button matSuffix [field]="day" />
+                    @if (field.hint) {
+                      <mat-hint>{{ field.hint | translate }}</mat-hint>
+                    }
+                    @if (errorFor(field); as error) {
+                      <mat-error [attr.data-testid]="'field-error-' + field.id">
+                        {{ error.key | translate: error.params }}
+                      </mat-error>
+                    }
+                  </mat-form-field>
                 } @else {
                   <mat-form-field>
                     @switch (field.kind) {
@@ -173,19 +197,6 @@
                           [formControlName]="field.id"
                           [required]="field.required ?? false"
                           [attr.maxlength]="field.maxLength ?? null"
-                          [attr.data-testid]="'field-' + field.id"
-                        />
-                      }
-                      @case ('date') {
-                        <input
-                          matInput
-                          appDay
-                          [id]="controlId(field)"
-                          type="text"
-                          inputmode="numeric"
-                          autocomplete="off"
-                          [formControlName]="field.id"
-                          [required]="field.required ?? false"
                           [attr.data-testid]="'field-' + field.id"
                         />
                       }

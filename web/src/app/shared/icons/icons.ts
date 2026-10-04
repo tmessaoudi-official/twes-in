@@ -23,6 +23,7 @@ export const ICONS = [
   'bolt',
   'bookmarks',
   'business',
+  'calendar_month',
   'cancel',
   'card_membership',
   'chat',

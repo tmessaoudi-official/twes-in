@@ -33,6 +33,7 @@ const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
     { provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => DayInput), multi: true },
     { provide: NG_VALIDATORS, useExisting: forwardRef(() => DayInput), multi: true },
   ],
+  exportAs: 'appDay',
   host: { '(input)': 'typed()', '(blur)': 'left()' },
 })
 export class DayInput implements ControlValueAccessor, Validator {
@@ -68,6 +69,23 @@ export class DayInput implements ControlValueAccessor, Validator {
     const value: unknown = control.value;
     if (typeof value !== 'string' || value === '') return null;
     return ISO_DAY.test(value) ? null : { date: true };
+  }
+
+  /** The ISO day the field holds, or '' when it holds nothing or text that is not a day. */
+  day(): string {
+    return ISO_DAY.test(this.value) ? this.value : '';
+  }
+
+  /** A day chosen elsewhere (the calendar): taken as if typed, and shown in full. */
+  choose(day: string): void {
+    this.value = day;
+    this.changed(day);
+    this.show();
+    this.touched();
+  }
+
+  focus(): void {
+    this.element.nativeElement.focus();
   }
 
   protected typed(): void {
