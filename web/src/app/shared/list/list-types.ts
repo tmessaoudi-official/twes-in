@@ -2,6 +2,7 @@
 
 import type { ActionConfirm } from '../actions/screen-action';
 import type { IconName } from '../icons/icons';
+import type { StatusTone } from '../theme/accent-theme';
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -102,6 +103,8 @@ export interface ListFilterOption {
   value: string;
   /** A translation key for declared options; custom options carry their configured label. */
   label: string;
+  /** The status tone an option's dot is drawn in, for a filter over a lifecycle. */
+  tone?: StatusTone;
 }
 
 /** One faceted filter of a list screen: the rows whose value equals the option a person picked. */

@@ -241,6 +241,31 @@ describe('Select', () => {
     expect(q('sel')!.querySelector('[data-trigger-count]')?.textContent?.trim()).toBe('30');
   });
 
+  it('draws a dot in the status tone before an option and beside the chosen label', async () => {
+    fixture.componentInstance.options.set([
+      { value: 'a', label: 'Paid', tone: 'success' },
+      { value: 'b', label: 'Draft' },
+    ]);
+    await settle();
+    await open();
+
+    const dots = Array.from(document.body.querySelectorAll('[role="option"]')).map(
+      (option) =>
+        option.querySelector<HTMLElement>('[data-tone-dot]')?.style.backgroundColor ?? null,
+    );
+    expect(dots).toEqual(['var(--twes-status-success-dot)', null]);
+    // The option with no tone keeps a blank of the dot's width, so the words of every row line up.
+    const rows = document.body.querySelectorAll('[role="option"]');
+    expect(
+      rows[1]!.querySelector('[data-option-label]')!.previousElementSibling?.className,
+    ).toContain('size-2.5');
+    document.body.querySelector<HTMLElement>('[role="option"]')!.click();
+    await settle();
+    expect(q('sel')!.querySelector<HTMLElement>('[data-tone-dot]')?.style.backgroundColor).toBe(
+      'var(--twes-status-success-dot)',
+    );
+  });
+
   it('goes to the option a typed letter begins, opening from the trigger as a native select did', async () => {
     press(q('sel')!, 'e');
     await settle();

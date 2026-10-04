@@ -571,6 +571,7 @@ export class DataList<Row> implements OnInit {
       ...facet.options.map((entry) => ({
         value: entry.option.value,
         label: entry.option.label,
+        tone: entry.option.tone,
         count: entry.count,
         testId: `list-facet-${id}-${entry.option.value}`,
       })),

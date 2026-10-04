@@ -22,6 +22,7 @@ import {
   type PaymentMethod,
   type TaxFamily,
   type TaxOption,
+  INVOICE_STATUS_TONES,
 } from './invoices-types';
 
 const FIELDS = 'invoices.fields';
@@ -191,6 +192,7 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
       options: INVOICE_SHOWN_STATUSES.map((status) => ({
         value: status,
         label: `invoices.statuses.${status}`,
+        tone: INVOICE_STATUS_TONES[status],
       })),
     },
     {

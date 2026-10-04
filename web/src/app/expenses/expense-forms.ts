@@ -19,6 +19,7 @@ import {
   type ExpenseSearch,
   type ExpenseSortKey,
   type PaymentMethod,
+  EXPENSE_STATUS_TONES,
 } from './expenses-types';
 
 const FIELDS = 'expenses.fields';
@@ -104,6 +105,7 @@ export const EXPENSES_LIST: ListDescriptor<ExpenseRow> = {
       options: EXPENSE_STATUSES.map((status) => ({
         value: status,
         label: `expenses.statuses.${status}`,
+        tone: EXPENSE_STATUS_TONES[status],
       })),
     },
   ],

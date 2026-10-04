@@ -20,6 +20,7 @@ import { NG_VALUE_ACCESSOR, type ControlValueAccessor } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import type { StatusTone } from '../theme/accent-theme';
 import { WINDOW_CLASS } from '../ui/window-class';
 
 /** One thing a Select offers: the value a control holds, and the words a person reads for it. */
@@ -34,6 +35,8 @@ export interface SelectOption {
   params?: Record<string, unknown>;
   /** How many rows the option stands for, drawn at the end of its row and beside the chosen label. */
   count?: number | null;
+  /** A status tone: a dot of that tone is drawn before the label, which still says the same in words. */
+  tone?: StatusTone;
 }
 
 /** How long typed letters count as one word before they are forgotten. */
@@ -106,6 +109,14 @@ function fold(text: string): string {
             }}</span>
           }
         } @else {
+          @if (chosen()[0].tone; as tone) {
+            <span
+              aria-hidden="true"
+              class="size-2.5 shrink-0 rounded-full"
+              data-tone-dot
+              [style.background-color]="'var(--twes-status-' + tone + '-dot)'"
+            ></span>
+          }
           <span class="truncate">{{ chosen()[0].label }}</span>
           @if (hasCount(chosen()[0].count)) {
             <span
@@ -194,6 +205,17 @@ function fold(text: string): string {
                 [class.invisible]="!isChosen(option.value)"
                 >check</mat-icon
               >
+              @if (option.tone; as tone) {
+                <span
+                  aria-hidden="true"
+                  class="size-2.5 shrink-0 rounded-full"
+                  data-tone-dot
+                  [style.background-color]="'var(--twes-status-' + tone + '-dot)'"
+                ></span>
+              } @else if (anyTone()) {
+                <!-- Keeps the words of an option with no tone (« all ») in line with the toned ones. -->
+                <span aria-hidden="true" class="size-2.5 shrink-0"></span>
+              }
               <span data-option-label class="min-w-0 flex-1">{{ option.label }}</span>
               @if (hasCount(option.count)) {
                 <span
@@ -266,6 +288,8 @@ export class Select implements ControlValueAccessor {
         }))
       : this.options();
   });
+
+  protected readonly anyTone = computed(() => this.items().some((option) => option.tone));
 
   protected readonly searchable = computed(() => this.items().length >= SELECT_SEARCH_FROM);
 

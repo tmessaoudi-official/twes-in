@@ -17,6 +17,7 @@ import {
   type LineTaxOption,
   type ProductOption,
   type TaxFamily,
+  DELIVERY_NOTE_STATUS_TONES,
 } from './delivery-notes-types';
 import { LOT_CODE_PATTERN, type ProductTracking } from '../products/products-types';
 
@@ -133,6 +134,7 @@ export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {
       options: DELIVERY_NOTE_STATUSES.map((status) => ({
         value: status,
         label: `delivery_notes.statuses.${status}`,
+        tone: DELIVERY_NOTE_STATUS_TONES[status],
       })),
     },
   ],
