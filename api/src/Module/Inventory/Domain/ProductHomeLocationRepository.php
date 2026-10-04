@@ -14,17 +14,21 @@ use Symfony\Component\Uid\Uuid;
 interface ProductHomeLocationRepository
 {
     /**
-     * Every home this product has, one per establishment, by establishment code.
+     * Every home this product has, by establishment code and then in order, the main home first.
      *
      * @return list<ProductHomeLocation>
      */
     public function ofProduct(Uuid $productId, Uuid $companyId): array;
 
-    /** The home this product has in that establishment, or none. */
-    public function ofProductInEstablishment(Uuid $productId, Uuid $establishmentId): ?ProductHomeLocation;
+    /**
+     * The homes this product has in that establishment, the main one first.
+     *
+     * @return list<ProductHomeLocation>
+     */
+    public function ofProductInEstablishment(Uuid $productId, Uuid $establishmentId): array;
 
     /**
-     * The homes of each of these products, keyed by the product's identifier. One read serves a whole picker: a list
+     * The homes of each of these products, keyed by the product's identifier, each list in order. One read serves a whole picker: a list
      * that asked per product would ask once per row.
      *
      * @param list<Uuid> $productIds

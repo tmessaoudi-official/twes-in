@@ -23,13 +23,17 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Where each product normally lives (docs/SPEC.md row 101). A home is a proposal, not a rule: it is what a receipt
- * offers so a person putting goods away answers the same question once rather than every time, and nothing here
- * refuses a movement to anywhere else.
+ * Where each product normally lives (docs/SPEC.md row 101, § 7 2026-10-04 09:04). A home is a proposal, not a rule: it
+ * is what a receipt offers so a person putting goods away answers the same question once rather than every time, and
+ * nothing here refuses a movement to anywhere else.
  *
- * One home per product per establishment, so setting one in an establishment that already has one MOVES it rather
- * than adding a second — the establishment is the location's own, never asked for separately, because a location
- * already knows where it is and two sources for one fact drift.
+ * A product may be kept at several places of one establishment, in order, the first being its main home, which is the
+ * one a receipt proposes. The list of an establishment is written as a whole: the places named are its homes, in that
+ * order, and any it had that are not named stop being homes. The order is rewritten for all of them at once, which is
+ * why it is not unique in the database: a swap of the first and the second would collide on its first update.
+ *
+ * The establishment is the location's own, never asked for separately, because a location already knows where it is
+ * and two sources for one fact drift.
  */
 final readonly class KeepProductHomes
 {
@@ -48,7 +52,7 @@ final readonly class KeepProductHomes
     }
 
     /**
-     * Every home this product has, by establishment code.
+     * Every home this product has, by establishment code and in order.
      *
      * @return list<ProductHomeLocation>
      *
@@ -62,13 +66,13 @@ final readonly class KeepProductHomes
     }
 
     /**
-     * What a picker proposes for each of these products: the location of its home, keyed by the product's
-     * identifier, and ONLY where the product has exactly one.
+     * What a picker proposes for each of these products: the location of its MAIN home, keyed by the product's
+     * identifier, and ONLY where its homes are all in one establishment.
      *
-     * A product with a home in two establishments is left without a proposal on purpose. A picker knows which
-     * product was chosen, not which establishment the goods are arriving at, so naming one of the two would be
-     * right half the time and silently wrong the other half — and a wrong shelf proposed is worse than none,
-     * because it is accepted without being read.
+     * A product with homes in two establishments is left without a proposal on purpose. A picker knows which product
+     * was chosen, not which establishment the goods are arriving at, so naming one of the two would be right half the
+     * time and silently wrong the other half — and a wrong shelf proposed is worse than none, because it is accepted
+     * without being read. Several homes in ONE establishment are not that doubt: the first is the main one.
      *
      * @param list<Uuid> $productIds
      *
@@ -78,7 +82,8 @@ final readonly class KeepProductHomes
     {
         $proposals = [];
         foreach ($this->homes->ofProducts($productIds, $company->getId()) as $productId => $homes) {
-            if (1 === \count($homes)) {
+            $establishments = array_unique(array_map(static fn (ProductHomeLocation $home): string => $home->getEstablishment()->getId()->toRfc4122(), $homes));
+            if (1 === \count($establishments)) {
                 $proposals[$productId] = $homes[0]->getLocation()->getId();
             }
         }
@@ -87,53 +92,104 @@ final readonly class KeepProductHomes
     }
 
     /**
-     * Gives the product a home at this location, moving the one its establishment already had.
+     * Makes this place the MAIN home of its establishment, the homes it already had following it in their order.
      *
      * @throws ProductNotInCompany
      * @throws InvalidStockLocation
      */
     public function set(Company $company, Uuid $productId, Uuid $locationId, ?Uuid $actorUserId): ProductHomeLocation
     {
-        return $this->transactions->run(function () use ($company, $productId, $locationId, $actorUserId): ProductHomeLocation {
-            $product = $this->product($company, $productId);
-            $location = $this->locations->ofIdInCompany($locationId, $company->getId())
-                ?? throw new InvalidStockLocation('locationId', 'No stock location of this company has this id.');
+        $location = $this->locations->ofIdInCompany($locationId, $company->getId())
+            ?? throw new InvalidStockLocation('locationId', 'No stock location of this company has this id.');
+        $establishmentId = $location->getEstablishment()->getId();
+        $others = array_values(array_filter(
+            array_map(static fn (ProductHomeLocation $home): Uuid => $home->getLocation()->getId(), $this->homes->ofProductInEstablishment($productId, $establishmentId)),
+            static fn (Uuid $id): bool => !$id->equals($locationId),
+        ));
 
-            $existing = $this->homes->ofProductInEstablishment($productId, $location->getEstablishment()->getId());
-            if (null === $existing) {
-                $home = ProductHomeLocation::at($product, $location, $this->clock->now());
-                $this->homes->save($home);
-                $this->record($company, $home, self::SET, $actorUserId);
-
+        foreach ($this->replace($company, $productId, $establishmentId, [$locationId, ...$others], $actorUserId) as $home) {
+            if ($home->getLocation()->getId()->equals($locationId)) {
                 return $home;
             }
-            // Dropped where it already was: no row, so no other screen is told a home moved that did not.
-            if ($existing->moveTo($location, $this->clock->now())) {
-                $this->homes->save($existing);
-                $this->record($company, $existing, self::SET, $actorUserId);
+        }
+        throw new \LogicException('The place just made a home is not among the homes.');
+    }
+
+    /**
+     * Writes the homes of one establishment as this list, in this order: the first is the main one.
+     *
+     * @param list<Uuid> $locationIds
+     *
+     * @return list<ProductHomeLocation> the homes now, in order
+     *
+     * @throws ProductNotInCompany
+     * @throws InvalidStockLocation
+     */
+    public function replace(Company $company, Uuid $productId, Uuid $establishmentId, array $locationIds, ?Uuid $actorUserId): array
+    {
+        return $this->transactions->run(function () use ($company, $productId, $establishmentId, $locationIds, $actorUserId): array {
+            $product = $this->product($company, $productId);
+            $places = [];
+            foreach ($locationIds as $locationId) {
+                $key = $locationId->toRfc4122();
+                if (isset($places[$key])) {
+                    throw new InvalidStockLocation('locationIds', 'A place is named once.');
+                }
+                $location = $this->locations->ofIdInCompany($locationId, $company->getId())
+                    ?? throw new InvalidStockLocation('locationIds', 'No stock location of this company has this id.');
+                if (!$location->getEstablishment()->getId()->equals($establishmentId)) {
+                    throw new InvalidStockLocation('locationIds', 'A home is a place of the establishment it is listed under.');
+                }
+                $places[$key] = $location;
             }
 
-            return $existing;
+            $now = $this->clock->now();
+            $changed = false;
+            $existing = [];
+            foreach ($this->homes->ofProductInEstablishment($productId, $establishmentId) as $home) {
+                $existing[$home->getLocation()->getId()->toRfc4122()] = $home;
+            }
+            $homes = [];
+            $position = 0;
+            foreach ($places as $key => $location) {
+                $home = $existing[$key] ?? null;
+                if (null === $home) {
+                    $home = ProductHomeLocation::at($product, $location, $position, $now);
+                    $changed = true;
+                } elseif ($home->placeAt($position, $now)) {
+                    $changed = true;
+                } else {
+                    ++$position;
+                    $homes[] = $home;
+                    continue;
+                }
+                $this->homes->save($home);
+                $homes[] = $home;
+                ++$position;
+            }
+            foreach ($existing as $key => $home) {
+                if (!isset($places[$key])) {
+                    $this->homes->remove($home);
+                    $changed = true;
+                }
+            }
+            if ($changed) {
+                $this->record($company, $product, $establishmentId, [] === $homes ? self::CLEARED : self::SET, $actorUserId);
+            }
+
+            return $homes;
         });
     }
 
     /**
-     * Takes away the home this product has in that establishment. A product with none is not an error: clearing what
+     * Takes away every home this product has in that establishment. A product with none is not an error: clearing what
      * is already clear is what a person pressing the same button twice means.
      *
      * @throws ProductNotInCompany
      */
     public function clear(Company $company, Uuid $productId, Uuid $establishmentId, ?Uuid $actorUserId): void
     {
-        $this->transactions->run(function () use ($company, $productId, $establishmentId, $actorUserId): void {
-            $this->product($company, $productId);
-            $home = $this->homes->ofProductInEstablishment($productId, $establishmentId);
-            if (null === $home) {
-                return;
-            }
-            $this->homes->remove($home);
-            $this->record($company, $home, self::CLEARED, $actorUserId);
-        });
+        $this->replace($company, $productId, $establishmentId, [], $actorUserId);
     }
 
     /** @throws ProductNotInCompany */
@@ -147,16 +203,16 @@ final readonly class KeepProductHomes
         return $product;
     }
 
-    private function record(Company $company, ProductHomeLocation $home, string $action, ?Uuid $actorUserId): void
+    private function record(Company $company, Product $product, Uuid $establishmentId, string $action, ?Uuid $actorUserId): void
     {
-        // Keyed on the PRODUCT, not on the home: what a screen reloads on is the product whose home changed, and a
+        // Keyed on the PRODUCT, not on a home: what a screen reloads on is the product whose homes changed, and a
         // cleared home's own identifier names a row that no longer exists.
         $this->audit->record(new AuditEntry(
             self::ENTITY_TYPE,
-            $home->getProduct()->getId(),
+            $product->getId(),
             $action,
             $actorUserId,
-            ['establishmentId' => $home->getEstablishment()->getId()->toRfc4122()],
+            ['establishmentId' => $establishmentId->toRfc4122()],
             companyId: $company->getId(),
         ));
     }

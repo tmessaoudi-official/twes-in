@@ -25,20 +25,20 @@ final class InMemoryProductHomeLocations implements ProductHomeLocationRepositor
             static fn (ProductHomeLocation $h): bool => $h->getProduct()->getId()->equals($productId)
                 && $h->getCompany()->getId()->equals($companyId),
         ));
-        usort($mine, static fn (ProductHomeLocation $a, ProductHomeLocation $b) => $a->getEstablishment()->getCode() <=> $b->getEstablishment()->getCode());
+        usort($mine, static fn (ProductHomeLocation $a, ProductHomeLocation $b) => [$a->getEstablishment()->getCode(), $a->getPosition()] <=> [$b->getEstablishment()->getCode(), $b->getPosition()]);
 
         return $mine;
     }
 
-    public function ofProductInEstablishment(Uuid $productId, Uuid $establishmentId): ?ProductHomeLocation
+    public function ofProductInEstablishment(Uuid $productId, Uuid $establishmentId): array
     {
-        foreach ($this->homes as $home) {
-            if ($home->getProduct()->getId()->equals($productId) && $home->getEstablishment()->getId()->equals($establishmentId)) {
-                return $home;
-            }
-        }
+        $found = array_values(array_filter(
+            $this->homes,
+            static fn (ProductHomeLocation $h): bool => $h->getProduct()->getId()->equals($productId) && $h->getEstablishment()->getId()->equals($establishmentId),
+        ));
+        usort($found, static fn (ProductHomeLocation $a, ProductHomeLocation $b): int => $a->getPosition() <=> $b->getPosition());
 
-        return null;
+        return $found;
     }
 
     public function ofProducts(array $productIds, Uuid $companyId): array

@@ -32,17 +32,17 @@ final readonly class DoctrineProductHomeLocationRepository implements ProductHom
             ->andWhere('h.company = :company')
             ->setParameter('product', $productId)
             ->setParameter('company', $companyId)
-            ->orderBy('e.code', 'ASC')
+            ->orderBy('e.code', 'ASC')->addOrderBy('h.position', 'ASC')
             ->getQuery()
             ->getResult();
 
         return $homes;
     }
 
-    public function ofProductInEstablishment(Uuid $productId, Uuid $establishmentId): ?ProductHomeLocation
+    public function ofProductInEstablishment(Uuid $productId, Uuid $establishmentId): array
     {
         return $this->entityManager->getRepository(ProductHomeLocation::class)
-            ->findOneBy(['product' => $productId, 'establishment' => $establishmentId]);
+            ->findBy(['product' => $productId, 'establishment' => $establishmentId], ['position' => 'ASC']);
     }
 
     public function ofProducts(array $productIds, Uuid $companyId): array
@@ -51,7 +51,7 @@ final readonly class DoctrineProductHomeLocationRepository implements ProductHom
             return [];
         }
         $homes = $this->entityManager->getRepository(ProductHomeLocation::class)
-            ->findBy(['product' => $productIds, 'company' => $companyId]);
+            ->findBy(['product' => $productIds, 'company' => $companyId], ['position' => 'ASC']);
 
         $byProduct = [];
         foreach ($homes as $home) {

@@ -47,6 +47,15 @@ use Symfony\Component\Validator\Constraints as Assert;
             denormalizationContext: ['groups' => [self::WRITE]],
             validationContext: ['groups' => [self::WRITE]],
         ),
+        new Put(
+            uriTemplate: '/companies/{companyId}/products/{productId}/home-locations/{establishmentId}',
+            processor: ReplaceProductHomesProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            output: false,
+            denormalizationContext: ['groups' => [self::ORDER]],
+            validationContext: ['groups' => [self::ORDER]],
+        ),
         new Delete(
             uriTemplate: '/companies/{companyId}/products/{productId}/home-locations/{establishmentId}',
             processor: ClearProductHomeProcessor::class,
@@ -59,6 +68,7 @@ final class ProductHomeResource
 {
     public const string READ = 'product_home:read';
     public const string WRITE = 'product_home:write';
+    public const string ORDER = 'product_home:order';
 
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
@@ -90,6 +100,25 @@ final class ProductHomeResource
     #[Groups([self::READ])]
     public string $locationName = '';
 
+    /** Where this home stands in its establishment's order, from 0; the first is the main one. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public int $position = 0;
+
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public bool $main = false;
+
+    /**
+     * The places of one establishment as a whole, in order (the PUT on the establishment): never read back.
+     *
+     * @var list<string>
+     */
+    #[Assert\Type('list', groups: [self::ORDER])]
+    #[Assert\All([new Assert\Uuid(groups: [self::ORDER])], groups: [self::ORDER])]
+    #[Groups([self::ORDER])]
+    public array $locationIds = [];
+
     public static function of(ProductHomeLocation $home): self
     {
         $establishment = $home->getEstablishment();
@@ -102,6 +131,8 @@ final class ProductHomeResource
         $resource->locationId = $location->getId()->toRfc4122();
         $resource->locationCode = $location->getCode();
         $resource->locationName = $location->getName();
+        $resource->position = $home->getPosition();
+        $resource->main = $home->isMain();
 
         return $resource;
     }

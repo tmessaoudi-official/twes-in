@@ -31,7 +31,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'product_home_location')]
 #[ORM\Index(name: 'idx_product_home_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_product_home_location', columns: ['location_id'])]
-#[ORM\UniqueConstraint(name: 'uniq_product_home_establishment', columns: ['product_id', 'establishment_id'])]
+#[ORM\Index(name: 'idx_product_home_order', columns: ['product_id', 'establishment_id', 'position'])]
+#[ORM\UniqueConstraint(name: 'uniq_product_home_place', columns: ['product_id', 'location_id'])]
 class ProductHomeLocation implements CompanyOwned
 {
     #[ORM\Id]
@@ -59,50 +60,58 @@ class ProductHomeLocation implements CompanyOwned
     #[ORM\JoinColumn(name: 'location_id', nullable: false, onDelete: 'CASCADE')]
     private StockLocation $location;
 
+    /** 0 is the main home; the others follow. Rewritten for the whole list at once, so it is not unique in the database. */
+    #[ORM\Column(type: Types::SMALLINT)]
+    private int $position;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
-    private function __construct(Product $product, StockLocation $location, \DateTimeImmutable $now)
+    private function __construct(Product $product, StockLocation $location, int $position, \DateTimeImmutable $now)
     {
         $this->id = Uuid::v7();
         $this->company = $location->getCompany();
         $this->product = $product;
         $this->establishment = $location->getEstablishment();
         $this->location = $location;
+        $this->position = $position;
         $this->createdAt = $now;
         $this->updatedAt = $now;
     }
 
     /** @throws InvalidStockLocation when the product is not this company's */
-    public static function at(Product $product, StockLocation $location, \DateTimeImmutable $now): self
+    public static function at(Product $product, StockLocation $location, int $position, \DateTimeImmutable $now): self
     {
         if (!$product->getCompany()->getId()->equals($location->getCompany()->getId())) {
             throw new InvalidStockLocation('productId', 'A product is given a home among its own company’s locations.');
         }
 
-        return new self($product, $location, $now);
+        return new self($product, $location, $position, $now);
     }
 
-    /**
-     * @return bool whether anything changed
-     *
-     * @throws InvalidStockLocation when the new location is in another establishment, which would be a second home
-     */
-    public function moveTo(StockLocation $location, \DateTimeImmutable $now): bool
+    /** @return bool whether anything changed */
+    public function placeAt(int $position, \DateTimeImmutable $now): bool
     {
-        if (!$location->getEstablishment()->getId()->equals($this->establishment->getId())) {
-            throw new InvalidStockLocation('locationId', 'A home moves within its establishment; another establishment’s home is its own.');
-        }
-        if ($location->getId()->equals($this->location->getId())) {
+        if ($position === $this->position) {
             return false;
         }
-        $this->location = $location;
+        $this->position = $position;
         $this->updatedAt = $now;
 
         return true;
+    }
+
+    public function getPosition(): int
+    {
+        return $this->position;
+    }
+
+    public function isMain(): bool
+    {
+        return 0 === $this->position;
     }
 
     public function getId(): Uuid

@@ -43,6 +43,41 @@ final class ProductHomeTest extends ApiTestCase
         $this->em()->flush();
     }
 
+    public function testAProductKeepsSeveralHomesInOneEstablishmentInOrderAndTheFirstIsTheMainOne(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
+        $this->ground();
+        $establishment = $this->homes().'/'.$this->establishmentId;
+
+        // Naming a place makes it the main home of its establishment; the one it had stays, second.
+        $this->sendJson('PUT', $this->homes(), ['locationId' => $this->rackId]);
+        self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $this->homes(), ['locationId' => $this->bayId]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([[$this->bayId, 0, true], [$this->rackId, 1, false]], $this->orderOfHomes());
+        self::assertSame($this->bayId, $this->pick()['homeLocationId'], 'a receipt proposes the main home');
+
+        // The whole order in one request, so a swap of the first and the second collides with nothing on the way.
+        $this->sendJson('PUT', $establishment, ['locationIds' => [$this->rackId, $this->bayId]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([[$this->rackId, 0, true], [$this->bayId, 1, false]], $this->orderOfHomes());
+        self::assertSame($this->rackId, $this->pick()['homeLocationId']);
+
+        $this->sendJson('PUT', $establishment, ['locationIds' => [$this->bayId]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([[$this->bayId, 0, true]], $this->orderOfHomes(), 'what the list leaves out is no longer a home');
+
+        $this->sendJson('PUT', $establishment, ['locationIds' => [$this->bayId, $this->bayId]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a place twice');
+        $this->sendJson('PUT', $establishment, ['locationIds' => [Uuid::v7()->toRfc4122()]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a place of no company of ours');
+        self::assertSame([[$this->bayId, 0, true]], $this->orderOfHomes(), 'a refused list changes nothing');
+
+        $this->sendJson('PUT', $establishment, ['locationIds' => []]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame([], $this->orderOfHomes());
+    }
+
     public function testAProductIsGivenOneHomePerEstablishmentAndMovedRatherThanDoubled(): void
     {
         $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
@@ -58,11 +93,11 @@ final class ProductHomeTest extends ApiTestCase
             $this->json()['establishmentId'], $this->json()['locationId'], $this->json()['locationCode'],
         ], 'the establishment is the location’s own, never sent');
 
-        // One home per establishment: naming another shelf moves it rather than adding a second.
+        // Naming another shelf makes it the main home and keeps the first as the second.
         $this->sendJson('PUT', $this->homes(), ['locationId' => $this->bayId]);
         self::assertResponseIsSuccessful();
         $this->getJson($this->homes());
-        self::assertSame([$this->bayId], array_column($this->jsonList(), 'locationId'));
+        self::assertSame([$this->bayId, $this->rackId], array_column($this->jsonList(), 'locationId'));
 
         $this->sendJson('DELETE', $this->homes().'/'.$this->establishmentId);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
@@ -124,6 +159,12 @@ final class ProductHomeTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertCount(2, $this->jsonHomes(), 'a home in each establishment, neither replacing the other');
         self::assertNull($this->pick()['homeLocationId'], 'two homes propose neither');
+    }
+
+    /** @return list<array{mixed, mixed, mixed}> each home's place, position and whether it is the main one, in the order read */
+    private function orderOfHomes(): array
+    {
+        return array_map(static fn (array $home): array => [$home['locationId'], $home['position'] ?? null, $home['main'] ?? null], $this->jsonHomes());
     }
 
     /** @return list<array<string, mixed>> the homes this test's product has */
