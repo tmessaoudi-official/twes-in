@@ -41,7 +41,10 @@ describe('CompanySwitcher', () => {
   const companies = signal<readonly CompanyOption[]>([acme, globex]);
   const unreadByCompany = signal<Readonly<Record<string, number>>>({});
 
-  async function render(current: CompanyOption): Promise<HTMLElement> {
+  async function render(
+    current: CompanyOption,
+    variant: 'bar' | 'rail' = 'rail',
+  ): Promise<HTMLElement> {
     await TestBed.configureTestingModule({
       imports: [CompanySwitcher],
       providers: [
@@ -65,7 +68,7 @@ describe('CompanySwitcher', () => {
       ],
     }).compileComponents();
     const fixture = TestBed.createComponent(CompanySwitcher);
-    fixture.componentRef.setInput('variant', 'rail');
+    fixture.componentRef.setInput('variant', variant);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -110,5 +113,20 @@ describe('CompanySwitcher', () => {
     const root = await render(acme);
 
     expect(root.querySelector('[data-testid="company-switcher"] app-count-badge')).toBeNull();
+  });
+
+  it('shows the counts in the menu of the bar the phone has, which has no room for one on its button', async () => {
+    unreadByCompany.set({ c1: 4, c2: 3 });
+    const root = await render(acme, 'bar');
+
+    expect(root.querySelector('[data-testid="company-switcher"] app-count-badge')).toBeNull();
+    root.querySelector<HTMLButtonElement>('[data-testid="company-switcher"]')?.click();
+    TestBed.inject(ApplicationRef).tick();
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(
+      document
+        .querySelector('[data-testid="company-option-Globex"] [role="img"]')
+        ?.getAttribute('aria-label'),
+    ).toBe('3 notification(s) non lue(s)');
   });
 });

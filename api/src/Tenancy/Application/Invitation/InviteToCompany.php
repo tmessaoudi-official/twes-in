@@ -71,9 +71,9 @@ final readonly class InviteToCompany
             // Checked before anything is written or sent, so a bad role cannot leave a half-made invitation behind.
             // Resolved against THIS company: the built-in three plus the roles it made for itself. A role belonging
             // to another company is as unknown here as an invented name, and answers the same way.
-            $this->roles->ofNameForCompany($request->roleName, $company->getId())
+            $role = $this->roles->ofNameForCompany($request->roleName, $company->getId())
                 ?? throw new UnknownRole(\sprintf('"%s" is not a role %s may give.', $request->roleName, $company->getName()));
-            $this->bounds->assertMayGrant($company->getId(), $actorUserId, $request->roleName);
+            $this->bounds->assertMayGrant($company->getId(), $actorUserId, $role);
 
             $email = Email::fromString($request->email);
             $existing = $this->users->ofEmail($email);

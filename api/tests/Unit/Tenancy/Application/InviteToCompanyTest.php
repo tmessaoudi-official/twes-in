@@ -265,6 +265,26 @@ final class InviteToCompanyTest extends TestCase
         self::assertCount(2, $this->mailer->sent);
     }
 
+    public function testNobodyInvitesIntoACustomRoleThatHoldsWhatTheyDoNot(): void
+    {
+        $this->roles->save(new Role('Gestion', ['invoice.issue'], $this->company));
+        $this->roles->save(new Role('Lecture', ['user.read'], $this->company));
+        $admin = $this->memberOfTheCompany('admin@twes.local', Role::ADMIN);
+        $owner = $this->memberOfTheCompany('owner@twes.local', Role::OWNER);
+
+        try {
+            $this->invite->handle(new InviteRequest($this->company->getId(), 'self@twes.local', 'Gestion'), $admin->getId());
+            self::fail('an admin invited into a role holding what they lack');
+        } catch (RoleNotManageable) {
+        }
+        self::assertSame([], $this->mailer->sent, 'a refused invitation sends nothing');
+
+        $this->invite->handle(new InviteRequest($this->company->getId(), 'reader@twes.local', 'Lecture'), $admin->getId());
+        $this->invite->handle(new InviteRequest($this->company->getId(), 'manager@twes.local', 'Gestion'), $owner->getId());
+
+        self::assertCount(2, $this->mailer->sent, 'what the admin holds they may give, and an owner may give anything');
+    }
+
     private function memberOfTheCompany(string $email, string $roleName): User
     {
         $user = new User(Email::fromString($email), 'Someone');

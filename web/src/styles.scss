@@ -634,6 +634,29 @@ body {
   background-color: var(--mat-sys-surface);
 }
 
+/* A company in the switcher's menu: its mark, its name and role, and what waits in it pushed to the end, whatever the
+   length of the name, so the pills of every company line up. */
+.twes-company-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 17rem;
+}
+
+/* Material caps a menu panel at 280px, which clips a company's name and its pill: the panel grows to its entries. */
+.mat-mdc-menu-panel.twes-company-menu {
+  max-width: min(26rem, 92vw);
+}
+
+.twes-company-option-name {
+  flex: 1 1 auto;
+}
+
+.twes-company-option-count {
+  flex: none;
+  margin-inline-start: auto;
+}
+
 .twes-rail-company-logo-small {
   display: inline-block;
   width: 1.5rem;

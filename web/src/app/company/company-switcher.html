@@ -39,7 +39,7 @@
           <mat-icon aria-hidden="true">unfold_more</mat-icon>
         }
       </button>
-      <mat-menu #railMenu="matMenu">
+      <mat-menu #railMenu="matMenu" class="twes-company-menu">
         @for (company of companies(); track company.id) {
           <button
             mat-menu-item
@@ -48,17 +48,23 @@
             [attr.data-testid]="'company-option-' + company.name"
             [attr.aria-current]="company.id === current.id ? 'true' : null"
           >
-            @if (logoOf(company); as url) {
-              <img class="twes-rail-company-logo-small" [src]="url" alt="" aria-hidden="true" />
-            }
-            {{ company.name }}
-            <span class="text-on-surface-variant">— {{ 'roles.' + company.role | translate }}</span>
-            <app-count-badge
-              class="ms-auto ps-3"
-              [count]="unread()[company.id] ?? 0"
-              [max]="9"
-              [label]="'company.unread' | translate: { count: unread()[company.id] ?? 0 }"
-            />
+            <span class="twes-company-option">
+              @if (logoOf(company); as url) {
+                <img class="twes-rail-company-logo-small" [src]="url" alt="" aria-hidden="true" />
+              }
+              <span class="twes-company-option-name">
+                {{ company.name }}
+                <span class="text-on-surface-variant"
+                  >— {{ 'roles.' + company.role | translate }}</span
+                >
+              </span>
+              <app-count-badge
+                class="twes-company-option-count"
+                [count]="unread()[company.id] ?? 0"
+                [max]="9"
+                [label]="'company.unread' | translate: { count: unread()[company.id] ?? 0 }"
+              />
+            </span>
           </button>
         }
       </mat-menu>
@@ -100,7 +106,7 @@
         current()?.name ?? ('company.choose' | translate)
       }}</span>
     </button>
-    <mat-menu #menu="matMenu">
+    <mat-menu #menu="matMenu" class="twes-company-menu">
       @for (company of companies(); track company.id) {
         <button
           mat-menu-item
@@ -109,8 +115,18 @@
           [attr.data-testid]="'company-option-' + company.name"
           [attr.aria-current]="company.id === current()?.id ? 'true' : null"
         >
-          {{ company.name }}
-          <span class="opacity-60">— {{ 'roles.' + company.role | translate }}</span>
+          <span class="twes-company-option">
+            <span class="twes-company-option-name">
+              {{ company.name }}
+              <span class="opacity-60">— {{ 'roles.' + company.role | translate }}</span>
+            </span>
+            <app-count-badge
+              class="twes-company-option-count"
+              [count]="unread()[company.id] ?? 0"
+              [max]="9"
+              [label]="'company.unread' | translate: { count: unread()[company.id] ?? 0 }"
+            />
+          </span>
         </button>
       }
     </mat-menu>

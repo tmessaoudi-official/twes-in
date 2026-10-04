@@ -26,15 +26,35 @@ final readonly class RoleBounds
     {
     }
 
-    /** @throws RoleNotManageable */
-    public function assertMayGrant(Uuid $companyId, ?Uuid $actorUserId, string $roleName): void
+    /**
+     * The built-in roles are ordered, owner above admin above member. A role the company made for itself has no place in
+     * that order, so it is bounded by what it holds instead: nobody gives a role carrying a permission their own does not
+     * grant, or an editor of roles could hand themselves anything by inviting a second address into one.
+     *
+     * @throws RoleNotManageable
+     */
+    public function assertMayGrant(Uuid $companyId, ?Uuid $actorUserId, Role $role): void
     {
         $actor = $this->actorRank($companyId, $actorUserId);
-        if (null === $actor || self::OWNER_RANK === $actor || (self::ADMIN_RANK === $actor && self::rank($roleName) <= self::ADMIN_RANK)) {
+        if (null === $actor || self::OWNER_RANK === $actor) {
+            return;
+        }
+        $roleName = $role->getName();
+        if ($role->isBuiltIn() ? self::ADMIN_RANK === $actor && self::rank($roleName) <= self::ADMIN_RANK : $this->holdsEverythingOf($companyId, $actorUserId, $role)) {
             return;
         }
 
         throw new RoleNotManageable(\sprintf('Your role in this company does not grant the %s role.', $roleName));
+    }
+
+    private function holdsEverythingOf(Uuid $companyId, ?Uuid $actorUserId, Role $role): bool
+    {
+        $held = null === $actorUserId ? null : $this->memberships->ofUserInCompany($actorUserId, $companyId)?->getRole();
+        if (null === $held) {
+            return false;
+        }
+
+        return array_all($role->getPermissions(), $held->grants(...));
     }
 
     /** @throws RoleNotManageable */

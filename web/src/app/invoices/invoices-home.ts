@@ -75,7 +75,13 @@ export class InvoicesHome {
   protected readonly topRow = computed(() => {
     const s = this.summary();
     const cards = 1 + (s?.costsVisible ? 1 : 0) + (this.withholds() ? 1 : 0);
-    return cards === 3 ? 'lg:grid-cols-3' : cards === 2 ? 'sm:grid-cols-2' : '';
+    // Three cards make a row of three from the large breakpoint; between small and large the third takes the whole row
+    // rather than sitting alone at half width.
+    return cards === 3
+      ? 'sm:grid-cols-2 lg:grid-cols-3 sm:[&>:last-child]:col-span-2 lg:[&>:last-child]:col-span-1'
+      : cards === 2
+        ? 'sm:grid-cols-2'
+        : '';
   });
   protected readonly marginVersus = computed(() => {
     const s = this.summary();

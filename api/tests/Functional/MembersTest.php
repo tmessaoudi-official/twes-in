@@ -129,6 +129,21 @@ final class MembersTest extends ApiTestCase
         self::assertSame('barista', $roles['joiner@twes.local'], 'held, not silently downgraded to member');
     }
 
+    public function testNobodyIsInvitedIntoACustomRoleThatHoldsWhatTheInviterDoesNot(): void
+    {
+        $this->adminSignedIn();
+        $em = $this->em();
+        $company = $em->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $em->persist(new Role('cashier', ['customer.read', 'invoice.issue'], $company));
+        $em->flush();
+        $this->createUser('joiner@twes.local', 'password-1234');
+
+        $this->postJson($this->path(), ['email' => 'joiner@twes.local', 'role' => 'cashier']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, 'the admin lacks invoice.issue, so may not hand it on');
+    }
+
     public function testAnotherCompanysRoleIsNotOfferedHere(): void
     {
         // Same refusal as an invented name: a role row exists, but not one this company may use.
@@ -329,7 +344,7 @@ final class MembersTest extends ApiTestCase
 
     private function adminSignedIn(): void
     {
-        $this->createUser('admin@twes.local', 'password-1234', $this->company, ['user.read', 'user.write'], Role::ADMIN);
+        $this->createUser('admin@twes.local', 'password-1234', $this->company, ['user.read', 'user.write', 'customer.read'], Role::ADMIN);
         $this->login('admin@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
     }
