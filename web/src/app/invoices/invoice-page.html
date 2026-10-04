@@ -364,6 +364,19 @@
           </div>
         </mat-card-content>
       </mat-card>
+      @if (company(); as owner) {
+        @if (scale() !== null) {
+          <app-invoice-instruments
+            [companyId]="owner.id"
+            [invoiceId]="invoice.id"
+            [amountDue]="invoice.amountDue"
+            [scale]="scale() ?? 0"
+            [today]="today()"
+            [mayPay]="mayPay()"
+            (changed)="instrumentCashed()"
+          />
+        }
+      }
     }
   }
 </section>

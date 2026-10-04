@@ -1,0 +1,163 @@
+<mat-card data-testid="invoice-instruments">
+  <mat-card-content>
+    <div class="flex flex-col gap-4">
+      <h2 class="text-xl font-semibold">{{ 'invoices.instruments.title' | translate }}</h2>
+      <p class="text-sm text-on-surface-variant">{{ 'invoices.instruments.hint' | translate }}</p>
+
+      @if (items().length === 0) {
+        <p data-testid="invoice-instruments-none">{{ 'invoices.instruments.none' | translate }}</p>
+      } @else {
+        <ul class="flex flex-col divide-y divide-outline-variant">
+          @for (row of items(); track row.id) {
+            <li
+              class="flex flex-wrap items-center justify-between gap-2 py-2"
+              [attr.data-testid]="'instrument-' + row.id"
+            >
+              <span class="flex flex-col">
+                <span class="flex flex-wrap items-center gap-2">
+                  <span>
+                    {{ 'invoices.instruments.kinds.' + row.kind | translate }}
+                    @if (row.number) {
+                      · {{ row.number }}
+                    }
+                  </span>
+                  <app-status-badge
+                    [tone]="tones[row.status]"
+                    [attr.data-testid]="'instrument-' + row.id + '-status'"
+                  >
+                    {{ 'invoices.instruments.status.' + row.status | translate }}
+                  </app-status-badge>
+                </span>
+                <span class="text-sm text-on-surface-variant">
+                  @if (row.settledOn) {
+                    {{
+                      'invoices.instruments.settled'
+                        | translate
+                          : {
+                              status: 'invoices.instruments.status.' + row.status | translate,
+                              day: (row.settledOn | day),
+                            }
+                    }}
+                  } @else {
+                    {{ 'invoices.instruments.due' | translate: { day: (row.dueOn | day) } }}
+                  }
+                  @if (row.bank) {
+                    · {{ row.bank }}
+                  }
+                </span>
+              </span>
+              <span class="flex flex-wrap items-center gap-2">
+                <span class="font-semibold tabular-nums">{{ row.amount | amount: scale() }}</span>
+                @if (mayPay() && (row.status === 'held' || row.status === 'deposited')) {
+                  @if (confirming(); as asked) {
+                    @if (asked.id === row.id) {
+                      <button
+                        mat-button
+                        type="button"
+                        (click)="confirming.set(null)"
+                        [attr.data-testid]="'instrument-' + row.id + '-keep'"
+                      >
+                        {{ 'invoices.instruments.keep' | translate }}
+                      </button>
+                      <button
+                        mat-flat-button
+                        type="button"
+                        [disabled]="busy()"
+                        (click)="asked.step === 'delete' ? remove(row) : advance(row, asked.step)"
+                        [attr.data-testid]="'instrument-' + row.id + '-confirm'"
+                      >
+                        {{
+                          'invoices.instruments.confirm_' +
+                            (asked.step === 'delete' ? 'delete' : asked.step) | translate
+                        }}
+                      </button>
+                    }
+                  }
+                  @if (confirming()?.id !== row.id) {
+                    @if (row.status === 'held') {
+                      <button
+                        mat-button
+                        type="button"
+                        [disabled]="busy()"
+                        (click)="advance(row, 'deposit')"
+                        [attr.data-testid]="'instrument-' + row.id + '-deposit'"
+                      >
+                        {{ 'invoices.instruments.deposit' | translate }}
+                      </button>
+                    }
+                    <button
+                      mat-button
+                      type="button"
+                      (click)="confirming.set({ id: row.id, step: 'cash' })"
+                      [attr.data-testid]="'instrument-' + row.id + '-cash'"
+                    >
+                      {{ 'invoices.instruments.cash' | translate }}
+                    </button>
+                    <button
+                      mat-button
+                      type="button"
+                      (click)="confirming.set({ id: row.id, step: 'unpaid' })"
+                      [attr.data-testid]="'instrument-' + row.id + '-unpaid'"
+                    >
+                      {{ 'invoices.instruments.unpaid' | translate }}
+                    </button>
+                    @if (row.status === 'held') {
+                      <button
+                        mat-button
+                        type="button"
+                        (click)="confirming.set({ id: row.id, step: 'delete' })"
+                        [attr.data-testid]="'instrument-' + row.id + '-delete'"
+                      >
+                        {{ 'invoices.instruments.delete' | translate }}
+                      </button>
+                    }
+                  }
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      }
+
+      @if (error(); as code) {
+        <p role="alert" data-testid="instrument-error" class="text-error">
+          {{ 'invoices.errors.' + code | translate }}
+        </p>
+      }
+
+      @if (group(); as form) {
+        <app-descriptor-form
+          [descriptor]="descriptor"
+          [form]="form"
+          testId="invoice-instrument-form"
+          (submitted)="receive()"
+        />
+        <div class="flex justify-end gap-2">
+          <button mat-button type="button" (click)="close()" data-testid="instrument-cancel">
+            {{ 'invoices.instruments.cancel' | translate }}
+          </button>
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="busy()"
+            (click)="receive()"
+            data-testid="instrument-save"
+          >
+            {{ 'invoices.instruments.save' | translate }}
+          </button>
+        </div>
+      } @else if (mayReceive()) {
+        <div>
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="open()"
+            data-testid="instrument-receive"
+          >
+            {{ 'invoices.instruments.receive' | translate }}
+          </button>
+        </div>
+      }
+    </div>
+  </mat-card-content>
+</mat-card>

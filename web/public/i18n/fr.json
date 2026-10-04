@@ -1333,6 +1333,49 @@
       },
       "credit_applied": "Le crédit du client est appliqué à la facture."
     },
+    "instruments": {
+      "title": "Chèques et traites",
+      "none": "Aucun chèque ni traite reçu.",
+      "hint": "Un chèque ou une traite n'est pas de l'argent tant qu'il n'est pas encaissé : la facture reste due entre-temps.",
+      "receive": "Recevoir un chèque ou une traite",
+      "receive_title": "Recevoir un chèque ou une traite",
+      "save": "Le recevoir",
+      "cancel": "Annuler",
+      "kind": "Nature",
+      "kinds": {
+        "check": "Chèque",
+        "draft": "Traite"
+      },
+      "amount": "Montant",
+      "amount_hint": "Au plus ce qui reste dû et n'est pas déjà couvert par un autre.",
+      "due_on": "Échéance",
+      "due_on_hint": "Le jour où il peut être encaissé, à partir de la date d'émission de la facture.",
+      "bank": "Banque",
+      "number": "Numéro",
+      "due": "Échéance le {{day}}",
+      "settled": "{{status}} le {{day}}",
+      "status": {
+        "held": "En portefeuille",
+        "deposited": "Remis à l'encaissement",
+        "cashed": "Encaissé",
+        "unpaid": "Impayé"
+      },
+      "deposit": "Remettre à l'encaissement",
+      "cash": "Encaisser",
+      "unpaid": "Marquer impayé",
+      "delete": "Supprimer",
+      "confirm_cash": "Confirmer : il est passé",
+      "confirm_unpaid": "Confirmer : il est revenu impayé",
+      "confirm_delete": "Confirmer la suppression",
+      "keep": "Le garder",
+      "done": {
+        "received": "Le chèque ou la traite est reçu.",
+        "deposit": "Le chèque ou la traite est remis à l'encaissement.",
+        "cash": "Le chèque ou la traite est encaissé : le paiement est enregistré.",
+        "unpaid": "Le chèque ou la traite est marqué impayé.",
+        "deleted": "Le chèque ou la traite est sorti du portefeuille."
+      }
+    },
     "actions": {
       "save": "Enregistrer le brouillon",
       "issue": "Émettre la facture",

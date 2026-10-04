@@ -1333,6 +1333,49 @@
       },
       "credit_applied": "The customer’s credit is applied to the invoice."
     },
+    "instruments": {
+      "title": "Cheques and traites",
+      "none": "No cheque or traite received.",
+      "hint": "A cheque or traite is not money until it is cashed: the invoice stays due meanwhile.",
+      "receive": "Receive a cheque or traite",
+      "receive_title": "Receive a cheque or traite",
+      "save": "Receive it",
+      "cancel": "Cancel",
+      "kind": "Kind",
+      "kinds": {
+        "check": "Cheque",
+        "draft": "Traite"
+      },
+      "amount": "Amount",
+      "amount_hint": "At most what is still due and not already covered by another.",
+      "due_on": "Due on",
+      "due_on_hint": "The day it can be cashed, from the invoice's issue day.",
+      "bank": "Bank",
+      "number": "Number",
+      "due": "Due {{day}}",
+      "settled": "{{status}} on {{day}}",
+      "status": {
+        "held": "In portfolio",
+        "deposited": "Deposited",
+        "cashed": "Cashed",
+        "unpaid": "Unpaid"
+      },
+      "deposit": "Deposit",
+      "cash": "Cash",
+      "unpaid": "Mark unpaid",
+      "delete": "Delete",
+      "confirm_cash": "Confirm: it cleared",
+      "confirm_unpaid": "Confirm: it came back unpaid",
+      "confirm_delete": "Confirm deletion",
+      "keep": "Keep it",
+      "done": {
+        "received": "The cheque or traite has been received.",
+        "deposit": "The cheque or traite is deposited.",
+        "cash": "The cheque or traite is cashed: the payment is recorded.",
+        "unpaid": "The cheque or traite is marked unpaid.",
+        "deleted": "The cheque or traite has been taken out of the portfolio."
+      }
+    },
     "actions": {
       "save": "Save the draft",
       "issue": "Issue the invoice",

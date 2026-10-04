@@ -308,7 +308,7 @@ export class InvoicesApi {
   }
 }
 
-function codeOf(error: unknown): InvoicesError {
+export function codeOf(error: unknown): InvoicesError {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return 'network';
   }

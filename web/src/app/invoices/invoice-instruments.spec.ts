@@ -1,0 +1,230 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import {
+  provideTranslateLoader,
+  provideTranslateService,
+  TranslateLoader,
+} from '@ngx-translate/core';
+import { of } from 'rxjs';
+import { AuthFacade } from '../auth/auth-facade';
+import { Session } from '../shared/session/session';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { InvoiceInstruments } from './invoice-instruments';
+import { InstrumentsApi } from './instruments-api';
+import { InvoicesRefused } from './invoices-api';
+import type { InstrumentRow } from './instruments-types';
+
+class StaticLoader implements TranslateLoader {
+  getTranslation() {
+    return of({});
+  }
+}
+
+const held: InstrumentRow = {
+  id: 'i1',
+  kind: 'check',
+  amount: '500.000',
+  dueOn: '2026-11-15',
+  bank: 'BT',
+  number: 'CHQ-77',
+  status: 'held',
+  settledOn: null,
+  paymentId: null,
+};
+const deposited: InstrumentRow = { ...held, id: 'i2', kind: 'draft', status: 'deposited' };
+const cashed: InstrumentRow = {
+  ...held,
+  id: 'i3',
+  status: 'cashed',
+  settledOn: '2026-10-01',
+  paymentId: 'p1',
+};
+
+describe('InvoiceInstruments', () => {
+  let fixture: ComponentFixture<InvoiceInstruments>;
+  let rows: InstrumentRow[];
+  const api = {
+    list: vi.fn(async () => rows),
+    receive: vi.fn(),
+    advance: vi.fn(),
+    remove: vi.fn(),
+  };
+  const changes: unknown[] = [];
+
+  const q = (testId: string): HTMLElement | null =>
+    fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
+
+  async function settle(): Promise<void> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    // The facade's reads and writes are promises of its own: let them finish before what they changed is looked at.
+    await new Promise((resolve) => setTimeout(resolve));
+    fixture.detectChanges();
+  }
+
+  async function show(
+    shown: InstrumentRow[],
+    options: { mayPay?: boolean; amountDue?: string } = {},
+  ): Promise<void> {
+    rows = shown;
+    fixture.componentRef.setInput('mayPay', options.mayPay ?? true);
+    fixture.componentRef.setInput('amountDue', options.amountDue ?? '1178.100');
+    await settle();
+  }
+
+  beforeEach(async () => {
+    rows = [];
+    changes.length = 0;
+    api.list.mockClear();
+    api.receive.mockReset().mockResolvedValue(held);
+    api.advance.mockReset().mockResolvedValue(held);
+    api.remove.mockReset().mockResolvedValue(undefined);
+    TestBed.configureTestingModule({
+      imports: [InvoiceInstruments],
+      providers: [
+        ...provideQuietFeedback(),
+        provideTranslateService({
+          lang: 'fr',
+          fallbackLang: 'fr',
+          loader: provideTranslateLoader(() => new StaticLoader()),
+        }),
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+        { provide: InstrumentsApi, useValue: api },
+        { provide: AuthFacade, useValue: { me: () => null } },
+        { provide: Session, useExisting: AuthFacade },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+      ],
+    });
+    fixture = TestBed.createComponent(InvoiceInstruments);
+    fixture.componentRef.setInput('companyId', 'c1');
+    fixture.componentRef.setInput('invoiceId', 'f1');
+    fixture.componentRef.setInput('scale', 3);
+    fixture.componentRef.setInput('today', '2026-10-04');
+    fixture.componentInstance.changed.subscribe(() => changes.push(true));
+  });
+
+  it("reads the invoice's instruments when it opens, and says when it has none", async () => {
+    await show([]);
+    expect(api.list).toHaveBeenCalledWith('c1', 'f1');
+    expect(q('invoice-instruments-none')).not.toBeNull();
+
+    api.list.mockClear();
+    rows = [held];
+    fixture.componentRef.setInput('invoiceId', 'f2');
+    await settle();
+    expect(api.list).toHaveBeenCalledWith('c1', 'f2');
+    expect(q('instrument-i1')).not.toBeNull();
+  });
+
+  it('offers a held one every step, a deposited one all but the deposit and the deletion, a settled one none', async () => {
+    await show([held, deposited, cashed]);
+
+    expect(
+      ['deposit', 'cash', 'unpaid', 'delete'].map((step) => q(`instrument-i1-${step}`) !== null),
+    ).toEqual([true, true, true, true]);
+    expect(
+      ['deposit', 'cash', 'unpaid', 'delete'].map((step) => q(`instrument-i2-${step}`) !== null),
+    ).toEqual([false, true, true, false]);
+    expect(
+      ['deposit', 'cash', 'unpaid', 'delete'].map((step) => q(`instrument-i3-${step}`) !== null),
+    ).toEqual([false, false, false, false]);
+  });
+
+  it('offers no step and no way to receive to a member who may not record payments', async () => {
+    await show([held], { mayPay: false });
+
+    expect(q('instrument-i1-cash')).toBeNull();
+    expect(q('instrument-receive')).toBeNull();
+  });
+
+  it('deposits at once, and asks once more before cashing, which tells the page the invoice changed', async () => {
+    await show([held]);
+
+    q('instrument-i1-deposit')!.click();
+    await settle();
+    expect(api.advance).toHaveBeenLastCalledWith('c1', 'f1', 'i1', 'deposit');
+    expect(changes).toEqual([]);
+
+    q('instrument-i1-cash')!.click();
+    await settle();
+    expect(api.advance).toHaveBeenCalledTimes(1);
+    q('instrument-i1-confirm')!.click();
+    await settle();
+    expect(api.advance).toHaveBeenLastCalledWith('c1', 'f1', 'i1', 'cash');
+    expect(changes).toEqual([true]);
+    expect(successToasts()).toEqual([
+      'invoices.instruments.done.deposit',
+      'invoices.instruments.done.cash',
+    ]);
+  });
+
+  it('lets the confirmation be kept off, and marks unpaid and deletes only after it', async () => {
+    await show([held]);
+
+    q('instrument-i1-unpaid')!.click();
+    await settle();
+    q('instrument-i1-keep')!.click();
+    await settle();
+    expect(api.advance).not.toHaveBeenCalled();
+    expect(q('instrument-i1-confirm')).toBeNull();
+
+    q('instrument-i1-delete')!.click();
+    await settle();
+    q('instrument-i1-confirm')!.click();
+    await settle();
+    expect(api.remove).toHaveBeenCalledWith('c1', 'f1', 'i1');
+    expect(changes).toEqual([]);
+  });
+
+  it('starts a new one for what the open ones leave free, and sends what was typed', async () => {
+    await show([held]);
+
+    q('instrument-receive')!.click();
+    await settle();
+    const amount = q('field-amount') as HTMLInputElement;
+    expect(amount.value).toBe('678,100');
+    amount.value = '600';
+    amount.dispatchEvent(new Event('input'));
+    (q('field-number') as HTMLInputElement).value = 'CHQ-78';
+    (q('field-number') as HTMLInputElement).dispatchEvent(new Event('input'));
+    q('instrument-save')!.click();
+    await settle();
+
+    expect(api.receive).toHaveBeenCalledWith('c1', 'f1', {
+      kind: 'check',
+      amount: '600',
+      dueOn: '2026-10-04',
+      bank: null,
+      number: 'CHQ-78',
+    });
+    expect(successToasts()).toContain('invoices.instruments.done.received');
+    expect(q('instrument-save')).toBeNull();
+  });
+
+  it('offers no new one once the open ones cover everything due', async () => {
+    await show([{ ...held, amount: '1178.100' }]);
+
+    expect(q('instrument-receive')).toBeNull();
+  });
+
+  it('keeps the form open and says why when the API refuses', async () => {
+    await show([], { amountDue: '100.000' });
+    q('instrument-receive')!.click();
+    await settle();
+    api.receive.mockRejectedValue(new InvoicesRefused('invalid'));
+    q('instrument-save')!.click();
+    await settle();
+
+    expect(q('instrument-save')).not.toBeNull();
+    expect(q('instrument-error')).not.toBeNull();
+  });
+});

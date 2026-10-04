@@ -72,6 +72,7 @@ import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { CreditExcessDialog } from './credit-excess-dialog';
 import { CreditNoteDialog } from './credit-note-dialog';
+import { InvoiceInstruments } from './invoice-instruments';
 import { PaymentDialog } from './payment-dialog';
 import { RecordView } from '../shared/form/record-view';
 
@@ -100,6 +101,7 @@ export const INVOICE_PLANNED: readonly PlannedAction[] = [
     TranslatePipe,
     AmountPipe,
     DayPipe,
+    InvoiceInstruments,
     DescriptorForm,
     Select,
     DocumentActions,
@@ -875,6 +877,13 @@ export class InvoicePage {
       this.feedback.success('invoices.duplicated');
       await this.router.navigate(['/invoices', copy.id]);
     }
+  }
+
+  /** A cheque or traite was cashed: the payment it became and what is still due are read again. */
+  protected async instrumentCashed(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    if (companyId && id !== null) await this.facade.loadInvoice(companyId, id);
   }
 
   protected async deletePayment(payment: Payment): Promise<void> {

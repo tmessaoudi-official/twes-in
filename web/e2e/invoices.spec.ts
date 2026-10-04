@@ -193,6 +193,37 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
     await expect(page.getByTestId('invoice-amount-due')).toHaveText(due);
 
+    // A cheque is not money (docs/SPEC.md § 7, 2026-09-21 18:40): the invoice stays due while it is held or deposited,
+    // and one that comes back unpaid leaves a trace and no payment. Cashing is certified by the API's functional
+    // test and the panel's spec: a cashed cheque's payment is kept, which would end this run's credit note below.
+    await page.getByTestId('instrument-receive').click();
+    await page.getByTestId('field-number').fill(`CHQ ${run}`);
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('instrument-save').click();
+    await expect(toast(page)).toContainText('Le chèque ou la traite est reçu.');
+    await expect(page.getByTestId('invoice-instruments')).toContainText(`CHQ ${run}`);
+    await expect(page.getByTestId('invoice-amount-due')).toHaveText(due);
+    await page.locator('[data-testid^="instrument-"][data-testid$="-deposit"]').click();
+    await expect(toast(page)).toContainText("remis à l'encaissement");
+    await page.locator('[data-testid^="instrument-"][data-testid$="-unpaid"]').click();
+    await page.locator('[data-testid^="instrument-"][data-testid$="-confirm"]').click();
+    await expect(toast(page)).toContainText('marqué impayé');
+    await expect(page.getByTestId('invoice-instruments')).toContainText('Impayé');
+    await expect(page.getByTestId('invoice-payments-none')).toBeVisible();
+    await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
+    await expect(page.getByTestId('invoice-amount-due')).toHaveText(due);
+    // What came back unpaid promises nothing, so another can be received and, still held, taken out again.
+    await page.getByTestId('instrument-receive').click();
+    await page.getByTestId('instrument-save').click();
+    await expect(toast(page)).toContainText('Le chèque ou la traite est reçu.');
+    await page.locator('[data-testid^="instrument-"][data-testid$="-delete"]').click();
+    await page.locator('[data-testid^="instrument-"][data-testid$="-confirm"]').click();
+    await expect(toast(page)).toContainText('sorti du portefeuille');
+    await expect(page.locator('[data-testid^="instrument-"][data-testid$="-status"]')).toHaveCount(
+      1,
+    );
+    expect(await wcagViolations(page)).toEqual([]);
+
     // From its list, an issued invoice opens as a sheet over it; « Encaisser » there asks for the payment on the
     // record (docs/SPEC.md § 7, 2026-09-24 22:51, row 123, and 2026-09-26).
     await page.goto('/invoices');
