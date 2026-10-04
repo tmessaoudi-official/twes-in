@@ -74,7 +74,7 @@ final class DeliveryNoteExportTest extends ApiTestCase
         self::assertSame('CLI-0001', $byReference['PO-DRAFT']['customer_number']);
         self::assertSame('Carthage Conseil', $byReference['PO-DRAFT']['customer']);
         self::assertSame('validated', $byReference['PO-77']['status']);
-        self::assertMatchesRegularExpression('/^BL-\d{4}-00001$/', (string) $byReference['PO-77']['number']);
+        self::assertMatchesRegularExpression('/^BL-\d{4}-\d{2}-00001$/', (string) $byReference['PO-77']['number']);
         self::assertSame(['TND', '200.000', '38.000', '238.000'], [$byReference['PO-77']['currency'], $byReference['PO-77']['total_net'], $byReference['PO-77']['total_tax'], $byReference['PO-77']['total']]);
         self::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}$/', (string) $byReference['PO-77']['issue_date']);
     }

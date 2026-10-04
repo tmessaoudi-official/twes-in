@@ -120,23 +120,23 @@ final class InvoiceWorkflowTest extends TestCase
 
         self::assertSame($invoice, $this->workflow->issue($this->company, $invoice->getId(), $actor));
 
-        self::assertSame([InvoiceStatus::Issued, 'FAC-2026-00001', '2026-09-15', '2026-11-14', 60], [$invoice->getStatus(), $invoice->getNumber(), $invoice->getIssueDate()?->format('Y-m-d'), $invoice->getDueDate()?->format('Y-m-d'), $invoice->getHeader()->paymentTermsDays]);
+        self::assertSame([InvoiceStatus::Issued, 'FAC-2026-09-00001', '2026-09-15', '2026-11-14', 60], [$invoice->getStatus(), $invoice->getNumber(), $invoice->getIssueDate()?->format('Y-m-d'), $invoice->getDueDate()?->format('Y-m-d'), $invoice->getHeader()->paymentTermsDays]);
         self::assertSame(['en', ['fiscal.mention.tn.export'], 'Pénalité de retard : 1 % par mois', 'Merci de votre confiance'], [$invoice->getLanguage(), $invoice->getMentionKeys(), $invoice->getLatePenaltyText(), $invoice->getFooter()]);
         self::assertSame(['10.000', '1.000', '11.000', '11.000'], [$invoice->getIssuedFigures()?->totalNet, $invoice->getIssuedFigures()?->fixedTaxes[0]['amount'], $invoice->getIssuedFigures()?->total, $invoice->getIssuedFigures()?->amountDue], 'an export customer pays no VAT, only the stamp');
         self::assertTrue($actor->equals($invoice->getIssuedBy()));
         self::assertSame(1, $this->transactions->committed);
         $entry = $this->audit->entries[0];
         self::assertSame(
-            ['invoice', $invoice->getId(), 'invoice.issued', $actor, ['number' => 'FAC-2026-00001'], $this->company->getId()],
+            ['invoice', $invoice->getId(), 'invoice.issued', $actor, ['number' => 'FAC-2026-09-00001'], $this->company->getId()],
             [$entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $entry->changes, $entry->companyId],
         );
         self::assertCount(1, $this->events->published);
         $event = $this->events->published[0];
         self::assertInstanceOf(InvoiceIssued::class, $event);
-        self::assertSame([$invoice->getId(), InvoiceType::Invoice, 'FAC-2026-00001', '2026-09-15'], [$event->invoiceId, $event->type, $event->number, $event->issueDate->format('Y-m-d')]);
+        self::assertSame([$invoice->getId(), InvoiceType::Invoice, 'FAC-2026-09-00001', '2026-09-15'], [$event->invoiceId, $event->type, $event->number, $event->issueDate->format('Y-m-d')]);
         self::assertSame([false], $this->events->whileInTransaction, 'published once the transaction is over');
 
-        self::assertSame('FAC-2026-00002', $this->workflow->issue($this->company, $this->draft($customer)->getId(), null)->getNumber());
+        self::assertSame('FAC-2026-09-00002', $this->workflow->issue($this->company, $this->draft($customer)->getId(), null)->getNumber());
     }
 
     /** A re-render (the PDF first rendered after the renderer failed at issue) prints what issuing kept. */
@@ -161,16 +161,16 @@ final class InvoiceWorkflowTest extends TestCase
 
         self::assertSame($credit, $this->workflow->issue($this->company, $credit->getId(), $actor));
 
-        self::assertSame([InvoiceStatus::Issued, 'AV-2026-00001', '-12.900'], [$credit->getStatus(), $credit->getNumber(), $credit->getIssuedFigures()?->amountDue]);
+        self::assertSame([InvoiceStatus::Issued, 'AV-2026-09-00001', '-12.900'], [$credit->getStatus(), $credit->getNumber(), $credit->getIssuedFigures()?->amountDue]);
         self::assertSame([InvoiceStatus::Paid, '12.900', '0.000'], [$invoice->getStatus(), $invoice->getIssuedFigures()->amountCredited, $invoice->getIssuedFigures()->amountDue]);
         self::assertSame(2, $this->transactions->committed);
         self::assertSame([
-            ['invoice', $credit->getId(), 'invoice.issued', $actor, ['number' => 'AV-2026-00001'], $this->company->getId()],
-            ['invoice', $invoice->getId(), 'invoice.credited', $actor, ['creditNoteId' => $credit->getId()->toRfc4122(), 'number' => 'AV-2026-00001', 'amount' => '12.900'], $this->company->getId()],
+            ['invoice', $credit->getId(), 'invoice.issued', $actor, ['number' => 'AV-2026-09-00001'], $this->company->getId()],
+            ['invoice', $invoice->getId(), 'invoice.credited', $actor, ['creditNoteId' => $credit->getId()->toRfc4122(), 'number' => 'AV-2026-09-00001', 'amount' => '12.900'], $this->company->getId()],
         ], array_map(static fn (AuditEntry $entry): array => [$entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $entry->changes, $entry->companyId], \array_slice($this->audit->entries, 1)));
         $event = $this->events->published[1];
         self::assertInstanceOf(InvoiceIssued::class, $event);
-        self::assertSame([$credit->getId(), InvoiceType::CreditNote, 'AV-2026-00001'], [$event->invoiceId, $event->type, $event->number]);
+        self::assertSame([$credit->getId(), InvoiceType::CreditNote, 'AV-2026-09-00001'], [$event->invoiceId, $event->type, $event->number]);
 
         $again = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
         $this->invoices->save($again);
@@ -255,10 +255,10 @@ final class InvoiceWorkflowTest extends TestCase
         } catch (InvoiceNotDraft) {
         }
 
-        self::assertSame([InvoiceStatus::Issued, 'FAC-2026-00001'], [$draft->getStatus(), $draft->getNumber()]);
+        self::assertSame([InvoiceStatus::Issued, 'FAC-2026-09-00001'], [$draft->getStatus(), $draft->getNumber()]);
         self::assertSame([1, 1], [\count($this->audit->entries), \count($this->events->published)]);
         $next = $this->workflow->issue($this->company, $this->draft($this->customer('standard', null))->getId(), null);
-        self::assertSame('FAC-2026-00002', $next->getNumber(), 'the refused attempt took no number');
+        self::assertSame('FAC-2026-09-00002', $next->getNumber(), 'the refused attempt took no number');
     }
 
     public function testACreditNoteIssuedTwiceAtOnceCreditsItsInvoiceOnce(): void
@@ -276,7 +276,7 @@ final class InvoiceWorkflowTest extends TestCase
         } catch (InvoiceNotDraft) {
         }
 
-        self::assertSame(['AV-2026-00001', '12.900', '0.000'], [$credit->getNumber(), $invoice->getIssuedFigures()?->amountCredited, $invoice->getIssuedFigures()?->amountDue]);
+        self::assertSame(['AV-2026-09-00001', '12.900', '0.000'], [$credit->getNumber(), $invoice->getIssuedFigures()?->amountCredited, $invoice->getIssuedFigures()?->amountDue]);
     }
 
     public function testTermsTheDraftStatesWinOverTheCustomersAndAStandardCustomerPrintsNoMention(): void

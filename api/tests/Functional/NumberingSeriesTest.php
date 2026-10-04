@@ -34,13 +34,13 @@ final class NumberingSeriesTest extends ApiTestCase
         $rows = $this->jsonList();
         self::assertSame(['credit_note', 'delivery_note', 'invoice'], array_map(fn (array $row): string => $this->stringAt($row, 'documentType'), $rows));
         $invoice = $rows[2];
-        self::assertSame('FAC-{YYYY}-{SEQ:5}', $invoice['format']);
+        self::assertSame('FAC-{YYYY}-{MM}-{SEQ:5}', $invoice['format']);
         self::assertSame(1, $invoice['nextNumber']);
         self::assertSame('yearly', $invoice['resetPeriod']);
         self::assertTrue($invoice['isDefault']);
         self::assertFalse($invoice['numbered']);
         self::assertSame('000', $invoice['establishmentCode']);
-        self::assertMatchesRegularExpression('/^FAC-\d{4}-00001$/', $this->stringAt($invoice, 'preview'));
+        self::assertMatchesRegularExpression('/^FAC-\d{4}-\d{2}-00001$/', $this->stringAt($invoice, 'preview'));
     }
 
     public function testAnAdministratorRevisesASeries(): void

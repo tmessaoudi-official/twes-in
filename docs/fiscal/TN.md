@@ -56,6 +56,7 @@ scanned PDF. The rate and base above agree across every source read.
 | 1.000 TND per invoice, since 1 January 2023 (was 0.600) | component `TIMBRE`, `fixed_document`, amount 1.000, default | Code des droits d'enregistrement et de timbre art. 117 n° 6, as amended by décret-loi n° 2022-79 (LF 2023) art. 69; Note commune DGELF n° 02/2023 du 14 février 2023 [3] | unvalidated |
 | The stamp is outside every tax base and untouched by every discount | calculator rule, pinned by pricing vectors | follows from its nature as a per-document duty; no explicit text found | unvalidated |
 | Large retail outlets pay 1.5 TND on invoices of 50 to 100 TND and 2 TND above | **not modelled** (ruled 2026-09-13; amount editable per company) | LF 2026 art. 20 [5] | unvalidated |
+| Large retail (grandes surfaces, multi-department stores, franchises; in practice DGE/DME enterprises) pay **0.100 TND on each till receipt** (ticket de caisse), issued in a continuous series | a component of its own for the till, opt-in per company and **never an invoice default** (ruled 2026-10-04); built with the till module, not yet modelled | LF 2022 art. 54, new art. 135 bis of the Code des droits d'enregistrement et de timbre, in force 1 February 2022; press summaries only (Gnet, Tunisie Numérique, tustex, Tekiano) and the ministry's Note commune n° 15, not opened; a 50 TND threshold appeared in one draft-stage article and is not confirmed | unvalidated |
 
 ## 5. Withholding on payments (retenue à la source)
 
@@ -129,7 +130,8 @@ once the settings engine carries the choice (G3b). Unvalidated.
 ## 11. Numbering and languages
 
 - Invoices are numbered from an uninterrupted series (art. 18-II) [13]. The preset's defaults are one series per
-  document type, reset every year. Unvalidated.
+  document type, written `FAC-{YYYY}-{MM}-{SEQ:5}`, `AV-…` and `BL-…` (ruled 2026-10-04), the sequence reset every year, so
+  the month is printed but never restarts the count. A company changes the format in the app. Unvalidated.
 - The preset's document language is French. Arabic is not in the POC.
 
 ## 12. Out of POC scope: El Fatoora e-invoicing

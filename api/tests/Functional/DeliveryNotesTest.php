@@ -175,7 +175,7 @@ final class DeliveryNotesTest extends ApiTestCase
     {
         $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
-        $number = static fn (int $sequence): string => \sprintf('BL-%s-%05d', substr($today, 0, 4), $sequence);
+        $number = static fn (int $sequence): string => \sprintf('BL-%s-%s-%05d', substr($today, 0, 4), substr($today, 5, 2), $sequence);
         $id = $this->draftWithALine();
 
         $this->postJson($this->path($id).'/validate', null);

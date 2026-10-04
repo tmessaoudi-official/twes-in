@@ -230,7 +230,7 @@ final class InvoicesTest extends ApiTestCase
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
-        $number = static fn (int $sequence): string => \sprintf('FAC-%s-%05d', substr($today, 0, 4), $sequence);
+        $number = static fn (int $sequence): string => \sprintf('FAC-%s-%s-%05d', substr($today, 0, 4), substr($today, 5, 2), $sequence);
         $inDays = static fn (int $days): string => new \DateTimeImmutable($today)->modify("+$days days")->format('Y-m-d');
         $this->postJson($this->path(), $this->invoice(['paymentTermsDays' => 45, 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
         $id = $this->stringAt($this->json(), 'id');
@@ -538,7 +538,7 @@ final class InvoicesTest extends ApiTestCase
         $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
-        $number = static fn (int $sequence): string => \sprintf('AV-%s-%05d', substr($today, 0, 4), $sequence);
+        $number = static fn (int $sequence): string => \sprintf('AV-%s-%s-%05d', substr($today, 0, 4), substr($today, 5, 2), $sequence);
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
         $id = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path($id).'/issue', null);

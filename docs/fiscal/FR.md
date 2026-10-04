@@ -111,7 +111,8 @@ Unvalidated.
 ## 8. Numbering and languages
 
 - One or more chronological continuous series, with no gaps (242 nonies A) [6]. The preset's defaults are one
-  series per document type, reset every year. Unvalidated.
+  series per document type, written `FA-{YYYY}-{MM}-{SEQ:5}`, `AV-…` and `BL-…` (month printed since 2026-10-04), the
+  sequence reset every year. Unvalidated.
 - The preset's document language is French.
 
 ## 9. Out of POC scope: electronic invoicing

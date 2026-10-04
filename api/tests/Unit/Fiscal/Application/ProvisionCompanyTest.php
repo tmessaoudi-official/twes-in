@@ -157,7 +157,7 @@ final class ProvisionCompanyTest extends TestCase
 
         $series = $this->series->ofCompany($company->getId());
         self::assertSame(
-            ['credit_note' => 'AV-{YYYY}-{SEQ:5}', 'delivery_note' => 'BL-{YYYY}-{SEQ:5}', 'invoice' => 'FAC-{YYYY}-{SEQ:5}'],
+            ['credit_note' => 'AV-{YYYY}-{MM}-{SEQ:5}', 'delivery_note' => 'BL-{YYYY}-{MM}-{SEQ:5}', 'invoice' => 'FAC-{YYYY}-{MM}-{SEQ:5}'],
             array_combine(array_map(static fn (NumberingSeries $s) => $s->getDocumentType(), $series), array_map(static fn (NumberingSeries $s) => $s->getFormat(), $series)),
         );
         foreach ($series as $each) {

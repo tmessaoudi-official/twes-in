@@ -72,7 +72,7 @@ final class ManageNumberingSeriesTest extends TestCase
         } catch (InvalidNumbering $refused) {
             self::assertSame('resetPeriod', $refused->field);
         }
-        self::assertSame('FAC-{YYYY}-{SEQ:5}', $invoices->getFormat());
+        self::assertSame('FAC-{YYYY}-{MM}-{SEQ:5}', $invoices->getFormat());
     }
 
     public function testAnotherCompanysSeriesIsNotFound(): void

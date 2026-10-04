@@ -49,7 +49,7 @@ final class AllocateNumberTest extends TestCase
     {
         $allocated = $this->transactions->run(fn () => $this->allocate->allocate($this->company, $this->head, 'delivery_note'));
 
-        self::assertSame('BL-2027-00001', $allocated->number);
+        self::assertSame('BL-2027-01-00001', $allocated->number);
         self::assertSame('2027-01-01', $allocated->issueDate->format('Y-m-d'));
         self::assertSame(2, $this->deliveryNotes()->getNextNumber());
         self::assertTrue($this->deliveryNotes()->isNumbered());

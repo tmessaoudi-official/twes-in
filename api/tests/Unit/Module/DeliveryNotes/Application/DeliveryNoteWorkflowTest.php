@@ -139,21 +139,21 @@ final class DeliveryNoteWorkflowTest extends TestCase
 
         self::assertSame($first, $this->workflow->validate($this->company, $first->getId(), $actor));
 
-        self::assertSame([DeliveryNoteStatus::Validated, 'BL-2026-00001', '2026-09-15'], [$first->getStatus(), $first->getNumber(), $first->getIssueDate()?->format('Y-m-d')]);
+        self::assertSame([DeliveryNoteStatus::Validated, 'BL-2026-09-00001', '2026-09-15'], [$first->getStatus(), $first->getNumber(), $first->getIssueDate()?->format('Y-m-d')]);
         self::assertSame(1, $this->transactions->committed);
         $entry = $this->audit->entries[0];
         self::assertSame(
-            ['delivery_note', $first->getId(), 'delivery_note.validated', $actor, ['number' => 'BL-2026-00001'], $this->company->getId()],
+            ['delivery_note', $first->getId(), 'delivery_note.validated', $actor, ['number' => 'BL-2026-09-00001'], $this->company->getId()],
             [$entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $entry->changes, $entry->companyId],
         );
         self::assertCount(1, $this->events->published);
         $event = $this->events->published[0];
         self::assertInstanceOf(DeliveryNoteValidated::class, $event);
-        self::assertSame([$first->getId(), 'BL-2026-00001'], [$event->deliveryNoteId, $event->number]);
+        self::assertSame([$first->getId(), 'BL-2026-09-00001'], [$event->deliveryNoteId, $event->number]);
         self::assertEquals([new DeliveredQuantity(null, '2.000', $this->unit('C62')->getId())], $event->lines);
         self::assertSame([false], $this->events->whileInTransaction, 'published once the transaction is over');
 
-        self::assertSame('BL-2026-00002', $this->workflow->validate($this->company, $this->draft()->getId(), null)->getNumber());
+        self::assertSame('BL-2026-09-00002', $this->workflow->validate($this->company, $this->draft()->getId(), null)->getNumber());
     }
 
     public function testWhatCannotBeValidatedStaysADraftAndTellsNobody(): void
@@ -191,7 +191,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
         // A new site gets its code into the format it copies; someone revising it back out is what this refusal still guards.
         foreach ($this->series->series as $series) {
             if ($series->getEstablishment()->getId()->equals($branch->getId()) && 'delivery_note' === $series->getDocumentType()) {
-                $series->revise(new \App\Tenancy\Domain\NumberFormat('BL-{YYYY}-{SEQ:5}'), $series->getResetPeriod(), 1, new \DateTimeImmutable());
+                $series->revise(new \App\Tenancy\Domain\NumberFormat('BL-{YYYY}-{MM}-{SEQ:5}'), $series->getResetPeriod(), 1, new \DateTimeImmutable());
             }
         }
         $this->workflow->validate($this->company, $this->draft()->getId(), null);
@@ -201,7 +201,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
             $this->workflow->validate($this->company, $fromTheBranch->getId(), null);
             self::fail('one number was given twice in a company');
         } catch (DeliveryNoteNumberTaken $taken) {
-            self::assertStringContainsString('BL-2026-00001', $taken->getMessage());
+            self::assertStringContainsString('BL-2026-09-00001', $taken->getMessage());
             self::assertStringContainsString('{EST}', $taken->getMessage());
         }
 
@@ -237,9 +237,9 @@ final class DeliveryNoteWorkflowTest extends TestCase
         $draft = $this->draft();
         $this->workflow->cancel($this->company, $draft->getId(), $actor);
 
-        self::assertSame([[DeliveryNoteStatus::Cancelled, 'BL-2026-00002'], [DeliveryNoteStatus::Cancelled, null]], [[$validated->getStatus(), $validated->getNumber()], [$draft->getStatus(), $draft->getNumber()]]);
+        self::assertSame([[DeliveryNoteStatus::Cancelled, 'BL-2026-09-00002'], [DeliveryNoteStatus::Cancelled, null]], [[$validated->getStatus(), $validated->getNumber()], [$draft->getStatus(), $draft->getNumber()]]);
         self::assertEquals([
-            new DeliveryNoteCancelled($validated->getId(), $this->company->getId(), $validated->getEstablishment()->getId(), 'BL-2026-00002'),
+            new DeliveryNoteCancelled($validated->getId(), $this->company->getId(), $validated->getEstablishment()->getId(), 'BL-2026-09-00002'),
         ], \array_slice($this->events->published, 2), 'a cancelled draft announced nothing and tells nothing');
         self::assertSame(
             [['delivery_note.cancelled', [], $validated->getId()], ['delivery_note.cancelled', [], $draft->getId()]],
@@ -272,10 +272,10 @@ final class DeliveryNoteWorkflowTest extends TestCase
         } catch (DeliveryNoteTransitionRefused) {
         }
 
-        self::assertSame([DeliveryNoteStatus::Cancelled, 'BL-2026-00001'], [$note->getStatus(), $note->getNumber()]);
+        self::assertSame([DeliveryNoteStatus::Cancelled, 'BL-2026-09-00001'], [$note->getStatus(), $note->getNumber()]);
         self::assertSame(['delivery_note.validated', 'delivery_note.cancelled'], array_map(static fn ($entry): string => $entry->action, $this->audit->entries));
         self::assertCount(2, $this->events->published, 'the note was announced validated once and cancelled once, so its stock moved once each way');
-        self::assertSame('BL-2026-00002', $this->workflow->validate($this->company, $this->draft()->getId(), null)->getNumber(), 'the refused attempt took no number');
+        self::assertSame('BL-2026-09-00002', $this->workflow->validate($this->company, $this->draft()->getId(), null)->getNumber(), 'the refused attempt took no number');
     }
 
     public function testANoteOnAnInvoiceThatIsNotCancelledIsNotCancelled(): void
