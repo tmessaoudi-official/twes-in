@@ -697,7 +697,8 @@
       "max_length": "Au plus {{max}} caractères.",
       "min": "Au moins {{min}}.",
       "max": "Au plus {{max}}.",
-      "date": "Saisissez un jour valide, par exemple 05/09/2026."
+      "date": "Saisissez un jour valide, par exemple 05/09/2026.",
+      "colour": "Saisissez une couleur au format #rrggbb, par exemple #1f6feb."
     },
     "leave": {
       "title": "Quitter sans enregistrer ?",
@@ -716,6 +717,17 @@
       "next_years": "24 années suivantes",
       "choose_date": "Choisir une année et un mois",
       "choose_month_and_year": "Choisir une année"
+    },
+    "colour": {
+      "blue": "Bleu",
+      "red": "Rouge",
+      "green": "Vert",
+      "orange": "Orange",
+      "purple": "Violet",
+      "teal": "Turquoise",
+      "pink": "Rose",
+      "slate": "Ardoise",
+      "custom": "Couleur au format #rrggbb"
     }
   },
   "fiscal": {

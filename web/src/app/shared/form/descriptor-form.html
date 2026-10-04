@@ -136,6 +136,22 @@
                       {{ error.key | translate: error.params }}
                     </span>
                   }
+                } @else if (field.kind === 'colour') {
+                  <app-colour-field
+                    [inputId]="controlId(field)"
+                    [labelledBy]="controlId(field) + '-label'"
+                    [formControlName]="field.id"
+                    [testId]="'field-' + field.id"
+                  />
+                  @if (errorFor(field); as error) {
+                    <span
+                      role="alert"
+                      class="px-2 text-xs text-error"
+                      [attr.data-testid]="'field-error-' + field.id"
+                    >
+                      {{ error.key | translate: error.params }}
+                    </span>
+                  }
                 } @else if (field.kind === 'date') {
                   <mat-form-field>
                     <input
@@ -197,16 +213,6 @@
                           [formControlName]="field.id"
                           [required]="field.required ?? false"
                           [attr.maxlength]="field.maxLength ?? null"
-                          [attr.data-testid]="'field-' + field.id"
-                        />
-                      }
-                      @case ('colour') {
-                        <input
-                          matInput
-                          [id]="controlId(field)"
-                          type="color"
-                          [formControlName]="field.id"
-                          [required]="field.required ?? false"
                           [attr.data-testid]="'field-' + field.id"
                         />
                       }

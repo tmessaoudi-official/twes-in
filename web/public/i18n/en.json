@@ -697,7 +697,8 @@
       "max_length": "At most {{max}} characters.",
       "min": "At least {{min}}.",
       "max": "At most {{max}}.",
-      "date": "Enter a valid day, such as 05/09/2026."
+      "date": "Enter a valid day, such as 05/09/2026.",
+      "colour": "Enter a colour written as #rrggbb, such as #1f6feb."
     },
     "leave": {
       "title": "Leave without saving?",
@@ -716,6 +717,17 @@
       "next_years": "Next 24 years",
       "choose_date": "Choose a year and month",
       "choose_month_and_year": "Choose a year"
+    },
+    "colour": {
+      "blue": "Blue",
+      "red": "Red",
+      "green": "Green",
+      "orange": "Orange",
+      "purple": "Purple",
+      "teal": "Teal",
+      "pink": "Pink",
+      "slate": "Slate",
+      "custom": "Colour written as #rrggbb"
     }
   },
   "fiscal": {
