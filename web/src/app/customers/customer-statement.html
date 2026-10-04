@@ -13,6 +13,7 @@
       <input
         matInput
         appDay
+        #dayField="appDay"
         type="text"
         inputmode="numeric"
         autocomplete="off"
@@ -20,12 +21,14 @@
         (ngModelChange)="onFrom($event)"
         data-testid="statement-from"
       />
+      <app-day-calendar-button matSuffix [field]="dayField" />
     </mat-form-field>
     <mat-form-field subscriptSizing="dynamic">
       <mat-label>{{ 'customers.statement.to' | translate }}</mat-label>
       <input
         matInput
         appDay
+        #dayField="appDay"
         type="text"
         inputmode="numeric"
         autocomplete="off"
@@ -33,6 +36,7 @@
         (ngModelChange)="onTo($event)"
         data-testid="statement-to"
       />
+      <app-day-calendar-button matSuffix [field]="dayField" />
     </mat-form-field>
     <a
       mat-stroked-button

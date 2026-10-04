@@ -72,12 +72,14 @@
               <input
                 matInput
                 appDay
+                #dayField="appDay"
                 type="text"
                 inputmode="numeric"
                 autocomplete="off"
                 formControlName="validFrom"
                 data-testid="price-list-from"
               />
+              <app-day-calendar-button matSuffix [field]="dayField" />
               <mat-error>{{ 'form.errors.date' | translate }}</mat-error>
             </mat-form-field>
             <mat-form-field subscriptSizing="dynamic">
@@ -85,12 +87,14 @@
               <input
                 matInput
                 appDay
+                #dayField="appDay"
                 type="text"
                 inputmode="numeric"
                 autocomplete="off"
                 formControlName="validTo"
                 data-testid="price-list-to"
               />
+              <app-day-calendar-button matSuffix [field]="dayField" />
               <mat-error>{{ 'form.errors.date' | translate }}</mat-error>
             </mat-form-field>
             <mat-slide-toggle formControlName="isActive" data-testid="price-list-active">{{

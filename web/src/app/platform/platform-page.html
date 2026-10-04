@@ -334,6 +334,7 @@
                         <input
                           matInput
                           appDay
+                          #dayField="appDay"
                           type="text"
                           inputmode="numeric"
                           autocomplete="off"
@@ -341,6 +342,7 @@
                           (ngModelChange)="setDay('trialEndsOn', $event)"
                           data-testid="subscription-trial-ends-on"
                         />
+                        <app-day-calendar-button matSuffix [field]="dayField" />
                       </mat-form-field>
                       <mat-form-field subscriptSizing="dynamic">
                         <mat-label>{{
@@ -349,6 +351,7 @@
                         <input
                           matInput
                           appDay
+                          #dayField="appDay"
                           type="text"
                           inputmode="numeric"
                           autocomplete="off"
@@ -356,6 +359,7 @@
                           (ngModelChange)="setDay('paidThrough', $event)"
                           data-testid="subscription-paid-through"
                         />
+                        <app-day-calendar-button matSuffix [field]="dayField" />
                       </mat-form-field>
                       <mat-form-field subscriptSizing="dynamic">
                         <mat-label>{{

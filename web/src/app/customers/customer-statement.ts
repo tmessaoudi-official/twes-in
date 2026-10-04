@@ -21,6 +21,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
@@ -45,6 +46,7 @@ const isZero = (amount: string): boolean => /^-?0*(\.0*)?$/.test(amount);
   imports: [
     FormsModule,
     DayInput,
+    DayCalendarButton,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,

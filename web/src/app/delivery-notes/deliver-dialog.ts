@@ -7,6 +7,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
+import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
 
 /**
@@ -19,6 +20,7 @@ import { DayInput } from '../shared/form/day-input';
   imports: [
     FormsModule,
     DayInput,
+    DayCalendarButton,
     MatButtonModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -36,6 +38,7 @@ import { DayInput } from '../shared/form/day-input';
         <input
           matInput
           appDay
+          #dayField="appDay"
           type="text"
           inputmode="numeric"
           autocomplete="off"
@@ -43,6 +46,7 @@ import { DayInput } from '../shared/form/day-input';
           (ngModelChange)="day.set($event)"
           data-testid="delivery-note-delivered-on"
         />
+        <app-day-calendar-button matSuffix [field]="dayField" />
       </mat-form-field>
     </mat-dialog-content>
     <mat-dialog-actions align="end">

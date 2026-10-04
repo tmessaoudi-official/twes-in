@@ -24,6 +24,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Select, type SelectOption } from '../shared/form/select';
 import { DecimalInput } from '../shared/form/decimal-input';
+import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { FormatFacade } from '../shared/i18n/format-facade';
@@ -83,6 +84,7 @@ function itemGroup(item: PriceListItem | null): ItemGroup {
     DataListCell,
     DecimalInput,
     DayInput,
+    DayCalendarButton,
     PickField,
     StatusBadge,
   ],

@@ -11,6 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -82,6 +83,7 @@ import { SubscriptionFacade } from '../licensing/subscription-facade';
     MatFormFieldModule,
     MatInputModule,
     DayInput,
+    DayCalendarButton,
     MatSlideToggleModule,
     MatTabsModule,
     RouterLink,
