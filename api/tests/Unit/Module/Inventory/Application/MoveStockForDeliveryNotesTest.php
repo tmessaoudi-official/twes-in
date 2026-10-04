@@ -15,6 +15,9 @@ use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
 use App\Module\Inventory\Domain\NamedLot;
+use App\Module\Inventory\Domain\ProductHomeLocation;
+use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
 use App\Module\Products\Domain\Product;
@@ -37,6 +40,7 @@ use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryModuleStates;
+use App\Tests\Support\InMemoryProductHomeLocations;
 use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStockLocations;
@@ -52,6 +56,7 @@ final class MoveStockForDeliveryNotesTest extends TestCase
     private MockClock $clock;
     private InMemoryStockMovements $movements;
     private InMemoryStockLocations $locations;
+    private InMemoryProductHomeLocations $homes;
     private InMemorySettings $settings;
     private InMemoryModuleStates $states;
     private FakeTransactions $transactions;
@@ -73,6 +78,7 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         $now = $this->clock->now();
         $this->movements = new InMemoryStockMovements();
         $this->locations = new InMemoryStockLocations();
+        $this->homes = new InMemoryProductHomeLocations();
         $this->settings = new InMemorySettings();
         $this->states = new InMemoryModuleStates();
         $this->transactions = new FakeTransactions();
@@ -99,7 +105,7 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         $keep = $this->keep = new KeepStock($this->movements, new InMemoryStockLots(), $this->locations, $products, $read, $this->transactions, $this->clock, new RecordingLiveChanges());
         $this->manage = $manage;
         $modules = new ModuleStates(new ModuleCatalog([new ProductsModule(), new InventoryModule()]), $this->states);
-        $this->move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $this->transactions, $this->clock);
+        $this->move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $this->transactions, $this->clock, $this->homes);
     }
 
     public function testAValidatedNoteTakesEachTrackedProductOutOfItsEstablishmentsDefaultLocationOnce(): void
@@ -203,6 +209,130 @@ final class MoveStockForDeliveryNotesTest extends TestCase
 
         $this->move->cancelled($first, $this->company->getId());
         self::assertSame([['NOVEMBER', '3.000'], ['OCTOBER', '1.000']], \array_slice($this->lotsWritten($received), 3));
+    }
+
+    /** A place of the depot, filed under its default location, that a product can be given as a home. */
+    private function shelf(string $code): StockLocation
+    {
+        return $this->manage->create($this->company, $this->depot->getId(), null, StockLocationKind::Rack, $code, 'Rayon '.$code, null);
+    }
+
+    /** The product's homes in the depot, the first the main one. */
+    private function homesAt(Product $product, StockLocation ...$places): void
+    {
+        foreach (array_values($places) as $position => $place) {
+            $this->homes->save(ProductHomeLocation::at($product, $place, $position, $this->clock->now()));
+        }
+    }
+
+    public function testADeliveryTakesGoodsFromTheMainHomeFirstThenTheNextInOrderNeverMoreThanIsThere(): void
+    {
+        $r1 = $this->shelf('R1');
+        $r2 = $this->shelf('R2');
+        $this->homesAt($this->laptop, $r1, $r2);
+        $this->keep->receive($this->company, $this->laptop->getId(), $r1->getId(), '3', null);
+        $this->keep->receive($this->company, $this->laptop->getId(), $r2->getId(), '10', null);
+        $before = \count($this->movements->movements);
+
+        $skipped = $this->move->validated(Uuid::v7(), $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '5.000', $this->piece)]);
+
+        self::assertSame([], $skipped);
+        self::assertSame([['ART-001', 'R1', 'out', '-3.000'], ['ART-001', 'R2', 'out', '-2.000']], \array_slice($this->written(), $before), 'the main home is emptied first, the next takes the rest, and nothing goes below zero');
+    }
+
+    public function testAProductWithNoHomeStillLeavesFromTheDefaultLocation(): void
+    {
+        $r1 = $this->shelf('R1');
+        $this->keep->receive($this->company, $this->laptop->getId(), $r1->getId(), '9', null);
+        $before = \count($this->movements->movements);
+
+        $this->move->validated(Uuid::v7(), $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '2.000', $this->piece)]);
+
+        self::assertSame([['ART-001', '001', 'out', '-2.000']], \array_slice($this->written(), $before));
+    }
+
+    public function testGoodsStillAtTheDefaultLocationLeaveFromItWhenTheHomesWereSetAfterTheyArrived(): void
+    {
+        $r1 = $this->shelf('R1');
+        $r2 = $this->shelf('R2');
+        $default = $this->manage->defaultOf($this->depot);
+        $this->keep->receive($this->company, $this->laptop->getId(), $default->getId(), '6', null);
+        $this->homesAt($this->laptop, $r1, $r2);
+        $before = \count($this->movements->movements);
+
+        $this->move->validated(Uuid::v7(), $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '4.000', $this->piece)]);
+
+        self::assertSame([['ART-001', '001', 'out', '-4.000']], \array_slice($this->written(), $before), 'no home goes negative while the default location holds the goods');
+    }
+
+    public function testWhatNoPlaceHoldsGoesOnTheMainHomeAsOneMovement(): void
+    {
+        $r1 = $this->shelf('R1');
+        $r2 = $this->shelf('R2');
+        $this->homesAt($this->laptop, $r1, $r2);
+        $this->keep->receive($this->company, $this->laptop->getId(), $r1->getId(), '3', null);
+        $this->keep->receive($this->company, $this->laptop->getId(), $r2->getId(), '2', null);
+        $before = \count($this->movements->movements);
+
+        $this->move->validated(Uuid::v7(), $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '8.000', $this->piece)]);
+
+        self::assertSame([['ART-001', 'R1', 'out', '-6.000'], ['ART-001', 'R2', 'out', '-2.000']], \array_slice($this->written(), $before), 'the shortfall of three joins the main home\'s own movement');
+    }
+
+    public function testASplitDeliveryAndAnInvoiceComeBackToEachPlaceTheyLeft(): void
+    {
+        $r1 = $this->shelf('R1');
+        $r2 = $this->shelf('R2');
+        $this->homesAt($this->laptop, $r1, $r2);
+        $this->keep->receive($this->company, $this->laptop->getId(), $r1->getId(), '3', null);
+        $this->keep->receive($this->company, $this->laptop->getId(), $r2->getId(), '10', null);
+        $note = Uuid::v7();
+        $invoice = Uuid::v7();
+
+        $this->move->validated($note, $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '5.000', $this->piece)]);
+        $this->move->invoiced($invoice, $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '4.000', $this->piece)]);
+        $this->move->cancelled($note, $this->company->getId());
+        $this->move->returned(Uuid::v7(), $invoice, $this->company->getId(), [$this->line($this->laptop, '4.000', $this->piece)]);
+
+        $levels = [];
+        foreach ($this->movements->levels($this->company->getId()) as $level) {
+            $levels[$level->locationId->toRfc4122()] = $level->quantity;
+        }
+        self::assertSame([$r1->getId()->toRfc4122() => '3.000', $r2->getId()->toRfc4122() => '10.000'], $levels, 'each place holds again what was received');
+    }
+
+    public function testEveryPlaceAProductMayLeaveFromIsLockedInOneFixedOrderBeforeAnythingIsRead(): void
+    {
+        $r1 = $this->shelf('R1');
+        $r2 = $this->shelf('R2');
+        $this->homesAt($this->laptop, $r2, $r1);
+        $already = \count($this->movements->calls);
+
+        $this->move->validated(Uuid::v7(), $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '1.000', $this->piece)]);
+
+        $locks = array_values(array_filter(\array_slice($this->movements->calls, $already), static fn (string $call): bool => str_starts_with($call, 'lock ')));
+        $default = $this->manage->defaultOf($this->depot)->getId()->toRfc4122();
+        $expected = array_map(fn (string $id): string => 'lock '.$this->laptop->getId()->toRfc4122().' '.$id.' in transaction', [$r1->getId()->toRfc4122(), $r2->getId()->toRfc4122(), $default]);
+        sort($expected);
+        self::assertSame($expected, $locks, 'the two homes and the default location, sorted, not in the order of the homes');
+    }
+
+    public function testALotAtTwoPlacesIsTakenFromTheMainHomeBeforeAnEarlierExpiringOneAtTheNextAndNeverCountedTwice(): void
+    {
+        $this->laptop->track(ProductTracking::Lot, $this->clock->now());
+        $r1 = $this->shelf('R1');
+        $r2 = $this->shelf('R2');
+        $this->homesAt($this->laptop, $r1, $r2);
+        $this->keep->receive($this->company, $this->laptop->getId(), $r1->getId(), '2', null, new NamedLot('NOVEMBER', new \DateTimeImmutable('2026-11-01')));
+        $this->keep->receive($this->company, $this->laptop->getId(), $r2->getId(), '2', null, new NamedLot('OCTOBER', new \DateTimeImmutable('2026-10-01')));
+        $this->keep->receive($this->company, $this->laptop->getId(), $r2->getId(), '1', null, new NamedLot('NOVEMBER', new \DateTimeImmutable('2026-11-01')));
+        $before = \count($this->movements->movements);
+
+        $skipped = $this->move->validated(Uuid::v7(), $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '5.000', $this->piece)]);
+
+        self::assertSame([], $skipped);
+        $taken = array_map(static fn (StockMovement $m) => [$m->getLocation()->getCode(), (string) $m->getLot()?->getCode(), $m->getQuantity()], \array_slice($this->movements->movements, $before));
+        self::assertSame([['R1', 'NOVEMBER', '-2.000'], ['R2', 'OCTOBER', '-2.000'], ['R2', 'NOVEMBER', '-1.000']], $taken, 'the main home first, then first-to-expire within the next one; the November lot of R2 is not reduced by what R1 gave');
     }
 
     /** @return list<array{string, string}> the lot and quantity of each movement written after the first $from */

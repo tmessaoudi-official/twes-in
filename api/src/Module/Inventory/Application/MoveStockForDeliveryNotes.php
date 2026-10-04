@@ -13,6 +13,8 @@ use App\Module\DeliveryNotes\Domain\DeliveredQuantity;
 use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\LotOnHand;
 use App\Module\Inventory\Domain\LotPicking;
+use App\Module\Inventory\Domain\ProductHomeLocation;
+use App\Module\Inventory\Domain\ProductHomeLocationRepository;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockMovement;
@@ -30,9 +32,11 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * What a delivery note does to stock (the goods leave with validation). A validated note
- * takes each product it delivers out of its establishment's default location, once per product, while the company has
- * inventory on and keeps stock of that product; a line counted in another unit than its product moves nothing and is
- * said, because no unit converts into another. A product tracked by lot or serial number leaves from its lots, the first
+ * takes each product it delivers out of the places the product lives in at its establishment, the main home first and
+ * then the next in order, then the default location, never more than a place holds while another still holds goods and
+ * what none holds going on the main place, while the company has inventory on and keeps stock of that product; a
+ * product with no home leaves from the default location alone. A line counted in another unit than its product moves
+ * nothing and is said, because no unit converts into another. A product tracked by lot or serial number leaves from its lots, the first
  * to expire first, and never from an expired lot nobody released; what no lot in date holds is said and not moved
  *. A cancelled note returns exactly what its validation took out, to the lots it
  * took it from, whatever the tracking or the module say since. Both are idempotent: an event handled twice moves
@@ -52,6 +56,7 @@ final readonly class MoveStockForDeliveryNotes
         private ModuleStates $modules,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private ProductHomeLocationRepository $homes,
         private ?RaiseStockAlerts $alerts = null,
     ) {
     }
@@ -128,38 +133,60 @@ final readonly class MoveStockForDeliveryNotes
         // The company's day decides which lots have expired: a lot used by today still leaves today, wherever the server is.
         $today = $now->setTimezone(new \DateTimeZone($establishment->getCompany()->getTimezone()));
 
-        return $this->transactions->run(function () use ($establishment, $out, $sourceType, $sourceId, $now, $today, $skipped): array {
-            $location = $this->locations->defaultOf($establishment);
+        return $this->transactions->run(function () use ($establishment, $companyId, $out, $sourceType, $sourceId, $now, $today, $skipped): array {
+            $default = $this->locations->defaultOf($establishment);
             $products = [];
             foreach ($out as [$product]) {
                 $products[$product->getId()->toRfc4122()] = $product;
             }
             ksort($products);
-            foreach ($products as $product) {
-                $this->movements->lockStockOf($product->getId(), $location->getId());
+            $places = $this->placesOf($products, $establishment->getId(), $companyId, $default);
+            // Every place a product may leave from is locked, in one fixed order, before anything is read at any of them.
+            $locks = [];
+            foreach ($products as $productId => $product) {
+                foreach ($places[$productId] as $place) {
+                    $locks[$productId.' '.$place->getId()->toRfc4122()] = [$product->getId(), $place->getId()];
+                }
+            }
+            ksort($locks);
+            foreach ($locks as [$lockedProduct, $lockedPlace]) {
+                $this->movements->lockStockOf($lockedProduct, $lockedPlace);
             }
             $written = [];
             $taking = [];
             foreach ($out as [$product, $quantity, $named]) {
+                $list = $places[$product->getId()->toRfc4122()];
                 if (ProductTracking::None === $product->getTracking()) {
-                    $written[] = self::leaving($sourceType, $product, $location, $quantity->value, $sourceId, $now);
+                    foreach (self::shared($this->movements, $product, $list, $quantity) as [$place, $leaves]) {
+                        $written[] = self::leaving($sourceType, $product, $place, $leaves->value, $sourceId, $now);
+                    }
                     continue;
                 }
                 // Read after the lock, as a count reads: what is picked is what no other delivery is taking. What an
-                // earlier group of this note took is not on hand any more, though it is not saved yet.
-                $onHand = self::less($this->movements->lotsAt($product->getId(), $location->getId()), $taking);
-                $picked = null === $named
-                    ? LotPicking::firstExpiring($onHand, $quantity->value, $today)
-                    : LotPicking::named($onHand, $named, $quantity->value, $today);
-                foreach ($picked->taken as [$lot, $taken]) {
-                    $written[] = self::leaving($sourceType, $product, $location, $taken, $sourceId, $now, $lot);
-                    $key = $lot->getId()->toRfc4122();
-                    $taking[$key] = ($taking[$key] ?? new Number(0))->add($taken);
+                // earlier group of this note took is not on hand any more, though it is not saved yet. Each place is
+                // read in the order of the homes, so the main home empties before the next is touched.
+                $short = $quantity->value;
+                $first = null;
+                foreach ($list as $place) {
+                    if (1 !== new Number($short)->compare(0)) {
+                        break;
+                    }
+                    $onHand = self::less($this->movements->lotsAt($product->getId(), $place->getId()), $taking, $place);
+                    $first ??= $onHand;
+                    $picked = null === $named
+                        ? LotPicking::firstExpiring($onHand, $short, $today)
+                        : LotPicking::named($onHand, $named, $short, $today);
+                    foreach ($picked->taken as [$lot, $taken]) {
+                        $written[] = self::leaving($sourceType, $product, $place, $taken, $sourceId, $now, $lot);
+                        $key = $lot->getId()->toRfc4122().' '.$place->getId()->toRfc4122();
+                        $taking[$key] = ($taking[$key] ?? new Number(0))->add($taken);
+                    }
+                    $short = $picked->short;
                 }
-                if (1 === new Number($picked->short)->compare(0)) {
+                if (1 === new Number($short)->compare(0)) {
                     $skipped[] = null === $named
-                        ? \sprintf('%s of %s was in no lot in date at %s, so it moved no stock: receive it under its lot, or release an expired one', $picked->short, $product->getReference(), $location->getCode())
-                        : self::namedShort($picked->short, $product->getReference(), $named, $location->getCode(), LotPicking::find($onHand, $named), $today);
+                        ? \sprintf('%s of %s was in no lot in date at %s, so it moved no stock: receive it under its lot, or release an expired one', $short, $product->getReference(), $list[0]->getCode())
+                        : self::namedShort($short, $product->getReference(), $named, $list[0]->getCode(), LotPicking::find($first ?? [], $named), $today);
                 }
             }
             if ([] !== $written) {
@@ -169,6 +196,68 @@ final readonly class MoveStockForDeliveryNotes
 
             return $skipped;
         });
+    }
+
+    /**
+     * The places each product may leave from in this establishment, by the product's id, the main place first: its homes
+     * in their order, then the default location, which holds what arrived before any home was named. A product with no
+     * home leaves from the default location alone, as it always did.
+     *
+     * @param array<string, Product> $products by id
+     *
+     * @return array<string, non-empty-list<StockLocation>>
+     */
+    private function placesOf(array $products, Uuid $establishmentId, Uuid $companyId, StockLocation $default): array
+    {
+        $homes = $this->homes->ofProducts(array_values(array_map(static fn (Product $product): Uuid => $product->getId(), $products)), $companyId);
+        $places = [];
+        foreach (array_keys($products) as $productId) {
+            $own = array_values(array_filter($homes[$productId] ?? [], static fn (ProductHomeLocation $home): bool => $home->getEstablishment()->getId()->equals($establishmentId)));
+            usort($own, static fn (ProductHomeLocation $a, ProductHomeLocation $b): int => $a->getPosition() <=> $b->getPosition());
+            $list = array_map(static fn (ProductHomeLocation $home): StockLocation => $home->getLocation(), $own);
+            $places[$productId] = [] === $list
+                ? [$default]
+                : (array_any($list, static fn (StockLocation $place): bool => $place->getId()->equals($default->getId())) ? $list : [...$list, $default]);
+        }
+
+        return $places;
+    }
+
+    /**
+     * What an untracked product's delivery takes from each place: what each holds, in the order of the places, never
+     * more than it holds, until the delivery is covered. What no place holds goes on the main place with whatever it
+     * gave, as one movement, so the shortage shows where the product lives and not at some shelf nobody chose. A
+     * product with one place to leave from asks nothing of the stock: the whole delivery is its.
+     *
+     * @param non-empty-list<StockLocation> $places
+     *
+     * @return list<array{StockLocation, Number}>
+     */
+    private static function shared(StockMovementRepository $movements, Product $product, array $places, Number $quantity): array
+    {
+        if (1 === \count($places)) {
+            return [[$places[0], $quantity]];
+        }
+        $left = $quantity;
+        $by = [];
+        foreach ($places as $at => $place) {
+            if (1 !== $left->compare(0)) {
+                break;
+            }
+            $held = new Number($movements->onHand($product->getId(), $place->getId()));
+            if (1 !== $held->compare(0)) {
+                continue;
+            }
+            $take = -1 === $left->compare($held) ? $left : $held;
+            $by[$at] = $take;
+            $left = $left->sub($take);
+        }
+        if (1 === $left->compare(0)) {
+            $by[0] = ($by[0] ?? new Number(0))->add($left);
+        }
+        ksort($by);
+
+        return array_map(static fn (int $at, Number $leaves): array => [$places[$at], $leaves], array_keys($by), $by);
     }
 
     /** @throws InvalidStockMovement */
@@ -183,14 +272,14 @@ final readonly class MoveStockForDeliveryNotes
      * The lots on hand less what this note already takes from them.
      *
      * @param list<LotOnHand>       $onHand
-     * @param array<string, Number> $taking by lot id
+     * @param array<string, Number> $taking by lot id and place id: a lot kept at two places is two stocks
      *
      * @return list<LotOnHand>
      */
-    private static function less(array $onHand, array $taking): array
+    private static function less(array $onHand, array $taking, StockLocation $place): array
     {
-        return array_map(static function (LotOnHand $each) use ($taking): LotOnHand {
-            $taken = $taking[$each->lot->getId()->toRfc4122()] ?? null;
+        return array_map(static function (LotOnHand $each) use ($taking, $place): LotOnHand {
+            $taken = $taking[$each->lot->getId()->toRfc4122().' '.$place->getId()->toRfc4122()] ?? null;
 
             return null === $taken ? $each : new LotOnHand($each->lot, new Number('0.000')->add(new Number($each->quantity)->sub($taken))->value);
         }, $onHand);
