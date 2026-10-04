@@ -10,6 +10,7 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -19,6 +20,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { map } from 'rxjs';
+import { Select, type SelectOption } from '../shared/form/select';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListQuery } from '../shared/list/list-types';
 import { CountBadge } from '../shared/ui/count-badge';
@@ -75,6 +77,7 @@ import { SubscriptionFacade } from '../licensing/subscription-facade';
   imports: [
     MatCardModule,
     MatButtonModule,
+    FormsModule,
     MatFormFieldModule,
     MatInputModule,
     MatSlideToggleModule,
@@ -85,6 +88,7 @@ import { SubscriptionFacade } from '../licensing/subscription-facade';
     DataListCell,
     StatusBadge,
     CountBadge,
+    Select,
   ],
   templateUrl: './platform-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -161,8 +165,29 @@ export class PlatformPage implements OnInit {
   protected readonly ownerEmails = signal<Readonly<Record<string, string>>>({});
   protected readonly subscription = this.platform.subscription;
   protected readonly openedSubscription = this.platform.openedSubscription;
-  protected readonly periodUnits = PERIOD_UNITS;
-  protected readonly unpaidModes = UNPAID_MODES;
+  protected readonly countryOptions: SelectOption[] = this.countries.map((code) => ({
+    value: code,
+    label: `platform.companies.countries.${code}`,
+    testId: `platform-company-country-option-${code}`,
+  }));
+  protected readonly periodUnitOptions: SelectOption[] = PERIOD_UNITS.map((unit) => ({
+    value: unit,
+    label: `platform.subscription.units.${unit}`,
+    testId: `subscription-period-unit-option-${unit}`,
+  }));
+  /** « Default » is the empty answer: the company follows the platform's way of handling an unpaid subscription. */
+  protected readonly unpaidModeOptions: SelectOption[] = [
+    {
+      value: '',
+      label: 'platform.subscription.modes.default',
+      testId: 'subscription-unpaid-mode-option-default',
+    },
+    ...UNPAID_MODES.map((mode) => ({
+      value: mode,
+      label: `platform.subscription.modes.${mode}`,
+      testId: `subscription-unpaid-mode-option-${mode}`,
+    })),
+  ];
   /** The terms in the open panel, which start from what the company holds, or empty where it holds none. */
   protected readonly terms = signal<SubscriptionTerms>({ ...EMPTY_TERMS });
 
@@ -244,8 +269,7 @@ export class PlatformPage implements OnInit {
     this.ownerEmails.update((typed) => ({ ...typed, [companyId]: value }));
   }
 
-  protected chosen(event: Event): CompanyCountry {
-    const value = (event.target as HTMLSelectElement).value;
+  protected chosen(value: string): CompanyCountry {
     return this.countries.find((code) => code === value) ?? 'TN';
   }
 
@@ -280,7 +304,11 @@ export class PlatformPage implements OnInit {
 
   /** One field of the terms being edited; an emptied field is null, which is what "follow the platform" means. */
   protected type(field: keyof SubscriptionTerms, event: Event): void {
-    const value = (event.target as HTMLInputElement | HTMLSelectElement).value;
+    this.set(field, (event.target as HTMLInputElement).value);
+  }
+
+  /** One term, from what an input holds or a Select chose. */
+  protected set(field: keyof SubscriptionTerms, value: string): void {
     this.terms.update((terms) => {
       switch (field) {
         case 'periodCount':

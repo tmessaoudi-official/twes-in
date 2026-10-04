@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -28,6 +29,7 @@ import {
   type ShellShortcut,
   shellKeyRefusal,
 } from '../shared/actions/shortcuts';
+import { Select, type SelectOption } from '../shared/form/select';
 import { keyName } from '../shared/actions/shortcuts-sheet';
 import {
   DATE_FORMATS,
@@ -67,7 +69,9 @@ const COMING_TABS: readonly AccountTab[] = ['device', 'notifications'];
   imports: [
     ConnectedDevices,
     MatButtonModule,
+    FormsModule,
     MatFormFieldModule,
+    Select,
     MatIconModule,
     MatInputModule,
     MatSlideToggleModule,
@@ -126,6 +130,33 @@ export class AccountPage implements OnInit {
   protected readonly numberFormat = this.settings.value(PRESENTATION.numberFormat);
   protected readonly dateFormats = DATE_FORMATS;
   protected readonly numberFormats = NUMBER_FORMATS;
+
+  /** What each preference Select offers; a language is named in its own words, which the screen's language must not translate. */
+  protected readonly languageOptions: SelectOption[] = this.languages.map((lang) => ({
+    value: lang,
+    label: this.languageNames[lang],
+    lang,
+    testId: `account-language-option-${lang}`,
+  }));
+  protected readonly schemeOptions = this.choices('scheme', this.schemes);
+  protected readonly densityOptions = this.choices('density', this.densities);
+  protected readonly dateFormatOptions = this.choices('date-format', this.dateFormats);
+  protected readonly numberFormatOptions = this.choices('number-format', this.numberFormats);
+  protected readonly companyOptions = computed<SelectOption[]>(() =>
+    this.companies().map((company) => ({
+      value: company.id,
+      label: company.name,
+      testId: `account-company-option-${company.id}`,
+    })),
+  );
+
+  private choices(key: string, values: readonly string[]): SelectOption[] {
+    return values.map((value) => ({
+      value,
+      label: `settings.choices.presentation.${key}.${value}`,
+      testId: `account-${key}-option-${value}`,
+    }));
+  }
   private readonly format = inject(FormatFacade);
   /** Today and an amount as they will read under the two choices, « Selon la langue » included. */
   protected readonly formatPreview = computed(() => ({

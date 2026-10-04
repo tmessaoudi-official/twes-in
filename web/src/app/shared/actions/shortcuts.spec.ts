@@ -66,6 +66,14 @@ describe('isTypingTarget', () => {
     ).toBe(true);
   });
 
+  it('is true on a combobox, which takes the keys a person types to reach an option', () => {
+    expect(
+      isTypingTarget(
+        inDom('<button type="button" role="combobox" aria-expanded="false">Euro</button>'),
+      ),
+    ).toBe(true);
+  });
+
   it('is true anywhere in an overlay, since a dialog or a menu owns the keyboard while it is open', () => {
     expect(
       isTypingTarget(inDom('<div class="cdk-overlay-container"><button>x</button></div>')),

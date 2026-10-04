@@ -8,7 +8,13 @@ import {
   type OnInit,
   signal,
 } from '@angular/core';
-import { FormArray, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import {
+  FormArray,
+  FormControl,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -16,6 +22,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { Select, type SelectOption } from '../shared/form/select';
 import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { FormatFacade } from '../shared/i18n/format-facade';
@@ -62,7 +69,9 @@ function itemGroup(item: PriceListItem | null): ItemGroup {
 @Component({
   selector: 'app-price-lists-page',
   imports: [
+    FormsModule,
     ReactiveFormsModule,
+    Select,
     MatButtonModule,
     MatCardModule,
     MatFormFieldModule,
@@ -85,8 +94,22 @@ export class PriceListsPage implements OnInit {
   private readonly format = inject(FormatFacade);
 
   protected readonly scopes = SCOPES;
+  protected readonly scopeOptions: SelectOption[] = SCOPES.map((known) => ({
+    value: known,
+    label: `price_lists.scopes.${known}`,
+    testId: `price-list-scope-option-${known}`,
+  }));
   protected readonly lists = this.facade.lists;
   protected readonly groups = this.facade.groups;
+  /** « — » is no group: the list then applies to whoever the scope names without one. */
+  protected readonly groupOptions = computed<SelectOption[]>(() => [
+    { value: '', label: '—', testId: 'price-list-group-option-none' },
+    ...this.groups().map((group) => ({
+      value: group.id,
+      label: group.name,
+      testId: `price-list-group-option-${group.id}`,
+    })),
+  ]);
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
@@ -186,8 +209,7 @@ export class PriceListsPage implements OnInit {
     this.facade.clearError();
   }
 
-  protected chooseScope(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
+  protected chooseScope(value: string): void {
     this.scope.set(SCOPES.find((known) => known === value) ?? 'everyone');
   }
 

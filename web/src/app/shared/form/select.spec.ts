@@ -39,6 +39,7 @@ const many: SelectOption[] = [
       [formControl]="control"
       [label]="label()"
       [labelInside]="labelInside()"
+      [translateLabels]="translateLabels()"
       [options]="options()"
       [multiple]="multiple()"
       labelledBy="lbl"
@@ -52,6 +53,7 @@ class Host {
   readonly multiple = signal(false);
   readonly label = signal('');
   readonly labelInside = signal(false);
+  readonly translateLabels = signal(false);
 }
 
 class StaticLoader implements TranslateLoader {
@@ -187,6 +189,85 @@ describe('Select', () => {
     expect(label.textContent?.trim()).toBe('Unité*');
     expect(trigger.getAttribute('aria-labelledby')).toContain(label.id);
     expect(trigger.getAttribute('aria-labelledby')).not.toContain('lbl');
+
+    trigger.click();
+    await settle();
+    expect(document.body.querySelector('[role="listbox"]')!.getAttribute('aria-labelledby')).toBe(
+      label.id,
+    );
+  });
+
+  it('marks an option written in another language, as a language picker needs', async () => {
+    fixture.componentInstance.options.set([
+      { value: 'fr', label: 'Français', lang: 'fr' },
+      { value: 'en', label: 'English', lang: 'en' },
+    ]);
+    await settle();
+    await open();
+
+    expect(
+      Array.from(document.body.querySelectorAll('[role="option"]')).map((o) =>
+        o.getAttribute('lang'),
+      ),
+    ).toEqual(['fr', 'en']);
+  });
+
+  it('translates a label with the parameters its option carries', async () => {
+    fixture.componentInstance.translateLabels.set(true);
+    fixture.componentInstance.options.set([
+      { value: 'a', label: 'select.more', params: { count: 3 } },
+    ]);
+    await settle();
+    await open();
+
+    expect(optionLabels()).toEqual(['+3']);
+  });
+
+  it('goes to the option a typed letter begins, opening from the trigger as a native select did', async () => {
+    press(q('sel')!, 'e');
+    await settle();
+
+    const listbox = document.body.querySelector('[role="listbox"]')!;
+    expect(labelOf(document.getElementById(listbox.getAttribute('aria-activedescendant')!))).toBe(
+      'Euro',
+    );
+
+    // A pause, and a second letter is a new word rather than the end of « eu ».
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    press(listbox, 'u');
+    await settle();
+    expect(labelOf(document.getElementById(listbox.getAttribute('aria-activedescendant')!))).toBe(
+      'US dollar',
+    );
+
+    press(listbox, 'Enter');
+    await settle();
+    expect(fixture.componentInstance.control.value).toBe('usd');
+  });
+
+  it('reads letters typed in a row as one word, and leaves a shortcut chord alone', async () => {
+    fixture.componentInstance.options.set([
+      { value: 'tn', label: 'Tunisia' },
+      { value: 'tr', label: 'Turkey' },
+      { value: 'tg', label: 'Togo' },
+    ]);
+    await settle();
+    await open();
+    const listbox = document.body.querySelector('[role="listbox"]')!;
+    const active = () =>
+      labelOf(document.getElementById(listbox.getAttribute('aria-activedescendant')!));
+
+    press(listbox, 't');
+    press(listbox, 'u');
+    press(listbox, 'r');
+    await settle();
+    expect(active()).toBe('Turkey');
+
+    // A pause, then a chord on a letter that WOULD move on to « Togo »: a shortcut is not a word.
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    listbox.dispatchEvent(new KeyboardEvent('keydown', { key: 't', ctrlKey: true, bubbles: true }));
+    await settle();
+    expect(active()).toBe('Turkey');
   });
 
   it('has no search box up to seven options', async () => {

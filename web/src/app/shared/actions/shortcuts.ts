@@ -134,7 +134,9 @@ export function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
 
   return (
-    target.closest('input, textarea, select, [contenteditable], .cdk-overlay-container') !== null
+    target.closest(
+      'input, textarea, select, [role="combobox"], [contenteditable], .cdk-overlay-container',
+    ) !== null
   );
 }
 

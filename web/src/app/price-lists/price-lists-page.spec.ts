@@ -198,6 +198,39 @@ describe('PriceListsPage', () => {
     expect(query('price-list-form')).toBeNull();
   });
 
+  it('creates a list for a customer group, chosen from the groups the company has', async () => {
+    const { query, settle } = await render();
+
+    query<HTMLButtonElement>('price-list-add')!.click();
+    await settle();
+    const name = query<HTMLInputElement>('price-list-name')!;
+    name.value = 'Revendeurs été';
+    name.dispatchEvent(new Event('input'));
+    query('price-list-scope')!.click();
+    await settle();
+    document.body
+      .querySelector<HTMLElement>('[data-testid="price-list-scope-option-group"]')!
+      .click();
+    await settle();
+    expect(query('price-list-group')).not.toBeNull();
+    query('price-list-group')!.click();
+    await settle();
+    document.body.querySelector<HTMLElement>('[data-testid="price-list-group-option-g1"]')!.click();
+    await settle();
+    query<HTMLButtonElement>('price-row-add')!.click();
+    await settle();
+    const price = query<HTMLInputElement>('price-row-0-price')!;
+    price.value = '8';
+    price.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('price-list-save')!.click();
+    await settle();
+
+    expect(facade.create).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ name: 'Revendeurs été', customerGroupId: 'g1', customerId: null }),
+    );
+  });
+
   it('opens a list with the prices it holds and sends the whole list back, its group kept', async () => {
     facade.open.mockResolvedValue({
       ...wholesale,
@@ -275,9 +308,11 @@ describe('PriceListsPage', () => {
     query<HTMLButtonElement>('price-list-add')!.click();
     await settle();
     expect(query('price-list-customer')).toBeNull();
-    const scope = query<HTMLSelectElement>('price-list-scope')!;
-    scope.value = 'customer';
-    scope.dispatchEvent(new Event('change'));
+    query('price-list-scope')!.click();
+    await settle();
+    document.body
+      .querySelector<HTMLElement>('[data-testid="price-list-scope-option-customer"]')!
+      .click();
     await settle();
 
     expect(query('price-list-customer')).not.toBeNull();

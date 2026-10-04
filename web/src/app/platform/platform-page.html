@@ -191,20 +191,16 @@
                       data-testid="platform-company-name"
                     />
                   </mat-form-field>
-                  <mat-form-field subscriptSizing="dynamic">
-                    <mat-label>{{ 'platform.companies.country' | translate }}</mat-label>
-                    <select
-                      matNativeControl
-                      (change)="companyCountry.set(chosen($event))"
-                      data-testid="platform-company-country"
-                    >
-                      @for (code of countries; track code) {
-                        <option [value]="code" [selected]="code === companyCountry()">
-                          {{ 'platform.companies.countries.' + code | translate }}
-                        </option>
-                      }
-                    </select>
-                  </mat-form-field>
+                  <app-select
+                    [label]="'platform.companies.country' | translate"
+                    [labelInside]="true"
+                    [options]="countryOptions"
+                    [translateLabels]="true"
+                    [ngModel]="companyCountry()"
+                    (ngModelChange)="companyCountry.set(chosen($event))"
+                    [ngModelOptions]="{ standalone: true }"
+                    testId="platform-company-country"
+                  />
                   <mat-form-field class="min-w-0 flex-1" subscriptSizing="dynamic">
                     <mat-label>{{ 'platform.companies.owner' | translate }}</mat-label>
                     <input
@@ -368,20 +364,16 @@
                           data-testid="subscription-period-count"
                         />
                       </mat-form-field>
-                      <mat-form-field subscriptSizing="dynamic">
-                        <mat-label>{{ 'platform.subscription.period_unit' | translate }}</mat-label>
-                        <select
-                          matNativeControl
-                          (change)="type('periodUnit', $event)"
-                          data-testid="subscription-period-unit"
-                        >
-                          @for (unit of periodUnits; track unit) {
-                            <option [value]="unit" [selected]="unit === terms().periodUnit">
-                              {{ 'platform.subscription.units.' + unit | translate }}
-                            </option>
-                          }
-                        </select>
-                      </mat-form-field>
+                      <app-select
+                        [label]="'platform.subscription.period_unit' | translate"
+                        [labelInside]="true"
+                        [options]="periodUnitOptions"
+                        [translateLabels]="true"
+                        [ngModel]="terms().periodUnit"
+                        (ngModelChange)="set('periodUnit', $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        testId="subscription-period-unit"
+                      />
                       <mat-form-field subscriptSizing="dynamic">
                         <mat-label>{{ 'platform.subscription.price' | translate }}</mat-label>
                         <input
@@ -422,23 +414,16 @@
                           data-testid="subscription-hold-days"
                         />
                       </mat-form-field>
-                      <mat-form-field subscriptSizing="dynamic">
-                        <mat-label>{{ 'platform.subscription.unpaid_mode' | translate }}</mat-label>
-                        <select
-                          matNativeControl
-                          (change)="type('unpaidMode', $event)"
-                          data-testid="subscription-unpaid-mode"
-                        >
-                          <option value="" [selected]="terms().unpaidMode === null">
-                            {{ 'platform.subscription.modes.default' | translate }}
-                          </option>
-                          @for (mode of unpaidModes; track mode) {
-                            <option [value]="mode" [selected]="mode === terms().unpaidMode">
-                              {{ 'platform.subscription.modes.' + mode | translate }}
-                            </option>
-                          }
-                        </select>
-                      </mat-form-field>
+                      <app-select
+                        [label]="'platform.subscription.unpaid_mode' | translate"
+                        [labelInside]="true"
+                        [options]="unpaidModeOptions"
+                        [translateLabels]="true"
+                        [ngModel]="terms().unpaidMode ?? ''"
+                        (ngModelChange)="set('unpaidMode', $event)"
+                        [ngModelOptions]="{ standalone: true }"
+                        testId="subscription-unpaid-mode"
+                      />
                     </div>
                     <div class="flex flex-wrap gap-2">
                       <button

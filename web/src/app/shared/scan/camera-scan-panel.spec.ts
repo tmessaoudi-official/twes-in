@@ -46,6 +46,16 @@ describe('CameraScanPanel', () => {
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
 
+  async function settle(): Promise<void> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
   /** Opens the panel and waits until it has asked for a camera and, when one opened, listed them. */
   async function open(): Promise<void> {
     fixture = TestBed.createComponent(CameraScanPanel);
@@ -81,11 +91,14 @@ describe('CameraScanPanel', () => {
     await open();
 
     expect(camera.open).toHaveBeenCalledWith(null);
-    const options = (q('camera-choice') as HTMLSelectElement).options;
-    expect(Array.from(options).map((option) => option.textContent?.trim())).toEqual([
-      'Front camera',
-      'Back camera',
-    ]);
+    q('camera-choice')!.click();
+    await settle();
+    const options = document.body.querySelectorAll('[role="option"]');
+    expect(
+      Array.from(options).map((option) =>
+        option.querySelector('[data-option-label]')?.textContent?.trim(),
+      ),
+    ).toEqual(['Front camera', 'Back camera']);
   });
 
   it('opens the camera chosen here last time, and remembers a new choice', async () => {
@@ -95,9 +108,10 @@ describe('CameraScanPanel', () => {
     await open();
     expect(camera.open).toHaveBeenLastCalledWith('back');
 
-    const choice = q('camera-choice') as HTMLSelectElement;
-    choice.value = 'front';
-    choice.dispatchEvent(new Event('change'));
+    q('camera-choice')!.click();
+    await settle();
+    document.body.querySelector<HTMLElement>('[data-testid="camera-choice-option-front"]')!.click();
+    await settle();
     await vi.waitFor(() => expect(camera.open).toHaveBeenLastCalledWith('front'));
 
     expect(first.stop).toHaveBeenCalled();

@@ -3,6 +3,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { inACompany, signIn } from './session';
 import { wcagViolations } from './axe';
 import { sidewaysOverflow } from './overflow';
+import { holds, pickOption } from './select';
 
 // The sidebar's desktop state through the real stack: the [ key turns it into a rail of named icons, the choice is
 // the person's presentation setting and outlives a reload. One database is shared by the whole suite, so the
@@ -422,17 +423,19 @@ test('a person chooses how days and figures read in Préférences, which outlive
   try {
     await page.goto('/account?tab=preferences');
     const preview = page.getByTestId('account-format-preview');
-    await expect(page.getByTestId('account-date-format')).toHaveValue('auto');
+    expect(await holds(page, 'account-date-format', 'account-date-format-option-auto')).toBe(true);
     await expect(preview).toContainText(/\d{2}\/\d{2}\/\d{4}/);
 
-    await page.getByTestId('account-date-format').selectOption('ymd');
-    await page.getByTestId('account-number-format').selectOption('comma-dot');
+    await pickOption(page, 'account-date-format', 'account-date-format-option-ymd');
+    await pickOption(page, 'account-number-format', 'account-number-format-option-comma-dot');
     await expect(preview).toContainText(/\d{4}-\d{2}-\d{2}/);
     await expect(preview).toContainText('1,234.56');
     expect(await wcagViolations(page)).toEqual([]);
 
     await page.reload();
-    await expect(page.getByTestId('account-number-format')).toHaveValue('comma-dot');
+    expect(
+      await holds(page, 'account-number-format', 'account-number-format-option-comma-dot'),
+    ).toBe(true);
     await expect(preview).toContainText(/\d{4}-\d{2}-\d{2}/);
     await expect(preview).toContainText('1,234.56');
   } finally {

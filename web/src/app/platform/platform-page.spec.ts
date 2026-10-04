@@ -292,12 +292,28 @@ describe('PlatformPage', () => {
     const paidThrough = query<HTMLInputElement>('subscription-paid-through')!;
     paidThrough.value = '2026-12-31';
     paidThrough.dispatchEvent(new Event('input'));
+    // The two choices are Selects: opened, the option taken, as a person does.
+    for (const [select, option] of [
+      ['subscription-period-unit', 'subscription-period-unit-option-year'],
+      ['subscription-unpaid-mode', 'subscription-unpaid-mode-option-locked'],
+    ] as const) {
+      query(select)!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      document.body.querySelector<HTMLElement>(`[data-testid="${option}"]`)!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
     query('subscription-save')!.click();
     await fixture.whenStable();
 
     expect(facade.saveSubscription).toHaveBeenCalledWith(
       'c1',
-      expect.objectContaining({ paidThrough: '2026-12-31', periodUnit: 'month' }),
+      expect.objectContaining({
+        paidThrough: '2026-12-31',
+        periodUnit: 'year',
+        unpaidMode: 'locked',
+      }),
     );
 
     query('subscription-Nouvelle Société')!.click();
@@ -411,9 +427,14 @@ describe('PlatformPage', () => {
     const name = query<HTMLInputElement>('platform-company-name')!;
     name.value = 'Globex';
     name.dispatchEvent(new Event('input'));
-    const country = query<HTMLSelectElement>('platform-company-country')!;
-    country.value = 'FR';
-    country.dispatchEvent(new Event('change'));
+    query<HTMLButtonElement>('platform-company-country')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    document.body
+      .querySelector<HTMLElement>('[data-testid="platform-company-country-option-FR"]')!
+      .click();
+    await fixture.whenStable();
+    fixture.detectChanges();
     const owner = query<HTMLInputElement>('platform-company-owner')!;
     owner.value = 'nadia@example.test';
     owner.dispatchEvent(new Event('input'));

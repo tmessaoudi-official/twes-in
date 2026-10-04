@@ -19,3 +19,25 @@ export async function choose(
   }
   await page.keyboard.press('Escape');
 }
+
+/** Has a Select take the option a test id names: for a choice whose label a test should not depend on. */
+export async function pickOption(
+  page: Page,
+  selectTestId: string,
+  optionTestId: string,
+): Promise<void> {
+  await page.getByTestId(selectTestId).click();
+  await page.getByTestId(optionTestId).click();
+}
+
+/** Whether a Select holds the option a test id names: opened, read, closed. */
+export async function holds(
+  page: Page,
+  selectTestId: string,
+  optionTestId: string,
+): Promise<boolean> {
+  await page.getByTestId(selectTestId).click();
+  const chosen = (await page.getByTestId(optionTestId).getAttribute('aria-selected')) === 'true';
+  await page.keyboard.press('Escape');
+  return chosen;
+}

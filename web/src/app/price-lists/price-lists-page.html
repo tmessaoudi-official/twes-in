@@ -34,34 +34,24 @@
               <mat-label>{{ 'price_lists.fields.name' | translate }}</mat-label>
               <input matInput formControlName="name" required data-testid="price-list-name" />
             </mat-form-field>
-            <mat-form-field subscriptSizing="dynamic">
-              <mat-label>{{ 'price_lists.fields.scope' | translate }}</mat-label>
-              <select
-                matNativeControl
-                (change)="chooseScope($event)"
-                data-testid="price-list-scope"
-              >
-                @for (known of scopes; track known) {
-                  <option [value]="known" [selected]="known === scope()">
-                    {{ 'price_lists.scopes.' + known | translate }}
-                  </option>
-                }
-              </select>
-            </mat-form-field>
+            <app-select
+              [label]="'price_lists.fields.scope' | translate"
+              [labelInside]="true"
+              [options]="scopeOptions"
+              [translateLabels]="true"
+              [ngModel]="scope()"
+              (ngModelChange)="chooseScope($event)"
+              [ngModelOptions]="{ standalone: true }"
+              testId="price-list-scope"
+            />
             @if (scope() === 'group') {
-              <mat-form-field subscriptSizing="dynamic">
-                <mat-label>{{ 'price_lists.fields.group' | translate }}</mat-label>
-                <select
-                  matNativeControl
-                  formControlName="customerGroupId"
-                  data-testid="price-list-group"
-                >
-                  <option value="">—</option>
-                  @for (group of groups(); track group.id) {
-                    <option [value]="group.id">{{ group.name }}</option>
-                  }
-                </select>
-              </mat-form-field>
+              <app-select
+                [label]="'price_lists.fields.group' | translate"
+                [labelInside]="true"
+                [options]="groupOptions()"
+                formControlName="customerGroupId"
+                testId="price-list-group"
+              />
             }
             @if (scope() === 'customer') {
               <div class="min-w-64">

@@ -8,12 +8,13 @@ import {
   inject,
   type OnInit,
   output,
+  computed,
   signal,
   viewChild,
 } from '@angular/core';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
+import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
+import { Select, type SelectOption } from '../form/select';
 import { SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import { PRESENTATION } from '../settings/settings-registry';
 import { signalRead } from './scan-signal';
@@ -37,7 +38,7 @@ const FRAME_MAX_WIDTH = 960;
  */
 @Component({
   selector: 'app-camera-view',
-  imports: [MatFormFieldModule, MatInputModule, TranslatePipe],
+  imports: [FormsModule, Select, TranslatePipe],
   templateUrl: './camera-view.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-col gap-3' },
@@ -54,6 +55,15 @@ export class CameraView implements OnInit {
   private readonly video = viewChild.required<ElementRef<HTMLVideoElement>>('video');
 
   protected readonly devices = signal<readonly CameraDevice[]>([]);
+  /** A camera by the name its device gives it, or by its place in the list where it gives none. */
+  protected readonly deviceOptions = computed<SelectOption[]>(() =>
+    this.devices().map((device, index) => ({
+      value: device.id,
+      label: device.label || 'scan.camera.unnamed',
+      params: { number: index + 1 },
+      testId: `camera-choice-option-${device.id}`,
+    })),
+  );
   protected readonly chosen = signal<string | null>(null);
   protected readonly refused = signal<CameraRefusal | null>(null);
   protected readonly lastRead = signal<string | null>(null);

@@ -28,7 +28,14 @@ export interface SelectOption {
   label: string;
   /** Names the option's row for a test that must pick it. */
   testId?: string;
+  /** The language an option's words are in, when it is not the screen's: a language's own name (WCAG 3.1.2). */
+  lang?: string;
+  /** What a translated label is told, when it has a placeholder: « Camera {{number}} ». */
+  params?: Record<string, unknown>;
 }
+
+/** How long typed letters count as one word before they are forgotten. */
+const TYPE_AHEAD_MS = 700;
 
 /** Past this many options the panel gets a search box: fewer are quicker to read than to filter. */
 export const SELECT_SEARCH_FROM = 8;
@@ -156,7 +163,7 @@ function fold(text: string): string {
           class="overflow-y-auto py-1 outline-none"
           [id]="listId"
           [attr.aria-multiselectable]="multiple() ? 'true' : null"
-          [attr.aria-labelledby]="labelledBy() || null"
+          [attr.aria-labelledby]="ownLabel() || null"
           [attr.aria-activedescendant]="activeId()"
         >
           @for (option of shown(); track option.value; let index = $index) {
@@ -166,6 +173,7 @@ function fold(text: string): string {
               [class.bg-surface-container-highest]="index === active()"
               [id]="optionId(index)"
               [attr.data-testid]="option.testId ?? null"
+              [attr.lang]="option.lang ?? null"
               [attr.aria-selected]="isChosen(option.value)"
               tabindex="-1"
               (click)="pick(option)"
@@ -213,6 +221,8 @@ export class Select implements ControlValueAccessor {
   protected readonly listId = `app-select-${this.uid}-list`;
   protected readonly valueId = `app-select-${this.uid}-value`;
   protected readonly sheetMode = signal(false);
+  private ahead = '';
+  private aheadTimer: ReturnType<typeof setTimeout> | undefined;
   protected readonly labelId = `app-select-${this.uid}-label`;
   protected readonly ownLabel = computed(() =>
     this.labelInside() && this.label() !== '' ? this.labelId : this.labelledBy(),
@@ -236,7 +246,7 @@ export class Select implements ControlValueAccessor {
     return this.translateLabels()
       ? this.options().map((option) => ({
           ...option,
-          label: this.translate.instant(option.label) as string,
+          label: this.translate.instant(option.label, option.params) as string,
         }))
       : this.options();
   });
@@ -319,7 +329,40 @@ export class Select implements ControlValueAccessor {
     if (!this.open() && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
       event.preventDefault();
       this.openPanel();
+      return;
     }
+    this.typeAhead(event);
+  }
+
+  /**
+   * A letter goes to the option it begins, as a native select did: letters typed in a row read as one word, and the
+   * word is forgotten after a short pause. A closed Select opens on it. A search box takes its own letters.
+   */
+  private typeAhead(event: KeyboardEvent): void {
+    const target = event.target as Element | null;
+    if (
+      event.key.length !== 1 ||
+      event.key === ' ' ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      target?.closest('input') != null
+    ) {
+      return;
+    }
+    clearTimeout(this.aheadTimer);
+    this.ahead += fold(event.key);
+    this.aheadTimer = setTimeout(() => (this.ahead = ''), TYPE_AHEAD_MS);
+
+    const options = this.open() ? this.shown() : this.items();
+    // One repeated letter walks the options that begin with it; a longer word starts from the top.
+    const from = this.ahead.length === 1 ? this.active() + 1 : 0;
+    const ordered = [...options.keys()].map((i) => (i + Math.max(from, 0)) % options.length);
+    const found = ordered.find((i) => fold(options[i]!.label).startsWith(this.ahead));
+    if (found === undefined) return;
+    event.preventDefault();
+    if (!this.open()) this.openPanel();
+    this.active.set(found);
   }
 
   protected panelKey(event: KeyboardEvent): void {
@@ -357,6 +400,8 @@ export class Select implements ControlValueAccessor {
       case 'Tab':
         this.close(false);
         break;
+      default:
+        this.typeAhead(event);
     }
   }
 

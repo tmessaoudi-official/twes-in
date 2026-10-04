@@ -2,6 +2,7 @@
 import { expect, Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_EMAIL as EMAIL, signIn, signInWithCode } from './session';
+import { pickOption } from './select';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
 
@@ -43,7 +44,7 @@ test('an operator opens a company from the platform, and the switcher moves the 
   await page.goto('/platform?tab=companies');
   await page.getByTestId('platform-company-new').click();
   await page.getByTestId('platform-company-name').fill(name);
-  await page.getByTestId('platform-company-country').selectOption('TN');
+  await pickOption(page, 'platform-company-country', 'platform-company-country-option-TN');
   await page.getByTestId('platform-company-owner').fill(owner);
   await page.getByTestId('platform-company-create').click();
   await expect(toast(page)).toContainText(owner);

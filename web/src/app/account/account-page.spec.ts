@@ -169,11 +169,42 @@ describe('AccountPage', () => {
   const byTestId = (root: HTMLElement, id: string) =>
     root.querySelector<HTMLElement>(`[data-testid="${id}"]`);
 
-  function choose(root: HTMLElement, id: string, value: string): void {
-    const select = byTestId(root, id) as HTMLSelectElement;
-    select.value = value;
-    select.dispatchEvent(new Event('change'));
+  /** A Select as a person uses it: opened, then the option taken. Its panel hangs off the body, not the page. */
+  async function choose(root: HTMLElement, id: string, value: string): Promise<void> {
+    byTestId(root, id)!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const option = Array.from(document.body.querySelectorAll<HTMLElement>('[role="option"]')).find(
+      (each) => each.getAttribute('data-testid')?.endsWith(`-option-${value}`),
+    );
+    expect(option, `${id} offers ${value}`).toBeDefined();
+    option!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
   }
+
+  /** What a Select shows as chosen. */
+  const shownIn = (root: HTMLElement, id: string): string =>
+    (byTestId(root, id)?.textContent ?? '').replace(/expand_more/, '').trim();
+
+  /** The values a Select offers, in order: opened, read from its options' test ids, closed. */
+  async function offeredBy(root: HTMLElement, id: string): Promise<string[]> {
+    byTestId(root, id)!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const listbox = document.body.querySelector('[role="listbox"]');
+    const values = Array.from(listbox?.querySelectorAll('[role="option"]') ?? []).map((option) =>
+      (option.getAttribute('data-testid') ?? '').replace(/^.*-option-/, ''),
+    );
+    listbox?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return values;
+  }
+
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
 
   beforeEach(() => {
     preference.set('auto');
@@ -290,11 +321,11 @@ describe('AccountPage', () => {
 
   it('sets the language, the scheme and the density', async () => {
     const root = await render('preferences');
-    expect((byTestId(root, 'account-language') as HTMLSelectElement).value).toBe('fr');
+    expect(shownIn(root, 'account-language')).toBe('Français');
 
-    choose(root, 'account-language', 'en');
-    choose(root, 'account-scheme', 'dark');
-    choose(root, 'account-density', 'compact');
+    await choose(root, 'account-language', 'en');
+    await choose(root, 'account-scheme', 'dark');
+    await choose(root, 'account-density', 'compact');
 
     expect(language.use).toHaveBeenCalledWith('en');
     expect(theme.setScheme).toHaveBeenCalledWith('dark');
@@ -305,10 +336,8 @@ describe('AccountPage', () => {
   it('sets a date and a number format of one’s own, the language’s until then', async () => {
     const root = await render('preferences');
     const settings = TestBed.inject(SettingsFacade);
-    const dates = byTestId(root, 'account-date-format') as HTMLSelectElement;
-    expect(dates.value).toBe('auto');
-    expect(dates.selectedOptions[0]?.textContent?.trim()).toBe('Selon la langue');
-    expect([...dates.options].map((option) => option.value)).toEqual([
+    expect(shownIn(root, 'account-date-format')).toBe('Selon la langue');
+    expect(await offeredBy(root, 'account-date-format')).toEqual([
       'auto',
       'dmy',
       'mdy',
@@ -316,17 +345,13 @@ describe('AccountPage', () => {
       'dmy-dots',
     ]);
 
-    choose(root, 'account-date-format', 'ymd');
-    choose(root, 'account-number-format', 'comma-dot');
+    await choose(root, 'account-date-format', 'ymd');
+    await choose(root, 'account-number-format', 'comma-dot');
 
     expect(settings.value(PRESENTATION.dateFormat)()).toBe('ymd');
     expect(settings.value(PRESENTATION.numberFormat)()).toBe('comma-dot');
     fixture.detectChanges();
-    expect(
-      (
-        byTestId(root, 'account-number-format') as HTMLSelectElement
-      ).selectedOptions[0]?.textContent?.trim(),
-    ).toBe('1,234.56');
+    expect(shownIn(root, 'account-number-format')).toBe('1,234.56');
     // What they will read, today and an amount, under the two choices.
     expect(byTestId(root, 'account-format-preview')?.textContent).toMatch(/\d{4}-\d{2}-\d{2}/);
     expect(byTestId(root, 'account-format-preview')?.textContent).toContain('1,234.56');
@@ -400,9 +425,10 @@ describe('AccountPage', () => {
 
     companies.set([{ ...acme, pinned: true }, globex]);
     fixture.detectChanges();
-    const pick = byTestId(root, 'account-company-at-sign-in-pick') as HTMLSelectElement;
-    expect(pick.value).toBe('c1');
-    choose(root, 'account-company-at-sign-in-pick', 'c2');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(shownIn(root, 'account-company-at-sign-in-pick')).toBe(acme.name);
+    await choose(root, 'account-company-at-sign-in-pick', 'c2');
     expect(company.pinAtSignIn).toHaveBeenLastCalledWith('c2');
 
     byTestId(root, 'account-company-at-sign-in')?.querySelector('button')?.click();
