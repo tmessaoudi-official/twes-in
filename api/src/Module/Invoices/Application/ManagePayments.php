@@ -19,6 +19,7 @@ use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\InvoiceTransitionRefused;
 use App\Module\Invoices\Domain\Payment;
 use App\Module\Invoices\Domain\PaymentDetails;
+use App\Module\Invoices\Domain\PaymentInstrumentRepository;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
@@ -41,6 +42,7 @@ final readonly class ManagePayments
         private CurrencyScales $scales,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private ?PaymentInstrumentRepository $instruments = null,
     ) {
     }
 
@@ -75,6 +77,10 @@ final readonly class ManagePayments
             // The money a credit note gave back was paid: taking the payment away would count it twice.
             if ($this->credits->hasGivenBack($company->getId(), $invoice->getId())) {
                 throw new InvoiceTransitionRefused(\sprintf('The invoice %s gave money back through a credit note: its payments are kept.', $invoice->getNumber() ?? $invoice->getId()->toRfc4122()));
+            }
+            // A cashed cheque is the proof the money came: its payment is kept, or the instrument would say cashed for nothing.
+            if (null !== $this->instruments?->cashedByPayment($company->getId(), $paymentId)) {
+                throw new InvoiceTransitionRefused(\sprintf('The payment cashed a cheque or traite of the invoice %s: it is kept.', $invoice->getNumber() ?? $invoice->getId()->toRfc4122()));
             }
             $invoice->removePayment($payment, $this->clock->now());
             $this->invoices->save($invoice);

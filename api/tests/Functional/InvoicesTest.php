@@ -666,6 +666,105 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a company the user is not a member of');
     }
 
+    public function testAChequeDatedAheadIsReceivedDepositedAndCashedIntoAPaymentWhileTheInvoiceStaysDue(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $ahead = new \DateTimeImmutable($today)->modify('+40 days')->format('Y-m-d');
+        $id = $this->issuedInvoice();
+        $due = $this->stringAt($this->json(), 'amountDue');
+        self::assertIsNumeric($due);
+        $instruments = $this->path($id).'/instruments';
+
+        $this->postJson($instruments, ['kind' => 'check', 'amount' => '100', 'dueOn' => $ahead, 'bank' => 'BT', 'number' => 'CHQ-1']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $cheque = $this->json();
+        self::assertSame(['check', '100.000', $ahead, 'BT', 'CHQ-1', 'held', null, null], [$cheque['kind'], $cheque['amount'], $cheque['dueOn'], $cheque['bank'], $cheque['number'], $cheque['status'], $cheque['settledOn'], $cheque['paymentId']]);
+        $chequeId = $this->stringAt($cheque, 'id');
+        $this->getJson($this->path($id));
+        self::assertSame(['issued', '0.000', $due, []], [$this->json()['status'], $this->json()['amountPaid'], $this->json()['amountDue'], $this->json()['payments']], 'an instrument is not money');
+        $this->getJson($instruments);
+        self::assertSame([$chequeId], array_column($this->json(), 'id'));
+
+        $this->postJson($instruments, ['kind' => 'draft', 'amount' => bcadd($due, '0.001', 3), 'dueOn' => $ahead]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'more than is due');
+        self::assertStringContainsString('amount', (string) $this->client->getResponse()->getContent());
+        $this->postJson($instruments, ['kind' => 'cheque', 'amount' => '1', 'dueOn' => $ahead]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a kind that is none');
+        $this->postJson($instruments, ['kind' => 'check', 'amount' => '1', 'dueOn' => '2001-01-01']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'before the issue day');
+        self::assertStringContainsString('dueOn', (string) $this->client->getResponse()->getContent());
+
+        $this->postJson($instruments.'/'.$chequeId.'/deposit', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame('deposited', $this->json()['status']);
+        $this->postJson($instruments.'/'.$chequeId.'/deposit', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'deposited once');
+        $this->sendJson('DELETE', $instruments.'/'.$chequeId);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a deposited one stays as the record');
+
+        $this->postJson($instruments.'/'.$chequeId.'/cash', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $cashed = $this->json();
+        self::assertSame(['cashed', $today], [$cashed['status'], $cashed['settledOn']]);
+        $this->getJson($this->path($id));
+        $paid = $this->arrayAt($this->json(), 'payments');
+        self::assertSame(['partially_paid', '100.000', bcsub($due, '100', 3)], [$this->json()['status'], $this->json()['amountPaid'], $this->json()['amountDue']]);
+        self::assertSame([[$today, '100.000', 'check', 'CHQ-1', $cashed['paymentId']]], array_map(static fn (mixed $payment): array => \is_array($payment) ? [$payment['date'], $payment['amount'], $payment['method'], $payment['reference'], $payment['id']] : [], $paid));
+        $this->sendJson('DELETE', $this->path($id).'/payments/'.$this->stringAt($cashed, 'paymentId'));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'the payment that cashed a cheque is kept');
+        self::assertEquals(3, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM audit_log WHERE action IN ('instrument.received', 'instrument.deposited', 'instrument.cashed')"), 'a refused step leaves no trace');
+    }
+
+    public function testAnUnpaidInstrumentLeavesNoPaymentAndAHeldOneIsTakenOut(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $id = $this->issuedInvoice();
+        $due = $this->stringAt($this->json(), 'amountDue');
+        $instruments = $this->path($id).'/instruments';
+
+        $this->postJson($instruments, ['kind' => 'draft', 'amount' => $due, 'dueOn' => $today, 'number' => 'TR-9']);
+        $traite = $this->stringAt($this->json(), 'id');
+        $this->postJson($instruments.'/'.$traite.'/unpaid', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame(['unpaid', $today, null], [$this->json()['status'], $this->json()['settledOn'], $this->json()['paymentId']]);
+        $this->getJson($this->path($id));
+        self::assertSame(['issued', $due, []], [$this->json()['status'], $this->json()['amountDue'], $this->json()['payments']]);
+
+        $this->postJson($instruments, ['kind' => 'check', 'amount' => $due, 'dueOn' => $today]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'what came back unpaid promises nothing');
+        $held = $this->stringAt($this->json(), 'id');
+        $this->sendJson('DELETE', $instruments.'/'.$held);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->sendJson('DELETE', $instruments.'/'.$held);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testInstrumentsNeedPaymentWriteToChangeAndStayInTheirCompany(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $id = $this->issuedInvoice();
+
+        $this->postJson($this->path($id).'/instruments', ['kind' => 'check', 'amount' => '1', 'dueOn' => $today]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'receiving one needs payment.write');
+        $this->getJson($this->path($id).'/instruments');
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->json());
+        self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM payment_instrument'));
+
+        $globex = $this->createCompany('Globex');
+        $this->createUser('globex@twes.local', 'password-1234', $globex, ['invoice.read', 'payment.write'], 'member');
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('globex@twes.local', 'password-1234');
+        $this->postJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoices/'.$id.'/instruments', ['kind' => 'check', 'amount' => '1', 'dueOn' => $today]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company\'s invoice');
+        $this->getJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoices/'.$id.'/instruments');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor is it listed');
+    }
+
     public function testAReaderOnlyReadsAndAnotherCompanysInvoiceIsNotFound(): void
     {
         $globex = $this->createCompany('Globex');
