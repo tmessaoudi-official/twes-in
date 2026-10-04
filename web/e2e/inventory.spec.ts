@@ -244,6 +244,59 @@ async function retire(
 // By its column, not its position: a column added before it (the lot, 2026-09-23) moved every position after it.
 const quantity = (row: Locator): Locator => row.locator('[data-column="quantity"]');
 
+test('a delivery shared over two places lands whole at both', async ({ page }) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const reference = `E2E-SPL-${run}`;
+  const customerNumber = `E2E-SPL-${run}`;
+  const locationCode = `E2E-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const fixture = await prepare(page, reference, customerNumber);
+  const { code, name } = fixture.establishment;
+  const defaultLocation = `${code} — ${name}`;
+  try {
+    await page.goto('/stock/locations');
+    await expect(page.getByTestId(`stock-location-${code}`)).toBeVisible();
+    await page.getByTestId('stock-location-add').click();
+    await page.getByTestId('field-establishmentId').click();
+    await page.getByRole('option', { name: defaultLocation, exact: true }).click();
+    await page.getByTestId('field-code').fill(locationCode);
+    await page.getByTestId('field-name').fill('Réserve e2e');
+    await page.getByTestId('stock-location-save').click();
+    const shelf = `${code} › ${locationCode} — Réserve e2e`;
+    await expect(page.getByTestId(`stock-location-${locationCode}`)).toContainText(shelf);
+
+    await page.goto('/stock');
+    await page.getByTestId('stock-receive').click();
+    await page.getByTestId('field-productId').fill(reference);
+    await page.getByRole('option', { name: `${reference} · Carton ${reference}` }).click();
+    await page.getByTestId('field-quantity').fill('10');
+    await page.getByTestId('stock-split').click();
+
+    // The place of the form is gone, the rows say where; nothing can be saved while some is left to place.
+    await expect(page.getByTestId('field-locationId')).toHaveCount(0);
+    await page.getByTestId('placement-0-quantity').fill('6');
+    await expect(page.getByTestId('placement-status')).toContainText('Il reste 4 à placer');
+    await page.getByTestId('stock-movement-save').click();
+    await expect(page.getByTestId('placement-refused')).toBeVisible();
+
+    await page.getByTestId('placement-1-location').click();
+    await page.getByRole('option', { name: shelf, exact: true }).click();
+    await page.getByTestId('placement-1-quantity').fill('4');
+    await expect(page.getByTestId('placement-status')).toContainText('Tout est placé');
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('stock-movement-save').click();
+    await expect(toast(page)).toContainText('Le mouvement a été enregistré.');
+
+    await page.getByTestId('list-filter').fill(reference);
+    await expect(quantity(page.getByTestId(`stock-${reference}-${code}`))).toHaveText('6');
+    await expect(quantity(page.getByTestId(`stock-${reference}-${locationCode}`))).toHaveText('4');
+  } finally {
+    // The shelf is not deleted: a location that has seen a movement is kept (409), and this one has seen one.
+    await retire(page, reference, customerNumber, '');
+  }
+});
+
 test('stock received at a location leaves with a validated delivery note and returns when it is cancelled', async ({
   page,
 }) => {

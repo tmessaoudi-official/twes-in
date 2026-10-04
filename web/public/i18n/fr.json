@@ -1854,7 +1854,8 @@
         "count": "La quantité trouvée ; l’écart avec le stock est enregistré, même nul.",
         "move": "La quantité à déplacer ; elle ne peut pas dépasser ce qui se trouve à l’emplacement d’origine.",
         "loss": "La quantité à sortir du stock ; elle ne peut pas dépasser ce qui se trouve à l’emplacement.",
-        "serial": "Un numéro de série désigne une pièce : la quantité est 1."
+        "serial": "Un numéro de série désigne une pièce : la quantité est 1.",
+        "receive_split": "La quantité reçue en tout ; les emplacements ci-dessous la partagent."
       },
       "lot_hint": {
         "lot": "Tel qu'il est imprimé sur l'étiquette ; un lot inconnu est ouvert à la réception.",
@@ -2096,6 +2097,18 @@
       "value": "Valeur",
       "unvalued": "Coût inconnu",
       "none": "Aucun stock à valoriser."
+    },
+    "placement": {
+      "split": "Répartir sur plusieurs emplacements",
+      "one_place": "Tout mettre au même endroit",
+      "add": "Ajouter un emplacement",
+      "rest": "Mettre le reste à l’emplacement par défaut",
+      "remove": "Retirer cet emplacement",
+      "short": "Il reste {{left}} à placer",
+      "done": "Tout est placé",
+      "over": "{{left}} de trop",
+      "invalid": "Saisissez la quantité reçue",
+      "unplaced": "Placez chaque unité avant d’enregistrer."
     }
   },
   "vendors": {

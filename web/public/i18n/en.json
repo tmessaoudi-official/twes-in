@@ -1854,7 +1854,8 @@
         "count": "The quantity found; the difference from the stock is recorded, even when nil.",
         "move": "How much to move; it cannot be more than what is at the location it leaves.",
         "loss": "How much to write off; it cannot be more than what is at the location.",
-        "serial": "A serial number is one piece: the quantity is 1."
+        "serial": "A serial number is one piece: the quantity is 1.",
+        "receive_split": "The whole quantity received; the places below share it."
       },
       "lot_hint": {
         "lot": "As printed on the label; an unknown lot is opened on receipt.",
@@ -2096,6 +2097,18 @@
       "value": "Value",
       "unvalued": "No cost known",
       "none": "No stock to value."
+    },
+    "placement": {
+      "split": "Share over several places",
+      "one_place": "Put it all in one place",
+      "add": "Add a place",
+      "rest": "Put the rest in the default place",
+      "remove": "Remove this place",
+      "short": "{{left}} left to place",
+      "done": "Everything is placed",
+      "over": "{{left}} too many",
+      "invalid": "Enter the quantity received",
+      "unplaced": "Place every unit before saving."
     }
   },
   "vendors": {

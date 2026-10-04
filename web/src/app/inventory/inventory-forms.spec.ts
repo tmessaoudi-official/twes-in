@@ -10,6 +10,7 @@ import {
   MOVEMENTS_LIST,
   movementForm,
   movementInput,
+  receiptInput,
   movementListRows,
   movementValues,
   STOCK_LIST,
@@ -568,5 +569,60 @@ describe('the cost of a receipt', () => {
     expect(movementInput('count', { ...values, applyCost: 'last' })).not.toHaveProperty(
       'applyCost',
     );
+  });
+});
+
+describe('a receipt shared over several places', () => {
+  const parts = [
+    { locationId: 'l2', quantity: '6' },
+    { locationId: 'l1', quantity: '4.0' },
+    { locationId: 'l3', quantity: '' },
+  ];
+
+  it('asks no single place: the quantity is the whole delivery and the rows say where it goes', () => {
+    const fields = movementForm('receive', [], 'none', false, null, true).sections[0].fields.map(
+      (field) => field.id,
+    );
+    expect(fields).not.toContain('locationId');
+    expect(fields).toContain('quantity');
+    expect(
+      movementForm('receive', [], 'none', false, null).sections[0].fields.map((f) => f.id),
+    ).toContain('locationId');
+  });
+
+  it('sends the rows given a quantity, each written as the API reads it, with the lot and the cost beside', () => {
+    expect(
+      receiptInput(
+        {
+          productId: ' p1 ',
+          quantity: '10',
+          lotCode: ' L-07 ',
+          lotExpiresOn: '2027-05-31',
+          unitCost: '2.5',
+          applyCost: 'last',
+        },
+        parts,
+      ),
+    ).toEqual({
+      productId: 'p1',
+      parts: [
+        { locationId: 'l2', quantity: '6' },
+        { locationId: 'l1', quantity: '4' },
+      ],
+      lotCode: 'L-07',
+      lotExpiresOn: '2027-05-31',
+      unitCost: '2.5',
+      applyCost: 'last',
+    });
+  });
+
+  it('names no lot, date or cost choice that was not typed', () => {
+    expect(receiptInput({ productId: 'p1', applyCost: 'last' }, parts)).toEqual({
+      productId: 'p1',
+      parts: [
+        { locationId: 'l2', quantity: '6' },
+        { locationId: 'l1', quantity: '4' },
+      ],
+    });
   });
 });

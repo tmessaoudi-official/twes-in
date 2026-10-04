@@ -163,6 +163,7 @@ describe('StockPage', () => {
     ),
     receiptCost: vi.fn(),
     record: vi.fn(),
+    receiveSplit: vi.fn(),
     releaseLot: vi.fn(),
     clearError: vi.fn(),
   };
@@ -210,6 +211,7 @@ describe('StockPage', () => {
     facade.loadStock.mockReset().mockResolvedValue(undefined);
     facade.receiptCost.mockReset().mockResolvedValue(null);
     facade.record.mockReset().mockResolvedValue(true);
+    facade.receiveSplit.mockReset().mockResolvedValue(true);
     facade.releaseLot.mockReset().mockResolvedValue(true);
     scans.named.mockReset().mockResolvedValue(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -345,6 +347,90 @@ describe('StockPage', () => {
     q('stock-movement-cancel')!.click();
     await settle();
     expect(q('stock-movement-save')).toBeNull();
+  });
+
+  describe('a receipt shared over several places', () => {
+    async function openSplit(): Promise<void> {
+      q('stock-receive')!.click();
+      await settle();
+      await pick('field-productId', 'ART-1 · Portable');
+      type('field-quantity', '10');
+      q('stock-split')!.click();
+      await settle();
+    }
+
+    it('is offered on a receipt only, and not for a serial number', async () => {
+      q('stock-count')!.click();
+      await settle();
+      expect(q('stock-split')).toBeNull();
+      q('stock-movement-cancel')!.click();
+      await settle();
+
+      q('stock-receive')!.click();
+      await settle();
+      expect(q('stock-split')).not.toBeNull();
+      await pick('field-productId', 'ART-4 · Casque');
+      expect(q('stock-split')).toBeNull();
+    });
+
+    it('swaps the single place for rows, the first on where the product lives, and keeps what was typed', async () => {
+      await openSplit();
+
+      expect(q('field-locationId')).toBeNull();
+      expect((q('field-quantity') as HTMLInputElement).value).toBe('10');
+      expect(q('placement-0-quantity')).not.toBeNull();
+      expect(q('placement-1-quantity')).not.toBeNull();
+      expect(q('placement-status')!.textContent).toContain('inventory.placement.short');
+    });
+
+    it('records one request for the whole delivery once every unit is placed', async () => {
+      await openSplit();
+      type('placement-0-quantity', '6');
+      await settle();
+      type('placement-1-quantity', '4');
+      await settle();
+      q('stock-movement-save')!.click();
+      await settle();
+
+      expect(facade.receiveSplit).toHaveBeenCalledWith('c1', {
+        productId: 'p1',
+        parts: [
+          { locationId: 'l2', quantity: '6' },
+          { locationId: 'l1', quantity: '4' },
+        ],
+      });
+      expect(facade.record).not.toHaveBeenCalled();
+      expect(successToasts()).toContain('inventory.stock.recorded');
+    });
+
+    it('refuses to save while some is left to place, and says so', async () => {
+      await openSplit();
+      type('placement-0-quantity', '6');
+      await settle();
+      q('stock-movement-save')!.click();
+      await settle();
+
+      expect(facade.receiveSplit).not.toHaveBeenCalled();
+      expect(q('placement-refused')).not.toBeNull();
+    });
+
+    it("goes back to a single place on the first row's place, with nothing sent as a split", async () => {
+      await openSplit();
+      q('stock-split')!.click();
+      await settle();
+
+      expect(q('placement-0-quantity')).toBeNull();
+      expect(form().get('locationId')!.value).toBe('l2');
+      q('stock-movement-save')!.click();
+      await settle();
+      expect(facade.receiveSplit).not.toHaveBeenCalled();
+      expect(facade.record).toHaveBeenCalledWith('c1', {
+        operation: 'receive',
+        productId: 'p1',
+        locationId: 'l2',
+        quantity: '10',
+      });
+    });
   });
 
   describe('the cost of a receipt', () => {

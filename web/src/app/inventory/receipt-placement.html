@@ -1,0 +1,66 @@
+<div class="flex flex-col gap-3" data-testid="placement">
+  @for (part of parts(); track $index; let i = $index) {
+    <div class="grid grid-cols-[1fr_auto] items-start gap-3 sm:grid-cols-[1fr_8rem_auto]">
+      <app-select
+        class="col-span-2 sm:col-span-1"
+        [label]="'inventory.stock.fields.location' | translate"
+        [labelInside]="true"
+        [options]="places()"
+        [ngModel]="part.locationId"
+        (ngModelChange)="moved(i, $event)"
+        [ngModelOptions]="{ standalone: true }"
+        [testId]="'placement-' + i + '-location'"
+      />
+      <label class="flex flex-col text-sm">
+        <span class="px-1 pb-1">{{ 'inventory.stock.fields.quantity' | translate }}</span>
+        <input
+          appDecimal
+          class="rounded-control border border-outline bg-transparent px-3 py-2"
+          [ngModel]="part.quantity"
+          (ngModelChange)="typed(i, $event)"
+          [ngModelOptions]="{ standalone: true }"
+          [attr.data-testid]="'placement-' + i + '-quantity'"
+        />
+      </label>
+      @if (parts().length > 1) {
+        <button
+          mat-icon-button
+          type="button"
+          [appLabel]="'inventory.placement.remove' | translate"
+          (click)="remove(i)"
+          [attr.data-testid]="'placement-' + i + '-remove'"
+        >
+          <mat-icon aria-hidden="true">delete</mat-icon>
+        </button>
+      } @else {
+        <span></span>
+      }
+    </div>
+  }
+
+  <div class="flex flex-wrap items-center gap-2">
+    <button
+      mat-stroked-button
+      type="button"
+      [disabled]="allNamed()"
+      (click)="add()"
+      data-testid="placement-add"
+    >
+      {{ 'inventory.placement.add' | translate }}
+    </button>
+    @if (stand().state === 'short' && restTo() !== null) {
+      <button mat-stroked-button type="button" (click)="rest()" data-testid="placement-rest">
+        {{ 'inventory.placement.rest' | translate }}
+      </button>
+    }
+    <app-status-badge [tone]="tone()" data-testid="placement-status" role="status">
+      {{ 'inventory.placement.' + stand().state | translate: { left: stand().left } }}
+    </app-status-badge>
+  </div>
+
+  @if (refused()) {
+    <p role="alert" class="text-error" data-testid="placement-refused">
+      {{ 'inventory.placement.unplaced' | translate }}
+    </p>
+  }
+</div>

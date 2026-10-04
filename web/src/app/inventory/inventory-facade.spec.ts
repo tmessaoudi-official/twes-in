@@ -80,6 +80,7 @@ describe('InventoryFacade', () => {
     reviseLocation: vi.fn(),
     deleteLocation: vi.fn(),
     record: vi.fn(),
+    receiveSplit: vi.fn(),
     repeatDrawing: vi.fn(),
     drawings: vi.fn(),
     floors: vi.fn(),
@@ -95,6 +96,7 @@ describe('InventoryFacade', () => {
     api.reviseLocation.mockReset().mockResolvedValue(site);
     api.deleteLocation.mockReset().mockResolvedValue(undefined);
     api.record.mockReset().mockResolvedValue({});
+    api.receiveSplit.mockReset().mockResolvedValue(['m1', 'm2']);
     api.repeatDrawing.mockReset().mockResolvedValue([]);
     api.drawings.mockReset().mockResolvedValue([]);
     api.floors.mockReset().mockResolvedValue([]);
@@ -155,6 +157,26 @@ describe('InventoryFacade', () => {
     expect(api.record).toHaveBeenCalledWith('c1', input);
     expect(api.levels).toHaveBeenLastCalledWith('c1', SEARCH);
     expect(facade.levels()).toEqual([level]);
+  });
+
+  it('records a receipt shared over several places in one call, then reads the page again', async () => {
+    api.levels
+      .mockResolvedValueOnce({ rows: [], total: 0 })
+      .mockResolvedValueOnce({ rows: [level], total: 1 });
+    await facade.loadStock('c1', SEARCH);
+
+    const input = {
+      productId: 'p1',
+      parts: [
+        { locationId: 'l1', quantity: '6' },
+        { locationId: 'l2', quantity: '4' },
+      ],
+    };
+    expect(await facade.receiveSplit('c1', input)).toBe(true);
+
+    expect(api.receiveSplit).toHaveBeenCalledWith('c1', input);
+    expect(api.record).not.toHaveBeenCalled();
+    expect(api.levels).toHaveBeenLastCalledWith('c1', SEARCH);
   });
 
   it('says why a write was refused, and leaves what was read', async () => {

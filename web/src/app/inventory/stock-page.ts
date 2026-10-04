@@ -33,15 +33,19 @@ import { StatusBadge } from '../shared/ui/status-badge';
 import { InventoryFacade } from './inventory-facade';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
+  locationLabels,
   movementForm,
   movementInput,
   movementValues,
+  receiptInput,
   STOCK_LIST,
   type StockListRow,
   stockListRows,
   stockSearch,
 } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
+import { ReceiptPlacement } from './receipt-placement';
+import { addPlace, type Part, placement } from './split-receipt';
 import type {
   ReceiptCostView,
   StockOperation,
@@ -69,6 +73,7 @@ import { addCount } from '../shared/scan/scan-lines';
     ListExport,
     DescriptorForm,
     StatusBadge,
+    ReceiptPlacement,
   ],
   templateUrl: './stock-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -140,7 +145,34 @@ export class StockPage implements OnInit {
           tracking,
           this.auth.hasPermission('product.cost.read'),
           this.costMode(),
+          this.split(),
         );
+  });
+
+  /**
+   * One delivery shared over several places (docs/SPEC.md row 188): the single place gives way to rows, and nothing is
+   * saved until every unit is placed. A serial number is one piece and has one place.
+   */
+  protected readonly split = signal(false);
+  protected readonly parts = signal<readonly Part[]>([]);
+  /** The quantity the form holds, which the rows are counted against. */
+  protected readonly received = signal('');
+  /** A save was refused for what was left unplaced; the next change to the rows takes the line away. */
+  protected readonly unplaced = signal(false);
+  protected readonly splitOffered = computed(
+    () => this.operation() === 'receive' && this.product()?.tracking !== 'serial',
+  );
+  protected readonly places = computed(() =>
+    [...locationLabels(this.facade.locations())].map(([value, label]) => ({ value, label })),
+  );
+  /** Where the rest goes: the default place of the first row's establishment, else any default place. */
+  protected readonly defaultPlace = computed(() => {
+    const locations = this.facade.locations();
+    const first = locations.find((location) => location.id === this.parts()[0]?.locationId);
+    const own = locations.find(
+      (location) => location.isDefault && location.establishmentId === first?.establishmentId,
+    );
+    return (own ?? locations.find((location) => location.isDefault))?.id ?? null;
   });
 
   /**
@@ -229,8 +261,19 @@ export class StockPage implements OnInit {
         const product = typeof productId === 'string' ? (this.known.get(productId) ?? null) : null;
         this.product.set(product);
         this.proposeHome(form, product);
+        if (product?.tracking === 'serial') this.stopSplit();
       });
       onCleanup(() => subscription?.unsubscribe());
+    });
+    // The rows are counted against the quantity as it is typed.
+    effect((onCleanup) => {
+      const form = this.form();
+      if (form === null) return;
+      const subscription = form.valueChanges.pipe(startWith(null)).subscribe(() => {
+        const quantity = form.get('quantity')?.value;
+        this.received.set(typeof quantity === 'string' ? quantity.trim() : '');
+      });
+      onCleanup(() => subscription.unsubscribe());
     });
     // The figures follow what is typed, a moment after the last key; only the latest answer is shown.
     effect((onCleanup) => {
@@ -380,7 +423,43 @@ export class StockPage implements OnInit {
   protected open(operation: StockOperation): void {
     this.facade.clearError();
     this.product.set(null);
+    this.split.set(false);
+    this.parts.set([]);
+    this.unplaced.set(false);
     this.operation.set(operation);
+  }
+
+  /** Shares the delivery over rows, the first on the place the form named; or goes back to the one place. */
+  protected toggleSplit(): void {
+    if (!this.split()) {
+      const named = this.form()?.get('locationId')?.value;
+      const first = typeof named === 'string' && named !== '' ? named : (this.defaultPlace() ?? '');
+      this.parts.set(
+        addPlace(
+          [{ locationId: first, quantity: '' }],
+          this.places().map((place) => ({ id: place.value })),
+        ),
+      );
+      this.unplaced.set(false);
+      this.split.set(true);
+    } else {
+      this.stopSplit();
+    }
+  }
+
+  private stopSplit(): void {
+    if (!this.split()) return;
+    const first = this.parts()[0]?.locationId ?? '';
+    this.split.set(false);
+    this.parts.set([]);
+    this.unplaced.set(false);
+    // The form is rebuilt with its place again, over what was typed; the place is the first row's.
+    this.form()?.patchValue({ locationId: first });
+  }
+
+  protected setParts(parts: readonly Part[]): void {
+    this.parts.set(parts);
+    this.unplaced.set(false);
   }
 
   protected cancel(): void {
@@ -392,11 +471,33 @@ export class StockPage implements OnInit {
     const companyId = this.company()?.id;
     const operation = this.operation();
     if (!companyId || operation === null || this.busy()) return;
+    if (operation === 'receive' && this.split()) {
+      await this.saveSplit(companyId, values);
+      return;
+    }
     if (await this.facade.record(companyId, movementInput(operation, values))) {
       // The form stays open for the next one — a serial number after a serial number, a lot after a lot — on the same
       // product and where it goes; what names this movement alone is emptied. « Annuler » is how it is closed.
       const form = this.form();
       if (form !== null) this.startNext(form);
+      this.feedback.success('inventory.stock.recorded');
+    }
+  }
+
+  /** Nothing goes to the API until every unit has a place: the delivery is stored whole, so it is asked whole. */
+  private async saveSplit(companyId: string, values: FormValues): Promise<void> {
+    const stand = placement(
+      this.received(),
+      this.parts().map((part) => part.quantity),
+    );
+    if (stand.state !== 'done') {
+      this.unplaced.set(true);
+      return;
+    }
+    if (await this.facade.receiveSplit(companyId, receiptInput(values, this.parts()))) {
+      const form = this.form();
+      if (form !== null) this.startNext(form);
+      this.parts.update((parts) => parts.map((part) => ({ ...part, quantity: '' })));
       this.feedback.success('inventory.stock.recorded');
     }
   }

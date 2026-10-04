@@ -56,6 +56,32 @@
               testId="stock-movement-form"
               (submitted)="save($event)"
             >
+              @if (splitOffered()) {
+                <div class="mb-4 flex flex-col gap-3" data-testid="stock-split-area">
+                  <button
+                    mat-button
+                    type="button"
+                    class="self-start"
+                    (click)="toggleSplit()"
+                    data-testid="stock-split"
+                  >
+                    {{
+                      (split() ? 'inventory.placement.one_place' : 'inventory.placement.split')
+                        | translate
+                    }}
+                  </button>
+                  @if (split()) {
+                    <app-receipt-placement
+                      [received]="received()"
+                      [parts]="parts()"
+                      [places]="places()"
+                      [defaultPlace]="defaultPlace()"
+                      [refused]="unplaced()"
+                      (partsChange)="setParts($event)"
+                    />
+                  }
+                </div>
+              }
               @if (operation() === 'receive' && receiptCost(); as cost) {
                 <dl
                   class="mb-4 grid max-w-prose grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm"

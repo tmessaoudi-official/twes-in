@@ -18,6 +18,7 @@ import type {
   StockMovementSearch,
   StockOptions,
   StockProductOption,
+  StockReceiptInput,
   ReceiptCostView,
   StockRepeatInput,
   StockStructureInput,
@@ -182,6 +183,17 @@ export class InventoryFacade {
     return this.write(
       () => this.api.record(companyId, input),
       // The page in hand is read again, not the whole stock: what was just recorded belongs on it or does not.
+      async () => {
+        const search = this.search;
+        if (search !== null) await this.loadStock(companyId, search);
+      },
+    );
+  }
+
+  /** One delivery shared over several places, stored whole or not at all; true once recorded and the page read again. */
+  async receiveSplit(companyId: string, input: StockReceiptInput): Promise<boolean> {
+    return this.write(
+      () => this.api.receiveSplit(companyId, input),
       async () => {
         const search = this.search;
         if (search !== null) await this.loadStock(companyId, search);

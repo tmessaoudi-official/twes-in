@@ -19,11 +19,13 @@ import {
   type StockMovementSortKey,
   type StockOperation,
   type StockOptions,
+  type StockReceiptInput,
   type StockProductOption,
   type StockSearch,
   type StockSortKey,
   type StockSourceType,
 } from './inventory-types';
+import { toReceiptParts } from './split-receipt';
 
 const LOCATION_FIELDS = 'inventory.locations.fields';
 const STOCK_FIELDS = 'inventory.stock.fields';
@@ -489,6 +491,7 @@ export function movementForm(
   tracking: StockProductOption['tracking'] = 'none',
   withCost = false,
   costMode: CostOnReceive | null = null,
+  split = false,
 ): FormDescriptor {
   return {
     id: `stock-${operation}`,
@@ -506,13 +509,21 @@ export function movementForm(
             noneFoundLabel: 'inventory.stock.no_product_found',
             hint: 'inventory.stock.product_hint',
           },
-          {
-            id: 'locationId',
-            label: `${STOCK_FIELDS}.${'move' === operation ? 'from_location' : 'location'}`,
-            kind: 'select',
-            required: true,
-            options: [...locationLabels(locations)].map(([id, label]) => ({ value: id, label })),
-          },
+          // A delivery shared over several places names them on the rows below: no single place is asked here.
+          ...(operation === 'receive' && split
+            ? []
+            : [
+                {
+                  id: 'locationId',
+                  label: `${STOCK_FIELDS}.${'move' === operation ? 'from_location' : 'location'}`,
+                  kind: 'select' as const,
+                  required: true,
+                  options: [...locationLabels(locations)].map(([id, label]) => ({
+                    value: id,
+                    label,
+                  })),
+                },
+              ]),
           // Only a move has somewhere to go, and it sits between the two so the form reads from where to where.
           ...(operation === 'move'
             ? [
@@ -540,7 +551,9 @@ export function movementForm(
             hint:
               tracking === 'serial'
                 ? 'inventory.movement.quantity_hint.serial'
-                : `inventory.movement.quantity_hint.${operation}`,
+                : operation === 'receive' && split
+                  ? 'inventory.movement.quantity_hint.receive_split'
+                  : `inventory.movement.quantity_hint.${operation}`,
           },
           // A loss says why: a report tells a breakage from a theft by it, and a count never stands in for either.
           ...(operation === 'loss'
@@ -682,6 +695,25 @@ export function movementInput(operation: StockOperation, values: FormValues): St
     ...(operation === 'move' || operation === 'loss' || text(values['lotExpiresOn']) === ''
       ? {}
       : { lotExpiresOn: text(values['lotExpiresOn']) }),
+  };
+}
+
+/**
+ * A delivery shared over several places, as the one request the API takes: the rows given a quantity, each written the
+ * way it reads it, with the lot, its day and the cost typed beside, as for a receipt in one place.
+ */
+export function receiptInput(
+  values: FormValues,
+  parts: readonly { readonly locationId: string; readonly quantity: string }[],
+): StockReceiptInput {
+  const basis = COST_BASES.find((candidate) => candidate === values['applyCost']);
+  return {
+    productId: text(values['productId']),
+    parts: toReceiptParts(parts),
+    ...(text(values['lotCode']) === '' ? {} : { lotCode: text(values['lotCode']) }),
+    ...(text(values['lotExpiresOn']) === '' ? {} : { lotExpiresOn: text(values['lotExpiresOn']) }),
+    ...(text(values['unitCost']) === '' ? {} : { unitCost: text(values['unitCost']) }),
+    ...(text(values['unitCost']) !== '' && basis !== undefined ? { applyCost: basis } : {}),
   };
 }
 
