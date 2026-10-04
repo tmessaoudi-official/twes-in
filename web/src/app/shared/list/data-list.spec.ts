@@ -307,9 +307,12 @@ describe('DataList', () => {
     trigger.click();
     await settle();
     const options = Array.from(document.body.querySelectorAll('[role="option"]')).map((option) =>
-      words(option, ['[data-option-label]', '[data-option-count]']),
+      words(option, ['[data-option-label]', '[data-option-count] [data-count]']),
     );
-    const reads = { trigger: words(trigger, ['.truncate', '[data-trigger-count]']), options };
+    const reads = {
+      trigger: words(trigger, ['.truncate', '[data-trigger-count] [data-count]']),
+      options,
+    };
     trigger.click();
     await settle();
     return reads;

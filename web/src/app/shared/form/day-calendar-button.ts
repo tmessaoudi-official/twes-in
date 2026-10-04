@@ -89,7 +89,7 @@ class TranslatedDatepickerIntl extends MatDatepickerIntl {
     </button>
     <ng-template #panel>
       <div
-        class="w-72 rounded-card border border-outline bg-surface shadow-lg"
+        class="w-full rounded-card border border-outline bg-surface shadow-lg"
         data-testid="day-calendar"
       >
         <mat-calendar
@@ -122,16 +122,20 @@ export class DayCalendarButton implements OnDestroy {
     // An empty field opens on today without marking it as the value.
     this.startAt.set(held ?? dateOfDay(todayIn(null)) ?? new Date());
     const origin = this.opener().nativeElement;
+    // Lined up with the text box it fills in, and at least as wide as it: on a phone it is the field's width, and
+    // wider than a narrow field on a desktop.
+    const box = this.field().box();
     this.ref = this.overlay.create({
       positionStrategy: this.overlay
         .position()
-        .flexibleConnectedTo(origin)
+        .flexibleConnectedTo(box)
         .withPositions([
-          { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 4 },
-          { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -4 },
+          { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: 4 },
+          { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -4 },
         ])
         .withPush(true),
       scrollStrategy: this.overlay.scrollStrategies.reposition(),
+      width: Math.max(288, box.getBoundingClientRect().width),
       panelClass: 'twes-day-calendar-panel',
     });
     this.ref.attach(new TemplatePortal(this.panel(), this.container));

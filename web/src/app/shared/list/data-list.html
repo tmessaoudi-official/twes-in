@@ -2,7 +2,7 @@
   <div class="twes-list-toolbar">
     @for (facet of facets(); track facet.filter.id) {
       <app-select
-        class="w-60"
+        class="w-full sm:w-60"
         [label]="facet.filter.label | translate"
         [labelInside]="true"
         [options]="facetOptions(facet)"

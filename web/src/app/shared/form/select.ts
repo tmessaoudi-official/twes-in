@@ -21,6 +21,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import type { StatusTone } from '../theme/accent-theme';
+import { CountBadge } from '../ui/count-badge';
 import { WINDOW_CLASS } from '../ui/window-class';
 
 /** One thing a Select offers: the value a control holds, and the words a person reads for it. */
@@ -65,7 +66,7 @@ function fold(text: string): string {
  */
 @Component({
   selector: 'app-select',
-  imports: [MatIconModule, TranslatePipe],
+  imports: [CountBadge, MatIconModule, TranslatePipe],
   providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => Select), multi: true }],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -80,7 +81,7 @@ function fold(text: string): string {
       #trigger
       type="button"
       role="combobox"
-      class="flex min-h-10 w-full items-center gap-1 rounded-control border border-outline bg-surface py-1.5 pr-2 pl-4 text-left text-base text-on-surface hover:border-on-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent disabled:opacity-60"
+      class="flex min-h-10 w-full items-center gap-1 rounded-control border border-outline bg-surface py-1.5 pr-2 pl-4 text-left text-base text-on-surface hover:border-on-surface focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent-text disabled:opacity-60"
       aria-haspopup="listbox"
       [id]="inputId() || null"
       [attr.aria-expanded]="open()"
@@ -119,11 +120,12 @@ function fold(text: string): string {
           }
           <span class="truncate">{{ chosen()[0].label }}</span>
           @if (hasCount(chosen()[0].count)) {
-            <span
-              class="shrink-0 text-sm tabular-nums text-on-surface-variant"
+            <app-count-badge
               data-trigger-count
-              >{{ chosen()[0].count }}</span
-            >
+              kind="total"
+              [count]="chosen()[0].count!"
+              [label]="'select.count' | translate: { count: chosen()[0].count }"
+            />
           }
         }
       </span>
@@ -218,11 +220,12 @@ function fold(text: string): string {
               }
               <span data-option-label class="min-w-0 flex-1">{{ option.label }}</span>
               @if (hasCount(option.count)) {
-                <span
-                  class="shrink-0 text-sm tabular-nums text-on-surface-variant"
+                <app-count-badge
                   data-option-count
-                  >{{ option.count }}</span
-                >
+                  kind="total"
+                  [count]="option.count!"
+                  [label]="'select.count' | translate: { count: option.count }"
+                />
               }
             </li>
           } @empty {

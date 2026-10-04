@@ -84,6 +84,11 @@ export class DayInput implements ControlValueAccessor, Validator {
     this.touched();
   }
 
+  /** The text box, which the calendar lines itself up with. */
+  box(): HTMLInputElement {
+    return this.element.nativeElement;
+  }
+
   focus(): void {
     this.element.nativeElement.focus();
   }

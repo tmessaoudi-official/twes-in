@@ -50,6 +50,8 @@ export async function expectFacetCount(
 ): Promise<void> {
   const filter = optionTestId.split('-')[2];
   await page.getByTestId(`list-facet-${filter}`).click();
-  await expect(page.getByTestId(optionTestId).locator('[data-option-count]')).toHaveText(count);
+  await expect(
+    page.getByTestId(optionTestId).locator('[data-option-count] [data-count]'),
+  ).toHaveText(count);
   await page.keyboard.press('Escape');
 }

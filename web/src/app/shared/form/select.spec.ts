@@ -233,12 +233,15 @@ describe('Select', () => {
     await open();
 
     const counts = Array.from(document.body.querySelectorAll('[role="option"]')).map(
-      (option) => option.querySelector('[data-option-count]')?.textContent?.trim() ?? null,
+      (option) =>
+        option.querySelector('[data-option-count] [data-count]')?.textContent?.trim() ?? null,
     );
     expect(counts).toEqual(['30', '0', null]);
     document.body.querySelector<HTMLElement>('[role="option"]')!.click();
     await settle();
-    expect(q('sel')!.querySelector('[data-trigger-count]')?.textContent?.trim()).toBe('30');
+    expect(q('sel')!.querySelector('[data-trigger-count] [data-count]')?.textContent?.trim()).toBe(
+      '30',
+    );
   });
 
   it('draws a dot in the status tone before an option and beside the chosen label', async () => {

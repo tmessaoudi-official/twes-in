@@ -3434,6 +3434,7 @@
     "none_found": "Nothing found",
     "select_all": "Select all",
     "clear_all": "Clear all",
-    "more": "+{{count}}"
+    "more": "+{{count}}",
+    "count": "Count: {{count}}"
   }
 }

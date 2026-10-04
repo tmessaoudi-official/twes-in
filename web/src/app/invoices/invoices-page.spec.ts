@@ -285,7 +285,7 @@ describe('InvoicesPage', () => {
       trigger.click();
       await settle();
       const text = document.body
-        .querySelector(`[data-testid="${id}"] [data-option-count]`)
+        .querySelector(`[data-testid="${id}"] [data-option-count] [data-count]`)
         ?.textContent?.trim();
       trigger.click();
       await settle();
