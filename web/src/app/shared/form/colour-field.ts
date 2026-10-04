@@ -10,6 +10,7 @@ import {
   type Validator,
 } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
+import { Label } from '../a11y/label';
 import { ACCENT_PRESETS } from '../theme/accent-presets';
 
 const HEX = /^#[0-9a-f]{6}$/;
@@ -21,7 +22,7 @@ const HEX = /^#[0-9a-f]{6}$/;
  */
 @Component({
   selector: 'app-colour-field',
-  imports: [TranslatePipe],
+  imports: [Label, TranslatePipe],
   providers: [
     { provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => ColourField), multi: true },
     { provide: NG_VALIDATORS, useExisting: forwardRef(() => ColourField), multi: true },
@@ -44,7 +45,7 @@ const HEX = /^#[0-9a-f]{6}$/;
           [class.ring-on-surface]="isChosen(preset.hex)"
           [style.background-color]="preset.hex"
           [attr.aria-checked]="isChosen(preset.hex)"
-          [attr.aria-label]="'form.colour.' + preset.id | translate"
+          [appLabel]="'form.colour.' + preset.id | translate"
           [disabled]="disabled()"
           (click)="choose(preset.hex)"
           [attr.data-testid]="testId() + '-swatch-' + preset.id"
