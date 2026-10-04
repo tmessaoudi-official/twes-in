@@ -208,4 +208,8 @@ export interface ProductHomeRow {
   locationId: string;
   locationCode: string;
   locationName: string;
+  /** Where it stands in its establishment's order, from 0. */
+  position: number;
+  /** The first of its establishment: the place a receipt proposes. */
+  main: boolean;
 }

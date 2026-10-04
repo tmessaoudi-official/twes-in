@@ -7,33 +7,71 @@
     </p>
   }
 
-  @if (rows().length === 0) {
+  @if (groups().length === 0) {
     <p data-testid="product-homes-none">{{ 'products.homes.none' | translate }}</p>
   } @else {
-    <ul class="flex flex-col gap-2" data-testid="product-homes-list">
-      @for (home of rows(); track home.id) {
-        <li
-          class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
+    <div class="flex flex-col gap-4" data-testid="product-homes-list-area">
+      @for (group of groups(); track group.establishmentId) {
+        <div
+          class="flex flex-col gap-2"
+          [attr.data-testid]="'product-homes-group-' + group.establishmentId"
         >
-          <span class="flex flex-col">
-            <span class="text-sm opacity-80">{{ home.establishmentName }}</span>
-            <span class="font-medium">{{ home.locationCode }} — {{ home.locationName }}</span>
-          </span>
-          @if (!readOnly()) {
-            <button
-              mat-icon-button
-              type="button"
-              [disabled]="busy()"
-              [appLabel]="'products.homes.clear' | translate"
-              [attr.data-testid]="'product-home-clear-' + home.establishmentId"
-              (click)="clear(home.establishmentId)"
-            >
-              <mat-icon>close</mat-icon>
-            </button>
-          }
-        </li>
+          <h3 class="text-sm opacity-80">{{ group.establishmentName }}</h3>
+          <ul class="flex flex-col gap-2" data-testid="product-homes-list">
+            @for (home of group.homes; track home.id; let first = $first; let last = $last) {
+              <li
+                class="flex flex-wrap items-center justify-between gap-3 rounded border border-outline-variant p-3"
+              >
+                <span class="flex flex-wrap items-center gap-2">
+                  <span class="font-medium">{{ home.locationCode }} — {{ home.locationName }}</span>
+                  @if (home.main) {
+                    <app-status-badge
+                      tone="success"
+                      [attr.data-testid]="'product-home-main-' + home.locationId"
+                      >{{ 'products.homes.main' | translate }}</app-status-badge
+                    >
+                  }
+                </span>
+                @if (!readOnly()) {
+                  <span class="flex items-center">
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [disabled]="busy() || first"
+                      [appLabel]="'products.homes.up' | translate"
+                      [attr.data-testid]="'product-home-up-' + home.locationId"
+                      (click)="move(home, -1)"
+                    >
+                      <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+                    </button>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [disabled]="busy() || last"
+                      [appLabel]="'products.homes.down' | translate"
+                      [attr.data-testid]="'product-home-down-' + home.locationId"
+                      (click)="move(home, 1)"
+                    >
+                      <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+                    </button>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [disabled]="busy()"
+                      [appLabel]="'products.homes.clear' | translate"
+                      [attr.data-testid]="'product-home-remove-' + home.locationId"
+                      (click)="remove(home)"
+                    >
+                      <mat-icon aria-hidden="true">close</mat-icon>
+                    </button>
+                  </span>
+                }
+              </li>
+            }
+          </ul>
+        </div>
       }
-    </ul>
+    </div>
   }
 
   @if (!readOnly()) {
@@ -58,10 +96,10 @@
         mat-flat-button
         type="button"
         [disabled]="busy() || chosen() === ''"
-        data-testid="product-home-set"
-        (click)="set()"
+        data-testid="product-home-add"
+        (click)="add()"
       >
-        {{ 'products.homes.set' | translate }}
+        {{ 'products.homes.add' | translate }}
       </button>
     </div>
   }

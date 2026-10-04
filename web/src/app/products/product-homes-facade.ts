@@ -4,6 +4,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { InventoryApi } from '../inventory/inventory-api';
 import type { StockLocationRow } from '../inventory/inventory-types';
 import { ProductsApi, ProductsRefused } from './products-api';
+import { appended, groupByEstablishment, moved, without } from './product-home-order';
 import type { ProductHomeRow, ProductsError } from './products-types';
 
 /**
@@ -46,10 +47,52 @@ export class ProductHomes {
     });
   }
 
-  /** Gives the product a home there; one it already had in that establishment moves rather than doubling. */
-  async set(companyId: string, productId: string, locationId: string): Promise<boolean> {
+  /** Where it lives, establishment by establishment, each in its order: the first of each is the main home. */
+  readonly groups = computed(() => groupByEstablishment(this.homesSignal()));
+
+  /** A home added after the others of its establishment, which a location knows; its first one is the main one. */
+  async add(companyId: string, productId: string, locationId: string): Promise<boolean> {
+    const place = this.locationsSignal().find((location) => location.id === locationId);
+    if (place === undefined) {
+      this.errorSignal.set('invalid');
+      return false;
+    }
+    return this.write(companyId, productId, place.establishmentId, (ids) =>
+      appended(ids, locationId),
+    );
+  }
+
+  /** A home one step towards the main end (−1) or away from it (1) in its own establishment. */
+  async move(
+    companyId: string,
+    productId: string,
+    home: ProductHomeRow,
+    step: -1 | 1,
+  ): Promise<boolean> {
+    return this.write(companyId, productId, home.establishmentId, (ids) =>
+      moved(ids, home.locationId, step),
+    );
+  }
+
+  /** A place stops being a home; the last one of an establishment clears it, the API having no empty list. */
+  async remove(companyId: string, productId: string, home: ProductHomeRow): Promise<boolean> {
+    return this.write(companyId, productId, home.establishmentId, (ids) =>
+      without(ids, home.locationId),
+    );
+  }
+
+  /** The establishment's homes as a new list, written whole and read again: the API keeps the order. */
+  private async write(
+    companyId: string,
+    productId: string,
+    establishmentId: string,
+    change: (ids: readonly string[]) => readonly string[],
+  ): Promise<boolean> {
+    const own = this.groups().find((group) => group.establishmentId === establishmentId);
+    const ids = change((own?.homes ?? []).map((home) => home.locationId));
     return this.run(async () => {
-      await this.api.setHome(companyId, productId, locationId);
+      if (ids.length === 0) await this.api.clearHome(companyId, productId, establishmentId);
+      else await this.api.replaceHomes(companyId, productId, establishmentId, ids);
       this.homesSignal.set(await this.api.homes(companyId, productId));
     });
   }

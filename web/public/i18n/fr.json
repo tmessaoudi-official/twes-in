@@ -1662,12 +1662,16 @@
       }
     },
     "homes": {
-      "intro": "L’emplacement que la réception proposera pour cet article, un par établissement. Ce n’est qu’une proposition : le stock peut être mis ailleurs.",
+      "intro": "L’emplacement que la réception proposera pour cet article, par établissement, dans l’ordre : le premier est le principal. Ce n’est qu’une proposition : le stock peut être mis ailleurs.",
       "none": "Aucun emplacement habituel pour l’instant.",
       "location": "Emplacement",
-      "set": "Définir",
+      "add": "Ajouter",
+      "main": "Principal",
+      "up": "Monter",
+      "down": "Descendre",
       "clear": "Retirer cet emplacement habituel",
-      "saved": "Emplacement habituel enregistré.",
+      "saved": "Emplacement habituel ajouté.",
+      "reordered": "Emplacements habituels réordonnés.",
       "cleared": "Emplacement habituel retiré."
     },
     "reorder": {

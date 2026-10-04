@@ -1662,12 +1662,16 @@
       }
     },
     "homes": {
-      "intro": "The location a receipt will propose for this product, one per establishment. It is only a proposal: stock may be put anywhere.",
+      "intro": "Where this product normally lives, per establishment, in order: the first is the main one a receipt proposes. It is only a proposal: stock may be put anywhere.",
       "none": "No home location yet.",
       "location": "Location",
-      "set": "Set",
+      "add": "Add",
+      "main": "Main",
+      "up": "Move up",
+      "down": "Move down",
       "clear": "Remove this home location",
-      "saved": "Home location saved.",
+      "saved": "Home location added.",
+      "reordered": "Home locations reordered.",
       "cleared": "Home location removed."
     },
     "reorder": {

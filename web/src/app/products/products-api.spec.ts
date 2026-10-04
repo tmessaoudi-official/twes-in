@@ -130,6 +130,42 @@ describe('ProductsApi', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-24 11:40.
+  it('reads the homes with their order, and writes one establishment’s homes as a whole list', async () => {
+    const read = api.homes('c1', 'p1');
+    http.expectOne('/api/companies/c1/products/p1/home-locations').flush([
+      {
+        id: 'h1',
+        establishmentId: 'e1',
+        establishmentCode: 'SIEGE',
+        establishmentName: 'Siège',
+        locationId: 'l1',
+        locationCode: 'A-12',
+        locationName: 'Zone A-12',
+        position: 0,
+        main: true,
+      },
+      { id: 'h2', establishmentId: 'e1', locationId: 'l2' },
+    ]);
+    const rows = await read;
+    expect(rows.map((row) => [row.locationId, row.position, row.main])).toEqual([
+      ['l1', 0, true],
+      ['l2', 0, false],
+    ]);
+
+    const written = api.replaceHomes('c1', 'p 1', 'e/1', ['l2', 'l1']);
+    const put = http.expectOne('/api/companies/c1/products/p%201/home-locations/e%2F1');
+    expect(put.request.method).toBe('PUT');
+    expect(put.request.body).toEqual({ locationIds: ['l2', 'l1'] });
+    put.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(written).resolves.toBeUndefined();
+
+    const refused = api.replaceHomes('c1', 'p1', 'e1', ['elsewhere']);
+    http
+      .expectOne('/api/companies/c1/products/p1/home-locations/e1')
+      .flush(null, { status: 422, statusText: 'Unprocessable' });
+    await expect(refused).rejects.toBeInstanceOf(ProductsRefused);
+  });
+
   it('reads, sets and clears a reorder point per establishment', async () => {
     const read = api.reorderPoints('c1', 'p1');
     http.expectOne('/api/companies/c1/products/p1/reorder-points').flush([

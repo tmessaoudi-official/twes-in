@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import {
@@ -15,11 +15,12 @@ import { Session } from '../shared/session/session';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { ProductHomes } from './product-homes-facade';
 import { ProductHomesSection } from './product-homes';
+import { groupByEstablishment } from './product-home-order';
 import type { ProductHomeRow } from './products-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
-    return of({ products: { homes: { set: 'Définir', clear: 'Retirer' } } });
+    return of({ products: { homes: { add: 'Ajouter', clear: 'Retirer', main: 'Principal' } } });
   }
 }
 
@@ -45,6 +46,17 @@ const home: ProductHomeRow = {
   locationId: 'l1',
   locationCode: 'A-12',
   locationName: 'Zone A-12',
+  position: 0,
+  main: true,
+};
+const second: ProductHomeRow = {
+  ...home,
+  id: 'h2',
+  locationId: 'l2',
+  locationCode: 'B-03',
+  locationName: 'Zone B-03',
+  position: 1,
+  main: false,
 };
 
 describe('ProductHomesSection', () => {
@@ -52,12 +64,14 @@ describe('ProductHomesSection', () => {
   const locations = signal<readonly StockLocationRow[]>([location('l1', 'A-12')]);
   const facade = {
     homes: homes.asReadonly(),
+    groups: computed(() => groupByEstablishment(homes())),
     locations: locations.asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
     load: vi.fn(),
-    set: vi.fn(),
-    clear: vi.fn(),
+    add: vi.fn(),
+    move: vi.fn(),
+    remove: vi.fn(),
   };
   const auth = { me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }) };
   let fixture: ComponentFixture<ProductHomesSection>;
@@ -78,8 +92,9 @@ describe('ProductHomesSection', () => {
     homes.set([]);
     locations.set([location('l1', 'A-12')]);
     facade.load.mockReset().mockResolvedValue(undefined);
-    facade.set.mockReset().mockResolvedValue(true);
-    facade.clear.mockReset().mockResolvedValue(true);
+    facade.add.mockReset().mockResolvedValue(true);
+    facade.move.mockReset().mockResolvedValue(true);
+    facade.remove.mockReset().mockResolvedValue(true);
     TestBed.configureTestingModule({
       imports: [ProductHomesSection],
       providers: [
@@ -115,49 +130,80 @@ describe('ProductHomesSection', () => {
 
     await open();
 
-    expect(q('product-homes-list')?.textContent).toContain('Siège');
-    expect(q('product-homes-list')?.textContent).toContain('A-12');
+    expect(q('product-homes-group-e1')?.textContent).toContain('Siège');
+    expect(q('product-homes-group-e1')?.textContent).toContain('A-12');
     expect(q('product-homes-none')).toBeNull();
   });
 
-  it('gives the product the chosen home and says it was saved', async () => {
+  it('shows a main home first and the others after it, in their order', async () => {
+    homes.set([second, home]);
+
+    await open();
+
+    const rows = Array.from(
+      fixture.nativeElement.querySelectorAll('[data-testid="product-homes-list"] li'),
+    ) as HTMLElement[];
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining('A-12'),
+      expect.stringContaining('B-03'),
+    ]);
+    expect(q('product-home-main-l1')).not.toBeNull();
+    expect(q('product-home-main-l2')).toBeNull();
+  });
+
+  it('adds the chosen place after the others and says it was saved', async () => {
     await open();
     fixture.componentInstance['chosen'].set('l1');
     fixture.detectChanges();
 
-    q('product-home-set')!.click();
+    q('product-home-add')!.click();
     await fixture.whenStable();
 
-    expect(facade.set).toHaveBeenCalledWith('c1', 'p1', 'l1');
+    expect(facade.add).toHaveBeenCalledWith('c1', 'p1', 'l1');
     expect(successToasts()).toContain('products.homes.saved');
   });
 
   /** Nothing chosen is not a home at the empty string: the API would answer 422 on a claim nobody made. */
-  it('does not save while no location is chosen', async () => {
+  it('does not add while no location is chosen', async () => {
     await open();
 
-    expect((q('product-home-set') as HTMLButtonElement).disabled).toBe(true);
+    expect((q('product-home-add') as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('clears the home of one establishment, naming that establishment', async () => {
-    homes.set([home]);
+  it('moves a home along its order, the main one having nothing above it and the last nothing below', async () => {
+    homes.set([home, second]);
     await open();
 
-    q('product-home-clear-e1')!.click();
+    expect((q('product-home-up-l1') as HTMLButtonElement).disabled).toBe(true);
+    expect((q('product-home-down-l2') as HTMLButtonElement).disabled).toBe(true);
+    q('product-home-up-l2')!.click();
     await fixture.whenStable();
 
-    expect(facade.clear).toHaveBeenCalledWith('c1', 'p1', 'e1');
+    expect(facade.move).toHaveBeenCalledWith('c1', 'p1', second, -1);
+    expect(successToasts()).toContain('products.homes.reordered');
+  });
+
+  it('removes one home, naming it', async () => {
+    homes.set([home, second]);
+    await open();
+
+    q('product-home-remove-l1')!.click();
+    await fixture.whenStable();
+
+    expect(facade.remove).toHaveBeenCalledWith('c1', 'p1', home);
     expect(successToasts()).toContain('products.homes.cleared');
   });
 
   /** A home is set with product.write; somebody who may only read one sees where it lives and changes nothing. */
-  it('offers neither the picker nor a clear to somebody who may not write', async () => {
-    homes.set([home]);
+  it('offers neither the picker nor a change to somebody who may not write', async () => {
+    homes.set([home, second]);
 
     await open(true);
 
     expect(q('product-homes-list')).not.toBeNull();
-    expect(q('product-home-set')).toBeNull();
-    expect(q('product-home-clear-e1')).toBeNull();
+    expect(q('product-home-main-l1')).not.toBeNull();
+    expect(q('product-home-add')).toBeNull();
+    expect(q('product-home-remove-l1')).toBeNull();
+    expect(q('product-home-up-l2')).toBeNull();
   });
 });

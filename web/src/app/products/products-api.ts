@@ -256,17 +256,20 @@ export class ProductsApi {
   }
 
   /**
-   * Gives the product a home there. The establishment is never sent: the location already knows where it is, and a
-   * product that had a home in that establishment has it moved rather than doubled.
+   * One establishment's homes written as a whole list, in order, the first the main one a receipt proposes: the places
+   * named are its homes and any it had that are not named stop being homes. 204; what the screen shows is read again.
    */
-  async setHome(companyId: string, productId: string, locationId: string): Promise<ProductHomeRow> {
-    return this.guard(async () =>
-      toHome(
-        await firstValueFrom(
-          this.http.put<ProductHomeProductHomeRead>(homesPath(companyId, productId), {
-            locationId,
-          }),
-        ),
+  async replaceHomes(
+    companyId: string,
+    productId: string,
+    establishmentId: string,
+    locationIds: readonly string[],
+  ): Promise<void> {
+    await this.guard(async () =>
+      firstValueFrom(
+        this.http.put(`${homesPath(companyId, productId)}/${encodeURIComponent(establishmentId)}`, {
+          locationIds,
+        }),
       ),
     );
   }
@@ -442,6 +445,8 @@ function toHome(raw: ProductHomeProductHomeRead): ProductHomeRow {
     locationId: raw.locationId ?? '',
     locationCode: raw.locationCode ?? '',
     locationName: raw.locationName ?? '',
+    position: raw.position ?? 0,
+    main: raw.main ?? false,
   };
 }
 
