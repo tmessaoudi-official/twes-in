@@ -706,6 +706,24 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
     }
 
+    public function testTheHomeSummaryCostsTheSameStatementsWhateverTheInvoicesItAddsUp(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'product.cost.read']);
+        $this->issuedDueToday();
+        $this->em()->clear();
+        $few = $this->statementsFor($this->companyPath().'/invoice-summary');
+
+        foreach (range(1, 6) as $ignored) {
+            $this->issuedDueToday();
+        }
+        $this->em()->clear();
+        $many = $this->statementsFor($this->companyPath().'/invoice-summary');
+
+        self::assertSame($few, $many, 'seven invoices cost what one does: the database adds them up');
+        // Measured 20, the session and the company's checks included; raise it only with a reason a person can read.
+        self::assertLessThanOrEqual(22, $many);
+    }
+
     public function testTheSummaryCountsWhatIsDueAndCollectedOnTheCompanysDayForAReader(): void
     {
         $globex = $this->createCompany('Globex');
@@ -971,6 +989,15 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
 
         return $id;
+    }
+
+    /** An issued invoice due the day it is issued, so the home's list of what to chase holds it. */
+    private function issuedDueToday(): void
+    {
+        $this->postJson($this->path(), $this->invoice(['paymentTermsDays' => 0, 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $id = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
     }
 
     /** @return list<string> the lines of the file a request just answered */

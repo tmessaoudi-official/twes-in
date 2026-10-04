@@ -5,7 +5,7 @@
 }
 @if (summary(); as s) {
   <div class="flex flex-col gap-4">
-    <div class="grid gap-4 {{ s.costsVisible ? 'sm:grid-cols-2' : '' }}">
+    <div class="grid gap-4 {{ topRow() }}">
       @if (s.costsVisible) {
         <mat-card appearance="outlined" data-testid="home-margin">
           <mat-card-content>
@@ -66,6 +66,30 @@
           </div>
         </mat-card-content>
       </mat-card>
+      @if (withholds()) {
+        <mat-card appearance="outlined" data-testid="home-withheld">
+          <mat-card-content>
+            <div class="flex flex-col gap-3">
+              <span class="text-sm text-on-surface-variant">{{
+                'invoices.home.withheld' | translate: { month: month() }
+              }}</span>
+              <span class="text-3xl font-semibold tabular-nums">
+                {{ s.withheldMonth | amount: s.currencyScale }}
+                <span class="text-base font-normal text-on-surface-variant">{{ s.currency }}</span>
+              </span>
+              @if (withheldVersus(); as v) {
+                <span class="text-sm tabular-nums text-on-surface-variant">{{
+                  'invoices.home.versus.' + v.kind
+                    | translate: { amount: (v.amount | amount: s.currencyScale) }
+                }}</span>
+              }
+              <span class="text-sm text-on-surface-variant">{{
+                'invoices.home.withheld_note' | translate
+              }}</span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
     </div>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

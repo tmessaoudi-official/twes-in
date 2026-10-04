@@ -461,6 +461,8 @@ function toSummary(raw: InvoiceSummaryInvoiceSummaryRead): InvoiceSummary {
     marginLastMonth: raw.marginLastMonth ?? null,
     marginBasis: raw.marginBasis ?? null,
     costsVisible: raw.costsVisible ?? false,
+    withheldMonth: raw.withheldMonth ?? '0',
+    withheldLastMonth: raw.withheldLastMonth ?? '0',
   };
 }
 

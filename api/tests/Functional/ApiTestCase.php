@@ -192,6 +192,21 @@ abstract class ApiTestCase extends WebTestCase
         return $collector->getQueryCount();
     }
 
+    /** The statements one plain GET costs, once the session is warm; the page must answer 200. */
+    protected function statementsFor(string $path): int
+    {
+        $this->warmSession();
+        $this->client->enableProfiler();
+        $this->getJson($path);
+        self::assertResponseIsSuccessful();
+        $profile = $this->client->getProfile();
+        self::assertInstanceOf(Profile::class, $profile, 'the profiler recorded the request');
+        $collector = $profile->getCollector('db');
+        self::assertInstanceOf(DoctrineDataCollector::class, $collector);
+
+        return $collector->getQueryCount();
+    }
+
     /**
      * The first request of a session records it for the person's list of devices, which is a cost of that request and not
      * of the page it asked for; a request made first leaves the pages measured after it at what they cost every time.

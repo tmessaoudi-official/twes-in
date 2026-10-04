@@ -42,6 +42,8 @@ class StaticLoader implements TranslateLoader {
           margin_blank: 'La marge apparaît dès qu’une ligne émise a un coût.',
           invoiced: 'Facturé · {{month}}',
           invoiced_note: 'hors taxes, avoirs déduits',
+          withheld: 'Retenue à la source · {{month}}',
+          withheld_note: 'retenue par vos clients, déjà déduite de ce qu’ils vous doivent',
           versus: {
             up: '+{{amount}} sur les mêmes jours du mois dernier',
             down: '−{{amount}} sur les mêmes jours du mois dernier',
@@ -123,6 +125,8 @@ const summary: InvoiceSummary = {
   marginLastMonth: '50.050',
   marginBasis: '1081.000',
   costsVisible: true,
+  withheldMonth: '10.000',
+  withheldLastMonth: '4.000',
 };
 
 describe('InvoicesHome', () => {
@@ -201,6 +205,20 @@ describe('InvoicesHome', () => {
     expect(text('home-invoiced')).toContain('1 881,000');
     expect(text('home-invoiced')).toContain('+30,950 sur les mêmes jours du mois dernier');
     expect(text('home-collected')).toContain('−400,000 sur les mêmes jours du mois dernier');
+  });
+
+  it('shows the withholding suffered against the same days of last month, and draws no card for a company that has none', async () => {
+    expect(text('home-withheld')).toContain('Retenue à la source · septembre');
+    expect(text('home-withheld')).toContain('10,000');
+    expect(text('home-withheld')).toContain('+6,000 sur les mêmes jours du mois dernier');
+
+    current.set({ ...summary, withheldMonth: '0.000', withheldLastMonth: '0.000' });
+    await settle();
+    expect(q('home-withheld')).toBeNull();
+
+    current.set({ ...summary, withheldMonth: '0.000', withheldLastMonth: '4.000' });
+    await settle();
+    expect(text('home-withheld')).toContain('−4,000 sur les mêmes jours du mois dernier');
   });
 
   it('leaves the margin blank with a note until a line has a cost, and draws no card for a reader without costs', async () => {

@@ -62,6 +62,20 @@ export class InvoicesHome {
     const s = this.summary();
     return s === null ? null : versus(s.invoicedMonth, s.invoicedLastMonth);
   });
+  /** A company that has never had a withholding is shown no card for it: a figure with nothing behind it is left out. */
+  protected readonly withholds = computed(() => {
+    const s = this.summary();
+    return s !== null && /[1-9]/.test(s.withheldMonth + s.withheldLastMonth);
+  });
+  protected readonly withheldVersus = computed(() => {
+    const s = this.summary();
+    return s === null ? null : versus(s.withheldMonth, s.withheldLastMonth);
+  });
+  protected readonly topRow = computed(() => {
+    const s = this.summary();
+    const cards = 1 + (s?.costsVisible ? 1 : 0) + (this.withholds() ? 1 : 0);
+    return cards === 3 ? 'lg:grid-cols-3' : cards === 2 ? 'sm:grid-cols-2' : '';
+  });
   protected readonly marginVersus = computed(() => {
     const s = this.summary();
     return s?.margin == null || s.marginLastMonth == null

@@ -143,6 +143,8 @@ describe('InvoicesApi', () => {
       marginLastMonth: null,
       marginBasis: '1081.000',
       costsVisible: true,
+      withheldMonth: '10.000',
+      withheldLastMonth: '4.000',
     });
     const summary = await pending;
     expect(summary.aging.map((each) => each.bucket)).toEqual(['not_due', 'days_over_45']);
@@ -158,6 +160,8 @@ describe('InvoicesApi', () => {
       margin: '441.000',
       marginLastMonth: null,
       costsVisible: true,
+      withheldMonth: '10.000',
+      withheldLastMonth: '4.000',
     });
   });
 

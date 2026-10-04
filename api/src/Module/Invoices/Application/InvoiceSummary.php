@@ -47,6 +47,8 @@ final readonly class InvoiceSummary
         public ?string $marginLastMonth,
         public ?string $marginBasis,
         public bool $costsVisible,
+        public string $withheldMonth,
+        public string $withheldLastMonth,
     ) {
     }
 }

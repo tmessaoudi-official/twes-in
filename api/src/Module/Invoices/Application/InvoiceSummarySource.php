@@ -53,6 +53,12 @@ interface InvoiceSummarySource
     public function paidBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): string;
 
     /**
+     * What the company's issued documents kept back for the tax office between two days (from included, until
+     * excluded), credit notes netting theirs out.
+     */
+    public function withheldBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): string;
+
+    /**
      * What the documents issued from a day to before another came to before tax, credit notes counted negative, and, over
      * the lines whose frozen cost is known only, what those lines sold for, what they cost and how many they are.
      *

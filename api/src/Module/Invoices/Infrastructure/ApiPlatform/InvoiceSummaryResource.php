@@ -165,6 +165,13 @@ final class InvoiceSummaryResource
     #[Groups([self::READ])]
     public bool $costsVisible = false;
 
+    /** What the documents issued so far this month kept back for the tax office, and over the same days of last month. */
+    #[Groups([self::READ])]
+    public string $withheldMonth = '0';
+
+    #[Groups([self::READ])]
+    public string $withheldLastMonth = '0';
+
     public static function of(InvoiceSummary $summary): self
     {
         $resource = new self();
@@ -191,6 +198,8 @@ final class InvoiceSummaryResource
         $resource->marginLastMonth = $summary->marginLastMonth;
         $resource->marginBasis = $summary->marginBasis;
         $resource->costsVisible = $summary->costsVisible;
+        $resource->withheldMonth = $summary->withheldMonth;
+        $resource->withheldLastMonth = $summary->withheldLastMonth;
 
         return $resource;
     }

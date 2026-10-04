@@ -12,6 +12,7 @@ namespace App\Tests\Integration\Invoices;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxComponentRepository;
@@ -182,6 +183,23 @@ final class SummarizeInvoicesTest extends KernelTestCase
         self::assertSame(['441.000', '50.050', '1081.000'], [$summary->margin, $summary->marginLastMonth, $summary->marginBasis]);
     }
 
+    public function testTheWithholdingSufferedIsWhatTheIssuedDocumentsKeptBackThisMonthAgainstTheSameDaysOfLastMonth(): void
+    {
+        $this->issued('FAC-W1', 'Nabeul Bois', '2026-09-10', 30, '1000.000', withholding: '10.000');
+        $this->issued('FAC-W2', 'Sans retenue', '2026-09-11', 30, '500.000');
+        $old = $this->issued('FAC-W3', 'Transports Sahel', '2026-06-01', 30, '1000.000', withholding: '10.000');
+        $this->credit($old, 'AV-W', '2026-09-12', '-200.000', [], withholding: '-2.000');
+        $this->issued('FAC-W4', 'Pharmacie Ennasr', '2026-08-12', 30, '800.000', withholding: '8.000');
+        // The 25th is past the days compared.
+        $this->issued('FAC-W5', 'Sousse Print', '2026-08-25', 30, '900.000', withholding: '9.000');
+        $this->issued('GLX-W', 'Autre', '2026-09-03', 0, '9999.000', company: $this->globex, withholding: '99.000');
+        $this->em()->clear();
+
+        $summary = $this->summarize->handle($this->company);
+
+        self::assertSame(['8.000', '8.000'], [$summary->withheldMonth, $summary->withheldLastMonth]);
+    }
+
     public function testTheMarginIsWithheldWithoutTheCostPermissionAndBlankUntilALineHasACost(): void
     {
         $this->issued('FAC-N', 'Nabeul Bois', '2026-09-15', 30, '1200.000');
@@ -207,21 +225,21 @@ final class SummarizeInvoicesTest extends KernelTestCase
     }
 
     /** @param array<string, string> $taxes the line taxes charged, by code */
-    private function issued(string $number, string $customer, string $day, int $terms, string $total, array $taxes = [], ?Company $company = null): Invoice
+    private function issued(string $number, string $customer, string $day, int $terms, string $total, array $taxes = [], ?Company $company = null, string $withholding = '0.000'): Invoice
     {
         $company ??= $this->company;
         $invoice = Invoice::create($company, $this->establishment($company), $this->customer($company, $customer), new InvoiceHeader(), [$this->line($company, array_keys($taxes))], [], $this->clock->now());
-        $invoice->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), $terms, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (): InvoiceFigures => $this->figures($total, $taxes), $this->clock->now());
+        $invoice->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), $terms, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (): InvoiceFigures => $this->figures($total, $taxes, $withholding), $this->clock->now());
         static::getContainer()->get(InvoiceRepository::class)->save($invoice);
 
         return $invoice;
     }
 
     /** @param array<string, string> $taxes */
-    private function credit(Invoice $invoice, string $number, string $day, string $total, array $taxes): Invoice
+    private function credit(Invoice $invoice, string $number, string $day, string $total, array $taxes, string $withholding = '0.000'): Invoice
     {
         $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
-        $credit->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (): InvoiceFigures => $this->figures($total, $taxes), $this->clock->now());
+        $credit->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (): InvoiceFigures => $this->figures($total, $taxes, $withholding), $this->clock->now());
         $invoice->credit($credit, $this->clock->now());
         $invoices = static::getContainer()->get(InvoiceRepository::class);
         $invoices->save($credit);
@@ -243,14 +261,14 @@ final class SummarizeInvoicesTest extends KernelTestCase
     }
 
     /** @param array<string, string> $taxes */
-    private function figures(string $total, array $taxes): InvoiceFigures
+    private function figures(string $total, array $taxes, string $withholding = '0.000'): InvoiceFigures
     {
         $rated = [];
         foreach ($taxes as $code => $amount) {
             $rated[] = ['code' => $code, 'rate' => 'TVA19' === $code ? '19.000' : '1.000', 'base' => '0.000', 'amount' => $amount];
         }
 
-        return new InvoiceFigures($total, '0.000', $total, $rated, '0.000', [], $total, [], '0.000', $total, [['net' => $total, 'tax' => '0.000', 'gross' => $total]]);
+        return new InvoiceFigures($total, '0.000', $total, $rated, '0.000', [], $total, [], $withholding, Decimal::format(Decimal::of($total)->sub(Decimal::of($withholding)), 3), [['net' => $total, 'tax' => '0.000', 'gross' => $total]]);
     }
 
     private function customer(Company $company, string $name): Customer

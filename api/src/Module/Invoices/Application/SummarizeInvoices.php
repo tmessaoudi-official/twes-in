@@ -22,6 +22,7 @@ use Psr\Clock\ClockInterface;
  *   corrects is already off its invoice's amount due. Late means due before today; due today is not late.
  * - To chase: the late invoices, the latest first, then those due within a week, the soonest first.
  * - Collected: the payments by the month of their day, which is already a company day.
+ * - Withheld (retenue à la source suffered): what the documents issued this month kept back, credit notes netting theirs out.
  * - Invoiced and collected so far this month are read against the same days of last month; the margin is what the lines
  *   with a frozen cost sold for less that cost, shown only to a reader of costs.
  * - VAT: the VAT-family taxes of the documents issued this month, credit notes included, so a correction nets out. It
@@ -121,6 +122,8 @@ final readonly class SummarizeInvoices
             $withCosts && $before['costedLines'] > 0 ? $amount(Decimal::of($before['costedNet'])->sub(Decimal::of($before['cost']))) : null,
             $withCosts && $now['costedLines'] > 0 ? $amount(Decimal::of($now['costedNet'])) : null,
             $withCosts,
+            $amount(Decimal::of($this->source->withheldBetween($company->getId(), $thisMonth, $tomorrow))),
+            $amount(Decimal::of($this->source->withheldBetween($company->getId(), $lastFrom, $lastUntil))),
         );
     }
 

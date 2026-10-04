@@ -350,4 +350,6 @@ export interface InvoiceSummary {
   /** What those lines sold for. */
   readonly marginBasis: string | null;
   readonly costsVisible: boolean;
+  readonly withheldMonth: string;
+  readonly withheldLastMonth: string;
 }

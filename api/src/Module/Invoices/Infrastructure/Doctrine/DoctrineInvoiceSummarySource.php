@@ -114,6 +114,18 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
         return ['net' => self::text($row['net']), 'costedNet' => self::text($row['costed_net']), 'cost' => self::text($row['cost']), 'costedLines' => (int) self::text($row['costed_lines'])];
     }
 
+    public function withheldBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): string
+    {
+        $sum = $this->connection->fetchOne(
+            'SELECT COALESCE(SUM(withholding_amount), 0) FROM invoice
+             WHERE company_id = :company AND status <> :cancelled AND amount_due IS NOT NULL
+               AND issue_date >= :from AND issue_date < :until',
+            ['company' => $companyId->toRfc4122(), 'cancelled' => InvoiceStatus::Cancelled->value, 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d')],
+        );
+
+        return self::text($sum);
+    }
+
     public function vatIssued(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): array
     {
         $rows = $this->connection->fetchAllAssociative(

@@ -1389,6 +1389,8 @@
       "margin_blank": "The margin appears as soon as an issued line has a cost.",
       "invoiced": "Invoiced · {{month}}",
       "invoiced_note": "before tax, credit notes taken off",
+      "withheld": "Withholding tax · {{month}}",
+      "withheld_note": "held back by your customers, already taken off what they owe you",
       "versus": {
         "up": "+{{amount}} on the same days of last month",
         "down": "−{{amount}} on the same days of last month",

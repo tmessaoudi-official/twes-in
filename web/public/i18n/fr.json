@@ -1389,6 +1389,8 @@
       "margin_blank": "La marge apparaît dès qu’une ligne émise a un coût.",
       "invoiced": "Facturé · {{month}}",
       "invoiced_note": "hors taxes, avoirs déduits",
+      "withheld": "Retenue à la source · {{month}}",
+      "withheld_note": "retenue par vos clients, déjà déduite de ce qu’ils vous doivent",
       "versus": {
         "up": "+{{amount}} sur les mêmes jours du mois dernier",
         "down": "−{{amount}} sur les mêmes jours du mois dernier",
