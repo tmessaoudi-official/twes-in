@@ -13,6 +13,7 @@ use App\Module\Inventory\Domain\CostBasis;
 use App\Module\Inventory\Domain\CostOnReceive;
 use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\NamedLot;
+use App\Module\Inventory\Domain\ReceiptDocument;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockLocation;
@@ -83,9 +84,9 @@ final readonly class KeepStock
      *
      * @throws InvalidStockMovement
      */
-    public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null): StockMovement
+    public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null, ?ReceiptDocument $document = null): StockMovement
     {
-        return $this->transactions->run(fn (): StockMovement => $this->receiptAt($company, $productId, $locationId, $quantity, $actorUserId, $named, $unitCost, $apply));
+        return $this->transactions->run(fn (): StockMovement => $this->receiptAt($company, $productId, $locationId, $quantity, $actorUserId, $named, $unitCost, $apply, $document));
     }
 
     /**
@@ -99,7 +100,7 @@ final readonly class KeepStock
      *
      * @throws InvalidStockMovement
      */
-    public function receiveSplit(Company $company, Uuid $productId, array $parts, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null): array
+    public function receiveSplit(Company $company, Uuid $productId, array $parts, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null, ?ReceiptDocument $document = null): array
     {
         if ([] === $parts) {
             throw new InvalidStockMovement('parts', 'A receipt needs at least one place.');
@@ -115,17 +116,17 @@ final readonly class KeepStock
         }
 
         return $this->transactions->run(fn (): array => array_map(
-            fn (array $part): StockMovement => $this->receiptAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named, $unitCost, $apply),
+            fn (array $part): StockMovement => $this->receiptAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named, $unitCost, $apply, $document),
             $parts,
         ));
     }
 
     /** @throws InvalidStockMovement */
-    private function receiptAt(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?CostBasis $apply): StockMovement
+    private function receiptAt(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?CostBasis $apply, ?ReceiptDocument $document): StockMovement
     {
         [$product, $location] = $this->trackedAt($company, $productId, $locationId);
         $lot = $this->lotFor($product, $named, true);
-        $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now(), $lot, $unitCost);
+        $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now(), $lot, $unitCost, $document);
         // Read before saving: a receipt typed with no cost is valued at the average when it is saved, and that
         // figure is not a price anybody typed.
         $typed = $movement->getUnitCost();

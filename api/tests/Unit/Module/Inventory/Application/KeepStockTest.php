@@ -14,6 +14,7 @@ use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\NamedLot;
+use App\Module\Inventory\Domain\ReceiptDocument;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationKind;
@@ -26,6 +27,8 @@ use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductTracking;
+use App\Module\Vendors\Domain\Vendor;
+use App\Module\Vendors\Domain\VendorProfile;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
@@ -123,6 +126,62 @@ final class KeepStockTest extends TestCase
 
         self::assertSame([StockMovementKind::In, '5.000', $actor], [$received->getKind(), $received->getQuantity(), $received->getRecordedBy()]);
         self::assertSame([[$this->laptop->getId()->toRfc4122(), $this->site->getId()->toRfc4122(), '7.000']], $this->levels());
+    }
+
+    public function testAReceiptKeepsTheVendorTheSupplierReferenceAndTheDayItCameWith(): void
+    {
+        $this->track(SettingAddress::company($this->company), true);
+        $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), $this->clock->now());
+        $document = new ReceiptDocument($vendor, 'BL-2026-118', new \DateTimeImmutable('2026-09-12'));
+
+        $received = $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '5', Uuid::v7(), null, null, null, $document);
+        $plain = $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '1', Uuid::v7());
+
+        self::assertSame([$vendor, 'BL-2026-118', '2026-09-12'], [$received->getVendor(), $received->getSupplierReference(), $received->getReceivedOn()?->format('Y-m-d')]);
+        self::assertSame([null, null, null], [$plain->getVendor(), $plain->getSupplierReference(), $plain->getReceivedOn()], 'a receipt that names none still writes none');
+    }
+
+    public function testASplitReceiptGivesEveryPartTheSameDocument(): void
+    {
+        $this->track(SettingAddress::company($this->company), true);
+        $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), $this->clock->now());
+
+        $written = $this->keep->receiveSplit($this->company, $this->laptop->getId(), [
+            ['locationId' => $this->site->getId(), 'quantity' => '6'],
+            ['locationId' => $this->rack()->getId(), 'quantity' => '4'],
+        ], Uuid::v7(), null, null, null, new ReceiptDocument($vendor, 'BL-7', null));
+
+        self::assertSame([[$vendor, 'BL-7'], [$vendor, 'BL-7']], array_map(static fn (StockMovement $movement): array => [$movement->getVendor(), $movement->getSupplierReference()], $written));
+    }
+
+    public function testAReceiptDatedAheadOfTheCompanysTodayIsRefusedAndWritesNothing(): void
+    {
+        $this->track(SettingAddress::company($this->company), true);
+        // 09:00 UTC on the 15th is the 15th in Tunis: the 16th is still to come, the 15th is today.
+        $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '1', null, null, null, null, new ReceiptDocument(null, null, new \DateTimeImmutable('2026-09-15')));
+
+        try {
+            $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '1', null, null, null, null, new ReceiptDocument(null, null, new \DateTimeImmutable('2026-09-16')));
+            self::fail('a day that has not come was accepted');
+        } catch (InvalidStockMovement $refused) {
+            self::assertSame('receivedOn', $refused->field);
+        }
+        self::assertCount(1, $this->movements->movements);
+    }
+
+    public function testASupplierReferenceIsTrimmedEmptyIsNoneAndOverlongIsRefused(): void
+    {
+        self::assertSame(['BL-1', null], [new ReceiptDocument(null, '  BL-1 ')->supplierReference, new ReceiptDocument(null, '   ')->supplierReference]);
+        self::assertTrue(new ReceiptDocument(null, ' ')->isEmpty());
+        self::assertFalse(new ReceiptDocument(null, 'BL-1')->isEmpty());
+        self::assertSame(60, mb_strlen(new ReceiptDocument(null, str_repeat('é', 60))->supplierReference ?? ''));
+
+        try {
+            new ReceiptDocument(null, str_repeat('x', 61));
+            self::fail('a 61-character reference was accepted');
+        } catch (InvalidStockMovement $refused) {
+            self::assertSame('supplierReference', $refused->field);
+        }
     }
 
     public function testASplitReceiptWritesOneMovementPerLocationAndTheTotalIsTheirSum(): void

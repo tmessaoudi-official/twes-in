@@ -12,6 +12,7 @@ namespace App\Module\Inventory\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Module\Inventory\Application\KeepStock;
+use App\Module\Inventory\Application\ReceiptDocuments;
 use App\Module\Inventory\Domain\CostBasis;
 use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\StockLossReason;
@@ -26,7 +27,7 @@ use Symfony\Component\Uid\Uuid;
 /** @implements ProcessorInterface<StockMovementResource, StockMovementResource> */
 final readonly class RecordStockMovementProcessor implements ProcessorInterface
 {
-    public function __construct(private KeepStock $stock, private CompanyGuard $guard)
+    public function __construct(private KeepStock $stock, private ReceiptDocuments $documents, private CompanyGuard $guard)
     {
     }
 
@@ -60,6 +61,6 @@ final readonly class RecordStockMovementProcessor implements ProcessorInterface
     {
         $sees = $this->guard->may($company, ProductPermission::COST_READ);
 
-        return $this->stock->receive($company, $productId, $locationId, $data->quantity, $actor, $data->lot(), $sees ? $data->unitCost : null, $sees && null !== $data->applyCost ? CostBasis::from($data->applyCost) : null);
+        return $this->stock->receive($company, $productId, $locationId, $data->quantity, $actor, $data->lot(), $sees ? $data->unitCost : null, $sees && null !== $data->applyCost ? CostBasis::from($data->applyCost) : null, $this->documents->named($company, $data->vendorId, $data->supplierReference, $data->receivedOn));
     }
 }

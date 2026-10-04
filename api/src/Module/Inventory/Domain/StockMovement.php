@@ -12,6 +12,7 @@ namespace App\Module\Inventory\Domain;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductTracking;
+use App\Module\Vendors\Domain\Vendor;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use BcMath\Number;
@@ -33,6 +34,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_stock_movement_location', columns: ['location_id'])]
 #[ORM\Index(name: 'idx_stock_movement_lot', columns: ['lot_id'])]
 #[ORM\Index(name: 'idx_stock_movement_reverses', columns: ['reverses_source_id'], options: ['where' => '(reverses_source_id IS NOT NULL)'])]
+#[ORM\Index(name: 'idx_stock_movement_vendor', columns: ['vendor_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_stock_movement_source', columns: ['source_type', 'source_id', 'product_id', 'location_id', 'kind', 'lot_id'], options: ['where' => '(source_id IS NOT NULL)'])]
 class StockMovement implements CompanyOwned
 {
@@ -106,6 +108,19 @@ class StockMovement implements CompanyOwned
     #[ORM\Column(options: ['default' => false])]
     private bool $costTyped = false;
 
+    /** The vendor a receipt came from, when it names one; the vendor kept, its movements keep it, a deleted one leaves none. */
+    #[ORM\ManyToOne(targetEntity: Vendor::class)]
+    #[ORM\JoinColumn(name: 'vendor_id', nullable: true, onDelete: 'SET NULL')]
+    private ?Vendor $vendor = null;
+
+    /** The number on the vendor's own delivery note or invoice, as the person read it. */
+    #[ORM\Column(length: ReceiptDocument::REFERENCE_MAX, nullable: true)]
+    private ?string $supplierReference = null;
+
+    /** The day the goods arrived, which is not always the day somebody typed them in. */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $receivedOn = null;
+
     /** The invoice whose sale this movement takes back, for the goods a credit note returned; none otherwise. */
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $reversesSourceId = null;
@@ -138,7 +153,7 @@ class StockMovement implements CompanyOwned
     }
 
     /** @throws InvalidStockMovement */
-    public static function receipt(Product $product, StockLocation $location, string $quantity, ?Uuid $recordedBy, \DateTimeImmutable $now, ?StockLot $lot = null, ?string $unitCost = null): self
+    public static function receipt(Product $product, StockLocation $location, string $quantity, ?Uuid $recordedBy, \DateTimeImmutable $now, ?StockLot $lot = null, ?string $unitCost = null, ?ReceiptDocument $document = null): self
     {
         $receipt = new self($product, $location, $lot, StockMovementKind::In, self::onePieceOfASerial($product, self::quantity($quantity, $product, false)), self::SOURCE_RECEIPT, null, $recordedBy, $now);
         if (null !== $unitCost) {
@@ -151,6 +166,16 @@ class StockMovement implements CompanyOwned
             }
             $receipt->unitCost = new Number($normalized)->value;
             $receipt->costTyped = true;
+        }
+        if (null !== $document) {
+            // The company's own day decides what is still to come, wherever the server is.
+            $today = $now->setTimezone(new \DateTimeZone($product->getCompany()->getTimezone()))->format('Y-m-d');
+            if (null !== $document->receivedOn && $document->receivedOn->format('Y-m-d') > $today) {
+                throw new InvalidStockMovement('receivedOn', 'Goods cannot have arrived on a day that has not come yet.');
+            }
+            $receipt->vendor = $document->vendor;
+            $receipt->supplierReference = $document->supplierReference;
+            $receipt->receivedOn = $document->receivedOn;
         }
 
         return $receipt;
@@ -397,6 +422,21 @@ class StockMovement implements CompanyOwned
     public function valuedAt(string $unitCost): void
     {
         $this->unitCost ??= $unitCost;
+    }
+
+    public function getVendor(): ?Vendor
+    {
+        return $this->vendor;
+    }
+
+    public function getSupplierReference(): ?string
+    {
+        return $this->supplierReference;
+    }
+
+    public function getReceivedOn(): ?\DateTimeImmutable
+    {
+        return $this->receivedOn;
     }
 
     /** @return numeric-string|null */

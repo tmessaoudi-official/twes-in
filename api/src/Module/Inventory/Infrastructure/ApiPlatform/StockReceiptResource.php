@@ -12,6 +12,7 @@ namespace App\Module\Inventory\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Post;
+use App\Module\Inventory\Domain\ReceiptDocument;
 use App\Module\Inventory\Domain\StockLot;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -79,6 +80,22 @@ final class StockReceiptResource
     #[Assert\Date(groups: [self::WRITE])]
     #[Groups([self::WRITE])]
     public ?string $lotExpiresOn = null;
+
+    /** The same vendor, supplier reference and day for every part, as for one receipt; all optional. */
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'uuid'])]
+    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $vendorId = null;
+
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'maxLength' => ReceiptDocument::REFERENCE_MAX])]
+    #[Assert\Length(max: ReceiptDocument::REFERENCE_MAX, groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $supplierReference = null;
+
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
+    #[Assert\Date(groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $receivedOn = null;
 
     #[ApiProperty(readable: false, schema: ['type' => ['string', 'null'], 'enum' => ['average', 'last', null]])]
     #[Assert\Choice(choices: ['average', 'last'], groups: [self::WRITE])]

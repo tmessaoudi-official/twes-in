@@ -20,6 +20,8 @@ use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductTracking;
+use App\Module\Vendors\Domain\Vendor;
+use App\Module\Vendors\Domain\VendorProfile;
 use App\ModuleRegistry\Domain\ModuleState;
 use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
@@ -147,6 +149,66 @@ final class InventoryTest extends ApiTestCase
             array_map(static fn (array $row): array => [$row['locationId'], $row['quantity']], $this->levels()),
             'no refused receipt left anything behind',
         );
+    }
+
+    public function testAReceiptNamesItsVendorItsSupplierReferenceAndItsDayAndTheMovementsSayThem(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), new \DateTimeImmutable());
+        $this->em()->persist($vendor);
+        $this->em()->flush();
+        $siteId = $this->defaultLocationId();
+        $day = new \DateTimeImmutable('yesterday')->format('Y-m-d');
+        $document = ['vendorId' => $vendor->getId()->toRfc4122(), 'supplierReference' => ' BL-77 ', 'receivedOn' => $day];
+
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $siteId, 'quantity' => '3', ...$document]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame([$vendor->getId()->toRfc4122(), 'Sotumag', 'BL-77', $day], [$this->json()['vendorId'], $this->json()['vendorName'], $this->json()['supplierReference'], $this->json()['receivedOn']]);
+
+        $this->postJson($this->path('stock-receipts'), ['productId' => $this->laptopId, 'parts' => [['locationId' => $siteId, 'quantity' => '2']], ...$document]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $siteId, 'quantity' => '1']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame([null, null, null, null], [$this->json()['vendorId'], $this->json()['vendorName'], $this->json()['supplierReference'], $this->json()['receivedOn']], 'a receipt that names none says none');
+
+        $this->getJson($this->path('stock-movements').'?productId='.$this->laptopId);
+        $rows = array_map(static fn (array $row): array => [$row['quantity'], $row['vendorName'], $row['supplierReference'], $row['receivedOn']], $this->jsonList());
+        self::assertEqualsCanonicalizing([['3.000', 'Sotumag', 'BL-77', $day], ['2.000', 'Sotumag', 'BL-77', $day], ['1.000', null, null, null]], $rows);
+    }
+
+    public function testAReceiptRefusesAVendorThatIsNotTheCompanysADayToComeAndAnythingButAReceiptNamingOne(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $siteId = $this->defaultLocationId();
+        $receive = ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $siteId, 'quantity' => '1'];
+
+        foreach ([
+            'vendorId' => ['vendorId' => Uuid::v7()->toRfc4122()],
+            'receivedOn' => ['receivedOn' => new \DateTimeImmutable('tomorrow +1 day')->format('Y-m-d')],
+            'supplierReference' => ['supplierReference' => str_repeat('x', 61)],
+        ] as $field => $named) {
+            $this->postJson($this->path('stock-movements'), [...$receive, ...$named]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
+        }
+        $this->postJson($this->path('stock-movements'), [...$receive, 'operation' => 'count', 'supplierReference' => 'BL-1']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'only a receipt carries a supplier reference');
+        self::assertSame([], $this->levels(), 'nothing refused was written');
+    }
+
+    public function testNoVendorIsNamedOnAReceiptWhileVendorsIsSwitchedOff(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag'), new \DateTimeImmutable());
+        $this->em()->persist($vendor);
+        $this->em()->persist(ModuleState::of($this->company, 'vendors', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '1', 'vendorId' => $vendor->getId()->toRfc4122()]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('vendorId', (string) $this->client->getResponse()->getContent());
     }
 
     public function testASplitReceiptNeedsTheStockWritePermission(): void

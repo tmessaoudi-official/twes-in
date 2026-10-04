@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\QueryParameter;
 use App\Module\Inventory\Domain\NamedLot;
+use App\Module\Inventory\Domain\ReceiptDocument;
 use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockMovement;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -133,6 +134,34 @@ final class StockMovementResource
     public ?string $note = null;
 
     /**
+     * The vendor a receipt came from, the number on the vendor's own delivery note or invoice, and the day the goods
+     * arrived: all optional, and only a receipt carries them. A vendor is named while Vendors is switched on; the day
+     * is never one still to come.
+     */
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'uuid'])]
+    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\When(expression: 'this.operation !== "'.self::RECEIVE.'"', constraints: [new Assert\IsNull(message: 'Only a receipt names a vendor.')], groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $vendorId = null;
+
+    /** The vendor's name, read back so a list says whose goods they were without holding the vendors. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $vendorName = null;
+
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'maxLength' => ReceiptDocument::REFERENCE_MAX])]
+    #[Assert\Length(max: ReceiptDocument::REFERENCE_MAX, groups: [self::WRITE])]
+    #[Assert\When(expression: 'this.operation !== "'.self::RECEIVE.'"', constraints: [new Assert\IsNull(message: 'Only a receipt carries a supplier reference.')], groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $supplierReference = null;
+
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
+    #[Assert\Date(groups: [self::WRITE])]
+    #[Assert\When(expression: 'this.operation !== "'.self::RECEIVE.'"', constraints: [new Assert\IsNull(message: 'Only a receipt has a day of arrival.')], groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $receivedOn = null;
+
+    /**
      * For a receipt, where the company's setting offers the choice: the figure to make the product's cost, the weighted
      * average of what came in or the cost typed on this receipt. Ignored where the setting decides, and for a writer
      * who cannot read costs. Written only.
@@ -235,6 +264,10 @@ final class StockMovementResource
         $resource->sourceType = $movement->getSourceType();
         $resource->reason = $movement->getReason()?->value;
         $resource->note = $movement->getNote();
+        $resource->vendorId = $movement->getVendor()?->getId()->toRfc4122();
+        $resource->vendorName = $movement->getVendor()?->getProfile()->name;
+        $resource->supplierReference = $movement->getSupplierReference();
+        $resource->receivedOn = $movement->getReceivedOn()?->format('Y-m-d');
         $resource->sourceId = $movement->getSourceId()?->toRfc4122();
         $resource->recordedBy = $movement->getRecordedBy()?->toRfc4122();
         $resource->at = $movement->getAt()->format(\DATE_ATOM);
