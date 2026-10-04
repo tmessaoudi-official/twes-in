@@ -41,6 +41,12 @@ interface ExpenseRepository
      */
     public function paidBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): array;
 
+    /**
+     * What a company's recorded and paid expenses came to, taxes included, by day of the expense from one day included
+     * to another excluded. A draft is not counted: it is not in the books yet.
+     */
+    public function recordedGrossBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): string;
+
     /** Null for an expense that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Expense;
 

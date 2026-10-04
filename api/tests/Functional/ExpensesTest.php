@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Expenses\Domain\Expense;
 use App\Module\Expenses\Domain\ExpenseDetails;
 use App\Module\Vendors\Domain\Vendor;
@@ -236,6 +237,43 @@ final class ExpensesTest extends ApiTestCase
         $this->sendJson('DELETE', $this->path($id));
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'only a draft is deleted');
         self::assertSame(['expense.created', 'expense.revised', 'expense.recorded', 'expense.paid'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense' ORDER BY at, id"));
+    }
+
+    public function testTheHomeSummaryAddsUpWhatWasRecordedThisMonthAgainstTheSameDaysOfLastMonth(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $category = $this->category('Carburant');
+        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $first = $today->modify('first day of this month');
+        // The first of a month is always inside the days compared; two years back is inside neither.
+        $made = function (\DateTimeImmutable $day, string $net, bool $record) use ($category): string {
+            $this->postJson($this->path(), $this->expense(['date' => $day->format('Y-m-d'), 'amountNet' => $net, 'categoryId' => $category]));
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            $gross = $this->stringAt($this->json(), 'amountGross');
+            if ($record) {
+                $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/record', null);
+                self::assertResponseIsSuccessful();
+            }
+
+            return $gross;
+        };
+        $a = $made($first, '100', true);
+        $b = $made($first, '50', true);
+        $made($first, '999', false);
+        $c = $made($first->modify('-1 month'), '70', true);
+        $made($first->modify('-2 years'), '5000', true);
+
+        $this->getJson($this->companyPath().'/expense-summary');
+
+        self::assertResponseIsSuccessful();
+        $summary = $this->json();
+        self::assertSame([Decimal::format(Decimal::of($a)->add(Decimal::of($b)), 3), $c, 'TND', 3, $today->format('Y-m-d')], [$summary['month'], $summary['lastMonth'], $summary['currency'], $summary['currencyScale'], $summary['today']], 'drafts and other days are left out');
+
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->createUser('nobody@twes.local', 'password-1234', $this->em()->find(Company::class, $this->company->getId()), ['company.read'], 'outsider');
+        $this->login('nobody@twes.local', 'password-1234');
+        $this->getJson($this->companyPath().'/expense-summary');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'without expense.read it is a stranger\'s answer');
     }
 
     public function testPayingASupplierWithholdsThePresetsRateFromOneThousandDinarsAndAnotherRateWhenSaid(): void

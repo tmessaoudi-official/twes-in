@@ -70,6 +70,7 @@ describe('ExpensesFacade', () => {
     createCategory: vi.fn(),
     reviseCategory: vi.fn(),
     statusCounts: vi.fn(),
+    summary: vi.fn(),
   };
   let facade: ExpensesFacade;
 
@@ -97,6 +98,23 @@ describe('ExpensesFacade', () => {
     expect(api.expenses).toHaveBeenCalledWith('c1', search);
     expect(facade.expenses()).toEqual([draft]);
     expect(facade.total()).toBe(42);
+  });
+
+  it('keeps the home summary of the company, and says nothing of it when it cannot be read', async () => {
+    const summary = {
+      currency: 'TND',
+      currencyScale: 3,
+      today: '2026-09-21',
+      month: '150.000',
+      lastMonth: '70.000',
+    };
+    api.summary.mockResolvedValueOnce(summary).mockRejectedValueOnce(new Error('offline'));
+
+    await facade.loadSummary('c1');
+    expect(facade.summary()).toEqual(summary);
+
+    await facade.loadSummary('c1');
+    expect(facade.summary()).toEqual(summary);
   });
 
   it('shows the chips’ counts of the latest search, whatever order the answers come back in', async () => {

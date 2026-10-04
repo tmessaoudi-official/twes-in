@@ -2154,6 +2154,16 @@
     }
   },
   "expenses": {
+    "home": {
+      "title": "Expenses · {{month}}",
+      "see": "View",
+      "note": "recorded, taxes included, drafts left out",
+      "versus": {
+        "up": "+{{amount}} over the same days of last month",
+        "down": "−{{amount}} over the same days of last month",
+        "same": "Same as the same days of last month"
+      }
+    },
     "title": "Expenses",
     "add": "New expense",
     "none": "No expenses yet.",

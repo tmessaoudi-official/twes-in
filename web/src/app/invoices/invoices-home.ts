@@ -15,7 +15,8 @@ import { AuthFacade } from '../auth/auth-facade';
 import { formatMonth } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { AmountPipe } from '../shared/i18n/format-pipes';
-import { agingBars, chaseDue, collectedBars, initials, versus } from './invoice-summary-view';
+import { versus } from '../shared/ui/versus';
+import { agingBars, chaseDue, collectedBars, initials } from './invoice-summary-view';
 import { InvoicesFacade } from './invoices-facade';
 import type { AgingBucket } from './invoices-types';
 

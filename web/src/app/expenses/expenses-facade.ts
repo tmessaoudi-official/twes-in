@@ -15,6 +15,7 @@ import type {
   ExpenseSearch,
   ExpensesError,
   ExpenseStatusCounts,
+  ExpenseSummary,
   ExpenseVendorOption,
   TejFileAnswer,
 } from './expenses-types';
@@ -31,6 +32,7 @@ export class ExpensesFacade {
   private readonly categoriesSignal = signal<readonly ExpenseCategoryRow[]>([]);
   private readonly totalSignal = signal(0);
   private readonly statusCountsSignal = signal<ExpenseStatusCounts | null>(null);
+  private readonly summarySignal = signal<ExpenseSummary | null>(null);
   private pageRequest = 0;
   private countsRequest = 0;
   private readonly busySignal = signal(false);
@@ -41,6 +43,8 @@ export class ExpensesFacade {
   readonly total = this.totalSignal.asReadonly();
   /** What each status chip of the list would show; null until read, and kept while a new count is on its way. */
   readonly statusCounts = this.statusCountsSignal.asReadonly();
+  /** What the home shows of the expenses; null until read, and kept when a later read fails. */
+  readonly summary = this.summarySignal.asReadonly();
   readonly options = this.optionsSignal.asReadonly();
   readonly expense = this.expenseSignal.asReadonly();
   readonly attachments = this.attachmentsSignal.asReadonly();
@@ -73,6 +77,15 @@ export class ExpensesFacade {
       const counts = await this.api.statusCounts(companyId, search);
       if (request === this.countsRequest) this.statusCountsSignal.set(counts);
     });
+  }
+
+  /** The home's figure; a failed read leaves the last one, since the panel is secondary to the page it sits on. */
+  async loadSummary(companyId: string): Promise<void> {
+    try {
+      this.summarySignal.set(await this.api.summary(companyId));
+    } catch {
+      /* the last summary stays */
+    }
   }
 
   /** What the expense screen needs: its options, and the expense with its files unless it is new. */

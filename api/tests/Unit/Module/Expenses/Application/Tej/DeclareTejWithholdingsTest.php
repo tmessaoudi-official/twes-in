@@ -194,6 +194,11 @@ final class DeclareTejWithholdingsTest extends TestCase
                 return $paid;
             }
 
+            public function recordedGrossBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): string
+            {
+                throw new \LogicException('not used');
+            }
+
             public function search(Uuid $companyId, ExpenseSearch $search, PageRequest $page): Page
             {
                 throw new \LogicException('not used');

@@ -14,6 +14,7 @@ import type {
   ExpenseJsonldExpenseRead,
   ExpenseOptionsExpenseOptionsRead,
   ExpenseStatusCountsExpenseStatusCountsRead,
+  ExpenseSummaryExpenseSummaryRead,
   ExpenseExpenseClassifyValidationExpenseClassify as ExpenseExpenseClassify,
   ExpenseVendorPickExpenseVendorPickRead,
 } from '../api/types.gen';
@@ -31,6 +32,7 @@ import type {
   ExpenseSearch,
   ExpensesError,
   ExpenseStatusCounts,
+  ExpenseSummary,
   ExpenseVendorOption,
   TejFileAnswer,
   TejRefusalCode,
@@ -122,6 +124,30 @@ export class ExpensesApi {
       if (counts.all === undefined || counts.statuses === undefined)
         throw new Error('Status counts came without their figures.');
       return { all: counts.all, statuses: { ...counts.statuses } };
+    });
+  }
+
+  /** What the home shows: recorded so far this month and over the same days of last month. */
+  async summary(companyId: string): Promise<ExpenseSummary> {
+    return this.guard(EXPENSE, async () => {
+      const raw = await firstValueFrom(
+        this.http.get<ExpenseSummaryExpenseSummaryRead>(path(companyId, 'expense-summary')),
+      );
+      if (
+        raw.currency === undefined ||
+        raw.currencyScale === undefined ||
+        raw.today === undefined ||
+        raw.month === undefined ||
+        raw.lastMonth === undefined
+      )
+        throw new Error('The expense summary came without its figures.');
+      return {
+        currency: raw.currency,
+        currencyScale: raw.currencyScale,
+        today: raw.today,
+        month: raw.month,
+        lastMonth: raw.lastMonth,
+      };
     });
   }
 

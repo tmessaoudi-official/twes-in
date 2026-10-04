@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { NavigateCommand } from '../shell/commands';
+import type { HomePanel } from '../shell/home-manifest';
 import type { NavEntry } from '../shell/nav-manifest';
 import type { PageTab } from '../shared/ui/page-tabs';
 
@@ -40,5 +41,15 @@ export const EXPENSES_COMMANDS: readonly NavigateCommand[] = [
     group: 'create',
     permission: 'expense.write',
     module: EXPENSES_MODULE,
+  },
+];
+
+/** What the module shows on the home page: what was recorded in expenses this month, never called a profit. */
+export const EXPENSES_HOME: readonly HomePanel[] = [
+  {
+    key: 'expenses',
+    permission: 'expense.read',
+    module: EXPENSES_MODULE,
+    load: () => import('./expenses-home').then((feature) => feature.ExpensesHome),
   },
 ];

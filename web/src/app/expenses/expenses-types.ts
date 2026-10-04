@@ -38,6 +38,16 @@ export type ExpenseSortKey =
 
 /** One page of the expenses list as the API searches, narrows and sorts it (docs/SPEC.md § 7, lists at scale). */
 /** What each status chip of the list would show under the same search, as the API counted it (docs/SPEC.md § 7, 2026-09-26). */
+/** What the home shows of the expenses: recorded so far this month, taxes included, and over the same days of last month. */
+export interface ExpenseSummary {
+  readonly currency: string;
+  readonly currencyScale: number;
+  /** The company's own day, which names the month. */
+  readonly today: string;
+  readonly month: string;
+  readonly lastMonth: string;
+}
+
 export interface ExpenseStatusCounts {
   all: number;
   statuses: Record<ExpenseStatus, number>;

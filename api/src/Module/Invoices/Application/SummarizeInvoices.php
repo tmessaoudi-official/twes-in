@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Application;
 
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
+use App\Shared\Application\MonthSoFar;
 use App\Tenancy\Domain\Company;
 use BcMath\Number;
 use Psr\Clock\ClockInterface;
@@ -89,10 +90,10 @@ final readonly class SummarizeInvoices
         $vat = $this->source->vatIssued($company->getId(), $thisMonth, $thisMonth->modify('+1 month'));
         usort($vat, static fn (array $a, array $b): int => Decimal::of($b['rate'])->compare(Decimal::of($a['rate'])) ?: $a['code'] <=> $b['code']);
 
-        // The month so far and the same number of days of last month, which may be shorter: it stops where this month starts.
-        $tomorrow = $today->modify('+1 day');
-        $lastFrom = $thisMonth->modify('-1 month');
-        $lastUntil = min($lastFrom->modify(\sprintf('+%d days', (int) $today->format('j'))), $thisMonth);
+        $window = MonthSoFar::of($today);
+        $tomorrow = $window->until;
+        $lastFrom = $window->previousFrom;
+        $lastUntil = $window->previousUntil;
         $now = $this->source->invoicedBetween($company->getId(), $thisMonth, $tomorrow);
         $before = $this->source->invoicedBetween($company->getId(), $lastFrom, $lastUntil);
 

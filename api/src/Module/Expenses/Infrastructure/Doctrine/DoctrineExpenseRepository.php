@@ -66,6 +66,20 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
         return $expenses;
     }
 
+    public function recordedGrossBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): string
+    {
+        $sum = $this->entityManager->createQueryBuilder()
+            ->select('COALESCE(SUM(e.amountGross), 0)')->from(Expense::class, 'e')
+            ->where('e.company = :company')->setParameter('company', $companyId, 'uuid')
+            ->andWhere('e.status IN (:recorded)')->setParameter('recorded', [ExpenseStatus::Recorded, ExpenseStatus::Paid])
+            ->andWhere('e.date >= :from')->setParameter('from', $from, Types::DATE_IMMUTABLE)
+            ->andWhere('e.date < :until')->setParameter('until', $until, Types::DATE_IMMUTABLE)
+            ->getQuery()->getSingleScalarResult();
+        \assert(is_numeric($sum));
+
+        return (string) $sum;
+    }
+
     public function search(Uuid $companyId, ExpenseSearch $search, PageRequest $page): Page
     {
         $query = $this->filtered($companyId, $search)->select('e', 'v', 'k');

@@ -148,6 +148,31 @@ describe('ExpensesApi', () => {
     expect(await pending).toEqual({ all: 16, statuses });
   });
 
+  it('reads the home summary: what was recorded this month and over the same days of last month', async () => {
+    const pending = api.summary('c1');
+    http.expectOne('/api/companies/c1/expense-summary').flush({
+      currency: 'TND',
+      currencyScale: 3,
+      today: '2026-09-21',
+      month: '150.000',
+      lastMonth: '70.000',
+    });
+
+    expect(await pending).toEqual({
+      currency: 'TND',
+      currencyScale: 3,
+      today: '2026-09-21',
+      month: '150.000',
+      lastMonth: '70.000',
+    });
+  });
+
+  it('refuses a summary that came without its figures', async () => {
+    const pending = api.summary('c1');
+    http.expectOne('/api/companies/c1/expense-summary').flush({ currency: 'TND' });
+    await expect(pending).rejects.toThrow();
+  });
+
   it('refuses counts that came without their figures, rather than showing none as nothing', async () => {
     const pending = api.statusCounts('c1', {
       page: 1,

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { Type } from '@angular/core';
+import { EXPENSES_HOME } from '../expenses/expenses-nav';
 import { FIRST_STEPS_HOME } from '../first-steps/first-steps-nav';
 import { INVOICES_HOME } from '../invoices/invoices-nav';
 import { WATCH_HOME } from '../watch/watch-nav';
@@ -21,4 +22,5 @@ export const HOME_PANELS: readonly HomePanel[] = [
   ...FIRST_STEPS_HOME,
   ...WATCH_HOME,
   ...INVOICES_HOME,
+  ...EXPENSES_HOME,
 ];

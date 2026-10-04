@@ -2154,6 +2154,16 @@
     }
   },
   "expenses": {
+    "home": {
+      "title": "Dépenses · {{month}}",
+      "see": "Voir",
+      "note": "comptabilisées, taxes comprises, brouillons exclus",
+      "versus": {
+        "up": "+{{amount}} sur les mêmes jours du mois dernier",
+        "down": "−{{amount}} sur les mêmes jours du mois dernier",
+        "same": "Comme les mêmes jours du mois dernier"
+      }
+    },
     "title": "Dépenses",
     "add": "Nouvelle dépense",
     "none": "Aucune dépense pour l’instant.",
