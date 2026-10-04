@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { FormArray, FormControl, FormGroup } from '@angular/forms';
-import { dirtyCount, revertToSaved } from './dirty-count';
+import { dirtyCount, revertToSaved, unsavedChanges } from './dirty-count';
 
 const SAVED = {
   name: 'Carthage SARL',
@@ -112,5 +114,53 @@ describe('dirtyCount', () => {
     expect(form.controls['terms']!.value).toBe(30);
     expect(dirtyCount(form.getRawValue(), SAVED)).toBe(0);
     expect(form.touched).toBe(false);
+  });
+});
+
+describe('unsavedChanges', () => {
+  function follow() {
+    const form = signal<FormGroup | null>(null);
+    const saved = signal<unknown>(null);
+    const count = TestBed.runInInjectionContext(() => unsavedChanges(form, saved));
+    return { form, saved, count };
+  }
+
+  it('on a new record counts what was typed since it opened, never the defaults it opened with', () => {
+    const { form, count } = follow();
+    const group = customer();
+    form.set(group);
+    TestBed.tick();
+    // No saved record to compare with: the form's own opening values are the baseline.
+    expect(count()).toBe(0);
+
+    group.controls['name']!.setValue('Carthage SA');
+    TestBed.tick();
+    expect(count()).toBe(1);
+
+    group.controls['name']!.setValue('Carthage SARL');
+    TestBed.tick();
+    expect(count()).toBe(0);
+  });
+
+  it('starts again from the opening values of the next form the page shows', () => {
+    const { form, count } = follow();
+    form.set(customer());
+    TestBed.tick();
+    const next = customer();
+    next.controls['terms']!.setValue(60);
+    form.set(next);
+    TestBed.tick();
+
+    expect(count()).toBe(0);
+  });
+
+  it('once a saved record exists, counts against it', () => {
+    const { form, saved, count } = follow();
+    const group = customer();
+    form.set(group);
+    TestBed.tick();
+    saved.set({ ...SAVED, terms: 45 });
+
+    expect(count()).toBe(1);
   });
 });

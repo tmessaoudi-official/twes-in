@@ -286,6 +286,7 @@ describe('ExpensePage', () => {
     type('field-description', 'Stationnement');
     type('field-amountNet', '4');
     type('field-payee', 'Parking Lafayette');
+    await settle();
     q('record-save')!.click();
     await settle();
     expect(facade.createExpense).toHaveBeenCalledWith(
@@ -297,6 +298,7 @@ describe('ExpensePage', () => {
     await open('e1');
     expect(q('expense-status')?.textContent).toContain('Sotumag');
     type('field-amountNet', '120');
+    await settle();
     q('record-save')!.click();
     await settle();
     expect(facade.reviseExpense).toHaveBeenCalledWith(

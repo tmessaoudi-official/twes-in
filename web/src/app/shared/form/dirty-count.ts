@@ -81,8 +81,16 @@ export function unsavedChanges(
 ): Signal<number> {
   const typed = signal(0);
   let subscription: Subscription | null = null;
+  // A new record has nothing saved to compare with, so the form's own opening values are what it is measured
+  // against: a blank form is not "unsaved changes", and leaving it asks nothing. Taken when the form appears,
+  // before anyone has typed in it.
+  let opened: { control: AbstractControl; values: unknown } | null = null;
   effect(() => {
     const control = form();
+    opened =
+      control === null
+        ? null
+        : { control, values: untracked(() => structuredClone(control.getRawValue())) };
     subscription?.unsubscribe();
     subscription =
       control?.valueChanges.subscribe(() => typed.update((count) => count + 1)) ?? null;
@@ -93,7 +101,10 @@ export function unsavedChanges(
   const count = computed(() => {
     typed();
     const control = form();
-    return control === null ? 0 : dirtyCount(control.getRawValue(), saved());
+    if (control === null) return 0;
+    const record = saved();
+    const baseline = record ?? (opened?.control === control ? opened.values : null);
+    return dirtyCount(control.getRawValue(), baseline);
   });
   // Declared here rather than on each page (row 45): a page that counts its unsaved fields at all is guarded
   // against being left, and one added later cannot forget to take part.

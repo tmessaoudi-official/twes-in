@@ -321,6 +321,7 @@ describe('CustomerPage', () => {
     type('field-number', 'CLI-0009');
     type('field-name', 'Carthage Conseil');
     type('field-identifier__matricule_fiscal', '1234567A/B/M/000');
+    await settle();
     q('record-save')!.click();
     await settle();
 
@@ -352,6 +353,7 @@ describe('CustomerPage', () => {
     type('field-number', 'CLI-0009');
     type('field-name', 'Carthage Conseil');
     type('field-identifier__matricule_fiscal', '1234567A/B/M/000');
+    await settle();
     q('record-save')!.click();
     await settle();
     await vi.waitFor(() => expect(offeredNext()?.key).toBe('customers.suggest.invoice'));
@@ -369,6 +371,7 @@ describe('CustomerPage', () => {
     type('field-number', 'CLI-0009');
     type('field-name', 'Carthage Conseil');
     type('field-identifier__matricule_fiscal', '1234567A/B/M/000');
+    await settle();
     q('record-save')!.click();
     await settle();
     await vi.waitFor(() => expect(successToasts()).toContain('customers.saved'));
@@ -380,6 +383,7 @@ describe('CustomerPage', () => {
     type('field-number', 'CLI-0010');
     type('field-name', 'Tunis Conseil');
     type('field-identifier__matricule_fiscal', '1234567A/B/M/000');
+    await settle();
     q('record-save')!.click();
     await settle();
     await vi.waitFor(() => expect(successToasts()).toHaveLength(2));
@@ -407,6 +411,7 @@ describe('CustomerPage', () => {
     type('field-name', 'Carthage Conseil');
     type('field-identifier__matricule_fiscal', '1234567A/B/M/000');
     type('field-custom__sector', ' Gros ');
+    await settle();
     q('record-save')!.click();
     await settle();
 
@@ -421,6 +426,7 @@ describe('CustomerPage', () => {
     type('field-number', 'CLI-0009');
     type('field-name', 'Carthage Conseil');
     type('field-identifier__matricule_fiscal', '1234567');
+    await settle();
     q('record-save')!.click();
     await settle();
 
