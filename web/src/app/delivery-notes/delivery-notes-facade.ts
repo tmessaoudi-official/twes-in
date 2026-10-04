@@ -17,6 +17,7 @@ import type {
   DeliveryNoteLeft,
   DeliveryNoteStatusCounts,
   ProductOption,
+  InvoiceDraftOption,
 } from './delivery-notes-types';
 
 /** The delivery notes of the company being worked in, the note open on screen and what its form offers. */
@@ -182,16 +183,34 @@ export class DeliveryNotesFacade {
     companyId: string,
     id: string,
     quantities?: Readonly<Record<string, string>>,
+    intoDraftId?: string,
   ): Promise<string | null> {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
-      return await this.api.invoice(companyId, [id], quantities);
+      return await this.api.invoice(companyId, [id], quantities, intoDraftId);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
       return null;
     } finally {
       this.busySignal.set(false);
+    }
+  }
+
+  /**
+   * The drafts a note could be added to, none when there are none or they could not be read (the reason is in `error`:
+   * what could not be asked is not the same as there being nothing to add to).
+   */
+  async draftsOf(
+    companyId: string,
+    customerId: string,
+    establishmentId: string | null,
+  ): Promise<InvoiceDraftOption[] | null> {
+    try {
+      return await this.api.draftsOf(companyId, customerId, establishmentId);
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return null;
     }
   }
 

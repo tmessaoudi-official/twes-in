@@ -1460,6 +1460,13 @@
   },
   "delivery_notes": {
     "credit_over": "Cette livraison porte ce que le client doit à {{owed}} + {{total}} {{currency}}, au-delà de son plafond de crédit de {{limit}} {{currency}}.",
+    "invoice_target": {
+      "title": "Sur quelle facture ce bon est-il facturé ?",
+      "help": "Une nouvelle facture, ou à la suite des lignes d'un brouillon de ce client. Une facture émise n'est jamais modifiée : un avoir la corrige.",
+      "new": "Une nouvelle facture",
+      "draft": "Ajouter à un brouillon de {{total}} ({{lines}} lignes) {{reference}}",
+      "cancel": "Annuler"
+    },
     "invoice_part": {
       "title": "Quantités à facturer",
       "help": "Chaque ligne part de ce qu'il en reste ; mettez 0 pour l'écarter de cette facture.",

@@ -395,6 +395,40 @@ class Invoice implements CompanyOwned
     }
 
     /**
+     * Lines added after the ones a draft already has, as a delivery note's lines are (docs/SPEC.md § 7, 2026-10-04): what
+     * the draft says otherwise is kept, and the lines it had keep their order and what they name.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     *
+     * @throws InvoiceNotDraft
+     * @throws InvalidInvoice  when the document is not an invoice, or a line names something of another company
+     */
+    public function addLines(array $lines, \DateTimeImmutable $now): void
+    {
+        $this->assertDraft('changes');
+        if (InvoiceType::Invoice !== $this->documentType) {
+            throw new InvalidInvoice('lines', 'Only an invoice takes the lines of delivery notes.');
+        }
+        $added = $this->linesOfThisCompany($lines);
+        if ([] === $added) {
+            return;
+        }
+        $this->writeLines([...array_map(static fn (InvoiceLine $line): InvoiceLineDetails => new InvoiceLineDetails(
+            $line->getProduct(),
+            $line->getDescription(),
+            $line->getQuantity(),
+            $line->getUnit(),
+            $line->getUnitPriceNet(),
+            $line->getDiscountRate(),
+            array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
+            $line->getSourceDeliveryNoteLineId(),
+            $line->getLotCode(),
+            $line->isReturned(),
+        ), $this->getLines()), ...$added]);
+        $this->updatedAt = $now;
+    }
+
+    /**
      * Numbers a draft with lines and fixes what it says: its taxes take their rates of the
      * issue day, then the figures those give are written once and answered from then on; what the customer was called,
      * the language, the mentions, the footer and the due day (the issue day plus the terms) are kept as they stand.

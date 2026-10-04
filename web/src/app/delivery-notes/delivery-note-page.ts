@@ -61,6 +61,7 @@ import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { DeliverDialog } from './deliver-dialog';
 import { InvoicePartDialog, type InvoicePartLine } from './invoice-part-dialog';
+import { InvoiceTargetDialog, type InvoiceTarget } from './invoice-target-dialog';
 import { RecordView } from '../shared/form/record-view';
 
 /**
@@ -594,10 +595,42 @@ export class DeliveryNotePage {
     const companyId = this.company()?.id;
     const id = this.id();
     if (!companyId || id === null || this.busy()) return;
-    const invoiceId = await this.facade.invoice(companyId, id);
+    const target = await this.chooseTarget(companyId);
+    if (target === null) return;
+    const invoiceId = await this.facade.invoice(
+      companyId,
+      id,
+      undefined,
+      target.draftId ?? undefined,
+    );
     if (invoiceId !== null) {
       await this.router.navigate(['/invoices', invoiceId]);
     }
+  }
+
+  /**
+   * Where the note is invoiced: asked only when the customer has a draft in the note's establishment to add it to,
+   * otherwise it starts a new invoice as it always did. Null when the person left the question.
+   */
+  private async chooseTarget(companyId: string): Promise<InvoiceTarget | null> {
+    const current = this.current();
+    if (!current || current.customerId === null) return { draftId: null };
+    const drafts = await this.facade.draftsOf(
+      companyId,
+      current.customerId,
+      current.establishmentId,
+    );
+    // A lookup that failed is said in `error`; the note then still starts a new invoice rather than going nowhere.
+    if (drafts === null || drafts.length === 0) return { draftId: null };
+    const target = await firstValueFrom(
+      this.dialog
+        .open(InvoiceTargetDialog, {
+          data: { drafts, scale: this.scale() ?? 3 },
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
+    );
+    return target ?? null;
   }
 
   /** An invoice for part of the note: how much of each line is asked in a dialog, from what is left of it. */
@@ -618,7 +651,14 @@ export class DeliveryNotePage {
         .afterClosed(),
     );
     if (!quantities) return;
-    const invoiceId = await this.facade.invoice(companyId, id, quantities);
+    const target = await this.chooseTarget(companyId);
+    if (target === null) return;
+    const invoiceId = await this.facade.invoice(
+      companyId,
+      id,
+      quantities,
+      target.draftId ?? undefined,
+    );
     if (invoiceId !== null) {
       await this.router.navigate(['/invoices', invoiceId]);
     }

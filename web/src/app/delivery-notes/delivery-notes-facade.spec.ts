@@ -58,6 +58,7 @@ describe('DeliveryNotesFacade', () => {
     deliver: vi.fn(),
     cancel: vi.fn(),
     invoice: vi.fn(),
+    draftsOf: vi.fn(),
     statusCounts: vi.fn(),
     credit: vi.fn(),
     left: vi.fn(),
@@ -167,13 +168,26 @@ describe('DeliveryNotesFacade', () => {
   it('answers the id of the invoice drafted from a note, or null with the reason', async () => {
     api.invoice.mockResolvedValue('i7');
     expect(await facade.invoice('c1', 'n1')).toBe('i7');
-    expect(api.invoice).toHaveBeenCalledWith('c1', ['n1'], undefined);
+    expect(api.invoice).toHaveBeenCalledWith('c1', ['n1'], undefined, undefined);
     await facade.invoice('c1', 'n1', { l1: '2' });
-    expect(api.invoice).toHaveBeenLastCalledWith('c1', ['n1'], { l1: '2' });
+    expect(api.invoice).toHaveBeenLastCalledWith('c1', ['n1'], { l1: '2' }, undefined);
+    await facade.invoice('c1', 'n1', undefined, 'd1');
+    expect(api.invoice).toHaveBeenLastCalledWith('c1', ['n1'], undefined, 'd1');
 
     api.invoice.mockRejectedValue(new DeliveryNotesRefused('conflict'));
     expect(await facade.invoice('c1', 'n1')).toBeNull();
     expect(facade.error()).toBe('conflict');
+  });
+
+  it('answers the drafts a note could be added to, and null with the reason when they could not be read', async () => {
+    const drafts = [{ id: 'd1', total: '10.000', lineCount: 1, customerReference: null }];
+    api.draftsOf.mockResolvedValue(drafts);
+    expect(await facade.draftsOf('c1', 'k1', 'e1')).toEqual(drafts);
+    expect(api.draftsOf).toHaveBeenCalledWith('c1', 'k1', 'e1');
+
+    api.draftsOf.mockRejectedValue(new DeliveryNotesRefused('network'));
+    expect(await facade.draftsOf('c1', 'k1', 'e1')).toBeNull();
+    expect(facade.error()).toBe('network');
   });
 
   it('answers the credit position of a note, and null when it could not be read, without raising the screen’s error', async () => {

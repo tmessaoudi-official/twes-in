@@ -34,7 +34,9 @@ import {
   type CustomerOption,
   type LineTaxOption,
   type ProductOption,
+  type InvoiceDraftOption,
 } from './delivery-notes-types';
+import { InvoicesApi } from '../invoices/invoices-api';
 import { trackingOf } from '../products/products-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
@@ -50,6 +52,7 @@ const LINE_TAX_FAMILIES: readonly LineTaxOption['family'][] = ['vat', 'levy'];
 @Injectable({ providedIn: 'root' })
 export class DeliveryNotesApi {
   private readonly http = inject(HttpClient);
+  private readonly invoices = inject(InvoicesApi);
 
   /** What the note form offers: the currency, and the active establishments, units and line taxes. */
   async options(companyId: string): Promise<DeliveryNoteOptions> {
@@ -234,6 +237,7 @@ export class DeliveryNotesApi {
     companyId: string,
     deliveryNoteIds: readonly string[],
     quantities?: Readonly<Record<string, string>>,
+    intoDraftId?: string,
   ): Promise<string> {
     const body: InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite = {
       deliveryNoteIds: [...deliveryNoteIds],
@@ -242,11 +246,43 @@ export class DeliveryNotesApi {
     return this.guard(async () => {
       const draft = await firstValueFrom(
         this.http.post<InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead>(
-          `${companyPath(companyId)}/invoices/from-delivery-notes`,
+          intoDraftId === undefined
+            ? `${companyPath(companyId)}/invoices/from-delivery-notes`
+            : `${companyPath(companyId)}/invoices/${encodeURIComponent(intoDraftId)}/delivery-notes`,
           body,
         ),
       );
       return draft.id ?? '';
+    });
+  }
+
+  /**
+   * The drafts of this customer and establishment the note could be added to, newest work first as the API lists
+   * them; a draft of another establishment is left out, because its series numbers it. At most the first page.
+   */
+  async draftsOf(
+    companyId: string,
+    customerId: string,
+    establishmentId: string | null,
+  ): Promise<InvoiceDraftOption[]> {
+    return this.guard(async () => {
+      const page = await this.invoices.invoices(companyId, {
+        page: 1,
+        itemsPerPage: 20,
+        q: '',
+        status: 'draft',
+        documentType: 'invoice',
+        customerId,
+        order: null,
+      });
+      return page.rows
+        .filter((row) => row.establishmentId === establishmentId)
+        .map((row) => ({
+          id: row.id,
+          total: row.total,
+          lineCount: row.lines.length,
+          customerReference: row.customerReference,
+        }));
     });
   }
 

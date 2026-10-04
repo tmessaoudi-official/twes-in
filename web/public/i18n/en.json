@@ -1460,6 +1460,13 @@
   },
   "delivery_notes": {
     "credit_over": "This delivery brings what the customer owes to {{owed}} + {{total}} {{currency}}, past their credit limit of {{limit}} {{currency}}.",
+    "invoice_target": {
+      "title": "Where is this note invoiced?",
+      "help": "A new invoice, or added after the lines of a draft of this customer. An issued invoice is never changed: a credit note corrects it.",
+      "new": "A new invoice",
+      "draft": "Add to a draft of {{total}} ({{lines}} lines) {{reference}}",
+      "cancel": "Cancel"
+    },
     "invoice_part": {
       "title": "Quantities to invoice",
       "help": "Each line starts at what is left of it; enter 0 to leave it off this invoice.",

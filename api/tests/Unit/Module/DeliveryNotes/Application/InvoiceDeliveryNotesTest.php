@@ -29,7 +29,9 @@ use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Domain\InvoiceLine;
+use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceLineTax;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Shared\Domain\PrintSettings;
@@ -175,6 +177,74 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $held->cancel($this->clock->now());
         $this->invoicing->draftInvoice($this->company, [$mine->getId()], null);
         self::assertCount(2, $this->invoices->invoices, 'a cancelled draft holds no note');
+    }
+
+    public function testNotesAreAddedToAnExistingDraftOfTheSameCustomerAfterItsOwnLinesAndAuditedAsARevision(): void
+    {
+        $first = $this->note('BL-2026-00001');
+        $second = $this->note('BL-2026-00002', [
+            new DeliveryNoteLineDetails(null, 'Câble', '4', $this->unit('C62'), '3', [$this->tax('TVA19')]),
+        ]);
+        $draft = $this->invoicing->draftInvoice($this->company, [$first->getId()], null);
+        $actor = Uuid::v7();
+
+        $same = $this->invoicing->addToDraft($this->company, $draft->getId(), [$second->getId()], $actor);
+
+        self::assertSame($draft, $same, 'the draft itself grows, no second invoice is made');
+        self::assertSame([$draft], $this->invoices->invoices);
+        self::assertSame(InvoiceStatus::Draft, $draft->getStatus());
+        self::assertEquals(
+            array_map(static fn (DeliveryNoteLine $line): Uuid => $line->getId(), [...$first->getLines(), ...$second->getLines()]),
+            array_map(static fn (InvoiceLine $line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $draft->getLines()),
+        );
+        self::assertSame([['Pièce', '1.000', 1], ['Câble', '4.000', 2]], array_map(static fn (InvoiceLine $line): array => [$line->getDescription(), $line->getQuantity(), $line->getPosition()], $draft->getLines()));
+        $entry = $this->audit->entries[array_key_last($this->audit->entries)];
+        self::assertSame(
+            ['invoice', $draft->getId(), 'invoice.revised', $actor, ['fields' => ['lines'], 'deliveryNoteIds' => [$second->getId()->toRfc4122()]]],
+            [$entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $entry->changes],
+        );
+    }
+
+    public function testAHalfInvoicedLineIsAddedForTheRestAndNeverTwiceOver(): void
+    {
+        $line = $this->note('BL-2026-00001', [new DeliveryNoteLineDetails(null, 'Vis', '10', $this->unit('C62'), '1', [$this->tax('TVA19')])]);
+        $lineId = $line->getLines()[0]->getId()->toRfc4122();
+        $draft = $this->invoicing->draftInvoice($this->company, [$line->getId()], null, [$lineId => '4']);
+
+        $this->invoicing->addToDraft($this->company, $draft->getId(), [$line->getId()], null, [$lineId => '6']);
+        self::assertSame(['4.000', '6.000'], array_map(static fn (InvoiceLine $each): string => $each->getQuantity(), $draft->getLines()));
+
+        $this->expectException(DeliveryNoteTransitionRefused::class);
+        $this->invoicing->addToDraft($this->company, $draft->getId(), [$line->getId()], null);
+    }
+
+    public function testWhatCannotBeAddedIsRefusedAndTheDraftIsLeftAsItWas(): void
+    {
+        $draft = $this->invoicing->draftInvoice($this->company, [$this->note('BL-2026-00001')->getId()], null);
+        $otherCustomer = $this->note('BL-2026-00002', customer: $this->customer($this->company, 'CLI-0002'));
+        $theirs = $this->note('BL-2026-00001', company: $this->globex);
+        $fine = $this->note('BL-2026-00003');
+        $before = array_map(static fn (InvoiceLine $line): string => $line->getDescription(), $draft->getLines());
+        $audited = \count($this->audit->entries);
+
+        foreach ([
+            'a note of another customer' => [InvalidDeliveryNote::class, fn () => $this->invoicing->addToDraft($this->company, $draft->getId(), [$otherCustomer->getId()], null)],
+            'a note of another company' => [InvalidDeliveryNote::class, fn () => $this->invoicing->addToDraft($this->company, $draft->getId(), [$theirs->getId()], null)],
+            'no note at all' => [InvalidDeliveryNote::class, fn () => $this->invoicing->addToDraft($this->company, $draft->getId(), [], null)],
+            'another company\'s invoice' => [InvoiceNotFound::class, fn () => $this->invoicing->addToDraft($this->globex, $draft->getId(), [$fine->getId()], null)],
+        ] as $case => [$expected, $attempt]) {
+            try {
+                $attempt();
+                self::fail("$case was accepted");
+            } catch (\RuntimeException|\DomainException $refused) {
+                self::assertInstanceOf($expected, $refused, $case);
+            }
+        }
+        self::assertSame([$before, $audited], [array_map(static fn (InvoiceLine $line): string => $line->getDescription(), $draft->getLines()), \count($this->audit->entries)]);
+
+        $draft->cancel($this->clock->now());
+        $this->expectException(InvoiceNotDraft::class);
+        $this->invoicing->addToDraft($this->company, $draft->getId(), [$fine->getId()], null);
     }
 
     public function testIssuingAnInvoiceMarksTheNotesOfItsLinesInvoicedAndLeavesWhatItCannotMarkAsItWas(): void

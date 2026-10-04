@@ -18,7 +18,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * An invoice drafted from delivery notes (docs/SPEC.md § 7, 2026-09-14), with invoice.write: the answer is the draft
- * invoice. It belongs to the delivery notes module, so it answers 404 while that module is off, and while invoices are.
+ * invoice. The same notes can instead be added to an existing draft of their customer and establishment, POST
+ * .../invoices/{invoiceId}/delivery-notes (2026-10-04), which answers 409 on an invoice that is not a draft. It belongs to the delivery notes module, so it answers 404 while that module is off, and while invoices are.
  */
 #[ApiResource(
     shortName: 'InvoiceFromDeliveryNotes',
@@ -27,6 +28,17 @@ use Symfony\Component\Validator\Constraints as Assert;
             uriTemplate: '/companies/{companyId}/invoices/from-delivery-notes',
             processor: DraftInvoiceFromDeliveryNotesProcessor::class,
             security: 'is_granted("ROLE_USER")',
+            output: InvoiceResource::class,
+            normalizationContext: InvoiceResource::NORMALIZATION,
+            denormalizationContext: ['groups' => [self::WRITE]],
+            validationContext: ['groups' => [self::WRITE]],
+        ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/delivery-notes',
+            status: 200,
+            processor: AddDeliveryNotesToDraftProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
             output: InvoiceResource::class,
             normalizationContext: InvoiceResource::NORMALIZATION,
             denormalizationContext: ['groups' => [self::WRITE]],

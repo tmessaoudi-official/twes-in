@@ -138,7 +138,7 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
 
     await page.getByTestId('document-action-validate').click();
     await page.getByTestId('confirm-run').click();
-    await expect(page.getByTestId('delivery-note-title')).toHaveText(/BL-\d{4}-\d{5}/);
+    await expect(page.getByTestId('delivery-note-title')).toHaveText(/BL-\d{4}-(\d{2}-)?\d{5}/);
     const noteNumber = ((await page.getByTestId('delivery-note-title').textContent()) ?? '').trim();
     await expect(page.getByTestId('line-0-quantity')).toBeDisabled();
     expect(await wcagViolations(page)).toEqual([]);
@@ -168,6 +168,51 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
     await expectFacetCount(page, 'list-facet-status-all', '1');
     await expectFacetCount(page, 'list-facet-status-delivered', '1');
     await expectFacetCount(page, 'list-facet-status-draft', '0');
+  } finally {
+    await retire(page, customerNumber);
+  }
+});
+
+/** A one-line note for the customer, drafted and validated through the screens; it ends on the validated note. */
+async function validatedNote(
+  page: Page,
+  customerNumber: string,
+  description: string,
+): Promise<void> {
+  await page.goto('/delivery-notes/new');
+  await page.getByTestId('delivery-note-customer').fill(customerNumber);
+  await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
+  await page.getByTestId('line-0-description').fill(description);
+  await page.getByTestId('line-0-quantity').fill('1');
+  await page.getByTestId('line-0-price').fill('100');
+  await choose(page, 'line-0-taxes', /19/);
+  await page.getByTestId('document-action-save').click();
+  await expect(page).toHaveURL(/\/delivery-notes\/[0-9a-f-]{36}$/);
+  await page.getByTestId('document-action-validate').click();
+  await page.getByTestId('confirm-run').click();
+  await expect(page.getByTestId('delivery-note-title')).toHaveText(/BL-\d{4}-(\d{2}-)?\d{5}/);
+}
+
+test('a second note is added to the draft invoice the first one started', async ({ page }) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const customerNumber = `E2E-DA-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  try {
+    await validatedNote(page, customerNumber, `Premier ${run}`);
+    // No draft yet: the note goes straight onto a new invoice, no question asked.
+    await page.getByTestId('document-action-invoice').click();
+    await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
+    const invoiceUrl = page.url();
+    const invoiceId = invoiceUrl.slice(invoiceUrl.lastIndexOf('/') + 1);
+
+    await validatedNote(page, customerNumber, `Second ${run}`);
+    await page.getByTestId('document-action-invoice').click();
+    await page.getByTestId(`invoice-target-${invoiceId}`).click();
+    await expect(page).toHaveURL(invoiceUrl);
+    await expect(page.getByTestId('line-0-description')).toHaveValue(`Premier ${run}`);
+    await expect(page.getByTestId('line-1-description')).toHaveValue(`Second ${run}`);
   } finally {
     await retire(page, customerNumber);
   }

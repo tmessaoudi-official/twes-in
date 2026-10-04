@@ -131,6 +131,66 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
     }
 
     /** docs/SPEC.md § 7: an invoice takes all or part of a note's lines, and the note is invoiced once nothing is left. */
+    public function testANoteIsAddedToAnExistingDraftAndBothAreInvoicedOnceItIsIssuedButNeverToAnIssuedInvoice(): void
+    {
+        $this->signedIn();
+        $first = $this->validatedNote(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]);
+        $second = $this->validatedNote(['lines' => [['description' => 'Transport', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '30', 'taxComponentIds' => [$this->taxId('TVA19')]]]]);
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$first]]);
+        $id = $this->stringAt($this->json(), 'id');
+        $toDraft = $this->invoicePath($id).'/delivery-notes';
+
+        $this->postJson($toDraft, ['deliveryNoteIds' => [$second]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $invoice = $this->json();
+        self::assertSame([$id, 'draft'], [$invoice['id'], $invoice['status']]);
+        self::assertSame([...$this->lineIds($first), ...$this->lineIds($second)], array_column($this->arrayAt($invoice, 'lines'), 'sourceDeliveryNoteLineId'), 'the draft\'s own lines first, then the added ones');
+        $revised = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'invoice.revised'");
+        self::assertIsString($revised);
+        self::assertEquals(['fields' => ['lines'], 'deliveryNoteIds' => [$second]], json_decode($revised, true));
+        $this->postJson($toDraft, ['deliveryNoteIds' => [$second]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'what the draft already took is not added twice');
+
+        $this->postJson($this->invoicePath($id).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        foreach ([$first, $second] as $note) {
+            $this->getJson($this->notePath($note));
+            self::assertSame(['invoiced', $id], [$this->json()['status'], $this->json()['invoicedByInvoiceId']]);
+        }
+        $third = $this->validatedNote();
+        $this->postJson($toDraft, ['deliveryNoteIds' => [$third]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an issued invoice is corrected by a credit note, never added to');
+        $this->getJson($this->invoicePath($id));
+        self::assertCount(2, $this->arrayAt($this->json(), 'lines'), 'nothing was added');
+    }
+
+    public function testAddingNotesToADraftNeedsInvoiceWriteTheCompanysOwnInvoiceAndNotesOfItsCustomer(): void
+    {
+        $this->signedIn();
+        // Made before the first request: the kernel reboots between requests and detaches the company.
+        $other = $this->customer('CLI-0002')->getId()->toRfc4122();
+        $first = $this->validatedNote();
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$first]]);
+        $id = $this->stringAt($this->json(), 'id');
+        $foreign = $this->validatedNote(['customerId' => $other]);
+
+        $this->postJson($this->invoicePath($id).'/delivery-notes', ['deliveryNoteIds' => [$foreign]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a note of another customer');
+        self::assertStringContainsString('invoiceId', (string) $this->client->getResponse()->getContent());
+        $this->postJson($this->invoicePath($id).'/delivery-notes', ['deliveryNoteIds' => []]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'no note at all');
+        $this->postJson($this->invoicePath(self::ABSENT).'/delivery-notes', ['deliveryNoteIds' => [$this->validatedNote()]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'an invoice that does not exist');
+
+        $globex = $this->createCompany('Globex');
+        $this->createUser('globex@twes.local', 'password-1234', $globex, ['invoice.read', 'invoice.write', 'delivery_note.read'], 'member');
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('globex@twes.local', 'password-1234');
+        $this->postJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoices/'.$id.'/delivery-notes', ['deliveryNoteIds' => [$first]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company\'s invoice');
+    }
+
     public function testAnInvoiceTakesPartOfANoteAndTheNoteIsInvoicedOnceNothingIsLeft(): void
     {
         $this->signedIn();

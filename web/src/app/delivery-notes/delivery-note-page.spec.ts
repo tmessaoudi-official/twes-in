@@ -151,6 +151,7 @@ describe('DeliveryNotePage', () => {
     deliver: vi.fn(),
     cancel: vi.fn(),
     invoice: vi.fn(),
+    draftsOf: vi.fn(),
     clearError: vi.fn(),
     credit: vi.fn(async () => null as unknown),
     left: vi.fn(),
@@ -261,6 +262,7 @@ describe('DeliveryNotePage', () => {
     modules.clear();
     ['delivery_notes', 'invoices'].forEach((each) => modules.add(each));
     facade.invoice.mockReset().mockResolvedValue('i7');
+    facade.draftsOf.mockReset().mockResolvedValue([]);
     facade.loadNote.mockReset().mockResolvedValue(undefined);
     facade.create.mockReset().mockResolvedValue({ ...draft, id: 'n9' });
     facade.revise.mockReset().mockResolvedValue(draft);
@@ -663,12 +665,95 @@ describe('DeliveryNotePage', () => {
     await open('n1');
     q('document-action-invoice')!.click();
     await settle();
-    expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1');
+    expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', undefined, undefined);
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']));
 
     note.set({ ...validated, status: 'delivered' });
     await settle();
     expect(q('document-action-invoice')).not.toBeNull();
+  });
+
+  describe('where the note is invoiced', () => {
+    const drafts = [
+      { id: 'd1', total: '1190.000', lineCount: 2, customerReference: 'PO-7' },
+      { id: 'd2', total: '30.000', lineCount: 1, customerReference: null },
+    ];
+
+    it('asks nothing when the customer has no draft to add to, and starts a new invoice', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      note.set(validated);
+      await open('n1');
+
+      q('document-action-invoice')!.click();
+      await settle();
+
+      expect(facade.draftsOf).toHaveBeenCalledWith(
+        'c1',
+        validated.customerId,
+        validated.establishmentId,
+      );
+      expect(over('invoice-target-title')).toBeNull();
+      await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']));
+    });
+
+    it('offers the drafts beside a new invoice, and adds the note to the one chosen', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      facade.draftsOf.mockResolvedValue(drafts);
+      facade.invoice.mockResolvedValue('d1');
+      note.set(validated);
+      await open('n1');
+
+      q('document-action-invoice')!.click();
+      await settle();
+      expect(over('invoice-target-new')).not.toBeNull();
+      expect(over('invoice-target-d2')).not.toBeNull();
+      over('invoice-target-d1')!.click();
+
+      await vi.waitFor(() =>
+        expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', undefined, 'd1'),
+      );
+      await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'd1']));
+    });
+
+    it('starts a new invoice when that is the one chosen, and does nothing when the question is left', async () => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      facade.draftsOf.mockResolvedValue(drafts);
+      note.set(validated);
+      await open('n1');
+
+      q('document-action-invoice')!.click();
+      await settle();
+      over('invoice-target-cancel')!.click();
+      await settle();
+      expect(facade.invoice).not.toHaveBeenCalled();
+
+      q('document-action-invoice')!.click();
+      await settle();
+      over('invoice-target-new')!.click();
+      await vi.waitFor(() =>
+        expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', undefined, undefined),
+      );
+    });
+
+    it('asks the same question when only part of the note is invoiced', async () => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      facade.draftsOf.mockResolvedValue(drafts);
+      facade.left.mockResolvedValue({
+        lines: [{ lineId: 'l1', quantity: '10.000', invoiced: '0.000', left: '10.000' }],
+      });
+      note.set(validated);
+      await open('n1');
+
+      q('document-action-invoice-part')!.click();
+      await settle();
+      over('invoice-part-confirm')!.click();
+      await vi.waitFor(() => expect(over('invoice-target-d2')).not.toBeNull());
+      over('invoice-target-d2')!.click();
+
+      await vi.waitFor(() =>
+        expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', { l1: '10.000' }, 'd2'),
+      );
+    });
   });
 
   it('invoices part of a note: each line starts at what is left, and only the quantities kept are sent', async () => {
@@ -691,7 +776,9 @@ describe('DeliveryNotePage', () => {
     typeIn(quantity, '1,5');
     over('invoice-part-confirm')!.click();
 
-    await vi.waitFor(() => expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', { l1: '1.5' }));
+    await vi.waitFor(() =>
+      expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', { l1: '1.5' }, undefined),
+    );
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']));
   });
 
@@ -737,8 +824,10 @@ describe('DeliveryNotePage', () => {
 
     offeredNext()!.run();
     await settle();
-    expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1');
-    expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']);
+    await vi.waitFor(() =>
+      expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', undefined, undefined),
+    );
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']));
   });
 
   it('offers no invoice after validating without the invoices module', async () => {

@@ -141,6 +141,29 @@ final readonly class ManageInvoices
     }
 
     /**
+     * Lines added to a draft after its own, audited as a revision of its lines with what they came from.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     * @param array<string, mixed>     $origin
+     *
+     * @throws InvoiceNotFound
+     * @throws InvoiceNotDraft
+     * @throws InvalidInvoice
+     */
+    public function appendLines(Company $company, Uuid $id, array $lines, array $origin, ?Uuid $actorUserId): Invoice
+    {
+        return $this->transactions->run(function () use ($company, $id, $lines, $origin, $actorUserId): Invoice {
+            $invoice = $this->locked($company, $id);
+            $invoice->addLines($lines, $this->clock->now());
+            $this->totals->checked($invoice);
+            $this->invoices->save($invoice);
+            $this->record($company, $invoice->getId(), self::REVISED, ['fields' => ['lines'], ...$origin], $actorUserId);
+
+            return $invoice;
+        });
+    }
+
+    /**
      * A copy of a document as a new draft; the answer is the copy, which is where the person continues.
      *
      * @throws InvoiceNotFound

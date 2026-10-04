@@ -3,6 +3,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { InvoicesApi } from '../invoices/invoices-api';
 import { DeliveryNotesApi, DeliveryNotesRefused } from './delivery-notes-api';
 import type { DeliveryNoteInput } from './delivery-notes-types';
 
@@ -47,10 +48,17 @@ describe('DeliveryNotesApi', () => {
   let api: DeliveryNotesApi;
   let http: HttpTestingController;
 
+  const invoices = { invoices: vi.fn() };
+
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: InvoicesApi, useValue: invoices },
+      ],
     });
+    invoices.invoices.mockReset();
     api = TestBed.inject(DeliveryNotesApi);
     http = TestBed.inject(HttpTestingController);
   });
@@ -401,6 +409,49 @@ describe('DeliveryNotesApi', () => {
     expect(request.request.body).toEqual({ deliveryNoteIds: ['n1'], quantities: { l1: '6' } });
     request.flush({ id: 'i8', status: 'draft' });
     expect(await pending).toBe('i8');
+  });
+
+  it("adds the notes to a draft on the draft's own route, with the quantities when there are some", async () => {
+    const whole = api.invoice('c1', ['n1'], undefined, 'd 1');
+    const request = http.expectOne('/api/companies/c1/invoices/d%201/delivery-notes');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ deliveryNoteIds: ['n1'] });
+    request.flush({ id: 'd 1', status: 'draft' });
+    expect(await whole).toBe('d 1');
+
+    const part = api.invoice('c1', ['n1'], { l1: '6' }, 'd2');
+    http
+      .expectOne('/api/companies/c1/invoices/d2/delivery-notes')
+      .flush({ id: 'd2', status: 'draft' });
+    await part;
+  });
+
+  it("lists the drafts of the notes' customer, leaving out those of another establishment", async () => {
+    const row = (id: string, establishmentId: string | null, lines: number) => ({
+      id,
+      establishmentId,
+      total: '10.000',
+      customerReference: id === 'd1' ? 'PO-7' : null,
+      lines: Array.from({ length: lines }, () => ({})),
+    });
+    invoices.invoices.mockResolvedValue({
+      rows: [row('d1', 'e1', 2), row('d2', 'e2', 1), row('d3', 'e1', 3)],
+      total: 3,
+    });
+
+    expect(await api.draftsOf('c1', 'k1', 'e1')).toEqual([
+      { id: 'd1', total: '10.000', lineCount: 2, customerReference: 'PO-7' },
+      { id: 'd3', total: '10.000', lineCount: 3, customerReference: null },
+    ]);
+    expect(invoices.invoices).toHaveBeenCalledWith('c1', {
+      page: 1,
+      itemsPerPage: 20,
+      q: '',
+      status: 'draft',
+      documentType: 'invoice',
+      customerId: 'k1',
+      order: null,
+    });
   });
 
   it('reads what of a note is still to invoice', async () => {
