@@ -155,6 +155,11 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame(['draft', 'CLI-0001', ''], [$byNumber['']['status'], $byNumber['']['customer_number'], $byNumber['']['issue_date']], 'a draft has no number or day yet');
 
         self::assertCount(2, $this->exportedFrom('?status=draft'), 'the draft alone');
+        // The combined filters of the list narrow the file the same way, and a filter it has not is refused.
+        self::assertCount(3, $this->exportedFrom('?status[]=draft&status[]=issued'), 'both, OR\'d');
+        self::assertCount(2, $this->exportedFrom('?status[]=draft&status[]=issued&documentType[]=invoice&customerId[]='.$this->customerId.'&totalGross[min]=0&issueDate[from]=2001-01-01'), 'the issued one alone: a draft has no day or total to be inside an interval');
+        $this->client->request('GET', $this->companyPath().'/exports/invoices.csv?status[]=paid-ish');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertCount(2, $this->exportedFrom('?status=issued'));
         self::assertCount(1, $this->exportedFrom('?documentType=credit_note'), 'no credit note: the header alone');
         self::assertCount(2, $this->exportedFrom('?q='.$number));
@@ -958,6 +963,8 @@ final class InvoicesTest extends ApiTestCase
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
         $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
+        $day = fn (string $shift): string => new \DateTimeImmutable($shift, new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        [$today, $yesterday, $tomorrow] = [$day('today'), $day('yesterday'), $day('tomorrow')];
 
         $this->issuedInvoice();
         $first = $this->stringAt($this->json(), 'number');
@@ -998,6 +1005,21 @@ final class InvoicesTest extends ApiTestCase
             'order[number]=desc&itemsPerPage=1' => [$second],
             // The rule is the column's, not a status any document holds: the one whose due day has passed, and only it.
             'status=overdue' => [$first],
+            // Combined (docs/SPEC.md § 7, 2026-10-06): the values of one filter are OR'd, different filters AND'd.
+            'status[]=draft&status[]=overdue' => [self::DRAFT, $first],
+            'status[]=draft&status[]=issued' => [self::DRAFT, $second, $first],
+            'status[]=overdue&status[]=issued' => [$second, $first],
+            'status[]=draft&status[]=overdue&customerId[]='.$other => [self::DRAFT],
+            'documentType[]=invoice&documentType[]=credit_note' => [self::DRAFT, $second, $first],
+            'customerId[]='.$other.'&customerId[]='.$this->customerId => [self::DRAFT, $second, $first],
+            'issueDate[from]='.$today.'&issueDate[to]='.$today => [$second, $first],
+            'issueDate[from]='.$tomorrow => [],
+            'issueDate[to]='.$yesterday => [],
+            'dueDate[to]='.$yesterday => [$first],
+            'status=issued&totalGross[min]=0&amountDue[min]=0' => [$second, $first],
+            'status=issued&totalGross[min]=999999' => [],
+            'status=issued&amountDue[max]=0' => [],
+            'status=issued&totalGross[max]=999999&amountDue[max]=999999' => [$second, $first],
         ] as $query => $numbers) {
             $this->getJson($this->path().'?'.$query);
             self::assertResponseIsSuccessful($query);
@@ -1009,8 +1031,10 @@ final class InvoicesTest extends ApiTestCase
             self::assertSame($numbers, $shown, $query);
         }
 
-        $this->getJson($this->path().'?status=paid-ish');
-        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        foreach (['status=paid-ish', 'status[]=draft&status[]=paid-ish', 'documentType[]=receipt', 'customerId[]=nope', 'issueDate[from]=yesterday', 'dueDate[to]=2026-02-30', 'totalGross[min]=abc', 'amountDue[max]=1e3', 'totalGross[min]=-1'] as $refused) {
+            $this->getJson($this->path().'?'.$refused);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+        }
     }
 
     /**
@@ -1040,7 +1064,8 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame(3, $this->json()['all']);
         self::assertSame(['draft' => 1, 'issued' => 2, 'partially_paid' => 0, 'paid' => 0, 'cancelled' => 0, 'overdue' => 1], $this->json()['statuses']);
 
-        foreach (['', 'q=carthage', 'q=BC-4242', 'documentType=credit_note', 'customerId='.$other] as $filters) {
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        foreach (['', 'q=carthage', 'q=BC-4242', 'documentType=credit_note', 'customerId='.$other, 'customerId[]='.$other.'&customerId[]='.$this->customerId, 'documentType[]=invoice&documentType[]=credit_note', 'issueDate[from]='.$today, 'totalGross[min]=0', 'dueDate[to]='.$today] as $filters) {
             $this->getJson($this->companyPath().'/invoice-status-counts?'.$filters);
             self::assertResponseIsSuccessful($filters);
             $counts = $this->json();

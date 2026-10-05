@@ -20,6 +20,17 @@ final readonly class ExportQuery
     {
     }
 
+    /**
+     * The query string itself, for a list whose filters take several values and intervals, which the list reads as one
+     * (`ListFilters`).
+     *
+     * @return array<array-key, mixed>
+     */
+    public function parameters(): array
+    {
+        return $this->parameters;
+    }
+
     public function text(string $key = 'q'): ?string
     {
         $value = $this->parameters[$key] ?? null;

@@ -15,13 +15,11 @@ use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceSearch;
-use App\Module\Invoices\Domain\InvoiceStatus;
-use App\Module\Invoices\Domain\InvoiceType;
 use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
+use App\Module\Invoices\Infrastructure\ApiPlatform\InvoiceSearchReader;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * The invoices and credit notes list as a file (docs/SPEC.md § 7, row 60): one row per document, under the search,
@@ -32,8 +30,6 @@ final readonly class InvoiceExport implements DeclaresExport
 {
     private const int BATCH = 200;
     private const string KEY = 'invoices';
-    /** What the status column shows for an invoice past its due day, which is not a status the document holds. */
-    private const string OVERDUE = 'overdue';
 
     public function __construct(private ManageInvoices $manage, private InvoiceTotals $totals)
     {
@@ -61,18 +57,7 @@ final readonly class InvoiceExport implements DeclaresExport
 
     public function rows(Company $company, ExportQuery $query): iterable
     {
-        $status = $query->choice('status', [...array_column(InvoiceStatus::cases(), 'value'), self::OVERDUE]);
-        $type = $query->choice('documentType', array_column(InvoiceType::cases(), 'value'));
-        $customer = $query->text('customerId');
-        $overdue = self::OVERDUE === $status;
-        $search = new InvoiceSearch(
-            $query->text(),
-            null !== $status && !$overdue ? InvoiceStatus::from($status) : null,
-            null === $type ? null : InvoiceType::from($type),
-            null !== $customer && Uuid::isValid($customer) ? Uuid::fromString($customer) : null,
-            $query->order(InvoiceSearch::SORTS),
-            $overdue ? new \DateTimeImmutable('today', new \DateTimeZone($company->getTimezone())) : null,
-        );
+        $search = InvoiceSearchReader::read($query->parameters(), $query->text(), $query->order(InvoiceSearch::SORTS), $company);
 
         for ($page = 1;; ++$page) {
             $answer = $this->manage->search($company, $search, new PageRequest($page, self::BATCH));

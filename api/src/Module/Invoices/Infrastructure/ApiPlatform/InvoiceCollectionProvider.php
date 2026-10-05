@@ -16,13 +16,10 @@ use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceSearch;
-use App\Module\Invoices\Domain\InvoiceStatus;
-use App\Module\Invoices\Domain\InvoiceType;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * One page of a company's invoices and credit notes, searched, narrowed and sorted in the database (docs/SPEC.md § 7,
@@ -32,9 +29,6 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class InvoiceCollectionProvider implements ProviderInterface
 {
-    /** What the status column shows for an invoice past its due day, which is not a status the document holds. */
-    private const string OVERDUE = 'overdue';
-
     public function __construct(
         private ManageInvoices $manage,
         private InvoiceTotals $totals,
@@ -47,20 +41,7 @@ final readonly class InvoiceCollectionProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): TraversablePaginator
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::READ);
-        $status = Paging::value($operation, 'status');
-        $documentType = Paging::value($operation, 'documentType');
-        $customer = Paging::value($operation, 'customerId');
-        // Overdue is asked for as a status because that is how the column reads, and answered against the company's
-        // own day rather than the server's.
-        $overdue = self::OVERDUE === $status;
-        $search = new InvoiceSearch(
-            Paging::text($operation),
-            \is_string($status) && !$overdue ? InvoiceStatus::from($status) : null,
-            \is_string($documentType) ? InvoiceType::from($documentType) : null,
-            \is_string($customer) && Uuid::isValid($customer) ? Uuid::fromString($customer) : null,
-            Paging::order($operation, InvoiceSearch::SORTS),
-            $overdue ? new \DateTimeImmutable('today', new \DateTimeZone($company->getTimezone())) : null,
-        );
+        $search = InvoiceSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, InvoiceSearch::SORTS), $company);
 
         $withCosts = $this->guard->may($company, ProductPermission::COST_READ);
 

@@ -15,6 +15,7 @@ use ApiPlatform\State\Pagination\Pagination;
 use ApiPlatform\State\Pagination\TraversablePaginator;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -56,6 +57,20 @@ final readonly class Paging
             $page->request->size,
             $page->total,
         );
+    }
+
+    /**
+     * The query string as the request parsed it, for the filters that take several values and intervals (`ListFilters`).
+     *
+     * @param array<string, mixed> $context
+     *
+     * @return array<array-key, mixed>
+     */
+    public static function parameters(array $context): array
+    {
+        $request = $context['request'] ?? null;
+
+        return $request instanceof Request ? $request->query->all() : [];
     }
 
     /** A declared query parameter's value once API Platform checked it, or null when the request left it out. */

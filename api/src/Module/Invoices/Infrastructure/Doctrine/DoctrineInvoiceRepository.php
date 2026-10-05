@@ -17,6 +17,7 @@ use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceType;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
+use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\ArrayParameterType;
@@ -68,8 +69,8 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
 
     public function statusCounts(Uuid $companyId, InvoiceSearch $search, \DateTimeImmutable $today): array
     {
-        // The chips narrow by status themselves, so whatever status the search carried is left aside.
-        $statusFree = new InvoiceSearch($search->text, null, $search->documentType, $search->customer);
+        // The chips narrow by status themselves, so whatever statuses the search carried are left aside.
+        $statusFree = $search->withoutStatus();
         $statuses = array_map(static fn (InvoiceStatus $status): string => $status->value, InvoiceStatus::cases());
         $counts = array_fill_keys($statuses, 0);
         /** @var list<array{status: InvoiceStatus, n: int|string}> $rows the column is mapped to the enum */
@@ -81,8 +82,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         }
         $all = array_sum($counts);
         // Overdue by the very condition the list narrows with, so the chip and the list it opens cannot disagree.
-        $overdue = new InvoiceSearch($search->text, null, $search->documentType, $search->customer, [], $today);
-        $counts[self::OVERDUE] = (int) $this->filtered($companyId, $overdue)
+        $counts[self::OVERDUE] = (int) $this->filtered($companyId, $search->onlyOverdue($today))
             ->select('COUNT(i.id)')->getQuery()->getSingleScalarResult();
 
         return ['all' => $all, 'statuses' => $counts];
@@ -101,21 +101,33 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         } elseif ('' !== $words) {
             $query->andWhere('LOWER(i.number) = LOWER(:number)')->setParameter('number', $words);
         }
-        if (null !== $search->status) {
-            $query->andWhere('i.status = :status')->setParameter('status', $search->status->value);
-        }
-        if (null !== $search->documentType) {
-            $query->andWhere('i.documentType = :documentType')->setParameter('documentType', $search->documentType->value);
-        }
-        if (null !== $search->customer) {
-            $query->andWhere('i.customer = :customerId')->setParameter('customerId', $search->customer, 'uuid');
+        // The values of one filter are OR'd, the filters AND'd. Overdue is one more value of the status filter.
+        $status = [];
+        if ([] !== $search->statuses) {
+            $status[] = 'i.status IN (:statuses)';
+            $query->setParameter('statuses', array_map(static fn (InvoiceStatus $each): string => $each->value, $search->statuses), ArrayParameterType::STRING);
         }
         if (null !== $search->overdueOn) {
-            $query->andWhere('i.documentType = :overdueType AND i.status IN (:overdueStatuses) AND i.dueDate IS NOT NULL AND i.dueDate < :overdueOn')
-                ->setParameter('overdueType', InvoiceType::Invoice->value)
+            $status[] = '(i.documentType = :overdueType AND i.status IN (:overdueStatuses) AND i.dueDate IS NOT NULL AND i.dueDate < :overdueOn)';
+            $query->setParameter('overdueType', InvoiceType::Invoice->value)
                 ->setParameter('overdueStatuses', [InvoiceStatus::Issued->value, InvoiceStatus::PartiallyPaid->value])
                 ->setParameter('overdueOn', $search->overdueOn);
         }
+        if ([] !== $status) {
+            $query->andWhere('('.implode(' OR ', $status).')');
+        }
+        if ([] !== $search->documentTypes) {
+            $query->andWhere('i.documentType IN (:documentTypes)')
+                ->setParameter('documentTypes', array_map(static fn (InvoiceType $each): string => $each->value, $search->documentTypes), ArrayParameterType::STRING);
+        }
+        if ([] !== $search->customers) {
+            $query->andWhere('i.customer IN (:customerIds)')
+                ->setParameter('customerIds', array_map(static fn (Uuid $each): string => $each->toRfc4122(), $search->customers), ArrayParameterType::STRING);
+        }
+        Intervals::days($query, 'i.issueDate', 'issued', $search->issueDate);
+        Intervals::days($query, 'i.dueDate', 'due', $search->dueDate);
+        Intervals::amounts($query, 'i.totalGross', 'total', $search->totalGross);
+        Intervals::amounts($query, 'i.amountDue', 'owed', $search->amountDue);
 
         return $query;
     }

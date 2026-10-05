@@ -51,9 +51,17 @@ use Symfony\Component\Validator\Constraints as Assert;
             normalizationContext: self::NORMALIZATION,
             parameters: [
                 'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the number, the customer\'s reference or the customer as the document recorded them, whatever their case and accents; under three characters, the exact number only. A draft carries no number and no recorded customer: narrow it with customerId.'),
-                'status' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['draft', 'issued', 'partially_paid', 'paid', 'cancelled', 'overdue']], description: '`overdue` is what the status column shows rather than a status a document holds: an invoice, issued or partly paid, whose due day has passed in the company\'s own timezone.'),
-                'documentType' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['invoice', 'credit_note']]),
-                'customerId' => new QueryParameter(schema: ['type' => 'string', 'format' => 'uuid']),
+                'status[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['draft', 'issued', 'partially_paid', 'paid', 'cancelled', 'overdue']]], description: 'Several statuses, OR\'d: `status[]=draft&status[]=overdue`; a single `status=draft` is the same filter with one value. `overdue` is what the status column shows rather than a status a document holds: an invoice, issued or partly paid, whose due day has passed in the company\'s own timezone.', constraints: []),
+                'documentType[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['invoice', 'credit_note']]], description: 'Several kinds of document, OR\'d; a single `documentType=invoice` still works.', constraints: []),
+                'customerId[]' => new QueryParameter(schema: ['type' => 'array', 'items' => self::ID], description: 'Several customers, OR\'d; a single `customerId=…` still works.', constraints: []),
+                'issueDate[from]' => new QueryParameter(schema: self::DAY, description: 'Issued on or after this day, in the company\'s own calendar. A draft has no issue day, so it is left out by any end.'),
+                'issueDate[to]' => new QueryParameter(schema: self::DAY, description: 'Issued on or before this day.'),
+                'dueDate[from]' => new QueryParameter(schema: self::DAY, description: 'Due on or after this day.'),
+                'dueDate[to]' => new QueryParameter(schema: self::DAY, description: 'Due on or before this day.'),
+                'totalGross[min]' => new QueryParameter(schema: self::AMOUNT, description: 'A document total, tax included, of at least this amount.'),
+                'totalGross[max]' => new QueryParameter(schema: self::AMOUNT, description: 'A document total, tax included, of at most this amount.'),
+                'amountDue[min]' => new QueryParameter(schema: self::AMOUNT, description: 'Still due: at least this amount.'),
+                'amountDue[max]' => new QueryParameter(schema: self::AMOUNT, description: 'Still due: at most this amount.'),
                 'order[number]' => new QueryParameter(schema: self::DIRECTION, description: 'Drafts carry no number and come last whichever the direction.'),
                 'order[customer]' => new QueryParameter(schema: self::DIRECTION, description: 'By the customer\'s current name.'),
                 'order[issueDate]' => new QueryParameter(schema: self::DIRECTION),
@@ -134,6 +142,9 @@ final class InvoiceResource
     public const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
     private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
     private const array ID = ['type' => 'string', 'format' => 'uuid'];
+    private const array DAY = ['type' => 'string', 'format' => 'date'];
+    /** An amount as a decimal string, never a float. */
+    private const array AMOUNT = ['type' => 'string', 'pattern' => '^(0|[1-9][0-9]{0,10})(\\.[0-9]{1,4})?$'];
     private const array TEXT_OR_NULL = ['type' => ['string', 'null']];
     private const array AMOUNT_LIST = [
         'type' => 'array',

@@ -15,6 +15,7 @@ use App\ImportExport\Application\UnknownExportSubject;
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
 use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
+use App\Shared\Domain\InvalidFilter;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -24,6 +25,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -68,7 +70,14 @@ final readonly class ExportController
             $this->writer->write($path, $spreadsheet, $rows);
         } catch (UnwritableSpreadsheet $failure) {
             @unlink($path);
+            // The writer reads the rows lazily and wraps whatever stops it: a filter the list does not have is the caller's.
+            if ($failure->getPrevious() instanceof InvalidFilter) {
+                throw new UnprocessableEntityHttpException($failure->getPrevious()->getMessage(), $failure->getPrevious());
+            }
             throw new ServiceUnavailableHttpException(30, 'The file could not be prepared; try again shortly.', $failure);
+        } catch (InvalidFilter $refused) {
+            @unlink($path);
+            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
         } catch (\Throwable $failure) {
             @unlink($path);
             throw $failure;
