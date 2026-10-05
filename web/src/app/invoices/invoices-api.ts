@@ -340,21 +340,30 @@ const ids = (values: readonly (string | null | undefined)[] | null | undefined):
 function toSearchParams(search: InvoiceSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
   if (search.q.trim() !== '') params = params.set('q', search.q.trim());
-  if (search.status !== null) params = params.set('status', search.status);
-  if (search.documentType !== null) params = params.set('documentType', search.documentType);
-  if (search.customerId !== null) params = params.set('customerId', search.customerId);
+  for (const status of search.status) params = params.append('status[]', status);
+  params = narrowing(params, search);
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
   return params;
 }
 
-/** The search as a count reads it: its words, kind and customer, never a status, a page or an order. */
+/** What narrows a list whatever the status: kinds, customers and the ends of the intervals, each as the API names it. */
+function narrowing(params: HttpParams, search: InvoiceSearch): HttpParams {
+  let next = params;
+  for (const type of search.documentType) next = next.append('documentType[]', type);
+  for (const id of search.customerIds) next = next.append('customerId[]', id);
+  for (const [key, value] of Object.entries(search.intervals)) {
+    const [name, end] = key.split('.');
+    next = next.set(`${name}[${end}]`, value);
+  }
+  return next;
+}
+
+/** The search as a count reads it: all but the status, which the chips count themselves, and the page and order. */
 function toCountParams(search: InvoiceSearch): HttpParams {
   let params = new HttpParams();
   if (search.q.trim() !== '') params = params.set('q', search.q.trim());
-  if (search.documentType !== null) params = params.set('documentType', search.documentType);
-  if (search.customerId !== null) params = params.set('customerId', search.customerId);
-  return params;
+  return narrowing(params, search);
 }
 
 function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceRow {

@@ -36,7 +36,8 @@ import { MatPaginatorModule, type PageEvent } from '@angular/material/paginator'
 import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { ActivatedRoute, type Params, Router, RouterLink } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { FormatFacade } from '../i18n/format-facade';
 import { SettingsFacade } from '../settings/settings-facade';
 import { listPreferencesSetting, listViewsSetting } from '../settings/settings-registry';
 import type {
@@ -46,6 +47,7 @@ import type {
   ListFilter,
   ListFilterOption,
   ListFilterValues,
+  ListPickSource,
   ListPreferences,
   ListQuery,
   ListSort,
@@ -66,6 +68,17 @@ import {
 import { Label } from '../a11y/label';
 import { FormsModule } from '@angular/forms';
 import { Select, type SelectOption } from '../form/select';
+import type { PickOption } from '../form/pick-field';
+import { ListFilterPanel } from './list-filter-panel';
+import {
+  activeFilterChips,
+  filterValues,
+  joinValues,
+  patchFilters,
+  rangeKey,
+  validRangeValue,
+  type FilterChip,
+} from './list-filters';
 import { runAction } from '../actions/run-action';
 import { ConfirmDialog } from '../ui/confirm-dialog';
 import { WINDOW_CLASS } from '../ui/window-class';
@@ -115,6 +128,7 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
     Label,
     FormsModule,
     Select,
+    ListFilterPanel,
     NgTemplateOutlet,
     CdkDropList,
     CdkDrag,
@@ -140,6 +154,8 @@ export class DataList<Row> implements OnInit {
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
+  private readonly translate = inject(TranslateService);
+  private readonly format = inject(FormatFacade);
 
   readonly descriptor = input.required<ListDescriptor<Row>>();
   readonly rows = input.required<readonly Row[]>();
@@ -151,6 +167,8 @@ export class DataList<Row> implements OnInit {
   readonly total = input<number | null>(null);
   /** What the API counted for each filter's options, shown on the chips of a paged list (docs/SPEC.md § 7, 2026-09-26). */
   readonly facetCounts = input<ListFacetCounts | null>(null);
+  /** Where each picker of the « Filtres » panel searches, and how it names the records an address holds. */
+  readonly pickSources = input<Readonly<Record<string, ListPickSource>>>({});
   /** The row whose record is open beside the list, marked so the eye and a screen reader find it (docs/SPEC.md § 7, 2026-09-26). */
   readonly activeRowId = input<string | null>(null);
   /** What a list the API pages wants shown: emitted on opening and on every change a person makes. */
@@ -173,6 +191,9 @@ export class DataList<Row> implements OnInit {
   protected readonly byApi = computed(() => this.total() !== null);
   protected readonly chosenFilters = signal<ListFilterValues>({});
   protected readonly viewsOpen = signal(false);
+  protected readonly panelOpen = signal(false);
+  /** What each picked record is called, by id, for its chip. */
+  protected readonly pickNames = signal<Readonly<Record<string, string>>>({});
   protected readonly viewName = signal('');
   protected readonly pageIndex = signal(0);
   protected readonly pageSize = linkedSignal(() => this.descriptor().pageSizes[0] ?? 25);
@@ -295,6 +316,7 @@ export class DataList<Row> implements OnInit {
       return this.filters().map((filter) => ({
         filter,
         chosen: chosen[filter.id] ?? '',
+        chosenList: filterValues(chosen[filter.id]),
         total: counted?.[filter.id]?.total ?? null,
         options: filter.options.map((option) => ({
           option,
@@ -309,6 +331,7 @@ export class DataList<Row> implements OnInit {
       return {
         filter,
         chosen: chosen[filter.id] ?? '',
+        chosenList: filterValues(chosen[filter.id]),
         total: base.length,
         options: filter.options.map((option) => ({
           option,
@@ -317,6 +340,14 @@ export class DataList<Row> implements OnInit {
       };
     });
   });
+  protected readonly chips = computed(() =>
+    activeFilterChips(this.descriptor(), this.chosenFilters(), this.pickNames()),
+  );
+  protected readonly hasPanel = computed(
+    () => (this.descriptor().ranges ?? []).length + (this.descriptor().picks ?? []).length > 0,
+  );
+  /** What the « Filtres » button counts: the chips a person could take off, so the number and the row of chips agree. */
+  protected readonly activeCount = computed(() => this.chips().length);
   /** The saved view that matches what the screen shows now, if any. */
   protected readonly currentViewId = computed(() => {
     const now = viewState(this.query(), this.chosenFilters(), this.preferences());
@@ -389,6 +420,16 @@ export class DataList<Row> implements OnInit {
       untracked(() => this.ask(query));
     });
     effect(() => {
+      // A record named by the address only has its id: ask for its name once, whatever the picker offers now.
+      const names = this.pickNames();
+      const sources = this.pickSources();
+      for (const pick of this.descriptor().picks ?? []) {
+        const missing = filterValues(this.chosenFilters()[pick.id]).filter((id) => !(id in names));
+        const source = sources[pick.id];
+        if (missing.length > 0 && source) untracked(() => void this.nameRecords(source, missing));
+      }
+    });
+    effect(() => {
       const rows = this.rows();
       untracked(() => this.noteArrivals(rows));
     });
@@ -404,10 +445,25 @@ export class DataList<Row> implements OnInit {
     this.searched.set(words);
     const chosen: ListFilterValues = {};
     for (const filter of descriptor.filters ?? []) {
-      const value = params.get(filter.id);
-      if (filter.options.some((option) => option.value === value) && value !== null) {
-        chosen[filter.id] = value;
+      const held = filterValues(params.get(filter.id) ?? undefined).filter((value) =>
+        filter.options.some((option) => option.value === value),
+      );
+      // A single-choice filter takes the first value an address names, as it took the only one before.
+      const kept = filter.multiple ? held : held.slice(0, 1);
+      if (kept.length > 0) chosen[filter.id] = joinValues(kept);
+    }
+    for (const range of descriptor.ranges ?? []) {
+      for (const end of range.kind === 'day'
+        ? (['from', 'to'] as const)
+        : (['min', 'max'] as const)) {
+        const value = params.get(rangeKey(range.id, end));
+        if (value !== null && validRangeValue(range.kind, value))
+          chosen[rangeKey(range.id, end)] = value;
       }
+    }
+    for (const pick of descriptor.picks ?? []) {
+      const ids = filterValues(params.get(pick.id) ?? undefined);
+      if (ids.length > 0) chosen[pick.id] = joinValues(ids);
     }
     this.chosenFilters.set(chosen);
     const sort = params.get('sort');
@@ -454,7 +510,7 @@ export class DataList<Row> implements OnInit {
     const queryParams: Params = {
       q: query.query === '' ? null : query.query,
       ...Object.fromEntries(
-        (descriptor.filters ?? []).map((filter) => [filter.id, query.filters[filter.id] ?? null]),
+        this.filterKeys(descriptor).map((key) => [key, query.filters[key] ?? null]),
       ),
       sort: sorted,
       page: query.pageIndex === 0 ? null : String(query.pageIndex + 1),
@@ -468,6 +524,38 @@ export class DataList<Row> implements OnInit {
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
+  }
+
+  /** Every key a list's query can hold for its filters: the facets, both ends of each interval, the pickers. */
+  private filterKeys(descriptor: ListDescriptor<Row>): string[] {
+    return [
+      ...(descriptor.filters ?? []).map((filter) => filter.id),
+      ...(descriptor.ranges ?? []).flatMap((range) =>
+        (range.kind === 'day' ? (['from', 'to'] as const) : (['min', 'max'] as const)).map((end) =>
+          rangeKey(range.id, end),
+        ),
+      ),
+      ...(descriptor.picks ?? []).map((pick) => pick.id),
+    ];
+  }
+
+  private async nameRecords(source: ListPickSource, ids: readonly string[]): Promise<void> {
+    // Marked as asked first, so a failing lookup is not repeated on every change; the chip then shows the id.
+    this.pickNames.update((names) => ({
+      ...Object.fromEntries(ids.map((id) => [id, id])),
+      ...names,
+    }));
+    try {
+      const records = await source.byIds(ids);
+      this.pickNames.update((names) => ({
+        ...names,
+        ...Object.fromEntries(
+          records.map((record) => [record.id, `${record.code} · ${record.name}`]),
+        ),
+      }));
+    } catch {
+      // The id stays as the chip's text; the filter itself still applies.
+    }
   }
 
   /** The words take effect at once on a list with every row, after a pause on a list the API pages. */
@@ -561,13 +649,18 @@ export class DataList<Row> implements OnInit {
     options: { option: ListFilterOption; count: number | null }[];
   }): SelectOption[] {
     const id = facet.filter.id;
+    // A multiple Select clears itself with its own « Tout effacer »: an « all » entry would be one more value to hold.
     return [
-      {
-        value: ANY_FACET,
-        label: 'list.filter_any',
-        count: facet.total,
-        testId: `list-facet-${id}-all`,
-      },
+      ...(facet.filter.multiple
+        ? []
+        : [
+            {
+              value: ANY_FACET,
+              label: 'list.filter_any',
+              count: facet.total,
+              testId: `list-facet-${id}-all`,
+            },
+          ]),
       ...facet.options.map((entry) => ({
         value: entry.option.value,
         label: entry.option.label,
@@ -584,6 +677,52 @@ export class DataList<Row> implements OnInit {
       ...(value === '' ? {} : { [filterId]: value }),
     }));
     this.pageIndex.set(0);
+  }
+
+  protected onFacetMany(filterId: string, values: readonly string[]): void {
+    this.patch({ [filterId]: joinValues(values) });
+  }
+
+  /** Sets or takes off the named keys of the query, from the panel or a chip, and goes back to the first page. */
+  protected patch(change: Readonly<Record<string, string | null>>): void {
+    this.chosenFilters.update((chosen) => patchFilters(chosen, change));
+    this.pageIndex.set(0);
+  }
+
+  /** What a chip says for its value, as one string: a range reads « from … to … », a facet's option in the language shown. */
+  protected chipValue(chip: FilterChip): string {
+    if (chip.kind === 'range') return this.chipRange(chip);
+    return chip.valueKey === undefined
+      ? (chip.valueText ?? '')
+      : this.translate.instant(chip.valueKey);
+  }
+
+  protected chipRange(chip: FilterChip): string {
+    const shown = (value: string): string =>
+      chip.rangeKind === 'day' ? this.format.day(value) : value;
+    const from = chip.from ?? '';
+    const to = chip.to ?? '';
+    if (from !== '' && to !== '')
+      return this.translate.instant('list.chip_range', { from: shown(from), to: shown(to) });
+    return from !== ''
+      ? this.translate.instant('list.chip_from', { from: shown(from) })
+      : this.translate.instant('list.chip_to', { to: shown(to) });
+  }
+
+  protected removeChip(chip: FilterChip): void {
+    this.patch(chip.remove);
+  }
+
+  protected clearAllFilters(): void {
+    this.chosenFilters.set({});
+    this.pageIndex.set(0);
+  }
+
+  protected onNamed(option: PickOption): void {
+    this.pickNames.update((names) => ({
+      ...names,
+      [option.id]: `${option.code} · ${option.name}`,
+    }));
   }
 
   protected onViewName(event: Event): void {

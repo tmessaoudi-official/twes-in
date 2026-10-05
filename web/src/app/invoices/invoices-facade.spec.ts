@@ -73,9 +73,10 @@ describe('InvoicesFacade', () => {
     page: 1,
     itemsPerPage: 25,
     q: '',
-    status: null,
-    documentType: null,
-    customerId: null,
+    status: [],
+    documentType: [],
+    customerIds: [],
+    intervals: {},
     order: null,
   } as const;
 

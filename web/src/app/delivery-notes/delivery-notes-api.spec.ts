@@ -447,9 +447,10 @@ describe('DeliveryNotesApi', () => {
       page: 1,
       itemsPerPage: 20,
       q: '',
-      status: 'draft',
-      documentType: 'invoice',
-      customerId: 'k1',
+      status: ['draft'],
+      documentType: ['invoice'],
+      customerIds: ['k1'],
+      intervals: {},
       order: null,
     });
   });

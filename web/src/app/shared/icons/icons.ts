@@ -57,6 +57,7 @@ export const ICONS = [
   'extension',
   'fiber_new',
   'file_copy',
+  'filter_list',
   'fingerprint',
   'format_list_numbered',
   'forward_to_inbox',

@@ -678,7 +678,23 @@
     "view_delete": "Supprimer la vue {{name}}",
     "new_row": "{{count}} nouvelle ligne",
     "new_rows": "{{count}} nouvelles lignes",
-    "more_actions": "Autres actions"
+    "more_actions": "Autres actions",
+    "filters": "Filtres",
+    "filters_open": "Afficher les filtres",
+    "filters_active": "{{count}} actif(s)",
+    "filters_clear_all": "Effacer tout",
+    "filter_chips": "Filtres actifs",
+    "chip_remove": "Retirer le filtre {{label}} : {{value}}",
+    "chip_range": "{{from}} au {{to}}",
+    "chip_from": "à partir du {{from}}",
+    "chip_to": "jusqu'au {{to}}",
+    "pick_hint": "Tapez pour chercher ; chaque choix s'ajoute au filtre.",
+    "range": {
+      "from": "Du",
+      "to": "Au",
+      "min": "Au moins",
+      "max": "Au plus"
+    }
   },
   "form": {
     "save": "Enregistrer",

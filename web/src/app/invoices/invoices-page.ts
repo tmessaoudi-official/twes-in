@@ -23,7 +23,13 @@ import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
 import { DataList, DataListCell } from '../shared/list/data-list';
-import type { ListDescriptor, ListFacetCounts, ListQuery } from '../shared/list/list-types';
+import type {
+  ListDescriptor,
+  ListFacetCounts,
+  ListPickSource,
+  ListQuery,
+} from '../shared/list/list-types';
+import type { PickAsked } from '../shared/form/pick-api';
 import { keyName } from '../shared/actions/shortcuts-sheet';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import { PRESENTATION } from '../shared/settings/settings-registry';
@@ -114,6 +120,23 @@ export class InvoicesPage implements OnInit {
     const counts = this.facade.statusCounts();
     return counts === null ? null : { status: { total: counts.all, options: counts.statuses } };
   });
+  /** Where the « Filtres » panel finds a customer to narrow by, and names the ones an address holds. */
+  protected readonly pickSources: Readonly<Record<string, ListPickSource>> = {
+    customer: {
+      search: (words) => this.pickCustomers({ words }),
+      byIds: (ids) => this.pickCustomers({ ids }),
+    },
+  };
+  private async pickCustomers(asked: PickAsked) {
+    const companyId = this.company()?.id;
+    if (!companyId) return [];
+    const found = await this.facade.pickCustomers(companyId, asked);
+    return found.map((customer) => ({
+      id: customer.id,
+      code: customer.number,
+      name: customer.name,
+    }));
+  }
   /** The person's key for a new document, named on the button (docs/SPEC.md § 7, 2026-09-24 22:51). */
   protected readonly newKey = computed(() => this.keys().new);
   protected readonly keyName = keyName;

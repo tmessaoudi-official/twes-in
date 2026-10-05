@@ -199,14 +199,15 @@ describe('InvoicesApi', () => {
       page: 3,
       itemsPerPage: 50,
       q: ' fac ',
-      status: 'overdue' as const,
-      documentType: 'credit_note' as const,
-      customerId: 'k1',
+      status: ['overdue' as const, 'draft' as const],
+      documentType: ['credit_note' as const],
+      customerIds: ['k1', 'k2'],
+      intervals: { 'issueDate.from': '2026-01-01', 'amountDue.max': '100.5' },
       order: { key: 'dueDate' as const, direction: 'desc' as const },
     };
 
-    expect(api.exportUrl('c/1', search, 'csv')).toBe(
-      '/api/companies/c%2F1/exports/invoices.csv?q=fac&status=overdue&documentType=credit_note&customerId=k1&order%5BdueDate%5D=desc',
+    expect(decodeURIComponent(api.exportUrl('c/1', search, 'csv'))).toBe(
+      '/api/companies/c/1/exports/invoices.csv?q=fac&status[]=overdue&status[]=draft&documentType[]=credit_note&customerId[]=k1&customerId[]=k2&issueDate[from]=2026-01-01&amountDue[max]=100.5&order[dueDate]=desc',
     );
   });
 
@@ -289,9 +290,10 @@ describe('InvoicesApi', () => {
       page: 2,
       itemsPerPage: 25,
       q: '  carthage  ',
-      status: 'overdue',
-      documentType: 'invoice',
-      customerId: 'cu1',
+      status: ['overdue', 'draft'],
+      documentType: ['invoice', 'credit_note'],
+      customerIds: ['cu1', 'cu2'],
+      intervals: { 'dueDate.to': '2026-12-31', 'totalGross.min': '10' },
       order: { key: 'number', direction: 'desc' },
     });
     const request = http.expectOne(
@@ -302,9 +304,12 @@ describe('InvoicesApi', () => {
     expect(request.request.params.get('itemsPerPage')).toBe('25');
     // Trimmed, so a trailing space is not a different search.
     expect(request.request.params.get('q')).toBe('carthage');
-    expect(request.request.params.get('status')).toBe('overdue');
-    expect(request.request.params.get('documentType')).toBe('invoice');
-    expect(request.request.params.get('customerId')).toBe('cu1');
+    // Repeated parameters, one per value, which the API ORs; the ends of an interval keep API Platform's bracket form.
+    expect(request.request.params.getAll('status[]')).toEqual(['overdue', 'draft']);
+    expect(request.request.params.getAll('documentType[]')).toEqual(['invoice', 'credit_note']);
+    expect(request.request.params.getAll('customerId[]')).toEqual(['cu1', 'cu2']);
+    expect(request.request.params.get('dueDate[to]')).toBe('2026-12-31');
+    expect(request.request.params.get('totalGross[min]')).toBe('10');
     expect(request.request.params.get('order[number]')).toBe('desc');
     request.flush({ member: [issued], totalItems: 48 });
 
@@ -318,9 +323,10 @@ describe('InvoicesApi', () => {
       page: 1,
       itemsPerPage: 25,
       q: '',
-      status: null,
-      documentType: null,
-      customerId: null,
+      status: [],
+      documentType: [],
+      customerIds: [],
+      intervals: {},
       order: null,
     });
     const request = http.expectOne(
@@ -338,9 +344,10 @@ describe('InvoicesApi', () => {
       page: 2,
       itemsPerPage: 25,
       q: '  carthage  ',
-      status: 'overdue',
-      documentType: 'invoice',
-      customerId: 'cu1',
+      status: ['overdue'],
+      documentType: ['invoice'],
+      customerIds: ['cu1'],
+      intervals: { 'issueDate.from': '2026-01-01' },
       order: { key: 'number', direction: 'desc' },
     });
     const request = http.expectOne(
@@ -348,10 +355,15 @@ describe('InvoicesApi', () => {
         candidate.url === '/api/companies/c1/invoice-status-counts' && candidate.method === 'GET',
     );
     expect(request.request.params.get('q')).toBe('carthage');
-    expect(request.request.params.get('documentType')).toBe('invoice');
-    expect(request.request.params.get('customerId')).toBe('cu1');
-    // The chips narrow by status themselves, and a count has no page or order.
-    expect(request.request.params.keys().sort()).toEqual(['customerId', 'documentType', 'q']);
+    expect(request.request.params.getAll('documentType[]')).toEqual(['invoice']);
+    expect(request.request.params.getAll('customerId[]')).toEqual(['cu1']);
+    // The chips narrow by status themselves, and a count has no page or order; the intervals narrow it as they do the page.
+    expect(request.request.params.keys().sort()).toEqual([
+      'customerId[]',
+      'documentType[]',
+      'issueDate[from]',
+      'q',
+    ]);
     const statuses = { draft: 1, issued: 3, overdue: 1, partially_paid: 1, paid: 0, cancelled: 0 };
     request.flush({ all: 5, statuses });
 
@@ -363,9 +375,10 @@ describe('InvoicesApi', () => {
       page: 1,
       itemsPerPage: 25,
       q: '',
-      status: null,
-      documentType: null,
-      customerId: null,
+      status: [],
+      documentType: [],
+      customerIds: [],
+      intervals: {},
       order: null,
     });
     http.expectOne('/api/companies/c1/invoice-status-counts').flush({ all: 5 });

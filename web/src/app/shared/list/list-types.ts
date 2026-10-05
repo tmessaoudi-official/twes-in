@@ -97,6 +97,18 @@ export interface ListDescriptor<Row> {
   linkColumn?: string;
   /** The row's own actions; the trailing column renders them. */
   actions?: RowAction<Row>[];
+  /** Intervals of days or amounts, offered in the « Filtres » panel beside the pickers. */
+  ranges?: ListRangeFilter[];
+  /** Records picked by searching, offered in the « Filtres » panel. */
+  picks?: ListPickFilter[];
+}
+
+/** What a list asks a screen for, to let a person pick records by searching and to name the ones an address holds. */
+export interface ListPickSource {
+  /** The few records matching these words. */
+  search: (words: string) => Promise<readonly { id: string; code: string; name: string }[]>;
+  /** Exactly these records, whether or not they are still offered by `search`. */
+  byIds: (ids: readonly string[]) => Promise<readonly { id: string; code: string; name: string }[]>;
 }
 
 export interface ListFilterOption {
@@ -113,6 +125,32 @@ export interface ListFilter<Row> {
   label: string;
   value: (row: Row) => string | null;
   options: ListFilterOption[];
+  /**
+   * Whether several options can be chosen at once (docs/SPEC.md § 7, 2026-10-06): the rows holding ANY of them are
+   * listed, and different filters narrow together. The chosen options are a comma list in the one string a query keeps.
+   */
+  multiple?: boolean;
+}
+
+/**
+ * An interval a list can be narrowed to, as the two ends a person types: days (`from`, `to`) or amounts (`min`, `max`),
+ * each end inclusive and either one open. A list the API pages sends the ends as they are (`issueDate[from]`).
+ */
+export interface ListRangeFilter {
+  id: string;
+  /** A translation key. */
+  label: string;
+  kind: 'day' | 'amount';
+}
+
+/**
+ * Records a list can be narrowed to, picked by searching (a customer, a vendor): the chosen ids are a comma list in the
+ * query. Where to search is the screen's, handed to the list as a `ListPickSource` under this id.
+ */
+export interface ListPickFilter {
+  id: string;
+  /** A translation key. */
+  label: string;
 }
 
 /**

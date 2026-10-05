@@ -208,16 +208,52 @@ describe('invoice forms', () => {
 
     it('carries overdue through as a status, which the API answers on the company’s day', () => {
       // It is not a status a document holds; filtering on screen would filter one page instead of the list.
-      expect(invoiceSearch({ ...query, filters: { status: 'overdue' } }).status).toBe('overdue');
-      expect(invoiceSearch({ ...query, filters: { status: 'paid' } }).status).toBe('paid');
-      expect(invoiceSearch({ ...query, filters: { status: 'nonsense' } }).status).toBeNull();
+      expect(invoiceSearch({ ...query, filters: { status: 'overdue' } }).status).toEqual([
+        'overdue',
+      ]);
+      expect(invoiceSearch({ ...query, filters: { status: 'paid' } }).status).toEqual(['paid']);
+      expect(invoiceSearch({ ...query, filters: { status: 'nonsense' } }).status).toEqual([]);
+    });
+
+    it('combines statuses, kinds and customers, leaving out what the list does not offer', () => {
+      const search = invoiceSearch({
+        ...query,
+        filters: {
+          status: 'overdue,draft,nonsense',
+          type: 'invoice,credit_note',
+          customer: 'k1,k2',
+        },
+      });
+      expect(search.status).toEqual(['draft', 'overdue']);
+      expect(search.documentType).toEqual(['invoice', 'credit_note']);
+      expect(search.customerIds).toEqual(['k1', 'k2']);
+    });
+
+    it('keeps the ends of an interval that are a day or an amount, and drops the rest', () => {
+      expect(
+        invoiceSearch({
+          ...query,
+          filters: {
+            'issueDate.from': '2026-02-30',
+            'issueDate.to': '2026-03-31',
+            'dueDate.from': '2026-01-01',
+            'totalGross.min': '12.5',
+            'totalGross.max': '-1',
+            'amountDue.max': '1e3',
+          },
+        }).intervals,
+      ).toEqual({
+        'issueDate.to': '2026-03-31',
+        'dueDate.from': '2026-01-01',
+        'totalGross.min': '12.5',
+      });
     });
 
     it('passes the kind of document and the sort the column names', () => {
-      expect(invoiceSearch({ ...query, filters: { type: 'credit_note' } }).documentType).toBe(
+      expect(invoiceSearch({ ...query, filters: { type: 'credit_note' } }).documentType).toEqual([
         'credit_note',
-      );
-      expect(invoiceSearch({ ...query, filters: { type: 'nonsense' } }).documentType).toBeNull();
+      ]);
+      expect(invoiceSearch({ ...query, filters: { type: 'nonsense' } }).documentType).toEqual([]);
       expect(
         invoiceSearch({ ...query, sort: { column: 'issueDate', direction: 'desc' } }).order,
       ).toEqual({ key: 'issueDate', direction: 'desc' });

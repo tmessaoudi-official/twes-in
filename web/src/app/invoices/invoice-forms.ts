@@ -3,6 +3,7 @@
 import { FormArray, FormControl, FormGroup, type ValidatorFn, Validators } from '@angular/forms';
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
 import { atScale } from '../shared/i18n/format';
+import { filterValues, rangeKey, validRangeValue } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import type { PickOption } from '../shared/form/pick-field';
 import { LOT_CODE_PATTERN, type ProductTracking } from '../products/products-types';
@@ -19,6 +20,7 @@ import {
   PAYMENT_METHODS,
   type ProductOption,
   type PaymentInput,
+  type InvoiceType,
   type PaymentMethod,
   type TaxFamily,
   type TaxOption,
@@ -78,6 +80,15 @@ export function paidShare(invoice: InvoiceRow): number {
   return Math.min(100, Math.max(0, Math.round((Number(invoice.amountPaid) / total) * 100)));
 }
 
+const INVOICE_TYPES: readonly InvoiceType[] = ['invoice', 'credit_note'];
+/** The intervals the « Filtres » panel offers, in the order it draws them. */
+const INVOICE_INTERVALS: readonly { id: string; kind: 'day' | 'amount'; label: string }[] = [
+  { id: 'issueDate', kind: 'day', label: `${FIELDS}.issueDate` },
+  { id: 'dueDate', kind: 'day', label: `${FIELDS}.dueDate` },
+  { id: 'totalGross', kind: 'amount', label: `${FIELDS}.total` },
+  { id: 'amountDue', kind: 'amount', label: `${FIELDS}.amountDue` },
+];
+
 const SORT_KEYS: Readonly<Record<string, InvoiceSortKey>> = {
   number: 'number',
   customer: 'customer',
@@ -91,17 +102,31 @@ const SORT_KEYS: Readonly<Record<string, InvoiceSortKey>> = {
  * through: the API answers it against the company's own day, by the rule this file's shownStatus reads on screen.
  */
 export function invoiceSearch(query: ListQuery): InvoiceSearch {
-  const status = INVOICE_SHOWN_STATUSES.find((known) => known === query.filters['status']) ?? null;
-  const documentType = query.filters['type'];
+  const status = INVOICE_SHOWN_STATUSES.filter((known) =>
+    filterValues(query.filters['status']).includes(known),
+  );
+  const documentType = INVOICE_TYPES.filter((known) =>
+    filterValues(query.filters['type']).includes(known),
+  );
+  const intervals = Object.fromEntries(
+    INVOICE_INTERVALS.flatMap(({ id, kind }) =>
+      (kind === 'day' ? (['from', 'to'] as const) : (['min', 'max'] as const)).flatMap((end) => {
+        const value = query.filters[rangeKey(id, end)];
+        return value !== undefined && validRangeValue(kind, value)
+          ? [[rangeKey(id, end), value]]
+          : [];
+      }),
+    ),
+  );
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
     itemsPerPage: query.pageSize,
     q: query.query,
     status,
-    documentType:
-      documentType === 'invoice' || documentType === 'credit_note' ? documentType : null,
-    customerId: null,
+    documentType,
+    customerIds: filterValues(query.filters['customer']),
+    intervals,
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };
@@ -184,10 +209,13 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
       width: 170,
     },
   ],
+  ranges: INVOICE_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),
+  picks: [{ id: 'customer', label: `${FIELDS}.customer` }],
   filters: [
     {
       id: 'status',
       label: `${FIELDS}.status`,
+      multiple: true,
       value: (row) => row.shown,
       options: INVOICE_SHOWN_STATUSES.map((status) => ({
         value: status,
@@ -198,6 +226,7 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
     {
       id: 'type',
       label: `${FIELDS}.type`,
+      multiple: true,
       value: (row) => row.type,
       options: [
         { value: 'invoice', label: 'invoices.types.invoice' },

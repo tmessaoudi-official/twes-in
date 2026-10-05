@@ -271,7 +271,7 @@ describe('InvoicesPage', () => {
   it('asks the API what each status would list, and says it on the chips', async () => {
     expect(facade.loadStatusCounts).toHaveBeenCalledWith(
       'c1',
-      expect.objectContaining({ q: '', documentType: null }),
+      expect.objectContaining({ q: '', documentType: [] }),
     );
     statusCounts.set({
       all: 48,
@@ -291,7 +291,7 @@ describe('InvoicesPage', () => {
       await settle();
       return text;
     };
-    expect(await count('list-facet-status-all')).toBe('48');
+    // Status combines, so it has no « all » entry to carry the total: each option carries its own count.
     expect(await count('list-facet-status-overdue')).toBe('3');
     expect(await count('list-facet-status-paid')).toBe('34');
     // The kind has no counts from the API, so it shows none rather than the page's.

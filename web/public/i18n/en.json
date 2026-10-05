@@ -678,7 +678,23 @@
     "view_delete": "Delete the view {{name}}",
     "new_row": "{{count}} new row",
     "new_rows": "{{count}} new rows",
-    "more_actions": "More actions"
+    "more_actions": "More actions",
+    "filters": "Filters",
+    "filters_open": "Show the filters",
+    "filters_active": "{{count}} active",
+    "filters_clear_all": "Clear all",
+    "filter_chips": "Active filters",
+    "chip_remove": "Remove the filter {{label}}: {{value}}",
+    "chip_range": "{{from}} to {{to}}",
+    "chip_from": "from {{from}}",
+    "chip_to": "up to {{to}}",
+    "pick_hint": "Type to search; each pick adds to the filter.",
+    "range": {
+      "from": "From",
+      "to": "To",
+      "min": "At least",
+      "max": "At most"
+    }
   },
   "form": {
     "save": "Save",

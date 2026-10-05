@@ -1,16 +1,30 @@
 <div class="flex flex-col gap-3">
   <div class="twes-list-toolbar">
     @for (facet of facets(); track facet.filter.id) {
-      <app-select
-        class="w-full sm:w-60"
-        [label]="facet.filter.label | translate"
-        [labelInside]="true"
-        [options]="facetOptions(facet)"
-        [translateLabels]="true"
-        [ngModel]="facet.chosen === '' ? ANY_FACET : facet.chosen"
-        (ngModelChange)="onFacet(facet.filter.id, $event === ANY_FACET ? '' : $event)"
-        [testId]="'list-facet-' + facet.filter.id"
-      />
+      @if (facet.filter.multiple) {
+        <app-select
+          class="w-full sm:w-60"
+          [label]="facet.filter.label | translate"
+          [labelInside]="true"
+          [multiple]="true"
+          [options]="facetOptions(facet)"
+          [translateLabels]="true"
+          [ngModel]="facet.chosenList"
+          (ngModelChange)="onFacetMany(facet.filter.id, $event ?? [])"
+          [testId]="'list-facet-' + facet.filter.id"
+        />
+      } @else {
+        <app-select
+          class="w-full sm:w-60"
+          [label]="facet.filter.label | translate"
+          [labelInside]="true"
+          [options]="facetOptions(facet)"
+          [translateLabels]="true"
+          [ngModel]="facet.chosen === '' ? ANY_FACET : facet.chosen"
+          (ngModelChange)="onFacet(facet.filter.id, $event === ANY_FACET ? '' : $event)"
+          [testId]="'list-facet-' + facet.filter.id"
+        />
+      }
     }
     <div class="twes-list-tools">
       @if (filterable()) {
@@ -45,6 +59,25 @@
           {{ (count === 1 ? 'list.new_row' : 'list.new_rows') | translate: { count } }}
         </button>
       }
+      @if (hasPanel()) {
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="panelOpen.set(!panelOpen())"
+          [attr.aria-expanded]="panelOpen()"
+          [attr.aria-controls]="testId() + '-filters'"
+          data-testid="list-filters"
+        >
+          <mat-icon aria-hidden="true">filter_list</mat-icon>
+          {{ 'list.filters' | translate }}
+          @if (activeCount() > 0) {
+            <span class="sr-only">{{
+              'list.filters_active' | translate: { count: activeCount() }
+            }}</span>
+            <span aria-hidden="true" data-testid="list-filters-count">({{ activeCount() }})</span>
+          }
+        </button>
+      }
       <button
         mat-icon-button
         type="button"
@@ -73,6 +106,62 @@
       </button>
     </div>
   </div>
+
+  @if (hasPanel() && panelOpen()) {
+    <app-list-filter-panel
+      [id]="testId() + '-filters'"
+      [ranges]="descriptor().ranges ?? []"
+      [picks]="descriptor().picks ?? []"
+      [sources]="pickSources()"
+      [chosen]="chosenFilters()"
+      [testId]="testId() + '-filter-panel'"
+      (patch)="patch($event)"
+      (named)="onNamed($event)"
+    />
+  }
+
+  @if (chips().length > 0) {
+    <ul
+      class="flex flex-wrap items-center gap-2 m-0 p-0 list-none"
+      [attr.aria-label]="'list.filter_chips' | translate"
+      data-testid="list-chips"
+    >
+      @for (chip of chips(); track chip.key) {
+        <li
+          class="inline-flex items-center gap-1 rounded-full bg-secondary-container py-0.5 pl-3 pr-1 text-sm text-on-secondary-container"
+          [attr.data-testid]="'list-chip-' + chip.key"
+        >
+          <span>
+            {{ chip.labelKey | translate }} :
+            @if (chip.kind === 'range') {
+              {{ chipRange(chip) }}
+            } @else if (chip.valueKey) {
+              {{ chip.valueKey | translate }}
+            } @else {
+              {{ chip.valueText }}
+            }
+          </span>
+          <button
+            mat-icon-button
+            type="button"
+            class="twes-chip-remove"
+            (click)="removeChip(chip)"
+            [appLabel]="
+              'list.chip_remove'
+                | translate: { label: (chip.labelKey | translate), value: chipValue(chip) }
+            "
+          >
+            <mat-icon aria-hidden="true">close</mat-icon>
+          </button>
+        </li>
+      }
+      <li>
+        <button mat-button type="button" (click)="clearAllFilters()" data-testid="list-chips-clear">
+          {{ 'list.filters_clear_all' | translate }}
+        </button>
+      </li>
+    </ul>
+  }
 
   @if (viewsOpen()) {
     <div

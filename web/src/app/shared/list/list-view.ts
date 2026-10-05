@@ -11,6 +11,7 @@ import type {
   ListView,
   ListViewDraft,
 } from './list-types';
+import { filterValues } from './list-filters';
 
 /**
  * What a list screen shows, as pure functions of its descriptor, a person's preferences and the rows:
@@ -129,10 +130,18 @@ export function applyFilters<Row>(
   filters: readonly ListFilter<Row>[],
   chosen: ListFilterValues,
 ): Row[] {
-  const active = filters.filter((filter) =>
-    filter.options.some((option) => option.value === chosen[filter.id]),
+  // A filter with several values keeps the rows holding ANY of them; different filters narrow together.
+  const held = (filter: ListFilter<Row>): string[] =>
+    (filter.multiple ? filterValues(chosen[filter.id]) : [chosen[filter.id] ?? '']).filter(
+      (value) => filter.options.some((option) => option.value === value),
+    );
+  const active = filters.filter((filter) => held(filter).length > 0);
+  return rows.filter((row) =>
+    active.every((filter) => {
+      const value = filter.value(row);
+      return value !== null && held(filter).includes(value);
+    }),
   );
-  return rows.filter((row) => active.every((filter) => filter.value(row) === chosen[filter.id]));
 }
 
 export interface Page<Row> {

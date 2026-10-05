@@ -147,10 +147,12 @@ export interface InvoiceSearch {
   itemsPerPage: number;
   /** Words found in the number, the customer's reference, or the customer the document recorded; empty finds all. */
   q: string;
-  /** A status the document holds, or `overdue`, which the API answers against the company's own day. */
-  status: InvoiceShownStatus | null;
-  documentType: InvoiceType | null;
-  customerId: string | null;
+  /** Statuses the document may hold, OR'd; `overdue` is answered against the company's own day. None lists every one. */
+  status: readonly InvoiceShownStatus[];
+  documentType: readonly InvoiceType[];
+  customerIds: readonly string[];
+  /** The ends of the intervals, by `issueDate.from`, `dueDate.to`, `totalGross.min`, `amountDue.max`: each already valid. */
+  intervals: Readonly<Record<string, string>>;
   order: { key: InvoiceSortKey; direction: 'asc' | 'desc' } | null;
 }
 

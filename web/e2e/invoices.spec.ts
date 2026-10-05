@@ -303,8 +303,25 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await expect(page.getByTestId('invoices-table')).toContainText(invoiceNumber);
     // Each status chip says how many it would list, as the API counts them (docs/SPEC.md § 7, 2026-09-26): this run's
     // invoice is settled, so « Soldée » counts at least it.
-    await expectFacetCount(page, 'list-facet-status-all', /^\d+$/);
     await expectFacetCount(page, 'list-facet-status-paid', /^[1-9]\d*$/);
+
+    // Filters combine (docs/SPEC.md § 7, 2026-10-06): « Soldée » or « Brouillon » keeps this settled invoice, a chip names
+    // each, and an interval of the issue day that begins tomorrow takes it out again until its chip is removed.
+    await choose(page, 'list-facet-status', /Soldée|Settled/);
+    await choose(page, 'list-facet-status', /Brouillon|Draft/);
+    await expect(page.getByTestId('list-chip-status:paid')).toBeVisible();
+    await expect(page.getByTestId('list-chip-status:draft')).toBeVisible();
+    await expect(page.getByTestId('invoices-table')).toContainText(invoiceNumber);
+    await page.getByTestId('list-filters').click();
+    const tomorrow = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
+    await page.getByTestId('invoices-table-filter-panel-issueDate-from').fill(tomorrow);
+    await expect(page.getByTestId('list-chip-issueDate:range')).toBeVisible();
+    await expect(page.getByTestId('invoices-table')).not.toContainText(invoiceNumber);
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('list-chip-issueDate:range').getByRole('button').click();
+    await expect(page.getByTestId('invoices-table')).toContainText(invoiceNumber);
+    await page.getByTestId('list-chips-clear').click();
+    await expect(page.getByTestId('list-chips')).toHaveCount(0);
 
     // The home page lays out the API's own summary: the same digits, whatever the locale does with separators.
     await page.goto('/');

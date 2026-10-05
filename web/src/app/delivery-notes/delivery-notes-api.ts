@@ -270,9 +270,10 @@ export class DeliveryNotesApi {
         page: 1,
         itemsPerPage: 20,
         q: '',
-        status: 'draft',
-        documentType: 'invoice',
-        customerId,
+        status: ['draft'],
+        documentType: ['invoice'],
+        customerIds: [customerId],
+        intervals: {},
         order: null,
       });
       return page.rows
