@@ -7,6 +7,7 @@ import type {
   ApiCompaniesCompanyIdinstrumentsGetCollectionResponse,
   InstrumentPortfolioRowJsonldInstrumentPortfolioRowRead,
 } from '../api/types.gen';
+import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import { INSTRUMENT_KINDS, INSTRUMENT_STATUSES } from './instruments-types';
 import { codeOf, InvoicesRefused } from './invoices-api';
@@ -37,7 +38,12 @@ export class PortfolioApi {
 
 function toSearchParams(search: PortfolioSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
-  if (search.status !== null) params = params.set('status', search.status);
+  for (const status of search.status) params = params.append('status[]', status);
+  for (const kind of search.kinds) params = params.append('kind[]', kind);
+  for (const id of search.customerIds) params = params.append('customerId[]', id);
+  for (const [key, value] of Object.entries(search.intervals)) {
+    params = params.set(apiRangeKey(key), value);
+  }
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
   return params;

@@ -15,7 +15,9 @@ use App\Module\Invoices\Domain\PaymentInstrument;
 use App\Module\Invoices\Domain\PaymentInstrumentRepository;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
+use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
@@ -73,9 +75,19 @@ final readonly class DoctrinePaymentInstrumentRepository implements PaymentInstr
             ->join('inv.customer', 'c')
             ->where('i.company = :company')
             ->setParameter('company', $companyId, 'uuid');
+        // The values of one filter are OR'd, the filters AND'd.
         if ([] !== $search->statuses) {
             $query->andWhere('i.status IN (:statuses)')->setParameter('statuses', $search->statuses);
         }
+        if ([] !== $search->kinds) {
+            $query->andWhere('i.kind IN (:kinds)')->setParameter('kinds', $search->kinds);
+        }
+        if ([] !== $search->customers) {
+            $query->andWhere('inv.customer IN (:customerIds)')
+                ->setParameter('customerIds', array_map(static fn (Uuid $each): string => $each->toRfc4122(), $search->customers), ArrayParameterType::STRING);
+        }
+        Intervals::days($query, 'i.dueOn', 'due', $search->dueOn);
+        Intervals::amounts($query, 'i.amount', 'amount', $search->amount);
         // The nearest due day first when nothing was asked; the id settles ties, so a page never shifts.
         ListOrder::apply($query, [] === $search->order ? ['dueOn' => 'asc'] : $search->order, self::SORTED_BY, [], 'i.id')
             ->setFirstResult($page->offset())->setMaxResults($page->size);

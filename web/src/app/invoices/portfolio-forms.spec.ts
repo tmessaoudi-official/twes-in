@@ -17,7 +17,10 @@ describe('portfolioSearch', () => {
     expect(portfolioSearch(query())).toEqual({
       page: 1,
       itemsPerPage: 25,
-      status: null,
+      status: [],
+      kinds: [],
+      customerIds: [],
+      intervals: {},
       order: null,
     });
   });
@@ -35,15 +38,44 @@ describe('portfolioSearch', () => {
     ).toEqual({
       page: 3,
       itemsPerPage: 50,
-      status: 'deposited',
+      status: ['deposited'],
+      kinds: [],
+      customerIds: [],
+      intervals: {},
       order: { key: 'amount', direction: 'desc' },
     });
   });
 
   it('knows the chip that narrows the list to what is open, and none it was not told of', () => {
-    expect(portfolioSearch(query({ filters: { status: 'open' } })).status).toBe('open');
-    expect(portfolioSearch(query({ filters: { status: 'all' } })).status).toBeNull();
-    expect(portfolioSearch(query({ filters: { status: 'nonsense' } })).status).toBeNull();
+    expect(portfolioSearch(query({ filters: { status: 'open' } })).status).toEqual(['open']);
+    expect(portfolioSearch(query({ filters: { status: 'all' } })).status).toEqual([]);
+    expect(portfolioSearch(query({ filters: { status: 'nonsense' } })).status).toEqual([]);
+  });
+
+  it('combines statuses, kinds and customers, leaving out what the list does not offer', () => {
+    const search = portfolioSearch(
+      query({
+        filters: { status: 'cashed,open,nonsense', kind: 'draft,cheque', customer: 'k1,k2' },
+      }),
+    );
+    expect(search.status).toEqual(['open', 'cashed']);
+    expect(search.kinds).toEqual(['draft']);
+    expect(search.customerIds).toEqual(['k1', 'k2']);
+  });
+
+  it('keeps the ends of an interval that are a day or an amount, and drops the rest', () => {
+    expect(
+      portfolioSearch(
+        query({
+          filters: {
+            'dueOn.from': '2026-02-30',
+            'dueOn.to': '2026-03-31',
+            'amount.min': '12.5',
+            'amount.max': '-1',
+          },
+        }),
+      ).intervals,
+    ).toEqual({ 'dueOn.to': '2026-03-31', 'amount.min': '12.5' });
   });
 
   it('sorts only by what the API can order a page by', () => {

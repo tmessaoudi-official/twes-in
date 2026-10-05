@@ -14,7 +14,6 @@ use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\Invoices\Application\ManageInstruments;
 use App\Module\Invoices\Domain\InstrumentPortfolioSearch;
-use App\Module\Invoices\Domain\InstrumentStatus;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
@@ -35,13 +34,7 @@ final readonly class InstrumentPortfolioProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): TraversablePaginator
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::READ);
-        $status = Paging::value($operation, 'status');
-        $statuses = match (true) {
-            'open' === $status => InstrumentPortfolioSearch::open()->statuses,
-            \is_string($status) => [InstrumentStatus::from($status)],
-            default => [],
-        };
-        $search = new InstrumentPortfolioSearch($statuses, Paging::order($operation, InstrumentPortfolioSearch::SORTS));
+        $search = InstrumentPortfolioSearchReader::read(Paging::parameters($context), Paging::order($operation, InstrumentPortfolioSearch::SORTS));
 
         return $this->paging->paginator(
             $this->instruments->portfolio($company, $search, $this->paging->request($operation, $context)),

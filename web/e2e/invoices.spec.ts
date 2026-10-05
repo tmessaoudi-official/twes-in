@@ -222,6 +222,18 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
       .filter({ hasText: `CHQ ${run}` });
     await expect(held).toHaveCount(1);
     expect(await wcagViolations(page)).toEqual([]);
+    // Filters combine here too (docs/SPEC.md § 7, 2026-10-06): a cheque that is held or open, due after a day in the
+    // far future, is not this one, and taking the interval's chip off brings it back.
+    await choose(page, 'list-facet-kind', /Chèque|Cheque/);
+    await choose(page, 'list-facet-status', /En portefeuille|In portfolio/);
+    await choose(page, 'list-facet-status', /En cours|Open/);
+    await expect(held).toHaveCount(1);
+    await page.getByTestId('list-filters').click();
+    await page.getByTestId('portfolio-table-filter-panel-dueOn-from').fill('2999-01-01');
+    await expect(page.getByTestId('list-chip-dueOn:range')).toBeVisible();
+    await expect(held).toHaveCount(0);
+    await page.getByTestId('list-chip-dueOn:range').getByRole('button').click();
+    await expect(held).toHaveCount(1);
     await held.getByRole('link').first().click();
     await expect(page).toHaveURL(invoiceUrl);
     await page.locator('[data-testid^="instrument-"][data-testid$="-deposit"]').click();

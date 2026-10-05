@@ -32,7 +32,13 @@ use Symfony\Component\Serializer\Attribute\Groups;
             // One page at a time, with its total, which only JSON-LD carries.
             outputFormats: ['jsonld' => ['application/ld+json']],
             parameters: [
-                'status' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['open', 'held', 'deposited', 'cashed', 'unpaid']], description: '`open` is what still promises money, held and deposited together; left out, every status is listed.'),
+                'status[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['open', 'held', 'deposited', 'cashed', 'unpaid']]], description: 'Several statuses, OR\'d; a single `status=held` still works. `open` is what still promises money, held and deposited together; left out, every status is listed.', constraints: []),
+                'kind[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['check', 'draft']]], description: 'Cheques, traites or both, OR\'d.', constraints: []),
+                'customerId[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid']], description: 'The customers of the invoices the instruments were handed over for, OR\'d.', constraints: []),
+                'dueOn[from]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'Due on or after this day.'),
+                'dueOn[to]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'Due on or before this day.'),
+                'amount[min]' => new QueryParameter(schema: ['type' => 'string', 'pattern' => '^(0|[1-9][0-9]{0,10})(\\.[0-9]{1,4})?$'], description: 'An instrument of at least this amount.'),
+                'amount[max]' => new QueryParameter(schema: ['type' => 'string', 'pattern' => '^(0|[1-9][0-9]{0,10})(\\.[0-9]{1,4})?$'], description: 'An instrument of at most this amount.'),
                 'order[dueOn]' => new QueryParameter(schema: self::DIRECTION),
                 'order[amount]' => new QueryParameter(schema: self::DIRECTION),
                 'order[status]' => new QueryParameter(schema: self::DIRECTION),

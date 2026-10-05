@@ -39,7 +39,11 @@ export type PortfolioSortKey = 'dueOn' | 'amount' | 'status';
 export interface PortfolioSearch {
   page: number;
   itemsPerPage: number;
-  /** Null lists every status. */
-  status: PortfolioScope | null;
+  /** Statuses wanted, OR'd, `open` standing for held and deposited; none lists every status. */
+  status: readonly PortfolioScope[];
+  kinds: readonly InstrumentKind[];
+  customerIds: readonly string[];
+  /** The ends of the intervals, by `dueOn.from`, `dueOn.to`, `amount.min`, `amount.max`: each already valid. */
+  intervals: Readonly<Record<string, string>>;
   order: { key: PortfolioSortKey; direction: 'asc' | 'desc' } | null;
 }

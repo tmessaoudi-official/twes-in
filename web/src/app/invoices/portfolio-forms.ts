@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { filterValues, rangeKey, validRangeValue } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
-import { INSTRUMENT_STATUS_TONES } from './instruments-types';
+import { INSTRUMENT_KINDS, INSTRUMENT_STATUS_TONES } from './instruments-types';
 import {
   PORTFOLIO_SCOPES,
   type PortfolioRow,
@@ -10,6 +11,12 @@ import {
 } from './portfolio-types';
 
 const FIELDS = 'invoices.portfolio.fields';
+
+/** The intervals the « Filtres » panel offers, in the order it draws them. */
+const PORTFOLIO_INTERVALS: readonly { id: string; kind: 'day' | 'amount'; label: string }[] = [
+  { id: 'dueOn', kind: 'day', label: `${FIELDS}.dueOn` },
+  { id: 'amount', kind: 'amount', label: `${FIELDS}.amount` },
+];
 
 /**
  * The company's cheques and traites, the nearest due day first. Nothing chosen lists every one; the chips narrow to
@@ -59,10 +66,23 @@ export const PORTFOLIO_LIST: ListDescriptor<PortfolioRow> = {
       width: 150,
     },
   ],
+  ranges: PORTFOLIO_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),
+  picks: [{ id: 'customer', label: `${FIELDS}.customer` }],
   filters: [
+    {
+      id: 'kind',
+      label: `${FIELDS}.kind`,
+      multiple: true,
+      value: (row) => row.kind,
+      options: INSTRUMENT_KINDS.map((kind) => ({
+        value: kind,
+        label: `invoices.instruments.kinds.${kind}`,
+      })),
+    },
     {
       id: 'status',
       label: `${FIELDS}.status`,
+      multiple: true,
       value: (row) => row.status,
       options: PORTFOLIO_SCOPES.map((scope) => ({
         value: scope,
@@ -81,13 +101,30 @@ const SORT_KEYS: Readonly<Record<string, PortfolioSortKey>> = {
 
 /** What the API is asked for the page of the portfolio the list shows. */
 export function portfolioSearch(query: ListQuery): PortfolioSearch {
-  const chosen = query.filters['status'];
-  const status = PORTFOLIO_SCOPES.find((scope) => scope === chosen) ?? null;
+  const status = PORTFOLIO_SCOPES.filter((scope) =>
+    filterValues(query.filters['status']).includes(scope),
+  );
+  const kinds = INSTRUMENT_KINDS.filter((kind) =>
+    filterValues(query.filters['kind']).includes(kind),
+  );
+  const intervals = Object.fromEntries(
+    PORTFOLIO_INTERVALS.flatMap(({ id, kind }) =>
+      (kind === 'day' ? (['from', 'to'] as const) : (['min', 'max'] as const)).flatMap((end) => {
+        const value = query.filters[rangeKey(id, end)];
+        return value !== undefined && validRangeValue(kind, value)
+          ? [[rangeKey(id, end), value]]
+          : [];
+      }),
+    ),
+  );
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
     itemsPerPage: query.pageSize,
     status,
+    kinds,
+    customerIds: filterValues(query.filters['customer']),
+    intervals,
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };

@@ -813,6 +813,39 @@ final class InvoicesTest extends ApiTestCase
         $this->getJson($portfolio.'?status=settled');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a status that is none');
 
+        // Combined (docs/SPEC.md § 7, 2026-10-06): the values of one filter are OR'd, different filters AND'd, and
+        // « open » is one more value standing for held and deposited.
+        $stranger = '018f0000-0000-7000-8000-000000000000';
+        foreach ([
+            'status[]=held&status[]=deposited' => ['TR-B', 'CHQ-A'],
+            'status[]=held&status[]=cashed' => ['CHQ-A'],
+            'status[]=open&status[]=cashed' => ['TR-B', 'CHQ-A'],
+            'status[]=cashed&status[]=unpaid' => [],
+            'kind[]=check' => ['CHQ-A'],
+            'kind[]=draft' => ['TR-B'],
+            'kind[]=check&kind[]=draft' => ['TR-B', 'CHQ-A'],
+            'status[]=held&kind[]=draft' => [],
+            'customerId[]='.$this->customerId => ['TR-B', 'CHQ-A'],
+            'customerId[]='.$stranger => [],
+            'customerId[]='.$stranger.'&customerId[]='.$this->customerId => ['TR-B', 'CHQ-A'],
+            'dueOn[from]='.$near.'&dueOn[to]='.$near => ['TR-B'],
+            'dueOn[from]='.$far => ['CHQ-A'],
+            'dueOn[to]='.$today => [],
+            'amount[min]=60' => ['CHQ-A'],
+            'amount[max]=60' => ['TR-B'],
+            'amount[min]=50&amount[max]=100' => ['TR-B', 'CHQ-A'],
+            'amount[min]=100.001' => [],
+            'status[]=held&status[]=deposited&kind[]=check&amount[min]=60&dueOn[from]='.$far => ['CHQ-A'],
+        ] as $query => $expected) {
+            $this->getJson($portfolio.'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($expected, $numbers(), $query);
+        }
+        foreach (['kind[]=cheque', 'kind=cheque', 'customerId[]=nope', 'dueOn[from]=soon', 'dueOn[to]=2026-02-30', 'amount[min]=abc', 'amount[max]=-1', 'status[]=open&status[]=settled'] as $refused) {
+            $this->getJson($portfolio.'?'.$refused);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+        }
+
         // Cashed, a traite leaves what is open and stays in the record.
         $this->postJson($instruments.'/'.$traite.'/cash', null);
         self::assertResponseIsSuccessful();

@@ -117,7 +117,7 @@ describe('PortfolioPage', () => {
     await create();
     expect(facade.loadPage).toHaveBeenCalledWith(
       'c1',
-      expect.objectContaining({ page: 1, itemsPerPage: 25, status: null }),
+      expect.objectContaining({ page: 1, itemsPerPage: 25, status: [] }),
     );
   });
 
