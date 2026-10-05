@@ -520,6 +520,7 @@ final class DeliveryNotesTest extends ApiTestCase
         $this->postJson($this->path(), $this->note([
             'customerId' => $other,
             'customerReference' => 'BC-7788',
+            'deliveryDate' => '2026-09-20',
             'lines' => [['productId' => $this->productId, 'quantity' => '1']],
         ]));
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -532,7 +533,26 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertCount(1, $this->jsonList());
         self::assertSame(2, $this->jsonPage()['totalItems']);
 
+        $zone = new \DateTimeZone($this->company->getTimezone());
+        $today = new \DateTimeImmutable('now', $zone)->format('Y-m-d');
+        $tomorrow = new \DateTimeImmutable('tomorrow', $zone)->format('Y-m-d');
+        $yesterday = new \DateTimeImmutable('yesterday', $zone)->format('Y-m-d');
+
         foreach ([
+            // Combined (docs/SPEC.md § 7, 2026-10-06): the values of one filter are OR'd, different filters AND'd.
+            'status[]=draft&status[]=validated' => [self::DRAFT, $number],
+            'status[]=draft&status[]=delivered' => [self::DRAFT],
+            'status[]=draft&status[]=validated&customerId[]='.$other => [self::DRAFT],
+            'customerId[]='.$other.'&customerId[]='.$this->customerId => [self::DRAFT, $number],
+            // A draft has no issue day, so any end of that interval leaves it out.
+            'issueDate[from]='.$today.'&issueDate[to]='.$today => [$number],
+            'issueDate[from]='.$tomorrow => [],
+            'issueDate[to]='.$yesterday => [],
+            // The validated note names no delivery day, so any end of that interval leaves it out.
+            'deliveryDate[from]=2026-09-20&deliveryDate[to]=2026-09-20' => [self::DRAFT],
+            'deliveryDate[to]=2026-09-19' => [],
+            'deliveryDate[from]=2026-09-21' => [],
+            'status[]=draft&issueDate[from]='.$today => [],
             'q='.$number => [$number],
             'q='.strtolower($number) => [$number],
             'q=carthage' => [$number],
@@ -553,7 +573,7 @@ final class DeliveryNotesTest extends ApiTestCase
             self::assertSame($numbers, $shown, $query);
         }
 
-        foreach (['status=delivered-ish', 'customerId=not-an-id'] as $refused) {
+        foreach (['status=delivered-ish', 'status[]=draft&status[]=delivered-ish', 'customerId=not-an-id', 'customerId[]=nope', 'issueDate[from]=yesterday', 'deliveryDate[to]=2026-02-30'] as $refused) {
             $this->getJson($this->path().'?'.$refused);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
         }
@@ -582,7 +602,8 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertSame(3, $this->json()['all']);
         self::assertSame(['draft' => 1, 'validated' => 1, 'delivered' => 0, 'cancelled' => 1, 'invoiced' => 0], $this->json()['statuses']);
 
-        foreach (['', 'q=carthage', 'q=BC-7788', 'customerId='.$other, 'status=draft'] as $filters) {
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        foreach (['', 'q=carthage', 'q=BC-7788', 'customerId='.$other, 'status=draft', 'customerId[]='.$other.'&customerId[]='.$this->customerId, 'issueDate[from]='.$today, 'deliveryDate[to]=2026-09-19'] as $filters) {
             $this->getJson($this->companyPath().'/delivery-note-status-counts?'.$filters);
             self::assertResponseIsSuccessful($filters);
             $counts = $this->json();

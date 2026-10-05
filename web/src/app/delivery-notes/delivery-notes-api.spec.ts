@@ -39,8 +39,9 @@ const SEARCH = {
   page: 1,
   itemsPerPage: 25,
   q: '',
-  status: null,
-  customerId: null,
+  status: [],
+  customerIds: [],
+  intervals: {},
   order: null,
 } as const;
 
@@ -233,8 +234,9 @@ describe('DeliveryNotesApi', () => {
       page: 3,
       itemsPerPage: 50,
       q: '  BL-2026  ',
-      status: 'validated',
-      customerId: 'k1',
+      status: ['validated', 'draft'],
+      customerIds: ['k1', 'k2'],
+      intervals: { 'issueDate.from': '2026-01-01', 'deliveryDate.to': '2026-12-31' },
       order: { key: 'deliveryDate', direction: 'asc' },
     });
     const request = http.expectOne(
@@ -246,8 +248,11 @@ describe('DeliveryNotesApi', () => {
     expect(request.request.params.get('itemsPerPage')).toBe('50');
     // Trimmed, so a trailing space is not a different search.
     expect(request.request.params.get('q')).toBe('BL-2026');
-    expect(request.request.params.get('status')).toBe('validated');
-    expect(request.request.params.get('customerId')).toBe('k1');
+    // Repeated parameters, one per value, which the API ORs; the ends of an interval keep API Platform's bracket form.
+    expect(request.request.params.getAll('status[]')).toEqual(['validated', 'draft']);
+    expect(request.request.params.getAll('customerId[]')).toEqual(['k1', 'k2']);
+    expect(request.request.params.get('issueDate[from]')).toBe('2026-01-01');
+    expect(request.request.params.get('deliveryDate[to]')).toBe('2026-12-31');
     expect(request.request.params.get('order[deliveryDate]')).toBe('asc');
     request.flush({ member: [{ id: 'n1', number: 'BL-2026-00001' }], totalItems: 91 });
 
@@ -261,13 +266,14 @@ describe('DeliveryNotesApi', () => {
       page: 3,
       itemsPerPage: 50,
       q: ' po ',
-      status: 'validated' as const,
-      customerId: 'k1',
+      status: ['validated' as const, 'draft' as const],
+      customerIds: ['k1'],
+      intervals: { 'issueDate.to': '2026-03-31' },
       order: { key: 'number' as const, direction: 'desc' as const },
     };
 
-    expect(api.exportUrl('c/1', search, 'xlsx')).toBe(
-      '/api/companies/c%2F1/exports/delivery-notes.xlsx?q=po&status=validated&customerId=k1&order%5Bnumber%5D=desc',
+    expect(decodeURIComponent(api.exportUrl('c/1', search, 'xlsx'))).toBe(
+      '/api/companies/c/1/exports/delivery-notes.xlsx?q=po&status[]=validated&status[]=draft&customerId[]=k1&issueDate[to]=2026-03-31&order[number]=desc',
     );
   });
 
@@ -289,8 +295,9 @@ describe('DeliveryNotesApi', () => {
       ...SEARCH,
       page: 2,
       q: '  carthage  ',
-      status: 'validated',
-      customerId: 'k1',
+      status: ['validated'],
+      customerIds: ['k1'],
+      intervals: { 'issueDate.from': '2026-01-01' },
       order: { key: 'number', direction: 'desc' },
     });
     const request = http.expectOne(
@@ -299,7 +306,7 @@ describe('DeliveryNotesApi', () => {
         candidate.method === 'GET',
     );
     // The chips narrow by status themselves, and a count has no page or order.
-    expect(request.request.params.keys().sort()).toEqual(['customerId', 'q']);
+    expect(request.request.params.keys().sort()).toEqual(['customerId[]', 'issueDate[from]', 'q']);
     expect(request.request.params.get('q')).toBe('carthage');
     const statuses = { draft: 1, validated: 2, delivered: 0, cancelled: 1, invoiced: 0 };
     request.flush({ all: 4, statuses });

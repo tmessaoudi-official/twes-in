@@ -137,7 +137,7 @@ describe('DeliveryNotesPage', () => {
     expect(facade.loadListContext).toHaveBeenCalledWith('c1');
     expect(facade.loadPage).toHaveBeenCalledWith(
       'c1',
-      expect.objectContaining({ page: 1, itemsPerPage: 25, q: '', status: null }),
+      expect.objectContaining({ page: 1, itemsPerPage: 25, q: '', status: [] }),
     );
   });
 
@@ -180,7 +180,7 @@ describe('DeliveryNotesPage', () => {
   it('asks the API what each status would list, and says it on the chips', async () => {
     expect(facade.loadStatusCounts).toHaveBeenCalledWith(
       'c1',
-      expect.objectContaining({ q: '', customerId: null }),
+      expect.objectContaining({ q: '', customerIds: [] }),
     );
     statusCounts.set({
       all: 12,
@@ -199,7 +199,7 @@ describe('DeliveryNotesPage', () => {
       await settle();
       return text;
     };
-    expect(await count('list-facet-status-all')).toBe('12');
+    // Status combines, so it has no « all » entry to carry the total: each option carries its own count.
     expect(await count('list-facet-status-delivered')).toBe('3');
   });
 

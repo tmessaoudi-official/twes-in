@@ -3,6 +3,7 @@
 import { atScale } from '../shared/i18n/format';
 import { FormArray, FormControl, FormGroup, type ValidatorFn, Validators } from '@angular/forms';
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
+import { filterValues, rangeKey, validRangeValue } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import type { PickOption } from '../shared/form/pick-field';
 import {
@@ -56,16 +57,35 @@ const SORT_KEYS: Readonly<Record<string, DeliveryNoteSortKey>> = {
   status: 'status',
 };
 
+/** The intervals the « Filtres » panel offers: both are days, a note holding no total of its own to compare. */
+const DELIVERY_NOTE_INTERVALS: readonly { id: string; label: string }[] = [
+  { id: 'issueDate', label: `${FIELDS}.issueDate` },
+  { id: 'deliveryDate', label: `${FIELDS}.deliveryDate` },
+];
+
 /** What the API is asked for the page of notes the list shows. */
 export function deliveryNoteSearch(query: ListQuery): DeliveryNoteSearch {
-  const status = DELIVERY_NOTE_STATUSES.find((known) => known === query.filters['status']) ?? null;
+  const status = DELIVERY_NOTE_STATUSES.filter((known) =>
+    filterValues(query.filters['status']).includes(known),
+  );
+  const intervals = Object.fromEntries(
+    DELIVERY_NOTE_INTERVALS.flatMap(({ id }) =>
+      (['from', 'to'] as const).flatMap((end) => {
+        const value = query.filters[rangeKey(id, end)];
+        return value !== undefined && validRangeValue('day', value)
+          ? [[rangeKey(id, end), value]]
+          : [];
+      }),
+    ),
+  );
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
     itemsPerPage: query.pageSize,
     q: query.query,
     status,
-    customerId: null,
+    customerIds: filterValues(query.filters['customer']),
+    intervals,
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };
@@ -126,10 +146,13 @@ export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {
       width: 160,
     },
   ],
+  ranges: DELIVERY_NOTE_INTERVALS.map(({ id, label }) => ({ id, label, kind: 'day' as const })),
+  picks: [{ id: 'customer', label: `${FIELDS}.customer` }],
   filters: [
     {
       id: 'status',
       label: `${FIELDS}.status`,
+      multiple: true,
       value: (row) => row.status,
       options: DELIVERY_NOTE_STATUSES.map((status) => ({
         value: status,

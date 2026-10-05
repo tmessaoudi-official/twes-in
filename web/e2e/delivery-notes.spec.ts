@@ -165,9 +165,25 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
     await expect(page.getByTestId('delivery-notes-table')).toContainText(noteNumber);
     // Each status chip says how many it would list under that search (docs/SPEC.md § 7, 2026-09-26): this run's
     // note, found by its number, is delivered.
-    await expectFacetCount(page, 'list-facet-status-all', '1');
     await expectFacetCount(page, 'list-facet-status-delivered', '1');
     await expectFacetCount(page, 'list-facet-status-draft', '0');
+
+    // Filters combine (docs/SPEC.md § 7, 2026-10-06): « Livré » or « Brouillon » keeps the note, an issue day that
+    // begins in two days takes it out until its chip is removed.
+    await choose(page, 'list-facet-status', /Livré|Delivered/);
+    await choose(page, 'list-facet-status', /Brouillon|Draft/);
+    await expect(page.getByTestId('list-chip-status:delivered')).toBeVisible();
+    await expect(page.getByTestId('list-chip-status:draft')).toBeVisible();
+    await expect(page.getByTestId('delivery-notes-table')).toContainText(noteNumber);
+    await page.getByTestId('list-filters').click();
+    const later = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
+    await page.getByTestId('delivery-notes-table-filter-panel-issueDate-from').fill(later);
+    await expect(page.getByTestId('list-chip-issueDate:range')).toBeVisible();
+    // The empty message names the search words, so the absence is read from the message, not from the number.
+    await expect(page.getByTestId('list-no-match')).toBeVisible();
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('list-chips-clear').click();
+    await expect(page.getByTestId('delivery-notes-table')).toContainText(noteNumber);
   } finally {
     await retire(page, customerNumber);
   }

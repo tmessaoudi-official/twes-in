@@ -16,6 +16,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteSearch;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
+use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\ArrayParameterType;
@@ -86,7 +87,7 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
     public function statusCounts(Uuid $companyId, DeliveryNoteSearch $search): array
     {
         // The chips narrow by status themselves, so whatever status the search carried is left aside.
-        $statusFree = new DeliveryNoteSearch($search->text, null, $search->customer);
+        $statusFree = $search->withoutStatus();
         $counts = array_fill_keys(array_map(static fn (DeliveryNoteStatus $status): string => $status->value, DeliveryNoteStatus::cases()), 0);
         /** @var list<array{status: DeliveryNoteStatus, total: int|string}> $rows the column is mapped to the enum */
         $rows = $this->filtered($companyId, $statusFree)
@@ -112,12 +113,17 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
         } elseif ('' !== $words) {
             $query->andWhere('LOWER(n.number) = LOWER(:number)')->setParameter('number', $words);
         }
-        if (null !== $search->status) {
-            $query->andWhere('n.status = :status')->setParameter('status', $search->status->value);
+        // The values of one filter are OR'd, the filters AND'd.
+        if ([] !== $search->statuses) {
+            $query->andWhere('n.status IN (:statuses)')
+                ->setParameter('statuses', array_map(static fn (DeliveryNoteStatus $each): string => $each->value, $search->statuses), ArrayParameterType::STRING);
         }
-        if (null !== $search->customer) {
-            $query->andWhere('n.customer = :customerId')->setParameter('customerId', $search->customer, 'uuid');
+        if ([] !== $search->customers) {
+            $query->andWhere('n.customer IN (:customerIds)')
+                ->setParameter('customerIds', array_map(static fn (Uuid $each): string => $each->toRfc4122(), $search->customers), ArrayParameterType::STRING);
         }
+        Intervals::days($query, 'n.issueDate', 'issued', $search->issueDate);
+        Intervals::days($query, 'n.deliveryDate', 'delivery', $search->deliveryDate);
 
         return $query;
     }

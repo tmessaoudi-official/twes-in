@@ -11,6 +11,7 @@ import {
   linesArray,
   offeredTaxes,
   pickedProduct,
+  deliveryNoteSearch,
 } from './delivery-note-forms';
 import type {
   CustomerOption,
@@ -95,6 +96,44 @@ const validated: DeliveryNoteRow = {
 };
 
 describe('delivery note forms', () => {
+  describe('deliveryNoteSearch', () => {
+    const query = {
+      pageIndex: 0,
+      pageSize: 25,
+      query: '',
+      filters: {} as Record<string, string>,
+      sort: null,
+    };
+
+    it('combines statuses and customers, leaving out what the list does not offer', () => {
+      const search = deliveryNoteSearch({
+        ...query,
+        filters: { status: 'delivered,draft,nonsense', customer: 'k1,k2' },
+      });
+      expect(search.status).toEqual(['draft', 'delivered']);
+      expect(search.customerIds).toEqual(['k1', 'k2']);
+      expect(deliveryNoteSearch(query)).toMatchObject({
+        status: [],
+        customerIds: [],
+        intervals: {},
+      });
+    });
+
+    it('keeps the ends of an interval that are a day, and drops the rest', () => {
+      expect(
+        deliveryNoteSearch({
+          ...query,
+          filters: {
+            'issueDate.from': '2026-02-30',
+            'issueDate.to': '2026-03-31',
+            'deliveryDate.from': '2026-01-01',
+            'deliveryDate.max': '5',
+          },
+        }).intervals,
+      ).toEqual({ 'issueDate.to': '2026-03-31', 'deliveryDate.from': '2026-01-01' });
+    });
+  });
+
   it('lists a note with the customer it was validated with, else today’s', () => {
     const draft: DeliveryNoteRow = {
       ...validated,

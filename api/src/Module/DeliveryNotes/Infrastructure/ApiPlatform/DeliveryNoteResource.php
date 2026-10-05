@@ -52,8 +52,12 @@ use Symfony\Component\Validator\Constraints as Assert;
             outputFormats: ['jsonld' => ['application/ld+json']],
             parameters: [
                 'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the number, the customer\'s reference or the customer as the note recorded them, whatever their case and accents; under three characters, the exact number only. A draft carries no number and no recorded customer: narrow it with customerId.'),
-                'status' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['draft', 'validated', 'delivered', 'cancelled', 'invoiced']]),
-                'customerId' => new QueryParameter(schema: self::ID),
+                'status[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['draft', 'validated', 'delivered', 'cancelled', 'invoiced']]], description: 'Several statuses, OR\'d: `status[]=draft&status[]=delivered`; a single `status=draft` is the same filter with one value.', constraints: []),
+                'customerId[]' => new QueryParameter(schema: ['type' => 'array', 'items' => self::ID], description: 'Several customers, OR\'d; a single `customerId=…` still works.', constraints: []),
+                'issueDate[from]' => new QueryParameter(schema: self::DAY, description: 'Issued on or after this day. A draft has no issue day, so it is left out by any end.'),
+                'issueDate[to]' => new QueryParameter(schema: self::DAY, description: 'Issued on or before this day.'),
+                'deliveryDate[from]' => new QueryParameter(schema: self::DAY, description: 'To be delivered, or delivered, on or after this day.'),
+                'deliveryDate[to]' => new QueryParameter(schema: self::DAY, description: 'To be delivered, or delivered, on or before this day.'),
                 'order[number]' => new QueryParameter(schema: self::DIRECTION, description: 'Drafts carry no number and come last whichever the direction.'),
                 'order[customer]' => new QueryParameter(schema: self::DIRECTION, description: 'By the customer\'s current name.'),
                 'order[issueDate]' => new QueryParameter(schema: self::DIRECTION),
@@ -123,6 +127,7 @@ final class DeliveryNoteResource
     private const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
     private const array TEXT_OR_NULL = ['type' => ['string', 'null']];
     private const array ID = ['type' => 'string', 'format' => 'uuid'];
+    private const array DAY = ['type' => 'string', 'format' => 'date'];
     /** Which way one of the list's sorts reads. */
     private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
 

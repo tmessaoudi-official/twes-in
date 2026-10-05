@@ -22,6 +22,7 @@ import type {
 import type { ListPage } from '../shared/list/list-types';
 import { trackingOf } from '../products/products-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
+import { apiRangeKey } from '../shared/list/list-filters';
 import {
   AGING_BUCKETS,
   type AgingAmount,
@@ -353,8 +354,7 @@ function narrowing(params: HttpParams, search: InvoiceSearch): HttpParams {
   for (const type of search.documentType) next = next.append('documentType[]', type);
   for (const id of search.customerIds) next = next.append('customerId[]', id);
   for (const [key, value] of Object.entries(search.intervals)) {
-    const [name, end] = key.split('.');
-    next = next.set(`${name}[${end}]`, value);
+    next = next.set(apiRangeKey(key), value);
   }
   return next;
 }

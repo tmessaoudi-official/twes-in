@@ -40,6 +40,12 @@ export function rangeKey(id: string, end: 'from' | 'to' | 'min' | 'max'): string
   return `${id}.${end}`;
 }
 
+/** How the API names an interval end a query keeps as `issueDate.from`: `issueDate[from]`. */
+export function apiRangeKey(key: string): string {
+  const [name, end] = key.split('.');
+  return `${name}[${end}]`;
+}
+
 /** Whether what was typed is a day that exists, or an amount without sign or exponent: what the API takes. */
 export function validRangeValue(kind: RangeKind, value: string): boolean {
   if (kind === 'amount') return AMOUNT.test(value);

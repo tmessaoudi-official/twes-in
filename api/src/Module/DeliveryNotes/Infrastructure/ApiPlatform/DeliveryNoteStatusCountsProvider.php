@@ -12,11 +12,9 @@ namespace App\Module\DeliveryNotes\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\DeliveryNotes\Application\ManageDeliveryNotes;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteSearch;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
-use Symfony\Component\Uid\Uuid;
 
 /** @implements ProviderInterface<DeliveryNoteStatusCountsResource> */
 final readonly class DeliveryNoteStatusCountsProvider implements ProviderInterface
@@ -28,13 +26,10 @@ final readonly class DeliveryNoteStatusCountsProvider implements ProviderInterfa
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): DeliveryNoteStatusCountsResource
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), DeliveryNotePermission::READ);
-        // The `uuid` format has already refused anything that is not an identifier, with a 422.
-        $customer = Paging::value($operation, 'customerId');
 
-        return DeliveryNoteStatusCountsResource::of($this->manage->statusCounts($company, new DeliveryNoteSearch(
-            Paging::text($operation),
-            null,
-            \is_string($customer) ? Uuid::fromString($customer) : null,
-        )));
+        return DeliveryNoteStatusCountsResource::of($this->manage->statusCounts(
+            $company,
+            DeliveryNoteSearchReader::read(Paging::parameters($context), Paging::text($operation), [])->withoutStatus(),
+        ));
     }
 }

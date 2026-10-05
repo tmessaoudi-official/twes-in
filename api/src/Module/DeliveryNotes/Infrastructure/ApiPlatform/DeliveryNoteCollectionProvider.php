@@ -16,11 +16,9 @@ use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Application\ManageDeliveryNotes;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteSearch;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * One page of a company's delivery notes, searched, narrowed and sorted in the database (docs/SPEC.md § 7, lists at
@@ -42,15 +40,7 @@ final readonly class DeliveryNoteCollectionProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): TraversablePaginator
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), DeliveryNotePermission::READ);
-        $status = Paging::value($operation, 'status');
-        // The `uuid` format has already refused anything that is not an identifier, with a 422.
-        $customer = Paging::value($operation, 'customerId');
-        $search = new DeliveryNoteSearch(
-            Paging::text($operation),
-            \is_string($status) ? DeliveryNoteStatus::from($status) : null,
-            \is_string($customer) ? Uuid::fromString($customer) : null,
-            Paging::order($operation, DeliveryNoteSearch::SORTS),
-        );
+        $search = DeliveryNoteSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, DeliveryNoteSearch::SORTS));
 
         return $this->paging->paginator(
             $this->manage->search($company, $search, $this->paging->request($operation, $context)),

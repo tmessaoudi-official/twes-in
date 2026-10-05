@@ -86,6 +86,12 @@ final class DeliveryNoteExportTest extends ApiTestCase
         self::assertCount(2, $this->csv('/exports/delivery-notes.csv?q=PO-77'));
         self::assertCount(1, $this->csv('/exports/delivery-notes.csv?q=nobody-here'), 'the header alone');
         self::assertCount(3, $this->csv('/exports/delivery-notes.csv?customerId='.$this->customerId));
+        // Combined (docs/SPEC.md § 7, 2026-10-06): the file is narrowed by the same reading the screen is.
+        self::assertCount(3, $this->csv('/exports/delivery-notes.csv?status[]=draft&status[]=validated&customerId[]='.$this->customerId));
+        self::assertCount(2, $this->csv('/exports/delivery-notes.csv?status[]=draft&status[]=validated&issueDate[from]=2001-01-01'), 'the validated note alone: a draft has no issue day');
+        self::assertCount(1, $this->csv('/exports/delivery-notes.csv?deliveryDate[from]=2999-01-01'), 'the header alone');
+        $this->client->request('GET', $this->path().'/exports/delivery-notes.csv?status[]=draft&status[]=sent-ish');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         $lines = $this->csv('/exports/delivery-notes.csv?order[status]=desc');
         self::assertStringContainsString('validated', $lines[1]);
     }

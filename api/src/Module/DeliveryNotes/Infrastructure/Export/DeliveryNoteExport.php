@@ -15,12 +15,11 @@ use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Application\ManageDeliveryNotes;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteSearch;
-use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\DeliveryNotePermission;
+use App\Module\DeliveryNotes\Infrastructure\ApiPlatform\DeliveryNoteSearchReader;
 use App\Module\DeliveryNotes\Infrastructure\Module\DeliveryNotesModule;
 use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * The delivery notes list as a file (docs/SPEC.md § 7, row 60): one row per note, under the search, status, customer
@@ -59,14 +58,7 @@ final readonly class DeliveryNoteExport implements DeclaresExport
 
     public function rows(Company $company, ExportQuery $query): iterable
     {
-        $status = $query->choice('status', array_column(DeliveryNoteStatus::cases(), 'value'));
-        $customer = $query->text('customerId');
-        $search = new DeliveryNoteSearch(
-            $query->text(),
-            null === $status ? null : DeliveryNoteStatus::from($status),
-            null !== $customer && Uuid::isValid($customer) ? Uuid::fromString($customer) : null,
-            $query->order(DeliveryNoteSearch::SORTS),
-        );
+        $search = DeliveryNoteSearchReader::read($query->parameters(), $query->text(), $query->order(DeliveryNoteSearch::SORTS));
 
         for ($page = 1;; ++$page) {
             $answer = $this->manage->search($company, $search, new PageRequest($page, self::BATCH));

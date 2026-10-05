@@ -79,8 +79,9 @@ describe('DeliveryNotesFacade', () => {
       page: 1,
       itemsPerPage: 25,
       q: '',
-      status: null,
-      customerId: null,
+      status: [],
+      customerIds: [],
+      intervals: {},
       order: null,
     } as const;
 
@@ -99,8 +100,9 @@ describe('DeliveryNotesFacade', () => {
       page: 1,
       itemsPerPage: 25,
       q: '',
-      status: null,
-      customerId: null,
+      status: [],
+      customerIds: [],
+      intervals: {},
       order: null,
     } as const;
     const counts = (all: number) => ({

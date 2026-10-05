@@ -49,8 +49,11 @@ export interface DeliveryNoteSearch {
   itemsPerPage: number;
   /** Words found in the number, the customer's reference, or the customer the note recorded; empty finds all. */
   q: string;
-  status: DeliveryNoteStatus | null;
-  customerId: string | null;
+  /** Statuses the note may hold, OR'd; none lists every one. */
+  status: readonly DeliveryNoteStatus[];
+  customerIds: readonly string[];
+  /** The ends of the intervals, by `issueDate.from`, `deliveryDate.to`: each already valid. */
+  intervals: Readonly<Record<string, string>>;
   order: { key: DeliveryNoteSortKey; direction: 'asc' | 'desc' } | null;
 }
 

@@ -19,6 +19,7 @@ import type {
   InvoiceFromDeliveryNotesInvoiceResourceInvoiceReadValidationInvoiceFromDeliveryNotesWrite as InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
+import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import {
@@ -343,19 +344,28 @@ const notePath = (companyId: string, id?: string): string =>
 function toSearchParams(search: DeliveryNoteSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
   if (search.q.trim() !== '') params = params.set('q', search.q.trim());
-  if (search.status !== null) params = params.set('status', search.status);
-  if (search.customerId !== null) params = params.set('customerId', search.customerId);
+  for (const status of search.status) params = params.append('status[]', status);
+  params = narrowing(params, search);
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
   return params;
+}
+
+/** What narrows a list whatever the status: the customers and the ends of the intervals, as the API names them. */
+function narrowing(params: HttpParams, search: DeliveryNoteSearch): HttpParams {
+  let next = params;
+  for (const id of search.customerIds) next = next.append('customerId[]', id);
+  for (const [key, value] of Object.entries(search.intervals)) {
+    next = next.set(apiRangeKey(key), value);
+  }
+  return next;
 }
 
 /** The chips narrow by status themselves, and a count has no page or order. */
 function toCountParams(search: DeliveryNoteSearch): HttpParams {
   let params = new HttpParams();
   if (search.q.trim() !== '') params = params.set('q', search.q.trim());
-  if (search.customerId !== null) params = params.set('customerId', search.customerId);
-  return params;
+  return narrowing(params, search);
 }
 
 function toNote(

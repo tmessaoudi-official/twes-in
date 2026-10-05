@@ -29,7 +29,11 @@ use Symfony\Component\Serializer\Attribute\Groups;
             normalizationContext: ['groups' => [self::READ]],
             parameters: [
                 'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'The list\'s own words.'),
-                'customerId' => new QueryParameter(schema: ['type' => 'string', 'format' => 'uuid']),
+                'customerId[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid']], description: 'Several customers, OR\'d; a single `customerId=…` still works.', constraints: []),
+                'issueDate[from]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'Issued on or after this day.'),
+                'issueDate[to]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'Issued on or before this day.'),
+                'deliveryDate[from]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'To be delivered, or delivered, on or after this day.'),
+                'deliveryDate[to]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'To be delivered, or delivered, on or before this day.'),
             ],
         ),
     ],
