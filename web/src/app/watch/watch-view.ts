@@ -23,18 +23,30 @@ function text(params: WatchRow['params'], name: string): string {
 
 /**
  * Each figure as the screen writes figures (`FormatFacade`: the locale, or the person's chosen formats). Days are
- * signed by the API (a lot's date past is negative); the table says each in the direction its column names.
+ * signed by the API (a lot's date past is negative); the table says each in the direction its column names. `say`
+ * translates a key, for the one figure the API names by code: the kind of a cheque or traite.
  */
 export function watchRowView(
   row: WatchRow,
   index: number,
   figures: Pick<FormatFacade, 'amount' | 'day'>,
+  say: (key: string) => string = (key) => key,
 ): WatchRowView {
   const params = row.params;
   const cells: Record<string, string | number> = {};
-  for (const name of ['customer', 'product', 'reference', 'establishment', 'lot'] as const) {
+  for (const name of [
+    'customer',
+    'product',
+    'reference',
+    'establishment',
+    'lot',
+    'invoice',
+    'number',
+    'bank',
+  ] as const) {
     if (name in params) cells[name] = text(params, name);
   }
+  if ('kind' in params) cells['kind'] = say(`invoices.instruments.kinds.${text(params, 'kind')}`);
   if ('invoices' in params) cells['invoices'] = Number(params['invoices']);
   if ('amount' in params) {
     const currency = text(params, 'currency');

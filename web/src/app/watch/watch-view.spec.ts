@@ -55,6 +55,35 @@ describe('watchRowView', () => {
     expect(view.cells['days']).toBe(-2);
   });
 
+  it("writes a cheque fallen due with its kind said in the screen's language and its day count", () => {
+    const view = watchRowView(
+      {
+        kind: 'invoices.instruments_due',
+        subjectId: 'i1',
+        params: {
+          customer: 'Carthage',
+          invoice: 'FAC-2026-10-00007',
+          kind: 'check',
+          number: 'CHQ-1',
+          bank: 'BT',
+          amount: '250.500',
+          currency: 'TND',
+          days: 3,
+        },
+      },
+      0,
+      figures,
+      (key) => `«${key}»`,
+    );
+
+    expect(view.cells['invoice']).toBe('FAC-2026-10-00007');
+    expect(view.cells['kind']).toBe('«invoices.instruments.kinds.check»');
+    expect(view.cells['number']).toBe('CHQ-1');
+    expect(view.cells['bank']).toBe('BT');
+    expect(String(view.cells['amount']).replace(/\s/g, '')).toBe('250,500TND');
+    expect(view.cells['days']).toBe(3);
+  });
+
   it('leaves a cell out when the API sent no such figure', () => {
     const view = watchRowView(
       { kind: 'k', subjectId: null, params: { product: 'Colle' } },

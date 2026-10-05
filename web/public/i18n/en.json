@@ -3072,6 +3072,10 @@
     "unknown": "This subject does not exist or is not within your reach.",
     "subjects": {
       "invoices": {
+        "instruments_due": {
+          "title": "Cheques and traites due",
+          "hint": "Cheques and traites whose day has come and that are still held or deposited. Deposit them, then cash them."
+        },
         "late_customer": {
           "title": "Customers late paying",
           "hint": "Customers with invoices past due for longer than the threshold. Chase them."
@@ -3116,11 +3120,17 @@
       "quantity": "Quantity",
       "expiresOn": "Expiry date",
       "expired_days": "Expired for (days)",
-      "in_days": "In (days)"
+      "in_days": "In (days)",
+      "invoice": "Invoice",
+      "kind": "Kind",
+      "number": "Number",
+      "bank": "Bank",
+      "due_days": "Due for (days)"
     },
     "actions": {
       "see_invoices": "See {{name}}'s overdue invoices",
-      "open_product": "Open {{name}}"
+      "open_product": "Open {{name}}",
+      "open_invoice": "Open {{name}}"
     }
   },
   "coming": {

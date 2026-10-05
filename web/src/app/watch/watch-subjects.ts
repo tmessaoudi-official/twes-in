@@ -50,6 +50,16 @@ const INVOICES_OF_CUSTOMER: RowAction<WatchRowView> = {
   linkQuery: (view) => ({ status: 'overdue', q: String(view.cells['customer'] ?? '') }),
 };
 
+/** The invoice a cheque or traite was received against, where it is deposited and cashed. */
+const OPEN_INVOICE: RowAction<WatchRowView> = {
+  id: 'open-invoice',
+  label: 'watch.actions.open_invoice',
+  labelParams: (view) => ({ name: String(view.cells['invoice'] ?? '') }),
+  icon: 'receipt_long',
+  link: (view) => ['/invoices', view.row.subjectId],
+  shown: (view) => view.row.subjectId !== null,
+};
+
 /** The product page, where its stock, its lots and its reorder points are. */
 const OPEN_PRODUCT: RowAction<WatchRowView> = {
   id: 'open-product',
@@ -77,6 +87,26 @@ function productList(
 
 /** Every subject the API can name, in the order the overview lists them when it names several. */
 export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
+  'invoices.instruments_due': {
+    icon: 'payments',
+    list: {
+      id: 'watch-instruments-due',
+      rowId: (view) => view.id,
+      pageSizes: PAGE_SIZES,
+      link: (view) => ['/invoices', view.row.subjectId],
+      linkColumn: 'invoice',
+      columns: [
+        cell('invoice', { hideable: false }),
+        cell('customer'),
+        cell('kind', { width: 110 }),
+        cell('number', { width: 150 }),
+        cell('bank', { width: 150 }),
+        cell('amount', { align: 'end', width: 170 }),
+        daysColumn('due_days', 'due_days', (days) => days),
+      ],
+      actions: [OPEN_INVOICE],
+    },
+  },
   'invoices.late_customer': {
     icon: 'schedule',
     list: {

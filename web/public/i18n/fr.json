@@ -3072,6 +3072,10 @@
     "unknown": "Ce sujet n'existe pas ou n'est pas à votre portée.",
     "subjects": {
       "invoices": {
+        "instruments_due": {
+          "title": "Chèques et traites à échéance",
+          "hint": "Des chèques et traites dont le jour est venu et qui sont encore en portefeuille ou remis en banque. Remettez-les, puis encaissez-les."
+        },
         "late_customer": {
           "title": "Clients en retard de paiement",
           "hint": "Les clients dont des factures sont échues depuis plus longtemps que le seuil. Relancez-les."
@@ -3116,11 +3120,17 @@
       "quantity": "Quantité",
       "expiresOn": "Date limite",
       "expired_days": "Dépassée depuis (jours)",
-      "in_days": "Dans (jours)"
+      "in_days": "Dans (jours)",
+      "invoice": "Facture",
+      "kind": "Type",
+      "number": "Numéro",
+      "bank": "Banque",
+      "due_days": "Échu depuis (jours)"
     },
     "actions": {
       "see_invoices": "Voir les factures en retard de {{name}}",
-      "open_product": "Ouvrir {{name}}"
+      "open_product": "Ouvrir {{name}}",
+      "open_invoice": "Ouvrir {{name}}"
     }
   },
   "coming": {

@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { map } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { FormatFacade } from '../shared/i18n/format-facade';
@@ -38,6 +38,9 @@ export class WatchSubjectPage implements OnInit {
   private readonly facade = inject(WatchFacade);
   private readonly auth = inject(AuthFacade);
   private readonly format = inject(FormatFacade);
+  private readonly translate = inject(TranslateService);
+  /** Read inside `rows`, so a row's kind is said again when the language changes. */
+  private readonly language = toSignal(this.translate.onLangChange, { initialValue: null });
   private readonly live = inject(LiveChanges);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
@@ -60,8 +63,11 @@ export class WatchSubjectPage implements OnInit {
   );
   protected readonly rows = computed(() => {
     const state = this.state();
+    this.language();
     return state.status === 'ready'
-      ? state.page.rows.map((row, index) => watchRowView(row, index, this.format))
+      ? state.page.rows.map((row, index) =>
+          watchRowView(row, index, this.format, (key) => this.translate.instant(key)),
+        )
       : [];
   });
   protected readonly total = computed(() => {

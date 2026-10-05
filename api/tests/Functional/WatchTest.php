@@ -149,6 +149,55 @@ final class WatchTest extends ApiTestCase
         self::assertSame(['invoices.unsold_products', 'stock.running_out', 'stock.lot_expired', 'stock.lot_expiring'], array_column($this->subjects(), 0));
     }
 
+    public function testAChequeOrTraiteFallenDueIsASubjectUntilItIsCashedOrComesBackUnpaid(): void
+    {
+        $this->signedIn(['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'product.read']);
+        $invoiceId = $this->issuedInvoice('VIS');
+        $number = $this->em()->getConnection()->fetchOne('SELECT number FROM invoice WHERE id = ?', [$invoiceId]);
+        $instruments = $this->company().'/invoices/'.$invoiceId.'/instruments';
+        $ahead = new \DateTimeImmutable($this->today)->modify('+5 days')->format('Y-m-d');
+
+        // Due today, and one not due for five days: only the first has fallen due.
+        $this->postJson($instruments, ['kind' => 'check', 'amount' => '1', 'dueOn' => $this->today, 'bank' => 'BT', 'number' => 'CHQ-1']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+        $dueToday = $this->stringAt($this->json(), 'id');
+        $this->postJson($instruments, ['kind' => 'draft', 'amount' => '2', 'dueOn' => $ahead, 'number' => 'TR-1']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+        $later = $this->stringAt($this->json(), 'id');
+
+        $this->getJson($this->watch());
+        self::assertSame([['invoices.instruments_due', 1]], $this->subjects(), 'the one due today; the invoice itself is not late');
+        self::assertSame([
+            ['invoices.instruments_due', $invoiceId, ['customer' => 'Carthage Conseil', 'invoice' => $number, 'kind' => 'check', 'number' => 'CHQ-1', 'bank' => 'BT', 'amount' => '1.000', 'currency' => 'TND', 'days' => 0]],
+        ], $this->rows('invoices.instruments_due'));
+
+        // The traite's day arrives three days ago: both are due, the older first; a deposited one is still open.
+        $this->em()->getConnection()->executeStatement('UPDATE payment_instrument SET due_on = ?::date - 3 WHERE id = ?', [$this->today, $later]);
+        $this->postJson($instruments.'/'.$later.'/deposit', null);
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->watch());
+        self::assertSame([['invoices.instruments_due', 2]], $this->subjects());
+        self::assertSame([3, 0], array_map(static fn (array $row): mixed => \is_array($row[2]) ? $row[2]['days'] : null, $this->rows('invoices.instruments_due')), 'oldest due day first');
+
+        // Without invoice.read the subject is not there.
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->signedIn(['company.read', 'product.read'], 'keeper@twes.local', 'keeper');
+        $this->getJson($this->watch());
+        self::assertSame([], $this->subjects());
+        $this->getJson($this->watch().'/invoices.instruments_due');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->sendJson('POST', '/api/auth/logout');
+
+        // Cashed, then unpaid: each leaves the list.
+        $this->login('owner@twes.local', 'password-1234');
+        $this->postJson($instruments.'/'.$dueToday.'/cash', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($instruments.'/'.$later.'/unpaid', null);
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->watch());
+        self::assertSame([], $this->subjects(), 'a cashed cheque is money, an unpaid traite is a record: neither is left to watch');
+    }
+
     public function testASubjectIsPagedInAStableOrderWithItsWholeTotal(): void
     {
         $this->signedIn(['company.read', 'product.read', 'stock.read', 'stock.write']);

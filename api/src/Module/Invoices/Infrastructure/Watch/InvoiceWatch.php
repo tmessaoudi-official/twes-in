@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Watch;
 
 use App\Module\Invoices\Application\InvoiceWatchSettings;
+use App\Module\Invoices\Domain\InstrumentStatus;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceType;
 use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
@@ -26,13 +27,21 @@ use Doctrine\DBAL\Connection;
 
 /**
  * What the invoices put on « À surveiller » (docs/SPEC.md § 7, 2026-09-24 12:10): each customer with invoices late
- * past the threshold, and each good that has not been sold for as long. Late means what the overdue filter of the
- * invoices list means, so the link from here shows the same invoices.
+ * past the threshold, each good that has not been sold for as long, and each cheque or traite whose day has come and
+ * is still held or deposited (§ 7, 2026-10-05). Late means what the overdue filter of the invoices list means, so the
+ * link from here shows the same invoices.
  */
 final readonly class InvoiceWatch implements DeclaresWatch
 {
     public const string LATE_CUSTOMER = 'invoices.late_customer';
     public const string UNSOLD_PRODUCTS = 'invoices.unsold_products';
+    public const string INSTRUMENTS_DUE = 'invoices.instruments_due';
+
+    /**
+     * An instrument still promising money whose day has come: the count and the rows read the same condition, and it is
+     * the `(company, status, due_on)` index's own order, so the number on the home never reads an invoice.
+     */
+    public const string INSTRUMENTS_WHERE = 'pi.company_id = :company AND pi.status IN (:open) AND pi.due_on <= :today';
 
     /** What late means, shared by the count and the rows so the number on the home is the number of rows behind it. */
     public const string LATE_WHERE = 'i.company_id = :company AND i.document_type = :type AND i.status IN (:statuses) AND i.amount_due > 0 AND i.due_date < :cutoff';
@@ -58,7 +67,7 @@ final readonly class InvoiceWatch implements DeclaresWatch
 
     public function kinds(): array
     {
-        return [self::LATE_CUSTOMER, self::UNSOLD_PRODUCTS];
+        return [self::INSTRUMENTS_DUE, self::LATE_CUSTOMER, self::UNSOLD_PRODUCTS];
     }
 
     public function count(string $kind, Company $company, \DateTimeImmutable $today): int
@@ -68,6 +77,7 @@ final readonly class InvoiceWatch implements DeclaresWatch
             // index of the open invoices and nothing else.
             self::LATE_CUSTOMER => ['SELECT COUNT(*) FROM (SELECT 1 FROM invoice i WHERE '.self::LATE_WHERE.' GROUP BY i.customer_id) late', ...$this->lateBindings($company, $today)],
             self::UNSOLD_PRODUCTS => ['SELECT COUNT(*) FROM ('.$this->unsoldFrom().') unsold', ...$this->unsoldBindings($company, $today)],
+            self::INSTRUMENTS_DUE => ['SELECT COUNT(*) FROM payment_instrument pi WHERE '.self::INSTRUMENTS_WHERE, ...$this->dueBindings($company, $today)],
             default => throw new \LogicException(\sprintf('The invoices watch has no %s.', $kind)),
         };
 
@@ -85,6 +95,7 @@ final readonly class InvoiceWatch implements DeclaresWatch
         return match ($kind) {
             self::LATE_CUSTOMER => $this->lateCustomers($company, $today, $paging, $total, $request),
             self::UNSOLD_PRODUCTS => $this->unsoldProducts($company, $today, $paging, $total, $request),
+            self::INSTRUMENTS_DUE => $this->instrumentsDue($company, $today, $paging, $total, $request),
             default => throw new \LogicException(\sprintf('The invoices watch has no %s.', $kind)),
         };
     }
@@ -154,6 +165,54 @@ final readonly class InvoiceWatch implements DeclaresWatch
                 'days' => (int) $since->diff($today)->days,
             ]);
         }, $rows), $total, $request);
+    }
+
+    /**
+     * One row per instrument, the oldest day first, each leading to its invoice, where it is deposited and cashed. A row
+     * says how many days past its day it is: 0 on the day itself.
+     *
+     * @param array{limit: int, offset: int} $paging
+     *
+     * @return Page<WatchItem>
+     */
+    private function instrumentsDue(Company $company, \DateTimeImmutable $today, array $paging, int $total, PageRequest $request): Page
+    {
+        [$params, $types] = $this->dueBindings($company, $today);
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT pi.id, pi.invoice_id, pi.kind, pi.number, pi.bank, pi.amount, pi.due_on, i.number AS invoice, c.name
+               FROM payment_instrument pi
+               JOIN invoice i ON i.id = pi.invoice_id
+               JOIN customer c ON c.id = i.customer_id
+              WHERE '.self::INSTRUMENTS_WHERE.'
+              ORDER BY pi.due_on, pi.id
+              LIMIT :limit OFFSET :offset',
+            $params + $paging,
+            $types,
+        );
+
+        return new Page(array_map(static fn (array $row): WatchItem => new WatchItem(self::INSTRUMENTS_DUE, self::text($row['invoice_id']), [
+            'customer' => self::text($row['name']),
+            'invoice' => self::text($row['invoice']),
+            'kind' => self::text($row['kind']),
+            'number' => \is_scalar($row['number']) ? (string) $row['number'] : '',
+            'bank' => \is_scalar($row['bank']) ? (string) $row['bank'] : '',
+            'amount' => self::text($row['amount']),
+            'currency' => $company->getCurrency(),
+            'days' => (int) new \DateTimeImmutable(self::text($row['due_on']))->diff($today)->days,
+        ]), $rows), $total, $request);
+    }
+
+    /** @return array{array<string, mixed>, array<string, ArrayParameterType>} */
+    private function dueBindings(Company $company, \DateTimeImmutable $today): array
+    {
+        return [
+            [
+                'company' => $company->getId()->toRfc4122(),
+                'open' => [InstrumentStatus::Held->value, InstrumentStatus::Deposited->value],
+                'today' => $today->format('Y-m-d'),
+            ],
+            ['open' => ArrayParameterType::STRING],
+        ];
     }
 
     /** @return array{array<string, mixed>, array<string, ArrayParameterType>} */
