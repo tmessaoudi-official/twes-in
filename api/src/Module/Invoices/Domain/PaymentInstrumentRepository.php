@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Domain;
 
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 /** The cheques and traites received (docs/SPEC.md § 7, 2026-09-21 18:40). */
@@ -22,6 +24,13 @@ interface PaymentInstrumentRepository
 
     /** @return list<PaymentInstrument> an invoice's, by due day then in the order they were received */
     public function ofInvoice(Uuid $companyId, Uuid $invoiceId): array;
+
+    /**
+     * One page of the company's instruments with their invoice and its customer, in the order asked for.
+     *
+     * @return Page<PaymentInstrument>
+     */
+    public function portfolio(Uuid $companyId, InstrumentPortfolioSearch $search, PageRequest $page): Page;
 
     /** Three decimals: what the invoice's held and deposited instruments promise. */
     public function openAmount(Uuid $companyId, Uuid $invoiceId): string;

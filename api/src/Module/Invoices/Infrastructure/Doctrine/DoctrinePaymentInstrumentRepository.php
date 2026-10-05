@@ -9,14 +9,22 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
+use App\Module\Invoices\Domain\InstrumentPortfolioSearch;
 use App\Module\Invoices\Domain\InstrumentStatus;
 use App\Module\Invoices\Domain\PaymentInstrument;
 use App\Module\Invoices\Domain\PaymentInstrumentRepository;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
+use App\Shared\Infrastructure\Doctrine\ListOrder;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrinePaymentInstrumentRepository implements PaymentInstrumentRepository
 {
+    /** The DQL expression each sort of the portfolio reads. */
+    private const array SORTED_BY = ['dueOn' => 'i.dueOn', 'amount' => 'i.amount', 'status' => 'i.status'];
+
     public function __construct(private EntityManagerInterface $entityManager)
     {
     }
@@ -54,6 +62,29 @@ final readonly class DoctrinePaymentInstrumentRepository implements PaymentInstr
             ->getResult();
 
         return $found;
+    }
+
+    public function portfolio(Uuid $companyId, InstrumentPortfolioSearch $search, PageRequest $page): Page
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('i', 'inv', 'c')
+            ->from(PaymentInstrument::class, 'i')
+            ->join('i.invoice', 'inv')
+            ->join('inv.customer', 'c')
+            ->where('i.company = :company')
+            ->setParameter('company', $companyId, 'uuid');
+        if ([] !== $search->statuses) {
+            $query->andWhere('i.status IN (:statuses)')->setParameter('statuses', $search->statuses);
+        }
+        // The nearest due day first when nothing was asked; the id settles ties, so a page never shifts.
+        ListOrder::apply($query, [] === $search->order ? ['dueOn' => 'asc'] : $search->order, self::SORTED_BY, [], 'i.id')
+            ->setFirstResult($page->offset())->setMaxResults($page->size);
+
+        $paginator = new Paginator($query, fetchJoinCollection: false)->setUseOutputWalkers(false);
+        /** @var list<PaymentInstrument> $found */
+        $found = iterator_to_array($paginator, false);
+
+        return new Page($found, \count($paginator), $page);
     }
 
     public function openAmount(Uuid $companyId, Uuid $invoiceId): string

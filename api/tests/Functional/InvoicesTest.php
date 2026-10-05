@@ -765,6 +765,81 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor is it listed');
     }
 
+    public function testThePortfolioListsTheCompanysInstrumentsByDueDayNarrowedByStatusAndPagedInItsOwnCompany(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $near = new \DateTimeImmutable($today)->modify('+2 days')->format('Y-m-d');
+        $far = new \DateTimeImmutable($today)->modify('+10 days')->format('Y-m-d');
+        $id = $this->issuedInvoice();
+        $number = $this->em()->getConnection()->fetchOne('SELECT number FROM invoice WHERE id = ?', [$id]);
+        $instruments = $this->path($id).'/instruments';
+        $this->postJson($instruments, ['kind' => 'check', 'amount' => '100', 'dueOn' => $far, 'bank' => 'BT', 'number' => 'CHQ-A']);
+        $this->postJson($instruments, ['kind' => 'draft', 'amount' => '50', 'dueOn' => $near, 'number' => 'TR-B']);
+        $traite = $this->stringAt($this->json(), 'id');
+        $this->postJson($instruments.'/'.$traite.'/deposit', null);
+        self::assertResponseIsSuccessful();
+        $portfolio = $this->companyPath().'/instruments';
+        $numbers = fn (): array => array_column($this->jsonList(), 'number');
+
+        $this->getJson($portfolio);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['TR-B', 'CHQ-A'], $numbers(), 'the nearest due day first');
+        self::assertSame(
+            ['invoiceId' => $id, 'invoiceNumber' => $number, 'customerName' => $this->jsonList()[1]['customerName'], 'currency' => 'TND', 'kind' => 'check', 'amount' => '100.000', 'dueOn' => $far, 'bank' => 'BT', 'status' => 'held'],
+            array_intersect_key($this->jsonList()[1], array_flip(['invoiceId', 'invoiceNumber', 'customerName', 'currency', 'kind', 'amount', 'dueOn', 'bank', 'status'])),
+        );
+        self::assertNotSame('', $this->jsonList()[1]['customerName']);
+
+        $this->getJson($portfolio.'?order[dueOn]=desc');
+        self::assertSame(['CHQ-A', 'TR-B'], $numbers());
+        $this->getJson($portfolio.'?order[amount]=asc');
+        self::assertSame(['TR-B', 'CHQ-A'], $numbers());
+        $this->getJson($portfolio.'?status=open');
+        self::assertSame(['TR-B', 'CHQ-A'], $numbers(), 'held and deposited are both still open');
+        $this->getJson($portfolio.'?status=all');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'every status is what leaving it out lists');
+        $this->getJson($portfolio.'?status=held');
+        self::assertSame(['CHQ-A'], $numbers());
+        $this->getJson($portfolio.'?status=deposited');
+        self::assertSame(['TR-B'], $numbers());
+        $this->getJson($portfolio.'?status=cashed');
+        self::assertSame([], $numbers());
+        $this->getJson($portfolio.'?status=settled');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a status that is none');
+
+        // Cashed, a traite leaves what is open and stays in the record.
+        $this->postJson($instruments.'/'.$traite.'/cash', null);
+        self::assertResponseIsSuccessful();
+        $this->getJson($portfolio);
+        self::assertSame(['TR-B', 'CHQ-A'], $numbers(), 'left out, every status is listed');
+        $this->getJson($portfolio.'?status=open');
+        self::assertSame(['CHQ-A'], $numbers(), 'a cashed one is no longer open');
+        $this->getJson($portfolio.'?status=cashed');
+        self::assertSame(['TR-B'], $numbers());
+
+        $this->getJson($portfolio.'?itemsPerPage=1&page=2');
+        self::assertSame(['CHQ-A'], $numbers());
+        self::assertSame(2, $this->jsonPage()['totalItems'], 'the total is the whole, whatever the page');
+
+        // Another company sees none of it, and a member without invoice.read is not told the portfolio exists.
+        $globex = $this->createCompany('Globex');
+        $this->createUser('globex@twes.local', 'password-1234', $globex, ['invoice.read'], 'member');
+        $acme = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($acme);
+        $this->createUser('cashier@twes.local', 'password-1234', $acme, ['payment.write'], 'cashier');
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('globex@twes.local', 'password-1234');
+        $this->getJson('/api/companies/'.$globex->getId()->toRfc4122().'/instruments');
+        self::assertSame([], $numbers());
+        $this->getJson($portfolio);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'not a member of this company');
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('cashier@twes.local', 'password-1234');
+        $this->getJson($portfolio);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'invoice.read reads it');
+    }
+
     public function testAReaderOnlyReadsAndAnotherCompanysInvoiceIsNotFound(): void
     {
         $globex = $this->createCompany('Globex');

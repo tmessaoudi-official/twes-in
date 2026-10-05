@@ -219,6 +219,11 @@ export const routes: Routes = [
         loadComponent: () => import('./invoices/invoice-page').then((m) => m.InvoicePage),
       },
       {
+        path: 'instruments',
+        canActivate: [moduleGuard(INVOICES_MODULE)],
+        loadComponent: () => import('./invoices/portfolio-page').then((m) => m.PortfolioPage),
+      },
+      {
         path: 'delivery-notes',
         canActivate: [moduleGuard(DELIVERY_NOTES_MODULE)],
         loadComponent: () =>

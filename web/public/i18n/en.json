@@ -501,6 +501,7 @@
     "watch": "To watch",
     "count": "{{count}} to review",
     "home": "Home",
+    "instruments": "Cheques and traites",
     "modules": "Modules",
     "members": "Members",
     "roles": "Roles",
@@ -1332,6 +1333,29 @@
         "other": "Other"
       },
       "credit_applied": "The customer’s credit is applied to the invoice."
+    },
+    "portfolio": {
+      "title": "Cheques and traites",
+      "hint": "What is held or at the bank, the nearest due day first. Open an invoice to deposit or cash its cheques and traites.",
+      "no_company": "No company is being worked in.",
+      "none": "No cheque or traite here.",
+      "fields": {
+        "dueOn": "Due on",
+        "invoice": "Invoice",
+        "customer": "Customer",
+        "kind": "Kind",
+        "number": "Number",
+        "bank": "Bank",
+        "amount": "Amount",
+        "status": "Status"
+      },
+      "scopes": {
+        "held": "In portfolio",
+        "deposited": "Deposited",
+        "cashed": "Cashed",
+        "unpaid": "Unpaid",
+        "open": "Open"
+      }
     },
     "instruments": {
       "title": "Cheques and traites",

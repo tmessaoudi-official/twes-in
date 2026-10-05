@@ -501,6 +501,7 @@
     "watch": "À surveiller",
     "count": "{{count}} à traiter",
     "home": "Accueil",
+    "instruments": "Chèques et traites",
     "modules": "Modules",
     "members": "Membres",
     "roles": "Rôles",
@@ -1332,6 +1333,29 @@
         "other": "Autre"
       },
       "credit_applied": "Le crédit du client est appliqué à la facture."
+    },
+    "portfolio": {
+      "title": "Chèques et traites",
+      "hint": "Ce qui est en portefeuille ou à la banque, l'échéance la plus proche d'abord. Ouvrez une facture pour remettre ou encaisser ses chèques et traites.",
+      "no_company": "Aucune société n'est active.",
+      "none": "Aucun chèque ni traite ici.",
+      "fields": {
+        "dueOn": "Échéance",
+        "invoice": "Facture",
+        "customer": "Client",
+        "kind": "Type",
+        "number": "Numéro",
+        "bank": "Banque",
+        "amount": "Montant",
+        "status": "État"
+      },
+      "scopes": {
+        "held": "En portefeuille",
+        "deposited": "Remis en banque",
+        "cashed": "Encaissé",
+        "unpaid": "Impayé",
+        "open": "En cours"
+      }
     },
     "instruments": {
       "title": "Chèques et traites",

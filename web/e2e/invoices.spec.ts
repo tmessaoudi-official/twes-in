@@ -214,6 +214,16 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     expect(await wcagViolations(page)).toEqual([]);
     await page.goBack();
     await expect(page.getByTestId('invoice-instruments')).toContainText(`CHQ ${run}`);
+    // The portfolio lists it with its customer, and its invoice number leads back to the invoice.
+    await page.goto('/instruments');
+    const held = page
+      .getByTestId('portfolio-table')
+      .getByRole('row')
+      .filter({ hasText: `CHQ ${run}` });
+    await expect(held).toHaveCount(1);
+    expect(await wcagViolations(page)).toEqual([]);
+    await held.getByRole('link').first().click();
+    await expect(page).toHaveURL(invoiceUrl);
     await page.locator('[data-testid^="instrument-"][data-testid$="-deposit"]').click();
     await expect(toast(page)).toContainText("remis à l'encaissement");
     await page.locator('[data-testid^="instrument-"][data-testid$="-unpaid"]').click();

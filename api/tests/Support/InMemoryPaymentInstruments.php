@@ -10,8 +10,11 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Fiscal\Domain\Calculation\Decimal;
+use App\Module\Invoices\Domain\InstrumentPortfolioSearch;
 use App\Module\Invoices\Domain\PaymentInstrument;
 use App\Module\Invoices\Domain\PaymentInstrumentRepository;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryPaymentInstruments implements PaymentInstrumentRepository
@@ -48,6 +51,14 @@ final class InMemoryPaymentInstruments implements PaymentInstrumentRepository
         usort($mine, static fn (PaymentInstrument $a, PaymentInstrument $b): int => [$a->getDueOn(), $a->getId()->toRfc4122()] <=> [$b->getDueOn(), $b->getId()->toRfc4122()]);
 
         return $mine;
+    }
+
+    public function portfolio(Uuid $companyId, InstrumentPortfolioSearch $search, PageRequest $page): Page
+    {
+        $mine = array_values(array_filter($this->instruments, static fn (PaymentInstrument $each): bool => $each->getCompany()->getId()->equals($companyId) && ([] === $search->statuses || \in_array($each->getStatus(), $search->statuses, true))));
+        usort($mine, static fn (PaymentInstrument $a, PaymentInstrument $b): int => [$a->getDueOn(), $a->getId()->toRfc4122()] <=> [$b->getDueOn(), $b->getId()->toRfc4122()]);
+
+        return new Page(\array_slice($mine, $page->offset(), $page->size), \count($mine), $page);
     }
 
     public function openAmount(Uuid $companyId, Uuid $invoiceId): string

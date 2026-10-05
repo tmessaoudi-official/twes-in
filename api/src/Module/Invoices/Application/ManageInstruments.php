@@ -15,6 +15,7 @@ use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Invoices\Domain\InstrumentDetails;
 use App\Module\Invoices\Domain\InstrumentKind;
+use App\Module\Invoices\Domain\InstrumentPortfolioSearch;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceRepository;
@@ -25,6 +26,8 @@ use App\Module\Invoices\Domain\PaymentDetails;
 use App\Module\Invoices\Domain\PaymentInstrument;
 use App\Module\Invoices\Domain\PaymentInstrumentRepository;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use App\Shared\Domain\PaymentMethod;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
@@ -65,6 +68,16 @@ final readonly class ManageInstruments
         $this->invoices->ofIdInCompany($invoiceId, $company->getId()) ?? throw new InvoiceNotFound();
 
         return $this->instruments->ofInvoice($company->getId(), $invoiceId);
+    }
+
+    /**
+     * One page of the company's cheques and traites, with their invoice, for the portfolio screen.
+     *
+     * @return Page<PaymentInstrument>
+     */
+    public function portfolio(Company $company, InstrumentPortfolioSearch $search, PageRequest $page): Page
+    {
+        return $this->instruments->portfolio($company->getId(), $search, $page);
     }
 
     /**
