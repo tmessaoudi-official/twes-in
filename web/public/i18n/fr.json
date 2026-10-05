@@ -3074,7 +3074,7 @@
       "invoices": {
         "instruments_due": {
           "title": "Chèques et traites à échéance",
-          "hint": "Des chèques et traites dont le jour est venu et qui sont encore en portefeuille ou remis en banque. Remettez-les, puis encaissez-les."
+          "hint": "Des chèques et traites qui arrivent à échéance dans la semaine, ou dont le jour est passé, et qui sont encore en portefeuille ou remis en banque. Remettez-les, puis encaissez-les."
         },
         "late_customer": {
           "title": "Clients en retard de paiement",
@@ -3125,7 +3125,7 @@
       "kind": "Type",
       "number": "Numéro",
       "bank": "Banque",
-      "due_days": "Échu depuis (jours)"
+      "due_days": "Échéance dans (jours)"
     },
     "actions": {
       "see_invoices": "Voir les factures en retard de {{name}}",

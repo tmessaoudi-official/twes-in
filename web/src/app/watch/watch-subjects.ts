@@ -102,7 +102,7 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
         cell('number', { width: 150 }),
         cell('bank', { width: 150 }),
         cell('amount', { align: 'end', width: 170 }),
-        daysColumn('due_days', 'due_days', (days) => days),
+        daysColumn('due_days', 'due_days', (days) => -days),
       ],
       actions: [OPEN_INVOICE],
     },

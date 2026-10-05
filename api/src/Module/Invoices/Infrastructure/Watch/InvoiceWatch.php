@@ -38,10 +38,14 @@ final readonly class InvoiceWatch implements DeclaresWatch
     public const string INSTRUMENTS_DUE = 'invoices.instruments_due';
 
     /**
-     * An instrument still promising money whose day has come: the count and the rows read the same condition, and it is
+     * An instrument still promising money whose day falls within the week ahead or has passed (§ 7, 2026-09-21 18:50: « cheques
+     * and traites due this week » on the home): the count and the rows read the same condition, and it is
      * the `(company, status, due_on)` index's own order, so the number on the home never reads an invoice.
      */
-    public const string INSTRUMENTS_WHERE = 'pi.company_id = :company AND pi.status IN (:open) AND pi.due_on <= :today';
+    /** How many days ahead a cheque or traite is already worth acting on: deposited a few days early, it clears on its day. */
+    public const int INSTRUMENTS_WINDOW_DAYS = 7;
+
+    public const string INSTRUMENTS_WHERE = 'pi.company_id = :company AND pi.status IN (:open) AND pi.due_on <= :until';
 
     /** What late means, shared by the count and the rows so the number on the home is the number of rows behind it. */
     public const string LATE_WHERE = 'i.company_id = :company AND i.document_type = :type AND i.status IN (:statuses) AND i.amount_due > 0 AND i.due_date < :cutoff';
@@ -169,7 +173,7 @@ final readonly class InvoiceWatch implements DeclaresWatch
 
     /**
      * One row per instrument, the oldest day first, each leading to its invoice, where it is deposited and cashed. A row
-     * says how many days past its day it is: 0 on the day itself.
+     * says how many days past its day it is, negative while the day is still ahead, 0 on the day itself.
      *
      * @param array{limit: int, offset: int} $paging
      *
@@ -198,8 +202,15 @@ final readonly class InvoiceWatch implements DeclaresWatch
             'bank' => \is_scalar($row['bank']) ? (string) $row['bank'] : '',
             'amount' => self::text($row['amount']),
             'currency' => $company->getCurrency(),
-            'days' => (int) new \DateTimeImmutable(self::text($row['due_on']))->diff($today)->days,
+            'days' => self::daysPast(new \DateTimeImmutable(self::text($row['due_on'])), $today),
         ]), $rows), $total, $request);
+    }
+
+    private static function daysPast(\DateTimeImmutable $day, \DateTimeImmutable $today): int
+    {
+        $apart = $day->diff($today);
+
+        return $apart->invert ? -(int) $apart->days : (int) $apart->days;
     }
 
     /** @return array{array<string, mixed>, array<string, ArrayParameterType>} */
@@ -209,7 +220,7 @@ final readonly class InvoiceWatch implements DeclaresWatch
             [
                 'company' => $company->getId()->toRfc4122(),
                 'open' => [InstrumentStatus::Held->value, InstrumentStatus::Deposited->value],
-                'today' => $today->format('Y-m-d'),
+                'until' => $today->modify('+'.self::INSTRUMENTS_WINDOW_DAYS.' days')->format('Y-m-d'),
             ],
             ['open' => ArrayParameterType::STRING],
         ];

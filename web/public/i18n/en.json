@@ -3074,7 +3074,7 @@
       "invoices": {
         "instruments_due": {
           "title": "Cheques and traites due",
-          "hint": "Cheques and traites whose day has come and that are still held or deposited. Deposit them, then cash them."
+          "hint": "Cheques and traites falling due within a week, or already past their day, that are still held or deposited. Deposit them, then cash them."
         },
         "late_customer": {
           "title": "Customers late paying",
@@ -3125,7 +3125,7 @@
       "kind": "Kind",
       "number": "Number",
       "bank": "Bank",
-      "due_days": "Due for (days)"
+      "due_days": "Due in (days)"
     },
     "actions": {
       "see_invoices": "See {{name}}'s overdue invoices",

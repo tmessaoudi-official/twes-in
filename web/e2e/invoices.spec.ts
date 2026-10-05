@@ -203,6 +203,17 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await expect(toast(page)).toContainText('Le chèque ou la traite est reçu.');
     await expect(page.getByTestId('invoice-instruments')).toContainText(`CHQ ${run}`);
     await expect(page.getByTestId('invoice-amount-due')).toHaveText(due);
+    // Due today, so it is already « à surveiller » (docs/SPEC.md § 7, 2026-09-21 18:50: due this week); back to the invoice after.
+    await page.goto('/watch/invoices.instruments_due');
+    await expect(
+      page
+        .getByTestId('watch-table')
+        .getByRole('row')
+        .filter({ hasText: `CHQ ${run}` }),
+    ).toHaveCount(1);
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.goBack();
+    await expect(page.getByTestId('invoice-instruments')).toContainText(`CHQ ${run}`);
     await page.locator('[data-testid^="instrument-"][data-testid$="-deposit"]').click();
     await expect(toast(page)).toContainText("remis à l'encaissement");
     await page.locator('[data-testid^="instrument-"][data-testid$="-unpaid"]').click();
