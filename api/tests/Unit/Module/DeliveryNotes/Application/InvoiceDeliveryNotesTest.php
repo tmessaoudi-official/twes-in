@@ -26,13 +26,13 @@ use App\Module\DeliveryNotes\Domain\DeliveryNotePrint;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
+use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\Invoice;
-use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Domain\InvoiceLine;
-use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceLineTax;
+use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
@@ -198,7 +198,9 @@ final class InvoiceDeliveryNotesTest extends TestCase
             array_map(static fn (InvoiceLine $line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $draft->getLines()),
         );
         self::assertSame([['Pièce', '1.000', 1], ['Câble', '4.000', 2]], array_map(static fn (InvoiceLine $line): array => [$line->getDescription(), $line->getQuantity(), $line->getPosition()], $draft->getLines()));
-        $entry = $this->audit->entries[array_key_last($this->audit->entries)];
+        $entries = $this->audit->entries;
+        $entry = array_pop($entries);
+        self::assertNotNull($entry, 'the revision was audited');
         self::assertSame(
             ['invoice', $draft->getId(), 'invoice.revised', $actor, ['fields' => ['lines'], 'deliveryNoteIds' => [$second->getId()->toRfc4122()]]],
             [$entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $entry->changes],

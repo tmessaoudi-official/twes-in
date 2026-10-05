@@ -25,6 +25,7 @@ use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
+use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Products\Domain\LotCode;
 use App\Shared\Application\Transactions;
@@ -203,8 +204,8 @@ final readonly class InvoiceDeliveryNotes
         $references = array_values(array_unique(array_map(static fn (DeliveryNote $note): string => $note->getHeader()->customerReference ?? '', $notes)));
         $header = new InvoiceHeader(self::lastDelivery($notes), customerReference: 1 === \count($references) ? $references[0] : null);
 
-    return [$notes, $lines, $header];
-}
+        return [$notes, $lines, $header];
+    }
 
     /**
      * What of a note is still to invoice, line by line: what the company's invoices that are not cancelled already take,
