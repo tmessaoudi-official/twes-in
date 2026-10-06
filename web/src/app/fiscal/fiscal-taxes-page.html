@@ -57,10 +57,13 @@
     </ng-template>
     <ng-template appDataListCell="value" let-row>
       @if (row.rate !== null) {
-        {{ row.rate }} %
+        {{ row.rate | amount: 0 }} %
       } @else {
-        {{ row.amount }}
+        {{ row.amount | amount: null }}
       }
+    </ng-template>
+    <ng-template appDataListCell="threshold" let-row>
+      {{ row.threshold | amount: null }}
     </ng-template>
     <ng-template appDataListCell="isDefault" let-row>
       {{ (row.isDefault ? 'fiscal.yes' : 'fiscal.no') | translate }}

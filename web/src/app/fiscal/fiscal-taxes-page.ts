@@ -30,11 +30,20 @@ import {
 } from './fiscal-forms';
 import type { CustomerTaxRegimeRow, TaxComponentRow } from './fiscal-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { AmountPipe } from '../shared/i18n/format-pipes';
 
 /** A company's taxes, which it copied from its fiscal preset and now edits, and the regimes its customers may be under. */
 @Component({
   selector: 'app-fiscal-taxes-page',
-  imports: [MatButtonModule, MatCardModule, TranslatePipe, DataList, DataListCell, DescriptorForm],
+  imports: [
+    MatButtonModule,
+    MatCardModule,
+    TranslatePipe,
+    AmountPipe,
+    DataList,
+    DataListCell,
+    DescriptorForm,
+  ],
   templateUrl: './fiscal-taxes-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

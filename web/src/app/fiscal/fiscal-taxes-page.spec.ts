@@ -151,9 +151,11 @@ describe('FiscalTaxesPage', () => {
 
   it('shows each tax with its translated family and its rate or amount', () => {
     expect(q('tax-TVA19')?.textContent).toContain('TVA');
-    expect(q('tax-TVA19')?.textContent).toContain('19.000 %');
+    // A rate and an amount read as every other figure does, through the pipes (audit 2026-10-06, V-14).
+    expect(q('tax-TVA19')?.textContent?.replace(/\s/g, ' ')).toContain('19 %');
+    expect(q('tax-TVA19')?.textContent).not.toContain('19.000');
     expect(q('tax-TIMBRE')?.textContent).toContain('Droit de timbre');
-    expect(q('tax-TIMBRE')?.textContent).toContain('1.000');
+    expect(q('tax-TIMBRE')?.textContent).toContain('1,000');
   });
 
   it('lists the customer regimes with the taxes they do not charge', () => {

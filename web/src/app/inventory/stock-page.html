@@ -147,7 +147,7 @@
     >
       <ng-template appDataListCell="useBy" let-row>
         <span class="inline-flex items-center gap-2">
-          {{ row.lotExpiresOn }}
+          {{ row.lotExpiresOn | day }}
           @if (row.expired) {
             <app-status-badge tone="danger">{{
               'inventory.stock.expired' | translate

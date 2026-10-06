@@ -286,6 +286,9 @@ describe('StockPage', () => {
 
     const row = q('stock-ART-3-000')?.textContent ?? '';
     expect(row).toContain('Périmé');
+    // The day a lot is used by, as the screen writes every day (audit 2026-10-06, V-14).
+    expect(row).toContain('31/01/2020');
+    expect(row).not.toContain('2020-01-31');
     expect(q('row-action-release-p1:l1:k1')).not.toBeNull();
     expect(q('row-action-release-p1:l1:k1')?.getAttribute('aria-label') ?? '').toContain('Libérer');
     expect(q('stock-ART-1-000')?.textContent).not.toContain('Périmé');
