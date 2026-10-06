@@ -49,12 +49,10 @@ final readonly class InviteToCompany
         private RoleBounds $bounds,
         private InvitationRepository $invitations,
         private MembershipRepository $memberships,
-        private InvitationMailer $mailer,
+        private InvitationMailQueue $mailQueue,
         private Notifications $notifications,
         private AuditTrail $audit,
         private ClockInterface $clock,
-        #[Autowire(param: 'app.invitation.accept_url')]
-        private string $acceptUrlTemplate,
         #[Autowire(param: 'app.invitation.valid_for')]
         private string $validFor,
         private Transactions $transactions,
@@ -64,7 +62,7 @@ final readonly class InviteToCompany
     /** @throws CompanyNotFound|UnknownRole|RoleNotManageable|AlreadyAMember */
     public function handle(InviteRequest $request, ?Uuid $actorUserId): InviteOutcome
     {
-        [$company, $email, $existing, $token, $invitation] = $this->transactions->run(function () use ($request, $actorUserId): array {
+        [$company, $email, $existing] = $this->transactions->run(function () use ($request, $actorUserId): array {
             $company = $this->companies->ofId($request->companyId)
                 ?? throw new CompanyNotFound(\sprintf('No company %s.', $request->companyId->toRfc4122()));
 
@@ -88,12 +86,12 @@ final readonly class InviteToCompany
                 $this->invitations->remove($open);
             }
 
-            $token = InvitationToken::generate();
+            // Never written out: the worker makes the link it mails (MailInvitation), and only that one works.
             $invitation = new Invitation(
                 $company,
                 $email,
                 $request->roleName,
-                $token,
+                InvitationToken::generate(),
                 $now,
                 new \DateInterval($this->validFor),
                 null === $actorUserId ? null : $this->users->ofId($actorUserId),
@@ -110,20 +108,12 @@ final readonly class InviteToCompany
                 $company->getId(),
             ));
 
-            return [$company, $email, $existing, $token, $invitation];
-        });
+            // Queued in the same transaction, so it is mailed if and only if it was committed; the worker makes the
+            // link the mail carries, and the one made here is never written out.
+            $this->mailQueue->queue($invitation->getId());
 
-        // Mailed once the invitation is committed, so a link never points at an invitation that was rolled back.
-        $this->mailer->send(new InvitationMail(
-            $email->value,
-            $company->getName(),
-            $request->roleName,
-            $invitation->getInvitedBy()?->getDisplayName(),
-            str_replace('{token}', $token->raw, $this->acceptUrlTemplate),
-            $company->getLocale(),
-            $company->getTimezone(),
-            $invitation->getExpiresAt(),
-        ));
+            return [$company, $email, $existing];
+        });
 
         // The link stays in the mail: a notification is stored and shown to whoever holds the session later.
         if (null !== $existing) {

@@ -53,6 +53,7 @@ final class MembersTest extends ApiTestCase
         self::assertSame(Role::MEMBER, $body['role']);
         self::assertSame('invited', $body['status']);
         self::assertNull($body['userId']);
+        self::assertSame(1, $this->deliverQueued(), 'the worker mails it');
         self::assertEmailCount(1);
         // Not a member until they accept: the list shows the invitation, naming nobody.
         $this->getJson($this->path());
@@ -71,6 +72,7 @@ final class MembersTest extends ApiTestCase
         $body = $this->json();
         self::assertSame('invited', $body['status']);
         self::assertNull($body['userId']);
+        self::assertSame(1, $this->deliverQueued(), 'the worker mails it');
         self::assertEmailCount(1);
     }
 

@@ -25,6 +25,8 @@ framework:
         # Only what is named here leaves the request. A mail sent by a handler is sent there and then, not queued again.
         routing:
             App\Identity\Infrastructure\Password\PasswordResetAsked: async
+            App\Tenancy\Infrastructure\Signup\SignupAsked: async
+            App\Tenancy\Infrastructure\Invitation\InvitationToMail: async
 
 when@test:
     framework:

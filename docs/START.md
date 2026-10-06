@@ -13,7 +13,7 @@ Every command runs from the repository root unless it says `cd`. For version bum
 | `postgres`   | `localhost:5433`, user `twes`, password `twes`, databases `twes` and `twes_test` | PostgreSQL                        |
 | `gotenberg`  | `localhost:8094`                            | renders PDFs                                                   |
 | `centrifugo` | not published (reached through `web`)       | realtime updates between tabs, and a phone lent as a scanner   |
-| `worker`     | not published                               | the work a request leaves for later (a forgotten password's mail), read from the `messenger_messages` table |
+| `worker`     | not published                               | the work a request leaves for later (the forgotten-password, signup and invitation mails), read from the `messenger_messages` table |
 | `lan`        | https://<this machine's address>:8443 (certificate root on http://…:8095/root.crt) | a phone's HTTPS door to `web`; started by `make up` only |
 
 Ports come from `.env`. To change one, set it in your shell (`WEB_PORT=9090 make up`) or in a `.env.local` next to
@@ -428,7 +428,7 @@ the next build or gate.
 | Every e2e scenario lands on `/two-factor` | Demo's two-step switch is on (§ 4) |
 | e2e fails at `browserType.launch: Executable doesn't exist` | Playwright's browser is missing: `make e2e` downloads it into `var/cache/ms-playwright` on its first run |
 | The api image fails at `cache:clear` ("Cannot autowire service …") | Work in progress in the working tree went into the build (§ 2). Finish it, or bring up a clean worktree |
-| A forgotten-password mail never arrives | The request only queues it and the `worker` sends it: `docker compose ps worker` must say running, `docker compose exec api bin/console messenger:stats` shows what waits, and `bin/console messenger:failed:show` what failed for good (retry it with `messenger:failed:retry`). Under `make up` the worker restarts every minute to read the code as it is |
+| A forgotten-password, signup or invitation mail never arrives | The request only queues it and the `worker` sends it: `docker compose ps worker` must say running, `docker compose exec api bin/console messenger:stats` shows what waits, and `bin/console messenger:failed:show` what failed for good (retry it with `messenger:failed:retry`). Under `make up` the worker restarts every minute to read the code as it is |
 | The api container restarts in a loop | A migration failed: `docker compose logs api` shows which, and the container refuses to serve until it passes |
 | The production api container stops at once, naming `APP_SECRET`, `APP_MFA_KEY` or a realtime key | Production refuses a missing secret and the development ones committed in `api/.env` (§ 10). Give it its own |
 | An API answer is wrong, slow or refused, and the log does not say why | Open the profiler, development only: <http://localhost:8091/_profiler> lists the last requests, and every answer carries an `X-Debug-Token-Link` header to its own. It shows which voter decided, the listeners in order and their time, every query and their count, and the timeline. Imports are not profiled (§ 7 of `docs/SPEC.md`, 2026-09-19) |

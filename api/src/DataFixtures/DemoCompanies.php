@@ -134,6 +134,7 @@ final class DemoCompanies extends Fixture
         private readonly InviteToCompany $invitations,
         private readonly AcceptInvitation $acceptances,
         private readonly CapturingInvitationMailer $mailed,
+        private readonly ImmediateInvitationMail $mailNow,
     ) {
     }
 
@@ -198,7 +199,8 @@ final class DemoCompanies extends Fixture
     private function addTesters(Uuid $companyId, Uuid $actor): void
     {
         foreach (self::TESTERS as $role => $email) {
-            $this->invitations->handle(new InviteRequest($companyId, $email, $role), $actor);
+            // Mailed here and now, not by the worker: the token is read off this run's own mail just below.
+            $this->mailNow->during(fn () => $this->invitations->handle(new InviteRequest($companyId, $email, $role), $actor));
             $known = null !== $this->users->ofEmail(Email::fromString($email));
             $this->acceptances->handle(new AcceptRequest(
                 $this->mailed->tokenFor($email),

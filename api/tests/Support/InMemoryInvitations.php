@@ -18,6 +18,17 @@ final class InMemoryInvitations implements InvitationRepository
     /** @var list<Invitation> */
     public array $invitations = [];
 
+    public function ofId(Uuid $id): ?Invitation
+    {
+        foreach ($this->invitations as $invitation) {
+            if ($invitation->getId()->equals($id)) {
+                return $invitation;
+            }
+        }
+
+        return null;
+    }
+
     public function ofTokenHash(string $tokenHash): ?Invitation
     {
         foreach ($this->invitations as $invitation) {

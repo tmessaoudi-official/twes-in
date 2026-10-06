@@ -15,7 +15,11 @@ use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Invitation;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;
+use App\Tenancy\Infrastructure\Invitation\InvitationToMail;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\ReceivedStamp;
 use Symfony\Component\Mime\Email as MimeEmail;
 
 /**
@@ -209,6 +213,58 @@ final class InvitationTest extends ApiTestCase
         self::assertSame(Company::STATUS_ACTIVE, $fresh->getStatus());
     }
 
+    public function testTheRequestQueuesTheInvitationAndTheWorkerMakesItsLinkAndMailsIt(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
+        $this->login('owner@twes.local', 'password-1234');
+        $this->postJson('/api/companies/'.$this->company->getId()->toRfc4122().'/members', ['email' => 'stranger@twes.local', 'role' => Role::MEMBER]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $invitation = $this->em()->getRepository(Invitation::class)->findOneBy(['email' => Email::fromString('stranger@twes.local')]);
+        self::assertInstanceOf(Invitation::class, $invitation);
+        // What waits in the queue is the invitation's id: a link's secret is never stored, the queue included.
+        self::assertEquals([new InvitationToMail($invitation->getId()->toRfc4122())], $this->queued());
+        self::assertEmailCount(0);
+        $placeholder = $invitation->getTokenHash();
+
+        self::assertSame(1, $this->deliverQueued());
+        self::assertEmailCount(1);
+        $message = self::getMailerMessage();
+        self::assertInstanceOf(MimeEmail::class, $message);
+        $token = self::tokenIn((string) $message->getHtmlBody());
+        self::assertNotSame($placeholder, hash('sha256', $token), 'the link is made by the worker, not kept from the request');
+
+        $this->signOut();
+        $this->getJson('/api/invitations/'.$token);
+        self::assertResponseIsSuccessful();
+    }
+
+    public function testAnInvitationReplacedBeforeTheWorkerRanIsNotMailed(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
+        $this->login('owner@twes.local', 'password-1234');
+        $this->postJson('/api/companies/'.$this->company->getId()->toRfc4122().'/members', ['email' => 'stranger@twes.local', 'role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $first = $this->queued();
+        // The test client's kernel starts afresh with each request, its in-memory queue with it: the first invitation's
+        // message is kept here and handed over after the second request, as a worker that lagged would.
+        $this->postJson('/api/companies/'.$this->company->getId()->toRfc4122().'/members', ['email' => 'stranger@twes.local', 'role' => Role::ADMIN]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        self::assertCount(1, $first);
+        static::getContainer()->get(MessageBusInterface::class)->dispatch(new Envelope($first[0], [new ReceivedStamp('async')]));
+        self::assertEmailCount(0);
+        self::assertSame(1, $this->deliverQueued());
+
+        self::assertEmailCount(1);
+        $message = self::getMailerMessage();
+        self::assertInstanceOf(MimeEmail::class, $message);
+        $this->signOut();
+        $this->getJson('/api/invitations/'.self::tokenIn((string) $message->getHtmlBody()));
+        self::assertResponseIsSuccessful();
+        self::assertSame(Role::ADMIN, $this->json()['roleName'], 'the one mailed is the invitation that is still open');
+    }
+
     public function testTheMailCarriesTheCompanyAndALink(): void
     {
         $this->inviteAndReadTheToken();
@@ -269,6 +325,8 @@ final class InvitationTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         self::assertSame('invited', $this->json()['status']);
 
+        // The worker's part: the request only queued the invitation, and the worker makes its link and mails it.
+        $this->deliverQueued();
         $message = self::getMailerMessage();
         self::assertInstanceOf(MimeEmail::class, $message);
 

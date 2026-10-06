@@ -82,6 +82,15 @@ class Invitation implements CompanyOwned
         return null === $this->acceptedAt && $now <= $this->expiresAt;
     }
 
+    /**
+     * The link that is mailed, made when the mail is: the one the invitation was created with is never written out,
+     * so a link exists only once the worker has sent it, and a second sending leaves only the newest link working.
+     */
+    public function renewToken(InvitationToken $token): void
+    {
+        $this->tokenHash = $token->hash();
+    }
+
     /** @throws \DomainException when it was already used or has expired */
     public function accept(\DateTimeImmutable $now): void
     {

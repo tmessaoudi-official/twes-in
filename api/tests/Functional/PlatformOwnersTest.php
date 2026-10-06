@@ -38,6 +38,7 @@ final class PlatformOwnersTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         self::assertSame(['email' => 'nadia@example.test', 'role' => Role::OWNER, 'status' => 'invited'], $this->json());
+        $this->deliverQueued();
         $message = self::getMailerMessage();
         self::assertInstanceOf(MimeEmail::class, $message);
         self::assertSame('nadia@example.test', $message->getTo()[0]->getAddress());
@@ -79,6 +80,7 @@ final class PlatformOwnersTest extends ApiTestCase
         $this->postJson($this->ownersOf($company), ['email' => 'nadia@example.test']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame([], $this->queued());
         self::assertNull(self::getMailerMessage());
     }
 
@@ -140,6 +142,7 @@ final class PlatformOwnersTest extends ApiTestCase
 
     private function tokenOfTheLastMail(): string
     {
+        $this->deliverQueued();
         $message = self::getMailerMessage();
         self::assertInstanceOf(MimeEmail::class, $message);
         $found = [];

@@ -21,6 +21,11 @@ final readonly class DoctrineInvitationRepository implements InvitationRepositor
     {
     }
 
+    public function ofId(Uuid $id): ?Invitation
+    {
+        return $this->entityManager->find(Invitation::class, $id);
+    }
+
     public function ofTokenHash(string $tokenHash): ?Invitation
     {
         return $this->entityManager->getRepository(Invitation::class)->findOneBy(['tokenHash' => $tokenHash]);

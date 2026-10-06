@@ -12,27 +12,28 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Domain\Email;
-use App\Tenancy\Application\Signup\RequestSignup;
-use App\Tenancy\Application\Signup\SignupClosed;
 use App\Tenancy\Application\Signup\SignupPolicy;
+use App\Tenancy\Infrastructure\Signup\SignupAsked;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 /**
  * Asks for a signup link. Two budgets (config/packages/rate_limiter.yaml): one per client, which answers 429 because
  * saying "slow down" tells nobody anything about an address; and one per address, which stops the mailing and still
- * answers 202, because a different answer for a second ask would say the first one was taken seriously.
+ * answers 202, because a different answer for a second ask would say the first one was taken seriously. What it accepts
+ * is queued for the worker, the same for every address, so the time the answer takes says nothing either.
  *
  * @implements ProcessorInterface<SignupResource, null>
  */
 final readonly class RequestSignupProcessor implements ProcessorInterface
 {
     public function __construct(
-        private RequestSignup $requestSignup,
+        private MessageBusInterface $bus,
         private SignupPolicy $policy,
         #[Target('signup_client')]
         private RateLimiterFactoryInterface $signupClientLimiter,
@@ -63,11 +64,7 @@ final readonly class RequestSignupProcessor implements ProcessorInterface
             return null;
         }
 
-        try {
-            $this->requestSignup->handle($email, $data->locale);
-        } catch (SignupClosed $closed) {
-            throw new NotFoundHttpException('Signup is closed.', $closed);
-        }
+        $this->bus->dispatch(new SignupAsked($email->value, $data->locale));
 
         return null;
     }

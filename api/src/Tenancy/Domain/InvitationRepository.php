@@ -13,6 +13,8 @@ use Symfony\Component\Uid\Uuid;
 
 interface InvitationRepository
 {
+    public function ofId(Uuid $id): ?Invitation;
+
     /** Looked up by hash: the raw token is never stored, so it is never compared. */
     public function ofTokenHash(string $tokenHash): ?Invitation;
 

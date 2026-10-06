@@ -9,11 +9,14 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Identity\Domain\Email;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\PlatformSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\SettingLevel;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\SignupRepository;
+use App\Tenancy\Infrastructure\Signup\SignupAsked;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mime\Email as MimeEmail;
 
@@ -65,6 +68,36 @@ final class SignupTest extends ApiTestCase
         $this->getJson('/api/signup/'.$token);
         self::assertResponseIsSuccessful();
         self::assertSame(self::ADDRESS, $this->json()['email']);
+    }
+
+    public function testTheRequestOnlyQueuesTheAskAndTheWorkerMakesTheLinkAndMailsIt(): void
+    {
+        // Audit D-1, as for a forgotten password: an address with an account must not be told by the time the answer
+        // takes, so the request queues the same ask for every address and the link is made where nobody times it.
+        $this->openSignup();
+        $this->postJson('/api/signup', ['email' => self::ADDRESS, 'locale' => 'en']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_ACCEPTED);
+        self::assertEquals([new SignupAsked(self::ADDRESS, 'en')], $this->queued());
+        $signups = static::getContainer()->get(SignupRepository::class);
+        self::assertNull($signups->openFor(Email::fromString(self::ADDRESS)), 'no link yet');
+        self::assertEmailCount(0);
+
+        self::assertSame(1, $this->deliverQueued());
+
+        self::assertNotNull(static::getContainer()->get(SignupRepository::class)->openFor(Email::fromString(self::ADDRESS)));
+        self::assertEmailCount(1);
+    }
+
+    public function testAnAddressWithAnAccountIsQueuedAsAnyOtherIs(): void
+    {
+        $this->openSignup();
+        $this->createUser('taken@twes.local', 'password-1234');
+        $this->postJson('/api/signup', ['email' => 'Taken@twes.local']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_ACCEPTED);
+        self::assertEquals([new SignupAsked('taken@twes.local', null)], $this->queued());
+        self::assertEmailCount(0);
     }
 
     public function testAnAddressWithAnAccountGetsTheSameAnswerAndNoLink(): void
@@ -223,11 +256,13 @@ final class SignupTest extends ApiTestCase
         $this->openSignup();
         $this->postJson('/api/signup', ['email' => self::ADDRESS]);
         self::assertResponseStatusCodeSame(Response::HTTP_ACCEPTED);
+        $this->deliverQueued();
         self::assertEmailCount(1);
 
         $this->postJson('/api/signup', ['email' => self::ADDRESS]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_ACCEPTED);
+        self::assertSame(0, $this->deliverQueued(), 'nothing queued past the address budget');
         self::assertEmailCount(0);
     }
 
@@ -279,8 +314,10 @@ final class SignupTest extends ApiTestCase
         ], $change);
     }
 
+    /** The worker's part first: the request only queued the ask. */
     private function lastMailTo(string $address): string
     {
+        $this->deliverQueued();
         $message = self::getMailerMessage();
         self::assertInstanceOf(MimeEmail::class, $message);
         self::assertSame($address, $message->getTo()[0]->getAddress());

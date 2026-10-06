@@ -18,6 +18,7 @@ use App\Tenancy\Application\Company\RoleNotManageable;
 use App\Tenancy\Application\Company\UnknownRole;
 use App\Tenancy\Application\Invitation\InviteRequest;
 use App\Tenancy\Application\Invitation\InviteToCompany;
+use App\Tenancy\Application\Invitation\MailInvitation;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Permission;
@@ -26,6 +27,7 @@ use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCompanies;
 use App\Tests\Support\InMemoryInvitationMailer;
+use App\Tests\Support\InMemoryInvitationMailQueue;
 use App\Tests\Support\InMemoryInvitations;
 use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\InMemoryNotifications;
@@ -44,6 +46,7 @@ final class InviteToCompanyTest extends TestCase
     private InMemoryMemberships $memberships;
     private InMemoryInvitations $invitations;
     private InMemoryInvitationMailer $mailer;
+    private InMemoryInvitationMailQueue $queue;
     private InMemoryNotifications $notifications;
     private InMemoryAuditTrail $audit;
     private InviteToCompany $invite;
@@ -66,6 +69,9 @@ final class InviteToCompanyTest extends TestCase
         $roles->save(new Role(Role::ADMIN, ['user.read', 'user.write']));
         $this->roles = $roles;
         $clock = new MockClock('2026-09-09 10:00:00');
+        // The worker's part runs as soon as an invitation is queued: what these cases read is the mail it sends.
+        $this->queue = new InMemoryInvitationMailQueue();
+        $this->queue->worker = new MailInvitation($this->invitations, $this->mailer, $clock, $transactions, 'https://twes.test/invitations/{token}');
 
         $this->invite = new InviteToCompany(
             $this->companies,
@@ -74,17 +80,27 @@ final class InviteToCompanyTest extends TestCase
             new RoleBounds($this->memberships),
             $this->invitations,
             $this->memberships,
-            $this->mailer,
+            $this->queue,
             $this->notifications,
             $this->audit,
             $clock,
-            'https://twes.test/invitations/{token}',
             'P7D',
             $transactions,
         );
 
         $this->company = Company::pending('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->companies->save($this->company);
+    }
+
+    public function testTheInvitationIsQueuedAndNotMailedByTheRequest(): void
+    {
+        $this->queue->worker = null;
+
+        $this->invite->handle(new InviteRequest($this->company->getId(), 'joiner@twes.local', Role::MEMBER), null);
+
+        self::assertCount(1, $this->invitations->invitations);
+        self::assertEquals([$this->invitations->invitations[0]->getId()], $this->queue->queued);
+        self::assertSame([], $this->mailer->sent, 'the worker mails it');
     }
 
     public function testAnAddressThatAlreadyHasAnAccountIsInvitedByMailAndJoinsNothingYet(): void
