@@ -1022,6 +1022,11 @@ app-cookie-notice {
   );
 }
 
+// The page's entry is brought into view clear of the fade, not flush with the edge where the fade hides it.
+[appNavScroller] [aria-current='page'] {
+  scroll-margin-block: 2.5rem;
+}
+
 // A section's heading that folds it (row 152): the heading's own look, as a button that says whether it is open.
 .twes-fold-heading {
   display: flex;

@@ -114,7 +114,11 @@
                   </span>
                 } @else {
                   <span matListItemTitle class="twes-rail-title"
-                    ><span>{{ entry.labelKey | translate }}</span>
+                    ><span
+                      [appCutTooltip]="entry.labelKey | translate"
+                      matTooltipPosition="right"
+                      >{{ entry.labelKey | translate }}</span
+                    >
                     @if (entry.coming) {
                       <span class="twes-soon" data-testid="soon">{{
                         'shell.soon' | translate

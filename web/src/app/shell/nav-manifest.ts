@@ -47,7 +47,7 @@ export interface NavEntry extends Gated {
  * under `coming.<key>` in the translations.
  */
 export interface Coming {
-  /** The entry it follows in its section; an entry the person cannot see is skipped over, never waited for. */
+  /** The entry it will follow once built; until then `withComing` puts it after its section's working entries. */
   readonly after: string;
   readonly version: 'v1' | 'later';
   /** What to use until it exists, when something does the job today. */
@@ -246,9 +246,9 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
 ];
 
 /**
- * The entries with the vision's coming ones placed among them, each right after the entry it follows, or last of its
- * section when that entry is hidden. A coming entry joins only a section the person already has: somebody who sells
- * nothing is not shown the till. With `show` off, only what works.
+ * The entries with the vision's coming ones after them: each section lists what works first, then what is coming, in
+ * the order declared, so a planned entry never pushes a working one below the fold. A coming entry joins only a
+ * section the person already has: somebody who sells nothing is not shown the till. With `show` off, only what works.
  */
 export function withComing(
   entries: readonly NavEntry[],
@@ -258,12 +258,6 @@ export function withComing(
   if (!show) return entries;
   const result = [...entries];
   for (const entry of coming) {
-    const at = result.findIndex((placed) => placed.key === entry.coming.after);
-    if (at >= 0) {
-      result.splice(at + 1, 0, entry);
-      continue;
-    }
-    // The entry it follows is hidden here: it goes after the last one of its section, if the person has that section.
     const lastOfSection = result.map((placed) => placed.section).lastIndexOf(entry.section);
     if (lastOfSection >= 0) result.splice(lastOfSection + 1, 0, entry);
   }

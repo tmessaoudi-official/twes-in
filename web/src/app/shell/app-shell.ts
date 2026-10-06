@@ -42,6 +42,7 @@ import { CookieNotice } from '../shared/legal/cookie-notice';
 import { LegalFooter } from '../shared/legal/legal-footer';
 import { CountBadge } from '../shared/ui/count-badge';
 import { NavScroller } from '../shared/ui/nav-scroller';
+import { CutTooltip } from '../shared/ui/cut-tooltip';
 import { sectionFolds } from '../shared/ui/section-folds';
 import { isBareKeystroke, isTypingTarget, matchesShortcut } from '../shared/actions/shortcuts';
 import { keyName, ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
@@ -119,6 +120,7 @@ const BOTTOM_BAR_HEIGHT = '--twes-bottom-bar-height';
 @Component({
   selector: 'app-shell',
   imports: [
+    CutTooltip,
     CountBadge,
     RouterOutlet,
     RouterLink,

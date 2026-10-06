@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { NavScroller } from './nav-scroller';
@@ -12,7 +12,7 @@ class Blank {}
   imports: [NavScroller, RouterLink, RouterLinkActive],
   template: `
     <nav appNavScroller data-testid="scroller">
-      @for (place of places; track place) {
+      @for (place of places(); track place) {
         <a
           [routerLink]="'/' + place"
           routerLinkActive
@@ -26,7 +26,7 @@ class Blank {}
   `,
 })
 class Host {
-  readonly places = ['first', 'middle', 'last'];
+  readonly places = signal(['first', 'middle', 'last']);
 }
 
 // docs/SPEC.md § 7, 2026-09-26 12:05 (row 152): a fade marks any edge of a menu with more behind it, and the entry of
@@ -102,5 +102,48 @@ describe('NavScroller', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(revealed.at(-1)?.getAttribute('data-testid')).toBe('middle');
+  });
+
+  it('brings the entry into view once it appears, though the menu drew it after the navigation', async () => {
+    // Audit 2026-10-06 V-9: the module entries arrive with the signed-in state, after the first navigation ended.
+    fixture.componentInstance.places.set([]);
+    fixture.detectChanges();
+    await TestBed.inject(Router).navigateByUrl('/last');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    revealed.length = 0;
+
+    fixture.componentInstance.places.set(['first', 'middle', 'last']);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    // RouterLinkActive marks a new link active a microtask later, then asks for the render that draws it so.
+    fixture.detectChanges();
+    expect(revealed.map((entry) => entry.getAttribute('data-testid'))).toEqual(['last']);
+
+    // Another render with the same entry leaves the menu where the person scrolled it.
+    fixture.componentInstance.places.set(['first', 'middle', 'last', 'after']);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(revealed).toHaveLength(1);
+  });
+
+  it('brings the same entry back when the menu’s layout moves while nobody scrolled, and not once somebody did', async () => {
+    await TestBed.inject(Router).navigateByUrl('/last');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    box(0, 400, 700);
+    revealed.length = 0;
+
+    box(0, 400, 760);
+    expect(revealed.map((entry) => entry.getAttribute('data-testid'))).toEqual(['last']);
+
+    // A box made shorter below the menu hides it too.
+    box(0, 380, 760);
+    expect(revealed).toHaveLength(2);
+
+    box(120, 400, 820);
+    expect(revealed).toHaveLength(2);
   });
 });

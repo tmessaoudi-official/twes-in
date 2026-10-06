@@ -141,7 +141,7 @@ describe('SettingsArea', () => {
     return { fixture, el, byTestId, groups };
   }
 
-  it('lists the settings not built yet among the others, marked « Bientôt », while what is coming shows', async () => {
+  it('lists the settings not built yet after the others, marked « Bientôt », while what is coming shows', async () => {
     // docs/SPEC.md § 7, 2026-09-25 17:22 and the round-6 settings board.
     showComing.set(true);
     const { byTestId, groups } = await render();
@@ -151,8 +151,8 @@ describe('SettingsArea', () => {
         'nav-company-security',
         'nav-establishments',
         'nav-numbering',
-        'nav-document-templates',
         'nav-defaults',
+        'nav-document-templates',
         'nav-alerts',
       ],
       ['nav-taxes', 'nav-units', 'nav-fiscal-preset'],

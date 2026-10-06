@@ -54,7 +54,8 @@ describe('the planned modules in the menu', () => {
     expect(plannedNav(undefined)).toEqual([]);
   });
 
-  it('places each in the section where it will live, after the entry it follows', () => {
+  it('places each in the section where it will live, after the entries that work', () => {
+    // Audit 2026-10-06 V-9: planned entries among the real ones pushed those below the fold.
     const shown = withComing(sidebar, comingEntries(catalogue), true);
 
     expect(
@@ -65,16 +66,16 @@ describe('the planned modules in the menu', () => {
         [
           'home',
           'invoices',
-          'quotes',
-          'recurring',
           'delivery-notes',
           'customers',
+          'products',
+          'price_lists',
+          'quotes',
+          'recurring',
           'statements',
           'mailing',
           'whatsapp',
           'portal',
-          'products',
-          'price_lists',
           'composites',
           'register',
           'works',
@@ -90,15 +91,15 @@ describe('the planned modules in the menu', () => {
         [
           'stock',
           'vendors',
-          'purchases',
           'expenses',
+          'watch',
+          'purchases',
           'reports',
           'declarations',
           'accounting_export',
           'einvoicing',
           'currencies',
           'zakat',
-          'watch',
         ],
       ],
     ]);

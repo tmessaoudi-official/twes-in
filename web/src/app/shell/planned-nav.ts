@@ -12,7 +12,7 @@ export interface PlannedPlace {
   /** A Material Symbols ligature. */
   readonly icon: IconName;
   readonly section: 'sell' | 'manage';
-  /** The entry it follows in its section; the chain below is read in order. */
+  /** The entry it will follow once its module ships; until then it sits after its section's working entries. */
   readonly after: string;
   /** What to use until it exists, when something does the job today. */
   readonly meanwhile?: string;

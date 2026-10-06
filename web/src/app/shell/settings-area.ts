@@ -28,6 +28,7 @@ import { ThemeFacade } from '../shared/theme/theme-facade';
 import { Label } from '../shared/a11y/label';
 import { LegalFooter } from '../shared/legal/legal-footer';
 import { NavScroller } from '../shared/ui/nav-scroller';
+import { CutTooltip } from '../shared/ui/cut-tooltip';
 import { SETTINGS_BESIDE_WINDOW } from '../shared/ui/window-class';
 import { sectionFolds } from '../shared/ui/section-folds';
 import {
@@ -52,6 +53,7 @@ export const SETTINGS_INDEX = '/company';
 @Component({
   selector: 'app-settings-area',
   imports: [
+    CutTooltip,
     RouterOutlet,
     RouterLink,
     RouterLinkActive,

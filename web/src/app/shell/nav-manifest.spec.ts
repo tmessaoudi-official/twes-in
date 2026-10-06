@@ -186,7 +186,7 @@ describe('the navigation manifest', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-25 11:17 and the round-6 boards: the whole vision shows, each part not built yet marked.
-  it('places each entry not built yet after the one it follows, as the rail and settings boards draw them', () => {
+  it('places each entry not built yet after the entries of its section that work', () => {
     const shown = withComing([...sidebar, ...SETTINGS_NAV], COMING_NAV, true);
     // The sidebar's entries not built yet are the planned modules, from the API's catalogue (planned-nav.spec.ts).
     expect(navSections(shown, SIDEBAR_SECTIONS)).toEqual(navSections(sidebar, SIDEBAR_SECTIONS));
@@ -198,9 +198,9 @@ describe('the navigation manifest', () => {
           'company-security',
           'establishments',
           'numbering',
-          'document-templates',
           'subscription',
           'defaults',
+          'document-templates',
           'alerts',
         ],
       ],
