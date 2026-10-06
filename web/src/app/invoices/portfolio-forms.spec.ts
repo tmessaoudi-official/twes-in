@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { FALLBACK_WIDTH } from '../shared/list/data-list';
 import type { ListQuery } from '../shared/list/list-types';
 import { PORTFOLIO_LIST, portfolioSearch } from './portfolio-forms';
 
@@ -100,5 +101,16 @@ describe('portfolioSearch', () => {
         column,
       ).not.toBeNull();
     }
+  });
+
+  it('fits the columns shown at first in the room a 1280 px window leaves it, so nothing scrolls sideways', () => {
+    // Audit 2026-10-06 V-20: 1200 px of columns in 943 px. The instrument's number and bank wait until placed.
+    const shown = PORTFOLIO_LIST.columns.filter((column) => !column.defaultHidden);
+    const width = shown.reduce((sum, column) => sum + (column.width ?? FALLBACK_WIDTH), 0);
+
+    expect(width).toBeLessThanOrEqual(943);
+    expect(
+      PORTFOLIO_LIST.columns.filter((column) => column.defaultHidden).map((column) => column.id),
+    ).toEqual(['number', 'bank']);
   });
 });

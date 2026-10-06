@@ -102,11 +102,12 @@ describe('PortfolioPage', () => {
     });
   });
 
-  it('lists each cheque with its customer, amount and state, the invoice number opening the invoice', async () => {
+  it('lists each cheque with its customer, amount, kind and state, the invoice number opening the invoice', async () => {
     await create();
     const row = q('instrument-row-i1')?.textContent ?? '';
     expect(row).toContain('Carthage Conseil');
-    expect(row).toContain('CHQ-77');
+    // The cheque's own number and bank wait in the columns menu, or the list scrolls sideways at 1280 px.
+    expect(row).not.toContain('CHQ-77');
     expect(row).toContain('TND');
     expect(row).toContain('Chèque');
     expect(row).toContain('Remis en banque');

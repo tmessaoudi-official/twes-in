@@ -234,10 +234,11 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.goto('/invoices');
     await page.getByTestId('invoices-portfolio').click();
     await expect(page).toHaveURL(/\/instruments$/);
+    // Found by its customer, this run's own: the cheque's number waits in the columns menu (audit V-20).
     const held = page
       .getByTestId('portfolio-table')
       .getByRole('row')
-      .filter({ hasText: `CHQ ${run}` });
+      .filter({ hasText: `Client ${customerNumber}` });
     await expect(held).toHaveCount(1);
     expect(await wcagViolations(page)).toEqual([]);
     // Filters combine here too (docs/SPEC.md § 7, 2026-10-06): a cheque that is held or open, due after a day in the

@@ -48,8 +48,21 @@ export const PORTFOLIO_LIST: ListDescriptor<PortfolioRow> = {
     },
     { id: 'customer', label: `${FIELDS}.customer`, value: (row) => row.customerName },
     { id: 'kind', label: `${FIELDS}.kind`, value: (row) => row.kind, width: 110 },
-    { id: 'number', label: `${FIELDS}.number`, value: (row) => row.number ?? '', width: 150 },
-    { id: 'bank', label: `${FIELDS}.bank`, value: (row) => row.bank ?? '', width: 150 },
+    // The instrument's own number and bank wait until placed: with them the list is wider than a 1280 px window leaves.
+    {
+      id: 'number',
+      label: `${FIELDS}.number`,
+      value: (row) => row.number ?? '',
+      width: 150,
+      defaultHidden: true,
+    },
+    {
+      id: 'bank',
+      label: `${FIELDS}.bank`,
+      value: (row) => row.bank ?? '',
+      width: 150,
+      defaultHidden: true,
+    },
     {
       id: 'amount',
       label: `${FIELDS}.amount`,

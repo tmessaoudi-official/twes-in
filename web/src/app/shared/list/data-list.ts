@@ -96,7 +96,7 @@ const ANY_FACET = '*';
 const RESIZE_STEP = 16;
 const MIN_WIDTH = 48;
 const MAX_WIDTH = 960;
-const FALLBACK_WIDTH = 160;
+export const FALLBACK_WIDTH = 160;
 const ACTIONS_WIDTH = 96;
 /** How long typing pauses before a list the API pages asks for the words. */
 export const LIST_SEARCH_PAUSE_MS = 300;
