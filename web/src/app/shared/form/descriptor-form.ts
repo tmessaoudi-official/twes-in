@@ -163,7 +163,7 @@ export class DescriptorForm {
   }
 
   protected spanClass(field: FormField): string {
-    return field.span === 2 ? 'sm:col-span-2' : '';
+    return field.span === 2 ? '@min-[30rem]:col-span-2' : '';
   }
 
   protected submit(): void {

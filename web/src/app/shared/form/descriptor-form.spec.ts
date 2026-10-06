@@ -182,8 +182,8 @@ describe('DescriptorForm', () => {
   });
 
   it('lets a field span both columns on a wide screen', () => {
-    expect(q('field-wrapper-name')?.classList.contains('sm:col-span-2')).toBe(true);
-    expect(q('field-wrapper-email')?.classList.contains('sm:col-span-2')).toBe(false);
+    expect(q('field-wrapper-name')?.classList.contains('@min-[30rem]:col-span-2')).toBe(true);
+    expect(q('field-wrapper-email')?.classList.contains('@min-[30rem]:col-span-2')).toBe(false);
   });
 
   it('offers the translated options of a select', async () => {

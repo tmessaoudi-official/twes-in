@@ -20,9 +20,9 @@
           {{ section.description | translate }}
         </p>
       }
-      <div class="twes-form-fields grid items-start gap-x-5 gap-y-4 sm:grid-cols-2">
+      <div class="twes-form-fields grid items-start gap-x-5 gap-y-4 @min-[30rem]:grid-cols-2">
         @if (section.id === leadIn()) {
-          <div class="flex min-w-0 flex-col sm:col-span-2">
+          <div class="flex min-w-0 flex-col @min-[30rem]:col-span-2">
             <ng-content select="[formLead]" />
           </div>
         }
@@ -30,7 +30,7 @@
           @if (applies(field)) {
             @if (field.kind === 'checkbox') {
               <div
-                class="flex flex-col gap-1 sm:pt-7"
+                class="flex flex-col gap-1 @min-[30rem]:pt-7"
                 [class]="spanClass(field)"
                 [class.twes-field-updated]="updated().has(field.id)"
                 [attr.data-testid]="'field-wrapper-' + field.id"

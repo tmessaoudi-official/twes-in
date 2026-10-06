@@ -183,7 +183,9 @@ html {
     margin-top: 0.75rem;
   }
 
-  @media (min-width: 1024px) {
+  // Measured on the page's own column, not the window: beside the settings list a page is a good deal narrower than
+  // the screen, and a label column there squeezed every field into a sliver.
+  @container (min-width: 52rem) {
     grid-template-columns: 15rem minmax(0, 1fr);
     grid-template-rows: auto 1fr;
 
@@ -2100,8 +2102,7 @@ li.twes-row-new.twes-list-card {
 }
 
 // A form in a narrow column (the stock map's inspector, beside the board, or any dialog): the section's title and
-// explanation sit above its fields at every window width, since the 15rem label column above 1024 px assumes a
-// full-width page. In a dialog of one section the dialog's own title already names it.
+// explanation sit above its fields at every width, since the 15rem label column assumes the whole page is the form's. In a dialog of one section the dialog's own title already names it.
 .mat-mdc-dialog-content
   .twes-form-section:only-of-type
   > [aria-hidden='true']:has(> .twes-form-section-title) {
@@ -2120,7 +2121,7 @@ li.twes-row-new.twes-list-card {
 
 .twes-form-stacked .twes-form-section,
 .mat-mdc-dialog-content .twes-form-section {
-  @media (min-width: 1024px) {
+  @container (min-width: 52rem) {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
 

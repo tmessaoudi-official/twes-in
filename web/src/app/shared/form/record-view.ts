@@ -38,9 +38,9 @@ interface ShownSection {
       @for (section of sections(); track section.id) {
         <div class="flex flex-col gap-2">
           <h2 class="text-lg font-semibold">{{ section.title | translate }}</h2>
-          <dl class="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+          <dl class="grid gap-x-6 gap-y-2 @min-[30rem]:grid-cols-2">
             @for (field of section.fields; track field.id) {
-              <div [class]="field.span === 2 ? 'sm:col-span-2' : ''">
+              <div [class]="field.span === 2 ? '@min-[30rem]:col-span-2' : ''">
                 <dt
                   class="text-sm text-on-surface-variant"
                   [attr.data-testid]="'view-label-' + field.id"
