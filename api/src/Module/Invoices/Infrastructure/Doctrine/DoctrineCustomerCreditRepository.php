@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Invoices\Domain\CreditEntryKind;
 use App\Module\Invoices\Domain\CustomerCreditEntry;
@@ -100,6 +101,9 @@ final readonly class DoctrineCustomerCreditRepository implements CustomerCreditR
 
     private static function decimal(mixed $value): string
     {
-        return \is_string($value) || \is_int($value) || \is_float($value) ? number_format((float) $value, 3, '.', '') : throw new \UnexpectedValueException('A credit balance came back as neither a string nor a number.');
+        // The database's NUMERIC comes back as an exact string, and stays one (docs/SPEC.md § 7, audit E-1).
+        $value = \is_int($value) ? (string) $value : $value;
+
+        return \is_string($value) && is_numeric($value) ? Decimal::format(Decimal::of($value), 3) : throw new \UnexpectedValueException('A credit balance came back as neither a decimal string nor an integer.');
     }
 }

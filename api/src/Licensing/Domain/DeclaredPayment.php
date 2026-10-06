@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Licensing\Domain;
 
+use BcMath\Number;
+
 /** What a company says it paid: how much, how, when, and what names the payment on their side. */
 final readonly class DeclaredPayment
 {
@@ -28,7 +30,7 @@ final readonly class DeclaredPayment
         public ?string $reference = null,
         public ?string $note = null,
     ) {
-        if (1 !== preg_match(self::AMOUNT, $amount) || 0.0 === (float) $amount) {
+        if (1 !== preg_match(self::AMOUNT, $amount) || !is_numeric($amount) || 0 === new Number($amount)->compare(0)) {
             throw new InvalidPayment('amount: a decimal amount above zero, with at most three decimals.');
         }
         if (1 !== preg_match(self::CURRENCY, $currency)) {

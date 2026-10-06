@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Customers\Domain;
 
 use App\Shared\Domain\PostalAddress;
+use BcMath\Number;
 
 /**
  * What a company knows of a customer and prints on its documents (docs/SPEC.md § 4 customer): kind, names,
@@ -108,7 +109,7 @@ final readonly class CustomerProfile
         if (null === $rate) {
             return null;
         }
-        if (1 !== preg_match(self::RATE, $rate, $parts) || (float) $rate > 100) {
+        if (1 !== preg_match(self::RATE, $rate, $parts) || !is_numeric($rate) || 1 === new Number($rate)->compare(100)) {
             throw new InvalidCustomer('defaultDiscountRate', 'A discount rate is a percentage from 0 to 100 with at most three decimals.', 'invalid_rate');
         }
 

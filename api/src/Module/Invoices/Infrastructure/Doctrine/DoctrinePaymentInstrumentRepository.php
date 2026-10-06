@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Invoices\Domain\InstrumentPortfolioSearch;
 use App\Module\Invoices\Domain\InstrumentStatus;
 use App\Module\Invoices\Domain\PaymentInstrument;
@@ -113,7 +114,10 @@ final readonly class DoctrinePaymentInstrumentRepository implements PaymentInstr
             ->getQuery()
             ->getSingleScalarResult();
 
-        return \is_string($sum) || \is_int($sum) || \is_float($sum) ? number_format((float) $sum, 3, '.', '') : throw new \UnexpectedValueException('An open amount came back as neither a string nor a number.');
+        // The database's NUMERIC comes back as an exact string, and stays one (docs/SPEC.md § 7, audit E-1).
+        $sum = \is_int($sum) ? (string) $sum : $sum;
+
+        return \is_string($sum) && is_numeric($sum) ? Decimal::format(Decimal::of($sum), 3) : throw new \UnexpectedValueException('An open amount came back as neither a decimal string nor an integer.');
     }
 
     public function cashedByPayment(Uuid $companyId, Uuid $paymentId): ?PaymentInstrument

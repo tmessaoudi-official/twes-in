@@ -138,6 +138,7 @@ in-gate-licences:
 	bash scripts/gates/tests/stored-items.test.sh
 	bash scripts/gates/tests/production-image.test.sh
 	bash scripts/gates/tests/icons-declared.test.sh
+	bash scripts/gates/tests/float-casts.test.sh
 	bash infra/self-hosted/tests/logrotate.test.sh
 	bash infra/web/tests/forwarded-proto.test.sh
 	bash infra/web/tests/live-proxy.test.sh
@@ -158,6 +159,7 @@ in-gate-licences:
 	bash scripts/gates/coming-gated.sh
 	bash scripts/gates/stored-items.sh
 	bash scripts/gates/icons-declared.sh
+	bash scripts/gates/float-casts.sh
 
 gate-api:      ## the postgres service is started for it (the tests need a real database)
 gate-api: tools-image

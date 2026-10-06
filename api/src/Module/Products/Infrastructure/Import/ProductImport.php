@@ -477,6 +477,6 @@ final readonly class ProductImport implements DeclaresImport
             return null;
         }
 
-        return 1 === preg_match('/^-?\d+$/', $normalised) ? (int) $normalised : (float) $normalised;
+        return 1 === preg_match('/^-?\d+$/', $normalised) ? (int) $normalised : (float) $normalised; // float: a custom number field is stored as a JSON number, never money
     }
 }

@@ -12,6 +12,7 @@ namespace App\Module\PriceLists\Domain;
 use App\Module\Products\Domain\Product;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
+use BcMath\Number;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -80,7 +81,7 @@ class PriceListItem implements CompanyOwned
             throw new InvalidPriceList('minQuantity', 'A minimum quantity is a decimal number with at most three decimals.');
         }
         $normalized = $match[1].'.'.str_pad($match[2] ?? '', 3, '0');
-        if (!is_numeric($normalized) || (float) $normalized <= 0.0) {
+        if (!is_numeric($normalized) || 1 !== new Number($normalized)->compare(0)) {
             throw new InvalidPriceList('minQuantity', 'A price applies from a quantity above zero.');
         }
 

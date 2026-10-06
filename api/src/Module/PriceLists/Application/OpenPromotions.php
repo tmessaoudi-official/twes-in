@@ -54,8 +54,15 @@ final readonly class OpenPromotions
                 ];
             }
         }
-        usort($rows, static fn (array $a, array $b): int => [$a['productId'], (float) $a['minQuantity'], (float) $a['price']] <=> [$b['productId'], (float) $b['minQuantity'], (float) $b['price']]);
+        usort($rows, static fn (array $a, array $b): int => ($a['productId'] <=> $b['productId'])
+            ?: new Number($a['minQuantity'])->compare($b['minQuantity'])
+            ?: self::decimal($a['price'])->compare(self::decimal($b['price'])));
 
         return $rows;
+    }
+
+    private static function decimal(string $price): Number
+    {
+        return is_numeric($price) ? new Number($price) : throw new \LogicException(\sprintf('A price read as "%s".', $price));
     }
 }

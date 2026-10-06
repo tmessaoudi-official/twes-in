@@ -18,6 +18,7 @@ use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use BcMath\Number;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
@@ -35,7 +36,7 @@ final readonly class ProductPriceProvider implements ProviderInterface
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ProductPermission::READ);
         $quantity = Paging::text($operation, 'quantity') ?? '1';
-        if (1 !== preg_match(self::QUANTITY, $quantity) || !is_numeric($quantity) || (float) $quantity <= 0.0) {
+        if (1 !== preg_match(self::QUANTITY, $quantity) || !is_numeric($quantity) || 1 !== new Number($quantity)->compare(0)) {
             throw new UnprocessableEntityHttpException('quantity: A quantity is a decimal number above zero with at most three decimals.');
         }
         $day = Paging::text($operation, 'on');
