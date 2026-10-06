@@ -21,6 +21,11 @@
         </p>
       }
       <div class="twes-form-fields grid items-start gap-x-5 gap-y-4 sm:grid-cols-2">
+        @if (section.id === leadIn()) {
+          <div class="flex min-w-0 flex-col sm:col-span-2">
+            <ng-content select="[formLead]" />
+          </div>
+        }
         @for (field of section.fields; track field.id) {
           @if (applies(field)) {
             @if (field.kind === 'checkbox') {

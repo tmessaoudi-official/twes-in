@@ -70,6 +70,11 @@ export class DescriptorForm {
   readonly testId = input('descriptor-form');
   /** Shows the values with every field disabled, for someone who may read but not change them. */
   readonly readOnly = input(false);
+  /**
+   * The section whose fields begin with what the screen projects as `formLead`: a field the screen keeps itself, such
+   * as a document's customer picker, then sits under its own section's heading rather than above the form.
+   */
+  readonly leadIn = input<string | null>(null);
   readonly submitted = output<FormValues>();
   /** Fields another person's saved version just changed, highlighted for a moment (docs/SPEC.md § 7, 2026-09-17). */
   readonly updated = input<ReadonlySet<string>>(new Set());

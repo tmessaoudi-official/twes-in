@@ -411,6 +411,18 @@ describe('InvoicePage', () => {
     expect(q('invoice-title')?.getAttribute('aria-hidden')).toBeNull();
   });
 
+  it('asks for the customer under the heading of its own section', async () => {
+    await open(undefined);
+    q('document-action-save')!.click();
+    await settle();
+
+    const section = q('invoice-customer')?.closest('fieldset');
+    expect(section?.querySelector('.twes-form-section-title')?.textContent).toContain(
+      'invoices.sections.parties',
+    );
+    expect(q('invoice-customer-error')?.closest('fieldset')).toBe(section);
+  });
+
   it('drafts an invoice for a customer, with the document taxes it would be charged, then opens it', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);

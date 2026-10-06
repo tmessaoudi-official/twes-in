@@ -332,6 +332,18 @@ describe('DeliveryNotePage', () => {
     ]);
   });
 
+  it('asks for the customer under the heading of its own section', async () => {
+    await open(undefined);
+    q('document-action-save')!.click();
+    await settle();
+
+    const section = q('delivery-note-customer')?.closest('fieldset');
+    expect(section?.querySelector('.twes-form-section-title')?.textContent).toContain(
+      'delivery_notes.sections.parties',
+    );
+    expect(q('delivery-note-customer-error')?.closest('fieldset')).toBe(section);
+  });
+
   it('drafts a note for a customer with a line filled from a product, then opens it', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);

@@ -51,7 +51,7 @@
           @if (errorKey(line, 'description'); as key) {
             <span
               role="alert"
-              class="-mt-4 px-4 pb-2 text-xs text-error"
+              class="px-4 pt-1 pb-2 text-xs text-error"
               [attr.data-testid]="'line-' + i + '-description-error'"
               >{{ key | translate }}</span
             >
@@ -73,7 +73,7 @@
           @if (errorKey(line, 'quantity'); as key) {
             <span
               role="alert"
-              class="-mt-4 px-4 pb-2 text-xs text-error"
+              class="px-4 pt-1 pb-2 text-xs text-error"
               [attr.data-testid]="'line-' + i + '-quantity-error'"
               >{{ key | translate }}</span
             >
@@ -96,7 +96,7 @@
             @if (errorKey(line, 'lotCode'); as key) {
               <span
                 role="alert"
-                class="-mt-4 px-4 pb-2 text-xs text-error"
+                class="px-4 pt-1 pb-2 text-xs text-error"
                 [attr.data-testid]="'line-' + i + '-lot-error'"
                 >{{ key | translate }}</span
               >
