@@ -8,6 +8,7 @@ import {
   establishmentInput,
   seriesChanges,
   seriesForm,
+  SERIES_LIST,
 } from './establishment-forms';
 
 const head: EstablishmentRow = {
@@ -29,6 +30,12 @@ const fieldOf = (descriptor: ReturnType<typeof seriesForm>, id: string) =>
   descriptor.sections[0]!.fields.find((field) => field.id === id);
 
 describe('establishment forms', () => {
+  it('shows the next number before the format it is made from', () => {
+    // « AV-{YYYY}-{SEQ:5} » alone told a shopkeeper nothing; the number it gives is what they read first.
+    const ids = SERIES_LIST.columns.map((column) => column.id);
+    expect(ids.indexOf('preview')).toBeLessThan(ids.indexOf('format'));
+  });
+
   it("checks a code against the shape the company's preset gives it", () => {
     const form = buildFormGroup(establishmentForm(head.codePattern), { name: 'Agence' });
 

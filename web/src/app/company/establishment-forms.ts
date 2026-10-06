@@ -177,6 +177,8 @@ export const SERIES_LIST: ListDescriptor<NumberingSeriesRow> = {
       sortable: true,
       hideable: false,
     },
+    // The number a series gives first, its format after: « {SEQ:5} » alone tells a shopkeeper nothing.
+    { id: 'preview', width: 150, label: `${COLUMNS}.preview`, value: (row) => row.preview },
     { id: 'format', width: 190, label: `${COLUMNS}.format`, value: (row) => row.format },
     {
       id: 'nextNumber',
@@ -191,7 +193,6 @@ export const SERIES_LIST: ListDescriptor<NumberingSeriesRow> = {
       label: `${COLUMNS}.resetPeriod`,
       value: (row) => row.resetPeriod,
     },
-    { id: 'preview', width: 150, label: `${COLUMNS}.preview`, value: (row) => row.preview },
   ],
 };
 

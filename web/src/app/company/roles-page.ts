@@ -9,7 +9,6 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -21,6 +20,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { CapitalizePipe } from '../shared/i18n/capitalize-pipe';
 import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
 
@@ -36,7 +36,7 @@ import type { RoleRow } from './roles-types';
   selector: 'app-roles-page',
   imports: [
     Label,
-    TitleCasePipe,
+    CapitalizePipe,
     FormsModule,
     MatButtonModule,
     MatCheckboxModule,

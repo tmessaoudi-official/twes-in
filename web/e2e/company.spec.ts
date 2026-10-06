@@ -137,7 +137,7 @@ test('the members page lists the company members', async ({ page }) => {
   await page.getByTestId('nav-members').click();
   await expect(page).toHaveURL(/\/members$/);
   await expect(page.getByTestId(`member-${EMAIL}`)).toContainText('Operator');
-  await expect(page.getByTestId(`member-${EMAIL}`)).toContainText('propriétaire');
+  await expect(page.getByTestId(`member-${EMAIL}`)).toContainText('Propriétaire');
 });
 
 async function userIdOf(page: Page): Promise<string> {

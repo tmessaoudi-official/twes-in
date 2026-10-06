@@ -21,6 +21,7 @@ import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
 import type { MemberRow } from './company-types';
 import { MembersFacade } from './members-facade';
+import { CapitalizePipe } from '../shared/i18n/capitalize-pipe';
 import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
 import { Feedback } from '../shared/feedback/feedback';
@@ -91,6 +92,7 @@ export const membersList = (roles: readonly RoleRow[]): ListDescriptor<MemberRow
     TranslatePipe,
     DataList,
     DataListCell,
+    CapitalizePipe,
   ],
   templateUrl: './members-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -104,6 +106,14 @@ export class MembersPage implements OnInit {
   private readonly feedback = inject(Feedback);
 
   protected readonly roles = this.rolesFacade.roles;
+  protected readonly shippedRoles = computed(
+    () =>
+      new Set(
+        this.roles()
+          .filter((role) => role.builtIn)
+          .map((role) => role.name),
+      ),
+  );
   protected readonly roleOptions = computed(() =>
     this.roles().map((role) => ({ value: role.name, label: roleLabel(role) })),
   );

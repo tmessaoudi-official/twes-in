@@ -30,9 +30,13 @@
       }
     </ng-template>
     <ng-template appDataListCell="role" let-row>
-      <!-- A built-in role is translated; a role the company named renders that name, which is what an unknown
-           translation key resolves to. -->
-      {{ 'roles.' + row.role | translate }}
+      <!-- A shipped role is translated, lowercase for the sentences it sits in, so raised here; a role the company
+           named renders that name as typed, which is what an unknown translation key resolves to. -->
+      @if (shippedRoles().has(row.role)) {
+        {{ 'roles.' + row.role | translate | capitalize }}
+      } @else {
+        {{ 'roles.' + row.role | translate }}
+      }
     </ng-template>
   </app-data-list>
 

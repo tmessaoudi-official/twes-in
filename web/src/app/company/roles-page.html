@@ -27,7 +27,7 @@
         <div class="flex min-w-0 grow flex-col">
           <span class="font-medium" [attr.data-testid]="'role-name-' + row.name">
             @if (row.builtIn) {
-              {{ 'roles.' + row.name | translate | titlecase }}
+              {{ 'roles.' + row.name | translate | capitalize }}
             } @else {
               {{ row.name }}
             }

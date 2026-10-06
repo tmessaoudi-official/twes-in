@@ -129,6 +129,17 @@ describe('CompanyProfilePage', () => {
     expect(q('profile-logo-remove')).toBeNull();
   });
 
+  it('names the logo card before it shows the picture, wherever the window wraps it', async () => {
+    // The preview box led the card, so on a phone it sat above its own « Logo » heading.
+    await open();
+    const heading = q('profile-logo-title');
+    const preview = q('profile-logo-none');
+    expect(heading).not.toBeNull();
+    expect(
+      heading!.compareDocumentPosition(preview!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('shows the logo by the version the profile names, and offers to remove it', async () => {
     profileSignal.set({ ...profile, logoVersion: 'v1' });
     await open();

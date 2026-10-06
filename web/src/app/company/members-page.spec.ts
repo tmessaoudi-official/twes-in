@@ -150,7 +150,8 @@ describe('MembersPage', () => {
 
   it('shows every member it was given', () => {
     expect(text('member-owner@example.test')).toContain('Owner');
-    expect(text('member-owner@example.test')).toContain('propriétaire');
+    // Translated lowercase to sit inside sentences, a shipped role alone in its column read « propriétaire ».
+    expect(text('member-owner@example.test')).toContain('Propriétaire');
   });
 
   it('offers the roles the company made, beside the three the release ships', async () => {
@@ -173,6 +174,7 @@ describe('MembersPage', () => {
     fixture.detectChanges();
 
     expect(text('member-barista@example.test')).toContain('barista');
+    expect(text('member-barista@example.test')).not.toContain('Barista');
   });
 
   it('refuses to submit an address that is not one', async () => {
