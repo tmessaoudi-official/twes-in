@@ -77,6 +77,7 @@ const invoice: InvoiceRow = {
   fixedTaxes: [],
   total: '11900.000',
   withholdings: [],
+  netToPay: '11900.000',
   amountDue: '5950.000',
   amountPaid: '5950.000',
   amountCredited: '0.000',

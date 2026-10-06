@@ -69,6 +69,15 @@ final readonly class InvoiceFigures
         )->atScale($scale);
     }
 
+    /**
+     * « Net à payer »: the total less what is withheld at source, the figure the paid, credited and left amounts add up
+     * to. Read after `atScale`: a difference of two amounts keeps their decimals.
+     */
+    public function netToPay(): string
+    {
+        return (string) Decimal::of($this->total)->sub(Decimal::of($this->withholdingAmount));
+    }
+
     /** The same figures written with the currency's number of decimals, as a stored column may hold more. */
     public function atScale(int $scale): self
     {

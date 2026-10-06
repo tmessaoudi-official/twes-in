@@ -348,6 +348,11 @@ final class InvoiceResource
     #[Groups([self::READ])]
     public array $withholdings = [];
 
+    /** The total less what is withheld at source: « net à payer », what the paid, credited and left amounts add up to. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $netToPay = '0';
+
     /** The total less what is withheld, paid and credited: what the customer still owes. */
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
@@ -490,6 +495,7 @@ final class InvoiceResource
         $resource->fixedTaxes = $figures->fixedTaxes;
         $resource->total = $figures->total;
         $resource->withholdings = $figures->withholdings;
+        $resource->netToPay = $figures->netToPay();
         $resource->amountDue = $figures->amountDue;
         $resource->amountPaid = $figures->amountPaid;
         $resource->amountCredited = $figures->amountCredited;

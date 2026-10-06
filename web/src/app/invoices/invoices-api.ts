@@ -420,6 +420,7 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
       base,
       amount,
     })),
+    netToPay: raw.netToPay ?? '0',
     amountDue: raw.amountDue ?? '0',
     amountPaid: raw.amountPaid ?? '0',
     amountCredited: raw.amountCredited ?? '0',

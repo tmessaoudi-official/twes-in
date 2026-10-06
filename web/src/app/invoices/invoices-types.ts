@@ -197,6 +197,8 @@ export interface InvoiceRow {
   fixedTaxes: FixedTax[];
   total: string;
   withholdings: TaxTotal[];
+  /** The total less what is withheld at source: « net à payer », as the API counts it. */
+  netToPay: string;
   amountDue: string;
   amountPaid: string;
   amountCredited: string;

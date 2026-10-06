@@ -41,6 +41,7 @@ const draft: InvoiceRow = {
   fixedTaxes: [],
   total: '0.000',
   withholdings: [],
+  netToPay: '0.000',
   amountDue: '0.000',
   amountPaid: '0.000',
   amountCredited: '0.000',

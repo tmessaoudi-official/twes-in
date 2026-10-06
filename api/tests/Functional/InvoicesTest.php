@@ -120,6 +120,8 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame(['201.841', '1227.841'], [$invoice['totalTax'], $invoice['total']]);
         self::assertSame([['RS1', '1226.841', '12.268']], array_map(static fn (mixed $held): array => \is_array($held) ? [$held['code'], $held['base'], $held['amount']] : [], $this->arrayAt($invoice, 'withholdings')));
         self::assertSame('1215.573', $invoice['amountDue']);
+        // What the customer owes once the withholding is off, counted here so the screen never redoes it.
+        self::assertSame('1215.573', $invoice['netToPay']);
 
         $this->getJson($this->path($this->stringAt($invoice, 'id')));
         self::assertResponseIsSuccessful();

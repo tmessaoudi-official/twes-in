@@ -210,6 +210,22 @@ describe('InvoiceInstruments', () => {
     expect(q('instrument-save')).toBeNull();
   });
 
+  // Audit 2026-10-06, E-8: what is left free is counted exactly, at the currency's decimals, never through a float.
+  it('counts what is left free exactly and at the currency’s decimals', async () => {
+    fixture.componentRef.setInput('scale', 2);
+    await show(
+      [
+        { ...held, id: 'a', amount: '0.10' },
+        { ...held, id: 'b', amount: '0.20' },
+      ],
+      { amountDue: '0.31' },
+    );
+
+    q('instrument-receive')!.click();
+    await settle();
+    expect((q('field-amount') as HTMLInputElement).value).toBe('0,01');
+  });
+
   it('offers no new one once the open ones cover everything due', async () => {
     await show([{ ...held, amount: '1178.100' }]);
 

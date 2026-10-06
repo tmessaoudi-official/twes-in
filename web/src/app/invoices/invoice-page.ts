@@ -43,7 +43,6 @@ import {
   stillOwed,
 } from './invoice-forms';
 import { PickField, type PickOption } from '../shared/form/pick-field';
-import { netToPay } from './invoice-net';
 import { InvoiceLines } from './invoice-lines';
 import { ProductScans } from '../products/product-scans';
 import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
@@ -150,11 +149,6 @@ export class InvoicePage {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly scale = computed(() => this.options()?.currencyScale ?? null);
-
-  /** What is owed after the withholding: the figure the paid and left amounts add up to. */
-  protected netPayable(invoice: InvoiceRow): string {
-    return netToPay(invoice.total, invoice.withholdings);
-  }
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly today = computed(() => todayIn(this.company()?.timezone));
   protected readonly mayWrite = computed(() => this.auth.hasPermission('invoice.write'));

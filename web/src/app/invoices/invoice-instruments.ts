@@ -78,14 +78,19 @@ export class InvoiceInstruments {
   protected readonly group = signal<DescriptorFormGroup | null>(null);
   protected readonly descriptor = instrumentForm();
 
-  /** What a new instrument can still cover: what is due less what the open ones already promise, in thousandths. */
+  /**
+   * What a new instrument can still cover: what is due less what the open ones already promise, in the currency's
+   * smallest units. The API refuses more; this only says what to offer.
+   */
   protected readonly free = computed(() => {
+    const scale = this.scale();
     const open = this.items()
       .filter((row) => row.status === 'held' || row.status === 'deposited')
-      .reduce((sum, row) => sum + thousandths(row.amount), 0);
-    return Math.max(0, thousandths(this.amountDue()) - open);
+      .reduce((sum, row) => sum + units(row.amount, scale), 0n);
+    const free = units(this.amountDue(), scale) - open;
+    return free > 0n ? free : 0n;
   });
-  protected readonly mayReceive = computed(() => this.mayPay() && this.free() > 0);
+  protected readonly mayReceive = computed(() => this.mayPay() && this.free() > 0n);
 
   constructor() {
     effect(() => {
@@ -100,7 +105,7 @@ export class InvoiceInstruments {
     this.group.set(
       buildFormGroup(
         this.descriptor,
-        instrumentValues(this.today(), (this.free() / 1000).toFixed(3)),
+        instrumentValues(this.today(), written(this.free(), this.scale())),
       ),
     );
   }
@@ -146,8 +151,18 @@ export class InvoiceInstruments {
   }
 }
 
-/** An amount as whole thousandths, which money is counted in; the API's decimals reach three. */
-function thousandths(amount: string): number {
-  const value = Number(amount);
-  return Number.isFinite(value) ? Math.round(value * 1000) : 0;
+const DECIMAL = /^(-?)(\d+)(?:\.(\d+))?$/;
+
+/** The API's decimal string in the currency's smallest units, exactly; an amount is never finer than its currency. */
+function units(amount: string, scale: number): bigint {
+  const [, sign, whole, decimals = ''] = DECIMAL.exec(amount) ?? [];
+  if (whole === undefined) return 0n;
+  const value = BigInt(whole + decimals.padEnd(scale, '0').slice(0, scale));
+  return sign === '-' ? -value : value;
+}
+
+/** Smallest units written back as a decimal string at the currency's scale, as the API takes it. */
+function written(amount: bigint, scale: number): string {
+  const digits = amount.toString().padStart(scale + 1, '0');
+  return scale === 0 ? digits : `${digits.slice(0, -scale)}.${digits.slice(-scale)}`;
 }

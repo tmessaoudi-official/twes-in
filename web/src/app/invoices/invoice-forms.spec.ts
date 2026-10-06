@@ -121,6 +121,7 @@ function invoice(overrides: Partial<InvoiceRow> = {}): InvoiceRow {
     fixedTaxes: [],
     total: '1428.000',
     withholdings: [],
+    netToPay: '1428.000',
     amountDue: '1428.000',
     amountPaid: '0.000',
     amountCredited: '0.000',

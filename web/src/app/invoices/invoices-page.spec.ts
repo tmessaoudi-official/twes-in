@@ -79,6 +79,7 @@ const issued: InvoiceRow = {
   fixedTaxes: [],
   total: '11900',
   withholdings: [],
+  netToPay: '11900',
   amountDue: '5950',
   amountPaid: '5950.000',
   amountCredited: '0.000',

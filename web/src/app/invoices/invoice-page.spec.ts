@@ -191,6 +191,7 @@ const draft: InvoiceRow = {
   fixedTaxes: [{ code: 'TIMBRE', amount: '1.000' }],
   total: '2143.000',
   withholdings: [{ code: 'RS1', rate: '1.000', base: '2143.000', amount: '21.430' }],
+  netToPay: '2121.570',
   amountDue: '2121.570',
   amountPaid: '0.000',
   amountCredited: '0.000',
@@ -685,6 +686,15 @@ describe('InvoicePage', () => {
     expect(text('invoice-net-due')).toContain('2 121,570');
     expect(text('invoice-due')).toContain('1 000,000');
     expect(text('invoice-due')).toContain('sur 2 121,570');
+  });
+
+  // Audit 2026-10-06, C-12: the API counts « net à payer »; the screen shows its figure and never redoes the sum.
+  it('shows the net payable the API counted, not a sum of its own', async () => {
+    invoice.set({ ...issued, netToPay: '2121.000' });
+    await open('i1');
+
+    expect(text('invoice-net-due')).toContain('2 121,000');
+    expect(text('invoice-due')).toContain('sur 2 121,000');
   });
 
   it('issues exactly what is on screen, once the consequence is confirmed', async () => {

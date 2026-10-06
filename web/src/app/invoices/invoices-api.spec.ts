@@ -73,6 +73,7 @@ const issued = {
   fixedTaxes: [{ code: 'TIMBRE', amount: '1.000' }],
   total: '11901.000',
   withholdings: [],
+  netToPay: '11901.000',
   amountDue: '5951.000',
   amountPaid: '5950.000',
   amountCredited: '0.000',
