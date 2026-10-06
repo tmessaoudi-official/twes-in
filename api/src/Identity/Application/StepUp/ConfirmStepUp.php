@@ -15,6 +15,8 @@ use App\Identity\Application\Mfa\PasskeyAssertions;
 use App\Identity\Application\Mfa\PasskeyRefused;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\UserRepository;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -22,6 +24,9 @@ use Symfony\Component\Uid\Uuid;
  * able to do: leaving customer view is the first, since a customer looking at the screen would otherwise only have to
  * press the button. The proof is the password or one of the account's passkeys; a recovery code or an authenticator
  * code is not enough, as they are for replacing the recovery codes. Success and refusal are both audited.
+ *
+ * A proof the API checks itself (an export: docs/SPEC.md § 7, audit H-b2) holds for a few minutes of this sign-in, so
+ * several files in a row ask once, and a screen left open afterwards hands nothing to the next person.
  */
 final readonly class ConfirmStepUp
 {
@@ -33,7 +38,19 @@ final readonly class ConfirmStepUp
         private PasswordHasher $hasher,
         private PasskeyAssertions $assertions,
         private AuditTrail $audit,
+        private StepUpProofs $proofs,
+        private ClockInterface $clock,
+        #[Autowire(param: 'app.step_up.valid_for')]
+        private string $validFor,
     ) {
+    }
+
+    /** Whether this account proved itself in this sign-in within the last few minutes. */
+    public function isRecent(Uuid $userId): bool
+    {
+        $at = $this->proofs->lastFor($userId);
+
+        return null !== $at && $this->clock->now() <= $at->add(new \DateInterval($this->validFor));
     }
 
     /** @throws StepUpRefused when the password is not the account's */
@@ -48,6 +65,7 @@ final readonly class ConfirmStepUp
         }
 
         $this->audit->record(new AuditEntry('user', $userId, self::CONFIRMED, $userId, ['method' => 'password']));
+        $this->proofs->remember($userId, $now ?? $this->clock->now());
     }
 
     /**
@@ -62,7 +80,7 @@ final readonly class ConfirmStepUp
                 throw new StepUpRefused();
             }
             // The passkey's new signature counter is saved by the verification.
-            $this->assertions->verify($user, $optionsJson, $credentialJson, $now ?? new \DateTimeImmutable());
+            $this->assertions->verify($user, $optionsJson, $credentialJson, $now ?? $this->clock->now());
         } catch (PasskeyRefused|StepUpRefused) {
             $this->audit->record(new AuditEntry('user', $userId, self::REFUSED, $userId, ['method' => 'passkey']));
 
@@ -70,5 +88,6 @@ final readonly class ConfirmStepUp
         }
 
         $this->audit->record(new AuditEntry('user', $userId, self::CONFIRMED, $userId, ['method' => 'passkey']));
+        $this->proofs->remember($userId, $now ?? $this->clock->now());
     }
 }

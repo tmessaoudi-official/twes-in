@@ -32,6 +32,8 @@ final class ExpenseExportTest extends ApiTestCase
         $this->vendorId = $vendor->getId()->toRfc4122();
         $this->createUser('buyer@twes.local', 'password-1234', $this->company, ['expense.read', 'expense.write'], 'member');
         $this->login('buyer@twes.local', 'password-1234');
+        // A file waits for the person to have proved who they are again (docs/SPEC.md § 7, audit H-b2).
+        $this->stepUp('password-1234');
         $this->postJson($this->path().'/expense-categories', ['name' => 'Loyers', 'parentId' => null, 'isActive' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $category = $this->stringAt($this->json(), 'id');

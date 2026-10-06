@@ -3,12 +3,17 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { type StepUpOutcome, StepUpProof } from './step-up-proof';
+
+/** What the dialog is opened with: the translation key of the sentence saying why it asks. */
+export interface StepUpReason {
+  intro: string;
+}
 
 /**
  * The question behind a step-up: the password, or a passkey where the browser has one. A refusal is said in the
@@ -31,7 +36,7 @@ import { type StepUpOutcome, StepUpProof } from './step-up-proof';
     <h2 mat-dialog-title data-testid="step-up-title">{{ 'step_up.title' | translate }}</h2>
     <form (submit)="$event.preventDefault(); confirmPassword()" novalidate>
       <mat-dialog-content class="flex flex-col gap-3">
-        <p>{{ 'step_up.intro' | translate }}</p>
+        <p data-testid="step-up-intro">{{ intro | translate }}</p>
         <mat-form-field>
           <mat-label>{{ 'step_up.password' | translate }}</mat-label>
           <input
@@ -74,6 +79,9 @@ import { type StepUpOutcome, StepUpProof } from './step-up-proof';
 export class StepUpDialog {
   protected readonly ref = inject<MatDialogRef<StepUpDialog, boolean>>(MatDialogRef);
   protected readonly proof = inject(StepUpProof);
+  /** Why the proof is asked for, as a translation key: leaving customer view unless the caller says otherwise. */
+  protected readonly intro =
+    inject<StepUpReason | undefined>(MAT_DIALOG_DATA, { optional: true })?.intro ?? 'step_up.intro';
   protected readonly password = new FormControl('', { nonNullable: true });
   protected readonly busy = signal(false);
   protected readonly problem = signal<Exclude<StepUpOutcome, 'confirmed'> | null>(null);

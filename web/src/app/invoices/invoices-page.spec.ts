@@ -16,6 +16,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { WINDOW_CLASS, type WindowClass } from '../shared/ui/window-class';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 import {
   PageMemoryStorage,
   SETTINGS_STORAGE,
@@ -154,6 +155,7 @@ describe('InvoicesPage', () => {
     TestBed.configureTestingModule({
       imports: [InvoicesPage],
       providers: [
+        provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -192,10 +194,10 @@ describe('InvoicesPage', () => {
   // docs/SPEC.md § 7, 2026-09-24 22:51 (row 123) and 2026-09-26: from a tablet up, an issued document opens as a sheet
   // over its list, named in the list's own address; a draft opens its editor, and a phone the record itself.
   it('offers what the list shows as a CSV or an Excel file', () => {
-    expect(q('invoices-export-csv')?.getAttribute('href')).toBe(
+    expect(q('invoices-export-csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/invoices.csv',
     );
-    expect(q('invoices-export-xlsx')?.getAttribute('href')).toBe(
+    expect(q('invoices-export-xlsx')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/invoices.xlsx',
     );
   });

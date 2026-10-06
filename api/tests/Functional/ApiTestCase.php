@@ -374,6 +374,13 @@ abstract class ApiTestCase extends WebTestCase
         return $out;
     }
 
+    /** Proves who is at the screen again, as the step-up dialog does before an export (docs/SPEC.md § 7, audit H-b2). */
+    protected function stepUp(string $password): void
+    {
+        $this->postJson('/api/auth/step-up', ['password' => $password]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+    }
+
     /**
      * What the last request left for the worker, as it sits in the queue (config/packages/messenger.yaml: in memory under
      * test). Read it before the next request: the kernel reboots then, and the queue with it.

@@ -377,6 +377,8 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   read straight after a reload returns `[]` and reads as "nothing was created".
 - `tests/Architecture/ComposePortsTest` reads `compose.yaml`: run it after any compose edit, not only before. And a plain
   `docker compose up` rebuild drops what `make up` exports (`LAN_ORIGIN`): bring the stack back with `make up` (2026-09-23).
+  `docker compose up <service>` also recreates what it depends on from `compose.yaml` alone, out of live mode: the api then
+  served its image, and an e2e of an API change failed against the old code (2026-10-06).
 - Global CSS beats Tailwind: `styles.scss` rules are unlayered, Tailwind's utilities sit in a layer, so any global or
   Material `display` wins over a template's `hidden`, `max-lg:hidden` or `flex`. `mat-sidenav-content` is `display:
   block` whatever its `flex flex-col` says, and `.twes-rail`'s `display: flex` showed a list `max-lg:hidden` should

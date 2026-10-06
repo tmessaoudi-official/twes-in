@@ -194,10 +194,10 @@ describe('StockMovementsPage', () => {
   it('offers what the list shows as a CSV or an Excel file', async () => {
     await settle();
 
-    expect(q('stock-movements-export-csv')?.getAttribute('href')).toBe(
+    expect(q('stock-movements-export-csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/stock-movements.csv',
     );
-    expect(q('stock-movements-export-xlsx')?.getAttribute('href')).toBe(
+    expect(q('stock-movements-export-xlsx')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/stock-movements.xlsx',
     );
   });

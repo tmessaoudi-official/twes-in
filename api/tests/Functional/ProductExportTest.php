@@ -115,6 +115,8 @@ final class ProductExportTest extends ApiTestCase
     {
         $this->createUser('stock@twes.local', 'password-1234', $this->em()->find(Company::class, $this->company->getId()), $permissions, 'member');
         $this->login('stock@twes.local', 'password-1234');
+        // A file waits for the person to have proved who they are again (docs/SPEC.md § 7, audit H-b2).
+        $this->stepUp('password-1234');
         self::assertResponseIsSuccessful();
     }
 

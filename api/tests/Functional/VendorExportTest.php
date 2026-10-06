@@ -45,6 +45,8 @@ final class VendorExportTest extends ApiTestCase
         $this->em()->flush();
         $this->createUser('buyer@twes.local', 'password-1234', $this->company, ['vendor.read'], 'member');
         $this->login('buyer@twes.local', 'password-1234');
+        // A file waits for the person to have proved who they are again (docs/SPEC.md § 7, audit H-b2).
+        $this->stepUp('password-1234');
     }
 
     public function testEveryVendorIsOneRowUnderTheColumnsAnImportTakes(): void

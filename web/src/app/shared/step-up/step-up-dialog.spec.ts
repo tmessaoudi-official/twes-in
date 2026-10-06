@@ -15,6 +15,8 @@ class StaticLoader implements TranslateLoader {
     return of({
       step_up: {
         title: 'Confirmez',
+        intro: 'Pour quitter cette vue.',
+        intro_export: 'Pour télécharger cette liste.',
         errors: { refused: 'Mauvais mot de passe.', no_passkey: 'Aucune clé.' },
       },
     });
@@ -45,11 +47,8 @@ describe('StepUpDialog', () => {
     input.dispatchEvent(new Event('input'));
   }
 
-  beforeEach(async () => {
-    close.mockReset();
-    proof.passkeySupported.mockReset().mockReturnValue(true);
-    proof.withPassword.mockReset().mockResolvedValue('confirmed');
-    proof.withPasskey.mockReset().mockResolvedValue('confirmed');
+  async function open(data: unknown): Promise<void> {
+    TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [StepUpDialog],
       providers: [
@@ -60,12 +59,28 @@ describe('StepUpDialog', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: MatDialogRef, useValue: { close } },
-        { provide: MAT_DIALOG_DATA, useValue: undefined },
+        { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: StepUpProof, useValue: proof },
       ],
     });
     fixture = TestBed.createComponent(StepUpDialog);
     await settle();
+  }
+
+  beforeEach(async () => {
+    close.mockReset();
+    proof.passkeySupported.mockReset().mockReturnValue(true);
+    proof.withPassword.mockReset().mockResolvedValue('confirmed');
+    proof.withPasskey.mockReset().mockResolvedValue('confirmed');
+    await open(undefined);
+  });
+
+  it('says why it asks: leaving customer view unless told otherwise, and an export when asked for one', async () => {
+    expect(q('step-up-intro')?.textContent?.trim()).toBe('Pour quitter cette vue.');
+
+    await open({ intro: 'step_up.intro_export' });
+
+    expect(q('step-up-intro')?.textContent?.trim()).toBe('Pour télécharger cette liste.');
   });
 
   it('closes confirmed once the password is the account’s', async () => {

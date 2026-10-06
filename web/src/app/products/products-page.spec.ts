@@ -130,10 +130,10 @@ describe('ProductsPage', () => {
   });
 
   it('offers what the list shows as a CSV or an Excel file', () => {
-    expect(q('products-export-csv')?.getAttribute('href')).toBe(
+    expect(q('products-export-csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/products.csv',
     );
-    expect(q('products-export-xlsx')?.getAttribute('href')).toBe(
+    expect(q('products-export-xlsx')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/products.xlsx',
     );
   });

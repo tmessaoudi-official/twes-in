@@ -52,6 +52,8 @@ final class DeliveryNoteExportTest extends ApiTestCase
         $this->productId = $product->getId()->toRfc4122();
         $this->createUser('sales@twes.local', 'password-1234', $this->company, ['delivery_note.read', 'delivery_note.write', 'delivery_note.validate'], 'member');
         $this->login('sales@twes.local', 'password-1234');
+        // A file waits for the person to have proved who they are again (docs/SPEC.md § 7, audit H-b2).
+        $this->stepUp('password-1234');
         $this->draft('PO-DRAFT', '1');
         $validated = $this->draft('PO-77', '2');
         $this->postJson($this->path().'/delivery-notes/'.$validated.'/validate', null);

@@ -141,10 +141,10 @@ describe('ExpensesPage', () => {
 
   it('offers what the list shows as a CSV or an Excel file', async () => {
     await create();
-    expect(q('expenses-export-csv')?.getAttribute('href')).toBe(
+    expect(q('expenses-export-csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/expenses.csv',
     );
-    expect(q('expenses-export-xlsx')?.getAttribute('href')).toBe(
+    expect(q('expenses-export-xlsx')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/expenses.xlsx',
     );
   });

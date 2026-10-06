@@ -110,10 +110,10 @@ describe('VendorsPage', () => {
   });
 
   it('offers what the list shows as a CSV or an Excel file', () => {
-    expect(q('vendors-export-csv')?.getAttribute('href')).toBe(
+    expect(q('vendors-export-csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/vendors.csv',
     );
-    expect(q('vendors-export-xlsx')?.getAttribute('href')).toBe(
+    expect(q('vendors-export-xlsx')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/vendors.xlsx',
     );
   });

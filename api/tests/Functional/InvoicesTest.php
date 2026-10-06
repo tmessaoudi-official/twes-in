@@ -133,6 +133,7 @@ final class InvoicesTest extends ApiTestCase
     public function testTheInvoicesListIsDownloadedAsAFileUnderWhatTheScreenShows(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $this->stepUp('password-1234');
         $this->postJson($this->path(), $this->invoice(['customerReference' => 'PO-77', 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
         $issued = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path($issued).'/issue', null);

@@ -45,6 +45,8 @@ final class StockExportTest extends ApiTestCase
         $this->createUser('keeper@twes.local', 'password-1234', $this->company, ['stock.read', 'stock.write', 'product.cost.read'], 'keeper');
         $this->createUser('sales@twes.local', 'password-1234', $this->company, ['customer.read'], 'sales');
         $this->login('keeper@twes.local', 'password-1234');
+        // A file waits for the person to have proved who they are again (docs/SPEC.md § 7, audit H-b2).
+        $this->stepUp('password-1234');
         $this->getJson($this->path('/stock-locations'));
         $this->site = $this->stringAt($this->jsonList()[0], 'id');
         $this->receive($laptop->getId()->toRfc4122(), '10', self::COST);

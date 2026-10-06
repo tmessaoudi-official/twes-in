@@ -166,10 +166,10 @@ describe('CustomersPage', () => {
   });
 
   it('offers what the list shows as a CSV or an Excel file, to a reader as to a writer', async () => {
-    expect(q('customers-export-csv')?.getAttribute('href')).toBe(
+    expect(q('customers-export-csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/customers.csv',
     );
-    expect(q('customers-export-xlsx')?.getAttribute('href')).toBe(
+    expect(q('customers-export-xlsx')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/customers.xlsx',
     );
     expect(facade.exportUrl).toHaveBeenCalledWith(

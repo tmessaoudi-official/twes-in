@@ -40,6 +40,8 @@ parameters:
     app.mfa.key: '%env(APP_MFA_KEY)%'
     # How long the half-authenticated state between password and second factor survives.
     app.mfa.pending_ttl: 'PT5M'
+    # How long a confirmed step-up opens what the API checks it for (an export), within the same sign-in.
+    app.step_up.valid_for: 'PT5M'
     # The issuer an authenticator app shows beside the account.
     app.mfa.issuer: '%app.product_name%'
     # Passkeys are bound to a relying party: the registrable domain the SPA is served under, and every exact origin

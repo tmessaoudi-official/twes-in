@@ -2808,7 +2808,8 @@
   },
   "export": {
     "csv": "Export as CSV",
-    "xlsx": "Export as Excel"
+    "xlsx": "Export as Excel",
+    "failed": "The file could not be prepared. Try again."
   },
   "import": {
     "boolean_note": "yes or no (yes, y, true, 1, oui, o — no, n, false, 0).",
@@ -3085,6 +3086,7 @@
   "step_up": {
     "title": "Confirm it is you",
     "intro": "To leave this view, enter your password or use a passkey.",
+    "intro_export": "To download this list, enter your password or use a passkey.",
     "password": "Password",
     "passkey": "Passkey",
     "confirm": "Confirm",

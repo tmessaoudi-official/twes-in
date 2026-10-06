@@ -37,6 +37,8 @@ final class CustomerExportTest extends ApiTestCase
         $this->em()->flush();
         $this->createUser('sales@twes.local', 'password-1234', $this->company, ['customer.read', 'customer.write'], 'member');
         $this->login('sales@twes.local', 'password-1234');
+        // A file waits for the person to have proved who they are again (docs/SPEC.md § 7, audit H-b2).
+        $this->stepUp('password-1234');
         $this->uploadFile($this->path().'/imports/customers', 'customers.csv', self::HEADER
             ."\nCLI-0001,Carthage Conseil,company,1234567A/B/M/000,Grossistes,TVA19,\"5,5\",non,compta@carthage.tn,12"
             ."\nCLI-0002,Sonia Ben Ali,individual,,,,,,,\n", 'file', ['mode' => 'create', 'dryRun' => '0']);

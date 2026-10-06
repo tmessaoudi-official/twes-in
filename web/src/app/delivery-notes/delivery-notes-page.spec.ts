@@ -15,6 +15,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 import {
   PageMemoryStorage,
   SETTINGS_STORAGE,
@@ -113,6 +114,7 @@ describe('DeliveryNotesPage', () => {
     TestBed.configureTestingModule({
       imports: [DeliveryNotesPage],
       providers: [
+        provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -142,10 +144,10 @@ describe('DeliveryNotesPage', () => {
   });
 
   it('offers what the list shows as a CSV or an Excel file', () => {
-    expect(q('delivery-notes-export-csv')?.getAttribute('href')).toBe(
+    expect(q('delivery-notes-export-csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/delivery-notes.csv',
     );
-    expect(q('delivery-notes-export-xlsx')?.getAttribute('href')).toBe(
+    expect(q('delivery-notes-export-xlsx')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/delivery-notes.xlsx',
     );
   });
