@@ -95,7 +95,7 @@ function fold(text: string): string {
     >
       <span [id]="valueId" class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
         @if (chosen().length === 0) {
-          <span class="text-on-surface-variant">{{ 'select.placeholder' | translate }}</span>
+          <span class="text-on-surface-variant">{{ emptyLabel() | translate }}</span>
         } @else if (multiple()) {
           @for (option of chipped(); track option.value) {
             <span
@@ -251,6 +251,8 @@ export class Select implements ControlValueAccessor {
   readonly required = input(false);
   /** The labels are translation keys (a company's own words pass through a key lookup unchanged). */
   readonly translateLabels = input(false);
+  /** What the field reads with nothing chosen, as a translation key: a list's filter says « Tous » there. */
+  readonly emptyLabel = input('select.placeholder');
 
   protected readonly open = signal(false);
   protected readonly disabled = signal(false);

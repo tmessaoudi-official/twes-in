@@ -138,6 +138,9 @@ class StaticLoader implements TranslateLoader {
         chip_range: '{{from}} to {{to}}',
         chip_from: 'from {{from}}',
         chip_to: 'up to {{to}}',
+        chip_min: 'at least {{min}}',
+        chip_max: 'at most {{max}}',
+        chip_amounts: '{{min}} to {{max}}',
         pick_hint: 'Type to search',
         range: { from: 'From', to: 'To', min: 'At least', max: 'At most' },
         columns: 'Columns',
@@ -233,6 +236,9 @@ describe('DataList filters that combine', () => {
 
   it('lists the rows holding ANY of several options of one filter, and narrows by every filter together', async () => {
     await mount({}, false);
+    // Nothing chosen reads « All », as a single-choice filter does, never the form's « Choose » (audit V-11).
+    expect(q('list-facet-status')?.textContent).toContain('All');
+    expect(q('list-facet-status')?.textContent).not.toContain('Choose');
 
     await toggle('status', 'draft', 'overdue');
     expect(rowIds()).toEqual(['1', '2', '4', '5']);
@@ -294,12 +300,21 @@ describe('DataList filters that combine', () => {
     await type('docs-table-filter-panel-issueDate-from', '2026-0');
     expect(last().filters).toEqual({});
 
-    await type('docs-table-filter-panel-totalGross-min', '12.5');
-    expect(last().filters).toEqual({ 'totalGross.min': '12.5' });
-    expect(q('list-chip-totalGross:range')?.textContent).toContain('from 12.5');
+    await type('docs-table-filter-panel-totalGross-min', '1500.5');
+    expect(last().filters).toEqual({ 'totalGross.min': '1500.5' });
+    // A sum reads as a sum, written as the screen writes amounts (audit 2026-10-06, B-4).
+    expect(q('list-chip-totalGross:range')?.textContent?.replace(/\s/g, ' ')).toContain(
+      'at least 1 500,5',
+    );
 
-    await type('docs-table-filter-panel-totalGross-max', '40');
-    expect(q('list-chip-totalGross:range')?.textContent).toContain('12.5 to 40');
+    await type('docs-table-filter-panel-totalGross-max', '4000');
+    expect(q('list-chip-totalGross:range')?.textContent?.replace(/\s/g, ' ')).toContain(
+      '1 500,5 to 4 000',
+    );
+    await type('docs-table-filter-panel-totalGross-min', '');
+    expect(q('list-chip-totalGross:range')?.textContent?.replace(/\s/g, ' ')).toContain(
+      'at most 4 000',
+    );
     expect(q('list-filters-count')?.textContent).toContain('1');
 
     (q('list-chip-totalGross:range')!.querySelector('button') as HTMLButtonElement).click();

@@ -649,7 +649,7 @@ export class DataList<Row> implements OnInit {
     options: { option: ListFilterOption; count: number | null }[];
   }): SelectOption[] {
     const id = facet.filter.id;
-    // A multiple Select clears itself with its own « Tout effacer »: an « all » entry would be one more value to hold.
+    // A multiple Select clears itself with its own « Effacer tout »: an « all » entry would be one more value to hold.
     return [
       ...(facet.filter.multiple
         ? []
@@ -698,15 +698,25 @@ export class DataList<Row> implements OnInit {
   }
 
   protected chipRange(chip: FilterChip): string {
-    const shown = (value: string): string =>
-      chip.rangeKind === 'day' ? this.format.day(value) : value;
     const from = chip.from ?? '';
     const to = chip.to ?? '';
+    if (chip.rangeKind === 'amount') return this.chipAmounts(from, to);
+    const shown = (value: string): string => this.format.day(value);
     if (from !== '' && to !== '')
       return this.translate.instant('list.chip_range', { from: shown(from), to: shown(to) });
     return from !== ''
       ? this.translate.instant('list.chip_from', { from: shown(from) })
       : this.translate.instant('list.chip_to', { to: shown(to) });
+  }
+
+  /** Sums read as sums, « au moins », « au plus », written as the screen writes amounts (audit 2026-10-06, B-4). */
+  private chipAmounts(min: string, max: string): string {
+    const shown = (value: string): string => this.format.amount(value.replace(',', '.'), null);
+    if (min !== '' && max !== '')
+      return this.translate.instant('list.chip_amounts', { min: shown(min), max: shown(max) });
+    return min !== ''
+      ? this.translate.instant('list.chip_min', { min: shown(min) })
+      : this.translate.instant('list.chip_max', { max: shown(max) });
   }
 
   protected removeChip(chip: FilterChip): void {

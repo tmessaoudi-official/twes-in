@@ -689,6 +689,9 @@
     "chip_range": "{{from}} to {{to}}",
     "chip_from": "from {{from}}",
     "chip_to": "up to {{to}}",
+    "chip_min": "at least {{min}}",
+    "chip_max": "at most {{max}}",
+    "chip_amounts": "{{min}} to {{max}}",
     "pick_hint": "Type to search; each pick adds to the filter.",
     "range": {
       "from": "From",

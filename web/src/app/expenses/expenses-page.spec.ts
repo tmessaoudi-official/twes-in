@@ -133,7 +133,8 @@ describe('ExpensesPage', () => {
     const row = q('expense-e1')?.textContent ?? '';
     expect(row).toContain('Gasoil');
     expect(row).toContain('Sotumag');
-    expect(row).toContain('TND');
+    // An amount in the company's own currency, bare, as the invoices list prints it (audit 2026-10-06, V-11).
+    expect(row).not.toContain('TND');
     expect(row).toContain('Comptabilisée');
     expect(q('list-link-e1')?.getAttribute('href')).toBe('/expenses/e1');
     expect(q('expense-add')?.getAttribute('href')).toBe('/expenses/new');

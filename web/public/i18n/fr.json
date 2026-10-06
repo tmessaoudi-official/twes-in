@@ -689,6 +689,9 @@
     "chip_range": "{{from}} au {{to}}",
     "chip_from": "à partir du {{from}}",
     "chip_to": "jusqu'au {{to}}",
+    "chip_min": "au moins {{min}}",
+    "chip_max": "au plus {{max}}",
+    "chip_amounts": "{{min}} à {{max}}",
     "pick_hint": "Tapez pour chercher ; chaque choix s'ajoute au filtre.",
     "range": {
       "from": "Du",
@@ -3629,7 +3632,7 @@
     "search": "Rechercher",
     "none_found": "Aucun résultat",
     "select_all": "Tout sélectionner",
-    "clear_all": "Tout effacer",
+    "clear_all": "Effacer tout",
     "more": "+{{count}}",
     "count": "Nombre : {{count}}"
   }

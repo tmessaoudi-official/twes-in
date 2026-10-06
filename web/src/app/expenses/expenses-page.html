@@ -53,7 +53,7 @@
       <ng-template appDataListCell="date" let-row>{{ row.date | day }}</ng-template>
       <ng-template appDataListCell="dueDate" let-row>{{ row.dueDate | day }}</ng-template>
       <ng-template appDataListCell="amountGross" let-row>
-        {{ row.amountGross | amount: null }} {{ row.currency }}
+        {{ row.amountGross | amount: null }}
       </ng-template>
       <ng-template appDataListCell="status" let-row>
         <app-status-badge [tone]="toneOf(row.status)">

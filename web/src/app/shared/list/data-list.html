@@ -9,6 +9,7 @@
           [multiple]="true"
           [options]="facetOptions(facet)"
           [translateLabels]="true"
+          emptyLabel="list.filter_any"
           [ngModel]="facet.chosenList"
           (ngModelChange)="onFacetMany(facet.filter.id, $event ?? [])"
           [testId]="'list-facet-' + facet.filter.id"
