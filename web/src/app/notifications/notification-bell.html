@@ -12,12 +12,15 @@
     [attr.data-unread]="unread()"
     data-testid="notification-bell"
   >
-    <mat-icon
+    <!-- The badge sits on a wrapper, never on the hidden icon itself, which Material warns about on every render; the
+         count is in the button's name. -->
+    <span
+      class="inline-flex"
       aria-hidden="true"
       [matBadge]="badge()"
       [matBadgeHidden]="unread() === 0 || !folded()"
       matBadgeSize="small"
-      >notifications</mat-icon
+      ><mat-icon>notifications</mat-icon></span
     >
     <span class="twes-rail-label" [class.sr-only]="folded()" aria-hidden="true">{{
       'notifications.title' | translate
@@ -36,13 +39,14 @@
     [attr.data-unread]="unread()"
     data-testid="notification-bell"
   >
-    <mat-icon
+    <span
+      class="inline-flex"
       aria-hidden="true"
       [matBadge]="badge()"
       [matBadgeHidden]="unread() === 0"
       matBadgeSize="medium"
       matBadgeColor="warn"
-      >notifications</mat-icon
+      ><mat-icon>notifications</mat-icon></span
     >
   </button>
 }

@@ -204,6 +204,27 @@ describe('NotificationBell', () => {
     expect(bell(fixture).getAttribute('aria-label')).toBe('Notifications, 3 non lues');
   });
 
+  it('badges no icon hidden from assistive technology, in either of its forms', async () => {
+    // Audit 2026-10-06 V-24: Material warned on every page; the bell's name already says the count.
+    const warn = vi.spyOn(console, 'warn');
+    unread.set(3);
+    const icon = render();
+    await settle(icon);
+    const row = TestBed.createComponent(NotificationBell);
+    row.componentRef.setInput('variant', 'row');
+    row.componentRef.setInput('folded', true);
+    await settle(row);
+
+    expect(warn.mock.calls.filter(([message]) => String(message).includes('matBadge'))).toEqual([]);
+    for (const fixture of [icon, row]) {
+      const badged = bell(fixture).querySelector('.mat-badge');
+      expect(badged?.tagName.toLowerCase()).not.toBe('mat-icon');
+      expect(badged?.getAttribute('aria-hidden')).toBe('true');
+      expect(badged?.querySelector('.mat-badge-content')?.textContent?.trim()).toBe('3');
+    }
+    warn.mockRestore();
+  });
+
   it('shows how many notifications are unread as a number, never a bare dot, and 9+ above nine', async () => {
     const badge = (fixture: ReturnType<typeof render>) =>
       fixture.nativeElement.querySelector('.mat-badge-content') as HTMLElement | null;

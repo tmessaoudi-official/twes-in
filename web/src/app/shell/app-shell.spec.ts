@@ -392,6 +392,22 @@ describe('AppShell', () => {
     );
   });
 
+  it('badges no icon hidden from assistive technology, which Material warns about on every page', async () => {
+    // Audit 2026-10-06 V-24: thirty warnings a page buried the real ones. The count is in the entry's name already.
+    const warn = vi.spyOn(console, 'warn');
+    permissions.set(['customer.read', 'company.read']);
+    watchSummary.set({ count: 4, subjects: [] });
+    theme.sidebar.set('rail');
+    const { byTestId } = await render();
+
+    expect(warn.mock.calls.filter(([message]) => String(message).includes('matBadge'))).toEqual([]);
+    const badged = byTestId('nav-watch')?.querySelector('.mat-badge');
+    expect(badged?.tagName.toLowerCase()).not.toBe('mat-icon');
+    expect(badged?.getAttribute('aria-hidden')).toBe('true');
+    expect(badged?.querySelector('mat-icon')).not.toBeNull();
+    warn.mockRestore();
+  });
+
   it('does not read what a person may not see', async () => {
     permissions.set(['customer.read']);
     await render();

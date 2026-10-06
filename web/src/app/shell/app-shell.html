@@ -105,13 +105,14 @@
                 [attr.data-testid]="'nav-' + entry.key"
                 (click)="handset() && drawer.close()"
               >
-                <mat-icon
+                <!-- The badge on a wrapper, not on the hidden icon (Material warns); the count is in the entry's name. -->
+                <span
                   matListItemIcon
                   aria-hidden="true"
                   [matBadge]="badge(count)"
                   [matBadgeHidden]="count === 0 || !rail()"
                   matBadgeSize="small"
-                  >{{ entry.icon }}</mat-icon
+                  ><mat-icon>{{ entry.icon }}</mat-icon></span
                 >
                 <!-- Folded, the rail keeps a short label under the icon (docs/SPEC.md § 8 row 123). Each branch has ONE root,
                    the title, or Angular projects it into the default slot and Material draws it two lines tall. -->
