@@ -1353,6 +1353,7 @@
       "credit_applied": "The customer’s credit is applied to the invoice."
     },
     "portfolio": {
+      "open": "Cheque and traite portfolio",
       "title": "Cheques and traites",
       "hint": "What is held or at the bank, the nearest due day first. Open an invoice to deposit or cash its cheques and traites.",
       "no_company": "No company is being worked in.",

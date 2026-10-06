@@ -223,10 +223,14 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
         .filter({ hasText: `CHQ ${run}` }),
     ).toHaveCount(1);
     expect(await wcagViolations(page)).toEqual([]);
+    await expect(page.getByTestId('watch-elsewhere')).toHaveAttribute('href', '/instruments');
     await page.goBack();
     await expect(page.getByTestId('invoice-instruments')).toContainText(`CHQ ${run}`);
-    // The portfolio lists it with its customer, and its invoice number leads back to the invoice.
-    await page.goto('/instruments');
+    // The portfolio lists it with its customer, and its invoice number leads back to the invoice. It is reached from
+    // the invoices list, as a person would (audit B-2: no screen led to it).
+    await page.goto('/invoices');
+    await page.getByTestId('invoices-portfolio').click();
+    await expect(page).toHaveURL(/\/instruments$/);
     const held = page
       .getByTestId('portfolio-table')
       .getByRole('row')

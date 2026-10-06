@@ -1353,6 +1353,7 @@
       "credit_applied": "Le crédit du client est appliqué à la facture."
     },
     "portfolio": {
+      "open": "Portefeuille chèques et traites",
       "title": "Chèques et traites",
       "hint": "Ce qui est en portefeuille ou à la banque, l'échéance la plus proche d'abord. Ouvrez une facture pour remettre ou encaisser ses chèques et traites.",
       "no_company": "Aucune société n'est active.",

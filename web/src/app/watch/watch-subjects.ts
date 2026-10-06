@@ -12,6 +12,8 @@ import type { WatchRowView } from './watch-view';
 export interface WatchSubjectView {
   readonly icon: IconName;
   readonly list: ListDescriptor<WatchRowView>;
+  /** The screen that holds the whole of what this subject picks from, linked beside its title. */
+  readonly elsewhere?: { readonly link: string; readonly label: string };
 }
 
 const COLUMNS = 'watch.columns';
@@ -106,6 +108,7 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       ],
       actions: [OPEN_INVOICE],
     },
+    elsewhere: { link: '/instruments', label: 'invoices.portfolio.open' },
   },
   'invoices.late_customer': {
     icon: 'schedule',

@@ -258,6 +258,11 @@ describe('InvoicesPage', () => {
     expect(text('invoice-i4')).toContain('Avoir');
   });
 
+  // Audit B-2: the cheque and traite portfolio was reachable only by typing its address.
+  it('leads to the cheque and traite portfolio from its header', () => {
+    expect(q('invoices-portfolio')?.getAttribute('href')).toBe('/instruments');
+  });
+
   it('offers a new invoice to a writer only', async () => {
     expect(q('invoice-add')).not.toBeNull();
 

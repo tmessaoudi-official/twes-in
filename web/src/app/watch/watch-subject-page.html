@@ -43,6 +43,15 @@
       <p class="text-sm text-on-surface-variant">
         {{ 'watch.subjects.' + kind() + '.hint' | translate }}
       </p>
+      @if (current.elsewhere; as elsewhere) {
+        <a
+          [routerLink]="elsewhere.link"
+          class="flex w-fit items-center gap-1 font-medium text-primary"
+          data-testid="watch-elsewhere"
+        >
+          {{ elsewhere.label | translate }}<mat-icon aria-hidden="true">arrow_forward</mat-icon>
+        </a>
+      }
     </header>
 
     @switch (state().status) {
