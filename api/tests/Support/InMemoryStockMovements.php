@@ -122,8 +122,16 @@ final class InMemoryStockMovements implements StockMovementRepository
         ));
     }
 
+    /** What another run does while this one waits for its first lock, once. */
+    public ?\Closure $whileWaitingForALock = null;
+
     public function lockStockOf(Uuid $productId, Uuid $locationId): void
     {
+        $other = $this->whileWaitingForALock;
+        $this->whileWaitingForALock = null;
+        if (null !== $other) {
+            $other();
+        }
         $this->calls[] = $this->call('lock', $productId, $locationId);
     }
 

@@ -153,6 +153,10 @@ final readonly class MoveStockForDeliveryNotes
             foreach ($locks as [$lockedProduct, $lockedPlace]) {
                 $this->movements->lockStockOf($lockedProduct, $lockedPlace);
             }
+            // Asked again under the locks: another run of the same document that held them first has moved the stock.
+            if ([] !== $this->movements->ofSource($sourceType, $sourceId, $companyId)) {
+                return [];
+            }
             $written = [];
             $taking = [];
             foreach ($out as [$product, $quantity, $named]) {
@@ -358,6 +362,9 @@ final readonly class MoveStockForDeliveryNotes
             ksort($locks);
             foreach ($locks as [$productId, $locationId]) {
                 $this->movements->lockStockOf($productId, $locationId);
+            }
+            if ([] !== $this->movements->ofSource(StockMovement::SOURCE_CREDIT_NOTE, $creditNoteId, $companyId)) {
+                return [];
             }
 
             // One product at one place and lot may have left through the invoice and several of its notes: a return

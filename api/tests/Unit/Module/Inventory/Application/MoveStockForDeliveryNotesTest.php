@@ -135,6 +135,18 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         self::assertSame($expected, $locks, 'each product is locked once, in a fixed order, before its movement is written');
     }
 
+    public function testTwoRunsOfOneValidationAtOnceTakeTheStockOutOnceAndNeitherFails(): void
+    {
+        // The other run wrote while this one waited for its lock: this one finds that once it holds the lock and stops,
+        // rather than writing again and meeting the unique index as a failure told to the keepers (audit 2026-10-06, B-F6).
+        $noteId = Uuid::v7();
+        $lines = [$this->line($this->laptop, '2.000', $this->piece)];
+        $this->movements->whileWaitingForALock = fn (): array => $this->move->validated($noteId, $this->company->getId(), $this->depot->getId(), $lines);
+
+        self::assertSame([], $this->move->validated($noteId, $this->company->getId(), $this->depot->getId(), $lines));
+        self::assertSame([['ART-001', '001', 'out', '-2.000']], $this->written());
+    }
+
     public function testALineInAnotherUnitThanItsProductCountsIsLeftOutAndSaid(): void
     {
         $skipped = $this->move->validated(Uuid::v7(), $this->company->getId(), $this->depot->getId(), [
@@ -404,6 +416,19 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         self::assertSame([['OCTOBER', '2.000'], ['NOVEMBER', '1.000']], $this->lotsWritten($sold), 'back to the lots the sale left, in the order it took them, once');
         $back = \array_slice($this->movements->movements, $sold);
         self::assertSame([StockMovement::SOURCE_CREDIT_NOTE, $creditNote->toRfc4122(), $invoice->toRfc4122(), '700.0000', false], [$back[0]->getSourceType(), $back[0]->getSourceId()?->toRfc4122(), $back[0]->getReversesSourceId()?->toRfc4122(), $back[0]->getUnitCost(), $back[0]->isCostTyped()]);
+    }
+
+    public function testTwoRunsOfOneCreditNoteAtOnceBringTheGoodsBackOnce(): void
+    {
+        $invoice = Uuid::v7();
+        $this->move->invoiced($invoice, $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '4.000', $this->piece)]);
+        $sold = \count($this->movements->movements);
+        $creditNote = Uuid::v7();
+        $lines = [$this->line($this->laptop, '3.000', $this->piece)];
+        $this->movements->whileWaitingForALock = fn (): array => $this->move->returned($creditNote, $invoice, $this->company->getId(), $lines);
+
+        self::assertSame([], $this->move->returned($creditNote, $invoice, $this->company->getId(), $lines));
+        self::assertCount(1, \array_slice($this->movements->movements, $sold), 'the goods came back once');
     }
 
     public function testASaleIsReturnedForNoMoreThanItTookOutLessWhatEarlierCreditNotesReturnedAndSaysWhatCameBackShort(): void
