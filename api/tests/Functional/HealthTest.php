@@ -23,4 +23,17 @@ final class HealthTest extends WebTestCase
         $body = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
         self::assertSame(['status' => 'ok', 'database' => 'ok'], $body);
     }
+
+    /**
+     * A caller with no session gets none read or started: the answer keeps Symfony's own header, which the web tier
+     * passes through (web/e2e/auth.spec.ts), and nothing on the way asks who is signed in.
+     */
+    public function testACallerWithNoSessionHasNoneOpened(): void
+    {
+        $client = static::createClient();
+        $client->request('GET', '/api/health');
+
+        self::assertResponseHeaderSame('cache-control', 'no-cache, private');
+        self::assertNull($client->getResponse()->headers->getCookies()[0] ?? null);
+    }
 }

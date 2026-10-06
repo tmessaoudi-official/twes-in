@@ -45,7 +45,9 @@ final readonly class CustomerScreenLockListener
         }
         $request = $event->getRequest();
         $path = rtrim($request->getPathInfo(), '/');
-        if (!str_starts_with($path, '/api')) {
+        // The hold lives in the session: a request bringing none cannot be held, and asking who is signed in would make
+        // the lazy firewall read a session for it, which turns a public answer's cache header private.
+        if (!str_starts_with($path, '/api') || !$request->hasPreviousSession()) {
             return;
         }
         $account = $this->security->getUser();
