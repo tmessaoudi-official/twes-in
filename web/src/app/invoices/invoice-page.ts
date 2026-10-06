@@ -175,9 +175,13 @@ export class InvoicePage {
   });
   protected readonly tones = INVOICE_STATUS_TONES;
   protected readonly stages = INVOICE_STATUS_STAGES;
+  /** A credit note reverses revenue, so changing its draft takes the right to draft one, as the API asks. */
+  private readonly mayTouch = computed(
+    () => this.mayWrite() && (!this.isCreditNote() || this.mayCredit()),
+  );
   protected readonly editable = computed(() => {
     const current = this.current();
-    return this.mayWrite() && (current === null || current?.status === 'draft');
+    return this.mayTouch() && (current === null || current?.status === 'draft');
   });
   protected readonly descriptor = computed(() => {
     const options = this.options();
@@ -509,7 +513,7 @@ export class InvoicePage {
       (!this.isCreditNote() || this.mayCredit()),
   );
   protected readonly canCancel = computed(
-    () => this.current()?.status === 'draft' && this.mayWrite(),
+    () => this.current()?.status === 'draft' && this.mayTouch(),
   );
   protected readonly isOpen = computed(() => {
     const status = this.current()?.status;

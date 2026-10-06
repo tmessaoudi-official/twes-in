@@ -74,6 +74,22 @@ final class ClerkRoleTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a clerk creates none');
         $this->postJson($this->path($credit).'/issue', null);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor issues the manager\'s draft');
+        // Audit 2026-10-06, C-F4: nor changes it, nor cancels it.
+        $this->sendJson('PUT', $this->path($credit), [
+            'customerId' => $this->customerId,
+            'establishmentId' => null,
+            'supplyDate' => null,
+            'paymentTermsDays' => null,
+            'customerReference' => null,
+            'notesPrinted' => null,
+            'notesInternal' => null,
+            'discountAmount' => null,
+            'documentTaxComponentIds' => [],
+            'lines' => [['description' => 'Prestation', 'quantity' => '1', 'unitId' => $this->unitId(), 'unitPriceNet' => '1', 'taxComponentIds' => []]],
+        ]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor changes the manager\'s draft');
+        $this->postJson($this->path($credit).'/cancel', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor cancels it');
 
         $this->client->getCookieJar()->clear();
         $this->login('manager@twes.local', 'password-1234');

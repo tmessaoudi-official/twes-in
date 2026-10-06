@@ -18,8 +18,6 @@ use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\InvoiceWorkflow;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\InvoiceNotDraft;
-use App\Module\Invoices\Domain\InvoiceRepository;
-use App\Module\Invoices\Domain\InvoiceType;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Tenancy\Application\Numbering\NoNumberingSeries;
 use App\Tenancy\Domain\InvalidNumbering;
@@ -38,7 +36,7 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
  */
 final readonly class IssueInvoiceProcessor implements ProcessorInterface
 {
-    public function __construct(private InvoiceWorkflow $workflow, private InvoiceTotals $totals, private CompanyGuard $guard, private InvoiceRepository $invoices)
+    public function __construct(private InvoiceWorkflow $workflow, private InvoiceTotals $totals, private CompanyGuard $guard, private CreditNoteRight $creditNotes)
     {
     }
 
@@ -46,11 +44,7 @@ final readonly class IssueInvoiceProcessor implements ProcessorInterface
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::ISSUE);
 
-        // A credit note reverses revenue, so issuing one takes the permission to draft one; the answer is the one a stranger gets.
-        $draft = $this->invoices->ofIdInCompany(CompanyPath::identifier($uriVariables, 'invoiceId'), $company->getId());
-        if (InvoiceType::CreditNote === $draft?->getType() && !$this->guard->may($company, InvoicePermission::CREDIT)) {
-            throw new NotFoundHttpException('No such invoice.');
-        }
+        $this->creditNotes->check($company, CompanyPath::identifier($uriVariables, 'invoiceId'));
 
         $request = $context['request'] ?? null;
         $asked = $request instanceof Request ? $request->query->get('excessTo') : null;

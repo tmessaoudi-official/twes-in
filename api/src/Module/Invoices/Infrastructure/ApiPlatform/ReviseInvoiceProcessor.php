@@ -25,13 +25,14 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 /** @implements ProcessorInterface<InvoiceResource, InvoiceResource> */
 final readonly class ReviseInvoiceProcessor implements ProcessorInterface
 {
-    public function __construct(private ManageInvoices $manage, private InvoiceTotals $totals, private CompanyGuard $guard)
+    public function __construct(private ManageInvoices $manage, private InvoiceTotals $totals, private CompanyGuard $guard, private CreditNoteRight $creditNotes)
     {
     }
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): InvoiceResource
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::WRITE);
+        $this->creditNotes->check($company, CompanyPath::identifier($uriVariables, 'invoiceId'));
 
         try {
             $invoice = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'invoiceId'), $data->input(), $this->guard->account()->getId());

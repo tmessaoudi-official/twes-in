@@ -1230,10 +1230,19 @@ describe('InvoicePage', () => {
     });
     await open('i1');
     expect(q('document-action-issue')).toBeNull();
+    // Nor its revising or cancelling: the API answers either as it would a stranger.
+    expect(q('document-action-save')).toBeNull();
+    q('document-more')?.click();
+    await settle();
+    expect(over('document-menu-cancel')).toBeNull();
 
     granted.add('invoice.credit');
     await open('i1');
     expect(q('document-action-issue')).not.toBeNull();
+    expect(q('document-action-save')).not.toBeNull();
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-cancel')).not.toBeNull();
   });
 
   it('shows a credit note as one: its title, its invoice, no payments and no credit note of its own', async () => {
