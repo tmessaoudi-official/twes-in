@@ -393,6 +393,10 @@ export class StockPage implements OnInit {
     const lotCode = named.lot ?? named.serial ?? '';
     const pieces = Math.max(named.quantity, 1) * scan.times;
     const same = before['productId'] === product.id && (before['lotCode'] ?? '') === lotCode;
+    // One serial number is one piece: the same one scanned again is not one more.
+    if (same && product.tracking === 'serial' && lotCode !== '') {
+      return { kind: 'refused', key: 'scan.serial_present', params: { name: product.name } };
+    }
     this.known.set(product.id, product);
     this.product.set(product);
     // Read again: a tracked product's form is another form, rebuilt over what was typed.

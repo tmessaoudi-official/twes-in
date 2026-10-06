@@ -690,6 +690,34 @@ describe('StockPage', () => {
       expect(values()).toMatchObject({ productId: 'p3', lotCode: 'SN-1', quantity: '1' });
     });
 
+    // Audit 2026-10-06, A-12: one serial number is one piece, so the same one scanned again is not one more.
+    it('refuses the same serial number scanned twice, and leaves the line as it was', async () => {
+      q('stock-receive')!.click();
+      await settle();
+      const headset = {
+        ...glue,
+        productId: 'p4',
+        reference: 'ART-4',
+        name: 'Casque',
+        role: 'unit' as const,
+        quantity: 1,
+        lot: null,
+        useBy: null,
+        serial: 'SN-7',
+      };
+      scans.named.mockResolvedValue(headset);
+
+      await scanned(headset.code);
+      const again = await scanned(headset.code);
+
+      expect(again).toMatchObject({
+        kind: 'refused',
+        key: 'scan.serial_present',
+        params: { name: 'Casque' },
+      });
+      expect(values()).toMatchObject({ productId: 'p4', lotCode: 'SN-7', quantity: '1' });
+    });
+
     it('leaves a scan to the card with no movement open, or when the picker does not answer the product', async () => {
       scans.named.mockResolvedValue(glue);
       expect(await scanned(glue.code)).toEqual({ kind: 'unclaimed' });
