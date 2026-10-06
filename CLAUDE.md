@@ -217,6 +217,8 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   mid-load with a connection refused; Centrifugo being down only warns (2026-09-29).
 - Stage first, then run the checks, then commit: the SPDX gate enumerates `git ls-files`, and this clone has
   `core.fileMode=false`, so a new script also needs `git update-index --chmod=+x` (the executable-bits gate catches it).
+  Commit a new script from the index (`git commit` with no pathspec): `git commit -- <paths>` re-reads the files and
+  records them 100644 again, though the index said 100755 (2026-10-06).
 - Use `git grep`, not `grep -rn`, for completeness sweeps; use `git --no-pager -c core.pager=cat diff --no-ext-diff`
   for programmatic diff reading (the external diff driver strips `+`/`-`). `docker compose config -q`, always `-q`.
 - Back a file up before applying a mutant and restore from the backup; `git restore` reverts the uncommitted fix with it.
