@@ -298,22 +298,25 @@ final readonly class MoveStockForDeliveryNotes
     /**
      * What a credit note returns of an invoice's sale goes back to the lots and the location the sale took it from,
      * worth what it left at, once per credit note, and never more than the sale took out less what earlier credit notes
-     * of the same invoice already brought back. Like a cancelled note's return, it does not ask whether the module or
-     * the product's tracking are still on: the sale is the proof that stock was kept.
+     * of the same invoice already brought back. An invoice built from delivery notes sold what those notes took out, so
+     * their movements count as its sale (docs/SPEC.md § 7, audit 2026-10-06 E-5). Like a cancelled note's return, it does
+     * not ask whether the module or the product's tracking are still on: the sale is the proof that stock was kept.
      *
-     * @param list<DeliveredQuantity> $lines the product lines the person marked as returned
+     * @param list<DeliveredQuantity> $lines           the product lines the person marked as returned
+     * @param list<Uuid>              $deliveryNoteIds the delivery notes the corrected invoice was built from
      *
      * @return list<string> why a line brought back nothing, or less than it said
      */
-    public function returned(Uuid $creditNoteId, Uuid $invoiceId, Uuid $companyId, array $lines): array
+    public function returned(Uuid $creditNoteId, Uuid $invoiceId, Uuid $companyId, array $lines, array $deliveryNoteIds = []): array
     {
         if ([] === $lines || [] !== $this->movements->ofSource(StockMovement::SOURCE_CREDIT_NOTE, $creditNoteId, $companyId)) {
             return [];
         }
-        $sales = array_values(array_filter(
-            $this->movements->ofSource(StockMovement::SOURCE_INVOICE, $invoiceId, $companyId),
-            static fn (StockMovement $movement): bool => StockMovementKind::Out === $movement->getKind(),
-        ));
+        $sources = [$this->movements->ofSource(StockMovement::SOURCE_INVOICE, $invoiceId, $companyId)];
+        foreach ($deliveryNoteIds as $deliveryNoteId) {
+            $sources[] = $this->movements->ofSource(StockMovement::SOURCE_DELIVERY_NOTE, $deliveryNoteId, $companyId);
+        }
+        $sales = array_values(array_filter(array_merge(...$sources), static fn (StockMovement $movement): bool => StockMovementKind::Out === $movement->getKind()));
 
         $skipped = [];
         $asked = [];
@@ -354,9 +357,14 @@ final readonly class MoveStockForDeliveryNotes
                 $this->movements->lockStockOf($productId, $locationId);
             }
 
+            // One product at one place and lot may have left through the invoice and several of its notes: a return
+            // comes back once per place and lot, so what is left to return is counted over all of them.
+            $soldAt = [];
             $left = [];
             foreach ($sales as $sale) {
-                $left[self::stockKey($sale)] = new Number($sale->getQuantity())->mul(-1);
+                $key = self::stockKey($sale);
+                $soldAt[$key][] = $sale;
+                $left[$key] = ($left[$key] ?? new Number(0))->add(new Number($sale->getQuantity())->mul(-1));
             }
             foreach ($this->movements->ofReversing($invoiceId, $companyId) as $back) {
                 $key = self::stockKey($back);
@@ -369,28 +377,27 @@ final readonly class MoveStockForDeliveryNotes
             foreach ($asked as [$product, $quantity, $lot]) {
                 $want = $quantity;
                 $named = null === $lot ? '' : ' lot '.$lot;
-                foreach ($sales as $sale) {
+                foreach ($soldAt as $key => [$sale]) {
                     if (!$sale->getProduct()->getId()->equals($product->getId()) || (null !== $lot && 0 !== strcasecmp((string) $sale->getLot()?->getCode(), $lot))) {
                         continue;
                     }
-                    $key = self::stockKey($sale);
                     $take = 1 === $left[$key]->compare($want) ? $want : $left[$key];
                     if (1 !== $take->compare(0)) {
                         continue;
                     }
-                    $give[$sale->getId()->toRfc4122()] = [$sale, ($give[$sale->getId()->toRfc4122()][1] ?? new Number(0))->add($take)];
+                    $give[$key] = ($give[$key] ?? new Number(0))->add($take);
                     $left[$key] = $left[$key]->sub($take);
                     $want = $want->sub($take);
                 }
                 if (1 === $want->compare(0)) {
-                    $skipped[] = \sprintf('%s of %s%s was not sold by this invoice, or had already been returned, so it returned no stock', new Number('0.000')->add($want)->value, $product->getReference(), $named);
+                    $skipped[] = \sprintf('%s of %s%s was not sold by this invoice or its delivery notes, or had already been returned, so it returned no stock', new Number('0.000')->add($want)->value, $product->getReference(), $named);
                 }
             }
 
             if ([] !== $give) {
                 $this->movements->save(...array_map(
-                    static fn (array $each): StockMovement => StockMovement::saleReturn($each[0], new Number('0.000')->add($each[1])->value, $creditNoteId, $now),
-                    array_values($give),
+                    static fn (string $key): StockMovement => StockMovement::returnOfSales($soldAt[$key], new Number('0.000')->add($give[$key])->value, $creditNoteId, $invoiceId, $now),
+                    array_keys($give),
                 ));
             }
 

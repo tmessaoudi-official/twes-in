@@ -432,6 +432,46 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         self::assertSame([], $this->move->returned(Uuid::v7(), Uuid::v7(), $this->company->getId(), []), 'a credit note with no returned line moves nothing and says nothing');
     }
 
+    /**
+     * An invoice built from delivery notes sold what the notes took out, so its credit note returns against them
+     * (docs/SPEC.md § 7, audit 2026-10-06 E-5): once per place, at what the goods left at across the notes, and named
+     * after the invoice, so a later credit note counts what came back.
+     */
+    public function testACreditNoteOfAnInvoiceBuiltFromDeliveryNotesReturnsWhatTheNotesTookOutAtTheirCost(): void
+    {
+        $depot = $this->manage->defaultOf($this->depot)->getId();
+        $this->keep->receive($this->company, $this->laptop->getId(), $depot, '5', null, null, '700');
+        $first = Uuid::v7();
+        $this->move->validated($first, $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '2.000', $this->piece)]);
+        $this->keep->receive($this->company, $this->laptop->getId(), $depot, '5', null, null, '1000');
+        $second = Uuid::v7();
+        $this->move->validated($second, $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '3.000', $this->piece)]);
+        $invoice = Uuid::v7();
+        $sold = \count($this->movements->movements);
+
+        $skipped = $this->move->returned(Uuid::v7(), $invoice, $this->company->getId(), [$this->line($this->laptop, '4.000', $this->piece)], [$first, $second]);
+        $short = $this->move->returned(Uuid::v7(), $invoice, $this->company->getId(), [$this->line($this->laptop, '2.000', $this->piece)], [$first, $second]);
+
+        self::assertSame([], $skipped);
+        self::assertCount(1, $short);
+        self::assertStringContainsString('1.000 of ART-001', $short[0]);
+        $back = \array_slice($this->movements->movements, $sold);
+        self::assertSame([['4.000', '812.5000', $invoice->toRfc4122()], ['1.000', '812.5000', $invoice->toRfc4122()]], array_map(
+            static fn (StockMovement $movement): array => [$movement->getQuantity(), $movement->getUnitCost(), $movement->getReversesSourceId()?->toRfc4122()],
+            $back,
+        ), 'one return per place, at 2 × 700 and 3 × 887.5 over 5, the second given what the first left');
+    }
+
+    public function testWithoutItsDeliveryNotesAnInvoiceThatSoldNothingItselfReturnsNothing(): void
+    {
+        $note = Uuid::v7();
+        $this->move->validated($note, $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '2.000', $this->piece)]);
+
+        $skipped = $this->move->returned(Uuid::v7(), Uuid::v7(), $this->company->getId(), [$this->line($this->laptop, '1.000', $this->piece)], []);
+
+        self::assertCount(1, $skipped, 'another invoice\'s notes are not this one\'s');
+    }
+
     public function testWhatASaleTookOutComesBackEvenOnceTheModuleIsOff(): void
     {
         $invoice = Uuid::v7();

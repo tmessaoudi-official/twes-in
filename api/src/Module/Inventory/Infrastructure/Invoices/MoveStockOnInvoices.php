@@ -11,6 +11,7 @@ namespace App\Module\Inventory\Infrastructure\Invoices;
 
 use App\Module\DeliveryNotes\Domain\DeliveredQuantity;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
+use App\Module\Inventory\Application\SourceDeliveryNotes;
 use App\Module\Inventory\Application\TellStockKeepers;
 use App\Module\Invoices\Domain\InvoicedQuantity;
 use App\Module\Invoices\Domain\InvoiceIssued;
@@ -20,14 +21,15 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
  * Takes an invoice's own goods out of stock when it is issued, and brings back what a credit note's returned lines name
- * when the credit note is. The document is already committed, so nothing here throws: a line that moved no stock, or a
- * move that failed, is logged and told to the people who keep the company's stock. A credit note takes nothing out, and
- * the lines a delivery note handed over are not in the event at all.
+ * when the credit note is, from the invoice's own sale or from the delivery notes it was built from. The document is
+ * already committed, so nothing here throws: a line that moved no stock, or a move that failed, is logged and told to the
+ * people who keep the company's stock. A credit note takes nothing out, and an invoice takes nothing a delivery note
+ * already handed over.
  */
 #[AsEventListener(event: InvoiceIssued::class)]
 final readonly class MoveStockOnInvoices
 {
-    public function __construct(private MoveStockForDeliveryNotes $move, private TellStockKeepers $tell, private LoggerInterface $logger)
+    public function __construct(private MoveStockForDeliveryNotes $move, private TellStockKeepers $tell, private LoggerInterface $logger, private SourceDeliveryNotes $notes)
     {
     }
 
@@ -68,7 +70,7 @@ final readonly class MoveStockOnInvoices
         }
         $lines = array_map(static fn (InvoicedQuantity $line): DeliveredQuantity => new DeliveredQuantity($line->productId, $line->quantity, $line->unitId, $line->lotCode), $event->returnedLines);
         try {
-            $reasons = $this->move->returned($event->invoiceId, $event->correctsInvoiceId, $event->companyId, $lines);
+            $reasons = $this->move->returned($event->invoiceId, $event->correctsInvoiceId, $event->companyId, $lines, $this->notes->ofLines($event->correctedSourceLineIds, $event->companyId));
         } catch (\Throwable $failure) {
             $this->logger->error('Credit note {number} was issued, but its goods could not be returned to stock: {failure}.', ['number' => $event->number, 'failure' => $failure->getMessage(), 'exception' => $failure]);
             $this->told(fn () => $this->tell->creditMovedNoStock($event->companyId, $event->invoiceId, $event->number));

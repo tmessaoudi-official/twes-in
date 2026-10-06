@@ -566,6 +566,45 @@ final class InventoryTest extends ApiTestCase
         self::assertStringContainsString('lines[0].returned', (string) $this->client->getResponse()->getContent());
     }
 
+    /**
+     * Goods an invoice sold through its delivery notes come back when its credit note marks them returned (docs/SPEC.md
+     * § 7, audit 2026-10-06 E-5): the notes cannot be cancelled once invoiced, so the credit note is the only way back.
+     */
+    public function testACreditNoteOfAnInvoiceBuiltFromDeliveryNotesBringsTheirGoodsBackOnceOnly(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '10']);
+        $customerId = $this->customer();
+        $notes = [$this->validatedNote($customerId, '2'), $this->validatedNote($customerId, '3')];
+        $this->postJson($this->path('invoices/from-delivery-notes'), ['deliveryNoteIds' => $notes]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $invoice = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('invoices', $invoice).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame(['5.000'], array_column($this->levels(), 'quantity'));
+        // The second asks for more goods than are left, at a price the invoice still has room to credit.
+        $creditNote = function (string $quantity, ?string $price = null) use ($invoice, $customerId): string {
+            $this->postJson($this->path('invoices', $invoice).'/credit-notes', ['creditNoteReason' => 'Retour']);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+            $id = $this->stringAt($this->json(), 'id');
+            $this->sendJson('PUT', $this->path('invoices', $id), ['customerId' => $customerId, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null, 'lines' => [['productId' => $this->laptopId, 'quantity' => $quantity, 'returned' => true, ...(null === $price ? [] : ['unitPriceNet' => $price])]]]);
+            self::assertResponseIsSuccessful();
+            $this->postJson($this->path('invoices', $id).'/issue', null);
+            self::assertResponseStatusCodeSame(Response::HTTP_OK);
+
+            return $id;
+        };
+
+        $first = $creditNote('4');
+        self::assertSame(['9.000'], array_column($this->levels(), 'quantity'), 'four of the five the notes took out come back');
+        $creditNote('2', '1');
+        self::assertSame(['10.000'], array_column($this->levels(), 'quantity'), 'the second gets the one left, never more than the notes took out');
+
+        $returned = $this->em()->getConnection()->fetchAllAssociative("SELECT quantity, reverses_source_id FROM stock_movement WHERE source_type = 'credit_note' ORDER BY quantity DESC");
+        self::assertSame([['quantity' => '4.000', 'reverses_source_id' => $invoice], ['quantity' => '1.000', 'reverses_source_id' => $invoice]], $returned, 'counted against the invoice the notes were invoiced on');
+        self::assertNotSame('', $first);
+    }
+
     public function testANoteWhoseStockNeverMovedIsReplayedOnceByTheCommand(): void
     {
         $this->signedIn(['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);

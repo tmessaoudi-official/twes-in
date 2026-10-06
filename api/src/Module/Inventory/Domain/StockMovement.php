@@ -297,25 +297,44 @@ class StockMovement implements CompanyOwned
     }
 
     /**
-     * Part of what an invoice sold, back where it left from: a credit note returned it. It goes to the lot and the
-     * location the sale took it from, worth what it left at, and names the invoice so what was already returned can be
-     * counted. A credit note returns a product at most once per location and lot, which the unique source key holds.
+     * Part of what an invoice sold, back where it left from: a credit note returned it. What it sold left through the
+     * invoice itself or through the delivery notes it was built from (docs/SPEC.md § 7, audit 2026-10-06 E-5), so the
+     * goods come back from every such sale of one product at one place and lot, worth what they left at weighed by
+     * quantity, and name the invoice so what was already returned is counted against it. A credit note returns a product
+     * at most once per location and lot, which the unique source key holds.
      *
-     * @throws InvalidStockMovement when the quantity is not a positive number the unit counts, or is more than the sale took
+     * @param non-empty-list<self> $sales what the invoice, or a delivery note it was built from, took out of one product at one place and lot
+     *
+     * @throws InvalidStockMovement when the quantity is not a positive number the unit counts, or is more than the sales took
      */
-    public static function saleReturn(self $sale, string $quantity, Uuid $creditNoteId, \DateTimeImmutable $now): self
+    public static function returnOfSales(array $sales, string $quantity, Uuid $creditNoteId, Uuid $invoiceId, \DateTimeImmutable $now): self
     {
-        if (StockMovementKind::Out !== $sale->kind || self::SOURCE_INVOICE !== $sale->sourceType || null === $sale->sourceId) {
-            throw new \LogicException('Only what an invoice sold is returned by a credit note.');
+        $first = $sales[0];
+        $taken = new Number(0);
+        $valued = new Number(0);
+        $amount = new Number(0);
+        foreach ($sales as $sale) {
+            if (StockMovementKind::Out !== $sale->kind || !\in_array($sale->sourceType, [self::SOURCE_INVOICE, self::SOURCE_DELIVERY_NOTE], true) || null === $sale->sourceId) {
+                throw new \LogicException('Only what an invoice or its delivery notes took out is returned by a credit note.');
+            }
+            if ($sale->product !== $first->product || $sale->location !== $first->location || $sale->lot !== $first->lot) {
+                throw new \LogicException('A return comes back to one product at one place and lot.');
+            }
+            $out = new Number($sale->quantity)->mul(-1);
+            $taken = $taken->add($out);
+            if (null !== $sale->unitCost) {
+                $valued = $valued->add($out);
+                $amount = $amount->add($out->mul($sale->unitCost));
+            }
         }
-        $back = self::quantity($quantity, $sale->product, false);
-        if (1 === new Number($back)->compare(new Number($sale->quantity)->mul(-1))) {
+        $back = self::quantity($quantity, $first->product, false);
+        if (1 === new Number($back)->compare($taken)) {
             throw new InvalidStockMovement('quantity', 'A sale is returned for no more than it took out.');
         }
 
-        $return = new self($sale->product, $sale->location, $sale->lot, StockMovementKind::In, $back, self::SOURCE_CREDIT_NOTE, $creditNoteId, null, $now);
-        $return->unitCost = $sale->unitCost;
-        $return->reversesSourceId = $sale->sourceId;
+        $return = new self($first->product, $first->location, $first->lot, StockMovementKind::In, $back, self::SOURCE_CREDIT_NOTE, $creditNoteId, null, $now);
+        $return->unitCost = 1 === $valued->compare(0) ? $amount->div($valued, 10)->round(4)->value : null;
+        $return->reversesSourceId = $invoiceId;
 
         return $return;
     }

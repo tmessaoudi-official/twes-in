@@ -619,7 +619,7 @@
       "stock_delivery_note_moved_no_stock": "The stock of delivery note {{number}} could not be updated. Nothing moved: tell the platform administrator, who can replay it.",
       "stock_invoice_lines_left_out": "Invoice {{number}} is issued, but some of its lines moved no stock (another unit, or no quantity).",
       "stock_invoice_moved_no_stock": "The stock of invoice {{number}} could not be updated. Nothing moved: record a stock adjustment, or tell the platform administrator.",
-      "stock_credit_lines_not_returned": "Credit note {{number}} is issued, but some of the goods it marks as returned did not come back to stock (not sold by that invoice, or already returned).",
+      "stock_credit_lines_not_returned": "Credit note {{number}} is issued, but some of the goods it marks as returned did not come back to stock (neither sold by that invoice nor delivered by its delivery notes, or already returned).",
       "stock_credit_moved_no_stock": "The goods of credit note {{number}} could not be returned to stock. Nothing moved: record a receipt, or tell the platform administrator.",
       "unknown": "New notification.",
       "subscription_payment_declared": "{{company}} declared a payment of {{amount}} {{currency}}.",

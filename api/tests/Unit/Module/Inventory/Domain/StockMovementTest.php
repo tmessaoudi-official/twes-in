@@ -233,28 +233,50 @@ final class StockMovementTest extends TestCase
         $sale = StockMovement::sale($this->laptop, $this->site, '5', $invoiceId, $this->now, $lot);
         $sale->valuedAt('7.0000');
 
-        $back = StockMovement::saleReturn($sale, '2', $creditNoteId, $this->now);
+        $back = StockMovement::returnOfSales([$sale], '2', $creditNoteId, $invoiceId, $this->now);
 
         self::assertSame([StockMovementKind::In, '2.000', StockMovement::SOURCE_CREDIT_NOTE, $creditNoteId, $invoiceId], [$back->getKind(), $back->getQuantity(), $back->getSourceType(), $back->getSourceId(), $back->getReversesSourceId()]);
         self::assertSame([$this->laptop, $this->site, $lot, '7.0000', false], [$back->getProduct(), $back->getLocation(), $back->getLot(), $back->getUnitCost(), $back->isCostTyped()]);
         self::assertNull($sale->getReversesSourceId());
     }
 
+    /** What a delivery note took out for an invoice is that invoice's sale too (docs/SPEC.md § 7, audit 2026-10-06 E-5). */
+    public function testAReturnOverSeveralSalesIsWorthWhatTheyLeftAtWeighedByQuantityAndNamesTheInvoice(): void
+    {
+        $invoiceId = Uuid::v7();
+        $noted = StockMovement::delivery($this->laptop, $this->site, '2', Uuid::v7(), $this->now);
+        $noted->valuedAt('700.0000');
+        $sold = StockMovement::sale($this->laptop, $this->site, '3', $invoiceId, $this->now);
+        $sold->valuedAt('887.5000');
+        $unvalued = StockMovement::delivery($this->laptop, $this->site, '1', Uuid::v7(), $this->now);
+
+        $back = StockMovement::returnOfSales([$noted, $sold, $unvalued], '6', Uuid::v7(), $invoiceId, $this->now);
+
+        self::assertSame(['6.000', '812.5000', $invoiceId], [$back->getQuantity(), $back->getUnitCost(), $back->getReversesSourceId()], 'what had no cost weighs nothing');
+        $elsewhere = StockMovement::delivery($this->laptop, StockLocation::create($this->site->getEstablishment(), $this->site, StockLocationKind::Zone, 'R1', 'Réserve', $this->now), '1', Uuid::v7(), $this->now);
+        try {
+            StockMovement::returnOfSales([$noted, $elsewhere], '1', Uuid::v7(), $invoiceId, $this->now);
+            self::fail('Two places were returned to at once.');
+        } catch (\LogicException $refused) {
+            self::assertNotInstanceOf(InvalidStockMovement::class, $refused);
+        }
+    }
+
     public function testOnlyASaleIsReturnedAndNeverMoreThanItTook(): void
     {
         $sale = StockMovement::sale($this->laptop, $this->site, '5', Uuid::v7(), $this->now);
 
-        foreach ([StockMovement::receipt($this->laptop, $this->site, '5', null, $this->now), StockMovement::delivery($this->laptop, $this->site, '5', Uuid::v7(), $this->now)] as $notASale) {
+        foreach ([StockMovement::receipt($this->laptop, $this->site, '5', null, $this->now)] as $notASale) {
             try {
-                StockMovement::saleReturn($notASale, '1', Uuid::v7(), $this->now);
+                StockMovement::returnOfSales([$notASale], '1', Uuid::v7(), Uuid::v7(), $this->now);
                 self::fail('Something that is not a sale was returned.');
-            } catch (\LogicException) {
-                self::addToAssertionCount(1);
+            } catch (\LogicException $refused) {
+                self::assertNotInstanceOf(InvalidStockMovement::class, $refused, 'refused for what it is, not for its quantity');
             }
         }
         foreach (['6', '0', '-1', 'abc'] as $quantity) {
             try {
-                StockMovement::saleReturn($sale, $quantity, Uuid::v7(), $this->now);
+                StockMovement::returnOfSales([$sale], $quantity, Uuid::v7(), Uuid::v7(), $this->now);
                 self::fail(\sprintf('A return of "%s" was accepted.', $quantity));
             } catch (InvalidStockMovement $refused) {
                 self::assertSame('quantity', $refused->field);

@@ -489,7 +489,9 @@ class Invoice implements CompanyOwned
             static fn (InvoiceLine $line): ?InvoicedQuantity => null === $line->getProduct() || !$line->isReturned() ? null : new InvoicedQuantity($line->getProduct()->getId(), $line->getQuantity(), $line->getUnit()->getId(), $line->getLotCode()),
             $this->getLines(),
         )));
-        $this->events[] = new InvoiceIssued($this->id, $this->company->getId(), $this->establishment->getId(), $this->documentType, $issue->number, $this->issueDate, $sources, $direct, $this->correctsInvoice?->getId(), $returned);
+        // What the corrected invoice sold through delivery notes is returned against those notes' own movements.
+        $correctedSources = null === $this->correctsInvoice || [] === $returned ? [] : array_values(array_filter(array_map(static fn (InvoiceLine $line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $this->correctsInvoice->getLines())));
+        $this->events[] = new InvoiceIssued($this->id, $this->company->getId(), $this->establishment->getId(), $this->documentType, $issue->number, $this->issueDate, $sources, $direct, $this->correctsInvoice?->getId(), $returned, $correctedSources);
     }
 
     /**

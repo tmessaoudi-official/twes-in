@@ -15,6 +15,7 @@ use App\Identity\Domain\User;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
+use App\Module\Inventory\Application\SourceDeliveryNotes;
 use App\Module\Inventory\Application\TellStockKeepers;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementKind;
@@ -248,7 +249,15 @@ final class MoveStockOnInvoicesTest extends TestCase
             }
         };
 
-        return [new MoveStockOnInvoices($move, new TellStockKeepers($memberships, $this->notifications), $logger), $logger];
+        // Which delivery notes an invoice came from is the delivery notes' to say; InventoryTest runs it through the real one.
+        $notes = new class implements SourceDeliveryNotes {
+            public function ofLines(array $lineIds, Uuid $companyId): array
+            {
+                return [];
+            }
+        };
+
+        return [new MoveStockOnInvoices($move, new TellStockKeepers($memberships, $this->notifications), $logger, $notes), $logger];
     }
 
     /**
