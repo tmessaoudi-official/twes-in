@@ -77,9 +77,14 @@ services:
     environment: *api-environment
     volumes:
       - api-files:/app/var/files
-    # The image's check asks the web server, which this container does not run.
+    # The image's check asks the web server, which this container does not run. The consumer is process 1 (the
+    # entrypoint execs it), so this says it is still running; `up --wait` needs a check to wait on.
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     depends_on:
       api:
         condition: service_healthy
