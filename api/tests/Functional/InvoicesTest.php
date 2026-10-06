@@ -407,7 +407,7 @@ final class InvoicesTest extends ApiTestCase
         $this->client->request('GET', $this->path($id).'/pdf/current');
         $page = (string) $this->client->getResponse()->getContent();
         self::assertStringNotContainsString('data-testid="paid-stamp"', $page, 'off unless the company asks');
-        self::assertStringContainsString('Arrêtée la présente facture à la somme TTC de :', $page, 'the total in words, on by default, closes the invoice');
+        self::assertStringContainsString("Arrêtée la présente facture à la somme TTC de\u{00A0}:", $page, 'the total in words, on by default, closes the invoice');
 
         static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company')), 'document.paid_stamp', SettingLevel::Company, true, null);
         $this->client->request('GET', $this->path($id).'/pdf/current');
@@ -609,7 +609,7 @@ final class InvoicesTest extends ApiTestCase
         $printed = (string) $this->client->getResponse()->getContent();
         $issuedOn = new \DateTimeImmutable($this->stringAt($invoice, 'issueDate'))->format('d/m/Y');
         self::assertStringContainsString(\sprintf('Avoir sur la facture %s du %s', $this->stringAt($invoice, 'number'), $issuedOn), $printed, 'the number and date of the invoice it corrects (EN 16931 BG-3)');
-        self::assertStringContainsString('Motif : Retour de deux portables', $printed);
+        self::assertStringContainsString("Motif\u{00A0}: Retour de deux portables", $printed);
         self::assertStringStartsWith('-', $credited);
         $credited = ltrim($credited, '-');
         self::assertIsNumeric($credited);

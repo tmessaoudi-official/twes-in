@@ -31,12 +31,28 @@ function load(lang: string): unknown {
   return files[lang];
 }
 
+function textsOf(value: unknown): string[] {
+  if (typeof value === 'string') return [value];
+  if (typeof value !== 'object' || value === null) return [];
+  return Object.values(value as Record<string, unknown>).flatMap(textsOf);
+}
+
+/**
+ * French holds « : » to its word with a no-break space and « ; ? ! » with a narrow one, and « » hold what they quote
+ * the same way, so no line ever starts with a mark (audit 2026-10-06, N-b). A plain space, or the wrong one, is named.
+ */
+const LOOSE_FRENCH = /(?<=\S)[ \u00a0][;?!]|(?<=\S)[ \u202f]:(?=\s|$)|« | »/;
+
 describe('translation files', () => {
   const fr = keysOf(load('fr')).sort();
   const en = keysOf(load('en')).sort();
 
   it('fr and en declare exactly the same keys', () => {
     expect(en).toEqual(fr);
+  });
+
+  it('French punctuation is held to its word by the right no-break space', () => {
+    expect(textsOf(load('fr')).filter((text) => LOOSE_FRENCH.test(text))).toEqual([]);
   });
 
   it('no key has an empty value', () => {

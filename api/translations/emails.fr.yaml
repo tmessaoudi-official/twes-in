@@ -3,7 +3,7 @@ invitation:
     subject: 'Rejoignez %company% sur %product%'
     heading: 'Vous êtes invité à rejoindre %company%'
     invited_by: '%name% vous a invité.'
-    role: 'Votre rôle sera : %role%.'
+    role: 'Votre rôle sera : %role%.'
     call_to_action: 'Accepter l''invitation'
     expires: 'Ce lien expire le %date%.'
     ignore: "Si vous n'attendiez pas cette invitation, ignorez ce message."
@@ -13,20 +13,20 @@ signup:
     intro: "Quelqu'un, sans doute vous, a demandé à ouvrir un compte %product% avec cette adresse."
     call_to_action: "Terminer l'inscription"
     expires: "Ce lien est valable %hours% heures et ne sert qu'une fois."
-    ignore: "Si vous n'avez rien demandé, ignorez ce message : aucun compte n'est créé."
+    ignore: "Si vous n'avez rien demandé, ignorez ce message : aucun compte n'est créé."
     account_exists:
         subject: 'Votre compte %product%'
         heading: 'Vous avez déjà un compte'
         intro: "Quelqu'un a demandé à ouvrir un compte %product% avec cette adresse, qui en a déjà un."
         call_to_action: 'Se connecter'
-        ignore: "Si ce n'était pas vous, ignorez ce message : rien n'a changé."
+        ignore: "Si ce n'était pas vous, ignorez ce message : rien n'a changé."
 password_reset:
     subject: 'Réinitialisez votre mot de passe %product%'
     heading: 'Choisissez un nouveau mot de passe'
     intro: 'Quelqu''un, sans doute vous, a demandé à réinitialiser le mot de passe de votre compte %product%.'
     call_to_action: 'Choisir un nouveau mot de passe'
     expires: 'Ce lien est valable %minutes% minutes et ne sert qu''une fois.'
-    ignore: 'Si vous n''êtes pas à l''origine de cette demande, ignorez ce message : votre mot de passe n''a pas changé.'
+    ignore: 'Si vous n''êtes pas à l''origine de cette demande, ignorez ce message : votre mot de passe n''a pas changé.'
 company_approved:
     subject: '%company% est ouverte sur %product%'
     heading: '%company% est approuvée'
@@ -36,15 +36,15 @@ payment_declared:
     subject: '%company% a déclaré un règlement de %amount% %currency%'
     heading: '%company% déclare avoir payé'
     intro: "%company% a déclaré %amount% %currency% réglés le %date%."
-    method: 'Moyen : %method%.'
+    method: 'Moyen : %method%.'
     methods:
         cash: 'espèces'
         transfer: 'virement'
         cheque: 'chèque'
         other: 'autre'
-    reference: 'Référence : %reference%.'
+    reference: 'Référence : %reference%.'
     call_to_action: 'Ouvrir la page plateforme'
-    sign_in_first: "La décision se prend connecté : ce lien ouvre la page, il ne confirme rien par lui-même."
+    sign_in_first: "La décision se prend connecté : ce lien ouvre la page, il ne confirme rien par lui-même."
 payment_decided:
     confirmed_subject: 'Votre règlement a été confirmé'
     rejected_subject: "Votre règlement n'a pas pu être confirmé"
@@ -52,5 +52,5 @@ payment_decided:
     rejected_heading: 'Règlement de %amount% %currency% non confirmé'
     rejected_intro: "Nous n'avons pas pu confirmer le règlement déclaré pour %company%."
     paid_through: '%company% est réglée jusqu’au %date%.'
-    note: 'Note : %note%'
+    note: 'Note : %note%'
     call_to_action: 'Ouvrir %product%'

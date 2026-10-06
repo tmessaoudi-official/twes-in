@@ -28,6 +28,25 @@ final class ApiTranslationParityTest extends TestCase
         }
     }
 
+    /**
+     * French holds « : » to its word with a no-break space and « ; ? ! » with a narrow one, and « » hold what they
+     * quote the same way, so a printed line or a mail never starts with a mark (audit 2026-10-06, N-b).
+     */
+    public function testFrenchPunctuationIsHeldToItsWordByTheRightNoBreakSpace(): void
+    {
+        $loose = [];
+        foreach (glob(self::DIRECTORY.'/*.fr.yaml') ?: [] as $path) {
+            $node = Yaml::parseFile($path);
+            array_walk_recursive($node, static function (mixed $text) use (&$loose): void {
+                if (\is_string($text) && 1 === preg_match('/(?<=\S)[ \x{00A0}][;?!]|(?<=\S)[ \x{202F}]:(?=\s|$)|« | »/u', $text)) {
+                    $loose[] = $text;
+                }
+            });
+        }
+
+        self::assertSame([], $loose);
+    }
+
     /** @return list<string> */
     private static function keys(string $file): array
     {

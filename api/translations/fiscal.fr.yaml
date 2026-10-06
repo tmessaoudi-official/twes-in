@@ -26,5 +26,5 @@ fiscal:
             export: 'Exonération de TVA, article 262 I du CGI.'
             franchise: 'TVA non applicable, art. 293 B du CGI.'
             late_payment: 'En cas de retard de paiement, des pénalités sont exigibles au taux de %rate%.'
-            recovery_indemnity: 'Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 €.'
+            recovery_indemnity: 'Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 €.'
             no_early_discount: "Pas d'escompte pour paiement anticipé."
