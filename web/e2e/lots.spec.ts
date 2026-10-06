@@ -63,7 +63,7 @@ test('a product kept by lot asks its lot on receipt, a GS1 label fills it, and t
     await scan(page, `]C1010${code}1727053110${scannedLot}`);
     await expect(page.getByTestId('field-quantity')).toHaveValue('2');
     await page.getByTestId('stock-movement-save').click();
-    await expect(page.getByRole('row').filter({ hasText: scannedLot })).toContainText('2027-05-31');
+    await expect(page.getByRole('row').filter({ hasText: scannedLot })).toContainText('31/05/2027');
 
     // Row 63 slice 10: a recall starts from the code, typed or read from the label, and finds what moved it.
     await page.goto('/stock/movements');
