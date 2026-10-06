@@ -135,12 +135,12 @@ describe('product forms', () => {
     );
   });
 
-  it('lists products with their category path and unit code, sorting the price as the API wrote it', () => {
+  it('lists products with their category path and unit name, sorting the price as the API wrote it', () => {
     expect(productListRows([laptop], [hardware, laptops], options)).toEqual([
-      { ...laptop, categoryName: 'Matériel › Portables', unitCode: 'C62' },
+      { ...laptop, categoryName: 'Matériel › Portables', unitName: 'Unité' },
     ]);
     expect(productListRows([{ ...laptop, categoryId: null }], [], null)[0]).toEqual(
-      expect.objectContaining({ categoryName: null, unitCode: '' }),
+      expect.objectContaining({ categoryName: null, unitName: '' }),
     );
     const list = productsList([warranty]);
     expect(list.columns.map((column) => column.id)).toEqual([
@@ -178,8 +178,9 @@ describe('product forms', () => {
       'custom',
     ]);
     expect(fields.find((field) => field.id === 'unitId')?.options).toEqual([
-      { value: 'u-hour', label: 'HUR · Heure' },
-      { value: 'u-unit', label: 'C62 · Unité' },
+      // A shopkeeper reads « Heure », never « HUR »: the code stays in the units' own settings (audit V-10).
+      { value: 'u-hour', label: 'Heure' },
+      { value: 'u-unit', label: 'Unité' },
     ]);
     expect(fields.find((field) => field.id === 'categoryId')?.options).toEqual([
       { value: '', label: 'products.form.no_category' },

@@ -74,6 +74,7 @@ import { CreditNoteDialog } from './credit-note-dialog';
 import { InvoiceInstruments } from './invoice-instruments';
 import { PaymentDialog } from './payment-dialog';
 import { RecordView } from '../shared/form/record-view';
+import { taxNames } from './tax-names';
 
 /**
  * One invoice or credit note: a new draft to fill in, a draft to revise, issue or cancel, or an issued document to
@@ -146,6 +147,7 @@ export class InvoicePage {
 
   protected readonly id = computed(() => this.invoiceId() ?? null);
   protected readonly options = this.facade.options;
+  protected readonly taxName = computed(() => taxNames(this.options()?.taxes ?? []));
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly scale = computed(() => this.options()?.currencyScale ?? null);

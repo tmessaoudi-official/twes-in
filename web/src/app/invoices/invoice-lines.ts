@@ -87,7 +87,7 @@ export class InvoiceLines {
   /** Whose company's catalogue the pickers ask; a line is never offered another company's products. */
   readonly companyId = input.required<string>();
   protected readonly unitOptions = computed(() =>
-    this.options().units.map((unit) => ({ value: unit.id, label: `${unit.code} · ${unit.name}` })),
+    this.options().units.map((unit) => ({ value: unit.id, label: unit.name })),
   );
   readonly options = input.required<InvoiceOptions>();
   readonly customer = input<CustomerOption | null>(null);

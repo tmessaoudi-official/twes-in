@@ -63,6 +63,7 @@ import { DeliverDialog } from './deliver-dialog';
 import { InvoicePartDialog, type InvoicePartLine } from './invoice-part-dialog';
 import { InvoiceTargetDialog, type InvoiceTarget } from './invoice-target-dialog';
 import { RecordView } from '../shared/form/record-view';
+import { taxNames } from '../invoices/tax-names';
 
 /**
  * One delivery note: a new draft to fill in, a draft to revise and validate, or a numbered note to deliver, cancel
@@ -123,6 +124,7 @@ export class DeliveryNotePage {
   protected readonly tones = DELIVERY_NOTE_STATUS_TONES;
   protected readonly stages = DELIVERY_NOTE_STATUS_STAGES;
   protected readonly options = this.facade.options;
+  protected readonly taxName = computed(() => taxNames(this.options()?.taxes ?? []));
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);

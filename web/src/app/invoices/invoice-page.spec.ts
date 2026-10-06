@@ -57,6 +57,7 @@ class StaticLoader implements TranslateLoader {
         due: { left: 'Reste à encaisser', paid_of: '{{paid}} payés sur {{total}}' },
         totals: {
           tax: '{{code}} {{rate}} % · base {{base}}',
+          tax_named: '{{name}} · base {{base}}',
           withholding: 'Retenue {{code}} {{rate}} %',
         },
       },
@@ -713,14 +714,26 @@ describe('InvoicePage', () => {
     invoice.set(draft);
     await open('i1');
     const totals = text('invoice-totals');
-    expect(totals).toContain('TVA19 19 % · base 1 800,000');
+    // Each tax by the name the company gave it, its code left to the tax settings (audit 2026-10-06, V-31).
+    expect(totals).toContain('TVA 19 % · base 1 800,000');
     expect(totals).toContain('342,000');
-    expect(totals).toContain('TIMBRE');
+    expect(totals).toContain('Timbre fiscal');
     expect(totals).toContain('2 143,000');
-    expect(totals).toContain('Retenue RS1 1 %');
+    expect(totals).toContain('Retenue à la source 1 %');
+    expect(totals).not.toMatch(/TVA19|TIMBRE|RS1/);
     expect(totals).toMatch(/[−-]21,430/);
     expect(text('invoice-net-due')).toContain('2 121,570');
     expect(text('line-0-net')).toContain('1 800,000');
+  });
+
+  it('names a tax by its code and rate when the company no longer has it at that rate', async () => {
+    invoice.set({
+      ...draft,
+      taxes: [{ code: 'TVA19', rate: '18.000', base: '1800.000', amount: '324.000' }],
+    });
+    await open('i1');
+
+    expect(text('invoice-totals')).toContain('TVA19 18 % · base 1 800,000');
   });
 
   it('shows an issued invoice’s net payable after its withholding, so the figures add up', async () => {

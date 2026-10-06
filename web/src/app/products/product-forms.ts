@@ -57,10 +57,10 @@ export function categoryLabels(categories: readonly ProductCategoryRow[]): Map<s
   return new Map(labels);
 }
 
-/** A product as the list shows it: its category's path and its unit's code. */
+/** A product as the list shows it: its category's path and its unit's name, never its code (audit V-10). */
 export type ProductListRow = ProductRow & {
   categoryName: string | null;
-  unitCode: string;
+  unitName: string;
 };
 
 export function productListRows(
@@ -69,11 +69,11 @@ export function productListRows(
   options: ProductOptions | null,
 ): ProductListRow[] {
   const labels = categoryLabels(categories);
-  const units = new Map((options?.units ?? []).map((unit) => [unit.id, unit.code]));
+  const units = new Map((options?.units ?? []).map((unit) => [unit.id, unit.name]));
   return rows.map((row) => ({
     ...row,
     categoryName: row.categoryId === null ? null : (labels.get(row.categoryId) ?? null),
-    unitCode: units.get(row.unitId) ?? '',
+    unitName: units.get(row.unitId) ?? '',
   }));
 }
 
@@ -111,7 +111,7 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
       sortable: true,
       filterable: true,
     },
-    { id: 'unit', label: `${FIELDS}.unit`, value: (row) => row.unitCode, width: 100 },
+    { id: 'unit', label: `${FIELDS}.unit`, value: (row) => row.unitName, width: 100 },
     {
       id: 'price',
       label: `${FIELDS}.price`,
@@ -269,7 +269,7 @@ export function productForm(
           required: true,
           options: options.units.map((unit) => ({
             value: unit.id,
-            label: `${unit.code} · ${unit.name}`,
+            label: unit.name,
           })),
         },
         {

@@ -152,7 +152,8 @@ describe('ProductsPage', () => {
     expect(row).toContain('Portable 14"');
     expect(row).toContain('Bien');
     expect(row).toContain('Matériel');
-    expect(row).toContain('C62');
+    expect(row).toContain('Unité');
+    expect(row).not.toContain('C62');
     expect(row).toContain('1 250,500');
     expect(row).toContain('Actif');
     expect(q('list-link-p1')?.getAttribute('href')).toBe('/products/p1');

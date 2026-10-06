@@ -1310,6 +1310,7 @@
       "discount": "Remise",
       "total_net": "Total HT après remise",
       "tax": "{{code}} {{rate}} % · base {{base}}",
+      "tax_named": "{{name}} · base {{base}}",
       "total": "Total TTC",
       "withholding": "Retenue {{code}} {{rate}} %",
       "net_due": "Net à payer",

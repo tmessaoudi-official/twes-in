@@ -245,20 +245,27 @@
             }
             @for (tax of invoice.taxes; track tax.code + '|' + tax.rate) {
               <dt>
-                {{
-                  'invoices.totals.tax'
-                    | translate
-                      : {
-                          code: tax.code,
-                          rate: (tax.rate | amount: 0),
-                          base: (tax.base | amount: scale()),
-                        }
-                }}
+                @if (taxName()(tax.code, tax.rate); as name) {
+                  {{
+                    'invoices.totals.tax_named'
+                      | translate: { name: name, base: (tax.base | amount: scale()) }
+                  }}
+                } @else {
+                  {{
+                    'invoices.totals.tax'
+                      | translate
+                        : {
+                            code: tax.code,
+                            rate: (tax.rate | amount: 0),
+                            base: (tax.base | amount: scale()),
+                          }
+                  }}
+                }
               </dt>
               <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
             }
             @for (tax of invoice.fixedTaxes; track tax.code) {
-              <dt>{{ tax.code }}</dt>
+              <dt>{{ taxName()(tax.code, null) ?? tax.code }}</dt>
               <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
             }
             <dt class="font-semibold">{{ 'invoices.totals.total' | translate }}</dt>
@@ -267,10 +274,14 @@
             </dd>
             @for (withholding of invoice.withholdings; track withholding.code) {
               <dt>
-                {{
-                  'invoices.totals.withholding'
-                    | translate: { code: withholding.code, rate: (withholding.rate | amount: 0) }
-                }}
+                @if (taxName()(withholding.code, withholding.rate); as name) {
+                  {{ name }}
+                } @else {
+                  {{
+                    'invoices.totals.withholding'
+                      | translate: { code: withholding.code, rate: (withholding.rate | amount: 0) }
+                  }}
+                }
               </dt>
               <dd class="text-end">{{ '-' + withholding.amount | amount: scale() }}</dd>
             }

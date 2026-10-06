@@ -437,7 +437,8 @@ describe('DeliveryNotePage', () => {
     await open('n1');
     expect(facade.loadNote).toHaveBeenCalledWith('c1', 'n1');
     expect((q('line-0-quantity') as HTMLInputElement).value).toBe('2');
-    expect(q('delivery-note-totals')?.textContent?.replace(/\s+/g, ' ')).toContain('TVA19 19 %');
+    expect(q('delivery-note-totals')?.textContent?.replace(/\s+/g, ' ')).toContain('TVA 19 %');
+    expect(q('delivery-note-totals')?.textContent).not.toContain('TVA19');
     expect(q('delivery-note-totals')?.textContent?.replace(/\s/g, ' ')).toContain('2 975,000');
 
     type('line-0-quantity', '3');

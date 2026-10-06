@@ -91,7 +91,8 @@ test('a product is filed in a category, priced at the currency scale and revised
     await page.getByTestId('field-categoryId').click();
     await page.getByRole('option', { name: categoryName }).click();
     await page.getByTestId('field-unitId').click();
-    await page.getByRole('option', { name: /^HUR · / }).click();
+    // A unit is offered by its name; its code stays in the units' settings (audit 2026-10-06, V-10).
+    await page.getByRole('option', { name: 'Heure', exact: true }).click();
     // docs/SPEC.md § 7, 2026-09-19 21:55: a decimal comma is a price, whatever the interface language.
     await page.getByTestId('field-unitPriceNet').fill('120,5');
     await choose(page, 'field-defaultTaxComponentIds', /19/);
@@ -125,7 +126,7 @@ test('a product is filed in a category, priced at the currency scale and revised
     await expect(page).toHaveURL(new RegExp(`[?&]q=${reference}`));
     await expect(page.getByTestId(`product-${reference}`)).toContainText(categoryName);
     await expect(page.getByTestId(`product-${reference}`)).toContainText('135,000');
-    await expect(page.getByTestId(`product-${reference}`)).toContainText('HUR');
+    await expect(page.getByTestId(`product-${reference}`)).toContainText('Heure');
   } finally {
     await retire(page, reference, categoryName);
   }
