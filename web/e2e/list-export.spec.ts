@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from '@playwright/test';
-import { inACompany, signIn } from './session';
+import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
 
 // Row 60 through the real stack: every list that offers its rows as a file does so from the screen, and what the
-// two links lead to is a real file, read with the session the browser holds (the API sets the cookie SameSite=Strict,
+// two buttons fetch is a real file, read with the session the browser holds (the API sets the cookie SameSite=Strict,
 // so the file is fetched from inside the page, as a click on the link would). The first column of each file is the
-// one its list names first, so a list that exports another list's rows reads as a failure.
+// one its list names first, so a list that exports another list's rows reads as a failure. A file waits for the
+// password given again (docs/SPEC.md § 7, audit H-b2): the read gives it only when the API asks, since the operator's
+// session is every spec's and each proof spends one of the account's five attempts in five minutes.
 const CSRF = '0123456789abcdef0123456789abcdef';
 
 const LISTS = [
@@ -37,9 +39,18 @@ test.describe('lists as files', () => {
       await page.screenshot({ path: testInfo.outputPath(`${list.testId}.png`) });
 
       const files = await page.evaluate(
-        async ([csvAddress, xlsxAddress]) => {
+        async ([csvAddress, xlsxAddress, csrf, password]) => {
           const read = async (address: string) => {
-            const response = await fetch(address);
+            let response = await fetch(address);
+            if (response.status === 403) {
+              const proof = await fetch('/api/auth/step-up', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+                body: JSON.stringify({ password }),
+              });
+              if (proof.status !== 204) throw new Error(`step-up answered ${proof.status}`);
+              response = await fetch(address);
+            }
             const bytes = new Uint8Array(await response.arrayBuffer());
             return {
               status: response.status,
@@ -50,7 +61,12 @@ test.describe('lists as files', () => {
           };
           return { csv: await read(csvAddress), xlsx: await read(xlsxAddress) };
         },
-        [(await csv.getAttribute('href')) ?? '', (await xlsx.getAttribute('href')) ?? ''] as const,
+        [
+          (await csv.getAttribute('data-address')) ?? '',
+          (await xlsx.getAttribute('data-address')) ?? '',
+          CSRF,
+          OPERATOR_PASSWORD,
+        ] as const,
       );
 
       expect(files.csv.status).toBe(200);
