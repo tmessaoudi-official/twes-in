@@ -128,7 +128,8 @@
   "roles": {
     "owner": "owner",
     "admin": "administrator",
-    "member": "member"
+    "member": "member",
+    "clerk": "cashier / seller"
   },
   "permissions": {
     "company": {
@@ -2548,8 +2549,6 @@
       "end_sessions": "End sessions",
       "deactivate": "Deactivate",
       "reactivate": "Reactivate",
-      "owner": "owner",
-      "member": "member",
       "states": {
         "active": "Active",
         "inactive": "Deactivated",

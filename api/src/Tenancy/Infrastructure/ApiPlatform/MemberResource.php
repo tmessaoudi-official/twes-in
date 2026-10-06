@@ -73,7 +73,7 @@ final class MemberResource
 
     /**
      * Which role, by name. There is deliberately no `Assert\Choice` here: the set depends on the company being
-     * acted for — its own roles as well as the built-in three — and an attribute is fixed at class level with no
+     * acted for — its own roles as well as the built-in four — and an attribute is fixed at class level with no
      * request in sight. `InviteToCompany` resolves the name against that company and refuses an unknown one, which
      * is the same 422 with a message that can say which company it looked in.
      */

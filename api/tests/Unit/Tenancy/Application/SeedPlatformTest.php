@@ -107,6 +107,17 @@ final class SeedPlatformTest extends TestCase
     }
 
     /** An admin reads what a product costs; a member, who may be at the till in front of a customer, does not. */
+    /**
+     * The clerk sells and nothing else (docs/SPEC.md § 7, 2026-10-03 08:09 and audit 2026-10-06 B-12): invoices issued and
+     * paid, delivery notes drafted, customers, products and stock read; no credit note, no validation, no cost, no
+     * settings, users or roles. The member keeps what it held before the clerk was folded into it.
+     */
+    public function testTheClerkHoldsExactlyWhatSellingTakesAndTheMemberWhatItHeldBefore(): void
+    {
+        self::assertSame(['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'customer.read', 'product.read', 'delivery_note.read', 'delivery_note.write', 'stock.read'], SeedPlatform::BUILT_IN_ROLES[Role::CLERK]);
+        self::assertSame(['company.read', 'invoice.read', 'invoice.write', 'customer.read', 'customer.write', 'product.read', 'delivery_note.read', 'delivery_note.write', 'stock.read', 'vendor.read', 'expense.read', 'fiscal.read'], SeedPlatform::BUILT_IN_ROLES[Role::MEMBER]);
+    }
+
     public function testOnlyTheAdminReadsCosts(): void
     {
         self::assertContains('product.cost.read', SeedPlatform::BUILT_IN_ROLES[Role::ADMIN]);
@@ -120,7 +131,7 @@ final class SeedPlatformTest extends TestCase
         $created = $this->seed->seed($this->request(password: 'secret'));
 
         self::assertSame([], $created);
-        self::assertCount(3, $this->roles->roles);
+        self::assertCount(4, $this->roles->roles);
     }
 
     public function testACustomCompanyRoleWithABuiltInNameIsNotTouched(): void
@@ -139,10 +150,10 @@ final class SeedPlatformTest extends TestCase
         $created = $this->seed->seed($this->request(password: 'secret'));
 
         self::assertSame([
-            'role owner', 'role admin', 'role member', 'operator op@example.test', 'company Seeded', 'membership op@example.test owns Seeded',
+            'role owner', 'role admin', 'role member', 'role clerk', 'operator op@example.test', 'company Seeded', 'membership op@example.test owns Seeded',
             'customer tax regimes of FR', 'customer tax regimes of TN', 'tax components of Seeded', 'units of Seeded', 'establishments of Seeded', 'numbering series of Seeded',
         ], $created);
-        self::assertCount(3, $this->roles->roles);
+        self::assertCount(4, $this->roles->roles);
         self::assertSame(['*'], $this->roles->builtIn(Role::OWNER)?->getPermissions());
         $operator = $this->users->ofEmail(Email::fromString('op@example.test'));
         self::assertNotNull($operator);
@@ -186,7 +197,7 @@ final class SeedPlatformTest extends TestCase
         $this->seed->seed($this->request(password: 'secret'));
 
         self::assertSame([], $this->seed->seed($this->request(password: null)));
-        self::assertCount(3, $this->roles->roles);
+        self::assertCount(4, $this->roles->roles);
         self::assertCount(1, $this->companies->companies);
     }
 

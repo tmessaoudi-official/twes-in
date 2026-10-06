@@ -33,11 +33,17 @@ use Psr\Clock\ClockInterface;
  */
 final readonly class SeedPlatform
 {
-    /** @var array<string, list<string>> the three built-in roles and their permission sets */
+    /**
+     * @var array<string, list<string>> the four built-in roles and their permission sets. The clerk holds what selling
+     *                                  takes and nothing a manager answers for: no credit note, no validated delivery
+     *                                  note, no customer record, no cost, no settings, members or roles (docs/SPEC.md
+     *                                  § 7, audit 2026-10-06 B-12).
+     */
     public const array BUILT_IN_ROLES = [
         Role::OWNER => [Permission::WILDCARD],
         Role::ADMIN => ['company.read', 'company.settings', 'user.read', 'user.write', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write', 'customer.read', 'customer.write', 'product.read', 'product.write', 'product.cost.read', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'stock.read', 'stock.write', 'vendor.read', 'vendor.write', 'expense.read', 'expense.write', 'fiscal.read', 'fiscal.write'],
-        Role::MEMBER => ['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'customer.read', 'customer.write', 'product.read', 'delivery_note.read', 'delivery_note.write', 'stock.read', 'vendor.read', 'expense.read', 'fiscal.read'],
+        Role::MEMBER => ['company.read', 'invoice.read', 'invoice.write', 'customer.read', 'customer.write', 'product.read', 'delivery_note.read', 'delivery_note.write', 'stock.read', 'vendor.read', 'expense.read', 'fiscal.read'],
+        Role::CLERK => ['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'customer.read', 'product.read', 'delivery_note.read', 'delivery_note.write', 'stock.read'],
     ];
 
     public function __construct(

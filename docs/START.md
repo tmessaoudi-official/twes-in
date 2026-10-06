@@ -244,7 +244,7 @@ follow its dates through the real numbering series, so the next real issue conti
 ### One account per role
 
 Each demo company also gets **one member of each built-in role**, so what a role may not do is something you can
-sign in and meet rather than read about. All three share one password, and each holds the same role in both
+sign in and meet rather than read about. All four share one password, and each holds the same role in both
 companies:
 
 | Role | Address | Password | What it may not do |
@@ -252,6 +252,7 @@ companies:
 | `owner` | `owner@twes.local` | `twes-role-test-2026` | Nothing inside the company — it holds the wildcard `*`. It is never a platform operator. |
 | `admin` | `admin@twes.local` | `twes-role-test-2026` | Grant the owner role, or remove an owner or another admin. |
 | `member` | `member@twes.local` | `twes-role-test-2026` | Issue an invoice, record a payment, validate a delivery note, or see the members. Read-only on products, stock, vendors and expenses. |
+| `clerk` (« Caissier / Vendeur ») | `clerk@twes.local` | `twes-role-test-2026` | Draft or issue a credit note, validate a delivery note, create or edit a customer, see a product's cost, or touch settings, members and roles. It issues invoices, records their payments and drafts delivery notes. |
 
 They are **invited and accepted through the product's own use cases**, not written into the database, so each has
 the membership, the audit rows and the password checks any real member gets — and the passwords pass the breach

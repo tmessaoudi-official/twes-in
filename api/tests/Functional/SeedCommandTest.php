@@ -25,12 +25,12 @@ final class SeedCommandTest extends ApiTestCase
 
         self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
         $display = (string) preg_replace('/\s+/', ' ', $tester->getDisplay());
-        foreach (['role owner', 'role admin', 'role member', 'operator op@example.test', 'company Seeded', 'membership op@example.test owns Seeded'] as $fragment) {
+        foreach (['role owner', 'role admin', 'role member', 'role clerk', 'operator op@example.test', 'company Seeded', 'membership op@example.test owns Seeded'] as $fragment) {
             self::assertStringContainsString($fragment, $display);
         }
 
         $em = $this->em();
-        self::assertCount(3, $em->getRepository(Role::class)->findBy(['company' => null]));
+        self::assertCount(4, $em->getRepository(Role::class)->findBy(['company' => null]));
         $operator = $em->getRepository(User::class)->findOneBy(['email' => 'op@example.test']);
         self::assertNotNull($operator);
         self::assertTrue($operator->isPlatformOperator());
@@ -52,7 +52,7 @@ final class SeedCommandTest extends ApiTestCase
         self::assertSame(0, $tester->getStatusCode());
         self::assertStringContainsString('Nothing to do', $tester->getDisplay());
         self::assertCount(1, $this->em()->getRepository(User::class)->findAll());
-        self::assertCount(3, $this->em()->getRepository(Role::class)->findAll());
+        self::assertCount(4, $this->em()->getRepository(Role::class)->findAll());
     }
 
     public function testAnOperatorTotpSecretMakesTheOperatorSignInWithACodeFromIt(): void

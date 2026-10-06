@@ -14,7 +14,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A named set of permission strings. The three built-in roles have no company; custom roles (later)
+ * A named set of permission strings. The four built-in roles have no company; custom roles (later)
  * belong to one. A permission is granted when the role lists it, or lists the wildcard "*".
  */
 #[ORM\Entity]
@@ -25,6 +25,8 @@ class Role
     public const string OWNER = 'owner';
     public const string ADMIN = 'admin';
     public const string MEMBER = 'member';
+    /** « Caissier / Vendeur »: sells, and nothing a manager answers for. */
+    public const string CLERK = 'clerk';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]

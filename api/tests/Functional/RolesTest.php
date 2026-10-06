@@ -23,7 +23,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A company's own roles through the API (docs/SPEC.md § 7, 2026-09-20 11:30, row 104). The three built-in roles are
+ * A company's own roles through the API (docs/SPEC.md § 7, 2026-09-20 11:30, row 104). The four built-in roles are
  * defined by the release and are read-only here; everything else a company makes for itself.
  */
 final class RolesTest extends ApiTestCase
@@ -59,6 +59,7 @@ final class RolesTest extends ApiTestCase
         self::assertArrayHasKey(Role::ADMIN, $byName);
         self::assertArrayHasKey(Role::MEMBER, $byName);
         self::assertArrayHasKey('barista', $byName);
+        self::assertSame([Role::OWNER, Role::ADMIN, Role::MEMBER, Role::CLERK, 'barista', 'tester'], array_keys($byName), 'the built-in four first, by rank, then the company\'s own by name');
 
         self::assertTrue($byName[Role::OWNER]['builtIn'], 'a released role, not the company\'s');
         self::assertFalse($byName['barista']['builtIn']);

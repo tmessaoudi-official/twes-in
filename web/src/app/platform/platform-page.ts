@@ -28,6 +28,7 @@ import type { ListQuery } from '../shared/list/list-types';
 import { CountBadge } from '../shared/ui/count-badge';
 import { StatusBadge } from '../shared/ui/status-badge';
 import type { StatusTone } from '../shared/theme/accent-theme';
+import { membershipRoleLabel } from './membership-role';
 import { PlatformFacade } from './platform-facade';
 import { ACCOUNTS_LIST, accountSearch, COMPANIES_LIST, companySearch } from './platform-forms';
 import {
@@ -104,6 +105,7 @@ export class PlatformPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
 
   protected readonly tabs = PLATFORM_TABS;
+  protected readonly roleLabel = membershipRoleLabel;
   /** The tab the address names, the overview where it names none. */
   protected readonly tab = toSignal(
     this.route.queryParamMap.pipe(

@@ -69,7 +69,7 @@ final readonly class InviteToCompany
                 ?? throw new CompanyNotFound(\sprintf('No company %s.', $request->companyId->toRfc4122()));
 
             // Checked before anything is written or sent, so a bad role cannot leave a half-made invitation behind.
-            // Resolved against THIS company: the built-in three plus the roles it made for itself. A role belonging
+            // Resolved against THIS company: the built-in four plus the roles it made for itself. A role belonging
             // to another company is as unknown here as an invented name, and answers the same way.
             $role = $this->roles->ofNameForCompany($request->roleName, $company->getId())
                 ?? throw new UnknownRole(\sprintf('"%s" is not a role %s may give.', $request->roleName, $company->getName()));

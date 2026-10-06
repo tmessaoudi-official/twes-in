@@ -36,6 +36,7 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       modules: { quotes: 'Devis et commandes', zakat: 'Zakat' },
+      roles: { owner: 'propriétaire', member: 'membre', clerk: 'caissier / vendeur' },
       platform: {
         demand: {
           title: 'Modules attendus',
@@ -91,8 +92,6 @@ class StaticLoader implements TranslateLoader {
           end_sessions: 'Terminer les sessions',
           deactivate: 'Désactiver',
           reactivate: 'Réactiver',
-          owner: 'propriétaire',
-          member: 'membre',
           states: { active: 'Actifs', inactive: 'Désactivés', operator: 'Opérateurs' },
         },
         companies: {
@@ -385,6 +384,7 @@ describe('PlatformPage', () => {
 
     const line = query('account-nadia@acme.test')!.textContent!.replace(/\s+/g, ' ');
     expect(line).toContain('Acme (propriétaire)');
+    // A company's own role is shown as the company named it.
     expect(line).toContain('Globex (Comptable)');
   });
 

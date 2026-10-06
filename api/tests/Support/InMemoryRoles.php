@@ -86,18 +86,19 @@ final class InMemoryRoles implements RoleRepository
         $this->roles = array_values(array_filter($this->roles, static fn (Role $kept): bool => $kept !== $role));
     }
 
-    /** The built-in three in the order they rank, then everything the company made for itself. */
+    /** The built-in four in the order they rank, then everything the company made for itself. */
     private static function rank(Role $role): int
     {
         if (!$role->isBuiltIn()) {
-            return 4;
+            return 5;
         }
 
         return match ($role->getName()) {
             Role::OWNER => 0,
             Role::ADMIN => 1,
             Role::MEMBER => 2,
-            default => 3,
+            Role::CLERK => 3,
+            default => 4,
         };
     }
 }

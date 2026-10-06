@@ -514,13 +514,7 @@
               @for (membership of row.companies; track membership.id) {
                 <span class="block text-sm">
                   {{ membership.name }}
-                  ({{
-                    membership.role === 'owner'
-                      ? ('platform.accounts.owner' | translate)
-                      : membership.role === 'member'
-                        ? ('platform.accounts.member' | translate)
-                        : membership.role
-                  }})
+                  ({{ roleLabel(membership.role) | translate }})
                 </span>
               }
             </ng-template>

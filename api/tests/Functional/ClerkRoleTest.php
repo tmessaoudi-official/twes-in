@@ -22,8 +22,9 @@ use App\Tenancy\Domain\Role;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The built-in member is the shop clerk (docs/SPEC.md § 7): they sell, which is issuing an invoice and taking its payment,
- * but a credit note, which reverses revenue, stays a manager's.
+ * The built-in clerk, « Caissier / Vendeur » (docs/SPEC.md § 7, audit 2026-10-06 B-12): they sell, which is issuing an
+ * invoice and taking its payment, and draft delivery notes; a credit note, which reverses revenue, a validated delivery
+ * note, a customer's record and a product's cost stay a manager's.
  */
 final class ClerkRoleTest extends ApiTestCase
 {
@@ -42,7 +43,7 @@ final class ClerkRoleTest extends ApiTestCase
         $this->em()->persist($customer);
         $this->em()->flush();
         $this->customerId = $customer->getId()->toRfc4122();
-        $this->createUser('clerk@twes.local', 'password-1234', $this->company, SeedPlatform::BUILT_IN_ROLES[Role::MEMBER], 'clerk');
+        $this->createUser('clerk@twes.local', 'password-1234', $this->company, SeedPlatform::BUILT_IN_ROLES[Role::CLERK], Role::CLERK);
         $this->createUser('manager@twes.local', 'password-1234', $this->company, SeedPlatform::BUILT_IN_ROLES[Role::ADMIN], 'manager');
     }
 
@@ -78,6 +79,19 @@ final class ClerkRoleTest extends ApiTestCase
         $this->login('manager@twes.local', 'password-1234');
         $this->postJson($this->path($credit).'/issue', null);
         self::assertResponseStatusCodeSame(Response::HTTP_OK, 'a manager does');
+    }
+
+    public function testAClerkReadsCustomersButWritesNoneAndSeesNoMembers(): void
+    {
+        $this->login('clerk@twes.local', 'password-1234');
+        $company = '/api/companies/'.$this->company->getId()->toRfc4122();
+
+        $this->client->request('GET', $company.'/customers/'.$this->customerId);
+        self::assertResponseIsSuccessful();
+        $this->postJson($company.'/customers', ['number' => 'CLI-0002', 'kind' => 'individual', 'name' => 'Sonia Ben Ali', 'taxRegime' => 'standard', 'defaultTaxComponentIds' => [], 'isActive' => true]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a customer\'s record is a manager\'s');
+        $this->client->request('GET', $company.'/members');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor who the members are');
     }
 
     private function path(string $id): string

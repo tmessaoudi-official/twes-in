@@ -96,6 +96,7 @@ final class DemoCompanies extends Fixture
         'owner' => 'owner@twes.local',
         'admin' => 'admin@twes.local',
         'member' => 'member@twes.local',
+        'clerk' => 'clerk@twes.local',
     ];
     /** Long enough for the password policy, and not a word any breach list carries. */
     public const string TESTER_PASSWORD = 'twes-role-test-2026';

@@ -43,10 +43,10 @@ final readonly class DoctrineRoleRepository implements RoleRepository
             ->from(Role::class, 'r')
             ->where('r.company IS NULL OR r.company = :company')
             ->setParameter('company', $companyId, 'uuid')
-            // The built-in three come first and in rank order, which is neither alphabetical nor insertion order;
+            // The built-in four come first and in rank order, which is neither alphabetical nor insertion order;
             // ordering in SQL rather than in PHP keeps the one answer every reader of this list wants.
             ->orderBy('CASE WHEN r.company IS NULL THEN 0 ELSE 1 END', 'ASC')
-            ->addOrderBy(\sprintf("CASE r.name WHEN '%s' THEN 0 WHEN '%s' THEN 1 WHEN '%s' THEN 2 ELSE 3 END", Role::OWNER, Role::ADMIN, Role::MEMBER), 'ASC')
+            ->addOrderBy(\sprintf("CASE r.name WHEN '%s' THEN 0 WHEN '%s' THEN 1 WHEN '%s' THEN 2 WHEN '%s' THEN 3 ELSE 4 END", Role::OWNER, Role::ADMIN, Role::MEMBER, Role::CLERK), 'ASC')
             ->addOrderBy('r.name', 'ASC')
             ->getQuery()
             ->getResult();

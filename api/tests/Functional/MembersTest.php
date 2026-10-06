@@ -111,7 +111,7 @@ final class MembersTest extends ApiTestCase
 
     public function testSomebodyIsInvitedAtTheCompanysOwnRole(): void
     {
-        // The three built-in names were hardcoded here while the company could already make roles of its own, so a
+        // The four built-in names were hardcoded here while the company could already make roles of its own, so a
         // role it made was offered nowhere and could be held by nobody (row 104's remainder).
         $this->adminSignedIn();
         $this->customRole('barista');
