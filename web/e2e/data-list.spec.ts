@@ -182,6 +182,33 @@ test('at phone width the members list and its chooser are accessible and fit the
   ).toBeLessThanOrEqual(0);
 });
 
+// The « Filtres » button joined the toolbar of the invoices and delivery notes lists, and on a phone the search, it and
+// the two tool buttons no longer fitted one line: the whole page panned sideways and « Vues » and « Colonnes » sat off
+// screen (visual audit 2026-10-06, V-26). Every paged list is walked, one with a filter chosen so its count shows.
+test('at phone width no paged list makes the page scroll sideways, a filter chosen or not', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await logIn(page);
+  await inACompany(page, '0123456789abcdef0123456789abcdef');
+  for (const path of [
+    '/invoices',
+    '/invoices?status=draft,overdue',
+    '/delivery-notes',
+    '/instruments',
+    '/customers',
+    '/products',
+    '/vendors',
+    '/expenses',
+    '/stock',
+    '/stock/movements',
+  ]) {
+    await page.goto(path);
+    await expect(page.getByTestId('list-columns')).toBeVisible();
+    expect(await sidewaysOverflow(page), `${path} must not scroll sideways`).toBeLessThanOrEqual(0);
+  }
+});
+
 // A list with no row actions pinned its LAST header to the table's right edge while that column's cells scrolled on,
 // so « Statut » covered « Reste à payer » on « Factures » (2026-09-26). At 900 px the invoice columns' own widths
 // exceed the page, so the table is wider than its container with or without rows.

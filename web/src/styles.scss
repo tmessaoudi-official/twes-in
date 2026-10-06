@@ -285,16 +285,32 @@ html {
   font-variant-numeric: tabular-nums;
 }
 
+// The search and the list's tools share a line while they fit and wrap when they do not: on a phone the search takes a
+// line of its own and the buttons the next, so no list pans sideways.
 .twes-list-tools {
   display: flex;
   flex: 1 1 100%;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem;
 
   .twes-list-search {
-    flex: 0 1 20rem;
+    flex: 1 1 12rem;
+    max-width: 20rem;
     min-width: 0;
     margin-right: auto;
+  }
+
+  > button {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 599.98px) {
+    .twes-list-search {
+      flex-basis: 100%;
+      max-width: none;
+    }
   }
 }
 
