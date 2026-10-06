@@ -11,6 +11,7 @@ namespace App\Module\DeliveryNotes\Application;
 
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\DocumentCalculator;
 use App\Fiscal\Domain\Calculation\DocumentInput;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
@@ -51,14 +52,16 @@ final readonly class DeliveryNoteTotals
     }
 
     /**
+     * @param array<string, string> $taken quantities already taken from lines, by line id: what is left of each is totalled
+     *
      * @throws InvalidDocument           when the lines cannot be totalled
      * @throws UnsupportedTaxCombination when the lines combine taxes the calculator does not
      */
-    public function of(DeliveryNote $note): DocumentTotals
+    public function of(DeliveryNote $note, array $taken = []): DocumentTotals
     {
         $company = $note->getCompany();
         $lines = array_map(static fn (DeliveryNoteLine $line): LineInput => new LineInput(
-            $line->getQuantity(),
+            self::left($line, $taken),
             $line->getUnitPriceNet(),
             null,
             array_map(static fn (DeliveryNoteLineTax $tax): TaxInput => TaxInput::percentage($tax->getCode(), Rate::fromPercentage($tax->getRate()), $tax->entersVatBase()), $line->getTaxes()),
@@ -71,5 +74,13 @@ final readonly class DeliveryNoteTotals
             $this->presets->get($company->getFiscalPreset())->vatRoundingPoint,
             $lines,
         ));
+    }
+
+    /** @param array<string, string> $taken */
+    private static function left(DeliveryNoteLine $line, array $taken): string
+    {
+        $left = Decimal::of($line->getQuantity())->sub(Decimal::of($taken[$line->getId()->toRfc4122()] ?? '0'));
+
+        return Decimal::format($left->compare(0) > 0 ? $left : Decimal::zero(), 3);
     }
 }

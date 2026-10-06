@@ -123,6 +123,53 @@ final class DeliveryNoteCreditTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    /** Audit 2026-10-06, A-F4: the part of a note an issued invoice already took is owed, so it is not counted again. */
+    public function testAPartlyInvoicedNoteCountsOnlyWhatIsLeftToInvoice(): void
+    {
+        $this->setLimit('1000');
+        $note = $this->draftNote('100', '8');
+        $this->postJson($this->path($note).'/validate', null);
+        self::assertResponseIsSuccessful();
+        $line = $this->em()->getConnection()->fetchOne('SELECT id FROM delivery_note_line WHERE delivery_note_id = ?', [$note]);
+        self::assertIsString($line);
+        $this->postJson($this->companyPath().'/invoices/from-delivery-notes', ['deliveryNoteIds' => [$note], 'quantities' => [$line => '6']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->companyPath().'/invoices/'.$this->stringAt($this->json(), 'id').'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+
+        $credit = $this->credit($note);
+
+        self::assertSame(['601.000', '200.000', '801.000', false], [$credit['owed'], $credit['noteTotal'], $credit['afterDelivery'], $credit['over']], '600 invoiced and owed with its 1 of stamp duty, 200 left to deliver: 801, under 1000');
+    }
+
+    /** Audit 2026-10-06, A-F5: the warning shows the customer's account, which takes the statement's two rights. */
+    public function testTheCustomersAccountTakesTheRightToReadTheCustomerAndItsInvoices(): void
+    {
+        // Created before any request: the kernel reboots between requests and would leave the company detached.
+        $this->createUser('driver@twes.local', 'password-1234', $this->company, ['delivery_note.read', 'customer.read'], 'driver');
+        $this->createUser('biller@twes.local', 'password-1234', $this->company, ['delivery_note.read', 'invoice.read'], 'biller');
+        $note = $this->draftNote('300');
+
+        foreach (['driver@twes.local' => 'invoice.read', 'biller@twes.local' => 'customer.read'] as $email => $missing) {
+            $this->login($email, 'password-1234');
+            $this->getJson($this->path($note).'/credit');
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, "without $missing");
+            $this->getJson($this->path($note));
+            self::assertResponseIsSuccessful('the note itself is still theirs to read');
+        }
+    }
+
+    /** Audit 2026-10-06, A-F7: a note the calculator refuses says so, it does not fail. */
+    public function testANoteThatCannotBeTotalledIsRefusedNotFailed(): void
+    {
+        $note = $this->draftNote('300');
+        $this->em()->getConnection()->executeStatement('UPDATE delivery_note_line SET unit_price_net = -1 WHERE delivery_note_id = :id', ['id' => $note]);
+
+        $this->getJson($this->path($note).'/credit');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
     private const string ABSENT = '0192c3a4-0000-7000-8000-000000000000';
 
     /** @return array<string, mixed> */
@@ -134,8 +181,8 @@ final class DeliveryNoteCreditTest extends ApiTestCase
         return $this->json();
     }
 
-    /** A draft delivering one line priced at $net, no tax; its id. */
-    private function draftNote(string $net): string
+    /** A draft delivering one line of $quantity priced at $net each, no tax; its id. */
+    private function draftNote(string $net, string $quantity = '1'): string
     {
         $this->postJson($this->path(), [
             'customerId' => $this->customerId,
@@ -149,7 +196,7 @@ final class DeliveryNoteCreditTest extends ApiTestCase
             'customerReference' => null,
             'remarksPrinted' => null,
             'notesInternal' => null,
-            'lines' => [['description' => 'Livraison', 'quantity' => '1', 'unitId' => $this->unitId(), 'unitPriceNet' => $net, 'taxComponentIds' => []]],
+            'lines' => [['description' => 'Livraison', 'quantity' => $quantity, 'unitId' => $this->unitId(), 'unitPriceNet' => $net, 'taxComponentIds' => []]],
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 

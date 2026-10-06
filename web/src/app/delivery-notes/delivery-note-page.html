@@ -55,7 +55,10 @@
     }
   }
   @if (current(); as note) {
-    @if ((note.status === 'draft' || note.status === 'validated') && options(); as opts) {
+    @if (
+      (note.status === 'draft' || note.status === 'validated') && mayReadAccount() && options();
+      as opts
+    ) {
       <app-delivery-note-credit-notice
         [companyId]="company()?.id ?? ''"
         [noteId]="note.id"

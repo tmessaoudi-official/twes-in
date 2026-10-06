@@ -129,6 +129,10 @@ export class DeliveryNotePage {
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('delivery_note.write'));
+  /** The credit notice shows the customer's account, which takes the right to read the customer and its invoices. */
+  protected readonly mayReadAccount = computed(
+    () => this.auth.hasPermission('customer.read') && this.auth.hasPermission('invoice.read'),
+  );
   protected readonly mayValidate = computed(() =>
     this.auth.hasPermission('delivery_note.validate'),
   );

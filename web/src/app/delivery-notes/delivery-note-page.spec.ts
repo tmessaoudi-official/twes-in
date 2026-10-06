@@ -258,6 +258,8 @@ describe('DeliveryNotePage', () => {
       'delivery_note.write',
       'delivery_note.validate',
       'invoice.write',
+      'customer.read',
+      'invoice.read',
     ].forEach((each) => granted.add(each));
     modules.clear();
     ['delivery_notes', 'invoices'].forEach((each) => modules.add(each));
@@ -562,6 +564,17 @@ describe('DeliveryNotePage', () => {
     await open('n1');
     expect(q('delivery-note-credit-over')).toBeNull();
     expect(facade.credit).not.toHaveBeenCalled();
+  });
+
+  // Audit 2026-10-06, A-F5: the notice shows the customer's account, which takes the statement's two rights.
+  it('asks nothing of the credit limit for somebody who may not read the customer and its invoices', async () => {
+    granted.delete('invoice.read');
+    facade.credit.mockClear();
+    note.set(validated);
+    await open('n1');
+
+    expect(facade.credit).not.toHaveBeenCalled();
+    expect(q('delivery-note-credit-unchecked')).toBeNull();
   });
 
   it('shows a validated note as it was issued, with its PDF, its delivery and its cancellation', async () => {
