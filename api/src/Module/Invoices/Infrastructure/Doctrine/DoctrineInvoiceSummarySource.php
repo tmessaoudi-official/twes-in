@@ -119,15 +119,24 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
 
     public function invoicedBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): array
     {
+        // What is invoiced is each document's own net, after its discount. A line's net comes before the document's
+        // discount when prices were typed without tax and after it when typed with tax, so the margin's base takes each
+        // line at its share of the document's net: the discount is then taken once, whichever way it was typed.
         // A credit note's lines keep their positive quantity while their figures are negative: its cost is counted the same way.
         $row = $this->connection->fetchAssociative(
-            'SELECT COALESCE(SUM(l.line_net), 0) AS net,
-                    COALESCE(SUM(l.line_net) FILTER (WHERE l.unit_cost IS NOT NULL), 0) AS costed_net,
-                    COALESCE(SUM(CASE WHEN i.document_type = :credit THEN -1 ELSE 1 END * l.quantity * l.unit_cost), 0) AS cost,
-                    COUNT(*) FILTER (WHERE l.unit_cost IS NOT NULL) AS costed_lines
-             FROM invoice i JOIN invoice_line l ON l.invoice_id = i.id
-             WHERE i.company_id = :company AND i.status <> :cancelled AND i.amount_due IS NOT NULL
-               AND i.issue_date >= :from AND i.issue_date < :until',
+            'WITH lines AS (
+                SELECT i.document_type, i.total_net, l.line_net, l.quantity, l.unit_cost,
+                       SUM(l.line_net) OVER (PARTITION BY i.id) AS lines_net,
+                       ROW_NUMBER() OVER (PARTITION BY i.id) AS nth
+                FROM invoice i JOIN invoice_line l ON l.invoice_id = i.id
+                WHERE i.company_id = :company AND i.status <> :cancelled AND i.amount_due IS NOT NULL
+                  AND i.issue_date >= :from AND i.issue_date < :until
+             )
+             SELECT COALESCE(SUM(total_net) FILTER (WHERE nth = 1), 0) AS net,
+                    COALESCE(ROUND(SUM(CASE WHEN lines_net = 0 THEN line_net ELSE line_net * total_net / lines_net END) FILTER (WHERE unit_cost IS NOT NULL), 3), 0) AS costed_net,
+                    COALESCE(SUM(CASE WHEN document_type = :credit THEN -1 ELSE 1 END * quantity * unit_cost), 0) AS cost,
+                    COUNT(*) FILTER (WHERE unit_cost IS NOT NULL) AS costed_lines
+             FROM lines',
             ['company' => $companyId->toRfc4122(), 'credit' => InvoiceType::CreditNote->value, 'cancelled' => InvoiceStatus::Cancelled->value, 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d')],
         );
         \assert(false !== $row);

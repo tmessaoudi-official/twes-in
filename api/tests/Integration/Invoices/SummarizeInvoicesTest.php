@@ -186,6 +186,22 @@ final class SummarizeInvoicesTest extends KernelTestCase
         self::assertSame(['441.000', '50.050', '1081.000'], [$summary->margin, $summary->marginLastMonth, $summary->marginBasis]);
     }
 
+    public function testWhatIsInvoicedAndItsMarginComeAfterTheDocumentDiscountWhicheverWayPricesWereTyped(): void
+    {
+        // Tax-exclusive, a line keeps its figure before the document's discount: 2150 less 1125 is 1025 invoiced.
+        $exclusive = $this->issuedAt('FAC-HT', '2026-09-15', new InvoiceFigures('2150.000', '1125.000', '1025.000', [], '0.000', [], '1025.000', [], '0.000', '1025.000', [['net' => '2150.000', 'tax' => '0.000', 'gross' => '2150.000']]));
+        $this->costed($exclusive, '500');
+        // Tax-inclusive, a line's net already comes after it: taking the discount off again would count it twice.
+        $inclusive = $this->issuedAt('FAC-TTC', '2026-09-16', new InvoiceFigures('1000.000', '100.000', '1000.000', [], '0.000', [], '1000.000', [], '0.000', '1000.000', [['net' => '1000.000', 'tax' => '0.000', 'gross' => '1000.000']]));
+        $this->costed($inclusive, '600');
+        $this->em()->clear();
+
+        $summary = $this->summarize->handle($this->company, true);
+
+        self::assertSame('2025.000', $summary->invoicedMonth);
+        self::assertSame(['925.000', null, '2025.000'], $this->marginOf($summary), '(1025 − 500) + (1000 − 600), over 1025 + 1000');
+    }
+
     public function testCollectedIsMoneyReceivedOnlyCreditAppliedIsNotAndDepositsAndRefundsCountOnTheirOwnDay(): void
     {
         // Audit E-14: 100 paid in cash in August, sent to the balance by a credit note, then applied to another invoice
@@ -258,6 +274,15 @@ final class SummarizeInvoicesTest extends KernelTestCase
         $company ??= $this->company;
         $invoice = Invoice::create($company, $this->establishment($company), $this->customer($company, $customer), new InvoiceHeader(), [$this->line($company, array_keys($taxes))], [], $this->clock->now());
         $invoice->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), $terms, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (): InvoiceFigures => $this->figures($total, $taxes, $withholding), $this->clock->now());
+        static::getContainer()->get(InvoiceRepository::class)->save($invoice);
+
+        return $invoice;
+    }
+
+    private function issuedAt(string $number, string $day, InvoiceFigures $figures): Invoice
+    {
+        $invoice = Invoice::create($this->company, $this->establishment($this->company), $this->customer($this->company, $number), new InvoiceHeader(), [$this->line($this->company, [])], [], $this->clock->now());
+        $invoice->issue(new InvoiceIssue($number, new \DateTimeImmutable($day), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), static fn (): InvoiceFigures => $figures, $this->clock->now());
         static::getContainer()->get(InvoiceRepository::class)->save($invoice);
 
         return $invoice;
