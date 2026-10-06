@@ -25,6 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        # The whole history: decision-stamps compares each Decisions Log stamp with the commit that wrote it.
+        with:
+          fetch-depth: 0
       # Everything runs in the project's own containers (docs/SPEC.md § 7): the runner needs Docker and nothing else.
       # The Makefile hands the services the runner's uid and the checkout's path; docs/START.md § 1.
       - run: make gate-licences
