@@ -22,7 +22,17 @@
       <p class="text-lg" data-testid="stock-valuation-total">
         {{ 'inventory.valuation.total' | translate }}
         <strong class="tabular-nums">{{ v.total | amount: 3 }}</strong>
+        @if (v.estimated) {
+          <span class="twes-estimated" data-testid="stock-valuation-total-estimated">{{
+            'inventory.valuation.estimated' | translate
+          }}</span>
+        }
       </p>
+      @if (v.estimated) {
+        <p class="text-sm opacity-80" data-testid="stock-valuation-estimated-note">
+          {{ 'inventory.valuation.estimated_note' | translate }}
+        </p>
+      }
       @if (hasUnvalued()) {
         <p class="text-sm opacity-80" data-testid="stock-valuation-unvalued-note">
           {{ 'inventory.valuation.unvalued_note' | translate }}
@@ -68,7 +78,16 @@
                     {{ line.unitCost | amount: 4 }}
                   }
                 </td>
-                <td class="p-2 text-end tabular-nums">{{ line.value | amount: 3 }}</td>
+                <td class="p-2 text-end tabular-nums">
+                  {{ line.value | amount: 3 }}
+                  @if (line.estimatedQuantity !== '0.000') {
+                    <span
+                      class="twes-estimated"
+                      [attr.data-testid]="'stock-valuation-estimated-' + line.productReference"
+                      >{{ 'inventory.valuation.estimated' | translate }}</span
+                    >
+                  }
+                </td>
                 <td class="p-2 text-end tabular-nums">
                   @if (line.unvaluedQuantity !== '0.000') {
                     {{ line.unvaluedQuantity }}

@@ -739,6 +739,7 @@ describe('InventoryApi', () => {
     const pending = api.valuation('c1');
     http.expectOne('/api/companies/c1/stock-valuation').flush({
       total: '12000.000',
+      estimated: true,
       lines: [
         {
           productId: 'p1',
@@ -749,6 +750,7 @@ describe('InventoryApi', () => {
           unitCost: '600.0000',
           value: '12000.000',
           unvaluedQuantity: '0.000',
+          estimatedQuantity: '5.000',
         },
         {
           productId: 'p2',
@@ -764,10 +766,12 @@ describe('InventoryApi', () => {
     });
 
     const valuation = await pending;
-    expect(valuation.total).toBe('12000.000');
-    expect(valuation.lines.map((line) => [line.productReference, line.unitCost])).toEqual([
-      ['ART-001', '600.0000'],
-      ['ART-002', null],
+    expect([valuation.total, valuation.estimated]).toEqual(['12000.000', true]);
+    expect(
+      valuation.lines.map((line) => [line.productReference, line.unitCost, line.estimatedQuantity]),
+    ).toEqual([
+      ['ART-001', '600.0000', '5.000'],
+      ['ART-002', null, '0.000'],
     ]);
   });
 });

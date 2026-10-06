@@ -285,6 +285,14 @@ html {
   font-variant-numeric: tabular-nums;
 }
 
+// A figure that is an estimate says so beside it, quieter than the figure.
+.twes-estimated {
+  margin-inline-start: 0.375rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+  font-style: italic;
+}
+
 // The search and the list's tools share a line while they fit and wrap when they do not: on a phone the search takes a
 // line of its own and the buttons the next, so no list pans sideways.
 .twes-list-tools {

@@ -104,6 +104,15 @@ class StockMovement implements CompanyOwned
     #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 4, nullable: true)]
     private ?string $unitCost = null;
 
+    /**
+     * What this movement adds to the stock's worth beyond quantity times cost: goods coming in to fill a stock that was
+     * below nothing set its worth at their own cost (RunningValue). Seven decimals; null for every other movement.
+     *
+     * @var numeric-string|null
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 30, scale: 7, nullable: true)]
+    private ?string $revaluation = null;
+
     /** Whether somebody typed the cost, as opposed to the average a movement without one is valued at. */
     #[ORM\Column(options: ['default' => false])]
     private bool $costTyped = false;
@@ -422,6 +431,18 @@ class StockMovement implements CompanyOwned
     public function valuedAt(string $unitCost): void
     {
         $this->unitCost ??= $unitCost;
+    }
+
+    /** @param numeric-string $amount */
+    public function revaluedBy(string $amount): void
+    {
+        $this->revaluation ??= $amount;
+    }
+
+    /** @return numeric-string|null */
+    public function getRevaluation(): ?string
+    {
+        return $this->revaluation;
     }
 
     public function getVendor(): ?Vendor

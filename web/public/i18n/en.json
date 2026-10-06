@@ -2196,6 +2196,8 @@
       "total": "The stock is worth",
       "forbidden": "Reading what the stock is worth needs the right to read what things cost.",
       "unvalued_note": "Stock with no known cost is counted apart and left out of the total: give it a cost on its next receipt, or a cost price on the product.",
+      "estimated_note": "Part of the stock has no recorded cost: it is estimated at the product’s cost price now, and its value is marked “estimated”.",
+      "estimated": "estimated",
       "unit_cost": "Average cost",
       "value": "Value",
       "unvalued": "No cost known",

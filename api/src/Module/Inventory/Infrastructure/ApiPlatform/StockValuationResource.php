@@ -16,8 +16,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
  * What the company's stock is worth (docs/SPEC.md § 7): each product at the weighted average of what came in, and the
- * total. Stock whose cost is not known is counted in `unvaluedQuantity` and adds nothing to the value, so the total is
- * never a guess. Read with stock.read AND product.cost.read, since it shows what the goods cost.
+ * total. Stock with no recorded cost is valued at the product's cost price now and counted in `estimatedQuantity`, and
+ * `estimated` says the total holds such a part (C-02); stock with no cost at all is counted in `unvaluedQuantity` and
+ * adds nothing. Read with stock.read AND product.cost.read, since it shows what the goods cost.
  */
 #[ApiResource(
     shortName: 'StockValuation',
@@ -39,12 +40,16 @@ final class StockValuationResource
     #[Groups([self::READ])]
     public string $total = '0.000';
 
+    /** Whether any line's value holds an estimate. */
+    #[Groups([self::READ])]
+    public bool $estimated = false;
+
     /** @var list<array<string, mixed>> */
     #[ApiProperty(schema: [
         'type' => 'array',
         'items' => [
             'type' => 'object',
-            'required' => ['productId', 'productReference', 'productName', 'unitCode', 'quantity', 'unitCost', 'value', 'unvaluedQuantity'],
+            'required' => ['productId', 'productReference', 'productName', 'unitCode', 'quantity', 'unitCost', 'value', 'unvaluedQuantity', 'estimatedQuantity'],
             'properties' => [
                 'productId' => ['type' => 'string'],
                 'productReference' => ['type' => 'string'],
@@ -54,6 +59,7 @@ final class StockValuationResource
                 'unitCost' => ['type' => ['string', 'null'], 'description' => 'The average cost of one unit; null when no stock of it has a cost.'],
                 'value' => ['type' => 'string'],
                 'unvaluedQuantity' => ['type' => 'string', 'description' => 'The part of the quantity with no known cost, left out of the value.'],
+                'estimatedQuantity' => ['type' => 'string', 'description' => 'The part of the quantity with no recorded cost, valued at the product\'s cost price now.'],
             ],
         ],
     ])]

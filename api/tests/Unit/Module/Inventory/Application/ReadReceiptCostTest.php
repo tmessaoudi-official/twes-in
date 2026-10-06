@@ -16,6 +16,7 @@ use App\Module\Inventory\Application\ReadReceiptCost;
 use App\Module\Inventory\Application\StockCostSettings;
 use App\Module\Inventory\Domain\CostOnReceive;
 use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
@@ -38,10 +39,12 @@ use App\Tests\Support\InMemoryStockMovements;
 use App\Tests\Support\RecordingLiveChanges;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 final class ReadReceiptCostTest extends TestCase
 {
     private InMemorySettings $settings;
+    private InMemoryStockMovements $movements;
     private KeepStock $keep;
     private ReadReceiptCost $read;
     private MockClock $clock;
@@ -80,6 +83,13 @@ final class ReadReceiptCostTest extends TestCase
         }
     }
 
+    public function testOnAStockSoldBelowNothingTheAverageOfferedIsTheReceiptsOwnCost(): void
+    {
+        $this->movements->save(StockMovement::sale($this->laptop, $this->site, '2', Uuid::v7(), $this->clock->now()));
+
+        self::assertSame('1100.0000', $this->read->read($this->company, $this->laptop, '3', '1100')->average, 'not (3 x 1100 - 2 x 1000) over 1 = 1300');
+    }
+
     public function testTheModeIsTheCompanysSetting(): void
     {
         $this->settings->save(new Setting(SettingAddress::company($this->company), StockCostSettings::COST_ON_RECEIVE, 'last', new \DateTimeImmutable()));
@@ -91,7 +101,7 @@ final class ReadReceiptCostTest extends TestCase
     {
         $this->clock = new MockClock('2026-09-15 09:00:00');
         $now = $this->clock->now();
-        $movements = new InMemoryStockMovements();
+        $movements = $this->movements = new InMemoryStockMovements();
         $products = new InMemoryProducts();
         $this->settings = new InMemorySettings();
         $transactions = new FakeTransactions();

@@ -2196,6 +2196,8 @@
       "total": "Le stock vaut",
       "forbidden": "Lire ce que vaut le stock demande le droit de lire ce que coûtent les choses.",
       "unvalued_note": "Le stock sans coût connu est compté à part et laissé hors du total : donnez-lui un coût à sa prochaine réception, ou un prix de revient au produit.",
+      "estimated_note": "Une partie du stock n’a pas de coût enregistré : elle est estimée au prix de revient actuel du produit, et sa valeur est marquée « estimé ».",
+      "estimated": "estimé",
       "unit_cost": "Coût moyen",
       "value": "Valeur",
       "unvalued": "Coût inconnu",

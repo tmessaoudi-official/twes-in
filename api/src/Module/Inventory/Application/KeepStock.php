@@ -271,13 +271,20 @@ final readonly class KeepStock
     }
 
     /**
-     * What the stock of each product is worth, at the weighted average of what came in.
+     * What the stock of each product is worth, at the weighted average of what came in; what has no recorded cost is
+     * estimated at the product's cost price now.
      *
      * @return list<StockValue>
      */
     public function valuation(Company $company): array
     {
-        return $this->movements->valuation($company->getId());
+        $values = $this->movements->valuation($company->getId());
+        $costs = [];
+        foreach ($this->products->ofIdsInCompany(array_map(static fn (StockValue $value): Uuid => $value->productId, $values), $company->getId()) as $product) {
+            $costs[$product->getId()->toRfc4122()] = $product->getDetails()->costPrice;
+        }
+
+        return array_map(static fn (StockValue $value): StockValue => $value->estimatedAt($costs[$value->productId->toRfc4122()] ?? null), $values);
     }
 
     /**

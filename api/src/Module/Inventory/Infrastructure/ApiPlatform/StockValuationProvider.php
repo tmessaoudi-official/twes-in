@@ -42,6 +42,7 @@ final readonly class StockValuationProvider implements ProviderInterface
 
         $total = new Number('0.000');
         $lines = [];
+        $estimated = false;
         foreach ($values as $value) {
             $product = $products[$value->productId->toRfc4122()] ?? null;
             $amount = new Number($value->value)->round(3);
@@ -57,13 +58,16 @@ final readonly class StockValuationProvider implements ProviderInterface
                 'unitCost' => 1 === $valued->compare(0) ? new Number($value->value)->div($valued, 10)->round(4)->value : null,
                 'value' => $amount->value,
                 'unvaluedQuantity' => $value->unvaluedQuantity,
+                'estimatedQuantity' => $value->estimatedQuantity,
             ];
+            $estimated = $estimated || 0 !== new Number($value->estimatedQuantity)->compare(0);
         }
         usort($lines, static fn (array $a, array $b): int => strcmp((string) $a['productReference'], (string) $b['productReference']));
 
         $resource = new StockValuationResource();
         $resource->total = $total->value;
         $resource->lines = $lines;
+        $resource->estimated = $estimated;
 
         return $resource;
     }

@@ -26,12 +26,17 @@ import { StockValuationPage } from './stock-valuation-page';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
-    return of({ inventory: { valuation: { none: 'Aucun stock', unvalued_note: 'Coût inconnu' } } });
+    return of({
+      inventory: {
+        valuation: { none: 'Aucun stock', unvalued_note: 'Coût inconnu', estimated: 'estimé' },
+      },
+    });
   }
 }
 
 const worth: StockValuation = {
   total: '12000.000',
+  estimated: false,
   lines: [
     {
       productId: 'p1',
@@ -42,6 +47,7 @@ const worth: StockValuation = {
       unitCost: '600.0000',
       value: '12000.000',
       unvaluedQuantity: '0.000',
+      estimatedQuantity: '0.000',
     },
     {
       productId: 'p2',
@@ -52,6 +58,7 @@ const worth: StockValuation = {
       unitCost: null,
       value: '0.000',
       unvaluedQuantity: '3.000',
+      estimatedQuantity: '0.000',
     },
   ],
 };
@@ -114,6 +121,28 @@ describe('StockValuationPage', () => {
     expect(row).toContain('Portable');
     expect(row).toMatch(/600/);
     expect(q('stock-valuation-unvalued-note')).not.toBeNull();
+    expect(q('stock-valuation-total-estimated')).toBeNull();
+    expect(q('stock-valuation-estimated-note')).toBeNull();
+    expect(q('stock-valuation-estimated-ART-001')).toBeNull();
+  });
+
+  // C-02: what has no recorded cost is valued at the product's cost price now, and the figure says it is an estimate.
+  it('marks an estimated value on its line and on the total', async () => {
+    valuation.set({
+      ...worth,
+      estimated: true,
+      lines: [{ ...worth.lines[0]!, estimatedQuantity: '5.000' }, worth.lines[1]!],
+    });
+    try {
+      await open();
+
+      expect(q('stock-valuation-total-estimated')?.textContent).toContain('estimé');
+      expect(q('stock-valuation-estimated-note')).not.toBeNull();
+      expect(q('stock-valuation-estimated-ART-001')?.textContent).toContain('estimé');
+      expect(q('stock-valuation-estimated-ART-002')).toBeNull();
+    } finally {
+      valuation.set(worth);
+    }
   });
 
   it('asks for nothing and says so when the person may not read what things cost', async () => {

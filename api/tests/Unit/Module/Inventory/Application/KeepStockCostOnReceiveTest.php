@@ -15,6 +15,7 @@ use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Application\StockCostSettings;
 use App\Module\Inventory\Domain\CostBasis;
 use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Products\Application\ChangeProductCost;
 use App\Module\Products\Domain\CostChangeSource;
 use App\Module\Products\Domain\Product;
@@ -40,10 +41,13 @@ use App\Tests\Support\InMemoryStockMovements;
 use App\Tests\Support\RecordingLiveChanges;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 final class KeepStockCostOnReceiveTest extends TestCase
 {
     private InMemorySettings $settings;
+    private InMemoryStockMovements $movements;
+    private InMemoryProducts $products;
     private InMemoryProductCostChanges $history;
     private KeepStock $keep;
     private Company $company;
@@ -101,12 +105,37 @@ final class KeepStockCostOnReceiveTest extends TestCase
         self::assertSame('1500.0000', $this->laptop->getDetails()->costPrice, 'the company set the rule, not the person at the counter');
     }
 
+    public function testAReceiptLiftingAStockSoldBelowNothingIsAveragedAtItsOwnCost(): void
+    {
+        // Sold below nothing, the two units left at the cost price; the three that come in at 1 fill that hole, so what
+        // is on the shelf is one unit worth 1, not (3 - 20) over 1 = -17, a cost no product takes (audit E-4).
+        $this->mode('average');
+        $nail = $this->product('ART-002', '10');
+        $this->movements->save(StockMovement::sale($nail, $this->site, '2', Uuid::v7(), new \DateTimeImmutable('2026-09-15 08:00:00')));
+
+        $this->keep->receive($this->company, $nail->getId(), $this->site->getId(), '3', null, null, '1');
+
+        self::assertSame('1.0000', $nail->getDetails()->costPrice);
+        self::assertSame('1.0000', $this->movements->averageCostOf($nail));
+    }
+
+    public function testAReceiptLiftingAStockBelowNothingForgetsWhatTheMissingUnitsWereWorth(): void
+    {
+        $this->mode('average');
+        $vice = $this->product('ART-003', '100');
+        $this->movements->save(StockMovement::sale($vice, $this->site, '5', Uuid::v7(), new \DateTimeImmutable('2026-09-15 08:00:00')));
+
+        $this->keep->receive($this->company, $vice->getId(), $this->site->getId(), '10', null, null, '60');
+
+        self::assertSame('60.0000', $vice->getDetails()->costPrice, 'the five on the shelf came in at 60, not (600 - 500) over 5 = 20');
+    }
+
     protected function setUp(): void
     {
         $clock = new MockClock('2026-09-15 09:00:00');
         $now = $clock->now();
-        $movements = new InMemoryStockMovements();
-        $products = new InMemoryProducts();
+        $movements = $this->movements = new InMemoryStockMovements();
+        $products = $this->products = new InMemoryProducts();
         $this->settings = new InMemorySettings();
         $transactions = new FakeTransactions();
         $movements->transactions = $transactions;
@@ -126,6 +155,14 @@ final class KeepStockCostOnReceiveTest extends TestCase
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(), new StockCostSettings()]), $this->settings));
         $this->history = new InMemoryProductCostChanges();
         $this->keep = new KeepStock($movements, $lots, $locations, $products, $read, $transactions, $clock, new RecordingLiveChanges($transactions), null, new ChangeProductCost($products, $this->history, $audit, $clock, $transactions));
+    }
+
+    private function product(string $reference, string $costPrice): Product
+    {
+        $product = Product::create($this->company, $reference, new ProductDetails($reference, null, ProductKind::Goods, '20', $costPrice), $this->laptop->getUnit(), null, [], new \DateTimeImmutable('2026-09-15 07:00:00'));
+        $this->products->save($product);
+
+        return $product;
     }
 
     private function mode(string $mode): void

@@ -3,5 +3,8 @@ parameters:
     paths:
         - src/
         - tests/
+    # Migrations are loaded by Doctrine from their directory, not by the autoloader; a test may run one.
+    scanDirectories:
+        - migrations/
     symfony:
         containerXmlPath: var/cache/test/App_KernelTestDebugContainer.xml

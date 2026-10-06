@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Infrastructure\Doctrine;
 
 use App\Module\Inventory\Domain\LotOnHand;
+use App\Module\Inventory\Domain\RunningValue;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockLot;
@@ -18,7 +19,6 @@ use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Module\Inventory\Domain\StockValue;
 use App\Module\Inventory\Domain\TypedCost;
-use App\Module\Inventory\Domain\WeightedAverageCost;
 use App\Module\Products\Domain\Product;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
@@ -53,15 +53,20 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
 
     public function save(StockMovement ...$movements): void
     {
-        $averages = [];
+        $products = [];
         foreach ($movements as $movement) {
-            if (null === $movement->getUnitCost()) {
-                $key = $movement->getProduct()->getId()->toRfc4122();
-                $averages[$key] ??= $this->averageCostOf($movement->getProduct());
-                if (null !== $averages[$key]) {
-                    $movement->valuedAt($averages[$key]);
-                }
-            }
+            $products[$movement->getProduct()->getId()->toRfc4122()] = $movement->getProduct()->getId();
+        }
+        ksort($products);
+        // A product's worth runs across all its places, so it is read and moved under the product's own lock.
+        foreach ($products as $productId) {
+            $this->lockValueOf($productId);
+        }
+        $running = [];
+        foreach ($movements as $movement) {
+            $key = $movement->getProduct()->getId()->toRfc4122();
+            $running[$key] ??= RunningValue::of($this->valuedTotalsOf($movement->getProduct()));
+            $running[$key] = $running[$key]->take($movement);
             $this->entityManager->persist($movement);
         }
         $this->entityManager->flush();
@@ -73,7 +78,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->select(
                 'IDENTITY(m.product) AS product',
                 'SUM(m.quantity) AS quantity',
-                'SUM(CASE WHEN m.unitCost IS NULL THEN 0 ELSE m.quantity * m.unitCost END) AS value',
+                'SUM(CASE WHEN m.unitCost IS NULL THEN 0 ELSE m.quantity * m.unitCost + COALESCE(m.revaluation, 0) END) AS value',
                 'SUM(CASE WHEN m.unitCost IS NULL THEN m.quantity ELSE 0 END) AS unvalued',
             )
             ->from(StockMovement::class, 'm')
@@ -104,13 +109,13 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
     {
         $totals = $this->valuedTotalsOf($product);
 
-        return WeightedAverageCost::of($totals['quantity'], $totals['amount'], $product->getDetails()->costPrice);
+        return RunningValue::of($totals)->average($product->getDetails()->costPrice);
     }
 
     public function valuedTotalsOf(Product $product): array
     {
         $row = $this->entityManager->createQueryBuilder()
-            ->select('SUM(m.quantity) AS quantity', 'SUM(m.quantity * m.unitCost) AS amount')
+            ->select('SUM(m.quantity) AS quantity', 'SUM(m.quantity * m.unitCost + COALESCE(m.revaluation, 0)) AS amount')
             ->from(StockMovement::class, 'm')
             ->where('m.product = :product')
             ->andWhere('m.unitCost IS NOT NULL')
@@ -194,12 +199,24 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return new Page($movements, \count($paginator), $page);
     }
 
-    /** A transaction-scoped advisory lock: stock is a sum of rows, so there is no one row to lock. */
+    /**
+     * A transaction-scoped advisory lock: stock is a sum of rows, so there is no one row to lock. The product's own lock
+     * comes first, the one saving takes for its worth, so every writer takes the two in the same order.
+     */
     public function lockStockOf(Uuid $productId, Uuid $locationId): void
     {
+        $this->lockValueOf($productId);
         $this->entityManager->getConnection()->executeQuery(
             'SELECT pg_advisory_xact_lock(hashtextextended(?, 0))',
             ['stock:'.$productId->toRfc4122().':'.$locationId->toRfc4122()],
+        );
+    }
+
+    private function lockValueOf(Uuid $productId): void
+    {
+        $this->entityManager->getConnection()->executeQuery(
+            'SELECT pg_advisory_xact_lock(hashtextextended(?, 0))',
+            ['stock:'.$productId->toRfc4122()],
         );
     }
 

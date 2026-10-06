@@ -11,6 +11,10 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\UnitRepository;
+use App\Module\Inventory\Application\StockCostSettings;
+use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockMovement;
+use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
@@ -18,6 +22,7 @@ use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * What the stock is worth (docs/SPEC.md § 7): a receipt records what a unit cost, the stock is valued at the weighted
@@ -103,6 +108,52 @@ final class StockValuationTest extends ApiTestCase
         self::assertSame(['3.000', null, '0.000', '3.000'], [$line['quantity'], $line['unitCost'], $line['value'], $line['unvaluedQuantity']], 'the laptop has no cost price and the receipt no cost');
     }
 
+    public function testAReceiptFillingAStockSoldBelowNothingIsAcceptedAndValuedAtItsOwnCost(): void
+    {
+        // The ruling's input (audit E-4): two sold at the cost price of 8 before any came in, then three received at
+        // 1 under the average rule. Summed, (3 - 16) over 1 = -13 was handed to the product as its cost and refused.
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), StockCostSettings::COST_ON_RECEIVE, 'average', new \DateTimeImmutable()));
+        $this->em()->flush();
+        $site = $this->site();
+        $this->sell($this->mouseId, $site, '2');
+
+        $this->receive($this->mouseId, $site, '3', '1');
+
+        $line = $this->line($this->mouseId);
+        self::assertSame(['1.000', '1.0000', '1.000'], [$line['quantity'], $line['unitCost'], $line['value']]);
+        $mouse = $this->em()->find(Product::class, Uuid::fromString($this->mouseId));
+        self::assertSame('1.0000', $mouse?->getDetails()->costPrice);
+    }
+
+    public function testStockWithNoRecordedCostIsEstimatedAtTheProductsCostPriceAndSaysSo(): void
+    {
+        // C-02 (§ 7 2026-10-03 08:09): what has no recorded cost is valued at the product's cost price now, flagged.
+        $site = $this->site();
+        $this->receive($this->mouseId, $site, '10', '6');
+        $mouse = $this->em()->find(Product::class, Uuid::fromString($this->mouseId));
+        $location = $this->em()->find(StockLocation::class, Uuid::fromString($site));
+        self::assertNotNull($mouse);
+        self::assertNotNull($location);
+        $this->em()->persist(StockMovement::receipt($mouse, $location, '5', null, new \DateTimeImmutable()));
+        $this->em()->flush();
+        // Written as a movement no cost was known for: nothing on it.
+        $this->em()->getConnection()->executeStatement('UPDATE stock_movement SET unit_cost = NULL WHERE company_id = ? AND quantity = 5', [$this->company->getId()->toRfc4122()]);
+
+        $line = $this->line($this->mouseId);
+        self::assertSame(['15.000', '100.000', '0.000', '5.000', '6.6667'], [$line['quantity'], $line['value'], $line['unvaluedQuantity'], $line['estimatedQuantity'], $line['unitCost']], '10 at 6 and 5 estimated at 8');
+        self::assertTrue($this->valuation()['estimated']);
+    }
+
+    public function testAValuationWithNothingEstimatedSaysSo(): void
+    {
+        $this->receive($this->mouseId, $this->site(), '10', '6');
+        $this->receive($this->laptopId, $this->site(), '3', null);
+
+        self::assertSame('0.000', $this->line($this->mouseId)['estimatedQuantity']);
+        self::assertSame(['3.000', '0.000'], [$this->line($this->laptopId)['unvaluedQuantity'], $this->line($this->laptopId)['estimatedQuantity']], 'no cost price: nothing to estimate at');
+        self::assertFalse($this->valuation()['estimated']);
+    }
+
     public function testItNeedsTheRightToReadWhatThingsCost(): void
     {
         $this->login('blind@twes.local', 'password-1234');
@@ -150,6 +201,15 @@ final class StockValuationTest extends ApiTestCase
     {
         $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $productId, 'locationId' => $locationId, 'quantity' => $quantity, 'unitCost' => $unitCost]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+    }
+
+    private function sell(string $productId, string $locationId, string $quantity): void
+    {
+        $product = $this->em()->find(Product::class, Uuid::fromString($productId));
+        $location = $this->em()->find(StockLocation::class, Uuid::fromString($locationId));
+        self::assertNotNull($product);
+        self::assertNotNull($location);
+        static::getContainer()->get(StockMovementRepository::class)->save(StockMovement::sale($product, $location, $quantity, Uuid::v7(), new \DateTimeImmutable()));
     }
 
     private function site(): string

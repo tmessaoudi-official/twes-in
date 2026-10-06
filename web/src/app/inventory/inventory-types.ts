@@ -181,11 +181,15 @@ export interface StockValuationLine {
   value: string;
   /** The part of the quantity with no known cost, left out of the value. */
   unvaluedQuantity: string;
+  /** The part with no recorded cost, valued at the product's cost price now: the value is an estimate. */
+  estimatedQuantity: string;
 }
 
 export interface StockValuation {
   /** The total of every line's value. */
   total: string;
+  /** Whether the total holds an estimated part. */
+  estimated: boolean;
   lines: StockValuationLine[];
 }
 

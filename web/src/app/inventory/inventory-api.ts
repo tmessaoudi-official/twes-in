@@ -221,6 +221,7 @@ export class InventoryApi {
       );
       return {
         total: raw.total ?? '0.000',
+        estimated: raw.estimated ?? false,
         lines: (raw.lines ?? []).map((line) => ({
           productId: String(line['productId'] ?? ''),
           productReference: String(line['productReference'] ?? ''),
@@ -230,6 +231,7 @@ export class InventoryApi {
           unitCost: line['unitCost'] == null ? null : String(line['unitCost']),
           value: String(line['value'] ?? '0.000'),
           unvaluedQuantity: String(line['unvaluedQuantity'] ?? '0.000'),
+          estimatedQuantity: String(line['estimatedQuantity'] ?? '0.000'),
         })),
       };
     });

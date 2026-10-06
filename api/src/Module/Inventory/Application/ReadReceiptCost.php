@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Application;
 
 use App\Module\Inventory\Domain\CostOnReceive;
+use App\Module\Inventory\Domain\RunningValue;
 use App\Module\Inventory\Domain\StockMovementRepository;
-use App\Module\Inventory\Domain\WeightedAverageCost;
 use App\Module\Products\Domain\Product;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
@@ -38,16 +38,13 @@ final readonly class ReadReceiptCost
         $own = $product->getDetails()->costPrice;
         $costNow = null !== $own && is_numeric($own) ? new Number($own)->round(4)->value : null;
 
-        $totals = $this->movements->valuedTotalsOf($product);
-        $quantityTotal = $totals['quantity'];
-        $amountTotal = $totals['amount'];
+        $stock = RunningValue::of($this->movements->valuedTotalsOf($product));
         if (null !== $quantity && null !== $unitCost && is_numeric($quantity) && is_numeric($unitCost)
             && 1 === new Number($quantity)->compare(0) && -1 !== new Number($unitCost)->compare(0)) {
-            $quantityTotal = new Number($quantityTotal)->add($quantity)->value;
-            $amountTotal = new Number($amountTotal)->add(new Number($quantity)->mul($unitCost))->value;
+            $stock = $stock->after($quantity, $unitCost);
         }
         $last = $this->movements->lastTypedCostOf($product);
 
-        return new ReceiptCost($mode, $costNow, WeightedAverageCost::of($quantityTotal, $amountTotal, $own), $last?->cost, $last?->at);
+        return new ReceiptCost($mode, $costNow, $stock->average($own), $last?->cost, $last?->at);
     }
 }

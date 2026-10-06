@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Module\Inventory\Domain\LotOnHand;
+use App\Module\Inventory\Domain\RunningValue;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockMovement;
@@ -17,7 +18,6 @@ use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Module\Inventory\Domain\StockValue;
 use App\Module\Inventory\Domain\TypedCost;
-use App\Module\Inventory\Domain\WeightedAverageCost;
 use App\Module\Products\Domain\Product;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
@@ -36,11 +36,8 @@ final class InMemoryStockMovements implements StockMovementRepository
     public function save(StockMovement ...$movements): void
     {
         foreach ($movements as $movement) {
-            if (null === $movement->getUnitCost()) {
-                $average = $this->averageCostOf($movement->getProduct());
-                if (null !== $average) {
-                    $movement->valuedAt($average);
-                }
+            if (!\in_array($movement, $this->movements, true)) {
+                RunningValue::of($this->valuedTotalsOf($movement->getProduct()))->take($movement);
             }
             if (!\in_array($movement, $this->movements, true)) {
                 $this->movements[] = $movement;
@@ -52,7 +49,7 @@ final class InMemoryStockMovements implements StockMovementRepository
     {
         $totals = $this->valuedTotalsOf($product);
 
-        return WeightedAverageCost::of($totals['quantity'], $totals['amount'], $product->getDetails()->costPrice);
+        return RunningValue::of($totals)->average($product->getDetails()->costPrice);
     }
 
     public function ofReversing(Uuid $invoiceId, Uuid $companyId): array
@@ -70,7 +67,7 @@ final class InMemoryStockMovements implements StockMovementRepository
         foreach ($this->movements as $earlier) {
             if ($earlier->getProduct() === $product && null !== $earlier->getUnitCost()) {
                 $quantity = $quantity->add($earlier->getQuantity());
-                $amount = $amount->add(new Number($earlier->getQuantity())->mul($earlier->getUnitCost()));
+                $amount = $amount->add(new Number($earlier->getQuantity())->mul($earlier->getUnitCost()))->add($earlier->getRevaluation() ?? '0');
             }
         }
 
@@ -170,7 +167,7 @@ final class InMemoryStockMovements implements StockMovementRepository
             if (null === $cost) {
                 $row['u'] = $row['u']->add($movement->getQuantity());
             } else {
-                $row['v'] = $row['v']->add(new Number($movement->getQuantity())->mul($cost));
+                $row['v'] = $row['v']->add(new Number($movement->getQuantity())->mul($cost))->add($movement->getRevaluation() ?? '0');
             }
             $rows[$key] = $row;
         }
