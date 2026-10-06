@@ -19,9 +19,11 @@ use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\PriceLists\Domain\PriceList;
 use App\Module\PriceLists\Domain\PriceListRepository;
+use App\Module\PriceLists\Infrastructure\Module\PriceListsModule;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\ModuleRegistry\Domain\ModuleState;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Exception\DriverException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -288,6 +290,44 @@ final class PriceListsTest extends ApiTestCase
         $this->getJson($this->price($this->nut, '?customerId='.$this->customer));
         self::assertResponseIsSuccessful();
         self::assertSame(['300.0000', null, null], [$this->json()['unitPriceNet'], $this->json()['priceListName'], $this->json()['minQuantity']], 'a product no list prices keeps its shelf price');
+    }
+
+    /**
+     * A line sent without a price takes the customer's list price in the use case, not only on the screen (docs/SPEC.md
+     * § 7, audit 2026-10-06 A-5): an import, a script or a screen that never asked reaches the API with no price.
+     */
+    public function testALineSentWithoutAPriceStartsAtTheCustomersListPriceOnAnInvoiceAndADeliveryNote(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'invoice.read', 'invoice.write', 'delivery_note.read', 'delivery_note.write']);
+        $this->postJson($this->lists(), ['name' => 'Revendeurs', 'customerGroupId' => $this->group, 'items' => [
+            ['productId' => $this->screw, 'minQuantity' => '1', 'unitPriceNet' => '900'],
+            ['productId' => $this->screw, 'minQuantity' => '10', 'unitPriceNet' => '800'],
+        ]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $lines = [
+            ['productId' => $this->screw, 'quantity' => '10'],
+            ['productId' => $this->screw, 'quantity' => '2'],
+            ['productId' => $this->screw, 'quantity' => '2', 'unitPriceNet' => '950'],
+            ['productId' => $this->nut, 'quantity' => '1'],
+        ];
+        $prices = fn (): array => array_column($this->arrayAt($this->json(), 'lines'), 'unitPriceNet');
+        $invoice = fn (array $lines) => $this->postJson('/api/companies/'.$this->company->getId()->toRfc4122().'/invoices', ['customerId' => $this->customer, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null, 'lines' => $lines]);
+
+        $invoice($lines);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(['800.0000', '900.0000', '950.0000', '300.0000'], $prices(), 'the break the quantity reaches, a typed price kept, the shelf where no list prices');
+        $this->postJson('/api/companies/'.$this->company->getId()->toRfc4122().'/delivery-notes', ['customerId' => $this->customer, 'lines' => $lines]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(['800.0000', '900.0000', '950.0000', '300.0000'], $prices(), 'a delivery note likewise');
+
+        // The client rebooted the kernel, so the company is found again before a row points at it.
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $this->em()->persist(ModuleState::of($company, PriceListsModule::KEY, false, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $invoice([['productId' => $this->screw, 'quantity' => '10']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(['1250.0000'], $prices(), 'with price lists off, the shelf price');
     }
 
     public function testTheRepositoryHandsBackOnlyTheListsThatMayPriceThisCustomer(): void

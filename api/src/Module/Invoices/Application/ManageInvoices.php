@@ -62,6 +62,7 @@ final readonly class ManageInvoices
         private InvoiceTotals $totals,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private InvoiceLinePrices $linePrices,
         private ExcludedTaxFamilies $excluded,
     ) {
     }
@@ -295,7 +296,10 @@ final readonly class ManageInvoices
             throw new InvalidInvoice('unitId', \sprintf('The unit %s is retired.', $unit->getCode()));
         }
 
-        $price = $line->unitPriceNet ?? $product?->getDetails()->unitPriceNet ?? throw new InvalidInvoice('unitPriceNet', 'A line without a product states its price.');
+        // A product line sent without a price starts where the screen would have started it: the customer's list price.
+        $price = $line->unitPriceNet
+            ?? (null === $product ? null : $this->linePrices->startingPrice($product, $customer->getId(), $line->quantity))
+            ?? throw new InvalidInvoice('unitPriceNet', 'A line without a product states its price.');
         $description = null === $line->description || '' === trim($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
 
         return new InvoiceLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->sourceDeliveryNoteLineId, $line->lotCode, $line->returned);

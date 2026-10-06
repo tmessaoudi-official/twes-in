@@ -40,6 +40,7 @@ use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
+use App\Tests\Support\ShelfLinePrices;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
@@ -61,7 +62,7 @@ final class MarkInvoicedDeliveryNotesTest extends TestCase
         $notes->transactions = $transactions;
         $invoices = new InMemoryInvoices();
         $audit = new InMemoryAuditTrail($transactions);
-        $manage = new ManageInvoices($invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $units, $taxes, $establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $audit, $clock, new ExcludedTaxFamilies(ShippedFiscalPresets::presets()));
+        $manage = new ManageInvoices($invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $units, $taxes, $establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $audit, $clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()));
         $now = $clock->now();
         $customer = Customer::create($company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
         $unit = $units->ofCodeInCompany('C62', $company->getId());
