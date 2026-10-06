@@ -1027,6 +1027,13 @@ app-cookie-notice {
   scroll-margin-block: 2.5rem;
 }
 
+// A Material button's touch target reaches a few pixels past the button: at the foot of a tab it overflowed the tab's
+// own scroll box, which then scrolled inside the scrolling page by those pixels. Qualified with the tab group's class,
+// since Material's styles load after this sheet.
+.mat-mdc-tab-group .mat-mdc-tab-body-content {
+  padding-bottom: 0.5rem;
+}
+
 // A section's heading that folds it (row 152): the heading's own look, as a button that says whether it is open.
 .twes-fold-heading {
   display: flex;
