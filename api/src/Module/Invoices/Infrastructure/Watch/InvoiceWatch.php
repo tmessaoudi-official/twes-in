@@ -38,13 +38,15 @@ final readonly class InvoiceWatch implements DeclaresWatch
     public const string INSTRUMENTS_DUE = 'invoices.instruments_due';
 
     /**
-     * An instrument still promising money whose day falls within the week ahead or has passed (§ 7, 2026-09-21 18:50: « cheques
-     * and traites due this week » on the home): the count and the rows read the same condition, and it is
-     * the `(company, status, due_on)` index's own order, so the number on the home never reads an invoice.
+     * The days of « this week » for a cheque or traite, today included: deposited a few days early, it clears on its day.
      */
-    /** How many days ahead a cheque or traite is already worth acting on: deposited a few days early, it clears on its day. */
     public const int INSTRUMENTS_WINDOW_DAYS = 7;
 
+    /**
+     * An instrument still promising money whose day falls within this week or has passed (§ 7, 2026-09-24 11:55: « cheques
+     * and traites due this week »): the count and the rows read the same condition, and it is the
+     * `(company, status, due_on)` index's own order, so the number never reads an invoice.
+     */
     public const string INSTRUMENTS_WHERE = 'pi.company_id = :company AND pi.status IN (:open) AND pi.due_on <= :until';
 
     /** What late means, shared by the count and the rows so the number on the home is the number of rows behind it. */
@@ -220,7 +222,7 @@ final readonly class InvoiceWatch implements DeclaresWatch
             [
                 'company' => $company->getId()->toRfc4122(),
                 'open' => [InstrumentStatus::Held->value, InstrumentStatus::Deposited->value],
-                'until' => $today->modify('+'.self::INSTRUMENTS_WINDOW_DAYS.' days')->format('Y-m-d'),
+                'until' => $today->modify('+'.(self::INSTRUMENTS_WINDOW_DAYS - 1).' days')->format('Y-m-d'),
             ],
             ['open' => ArrayParameterType::STRING],
         ];

@@ -155,10 +155,11 @@ final class WatchTest extends ApiTestCase
         $invoiceId = $this->issuedInvoice('VIS');
         $number = $this->em()->getConnection()->fetchOne('SELECT number FROM invoice WHERE id = ?', [$invoiceId]);
         $instruments = $this->company().'/invoices/'.$invoiceId.'/instruments';
-        $edge = new \DateTimeImmutable($this->today)->modify('+7 days')->format('Y-m-d');
-        $beyond = new \DateTimeImmutable($this->today)->modify('+8 days')->format('Y-m-d');
+        $edge = new \DateTimeImmutable($this->today)->modify('+6 days')->format('Y-m-d');
+        $beyond = new \DateTimeImmutable($this->today)->modify('+7 days')->format('Y-m-d');
 
-        // Due today and due in seven days are « this week »; due in eight is not.
+        // « This week » is seven days, today included (audit 2026-10-06, H-b10): due today and due in six days are in
+        // it; due in seven is not.
         $this->postJson($instruments, ['kind' => 'check', 'amount' => '1', 'dueOn' => $this->today, 'bank' => 'BT', 'number' => 'CHQ-1']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
         $dueToday = $this->stringAt($this->json(), 'id');
@@ -170,10 +171,10 @@ final class WatchTest extends ApiTestCase
         $later = $this->stringAt($this->json(), 'id');
 
         $this->getJson($this->watch());
-        self::assertSame([['invoices.instruments_due', 2]], $this->subjects(), 'today and in seven days; the invoice itself is not late');
+        self::assertSame([['invoices.instruments_due', 2]], $this->subjects(), 'today and in six days; the invoice itself is not late');
         self::assertSame([
             ['invoices.instruments_due', $invoiceId, ['customer' => 'Carthage Conseil', 'invoice' => $number, 'kind' => 'check', 'number' => 'CHQ-1', 'bank' => 'BT', 'amount' => '1.000', 'currency' => 'TND', 'days' => 0]],
-            ['invoices.instruments_due', $invoiceId, ['customer' => 'Carthage Conseil', 'invoice' => $number, 'kind' => 'check', 'number' => 'CHQ-2', 'bank' => '', 'amount' => '1.000', 'currency' => 'TND', 'days' => -7]],
+            ['invoices.instruments_due', $invoiceId, ['customer' => 'Carthage Conseil', 'invoice' => $number, 'kind' => 'check', 'number' => 'CHQ-2', 'bank' => '', 'amount' => '1.000', 'currency' => 'TND', 'days' => -6]],
         ], $this->rows('invoices.instruments_due'));
 
         // The traite's day was three days ago: it is the oldest; a deposited one is still open.
@@ -182,7 +183,7 @@ final class WatchTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $this->getJson($this->watch());
         self::assertSame([['invoices.instruments_due', 3]], $this->subjects());
-        self::assertSame([3, 0, -7], array_map(static fn (array $row): mixed => \is_array($row[2]) ? $row[2]['days'] : null, $this->rows('invoices.instruments_due')), 'oldest due day first');
+        self::assertSame([3, 0, -6], array_map(static fn (array $row): mixed => \is_array($row[2]) ? $row[2]['days'] : null, $this->rows('invoices.instruments_due')), 'oldest due day first');
 
         // Another company's cheque, also fallen due: the raw SQL bypasses the company filter, so only its own predicate keeps it out.
         $other = $this->createCompany('Autre');
