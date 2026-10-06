@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
+import { DecimalInput } from '../shared/form/decimal-input';
+import { AmountPipe } from '../shared/i18n/format-pipes';
 
 /** One line of the note as the dialog offers it: what it says, and what is still to invoice of it. */
 export interface InvoicePartLine {
@@ -22,7 +25,16 @@ export interface InvoicePartLine {
  */
 @Component({
   selector: 'app-invoice-part-dialog',
-  imports: [MatButtonModule, MatDialogModule, MatFormFieldModule, MatInputModule, TranslatePipe],
+  imports: [
+    AmountPipe,
+    DecimalInput,
+    FormsModule,
+    MatButtonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    TranslatePipe,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title data-testid="invoice-part-title">
@@ -38,13 +50,16 @@ export interface InvoicePartLine {
             <mat-label>{{ line.description }}</mat-label>
             <input
               matInput
-              inputmode="decimal"
-              [value]="quantities()[line.lineId]"
-              (input)="onQuantity(line.lineId, $event)"
+              appDecimal
+              autocomplete="off"
+              [ngModel]="quantities()[line.lineId]"
+              (ngModelChange)="onQuantity(line.lineId, $event)"
               [attr.data-testid]="'invoice-part-quantity-' + index"
             />
-            <mat-hint>
-              {{ 'delivery_notes.invoice_part.left' | translate: { left: line.left } }}
+            <mat-hint [attr.data-testid]="'invoice-part-left-' + index">
+              {{
+                'delivery_notes.invoice_part.left' | translate: { left: line.left | amount: null }
+              }}
             </mat-hint>
           </mat-form-field>
         }
@@ -70,9 +85,9 @@ export class InvoicePartDialog {
   protected readonly ref =
     inject<MatDialogRef<InvoicePartDialog, Record<string, string> | null>>(MatDialogRef);
   /** Only the lines with something left. */
-  protected readonly lines = inject<InvoicePartLine[]>(MAT_DIALOG_DATA).filter(
-    (line) => !/^-?0*(\.0*)?$/.test(line.left),
-  );
+  protected readonly lines = inject<InvoicePartLine[]>(MAT_DIALOG_DATA)
+    .filter((line) => !/^-?0*(\.0*)?$/.test(line.left))
+    .map((line) => ({ ...line, left: plainQuantity(line.left) }));
   protected readonly quantities = signal<Record<string, string>>(
     Object.fromEntries(this.lines.map((line) => [line.lineId, line.left])),
   );
@@ -91,8 +106,13 @@ export class InvoicePartDialog {
     return Object.keys(this.chosen()).length > 0;
   }
 
-  protected onQuantity(lineId: string, event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
-    this.quantities.update((all) => ({ ...all, [lineId]: value }));
+  /** What the field holds: the API's point, whatever separator was typed (`appDecimal`). */
+  protected onQuantity(lineId: string, value: unknown): void {
+    this.quantities.update((all) => ({ ...all, [lineId]: typeof value === 'string' ? value : '' }));
   }
+}
+
+/** "4.500" as "4.5": the zeros the API pads a quantity with say nothing to the person reading it. */
+function plainQuantity(value: string): string {
+  return value.includes('.') ? value.replace(/0+$/, '').replace(/\.$/, '') : value;
 }

@@ -56,6 +56,7 @@ class StaticLoader implements TranslateLoader {
           cancelled: 'Annulé, il peut encore être imprimé.',
         },
         invoiced_note: 'Ce bon est sur une facture.',
+        invoice_part: { left: 'Il en reste {{left}}' },
       },
     });
   }
@@ -770,7 +771,7 @@ describe('DeliveryNotePage', () => {
       over('invoice-target-d2')!.click();
 
       await vi.waitFor(() =>
-        expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', { l1: '10.000' }, 'd2'),
+        expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1', { l1: '10' }, 'd2'),
       );
     });
   });
@@ -779,7 +780,7 @@ describe('DeliveryNotePage', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     facade.left.mockResolvedValue({
       lines: [
-        { lineId: 'l1', quantity: '10.000', invoiced: '6.000', left: '4.000' },
+        { lineId: 'l1', quantity: '10.000', invoiced: '5.500', left: '4.500' },
         { lineId: 'l2', quantity: '2.000', invoiced: '2.000', left: '0.000' },
       ],
     });
@@ -789,8 +790,10 @@ describe('DeliveryNotePage', () => {
     q('document-action-invoice-part')!.click();
     await settle();
     expect(facade.left).toHaveBeenCalledWith('c1', 'n1');
+    // Written as the screen writes figures, not as the API sends them (audit 2026-10-06, C-6).
     const quantity = over('invoice-part-quantity-0') as HTMLInputElement;
-    expect(quantity.value).toBe('4.000');
+    expect(quantity.value).toBe('4,5');
+    expect(over('invoice-part-left-0')?.textContent?.trim()).toBe('Il en reste 4,5');
     expect(over('invoice-part-quantity-1'), 'a line with nothing left is not offered').toBeNull();
     typeIn(quantity, '1,5');
     over('invoice-part-confirm')!.click();
