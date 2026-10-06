@@ -21,6 +21,7 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       modules: { inventory: 'Stock' },
+      roles: { owner: 'propriétaire', member: 'membre' },
       permissions: {
         groups: { members: 'Équipe' },
         user: { read: 'Voir les membres', write: 'Inviter et retirer des membres' },
@@ -149,6 +150,10 @@ describe('RolesPage', () => {
 
     expect(facade.load).toHaveBeenCalledWith('c1');
     expect(q('role-owner')?.textContent).toContain('fourni');
+    // A shipped role is named in the screen's language, never by its key (audit 2026-10-06, V-18).
+    expect(q('role-name-owner')?.textContent?.trim()).toBe('Propriétaire');
+    expect(q('role-name-member')?.textContent?.trim()).toBe('Membre');
+    expect(q('role-name-barista')?.textContent?.trim()).toBe('barista');
     expect(q('role-owner')?.textContent).toContain('2 membre(s)');
     expect(q('role-barista')?.textContent).not.toContain('fourni');
     expect(q('role-barista')?.textContent).toContain('0 membre(s)');

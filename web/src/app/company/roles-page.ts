@@ -9,13 +9,14 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
+import { TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { Label } from '../shared/a11y/label';
 import { Feedback } from '../shared/feedback/feedback';
@@ -35,6 +36,7 @@ import type { RoleRow } from './roles-types';
   selector: 'app-roles-page',
   imports: [
     Label,
+    TitleCasePipe,
     FormsModule,
     MatButtonModule,
     MatCheckboxModule,
@@ -52,6 +54,7 @@ export class RolesPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly live = inject(LiveChanges);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
 
   protected readonly roles = this.facade.roles;
   protected readonly groups = this.facade.groups;
@@ -103,8 +106,21 @@ export class RolesPage implements OnInit {
   protected openRole(row: RoleRow): void {
     this.facade.clearError();
     this.openId.set(row.id);
-    this.draftName.set(row.name);
+    // A shipped role is named in the screen's language; its stored name is a key nobody may change (audit V-18).
+    this.draftName.set(row.builtIn ? this.shippedName(row.name) : row.name);
     this.ticksSignal.set(new Set(row.permissions));
+  }
+
+  /** The open role's saved name, as the list shows it; not what is being typed. */
+  protected readonly openName = computed(() => {
+    const role = this.open();
+    if (role === null) return '';
+    return role.builtIn ? this.shippedName(role.name) : role.name;
+  });
+
+  private shippedName(name: string): string {
+    const shown = this.translate.instant(`roles.${name}`) as string;
+    return shown.charAt(0).toLocaleUpperCase() + shown.slice(1);
   }
 
   protected startNew(): void {
