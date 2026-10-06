@@ -49,6 +49,7 @@ final readonly class RecordStockReceiptProcessor implements ProcessorInterface
                 $sees ? $data->unitCost : null,
                 $sees && null !== $data->applyCost ? CostBasis::from($data->applyCost) : null,
                 $this->documents->named($company, $data->vendorId, $data->supplierReference, $data->receivedOn),
+                !$sees,
             );
         } catch (InvalidStockMovement $refused) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);

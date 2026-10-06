@@ -26,6 +26,7 @@ use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use BcMath\Number;
 use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\ORM\Tools\Pagination\Paginator;
@@ -110,6 +111,38 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         $totals = $this->valuedTotalsOf($product);
 
         return RunningValue::of($totals)->average($product->getDetails()->costPrice);
+    }
+
+    public function valuedTotalsBefore(StockMovement $movement): array
+    {
+        $this->lockValueOf($movement->getProduct()->getId());
+        $row = $this->entityManager->createQueryBuilder()
+            ->select('SUM(m.quantity) AS quantity', 'SUM(m.quantity * m.unitCost + COALESCE(m.revaluation, 0)) AS amount')
+            ->from(StockMovement::class, 'm')
+            ->where('m.product = :product')
+            ->andWhere('m.unitCost IS NOT NULL')
+            ->andWhere('m.at < :at OR (m.at = :at AND m.id < :id)')
+            ->setParameter('product', $movement->getProduct()->getId(), 'uuid')
+            ->setParameter('at', $movement->getAt(), Types::DATETIME_IMMUTABLE)
+            ->setParameter('id', $movement->getId(), 'uuid')
+            ->getQuery()
+            ->getSingleResult();
+        $row = \is_array($row) ? $row : [];
+
+        return ['quantity' => self::decimal($row['quantity'] ?? 0), 'amount' => new Number('0.0000000')->add(self::amount($row['amount'] ?? 0))->value];
+    }
+
+    public function saveValued(StockMovement $movement): void
+    {
+        $this->entityManager->persist($movement);
+        $this->entityManager->flush();
+    }
+
+    public function ofIdInCompany(Uuid $id, Uuid $companyId): ?StockMovement
+    {
+        $movement = $this->entityManager->find(StockMovement::class, $id);
+
+        return $movement instanceof StockMovement && $movement->getCompany()->getId()->equals($companyId) ? $movement : null;
     }
 
     public function valuedTotalsOf(Product $product): array

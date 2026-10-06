@@ -60,6 +60,32 @@ final class InMemoryStockMovements implements StockMovementRepository
         ));
     }
 
+    public function valuedTotalsBefore(StockMovement $movement): array
+    {
+        $quantity = new Number('0.000');
+        $amount = new Number('0.0000000');
+        foreach ($this->movements as $earlier) {
+            if ($earlier === $movement) {
+                break;
+            }
+            if ($earlier->getProduct() === $movement->getProduct() && null !== $earlier->getUnitCost()) {
+                $quantity = $quantity->add($earlier->getQuantity());
+                $amount = $amount->add(new Number($earlier->getQuantity())->mul($earlier->getUnitCost()))->add($earlier->getRevaluation() ?? '0');
+            }
+        }
+
+        return ['quantity' => $quantity->value, 'amount' => $amount->value];
+    }
+
+    public function saveValued(StockMovement $movement): void
+    {
+    }
+
+    public function ofIdInCompany(Uuid $id, Uuid $companyId): ?StockMovement
+    {
+        return array_find($this->movements, static fn (StockMovement $each): bool => $each->getId()->equals($id) && $each->getCompany()->getId()->equals($companyId));
+    }
+
     public function valuedTotalsOf(Product $product): array
     {
         $quantity = new Number('0.000');

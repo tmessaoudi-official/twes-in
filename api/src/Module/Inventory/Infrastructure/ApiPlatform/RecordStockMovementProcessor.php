@@ -61,6 +61,6 @@ final readonly class RecordStockMovementProcessor implements ProcessorInterface
     {
         $sees = $this->guard->may($company, ProductPermission::COST_READ);
 
-        return $this->stock->receive($company, $productId, $locationId, $data->quantity, $actor, $data->lot(), $sees ? $data->unitCost : null, $sees && null !== $data->applyCost ? CostBasis::from($data->applyCost) : null, $this->documents->named($company, $data->vendorId, $data->supplierReference, $data->receivedOn));
+        return $this->stock->receive($company, $productId, $locationId, $data->quantity, $actor, $data->lot(), $sees ? $data->unitCost : null, $sees && null !== $data->applyCost ? CostBasis::from($data->applyCost) : null, $this->documents->named($company, $data->vendorId, $data->supplierReference, $data->receivedOn), !$sees);
     }
 }

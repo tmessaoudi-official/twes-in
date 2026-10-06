@@ -117,6 +117,10 @@ class StockMovement implements CompanyOwned
     #[ORM\Column(options: ['default' => false])]
     private bool $costTyped = false;
 
+    /** A receipt recorded by someone who may not read costs, valued at the average until a cost reader enters its cost. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $costToComplete = false;
+
     /** The vendor a receipt came from, when it names one; the vendor kept, its movements keep it, a deleted one leaves none. */
     #[ORM\ManyToOne(targetEntity: Vendor::class)]
     #[ORM\JoinColumn(name: 'vendor_id', nullable: true, onDelete: 'SET NULL')]
@@ -162,20 +166,14 @@ class StockMovement implements CompanyOwned
     }
 
     /** @throws InvalidStockMovement */
-    public static function receipt(Product $product, StockLocation $location, string $quantity, ?Uuid $recordedBy, \DateTimeImmutable $now, ?StockLot $lot = null, ?string $unitCost = null, ?ReceiptDocument $document = null): self
+    public static function receipt(Product $product, StockLocation $location, string $quantity, ?Uuid $recordedBy, \DateTimeImmutable $now, ?StockLot $lot = null, ?string $unitCost = null, ?ReceiptDocument $document = null, bool $costToComplete = false): self
     {
         $receipt = new self($product, $location, $lot, StockMovementKind::In, self::onePieceOfASerial($product, self::quantity($quantity, $product, false)), self::SOURCE_RECEIPT, null, $recordedBy, $now);
         if (null !== $unitCost) {
-            if (1 !== preg_match('/^(0|[1-9][0-9]{0,10})(?:\.([0-9]{1,4}))?$/', trim($unitCost), $match)) {
-                throw new InvalidStockMovement('unitCost', 'A cost is an amount from zero with at most four decimals.');
-            }
-            $normalized = $match[1].'.'.str_pad($match[2] ?? '', 4, '0');
-            if (!is_numeric($normalized)) {
-                throw new \LogicException(\sprintf('The cost %s was not normalized to a number.', $normalized));
-            }
-            $receipt->unitCost = new Number($normalized)->value;
+            $receipt->unitCost = self::cost($unitCost);
             $receipt->costTyped = true;
         }
+        $receipt->costToComplete = $costToComplete && null === $unitCost;
         if (null !== $document) {
             // The company's own day decides what is still to come, wherever the server is.
             $today = $now->setTimezone(new \DateTimeZone($product->getCompany()->getTimezone()))->format('Y-m-d');
@@ -437,6 +435,49 @@ class StockMovement implements CompanyOwned
     public function isCostTyped(): bool
     {
         return $this->costTyped;
+    }
+
+    public function isCostToComplete(): bool
+    {
+        return $this->costToComplete;
+    }
+
+    /**
+     * A cost reader enters the cost of a receipt left « à compléter »: it is worth that from then on, and lifts a stock
+     * that was below nothing as it would have at that cost.
+     *
+     * @param RunningValue $before the product's valued stock before this receipt
+     *
+     * @throws InvalidStockMovement
+     * @throws StockMovementCostKnown
+     */
+    public function costEntered(string $unitCost, RunningValue $before): void
+    {
+        if (!$this->costToComplete) {
+            throw new StockMovementCostKnown('Only a receipt whose cost was left to a cost reader takes one afterwards.');
+        }
+        $this->unitCost = self::cost($unitCost);
+        $this->costTyped = true;
+        $this->costToComplete = false;
+        $this->revaluation = $before->revaluationFor($this->quantity, $this->unitCost);
+    }
+
+    /**
+     * @return numeric-string
+     *
+     * @throws InvalidStockMovement
+     */
+    private static function cost(string $unitCost): string
+    {
+        if (1 !== preg_match('/^(0|[1-9][0-9]{0,10})(?:\.([0-9]{1,4}))?$/', trim($unitCost), $match)) {
+            throw new InvalidStockMovement('unitCost', 'A cost is an amount from zero with at most four decimals.');
+        }
+        $normalized = $match[1].'.'.str_pad($match[2] ?? '', 4, '0');
+        if (!is_numeric($normalized)) {
+            throw new \LogicException(\sprintf('The cost %s was not normalized to a number.', $normalized));
+        }
+
+        return new Number($normalized)->value;
     }
 
     /** The invoice whose sale this movement takes back; none for any other movement. */

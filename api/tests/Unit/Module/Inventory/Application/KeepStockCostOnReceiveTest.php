@@ -16,6 +16,7 @@ use App\Module\Inventory\Application\StockCostSettings;
 use App\Module\Inventory\Domain\CostBasis;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockMovement;
+use App\Module\Inventory\Domain\StockMovementCostKnown;
 use App\Module\Products\Application\ChangeProductCost;
 use App\Module\Products\Domain\CostChangeSource;
 use App\Module\Products\Domain\Product;
@@ -129,6 +130,25 @@ final class KeepStockCostOnReceiveTest extends TestCase
         $this->keep->receive($this->company, $vice->getId(), $this->site->getId(), '10', null, null, '60');
 
         self::assertSame('60.0000', $vice->getDetails()->costPrice, 'the five on the shelf came in at 60, not (600 - 500) over 5 = 20');
+    }
+
+    public function testACostEnteredLaterLiftsAStockBelowNothingAsTheReceiptWouldHaveAtThatCost(): void
+    {
+        // Five sold below nothing at the cost price of 100; ten come in « à compléter », valued at that 100 meanwhile.
+        $this->mode('average');
+        $vice = $this->product('ART-003', '100');
+        $this->movements->save(StockMovement::sale($vice, $this->site, '5', Uuid::v7(), new \DateTimeImmutable('2026-09-15 08:00:00')));
+        $receipt = $this->keep->receive($this->company, $vice->getId(), $this->site->getId(), '10', null, costToComplete: true);
+        self::assertTrue($receipt->isCostToComplete());
+        self::assertSame('100.0000', $this->movements->averageCostOf($vice));
+
+        $this->keep->enterCost($this->company, $receipt->getId(), '60', null, null);
+
+        self::assertFalse($receipt->isCostToComplete());
+        self::assertSame('60.0000', $this->movements->averageCostOf($vice), 'the five on the shelf came in at 60, as if typed on the receipt');
+        self::assertSame('60.0000', $vice->getDetails()->costPrice);
+        $this->expectException(StockMovementCostKnown::class);
+        $this->keep->enterCost($this->company, $receipt->getId(), '70', null, null);
     }
 
     protected function setUp(): void

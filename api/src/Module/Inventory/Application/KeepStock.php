@@ -14,6 +14,7 @@ use App\Module\Inventory\Domain\CostOnReceive;
 use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\NamedLot;
 use App\Module\Inventory\Domain\ReceiptDocument;
+use App\Module\Inventory\Domain\RunningValue;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockLocation;
@@ -22,6 +23,7 @@ use App\Module\Inventory\Domain\StockLossReason;
 use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockLotRepository;
 use App\Module\Inventory\Domain\StockMovement;
+use App\Module\Inventory\Domain\StockMovementCostKnown;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Module\Inventory\Domain\StockValue;
@@ -82,9 +84,9 @@ final readonly class KeepStock
      *
      * @throws InvalidStockMovement
      */
-    public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null, ?ReceiptDocument $document = null): StockMovement
+    public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null, ?ReceiptDocument $document = null, bool $costToComplete = false): StockMovement
     {
-        return $this->transactions->run(fn (): StockMovement => $this->receiptAt($company, $productId, $locationId, $quantity, $actorUserId, $named, $unitCost, $apply, $document));
+        return $this->transactions->run(fn (): StockMovement => $this->receiptAt($company, $productId, $locationId, $quantity, $actorUserId, $named, $unitCost, $apply, $document, $costToComplete));
     }
 
     /**
@@ -98,7 +100,7 @@ final readonly class KeepStock
      *
      * @throws InvalidStockMovement
      */
-    public function receiveSplit(Company $company, Uuid $productId, array $parts, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null, ?ReceiptDocument $document = null): array
+    public function receiveSplit(Company $company, Uuid $productId, array $parts, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null, ?ReceiptDocument $document = null, bool $costToComplete = false): array
     {
         if ([] === $parts) {
             throw new InvalidStockMovement('parts', 'A receipt needs at least one place.');
@@ -114,17 +116,17 @@ final readonly class KeepStock
         }
 
         return $this->transactions->run(fn (): array => array_map(
-            fn (array $part): StockMovement => $this->receiptAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named, $unitCost, $apply, $document),
+            fn (array $part): StockMovement => $this->receiptAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named, $unitCost, $apply, $document, $costToComplete),
             $parts,
         ));
     }
 
     /** @throws InvalidStockMovement */
-    private function receiptAt(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?CostBasis $apply, ?ReceiptDocument $document): StockMovement
+    private function receiptAt(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?CostBasis $apply, ?ReceiptDocument $document, bool $costToComplete): StockMovement
     {
         [$product, $location] = $this->trackedAt($company, $productId, $locationId);
         $lot = $this->lotFor($product, $named, true);
-        $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now(), $lot, $unitCost, $document);
+        $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now(), $lot, $unitCost, $document, $costToComplete);
         // Read before saving: a receipt typed with no cost is valued at the average when it is saved, and that
         // figure is not a price anybody typed.
         $typed = $movement->getUnitCost();
@@ -134,6 +136,28 @@ final readonly class KeepStock
         $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.received', $actorUserId, $company->getId()));
 
         return $movement;
+    }
+
+    /**
+     * A cost reader enters the cost of a receipt left « à compléter » by someone who could not read costs (docs/SPEC.md
+     * § 7, audit 2026-10-06 C challenge 9): the receipt is worth that from then on, and the product's cost moves as the
+     * company's setting says, as it would have on the receipt.
+     *
+     * @throws StockMovementNotFound
+     * @throws StockMovementCostKnown
+     * @throws InvalidStockMovement
+     */
+    public function enterCost(Company $company, Uuid $movementId, string $unitCost, ?CostBasis $apply, ?Uuid $actorUserId): StockMovement
+    {
+        return $this->transactions->run(function () use ($company, $movementId, $unitCost, $apply, $actorUserId): StockMovement {
+            $receipt = $this->movements->ofIdInCompany($movementId, $company->getId()) ?? throw new StockMovementNotFound();
+            $receipt->costEntered($unitCost, RunningValue::of($this->movements->valuedTotalsBefore($receipt)));
+            $this->movements->saveValued($receipt);
+            $this->moveCost($company, $receipt->getProduct(), $receipt, $receipt->getUnitCost(), $apply, $actorUserId);
+            $this->liveChanges->stage(new LiveChange('stock', $receipt->getProduct()->getId(), 'stock.cost_entered', $actorUserId, $company->getId()));
+
+            return $receipt;
+        });
     }
 
     /**

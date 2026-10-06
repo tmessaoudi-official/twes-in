@@ -481,6 +481,63 @@ final class InventoryTest extends ApiTestCase
         self::assertSame(['1275.0000', 2], [$cost(), $rows()], 'a writer who cannot read costs neither types one nor applies one');
     }
 
+    /**
+     * A receipt recorded by someone who may not read costs keeps its cost « à compléter »: a cost reader is asked for it on
+     * « À surveiller », and once it is entered the weighted average and the product cost move (docs/SPEC.md § 7, audit
+     * 2026-10-06 C challenge 9).
+     */
+    public function testAReceiptBySomeoneWhoCannotReadCostsWaitsForACostReaderWhoCompletesIt(): void
+    {
+        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'average', new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->signedIn(['company.read', 'stock.read', 'stock.write', 'product.cost.read']);
+        $site = $this->defaultLocationId();
+        $receive = fn (string $quantity, ?string $cost) => $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => $quantity, 'unitCost' => $cost]);
+        $cost = fn (): mixed => $this->em()->getConnection()->fetchOne('SELECT cost_price FROM product WHERE id = ?', [$this->laptopId]);
+        $toComplete = $this->path('watch/stock.receipt_cost_to_complete');
+        $receive('10', '1000');
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame('1000.0000', $cost());
+        $receive('4', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'a cost reader leaving the cost out is not asked for it again');
+
+        $this->createUser('clerk@twes.local', 'password-1234', $this->company(), ['company.read', 'stock.read', 'stock.write'], 'counter');
+        $this->login('clerk@twes.local', 'password-1234');
+        $receive('10', '9000');
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $receiptId = $this->stringAt($this->json(), 'id');
+        self::assertSame('1000.0000', $cost(), 'valued at the average meanwhile, the typed cost ignored');
+        $this->postJson($this->path('stock-receipts'), ['productId' => $this->laptopId, 'parts' => [['locationId' => $site, 'quantity' => '2']], 'unitCost' => '9000']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $splitId = $this->stringAt($this->json(), 'id');
+        $this->getJson($toComplete);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the subject is a cost reader\'s');
+        $complete = fn (string $id, string $unitCost) => $this->postJson($this->path('stock-movements', $id).'/cost', ['unitCost' => $unitCost]);
+        $complete($receiptId, '1200');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'nor may a writer who cannot read costs enter one');
+
+        $this->login('stock@twes.local', 'password-1234');
+        $this->getJson($toComplete);
+        self::assertResponseIsSuccessful();
+        self::assertSame([$receiptId, $splitId], array_column($this->jsonList(), 'subjectId'), 'only the receipts nobody could cost, a split one too, oldest first');
+        $complete($receiptId, '12x');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $complete($receiptId, '1200');
+        self::assertResponseIsSuccessful();
+        self::assertTrue($this->json()['costTyped'] ?? null);
+        $row = $this->em()->getConnection()->fetchAssociative('SELECT unit_cost, cost_typed, cost_to_complete FROM stock_movement WHERE id = ?', [$receiptId]);
+        self::assertSame(['unit_cost' => '1200.0000', 'cost_typed' => true, 'cost_to_complete' => false], $row);
+        self::assertSame('1076.9231', $cost(), '(10 x 1000 + 4 x 1000 + 10 x 1200 + 2 x 1000) over 26: the average moves once the cost is known');
+        $this->getJson($toComplete);
+        self::assertSame([$splitId], array_column($this->jsonList(), 'subjectId'), 'asked once, answered once');
+        $complete($receiptId, '1300');
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a cost entered is a cost, not a question any more');
+
+        $other = $this->createCompany('Globex');
+        $this->postJson('/api/companies/'.$other->getId()->toRfc4122().'/stock-movements/'.$receiptId.'/cost', ['unitCost' => '1']);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company');
+    }
+
     public function testTheReceiptCostAndTheCostHistoryAreReadOnlyWithTheCostPermission(): void
     {
         $this->signedIn(['stock.read', 'stock.write', 'product.cost.read']);

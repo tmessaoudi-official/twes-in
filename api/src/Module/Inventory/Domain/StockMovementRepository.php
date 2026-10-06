@@ -37,6 +37,19 @@ interface StockMovementRepository
     public function valuedTotalsOf(Product $product): array;
 
     /**
+     * The same totals over the product's movements before this one, under the product's lock: the stock a receipt
+     * whose cost comes later met when it came in.
+     *
+     * @return array{quantity: numeric-string, amount: numeric-string}
+     */
+    public function valuedTotalsBefore(StockMovement $movement): array;
+
+    public function ofIdInCompany(Uuid $id, Uuid $companyId): ?StockMovement;
+
+    /** Writes a movement already valued as it now is, without valuing it again: a receipt whose cost came later. */
+    public function saveValued(StockMovement $movement): void;
+
+    /**
      * What credit notes have already returned of an invoice's sale.
      *
      * @return list<StockMovement>

@@ -239,6 +239,19 @@ final class StockMovementResource
     #[Groups([self::READ])]
     public string $at = '';
 
+    /** Whether somebody typed what one unit cost, as opposed to the average a receipt without one is valued at. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public bool $costTyped = false;
+
+    /**
+     * A receipt recorded by someone who could not read costs, whose cost a cost reader is asked to enter (docs/SPEC.md
+     * § 7, audit 2026-10-06 C challenge 9).
+     */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public bool $costToComplete = false;
+
     /** The lot the write names, or none. */
     public function lot(): ?NamedLot
     {
@@ -271,6 +284,8 @@ final class StockMovementResource
         $resource->sourceId = $movement->getSourceId()?->toRfc4122();
         $resource->recordedBy = $movement->getRecordedBy()?->toRfc4122();
         $resource->at = $movement->getAt()->format(\DATE_ATOM);
+        $resource->costTyped = $movement->isCostTyped();
+        $resource->costToComplete = $movement->isCostToComplete();
 
         return $resource;
     }
