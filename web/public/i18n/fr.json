@@ -1297,6 +1297,7 @@
         "quantity_above_source": "Plus que ce qui reste à facturer sur le bon de livraison."
       },
       "no_product_found": "Aucun produit trouvé.",
+      "price_unchecked": "Prix non vérifié : le tarif du client n'a pas pu être lu.",
       "price_list": "Tarif : {{name}}"
     },
     "document_taxes": {
@@ -1506,6 +1507,7 @@
   },
   "delivery_notes": {
     "credit_over": "Cette livraison porte ce que le client doit à {{owed}} + {{total}} {{currency}}, au-delà de son plafond de crédit de {{limit}} {{currency}}.",
+    "credit_unchecked": "Plafond de crédit non vérifié : la position du client n'a pas pu être lue.",
     "invoice_target": {
       "title": "Sur quelle facture ce bon est-il facturé ?",
       "help": "Une nouvelle facture, ou à la suite des lignes d'un brouillon de ce client. Une facture émise n'est jamais modifiée : un avoir la corrige.",
@@ -1589,6 +1591,7 @@
       "lot_hint": "Celui qui est remis ; vide, le lot qui expire le premier sort du stock.",
       "unitPriceNet": "Prix unitaire HT",
       "price_hint": "En {{currency}}, avec au plus quatre décimales.",
+      "price_unchecked": "Prix non vérifié : le tarif du client n'a pas pu être lu.",
       "price_list": "Tarif : {{name}}",
       "taxes": "Taxes de la ligne",
       "add": "Ajouter une ligne",

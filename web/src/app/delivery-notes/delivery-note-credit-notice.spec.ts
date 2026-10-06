@@ -15,7 +15,10 @@ import type { DeliveryNoteCredit } from './delivery-notes-types';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
-      delivery_notes: { credit_over: 'Dépassé : {{owed}} + {{total}} sur {{limit}} {{currency}}' },
+      delivery_notes: {
+        credit_over: 'Dépassé : {{owed}} + {{total}} sur {{limit}} {{currency}}',
+        credit_unchecked: 'Plafond non vérifié',
+      },
     });
   }
 }
@@ -60,6 +63,8 @@ describe('DeliveryNoteCreditNotice', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
   const notice = (el: HTMLElement) => el.querySelector('[data-testid="delivery-note-credit-over"]');
+  const unchecked = (el: HTMLElement) =>
+    el.querySelector('[data-testid="delivery-note-credit-unchecked"]');
 
   beforeEach(() => credit.mockReset());
 
@@ -72,13 +77,20 @@ describe('DeliveryNoteCreditNotice', () => {
     expect(notice(el)?.getAttribute('role')).toBe('alert');
   });
 
-  it('says nothing when the delivery stays under the limit, or when the position could not be read', async () => {
+  it('says nothing when the delivery stays under the limit', async () => {
     credit.mockResolvedValue(position(false));
-    expect(notice((await render()).el)).toBeNull();
+    const { el } = await render();
+    expect(notice(el)).toBeNull();
+    expect(unchecked(el)).toBeNull();
+  });
 
-    TestBed.resetTestingModule();
+  // Audit 2026-10-06, G-12: the warning exists to stop a delivery past the limit, so its absence must not be silent.
+  it('says the limit was not checked when the position could not be read', async () => {
     credit.mockResolvedValue(null);
-    expect(notice((await render()).el)).toBeNull();
+    const { el } = await render();
+
+    expect(notice(el)).toBeNull();
+    expect(unchecked(el)?.textContent?.trim()).toBe('Plafond non vérifié');
   });
 
   it('reads again when the note’s total changes, since that changes the answer', async () => {

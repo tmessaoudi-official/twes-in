@@ -90,6 +90,11 @@ export class DeliveryNoteLines {
   private readonly known = new Map<string, ProductOption>();
   /** The price list that set each line's price, with the price it set. */
   private readonly listed = new WeakMap<LineGroup, { name: string; price: string }>();
+  /** The price a line held when its list could not be asked, while it still holds it. */
+  private readonly unchecked = new WeakMap<LineGroup, string>();
+  /** The latest question asked for each line: an earlier quantity's answer arriving late is dropped. */
+  private readonly asked = new WeakMap<LineGroup, number>();
+  private asking = 0;
   private readonly offered = computed(
     () => new Set(offeredTaxes(this.options(), this.excludedFamilies()).map((tax) => tax.id)),
   );
@@ -199,6 +204,13 @@ export class DeliveryNoteLines {
     void this.reprice(line);
   }
 
+  /** Whether the line's price is one its list could not be asked about, while it is still on the line. */
+  protected priceUnchecked(line: LineGroup): boolean {
+    this.revision();
+    const held = this.unchecked.get(line);
+    return held !== undefined && held === line.controls.unitPriceNet.value;
+  }
+
   /** The price list that set a line's price, while the price on the line is still the one it set. */
   protected listOf(line: LineGroup): string | null {
     this.revision();
@@ -215,13 +227,23 @@ export class DeliveryNoteLines {
     const product = this.known.get(productId);
     if (!this.priceLists() || product === undefined) return;
     const quantity = line.controls.quantity.value;
+    const ask = ++this.asking;
+    this.asked.set(line, ask);
     const resolved = await this.facade.productPrice(
       this.companyId(),
       productId,
       this.customer()?.id ?? null,
       quantity === '' ? '1' : quantity,
     );
-    if (resolved === null || line.controls.productId.value !== productId) return;
+    if (this.asked.get(line) !== ask || line.controls.productId.value !== productId) return;
+    if (resolved === null) {
+      // A wrong price on a fiscal document is the expensive failure: the line says its price was not checked.
+      this.unchecked.set(line, line.controls.unitPriceNet.value);
+      this.listed.delete(line);
+      this.revision.update((revision) => revision + 1);
+      return;
+    }
+    this.unchecked.delete(line);
     const scale = this.options().currencyScale;
     const current = line.controls.unitPriceNet.value;
     if (

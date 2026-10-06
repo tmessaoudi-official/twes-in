@@ -145,7 +145,11 @@
               [attr.data-testid]="'line-' + i + '-price'"
             />
             <mat-hint>
-              @if (listOf(line); as list) {
+              @if (priceUnchecked(line)) {
+                <span class="text-error" [attr.data-testid]="'line-' + i + '-price-unchecked'">{{
+                  'invoices.lines.price_unchecked' | translate
+                }}</span>
+              } @else if (listOf(line); as list) {
                 <span [attr.data-testid]="'line-' + i + '-price-list'">{{
                   'invoices.lines.price_list' | translate: { name: list }
                 }}</span>

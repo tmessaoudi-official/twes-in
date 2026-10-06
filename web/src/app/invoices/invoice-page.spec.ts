@@ -564,6 +564,51 @@ describe('InvoicePage', () => {
       expect((q('line-0-price') as HTMLInputElement).value).toBe('1500,000');
     });
 
+    // Audit 2026-10-06, G-4: a wrong price on a fiscal document is the expensive failure, so a price the list could not
+    // be asked for is marked, and an earlier quantity's answer arriving late never prices a later quantity.
+    it('marks the price as not checked when the customer’s list could not be read', async () => {
+      modulesOn.add('price_lists');
+      facade.productPrice.mockResolvedValue(null);
+      await open(undefined);
+      await pick('invoice-customer', 'CLI-2 · Méditerranée');
+      await pick('line-0-product', 'ART-1 · Conception');
+
+      expect(q('line-0-price-unchecked')?.textContent).toContain('invoices.lines.price_unchecked');
+      expect(q('line-0-price-list')).toBeNull();
+
+      facade.productPrice.mockResolvedValue({ unitPriceNet: '1700.0000', priceListName: 'Gros' });
+      type('line-0-quantity', '2');
+      (q('line-0-quantity') as HTMLInputElement).dispatchEvent(new Event('blur'));
+      await settle();
+      expect(q('line-0-price-unchecked')).toBeNull();
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1700,000');
+    });
+
+    it('keeps the answer for the latest quantity when an earlier one answers after it', async () => {
+      modulesOn.add('price_lists');
+      facade.productPrice.mockResolvedValueOnce({
+        unitPriceNet: '1700.0000',
+        priceListName: 'Gros',
+      });
+      await open(undefined);
+      await pick('invoice-customer', 'CLI-2 · Méditerranée');
+      await pick('line-0-product', 'ART-1 · Conception');
+      let answerTen!: (price: unknown) => void;
+      facade.productPrice
+        .mockReturnValueOnce(new Promise((resolve) => (answerTen = resolve)))
+        .mockResolvedValueOnce({ unitPriceNet: '1200.0000', priceListName: 'Gros' });
+
+      type('line-0-quantity', '10');
+      (q('line-0-quantity') as HTMLInputElement).dispatchEvent(new Event('blur'));
+      type('line-0-quantity', '100');
+      (q('line-0-quantity') as HTMLInputElement).dispatchEvent(new Event('blur'));
+      await settle();
+      answerTen({ unitPriceNet: '1500.0000', priceListName: 'Gros' });
+      await settle();
+
+      expect((q('line-0-price') as HTMLInputElement).value).toBe('1200,000');
+    });
+
     it('leaves a price the person typed alone', async () => {
       modulesOn.add('price_lists');
       facade.productPrice.mockResolvedValueOnce({

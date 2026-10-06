@@ -1076,6 +1076,20 @@ describe('DeliveryNotePage', () => {
       expect(q('line-0-price-list')?.textContent).toContain('delivery_notes.lines.price_list');
     });
 
+    // Audit 2026-10-06, G-4: a price the customer's list could not be asked about is marked, never left silently.
+    it('marks the price as not checked when the customer’s list could not be read', async () => {
+      modules.add('price_lists');
+      facade.productPrice.mockResolvedValue(null);
+      await open(undefined);
+      await pick('delivery-note-customer', 'CLI-2 · Export SA');
+      await pick('line-0-product', 'ART-1 · Portable 14"');
+
+      expect(q('line-0-price-unchecked')?.textContent).toContain(
+        'delivery_notes.lines.price_unchecked',
+      );
+      expect(q('line-0-price-list')).toBeNull();
+    });
+
     it('prices the lines again for another customer, who may have another list', async () => {
       modules.add('price_lists');
       facade.productPrice

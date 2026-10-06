@@ -103,8 +103,7 @@ export class DeliveryNotesFacade {
 
   /**
    * What delivering the note would do to its customer's credit limit, or null when that could not be read. The notice
-   * is advisory and sits beside a screen that reports the server's absence itself, so a failed read says nothing
-   * here rather than replacing the note with an error.
+   * is advisory, so a failed read does not replace the note with an error: the notice says the limit was not checked.
    */
   async credit(companyId: string, id: string): Promise<DeliveryNoteCredit | null> {
     try {

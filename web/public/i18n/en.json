@@ -1297,6 +1297,7 @@
         "quantity_above_source": "More than is left to invoice on the delivery note."
       },
       "no_product_found": "No product found.",
+      "price_unchecked": "Price not checked: the customer's price list could not be read.",
       "price_list": "Price list: {{name}}"
     },
     "document_taxes": {
@@ -1506,6 +1507,7 @@
   },
   "delivery_notes": {
     "credit_over": "This delivery brings what the customer owes to {{owed}} + {{total}} {{currency}}, past their credit limit of {{limit}} {{currency}}.",
+    "credit_unchecked": "Credit limit not checked: the customer's position could not be read.",
     "invoice_target": {
       "title": "Where is this note invoiced?",
       "help": "A new invoice, or added after the lines of a draft of this customer. An issued invoice is never changed: a credit note corrects it.",
@@ -1589,6 +1591,7 @@
       "lot_hint": "The one handed over; left empty, the lot expiring first leaves the stock.",
       "unitPriceNet": "Net unit price",
       "price_hint": "In {{currency}}, with up to four decimals.",
+      "price_unchecked": "Price not checked: the customer's price list could not be read.",
       "price_list": "Price list: {{name}}",
       "taxes": "Taxes on the line",
       "add": "Add a line",

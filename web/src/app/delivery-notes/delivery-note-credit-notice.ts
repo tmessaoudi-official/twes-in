@@ -16,7 +16,8 @@ import type { DeliveryNoteCredit } from './delivery-notes-types';
 
 /**
  * Says so when delivering a note would take its customer past their credit limit (docs/SPEC.md § 7). It warns and
- * never blocks: the person delivering decides. Read again whenever the note's total or status changes, because both
+ * never blocks: the person delivering decides. When the position could not be read it says the limit was not checked,
+ * rather than nothing, which would read as « within the limit ». Read again whenever the note's total or status changes, because both
  * change the answer.
  */
 @Component({
@@ -38,6 +39,10 @@ import type { DeliveryNoteCredit } from './delivery-notes-types';
           }}
         </p>
       }
+    } @else if (credit() === null) {
+      <p class="text-sm text-on-surface-variant" data-testid="delivery-note-credit-unchecked">
+        {{ 'delivery_notes.credit_unchecked' | translate }}
+      </p>
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -53,7 +58,8 @@ export class DeliveryNoteCreditNotice {
   readonly currency = input.required<string>();
   readonly scale = input.required<number>();
 
-  protected readonly credit = signal<DeliveryNoteCredit | null>(null);
+  /** The position; null when it could not be read, which is said, since the warning exists to stop a delivery. */
+  protected readonly credit = signal<DeliveryNoteCredit | null | undefined>(undefined);
   private request = 0;
 
   constructor() {
