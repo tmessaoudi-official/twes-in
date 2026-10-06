@@ -78,6 +78,19 @@ final class InMemoryStockMovements implements StockMovementRepository
         return ['quantity' => $quantity->value, 'amount' => $amount->value];
     }
 
+    public function valuedAfter(StockMovement $movement): array
+    {
+        $index = array_search($movement, $this->movements, true);
+        if (false === $index) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            \array_slice($this->movements, $index + 1),
+            static fn (StockMovement $later): bool => $later->getProduct() === $movement->getProduct() && null !== $later->getUnitCost(),
+        ));
+    }
+
     public function saveValued(StockMovement $movement): void
     {
     }

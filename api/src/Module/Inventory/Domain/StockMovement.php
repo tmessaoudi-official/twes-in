@@ -45,6 +45,8 @@ class StockMovement implements CompanyOwned
     public const string SOURCE_CREDIT_NOTE = 'credit_note';
     public const string SOURCE_MOVE = 'move';
     public const string SOURCE_LOSS = 'loss';
+    /** The share of a late receipt cost that went with the goods already gone: no quantity, only a value. */
+    public const string SOURCE_COST_CORRECTION = 'cost_correction';
     public const int NOTE_MAX = 500;
     public const int QUANTITY_DECIMALS = 3;
     private const string QUANTITY = '/^(-?)(0|[1-9][0-9]{0,10})(?:\.([0-9]{1,3}))?$/';
@@ -505,6 +507,33 @@ class StockMovement implements CompanyOwned
     public function revaluedBy(string $amount): void
     {
         $this->revaluation ??= $amount;
+    }
+
+    /**
+     * A receipt's late cost booked against the cost of sales on the day it is entered (docs/SPEC.md § 7, the B-F4
+     * ruling): it moves no goods and takes that much off the stock's value, once per receipt.
+     *
+     * @param numeric-string $amount what went with the goods gone, signed: a cost entered below the provisional one gives back
+     *
+     * @throws InvalidStockMovement
+     */
+    public static function costOfSalesCorrection(self $receipt, string $amount, ?Uuid $recordedBy, \DateTimeImmutable $now): self
+    {
+        $correction = new self($receipt->product, $receipt->location, $receipt->lot, StockMovementKind::Adjustment, '0.000', self::SOURCE_COST_CORRECTION, $receipt->id, $recordedBy, $now);
+        $correction->unitCost = $receipt->unitCost;
+        $correction->revaluation = new Number('0.0000000')->sub(new Number($amount))->value;
+
+        return $correction;
+    }
+
+    /** @return numeric-string what the movement adds to the stock's value, seven decimals; nothing when it has no cost */
+    public function value(): string
+    {
+        if (null === $this->unitCost) {
+            return '0.0000000';
+        }
+
+        return new Number('0.0000000')->add(new Number($this->quantity)->mul($this->unitCost))->add($this->revaluation ?? '0')->value;
     }
 
     /** @return numeric-string|null */

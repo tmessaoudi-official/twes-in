@@ -452,6 +452,20 @@ describe('InventoryApi', () => {
     await expect(known).rejects.toMatchObject({ code: 'cost_known' });
   });
 
+  it('keeps a credit note’s return and a late cost’s correction as what they are, not as receipts', async () => {
+    const entered = api.enterReceiptCost('c1', 'm1', '8', null);
+    http
+      .expectOne('/api/companies/c1/stock-movements/m1/cost')
+      .flush({ id: 'm1', sourceType: 'credit_note' });
+    expect((await entered).sourceType).toBe('credit_note');
+
+    const again = api.enterReceiptCost('c1', 'm2', '8', null);
+    http
+      .expectOne('/api/companies/c1/stock-movements/m2/cost')
+      .flush({ id: 'm2', sourceType: 'cost_correction' });
+    expect((await again).sourceType).toBe('cost_correction');
+  });
+
   it('records a receipt or a count, and says why one was refused', async () => {
     const recorded = api.record('c1', {
       operation: 'receive',

@@ -12,6 +12,7 @@ namespace App\Module\Inventory\Application;
 use App\Module\Inventory\Domain\CostBasis;
 use App\Module\Inventory\Domain\CostOnReceive;
 use App\Module\Inventory\Domain\InvalidStockMovement;
+use App\Module\Inventory\Domain\LateCost;
 use App\Module\Inventory\Domain\NamedLot;
 use App\Module\Inventory\Domain\ReceiptDocument;
 use App\Module\Inventory\Domain\RunningValue;
@@ -190,13 +191,38 @@ final readonly class KeepStock
     {
         return $this->transactions->run(function () use ($company, $movementId, $unitCost, $apply, $actorUserId): StockMovement {
             $receipt = $this->movements->ofIdInCompany($movementId, $company->getId()) ?? throw new StockMovementNotFound();
-            $receipt->costEntered($unitCost, RunningValue::of($this->movements->valuedTotalsBefore($receipt)));
+            $before = RunningValue::of($this->movements->valuedTotalsBefore($receipt));
+            $provisional = $receipt->value();
+            $receipt->costEntered($unitCost, $before);
             $this->movements->saveValued($receipt);
+            $this->costOfSalesShare($receipt, $provisional, $before, $actorUserId);
             $this->moveCost($company, $receipt->getProduct(), $receipt, $receipt->getUnitCost(), $apply, $actorUserId);
             $this->liveChanges->stage(new LiveChange('stock', $receipt->getProduct()->getId(), 'stock.cost_entered', $actorUserId, $company->getId()));
 
             return $receipt;
         });
+    }
+
+    /**
+     * What the entered cost changed, split (docs/SPEC.md § 7, the B-F4 ruling): the share that went with the goods gone
+     * since the receipt is booked today against the cost of sales, so the stock left is worth what it cost and the
+     * average the product cost may move to is that cost, not the whole difference crowded onto what remains.
+     *
+     * @param numeric-string $provisional what the receipt was worth before its cost was entered
+     *
+     * @throws InvalidStockMovement
+     */
+    private function costOfSalesShare(StockMovement $receipt, string $provisional, RunningValue $before, ?Uuid $actorUserId): void
+    {
+        $since = array_values(array_map(
+            static fn (StockMovement $later): string => $later->getQuantity(),
+            array_filter($this->movements->valuedAfter($receipt), static fn (StockMovement $later): bool => StockMovement::SOURCE_MOVE !== $later->getSourceType()),
+        ));
+        $difference = new Number($receipt->value())->sub($provisional)->value;
+        $sold = LateCost::soldShare($difference, new Number($before->quantity)->add($receipt->getQuantity())->value, $since);
+        if (null !== $sold) {
+            $this->movements->saveValued(StockMovement::costOfSalesCorrection($receipt, $sold, $actorUserId, $this->clock->now()));
+        }
     }
 
     /**

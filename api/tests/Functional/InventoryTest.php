@@ -584,6 +584,47 @@ final class InventoryTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company');
     }
 
+    /**
+     * A cost entered after some of the receipt's goods have left is split (docs/SPEC.md § 7, the B-F4 ruling): the share
+     * that went with them is booked once, that day, as a correction of the cost of sales, and the rest stays on the stock.
+     * 10 received at a provisional 5, 5 gone, 8 entered: 5 left worth 40, a cost of 8, and 15 to the cost of sales.
+     */
+    public function testACostEnteredAfterSomeOfTheGoodsLeftSplitsTheDifferenceBetweenTheStockAndTheCostOfSales(): void
+    {
+        $this->em()->getConnection()->executeStatement('UPDATE product SET cost_price = 5 WHERE id = ?', [$this->laptopId]);
+        $this->em()->persist(new Setting(SettingAddress::company($this->company()), 'stock.cost_on_receive', 'average', new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->createUser('clerk@twes.local', 'password-1234', $this->company(), ['company.read', 'stock.read', 'stock.write'], 'counter');
+        $this->signedIn(['company.read', 'stock.read', 'stock.write', 'product.cost.read']);
+        $site = $this->defaultLocationId();
+
+        $this->login('clerk@twes.local', 'password-1234');
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => '10']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $receiptId = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('stock-movements'), ['operation' => 'loss', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => '5', 'reason' => 'broken', 'note' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        // A move to another shelf takes nothing out of the stock: it is no share of the sales.
+        $this->postJson($this->path('stock-locations'), $this->location(['kind' => 'rack', 'code' => 'R9', 'name' => 'Rayon 9']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->path('stock-movements'), ['operation' => 'move', 'productId' => $this->laptopId, 'locationId' => $site, 'toLocationId' => $this->stringAt($this->json(), 'id'), 'quantity' => '3']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->login('stock@twes.local', 'password-1234');
+        $this->postJson($this->path('stock-movements', $receiptId).'/cost', ['unitCost' => '8']);
+        self::assertResponseIsSuccessful();
+
+        $value = $this->em()->getConnection()->fetchOne('SELECT SUM(quantity * unit_cost + COALESCE(revaluation, 0)) FROM stock_movement WHERE product_id = ? AND unit_cost IS NOT NULL', [$this->laptopId]);
+        self::assertEquals(40, $value, 'the five left are worth what they cost');
+        self::assertSame('8.0000', $this->em()->getConnection()->fetchOne('SELECT cost_price FROM product WHERE id = ?', [$this->laptopId]));
+        $corrections = $this->em()->getConnection()->fetchAllAssociative("SELECT quantity, revaluation::numeric(14, 4) AS revaluation, source_id FROM stock_movement WHERE source_type = 'cost_correction'");
+        self::assertSame([['quantity' => '0.000', 'revaluation' => '-15.0000', 'source_id' => $receiptId]], $corrections, 'the share of the goods gone, booked once against the receipt');
+
+        $this->getJson($this->path('stock-movements').'?sourceType=cost_correction');
+        self::assertResponseIsSuccessful();
+        self::assertCount(1, $this->jsonList(), 'the correction is in the stock history, under its own kind');
+    }
+
     public function testTheReceiptCostAndTheCostHistoryAreReadOnlyWithTheCostPermission(): void
     {
         $this->signedIn(['stock.read', 'stock.write', 'product.cost.read']);

@@ -44,6 +44,14 @@ interface StockMovementRepository
      */
     public function valuedTotalsBefore(StockMovement $movement): array;
 
+    /**
+     * The product's movements that carry a cost after this one, in the order they were valued: what a late receipt cost
+     * met once it came in.
+     *
+     * @return list<StockMovement>
+     */
+    public function valuedAfter(StockMovement $movement): array;
+
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?StockMovement;
 
     /** Writes a movement already valued as it now is, without valuing it again: a receipt whose cost came later. */

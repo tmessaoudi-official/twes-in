@@ -43,7 +43,7 @@ use Symfony\Component\Validator\Constraints as Assert;
                 'locationId' => new QueryParameter(schema: self::ID, description: 'Only what moved at this location.'),
                 'kind' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['in', 'out', 'adjustment']], description: 'Only what moved this way.'),
                 'lot' => new QueryParameter(description: 'Only what moved this lot or serial number, its code matched whole and whatever its case.'),
-                'sourceType' => new QueryParameter(schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_MOVE, StockMovement::SOURCE_LOSS, StockMovement::SOURCE_DELIVERY_NOTE, StockMovement::SOURCE_INVOICE]], description: 'Only what this kind of document moved.'),
+                'sourceType' => new QueryParameter(schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_MOVE, StockMovement::SOURCE_LOSS, StockMovement::SOURCE_DELIVERY_NOTE, StockMovement::SOURCE_INVOICE, StockMovement::SOURCE_CREDIT_NOTE, StockMovement::SOURCE_COST_CORRECTION]], description: 'Only what this kind of document moved.'),
                 'order[movedAt]' => new QueryParameter(schema: self::DIRECTION),
                 'order[product]' => new QueryParameter(schema: self::DIRECTION),
                 'order[location]' => new QueryParameter(schema: self::DIRECTION),
@@ -221,7 +221,7 @@ final class StockMovementResource
     #[Groups([self::READ, self::WRITE])]
     public string $quantity = '';
 
-    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_MOVE, StockMovement::SOURCE_LOSS, StockMovement::SOURCE_DELIVERY_NOTE, StockMovement::SOURCE_INVOICE]])]
+    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_MOVE, StockMovement::SOURCE_LOSS, StockMovement::SOURCE_DELIVERY_NOTE, StockMovement::SOURCE_INVOICE, StockMovement::SOURCE_CREDIT_NOTE, StockMovement::SOURCE_COST_CORRECTION]])]
     #[Groups([self::READ])]
     public string $sourceType = '';
 

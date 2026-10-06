@@ -133,6 +133,25 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return ['quantity' => self::decimal($row['quantity'] ?? 0), 'amount' => new Number('0.0000000')->add(self::amount($row['amount'] ?? 0))->value];
     }
 
+    public function valuedAfter(StockMovement $movement): array
+    {
+        $after = $this->entityManager->createQueryBuilder()
+            ->select('m')
+            ->from(StockMovement::class, 'm')
+            ->where('m.product = :product')
+            ->andWhere('m.unitCost IS NOT NULL')
+            ->andWhere('m.at > :at OR (m.at = :at AND m.id > :id)')
+            ->setParameter('product', $movement->getProduct()->getId(), 'uuid')
+            ->setParameter('at', $movement->getAt(), Types::DATETIME_IMMUTABLE)
+            ->setParameter('id', $movement->getId(), 'uuid')
+            ->orderBy('m.at')
+            ->addOrderBy('m.id')
+            ->getQuery()
+            ->getResult();
+
+        return array_values(array_filter(\is_array($after) ? $after : [], static fn (mixed $each): bool => $each instanceof StockMovement));
+    }
+
     public function saveValued(StockMovement $movement): void
     {
         $this->entityManager->persist($movement);

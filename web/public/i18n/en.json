@@ -2051,7 +2051,9 @@
       "move": "Move",
       "loss": "Write-off",
       "delivery_note": "Delivery note",
-      "invoice": "Invoice"
+      "invoice": "Invoice",
+      "credit_note": "Credit note",
+      "cost_correction": "Cost of sales correction"
     },
     "kinds": {
       "site": "Site",

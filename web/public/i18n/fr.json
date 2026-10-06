@@ -2051,7 +2051,9 @@
       "move": "Déplacement",
       "loss": "Perte",
       "delivery_note": "Bon de livraison",
-      "invoice": "Facture"
+      "invoice": "Facture",
+      "credit_note": "Avoir",
+      "cost_correction": "Correction du coût des ventes"
     },
     "kinds": {
       "site": "Site",
