@@ -7,14 +7,14 @@
 
 declare(strict_types=1);
 
-namespace App\Scanning\Infrastructure\Http;
+namespace App\Module\Scanning\Infrastructure\Http;
 
 use App\Identity\Domain\UserRepository;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
-use App\Scanning\Application\PairingEcho;
-use App\Scanning\Application\PhonePairings;
-use App\Scanning\Domain\ScanPairingRefused;
+use App\Module\Scanning\Application\PairingEcho;
+use App\Module\Scanning\Application\PhonePairings;
+use App\Module\Scanning\Domain\ScanPairingRefused;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Bundle\SecurityBundle\Security;

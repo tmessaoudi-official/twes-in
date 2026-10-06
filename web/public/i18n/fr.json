@@ -469,6 +469,7 @@
   },
   "modules": {
     "customers": "Clients",
+    "scanning": "Scanner",
     "delivery_notes": "Bons de livraison",
     "products": "Produits",
     "inventory": "Stock",

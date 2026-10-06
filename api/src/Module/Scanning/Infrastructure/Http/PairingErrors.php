@@ -7,9 +7,9 @@
 
 declare(strict_types=1);
 
-namespace App\Scanning\Infrastructure\Http;
+namespace App\Module\Scanning\Infrastructure\Http;
 
-use App\Scanning\Domain\ScanPairingRefused;
+use App\Module\Scanning\Domain\ScanPairingRefused;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;

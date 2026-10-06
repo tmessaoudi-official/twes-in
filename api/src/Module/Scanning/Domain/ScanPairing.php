@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Scanning\Domain;
+namespace App\Module\Scanning\Domain;
 
 use App\Identity\Domain\User;
 use App\Shared\Domain\CompanyOwned;

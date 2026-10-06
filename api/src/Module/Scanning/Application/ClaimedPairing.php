@@ -7,13 +7,13 @@
 
 declare(strict_types=1);
 
-namespace App\Scanning\Application;
+namespace App\Module\Scanning\Application;
 
 use Symfony\Component\Uid\Uuid;
 
-final readonly class OpenedPairing
+final readonly class ClaimedPairing
 {
-    public function __construct(public Uuid $id, public string $link)
+    public function __construct(public Uuid $id, public string $key)
     {
     }
 }

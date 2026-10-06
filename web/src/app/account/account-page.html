@@ -171,61 +171,63 @@
                 >
               </div>
 
-              <div class="flex flex-col gap-2">
-                <h2 class="text-lg font-semibold">{{ 'account.scanning' | translate }}</h2>
-                <mat-slide-toggle
-                  data-testid="account-scan-feedback"
-                  [checked]="scanFeedback()"
-                  (change)="setScanFeedback($event.checked)"
-                  >{{ 'account.scan_feedback' | translate }}</mat-slide-toggle
-                >
-                <div class="flex flex-col gap-2" data-testid="account-scanner">
-                  <h3 class="text-base font-medium">{{ 'account.scanner.title' | translate }}</h3>
-                  <p class="text-sm opacity-80" data-testid="account-scanner-gap">
-                    {{ 'account.scanner.gap' | translate: { ms: scanGap.gap() } }}
-                  </p>
-                  <mat-form-field appearance="outline" class="max-w-sm">
-                    <mat-label>{{ 'account.scanner.test' | translate }}</mat-label>
-                    <input
-                      matInput
-                      autocomplete="off"
-                      data-testid="account-scanner-test"
-                      (keydown)="measure($event)"
-                    />
-                  </mat-form-field>
-                  @if (suggestion(); as ms) {
-                    <p data-testid="account-scanner-result">
-                      {{ 'account.scanner.result' | translate: { ms } }}
+              @if (scanning()) {
+                <div class="flex flex-col gap-2">
+                  <h2 class="text-lg font-semibold">{{ 'account.scanning' | translate }}</h2>
+                  <mat-slide-toggle
+                    data-testid="account-scan-feedback"
+                    [checked]="scanFeedback()"
+                    (change)="setScanFeedback($event.checked)"
+                    >{{ 'account.scan_feedback' | translate }}</mat-slide-toggle
+                  >
+                  <div class="flex flex-col gap-2" data-testid="account-scanner">
+                    <h3 class="text-base font-medium">{{ 'account.scanner.title' | translate }}</h3>
+                    <p class="text-sm opacity-80" data-testid="account-scanner-gap">
+                      {{ 'account.scanner.gap' | translate: { ms: scanGap.gap() } }}
                     </p>
-                    <div class="flex gap-2">
-                      <button
-                        mat-flat-button
-                        type="button"
-                        data-testid="account-scanner-apply"
-                        (click)="applySuggestion()"
-                      >
-                        {{ 'account.scanner.apply' | translate: { ms } }}
-                      </button>
-                    </div>
-                  } @else if (measuredNothing()) {
-                    <p data-testid="account-scanner-nothing">
-                      {{ 'account.scanner.nothing' | translate }}
-                    </p>
-                  }
-                  @if (scanGap.gap() !== defaultGap) {
-                    <div class="flex gap-2">
-                      <button
-                        mat-stroked-button
-                        type="button"
-                        data-testid="account-scanner-reset"
-                        (click)="scanGap.reset()"
-                      >
-                        {{ 'account.scanner.reset' | translate: { ms: defaultGap } }}
-                      </button>
-                    </div>
-                  }
+                    <mat-form-field appearance="outline" class="max-w-sm">
+                      <mat-label>{{ 'account.scanner.test' | translate }}</mat-label>
+                      <input
+                        matInput
+                        autocomplete="off"
+                        data-testid="account-scanner-test"
+                        (keydown)="measure($event)"
+                      />
+                    </mat-form-field>
+                    @if (suggestion(); as ms) {
+                      <p data-testid="account-scanner-result">
+                        {{ 'account.scanner.result' | translate: { ms } }}
+                      </p>
+                      <div class="flex gap-2">
+                        <button
+                          mat-flat-button
+                          type="button"
+                          data-testid="account-scanner-apply"
+                          (click)="applySuggestion()"
+                        >
+                          {{ 'account.scanner.apply' | translate: { ms } }}
+                        </button>
+                      </div>
+                    } @else if (measuredNothing()) {
+                      <p data-testid="account-scanner-nothing">
+                        {{ 'account.scanner.nothing' | translate }}
+                      </p>
+                    }
+                    @if (scanGap.gap() !== defaultGap) {
+                      <div class="flex gap-2">
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          data-testid="account-scanner-reset"
+                          (click)="scanGap.reset()"
+                        >
+                          {{ 'account.scanner.reset' | translate: { ms: defaultGap } }}
+                        </button>
+                      </div>
+                    }
+                  </div>
                 </div>
-              </div>
+              }
 
               @if (canPin()) {
                 <div class="flex flex-col gap-2">

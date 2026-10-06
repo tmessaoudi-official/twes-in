@@ -136,7 +136,12 @@ describe('AccountPage', () => {
   const me = signal<{ mfa: MfaStatus }>({
     mfa: { enrolled: true, required: false, totp: true, passkeys: 0 },
   });
-  const auth = { me, changePassword: vi.fn() };
+  const modules = signal<readonly string[]>(['scanning']);
+  const auth = {
+    me,
+    changePassword: vi.fn(),
+    hasModule: (module: string) => modules().includes(module),
+  };
   let fixture: ComponentFixture<AccountPage>;
 
   async function render(tab?: string): Promise<HTMLElement> {
@@ -365,6 +370,15 @@ describe('AccountPage', () => {
     toggle?.click();
 
     expect(theme.setShowComing).toHaveBeenCalledWith(false);
+  });
+
+  it('says nothing of scanning with the scanner switched off for the company', async () => {
+    modules.set([]);
+    const root = await render('preferences');
+
+    expect(byTestId(root, 'account-scan-feedback')).toBeNull();
+    expect(byTestId(root, 'account-scanner')).toBeNull();
+    modules.set(['scanning']);
   });
 
   it('turns the beep and the buzz of a camera scan off and on, for the person', async () => {

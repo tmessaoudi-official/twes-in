@@ -67,6 +67,47 @@ test('a module switched off leaves the navigation, its pages and its API until i
   }
 });
 
+// docs/SPEC.md § 7, 2026-10-06 21:02: the scanner is a module. Off, the bar offers no camera and no phone, and the
+// API opens no pairing; on again, both come back.
+test('the scanner switched off offers no camera nor phone and opens no pairing, until it is on again', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const pairing = () =>
+    page.evaluate(async (csrf) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const opened = await fetch(`/api/companies/${me.company.id}/scan-pairings`, {
+        method: 'POST',
+        headers: { 'csrf-token': csrf, 'x-tab': 'e2e-scanner-module' },
+      });
+      if (opened.ok) {
+        const { id } = (await opened.json()) as { id: string };
+        await fetch(`/api/companies/${me.company.id}/scan-pairings/${id}`, {
+          method: 'DELETE',
+          headers: { 'csrf-token': csrf },
+        });
+      }
+      return opened.status;
+    }, CSRF);
+  try {
+    await page.goto('/');
+    await expect(page.getByTestId('phone-pair')).toBeVisible();
+    await switchModule(page, 'scanning', false);
+    await page.reload();
+    await expect(page.getByTestId('nav-customers')).toBeVisible();
+    await expect(page.getByTestId('phone-pair')).toHaveCount(0);
+    await expect(page.getByTestId('camera-open')).toHaveCount(0);
+    expect(await pairing()).toBe(404);
+    await page.screenshot({ path: test.info().outputPath('scanner-off.png') });
+  } finally {
+    await switchModule(page, 'scanning', true);
+  }
+  await page.reload();
+  await expect(page.getByTestId('phone-pair')).toBeVisible();
+  expect(await pairing()).toBe(201);
+});
+
 async function setInterest(page: Page, key: string, interested: boolean): Promise<void> {
   await page.evaluate(
     async ([csrf, moduleKey, wanted]) => {

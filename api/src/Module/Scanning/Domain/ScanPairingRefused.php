@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Scanning\Domain;
+namespace App\Module\Scanning\Domain;
 
 /**
  * Why a phone was turned away: `claimed` (the link was already used), `expired` (it was not claimed in time), `ended`

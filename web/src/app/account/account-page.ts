@@ -19,6 +19,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { SCANNING_MODULE } from '../shared/scan/scanning-module';
 import type { PasswordChangeOutcome } from '../auth/auth-types';
 import { CompanyFacade } from '../company/company-facade';
 import { ConnectedDevices } from './connected-devices';
@@ -121,6 +122,8 @@ export class AccountPage implements OnInit {
   protected readonly twoFactorOn = computed(() => this.auth.me()?.mfa.enrolled === true);
 
   private readonly settings = inject(SettingsFacade);
+  /** The scanner is a module (docs/SPEC.md § 7, 2026-10-06 21:02): off, its preferences have nothing to set. */
+  protected readonly scanning = computed(() => this.auth.hasModule(SCANNING_MODULE));
   protected readonly scanFeedback = this.settings.value(PRESENTATION.scanFeedback);
   /** The shell's single keys as this person has them (docs/SPEC.md § 7, 2026-09-24 22:51, row 125). */
   protected readonly keys = this.settings.value(PRESENTATION.shortcuts);

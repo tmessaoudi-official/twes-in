@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Support;
 
-use App\Scanning\Domain\ScanPairing;
-use App\Scanning\Domain\ScanPairingRepository;
+use App\Module\Scanning\Domain\ScanPairing;
+use App\Module\Scanning\Domain\ScanPairingRepository;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryScanPairings implements ScanPairingRepository

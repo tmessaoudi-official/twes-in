@@ -469,6 +469,7 @@
   },
   "modules": {
     "customers": "Customers",
+    "scanning": "Scanner",
     "delivery_notes": "Delivery notes",
     "products": "Products",
     "inventory": "Inventory",

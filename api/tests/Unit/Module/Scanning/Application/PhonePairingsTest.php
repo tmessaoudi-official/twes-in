@@ -7,14 +7,15 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Scanning\Application;
+namespace App\Tests\Unit\Module\Scanning\Application;
 
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
-use App\Scanning\Application\PairingEcho;
-use App\Scanning\Application\PhonePairings;
-use App\Scanning\Domain\ScanPairing;
-use App\Scanning\Domain\ScanPairingRefused;
+use App\Module\Scanning\Application\PairingEcho;
+use App\Module\Scanning\Application\PhonePairings;
+use App\Module\Scanning\Application\ScannerSwitch;
+use App\Module\Scanning\Domain\ScanPairing;
+use App\Module\Scanning\Domain\ScanPairingRefused;
 use App\Shared\Application\RealtimeToken;
 use App\Shared\Application\RealtimeTokens;
 use App\Tenancy\Domain\Company;
@@ -42,6 +43,7 @@ final class PhonePairingsTest extends TestCase
     private User $user;
     /** @var list<array{subject: string, channels: array<mixed>}> */
     private array $issued = [];
+    private bool $scannerOn = true;
 
     protected function setUp(): void
     {
@@ -239,6 +241,29 @@ final class PhonePairingsTest extends TestCase
         self::assertFalse($this->pairings->get($other->id)?->isLive($this->clock->now()));
     }
 
+    public function testAScannerSwitchedOffAnswersThePhoneAsAPairingThatNeverWas(): void
+    {
+        [$id, $key] = $this->claimedPairing();
+        $unclaimed = $this->phones()->open($this->company, $this->user, 'tab-2');
+        $this->scannerOn = false;
+        $before = \count($this->realtime->pushed);
+
+        foreach ([
+            fn () => $this->phones()->scan($id, $key, '3017620422003', '0199aaaa-0000-4000-8000-000000000001'),
+            fn () => $this->phones()->token($id, $key),
+            fn () => $this->phones()->claim($unclaimed->link),
+        ] as $call) {
+            try {
+                $call();
+                self::fail('a switched-off scanner answered the phone');
+            } catch (ScanPairingRefused $refused) {
+                self::assertSame('unknown', $refused->reason);
+            }
+        }
+        self::assertCount($before, $this->realtime->pushed);
+        self::assertFalse($this->pairings->get($unclaimed->id)?->isClaimed());
+    }
+
     public function testThePhonesConnectionHearsItsOwnChannelOnly(): void
     {
         [$id, $key] = $this->claimedPairing();
@@ -303,6 +328,18 @@ final class PhonePairingsTest extends TestCase
             }
         };
 
-        return new PhonePairings($this->pairings, $this->realtime, $tokens, $this->transactions, $this->clock);
+        $scanner = new class(fn (): bool => $this->scannerOn) implements ScannerSwitch {
+            /** @param \Closure(): bool $on */
+            public function __construct(private \Closure $on)
+            {
+            }
+
+            public function isOn(Uuid $companyId): bool
+            {
+                return ($this->on)();
+            }
+        };
+
+        return new PhonePairings($this->pairings, $this->realtime, $tokens, $this->transactions, $this->clock, $scanner);
     }
 }

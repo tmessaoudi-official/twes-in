@@ -7,9 +7,9 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Scanning\Infrastructure;
+namespace App\Tests\Unit\Module\Scanning\Infrastructure;
 
-use App\Scanning\Infrastructure\Http\PhoneAddress;
+use App\Module\Scanning\Infrastructure\Http\PhoneAddress;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Scanning\Domain;
+namespace App\Module\Scanning\Domain;
 
 use Symfony\Component\Uid\Uuid;
 

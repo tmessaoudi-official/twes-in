@@ -609,6 +609,7 @@ describe('AppShell', () => {
 
   it('keeps a slim bar above the page, its scanning controls at the end', async () => {
     permissions.set(['product.read']);
+    modules.set(['customers', 'scanning']);
     const { fixture, byTestId, el } = await render();
     const bar = el.querySelector('.twes-shell-bar');
     expect(bar?.contains(byTestId('camera-open'))).toBe(true);
@@ -1128,7 +1129,7 @@ describe('AppShell', () => {
 
   it('runs no shortcut for the first letter of a scanned code', async () => {
     permissions.set(['product.read']);
-    modules.set(['products']);
+    modules.set(['products', 'scanning']);
     await render();
     let issued = 0;
     declareScreenActions([
@@ -1239,7 +1240,7 @@ describe('AppShell', () => {
 
   it('opens what a scan names when a scanner types a code with no field focused', async () => {
     permissions.set(['product.read']);
-    modules.set(['products']);
+    modules.set(['products', 'scanning']);
     const { el } = await render();
     let saved = 0;
     declareScreenActions([
@@ -1279,7 +1280,7 @@ describe('AppShell', () => {
 
   it('reads a scan whose characters a French keyboard types with AltGr, as a GS1 prefix is', async () => {
     permissions.set(['product.read']);
-    modules.set(['products']);
+    modules.set(['products', 'scanning']);
     await render();
     const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
       afterClosed: () => of(undefined),
@@ -1305,7 +1306,7 @@ describe('AppShell', () => {
 
   it('lends a phone as a scanner to somebody who reads the products, and lets it go when the shell goes', async () => {
     permissions.set(['product.read']);
-    modules.set(['products']);
+    modules.set(['products', 'scanning']);
     const { fixture, click } = await render();
     const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
       afterClosed: () => of(undefined),
@@ -1316,6 +1317,32 @@ describe('AppShell', () => {
     expect(open).toHaveBeenCalledWith(PhonePairingDialog, expect.anything());
     fixture.destroy();
     expect(pairing.end).toHaveBeenCalled();
+  });
+
+  // docs/SPEC.md § 7, 2026-10-06 21:02: the scanner is a module; off, nothing offers it and a burst opens nothing.
+  it('offers no camera and no phone with the scanner off, and a burst outside a field opens nothing nor runs a key', async () => {
+    permissions.set(['product.read']);
+    modules.set(['products']);
+    const { byTestId } = await render();
+    let saved = 0;
+    declareScreenActions([
+      { id: 'save', label: 'products.save', shortcut: 's', run: () => (saved += 1) },
+    ]);
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(undefined),
+    } as never);
+
+    expect(byTestId('camera-open')).toBeNull();
+    expect(byTestId('phone-pair')).toBeNull();
+    [...'0s123', 'Enter'].forEach((key) =>
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+      ),
+    );
+    await settled();
+
+    expect(open).not.toHaveBeenCalled();
+    expect(saved).toBe(0);
   });
 
   // docs/SPEC.md § 7, 2026-10-03 08:20: the customer screen is one click from any page, for whoever may read products.
@@ -1359,6 +1386,7 @@ describe('AppShell', () => {
   });
 
   it('gives a scan to the screen that acts on it, counted as typed before it, and Ctrl Z takes it back', async () => {
+    modules.set(['customers', 'scanning']);
     const { fixture } = await render();
     const seen: number[] = [];
     let undone = 0;

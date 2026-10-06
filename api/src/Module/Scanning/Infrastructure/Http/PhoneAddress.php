@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Scanning\Infrastructure\Http;
+namespace App\Module\Scanning\Infrastructure\Http;
 
 /**
  * Where a phone opens a pairing link, when that is not where the computer tab is (docs/SPEC.md § 7, 2026-09-23 14:08):

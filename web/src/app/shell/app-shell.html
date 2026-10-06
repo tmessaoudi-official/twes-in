@@ -271,7 +271,7 @@
               <mat-icon aria-hidden="true">search</mat-icon>
             </button>
           }
-          @if (cameraAvailable) {
+          @if (cameraAvailable && scanning()) {
             <button
               mat-icon-button
               type="button"

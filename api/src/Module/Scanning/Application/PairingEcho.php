@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Scanning\Application;
+namespace App\Module\Scanning\Application;
 
 /**
  * What the computer tab tells the phone about one scan (docs/SPEC.md § 7, 2026-09-23 09:45, slice 4): the outcome as

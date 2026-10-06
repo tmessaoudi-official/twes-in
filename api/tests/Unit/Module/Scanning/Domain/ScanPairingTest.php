@@ -7,12 +7,12 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Unit\Scanning\Domain;
+namespace App\Tests\Unit\Module\Scanning\Domain;
 
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
-use App\Scanning\Domain\ScanPairing;
-use App\Scanning\Domain\ScanPairingRefused;
+use App\Module\Scanning\Domain\ScanPairing;
+use App\Module\Scanning\Domain\ScanPairingRefused;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;

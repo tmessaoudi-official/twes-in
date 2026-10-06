@@ -9,7 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Scanning\Domain\ScanPairing;
+use App\Module\Scanning\Domain\ScanPairing;
+use App\ModuleRegistry\Domain\ModuleState;
 use App\Shared\Application\RealtimePublisher;
 use App\Shared\Infrastructure\Realtime\HmacJwt;
 use App\Tenancy\Domain\Company;
@@ -197,10 +198,37 @@ final class ScanPairingTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
     }
 
-    /** @return array{string, string} the pairing's id and its link */
-    private function open(): array
+    /** The scanner is a module a company switches off (docs/SPEC.md § 7, 2026-10-06 21:02): then no tab and no phone is answered. */
+    public function testASwitchedOffScannerAnswersNeitherTheTabNorThePhone(): void
     {
+        [$id, $link] = $this->open();
+        [, $unclaimed] = $this->open('tab-2');
+        $key = $this->claim($link);
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $this->em()->persist(ModuleState::of($company, 'scanning', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $before = \count($this->publisher->pushed);
+
+        $this->postJson("/api/scan-pairings/$id/scans", ['code' => '3017620422003', 'scan' => '0199aaaa-0000-4000-8000-000000000001'], server: ['HTTP_X_PAIRING_KEY' => $key]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->postJson("/api/scan-pairings/$id/realtime-token", null, server: ['HTTP_X_PAIRING_KEY' => $key]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->postJson('/api/scan-pairings/claim', ['link' => $unclaimed]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertCount($before, $this->publisher->pushed);
+
+        $this->login('till@twes.local', 'password-1234');
         $this->postJson($this->pairingsPath(), null, server: ['HTTP_X_TAB' => 'tab-1']);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->postJson($this->pairingPath($id).'/heartbeat', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /** @return array{string, string} the pairing's id and its link */
+    private function open(string $tab = 'tab-1'): array
+    {
+        $this->postJson($this->pairingsPath(), null, server: ['HTTP_X_TAB' => $tab]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $body = $this->json();
         $id = $this->stringAt($body, 'id');

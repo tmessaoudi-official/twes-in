@@ -70,6 +70,7 @@ import { ScanBus } from '../shared/scan/scan-bus';
 import { ScanCount } from '../shared/scan/scan-count';
 import { ScanGap } from '../shared/scan/scan-gap';
 import { ScanWedge } from '../shared/scan/scan-wedge';
+import { SCANNING_MODULE } from '../shared/scan/scanning-module';
 import { CommandPalette, type CommandPaletteData } from './command-palette';
 import { type Command, MODULE_COMMANDS, navCommands, screenCommands } from './commands';
 import {
@@ -162,9 +163,11 @@ export class AppShell {
   protected readonly mayOpenCustomerScreen = computed(
     () => this.auth.me() !== null && this.auth.hasPermission('product.read'),
   );
+  /** The scanner is a module (docs/SPEC.md § 7, 2026-10-06 21:02): off, the camera, the phone and a burst's card are gone. */
+  protected readonly scanning = computed(() => this.auth.hasModule(SCANNING_MODULE));
   /** Every scan handler needs product.read, so a phone scanning for somebody without it would do nothing. */
   protected readonly mayScan = computed(
-    () => this.auth.me() !== null && this.auth.hasPermission('product.read'),
+    () => this.auth.me() !== null && this.scanning() && this.auth.hasPermission('product.read'),
   );
   private phoneOpen = false;
   private scanOpen = false;
@@ -420,8 +423,9 @@ export class AppShell {
       this.dropHeldShortcut();
       this.count.reset();
       event.preventDefault();
-      // The screen on view acts on it when it can (an invoice adds a line); otherwise the card opens.
-      if (reading.code !== null) void this.scans.receive(reading.code, 'wedge');
+      // The screen on view acts on it when it can (an invoice adds a line); otherwise the card opens. With the
+      // scanner off the burst is still read, so its letters run no shortcut, and nothing acts on it.
+      if (reading.code !== null && this.scanning()) void this.scans.receive(reading.code, 'wedge');
       return;
     }
 

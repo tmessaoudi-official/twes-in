@@ -7,12 +7,12 @@
 
 declare(strict_types=1);
 
-namespace App\Scanning\Application;
+namespace App\Module\Scanning\Application;
 
 use App\Identity\Domain\User;
-use App\Scanning\Domain\ScanPairing;
-use App\Scanning\Domain\ScanPairingRefused;
-use App\Scanning\Domain\ScanPairingRepository;
+use App\Module\Scanning\Domain\ScanPairing;
+use App\Module\Scanning\Domain\ScanPairingRefused;
+use App\Module\Scanning\Domain\ScanPairingRepository;
 use App\Shared\Application\RealtimePublisher;
 use App\Shared\Application\RealtimeToken;
 use App\Shared\Application\RealtimeTokens;
@@ -37,6 +37,7 @@ final readonly class PhonePairings
         private RealtimeTokens $tokens,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private ScannerSwitch $scanner,
     ) {
     }
 
@@ -66,6 +67,7 @@ final readonly class PhonePairings
         $key = self::secret();
         $pairing = $this->transactions->run(function () use ($link, $key): ScanPairing {
             $pairing = $this->pairings->lockedByLinkHash(ScanPairing::linkHash($link)) ?? throw new ScanPairingRefused('unknown');
+            $this->switchedOn($pairing);
             $pairing->claim($key, $this->clock->now());
             $this->pairings->save($pairing);
 
@@ -146,9 +148,18 @@ final readonly class PhonePairings
     private function authorised(Uuid $id, string $key): ScanPairing
     {
         $pairing = $this->pairings->get($id) ?? throw new ScanPairingRefused('unknown');
+        $this->switchedOn($pairing);
         $pairing->authorise($key, $this->clock->now());
 
         return $pairing;
+    }
+
+    /** A company that switched the scanner off answers its phones as a pairing that never was. */
+    private function switchedOn(ScanPairing $pairing): void
+    {
+        if (!$this->scanner->isOn($pairing->getCompany()->getId())) {
+            throw new ScanPairingRefused('unknown');
+        }
     }
 
     private function ofUser(Uuid $userId, Uuid $id): ScanPairing
