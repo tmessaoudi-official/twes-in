@@ -609,6 +609,15 @@ final class InventoryTest extends ApiTestCase
         $history = $this->jsonList();
         self::assertSame([[null, '1200.0000', 'receipt']], array_map(static fn (array $row): array => [$row['oldCost'] ?? null, $row['newCost'] ?? null, $row['source'] ?? null], $history));
 
+        // Audit 2026-10-06, E-13: what is not a plain decimal is no receipt to weigh in, never a server error.
+        $this->getJson($this->path('stock-options/receipt-cost').'?productId='.$this->laptopId);
+        $plain = $this->json()['average'] ?? null;
+        foreach (['quantity=1e3&unitCost=1', 'quantity=%201&unitCost=1', 'quantity=10&unitCost=1e3', 'quantity=10&unitCost=-0'] as $odd) {
+            $this->getJson($this->path('stock-options/receipt-cost').'?productId='.$this->laptopId.'&'.$odd);
+            self::assertResponseIsSuccessful($odd);
+            self::assertSame($plain, $this->json()['average'] ?? null, $odd);
+        }
+
         $this->getJson($this->path('stock-options/receipt-cost').'?productId='.Uuid::v7()->toRfc4122());
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a product of nobody');
 

@@ -47,8 +47,10 @@ final readonly class DoctrineCustomerCreditRepository implements CustomerCreditR
 
     public function lockedBalance(Uuid $companyId, Uuid $customerId): string
     {
-        // The customer's row is the lock: entries are only ever added or removed with it held, so the sum read next
-        // is not moved by another transaction before this one ends. Doctrine refuses the lock outside a transaction.
+        // The customer's row is the lock every use of the balance takes, so two of them never both fit it. A deposit,
+        // a refund given back or a payment deleted adds or removes entries without it, and none of them lowers the
+        // sum: it can grow before this transaction ends, never shrink below what was read.
+        // Doctrine refuses the lock outside a transaction.
         $this->entityManager->createQueryBuilder()
             ->select('c.id')
             ->from(Customer::class, 'c')

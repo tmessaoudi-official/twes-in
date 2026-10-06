@@ -39,12 +39,22 @@ final readonly class ReadReceiptCost
         $costNow = null !== $own && is_numeric($own) ? new Number($own)->round(4)->value : null;
 
         $stock = RunningValue::of($this->movements->valuedTotalsOf($product));
-        if (null !== $quantity && null !== $unitCost && is_numeric($quantity) && is_numeric($unitCost)
-            && 1 === new Number($quantity)->compare(0) && -1 !== new Number($unitCost)->compare(0)) {
+        if (self::plain($quantity) && self::plain($unitCost) && 1 === new Number($quantity)->compare(0)) {
             $stock = $stock->after($quantity, $unitCost);
         }
         $last = $this->movements->lastTypedCostOf($product);
 
         return new ReceiptCost($mode, $costNow, $stock->average($own), $last?->cost, $last?->at);
+    }
+
+    /**
+     * A plain decimal of nothing or more, as a form sends it: `is_numeric` also takes « 1e3 » and « 1 », which
+     * `BcMath\Number` refuses with an error, so a receipt to weigh in is read only from what this shape allows.
+     *
+     * @phpstan-assert-if-true numeric-string $value
+     */
+    private static function plain(?string $value): bool
+    {
+        return null !== $value && 1 === preg_match('/^(0|[1-9][0-9]*)(\.[0-9]+)?$/', $value);
     }
 }
