@@ -85,6 +85,39 @@ final class StockTotalsTest extends ApiTestCase
         self::assertSame([], $this->jsonList(), 'a value that is no id names no product');
     }
 
+    /**
+     * Audit 2026-10-06, D-5 / G-15: another company's real product, with stock of its own, reads here exactly as an id
+     * that exists nowhere: every id asked is answered, at zero when this company moved nothing for it, and their stock is
+     * never summed in.
+     */
+    public function testAnotherCompanysProductReadsAsAnUnknownOneWithNoneOfItsStock(): void
+    {
+        $acme = $this->company;
+        $this->company = $this->createCompany('Globex');
+        static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
+        $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($piece);
+        $theirs = Product::create($this->company, 'ART-001', new ProductDetails('Leur portable', null, ProductKind::Goods, '10'), $piece, null, [], new \DateTimeImmutable());
+        $this->em()->persist($theirs);
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->createUser('globex@twes.local', 'password-1234', $this->company, ['stock.read', 'stock.write'], 'keeper');
+        $this->login('globex@twes.local', 'password-1234');
+        $this->receive($theirs->getId()->toRfc4122(), $this->defaultLocationId(), '9');
+        $this->company = $acme;
+
+        $this->login('keeper@twes.local', 'password-1234');
+        $absent = '0192c3a4-0000-7000-8000-000000000000';
+        $this->getJson($this->path('stock-totals').'?productId[]='.$theirs->getId()->toRfc4122().'&productId[]='.$absent);
+
+        self::assertResponseIsSuccessful();
+        $totals = [];
+        foreach ($this->jsonList() as $row) {
+            $totals[$this->stringAt($row, 'productId')] = $row['quantity'];
+        }
+        self::assertSame([$theirs->getId()->toRfc4122() => '0.000', $absent => '0.000'], $totals);
+    }
+
     private function receive(string $productId, string $locationId, string $quantity): void
     {
         $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $productId, 'locationId' => $locationId, 'quantity' => $quantity]);

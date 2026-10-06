@@ -88,6 +88,28 @@ final class DeliveryNoteCreditTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
+    /** Audit 2026-10-06, D-5 / G-15: another company's real note, reached through this company's path, is not there. */
+    public function testAnotherCompanysNoteIsNotFound(): void
+    {
+        [$acme, $acmeCustomer] = [$this->company, $this->customerId];
+        $this->company = $this->createCompany('Globex');
+        static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
+        $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
+        self::assertNotNull($regime);
+        $customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Globex Client'), null, $regime, [], new \DateTimeImmutable());
+        $this->em()->persist($customer);
+        $this->em()->flush();
+        $this->customerId = $customer->getId()->toRfc4122();
+        $this->createUser('globex@twes.local', 'password-1234', $this->company, ['delivery_note.read', 'delivery_note.write'], 'member');
+        $this->login('globex@twes.local', 'password-1234');
+        $theirs = $this->draftNote('300');
+        [$this->company, $this->customerId] = [$acme, $acmeCustomer];
+        $this->login('sales@twes.local', 'password-1234');
+
+        $this->getJson($this->path($theirs).'/credit');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     private const string ABSENT = '0192c3a4-0000-7000-8000-000000000000';
 
     /** @return array<string, mixed> */

@@ -158,6 +158,53 @@ final class CustomerCreditBalanceTest extends ApiTestCase
     }
 
     /**
+     * Audit 2026-10-06, D-5 / G-15: another company's REAL customer and invoice, reached through this company's path,
+     * answer as an unknown one does; an id that exists nowhere would stay 404 even if a lookup stopped scoping by company.
+     */
+    public function testAnotherCompanysCustomerAndInvoiceAnswerAsUnknownOnesDo(): void
+    {
+        [$theirCustomer, $theirInvoice] = $this->inGlobex(function (): array {
+            $this->postJson($this->creditPath(), ['amount' => '300', 'date' => $this->today()]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+            return [$this->customerId, $this->issue('200')];
+        });
+        $theirs = $this->companyPath().'/customers/'.$theirCustomer.'/credit-balance';
+
+        $this->getJson($theirs);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'their balance');
+        $this->postJson($theirs, ['amount' => '10', 'date' => $this->today()]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a deposit to their customer');
+        $this->postJson($this->invoicePath($theirInvoice).'/apply-credit', ['amount' => '100']);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'their invoice paid from a credit');
+    }
+
+    /**
+     * Runs the work as a person of a second company, Globex, with its own customer, then signs Acme's person back in.
+     *
+     * @template T
+     *
+     * @param \Closure(): T $work
+     *
+     * @return T
+     */
+    private function inGlobex(\Closure $work): mixed
+    {
+        [$acme, $acmeCustomer] = [$this->company, $this->customerId];
+        $this->company = $this->createCompany('Globex');
+        static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
+        $this->customerId = $this->customer('CLI-0001', 'Globex Client')->getId()->toRfc4122();
+        $this->createUser('globex@twes.local', 'password-1234', $this->company, ['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write'], 'member');
+        $this->login('globex@twes.local', 'password-1234');
+        try {
+            return $work();
+        } finally {
+            [$this->company, $this->customerId] = [$acme, $acmeCustomer];
+            $this->login('sales@twes.local', 'password-1234');
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function rowOf(mixed $row): array
