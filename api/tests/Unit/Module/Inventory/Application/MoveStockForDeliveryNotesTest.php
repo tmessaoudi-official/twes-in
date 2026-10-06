@@ -240,6 +240,21 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         self::assertSame([['ART-001', 'R1', 'out', '-3.000'], ['ART-001', 'R2', 'out', '-2.000']], \array_slice($this->written(), $before), 'the main home is emptied first, the next takes the rest, and nothing goes below zero');
     }
 
+    /** Audit 2026-10-06, H-a29: goods in quarantine wait for a decision, so a delivery never takes them, even from a home. */
+    public function testADeliveryNeverTakesGoodsFromAQuarantinePlaceEvenOneThatIsAHome(): void
+    {
+        $held = $this->manage->create($this->company, $this->depot->getId(), null, StockLocationKind::Quarantine, 'Q1', 'Quarantaine', null);
+        $r1 = $this->shelf('R1');
+        $this->homesAt($this->laptop, $held, $r1);
+        $this->keep->receive($this->company, $this->laptop->getId(), $held->getId(), '5', null);
+        $this->keep->receive($this->company, $this->laptop->getId(), $r1->getId(), '3', null);
+        $before = \count($this->movements->movements);
+
+        $this->move->validated(Uuid::v7(), $this->company->getId(), $this->depot->getId(), [$this->line($this->laptop, '2.000', $this->piece)]);
+
+        self::assertSame([['ART-001', 'R1', 'out', '-2.000']], \array_slice($this->written(), $before));
+    }
+
     public function testAProductWithNoHomeStillLeavesFromTheDefaultLocation(): void
     {
         $r1 = $this->shelf('R1');

@@ -16,6 +16,7 @@ use App\Module\Inventory\Domain\LotPicking;
 use App\Module\Inventory\Domain\ProductHomeLocation;
 use App\Module\Inventory\Domain\ProductHomeLocationRepository;
 use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementKind;
@@ -212,7 +213,9 @@ final readonly class MoveStockForDeliveryNotes
         $homes = $this->homes->ofProducts(array_values(array_map(static fn (Product $product): Uuid => $product->getId(), $products)), $companyId);
         $places = [];
         foreach (array_keys($products) as $productId) {
-            $own = array_values(array_filter($homes[$productId] ?? [], static fn (ProductHomeLocation $home): bool => $home->getEstablishment()->getId()->equals($establishmentId)));
+            // Goods in quarantine wait for a decision: a delivery never takes them, even from a place that is a home.
+            $own = array_values(array_filter($homes[$productId] ?? [], static fn (ProductHomeLocation $home): bool => $home->getEstablishment()->getId()->equals($establishmentId)
+                && StockLocationKind::Quarantine !== $home->getLocation()->getKind()));
             usort($own, static fn (ProductHomeLocation $a, ProductHomeLocation $b): int => $a->getPosition() <=> $b->getPosition());
             $list = array_map(static fn (ProductHomeLocation $home): StockLocation => $home->getLocation(), $own);
             $places[$productId] = [] === $list
