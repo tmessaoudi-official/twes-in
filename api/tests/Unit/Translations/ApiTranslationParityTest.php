@@ -37,6 +37,7 @@ final class ApiTranslationParityTest extends TestCase
         $loose = [];
         foreach (glob(self::DIRECTORY.'/*.fr.yaml') ?: [] as $path) {
             $node = Yaml::parseFile($path);
+            self::assertIsArray($node, $path);
             array_walk_recursive($node, static function (mixed $text) use (&$loose): void {
                 if (\is_string($text) && 1 === preg_match('/(?<=\S)[ \x{00A0}][;?!]|(?<=\S)[ \x{202F}]:(?=\s|$)|« | »/u', $text)) {
                     $loose[] = $text;
