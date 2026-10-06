@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
+import { aProduct, forget, stockKept } from './catalogue';
 import { forgetPresentationChoices } from './presentation';
 import { OPERATOR_EMAIL as EMAIL, inACompany, signIn as logIn } from './session';
 import { sidewaysOverflow } from './overflow';
@@ -217,19 +218,49 @@ test('on a laptop the stock list shows each row’s quantity clear of the row ac
   await page.setViewportSize({ width: 1280, height: 800 });
   await logIn(page);
   await inACompany(page, '0123456789abcdef0123456789abcdef');
-  await page.goto('/stock');
-  const quantity = page.locator('td[data-column="quantity"]').first();
-  await expect(quantity).toBeVisible();
-  const [cell, actions] = await Promise.all([
-    quantity.boundingBox(),
-    page.locator('td.twes-row-actions').first().boundingBox(),
-  ]);
-  expect(cell).not.toBeNull();
-  expect(actions).not.toBeNull();
-  expect(
-    cell!.x + cell!.width,
-    'the quantity ends before the pinned actions begin',
-  ).toBeLessThanOrEqual(actions!.x + 1);
+  // The seeded company holds no stock, so the run receives its own, and the list is searched for it.
+  const reference = `E2E-QTY-${Date.now().toString(36).toUpperCase()}`;
+  const productId = await aProduct(page, reference);
+  try {
+    await stockKept(page, productId, true);
+    await page.evaluate(
+      async ([csrf, id]) => {
+        const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+        const base = `/api/companies/${me.company.id}`;
+        const locations = (await (await fetch(`${base}/stock-locations`)).json()) as {
+          id: string;
+        }[];
+        const received = await fetch(`${base}/stock-movements`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify({
+            operation: 'receive',
+            productId: id,
+            locationId: locations[0]!.id,
+            quantity: '12',
+          }),
+        });
+        if (!received.ok) throw new Error(`receiving answered ${received.status}`);
+      },
+      ['0123456789abcdef0123456789abcdef', productId] as const,
+    );
+    await page.goto('/stock');
+    await page.getByTestId('list-filter').fill(reference);
+    const quantity = page.locator('td[data-column="quantity"]').first();
+    await expect(quantity).toContainText('12');
+    const [cell, actions] = await Promise.all([
+      quantity.boundingBox(),
+      page.locator('td.twes-row-actions').first().boundingBox(),
+    ]);
+    expect(cell).not.toBeNull();
+    expect(actions).not.toBeNull();
+    expect(
+      cell!.x + cell!.width,
+      'the quantity ends before the pinned actions begin',
+    ).toBeLessThanOrEqual(actions!.x + 1);
+  } finally {
+    await forget(page, [productId]);
+  }
 });
 
 // A list with no row actions pinned its LAST header to the table's right edge while that column's cells scrolled on,
