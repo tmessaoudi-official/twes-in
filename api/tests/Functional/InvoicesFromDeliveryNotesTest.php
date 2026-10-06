@@ -242,6 +242,43 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         self::assertSame(['invoiced', $this->stringAt($second, 'id')], [$this->json()['status'], $this->json()['invoicedByInvoiceId']], 'invoiced by the invoice that took the last of it');
     }
 
+    /**
+     * A draft's line taken from a delivery note stays that line (docs/SPEC.md § 7, audit 2026-10-06 A-16): revising it
+     * cannot invoice more than the note line has left, counting the company's other invoices that are not cancelled, nor
+     * turn it into another product.
+     */
+    public function testRevisingADraftCannotInvoiceMoreOfANoteLineThanIsLeftNorChangeItsProduct(): void
+    {
+        $this->signedIn();
+        $note = $this->validatedNote(['lines' => [['productId' => $this->productId, 'quantity' => '10']]]);
+        [$goods] = $this->lineIds($note);
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note], 'quantities' => [$goods => '6']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $first = $this->json();
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'the other four on a second draft');
+        $line = $this->arrayAt($first, 'lines')[0];
+        self::assertIsArray($line);
+        $line = array_diff_key($line, ['net' => true]);
+        $revise = fn (array $lines) => $this->sendJson('PUT', $this->invoicePath($this->stringAt($first, 'id')), [...$this->invoiceBody($first), 'lines' => $lines]);
+
+        $revise([[...$line, 'quantity' => '7']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'four of the ten are on the other draft');
+        self::assertStringContainsString('lines[0].quantity', (string) $this->client->getResponse()->getContent());
+        self::assertStringContainsString('6.000', (string) $this->client->getResponse()->getContent());
+        $other = Product::create($this->em()->find(Company::class, $this->company->getId()) ?? self::fail('no company'), 'ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '20'), $this->unit('C62'), null, [], new \DateTimeImmutable());
+        $this->em()->persist($other);
+        $this->em()->flush();
+        $revise([[...$line, 'productId' => $other->getId()->toRfc4122()]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a note line keeps its product');
+        self::assertStringContainsString('lines[0].productId', (string) $this->client->getResponse()->getContent());
+
+        $revise([[...$line, 'quantity' => '5']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK, 'less is always fine');
+        $revise([[...$line, 'quantity' => '6']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK, 'its own six are its own, not taken twice');
+    }
+
     public function testAnInvoiceDraftedFromNotesNamesTheLotEachLineHandedOverAndARevisionKeepsIt(): void
     {
         // docs/SPEC.md § 7, 2026-09-24 12:40 row 5: the lot handed over is the lot invoiced.

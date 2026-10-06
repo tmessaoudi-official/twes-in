@@ -47,6 +47,7 @@ use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryInvoices;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryProducts;
+use App\Tests\Support\InMemorySourceDeliveryNoteLines;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\ShelfLinePrices;
@@ -87,7 +88,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $this->audit = new InMemoryAuditTrail($this->transactions);
         // The notes are held while they are read, as the database holds their rows.
         $this->notes->transactions = $this->transactions;
-        $manage = new ManageInvoices($this->invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $this->units, $this->taxes, $this->establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()));
+        $manage = new ManageInvoices($this->invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $this->units, $this->taxes, $this->establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new InMemorySourceDeliveryNoteLines());
         $this->invoicing = new InvoiceDeliveryNotes($this->notes, $this->invoices, $manage, $this->transactions, $this->audit, $this->clock);
         $this->customer = $this->customer($this->company);
     }

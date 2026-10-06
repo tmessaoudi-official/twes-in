@@ -53,13 +53,14 @@ interface InvoiceRepository
     /**
      * How much of each delivery note line the company's invoices already take: the sum of the quantities of the lines
      * that name it, on invoices that are not cancelled, drafts included since a draft holds what it took. With
-     * `$issuedOnly` the drafts are left out, which is what decides whether a note has been invoiced.
+     * `$issuedOnly` the drafts are left out, which is what decides whether a note has been invoiced; `$except` leaves out the
+     * invoice being revised, whose own lines are not taken from what it may take.
      *
      * @param list<Uuid> $deliveryNoteLineIds
      *
      * @return array<string, string> decimal quantities by delivery note line id; a line no invoice takes is absent
      */
-    public function invoicedQuantities(Uuid $companyId, array $deliveryNoteLineIds, bool $issuedOnly = false): array;
+    public function invoicedQuantities(Uuid $companyId, array $deliveryNoteLineIds, bool $issuedOnly = false, ?Uuid $except = null): array;
 
     /** Whether a document of this type of the company already carries this number. */
     public function numberTaken(Uuid $companyId, InvoiceType $type, string $number): bool;

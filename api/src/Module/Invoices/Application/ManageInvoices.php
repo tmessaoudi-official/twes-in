@@ -12,6 +12,7 @@ namespace App\Module\Invoices\Application;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\TaxKind;
@@ -26,6 +27,7 @@ use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\InvoiceSearch;
 use App\Module\Invoices\Domain\InvoiceTransitionRefused;
+use App\Module\Invoices\Domain\InvoiceType;
 use App\Module\Products\Domain\ProductRepository;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
@@ -64,6 +66,7 @@ final readonly class ManageInvoices
         private ClockInterface $clock,
         private InvoiceLinePrices $linePrices,
         private ExcludedTaxFamilies $excluded,
+        private SourceDeliveryNoteLines $sourceLines,
     ) {
     }
 
@@ -261,6 +264,10 @@ final readonly class ManageInvoices
                 ?? throw new InvalidInvoice('establishmentId', 'No establishment of this company has this id.');
         }
 
+        if (null !== $current && InvoiceType::Invoice === $current->getType()) {
+            $this->withinTheirNotes($company, $current, $input->lines);
+        }
+
         $kept = self::named($current);
         $lines = [];
         foreach ($input->lines as $index => $line) {
@@ -272,6 +279,42 @@ final readonly class ManageInvoices
         }
 
         return [$establishment, $customer, $lines, $this->documentTaxes($company, $customer, $input->documentTaxComponentIds, $kept['documentTaxes'])];
+    }
+
+    /**
+     * A draft's line taken from a delivery note stays that line (docs/SPEC.md § 7, audit 2026-10-06 A-16): it keeps the
+     * note line's product and invoices no more of it than the company's other invoices that are not cancelled leave.
+     * Whether the draft carried the line at all is `line()`'s check, and a line named twice the domain's.
+     *
+     * @param list<InvoiceLineInput> $lines
+     */
+    private function withinTheirNotes(Company $company, Invoice $current, array $lines): void
+    {
+        $ids = [];
+        foreach ($lines as $line) {
+            if (null !== $line->sourceDeliveryNoteLineId) {
+                $ids[$line->sourceDeliveryNoteLineId->toRfc4122()] = $line->sourceDeliveryNoteLineId;
+            }
+        }
+        if ([] === $ids) {
+            return;
+        }
+        $sources = $this->sourceLines->ofIds(array_values($ids), $company->getId());
+        $elsewhere = $this->invoices->invoicedQuantities($company->getId(), array_values($ids), false, $current->getId());
+        foreach ($lines as $index => $line) {
+            $id = $line->sourceDeliveryNoteLineId?->toRfc4122();
+            if (null === $id || !isset($sources[$id])) {
+                continue;
+            }
+            $source = $sources[$id];
+            if (!(null === $source->productId ? null === $line->productId : null !== $line->productId && $source->productId->equals($line->productId))) {
+                throw (new InvalidInvoice('productId', 'A line taken from a delivery note keeps the product the note delivered.'))->within("lines[$index]");
+            }
+            $left = Decimal::of($source->quantity)->sub(Decimal::of($elsewhere[$id] ?? '0'));
+            if (is_numeric($line->quantity) && Decimal::of($line->quantity)->compare($left) > 0) {
+                throw (new InvalidInvoice('quantity', \sprintf('Only %s of this delivery note line is left to invoice.', Decimal::format($left, 3))))->within("lines[$index]");
+            }
+        }
     }
 
     /** @param array{products: list<string>, units: list<string>, taxes: list<string>, documentTaxes: list<string>, sources: list<string>} $kept */

@@ -204,13 +204,13 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         return array_values(array_filter(\is_array($invoices) ? $invoices : [], static fn (mixed $invoice): bool => $invoice instanceof Invoice));
     }
 
-    public function invoicedQuantities(Uuid $companyId, array $deliveryNoteLineIds, bool $issuedOnly = false): array
+    public function invoicedQuantities(Uuid $companyId, array $deliveryNoteLineIds, bool $issuedOnly = false, ?Uuid $except = null): array
     {
         if ([] === $deliveryNoteLineIds) {
             return [];
         }
         $excluded = $issuedOnly ? [InvoiceStatus::Cancelled->value, InvoiceStatus::Draft->value] : [InvoiceStatus::Cancelled->value];
-        $rows = $this->entityManager->createQueryBuilder()
+        $query = $this->entityManager->createQueryBuilder()
             ->select('l.sourceDeliveryNoteLineId AS line', 'SUM(l.quantity) AS quantity')
             ->from(InvoiceLine::class, 'l')
             ->join('l.invoice', 'i')
@@ -222,9 +222,11 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             ->setParameter('company', $companyId, 'uuid')
             ->setParameter('type', InvoiceType::Invoice->value)
             ->setParameter('excluded', $excluded, ArrayParameterType::STRING)
-            ->setParameter('lines', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $deliveryNoteLineIds), ArrayParameterType::STRING)
-            ->getQuery()
-            ->getArrayResult();
+            ->setParameter('lines', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $deliveryNoteLineIds), ArrayParameterType::STRING);
+        if (null !== $except) {
+            $query->andWhere('i.id <> :except')->setParameter('except', $except, 'uuid');
+        }
+        $rows = $query->getQuery()->getArrayResult();
 
         $quantities = [];
         foreach ($rows as $row) {

@@ -111,13 +111,13 @@ final class InMemoryInvoices implements InvoiceRepository
             && [] !== array_filter($invoice->getLines(), static fn (InvoiceLine $line): bool => \in_array($line->getSourceDeliveryNoteLineId()?->toRfc4122(), $wanted, true))));
     }
 
-    public function invoicedQuantities(Uuid $companyId, array $deliveryNoteLineIds, bool $issuedOnly = false): array
+    public function invoicedQuantities(Uuid $companyId, array $deliveryNoteLineIds, bool $issuedOnly = false, ?Uuid $except = null): array
     {
         $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $deliveryNoteLineIds);
         $excluded = $issuedOnly ? [InvoiceStatus::Cancelled, InvoiceStatus::Draft] : [InvoiceStatus::Cancelled];
         $quantities = [];
         foreach ($this->ofCompany($companyId) as $invoice) {
-            if (InvoiceType::Invoice !== $invoice->getType() || \in_array($invoice->getStatus(), $excluded, true)) {
+            if (InvoiceType::Invoice !== $invoice->getType() || \in_array($invoice->getStatus(), $excluded, true) || (null !== $except && $invoice->getId()->equals($except))) {
                 continue;
             }
             foreach ($invoice->getLines() as $line) {
