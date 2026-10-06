@@ -45,13 +45,15 @@
     <div class="watermark">{{ ('watermark.' ~ page.watermark)|trans({}, t, locale) }}</div>
   {%- endif %}
 
+  {#- The copy's day is a moment in the company's zone: `false` keeps that zone, where the document's own days below
+      are UTC midnights and say 'UTC'. Without it Twig turns it into the server's day, a day behind in Tunis after 23:00. #}
   {%- if page.copy %}
-    <p class="copy-mark" data-testid="copy-mark">{{ ('copy.' ~ page.copy.value)|trans({'%date%': page.copiedOn|date(dateFormat)}, t, locale) }}</p>
+    <p class="copy-mark" data-testid="copy-mark">{{ ('copy.' ~ page.copy.value)|trans({'%date%': page.copiedOn|date(dateFormat, false)}, t, locale) }}</p>
   {%- endif %}
   {%- if page.paidStamp %}
     <div class="paid-stamp" data-testid="paid-stamp">{{ ('stamp.' ~ page.paidStamp)|trans({}, t, locale) }}</div>
     {%- if page.paidStamp == 'partial' %}
-    <p class="copy-mark" data-testid="paid-stamp-balance">{{ 'stamp.balance'|trans({'%amount%': figures.amountDue|decimal(scale, locale, page.numberFormat), '%date%': page.copiedOn|date(dateFormat)}, t, locale) }}</p>
+    <p class="copy-mark" data-testid="paid-stamp-balance">{{ 'stamp.balance'|trans({'%amount%': figures.amountDue|decimal(scale, locale, page.numberFormat), '%date%': page.copiedOn|date(dateFormat, false)}, t, locale) }}</p>
     {%- endif %}
   {%- endif %}
 

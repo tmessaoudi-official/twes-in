@@ -30,11 +30,14 @@ use App\Settings\Domain\SettingLevel;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
+use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
 
 final class InvoicesTest extends ApiTestCase
 {
+    use ClockSensitiveTrait;
+
     private const string ABSENT = '0192c3a4-0000-7000-8000-000000000000';
     /** What a row with no number yet stands as in a list assertion. */
     private const string DRAFT = '(draft)';
@@ -415,6 +418,18 @@ final class InvoicesTest extends ApiTestCase
 
         self::assertStringContainsString('RÉGLÉE PARTIELLEMENT', $page);
         self::assertMatchesRegularExpression('/data-testid="paid-stamp-balance">Reste dû [0-9\s\x{00A0}\x{202F},.]+ au '.preg_quote($today->format('d/m/Y'), '/').'</u', $page);
+    }
+
+    public function testACopyIsDatedByTheCompanysDayWhileTheServersIsStillTheDayBefore(): void
+    {
+        // At 23:30 UTC it is already the next day in Tunis: the template turned the company's day back into the server's.
+        self::mockTime(new \DateTimeImmutable('2026-10-06 23:30:00', new \DateTimeZone('UTC')));
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $id = $this->issuedInvoice();
+
+        $this->client->request('GET', $this->path($id).'/pdf/current');
+        self::assertResponseIsSuccessful();
+        self::assertStringContainsString('au 07/10/2026', (string) $this->client->getResponse()->getContent());
     }
 
     public function testACreditNotePrintsNoDueDayNorTermsWhichOnlyAnInvoiceHas(): void
