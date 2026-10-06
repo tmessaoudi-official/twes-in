@@ -48,19 +48,25 @@
     >
       {{ 'inventory.placement.add' | translate }}
     </button>
-    @if (stand().state === 'short' && restTo() !== null) {
-      <button mat-stroked-button type="button" (click)="rest()" data-testid="placement-rest">
-        {{ 'inventory.placement.rest' | translate }}
-      </button>
+    @if (counting()) {
+      <span class="text-sm" data-testid="placement-counting">
+        {{ 'inventory.placement.counting' | translate }}
+      </span>
+    } @else {
+      @if (stand().state === 'short' && restTo() !== null) {
+        <button mat-stroked-button type="button" (click)="rest()" data-testid="placement-rest">
+          {{ 'inventory.placement.rest' | translate }}
+        </button>
+      }
+      <app-status-badge [tone]="tone()" data-testid="placement-status" role="status">
+        {{ 'inventory.placement.' + stand().state | translate: { left: stand().left } }}
+      </app-status-badge>
     }
-    <app-status-badge [tone]="tone()" data-testid="placement-status" role="status">
-      {{ 'inventory.placement.' + stand().state | translate: { left: stand().left } }}
-    </app-status-badge>
   </div>
 
   @if (refused()) {
     <p role="alert" class="text-error" data-testid="placement-refused">
-      {{ 'inventory.placement.unplaced' | translate }}
+      {{ 'inventory.placement.' + (counting() ? 'uncounted' : 'unplaced') | translate }}
     </p>
   }
 </div>

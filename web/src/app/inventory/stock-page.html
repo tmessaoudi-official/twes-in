@@ -81,6 +81,7 @@
                       [defaultPlace]="defaultPlace()"
                       [decimals]="decimals()"
                       [refused]="unplaced()"
+                      [counting]="operation() === 'count'"
                       (partsChange)="setParts($event)"
                     />
                   }

@@ -408,6 +408,28 @@ describe('InventoryApi', () => {
     await expect(refused).rejects.toMatchObject({ code: 'invalid' });
   });
 
+  // Audit 2026-10-06, H-b3.
+  it('counts what was found at several places in one request, and says when it is refused', async () => {
+    const input = {
+      productId: 'p1',
+      parts: [
+        { locationId: 'l1', quantity: '6' },
+        { locationId: 'l2', quantity: '0' },
+      ],
+    };
+    const counted = api.countSplit('c1', input);
+    const post = http.expectOne('/api/companies/c1/stock-counts');
+    expect([post.request.method, post.request.body]).toEqual(['POST', input]);
+    post.flush({ id: 'm1', productId: 'p1', parts: input.parts, movementIds: ['m1', 'm2'] });
+    expect(await counted).toEqual(['m1', 'm2']);
+
+    const refused = api.countSplit('c1', input);
+    http
+      .expectOne('/api/companies/c1/stock-counts')
+      .flush({ detail: 'quantity' }, { status: 422, statusText: 'Unprocessable Entity' });
+    await expect(refused).rejects.toMatchObject({ code: 'invalid' });
+  });
+
   // docs/SPEC.md § 7, audit 2026-10-06 C challenge 9.
   it('enters the cost of a receipt left to complete, and says when its cost is already known', async () => {
     const entered = api.enterReceiptCost('c1', 'm1', '1200.5', null);

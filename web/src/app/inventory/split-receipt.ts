@@ -136,3 +136,20 @@ export function toReceiptParts(
       : [{ locationId: part.locationId, quantity: quantityOf(units) }];
   });
 }
+
+/**
+ * What a count over several places sends: every row, each what was found there, nothing found (0) included; null
+ * while a row has no count, since a place left blank is not a place where nothing was found.
+ */
+export function toCountParts(
+  parts: readonly Part[],
+  decimals = SCALE,
+): { locationId: string; quantity: string }[] | null {
+  const counted = parts.map((part) => ({
+    locationId: part.locationId,
+    units: unitsOf(part.quantity, decimals),
+  }));
+  return counted.some((part) => part.units === null || part.locationId === '')
+    ? null
+    : counted.map((part) => ({ locationId: part.locationId, quantity: quantityOf(part.units!) }));
+}

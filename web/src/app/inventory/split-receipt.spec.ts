@@ -9,6 +9,7 @@ import {
   restToDefault,
   setPlaceLocation,
   setPlaceQuantity,
+  toCountParts,
   toReceiptParts,
   unitsOf,
 } from './split-receipt';
@@ -141,5 +142,27 @@ describe('a unit that keeps fewer decimals than the API stores', () => {
       { locationId: 'l1', quantity: '6' },
     ]);
     expect(toReceiptParts([{ locationId: 'l1', quantity: '6.5' }], 0)).toEqual([]);
+  });
+
+  it('sends every counted place, nothing found included, and nothing while a place is not counted', () => {
+    expect(
+      toCountParts(
+        [
+          { locationId: 'l1', quantity: '6.5' },
+          { locationId: 'l2', quantity: '0' },
+        ],
+        3,
+      ),
+    ).toEqual([
+      { locationId: 'l1', quantity: '6.5' },
+      { locationId: 'l2', quantity: '0' },
+    ]);
+    expect(
+      toCountParts([
+        { locationId: 'l1', quantity: '6' },
+        { locationId: 'l2', quantity: '' },
+      ]),
+    ).toBeNull();
+    expect(toCountParts([{ locationId: '', quantity: '6' }])).toBeNull();
   });
 });

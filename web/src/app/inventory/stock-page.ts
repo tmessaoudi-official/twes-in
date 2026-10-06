@@ -33,6 +33,7 @@ import { StatusBadge } from '../shared/ui/status-badge';
 import { InventoryFacade } from './inventory-facade';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
+  countInput,
   locationLabels,
   movementForm,
   movementInput,
@@ -45,7 +46,7 @@ import {
 } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
 import { ReceiptPlacement } from './receipt-placement';
-import { addPlace, type Part, placement } from './split-receipt';
+import { addPlace, type Part, placement, toCountParts } from './split-receipt';
 import type {
   ReceiptCostView,
   StockOperation,
@@ -153,7 +154,8 @@ export class StockPage implements OnInit {
 
   /**
    * One delivery shared over several places (docs/SPEC.md row 188): the single place gives way to rows, and nothing is
-   * saved until every unit is placed. A serial number is one piece and has one place.
+   * saved until every unit is placed. A count is taken over several places the same way, each row what was found
+   * there, with no total to place (audit 2026-10-06, H-b3). A serial number is one piece and has one place.
    */
   protected readonly split = signal(false);
   protected readonly parts = signal<readonly Part[]>([]);
@@ -164,7 +166,9 @@ export class StockPage implements OnInit {
   /** The decimals the chosen product's unit keeps, which the rows are read to. */
   protected readonly decimals = computed(() => this.product()?.unitDecimals ?? 3);
   protected readonly splitOffered = computed(
-    () => this.operation() === 'receive' && this.product()?.tracking !== 'serial',
+    () =>
+      (this.operation() === 'receive' || this.operation() === 'count') &&
+      this.product()?.tracking !== 'serial',
   );
   protected readonly places = computed(() =>
     [...locationLabels(this.facade.locations())].map(([value, label]) => ({ value, label })),
@@ -506,6 +510,10 @@ export class StockPage implements OnInit {
       await this.saveSplit(companyId, values);
       return;
     }
+    if (operation === 'count' && this.split()) {
+      await this.saveCount(companyId, values);
+      return;
+    }
     if (await this.facade.record(companyId, movementInput(operation, values))) {
       // The form stays open for the next one — a serial number after a serial number, a lot after a lot — on the same
       // product and where it goes; what names this movement alone is emptied. « Annuler » is how it is closed.
@@ -532,6 +540,21 @@ export class StockPage implements OnInit {
       const form = this.form();
       if (form !== null) this.startNext(form);
       this.parts.update((parts) => parts.map((part) => ({ ...part, quantity: '' })));
+      this.feedback.success('inventory.stock.recorded');
+    }
+  }
+
+  /** Every place is counted before anything is sent: a place left blank is not a place where nothing was found. */
+  private async saveCount(companyId: string, values: FormValues): Promise<void> {
+    const parts = toCountParts(this.parts(), this.decimals());
+    if (parts === null) {
+      this.unplaced.set(true);
+      return;
+    }
+    if (await this.facade.countSplit(companyId, countInput(values, parts))) {
+      const form = this.form();
+      if (form !== null) this.startNext(form);
+      this.parts.update((rows) => rows.map((part) => ({ ...part, quantity: '' })));
       this.feedback.success('inventory.stock.recorded');
     }
   }

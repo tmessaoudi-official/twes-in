@@ -242,6 +242,14 @@ export interface StockReceiptInput {
   receivedOn?: string;
 }
 
+/** What was found at several places, as an opening count is taken: each part what was found there, 0 included. */
+export interface StockCountInput {
+  productId: string;
+  parts: readonly { locationId: string; quantity: string }[];
+  lotCode?: string;
+  lotExpiresOn?: string;
+}
+
 /** What a receipt does to a product's cost: the company decides, or leaves the choice to the person. */
 export type CostOnReceive = 'suggest' | 'average' | 'last' | 'manual';
 

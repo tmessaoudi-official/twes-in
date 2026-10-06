@@ -29,7 +29,7 @@ const TONES: Record<ReturnType<typeof placement>['state'], StatusTone> = {
 
 /**
  * One delivery shared over several places: a row per place with what goes there, and « il reste N à placer » until it
- * adds up. It holds nothing: the rows come in and go back out whole, so the page owns them and the arithmetic stays in
+ * adds up; or a count over several places, a row per place with what was found there. It holds nothing: the rows come in and go back out whole, so the page owns them and the arithmetic stays in
  * whole thousandths in `split-receipt.ts`.
  */
 @Component({
@@ -59,6 +59,11 @@ export class ReceiptPlacement {
   readonly decimals = input(3);
   /** A save was refused for what is unplaced: the line says so. */
   readonly refused = input(false);
+  /**
+   * A count rather than a delivery: each row is what was found at its place, so there is no total to share out and
+   * no « il reste » (audit 2026-10-06, H-b3).
+   */
+  readonly counting = input(false);
   readonly partsChange = output<readonly Part[]>();
 
   protected readonly stand = computed(() =>

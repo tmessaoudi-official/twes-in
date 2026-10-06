@@ -2226,7 +2226,9 @@
       "done": "Tout est placé",
       "over": "{{left}} de trop",
       "invalid": "Saisissez la quantité reçue",
-      "unplaced": "Placez chaque unité avant d’enregistrer."
+      "unplaced": "Placez chaque unité avant d’enregistrer.",
+      "counting": "Chaque ligne : ce qui a été trouvé à cet emplacement, 0 s'il n'y a rien.",
+      "uncounted": "Saisissez ce qui a été trouvé à chaque emplacement, 0 s'il n'y a rien."
     },
     "receipt_cost": {
       "section": "Coût",

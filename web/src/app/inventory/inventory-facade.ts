@@ -20,6 +20,7 @@ import type {
   StockOptions,
   StockProductOption,
   StockVendorOption,
+  StockCountInput,
   StockReceiptInput,
   ReceiptCostView,
   StockRepeatInput,
@@ -219,6 +220,17 @@ export class InventoryFacade {
   async receiveSplit(companyId: string, input: StockReceiptInput): Promise<boolean> {
     return this.write(
       () => this.api.receiveSplit(companyId, input),
+      async () => {
+        const search = this.search;
+        if (search !== null) await this.loadStock(companyId, search);
+      },
+    );
+  }
+
+  /** What was found at several places, stored whole or not at all; true once recorded and the page read again. */
+  async countSplit(companyId: string, input: StockCountInput): Promise<boolean> {
+    return this.write(
+      () => this.api.countSplit(companyId, input),
       async () => {
         const search = this.search;
         if (search !== null) await this.loadStock(companyId, search);

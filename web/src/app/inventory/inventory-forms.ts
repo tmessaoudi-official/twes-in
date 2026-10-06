@@ -20,6 +20,7 @@ import {
   type StockMovementSortKey,
   type StockOperation,
   type StockOptions,
+  type StockCountInput,
   type StockReceiptInput,
   type StockProductOption,
   type StockSearch,
@@ -532,8 +533,8 @@ export function movementForm(
             noneFoundLabel: 'inventory.stock.no_product_found',
             hint: 'inventory.stock.product_hint',
           },
-          // A delivery shared over several places names them on the rows below: no single place is asked here.
-          ...(operation === 'receive' && split
+          // A delivery or a count shared over several places names them on the rows below: no single place is asked here.
+          ...((operation === 'receive' || operation === 'count') && split
             ? []
             : [
                 {
@@ -563,21 +564,26 @@ export function movementForm(
               ]
             : []),
           ...lotFields(operation, tracking),
-          {
-            id: 'quantity',
-            label: `${STOCK_FIELDS}.quantity`,
-            kind: 'decimal',
-            required: true,
-            pattern: QUANTITY_PATTERN,
-            // A serial number is one piece, whatever the movement: the page puts the 1 there and nobody types another.
-            readOnly: tracking === 'serial',
-            hint:
-              tracking === 'serial'
-                ? 'inventory.movement.quantity_hint.serial'
-                : operation === 'receive' && split
-                  ? 'inventory.movement.quantity_hint.receive_split'
-                  : `inventory.movement.quantity_hint.${operation}`,
-          },
+          // A count over several places has no total: each row says what was found there.
+          ...(operation === 'count' && split
+            ? []
+            : [
+                {
+                  id: 'quantity',
+                  label: `${STOCK_FIELDS}.quantity`,
+                  kind: 'decimal' as const,
+                  required: true,
+                  pattern: QUANTITY_PATTERN,
+                  // A serial number is one piece, whatever the movement: the page puts the 1 there and nobody types another.
+                  readOnly: tracking === 'serial',
+                  hint:
+                    tracking === 'serial'
+                      ? 'inventory.movement.quantity_hint.serial'
+                      : operation === 'receive' && split
+                        ? 'inventory.movement.quantity_hint.receive_split'
+                        : `inventory.movement.quantity_hint.${operation}`,
+                },
+              ]),
           // A loss says why: a report tells a breakage from a theft by it, and a count never stands in for either.
           ...(operation === 'loss'
             ? [
@@ -830,6 +836,19 @@ export function receiptInput(
     ...(text(values['unitCost']) === '' ? {} : { unitCost: text(values['unitCost']) }),
     ...(text(values['unitCost']) !== '' && basis !== undefined ? { applyCost: basis } : {}),
     ...documentOf(values),
+  };
+}
+
+/** A count over several places: the product, its lot, and what was found at each place, as `toCountParts` reads them. */
+export function countInput(
+  values: FormValues,
+  parts: readonly { locationId: string; quantity: string }[],
+): StockCountInput {
+  return {
+    productId: text(values['productId']),
+    parts: parts.map((part) => ({ ...part })),
+    ...(text(values['lotCode']) === '' ? {} : { lotCode: text(values['lotCode']) }),
+    ...(text(values['lotExpiresOn']) === '' ? {} : { lotExpiresOn: text(values['lotExpiresOn']) }),
   };
 }
 

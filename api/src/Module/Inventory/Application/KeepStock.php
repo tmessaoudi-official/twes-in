@@ -102,23 +102,36 @@ final readonly class KeepStock
      */
     public function receiveSplit(Company $company, Uuid $productId, array $parts, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null, ?ReceiptDocument $document = null, bool $costToComplete = false): array
     {
-        if ([] === $parts) {
-            throw new InvalidStockMovement('parts', 'A receipt needs at least one place.');
-        }
-        $seen = [];
-        foreach ($parts as $part) {
-            $key = $part['locationId']->toRfc4122();
-            if (isset($seen[$key])) {
-                throw new InvalidStockMovement('locationId', 'A place may appear once in a receipt: add its quantities together.');
-            }
-            $seen[$key] = true;
-            $this->trackedAt($company, $productId, $part['locationId']);
-        }
+        $this->placesOnce($company, $productId, $parts, 'A receipt needs at least one place.', 'A place may appear once in a receipt: add its quantities together.');
 
         return $this->transactions->run(fn (): array => array_map(
             fn (array $part): StockMovement => $this->receiptAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named, $unitCost, $apply, $document, $costToComplete),
             $parts,
         ));
+    }
+
+    /**
+     * Every place of a split movement checked before any is written: at least one, each the company's and tracked for
+     * the product, none twice.
+     *
+     * @param list<array{locationId: Uuid, quantity: string}> $parts
+     *
+     * @throws InvalidStockMovement
+     */
+    private function placesOnce(Company $company, Uuid $productId, array $parts, string $none, string $twice): void
+    {
+        if ([] === $parts) {
+            throw new InvalidStockMovement('parts', $none);
+        }
+        $seen = [];
+        foreach ($parts as $part) {
+            $key = $part['locationId']->toRfc4122();
+            if (isset($seen[$key])) {
+                throw new InvalidStockMovement('locationId', $twice);
+            }
+            $seen[$key] = true;
+            $this->trackedAt($company, $productId, $part['locationId']);
+        }
     }
 
     /** @throws InvalidStockMovement */
@@ -199,18 +212,44 @@ final readonly class KeepStock
      */
     public function count(Company $company, Uuid $productId, Uuid $locationId, string $counted, ?Uuid $actorUserId, ?NamedLot $named = null): StockMovement
     {
-        return $this->transactions->run(function () use ($company, $productId, $locationId, $counted, $actorUserId, $named): StockMovement {
-            [$product, $location] = $this->trackedAt($company, $productId, $locationId);
-            $lot = $this->lotFor($product, $named, true);
-            $this->movements->lockStockOf($product->getId(), $location->getId());
-            $movement = StockMovement::count($product, $location, $counted, $this->movements->onHand($productId, $locationId, $lot?->getId()), $actorUserId, $this->clock->now(), $lot);
-            $this->inStockOnce($movement);
-            $this->save($movement);
-            $this->alerts?->raise([$movement]);
-            $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.counted', $actorUserId, $company->getId()));
+        return $this->transactions->run(fn (): StockMovement => $this->countAt($company, $productId, $locationId, $counted, $actorUserId, $named));
+    }
 
-            return $movement;
-        });
+    /**
+     * What was found at several places of a company, each place with its own quantity, as an opening count is taken:
+     * one count per place, stored whole or not at all, so a count refused at one place moves no other. Each part is
+     * what was found there, not a share of a total. Every place is checked before any is written, and a place may
+     * appear once.
+     *
+     * @param list<array{locationId: Uuid, quantity: string}> $parts in the order the person gave them
+     *
+     * @return list<StockMovement> the counts, in the same order
+     *
+     * @throws InvalidStockMovement
+     */
+    public function countSplit(Company $company, Uuid $productId, array $parts, ?Uuid $actorUserId, ?NamedLot $named = null): array
+    {
+        $this->placesOnce($company, $productId, $parts, 'A count needs at least one place.', 'A place may appear once in a count: count it as one.');
+
+        return $this->transactions->run(fn (): array => array_map(
+            fn (array $part): StockMovement => $this->countAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named),
+            $parts,
+        ));
+    }
+
+    /** @throws InvalidStockMovement */
+    private function countAt(Company $company, Uuid $productId, Uuid $locationId, string $counted, ?Uuid $actorUserId, ?NamedLot $named): StockMovement
+    {
+        [$product, $location] = $this->trackedAt($company, $productId, $locationId);
+        $lot = $this->lotFor($product, $named, true);
+        $this->movements->lockStockOf($product->getId(), $location->getId());
+        $movement = StockMovement::count($product, $location, $counted, $this->movements->onHand($productId, $locationId, $lot?->getId()), $actorUserId, $this->clock->now(), $lot);
+        $this->inStockOnce($movement);
+        $this->save($movement);
+        $this->alerts?->raise([$movement]);
+        $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.counted', $actorUserId, $company->getId()));
+
+        return $movement;
     }
 
     /**

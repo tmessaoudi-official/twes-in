@@ -165,6 +165,7 @@ describe('StockPage', () => {
     receiptCost: vi.fn(),
     record: vi.fn(),
     receiveSplit: vi.fn(),
+    countSplit: vi.fn(),
     releaseLot: vi.fn(),
     clearError: vi.fn(),
   };
@@ -214,6 +215,7 @@ describe('StockPage', () => {
     facade.receiptCost.mockReset().mockResolvedValue(null);
     facade.record.mockReset().mockResolvedValue(true);
     facade.receiveSplit.mockReset().mockResolvedValue(true);
+    facade.countSplit.mockReset().mockResolvedValue(true);
     facade.releaseLot.mockReset().mockResolvedValue(true);
     scans.named.mockReset().mockResolvedValue(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -362,8 +364,8 @@ describe('StockPage', () => {
       await settle();
     }
 
-    it('is offered on a receipt only, and not for a serial number', async () => {
-      q('stock-count')!.click();
+    it('is offered on a receipt and a count, and not on a move nor for a serial number', async () => {
+      q('stock-move')!.click();
       await settle();
       expect(q('stock-split')).toBeNull();
       q('stock-movement-cancel')!.click();
@@ -433,6 +435,60 @@ describe('StockPage', () => {
         locationId: 'l2',
         quantity: '10',
       });
+    });
+  });
+
+  // Audit 2026-10-06, H-b3: an opening count is taken place by place, each row what was found there.
+  describe('a count over several places', () => {
+    async function openCount(): Promise<void> {
+      q('stock-count')!.click();
+      await settle();
+      await pick('field-productId', 'ART-1 · Portable');
+      q('stock-split')!.click();
+      await settle();
+    }
+
+    it('swaps the place and the quantity for rows, with no total to place', async () => {
+      await openCount();
+
+      expect(q('field-locationId')).toBeNull();
+      expect(q('field-quantity')).toBeNull();
+      expect(q('placement-0-quantity')).not.toBeNull();
+      expect(q('placement-status')).toBeNull();
+      expect(q('placement-rest')).toBeNull();
+      expect(q('placement-counting')).not.toBeNull();
+    });
+
+    it('records one request with what was found at each place, nothing found included', async () => {
+      await openCount();
+      type('placement-0-quantity', '6');
+      await settle();
+      type('placement-1-quantity', '0');
+      await settle();
+      q('stock-movement-save')!.click();
+      await settle();
+
+      expect(facade.countSplit).toHaveBeenCalledWith('c1', {
+        productId: 'p1',
+        parts: [
+          { locationId: 'l2', quantity: '6' },
+          { locationId: 'l1', quantity: '0' },
+        ],
+      });
+      expect(facade.record).not.toHaveBeenCalled();
+      expect(facade.receiveSplit).not.toHaveBeenCalled();
+      expect(successToasts()).toContain('inventory.stock.recorded');
+    });
+
+    it('refuses to save while a place has no count, and says so', async () => {
+      await openCount();
+      type('placement-0-quantity', '6');
+      await settle();
+      q('stock-movement-save')!.click();
+      await settle();
+
+      expect(facade.countSplit).not.toHaveBeenCalled();
+      expect(q('placement-refused')!.textContent).toContain('inventory.placement.uncounted');
     });
   });
 

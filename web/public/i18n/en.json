@@ -2226,7 +2226,9 @@
       "done": "Everything is placed",
       "over": "{{left}} too many",
       "invalid": "Enter the quantity received",
-      "unplaced": "Place every unit before saving."
+      "unplaced": "Place every unit before saving.",
+      "counting": "Each row: what was found at that place, 0 if nothing.",
+      "uncounted": "Enter what was found at each place, 0 if nothing."
     },
     "receipt_cost": {
       "section": "Cost",

@@ -251,6 +251,52 @@ final class InventoryTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testACountIsTakenOverSeveralPlacesInOneRequestEachWhatWasFoundThereAndRefusedWholeWhenAnyPartIs(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $siteId = $this->defaultLocationId();
+        $this->postJson($this->path('stock-locations'), $this->location(['kind' => 'zone', 'code' => 'Z1', 'name' => 'Zone froide']));
+        $zoneId = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $siteId, 'quantity' => '3']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->postJson($this->path('stock-counts'), ['productId' => $this->laptopId, 'parts' => [
+            ['locationId' => $siteId, 'quantity' => '5'],
+            ['locationId' => $zoneId, 'quantity' => '2'],
+        ]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $parts = $this->json()['parts'];
+        self::assertIsArray($parts);
+        self::assertSame([$siteId, $zoneId], array_column($parts, 'locationId'));
+        self::assertSame(['5.000', '2.000'], array_column($parts, 'quantity'), 'each place says what was found there, not what moved');
+        self::assertIsArray($this->json()['movementIds']);
+        self::assertCount(2, $this->json()['movementIds']);
+        self::assertEqualsCanonicalizing(
+            [[$siteId, '5.000'], [$zoneId, '2.000']],
+            array_map(static fn (array $row): array => [$row['locationId'], $row['quantity']], $this->levels()),
+        );
+
+        foreach ([
+            'a place the company does not have' => [['locationId' => $siteId, 'quantity' => '9'], ['locationId' => Uuid::v7()->toRfc4122(), 'quantity' => '1']],
+            'a place twice' => [['locationId' => $siteId, 'quantity' => '9'], ['locationId' => $siteId, 'quantity' => '1']],
+            'no place' => [],
+            'a count below nothing' => [['locationId' => $siteId, 'quantity' => '9'], ['locationId' => $zoneId, 'quantity' => '-1']],
+        ] as $case => $refused) {
+            $this->postJson($this->path('stock-counts'), ['productId' => $this->laptopId, 'parts' => $refused]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
+        }
+        self::assertEqualsCanonicalizing(
+            [[$siteId, '5.000'], [$zoneId, '2.000']],
+            array_map(static fn (array $row): array => [$row['locationId'], $row['quantity']], $this->levels()),
+            'no refused count left anything behind',
+        );
+
+        $this->createUser('reader@twes.local', 'password-1234', $this->company(), ['stock.read'], 'reader');
+        $this->login('reader@twes.local', 'password-1234');
+        $this->postJson($this->path('stock-counts'), ['productId' => $this->laptopId, 'parts' => [['locationId' => $siteId, 'quantity' => '1']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'counting writes stock');
+    }
+
     public function testTrackedGoodsAreReceivedAndCountedAndTheirStockListedByLocation(): void
     {
         $this->signedIn(['stock.read', 'stock.write']);

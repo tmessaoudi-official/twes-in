@@ -25,6 +25,8 @@ import type {
   StockProductPickStockProductPickRead,
   StockVendorPickStockVendorPickRead,
   StockReceiptStockReceiptReadValidationStockReceiptWrite as StockReceiptStockReceiptRead,
+  StockCountStockCountReadValidationStockCountWrite as StockCountStockCountRead,
+  StockCountStockCountWriteValidationStockCountWrite as StockCountStockCountWrite,
   StockReceiptStockReceiptWriteValidationStockReceiptWrite as StockReceiptStockReceiptWrite,
   ReceiptCostReceiptCostRead,
   ReceiptCostEntryReceiptCostEntryWriteValidationReceiptCostEntryWrite as ReceiptCostEntryWrite,
@@ -52,6 +54,7 @@ import {
   type StockLocationInput,
   type StockLocationRow,
   type StockMovementInput,
+  type StockCountInput,
   type StockReceiptInput,
   type StockMovementRow,
   API_DECIMALS,
@@ -515,6 +518,23 @@ export class InventoryApi {
         this.http.post<StockReceiptStockReceiptRead>(path(companyId, 'stock-receipts'), body),
       );
       return receipt.movementIds ?? [];
+    });
+  }
+
+  /**
+   * What was found at several places, all stored or none: the ids of the counts written, one per place, in the order
+   * given. 422 naming the field refused, a place the company does not have, one named twice or a count below nothing.
+   */
+  async countSplit(companyId: string, input: StockCountInput): Promise<string[]> {
+    const body: StockCountStockCountWrite = {
+      ...input,
+      parts: input.parts.map((part) => ({ ...part })),
+    };
+    return this.guard(async () => {
+      const count = await firstValueFrom(
+        this.http.post<StockCountStockCountRead>(path(companyId, 'stock-counts'), body),
+      );
+      return count.movementIds ?? [];
     });
   }
 
