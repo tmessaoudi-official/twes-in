@@ -15,6 +15,7 @@ use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Application\StockCostSettings;
 use App\Module\Inventory\Domain\CostBasis;
 use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementCostKnown;
 use App\Module\Products\Application\ChangeProductCost;
@@ -54,6 +55,7 @@ final class KeepStockCostOnReceiveTest extends TestCase
     private KeepStock $keep;
     private Company $company;
     private StockLocation $site;
+    private InMemoryStockLocations $locations;
     private Product $laptop;
 
     public function testInSuggestAReceiptKeepsTheCostUnlessThePersonAppliesTheLastPriceOrTheAverage(): void
@@ -151,6 +153,28 @@ final class KeepStockCostOnReceiveTest extends TestCase
         $this->keep->enterCost($this->company, $receipt->getId(), '70', null, null);
     }
 
+    public function testAReceiptSplitOverSeveralPlacesMovesTheCostOnceFromTheWholeOfIt(): void
+    {
+        // One receipt put away on two shelves is one arrival of goods: the cost moves once, to the average with all of
+        // it on the shelf, and the history keeps no figure from halfway through the put-away (audit 2026-10-06, E-12).
+        $this->mode('average');
+        $rack = StockLocation::create($this->site->getEstablishment(), $this->site, StockLocationKind::Rack, 'R1', 'Rack 1', new \DateTimeImmutable('2026-09-15 08:00:00'));
+        $this->locations->save($rack);
+        $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '10', null, null, '1000');
+        $before = \count($this->history->changes);
+
+        $written = $this->keep->receiveSplit($this->company, $this->laptop->getId(), [
+            ['locationId' => $this->site->getId(), 'quantity' => '5'],
+            ['locationId' => $rack->getId(), 'quantity' => '5'],
+        ], null, null, '1400');
+
+        self::assertSame('1200.0000', $this->laptop->getDetails()->costPrice, '(10 x 1000 + 10 x 1400) over 20');
+        self::assertCount($before + 1, $this->history->changes, 'one move of the cost for one receipt, not one per shelf');
+        $moved = $this->history->changes[$before];
+        self::assertSame(['1000.0000', '1200.0000'], [$moved->getOldCost(), $moved->getNewCost()]);
+        self::assertTrue($written[1]->getId()->equals($moved->getSourceId()), 'the history names the part that completed the receipt');
+    }
+
     protected function setUp(): void
     {
         $clock = new MockClock('2026-09-15 09:00:00');
@@ -162,7 +186,7 @@ final class KeepStockCostOnReceiveTest extends TestCase
         $movements->transactions = $transactions;
         $lots = new InMemoryStockLots();
         $lots->transactions = $transactions;
-        $locations = new InMemoryStockLocations();
+        $locations = $this->locations = new InMemoryStockLocations();
         $establishments = new InMemoryEstablishments();
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $main = Establishment::create($this->company, '000', 'Siège', true, $now);

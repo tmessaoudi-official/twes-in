@@ -86,7 +86,7 @@ final readonly class KeepStock
      */
     public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null, ?ReceiptDocument $document = null, bool $costToComplete = false): StockMovement
     {
-        return $this->transactions->run(fn (): StockMovement => $this->receiptAt($company, $productId, $locationId, $quantity, $actorUserId, $named, $unitCost, $apply, $document, $costToComplete));
+        return $this->transactions->run(fn (): StockMovement => $this->receiptsAt($company, $productId, [['locationId' => $locationId, 'quantity' => $quantity]], $actorUserId, $named, $unitCost, $apply, $document, $costToComplete)[0]);
     }
 
     /**
@@ -104,10 +104,7 @@ final readonly class KeepStock
     {
         $this->placesOnce($company, $productId, $parts, 'A receipt needs at least one place.', 'A place may appear once in a receipt: add its quantities together.');
 
-        return $this->transactions->run(fn (): array => array_map(
-            fn (array $part): StockMovement => $this->receiptAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named, $unitCost, $apply, $document, $costToComplete),
-            $parts,
-        ));
+        return $this->transactions->run(fn (): array => $this->receiptsAt($company, $productId, $parts, $actorUserId, $named, $unitCost, $apply, $document, $costToComplete));
     }
 
     /**
@@ -115,6 +112,8 @@ final readonly class KeepStock
      * the product, none twice.
      *
      * @param list<array{locationId: Uuid, quantity: string}> $parts
+     *
+     * @phpstan-assert non-empty-list<array{locationId: Uuid, quantity: string}> $parts
      *
      * @throws InvalidStockMovement
      */
@@ -134,8 +133,36 @@ final readonly class KeepStock
         }
     }
 
-    /** @throws InvalidStockMovement */
-    private function receiptAt(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?CostBasis $apply, ?ReceiptDocument $document, bool $costToComplete): StockMovement
+    /**
+     * The receipts of one delivery, then the product's cost moved once, from the last of them: a delivery put away on
+     * several shelves is one arrival, and a cost moved per shelf would leave a history row for every figure on the way
+     * (audit 2026-10-06, E-12). The live change is one per product already, staged once per transaction.
+     *
+     * @param non-empty-list<array{locationId: Uuid, quantity: string}> $parts
+     *
+     * @return non-empty-list<StockMovement>
+     *
+     * @throws InvalidStockMovement
+     */
+    private function receiptsAt(Company $company, Uuid $productId, array $parts, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?CostBasis $apply, ?ReceiptDocument $document, bool $costToComplete): array
+    {
+        $written = [];
+        $typed = null;
+        foreach ($parts as $part) {
+            [$written[], $typed] = $this->receiptAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named, $unitCost, $document, $costToComplete);
+        }
+        $last = $written[\count($written) - 1];
+        $this->moveCost($company, $last->getProduct(), $last, $typed, $apply, $actorUserId);
+
+        return $written;
+    }
+
+    /**
+     * @return array{StockMovement, numeric-string|null} the receipt, and the cost it came with, none when nobody typed one
+     *
+     * @throws InvalidStockMovement
+     */
+    private function receiptAt(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?ReceiptDocument $document, bool $costToComplete): array
     {
         [$product, $location] = $this->trackedAt($company, $productId, $locationId);
         $lot = $this->lotFor($product, $named, true);
@@ -145,10 +172,9 @@ final readonly class KeepStock
         $typed = $movement->getUnitCost();
         $this->inStockOnce($movement);
         $this->save($movement);
-        $this->moveCost($company, $product, $movement, $typed, $apply, $actorUserId);
         $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.received', $actorUserId, $company->getId()));
 
-        return $movement;
+        return [$movement, $typed];
     }
 
     /**
@@ -212,7 +238,7 @@ final readonly class KeepStock
      */
     public function count(Company $company, Uuid $productId, Uuid $locationId, string $counted, ?Uuid $actorUserId, ?NamedLot $named = null): StockMovement
     {
-        return $this->transactions->run(fn (): StockMovement => $this->countAt($company, $productId, $locationId, $counted, $actorUserId, $named));
+        return $this->transactions->run(fn (): StockMovement => $this->countsAt($company, $productId, [['locationId' => $locationId, 'quantity' => $counted]], $actorUserId, $named)[0]);
     }
 
     /**
@@ -231,10 +257,28 @@ final readonly class KeepStock
     {
         $this->placesOnce($company, $productId, $parts, 'A count needs at least one place.', 'A place may appear once in a count: count it as one.');
 
-        return $this->transactions->run(fn (): array => array_map(
-            fn (array $part): StockMovement => $this->countAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named),
-            $parts,
-        ));
+        return $this->transactions->run(fn (): array => $this->countsAt($company, $productId, $parts, $actorUserId, $named));
+    }
+
+    /**
+     * The counts of every place, then the alerts raised once over all of them: five missing on the floor and found on
+     * the rack is no fall, which judging the floor before the rack is written would announce (audit 2026-10-06, N-e).
+     *
+     * @param non-empty-list<array{locationId: Uuid, quantity: string}> $parts
+     *
+     * @return non-empty-list<StockMovement>
+     *
+     * @throws InvalidStockMovement
+     */
+    private function countsAt(Company $company, Uuid $productId, array $parts, ?Uuid $actorUserId, ?NamedLot $named): array
+    {
+        $written = [];
+        foreach ($parts as $part) {
+            $written[] = $this->countAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named);
+        }
+        $this->alerts?->raise($written);
+
+        return $written;
     }
 
     /** @throws InvalidStockMovement */
@@ -246,7 +290,6 @@ final readonly class KeepStock
         $movement = StockMovement::count($product, $location, $counted, $this->movements->onHand($productId, $locationId, $lot?->getId()), $actorUserId, $this->clock->now(), $lot);
         $this->inStockOnce($movement);
         $this->save($movement);
-        $this->alerts?->raise([$movement]);
         $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.counted', $actorUserId, $company->getId()));
 
         return $movement;

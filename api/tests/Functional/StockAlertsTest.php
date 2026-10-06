@@ -11,6 +11,8 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\UnitRepository;
+use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
@@ -18,6 +20,7 @@ use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Alerts, not reports (docs/SPEC.md § 7): a count that found a difference, and stock that fell to its reorder point,
@@ -87,6 +90,32 @@ final class StockAlertsTest extends ApiTestCase
         $this->movement('receive', $site, '10');
         $this->movement('count', $site, '4');
         self::assertCount(4, $this->told('stock.low'), 'back above and under again is a new fall');
+    }
+
+    public function testACountOverSeveralPlacesIsJudgedWholeSoGoodsFoundOnAnotherShelfAreNoFall(): void
+    {
+        // Five counted missing on the floor and found on the rack is stock that did not fall: the alert reads the count
+        // as a whole, not the floor alone before the rack is written (audit 2026-10-06, N-e).
+        $site = $this->site();
+        $this->sendJson('PUT', $this->path('products/'.$this->laptopId.'/reorder-points/'.$this->establishmentId($site)), ['quantity' => '5']);
+        self::assertResponseIsSuccessful();
+        $floor = $this->em()->find(StockLocation::class, Uuid::fromString($site));
+        self::assertNotNull($floor);
+        $rack = StockLocation::create($floor->getEstablishment(), $floor, StockLocationKind::Rack, 'R1', 'Rack 1', new \DateTimeImmutable());
+        $this->em()->persist($rack);
+        $this->em()->flush();
+        $rackId = $rack->getId()->toRfc4122();
+        $this->movement('receive', $site, '8');
+        $this->movement('receive', $rackId, '2');
+
+        $this->postJson($this->path('stock-counts'), ['productId' => $this->laptopId, 'parts' => [
+            ['locationId' => $site, 'quantity' => '3'],
+            ['locationId' => $rackId, 'quantity' => '7'],
+        ]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        self::assertSame([], $this->told('stock.low'), 'ten before, ten after: nothing fell');
+        self::assertCount(2, $this->told('stock.count_difference'), 'each place that differed is still told, to the other keeper');
     }
 
     /**
