@@ -49,68 +49,45 @@
               <span class="flex flex-wrap items-center gap-2">
                 <span class="font-semibold tabular-nums">{{ row.amount | amount: scale() }}</span>
                 @if (mayPay() && (row.status === 'held' || row.status === 'deposited')) {
-                  @if (confirming(); as asked) {
-                    @if (asked.id === row.id) {
-                      <button
-                        mat-button
-                        type="button"
-                        (click)="confirming.set(null)"
-                        [attr.data-testid]="'instrument-' + row.id + '-keep'"
-                      >
-                        {{ 'invoices.instruments.keep' | translate }}
-                      </button>
-                      <button
-                        mat-flat-button
-                        type="button"
-                        [disabled]="busy()"
-                        (click)="asked.step === 'delete' ? remove(row) : advance(row, asked.step)"
-                        [attr.data-testid]="'instrument-' + row.id + '-confirm'"
-                      >
-                        {{
-                          'invoices.instruments.confirm_' +
-                            (asked.step === 'delete' ? 'delete' : asked.step) | translate
-                        }}
-                      </button>
-                    }
+                  @if (row.status === 'held') {
+                    <button
+                      mat-button
+                      type="button"
+                      [disabled]="busy()"
+                      (click)="ask(row, 'deposit')"
+                      [attr.data-testid]="'instrument-' + row.id + '-deposit'"
+                    >
+                      {{ 'invoices.instruments.deposit' | translate }}
+                    </button>
                   }
-                  @if (confirming()?.id !== row.id) {
-                    @if (row.status === 'held') {
-                      <button
-                        mat-button
-                        type="button"
-                        [disabled]="busy()"
-                        (click)="advance(row, 'deposit')"
-                        [attr.data-testid]="'instrument-' + row.id + '-deposit'"
-                      >
-                        {{ 'invoices.instruments.deposit' | translate }}
-                      </button>
-                    }
+                  <button
+                    mat-button
+                    type="button"
+                    [disabled]="busy()"
+                    (click)="ask(row, 'cash')"
+                    [attr.data-testid]="'instrument-' + row.id + '-cash'"
+                  >
+                    {{ 'invoices.instruments.cash' | translate }}
+                  </button>
+                  <button
+                    mat-button
+                    type="button"
+                    [disabled]="busy()"
+                    (click)="ask(row, 'unpaid')"
+                    [attr.data-testid]="'instrument-' + row.id + '-unpaid'"
+                  >
+                    {{ 'invoices.instruments.unpaid' | translate }}
+                  </button>
+                  @if (row.status === 'held') {
                     <button
                       mat-button
                       type="button"
-                      (click)="confirming.set({ id: row.id, step: 'cash' })"
-                      [attr.data-testid]="'instrument-' + row.id + '-cash'"
+                      [disabled]="busy()"
+                      (click)="ask(row, 'delete')"
+                      [attr.data-testid]="'instrument-' + row.id + '-delete'"
                     >
-                      {{ 'invoices.instruments.cash' | translate }}
+                      {{ 'invoices.instruments.delete' | translate }}
                     </button>
-                    <button
-                      mat-button
-                      type="button"
-                      (click)="confirming.set({ id: row.id, step: 'unpaid' })"
-                      [attr.data-testid]="'instrument-' + row.id + '-unpaid'"
-                    >
-                      {{ 'invoices.instruments.unpaid' | translate }}
-                    </button>
-                    @if (row.status === 'held') {
-                      <button
-                        mat-button
-                        type="button"
-                        (click)="confirming.set({ id: row.id, step: 'delete' })"
-                        [attr.data-testid]="'instrument-' + row.id + '-delete'"
-                      >
-                        {{ 'invoices.instruments.delete' | translate }}
-                      </button>
-                    }
                   }
                 }
               </span>

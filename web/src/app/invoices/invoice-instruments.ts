@@ -13,11 +13,14 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
 import { TranslatePipe } from '@ngx-translate/core';
+import { runAction } from '../shared/actions/run-action';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import { Feedback } from '../shared/feedback/feedback';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
+import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { instrumentForm, instrumentInput, instrumentValues } from './instruments-forms';
 import { InstrumentsFacade } from './instruments-facade';
@@ -26,12 +29,6 @@ import {
   type InstrumentRow,
   type InstrumentStep,
 } from './instruments-types';
-
-/** A step that cannot be taken back asks once more, on the row, before it is taken. */
-interface Confirming {
-  readonly id: string;
-  readonly step: InstrumentStep | 'delete';
-}
 
 /**
  * The cheques and traites received against one issued invoice (docs/SPEC.md § 7, 2026-09-21 18:40). An instrument is
@@ -69,12 +66,12 @@ export class InvoiceInstruments {
 
   private readonly facade = inject(InstrumentsFacade);
   private readonly feedback = inject(Feedback);
+  private readonly dialog = inject(MatDialog);
 
   protected readonly items = this.facade.items;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly tones = INSTRUMENT_STATUS_TONES;
-  protected readonly confirming = signal<Confirming | null>(null);
   protected readonly group = signal<DescriptorFormGroup | null>(null);
   protected readonly descriptor = instrumentForm();
 
@@ -133,20 +130,39 @@ export class InvoiceInstruments {
     }
   }
 
-  protected async advance(row: InstrumentRow, step: InstrumentStep): Promise<void> {
-    this.confirming.set(null);
+  /**
+   * Every step on an instrument is one the bank or the paper makes final: a deposit is not taken back from the bank,
+   * and none of them has an undo. So each asks through the shared confirmation, which names it « définitif », and the
+   * toast after it says the same word (audit 2026-10-06, C-8).
+   */
+  protected ask(row: InstrumentRow, step: InstrumentStep | 'delete'): void {
     if (this.busy()) return;
+    runAction(
+      {
+        run: () => void (step === 'delete' ? this.remove(row) : this.advance(row, step)),
+        confirm: {
+          kind: 'definitif',
+          title: `invoices.instruments.ask.${step}.title`,
+          message: `invoices.instruments.ask.${step}.message`,
+          confirmLabel: `invoices.instruments.confirm_${step}`,
+          keepLabel: 'invoices.instruments.keep',
+        },
+      },
+      (confirm) =>
+        this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+    );
+  }
+
+  private async advance(row: InstrumentRow, step: InstrumentStep): Promise<void> {
     if (await this.facade.advance(this.companyId(), this.invoiceId(), row.id, step)) {
-      this.feedback.success(`invoices.instruments.done.${step}`);
+      this.feedback.effect(`invoices.instruments.done.${step}`, {}, 'definitif');
       if (step === 'cash') this.changed.emit();
     }
   }
 
-  protected async remove(row: InstrumentRow): Promise<void> {
-    this.confirming.set(null);
-    if (this.busy()) return;
+  private async remove(row: InstrumentRow): Promise<void> {
     if (await this.facade.remove(this.companyId(), this.invoiceId(), row.id)) {
-      this.feedback.success('invoices.instruments.done.deleted');
+      this.feedback.effect('invoices.instruments.done.deleted', {}, 'definitif');
     }
   }
 }

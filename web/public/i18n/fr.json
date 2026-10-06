@@ -1411,10 +1411,29 @@
       "cash": "Encaisser",
       "unpaid": "Marquer impayé",
       "delete": "Supprimer",
+      "confirm_deposit": "Confirmer la remise",
       "confirm_cash": "Confirmer : il est passé",
       "confirm_unpaid": "Confirmer : il est revenu impayé",
       "confirm_delete": "Confirmer la suppression",
       "keep": "Le garder",
+      "ask": {
+        "deposit": {
+          "title": "Remettre à l'encaissement ?",
+          "message": "Le chèque ou la traite part à la banque : il ne revient plus au portefeuille."
+        },
+        "cash": {
+          "title": "Encaisser ?",
+          "message": "Le paiement est enregistré sur la facture : ce qui reste dû diminue d'autant."
+        },
+        "unpaid": {
+          "title": "Marquer impayé ?",
+          "message": "Le chèque ou la traite ne couvre plus rien : ce qu'il promettait redevient dû."
+        },
+        "delete": {
+          "title": "Supprimer ?",
+          "message": "Le chèque ou la traite sort du portefeuille, et n'apparaîtra plus sur la facture."
+        }
+      },
       "done": {
         "received": "Le chèque ou la traite est reçu.",
         "deposit": "Le chèque ou la traite est remis à l'encaissement.",

@@ -254,10 +254,13 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await expect(held).toHaveCount(1);
     await held.getByRole('link').first().click();
     await expect(page).toHaveURL(invoiceUrl);
+    // Every step on a cheque asks through the shared confirmation, deposit included (audit 2026-10-06, C-8).
     await page.locator('[data-testid^="instrument-"][data-testid$="-deposit"]').click();
+    await expect(page.getByTestId('confirm-kind')).toHaveAttribute('data-kind', 'definitif');
+    await page.getByTestId('confirm-run').click();
     await expect(toast(page)).toContainText("remis à l'encaissement");
     await page.locator('[data-testid^="instrument-"][data-testid$="-unpaid"]').click();
-    await page.locator('[data-testid^="instrument-"][data-testid$="-confirm"]').click();
+    await page.getByTestId('confirm-run').click();
     await expect(toast(page)).toContainText('marqué impayé');
     await expect(page.getByTestId('invoice-instruments')).toContainText('Impayé');
     await expect(page.getByTestId('invoice-payments-none')).toBeVisible();

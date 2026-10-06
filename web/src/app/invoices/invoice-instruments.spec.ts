@@ -16,7 +16,7 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { effectToasts, provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { InvoiceInstruments } from './invoice-instruments';
 import { InstrumentsApi } from './instruments-api';
 import { InvoicesRefused } from './invoices-api';
@@ -146,43 +146,64 @@ describe('InvoiceInstruments', () => {
     expect(q('instrument-receive')).toBeNull();
   });
 
-  it('deposits at once, and asks once more before cashing, which tells the page the invoice changed', async () => {
+  // Audit 2026-10-06, C-8: every step on a cheque or traite asks through the shared confirmation, which says it cannot
+  // be taken back, « Remettre à l'encaissement » included; the toast after it says the same word.
+  const dialog = (testId: string) => {
+    const all = document.querySelectorAll(`[data-testid="${testId}"]`);
+    return all[all.length - 1] as HTMLElement | undefined;
+  };
+  async function answer(testId: 'confirm-run' | 'confirm-keep'): Promise<void> {
+    await vi.waitFor(() => expect(dialog(testId)).toBeDefined());
+    dialog(testId)!.click();
+    await settle();
+  }
+
+  it('asks before depositing, says it cannot be taken back, and deposits only once confirmed', async () => {
     await show([held]);
 
     q('instrument-i1-deposit')!.click();
     await settle();
-    expect(api.advance).toHaveBeenLastCalledWith('c1', 'f1', 'i1', 'deposit');
+    await vi.waitFor(() =>
+      expect(dialog('confirm-kind')?.getAttribute('data-kind')).toBe('definitif'),
+    );
+    await answer('confirm-keep');
+    expect(api.advance).not.toHaveBeenCalled();
+
+    q('instrument-i1-deposit')!.click();
+    await settle();
+    await answer('confirm-run');
+    await vi.waitFor(() =>
+      expect(api.advance).toHaveBeenLastCalledWith('c1', 'f1', 'i1', 'deposit'),
+    );
     expect(changes).toEqual([]);
+    expect(effectToasts()).toEqual(['invoices.instruments.done.deposit:definitif']);
+  });
+
+  it('cashes only once confirmed, which tells the page the invoice changed', async () => {
+    await show([held]);
 
     q('instrument-i1-cash')!.click();
     await settle();
-    expect(api.advance).toHaveBeenCalledTimes(1);
-    q('instrument-i1-confirm')!.click();
-    await settle();
-    expect(api.advance).toHaveBeenLastCalledWith('c1', 'f1', 'i1', 'cash');
+    await answer('confirm-run');
+    await vi.waitFor(() => expect(api.advance).toHaveBeenLastCalledWith('c1', 'f1', 'i1', 'cash'));
     expect(changes).toEqual([true]);
-    expect(successToasts()).toEqual([
-      'invoices.instruments.done.deposit',
-      'invoices.instruments.done.cash',
-    ]);
+    expect(effectToasts()).toEqual(['invoices.instruments.done.cash:definitif']);
   });
 
-  it('lets the confirmation be kept off, and marks unpaid and deletes only after it', async () => {
+  it('marks unpaid and deletes only once confirmed', async () => {
     await show([held]);
 
     q('instrument-i1-unpaid')!.click();
     await settle();
-    q('instrument-i1-keep')!.click();
-    await settle();
+    await answer('confirm-keep');
     expect(api.advance).not.toHaveBeenCalled();
-    expect(q('instrument-i1-confirm')).toBeNull();
 
     q('instrument-i1-delete')!.click();
     await settle();
-    q('instrument-i1-confirm')!.click();
-    await settle();
-    expect(api.remove).toHaveBeenCalledWith('c1', 'f1', 'i1');
+    await answer('confirm-run');
+    await vi.waitFor(() => expect(api.remove).toHaveBeenCalledWith('c1', 'f1', 'i1'));
     expect(changes).toEqual([]);
+    expect(effectToasts()).toEqual(['invoices.instruments.done.deleted:definitif']);
   });
 
   it('starts a new one for what the open ones leave free, and sends what was typed', async () => {

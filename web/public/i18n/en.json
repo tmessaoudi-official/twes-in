@@ -1411,10 +1411,29 @@
       "cash": "Cash",
       "unpaid": "Mark unpaid",
       "delete": "Delete",
+      "confirm_deposit": "Confirm the deposit",
       "confirm_cash": "Confirm: it cleared",
       "confirm_unpaid": "Confirm: it came back unpaid",
       "confirm_delete": "Confirm deletion",
       "keep": "Keep it",
+      "ask": {
+        "deposit": {
+          "title": "Deposit it?",
+          "message": "The cheque or traite goes to the bank: it does not come back to the portfolio."
+        },
+        "cash": {
+          "title": "Cash it?",
+          "message": "The payment is recorded on the invoice: what is still due drops by as much."
+        },
+        "unpaid": {
+          "title": "Mark it unpaid?",
+          "message": "The cheque or traite no longer covers anything: what it promised is due again."
+        },
+        "delete": {
+          "title": "Delete it?",
+          "message": "The cheque or traite leaves the portfolio and no longer shows on the invoice."
+        }
+      },
       "done": {
         "received": "The cheque or traite has been received.",
         "deposit": "The cheque or traite is deposited.",
