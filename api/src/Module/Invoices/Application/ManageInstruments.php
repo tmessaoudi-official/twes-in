@@ -51,6 +51,7 @@ final readonly class ManageInstruments
         private InvoiceRepository $invoices,
         private PaymentInstrumentRepository $instruments,
         private ManagePayments $payments,
+        private ManageCustomerCredit $credit,
         private Transactions $transactions,
         private CurrencyScales $scales,
         private AuditTrail $audit,
@@ -139,7 +140,6 @@ final readonly class ManageInstruments
      * @throws InvoiceNotFound
      * @throws InstrumentNotFound
      * @throws InvoiceTransitionRefused unless the instrument is held or deposited
-     * @throws InvalidInvoice           when the invoice no longer owes the instrument's amount
      */
     public function cash(Company $company, Uuid $invoiceId, Uuid $instrumentId, ?Uuid $actorUserId): PaymentInstrument
     {
@@ -151,10 +151,22 @@ final readonly class ManageInstruments
             $now = $this->clock->now();
             $today = $now->setTimezone(new \DateTimeZone($company->getTimezone()));
             $method = InstrumentKind::Check === $instrument->getKind() ? PaymentMethod::Check : PaymentMethod::Other;
-            $payment = $this->payments->record($company, $invoiceId, new PaymentDetails($today, $instrument->getAmount(), $method, $instrument->getNumber()), $actorUserId);
+            // Other money may have covered the invoice since the instrument came in: it pays what is still due, and the
+            // rest, which really arrived, is the customer's, on account (docs/SPEC.md § 7, 2026-10-06 22:11).
+            $scale = $this->scales->of($company->getCurrency());
+            $amount = Decimal::of($instrument->getAmount());
+            $due = Decimal::of($invoice->getIssuedFigures()->amountDue ?? '0');
+            $paid = $amount->compare($due) > 0 ? $due : $amount;
+            $onAccount = $amount->sub($paid);
+            $payment = $paid->compare(0) > 0
+                ? $this->payments->record($company, $invoiceId, new PaymentDetails($today, Decimal::format($paid, $scale), $method, $instrument->getNumber()), $actorUserId)
+                : null;
+            if ($onAccount->compare(0) > 0) {
+                $this->credit->deposit($company, $invoice->getCustomer()->getId(), new PaymentDetails($today, Decimal::format($onAccount, $scale), $method, $instrument->getNumber()), $actorUserId);
+            }
             $instrument->cash($payment, $today, $now);
             $this->instruments->save($instrument);
-            $this->trail($company, $invoice, self::CASHED, $instrument, $actorUserId);
+            $this->trail($company, $invoice, self::CASHED, $instrument, $actorUserId, ['onAccount' => Decimal::format($onAccount, $scale)]);
 
             return $instrument;
         });
@@ -212,13 +224,14 @@ final readonly class ManageInstruments
         return [$invoice, $instrument];
     }
 
-    private function trail(Company $company, Invoice $invoice, string $action, PaymentInstrument $instrument, ?Uuid $actorUserId): void
+    /** @param array<string, string> $more */
+    private function trail(Company $company, Invoice $invoice, string $action, PaymentInstrument $instrument, ?Uuid $actorUserId, array $more = []): void
     {
         $this->audit->record(new AuditEntry(ManageInvoices::ENTITY_TYPE, $invoice->getId(), $action, $actorUserId, [
             'instrumentId' => $instrument->getId()->toRfc4122(),
             'kind' => $instrument->getKind()->value,
             'dueOn' => $instrument->getDueOn()->format('Y-m-d'),
             'amount' => $instrument->getAmount(),
-        ], $company->getId()));
+        ] + $more, $company->getId()));
     }
 }

@@ -772,6 +772,46 @@ final class InvoicesTest extends ApiTestCase
         self::assertEquals(3, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM audit_log WHERE action IN ('instrument.received', 'instrument.deposited', 'instrument.cashed')"), 'a refused step leaves no trace');
     }
 
+    /**
+     * Audit 2026-10-06, A-F6 (docs/SPEC.md § 7, 2026-10-06 22:11): a cheque cashed after other money covered its invoice
+     * pays what is still due, and the rest is the customer's, on account; it is never stuck.
+     */
+    public function testAChequeCashedOnAnInvoiceOtherMoneyCoveredPaysWhatIsLeftAndPutsTheRestOnAccount(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write', 'customer.read']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $id = $this->issuedInvoice();
+        $due = $this->stringAt($this->json(), 'amountDue');
+        self::assertIsNumeric($due);
+        $instruments = $this->path($id).'/instruments';
+        $this->postJson($instruments, ['kind' => 'check', 'amount' => '100', 'dueOn' => $today, 'bank' => 'BT', 'number' => 'CHQ-9']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $cheque = $this->stringAt($this->json(), 'id');
+        $this->postJson($instruments, ['kind' => 'check', 'amount' => '25', 'dueOn' => $today, 'bank' => 'BT', 'number' => 'CHQ-10']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $second = $this->stringAt($this->json(), 'id');
+        $this->postJson($instruments.'/'.$cheque.'/deposit', null);
+        $this->postJson($this->path($id).'/payments', ['date' => $today, 'amount' => bcsub($due, '40', 3), 'method' => 'cash', 'reference' => null, 'notes' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->postJson($instruments.'/'.$cheque.'/cash', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame('cashed', $this->json()['status']);
+        $this->getJson($this->path($id));
+        self::assertSame(['paid', '0.000'], [$this->json()['status'], $this->json()['amountDue']], 'the cheque paid the 40 still due');
+        self::assertSame([bcsub($due, '40', 3), '40.000'], array_column($this->arrayAt($this->json(), 'payments'), 'amount'));
+        $this->getJson($this->companyPath().'/customers/'.$this->customerId.'/credit-balance');
+        self::assertSame(['60.000', ['deposit']], [$this->json()['balance'], array_column($this->arrayAt($this->json(), 'entries'), 'kind')], 'the 60 left over is on account');
+
+        // The second cheque, on the now paid invoice: none of it is due, all of it goes on account.
+        $this->postJson($instruments.'/'.$second.'/cash', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertNull($this->json()['paymentId'], 'nothing was due, so no payment');
+        $this->getJson($this->companyPath().'/customers/'.$this->customerId.'/credit-balance');
+        self::assertSame('85.000', $this->json()['balance']);
+    }
+
     public function testAnUnpaidInstrumentLeavesNoPaymentAndAHeldOneIsTakenOut(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);

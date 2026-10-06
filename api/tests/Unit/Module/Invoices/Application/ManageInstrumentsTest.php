@@ -17,6 +17,7 @@ use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\Invoices\Application\InstrumentNotFound;
 use App\Module\Invoices\Application\InvoiceNotFound;
+use App\Module\Invoices\Application\ManageCustomerCredit;
 use App\Module\Invoices\Application\ManageInstruments;
 use App\Module\Invoices\Application\ManagePayments;
 use App\Module\Invoices\Domain\InstrumentDetails;
@@ -36,6 +37,7 @@ use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomerCredits;
+use App\Tests\Support\InMemoryCustomers;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryInvoices;
 use App\Tests\Support\InMemoryNumberingSeries;
@@ -75,8 +77,10 @@ final class ManageInstrumentsTest extends TestCase
         $this->invoices->transactions = $this->transactions;
         $this->instruments = new InMemoryPaymentInstruments();
         $this->audit = new InMemoryAuditTrail($this->transactions);
-        $this->payments = new ManagePayments($this->invoices, new InMemoryCustomerCredits(), $this->transactions, ShippedFiscalPresets::scales(), $this->audit, $this->clock, $this->instruments);
-        $this->manage = new ManageInstruments($this->invoices, $this->instruments, $this->payments, $this->transactions, ShippedFiscalPresets::scales(), $this->audit, $this->clock);
+        $credits = new InMemoryCustomerCredits();
+        $this->payments = new ManagePayments($this->invoices, $credits, $this->transactions, ShippedFiscalPresets::scales(), $this->audit, $this->clock, $this->instruments);
+        $credit = new ManageCustomerCredit($credits, new InMemoryCustomers(), $this->invoices, $this->transactions, ShippedFiscalPresets::scales(), $this->audit, $this->clock);
+        $this->manage = new ManageInstruments($this->invoices, $this->instruments, $this->payments, $credit, $this->transactions, ShippedFiscalPresets::scales(), $this->audit, $this->clock);
     }
 
     public function testAChequeDatedAheadLeavesTheInvoiceDueAndIsAudited(): void

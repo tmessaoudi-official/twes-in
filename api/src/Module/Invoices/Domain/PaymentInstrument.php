@@ -100,8 +100,11 @@ class PaymentInstrument implements CompanyOwned
         $this->updatedAt = $now;
     }
 
-    /** Cashed: the payment it became. @throws InvoiceTransitionRefused unless it is held or deposited */
-    public function cash(Payment $payment, \DateTimeImmutable $day, \DateTimeImmutable $now): void
+    /**
+     * Cashed: the payment it became, none when other money had already covered its invoice and all of it went on the
+     * customer's account. @throws InvoiceTransitionRefused unless it is held or deposited.
+     */
+    public function cash(?Payment $payment, \DateTimeImmutable $day, \DateTimeImmutable $now): void
     {
         $this->settle(InstrumentStatus::Cashed, $day, $now);
         $this->payment = $payment;
