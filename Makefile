@@ -119,6 +119,11 @@ gate: gate-licences gate-api gate-web   ## everything CI checks except e2e
 
 gate-licences: tools-image
 	$(TOOLS) make --no-print-directory in-gate-licences
+gate-stamps: tools-image   ## the Decisions Log stamps alone: what a push touching only docs/SPEC.md is checked by
+	$(TOOLS) make --no-print-directory in-gate-stamps
+in-gate-stamps:
+	bash scripts/gates/tests/decision-stamps.test.sh
+	bash scripts/gates/decision-stamps.sh
 in-gate-licences:
 	bash scripts/gates/tests/dependency-licences.test.sh
 	bash scripts/gates/tests/spdx-headers.test.sh

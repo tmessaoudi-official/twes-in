@@ -1,0 +1,23 @@
+# The Decisions Log stamps of a push that changes docs/SPEC.md. ci.yml leaves a push touching only the spec alone, and
+# the stamps gate is the one check such a push can fail: without this, a bad stamp waited for the next code push.
+name: decision-stamps
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - docs/SPEC.md
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stamps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        # The whole history: each stamp is compared with the commit that wrote it.
+        with:
+          fetch-depth: 0
+      - run: make gate-stamps

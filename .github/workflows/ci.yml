@@ -4,8 +4,9 @@ name: ci
 on:
   push:
     branches: [master]
-    # A push that touches only these runs nothing (docs/SPEC.md § 7, 2026-10-04 10:40). Not `docs/**`: the pricing
-    # vectors under docs/spec are a test fixture, and START.md and UPDATE.md are read by the version-pin gate.
+    # A push that touches only these runs none of these jobs (docs/SPEC.md § 7, 2026-10-04 10:40); one touching
+    # docs/SPEC.md still has its Decisions Log stamps checked, by decision-stamps.yml. Not `docs/**`: the pricing
+    # vectors under docs/spec are a test fixture.
     paths-ignore:
       - docs/SPEC.md
       - docs/research/**

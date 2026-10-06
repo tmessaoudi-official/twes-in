@@ -381,6 +381,7 @@ make gate-licences    # dependency licences, SPDX headers, executable bits, vers
 make gate-api         # php-cs-fixer, PHPStan, PHPUnit against the twes_test database (needs postgres running)
 make gate-web         # regenerate the API types, lint, format, unit tests, production build
 make gate             # the three above
+make gate-stamps      # the Decisions Log stamps alone, as the decision-stamps workflow checks a push touching only docs/SPEC.md
 make e2e              # Playwright against the running stack (make up first)
 ```
 
