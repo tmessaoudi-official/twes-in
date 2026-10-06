@@ -298,7 +298,7 @@ final readonly class ManageInvoices
                 $ids[$line->sourceDeliveryNoteLineId->toRfc4122()] = $line->sourceDeliveryNoteLineId;
             }
         }
-        [$sources, $room] = $this->room($company, $current, array_values($ids));
+        [$sources, $room] = $this->room($company, $current, array_values($ids), true);
         foreach ($lines as $index => $line) {
             $id = $line->sourceDeliveryNoteLineId?->toRfc4122();
             if (null === $id || !isset($sources[$id], $room[$id])) {
@@ -330,17 +330,18 @@ final readonly class ManageInvoices
     }
 
     /**
-     * @param list<Uuid> $ids delivery note lines
+     * @param list<Uuid> $ids  delivery note lines
+     * @param bool       $held whether what is read must stay so until the transaction ends, for a revision that relies on it
      *
      * @return array{array<string, SourceDeliveryNoteLine>, array<string, string>} the note lines of the company, and
      *                                                                             what each leaves to this invoice
      */
-    private function room(Company $company, Invoice $invoice, array $ids): array
+    private function room(Company $company, Invoice $invoice, array $ids, bool $held = false): array
     {
         if ([] === $ids) {
             return [[], []];
         }
-        $sources = $this->sourceLines->ofIds($ids, $company->getId());
+        $sources = $held ? $this->sourceLines->lockedOfIds($ids, $company->getId()) : $this->sourceLines->ofIds($ids, $company->getId());
         $elsewhere = $this->invoices->invoicedQuantities($company->getId(), $ids, false, $invoice->getId());
         $room = [];
         foreach ($sources as $id => $source) {

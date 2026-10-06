@@ -16,9 +16,19 @@ use Symfony\Component\Uid\Uuid;
 /** The delivery note lines a test declares, for any company. InvoicesFromDeliveryNotesTest runs the real one. */
 final class InMemorySourceDeliveryNoteLines implements SourceDeliveryNoteLines
 {
+    /** @var list<list<Uuid>> the line ids each lockedOfIds call was asked for, in order */
+    public array $locked = [];
+
     /** @param array<string, SourceDeliveryNoteLine> $lines by delivery note line id */
     public function __construct(public array $lines = [])
     {
+    }
+
+    public function lockedOfIds(array $lineIds, Uuid $companyId): array
+    {
+        $this->locked[] = $lineIds;
+
+        return $this->ofIds($lineIds, $companyId);
     }
 
     public function ofIds(array $lineIds, Uuid $companyId): array

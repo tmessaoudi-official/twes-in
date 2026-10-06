@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\DeliveryNotes\Infrastructure\Invoices;
 
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLine;
+use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
 use App\Module\Invoices\Application\SourceDeliveryNoteLine;
 use App\Module\Invoices\Application\SourceDeliveryNoteLines;
 use Doctrine\DBAL\ArrayParameterType;
@@ -19,8 +20,18 @@ use Symfony\Component\Uid\Uuid;
 /** Answers the invoices' `SourceDeliveryNoteLines` port out of this module, within the company asked about only. */
 final readonly class DeliveryNoteLinesAsSources implements SourceDeliveryNoteLines
 {
-    public function __construct(private EntityManagerInterface $entityManager)
+    public function __construct(private EntityManagerInterface $entityManager, private DeliveryNoteRepository $notes)
     {
+    }
+
+    public function lockedOfIds(array $lineIds, Uuid $companyId): array
+    {
+        if ([] === $lineIds) {
+            return [];
+        }
+        $this->notes->lockedOfLineIdsInCompany($lineIds, $companyId);
+
+        return $this->ofIds($lineIds, $companyId);
     }
 
     public function ofIds(array $lineIds, Uuid $companyId): array

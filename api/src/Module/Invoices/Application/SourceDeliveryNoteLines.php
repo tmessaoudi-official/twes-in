@@ -25,4 +25,15 @@ interface SourceDeliveryNoteLines
      *                                               company's line is absent
      */
     public function ofIds(array $lineIds, Uuid $companyId): array;
+
+    /**
+     * The same, read once their delivery notes are held until the transaction ends: what is left of a line is then
+     * what no other transaction can be invoicing at the same time. Taken after the invoice's own lock, the order the
+     * notes' add-to-draft takes them in.
+     *
+     * @param list<Uuid> $lineIds
+     *
+     * @return array<string, SourceDeliveryNoteLine>
+     */
+    public function lockedOfIds(array $lineIds, Uuid $companyId): array;
 }

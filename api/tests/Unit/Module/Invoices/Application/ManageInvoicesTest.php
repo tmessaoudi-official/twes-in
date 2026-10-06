@@ -63,6 +63,7 @@ final class ManageInvoicesTest extends TestCase
     private InMemoryAuditTrail $audit;
     private ProvisionCompany $provision;
     private ManageInvoices $manage;
+    private InMemorySourceDeliveryNoteLines $sourceLines;
     private InMemoryInvoices $invoices;
     private InvoiceTotals $totals;
     private Company $company;
@@ -79,7 +80,7 @@ final class ManageInvoicesTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->totals = new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
-        $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new InMemorySourceDeliveryNoteLines());
+        $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), $this->sourceLines = new InMemorySourceDeliveryNoteLines());
         $this->invoices->transactions = $transactions;
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->provision->handle($this->company);
@@ -276,6 +277,20 @@ final class ManageInvoicesTest extends TestCase
         self::assertEquals([$second, null], $this->sources($invoice->getLines()), 'a revision keeps a line it carried and adds one written by hand');
         $this->assertRefused('lines[1].sourceDeliveryNoteLineId', fn () => $this->manage->revise($this->company, $invoice->getId(), $this->input($customer, [$carried($second), $carried($first)]), null));
         $this->assertRefused('lines[0].sourceDeliveryNoteLineId', fn () => $this->manage->create($this->company, $this->input($customer, [$carried($second)]), null));
+    }
+
+    public function testARevisionReadsWhatIsLeftOfItsNoteLinesUnderTheirNotesLock(): void
+    {
+        // Read without it, revising one draft while the same note was added to another invoiced 15 of 10 units.
+        $customer = $this->customer();
+        $establishment = array_find($this->establishments->ofCompany($this->company->getId()), static fn ($e): bool => $e->isDefault());
+        self::assertNotNull($establishment);
+        $from = Uuid::v7();
+        $invoice = $this->manage->createFromLines($this->company, $establishment, $customer, new InvoiceHeader(), [new InvoiceLineDetails(null, 'Pièce', '1', $this->unit('C62'), '10', null, [$this->tax('TVA19')], $from)], [], null);
+
+        $this->manage->revise($this->company, $invoice->getId(), $this->input($customer, [new InvoiceLineInput(null, 'Pièce', '2', $this->unit('C62')->getId(), '10', null, [$this->tax('TVA19')->getId()], $from)]), null);
+
+        self::assertEquals([[$from]], $this->sourceLines->locked);
     }
 
     public function testAnotherCompanysInvoiceIsNotFound(): void
