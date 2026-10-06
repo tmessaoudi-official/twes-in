@@ -81,6 +81,9 @@ final class ManageSessionsTest extends TestCase
         self::assertTrue($this->manage()->recorded('session-a')?->isRevoked());
         self::assertNull($this->manage()->recorded('never-seen'));
         self::assertSame(['auth.session_ended'], array_map(static fn ($entry): string => $entry->action, $this->audit->entries));
+        // Audit 2026-10-06, D-3: an audit row is read by people and names what changed, never the values; the device and
+        // the address stay on the session itself, which the entry names by its id.
+        self::assertSame(['session' => $id->toRfc4122()], $this->audit->entries[0]->changes);
     }
 
     public function testAPersonCannotEndTheSessionTheyAreUsingOrSomeoneElses(): void

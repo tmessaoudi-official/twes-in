@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Identity\Application;
 
+use App\Identity\Application\Login\PasswordAttempts;
+use App\Identity\Application\Login\RecordFailedLogin;
 use App\Identity\Application\Mfa\PasskeyAssertions;
 use App\Identity\Application\PasskeyCeremonies;
 use App\Identity\Application\PasswordHasher;
@@ -18,6 +20,7 @@ use App\Identity\Application\StepUp\StepUpRefused;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\PasskeyRepository;
 use App\Identity\Domain\User;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryUsers;
 use PHPUnit\Framework\TestCase;
@@ -86,6 +89,27 @@ final class ConfirmStepUpTest extends TestCase
         self::assertFalse($this->confirm()->isRecent($this->user->getId()));
     }
 
+    public function testALockedAccountIsRefusedEvenTheRightPasswordUntilTheLockEnds(): void
+    {
+        for ($i = 0; $i < 5; ++$i) {
+            try {
+                $this->confirm()->withPassword($this->user->getId(), 'guess-'.$i);
+            } catch (StepUpRefused) {
+            }
+        }
+
+        try {
+            $this->confirm()->withPassword($this->user->getId(), self::PASSWORD);
+            self::fail('a locked account proved itself');
+        } catch (StepUpRefused) {
+        }
+        self::assertSame(5, $this->user->getFailedLoginCount(), 'a refusal because of the lock is not one more guess');
+
+        $this->clock->modify('+16 minutes');
+        $this->confirm()->withPassword($this->user->getId(), self::PASSWORD);
+        self::assertTrue($this->confirm()->isRecent($this->user->getId()));
+    }
+
     public function testAnotherAccountsProofIsNotThisOnes(): void
     {
         $this->confirm()->withPassword($this->user->getId(), self::PASSWORD);
@@ -108,6 +132,8 @@ final class ConfirmStepUpTest extends TestCase
         };
         $assertions = new PasskeyAssertions($this->createStub(PasskeyRepository::class), $this->createStub(PasskeyCeremonies::class));
 
-        return new ConfirmStepUp($this->users, $hasher, $assertions, new InMemoryAuditTrail(), $this->proofs, $this->clock, 'PT5M');
+        $audit = new InMemoryAuditTrail();
+
+        return new ConfirmStepUp($this->users, new PasswordAttempts($hasher, new RecordFailedLogin($this->users, $audit, $this->clock, 5, 'PT15M'), $this->clock, new FakeTransactions()), $assertions, $audit, $this->proofs, $this->clock, 'PT5M');
     }
 }

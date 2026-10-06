@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Identity\Domain\Email;
+use App\Identity\Domain\User;
 use Symfony\Component\HttpFoundation\Response;
 
 /** A signed-in person changes their own password: checked against the current one, and every session ends after it. */
@@ -83,6 +85,22 @@ final class ChangePasswordTest extends ApiTestCase
 
         $this->sendJson('PUT', self::PATH, ['currentPassword' => self::PASSWORD, 'newPassword' => self::NEXT]);
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS, 'the right one does not get round the limit');
+    }
+
+    /** Audit 2026-10-06, D-4: as at the sign-in, a wrong current password counts toward the account's lockout. */
+    public function testWrongCurrentPasswordsLockTheAccountAsWrongSignInsDo(): void
+    {
+        $this->createUser('someone@twes.local', self::PASSWORD);
+        $this->login('someone@twes.local', self::PASSWORD);
+
+        for ($i = 0; $i < 5; ++$i) {
+            $this->sendJson('PUT', self::PATH, ['currentPassword' => 'guess-'.$i, 'newPassword' => self::NEXT]);
+        }
+
+        $this->em()->clear();
+        $user = $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('someone@twes.local')]);
+        self::assertInstanceOf(User::class, $user);
+        self::assertTrue($user->isLockedAt(new \DateTimeImmutable()));
     }
 
     public function testSomeoneNotSignedInCannotChangeAPassword(): void

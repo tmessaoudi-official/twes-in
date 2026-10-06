@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Identity\Application;
 
+use App\Identity\Application\Login\PasswordAttempts;
+use App\Identity\Application\Login\RecordFailedLogin;
 use App\Identity\Application\Password\ChangePassword;
 use App\Identity\Application\Password\NewPasswordPolicy;
 use App\Identity\Application\Password\NewPasswordRefused;
@@ -58,7 +60,9 @@ final class ChangePasswordTest extends TestCase
         $this->assertRefused(NewPasswordRefused::CURRENT_PASSWORD, fn () => $this->change()->handle($this->user->getId(), 'not-it', self::NEXT));
 
         self::assertSame('hash:'.self::CURRENT, $this->user->getPasswordHash());
-        self::assertSame(['auth.password_change_refused'], array_map(static fn ($entry): string => $entry->action, $this->audit->entries));
+        // The guess also counts toward the account's lockout, which records it as a failed sign-in does (audit D-4).
+        self::assertSame(['auth.login_failed', 'auth.password_change_refused'], array_map(static fn ($entry): string => $entry->action, $this->audit->entries));
+        self::assertSame(1, $this->user->getFailedLoginCount());
     }
 
     public function testAPasswordUnderTwelveCharactersIsRefused(): void
@@ -95,7 +99,9 @@ final class ChangePasswordTest extends TestCase
             }
         };
 
-        return new ChangePassword($this->users, $hasher, new NewPasswordPolicy(new FakeBreachedPasswordCheck($breached)), $this->audit, $this->transactions, new MockClock('2026-10-02 12:00:00'));
+        $clock = new MockClock('2026-10-02 12:00:00');
+
+        return new ChangePassword($this->users, $hasher, new PasswordAttempts($hasher, new RecordFailedLogin($this->users, $this->audit, $clock, 5, 'PT15M'), $clock, $this->transactions), new NewPasswordPolicy(new FakeBreachedPasswordCheck($breached)), $this->audit, $this->transactions, $clock);
     }
 
     private function assertRefused(string $reason, callable $act): void

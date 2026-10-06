@@ -11,6 +11,7 @@ namespace App\Identity\Application\Password;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Identity\Application\Login\PasswordAttempts;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\UserRepository;
 use App\Shared\Application\Transactions;
@@ -32,6 +33,7 @@ final readonly class ChangePassword
     public function __construct(
         private UserRepository $users,
         private PasswordHasher $hasher,
+        private PasswordAttempts $passwords,
         private NewPasswordPolicy $policy,
         private AuditTrail $audit,
         private Transactions $transactions,
@@ -43,7 +45,7 @@ final readonly class ChangePassword
     public function handle(Uuid $userId, string $currentPassword, string $newPassword): void
     {
         $user = $this->users->ofId($userId);
-        if (null === $user || '' === $currentPassword || !$this->hasher->verify($user->getPasswordHash(), $currentPassword)) {
+        if (null === $user || !$this->passwords->matches($user, $currentPassword, 'password_change')) {
             throw $this->refuse($userId, NewPasswordRefused::CURRENT_PASSWORD);
         }
 

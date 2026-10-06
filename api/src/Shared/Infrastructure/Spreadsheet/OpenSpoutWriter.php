@@ -31,8 +31,9 @@ final class OpenSpoutWriter implements SpreadsheetWriter
 
         try {
             $writer->openToFile($path);
+            $csv = SpreadsheetFormat::Csv === $format;
             foreach ($rows as $row) {
-                $writer->addRow(new Row(array_map(self::cell(...), $row)));
+                $writer->addRow(new Row(array_map(static fn (string $value): Cell => self::cell($csv ? CsvFormula::defused($value) : $value), $row)));
             }
             $writer->close();
         } catch (\Throwable $failure) {

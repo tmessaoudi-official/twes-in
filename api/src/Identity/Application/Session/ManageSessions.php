@@ -99,7 +99,7 @@ final readonly class ManageSessions
         $this->transactions->run(function () use ($session, $user): void {
             $session->revoke($this->clock->now());
             $this->sessions->save($session);
-            $this->audit->record(new AuditEntry('user', $user->getId(), self::ENDED, $user->getId(), ['device' => $session->getDevice(), 'address' => $session->getAddress()]));
+            $this->audit->record(new AuditEntry('user', $user->getId(), self::ENDED, $user->getId(), ['session' => $session->getId()->toRfc4122()]));
         });
 
         return true;

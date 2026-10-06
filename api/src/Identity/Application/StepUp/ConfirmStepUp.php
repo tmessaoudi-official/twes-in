@@ -11,9 +11,9 @@ namespace App\Identity\Application\StepUp;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Identity\Application\Login\PasswordAttempts;
 use App\Identity\Application\Mfa\PasskeyAssertions;
 use App\Identity\Application\Mfa\PasskeyRefused;
-use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\UserRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -35,7 +35,7 @@ final readonly class ConfirmStepUp
 
     public function __construct(
         private UserRepository $users,
-        private PasswordHasher $hasher,
+        private PasswordAttempts $passwords,
         private PasskeyAssertions $assertions,
         private AuditTrail $audit,
         private StepUpProofs $proofs,
@@ -58,7 +58,7 @@ final readonly class ConfirmStepUp
     {
         $user = $this->users->ofId($userId);
 
-        if (null === $user || '' === $password || !$this->hasher->verify($user->getPasswordHash(), $password)) {
+        if (null === $user || !$this->passwords->matches($user, $password, 'step_up')) {
             $this->audit->record(new AuditEntry('user', $userId, self::REFUSED, $userId, ['method' => 'password']));
 
             throw new StepUpRefused();

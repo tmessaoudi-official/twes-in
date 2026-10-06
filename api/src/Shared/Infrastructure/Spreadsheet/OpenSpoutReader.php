@@ -48,7 +48,9 @@ final class OpenSpoutReader implements SpreadsheetReader
                     // is what every rejected row's reason will name.
                     \assert(\is_int($number));
 
-                    yield $number => array_values(array_map(self::text(...), $row->toArray()));
+                    $cells = array_values(array_map(self::text(...), $row->toArray()));
+
+                    yield $number => SpreadsheetFormat::Csv === $format ? array_map(CsvFormula::restored(...), $cells) : $cells;
                 }
 
                 // A template has one sheet, and a person's own file is asked to put its data in the first.

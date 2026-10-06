@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Identity\Domain\Email;
+use App\Identity\Domain\User;
 use App\Tests\Support\FakeAuthenticator;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -59,6 +61,36 @@ final class StepUpTest extends ApiTestCase
 
         $this->postJson(self::STEP_UP, ['password' => self::PASSWORD]);
         self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS, 'the right password is not a way round the budget');
+    }
+
+    /**
+     * Audit 2026-10-06, D-4: a wrong password here is a guess at the same account as a wrong one at the sign-in, so it
+     * counts toward the same lockout; otherwise an open session is a way to guess the password all day at the limiter's pace.
+     */
+    public function testWrongPasswordsHereLockTheAccountAsWrongSignInsDo(): void
+    {
+        $this->createUser('someone@twes.local', self::PASSWORD);
+        $this->login('someone@twes.local', self::PASSWORD);
+
+        for ($i = 0; $i < 4; ++$i) {
+            $this->postJson(self::STEP_UP, ['password' => 'guess-'.$i]);
+        }
+        self::assertFalse($this->account('someone@twes.local')->isLockedAt(new \DateTimeImmutable()), 'four are not enough');
+        $this->postJson(self::STEP_UP, ['password' => 'guess-4']);
+
+        self::assertTrue($this->account('someone@twes.local')->isLockedAt(new \DateTimeImmutable()));
+        $this->client->getCookieJar()->clear();
+        $this->postJson('/api/auth/login', ['email' => 'someone@twes.local', 'password' => self::PASSWORD]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED, 'the right password no longer signs in while it is locked');
+    }
+
+    private function account(string $email): User
+    {
+        $this->em()->clear();
+        $user = $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString($email)]);
+        self::assertInstanceOf(User::class, $user);
+
+        return $user;
     }
 
     public function testItNeedsASessionAndTheCsrfHeader(): void

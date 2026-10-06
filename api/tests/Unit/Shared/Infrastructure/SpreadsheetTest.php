@@ -61,6 +61,34 @@ final class SpreadsheetTest extends TestCase
     }
 
     /**
+     * Audit 2026-10-06, D-2: a CSV cell opened in a spreadsheet that begins like a formula is run as one, which is how a
+     * customer's name such as `=HYPERLINK(...)` or `-2+3+cmd|...` reaches whoever opens the export. In the file such a
+     * cell starts with a quote, which a spreadsheet shows as text; a plain negative amount is a number and stays as it is.
+     */
+    public function testACsvCellThatASpreadsheetWouldRunAsAFormulaIsWrittenAsText(): void
+    {
+        $path = $this->path('csv');
+        (new OpenSpoutWriter())->write($path, SpreadsheetFormat::Csv, [[
+            '=HYPERLINK("http://x","y")', '+216 22 333 444', '@SUM(A1)', '-2+3+cmd', "\t=1", "\r=1", '-12.500', '-7', 'ART-001',
+        ]]);
+
+        $written = (string) file_get_contents($path);
+        foreach (['\'=HYPERLINK', '\'+216', '\'@SUM', '\'-2+3', "'\t=1", "'\r=1"] as $quoted) {
+            self::assertStringContainsString($quoted, $written, $quoted);
+        }
+        self::assertStringNotContainsString("'-12.500", $written, 'a negative amount is a number');
+        self::assertStringNotContainsString("'-7", $written);
+        self::assertStringNotContainsString("'ART", $written);
+    }
+
+    public function testACsvCellQuotedAgainstFormulasReadsBackAsItWasWritten(): void
+    {
+        $rows = [['=1+1', '+216 22 333 444', '@x', '-2+3', '-12.500', "'quoted by its author"]];
+
+        self::assertSame($rows, array_values(iterator_to_array($this->roundTrip($rows, SpreadsheetFormat::Csv))));
+    }
+
+    /**
      * A row's key is its line in the file, so a reason can name it. openspout drops empty rows by default, which would
      * silently renumber every row below one — the reason "line 7" would then point at line 6.
      */
