@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { announceSaved } from '../shared/testing/live';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
@@ -154,6 +155,16 @@ describe('PriceListsPage', () => {
     const line = query('price-list-Gros')!.textContent!.replace(/\s+/g, ' ');
     expect(line).toContain('Un groupe de clients · Revendeurs');
     expect(line).toContain('2026-01-01 → 2026-12-31');
+  });
+
+  // Audit 2026-10-06, C-7: a list a teammate changes elsewhere is read again here.
+  it('reads the lists again when a teammate changes one', async () => {
+    await render();
+    facade.load.mockClear();
+
+    await announceSaved('price_list', 'l9');
+
+    expect(facade.load).toHaveBeenCalledWith('c1');
   });
 
   it('offers no way to add a list to someone who may not write', async () => {

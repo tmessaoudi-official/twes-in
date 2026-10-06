@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { provideQuietFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import {
@@ -86,6 +88,7 @@ describe('CustomerScreenPage', () => {
     TestBed.configureTestingModule({
       imports: [CustomerScreenPage],
       providers: [
+        ...provideQuietFeedback(),
         provideTranslateService(),
         provideTranslateLoader(StaticLoader),
         { provide: CustomerScreenApi, useValue: api },
@@ -173,6 +176,24 @@ describe('CustomerScreenPage', () => {
     expect(q('customer-screen-none')).not.toBeNull();
     expect(q('customer-screen-results')).toBeNull();
     expect((q('customer-screen-words') as HTMLInputElement).value).toBe('');
+  });
+
+  // Audit 2026-10-06, C-7: the screen faces a customer, so a price or stock changed elsewhere shows without a reload.
+  it('asks its last search again when a price, a product or the stock changes elsewhere', async () => {
+    api.find.mockResolvedValue([screw]);
+    await look('vis');
+    for (const kind of ['price_list', 'product', 'stock', 'delivery_note', 'invoice']) {
+      api.find.mockClear();
+      api.find.mockResolvedValue([{ ...screw, inStock: false }]);
+      await announceSaved(kind, 'x1');
+      await settle();
+      expect(api.find, kind).toHaveBeenCalledWith('c1', 'vis', null);
+    }
+  });
+
+  it('asks nothing again before a first search', async () => {
+    await announceSaved('price_list', 'x1');
+    expect(api.find).not.toHaveBeenCalled();
   });
 
   it('does not search for nothing', async () => {
@@ -267,6 +288,35 @@ describe('CustomerScreenPage', () => {
       await reopen();
 
       expect(q('customer-screen-places')).not.toBeNull();
+    });
+
+    // Audit 2026-10-06, N-d: a place deleted while the screen stands there answers its stock as « not said »; the
+    // screen forgets it and asks again rather than going on silently.
+    it('asks again when the place it stands at goes away while it is open', async () => {
+      api.places.mockResolvedValue([main, sfax]);
+      storage.setItem('twes.customer-screen.place', JSON.stringify({ c1: 'e2' }));
+      await reopen();
+      api.places.mockResolvedValue([main, { ...sfax, id: 'e3', name: 'Agence de Sousse' }]);
+      api.find.mockResolvedValue([{ ...screw, inStock: null }]);
+
+      await look('vis');
+      await settle();
+
+      expect(q('customer-screen-places')).not.toBeNull();
+      expect(JSON.parse(storage.getItem('twes.customer-screen.place') ?? '{}')).toEqual({});
+    });
+
+    it('keeps its place when stock is simply not said there', async () => {
+      api.places.mockResolvedValue([main, sfax]);
+      storage.setItem('twes.customer-screen.place', JSON.stringify({ c1: 'e2' }));
+      await reopen();
+      api.find.mockResolvedValue([{ ...screw, inStock: null }]);
+
+      await look('vis');
+      await settle();
+
+      expect(q('customer-screen-places')).toBeNull();
+      expect(q('customer-screen-place')!.textContent).toContain('Agence de Sfax');
     });
 
     it('asks nothing of a company with one establishment', async () => {

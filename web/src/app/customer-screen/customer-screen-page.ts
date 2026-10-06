@@ -5,12 +5,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
   inject,
   Injector,
   signal,
   viewChild,
 } from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -26,6 +28,7 @@ import { Session } from '../shared/session/session';
 import { CustomerScreenApi } from './customer-screen-api';
 import {
   CUSTOMER_SCREEN_PLACE_STORAGE,
+  forgetPlace,
   rememberedPlace,
   rememberPlace,
 } from './customer-screen-place';
@@ -65,6 +68,8 @@ export class CustomerScreenPage {
   private readonly format = inject(FormatFacade);
   private readonly storage = inject(CUSTOMER_SCREEN_PLACE_STORAGE);
   private readonly injector = inject(Injector);
+  private readonly live = inject(LiveChanges);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly field = viewChild<ElementRef<HTMLInputElement>>('field');
   /** The latest search, so that a slow earlier answer never replaces a later one. */
   private turn = 0;
@@ -91,6 +96,28 @@ export class CustomerScreenPage {
   constructor() {
     this.view.on();
     void this.standSomewhere();
+    // The screen faces a customer: a price, a promotion or the stock changed elsewhere shows without a reload.
+    this.live.reloadOn(
+      ['price_list', 'product', 'stock', 'delivery_note', 'invoice'],
+      () => this.lookAgain(),
+      this.destroyRef,
+    );
+  }
+
+  /** The last search asked again, as it stands: the words and the field are left as they are. */
+  private async lookAgain(): Promise<void> {
+    const words = this.asked();
+    const companyId = this.session.me()?.company?.id;
+    if (this.results() === null || words === '' || companyId === undefined) return;
+    const turn = ++this.turn;
+    try {
+      const found = await this.api.find(companyId, words, this.place());
+      if (turn === this.turn) this.results.set(found);
+    } catch {
+      if (turn !== this.turn) return;
+      this.results.set(null);
+      this.failed.set(true);
+    }
   }
 
   private async standSomewhere(): Promise<void> {
@@ -139,10 +166,15 @@ export class CustomerScreenPage {
     this.words.set('');
     this.asked.set(words);
     try {
-      const found = await this.api.find(companyId, words, this.place());
+      const placeId = this.place();
+      const found = await this.api.find(companyId, words, placeId);
       if (turn !== this.turn) return;
       this.results.set(found);
       this.failed.set(false);
+      // The stock of a place deleted meanwhile is answered as not said: make sure the place is still there.
+      if (placeId !== null && found.length > 0 && found.every((item) => item.inStock === null)) {
+        await this.stillThere(companyId, placeId);
+      }
     } catch {
       if (turn !== this.turn) return;
       // What a customer reads must not be a stale answer: the list is dropped and the line says it could not look.
@@ -150,6 +182,21 @@ export class CustomerScreenPage {
       this.failed.set(true);
     }
     this.field()?.nativeElement.focus();
+  }
+
+  private async stillThere(companyId: string, placeId: string): Promise<void> {
+    let places: ScreenPlace[];
+    try {
+      places = await this.api.places(companyId);
+    } catch {
+      return;
+    }
+    if (places.some((place) => place.id === placeId)) return;
+    forgetPlace(this.storage, companyId);
+    this.places.set(places);
+    this.place.set(null);
+    this.results.set(null);
+    this.choosing.set(places.length > 1);
   }
 
   protected async leave(): Promise<void> {

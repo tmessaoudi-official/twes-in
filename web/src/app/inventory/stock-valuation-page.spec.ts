@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { provideQuietFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
@@ -94,6 +96,7 @@ describe('StockValuationPage', () => {
     TestBed.configureTestingModule({
       imports: [StockValuationPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -127,6 +130,16 @@ describe('StockValuationPage', () => {
   });
 
   // C-02: what has no recorded cost is valued at the product's cost price now, and the figure says it is an estimate.
+  // Audit 2026-10-06, C-7: a receipt or a sale by a teammate changes what the stock is worth.
+  it('reads the valuation again when the stock or a product changes elsewhere', async () => {
+    await open();
+    for (const kind of ['stock', 'delivery_note', 'invoice', 'product']) {
+      facade.loadValuation.mockClear();
+      await announceSaved(kind, 'x1');
+      expect(facade.loadValuation, kind).toHaveBeenCalledWith('c1');
+    }
+  });
+
   it('marks an estimated value on its line and on the total', async () => {
     valuation.set({
       ...worth,

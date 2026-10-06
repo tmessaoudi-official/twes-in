@@ -43,6 +43,18 @@ export function rememberPlace(storage: SettingsStorage, companyId: string, place
   }
 }
 
+/** Forgets the company's establishment, leaving the other companies' choices as they were. */
+export function forgetPlace(storage: SettingsStorage, companyId: string): void {
+  const rest = Object.fromEntries(
+    Object.entries(readPlaces(storage)).filter(([id]) => id !== companyId),
+  );
+  try {
+    storage.setItem(CUSTOMER_SCREEN_PLACE_KEY, JSON.stringify(rest));
+  } catch {
+    // Storage refused: nothing was kept there to forget.
+  }
+}
+
 function readPlaces(storage: SettingsStorage): Record<string, unknown> {
   try {
     const parsed: unknown = JSON.parse(storage.getItem(CUSTOMER_SCREEN_PLACE_KEY) ?? '{}');

@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   type OnInit,
   signal,
@@ -28,6 +29,7 @@ import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { FormatFacade } from '../shared/i18n/format-facade';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { Feedback } from '../shared/feedback/feedback';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
@@ -96,6 +98,8 @@ export class PriceListsPage implements OnInit {
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
   private readonly format = inject(FormatFacade);
+  private readonly live = inject(LiveChanges);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly scopes = SCOPES;
   protected readonly scopeOptions: SelectOption[] = SCOPES.map((known) => ({
@@ -168,7 +172,9 @@ export class PriceListsPage implements OnInit {
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
-    if (companyId) await this.facade.load(companyId);
+    if (!companyId) return;
+    this.live.reloadOn(['price_list'], () => this.facade.load(companyId), this.destroyRef);
+    await this.facade.load(companyId);
   }
 
   protected groupName(row: PriceListRow): string {
