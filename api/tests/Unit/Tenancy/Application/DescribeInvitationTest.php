@@ -91,7 +91,7 @@ final class DescribeInvitationTest extends TestCase
         $this->invitations->save(new Invitation(
             new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'),
             Email::fromString('stranger@twes.local'),
-            Role::MEMBER,
+            new Role(Role::MEMBER, []),
             $token,
             new \DateTimeImmutable(self::NOW),
             new \DateInterval('P7D'),

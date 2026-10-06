@@ -140,6 +140,45 @@ final class InvitationTest extends ApiTestCase
         self::assertSame('New Person', $user->getDisplayName());
     }
 
+    public function testAnInvitationJoinsTheRoleItWasSentForEvenOnceAnotherRoleTakesItsName(): void
+    {
+        // Resolving the role by name at the link let an editor invite a second address of their own into a role they
+        // may give, rename it away, rename a role holding what they lack onto that name, and join holding it.
+        $em = $this->em();
+        $company = $em->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $low = new Role('low', ['customer.read'], $company);
+        $cashier = new Role('cashier', ['customer.read', 'invoice.issue'], $company);
+        $em->persist($low);
+        $em->persist($cashier);
+        $em->flush();
+        $this->createUser('editor@twes.local', 'password-1234', $this->company, ['company.read', 'company.settings', 'user.write', 'customer.read'], 'editor');
+        $this->login('editor@twes.local', 'password-1234');
+        self::assertResponseIsSuccessful();
+        $companyPath = '/api/companies/'.$this->company->getId()->toRfc4122();
+        $this->postJson($companyPath.'/members', ['email' => 'stranger@twes.local', 'role' => 'low']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->deliverQueued();
+        $message = self::getMailerMessage();
+        self::assertInstanceOf(MimeEmail::class, $message);
+        $token = self::tokenIn((string) $message->getHtmlBody());
+
+        $this->sendJson('PUT', $companyPath.'/roles/'.$low->getId()->toRfc4122(), ['name' => 'away', 'permissions' => ['customer.read']]);
+        self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $companyPath.'/roles/'.$cashier->getId()->toRfc4122(), ['name' => 'low', 'permissions' => ['customer.read', 'invoice.issue']]);
+        self::assertResponseIsSuccessful();
+        $this->signOut();
+
+        $this->postJson('/api/invitations/'.$token.'/accept', ['displayName' => 'Second Me', 'password' => self::PASSWORD]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $user = $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('stranger@twes.local')]);
+        self::assertNotNull($user);
+        $membership = $this->em()->getRepository(Membership::class)->findOneBy(['user' => $user->getId(), 'company' => $this->company->getId()]);
+        self::assertNotNull($membership);
+        self::assertSame('away', $membership->getRole()->getName(), 'the role it was sent for, under its new name, never the one that took its name');
+    }
+
     public function testTheNewAccountCanSignIn(): void
     {
         $token = $this->inviteAndReadTheToken();

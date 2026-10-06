@@ -110,7 +110,7 @@ final class InvitationTest extends TestCase
         return new Invitation(
             new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'),
             Email::fromString('joiner@twes.local'),
-            Role::MEMBER,
+            new Role(Role::MEMBER, []),
             $token ?? InvitationToken::generate(),
             new \DateTimeImmutable(self::NOW),
             new \DateInterval('P7D'),

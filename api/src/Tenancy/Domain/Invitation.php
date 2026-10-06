@@ -37,6 +37,15 @@ class Invitation implements CompanyOwned
     #[ORM\Column(type: 'email', length: 254)]
     private Email $email;
 
+    /**
+     * The role it was sent for, held by identity: a rename follows it, and another role taken onto its old name does
+     * not become it. Null once that role is deleted, and an invitation whose role is gone is refused at the link.
+     */
+    #[ORM\ManyToOne(targetEntity: Role::class)]
+    #[ORM\JoinColumn(name: 'role_id', nullable: true, onDelete: 'SET NULL')]
+    private ?Role $role;
+
+    /** The role's name when the invitation was sent, said while the role itself is gone. */
     #[ORM\Column(length: 64)]
     private string $roleName;
 
@@ -60,7 +69,7 @@ class Invitation implements CompanyOwned
     public function __construct(
         Company $company,
         Email $email,
-        string $roleName,
+        Role $role,
         InvitationToken $token,
         \DateTimeImmutable $now,
         \DateInterval $validFor,
@@ -69,7 +78,8 @@ class Invitation implements CompanyOwned
         $this->id = Uuid::v7();
         $this->company = $company;
         $this->email = $email;
-        $this->roleName = $roleName;
+        $this->role = $role;
+        $this->roleName = $role->getName();
         $this->tokenHash = $token->hash();
         $this->invitedBy = $invitedBy;
         $this->createdAt = $now;
@@ -115,9 +125,14 @@ class Invitation implements CompanyOwned
         return $this->email;
     }
 
+    public function getRole(): ?Role
+    {
+        return $this->role;
+    }
+
     public function getRoleName(): string
     {
-        return $this->roleName;
+        return $this->role?->getName() ?? $this->roleName;
     }
 
     public function getTokenHash(): string

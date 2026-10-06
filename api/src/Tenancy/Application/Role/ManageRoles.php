@@ -145,11 +145,11 @@ final readonly class ManageRoles
         $this->transactions->run(function () use ($company, $roleId, $actorUserId): void {
             $role = $this->editable($company, $roleId);
 
-            // Members first, then the addresses invited AT this role and not yet joined. An invitation names its
-            // role by NAME and carries no foreign key, so nothing at the database would stop this delete — the
-            // invitation would simply stop being acceptable, and the person would find out at the link.
+            // Members first, then the addresses invited AT this role and not yet joined. The database lets the delete
+            // through (an invitation's role is set to null, so accepted ones stay as history), and the person would
+            // only find out at the link that it can no longer be used.
             $holders = $this->memberships->holdersOfRole($company->getId(), $roleId, self::NAMED_HOLDERS + 1);
-            $holders = array_merge($holders, $this->invitedToRole($company, $role->getName()));
+            $holders = array_merge($holders, $this->invitedToRole($company, $role));
             if ([] !== $holders) {
                 $named = \array_slice($holders, 0, self::NAMED_HOLDERS);
                 $more = \count($holders) > self::NAMED_HOLDERS ? ' and others' : '';
@@ -168,11 +168,11 @@ final readonly class ManageRoles
      *
      * @return list<string>
      */
-    private function invitedToRole(Company $company, string $roleName): array
+    private function invitedToRole(Company $company, Role $role): array
     {
         $invited = [];
         foreach ($this->invitations->openOfCompany($company->getId(), $this->clock->now()) as $invitation) {
-            if ($invitation->getRoleName() === $roleName) {
+            if (true === $invitation->getRole()?->getId()->equals($role->getId())) {
                 $invited[] = $invitation->getEmail()->value;
             }
             if (\count($invited) > self::NAMED_HOLDERS) {

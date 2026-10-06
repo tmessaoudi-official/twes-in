@@ -90,7 +90,7 @@ final readonly class InviteToCompany
             $invitation = new Invitation(
                 $company,
                 $email,
-                $request->roleName,
+                $role,
                 InvitationToken::generate(),
                 $now,
                 new \DateInterval($this->validFor),

@@ -246,7 +246,7 @@ final class AcceptInvitationTest extends TestCase
         $this->invitations->save(new Invitation(
             $this->company,
             Email::fromString('stranger@twes.local'),
-            $roleName,
+            $this->roles->ofNameForCompany($roleName, $this->company->getId()) ?? self::fail('no role '.$roleName),
             $token,
             new \DateTimeImmutable(self::NOW),
             new \DateInterval('P7D'),
@@ -274,7 +274,6 @@ final class AcceptInvitationTest extends TestCase
             $this->invitations,
             $this->users,
             $this->memberships,
-            $this->roles,
             $this->companies,
             $hasher,
             new FakeBreachedPasswordCheck($breached),

@@ -26,7 +26,6 @@ use App\Tenancy\Domain\InvitationToken;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\MembershipRepository;
 use App\Tenancy\Domain\Role;
-use App\Tenancy\Domain\RoleRepository;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -48,7 +47,6 @@ final readonly class AcceptInvitation
         private InvitationRepository $invitations,
         private UserRepository $users,
         private MembershipRepository $memberships,
-        private RoleRepository $roles,
         private CompanyRepository $companies,
         private PasswordHasher $hasher,
         private BreachedPasswordCheck $breachedPasswords,
@@ -65,10 +63,11 @@ final readonly class AcceptInvitation
         [$outcome, $joined] = $this->transactions->run(function () use ($request): array {
             $invitation = $this->usable($request->rawToken);
             $company = $invitation->getCompany();
-            // An invitation names its role by name, so a role the company deleted between sending and accepting
-            // resolves to nothing here rather than to a wrong role. Refusing is the safe answer: joining at some
-            // other role would be a silent grant nobody chose.
-            $role = $this->roles->ofNameForCompany($invitation->getRoleName(), $company->getId())
+            // The role it was sent for, by identity: whoever sent it was allowed to give that role then, and a rename
+            // since, or another role renamed onto its old name, changes nothing about which one it is. A role the
+            // company deleted in between leaves nothing, and refusing is the safe answer: joining at some other role
+            // would be a silent grant nobody chose.
+            $role = $invitation->getRole()
                 ?? throw new UnknownRole(\sprintf('"%s" is no longer a role %s gives.', $invitation->getRoleName(), $company->getName()));
 
             $now = $this->clock->now();

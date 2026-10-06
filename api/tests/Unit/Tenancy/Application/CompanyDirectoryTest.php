@@ -129,7 +129,7 @@ final class CompanyDirectoryTest extends TestCase
 
     private function invite(Company $company, string $email, string $at): Invitation
     {
-        $invitation = new Invitation($company, Email::fromString($email), Role::MEMBER, InvitationToken::generate(), new \DateTimeImmutable($at), new \DateInterval('P7D'), null);
+        $invitation = new Invitation($company, Email::fromString($email), new Role(Role::MEMBER, []), InvitationToken::generate(), new \DateTimeImmutable($at), new \DateInterval('P7D'), null);
         $this->invitations->save($invitation);
 
         return $invitation;

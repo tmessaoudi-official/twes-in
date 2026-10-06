@@ -301,7 +301,7 @@ final class RolesTest extends ApiTestCase
         $em->persist(new Invitation(
             $company,
             Email::fromString($email),
-            $roleName,
+            $em->getRepository(Role::class)->findOneBy(['name' => $roleName, 'company' => $company]) ?? self::fail('no role '.$roleName),
             InvitationToken::generate(),
             new \DateTimeImmutable(),
             new \DateInterval('P7D'),

@@ -14,6 +14,7 @@ use App\Tenancy\Application\Invitation\MailInvitation;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Invitation;
 use App\Tenancy\Domain\InvitationToken;
+use App\Tenancy\Domain\Role;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryInvitationMailer;
 use App\Tests\Support\InMemoryInvitations;
@@ -82,7 +83,7 @@ final class MailInvitationTest extends TestCase
     private function invitation(): Invitation
     {
         $company = Company::pending('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
-        $invitation = new Invitation($company, Email::fromString('joiner@twes.local'), 'member', InvitationToken::generate(), $this->clock->now(), new \DateInterval('P7D'), null);
+        $invitation = new Invitation($company, Email::fromString('joiner@twes.local'), new Role(Role::MEMBER, []), InvitationToken::generate(), $this->clock->now(), new \DateInterval('P7D'), null);
         $this->invitations->save($invitation);
 
         return $invitation;
