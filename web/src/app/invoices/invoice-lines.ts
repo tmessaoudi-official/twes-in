@@ -181,10 +181,13 @@ export class InvoiceLines {
     return line.controls.sourceDeliveryNoteLineId.value !== '';
   }
 
-  /** What a line taken from a delivery note may still invoice, shown under its quantity, which it caps. */
+  /**
+   * What a line taken from a delivery note may still invoice, shown under its quantity, which it caps; the quantity's
+   * error takes its place. One condition, since a hint nested in a second block is not projected under the field.
+   */
   protected leftOf(line: LineGroup): string | null {
     this.revision();
-    return this.readOnly() ? null : sourceLeftOf(line);
+    return this.readOnly() || this.errorKey(line, 'quantity') !== null ? null : sourceLeftOf(line);
   }
 
   protected netOf(index: number, line: LineGroup): string | null {

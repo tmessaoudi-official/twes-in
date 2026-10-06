@@ -1274,7 +1274,7 @@
       "no_product": "Sans produit",
       "description": "Désignation",
       "quantity": "Quantité",
-      "source_left": "Reste à facturer sur le bon de livraison : {{left}}",
+      "source_left": "Reste sur le bon : {{left}}",
       "unit": "Unité",
       "lot": "Lot ou numéro de série",
       "returned": "Les marchandises sont revenues en stock",

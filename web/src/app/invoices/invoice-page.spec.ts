@@ -852,6 +852,7 @@ describe('InvoicePage', () => {
     (q('line-0-quantity') as HTMLInputElement).dispatchEvent(new Event('blur'));
     await settle();
     expect(text('line-0-quantity-error')).toContain('invoices.lines.errors.quantity_above_source');
+    expect(q('line-0-source-left')).toBeNull();
 
     type('line-0-quantity', '6');
     await settle();

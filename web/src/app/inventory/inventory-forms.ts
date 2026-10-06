@@ -745,7 +745,6 @@ export function receiptCostForm(costMode: CostOnReceive | null): FormDescriptor 
             required: true,
             maxLength: 16,
             pattern: COST_PATTERN,
-            hint: 'inventory.movement.cost_hint',
           },
           ...(costMode === 'suggest'
             ? [

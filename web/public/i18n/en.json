@@ -1274,7 +1274,7 @@
       "no_product": "No product",
       "description": "Description",
       "quantity": "Quantity",
-      "source_left": "Left to invoice on the delivery note: {{left}}",
+      "source_left": "Left on the note: {{left}}",
       "unit": "Unit",
       "lot": "Lot or serial number",
       "returned": "The goods came back to stock",
