@@ -718,6 +718,31 @@ describe('StockPage', () => {
       expect(values()).toMatchObject({ productId: 'p4', lotCode: 'SN-7', quantity: '1' });
     });
 
+    // Audit 2026-10-06, A-11: a printed location label names where a move's goods go, as count mode takes one.
+    it('takes a location label on an open move as where the goods go, and on a receipt as where they arrive', async () => {
+      q('stock-move')!.click();
+      await settle();
+
+      const outcome = await scanned('R1');
+
+      expect(outcome).toMatchObject({
+        kind: 'done',
+        key: 'inventory.scan.location_set',
+        params: { name: expect.stringContaining('R1') },
+      });
+      expect(values()['toLocationId']).toBe('l2');
+      expect(scans.named).not.toHaveBeenCalled();
+      TestBed.inject(ScanBus).undoLast();
+      expect(values()['toLocationId']).toBe('');
+
+      q('stock-movement-cancel')!.click();
+      await settle();
+      q('stock-receive')!.click();
+      await settle();
+      await scanned('R1');
+      expect(values()['locationId']).toBe('l2');
+    });
+
     it('leaves a scan to the card with no movement open, or when the picker does not answer the product', async () => {
       scans.named.mockResolvedValue(glue);
       expect(await scanned(glue.code)).toEqual({ kind: 'unclaimed' });

@@ -2202,7 +2202,8 @@
       "view_hint": "Molette pour approcher, glisser pour déplacer"
     },
     "scan": {
-      "filled": "{{name}} : article, lot et quantité remplis"
+      "filled": "{{name}} : article, lot et quantité remplis",
+      "location_set": "{{name}} : emplacement rempli"
     },
     "count": {
       "title": "Comptage",

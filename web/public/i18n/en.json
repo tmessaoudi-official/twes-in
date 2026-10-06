@@ -2202,7 +2202,8 @@
       "view_hint": "Wheel to come nearer, drag to move"
     },
     "scan": {
-      "filled": "{{name}}: article, lot and quantity filled in"
+      "filled": "{{name}}: article, lot and quantity filled in",
+      "location_set": "{{name}}: location filled in"
     },
     "count": {
       "title": "Count",

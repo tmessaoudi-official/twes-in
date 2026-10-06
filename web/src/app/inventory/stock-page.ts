@@ -45,6 +45,7 @@ import {
   stockSearch,
 } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
+import { locationScanned } from './count-sheet';
 import { ReceiptPlacement } from './receipt-placement';
 import { addPlace, type Part, placement, toCountParts } from './split-receipt';
 import type {
@@ -377,9 +378,10 @@ export class StockPage implements OnInit {
   private async scanned(scan: Scan): Promise<ScanOutcome> {
     const companyId = this.company()?.id;
     const form = this.form();
-    if (!companyId || form === null || !this.auth.hasPermission('product.read')) {
-      return { kind: 'unclaimed' };
-    }
+    if (!companyId || form === null) return { kind: 'unclaimed' };
+    const located = locationScanned(scan.code, this.facade.locations());
+    if (located !== null) return this.located(form, located, scan.code);
+    if (!this.auth.hasPermission('product.read')) return { kind: 'unclaimed' };
     const named = await this.productScans.named(scan.code);
     if (named === null) return { kind: 'unclaimed' };
     if (!named.isActive) {
@@ -417,6 +419,26 @@ export class StockPage implements OnInit {
         this.product.set(chosenBefore);
         this.form()?.patchValue(before);
       },
+    };
+  }
+
+  /**
+   * A printed location label names where the goods go on a move, and where they are everywhere else, as count mode
+   * reads one (audit 2026-10-06, A-11). Marked as the person's choice, so a product's home proposed after it never
+   * replaces it.
+   */
+  private located(form: DescriptorFormGroup, locationId: string, code: string): ScanOutcome {
+    const field = this.operation() === 'move' ? 'toLocationId' : 'locationId';
+    const control = form.get(field);
+    if (control === null) return { kind: 'unclaimed' };
+    const before = control.value;
+    control.setValue(locationId);
+    control.markAsDirty();
+    return {
+      kind: 'done',
+      key: 'inventory.scan.location_set',
+      params: { name: locationLabels(this.facade.locations()).get(locationId) ?? code },
+      undo: () => this.form()?.get(field)?.setValue(before),
     };
   }
 
