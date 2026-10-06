@@ -130,6 +130,11 @@ final class NotificationsTest extends ApiTestCase
     public function testTheUnreadAreCountedPerCompanyForTheSignedInUserOnly(): void
     {
         $globex = $this->createCompany('Globex');
+        $this->addMembership($this->owner, $globex);
+        // A company the person has left is no longer in the switcher, so its notifications are not counted for it
+        // (audit 2026-10-06, C-F8).
+        $initech = $this->createCompany('Initech');
+        $this->item($this->owner, 'invitation.accepted', '2026-09-13 09:35:00', $initech);
         $other = $this->createUser('other@twes.local', 'password-1234');
         $this->item($this->owner, 'invitation.accepted', '2026-09-13 09:00:00', $this->company);
         $this->item($this->owner, 'invitation.accepted', '2026-09-13 09:10:00', $this->company);

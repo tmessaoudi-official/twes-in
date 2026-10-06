@@ -11,6 +11,7 @@ namespace App\Inbox\Infrastructure\Doctrine;
 
 use App\Inbox\Domain\InboxItem;
 use App\Inbox\Domain\InboxRepository;
+use App\Tenancy\Domain\Membership;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -49,7 +50,9 @@ final readonly class DoctrineInboxRepository implements InboxRepository
     {
         $rows = $this->entityManager->createQuery(
             'SELECT IDENTITY(i.company) AS company, COUNT(i.id) AS unread FROM '.InboxItem::class.' i
-             WHERE i.recipient = :recipient AND i.readAt IS NULL AND i.company IS NOT NULL GROUP BY i.company',
+             WHERE i.recipient = :recipient AND i.readAt IS NULL AND i.company IS NOT NULL
+               AND EXISTS (SELECT 1 FROM '.Membership::class.' m WHERE m.user = i.recipient AND m.company = i.company)
+             GROUP BY i.company',
         )->setParameter('recipient', $recipientId, 'uuid')->getArrayResult();
 
         $counts = [];
