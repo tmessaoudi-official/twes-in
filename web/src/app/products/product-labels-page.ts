@@ -17,6 +17,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { BarcodeSvg } from '../shared/barcode/barcode-svg';
 import { FormatFacade } from '../shared/i18n/format-facade';
@@ -45,6 +46,7 @@ const MOST_COPIES = 100;
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    RouterLink,
     TranslatePipe,
   ],
   templateUrl: './product-labels-page.html',

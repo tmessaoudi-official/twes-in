@@ -2,6 +2,7 @@
 
 import { DOCUMENT } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -81,6 +82,7 @@ describe('ProductLabelsPage', () => {
     TestBed.configureTestingModule({
       imports: [ProductLabelsPage],
       providers: [
+        provideRouter([]),
         provideTranslateService(),
         provideTranslateLoader(StaticLoader),
         { provide: ProductsApi, useValue: api },
@@ -179,5 +181,13 @@ describe('ProductLabelsPage', () => {
     await open();
     expect(q('product-labels-no-code')).not.toBeNull();
     expect(all('product-label')).toHaveLength(0);
+  });
+
+  it('leads back to the product, with the link left off the paper', async () => {
+    // Audit 2026-10-06 V-22: the sheet had no way back.
+    await open();
+    const back = q('product-labels-back');
+    expect(back?.getAttribute('href')).toBe('/products/p1');
+    expect(back?.closest('.print\\:hidden')).not.toBeNull();
   });
 });

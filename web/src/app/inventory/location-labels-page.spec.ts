@@ -2,6 +2,7 @@
 
 import { DOCUMENT, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -12,7 +13,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthFacade } from '../auth/auth-facade';
 import { InventoryFacade } from './inventory-facade';
 import type { StockLocationRow } from './inventory-types';
-import { LocationLabelsPage } from './location-labels-page';
+import { codeSize, LocationLabelsPage } from './location-labels-page';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -60,6 +61,7 @@ describe('LocationLabelsPage', () => {
     TestBed.configureTestingModule({
       imports: [LocationLabelsPage],
       providers: [
+        provideRouter([]),
         provideTranslateService(),
         provideTranslateLoader(StaticLoader),
         { provide: InventoryFacade, useValue: facade },
@@ -92,8 +94,28 @@ describe('LocationLabelsPage', () => {
 
   it('prints on asking, with the button left off the paper', () => {
     const button = q('location-labels-print');
-    expect(button?.classList.contains('print:hidden')).toBe(true);
+    expect(button?.closest('.print\\:hidden')).not.toBeNull();
     button!.click();
     expect(print).toHaveBeenCalled();
+  });
+
+  it('leads back to the locations, with the link left off the paper', () => {
+    // Audit 2026-10-06 V-22: the sheet had no way back.
+    const back = q('location-labels-back');
+    expect(back?.getAttribute('href')).toBe('/stock/locations');
+    expect(back?.closest('.print\\:hidden')).not.toBeNull();
+  });
+
+  it('keeps a code on one line, smaller as it grows, never broken at its hyphen', () => {
+    // « RAYON / -A »: the code wrapped at its hyphen beside the QR code (audit V-22).
+    const code = q(`location-label-${rack.code}`)?.querySelector(
+      '[data-testid="location-label-code"]',
+    );
+    expect(code?.classList.contains('whitespace-nowrap')).toBe(true);
+    expect(code?.classList.contains('break-all')).toBe(false);
+    expect(codeSize('R1')).toContain('text-4xl');
+    expect(codeSize('RAYON-A-12')).toContain('text-3xl');
+    expect(codeSize('ENTREPOT-NORD-1')).toContain('text-2xl');
+    expect(codeSize('ENTREPOT-NORD-ALLEE-12')).toBe('text-xl break-all');
   });
 });

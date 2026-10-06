@@ -1907,7 +1907,8 @@
       "pack_of": "Pack of {{quantity}}",
       "print": "Print",
       "no_code": "This product answers to no code of its own: give it a unit or internal code to print its labels.",
-      "open": "Print labels"
+      "open": "Print labels",
+      "back": "Back to the product"
     },
     "substitutes": {
       "title": "Substitutes",
@@ -2235,7 +2236,8 @@
       "intro": "One label per location, to stick on the shelf: a phone reading its QR code opens count mode at that location, and a scanner recognises it too.",
       "print": "Print",
       "empty": "No location to label.",
-      "open": "Print labels"
+      "open": "Print labels",
+      "back": "Back to the locations"
     },
     "valuation": {
       "title": "Stock valuation",

@@ -1907,7 +1907,8 @@
       "pack_of": "Colis de {{quantity}}",
       "print": "Imprimer",
       "no_code": "Cet article ne répond à aucun code qui soit le sien : ajoutez-lui un code unitaire ou interne pour imprimer ses étiquettes.",
-      "open": "Imprimer des étiquettes"
+      "open": "Imprimer des étiquettes",
+      "back": "Retour au produit"
     },
     "substitutes": {
       "title": "Substituts",
@@ -2235,7 +2236,8 @@
       "intro": "Une étiquette par emplacement, à coller sur l’étagère : un téléphone qui en lit le QR code ouvre le comptage à cet emplacement, et une douchette le reconnaît aussi.",
       "print": "Imprimer",
       "empty": "Aucun emplacement à étiqueter.",
-      "open": "Imprimer les étiquettes"
+      "open": "Imprimer les étiquettes",
+      "back": "Retour aux emplacements"
     },
     "valuation": {
       "title": "Valorisation du stock",

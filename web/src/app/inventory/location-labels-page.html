@@ -4,16 +4,15 @@
       <h1 class="m-0 text-3xl font-semibold">{{ 'inventory.labels.title' | translate }}</h1>
       <p class="m-0 max-w-prose">{{ 'inventory.labels.intro' | translate }}</p>
     </div>
-    <button
-      mat-flat-button
-      type="button"
-      class="print:hidden"
-      data-testid="location-labels-print"
-      (click)="print()"
-    >
-      <mat-icon>print</mat-icon>
-      {{ 'inventory.labels.print' | translate }}
-    </button>
+    <div class="flex flex-wrap items-center gap-2">
+      <a mat-button routerLink="/stock/locations" data-testid="location-labels-back">{{
+        'inventory.labels.back' | translate
+      }}</a>
+      <button mat-flat-button type="button" data-testid="location-labels-print" (click)="print()">
+        <mat-icon>print</mat-icon>
+        {{ 'inventory.labels.print' | translate }}
+      </button>
+    </div>
   </header>
 
   @if (labels().length === 0) {
@@ -27,13 +26,19 @@
   >
     @for (label of labels(); track label.id) {
       <li
-        class="flex break-inside-avoid items-center gap-4 rounded-md border border-black bg-white p-4 text-black"
+        class="flex break-inside-avoid flex-col gap-3 rounded-md border border-black bg-white p-4 text-black"
         [attr.data-testid]="'location-label-' + label.code"
       >
-        <app-qr-code class="w-28 shrink-0" [value]="address(label.id)" [label]="label.path" />
-        <div class="flex min-w-0 flex-col gap-1">
-          <span class="text-4xl font-bold break-all">{{ label.code }}</span>
-          <span class="text-sm break-words">{{ label.path }}</span>
+        <!-- The code across the whole label, on one line: beside the QR code it had a sliver and broke at its hyphen. -->
+        <span
+          class="leading-none font-bold"
+          [class]="codeSize(label.code)"
+          data-testid="location-label-code"
+          >{{ label.code }}</span
+        >
+        <div class="flex items-center gap-4">
+          <app-qr-code class="w-28 shrink-0" [value]="address(label.id)" [label]="label.path" />
+          <span class="min-w-0 text-sm break-words">{{ label.path }}</span>
         </div>
       </li>
     }

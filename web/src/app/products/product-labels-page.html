@@ -8,6 +8,13 @@
       <p class="m-0 max-w-prose">{{ 'products.labels.intro' | translate }}</p>
     </div>
     <div class="flex flex-wrap items-start gap-3">
+      <a
+        mat-button
+        class="mt-2"
+        [routerLink]="['/products', productId()]"
+        data-testid="product-labels-back"
+        >{{ 'products.labels.back' | translate }}</a
+      >
       <mat-form-field class="w-32">
         <mat-label>{{ 'products.labels.copies' | translate }}</mat-label>
         <input
