@@ -408,5 +408,8 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - A Material dialog with `autoFocus: 'first-tabbable'` moves focus only once its open animation ends: an e2e that fills the
   first field straight away types into the page behind (the invoice payment flake). Wait for `toBeFocused()` on that field
   first. A matSuffix inside an `@if` beside its input is not projected either (NG8011): one mat-form-field per kind (2026-10-06).
+- A `RequestEvent` listener that asks `Security::getUser()` on every API path makes the lazy firewall read a session for an
+  anonymous request too, and Symfony then answers it `max-age=0, must-revalidate, private`: return first unless
+  `$request->hasPreviousSession()`. Only the e2e of `/api/health`'s header saw it (2026-10-06, the customer-screen lock).
 - For the next expertise refresh: `.claude/rules/expertise-core.md` § 2 still says the locked customer screen is NOT built
   and `hides()` is the code; it was built (rows 205, 207), `hides()` is gone, and the lock is held by the API session (2026-10-06).
