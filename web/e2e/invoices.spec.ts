@@ -271,7 +271,7 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.getByTestId('instrument-save').click();
     await expect(toast(page)).toContainText('Le chèque ou la traite est reçu.');
     await page.locator('[data-testid^="instrument-"][data-testid$="-delete"]').click();
-    await page.locator('[data-testid^="instrument-"][data-testid$="-confirm"]').click();
+    await page.getByTestId('confirm-run').click();
     await expect(toast(page)).toContainText('sorti du portefeuille');
     await expect(page.locator('[data-testid^="instrument-"][data-testid$="-status"]')).toHaveCount(
       1,
