@@ -42,7 +42,12 @@ tables, essay gotchas) was retired with the reset. What applies here:
 1. **Upstream code never enters this tree.** Invoice Ninja's backend and web UI are Elastic
    License 2.0; a translation of their code is a derivative work. Build from the contract, the
    behaviour and the standards (EN 16931, UBL, CII, Factur-X, Peppol, El Fatoora), never from
-   the source. Reference clones live in `/tmp/xxx/**`, never in the working tree.
+   the source. Reference clones live in `/tmp/xxx/**`, never in the working tree. One bounded
+   exception (docs/SPEC.md § 7, 2026-10-04 08:04 and the audit of 2026-10-06): for the importer, Invoice
+   Ninja's source may be read ONLY to learn what its exports and data hold (field names, file layout);
+   nothing is copied, no code is translated, the source read is a fresh shallow clone of an upstream tag
+   under `/tmp`, and what is learnt is written as data facts under `docs/research/`. The developer's own
+   fork at `/stack/projects/invoiceninja` is another project: never read from, written to or copied from.
 2. **Never reproduce, disable or reimplement a licence-key or branding gate** from upstream.
    Our own plan gating is ours and is fine.
 3. **Every dependency is permissive and recorded** in `THIRD-PARTY-NOTICES.md` (generated from
