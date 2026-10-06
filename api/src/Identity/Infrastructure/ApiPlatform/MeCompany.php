@@ -27,6 +27,8 @@ final readonly class MeCompany
         #[ApiProperty(required: true, schema: ['type' => 'string', 'enum' => ['full', 'read_only', 'locked']])] public string $access = 'full',
         /** null when licensing does not manage the company */
         #[ApiProperty(required: true)] public ?MeSubscription $subscription = null,
+        /** the id of the company's stored logo, which changes with it; null without one */
+        #[ApiProperty(required: true)] public ?string $logoVersion = null,
     ) {
     }
 }

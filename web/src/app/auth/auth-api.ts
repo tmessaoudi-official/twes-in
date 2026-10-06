@@ -230,6 +230,7 @@ function toState(me: Me): SignedInState {
             role: me.company.role,
             access: toAccess(me.company.access),
             subscription: toSubscription(me.company.subscription),
+            logoVersion: me.company.logoVersion ?? null,
           },
     permissions: [...me.permissions],
     modules: [...me.modules],

@@ -1,6 +1,9 @@
 <main class="flex min-h-dvh flex-col gap-8 p-6" data-testid="customer-screen">
   <header class="flex flex-wrap items-center justify-between gap-4">
-    <h1 class="m-0 text-3xl font-medium">{{ 'customer_screen.title' | translate }}</h1>
+    <div class="flex min-w-0 flex-col gap-2">
+      <app-company-brand />
+      <h1 class="m-0 text-3xl font-medium">{{ 'customer_screen.title' | translate }}</h1>
+    </div>
     <button mat-stroked-button type="button" (click)="leave()" data-testid="customer-screen-leave">
       <mat-icon aria-hidden="true">lock_open</mat-icon>
       {{ 'customer_screen.leave' | translate }}

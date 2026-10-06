@@ -55,7 +55,7 @@ final readonly class Me
     {
         return new self(
             new MeUser($user->getId()->toRfc4122(), $user->getEmail()->value, $user->getDisplayName(), $user->getLocale(), $user->isPlatformOperator()),
-            null === $context ? null : new MeCompany($context->companyId, $context->name, $context->countryCode, $context->currency, $context->locale, $context->timezone, $context->status, $context->role, (null === $standing ? Access::Full : $standing->access)->value, null === $standing ? null : MeSubscription::of($standing)),
+            null === $context ? null : new MeCompany($context->companyId, $context->name, $context->countryCode, $context->currency, $context->locale, $context->timezone, $context->status, $context->role, (null === $standing ? Access::Full : $standing->access)->value, null === $standing ? null : MeSubscription::of($standing), $context->logoVersion),
             null === $context ? [] : $context->permissions,
             new MeMfa($user->hasTotp() || $passkeys > 0, $mfaRequired, $user->hasTotp(), $passkeys),
             $modules,

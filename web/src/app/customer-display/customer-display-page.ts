@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { CompanyBrand } from '../company/company-brand';
 import { TranslatePipe } from '@ngx-translate/core';
 import { CustomerDisplay } from '../shared/customer-display/customer-display';
 import { FormatFacade } from '../shared/i18n/format-facade';
@@ -14,7 +15,7 @@ import { SettingsApi } from '../shared/settings/settings-api';
  */
 @Component({
   selector: 'app-customer-display-page',
-  imports: [TranslatePipe],
+  imports: [CompanyBrand, TranslatePipe],
   templateUrl: './customer-display-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

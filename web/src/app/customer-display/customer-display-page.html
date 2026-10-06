@@ -3,6 +3,7 @@
   data-testid="customer-display"
 >
   <h1 class="sr-only">{{ 'customer_display.title' | translate }}</h1>
+  <app-company-brand />
   @if (shown(); as state) {
     @if (state.item; as item) {
       <section class="flex flex-col items-center gap-4" aria-live="polite">

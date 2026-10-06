@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -108,6 +109,30 @@ final class CustomerScreenLockTest extends ApiTestCase
         $this->postJson($this->companyPath().'/customer-screen/lock', null);
         $this->sendJson('DELETE', self::LOCK);
         self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, 'the proof that let them out once is spent');
+    }
+
+    public function testTheLockedScreenNamesItsCompanyAndShowsItsLogoAndChangesNothingOfIt(): void
+    {
+        // Audit 2026-10-06 V-33: a window facing customers carries the company's name and logo, the ones printed on
+        // every document the customer already holds; under the lock it reads them and nothing more of the company.
+        $png = (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
+        $logo = static::getContainer()->get(CompanyLogo::class)->set($this->company, 'logo.png', $png, null);
+        $this->postJson($this->companyPath().'/customer-screen/lock', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+
+        $this->getJson('/api/auth/me');
+        $company = $this->json()['company'] ?? null;
+        self::assertIsArray($company);
+        self::assertSame('Acme', $company['name'] ?? null);
+        self::assertSame($logo->getFile()->getId()->toRfc4122(), $company['logoVersion'] ?? null);
+        $this->client->request('GET', $this->companyPath().'/logo');
+        self::assertResponseIsSuccessful();
+        self::assertSame($png, $this->client->getResponse()->getContent());
+
+        foreach (['POST', 'DELETE'] as $method) {
+            $this->sendJson($method, $this->companyPath().'/logo');
+            self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, "$method logo");
+        }
     }
 
     private function companyPath(): string

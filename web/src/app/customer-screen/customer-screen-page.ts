@@ -20,6 +20,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
+import { CompanyBrand } from '../company/company-brand';
 import { TranslatePipe } from '@ngx-translate/core';
 import { CustomerView } from '../shared/customer-view/customer-view';
 import { Feedback } from '../shared/feedback/feedback';
@@ -48,6 +49,7 @@ import type { ScreenPlace, ScreenProduct } from './customer-screen-types';
 @Component({
   selector: 'app-customer-screen-page',
   imports: [
+    CompanyBrand,
     AmountPipe,
     DayPipe,
     FormsModule,

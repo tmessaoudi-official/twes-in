@@ -21,7 +21,8 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 /**
  * While the customer screen holds a sign-in, the sign-in reaches what the screen reads and the way out, nothing else
  * (docs/SPEC.md § 7, 2026-10-06 19:44): another tab, a new one or a typed call gets the clerk's app no more than the
- * screen does. The refusal names itself, so a tab that meets it goes to the screen.
+ * screen does. The refusal names itself, so a tab that meets it goes to the screen. The screen also reads its company's
+ * logo, the one printed on every document a customer already holds, to stand under its name.
  *
  * After the firewall (8), so the account is known, and before API Platform reads anything (4). Matched on paths, as
  * `MfaEnrolmentListener` is, and on methods: the screen only reads, so locking again onto another company is refused.
@@ -74,6 +75,7 @@ final readonly class CustomerScreenLockListener
 
         return str_starts_with($path, $base.'/customer-screen/')
             || $base.'/establishments' === $path
+            || $base.'/logo' === $path
             || ($base.'/settings' === $path && 'presentation' === $request->query->get('chain'));
     }
 }

@@ -9,16 +9,25 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Tenancy\Application;
 
+use App\Files\Application\Attachments;
+use App\Files\Application\Files;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
+use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Application\Session\ChooseWorkingCompany;
 use App\Tenancy\Application\Session\DescribeWorkingContext;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;
+use App\Tests\Support\FakeTransactions;
+use App\Tests\Support\InMemoryAttachments;
+use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCurrentCompany;
+use App\Tests\Support\InMemoryFileStorage;
 use App\Tests\Support\InMemoryMemberships;
+use App\Tests\Support\InMemoryStoredFiles;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 
 final class WorkingCompanyTest extends TestCase
 {
@@ -64,7 +73,8 @@ final class WorkingCompanyTest extends TestCase
         $this->memberships->save(new Membership($this->user, $company, new Role(Role::ADMIN, ['invoice.read', 'invoice.write'])));
         $this->current->set($company->getId());
 
-        $context = (new DescribeWorkingContext($this->memberships, $this->current))->for($this->user->getId());
+        $logos = $this->logos();
+        $context = (new DescribeWorkingContext($this->memberships, $this->current, $logos))->for($this->user->getId());
 
         self::assertNotNull($context);
         self::assertSame($company->getId()->toRfc4122(), $context->companyId);
@@ -74,14 +84,31 @@ final class WorkingCompanyTest extends TestCase
         self::assertSame('active', $context->status);
         self::assertSame('admin', $context->role);
         self::assertSame(['invoice.read', 'invoice.write'], $context->permissions);
+        self::assertNull($context->logoVersion, 'no logo, no version');
+
+        // The customer screen names the company with its logo, read from this (audit 2026-10-06, V-33).
+        $logo = $logos->set($company, 'logo.png', (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true), null);
+        $context = (new DescribeWorkingContext($this->memberships, $this->current, $logos))->for($this->user->getId());
+        self::assertSame($logo->getFile()->getId()->toRfc4122(), $context?->logoVersion);
     }
 
     public function testWithoutASessionCompanyOrAMembershipThereIsNoContext(): void
     {
-        $describe = new DescribeWorkingContext($this->memberships, $this->current);
+        $describe = new DescribeWorkingContext($this->memberships, $this->current, $this->logos());
         self::assertNull($describe->for($this->user->getId()));
 
         $this->current->set((new Company('Other', 'FR', 'EUR', 'fr', 'Europe/Paris'))->getId());
         self::assertNull($describe->for($this->user->getId()), 'a session company the user is no longer a member of yields nothing');
+    }
+
+    private function logos(): CompanyLogo
+    {
+        $clock = new MockClock();
+
+        return new CompanyLogo(
+            new Attachments(new Files(new InMemoryFileStorage(), new InMemoryStoredFiles(), $clock), new InMemoryAttachments(), $clock, 1024, ['image/png'], 2),
+            new InMemoryAuditTrail(),
+            new FakeTransactions(),
+        );
     }
 }

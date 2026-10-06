@@ -30,6 +30,7 @@ const owner: Me = {
       graceEndsAt: '2026-09-07T23:59:59+01:00',
       daysLeft: null,
     },
+    logoVersion: 'f1',
   },
   permissions: ['*'],
   mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
@@ -61,6 +62,7 @@ describe('AuthApi', () => {
     const state = await pending;
     expect(state.user.displayName).toBe('Owner');
     expect(state.company?.role).toBe('owner');
+    expect(state.company?.logoVersion).toBe('f1');
     expect(state.permissions).toEqual(['*']);
     expect(state.modules).toEqual(['customers']);
     expect(state.plannedModules).toEqual([

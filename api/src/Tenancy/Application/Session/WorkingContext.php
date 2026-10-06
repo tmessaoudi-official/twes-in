@@ -23,6 +23,8 @@ final readonly class WorkingContext
         public string $status,
         public string $role,
         public array $permissions,
+        /** the id of the company's stored logo, which changes with it; null without one */
+        public ?string $logoVersion = null,
     ) {
     }
 }

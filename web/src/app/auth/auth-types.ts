@@ -80,6 +80,8 @@ export interface WorkingCompany {
   access: CompanyAccess;
   /** Null when licensing does not manage the company. */
   subscription: CompanySubscription | null;
+  /** The id of the company's stored logo, which changes with it; null without one. */
+  logoVersion?: string | null;
 }
 
 /** Whether the account has a second factor in force, and whether a company it belongs to requires one. */

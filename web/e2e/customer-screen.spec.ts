@@ -53,6 +53,8 @@ test('the customer screen asks where it stands, says that place, remembers it, h
   try {
     await page.goto('/customer-screen');
     await expect(page.getByTestId('customer-screen-places')).toBeVisible();
+    // The window faces customers: it names the company, under the lock (audit 2026-10-06, V-33).
+    await expect(page.getByTestId('company-brand-name')).not.toBeEmpty();
     await expect(page.getByTestId('customer-screen-form')).toBeHidden();
     await page.screenshot({ path: test.info().outputPath('customer-screen-places.png') });
     await page.getByTestId(`customer-screen-place-${real.code}`).click();

@@ -10,12 +10,13 @@ declare(strict_types=1);
 namespace App\Tenancy\Application\Session;
 
 use App\Shared\Application\CurrentCompany;
+use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\MembershipRepository;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DescribeWorkingContext
 {
-    public function __construct(private MembershipRepository $memberships, private CurrentCompany $currentCompany)
+    public function __construct(private MembershipRepository $memberships, private CurrentCompany $currentCompany, private CompanyLogo $logo)
     {
     }
 
@@ -39,6 +40,7 @@ final readonly class DescribeWorkingContext
             $company->getStatus(),
             $membership->getRole()->getName(),
             $membership->getRole()->getPermissions(),
+            $this->logo->current($company)?->getFile()->getId()->toRfc4122(),
         );
     }
 }
