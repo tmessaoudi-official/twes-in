@@ -127,7 +127,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
         $note = $this->workflow->validate($this->company, $this->draft()->getId(), null);
 
         self::assertEquals(
-            new DeliveryNotePrint('en', false, true, new PrintSettings('Marchandise voyageant aux risques du client.', 'auto', 'space-comma')),
+            new DeliveryNotePrint('en', false, true, new PrintSettings('Marchandise voyageant aux risques du client.', 'auto', 'space-comma', true)),
             $note->getPrintSettings(),
         );
     }

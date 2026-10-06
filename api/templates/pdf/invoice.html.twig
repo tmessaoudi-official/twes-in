@@ -50,6 +50,9 @@
   {%- endif %}
   {%- if page.paidStamp %}
     <div class="paid-stamp" data-testid="paid-stamp">{{ ('stamp.' ~ page.paidStamp)|trans({}, t, locale) }}</div>
+    {%- if page.paidStamp == 'partial' %}
+    <p class="copy-mark" data-testid="paid-stamp-balance">{{ 'stamp.balance'|trans({'%amount%': figures.amountDue|decimal(scale, locale, page.numberFormat), '%date%': page.copiedOn|date(dateFormat)}, t, locale) }}</p>
+    {%- endif %}
   {%- endif %}
 
   <div class="parties">
@@ -155,7 +158,7 @@
     <tr class="due"><td>{{ 'totals.amount_due'|trans({}, t, locale) }}</td><td class="number">{{ figures.amountDue|decimal(scale, locale, page.numberFormat) }}</td></tr>
   </table>
   {%- if page.amountInWords %}
-    <p data-testid="amount-in-words">{{ 'totals.in_words'|trans({}, t, locale) }} {{ page.amountInWords }}.</p>
+    <p data-testid="amount-in-words">{{ (invoice.type.value == 'credit_note' ? 'totals.in_words_credit_note' : 'totals.in_words')|trans({}, t, locale) }} {{ page.amountInWords }}.</p>
   {%- endif %}
   {%- if page.howToPay and invoice.type.value != 'credit_note' and seller.iban %}
     <div class="mention" data-testid="how-to-pay">

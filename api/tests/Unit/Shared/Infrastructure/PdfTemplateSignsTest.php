@@ -50,20 +50,26 @@ final class PdfTemplateSignsTest extends TestCase
     }
 
     /**
-     * Written out, the amount is the invoice's total with its taxes, while the bold last row is what remains to pay after
-     * a withholding: the sentence names which one it spells, or a reader takes the two for a disagreement.
+     * Written out, the amount is the document's total with its taxes, while the bold last row is what remains to pay after
+     * a withholding: the closing sentence (« Arrêtée la présente facture à la somme de … », as ruled) names that it spells
+     * the total with tax, or a reader takes the two for a disagreement. A credit note closes with a sentence of its own.
      */
-    public function testTheAmountInWordsNamesTheTotalItSpells(): void
+    public function testTheAmountInWordsNamesTheTotalItSpellsOnAnInvoiceAndACreditNote(): void
     {
         $dir = \dirname(__DIR__, 4).'/translations';
-        foreach (['fr' => 'Total TTC', 'en' => 'Total incl. tax'] as $language => $total) {
+        foreach ([
+            'fr' => ['TTC', 'Arrêtée la présente facture à la somme', 'Arrêté le présent avoir à la somme'],
+            'en' => ['tax included', 'This invoice is closed at the sum', 'This credit note is closed at the sum'],
+        ] as $language => [$withTax, $invoice, $creditNote]) {
             $messages = Yaml::parseFile($dir.'/pdf.'.$language.'.yaml');
             self::assertIsArray($messages);
             self::assertIsArray($messages['totals'] ?? null);
-            $label = $messages['totals']['in_words'] ?? null;
-            self::assertIsString($label);
-            self::assertStringContainsString($total, $label, 'the '.$language.' sentence says which total it writes out');
-            self::assertSame($total, $messages['totals']['total'] ?? null, 'and that is the name the totals table gives that row');
+            foreach (['in_words' => $invoice, 'in_words_credit_note' => $creditNote] as $key => $opening) {
+                $label = $messages['totals'][$key] ?? null;
+                self::assertIsString($label);
+                self::assertStringStartsWith($opening, $label, $language.' '.$key);
+                self::assertStringContainsString($withTax, $label, 'the '.$language.' sentence says it spells the total with tax');
+            }
         }
     }
 

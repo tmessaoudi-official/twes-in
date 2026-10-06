@@ -28,7 +28,7 @@ final class BusinessDefaultSettingsTest extends TestCase
     public function testThePartiesChainCarriesTheDocumentDefaults(): void
     {
         self::assertSame(
-            ['document.payment_terms_days', 'document.language', 'document.printed_notes', 'document.how_to_pay', 'document.amount_in_words', 'credit.limit'],
+            ['document.payment_terms_days', 'document.language', 'document.printed_notes', 'document.how_to_pay', 'document.amount_in_words', 'document.paid_stamp', 'credit.limit'],
             array_map(static fn (SettingDefinition $definition) => $definition->key, $this->catalog->ofChain(SettingChain::Parties)),
         );
         $terms = $this->definition('document.payment_terms_days');

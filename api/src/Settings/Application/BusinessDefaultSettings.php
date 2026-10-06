@@ -36,8 +36,13 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
         // The seller's bank details printed on an invoice as the way to pay it, its number the reference to give.
         yield new SettingDefinition('document.how_to_pay', SettingType::Bool, true, SettingChain::Parties, $parties, 'settings.document.how_to_pay', self::MODULE);
 
-        // The total of an invoice or credit note written out in words beneath its figures, as many Tunisian invoices carry.
-        yield new SettingDefinition('document.amount_in_words', SettingType::Bool, false, SettingChain::Parties, $parties, 'settings.document.amount_in_words', self::MODULE);
+        // The total of an invoice or credit note written out in words beneath its figures, as Tunisian invoices customarily
+        // close (« Arrêtée la présente facture à la somme de … »), so it is on unless a company turns it off.
+        yield new SettingDefinition('document.amount_in_words', SettingType::Bool, true, SettingChain::Parties, $parties, 'settings.document.amount_in_words', self::MODULE);
+
+        // Whether an up-to-date copy stamps what became of the invoice: « Acquittée », « Soldée » or « Réglée partiellement ».
+        // Off unless the company asks, because a stamp on a document reads as a statement the seller makes.
+        yield new SettingDefinition('document.paid_stamp', SettingType::Bool, false, SettingChain::Parties, [SettingLevel::Company], 'settings.document.paid_stamp', self::MODULE);
 
         // What a customer may owe before a new delivery warns, in the company's currency; zero is no limit, so a customer
         // can be released from a group's limit by setting zero on it. A document has none: it is about the account.

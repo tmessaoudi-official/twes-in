@@ -47,7 +47,8 @@ totals:
     total_net: 'Total excl. tax after discount'
     withheld: 'Withheld at source'
     amount_due: 'Amount due'
-    in_words: 'Total incl. tax in words:'
+    in_words: 'This invoice is closed at the sum, tax included, of:'
+    in_words_credit_note: 'This credit note is closed at the sum, tax included, of:'
     subtotal: 'Total excl. tax'
     total_tax: 'Total tax'
     total: 'Total incl. tax'
@@ -68,6 +69,8 @@ copy:
 stamp:
     paid: 'PAID'
     partial: 'PARTLY PAID'
+    settled: 'SETTLED'
+    balance: 'Balance due %amount% as of %date%'
 statement:
     title: 'Statement of account'
     period: 'Period from %from% to %to%'

@@ -47,7 +47,8 @@ totals:
     total_net: 'Total HT après remise'
     withheld: 'Retenue à la source'
     amount_due: 'Net à payer'
-    in_words: 'Total TTC en lettres :'
+    in_words: 'Arrêtée la présente facture à la somme TTC de :'
+    in_words_credit_note: 'Arrêté le présent avoir à la somme TTC de :'
     subtotal: 'Total HT'
     total_tax: 'Total des taxes'
     total: 'Total TTC'
@@ -68,6 +69,8 @@ copy:
 stamp:
     paid: 'ACQUITTÉE'
     partial: 'RÉGLÉE PARTIELLEMENT'
+    settled: 'SOLDÉE'
+    balance: 'Reste dû %amount% au %date%'
 statement:
     title: 'Relevé de compte'
     period: 'Période du %from% au %to%'

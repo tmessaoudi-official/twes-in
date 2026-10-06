@@ -23,6 +23,9 @@ use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductTracking;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\SettingLevel;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
@@ -387,6 +390,27 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'only the two kinds exist');
         $this->client->request('GET', $this->path(self::ABSENT).'/pdf/duplicate');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testAnUpToDateCopyStampsAPartPaymentWithWhatIsLeftAndTheDayOnlyWhenTheCompanyAsks(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()));
+        $id = $this->issuedInvoice();
+        $this->postJson($this->path($id).'/payments', ['date' => $today->format('Y-m-d'), 'amount' => '1', 'method' => 'cash', 'reference' => null, 'notes' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->client->request('GET', $this->path($id).'/pdf/current');
+        $page = (string) $this->client->getResponse()->getContent();
+        self::assertStringNotContainsString('data-testid="paid-stamp"', $page, 'off unless the company asks');
+        self::assertStringContainsString('Arrêtée la présente facture à la somme TTC de :', $page, 'the total in words, on by default, closes the invoice');
+
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company')), 'document.paid_stamp', SettingLevel::Company, true, null);
+        $this->client->request('GET', $this->path($id).'/pdf/current');
+        $page = (string) $this->client->getResponse()->getContent();
+
+        self::assertStringContainsString('RÉGLÉE PARTIELLEMENT', $page);
+        self::assertMatchesRegularExpression('/data-testid="paid-stamp-balance">Reste dû [0-9\s\x{00A0}\x{202F},.]+ au '.preg_quote($today->format('d/m/Y'), '/').'</u', $page);
     }
 
     public function testADraftPrintsOnRequestAndAnIssuedInvoicePrintsAsItWasIssued(): void

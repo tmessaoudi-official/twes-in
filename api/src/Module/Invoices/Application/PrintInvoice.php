@@ -12,6 +12,7 @@ namespace App\Module\Invoices\Application;
 use App\Files\Application\Files;
 use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceRepository;
@@ -78,11 +79,7 @@ final readonly class PrintInvoice
         if (!\in_array($invoice->getStatus(), [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid, InvoiceStatus::Paid], true)) {
             throw new NoCopyOfADraft();
         }
-        $stamp = InvoiceCopy::UpToDate === $kind ? match ($invoice->getStatus()) {
-            InvoiceStatus::Paid => 'paid',
-            InvoiceStatus::PartiallyPaid => 'partial',
-            default => null,
-        } : null;
+        $stamp = InvoiceCopy::UpToDate === $kind && true === $this->settings->value(new SettingContext($company), 'document.paid_stamp') ? self::stamp($invoice) : null;
         $watermark = InvoiceCopy::Duplicate === $kind ? InvoicePage::DUPLICATE : InvoicePage::COPY;
         $today = \DateTimeImmutable::createFromInterface($this->clock->now())->setTimezone(new \DateTimeZone($company->getTimezone()));
 
@@ -154,6 +151,23 @@ final readonly class PrintInvoice
             $copiedOn,
             $paidStamp,
         )));
+    }
+
+    /**
+     * What became of an issued invoice, as its up-to-date copy stamps it: « Acquittée » only when money paid it, « Soldée »
+     * when a credit note closed it (alone or after part of it was paid), « Réglée partiellement » while some is still due.
+     *
+     * @return 'paid'|'settled'|'partial'|null
+     */
+    private static function stamp(Invoice $invoice): ?string
+    {
+        $credited = Decimal::of($invoice->getIssuedFigures()->amountCredited ?? '0');
+
+        return match ($invoice->getStatus()) {
+            InvoiceStatus::Paid => 0 === $credited->compare(0) ? 'paid' : 'settled',
+            InvoiceStatus::PartiallyPaid => 'partial',
+            default => null,
+        };
     }
 
     private static function fileName(Invoice $invoice, ?InvoiceCopy $copy = null): string

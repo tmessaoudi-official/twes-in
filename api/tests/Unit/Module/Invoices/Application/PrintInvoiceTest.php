@@ -28,6 +28,7 @@ use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceIssue;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
+use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\PaymentDetails;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ChangeSettings;
@@ -221,18 +222,18 @@ final class PrintInvoiceTest extends TestCase
         self::assertSame(['Nouvelles notes', 'dmy', 'auto'], [$today->printedNotes, $today->dateFormat, $today->numberFormat], 'a draft prints today\'s settings');
     }
 
-    public function testTheTotalIsWrittenOutOnlyWhereTheSettingAsksForIt(): void
+    public function testTheTotalIsWrittenOutUnlessTheSettingTurnsItOff(): void
     {
         $draft = $this->draft($this->customer('standard', null));
         $this->print->pdf($this->company, $draft->getId());
-        self::assertNull($this->template->pages[0]->amountInWords, 'off by default');
+        $words = $this->template->pages[0]->amountInWords;
+        self::assertNotNull($words, 'on by default on invoices');
+        self::assertStringContainsString('dinars', $words);
 
-        $this->change->change(new SettingContext($this->company), 'document.amount_in_words', SettingLevel::Company, true, null);
+        $this->change->change(new SettingContext($this->company), 'document.amount_in_words', SettingLevel::Company, false, null);
         $this->print->pdf($this->company, $draft->getId());
 
-        $words = $this->template->pages[1]->amountInWords;
-        self::assertNotNull($words);
-        self::assertStringContainsString('dinars', $words);
+        self::assertNull($this->template->pages[1]->amountInWords);
     }
 
     public function testAnIssuedInvoiceKeepsWhetherItWroteTheTotalOutWhateverTheSettingSaysByThen(): void
@@ -293,8 +294,44 @@ final class PrintInvoiceTest extends TestCase
         self::assertStringContainsString('duplicate', $copy->contents);
     }
 
+    public function testThePaidStampIsOffUntilTheCompanyTurnsItOn(): void
+    {
+        $invoice = $this->issued($this->customer('standard', null));
+        $invoice->recordPayment(new PaymentDetails(new \DateTimeImmutable('2026-09-15'), $this->totals->figures($invoice)->amountDue, PaymentMethod::Cash), new \DateTimeImmutable('2026-09-15'), 3, null, $this->clock->now());
+
+        $this->print->copy($this->company, $invoice->getId(), InvoiceCopy::UpToDate);
+
+        self::assertSame(InvoiceStatus::Paid, $invoice->getStatus());
+        self::assertNull($this->template->pages[0]->paidStamp, 'a paid invoice, but the stamp is off by default');
+    }
+
+    public function testAnInvoiceACreditNoteClosedIsSettledNeverPaid(): void
+    {
+        $this->stampOn();
+        $invoice = $this->issued($this->customer('standard', null));
+        $this->creditInFull($invoice);
+
+        $this->print->copy($this->company, $invoice->getId(), InvoiceCopy::UpToDate);
+
+        self::assertSame([InvoiceStatus::Paid, '0.000'], [$invoice->getStatus(), $invoice->getIssuedFigures()?->amountDue], 'closed with no money paid');
+        self::assertSame('settled', $this->template->pages[0]->paidStamp, 'not « Acquittée », which says money was paid');
+    }
+
+    public function testAnInvoicePartlyPaidAndClosedByACreditNoteIsSettled(): void
+    {
+        $this->stampOn();
+        $invoice = $this->issued($this->customer('standard', null));
+        $invoice->recordPayment(new PaymentDetails(new \DateTimeImmutable('2026-09-15'), '1', PaymentMethod::Cash), new \DateTimeImmutable('2026-09-15'), 3, null, $this->clock->now());
+        $this->creditInFull($invoice);
+
+        $this->print->copy($this->company, $invoice->getId(), InvoiceCopy::UpToDate);
+
+        self::assertSame('settled', $this->template->pages[0]->paidStamp, 'what closed it was the credit note');
+    }
+
     public function testAnUpToDateCopyStampsWhatTheInvoiceHasBecome(): void
     {
+        $this->stampOn();
         $invoice = $this->issued($this->customer('standard', null));
         $this->print->copy($this->company, $invoice->getId(), InvoiceCopy::UpToDate);
         self::assertNull($this->template->pages[0]->paidStamp, 'nothing paid, no stamp');
@@ -312,6 +349,7 @@ final class PrintInvoiceTest extends TestCase
 
     public function testADuplicateNeverCarriesAPaidStampEvenOnAPaidInvoice(): void
     {
+        $this->stampOn();
         $invoice = $this->issued($this->customer('standard', null));
         $invoice->recordPayment(new PaymentDetails(new \DateTimeImmutable('2026-09-15'), '1', PaymentMethod::Cash), new \DateTimeImmutable('2026-09-15'), 3, null, $this->clock->now());
 
@@ -369,6 +407,18 @@ final class PrintInvoiceTest extends TestCase
         $invoice->releaseEvents();
 
         return $invoice;
+    }
+
+    private function stampOn(): void
+    {
+        $this->change->change(new SettingContext($this->company), 'document.paid_stamp', SettingLevel::Company, true, null);
+    }
+
+    private function creditInFull(Invoice $invoice): void
+    {
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
+        $credit->issue(new InvoiceIssue('AV-2026-00001', new \DateTimeImmutable('2026-09-15'), 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
+        $invoice->credit($credit, $this->clock->now());
     }
 
     private function customer(string $regime, ?string $mentionKey): Customer

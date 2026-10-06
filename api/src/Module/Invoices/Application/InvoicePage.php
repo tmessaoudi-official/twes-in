@@ -56,7 +56,7 @@ final readonly class InvoicePage
         public ?InvoiceCopy $copy = null,
         /** The day the copy was printed, in the company's time zone. */
         public ?\DateTimeImmutable $copiedOn = null,
-        /** What an up-to-date copy shows of the payments: `partial` or `paid`; null on every other output. */
+        /** What an up-to-date copy stamps: `paid`, `settled` or `partial`; null on every other output or when the company keeps it off. */
         public ?string $paidStamp = null,
     ) {
     }

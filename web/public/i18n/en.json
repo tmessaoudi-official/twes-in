@@ -843,7 +843,8 @@
       "language": "Document language",
       "printed_notes": "Notes printed on documents",
       "how_to_pay": "Print how to pay on invoices (IBAN, BIC, number to quote)",
-      "amount_in_words": "Write the total out in words on documents"
+      "amount_in_words": "Write the total out in words on documents",
+      "paid_stamp": "Stamp what became of the invoice on its up-to-date copy (« Paid », « Settled », « Partly paid »)"
     },
     "credit": {
       "limit": "Customer credit limit (0: none)"
