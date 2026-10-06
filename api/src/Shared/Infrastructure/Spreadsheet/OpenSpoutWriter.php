@@ -14,6 +14,7 @@ use App\Shared\Application\Spreadsheet\SpreadsheetWriter;
 use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
 use OpenSpout\Common\Entity\Cell;
 use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Exception\OpenSpoutException;
 use OpenSpout\Writer\CSV\Options as CsvOptions;
 use OpenSpout\Writer\CSV\Writer as CsvWriter;
 use OpenSpout\Writer\WriterInterface;
@@ -36,7 +37,9 @@ final class OpenSpoutWriter implements SpreadsheetWriter
                 $writer->addRow(new Row(array_map(static fn (string $value): Cell => self::cell($csv ? CsvFormula::defused($value) : $value), $row)));
             }
             $writer->close();
-        } catch (\Throwable $failure) {
+        } catch (OpenSpoutException $failure) {
+            // Only the library refusing the file is a file that could not be written, worth trying again: a bug while
+            // the rows are made is left to surface as the error it is.
             throw new UnwritableSpreadsheet(\sprintf('"%s" could not be written.', basename($path)), previous: $failure);
         }
     }

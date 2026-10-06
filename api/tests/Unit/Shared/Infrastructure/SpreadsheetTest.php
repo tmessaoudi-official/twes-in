@@ -11,6 +11,7 @@ namespace App\Tests\Unit\Shared\Infrastructure;
 
 use App\Shared\Application\Spreadsheet\SpreadsheetFormat;
 use App\Shared\Application\Spreadsheet\UnreadableSpreadsheet;
+use App\Shared\Application\Spreadsheet\UnwritableSpreadsheet;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutReader;
 use App\Shared\Infrastructure\Spreadsheet\OpenSpoutWriter;
 use OpenSpout\Common\Entity\Cell;
@@ -150,6 +151,30 @@ final class SpreadsheetTest extends TestCase
 
         $this->expectException(UnreadableSpreadsheet::class);
         iterator_to_array((new OpenSpoutReader())->rows($path, SpreadsheetFormat::Xlsx));
+    }
+
+    /**
+     * A file that cannot be written is a disk or a library refusing, worth trying again; a bug while the rows are made is
+     * not, and must not read as one (audit 2026-10-06, G-12).
+     */
+    public function testAnErrorWhileTheRowsAreMadeIsNotTakenForAFileThatCouldNotBeWritten(): void
+    {
+        $path = $this->path('csv');
+        $this->written[] = $path;
+        $rows = (static function (): iterable {
+            yield ['a'];
+
+            throw new \LogicException('a row mapping went wrong');
+        })();
+
+        $this->expectException(\LogicException::class);
+        (new OpenSpoutWriter())->write($path, SpreadsheetFormat::Csv, $rows);
+    }
+
+    public function testAPlaceThatCannotTakeTheFileIsAFileThatCouldNotBeWritten(): void
+    {
+        $this->expectException(UnwritableSpreadsheet::class);
+        (new OpenSpoutWriter())->write('/nonexistent-directory/export.csv', SpreadsheetFormat::Csv, [['a']]);
     }
 
     /**
