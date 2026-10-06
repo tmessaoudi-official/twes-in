@@ -286,6 +286,27 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_OK, 'its own six are its own, not taken twice');
     }
 
+    public function testADraftInvoicingNotesStaysWithTheirCustomerUntilItInvoicesNoneOfThem(): void
+    {
+        // Moved to another customer, one customer's delivered goods were invoiced to another, and the note marked invoiced.
+        $other = $this->customer('CLI-0002')->getId()->toRfc4122();
+        $this->signedIn();
+        $note = $this->validatedNote();
+        $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $draft = $this->json();
+        $path = $this->invoicePath($this->stringAt($draft, 'id'));
+
+        $this->sendJson('PUT', $path, ['customerId' => $other] + $this->invoiceBody($draft));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('customerId', (string) $this->client->getResponse()->getContent());
+
+        $line = $this->arrayAt($draft, 'lines')[0];
+        self::assertIsArray($line);
+        $this->sendJson('PUT', $path, ['customerId' => $other, 'lines' => [[...array_diff_key($line, ['net' => true, 'sourceDeliveryNoteLineId' => true]), 'description' => 'Écrite à la main']]] + $this->invoiceBody($draft));
+        self::assertResponseStatusCodeSame(Response::HTTP_OK, 'once no line invoices a note, the draft is anybody\'s');
+    }
+
     public function testAnInvoiceDraftedFromNotesNamesTheLotEachLineHandedOverAndARevisionKeepsIt(): void
     {
         // docs/SPEC.md § 7, 2026-09-24 12:40 row 5: the lot handed over is the lot invoiced.

@@ -356,6 +356,16 @@ class Invoice implements CompanyOwned
         }
         $lines = $this->linesOfThisCompany($lines);
         $documentTaxes = $this->documentTaxesOfThisCompany($documentTaxes);
+        // Delivery notes are invoiced to their customer, numbered in their establishment's series: a draft that still
+        // invoices note lines keeps both, or one customer's delivered goods are invoiced to another.
+        if (array_any($lines, static fn (InvoiceLineDetails $line): bool => null !== $line->sourceDeliveryNoteLineId)) {
+            if (!$customer->getId()->equals($this->customer->getId())) {
+                throw new InvalidInvoice('customerId', 'An invoice of delivery notes stays with their customer: take their lines off first.');
+            }
+            if (!$establishment->getId()->equals($this->establishment->getId())) {
+                throw new InvalidInvoice('establishmentId', 'An invoice of delivery notes stays with their establishment: take their lines off first.');
+            }
+        }
 
         $changed = [];
         if (!$establishment->getId()->equals($this->establishment->getId())) {
