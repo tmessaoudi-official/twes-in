@@ -13,8 +13,8 @@
     "login": {
       "title": "Connexion",
       "email": "Adresse e-mail",
-      "email_required": "L'adresse e-mail est obligatoire.",
-      "email_invalid": "Cette adresse e-mail n'est pas valide.",
+      "email_required": "L’adresse e-mail est obligatoire.",
+      "email_invalid": "Cette adresse e-mail n’est pas valide.",
       "password": "Mot de passe",
       "password_required": "Le mot de passe est obligatoire.",
       "submit": "Se connecter",
@@ -94,8 +94,8 @@
     },
     "awaiting": {
       "title": "Presque prêt",
-      "pending": "{{company}} attend l'approbation de l'équipe de la plateforme. Vous recevrez un e-mail dès qu'elle sera approuvée.",
-      "suspended": "{{company}} est suspendue. Contactez l'équipe de la plateforme pour en savoir plus.",
+      "pending": "{{company}} attend l’approbation de l’équipe de la plateforme. Vous recevrez un e-mail dès qu’elle sera approuvée.",
+      "suspended": "{{company}} est suspendue. Contactez l’équipe de la plateforme pour en savoir plus.",
       "sign_out": "Se déconnecter",
       "locked": "{{company}} est fermée en attendant le règlement de l’abonnement. Contactez-nous pour la rouvrir.",
       "declare_payment": "Déclarer un règlement"
@@ -120,8 +120,8 @@
   "hello": {
     "greeting": "Bonjour, {{name}}",
     "company": "Vous travaillez dans {{company}} en tant que {{role}}.",
-    "no_company": "Vous n'êtes membre d'aucune entreprise pour le moment.",
-    "choose_company": "Choisissez l'entreprise dans laquelle travailler.",
+    "no_company": "Vous n’êtes membre d’aucune entreprise pour le moment.",
+    "choose_company": "Choisissez l’entreprise dans laquelle travailler.",
     "operator": "Vous êtes opérateur de la plateforme.",
     "platform": "Gérer la plateforme"
   },
@@ -192,26 +192,26 @@
     "of": "Entreprise {{company}}",
     "name": "Nom",
     "email": "Adresse e-mail",
-    "email_invalid": "Cette adresse e-mail n'est pas valide.",
+    "email_invalid": "Cette adresse e-mail n’est pas valide.",
     "role": "Rôle",
     "actions": "Actions",
     "add": "Ajouter",
     "remove": "Retirer",
     "none": "Aucun membre.",
     "errors": {
-      "unknown_user": "Aucun compte ne porte cette adresse. L'invitation arrive bientôt.",
-      "already_member": "Cette personne fait déjà partie de l'entreprise.",
+      "unknown_user": "Aucun compte ne porte cette adresse. L’invitation arrive bientôt.",
+      "already_member": "Cette personne fait déjà partie de l’entreprise.",
       "last_owner": "Une entreprise garde au moins un propriétaire.",
       "forbidden": "Votre rôle dans cette entreprise ne le permet pas.",
       "not_found": "Entreprise introuvable.",
       "invalid": "Demande invalide.",
       "network": "Impossible de joindre le serveur."
     },
-    "no_company": "Choisissez d'abord une entreprise.",
-    "invited": "L'invitation a été envoyée par e-mail.",
+    "no_company": "Choisissez d’abord une entreprise.",
+    "invited": "L’invitation a été envoyée par e-mail.",
     "invited_row": "Invitation en attente",
     "remove_title": "Retirer ce membre ?",
-    "remove_message": "{{name}} n'aura plus accès à cette entreprise. Vous pourrez l'inviter à nouveau.",
+    "remove_message": "{{name}} n’aura plus accès à cette entreprise. Vous pourrez l’inviter à nouveau.",
     "remove_confirm": "Retirer",
     "keep": "Garder"
   },
@@ -221,10 +221,10 @@
     "unread_elsewhere": "{{count}} notification(s) non lue(s) dans vos autres entreprises",
     "profile": {
       "title": "Profil de la société",
-      "intro": "Ce que les documents de la société disent d'elle : identité, identifiants, adresse, coordonnées, banque et mentions imprimées.",
+      "intro": "Ce que les documents de la société disent d’elle : identité, identifiants, adresse, coordonnées, banque et mentions imprimées.",
       "save": "Enregistrer",
       "saved": "Le profil a été enregistré.",
-      "no_company": "Choisissez d'abord une société.",
+      "no_company": "Choisissez d’abord une société.",
       "forbidden": "Modifier le profil de la société demande la permission des paramètres.",
       "sections": {
         "identity": "Identité",
@@ -244,9 +244,9 @@
       },
       "logo": {
         "title": "Logo",
-        "hint": "Imprimé en tête des factures, avoirs et bons de livraison, et affiché dans le sélecteur d'entreprise. PNG, JPEG ou WebP, 2 Mo et 4000 pixels de côté au plus.",
+        "hint": "Imprimé en tête des factures, avoirs et bons de livraison, et affiché dans le sélecteur d’entreprise. PNG, JPEG ou WebP, 2 Mo et 4000 pixels de côté au plus.",
         "none": "Pas encore de logo",
-        "alt": "Le logo de l'entreprise",
+        "alt": "Le logo de l’entreprise",
         "add": "Choisir une image",
         "replace": "Choisir une autre image",
         "remove": "Retirer le logo",
@@ -258,7 +258,7 @@
         "legalForm": "Forme juridique",
         "vatRegime": "Régime de TVA",
         "addressLine1": "Adresse",
-        "addressLine2": "Complément d'adresse",
+        "addressLine2": "Complément d’adresse",
         "postalCode": "Code postal",
         "city": "Ville",
         "email": "E-mail de facturation",
@@ -270,43 +270,43 @@
         "latePenaltyText": "Pénalités de retard"
       },
       "errors": {
-        "invalid": "Le profil a été refusé. Vérifiez les identifiants, l'IBAN et le BIC.",
+        "invalid": "Le profil a été refusé. Vérifiez les identifiants, l’IBAN et le BIC.",
         "not_found": "Société introuvable.",
         "network": "Le serveur est injoignable.",
         "forbidden": "Votre rôle dans cette entreprise ne le permet pas.",
-        "logo_refused": "L'image est refusée. Envoyez un fichier PNG, JPEG ou WebP de 2 Mo et 4000 pixels de côté au plus."
+        "logo_refused": "L’image est refusée. Envoyez un fichier PNG, JPEG ou WebP de 2 Mo et 4000 pixels de côté au plus."
       }
     },
     "establishments": {
       "title": "Établissements",
-      "intro": "Les lieux d'où la société émet ses documents. Chacun numérote ses documents à part ; l'un d'eux est l'établissement par défaut.",
+      "intro": "Les lieux d’où la société émet ses documents. Chacun numérote ses documents à part ; l’un d’eux est l’établissement par défaut.",
       "add": "Ajouter un établissement",
       "edit": "Modifier",
       "save": "Enregistrer",
       "cancel": "Annuler",
-      "saved": "L'établissement a été enregistré.",
+      "saved": "L’établissement a été enregistré.",
       "none": "Aucun établissement pour le moment.",
-      "no_company": "Choisissez d'abord une société.",
+      "no_company": "Choisissez d’abord une société.",
       "yes": "Oui",
       "no": "Non",
       "section": "Établissement",
       "fields": {
         "code": "Code",
-        "code_hint": "La forme que lui donnent les numéros d'immatriculation du pays de la société.",
+        "code_hint": "La forme que lui donnent les numéros d’immatriculation du pays de la société.",
         "code_locked_hint": "Des documents numérotés portent ce code : il ne change plus.",
         "name": "Nom",
         "addressLine1": "Adresse",
-        "addressLine2": "Complément d'adresse",
+        "addressLine2": "Complément d’adresse",
         "postalCode": "Code postal",
         "city": "Ville",
         "phone": "Téléphone",
         "email": "E-mail",
         "isDefault": "Établissement par défaut",
-        "isDefault_hint": "L'établissement par défaut le reste tant qu'un autre ne prend pas sa place."
+        "isDefault_hint": "L’établissement par défaut le reste tant qu’un autre ne prend pas sa place."
       },
       "errors": {
         "code_taken": "Un autre établissement porte déjà ce code.",
-        "invalid": "L'établissement a été refusé. Vérifiez son code et son e-mail.",
+        "invalid": "L’établissement a été refusé. Vérifiez son code et son e-mail.",
         "not_found": "Établissement introuvable.",
         "network": "Le serveur est injoignable.",
         "forbidden": "Votre rôle dans cette entreprise ne le permet pas."
@@ -314,13 +314,13 @@
     },
     "numbering": {
       "title": "Numérotation des documents",
-      "intro": "Comment chaque établissement numérote chaque type de document. Les numéros sont attribués à l'émission d'un document ; d'ici là, une série peut reprendre à n'importe quel numéro.",
+      "intro": "Comment chaque établissement numérote chaque type de document. Les numéros sont attribués à l’émission d’un document ; d’ici là, une série peut reprendre à n’importe quel numéro.",
       "edit": "Modifier",
       "save": "Enregistrer",
       "cancel": "Annuler",
       "saved": "La numérotation a été enregistrée.",
       "none": "Aucune série de numérotation pour le moment.",
-      "no_company": "Choisissez d'abord une société.",
+      "no_company": "Choisissez d’abord une société.",
       "section": "Numérotation",
       "preview": "Prochain numéro : {{number}}",
       "preview_invalid": "Ce format ne peut pas encore numéroter un document.",
@@ -334,10 +334,10 @@
       },
       "fields": {
         "format": "Format",
-        "format_hint": "Du texte autour de {YYYY}, {YY}, {MM}, {EST} (le code de l'établissement) et d'une séquence, {SEQ} ou {SEQ:5} sur cinq chiffres.",
+        "format_hint": "Du texte autour de {YYYY}, {YY}, {MM}, {EST} (le code de l’établissement) et d’une séquence, {SEQ} ou {SEQ:5} sur cinq chiffres.",
         "nextNumber": "Reprendre à",
-        "nextNumber_hint": "Une société venant d'un autre outil continue là où elle s'était arrêtée.",
-        "nextNumber_frozen_hint": "Des documents portent déjà des numéros de cette série : elle continue d'ici, sans sauter ni répéter un numéro.",
+        "nextNumber_hint": "Une société venant d’un autre outil continue là où elle s’était arrêtée.",
+        "nextNumber_frozen_hint": "Des documents portent déjà des numéros de cette série : elle continue d’ici, sans sauter ni répéter un numéro.",
         "resetPeriod": "Redémarre"
       },
       "document_types": {
@@ -359,7 +359,7 @@
     },
     "custom_fields": {
       "title": "Champs personnalisés",
-      "intro": "Les champs que votre société ajoute à ses clients et à ses produits. La clé et le type d'un champ sont fixés une fois déclarés ; retirez un champ plutôt que de le supprimer, les valeurs sont conservées.",
+      "intro": "Les champs que votre société ajoute à ses clients et à ses produits. La clé et le type d’un champ sont fixés une fois déclarés ; retirez un champ plutôt que de le supprimer, les valeurs sont conservées.",
       "add": "Ajouter un champ",
       "section": "Champ",
       "save": "Enregistrer",
@@ -391,11 +391,11 @@
         "required": "Obligatoire",
         "sortOrder": "Position",
         "isActive": "Actif",
-        "isActive_hint": "Un champ retiré n'est plus affiché ; les valeurs sont conservées."
+        "isActive_hint": "Un champ retiré n’est plus affiché ; les valeurs sont conservées."
       },
       "errors": {
         "network": "Le serveur est injoignable. Réessayez.",
-        "not_found": "Ce champ n'existe plus.",
+        "not_found": "Ce champ n’existe plus.",
         "key_taken": "Un autre champ porte déjà cette clé.",
         "invalid": "Le champ a été refusé. Vérifiez son libellé, ses choix et sa position."
       },
@@ -407,14 +407,14 @@
     },
     "modules": {
       "title": "Modules",
-      "intro": "Les modules que votre société utilise. Un module désactivé quitte le menu et ses pages ne s'ouvrent plus ; ses données sont conservées et reviennent quand vous le réactivez.",
+      "intro": "Les modules que votre société utilise. Un module désactivé quitte le menu et ses pages ne s’ouvrent plus ; ses données sont conservées et reviennent quand vous le réactivez.",
       "planned": "Ce qui arrive",
       "depends_on": "Nécessite :",
       "no_company": "Choisissez une société pour gérer ses modules.",
       "errors": {
         "network": "Le serveur est injoignable. Réessayez.",
-        "not_found": "Ce module n'existe pas.",
-        "needs_modules": "Activez d'abord :",
+        "not_found": "Ce module n’existe pas.",
+        "needs_modules": "Activez d’abord :",
         "still_needed": "Ces modules en ont encore besoin :",
         "invalid": "Le changement a été refusé.",
         "already_available": "Ce module est déjà là : activez-le."
@@ -445,11 +445,11 @@
       "deleted": "Rôle supprimé",
       "errors": {
         "network": "Le serveur est injoignable. Réessayez.",
-        "not_found": "Ce rôle n'existe pas.",
+        "not_found": "Ce rôle n’existe pas.",
         "name_taken": "Un rôle porte déjà ce nom dans cette société.",
         "in_use": "Des membres ont encore ce rôle. Changez leur rôle avant de le supprimer.",
         "built_in": "Ce rôle est fourni avec le produit et ne peut pas être modifié.",
-        "unknown_permission": "Un des droits cochés n'existe pas. Rechargez la page.",
+        "unknown_permission": "Un des droits cochés n’existe pas. Rechargez la page.",
         "not_held": "Vous ne pouvez donner à un rôle que les droits que vous avez vous-même.",
         "invalid": "Cet enregistrement a été refusé."
       }
@@ -609,22 +609,22 @@
     "filter_all": "Toutes",
     "filter_unread": "Non lues",
     "unread": "Non lue",
-    "today": "Aujourd'hui",
+    "today": "Aujourd’hui",
     "yesterday": "Hier",
     "types": {
       "membership_added": "Vous avez été ajouté à {{company}}.",
-      "invitation_accepted": "{{display_name}} a rejoint l'entreprise.",
+      "invitation_accepted": "{{display_name}} a rejoint l’entreprise.",
       "invitation_received": "Une invitation à rejoindre {{company}} vous attend dans votre messagerie.",
-      "stock_delivery_note_lines_left_out": "Le bon de livraison {{number}} est validé, mais certaines de ses lignes n'ont pas sorti de stock (unité différente ou quantité absente).",
-      "stock_delivery_note_moved_no_stock": "Le stock du bon de livraison {{number}} n'a pas pu être mis à jour. Rien n'a bougé : prévenez l'administrateur de la plateforme, qui peut le rejouer.",
-      "stock_invoice_lines_left_out": "La facture {{number}} est émise, mais certaines de ses lignes n'ont pas sorti de stock (unité différente, ou pas de quantité).",
-      "stock_invoice_moved_no_stock": "Le stock de la facture {{number}} n'a pas pu être mis à jour. Rien n'a bougé : enregistrez un ajustement de stock, ou prévenez l'administrateur de la plateforme.",
-      "stock_credit_lines_not_returned": "L'avoir {{number}} est émis, mais une partie des marchandises qu'il marque comme retournées n'est pas revenue en stock (ni vendue par cette facture ni livrée par ses bons de livraison, ou déjà retournée).",
-      "stock_credit_moved_no_stock": "Les marchandises de l'avoir {{number}} n'ont pas pu être remises en stock. Rien n'a bougé : enregistrez une réception, ou prévenez l'administrateur de la plateforme.",
+      "stock_delivery_note_lines_left_out": "Le bon de livraison {{number}} est validé, mais certaines de ses lignes n’ont pas sorti de stock (unité différente ou quantité absente).",
+      "stock_delivery_note_moved_no_stock": "Le stock du bon de livraison {{number}} n’a pas pu être mis à jour. Rien n’a bougé : prévenez l’administrateur de la plateforme, qui peut le rejouer.",
+      "stock_invoice_lines_left_out": "La facture {{number}} est émise, mais certaines de ses lignes n’ont pas sorti de stock (unité différente, ou pas de quantité).",
+      "stock_invoice_moved_no_stock": "Le stock de la facture {{number}} n’a pas pu être mis à jour. Rien n’a bougé : enregistrez un ajustement de stock, ou prévenez l’administrateur de la plateforme.",
+      "stock_credit_lines_not_returned": "L’avoir {{number}} est émis, mais une partie des marchandises qu’il marque comme retournées n’est pas revenue en stock (ni vendue par cette facture ni livrée par ses bons de livraison, ou déjà retournée).",
+      "stock_credit_moved_no_stock": "Les marchandises de l’avoir {{number}} n’ont pas pu être remises en stock. Rien n’a bougé : enregistrez une réception, ou prévenez l’administrateur de la plateforme.",
       "unknown": "Nouvelle notification.",
       "subscription_payment_declared": "{{company}} a déclaré un règlement de {{amount}} {{currency}}.",
       "subscription_payment_decided": "Votre règlement de {{amount}} {{currency}} a reçu une réponse.",
-      "module_arrived": "« {{label}} » est arrivé : vous pouvez l'activer pour {{company}} dans Modules.",
+      "module_arrived": "« {{label}} » est arrivé : vous pouvez l’activer pour {{company}} dans Modules.",
       "stock_count_difference": "Le comptage de {{product}} ({{reference}}) à {{location}} a trouvé un écart de {{difference}}.",
       "stock_low": "{{product}} ({{reference}}) est tombé à {{on_hand}} à {{establishment}}, au niveau ou sous son seuil de réapprovisionnement de {{point}}.",
       "invoice_credit_limit_passed": "{{customer}} dépasse sa limite de crédit : {{owed}} {{currency}} dus pour {{limit}} après la facture {{number}}."
@@ -633,8 +633,8 @@
   "invitation": {
     "title": "Rejoindre une entreprise",
     "offer": "Vous êtes invité à rejoindre {{company}} en tant que {{role}}.",
-    "has_account": "Cette adresse a déjà un compte : accepter y ajoute l'entreprise, et vous vous connectez comme d'habitude pour y travailler.",
-    "join": "Rejoindre l'entreprise",
+    "has_account": "Cette adresse a déjà un compte : accepter y ajoute l’entreprise, et vous vous connectez comme d’habitude pour y travailler.",
+    "join": "Rejoindre l’entreprise",
     "display_name": "Votre nom",
     "display_name_required": "Votre nom est obligatoire.",
     "password": "Choisissez un mot de passe",
@@ -642,7 +642,7 @@
     "password_too_short": "Le mot de passe doit faire au moins 12 caractères.",
     "submit": "Créer mon compte",
     "errors": {
-      "not_usable": "Ce lien n'est plus valable. Demandez une nouvelle invitation.",
+      "not_usable": "Ce lien n’est plus valable. Demandez une nouvelle invitation.",
       "password_refused": "Ce mot de passe a été vu dans une fuite de données. Choisissez-en un autre.",
       "invalid": "Demande invalide.",
       "network": "Impossible de joindre le serveur."
@@ -688,11 +688,11 @@
     "chip_remove": "Retirer le filtre {{label}} : {{value}}",
     "chip_range": "{{from}} au {{to}}",
     "chip_from": "à partir du {{from}}",
-    "chip_to": "jusqu'au {{to}}",
+    "chip_to": "jusqu’au {{to}}",
     "chip_min": "au moins {{min}}",
     "chip_max": "au plus {{max}}",
     "chip_amounts": "{{min}} à {{max}}",
-    "pick_hint": "Tapez pour chercher ; chaque choix s'ajoute au filtre.",
+    "pick_hint": "Tapez pour chercher ; chaque choix s’ajoute au filtre.",
     "range": {
       "from": "Du",
       "to": "Au",
@@ -763,7 +763,7 @@
     }
   },
   "fiscal": {
-    "no_company": "Choisissez d'abord une société.",
+    "no_company": "Choisissez d’abord une société.",
     "edit": "Modifier",
     "cancel": "Annuler",
     "save": "Enregistrer",
@@ -796,7 +796,7 @@
       "is_default": "Appliquée par défaut",
       "is_active": "Active",
       "is_active_hint": "Une taxe inactive reste sur les documents qui la portent.",
-      "exemption_mention": "Mention d'exonération",
+      "exemption_mention": "Mention d’exonération",
       "sort_order": "Ordre"
     },
     "regimes": {
@@ -811,7 +811,7 @@
     "units": {
       "title": "Unités",
       "add": "Ajouter une unité",
-      "saved": "L'unité a été enregistrée.",
+      "saved": "L’unité a été enregistrée.",
       "none": "Aucune unité.",
       "section": "Unité",
       "code": "Code",
@@ -832,7 +832,7 @@
   "settings": {
     "title": "Paramètres",
     "intro": "Les valeurs par défaut de la société. Un client, un produit ou un document peut encore en décider autrement.",
-    "no_company": "Choisissez d'abord une société.",
+    "no_company": "Choisissez d’abord une société.",
     "forbidden": "Modifier les paramètres de la société demande la permission des paramètres.",
     "save": "Enregistrer",
     "saved": "Les paramètres ont été enregistrés.",
@@ -860,23 +860,23 @@
       "show_price_excl_tax": "Afficher aussi le prix HT à ce qui fait face au client"
     },
     "stock": {
-      "cost_on_receive": "Ce que fait une réception de stock au coût d'un produit"
+      "cost_on_receive": "Ce que fait une réception de stock au coût d’un produit"
     },
     "customer_screen": {
-      "show_stock": "Dire sur l'écran client si un produit est en stock ou non"
+      "show_stock": "Dire sur l’écran client si un produit est en stock ou non"
     },
     "watch": {
       "late_after_days": "À surveiller : un client est signalé quand une facture a ce nombre de jours de retard",
-      "unsold_after_days": "À surveiller : un produit est signalé quand il n'a pas été vendu depuis ce nombre de jours",
+      "unsold_after_days": "À surveiller : un produit est signalé quand il n’a pas été vendu depuis ce nombre de jours",
       "lot_expiry_days": "À surveiller : un lot est signalé ce nombre de jours avant sa date limite",
-      "lead_days": "À surveiller : délai de réapprovisionnement (jours) sous lequel un stock qui s'épuise est signalé"
+      "lead_days": "À surveiller : délai de réapprovisionnement (jours) sous lequel un stock qui s’épuise est signalé"
     },
     "delivery_note": {
       "show_prices": "Afficher les prix sur les bons de livraison",
       "reception_block": "Imprimer le bloc de réception (date et heure, nom, signature et cachet, réserves)"
     },
     "presentation": {
-      "accent": "Couleur d'accent",
+      "accent": "Couleur d’accent",
       "scheme": "Thème",
       "density": "Densité",
       "sidebar": "Menu latéral",
@@ -1010,7 +1010,7 @@
     },
     "coming": {
       "title": "Ce qui arrive",
-      "intro": "Les réglages des modules à venir, dits en mots : rien n'est encore à choisir.",
+      "intro": "Les réglages des modules à venir, dits en mots : rien n’est encore à choisir.",
       "more": "En savoir plus sur {{module}}"
     }
   },
@@ -1201,8 +1201,8 @@
   "invoices": {
     "title": "Factures",
     "add": "Nouvelle facture",
-    "none": "Aucune facture pour l'instant.",
-    "no_company": "Choisissez d'abord une société.",
+    "none": "Aucune facture pour l’instant.",
+    "no_company": "Choisissez d’abord une société.",
     "new_title": "Nouvelle facture",
     "draft_title": "Facture en brouillon",
     "credit_note_draft_title": "Avoir en brouillon",
@@ -1260,8 +1260,8 @@
     },
     "form": {
       "reference_hint": "Le numéro de commande du client, imprimé sur la facture.",
-      "supply_date_hint": "Le jour où les biens ont été livrés ou la prestation rendue, s'il diffère du jour d'émission.",
-      "terms_hint": "De 0 à 365 jours après l'émission. Laissé vide, le délai du client à l'émission.",
+      "supply_date_hint": "Le jour où les biens ont été livrés ou la prestation rendue, s’il diffère du jour d’émission.",
+      "terms_hint": "De 0 à 365 jours après l’émission. Laissé vide, le délai du client à l’émission.",
       "discount_hint": "Un montant hors taxes, réparti sur les lignes ; au plus ce que les lignes totalisent.",
       "printed_hint": "Imprimées sur la facture.",
       "internal_hint": "Gardées dans la société, jamais imprimées.",
@@ -1292,7 +1292,7 @@
       "none": "Aucune ligne : une facture en demande au moins une pour être émise.",
       "errors": {
         "description": "Indiquez ce qui est facturé.",
-        "quantity": "Une quantité supérieure à zéro, sans plus de décimales que son unité n'en compte (trois au plus).",
+        "quantity": "Une quantité supérieure à zéro, sans plus de décimales que son unité n’en compte (trois au plus).",
         "unitId": "Choisissez une unité.",
         "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales.",
         "discountRate": "Un pourcentage de 0 à 100, avec au plus trois décimales.",
@@ -1300,12 +1300,12 @@
         "quantity_above_source": "Plus que ce qui reste à facturer sur le bon de livraison."
       },
       "no_product_found": "Aucun produit trouvé.",
-      "price_unchecked": "Prix non vérifié : le tarif du client n'a pas pu être lu.",
+      "price_unchecked": "Prix non vérifié : le tarif du client n’a pas pu être lu.",
       "price_list": "Tarif : {{name}}"
     },
     "document_taxes": {
       "title": "Droits et retenues du document",
-      "hint": "Proposés d'après la société et le client ; ils ne s'appliquent qu'une fois, sur tout le document."
+      "hint": "Proposés d’après la société et le client ; ils ne s’appliquent qu’une fois, sur tout le document."
     },
     "totals": {
       "title": "Totaux",
@@ -1320,7 +1320,7 @@
       "paid": "Déjà payé",
       "credited": "Avoirs",
       "left": "Reste à payer",
-      "as_saved": "En {{currency}}, tels qu'enregistrés en dernier."
+      "as_saved": "En {{currency}}, tels qu’enregistrés en dernier."
     },
     "due": {
       "left": "Reste à encaisser",
@@ -1363,8 +1363,8 @@
     "portfolio": {
       "open": "Portefeuille chèques et traites",
       "title": "Chèques et traites",
-      "hint": "Ce qui est en portefeuille ou à la banque, l'échéance la plus proche d'abord. Ouvrez une facture pour remettre ou encaisser ses chèques et traites.",
-      "no_company": "Aucune société n'est active.",
+      "hint": "Ce qui est en portefeuille ou à la banque, l’échéance la plus proche d’abord. Ouvrez une facture pour remettre ou encaisser ses chèques et traites.",
+      "no_company": "Aucune société n’est active.",
       "none": "Aucun chèque ni traite ici.",
       "fields": {
         "dueOn": "Échéance",
@@ -1387,7 +1387,7 @@
     "instruments": {
       "title": "Chèques et traites",
       "none": "Aucun chèque ni traite reçu.",
-      "hint": "Un chèque ou une traite n'est pas de l'argent tant qu'il n'est pas encaissé : la facture reste due entre-temps.",
+      "hint": "Un chèque ou une traite n’est pas de l’argent tant qu’il n’est pas encaissé : la facture reste due entre-temps.",
       "receive": "Recevoir un chèque ou une traite",
       "receive_title": "Recevoir un chèque ou une traite",
       "save": "Le recevoir",
@@ -1398,20 +1398,20 @@
         "draft": "Traite"
       },
       "amount": "Montant",
-      "amount_hint": "Au plus ce qui reste dû et n'est pas déjà couvert par un autre.",
+      "amount_hint": "Au plus ce qui reste dû et n’est pas déjà couvert par un autre.",
       "due_on": "Échéance",
-      "due_on_hint": "Le jour où il peut être encaissé, à partir de la date d'émission de la facture.",
+      "due_on_hint": "Le jour où il peut être encaissé, à partir de la date d’émission de la facture.",
       "bank": "Banque",
       "number": "Numéro",
       "due": "Échéance le {{day}}",
       "settled": "{{status}} le {{day}}",
       "status": {
         "held": "En portefeuille",
-        "deposited": "Remis à l'encaissement",
+        "deposited": "Remis à l’encaissement",
         "cashed": "Encaissé",
         "unpaid": "Impayé"
       },
-      "deposit": "Remettre à l'encaissement",
+      "deposit": "Remettre à l’encaissement",
       "cash": "Encaisser",
       "unpaid": "Marquer impayé",
       "delete": "Supprimer",
@@ -1422,25 +1422,25 @@
       "keep": "Le garder",
       "ask": {
         "deposit": {
-          "title": "Remettre à l'encaissement ?",
+          "title": "Remettre à l’encaissement ?",
           "message": "Le chèque ou la traite part à la banque : il ne revient plus au portefeuille."
         },
         "cash": {
           "title": "Encaisser ?",
-          "message": "Le paiement est enregistré sur la facture : ce qui reste dû diminue d'autant."
+          "message": "Le paiement est enregistré sur la facture : ce qui reste dû diminue d’autant."
         },
         "unpaid": {
           "title": "Marquer impayé ?",
-          "message": "Le chèque ou la traite ne couvre plus rien : ce qu'il promettait redevient dû."
+          "message": "Le chèque ou la traite ne couvre plus rien : ce qu’il promettait redevient dû."
         },
         "delete": {
           "title": "Supprimer ?",
-          "message": "Le chèque ou la traite sort du portefeuille, et n'apparaîtra plus sur la facture."
+          "message": "Le chèque ou la traite sort du portefeuille, et n’apparaîtra plus sur la facture."
         }
       },
       "done": {
         "received": "Le chèque ou la traite est reçu.",
-        "deposit": "Le chèque ou la traite est remis à l'encaissement.",
+        "deposit": "Le chèque ou la traite est remis à l’encaissement.",
         "cash": "Le chèque ou la traite est encaissé : le paiement est enregistré.",
         "unpaid": "Le chèque ou la traite est marqué impayé.",
         "deleted": "Le chèque ou la traite est sorti du portefeuille."
@@ -1449,13 +1449,13 @@
     "actions": {
       "save": "Enregistrer le brouillon",
       "issue": "Émettre la facture",
-      "issue_credit_note": "Émettre l'avoir",
+      "issue_credit_note": "Émettre l’avoir",
       "credit_note": "Créer un avoir",
       "cancel": "Annuler le brouillon",
       "duplicate": "Dupliquer",
       "cancel_title": "Annuler ce document ?",
-      "cancel_message": "Un document annulé ne peut plus être émis, et son numéro n'est pas réutilisé.",
-      "confirm_cancel": "Confirmer l'annulation",
+      "cancel_message": "Un document annulé ne peut plus être émis, et son numéro n’est pas réutilisé.",
+      "confirm_cancel": "Confirmer l’annulation",
       "keep": "Garder le brouillon",
       "pdf": "Télécharger le PDF",
       "pdf_draft": "Aperçu du PDF",
@@ -1471,8 +1471,8 @@
     "errors": {
       "network": "Le serveur est injoignable.",
       "not_found": "Facture introuvable.",
-      "conflict": "Le document a changé d'état entre-temps, ou son établissement n'a pas de série de numérotation des factures.",
-      "invalid": "Refusé. Vérifiez le client, les lignes, la remise et, pour un paiement, son montant (au plus le reste à payer) et sa date (entre l'émission et aujourd'hui).",
+      "conflict": "Le document a changé d’état entre-temps, ou son établissement n’a pas de série de numérotation des factures.",
+      "invalid": "Refusé. Vérifiez le client, les lignes, la remise et, pour un paiement, son montant (au plus le reste à payer) et sa date (entre l’émission et aujourd’hui).",
       "excess_to": "Dites où va l’argent déjà payé : au crédit du client ou remboursé."
     },
     "home": {
@@ -1514,7 +1514,7 @@
       }
     },
     "issued": "La facture a été émise.",
-    "credit_note_issued": "L'avoir a été émis.",
+    "credit_note_issued": "L’avoir a été émis.",
     "cancelled": "Le document a été annulé.",
     "suggest": {
       "record_payment": "Enregistrer un paiement"
@@ -1530,25 +1530,25 @@
   },
   "delivery_notes": {
     "credit_over": "Cette livraison porte ce que le client doit à {{owed}} + {{total}} {{currency}}, au-delà de son plafond de crédit de {{limit}} {{currency}}.",
-    "credit_unchecked": "Plafond de crédit non vérifié : la position du client n'a pas pu être lue.",
+    "credit_unchecked": "Plafond de crédit non vérifié : la position du client n’a pas pu être lue.",
     "invoice_target": {
       "title": "Sur quelle facture ce bon est-il facturé ?",
-      "help": "Une nouvelle facture, ou à la suite des lignes d'un brouillon de ce client. Une facture émise n'est jamais modifiée : un avoir la corrige.",
+      "help": "Une nouvelle facture, ou à la suite des lignes d’un brouillon de ce client. Une facture émise n’est jamais modifiée : un avoir la corrige.",
       "new": "Une nouvelle facture",
       "draft": "Ajouter à un brouillon de {{total}} ({{lines}} lignes) {{reference}}",
       "cancel": "Annuler"
     },
     "invoice_part": {
       "title": "Quantités à facturer",
-      "help": "Chaque ligne part de ce qu'il en reste ; mettez 0 pour l'écarter de cette facture.",
+      "help": "Chaque ligne part de ce qu’il en reste ; mettez 0 pour l’écarter de cette facture.",
       "left": "Il en reste {{left}}",
       "cancel": "Annuler",
       "confirm": "Créer le brouillon"
     },
     "title": "Bons de livraison",
     "add": "Nouveau bon de livraison",
-    "none": "Aucun bon de livraison pour l'instant.",
-    "no_company": "Choisissez d'abord une société.",
+    "none": "Aucun bon de livraison pour l’instant.",
+    "no_company": "Choisissez d’abord une société.",
     "new_title": "Nouveau bon de livraison",
     "draft_title": "Bon de livraison en brouillon",
     "draft": "Brouillon",
@@ -1584,7 +1584,7 @@
       "deliveryDate": "Date de livraison",
       "total": "Total TTC",
       "deliveryAddressLine1": "Adresse",
-      "deliveryAddressLine2": "Complément d'adresse",
+      "deliveryAddressLine2": "Complément d’adresse",
       "deliveryPostalCode": "Code postal",
       "deliveryCity": "Ville",
       "deliveryCountryCode": "Pays",
@@ -1594,7 +1594,7 @@
     "form": {
       "reference_hint": "Le numéro de commande du client, imprimé sur le bon.",
       "delivery_date_hint": "Le jour où la marchandise est attendue ; devient le jour de la remise une fois livrée.",
-      "address_hint": "Laissée vide, l'adresse de livraison du client, sinon son adresse de facturation, est imprimée à la validation.",
+      "address_hint": "Laissée vide, l’adresse de livraison du client, sinon son adresse de facturation, est imprimée à la validation.",
       "country_hint": "Deux lettres, par exemple TN.",
       "remarks_hint": "Imprimées sur le bon.",
       "notes_hint": "Gardées dans la société, jamais imprimées.",
@@ -1614,7 +1614,7 @@
       "lot_hint": "Celui qui est remis ; vide, le lot qui expire le premier sort du stock.",
       "unitPriceNet": "Prix unitaire HT",
       "price_hint": "En {{currency}}, avec au plus quatre décimales.",
-      "price_unchecked": "Prix non vérifié : le tarif du client n'a pas pu être lu.",
+      "price_unchecked": "Prix non vérifié : le tarif du client n’a pas pu être lu.",
       "price_list": "Tarif : {{name}}",
       "taxes": "Taxes de la ligne",
       "add": "Ajouter une ligne",
@@ -1623,7 +1623,7 @@
       "none": "Aucune ligne : un bon en demande au moins une pour être validé.",
       "errors": {
         "description": "Indiquez ce qui est livré.",
-        "quantity": "Une quantité supérieure à zéro, sans plus de décimales que son unité n'en compte (trois au plus).",
+        "quantity": "Une quantité supérieure à zéro, sans plus de décimales que son unité n’en compte (trois au plus).",
         "unitId": "Choisissez une unité.",
         "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales.",
         "lotCode": "Jusqu’à 40 caractères visibles, sans espace."
@@ -1639,7 +1639,7 @@
       "subtotal": "Total HT",
       "total_tax": "Total des taxes",
       "total": "Total TTC",
-      "as_saved": "En {{currency}}, tels qu'enregistrés en dernier."
+      "as_saved": "En {{currency}}, tels qu’enregistrés en dernier."
     },
     "actions": {
       "save": "Enregistrer le brouillon",
@@ -1651,7 +1651,7 @@
       "cancel": "Annuler le bon",
       "cancel_title": "Annuler ce bon ?",
       "cancel_message": "Un bon annulé ne peut plus être validé ni facturé.",
-      "confirm_cancel": "Confirmer l'annulation",
+      "confirm_cancel": "Confirmer l’annulation",
       "keep": "Garder le bon",
       "pdf": "Télécharger le PDF",
       "pdf_draft": "Aperçu du PDF",
@@ -1662,7 +1662,7 @@
     "errors": {
       "network": "Le serveur est injoignable.",
       "not_found": "Bon de livraison introuvable.",
-      "conflict": "Le bon a changé d'état entre-temps, ou son établissement n'a pas de série de numérotation des bons de livraison.",
+      "conflict": "Le bon a changé d’état entre-temps, ou son établissement n’a pas de série de numérotation des bons de livraison.",
       "invalid": "Le bon a été refusé. Vérifiez le client, les lignes et les dates."
     },
     "validated": "Le bon a été validé.",
@@ -1728,8 +1728,8 @@
       "price_hint": "Dans la devise de l’entreprise, avec quatre décimales au plus.",
       "cost_hint": "Ce qu’une unité vous coûte ; jamais imprimé.",
       "description_hint": "Proposée comme texte d’une nouvelle ligne de document.",
-      "tracking_hint": "Choisi avant le premier mouvement de stock ; un service n'est pas suivi.",
-      "substitution_group_hint": "Les produits qui portent ce nom peuvent se remplacer quand l'un est en rupture. La casse ne les distingue pas."
+      "tracking_hint": "Choisi avant le premier mouvement de stock ; un service n’est pas suivi.",
+      "substitution_group_hint": "Les produits qui portent ce nom peuvent se remplacer quand l’un est en rupture. La casse ne les distingue pas."
     },
     "errors": {
       "network": "Le serveur est injoignable.",
@@ -1799,9 +1799,9 @@
     },
     "reorder": {
       "title": "Seuils de réapprovisionnement",
-      "intro": "La quantité à partir de laquelle l'article est à racheter, par établissement. Vide : aucune alerte.",
+      "intro": "La quantité à partir de laquelle l’article est à racheter, par établissement. Vide : aucune alerte.",
       "quantity": "Seuil",
-      "hint": "Dans l'unité de l'article.",
+      "hint": "Dans l’unité de l’article.",
       "save": "Enregistrer",
       "clear": "Retirer le seuil",
       "none": "Aucun seuil",
@@ -1871,7 +1871,7 @@
     },
     "calculator": {
       "title": "Calculateur de prix",
-      "intro": "Hors taxes, la marge et la majoration disent la même chose de deux façons : toutes deux partent du bénéfice (prix − coût), mais la marge le compare au prix de vente et la majoration au coût. C'est pourquoi une marge de 30 % donne un prix plus haut que 30 % ajoutés au coût.",
+      "intro": "Hors taxes, la marge et la majoration disent la même chose de deux façons : toutes deux partent du bénéfice (prix − coût), mais la marge le compare au prix de vente et la majoration au coût. C’est pourquoi une marge de 30 % donne un prix plus haut que 30 % ajoutés au coût.",
       "missing": "Saisissez le coût et le prix HT pour voir ce que rapporte une unité.",
       "profit": "Bénéfice par unité",
       "margin": "Marge (sur le prix)",
@@ -1888,9 +1888,9 @@
       "target_markup": "Coût {{cost}} × (1 + {{percent}} %) = {{price}} : le bénéfice représente {{percent}} % du coût.",
       "no_price": "Aucun prix ne donne ce pourcentage : une marge reste sous 100 %.",
       "with_tax": "Avec les taxes",
-      "with_tax_unavailable": "Les taxes de ce prix ne peuvent pas être comptées pour l'instant.",
+      "with_tax_unavailable": "Les taxes de ce prix ne peuvent pas être comptées pour l’instant.",
       "quantity": "Quantité",
-      "per_unit": "À l'unité",
+      "per_unit": "À l’unité",
       "per_pack": "Colis de {{count}}",
       "net": "HT ({{currency}})",
       "tax": "Taxes",
@@ -1909,7 +1909,7 @@
     "substitutes": {
       "title": "Substituts",
       "intro": "Les autres produits actifs du groupe « {{group}} ».",
-      "ungrouped": "Ce produit n'a pas de groupe de substitution : nommez-en un dans sa fiche pour lister les produits qui peuvent le remplacer.",
+      "ungrouped": "Ce produit n’a pas de groupe de substitution : nommez-en un dans sa fiche pour lister les produits qui peuvent le remplacer.",
       "none": "Aucun autre produit actif dans ce groupe.",
       "on_hand": "{{quantity}} en stock"
     },
@@ -1997,15 +1997,15 @@
         "receive_split": "La quantité reçue en tout ; les emplacements ci-dessous la partagent."
       },
       "lot_hint": {
-        "lot": "Tel qu'il est imprimé sur l'étiquette ; un lot inconnu est ouvert à la réception.",
-        "serial": "Une pièce par numéro ; il est en stock une seule fois dans l'entreprise."
+        "lot": "Tel qu’il est imprimé sur l’étiquette ; un lot inconnu est ouvert à la réception.",
+        "serial": "Une pièce par numéro ; il est en stock une seule fois dans l’entreprise."
       },
       "no_vendor": "Aucun fournisseur",
       "no_vendor_found": "Aucun fournisseur trouvé.",
       "vendor_hint": "Tapez le numéro ou le nom ; seuls les fournisseurs actifs sont proposés.",
       "supplier_reference_hint": "La référence du bon de livraison ou de la facture du fournisseur, s’il y en a une.",
-      "use_by_hint": "Si l'étiquette en porte une ; une date différente de celle du lot est refusée.",
-      "cost_hint": "Ce qu'une unité vous a coûté ; laissé vide, la moyenne de ce que vaut déjà le stock, ou le prix de revient du produit.",
+      "use_by_hint": "Si l’étiquette en porte une ; une date différente de celle du lot est refusée.",
+      "cost_hint": "Ce qu’une unité vous a coûté ; laissé vide, la moyenne de ce que vaut déjà le stock, ou le prix de revient du produit.",
       "apply_cost": {
         "none": "Laisser le prix de revient tel quel",
         "last": "Prendre le coût de cette réception",
@@ -2092,31 +2092,31 @@
       "title": "Plan du stock",
       "intro": "Chaque étage est un plan : les zones et les rayonnages y sont des rectangles, en mètres, alignés sur le quart de mètre. Un bac ne se dessine pas ici — il se range dans la vue de face de son rayonnage.",
       "floors": "Étages",
-      "no_floor": "Aucun étage n'est encore dessiné. Créez-en un pour commencer le plan.",
+      "no_floor": "Aucun étage n’est encore dessiné. Créez-en un pour commencer le plan.",
       "drawn": "Dessiné sur cet étage",
-      "nothing_drawn": "Aucun emplacement n'est encore dessiné sur cet étage.",
+      "nothing_drawn": "Aucun emplacement n’est encore dessiné sur cet étage.",
       "plan_of": "Plan de {{floor}} : {{count}} rectangle(s) dessiné(s)",
       "draw": "Dessiner un emplacement",
       "trace": "Tracer un rectangle",
       "trace_hint": "Faites glisser sur le plan pour tracer l’emprise au sol, puis choisissez l’emplacement.",
       "erase": "Effacer le rectangle",
       "add_floor": "Ajouter un étage",
-      "edit_floor": "Modifier l'étage",
-      "remove_floor": "Supprimer l'étage",
+      "edit_floor": "Modifier l’étage",
+      "remove_floor": "Supprimer l’étage",
       "floor_saved": "Étage enregistré",
       "floor_removed": "Étage supprimé",
       "drawing_saved": "Rectangle enregistré",
       "drawing_erased": "Rectangle effacé",
-      "floor_section": "L'étage",
-      "level_hint": "Le rez-de-chaussée est 0 ; un étage plus haut est un nombre plus grand, jusqu'à 200.",
-      "drawing_section": "L'emplacement dessiné",
-      "location_hint": "Un emplacement est à un seul endroit, donc il n'est dessiné qu'une fois. Les bacs ne sont pas proposés.",
-      "footprint_section": "L'emprise au sol",
-      "footprint_hint": "En mètres depuis le coin haut-gauche de l'étage, alignée sur le quart de mètre.",
+      "floor_section": "L’étage",
+      "level_hint": "Le rez-de-chaussée est 0 ; un étage plus haut est un nombre plus grand, jusqu’à 200.",
+      "drawing_section": "L’emplacement dessiné",
+      "location_hint": "Un emplacement est à un seul endroit, donc il n’est dessiné qu’une fois. Les bacs ne sont pas proposés.",
+      "footprint_section": "L’emprise au sol",
+      "footprint_hint": "En mètres depuis le coin haut-gauche de l’étage, alignée sur le quart de mètre.",
       "rotation_hint": "Par pas de 15°, pour un rayonnage posé de biais contre un mur.",
       "floor_fields": {
         "establishmentId": "Établissement",
-        "name": "Nom de l'étage",
+        "name": "Nom de l’étage",
         "level": "Niveau",
         "widthMetres": "Largeur de l’étage (m)",
         "depthMetres": "Profondeur de l’étage (m)"
@@ -2147,7 +2147,7 @@
         "depth": "Épaisseur (m)",
         "name": "Nom"
       },
-      "structure_name_hint": "Le nom que le magasin utilise déjà, s'il en a un.",
+      "structure_name_hint": "Le nom que le magasin utilise déjà, s’il en a un.",
       "structure_kinds": {
         "wall": "Mur",
         "door": "Porte",
@@ -2178,7 +2178,7 @@
       "repeat_of": "Répéter {{code}}",
       "repeat_count": "Combien de plus",
       "repeat_spacing": "Espacement (m)",
-      "repeat_spacing_hint": "L'espace libre entre deux rectangles. Zéro les met dos à dos.",
+      "repeat_spacing_hint": "L’espace libre entre deux rectangles. Zéro les met dos à dos.",
       "repeat_way": "Direction",
       "repeat_first_code": "Code de la première copie",
       "repeat_will_create": "{{count}} emplacements de stock et leurs rectangles :",
@@ -2211,23 +2211,23 @@
     },
     "count": {
       "title": "Comptage",
-      "intro": "Choisissez l'emplacement, ou scannez son étiquette, puis scannez ce qui s'y trouve. Chaque ligne se corrige à la main ; l'enregistrement fixe le stock de l'emplacement à ce qui a été compté, pour ce qui a été scanné seulement.",
+      "intro": "Choisissez l’emplacement, ou scannez son étiquette, puis scannez ce qui s’y trouve. Chaque ligne se corrige à la main ; l’enregistrement fixe le stock de l’emplacement à ce qui a été compté, pour ce qui a été scanné seulement.",
       "location": "Emplacement compté",
       "code": "Code",
       "add": "Ajouter",
-      "empty": "Rien n'est encore compté ici.",
+      "empty": "Rien n’est encore compté ici.",
       "counted": "Compté",
       "remove": "Retirer la ligne",
       "record": "Enregistrer le comptage",
-      "incomplete": "Chaque ligne a besoin d'une quantité, et d'un lot pour un article suivi.",
+      "incomplete": "Chaque ligne a besoin d’une quantité, et d’un lot pour un article suivi.",
       "recorded": "Comptage enregistré : {{count}} ligne(s).",
       "at_location": "Comptage à : {{name}}",
       "tallied": "{{name}} : {{quantity}} compté(s)",
-      "read_only": "Vous pouvez compter, mais pas enregistrer : l'enregistrement demande le droit d'écrire le stock."
+      "read_only": "Vous pouvez compter, mais pas enregistrer : l’enregistrement demande le droit d’écrire le stock."
     },
     "labels": {
-      "title": "Étiquettes d'emplacements",
-      "intro": "Une étiquette par emplacement, à coller sur l'étagère : un téléphone qui en lit le QR code ouvre le comptage à cet emplacement, et une douchette le reconnaît aussi.",
+      "title": "Étiquettes d’emplacements",
+      "intro": "Une étiquette par emplacement, à coller sur l’étagère : un téléphone qui en lit le QR code ouvre le comptage à cet emplacement, et une douchette le reconnaît aussi.",
       "print": "Imprimer",
       "empty": "Aucun emplacement à étiqueter.",
       "open": "Imprimer les étiquettes"
@@ -2255,8 +2255,8 @@
       "over": "{{left}} de trop",
       "invalid": "Saisissez la quantité reçue",
       "unplaced": "Placez chaque unité avant d’enregistrer.",
-      "counting": "Chaque ligne : ce qui a été trouvé à cet emplacement, 0 s'il n'y a rien.",
-      "uncounted": "Saisissez ce qui a été trouvé à chaque emplacement, 0 s'il n'y a rien."
+      "counting": "Chaque ligne : ce qui a été trouvé à cet emplacement, 0 s’il n’y a rien.",
+      "uncounted": "Saisissez ce qui a été trouvé à chaque emplacement, 0 s’il n’y a rien."
     },
     "receipt_cost": {
       "section": "Coût",
@@ -2392,7 +2392,7 @@
       "net_hint": "Hors taxes, sans plus de décimales que la devise n’en compte.",
       "no_tax": "Aucune taxe",
       "notes_hint": "Pour votre équipe uniquement.",
-      "withholding_hint": "Proposée à 1 % dès 1 000 TND TTC ; indiquez 0 pour un achat exclu ou un fournisseur exonéré, ou le taux qui s'applique au fournisseur.",
+      "withholding_hint": "Proposée à 1 % dès 1 000 TND TTC ; indiquez 0 pour un achat exclu ou un fournisseur exonéré, ou le taux qui s’applique au fournisseur.",
       "tej_hint": "Code de la plateforme TEJ, à indiquer pour déclarer cette retenue."
     },
     "payment_methods": {
@@ -2407,7 +2407,7 @@
       "pay": "Marquer comme payée",
       "delete": "Supprimer le brouillon",
       "delete_confirm": "Confirmer la suppression",
-      "classify": "Enregistrer l'opération"
+      "classify": "Enregistrer l’opération"
     },
     "attachments": {
       "title": "Justificatifs",
@@ -2449,7 +2449,7 @@
     "withheld": "Retenue à la source {{rate}} % : {{amount}} · versé {{paid}}",
     "tej": {
       "none": "Opération TEJ non indiquée",
-      "classified": "L'opération TEJ a été enregistrée."
+      "classified": "L’opération TEJ a été enregistrée."
     },
     "tej_file": {
       "open": "Fichier TEJ",
@@ -2458,12 +2458,12 @@
       "month": "Mois",
       "download": "Télécharger",
       "close": "Fermer",
-      "failed": "Le fichier n'a pas pu être obtenu. Réessayez.",
+      "failed": "Le fichier n’a pas pu être obtenu. Réessayez.",
       "downloaded": "Le fichier TEJ a été téléchargé.",
       "refused": {
         "not_declared_to_tej": "Cette entreprise ne déclare pas à la TEJ.",
-        "company_matricule_missing": "Le matricule fiscal de l'entreprise n'est pas renseigné.",
-        "company_matricule_unreadable": "Le matricule fiscal de l'entreprise n'est pas lisible.",
+        "company_matricule_missing": "Le matricule fiscal de l’entreprise n’est pas renseigné.",
+        "company_matricule_unreadable": "Le matricule fiscal de l’entreprise n’est pas lisible.",
         "nothing_to_declare": "Aucune retenue à déclarer ce mois-ci.",
         "incomplete_expenses": "{{count}} paiement(s) à compléter avant de pouvoir écrire le fichier :"
       },
@@ -2517,36 +2517,36 @@
     "back_to_login": "Retour à la connexion",
     "request": {
       "title": "Créer un compte",
-      "intro": "Saisissez votre adresse e-mail : nous vous enverrons un lien pour terminer l'inscription.",
+      "intro": "Saisissez votre adresse e-mail : nous vous enverrons un lien pour terminer l’inscription.",
       "email": "Adresse e-mail",
-      "email_invalid": "Cette adresse e-mail n'est pas valide.",
+      "email_invalid": "Cette adresse e-mail n’est pas valide.",
       "submit": "Recevoir le lien",
-      "sent": "Consultez votre boîte de réception : si cette adresse peut servir à s'inscrire, un lien pour terminer est en route. Il est valable 24 heures.",
-      "closed": "Les inscriptions ne sont pas ouvertes pour l'instant.",
+      "sent": "Consultez votre boîte de réception : si cette adresse peut servir à s’inscrire, un lien pour terminer est en route. Il est valable 24 heures.",
+      "closed": "Les inscriptions ne sont pas ouvertes pour l’instant.",
       "errors": {
         "too_many": "Trop de demandes depuis ici. Réessayez dans un moment.",
-        "refused": "Cette adresse e-mail n'est pas valide.",
-        "not_usable": "Les inscriptions ne sont pas ouvertes pour l'instant.",
+        "refused": "Cette adresse e-mail n’est pas valide.",
+        "not_usable": "Les inscriptions ne sont pas ouvertes pour l’instant.",
         "network": "Le serveur est injoignable."
       }
     },
     "finish": {
-      "title": "Terminer l'inscription",
+      "title": "Terminer l’inscription",
       "display_name": "Votre nom",
       "password": "Choisissez un mot de passe",
       "password_hint": "12 caractères au moins.",
       "password_too_short": "Le mot de passe doit contenir au moins 12 caractères.",
-      "company_name": "Nom de l'entreprise",
+      "company_name": "Nom de l’entreprise",
       "country": "Pays",
       "timezone": "Fuseau horaire",
       "required": "Ce champ est obligatoire.",
       "submit": "Créer mon compte",
       "ready": "Votre compte est prêt.",
-      "pending": "{{company}} sera disponible dès que l'équipe de la plateforme l'aura approuvée. Vous pouvez déjà vous connecter.",
+      "pending": "{{company}} sera disponible dès que l’équipe de la plateforme l’aura approuvée. Vous pouvez déjà vous connecter.",
       "active": "{{company}} est prête. Connectez-vous pour commencer.",
       "errors": {
-        "not_usable": "Ce lien n'est plus valable. Demandez-en un nouveau depuis la page d'inscription.",
-        "refused": "Refusé : le nom de l'entreprise est peut-être déjà pris, ou le mot de passe est apparu dans une fuite de données.",
+        "not_usable": "Ce lien n’est plus valable. Demandez-en un nouveau depuis la page d’inscription.",
+        "refused": "Refusé : le nom de l’entreprise est peut-être déjà pris, ou le mot de passe est apparu dans une fuite de données.",
         "too_many": "Trop de demandes. Réessayez dans un moment.",
         "network": "Le serveur est injoignable."
       }
@@ -2556,12 +2556,12 @@
     "title": "Plateforme",
     "signup": {
       "title": "Inscriptions",
-      "enabled": "Tout le monde peut s'inscrire",
-      "approval_required": "Une entreprise inscrite attend l'approbation"
+      "enabled": "Tout le monde peut s’inscrire",
+      "approval_required": "Une entreprise inscrite attend l’approbation"
     },
     "waiting": {
-      "title": "En attente d'approbation",
-      "none": "Aucune entreprise n'attend d'approbation.",
+      "title": "En attente d’approbation",
+      "none": "Aucune entreprise n’attend d’approbation.",
       "owners": "Propriétaires : {{owners}}",
       "approve": "Approuver",
       "reject": "Refuser",
@@ -2569,10 +2569,10 @@
     },
     "companies": {
       "title": "Entreprises",
-      "name": "Nom de l'entreprise",
+      "name": "Nom de l’entreprise",
       "country": "Pays",
       "owner": "Adresse du propriétaire",
-      "create": "Ouvrir l'entreprise",
+      "create": "Ouvrir l’entreprise",
       "invite": "Inviter un propriétaire",
       "invited": "Invitation envoyée à {{email}}.",
       "none": "Aucune entreprise.",
@@ -2607,7 +2607,7 @@
       }
     },
     "errors": {
-      "not_found": "Cette entreprise n'existe plus.",
+      "not_found": "Cette entreprise n’existe plus.",
       "refused": "La plateforme a refusé.",
       "own_account": "Vous ne pouvez pas désactiver votre propre compte.",
       "network": "Le serveur est injoignable.",
@@ -2664,9 +2664,9 @@
     },
     "demand": {
       "title": "Modules attendus",
-      "intro": "Combien de sociétés ont demandé à être prévenues de l'arrivée de chaque module.",
+      "intro": "Combien de sociétés ont demandé à être prévenues de l’arrivée de chaque module.",
       "companies": "Sociétés : {{count}}",
-      "empty": "Aucune société n'attend encore de module."
+      "empty": "Aucune société n’attend encore de module."
     },
     "legal": {
       "title": "Pages légales",
@@ -2726,7 +2726,7 @@
       }
     },
     "tabs": {
-      "overview": "Vue d'ensemble",
+      "overview": "Vue d’ensemble",
       "companies": "Entreprises",
       "accounts": "Comptes",
       "payments": "Paiements",
@@ -2859,16 +2859,16 @@
   "export": {
     "csv": "Exporter en CSV",
     "xlsx": "Exporter en Excel",
-    "failed": "Le fichier n'a pas pu être préparé. Réessayez."
+    "failed": "Le fichier n’a pas pu être préparé. Réessayez."
   },
   "import": {
     "boolean_note": "oui ou non (yes, y, true, 1, oui, o — non, n, false, 0).",
-    "country_note": "Code pays à deux lettres (TN, FR). Laissé vide, celui de l'entreprise s'applique.",
-    "identifier_note": "Numéro d'immatriculation attendu par le régime fiscal de l'entreprise.",
+    "country_note": "Code pays à deux lettres (TN, FR). Laissé vide, celui de l’entreprise s’applique.",
+    "identifier_note": "Numéro d’immatriculation attendu par le régime fiscal de l’entreprise.",
     "rate_note": "Taux en pourcentage, avec une virgule ou un point (5,5 ou 5.5).",
     "customers": {
       "number": "Numéro client",
-      "number_note": "Sert à retrouver le client lors d'un second import : il ne change pas.",
+      "number_note": "Sert à retrouver le client lors d’un second import : il ne change pas.",
       "kind": "Type",
       "kind_note": "company pour une entreprise, individual pour un particulier.",
       "name": "Nom",
@@ -2877,20 +2877,20 @@
       "phone": "Téléphone",
       "website": "Site web",
       "billing_line1": "Adresse de facturation",
-      "billing_line2": "Complément d'adresse",
+      "billing_line2": "Complément d’adresse",
       "billing_postal_code": "Code postal",
       "billing_city": "Ville",
       "billing_country_code": "Pays",
       "shipping_line1": "Adresse de livraison",
       "shipping_note": "À remplir seulement si elle diffère de la facturation.",
-      "shipping_line2": "Complément d'adresse",
+      "shipping_line2": "Complément d’adresse",
       "shipping_postal_code": "Code postal",
       "shipping_city": "Ville",
       "shipping_country_code": "Pays",
       "group": "Groupe",
-      "group_note": "Le nom d'un groupe de clients existant ; créez-le avant l'import.",
+      "group_note": "Le nom d’un groupe de clients existant ; créez-le avant l’import.",
       "tax_regime": "Régime fiscal",
-      "tax_regime_note": "Le code d'un régime du référentiel de l'entreprise.",
+      "tax_regime_note": "Le code d’un régime du référentiel de l’entreprise.",
       "default_taxes": "Taxes par défaut",
       "default_taxes_note": "Codes de taxes séparés par des virgules (TVA19).",
       "discount": "Remise par défaut",
@@ -2899,39 +2899,39 @@
     },
     "products": {
       "reference": "Référence",
-      "reference_note": "Sert à retrouver l'article lors d'un second import : elle ne change pas.",
+      "reference_note": "Sert à retrouver l’article lors d’un second import : elle ne change pas.",
       "name": "Désignation",
       "kind": "Type",
       "kind_note": "goods pour un bien, service pour une prestation.",
       "description": "Description",
       "unit_code": "Unité",
-      "unit_code_note": "Le code d'une unité de l'entreprise (H87 pièce, HUR heure). Obligatoire pour un nouvel article.",
+      "unit_code_note": "Le code d’une unité de l’entreprise (H87 pièce, HUR heure). Obligatoire pour un nouvel article.",
       "category": "Catégorie",
-      "category_note": "Le nom d'une catégorie existante ; créez-la avant l'import.",
+      "category_note": "Le nom d’une catégorie existante ; créez-la avant l’import.",
       "unit_price_net": "Prix de vente HT",
       "price_note": "Montant avec une virgule ou un point. Obligatoire pour un nouvel article.",
       "cost_price": "Prix de revient",
-      "cost_note": "Ce que l'article coûte, pour calculer la marge.",
+      "cost_note": "Ce que l’article coûte, pour calculer la marge.",
       "barcode": "Code-barres",
-      "barcode_note": "Sans espace ; c'est ce que lit la douchette.",
+      "barcode_note": "Sans espace ; c’est ce que lit la douchette.",
       "default_taxes": "Taxes par défaut",
       "default_taxes_note": "Codes de taxes séparés par des virgules (TVA19).",
       "active": "Actif",
       "home_location": "Emplacement habituel",
-      "home_location_note": "Le code d'un emplacement de stock : c'est celui que la réception proposera.",
+      "home_location_note": "Le code d’un emplacement de stock : c’est celui que la réception proposera.",
       "reorder_point": "Seuil de réapprovisionnement",
-      "reorder_point_note": "La quantité à partir de laquelle l'article est à racheter, dans l'établissement de son emplacement habituel (ou le seul établissement)."
+      "reorder_point_note": "La quantité à partir de laquelle l’article est à racheter, dans l’établissement de son emplacement habituel (ou le seul établissement)."
     },
     "vendors": {
       "number": "Numéro fournisseur",
-      "number_note": "Sert à retrouver le fournisseur lors d'un second import : il ne change pas.",
+      "number_note": "Sert à retrouver le fournisseur lors d’un second import : il ne change pas.",
       "name": "Nom",
       "legal_name": "Raison sociale",
       "email": "E-mail",
       "phone": "Téléphone",
       "website": "Site web",
       "line1": "Adresse",
-      "line2": "Complément d'adresse",
+      "line2": "Complément d’adresse",
       "postal_code": "Code postal",
       "city": "Ville",
       "country_code": "Pays",
@@ -2940,17 +2940,17 @@
       "payment_terms_days": "Délai de paiement",
       "payment_terms_note": "Nombre entier de jours après la facture du fournisseur (30).",
       "expense_category": "Rubrique de dépense",
-      "expense_category_note": "Le nom d'une rubrique active ; créez-la avant l'import.",
+      "expense_category_note": "Le nom d’une rubrique active ; créez-la avant l’import.",
       "notes": "Notes",
       "active": "Actif"
     },
     "opening_stock": {
       "reference": "Référence produit",
-      "reference_note": "La référence du produit tel qu'il existe déjà : importez les produits d'abord.",
+      "reference_note": "La référence du produit tel qu’il existe déjà : importez les produits d’abord.",
       "location_code": "Code emplacement",
-      "location_code_note": "Le code de l'emplacement où les articles ont été comptés, tel qu'il figure dans Stock.",
+      "location_code_note": "Le code de l’emplacement où les articles ont été comptés, tel qu’il figure dans Stock.",
       "quantity": "Quantité comptée",
-      "quantity_note": "Ce qui est là, pas ce qui arrive : le même fichier importé deux fois laisse le même stock. Avec une virgule ou un point, dans les décimales de l'unité."
+      "quantity_note": "Ce qui est là, pas ce qui arrive : le même fichier importé deux fois laisse le même stock. Avec une virgule ou un point, dans les décimales de l’unité."
     },
     "title": "Importer des {{subject}}",
     "subjects": {
@@ -2965,11 +2965,11 @@
     "template_csv": "Modèle CSV",
     "template_xlsx": "Modèle Excel",
     "column": "Colonne",
-    "heading": "Ce que c'est",
+    "heading": "Ce que c’est",
     "example": "Exemple",
     "note": "À savoir",
     "required": "Obligatoire",
-    "required_note": "Les colonnes marquées d'une étoile doivent figurer dans le fichier et être remplies sur chaque ligne.",
+    "required_note": "Les colonnes marquées d’une étoile doivent figurer dans le fichier et être remplies sur chaque ligne.",
     "file_title": "Le fichier",
     "choose_file": "Choisir un fichier .csv ou .xlsx",
     "mode": "Comment lire le fichier",
@@ -2977,25 +2977,25 @@
     "mode_upsert": "Créer et mettre à jour : une ligne déjà connue est modifiée, les cellules vides gardent ce qui est là.",
     "preview": "Prévisualiser",
     "store": "Importer",
-    "preview_first": "Prévisualisez d'abord : rien ne sera enregistré.",
-    "preview_title": "Ce que l'import ferait",
-    "stored_title": "Ce que l'import a fait",
+    "preview_first": "Prévisualisez d’abord : rien ne sera enregistré.",
+    "preview_title": "Ce que l’import ferait",
+    "stored_title": "Ce que l’import a fait",
     "created": "{{count}} créés",
     "updated": "{{count}} mis à jour",
     "rejected": "{{count}} refusés",
-    "nothing_stored": "Rien n'a été enregistré : corrigez les lignes ci-dessous et réimportez le fichier.",
+    "nothing_stored": "Rien n’a été enregistré : corrigez les lignes ci-dessous et réimportez le fichier.",
     "stored": "Fichier importé : {{created}} créés, {{updated}} mis à jour.",
     "line": "Ligne",
     "reason": "Motif",
     "errors": {
-      "network": "L'API est injoignable. Réessayez dans un instant.",
-      "not_found": "Rien de tel ne peut être importé ici, ou vous n'avez pas le droit de l'écrire.",
+      "network": "L’API est injoignable. Réessayez dans un instant.",
+      "not_found": "Rien de tel ne peut être importé ici, ou vous n’avez pas le droit de l’écrire.",
       "file_too_large": "Le fichier est trop lourd.",
-      "invalid": "Le fichier n'a pas pu être lu."
+      "invalid": "Le fichier n’a pas pu être lu."
     },
     "refusals": {
-      "invalid_request": "La demande n'a pas été comprise.",
-      "unreadable": "Le fichier n'est ni un .csv ni un .xlsx lisible.",
+      "invalid_request": "La demande n’a pas été comprise.",
+      "unreadable": "Le fichier n’est ni un .csv ni un .xlsx lisible.",
       "empty": "Le fichier ne contient aucune ligne.",
       "unknown_columns": "Colonnes inconnues : {{columns}}. Repartez du modèle.",
       "duplicate_columns": "Colonnes en double : {{columns}}.",
@@ -3012,18 +3012,18 @@
       "not_yes_or_no": "Attendu : oui ou non.",
       "not_a_number": "Attendu : un nombre.",
       "not_a_whole_number": "Attendu : un nombre entier.",
-      "unknown_group": "L'entreprise n'a aucun groupe nommé « {{name}} ». Créez-le d'abord.",
-      "unknown_tax_code": "L'entreprise n'a aucune taxe codée « {{code}} ».",
+      "unknown_group": "L’entreprise n’a aucun groupe nommé « {{name}} ». Créez-le d’abord.",
+      "unknown_tax_code": "L’entreprise n’a aucune taxe codée « {{code}} ».",
       "unknown_unit": "Unité inconnue : « {{code}} ».",
-      "unknown_category": "L'entreprise n'a aucune catégorie nommée « {{name}} ».",
-      "unknown_expense_category": "L'entreprise n'a aucune catégorie de dépense nommée « {{name}} ».",
-      "unknown_product": "L'entreprise n'a aucun produit référencé « {{reference}} ». Importez les produits d'abord.",
-      "unknown_location": "L'entreprise n'a aucun emplacement codé « {{code}} ». Créez-le d'abord dans Stock.",
+      "unknown_category": "L’entreprise n’a aucune catégorie nommée « {{name}} ».",
+      "unknown_expense_category": "L’entreprise n’a aucune catégorie de dépense nommée « {{name}} ».",
+      "unknown_product": "L’entreprise n’a aucun produit référencé « {{reference}} ». Importez les produits d’abord.",
+      "unknown_location": "L’entreprise n’a aucun emplacement codé « {{code}} ». Créez-le d’abord dans Stock.",
       "ambiguous_location": "Plusieurs établissements ont un emplacement codé « {{code}} » : renommez-en un, ou importez un établissement à la fois.",
-      "ambiguous_establishment": "L'entreprise a plusieurs établissements : indiquez l'emplacement habituel pour dire lequel.",
-      "not_stocked": "Aucun stock n'est tenu pour ce produit : seules les marchandises suivies le sont.",
-      "lot_tracked": "« {{reference}} » est suivi par lot ou par numéro de série : comptez son stock d'ouverture dans Stock, lot par lot.",
-      "invalid_quantity": "Quantité refusée : un nombre, dans les décimales de l'unité.",
+      "ambiguous_establishment": "L’entreprise a plusieurs établissements : indiquez l’emplacement habituel pour dire lequel.",
+      "not_stocked": "Aucun stock n’est tenu pour ce produit : seules les marchandises suivies le sont.",
+      "lot_tracked": "« {{reference}} » est suivi par lot ou par numéro de série : comptez son stock d’ouverture dans Stock, lot par lot.",
+      "invalid_quantity": "Quantité refusée : un nombre, dans les décimales de l’unité.",
       "invalid_location": "Emplacement refusé.",
       "invalid_name": "Nom refusé.",
       "invalid_legal_name": "Raison sociale refusée.",
@@ -3038,9 +3038,9 @@
       "invalid_iban": "IBAN refusé.",
       "invalid_bic": "BIC refusé.",
       "invalid_payment_terms": "Délai de paiement refusé : un nombre entier de jours.",
-      "identifier_required": "Ce numéro d'immatriculation est obligatoire pour ce régime.",
-      "identifier_shape": "Ce numéro d'immatriculation n'a pas la forme attendue.",
-      "identifier_checksum": "Ce numéro d'immatriculation est mal formé : la clé de contrôle ne tombe pas juste."
+      "identifier_required": "Ce numéro d’immatriculation est obligatoire pour ce régime.",
+      "identifier_shape": "Ce numéro d’immatriculation n’a pas la forme attendue.",
+      "identifier_checksum": "Ce numéro d’immatriculation est mal formé : la clé de contrôle ne tombe pas juste."
     },
     "action": "Importer"
   },
@@ -3082,46 +3082,46 @@
       "pair": "Utiliser un téléphone comme scanner",
       "paired": "Téléphone relié : ouvrir",
       "title": "Scanner avec un téléphone",
-      "hint": "Scannez ce code avec l'appareil photo du téléphone, ou ouvrez cette adresse sur celui-ci. Aucune connexion n'y est demandée.",
+      "hint": "Scannez ce code avec l’appareil photo du téléphone, ou ouvrez cette adresse sur celui-ci. Aucune connexion n’y est demandée.",
       "qr": "Code QR du lien pour le téléphone",
       "opening": "Préparation du lien…",
       "waiting": "En attente du téléphone",
       "connected": "Téléphone relié",
       "disconnect": "Libérer le téléphone",
       "close": "Fermer",
-      "ended": "Le téléphone n'est plus relié à cet onglet",
+      "ended": "Le téléphone n’est plus relié à cet onglet",
       "found": "{{name}}",
-      "retired": "{{name}} n'est plus vendu",
+      "retired": "{{name}} n’est plus vendu",
       "unknown": "Aucun produit ne porte le code {{code}}",
       "page": {
         "title": "Scanner",
-        "claiming": "Liaison avec l'ordinateur…",
-        "ended": "Ce téléphone n'est plus relié. Pour scanner à nouveau, scannez un nouveau code sur l'ordinateur.",
+        "claiming": "Liaison avec l’ordinateur…",
+        "ended": "Ce téléphone n’est plus relié. Pour scanner à nouveau, scannez un nouveau code sur l’ordinateur.",
         "code": "Code",
         "send": "Envoyer",
         "sent": "Envoyé :"
       },
       "refused": {
-        "unknown": "Ce lien n'existe pas. Scannez à nouveau le code affiché sur l'ordinateur.",
-        "key": "Ce téléphone n'est pas celui qui a été relié.",
-        "claimed": "Ce lien a déjà été utilisé par un autre téléphone. Demandez-en un nouveau sur l'ordinateur.",
-        "expired": "Ce lien a expiré. Demandez-en un nouveau sur l'ordinateur.",
-        "ended": "L'ordinateur n'utilise plus ce lien. Demandez-en un nouveau sur l'ordinateur.",
-        "invalid": "Ce lien n'est pas valide.",
-        "network": "L'ordinateur ne répond pas. Vérifiez la connexion du téléphone."
+        "unknown": "Ce lien n’existe pas. Scannez à nouveau le code affiché sur l’ordinateur.",
+        "key": "Ce téléphone n’est pas celui qui a été relié.",
+        "claimed": "Ce lien a déjà été utilisé par un autre téléphone. Demandez-en un nouveau sur l’ordinateur.",
+        "expired": "Ce lien a expiré. Demandez-en un nouveau sur l’ordinateur.",
+        "ended": "L’ordinateur n’utilise plus ce lien. Demandez-en un nouveau sur l’ordinateur.",
+        "invalid": "Ce lien n’est pas valide.",
+        "network": "L’ordinateur ne répond pas. Vérifiez la connexion du téléphone."
       }
     }
   },
   "customer_screen": {
-    "open": "Ouvrir l'écran client",
+    "open": "Ouvrir l’écran client",
     "title": "Écran client",
-    "leave": "Quitter l'écran client",
+    "leave": "Quitter l’écran client",
     "search": "Scannez un article, ou saisissez son nom ou sa référence",
     "hint": "Appuyez sur Entrée pour le chercher.",
     "look": "Chercher",
     "welcome": "Scannez un article pour voir son prix.",
-    "none": "Rien n'a été trouvé pour « {{words}} ».",
-    "failed": "L'écran n'a pas pu chercher. Demandez à un membre de l'équipe.",
+    "none": "Rien n’a été trouvé pour « {{words}} ».",
+    "failed": "L’écran n’a pas pu chercher. Demandez à un membre de l’équipe.",
     "taxes_included": "Taxes comprises",
     "reference": "Réf.",
     "barcode": "Code-barres",
@@ -3130,25 +3130,25 @@
     "offer": "Offre",
     "from_quantity": "à partir de {{quantity}}",
     "between": "du {{from}} au {{to}}",
-    "until": "jusqu'au {{date}}",
+    "until": "jusqu’au {{date}}",
     "since": "depuis le {{date}}",
     "places_title": "Où se trouve cet écran ?",
     "places_intro": "Il dira le stock de cet établissement. Ce choix est gardé sur cet appareil.",
     "place": "Établissement :",
-    "place_change": "Changer d'établissement"
+    "place_change": "Changer d’établissement"
   },
   "step_up": {
-    "title": "Confirmez que c'est bien vous",
-    "intro": "Pour quitter cette vue, saisissez votre mot de passe ou utilisez une clé d'accès.",
-    "intro_export": "Pour télécharger cette liste, saisissez votre mot de passe ou utilisez une clé d'accès.",
+    "title": "Confirmez que c’est bien vous",
+    "intro": "Pour quitter cette vue, saisissez votre mot de passe ou utilisez une clé d’accès.",
+    "intro_export": "Pour télécharger cette liste, saisissez votre mot de passe ou utilisez une clé d’accès.",
     "password": "Mot de passe",
-    "passkey": "Clé d'accès",
+    "passkey": "Clé d’accès",
     "confirm": "Confirmer",
     "cancel": "Annuler",
     "errors": {
-      "refused": "Ce n'est pas le bon mot de passe.",
+      "refused": "Ce n’est pas le bon mot de passe.",
       "too_many": "Trop de tentatives : réessayez dans quelques minutes.",
-      "no_passkey": "Aucune clé d'accès n'a pu être utilisée.",
+      "no_passkey": "Aucune clé d’accès n’a pu être utilisée.",
       "network": "Le serveur ne répond pas : réessayez."
     }
   },
@@ -3158,19 +3158,19 @@
     "shelf_price": "Prix affiché, toutes taxes comprises",
     "excl_tax": "Hors taxes :",
     "total": "Total :",
-    "open": "Ouvrir l'affichage client"
+    "open": "Ouvrir l’affichage client"
   },
   "watch": {
     "title": "À surveiller",
-    "intro": "Ce qui demande votre attention maintenant. La liste se met à jour d'elle-même : un point traité en sort.",
+    "intro": "Ce qui demande votre attention maintenant. La liste se met à jour d’elle-même : un point traité en sort.",
     "none": "Rien à surveiller.",
     "count": "À surveiller : {{count}}",
     "errors": {
-      "unavailable": "La liste n'a pas pu être lue. Réessayez dans un instant."
+      "unavailable": "La liste n’a pas pu être lue. Réessayez dans un instant."
     },
     "open": "Ouvrir",
     "gone": "Plus rien à surveiller ici : tout a été traité.",
-    "unknown": "Ce sujet n'existe pas ou n'est pas à votre portée.",
+    "unknown": "Ce sujet n’existe pas ou n’est pas à votre portée.",
     "subjects": {
       "invoices": {
         "instruments_due": {
@@ -3183,7 +3183,7 @@
         },
         "unsold_products": {
           "title": "Produits sans vente",
-          "hint": "Des marchandises actives qui n'ont pas été vendues depuis plus longtemps que le seuil."
+          "hint": "Des marchandises actives qui n’ont pas été vendues depuis plus longtemps que le seuil."
         }
       },
       "stock": {
@@ -3247,9 +3247,9 @@
       "later": "Plus tard"
     },
     "planned": "Prévu pour",
-    "home": "Retour à l'accueil",
+    "home": "Retour à l’accueil",
     "hide": "Masquer ce qui arrive",
-    "unknown": "Rien n'est prévu à cette adresse.",
+    "unknown": "Rien n’est prévu à cette adresse.",
     "register": {
       "heading": "La caisse est en construction",
       "does": "La vente au comptoir sur un seul écran, à la douchette et au clavier : reçu ou facture de la même vente, espèces avec rendu, carte, à crédit ou deux moyens, retours avec avoir et remise en stock, ouverture et clôture du tiroir avec le rapport Z.",
@@ -3265,9 +3265,9 @@
     },
     "reports": {
       "heading": "Les rapports sont en construction",
-      "does": "Le chiffre d'affaires, les encaissements, les marges et le stock sur la période choisie, par client, par article ou par établissement, à regarder ou à exporter.",
-      "meanwhile": "En attendant, l'accueil montre les chiffres du jour :",
-      "meanwhile_link": "Ouvrir l'accueil"
+      "does": "Le chiffre d’affaires, les encaissements, les marges et le stock sur la période choisie, par client, par article ou par établissement, à regarder ou à exporter.",
+      "meanwhile": "En attendant, l’accueil montre les chiffres du jour :",
+      "meanwhile_link": "Ouvrir l’accueil"
     },
     "declarations": {
       "heading": "Les déclarations sont en construction",
@@ -3276,7 +3276,7 @@
     },
     "document-templates": {
       "heading": "Les modèles de documents sont en construction",
-      "does": "Choisir le modèle de chaque document dans une galerie, le régler (logo, couleur, colonnes, mentions et blocs) et voir un vrai document à jour pendant qu'on règle.",
+      "does": "Choisir le modèle de chaque document dans une galerie, le régler (logo, couleur, colonnes, mentions et blocs) et voir un vrai document à jour pendant qu’on règle.",
       "meanwhile": "En attendant, le logo et les coordonnées imprimés se règlent dans le profil :",
       "meanwhile_link": "Profil de la société"
     },
@@ -3288,17 +3288,17 @@
     },
     "fiscal-preset": {
       "heading": "Le préréglage fiscal est en construction",
-      "does": "Appliquer d'un coup les taxes, les mentions et la numérotation qu'exige le pays de la société, puis les ajuster.",
+      "does": "Appliquer d’un coup les taxes, les mentions et la numérotation qu’exige le pays de la société, puis les ajuster.",
       "meanwhile": "En attendant, les taxes se règlent une à une :",
       "meanwhile_link": "Taxes"
     },
     "support-access": {
-      "heading": "L'accès du support est en construction",
-      "does": "Ouvrir au support, pour un temps limité et sur votre accord, un accès en lecture à la société, et voir tout ce qu'il y a fait."
+      "heading": "L’accès du support est en construction",
+      "does": "Ouvrir au support, pour un temps limité et sur votre accord, un accès en lecture à la société, et voir tout ce qu’il y a fait."
     },
     "texts": {
       "heading": "Les textes sont en construction",
-      "does": "Remplacer les mots de l'application par les vôtres (« Client » en « Patient », par exemple), dans chaque langue."
+      "does": "Remplacer les mots de l’application par les vôtres (« Client » en « Patient », par exemple), dans chaque langue."
     },
     "accounting_export": {
       "heading": "L’export comptable est en construction",
@@ -3312,12 +3312,12 @@
     "currencies": {
       "heading": "Les devises étrangères sont en construction",
       "does": "Facturer dans la devise du client avec le cours du jour, encaisser en devise et suivre le gain ou la perte de change.",
-      "settings": "La source des taux de change et l'arrondi des conversions."
+      "settings": "La source des taux de change et l’arrondi des conversions."
     },
     "einvoicing": {
       "heading": "La facturation électronique est en construction",
       "does": "Transmettre les factures au format exigé par l’administration : El Fatoora par TTN en Tunisie, Factur-X par une plateforme agréée en France.",
-      "settings": "L'identifiant sur le réseau et la plateforme par laquelle partent les factures."
+      "settings": "L’identifiant sur le réseau et la plateforme par laquelle partent les factures."
     },
     "guests": {
       "heading": "Les clients fidèles sont en construction",
@@ -3326,7 +3326,7 @@
     "mailing": {
       "heading": "L’envoi par e-mail est en construction",
       "does": "Envoyer une facture, un devis ou un bon au client depuis le document, et relancer automatiquement ce qui reste impayé.",
-      "settings": "L'adresse d'envoi, la signature, le texte de chaque message et le calendrier des relances."
+      "settings": "L’adresse d’envoi, la signature, le texte de chaque message et le calendrier des relances."
     },
     "menu": {
       "heading": "La carte est en construction",
@@ -3335,7 +3335,7 @@
     "portal": {
       "heading": "Le portail client est en construction",
       "does": "Vos clients consultent leurs factures, téléchargent leurs documents et passent commande depuis un espace qui leur est réservé.",
-      "settings": "Ce qu'un client voit dans son espace : ses factures, ses devis, ses relevés, et s'il peut payer en ligne."
+      "settings": "Ce qu’un client voit dans son espace : ses factures, ses devis, ses relevés, et s’il peut payer en ligne."
     },
     "purchases": {
       "heading": "Les commandes fournisseurs sont en construction",
@@ -3347,7 +3347,7 @@
       "heading": "Les devis sont en construction",
       "does": "Un devis que le client accepte devient la commande : acompte, suivi de ce qui reste à livrer et à facturer, puis la facture sans rien ressaisir.",
       "create": "Nouveau devis",
-      "settings": "La durée de validité par défaut d'un devis, sa numérotation et les conditions imprimées en bas."
+      "settings": "La durée de validité par défaut d’un devis, sa numérotation et les conditions imprimées en bas."
     },
     "ratings": {
       "heading": "Les avis sont en construction",
@@ -3357,7 +3357,7 @@
       "heading": "Les factures récurrentes sont en construction",
       "does": "Un abonnement ou un contrat facturé chaque mois ou chaque année : les brouillons se préparent d’eux-mêmes à la date prévue.",
       "create": "Nouvelle facture récurrente",
-      "settings": "La fréquence proposée par défaut, le jour d'émission et si chaque facture part seule par e-mail."
+      "settings": "La fréquence proposée par défaut, le jour d’émission et si chaque facture part seule par e-mail."
     },
     "service": {
       "heading": "Le service en salle est en construction",
@@ -3375,12 +3375,12 @@
     "whatsapp": {
       "heading": "L’envoi par WhatsApp est en construction",
       "does": "Envoyer une facture ou un bon au client par WhatsApp, avec le lien vers le document.",
-      "settings": "Le numéro d'envoi et le texte des messages."
+      "settings": "Le numéro d’envoi et le texte des messages."
     },
     "zakat": {
       "heading": "La zakat est en construction",
       "does": "Calculer la zakat de l’entreprise à la date de son hawl, selon votre école : les biens soumis, le nisab en or ou en argent, et un rappel chaque année.",
-      "settings": "La date du hawl, le seuil du nisab retenu et ce qui entre dans l'assiette."
+      "settings": "La date du hawl, le seuil du nisab retenu et ce qui entre dans l’assiette."
     }
   },
   "account": {
@@ -3406,14 +3406,14 @@
       "submit": "Changer le mot de passe",
       "changed": "Le mot de passe a été changé. Connectez-vous avec le nouveau.",
       "problems": {
-        "current_password": "Le mot de passe actuel n'est pas le bon.",
+        "current_password": "Le mot de passe actuel n’est pas le bon.",
         "too_short": "Le nouveau mot de passe doit avoir au moins 12 caractères.",
-        "unchanged": "Choisissez un mot de passe différent de l'actuel.",
+        "unchanged": "Choisissez un mot de passe différent de l’actuel.",
         "breached": "Ce mot de passe apparaît dans une fuite de données : choisissez-en un autre.",
         "mismatch": "Les deux saisies du nouveau mot de passe ne sont pas les mêmes.",
-        "too_many": "Trop d'essais. Réessayez dans quelques minutes.",
+        "too_many": "Trop d’essais. Réessayez dans quelques minutes.",
         "network": "Le serveur ne répond pas. Réessayez.",
-        "refused": "Le mot de passe n'a pas pu être changé."
+        "refused": "Le mot de passe n’a pas pu être changé."
       }
     },
     "title": "Mon compte",
@@ -3443,9 +3443,9 @@
       "nothing": "Rien n’a été lu : ce sont des touches tapées à la main, ou trop peu de caractères.",
       "reset": "Revenir à {{ms}} ms"
     },
-    "company_at_sign_in": "Société à l'ouverture",
+    "company_at_sign_in": "Société à l’ouverture",
     "company_at_sign_in_on": "Toujours ouvrir la même société",
-    "company_at_sign_in_off": "Sinon, la dernière société utilisée s'ouvre.",
+    "company_at_sign_in_off": "Sinon, la dernière société utilisée s’ouvre.",
     "company_at_sign_in_pick": "Société",
     "shortcuts": "Raccourcis clavier",
     "shortcuts_intro": "Une touche, sans Ctrl ni Alt, pour chaque action. Elle ne fait rien quand vous écrivez dans un champ. Ctrl K ouvre toujours la recherche.",
@@ -3570,7 +3570,7 @@
   },
   "price_lists": {
     "title": "Tarifs",
-    "intro": "Un prix par client, par groupe de clients ou pour tous, par quantité et sur une période, qui fixe le prix de départ d'une ligne avant toute remise.",
+    "intro": "Un prix par client, par groupe de clients ou pour tous, par quantité et sur une période, qui fixe le prix de départ d’une ligne avant toute remise.",
     "add": "Nouveau tarif",
     "edit": "Modifier",
     "saved": "Le tarif a été enregistré.",

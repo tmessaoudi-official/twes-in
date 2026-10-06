@@ -48,6 +48,22 @@ final class ApiTranslationParityTest extends TestCase
         self::assertSame([], $loose);
     }
 
+    public function testFrenchElidesWithTheTypographicApostropheNeverAStraightOne(): void
+    {
+        $straight = [];
+        foreach (glob(self::DIRECTORY.'/*.fr.yaml') ?: [] as $path) {
+            $node = Yaml::parseFile($path);
+            self::assertIsArray($node, $path);
+            array_walk_recursive($node, static function (mixed $text) use (&$straight): void {
+                if (\is_string($text) && 1 === preg_match("/\\p{L}'\\p{L}/u", $text)) {
+                    $straight[] = $text;
+                }
+            });
+        }
+
+        self::assertSame([], $straight);
+    }
+
     /** @return list<string> */
     private static function keys(string $file): array
     {

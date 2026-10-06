@@ -55,6 +55,11 @@ describe('translation files', () => {
     expect(textsOf(load('fr')).filter((text) => LOOSE_FRENCH.test(text))).toEqual([]);
   });
 
+  it('French elides with the typographic apostrophe, never a straight one beside it', () => {
+    // « l'instant » beside « qu’un » read as two hands (audit 2026-10-06, V-16).
+    expect(textsOf(load('fr')).filter((text) => /\p{L}'\p{L}/u.test(text))).toEqual([]);
+  });
+
   it('no key has an empty value', () => {
     for (const lang of ['fr', 'en']) {
       const json = JSON.stringify(load(lang));

@@ -258,7 +258,7 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.locator('[data-testid^="instrument-"][data-testid$="-deposit"]').click();
     await expect(page.getByTestId('confirm-kind')).toHaveAttribute('data-kind', 'definitif');
     await page.getByTestId('confirm-run').click();
-    await expect(toast(page)).toContainText("remis à l'encaissement");
+    await expect(toast(page)).toContainText('remis à l’encaissement');
     await page.locator('[data-testid^="instrument-"][data-testid$="-unpaid"]').click();
     await page.getByTestId('confirm-run').click();
     await expect(toast(page)).toContainText('marqué impayé');
