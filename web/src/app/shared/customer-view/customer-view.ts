@@ -1,65 +1,36 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { DOCUMENT, inject, Injectable, InjectionToken, signal } from '@angular/core';
-import { PageMemoryStorage, type SettingsStorage } from '../settings/settings-facade';
+import { computed, inject, Injectable } from '@angular/core';
+import { Session } from '../session/session';
 import { StepUp } from '../step-up/step-up';
-
-/** Where this tab remembers that the customer screen is open: its session storage, so another tab is not affected. */
-export const CUSTOMER_VIEW_STORAGE = new InjectionToken<SettingsStorage>('CUSTOMER_VIEW_STORAGE', {
-  providedIn: 'root',
-  factory: () => {
-    try {
-      // Reading the property itself throws when site data is blocked.
-      return inject(DOCUMENT).defaultView?.sessionStorage ?? new PageMemoryStorage();
-    } catch {
-      return new PageMemoryStorage();
-    }
-  },
-});
-
-const KEY = 'twes.customer-view';
+import { CustomerScreenHold } from './customer-screen-hold';
 
 /**
- * Whether this tab is locked on the customer screen (docs/SPEC.md § 7, 2026-10-03 08:20): the screen a customer may
- * look at, which shows an allow-list the API itself sends and reaches nothing else. While it is on, every other screen
- * of the signed-in app sends the tab back to it, and leaving takes the password or a passkey, since a customer looking
- * at it would otherwise only have to press a button. Per tab, so another window of the counter is not locked with it.
+ * Whether the sign-in is held on the customer screen (docs/SPEC.md § 7, 2026-10-06 19:44): the screen a customer may
+ * look at, which shows an allow-list the API itself sends. The API keeps the hold in the session and answers nothing
+ * else while it lasts, so every tab of the browser, a new one included, is held with it; this only follows what the
+ * API said. Leaving takes the password or a passkey, which the API spends, since a customer looking at the screen
+ * would otherwise only have to press a button.
  */
 @Injectable({ providedIn: 'root' })
 export class CustomerView {
-  private readonly storage = inject(CUSTOMER_VIEW_STORAGE);
+  private readonly session = inject(Session);
+  private readonly hold = inject(CustomerScreenHold);
   private readonly stepUp = inject(StepUp);
-  private readonly on$ = signal(this.remembered());
 
-  readonly active = this.on$.asReadonly();
+  readonly active = computed(() => (this.session.me()?.customerScreenCompanyId ?? null) !== null);
 
-  on(): void {
-    this.set(true);
+  /** Holds the sign-in on the working company's screen; false when there is none or the API would not. */
+  async on(): Promise<boolean> {
+    if (this.active()) return true;
+    const company = this.session.me()?.company?.id;
+    return company !== undefined && (await this.hold.hold(company));
   }
 
-  /** Leaving takes the password or a passkey; true once it is off, false when the person gave up. */
+  /** Leaving takes the password or a passkey; true once it is off, false when the person gave up or the API kept it. */
   async leave(): Promise<boolean> {
-    if (!this.on$()) return true;
+    if (!this.active()) return true;
     if (!(await this.stepUp.request())) return false;
-    this.set(false);
-    return true;
-  }
-
-  private set(on: boolean): void {
-    this.on$.set(on);
-    try {
-      if (on) this.storage.setItem(KEY, '1');
-      else this.storage.removeItem(KEY);
-    } catch {
-      // A browser refusing storage keeps the choice for this page only; the signal above already holds it.
-    }
-  }
-
-  private remembered(): boolean {
-    try {
-      return this.storage.getItem(KEY) === '1';
-    } catch {
-      return false;
-    }
+    return this.hold.release();
   }
 }

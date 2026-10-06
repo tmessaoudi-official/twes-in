@@ -38,6 +38,7 @@ const owner: Me = {
     { key: 'quotes', planned: 'v1' },
     { key: 'zakat', planned: 'later' },
   ],
+  customerScreenCompanyId: null,
 };
 
 describe('AuthApi', () => {
@@ -66,6 +67,33 @@ describe('AuthApi', () => {
       { key: 'quotes', planned: 'v1' },
       { key: 'zakat', planned: 'later' },
     ]);
+  });
+
+  it('carries the company whose customer screen holds the sign-in', async () => {
+    const pending = api.me();
+    http.expectOne('/api/auth/me').flush({ ...owner, customerScreenCompanyId: 'c1' });
+
+    expect((await pending).customerScreenCompanyId).toBe('c1');
+  });
+
+  it('holds the sign-in on a customer screen and lets go of it, saying why it was kept', async () => {
+    const held = api.lockCustomerScreen('c1');
+    http
+      .expectOne({ method: 'POST', url: '/api/companies/c1/customer-screen/lock' })
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await held;
+
+    const kept = api.leaveCustomerScreen();
+    http
+      .expectOne({ method: 'DELETE', url: '/api/auth/customer-screen' })
+      .flush({ error: 'step_up_required' }, { status: 403, statusText: 'Forbidden' });
+    await expect(kept).rejects.toEqual(new AuthRefused('step_up_required'));
+
+    const left = api.leaveCustomerScreen();
+    http
+      .expectOne({ method: 'DELETE', url: '/api/auth/customer-screen' })
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await left;
   });
 
   it('posts the credentials as the API expects them', async () => {

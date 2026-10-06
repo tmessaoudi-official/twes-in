@@ -41,6 +41,8 @@ final readonly class Me
         #[ApiProperty(required: true)] public MeMfa $mfa,
         #[ApiProperty(required: true, schema: ['type' => 'array', 'items' => ['type' => 'string']])] public array $modules = [],
         #[ApiProperty(required: true)] public array $plannedModules = [],
+        /** The company whose customer screen holds this sign-in, null while none does: every tab opens on it. */
+        #[ApiProperty(required: true)] public ?string $customerScreenCompanyId = null,
     ) {
     }
 
@@ -49,7 +51,7 @@ final readonly class Me
      * @param Standing|null         $standing       where the working company stands in its subscription, null when licensing does not manage it
      * @param list<MePlannedModule> $plannedModules the modules not built yet, whoever is signed in
      */
-    public static function of(User $user, ?WorkingContext $context, bool $mfaRequired = false, array $modules = [], int $passkeys = 0, ?Standing $standing = null, array $plannedModules = []): self
+    public static function of(User $user, ?WorkingContext $context, bool $mfaRequired = false, array $modules = [], int $passkeys = 0, ?Standing $standing = null, array $plannedModules = [], ?string $customerScreenCompanyId = null): self
     {
         return new self(
             new MeUser($user->getId()->toRfc4122(), $user->getEmail()->value, $user->getDisplayName(), $user->getLocale(), $user->isPlatformOperator()),
@@ -58,6 +60,7 @@ final readonly class Me
             new MeMfa($user->hasTotp() || $passkeys > 0, $mfaRequired, $user->hasTotp(), $passkeys),
             $modules,
             $plannedModules,
+            $customerScreenCompanyId,
         );
     }
 }

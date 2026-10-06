@@ -12,6 +12,8 @@ export interface SessionState {
   } | null;
   /** The modules of the complete product not built yet, as the API's catalogue lists them (row 150). */
   readonly plannedModules?: readonly { readonly key: string; readonly planned: string }[];
+  /** The company whose customer screen holds the sign-in, null when none does. */
+  readonly customerScreenCompanyId?: string | null;
 }
 
 /**

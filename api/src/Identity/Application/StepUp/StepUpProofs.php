@@ -21,4 +21,7 @@ interface StepUpProofs
 
     /** @return \DateTimeImmutable|null when this account last proved itself in this sign-in, or null when it has not */
     public function lastFor(Uuid $userId): ?\DateTimeImmutable;
+
+    /** Spends the proof of this sign-in, so what took it cannot be taken again on it. */
+    public function forget(): void;
 }

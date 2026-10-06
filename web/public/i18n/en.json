@@ -3114,6 +3114,7 @@
   },
   "customer_screen": {
     "open": "Open the customer screen",
+    "hold_failed": "The customer screen could not be opened. Try again.",
     "title": "Customer screen",
     "leave": "Leave the customer screen",
     "search": "Scan an item, or type its name or reference",
@@ -3561,7 +3562,6 @@
         "camera": "The camera chosen for scanning.",
         "scan_gap": "The time between two keys that tells your scanner from a hand.",
         "notice": "That you closed the cookie notice.",
-        "customer_view": "Whether the customer screen is open in this tab.",
         "customer_screen_place": "The establishment this device's customer screen stands at, for each company.",
         "phone": "The link of a phone lent as a scanner."
       },

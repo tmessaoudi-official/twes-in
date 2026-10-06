@@ -40,4 +40,9 @@ final readonly class SessionStepUpProofs implements StepUpProofs
 
         return new \DateTimeImmutable('@'.$proof['at']);
     }
+
+    public function forget(): void
+    {
+        $this->requestStack->getSession()->remove(self::KEY);
+    }
 }

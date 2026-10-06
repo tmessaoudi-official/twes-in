@@ -347,6 +347,16 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             summary: 'Confirm who is at the screen with a passkey',
             requestBody: $bodyOf('PasskeyAssertion', 'The assertion'),
         )));
+        $openApi->getPaths()->addPath('/api/auth/customer-screen', new PathItem(delete: new Operation(
+            operationId: 'leaveCustomerScreen',
+            tags: ['Auth'],
+            responses: [
+                '204' => new Response('The sign-in reaches the whole app again, and the proof it used is spent'),
+                '401' => $errorResponse('Not signed in'),
+                '403' => $errorResponse('No fresh proof of who is at the screen (step_up_required)'),
+            ],
+            summary: 'Leave the customer screen, once who is at the screen proved it',
+        )));
 
         $health = static fn (string $description): Response => new Response($description, new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/Health']))]));
         $openApi->getPaths()->addPath('/api/health', new PathItem(get: new Operation(

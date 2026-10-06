@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { provideQuietFeedback } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
+import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
@@ -82,7 +83,7 @@ describe('CustomerScreenPage', () => {
     api.find.mockReset();
     api.places.mockReset().mockResolvedValue([main]);
     storage = new PageMemoryStorage();
-    view.on.mockReset();
+    view.on.mockReset().mockResolvedValue(true);
     view.leave.mockReset().mockResolvedValue(true);
     router.navigateByUrl.mockReset().mockResolvedValue(true);
     TestBed.configureTestingModule({
@@ -226,6 +227,17 @@ describe('CustomerScreenPage', () => {
     await settle();
 
     expect(all('customer-screen-name').map((e) => e.textContent?.trim())).toEqual(['Écrou']);
+  });
+
+  it('says so and goes home when the API would not hold the sign-in on the screen', async () => {
+    fixture.destroy();
+    view.on.mockResolvedValueOnce(false);
+    fixture = TestBed.createComponent(CustomerScreenPage);
+    await settle();
+
+    const said = (TestBed.inject(Feedback) as RecordedFeedback).said.map((toast) => toast.key);
+    expect(said).toContain('customer_screen.hold_failed');
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/');
   });
 
   it('leaves for the home page only once the person proved who they are', async () => {

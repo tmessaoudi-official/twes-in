@@ -3114,6 +3114,7 @@
   },
   "customer_screen": {
     "open": "Ouvrir l’écran client",
+    "hold_failed": "L’écran client n’a pas pu être ouvert. Réessayez.",
     "title": "Écran client",
     "leave": "Quitter l’écran client",
     "search": "Scannez un article, ou saisissez son nom ou sa référence",
@@ -3561,7 +3562,6 @@
         "camera": "La caméra choisie pour scanner.",
         "scan_gap": "Le délai entre deux touches qui distingue votre scanner d’une main.",
         "notice": "Que vous avez fermé le bandeau sur les cookies.",
-        "customer_view": "Si l’écran client est ouvert dans cet onglet.",
         "customer_screen_place": "L’établissement où se trouve l’écran client de cet appareil, pour chaque entreprise.",
         "phone": "Le lien d’un téléphone prêté comme scanner."
       },

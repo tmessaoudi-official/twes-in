@@ -184,6 +184,16 @@ export class AuthApi {
     return toState(await send(this.http.post<Me>('/api/auth/mfa/passkey-login', body)));
   }
 
+  /** Holds the sign-in on this company's customer screen: until it is left, the API answers only the screen. */
+  async lockCustomerScreen(companyId: string): Promise<void> {
+    await send(this.http.post<void>(`/api/companies/${companyId}/customer-screen/lock`, null));
+  }
+
+  /** Lets go of the customer screen; rejects with step_up_required without a fresh proof of who is at it. */
+  async leaveCustomerScreen(): Promise<void> {
+    await send(this.http.delete<void>('/api/auth/customer-screen'));
+  }
+
   async logout(): Promise<void> {
     await firstValueFrom(this.http.post('/api/auth/logout', null));
   }
@@ -227,6 +237,7 @@ function toState(me: Me): SignedInState {
       key: module.key,
       planned: module.planned,
     })),
+    customerScreenCompanyId: me.customerScreenCompanyId,
     mfa: {
       enrolled: me.mfa.enrolled,
       required: me.mfa.required,

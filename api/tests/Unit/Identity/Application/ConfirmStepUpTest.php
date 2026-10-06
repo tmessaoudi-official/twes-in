@@ -60,6 +60,11 @@ final class ConfirmStepUpTest extends TestCase
             {
                 return $this->at[$userId->toRfc4122()] ?? null;
             }
+
+            public function forget(): void
+            {
+                $this->at = [];
+            }
         };
     }
 

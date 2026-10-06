@@ -71,6 +71,7 @@ const me: Me = {
   mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
   modules: [],
   plannedModules: [],
+  customerScreenCompanyId: null,
 };
 
 describe('LoginPage', () => {

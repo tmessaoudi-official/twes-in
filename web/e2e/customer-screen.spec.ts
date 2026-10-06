@@ -9,7 +9,7 @@ import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
 // at to the real API, which reads the stock there; the stock of each place is certified by CustomerScreenAvailabilityTest.
 const CSRF = '0123456789abcdef0123456789abcdef';
 
-test('the customer screen asks where it stands, says that place, remembers it and is left with the password', async ({
+test('the customer screen asks where it stands, says that place, remembers it, holds the sign-in and is left with the password', async ({
   page,
 }) => {
   await signIn(page);
@@ -76,13 +76,47 @@ test('the customer screen asks where it stands, says that place, remembers it an
     await expect(page.getByTestId('customer-screen-places')).toBeVisible();
     await page.getByTestId(`customer-screen-place-${real.code}`).click();
 
-    // The tab is locked on the screen: leaving it takes the password again.
+    // The API holds the whole sign-in, not this tab: another tab lands on the screen, and a typed call is refused.
+    const other = await page.context().newPage();
+    await other.goto('/customers');
+    await expect(other).toHaveURL(/\/customer-screen$/);
+    await other.close();
+    const refused = await page.evaluate(async () => {
+      const me = (await (await fetch('/api/auth/me')).json()) as {
+        company: { id: string };
+        customerScreenCompanyId: string | null;
+      };
+      const answer = await fetch(`/api/companies/${me.company.id}/customers`);
+      return { held: me.customerScreenCompanyId, status: answer.status };
+    });
+    expect(refused).toEqual({ held: expect.any(String), status: 403 });
+
+    // Leaving it takes the password again.
     await page.getByTestId('customer-screen-leave').click();
     await expect(page.getByTestId('step-up-title')).toBeVisible();
     await page.getByTestId('step-up-password').fill(OPERATOR_PASSWORD);
     await page.getByTestId('step-up-confirm').click();
     await expect(page).toHaveURL(/\/$/);
   } finally {
+    // The operator's session is shared by every scenario after this one: a failure above must not leave it held.
+    await page.evaluate(
+      async ([token, password]) => {
+        const me = (await (await fetch('/api/auth/me')).json()) as {
+          customerScreenCompanyId: string | null;
+        };
+        if (me.customerScreenCompanyId === null) return;
+        const headers = { 'content-type': 'application/json', 'csrf-token': token };
+        const proved = await fetch('/api/auth/step-up', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ password }),
+        });
+        if (!proved.ok) throw new Error(`the step-up answered ${proved.status}`);
+        const left = await fetch('/api/auth/customer-screen', { method: 'DELETE', headers });
+        if (!left.ok) throw new Error(`leaving the customer screen answered ${left.status}`);
+      },
+      [CSRF, OPERATOR_PASSWORD] as const,
+    );
     await page.unroute('**/api/companies/*/establishments');
     await forget(page, [product]);
   }

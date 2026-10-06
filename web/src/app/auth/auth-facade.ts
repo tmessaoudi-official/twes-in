@@ -2,6 +2,7 @@
 
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Session } from '../shared/session/session';
+import { CustomerScreenHold } from '../shared/customer-view/customer-screen-hold';
 import { type StepUpOutcome, StepUpProof } from '../shared/step-up/step-up-proof';
 import { AuthApi, AuthRefused } from './auth-api';
 import { ALWAYS_PERMITTED } from './auth-types';
@@ -26,7 +27,7 @@ import { PasskeyClient } from './passkey-client';
  * what the API last said. Components depend on it and never on the API adapter.
  */
 @Injectable({ providedIn: 'root' })
-export class AuthFacade implements Session, StepUpProof {
+export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
   private readonly api = inject(AuthApi);
   private readonly passkeyClient = inject(PasskeyClient);
   private readonly stateSignal = signal<SignedInState | null>(null);
@@ -204,6 +205,30 @@ export class AuthFacade implements Session, StepUpProof {
     } catch (error) {
       return stepUpOutcome(error);
     }
+  }
+
+  async hold(companyId: string): Promise<boolean> {
+    try {
+      await this.api.lockCustomerScreen(companyId);
+    } catch {
+      return false;
+    }
+    await this.refresh();
+    return true;
+  }
+
+  async release(): Promise<boolean> {
+    try {
+      await this.api.leaveCustomerScreen();
+    } catch {
+      return false;
+    }
+    await this.refresh();
+    return true;
+  }
+
+  reread(): Promise<void> {
+    return this.refresh();
   }
 
   async listPasskeys(): Promise<PasskeysOutcome> {

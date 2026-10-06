@@ -22,6 +22,7 @@ import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { CustomerView } from '../shared/customer-view/customer-view';
+import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { Session } from '../shared/session/session';
@@ -36,7 +37,7 @@ import type { ScreenPlace, ScreenProduct } from './customer-screen-types';
 
 /**
  * The customer screen (docs/SPEC.md § 7, 2026-10-03 08:20): the one screen a customer may be left in front of. Opening
- * it locks the tab on it (`CustomerView`), and everything it draws is what the API sent of an allow-list — name, final
+ * it holds the sign-in on it (`CustomerView`), and everything it draws is what the API sent of an allow-list — name, final
  * price, our own reference and barcode, in or out of stock when the company says so, the promotions open to everyone —
  * so there is no cost, no supplier and no other customer on it to hide. A scanner typing into the field and pressing
  * Enter is a search like any other. Outside the shell, so it carries no menu.
@@ -65,6 +66,7 @@ export class CustomerScreenPage {
   private readonly session = inject(Session);
   private readonly view = inject(CustomerView);
   private readonly router = inject(Router);
+  private readonly feedback = inject(Feedback);
   private readonly format = inject(FormatFacade);
   private readonly storage = inject(CUSTOMER_SCREEN_PLACE_STORAGE);
   private readonly injector = inject(Injector);
@@ -94,7 +96,7 @@ export class CustomerScreenPage {
   protected readonly ready = signal(false);
 
   constructor() {
-    this.view.on();
+    void this.holdTheSignIn();
     void this.standSomewhere();
     // The screen faces a customer: a price, a promotion or the stock changed elsewhere shows without a reload.
     this.live.reloadOn(
@@ -197,6 +199,13 @@ export class CustomerScreenPage {
     this.place.set(null);
     this.results.set(null);
     this.choosing.set(places.length > 1);
+  }
+
+  /** Without the API's hold the screen would be a page any other tab could leave: it says so and goes home instead. */
+  private async holdTheSignIn(): Promise<void> {
+    if (await this.view.on()) return;
+    this.feedback.failure('customer_screen.hold_failed');
+    await this.router.navigateByUrl('/');
   }
 
   protected async leave(): Promise<void> {

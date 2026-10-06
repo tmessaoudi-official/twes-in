@@ -29,6 +29,8 @@ export type LoginError =
   | 'too_short'
   | 'unchanged'
   | 'breached'
+  // Leaving the customer screen without a fresh proof of who is at it.
+  | 'step_up_required'
   // The browser produced no passkey: cancelled, timed out, or no authenticator to answer. Never sent by the API.
   | 'passkey_cancelled'
   // The browser refused because this device already holds a passkey for the account. Never sent by the API.
@@ -98,6 +100,8 @@ export interface SignedInState {
   mfa: MfaStatus;
   /** the modules not built yet, from the API's catalogue: the menus show them « Bientôt » (docs/SPEC.md § 7, 2026-09-26) */
   plannedModules?: readonly PlannedModule[];
+  /** the company whose customer screen holds the sign-in, null when none does (docs/SPEC.md § 7, 2026-10-06 19:44) */
+  customerScreenCompanyId?: string | null;
 }
 
 /** A module of the complete product not built yet, and the version it is expected in. */

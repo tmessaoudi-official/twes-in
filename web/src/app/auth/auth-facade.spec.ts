@@ -52,6 +52,8 @@ describe('AuthFacade', () => {
     removePasskey: vi.fn(),
     passkeyLoginOptions: vi.fn(),
     finishPasskeyLogin: vi.fn(),
+    lockCustomerScreen: vi.fn(),
+    leaveCustomerScreen: vi.fn(),
   };
   const client = { supported: vi.fn(), create: vi.fn(), get: vi.fn() };
   let facade: AuthFacade;
@@ -244,6 +246,30 @@ describe('AuthFacade', () => {
     expect(await facade.changePassword('a', 'b')).toBe('too_many');
     api.changePassword.mockRejectedValueOnce(new AuthRefused('network'));
     expect(await facade.changePassword('a', 'b')).toBe('network');
+  });
+
+  it('holds the sign-in on the customer screen and lets go of it, reading the sign-in again each time', async () => {
+    api.lockCustomerScreen.mockResolvedValueOnce(undefined);
+    api.me.mockResolvedValueOnce({ ...owner, customerScreenCompanyId: 'c1' });
+    expect(await facade.hold('c1')).toBe(true);
+    expect(api.lockCustomerScreen).toHaveBeenCalledWith('c1');
+    expect(facade.me()?.customerScreenCompanyId).toBe('c1');
+
+    api.leaveCustomerScreen.mockRejectedValueOnce(new AuthRefused('step_up_required'));
+    expect(await facade.release()).toBe(false);
+    expect(facade.me()?.customerScreenCompanyId).toBe('c1');
+
+    api.leaveCustomerScreen.mockResolvedValueOnce(undefined);
+    api.me.mockResolvedValueOnce({ ...owner, customerScreenCompanyId: null });
+    expect(await facade.release()).toBe(true);
+    expect(facade.me()?.customerScreenCompanyId).toBeNull();
+
+    api.lockCustomerScreen.mockRejectedValueOnce(new AuthRefused('network'));
+    expect(await facade.hold('c1')).toBe(false);
+
+    api.me.mockResolvedValueOnce({ ...owner, customerScreenCompanyId: 'c1' });
+    await facade.reread();
+    expect(facade.me()?.customerScreenCompanyId).toBe('c1');
   });
 
   it('says how a proof of who is at the screen came out', async () => {

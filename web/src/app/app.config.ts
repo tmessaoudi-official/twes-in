@@ -20,6 +20,8 @@ import { routes } from './app.routes';
 import { AuthFacade } from './auth/auth-facade';
 import { Session } from './shared/session/session';
 import { StepUpProof } from './shared/step-up/step-up-proof';
+import { CustomerScreenHold } from './shared/customer-view/customer-screen-hold';
+import { customerScreenInterceptor } from './shared/customer-view/customer-screen-interceptor';
 import { csrfInterceptor } from './auth/csrf-interceptor';
 import { ApiSettings } from './shared/settings/api-settings';
 import { BrowserStorageSettings } from './shared/settings/browser-storage-settings';
@@ -42,7 +44,12 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding()),
     // The API uses Symfony stateless CSRF (header only), not the cookie Angular built-in XSRF support echoes.
     provideHttpClient(
-      withInterceptors([csrfInterceptor, tabInterceptor, activityInterceptor]),
+      withInterceptors([
+        csrfInterceptor,
+        tabInterceptor,
+        activityInterceptor,
+        customerScreenInterceptor,
+      ]),
       withNoXsrfProtection(),
     ),
     // French first (Tunisia, France); English second. Files live in public/i18n/<lang>.json.
@@ -58,6 +65,8 @@ export const appConfig: ApplicationConfig = {
     { provide: SCAN_DETAILS, useExisting: ProductScanDetails },
     // Proving who is at the screen again is the auth feature's too.
     { provide: StepUpProof, useExisting: AuthFacade },
+    // So is holding the sign-in on the customer screen, which the API keeps in the session.
+    { provide: CustomerScreenHold, useExisting: AuthFacade },
     { provide: SettingsFacade, useClass: ApiSettings },
     // Outcomes are said in toasts; what the application waits for, in the activity bar (docs/SPEC.md § 8 row 48).
     { provide: Feedback, useExisting: MaterialFeedback },
