@@ -15,13 +15,13 @@ use PHPUnit\Framework\TestCase;
 
 final class CustomerScreenSettingsTest extends TestCase
 {
-    public function testTheCustomerScreenKeepsStockToItselfUntilTheCompanyTurnsItOnAndOnlyTheCompanyDecides(): void
+    public function testTheCustomerScreenKeepsStockToItselfUntilTheCompanyTurnsItOnAndEachEstablishmentMayDecideForItself(): void
     {
         $definitions = [...new CustomerScreenSettings()->settings()];
 
         self::assertCount(1, $definitions);
         self::assertSame(CustomerScreenSettings::SHOW_STOCK, $definitions[0]->key, 'the label gate reads the key from the source, so it is written out and this keeps it equal');
         self::assertFalse($definitions[0]->default, 'a shop does not show its shelves to a customer unless it chose to');
-        self::assertSame([SettingLevel::Company], $definitions[0]->overridableAt);
+        self::assertSame([SettingLevel::Company, SettingLevel::Establishment], $definitions[0]->overridableAt);
     }
 }

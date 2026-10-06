@@ -103,12 +103,13 @@ interface StockMovementRepository
 
     /**
      * What is on hand of each of the products, every location and lot together; a product nothing moved for is "0.000".
+     * Named, an establishment narrows it to the locations of that establishment.
      *
      * @param list<Uuid> $productIds
      *
      * @return array<string, numeric-string> by the product's id
      */
-    public function totalsOf(Uuid $companyId, array $productIds): array;
+    public function totalsOf(Uuid $companyId, array $productIds, ?Uuid $establishmentId = null): array;
 
     /** @return list<StockLevel> every product, location and lot of the company something moved in */
     public function levels(Uuid $companyId): array;

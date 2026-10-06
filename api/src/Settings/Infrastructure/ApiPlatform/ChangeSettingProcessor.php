@@ -34,7 +34,7 @@ final readonly class ChangeSettingProcessor implements ProcessorInterface
         $this->access->companyToRead($companyId);
         $level = SettingLevel::tryFrom($data->level) ?? throw new UnprocessableEntityHttpException(\sprintf('level: no level is called %s.', $data->level));
         $company = $this->access->companyToWrite($companyId, $level);
-        $settingContext = $this->access->contextToWrite($company, $level, $data->roleId, $data->customerId, $data->customerGroupId, $data->productId, $data->productCategoryId);
+        $settingContext = $this->access->contextToWrite($company, $level, $data->roleId, $data->customerId, $data->customerGroupId, $data->productId, $data->productCategoryId, $data->establishmentId);
 
         try {
             $setting = $this->change->change($settingContext, SettingKey::of($uriVariables), $level, $data->value, $this->access->callerId());

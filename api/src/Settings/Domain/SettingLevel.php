@@ -17,6 +17,7 @@ enum SettingLevel: string
 {
     case Platform = 'platform';
     case Company = 'company';
+    case Establishment = 'establishment';
     case CustomerGroup = 'customer_group';
     case Customer = 'customer';
     case Document = 'document';

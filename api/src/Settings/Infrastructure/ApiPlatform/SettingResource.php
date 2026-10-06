@@ -39,6 +39,7 @@ use Symfony\Component\Validator\Constraints as Assert;
                 new Parameter('customerGroupId', 'query', 'Read the chain as this customer group sees it', false, schema: ['type' => 'string', 'format' => 'uuid']),
                 new Parameter('productId', 'query', 'Read the chain as this product sees it, its category included', false, schema: ['type' => 'string', 'format' => 'uuid']),
                 new Parameter('productCategoryId', 'query', 'Read the chain as this product category sees it', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                new Parameter('establishmentId', 'query', 'Read the chain as this establishment sees it', false, schema: ['type' => 'string', 'format' => 'uuid']),
             ]),
         ),
         new Put(
@@ -64,6 +65,7 @@ use Symfony\Component\Validator\Constraints as Assert;
                 new Parameter('customerGroupId', 'query', 'The customer group, at the customer group level', false, schema: ['type' => 'string', 'format' => 'uuid']),
                 new Parameter('productId', 'query', 'The product, at the product level', false, schema: ['type' => 'string', 'format' => 'uuid']),
                 new Parameter('productCategoryId', 'query', 'The product category, at the product category level', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                new Parameter('establishmentId', 'query', 'The establishment, at the establishment level', false, schema: ['type' => 'string', 'format' => 'uuid']),
             ]),
         ),
         // The platform chain, which belongs to the platform's operators (docs/SPEC.md § 3 Settings).
@@ -179,6 +181,10 @@ final class SettingResource
     /** At the product category level, the category whose default this is. */
     #[Groups([self::WRITE])]
     public ?string $productCategoryId = null;
+
+    /** At the establishment level, the establishment whose own value this is. */
+    #[Groups([self::WRITE])]
+    public ?string $establishmentId = null;
 
     /** @param list<string> $writableLevels */
     public static function of(ResolvedSetting $setting, array $writableLevels): self

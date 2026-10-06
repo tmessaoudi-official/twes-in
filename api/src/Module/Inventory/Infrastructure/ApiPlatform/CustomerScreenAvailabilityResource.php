@@ -17,8 +17,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
  * Whether the customer screen may say a product is in stock, read with product.read (docs/SPEC.md § 7, 2026-10-03
- * 08:20): a yes or a no for goods whose stock is kept, never a quantity, and nothing at all until the company turns
- * `customer_screen.show_stock` on.
+ * 08:20): a yes or a no for goods whose stock is kept at the establishment the screen stands at, never a quantity, and
+ * nothing at all until `customer_screen.show_stock` is on for that establishment. Another company's establishment
+ * answers 404.
  */
 #[ApiResource(
     shortName: 'CustomerScreenAvailability',
@@ -32,6 +33,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
                 'ids' => new QueryParameter(
                     schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid'], 'maxItems' => 20],
                     description: 'The products the screen lists. Left out, nothing is answered.',
+                ),
+                'establishmentId' => new QueryParameter(
+                    schema: ['type' => 'string', 'format' => 'uuid'],
+                    description: 'The establishment the screen stands at; left out, the main one.',
                 ),
             ],
         ),

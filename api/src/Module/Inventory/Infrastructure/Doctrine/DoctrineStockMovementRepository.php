@@ -318,7 +318,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return $lots;
     }
 
-    public function totalsOf(Uuid $companyId, array $productIds): array
+    public function totalsOf(Uuid $companyId, array $productIds, ?Uuid $establishmentId = null): array
     {
         $totals = [];
         foreach ($productIds as $id) {
@@ -327,16 +327,18 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         if ([] === $productIds) {
             return $totals;
         }
-        $rows = $this->entityManager->createQueryBuilder()
+        $query = $this->entityManager->createQueryBuilder()
             ->select('IDENTITY(m.product) AS product', 'SUM(m.quantity) AS quantity')
             ->from(StockMovement::class, 'm')
             ->where('m.company = :company')
             ->andWhere('m.product IN (:products)')
             ->groupBy('m.product')
             ->setParameter('company', $companyId, 'uuid')
-            ->setParameter('products', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $productIds), ArrayParameterType::STRING)
-            ->getQuery()
-            ->getArrayResult();
+            ->setParameter('products', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $productIds), ArrayParameterType::STRING);
+        if (null !== $establishmentId) {
+            $query->join('m.location', 'l')->andWhere('l.establishment = :establishment')->setParameter('establishment', $establishmentId, 'uuid');
+        }
+        $rows = $query->getQuery()->getArrayResult();
         foreach ($rows as $row) {
             if (\is_array($row) && \is_string($row['product'] ?? null)) {
                 $totals[Uuid::fromString($row['product'])->toRfc4122()] = self::decimal($row['quantity'] ?? 0);

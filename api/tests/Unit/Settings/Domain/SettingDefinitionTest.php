@@ -91,7 +91,7 @@ final class SettingDefinitionTest extends TestCase
     public function testEachChainRunsFromTheMostGeneralLevel(): void
     {
         self::assertSame([SettingLevel::Platform, SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer, SettingLevel::Document], SettingChain::Parties->levels());
-        self::assertSame([SettingLevel::Platform, SettingLevel::Company, SettingLevel::ProductCategory, SettingLevel::Product, SettingLevel::DocumentLine], SettingChain::Articles->levels());
+        self::assertSame([SettingLevel::Platform, SettingLevel::Company, SettingLevel::Establishment, SettingLevel::ProductCategory, SettingLevel::Product, SettingLevel::DocumentLine], SettingChain::Articles->levels());
         self::assertSame([SettingLevel::Platform, SettingLevel::Company, SettingLevel::Role, SettingLevel::User], SettingChain::Presentation->levels());
     }
 

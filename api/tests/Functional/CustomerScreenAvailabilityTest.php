@@ -97,6 +97,88 @@ final class CustomerScreenAvailabilityTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testEachEstablishmentSaysItsOwnStockAndMayKeepItToItself(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company(), ['company.read', 'company.settings', 'stock.read', 'stock.write', 'product.read', 'product.write'], 'owner');
+        $this->login('owner@twes.local', 'password-1234');
+        $this->getJson($this->path('establishments'));
+        $mainId = $this->stringAt($this->jsonList()[0], 'id');
+        $this->postJson($this->path('establishments'), ['code' => '001', 'name' => 'Agence de Sfax', 'city' => 'Sfax']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $sfaxId = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('stock-locations'), ['establishmentId' => $sfaxId, 'parentId' => null, 'kind' => 'zone', 'code' => 'SF1', 'name' => 'Réserve de Sfax']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->outOfStock, 'locationId' => $this->stringAt($this->json(), 'id'), 'quantity' => '5']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->sendJson('PUT', $this->path('settings/customer_screen.show_stock'), ['level' => 'company', 'value' => true]);
+        self::assertResponseIsSuccessful();
+
+        self::assertSame([$this->inStock => true, $this->outOfStock => false], $this->inStockAt($mainId), 'the main shop has the laptops, the keyboards are in Sfax');
+        self::assertSame([$this->inStock => false, $this->outOfStock => true], $this->inStockAt($sfaxId));
+        self::assertSame([$this->inStock => true, $this->outOfStock => false], $this->inStockAt(null), 'a screen that names no establishment stands at the main one, never at the whole company');
+
+        $this->sendJson('PUT', $this->path('settings/customer_screen.show_stock'), ['level' => 'establishment', 'establishmentId' => $sfaxId, 'value' => false]);
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->inStockAt($sfaxId), 'Sfax keeps its shelves to itself');
+        self::assertSame([$this->inStock => true, $this->outOfStock => false], $this->inStockAt($mainId), 'and the main shop still says');
+
+        $this->getJson($this->path('settings').'?chain=articles&establishmentId='.$sfaxId);
+        self::assertResponseIsSuccessful();
+        $row = array_values(array_filter($this->jsonList(), static fn (array $row): bool => 'customer_screen.show_stock' === $row['key']))[0];
+        self::assertSame([false, 'establishment'], [$row['value'], $row['source']]);
+
+        $other = $this->createCompany('Globex');
+        static::getContainer()->get(ProvisionCompany::class)->handle($other);
+        $theirs = $this->em()->getConnection()->fetchOne('SELECT id FROM establishment WHERE company_id = ?', [$other->getId()->toRfc4122()]);
+        self::assertIsString($theirs);
+        $this->getJson($this->availability([$this->inStock]).'&establishmentId='.$theirs);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company\'s establishment is nobody\'s here');
+        $this->sendJson('PUT', $this->path('settings/customer_screen.show_stock'), ['level' => 'establishment', 'establishmentId' => $theirs, 'value' => true]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testOnlyASettingThatDeclaresTheEstablishmentLevelIsSetThere(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company(), ['company.read', 'company.settings', 'product.read', 'product.write'], 'owner');
+        $this->login('owner@twes.local', 'password-1234');
+        $this->getJson($this->path('establishments'));
+        $mainId = $this->stringAt($this->jsonList()[0], 'id');
+
+        $this->sendJson('PUT', $this->path('settings/article.default_unit'), ['level' => 'establishment', 'establishmentId' => $mainId, 'value' => 'KGM']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        $this->login('clerk@twes.local', 'password-1234');
+        $this->sendJson('PUT', $this->path('settings/customer_screen.show_stock'), ['level' => 'establishment', 'establishmentId' => $mainId, 'value' => true]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'an establishment\'s screen is the company\'s to set');
+    }
+
+    /** @return array<string, bool> by product, empty while the establishment keeps its stock to itself */
+    private function inStockAt(?string $establishmentId): array
+    {
+        $this->getJson($this->availability([$this->inStock, $this->outOfStock]).(null === $establishmentId ? '' : '&establishmentId='.$establishmentId));
+        self::assertResponseIsSuccessful();
+        $answer = [];
+        foreach ($this->arrayAt($this->json(), 'items') as $item) {
+            self::assertIsArray($item);
+            self::assertIsString($item['productId']);
+            self::assertIsBool($item['inStock']);
+            $answer[$item['productId']] = $item['inStock'];
+        }
+        ksort($answer);
+        $order = [$this->inStock, $this->outOfStock];
+        uksort($answer, static fn (string $a, string $b): int => array_search($a, $order, true) <=> array_search($b, $order, true));
+
+        return $answer;
+    }
+
+    private function company(): Company
+    {
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+
+        return $company;
+    }
+
     /** @param list<string> $ids */
     private function availability(array $ids): string
     {

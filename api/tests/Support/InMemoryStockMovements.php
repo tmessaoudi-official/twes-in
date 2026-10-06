@@ -208,7 +208,7 @@ final class InMemoryStockMovements implements StockMovementRepository
         return $values;
     }
 
-    public function totalsOf(Uuid $companyId, array $productIds): array
+    public function totalsOf(Uuid $companyId, array $productIds, ?Uuid $establishmentId = null): array
     {
         $totals = [];
         foreach ($productIds as $id) {
@@ -216,7 +216,8 @@ final class InMemoryStockMovements implements StockMovementRepository
         }
         foreach ($this->movements as $movement) {
             $key = $movement->getProduct()->getId()->toRfc4122();
-            if ($movement->getCompany()->getId()->equals($companyId) && isset($totals[$key])) {
+            $there = null === $establishmentId || $movement->getLocation()->getEstablishment()->getId()->equals($establishmentId);
+            if ($movement->getCompany()->getId()->equals($companyId) && isset($totals[$key]) && $there) {
                 $totals[$key] = $totals[$key]->add($movement->getQuantity());
             }
         }

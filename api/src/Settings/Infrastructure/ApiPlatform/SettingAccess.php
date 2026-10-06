@@ -15,6 +15,7 @@ use App\Settings\Application\SettingContext;
 use App\Settings\Domain\SettingDefinition;
 use App\Settings\Domain\SettingLevel;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\EstablishmentRepository;
 use App\Tenancy\Domain\MembershipRepository;
 use App\Tenancy\Domain\RoleRepository;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -45,6 +46,7 @@ final readonly class SettingAccess
         private RoleRepository $roles,
         private PartySubjects $parties,
         private ArticleSubjects $articles,
+        private EstablishmentRepository $establishments,
     ) {
     }
 
@@ -93,14 +95,14 @@ final readonly class SettingAccess
     /**
      * The caller in the company: their role there, when they hold one (an operator may not), and themselves; and, when
      * one is named, the subject the chain is read for: a customer (with its group) or a customer group, a product (with
-     * its category) or a product category. A read names one subject at most, whatever its chain.
+     * its category) or a product category, or an establishment. A read names one subject at most, whatever its chain.
      */
-    public function contextOf(Company $company, ?string $customerId = null, ?string $customerGroupId = null, ?string $productId = null, ?string $productCategoryId = null): SettingContext
+    public function contextOf(Company $company, ?string $customerId = null, ?string $customerGroupId = null, ?string $productId = null, ?string $productCategoryId = null, ?string $establishmentId = null): SettingContext
     {
         $userId = $this->callerId();
         $roleId = $this->memberships->ofUserInCompany($userId, $company->getId())?->getRole()->getId();
         $named = [];
-        foreach (['customerId' => $customerId, 'customerGroupId' => $customerGroupId, 'productId' => $productId, 'productCategoryId' => $productCategoryId] as $name => $identifier) {
+        foreach (['customerId' => $customerId, 'customerGroupId' => $customerGroupId, 'productId' => $productId, 'productCategoryId' => $productCategoryId, 'establishmentId' => $establishmentId] as $name => $identifier) {
             $value = self::named($identifier);
             if (null !== $value) {
                 $named[$name] = $value;
@@ -117,12 +119,13 @@ final readonly class SettingAccess
 
         return match ($name) {
             'customerId', 'customerGroupId' => $this->partyContext($company, $roleId, $userId, $name, $id),
+            'establishmentId' => $this->establishmentContext($company, $roleId, $userId, $id),
             default => $this->articleContext($company, $roleId, $userId, $name, $id),
         };
     }
 
     /** The context a change at the level is made in: the named role or subject in place of the caller's own. */
-    public function contextToWrite(Company $company, SettingLevel $level, ?string $roleId, ?string $customerId, ?string $customerGroupId, ?string $productId = null, ?string $productCategoryId = null): SettingContext
+    public function contextToWrite(Company $company, SettingLevel $level, ?string $roleId, ?string $customerId, ?string $customerGroupId, ?string $productId = null, ?string $productCategoryId = null, ?string $establishmentId = null): SettingContext
     {
         return match ($level) {
             SettingLevel::Role => $this->contextOfRole($company, $roleId),
@@ -130,6 +133,7 @@ final readonly class SettingAccess
             SettingLevel::CustomerGroup => $this->contextOf($company, null, self::named($customerGroupId) ?? throw new UnprocessableEntityHttpException('customerGroupId: the customer group level names a group.')),
             SettingLevel::Product => $this->contextOf($company, productId: self::named($productId) ?? throw new UnprocessableEntityHttpException('productId: the product level names a product.')),
             SettingLevel::ProductCategory => $this->contextOf($company, productCategoryId: self::named($productCategoryId) ?? throw new UnprocessableEntityHttpException('productCategoryId: the product category level names a category.')),
+            SettingLevel::Establishment => $this->contextOf($company, establishmentId: self::named($establishmentId) ?? throw new UnprocessableEntityHttpException('establishmentId: the establishment level names an establishment.')),
             default => $this->contextOf($company),
         };
     }
@@ -155,8 +159,10 @@ final readonly class SettingAccess
         foreach ($definition->chain->levels() as $level) {
             $mine = SettingLevel::User === $level;
             // This endpoint writes the company and role levels, and the one subject the chain was read for. The platform
-            // level belongs to the operator's own screen; documents and their lines arrive later.
-            $shared = $mayShare && \in_array($level, [SettingLevel::Company, SettingLevel::Role], true);
+            // level belongs to the operator's own screen; documents and their lines arrive later. An establishment is
+            // the company's own place, so whoever sets the company's defaults sets it.
+            $shared = $mayShare && (\in_array($level, [SettingLevel::Company, SettingLevel::Role], true)
+                || (SettingLevel::Establishment === $level && null !== $context?->establishmentId));
             $subject = null !== $context && match ($level) {
                 SettingLevel::CustomerGroup => $mayWriteParties && null !== $context->customerGroupId && null === $context->customerId,
                 SettingLevel::Customer => $mayWriteParties && null !== $context->customerId,
@@ -212,6 +218,16 @@ final readonly class SettingAccess
         }
 
         return new SettingContext($company, $roleId, $userId, productCategoryId: $id);
+    }
+
+    /** One of the company's establishments, the place a read stands at; an establishment of nobody here answers 404. */
+    private function establishmentContext(Company $company, ?Uuid $roleId, Uuid $userId, ?Uuid $id): SettingContext
+    {
+        if (null === $id || null === $this->establishments->ofIdInCompany($id, $company->getId())) {
+            throw new NotFoundHttpException('No such establishment.');
+        }
+
+        return new SettingContext($company, $roleId, $userId, establishmentId: $id);
     }
 
     private static function named(?string $identifier): ?string
