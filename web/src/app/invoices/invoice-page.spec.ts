@@ -933,6 +933,20 @@ describe('InvoicePage', () => {
     expect(q('invoice-view')).toBeNull();
   });
 
+  it('names the customer of a locked document as the document recorded it', async () => {
+    // The customer is a picker beside the form, not a field of its descriptor, so the read view left it out and an
+    // issued invoice never said whom it was for (visual audit 2026-10-06, V-25).
+    invoice.set(issued);
+    await open('i1');
+
+    expect(text('invoice-view-customer-label')).toContain('invoices.fields.customerId');
+    expect(text('invoice-view-customer')).toContain('Carthage SA');
+
+    invoice.set(draft);
+    await open('i1');
+    expect(q('invoice-view-customer')).toBeNull();
+  });
+
   it('shows an issued invoice fixed, with what is left to collect and its payments', async () => {
     invoice.set(issued);
     await open('i1');

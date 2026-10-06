@@ -244,6 +244,13 @@ export class DeliveryNotePage {
     return picked !== (current?.customerId ?? null) ? 1 : 0;
   });
   protected readonly customerShown = computed(() => pickedCustomer(this.customer()));
+  /**
+   * Whom a locked note is for, as it recorded them: the customer is a picker beside the form, not a field of its
+   * descriptor, so the read view would otherwise never name them.
+   */
+  protected readonly customerOfRecord = computed(
+    () => this.current()?.recordedCustomerName ?? this.customerShown()?.name ?? '',
+  );
   /** The note read rather than filled in, once it no longer changes (design review finding 3). */
   protected readonly asView = computed(() => !this.editable() && this.current() != null);
   protected readonly viewPicked = computed<Record<string, string>>(() => {

@@ -302,6 +302,13 @@ export class InvoicePage {
    * changes", and kept an empty box for every field nobody filled in.
    */
   protected readonly asView = computed(() => !this.editable() && this.current() != null);
+  /**
+   * Whom a locked document is for, as it recorded them when it was issued: the customer is a picker beside the form, not
+   * a field of its descriptor, so the read view would otherwise never name them.
+   */
+  protected readonly customerOfRecord = computed(
+    () => this.current()?.recordedCustomerName ?? this.customerShown()?.name ?? '',
+  );
   /** What the read view shows for the customer, which is a name rather than the id the control holds. */
   protected readonly viewPicked = computed<Record<string, string>>(() => {
     const customer = this.customerShown();

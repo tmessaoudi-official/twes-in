@@ -532,6 +532,11 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-view')).not.toBeNull();
     expect(q('delivery-note-form')).toBeNull();
     expect(q('delivery-note-customer')).toBeNull();
+    // The customer is a picker beside the form, so the read view left it out (visual audit 2026-10-06, V-25).
+    expect(q('delivery-note-view-customer-label')?.textContent).toContain(
+      'delivery_notes.fields.customerId',
+    );
+    expect(q('delivery-note-view-customer')?.textContent).toContain('Carthage Conseil');
 
     note.set(draft);
     await open('n1');
