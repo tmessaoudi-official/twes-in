@@ -121,7 +121,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   version and validates the latest through `/api/platform/legal-texts`, from `/platform/legal`),
   `FirstSteps` (« Premiers pas »: a context declares its step with `DeclaresFirstStep` in its own
   `Infrastructure/FirstSteps/`, done worked out from what is there, shown to whoever may do it),
-  and the modules one level down in `api/src/Module/<Name>/`, `Shared` (docs/SPEC.md § 3
+  and the modules one level down in `api/src/Module/<Name>/` (a module reaches another only through a port it owns in its
+  `Application/`, answered in the other's `Infrastructure/<Caller>/`, such as `Inventory/Application/ReceiptCosts`;
+  `tests/Architecture/ModuleBoundariesTest` reds on another module's class that runs), `Shared` (docs/SPEC.md § 3
   "Architecture style"; `Shared/Domain/CompanyOwned` marks an entity the `Shared/Infrastructure/Doctrine/CompanyFilter`
   scopes to the company a request acts for, and `tests/Architecture/CompanyColumnTest` requires it; a paged list's provider
   uses `Shared/Infrastructure/ApiPlatform/Paging`, its repository `ListOrder` and the `SEARCH_TEXT` expression its trigram

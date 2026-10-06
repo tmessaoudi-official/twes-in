@@ -12,7 +12,6 @@ namespace App\Module\DeliveryNotes\Application;
 use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
-use App\Module\Invoices\Application\CustomerCredit;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 
@@ -27,7 +26,7 @@ final readonly class DeliveryNoteCredit
     public function __construct(
         private ManageDeliveryNotes $notes,
         private DeliveryNoteTotals $totals,
-        private CustomerCredit $credit,
+        private CustomerAccount $credit,
         private CurrencyScales $scales,
     ) {
     }

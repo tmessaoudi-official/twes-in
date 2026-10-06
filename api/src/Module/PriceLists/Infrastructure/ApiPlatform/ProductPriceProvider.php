@@ -12,8 +12,7 @@ namespace App\Module\PriceLists\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\PriceLists\Application\ResolveUnitPrice;
-use App\Module\Products\Application\ManageProducts;
-use App\Module\Products\Application\ProductNotFound;
+use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -28,7 +27,7 @@ final readonly class ProductPriceProvider implements ProviderInterface
 {
     private const string QUANTITY = '/^[0-9]{1,11}(\\.[0-9]{1,3})?$/';
 
-    public function __construct(private ManageProducts $manage, private ResolveUnitPrice $resolve, private CompanyGuard $guard, private ClockInterface $clock)
+    public function __construct(private ProductRepository $products, private ResolveUnitPrice $resolve, private CompanyGuard $guard, private ClockInterface $clock)
     {
     }
 
@@ -44,11 +43,8 @@ final readonly class ProductPriceProvider implements ProviderInterface
             ? new \DateTimeImmutable($this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'))
             : self::dayOf($day);
 
-        try {
-            $product = $this->manage->get($company, CompanyPath::identifier($uriVariables, 'productId'));
-        } catch (ProductNotFound $absent) {
-            throw new NotFoundHttpException('No such product.', $absent);
-        }
+        $product = $this->products->ofIdInCompany(CompanyPath::identifier($uriVariables, 'productId'), $company->getId())
+            ?? throw new NotFoundHttpException('No such product.');
 
         return ProductPriceResource::of($product->getId()->toRfc4122(), $this->resolve->of($product, Paging::identifier($operation, 'customerId'), $quantity, $on));
     }

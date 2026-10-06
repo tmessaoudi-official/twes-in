@@ -34,6 +34,7 @@ use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceLineTax;
 use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceStatus;
+use App\Module\Invoices\Infrastructure\DeliveryNotes\ManagedInvoiceDrafts;
 use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
@@ -89,7 +90,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         // The notes are held while they are read, as the database holds their rows.
         $this->notes->transactions = $this->transactions;
         $manage = new ManageInvoices($this->invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $this->units, $this->taxes, $this->establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new InMemorySourceDeliveryNoteLines());
-        $this->invoicing = new InvoiceDeliveryNotes($this->notes, $this->invoices, $manage, $this->transactions, $this->audit, $this->clock);
+        $this->invoicing = new InvoiceDeliveryNotes($this->notes, $this->invoices, new ManagedInvoiceDrafts($manage), $this->transactions, $this->audit, $this->clock);
         $this->customer = $this->customer($this->company);
     }
 

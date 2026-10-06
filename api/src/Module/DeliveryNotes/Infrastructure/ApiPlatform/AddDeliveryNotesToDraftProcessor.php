@@ -15,11 +15,9 @@ use App\Module\DeliveryNotes\Application\InvoiceDeliveryNotes;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
 use App\Module\Invoices\Application\InvoiceNotFound;
-use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
-use App\Module\Invoices\Infrastructure\ApiPlatform\InvoiceResource;
 use App\Module\Invoices\Infrastructure\Module\InvoicesModule;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -34,15 +32,15 @@ use Symfony\Component\Uid\Uuid;
  * draft any more, or a note that is not validated or delivered or has nothing left, 409; notes that are not of the draft's
  * customer and establishment, or quantities asking for more than is left, 422.
  *
- * @implements ProcessorInterface<InvoiceFromDeliveryNotesResource, InvoiceResource>
+ * @implements ProcessorInterface<InvoiceFromDeliveryNotesResource, object>
  */
 final readonly class AddDeliveryNotesToDraftProcessor implements ProcessorInterface
 {
-    public function __construct(private InvoiceDeliveryNotes $invoicing, private InvoiceTotals $totals, private CompanyGuard $guard, private ModuleStates $modules)
+    public function __construct(private InvoiceDeliveryNotes $invoicing, private InvoiceAnswer $answer, private CompanyGuard $guard, private ModuleStates $modules)
     {
     }
 
-    public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): InvoiceResource
+    public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): object
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::WRITE);
         if (!$this->modules->isEnabled($company->getId(), InvoicesModule::KEY)) {
@@ -59,6 +57,6 @@ final readonly class AddDeliveryNotesToDraftProcessor implements ProcessorInterf
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         }
 
-        return InvoiceResource::of($invoice, $this->totals->figures($invoice));
+        return $this->answer->of($company, $invoice);
     }
 }

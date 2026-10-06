@@ -25,8 +25,6 @@ use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Module\Inventory\Domain\StockValue;
-use App\Module\Products\Application\ChangeProductCost;
-use App\Module\Products\Domain\CostChangeSource;
 use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductKind;
@@ -62,7 +60,7 @@ final readonly class KeepStock
         private ClockInterface $clock,
         private LiveChanges $liveChanges,
         private ?RaiseStockAlerts $alerts = null,
-        private ?ChangeProductCost $changeCost = null,
+        private ?ReceiptCosts $receiptCosts = null,
     ) {
     }
 
@@ -145,7 +143,7 @@ final readonly class KeepStock
      */
     private function moveCost(Company $company, Product $product, StockMovement $receipt, ?string $typed, ?CostBasis $asked, ?Uuid $actorUserId): void
     {
-        if (null === $this->changeCost || null === $typed) {
+        if (null === $this->receiptCosts || null === $typed) {
             return;
         }
         $context = new SettingContext($company, productCategoryId: $product->getCategory()?->getId(), productId: $product->getId());
@@ -163,7 +161,7 @@ final readonly class KeepStock
         $cost = CostBasis::Last === $basis ? $typed : $this->movements->averageCostOf($product);
         if (null !== $cost) {
             try {
-                $this->changeCost->handle($company, $product, $cost, CostChangeSource::Receipt, $receipt->getId(), $actorUserId);
+                $this->receiptCosts->received($company, $product, $cost, $receipt->getId(), $actorUserId);
             } catch (InvalidProduct $refused) {
                 throw new InvalidStockMovement('unitCost', $refused->getMessage(), $refused);
             }

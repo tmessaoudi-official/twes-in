@@ -21,6 +21,7 @@ use App\Module\Products\Domain\CostChangeSource;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Infrastructure\Inventory\ProductCostOnReceipt;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\ResolveSettings;
@@ -154,7 +155,7 @@ final class KeepStockCostOnReceiveTest extends TestCase
         $this->settings->save(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings(), new StockCostSettings()]), $this->settings));
         $this->history = new InMemoryProductCostChanges();
-        $this->keep = new KeepStock($movements, $lots, $locations, $products, $read, $transactions, $clock, new RecordingLiveChanges($transactions), null, new ChangeProductCost($products, $this->history, $audit, $clock, $transactions));
+        $this->keep = new KeepStock($movements, $lots, $locations, $products, $read, $transactions, $clock, new RecordingLiveChanges($transactions), null, new ProductCostOnReceipt(new ChangeProductCost($products, $this->history, $audit, $clock, $transactions)));
     }
 
     private function product(string $reference, string $costPrice): Product

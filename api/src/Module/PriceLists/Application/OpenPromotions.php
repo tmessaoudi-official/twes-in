@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace App\Module\PriceLists\Application;
 
 use App\Module\PriceLists\Domain\PriceListRepository;
-use App\Module\Products\Application\CustomerPrice;
 use App\Tenancy\Domain\Company;
 use BcMath\Number;
 use Symfony\Component\Uid\Uuid;
@@ -24,7 +23,7 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class OpenPromotions
 {
-    public function __construct(private PriceListRepository $lists, private CustomerPrice $prices)
+    public function __construct(private PriceListRepository $lists, private TaxedPrices $prices)
     {
     }
 

@@ -20,7 +20,6 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
 use App\Module\Invoices\Application\InvoiceNotFound;
-use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
@@ -46,7 +45,7 @@ final readonly class InvoiceDeliveryNotes
     public function __construct(
         private DeliveryNoteRepository $notes,
         private InvoiceRepository $invoices,
-        private ManageInvoices $invoicing,
+        private InvoiceDrafts $invoicing,
         private Transactions $transactions,
         private AuditTrail $audit,
         private ClockInterface $clock,
