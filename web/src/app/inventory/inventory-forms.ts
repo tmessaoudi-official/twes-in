@@ -209,6 +209,16 @@ export const STOCK_LIST: ListDescriptor<StockListRow> = {
       sortable: true,
       filterable: true,
     },
+    // The quantity is what the list is for, so it comes before the optional columns a narrow window cuts first.
+    {
+      id: 'quantity',
+      label: `${STOCK_FIELDS}.quantity`,
+      value: (row) => Number(row.quantity),
+      sortable: true,
+      align: 'end',
+      width: 160,
+    },
+    { id: 'unit', label: `${STOCK_FIELDS}.unit`, value: (row) => row.unitCode, width: 100 },
     // A tracked product's stock is a number per lot (docs/SPEC.md § 7, 2026-09-22 11:10); an untracked one shows none.
     {
       id: 'lot',
@@ -223,15 +233,6 @@ export const STOCK_LIST: ListDescriptor<StockListRow> = {
       value: (row) => row.lotExpiresOn ?? '',
       width: 130,
     },
-    {
-      id: 'quantity',
-      label: `${STOCK_FIELDS}.quantity`,
-      value: (row) => Number(row.quantity),
-      sortable: true,
-      align: 'end',
-      width: 160,
-    },
-    { id: 'unit', label: `${STOCK_FIELDS}.unit`, value: (row) => row.unitCode, width: 100 },
   ],
 };
 

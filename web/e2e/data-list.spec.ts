@@ -209,6 +209,29 @@ test('at phone width no paged list makes the page scroll sideways, a filter chos
   }
 });
 
+// The stock list put its quantity after the lot and use-by columns, so on a laptop the pinned row actions covered it
+// (« Qu » at 1440, nothing at 1280): the one figure the list exists for was the one not seen (visual audit, V-13).
+test('on a laptop the stock list shows each row’s quantity clear of the row actions', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await logIn(page);
+  await inACompany(page, '0123456789abcdef0123456789abcdef');
+  await page.goto('/stock');
+  const quantity = page.locator('td[data-column="quantity"]').first();
+  await expect(quantity).toBeVisible();
+  const [cell, actions] = await Promise.all([
+    quantity.boundingBox(),
+    page.locator('td.twes-row-actions').first().boundingBox(),
+  ]);
+  expect(cell).not.toBeNull();
+  expect(actions).not.toBeNull();
+  expect(
+    cell!.x + cell!.width,
+    'the quantity ends before the pinned actions begin',
+  ).toBeLessThanOrEqual(actions!.x + 1);
+});
+
 // A list with no row actions pinned its LAST header to the table's right edge while that column's cells scrolled on,
 // so « Statut » covered « Reste à payer » on « Factures » (2026-09-26). At 900 px the invoice columns' own widths
 // exceed the page, so the table is wider than its container with or without rows.

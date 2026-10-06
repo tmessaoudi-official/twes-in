@@ -209,10 +209,10 @@ describe('the list rows', () => {
       'reference',
       'product',
       'location',
-      'lot',
-      'useBy',
       'quantity',
       'unit',
+      'lot',
+      'useBy',
     ]);
     expect(MOVEMENTS_LIST.columns.map((column) => column.id)).toEqual([
       'at',
