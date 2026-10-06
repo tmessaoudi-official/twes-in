@@ -129,4 +129,13 @@ describe('CompanySwitcher', () => {
         ?.getAttribute('aria-label'),
     ).toBe('3 notification(s) non lue(s)');
   });
+
+  it('names the company in a tooltip on the phone’s bar, where a long name is cut short', async () => {
+    // Audit 2026-10-06 V-1: the name ends in an ellipsis beside the bar's icons, and the tooltip says it whole.
+    const root = await render(acme, 'bar');
+
+    expect(root.querySelector('[data-testid="company-switcher"]')?.getAttribute('aria-label')).toBe(
+      acme.name,
+    );
+  });
 });

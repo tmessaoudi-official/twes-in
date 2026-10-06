@@ -237,7 +237,7 @@
       <mat-toolbar class="twes-shell-bar gap-2" [class.is-slim]="!handset()">
         @if (handset()) {
           <div class="flex min-w-0 shrink items-center gap-2" data-testid="top-bar-leading">
-            <app-company-switcher class="min-w-0 truncate" />
+            <app-company-switcher class="block min-w-0 max-w-full" />
           </div>
         } @else {
           <div class="flex-1 basis-0" aria-hidden="true"></div>
@@ -271,42 +271,57 @@
               <mat-icon aria-hidden="true">search</mat-icon>
             </button>
           }
-          @if (cameraAvailable && scanning()) {
-            <button
-              mat-icon-button
-              type="button"
-              (click)="openCamera()"
-              [appLabel]="'scan.camera.open' | translate"
-              data-testid="camera-open"
-            >
-              <mat-icon aria-hidden="true">photo_camera</mat-icon>
-            </button>
-          }
-          @if (mayScan()) {
-            <button
-              mat-icon-button
-              type="button"
-              (click)="openPhone()"
-              [appLabel]="
-                (phone.state()?.phone === 'connected' ? 'scan.phone.paired' : 'scan.phone.pair')
-                  | translate
-              "
-              data-testid="phone-pair"
-            >
-              <mat-icon aria-hidden="true">{{
-                phone.state()?.phone === 'connected' ? 'mobile_friendly' : 'smartphone'
-              }}</mat-icon>
-            </button>
-          }
-          @if (mayOpenCustomerScreen()) {
-            <a
-              mat-icon-button
-              routerLink="/customer-screen"
-              [appLabel]="'customer_screen.open' | translate"
-              data-testid="customer-screen-open"
-            >
-              <mat-icon aria-hidden="true">storefront</mat-icon>
-            </a>
+          <!-- On a phone the three counter tools share one button: six icons beside the company name cut it. -->
+          @if (handset()) {
+            @if (hasScanTools()) {
+              <button
+                mat-icon-button
+                type="button"
+                [matMenuTriggerFor]="scanTools"
+                [appLabel]="'shell.scan_tools' | translate"
+                data-testid="scan-tools"
+              >
+                <mat-icon aria-hidden="true">barcode_scanner</mat-icon>
+              </button>
+            }
+          } @else {
+            @if (cameraAvailable && scanning()) {
+              <button
+                mat-icon-button
+                type="button"
+                (click)="openCamera()"
+                [appLabel]="'scan.camera.open' | translate"
+                data-testid="camera-open"
+              >
+                <mat-icon aria-hidden="true">photo_camera</mat-icon>
+              </button>
+            }
+            @if (mayScan()) {
+              <button
+                mat-icon-button
+                type="button"
+                (click)="openPhone()"
+                [appLabel]="
+                  (phone.state()?.phone === 'connected' ? 'scan.phone.paired' : 'scan.phone.pair')
+                    | translate
+                "
+                data-testid="phone-pair"
+              >
+                <mat-icon aria-hidden="true">{{
+                  phone.state()?.phone === 'connected' ? 'mobile_friendly' : 'smartphone'
+                }}</mat-icon>
+              </button>
+            }
+            @if (mayOpenCustomerScreen()) {
+              <a
+                mat-icon-button
+                routerLink="/customer-screen"
+                [appLabel]="'customer_screen.open' | translate"
+                data-testid="customer-screen-open"
+              >
+                <mat-icon aria-hidden="true">storefront</mat-icon>
+              </a>
+            }
           }
           @if (scanCount(); as count) {
             <button
@@ -337,6 +352,32 @@
         </div>
       </mat-toolbar>
     </header>
+
+    <mat-menu #scanTools="matMenu" xPosition="before">
+      @if (cameraAvailable && scanning()) {
+        <button mat-menu-item type="button" (click)="openCamera()" data-testid="camera-open">
+          <mat-icon aria-hidden="true">photo_camera</mat-icon>
+          <span>{{ 'scan.camera.open' | translate }}</span>
+        </button>
+      }
+      @if (mayScan()) {
+        <button mat-menu-item type="button" (click)="openPhone()" data-testid="phone-pair">
+          <mat-icon aria-hidden="true">{{
+            phone.state()?.phone === 'connected' ? 'mobile_friendly' : 'smartphone'
+          }}</mat-icon>
+          <span>{{
+            (phone.state()?.phone === 'connected' ? 'scan.phone.paired' : 'scan.phone.pair')
+              | translate
+          }}</span>
+        </button>
+      }
+      @if (mayOpenCustomerScreen()) {
+        <a mat-menu-item routerLink="/customer-screen" data-testid="customer-screen-open">
+          <mat-icon aria-hidden="true">storefront</mat-icon>
+          <span>{{ 'customer_screen.open' | translate }}</span>
+        </a>
+      }
+    </mat-menu>
 
     <mat-menu #account="matMenu" xPosition="before">
       @if (me(); as me) {

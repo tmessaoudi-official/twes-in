@@ -82,6 +82,7 @@ class StaticLoader implements TranslateLoader {
         settings: 'Paramètres',
         create: 'Créer',
         soon: 'Bientôt',
+        scan_tools: 'Scanner',
         commands: {
           open: 'Rechercher',
           find: 'Rechercher un client, une facture, un produit…',
@@ -621,6 +622,37 @@ describe('AppShell', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(el.querySelector('.twes-shell-bar [data-testid="phone-pair"]')).toBeNull();
+  });
+
+  it('folds the camera, the phone and the customer screen into one menu on a phone', async () => {
+    // Audit 2026-10-06 V-1: six icons beside the company name cut it; the three counter tools share one button.
+    permissions.set(['product.read']);
+    modules.set(['customers', 'scanning']);
+    width.next(390);
+    const { byTestId, click, el } = await render();
+    const bar = el.querySelector('.twes-shell-bar');
+    for (const id of ['camera-open', 'phone-pair', 'customer-screen-open']) {
+      expect(bar?.querySelector(`[data-testid="${id}"]`)).toBeNull();
+    }
+    expect(byTestId('scan-tools')?.getAttribute('aria-label')).toBe('Scanner');
+
+    await click('scan-tools');
+    const shown = [...document.querySelectorAll('.cdk-overlay-container [data-testid]')].map(
+      (item) => item.getAttribute('data-testid'),
+    );
+    expect(shown).toEqual(
+      expect.arrayContaining(['camera-open', 'phone-pair', 'customer-screen-open']),
+    );
+    (document.querySelector('.cdk-overlay-backdrop') as HTMLElement | null)?.click();
+  });
+
+  it('shows no counter-tools menu on a phone to somebody with none of them', async () => {
+    permissions.set(['customer.read']);
+    modules.set(['customers']);
+    width.next(390);
+    const { byTestId } = await render();
+
+    expect(byTestId('scan-tools')).toBeNull();
   });
 
   it('names every rail control that shows no words once folded, with a tooltip', async () => {

@@ -169,6 +169,11 @@ export class AppShell {
   protected readonly mayScan = computed(
     () => this.auth.me() !== null && this.scanning() && this.auth.hasPermission('product.read'),
   );
+  /** Whether a phone's bar shows the menu that holds the camera, the phone and the customer screen. */
+  protected readonly hasScanTools = computed(
+    () =>
+      (this.cameraAvailable && this.scanning()) || this.mayScan() || this.mayOpenCustomerScreen(),
+  );
   private phoneOpen = false;
   private scanOpen = false;
   private readonly scanGap = inject(ScanGap);

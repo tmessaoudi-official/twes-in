@@ -603,6 +603,18 @@ body {
   text-transform: uppercase;
 }
 
+// The company on a phone's bar shrinks to the room its icons leave, so its name can end in an ellipsis rather than be
+// clipped by the slot. Qualified with Material's class, whose own button styles load after this sheet.
+.mat-mdc-button.twes-bar-company {
+  max-width: 100%;
+
+  .mdc-button__label {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
 .twes-rail-company {
   position: relative;
   display: flex;

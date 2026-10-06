@@ -550,6 +550,7 @@
     "price_lists": "Tarifs"
   },
   "shell": {
+    "scan_tools": "Scanner",
     "skip": "Aller au contenu",
     "navigation": "Navigation principale",
     "more": "Plus",

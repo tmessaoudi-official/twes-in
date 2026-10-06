@@ -96,13 +96,15 @@
     <button
       mat-button
       type="button"
+      class="twes-bar-company"
       [matMenuTriggerFor]="menu"
       [disabled]="switching()"
+      [appLabel]="current()?.name ?? ('company.choose' | translate)"
       data-testid="company-switcher"
     >
-      <!-- Truncated rather than pushing the bar's controls off the edge: at 390 px this sits where the wordmark
-         was, and a long company name would otherwise cut off the account button (design review finding 5). -->
-      <span class="block max-w-[45vw] truncate" data-testid="company-name">{{
+      <!-- Truncated rather than pushing the bar's controls off the edge, within whatever room the bar leaves it, and
+           named whole in the tooltip: a long company name would otherwise cut off the account button. -->
+      <span class="block max-w-full truncate" data-testid="company-name">{{
         current()?.name ?? ('company.choose' | translate)
       }}</span>
     </button>
@@ -131,7 +133,7 @@
       }
     </mat-menu>
   } @else if (current(); as current) {
-    <span data-testid="company-name" class="block max-w-[45vw] truncate text-sm opacity-90">{{
+    <span data-testid="company-name" class="block max-w-full truncate text-sm opacity-90">{{
       current.name
     }}</span>
   }
