@@ -126,8 +126,8 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         }
         Intervals::days($query, 'i.issueDate', 'issued', $search->issueDate);
         Intervals::days($query, 'i.dueDate', 'due', $search->dueDate);
-        Intervals::amounts($query, 'i.totalGross', 'total', $search->totalGross);
-        Intervals::amounts($query, 'i.amountDue', 'owed', $search->amountDue);
+        Intervals::sizes($query, 'i.totalGross', 'total', $search->totalGross);
+        Intervals::sizes($query, 'i.amountDue', 'owed', $search->amountDue);
 
         return $query;
     }

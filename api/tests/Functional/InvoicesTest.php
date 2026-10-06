@@ -11,6 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
@@ -1237,6 +1238,41 @@ final class InvoicesTest extends ApiTestCase
     private function lines(array $body): array
     {
         return array_values(array_filter($this->arrayAt($body, 'lines'), is_array(...)));
+    }
+
+    /**
+     * A credit note's figures are negative, yet a person looking for « total from 100 » among invoices and credit notes
+     * means its size: an amount interval reads the size of the figure, whatever its sign (audit 2026-10-06, G-13).
+     */
+    public function testAnAmountIntervalFindsACreditNoteByItsSizeNotItsSign(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $invoiceId = $this->issuedInvoice();
+        $total = $this->stringAt($this->json(), 'total');
+        $this->postJson($this->path($invoiceId).'/credit-notes', ['creditNoteReason' => 'Retour']);
+        $creditId = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($creditId).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertStringStartsWith('-', $this->stringAt($this->json(), 'total'), 'the whole invoice, negative');
+        $creditDue = $this->stringAt($this->json(), 'amountDue');
+        self::assertStringStartsWith('-', $creditDue, 'what the credit note still has to give back, negative');
+        $creditDue = ltrim($creditDue, '-');
+        $this->getJson($this->path($invoiceId));
+        self::assertSame('0.000', $this->json()['amountDue'], 'the invoice is credited whole');
+        $below = static fn (string $amount): string => Decimal::format(Decimal::of($amount)->sub(Decimal::of('0.001')), 3);
+
+        $both = 'documentType[]=invoice&documentType[]=credit_note';
+        foreach ([
+            "totalGross[min]=$total" => [$creditId, $invoiceId],
+            "totalGross[max]={$below($total)}" => [],
+            "totalGross[min]=$total&totalGross[max]=$total" => [$creditId, $invoiceId],
+            "amountDue[min]=$creditDue" => [$creditId],
+            'amountDue[max]=0' => [$invoiceId],
+        ] as $query => $ids) {
+            $this->getJson($this->path().'?'.$both.'&'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertEqualsCanonicalizing($ids, array_column($this->jsonList(), 'id'), $query);
+        }
     }
 
     /** Drafts and issues a one-line invoice; the response left to read is the issued invoice. */

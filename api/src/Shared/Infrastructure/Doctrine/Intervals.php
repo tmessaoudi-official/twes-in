@@ -47,4 +47,14 @@ final class Intervals
             $query->andWhere("$column <= :{$name}_max")->setParameter("{$name}_max", $range->max, ParameterType::STRING);
         }
     }
+
+    /**
+     * An amount interval over the size of a signed figure: a credit note's total is negative, and « from 100 » among
+     * invoices and credit notes means its size. The column's own index does not answer it; the list is narrowed to
+     * its company first.
+     */
+    public static function sizes(QueryBuilder $query, string $column, string $name, ?DecimalRange $range): void
+    {
+        self::amounts($query, "ABS($column)", $name, $range);
+    }
 }
