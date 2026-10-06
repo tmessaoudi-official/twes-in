@@ -3220,14 +3220,12 @@
       "later": "Later"
     },
     "planned": "Planned for",
-    "plan_row": "Plan row",
     "home": "Back to home",
     "hide": "Hide what is coming",
     "unknown": "Nothing is planned at this address.",
     "register": {
       "heading": "The till is being built",
       "does": "Counter sales on one screen, with the scanner and the keyboard: a receipt or an invoice for the same sale, cash with change, card, on credit or two means, returns with a credit note and back into stock, opening and closing the drawer with the Z report.",
-      "plan": "§ 8 · 82 — counter sales",
       "meanwhile": "Meanwhile, a counter sale is made from an invoice:",
       "meanwhile_link": "Issue and collect",
       "create": "New counter sale",
@@ -3236,57 +3234,48 @@
     "works": {
       "heading": "Works are being built",
       "does": "Follow a job or an intervention end to end: what is planned, the time and supplies spent, what is left to invoice.",
-      "plan": "§ 8 · 80 — works",
       "create": "New job"
     },
     "reports": {
       "heading": "Reports are being built",
       "does": "Revenue, payments received, margins and stock over the chosen period, by customer, by item or by establishment, to read or to export.",
-      "plan": "§ 8 · 89 and 114 — reports",
       "meanwhile": "Meanwhile, the home page shows today's figures:",
       "meanwhile_link": "Open home"
     },
     "declarations": {
       "heading": "Declarations are being built",
       "does": "The period's tax returns prepared from the documents issued: the amounts per tax, what is left to declare, and a reminder of each due date.",
-      "plan": "§ 8 · 91 — declarations",
       "settings": "The tax regime, how often declarations are due and their deadlines."
     },
     "document-templates": {
       "heading": "Document templates are being built",
       "does": "Choose the template of each document from a gallery, adjust it (logo, colour, columns, mentions and blocks) and see a real document update while you adjust.",
-      "plan": "A plan row to create (B45, decided on 24/09)",
       "meanwhile": "Meanwhile, the printed logo and details are set in the profile:",
       "meanwhile_link": "Company profile"
     },
     "alerts": {
       "heading": "Alerts are being built",
       "does": "Choose what deserves an alert, from which threshold, and who receives it: a late invoice, low stock, a lot about to expire.",
-      "plan": "§ 8 · 115 — alerts",
       "meanwhile": "Meanwhile, what needs attention is listed here:",
       "meanwhile_link": "To watch"
     },
     "fiscal-preset": {
       "heading": "The fiscal preset is being built",
       "does": "Apply at once the taxes, mentions and numbering the company's country requires, then adjust them.",
-      "plan": "Not in the plan yet",
       "meanwhile": "Meanwhile, taxes are set one by one:",
       "meanwhile_link": "Taxes"
     },
     "support-access": {
       "heading": "Support access is being built",
-      "does": "Give support, for a limited time and with your consent, read access to the company, and see everything it did there.",
-      "plan": "Not in the plan yet"
+      "does": "Give support, for a limited time and with your consent, read access to the company, and see everything it did there."
     },
     "texts": {
       "heading": "Texts are being built",
-      "does": "Replace the application's words with yours (“Customer” as “Patient”, for example), in each language.",
-      "plan": "Not in the plan yet"
+      "does": "Replace the application's words with yours (“Customer” as “Patient”, for example), in each language."
     },
     "accounting_export": {
       "heading": "The accounting export is under construction",
       "does": "The period's sales, purchase and payment entries, ready for your accountant's software, with an accountant role and closed periods.",
-      "plan": "§ 8 · 92 — the accounting export",
       "settings": "The chart of accounts, the journal codes and the exported file's format."
     },
     "composites": {
@@ -3301,7 +3290,6 @@
     "einvoicing": {
       "heading": "E-invoicing is under construction",
       "does": "Send invoices in the format the tax authority requires: El Fatoora through TTN in Tunisia, Factur-X through an approved platform in France.",
-      "plan": "§ 8 · 93 and 145 — e-invoicing",
       "settings": "The network identifier and the platform invoices are sent through."
     },
     "guests": {
@@ -3311,7 +3299,6 @@
     "mailing": {
       "heading": "Email sending is under construction",
       "does": "Send an invoice, a quote or a delivery note to the customer from the document, and remind them automatically of what is unpaid.",
-      "plan": "§ 8 · 135 — reminders",
       "settings": "The sending address, the signature, each message's text and the reminder schedule."
     },
     "menu": {
@@ -3326,14 +3313,12 @@
     "purchases": {
       "heading": "Purchase orders are under construction",
       "does": "Order from suppliers, receive the goods into stock and match the order, the receipt and the supplier's invoice.",
-      "plan": "§ 8 · 81 and 84 — purchase orders and receipts",
       "create": "New purchase order",
       "settings": "The numbering of supplier orders and what a reception confirms."
     },
     "quotes": {
       "heading": "Quotes are under construction",
       "does": "A quote the customer accepts becomes the order: a deposit, what is left to deliver and invoice, then the invoice with nothing typed twice.",
-      "plan": "§ 8 · 78 — the quote",
       "create": "New quote",
       "settings": "A quote's default validity, its numbering and the terms printed at its foot."
     },
@@ -3344,7 +3329,6 @@
     "recurring": {
       "heading": "Recurring invoices are under construction",
       "does": "A subscription or contract invoiced monthly or yearly: the drafts prepare themselves on the planned date.",
-      "plan": "§ 8 · 86 — recurring invoices",
       "create": "New recurring invoice",
       "settings": "The default frequency, the day each invoice is issued, and whether each one is emailed on its own."
     },
@@ -3355,7 +3339,6 @@
     "statements": {
       "heading": "Credit limits are under construction",
       "does": "A credit limit per customer or group, warning before a delivery would pass what is already owed.",
-      "plan": "§ 8 · 85 and 134 — the credit limit",
       "settings": "The credit limit a new customer starts with."
     },
     "venue": {
@@ -3365,13 +3348,11 @@
     "whatsapp": {
       "heading": "WhatsApp sending is under construction",
       "does": "Send an invoice or a delivery note to the customer through WhatsApp, with a link to the document.",
-      "plan": "§ 8 · 95 — WhatsApp delivery",
       "settings": "The sending number and the messages' text."
     },
     "zakat": {
       "heading": "Zakat is under construction",
       "does": "Work out the company's zakat on its hawl date, according to your school: the assets subject to it, the gold or silver nisab, and a yearly reminder.",
-      "plan": "§ 8 · 120 — zakat",
       "settings": "The hawl date, the nisab threshold used and what the base includes."
     }
   },

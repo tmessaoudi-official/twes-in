@@ -23,21 +23,18 @@ class StaticLoader implements TranslateLoader {
       coming: {
         version: { v1: 'Version 1', later: 'Plus tard' },
         planned: 'Prévu pour',
-        plan_row: 'Ligne du plan',
         home: 'Retour à l’accueil',
         hide: 'Masquer ce qui arrive',
         unknown: 'Rien n’est prévu à cette adresse.',
         register: {
           heading: 'La caisse est en construction',
           does: 'La vente au comptoir sur un seul écran.',
-          plan: '§ 8 · 82 — la vente au comptoir',
           meanwhile: 'En attendant, une vente au comptoir se fait depuis une facture :',
           meanwhile_link: 'Émettre et encaisser',
         },
         works: {
           heading: 'Les travaux sont en construction',
           does: 'Les chantiers.',
-          plan: '§ 8 · 80',
         },
         venue: {
           heading: 'La salle est en construction',
@@ -48,8 +45,7 @@ class StaticLoader implements TranslateLoader {
   }
 }
 
-// docs/SPEC.md § 7, 2026-09-25 17:22: every entry not built yet opens one shared page saying what it will do, when,
-// the plan row that builds it and what to use meanwhile.
+// Every entry not built yet opens one shared page saying what it will do, when, and what to use meanwhile.
 describe('ComingPage', () => {
   const showComing = signal(true);
   const theme = { showComing, setShowComing: vi.fn((show: boolean) => showComing.set(show)) };
@@ -96,7 +92,7 @@ describe('ComingPage', () => {
     ]);
   });
 
-  it('says what the entry will do, for which version, the plan row and what to use meanwhile', async () => {
+  it('says what the entry will do, for which version and what to use meanwhile', async () => {
     const root = await render('register');
     expect(byTestId(root, 'coming-heading')?.textContent).toContain(
       'La caisse est en construction',
@@ -105,7 +101,9 @@ describe('ComingPage', () => {
     expect(byTestId(root, 'coming-crumb')?.textContent).toContain('Bientôt');
     expect(byTestId(root, 'coming-does')?.textContent).toContain('La vente au comptoir');
     expect(byTestId(root, 'coming-version')?.textContent).toContain('Version 1');
-    expect(byTestId(root, 'coming-plan')?.textContent).toContain('§ 8 · 82');
+    // Audit 2026-10-06, V-19: the page is read by customers, and a row of our own plan means nothing to them.
+    expect(byTestId(root, 'coming-plan')).toBeNull();
+    expect(root.textContent).not.toContain('§');
     const meanwhile = byTestId(root, 'coming-meanwhile');
     expect(meanwhile?.textContent).toContain('En attendant');
     expect(meanwhile?.querySelector('a')?.getAttribute('href')).toBe('/invoices/new');
@@ -126,7 +124,7 @@ describe('ComingPage', () => {
     expect(navigate).toHaveBeenCalledWith('/');
   });
 
-  it('names no plan row for a planned module no § 8 row builds yet, and gives the version the API says', async () => {
+  it('gives the version the API says for a planned module', async () => {
     const root = await render('venue');
     expect(byTestId(root, 'coming-heading')?.textContent).toContain('La salle');
     expect(byTestId(root, 'coming-version')?.textContent).toContain('Plus tard');

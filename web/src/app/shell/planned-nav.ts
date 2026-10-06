@@ -16,8 +16,6 @@ export interface PlannedPlace {
   readonly after: string;
   /** What to use until it exists, when something does the job today. */
   readonly meanwhile?: string;
-  /** Whether a § 8 row builds it yet: its « En construction » page then names that row. */
-  readonly plan?: true;
   /** Whether « Créer » will make something with it, a document or a record, named under `coming.<key>.create`. */
   readonly create?: true;
 }
@@ -35,7 +33,6 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
     icon: 'request_quote',
     section: 'sell',
     after: 'invoices',
-    plan: true,
     create: true,
   },
   {
@@ -43,7 +40,6 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
     icon: 'event_repeat',
     section: 'sell',
     after: 'quotes',
-    plan: true,
     create: true,
   },
   {
@@ -51,10 +47,9 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
     icon: 'account_balance_wallet',
     section: 'sell',
     after: 'customers',
-    plan: true,
   },
-  { key: 'mailing', icon: 'forward_to_inbox', section: 'sell', after: 'statements', plan: true },
-  { key: 'whatsapp', icon: 'chat', section: 'sell', after: 'mailing', plan: true },
+  { key: 'mailing', icon: 'forward_to_inbox', section: 'sell', after: 'statements' },
+  { key: 'whatsapp', icon: 'chat', section: 'sell', after: 'mailing' },
   { key: 'portal', icon: 'web', section: 'sell', after: 'whatsapp' },
   { key: 'composites', icon: 'widgets', section: 'sell', after: 'price_lists' },
   {
@@ -63,7 +58,6 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
     section: 'sell',
     after: 'composites',
     meanwhile: '/invoices/new',
-    plan: true,
     create: true,
   },
   {
@@ -71,7 +65,6 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
     icon: 'construction',
     section: 'sell',
     after: 'register',
-    plan: true,
     create: true,
   },
   // Café and restaurant.
@@ -86,7 +79,6 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
     icon: 'shopping_cart',
     section: 'manage',
     after: 'vendors',
-    plan: true,
     create: true,
   },
   // Money and compliance.
@@ -96,25 +88,22 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
     section: 'manage',
     after: 'expenses',
     meanwhile: '/',
-    plan: true,
   },
-  { key: 'declarations', icon: 'event_note', section: 'manage', after: 'reports', plan: true },
+  { key: 'declarations', icon: 'event_note', section: 'manage', after: 'reports' },
   {
     key: 'accounting_export',
     icon: 'output',
     section: 'manage',
     after: 'declarations',
-    plan: true,
   },
   {
     key: 'einvoicing',
     icon: 'receipt_long',
     section: 'manage',
     after: 'accounting_export',
-    plan: true,
   },
   { key: 'currencies', icon: 'currency_exchange', section: 'manage', after: 'einvoicing' },
-  { key: 'zakat', icon: 'volunteer_activism', section: 'manage', after: 'currencies', plan: true },
+  { key: 'zakat', icon: 'volunteer_activism', section: 'manage', after: 'currencies' },
 ];
 
 /** The menu entries of the modules the API lists as planned, in the order they are placed; a key without a place is left out. */
@@ -136,7 +125,6 @@ export function plannedNav(
           after: place.after,
           version: planned,
           ...(place.meanwhile === undefined ? {} : { meanwhile: place.meanwhile }),
-          ...(place.plan === undefined ? {} : { plan: place.plan }),
         },
       },
     ];

@@ -219,17 +219,17 @@ describe('the navigation manifest', () => {
     expect(keys(alone)).toEqual(['home']);
   });
 
-  it('names every entry not built yet, what it will do and its plan row, in both languages', () => {
+  it('names every entry not built yet and what it will do, in both languages, and no row of our plan', () => {
     for (const entry of COMING_NAV) {
       for (const json of [fr, en]) {
         for (const key of [
           entry.labelKey,
           `coming.${entry.key}.heading`,
           `coming.${entry.key}.does`,
-          `coming.${entry.key}.plan`,
         ]) {
           expect(hasKey(json, key), key).toBe(true);
         }
+        expect(hasKey(json, `coming.${entry.key}.plan`), `${entry.key} plan`).toBe(false);
         if (entry.coming.meanwhile !== undefined) {
           expect(hasKey(json, `coming.${entry.key}.meanwhile`), entry.key).toBe(true);
           expect(hasKey(json, `coming.${entry.key}.meanwhile_link`), entry.key).toBe(true);

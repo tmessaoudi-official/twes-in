@@ -20,10 +20,6 @@
       <dd data-testid="coming-version">
         {{ 'coming.version.' + entry.coming.version | translate }}
       </dd>
-      @if (entry.coming.plan) {
-        <dt class="text-on-surface-variant">{{ 'coming.plan_row' | translate }}</dt>
-        <dd data-testid="coming-plan">{{ 'coming.' + entry.key + '.plan' | translate }}</dd>
-      }
     </dl>
     @if (entry.coming.meanwhile; as meanwhile) {
       <p

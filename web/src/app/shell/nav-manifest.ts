@@ -52,8 +52,6 @@ export interface Coming {
   readonly version: 'v1' | 'later';
   /** What to use until it exists, when something does the job today. */
   readonly meanwhile?: string;
-  /** Whether a § 8 row builds it yet: its page then names that row, under `coming.<key>.plan`. */
-  readonly plan?: true;
 }
 
 export interface NavGroup {
@@ -207,7 +205,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/document-templates`,
     section: 'company',
     permission: 'company.settings',
-    coming: { after: 'numbering', version: 'v1', meanwhile: '/company/profile', plan: true },
+    coming: { after: 'numbering', version: 'v1', meanwhile: '/company/profile' },
   },
   {
     key: 'alerts',
@@ -216,7 +214,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/alerts`,
     section: 'company',
     permission: 'company.settings',
-    coming: { after: 'defaults', version: 'v1', meanwhile: '/watch', plan: true },
+    coming: { after: 'defaults', version: 'v1', meanwhile: '/watch' },
   },
   {
     key: 'fiscal-preset',
@@ -225,7 +223,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/fiscal-preset`,
     section: 'fiscal',
     permission: 'company.settings',
-    coming: { after: 'units', version: 'later', meanwhile: '/fiscal/taxes', plan: true },
+    coming: { after: 'units', version: 'later', meanwhile: '/fiscal/taxes' },
   },
   {
     key: 'support-access',
@@ -234,7 +232,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/support-access`,
     section: 'team',
     permission: 'company.settings',
-    coming: { after: 'roles', version: 'later', plan: true },
+    coming: { after: 'roles', version: 'later' },
   },
   {
     key: 'texts',
@@ -243,7 +241,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/texts`,
     section: 'customisation',
     permission: 'company.settings',
-    coming: { after: 'modules', version: 'later', plan: true },
+    coming: { after: 'modules', version: 'later' },
   },
 ];
 

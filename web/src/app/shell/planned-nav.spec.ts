@@ -117,7 +117,7 @@ describe('the planned modules in the menu', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('names each, says what it will do, and its plan row and meanwhile where it has them, in both languages', () => {
+  it('names each, says what it will do, and what to use meanwhile where it has that, in both languages', () => {
     expect(PLANNED_NAV.length).toBe(21);
     for (const entry of plannedNav(catalogue)) {
       for (const json of [fr, en]) {
@@ -128,9 +128,8 @@ describe('the planned modules in the menu', () => {
         ]) {
           expect(hasKey(json, key), key).toBe(true);
         }
-        expect(hasKey(json, `coming.${entry.key}.plan`), `${entry.key} plan`).toBe(
-          entry.coming.plan === true,
-        );
+        // No row of our own plan reaches the page a customer reads (audit 2026-10-06, V-19).
+        expect(hasKey(json, `coming.${entry.key}.plan`), `${entry.key} plan`).toBe(false);
         if (entry.coming.meanwhile !== undefined) {
           expect(hasKey(json, `coming.${entry.key}.meanwhile`), entry.key).toBe(true);
           expect(hasKey(json, `coming.${entry.key}.meanwhile_link`), entry.key).toBe(true);

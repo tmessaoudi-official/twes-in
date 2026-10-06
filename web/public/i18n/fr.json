@@ -3220,14 +3220,12 @@
       "later": "Plus tard"
     },
     "planned": "Prévu pour",
-    "plan_row": "Ligne du plan",
     "home": "Retour à l'accueil",
     "hide": "Masquer ce qui arrive",
     "unknown": "Rien n'est prévu à cette adresse.",
     "register": {
       "heading": "La caisse est en construction",
       "does": "La vente au comptoir sur un seul écran, à la douchette et au clavier : reçu ou facture de la même vente, espèces avec rendu, carte, à crédit ou deux moyens, retours avec avoir et remise en stock, ouverture et clôture du tiroir avec le rapport Z.",
-      "plan": "§ 8 · 82 — la vente au comptoir",
       "meanwhile": "En attendant, une vente au comptoir se fait depuis une facture :",
       "meanwhile_link": "Émettre et encaisser",
       "create": "Nouvelle vente au comptoir",
@@ -3236,57 +3234,48 @@
     "works": {
       "heading": "Les travaux sont en construction",
       "does": "Suivre un chantier ou une intervention de bout en bout : ce qui est prévu, le temps et les fournitures passés, ce qui reste à facturer.",
-      "plan": "§ 8 · 80 — les travaux",
       "create": "Nouveau chantier"
     },
     "reports": {
       "heading": "Les rapports sont en construction",
       "does": "Le chiffre d'affaires, les encaissements, les marges et le stock sur la période choisie, par client, par article ou par établissement, à regarder ou à exporter.",
-      "plan": "§ 8 · 89 et 114 — les rapports",
       "meanwhile": "En attendant, l'accueil montre les chiffres du jour :",
       "meanwhile_link": "Ouvrir l'accueil"
     },
     "declarations": {
       "heading": "Les déclarations sont en construction",
       "does": "Les déclarations fiscales de la période préparées depuis les documents émis : les montants par taxe, ce qui reste à déclarer, et le rappel de chaque échéance.",
-      "plan": "§ 8 · 91 — les déclarations",
       "settings": "Le régime de taxe, la périodicité des déclarations et leurs échéances."
     },
     "document-templates": {
       "heading": "Les modèles de documents sont en construction",
       "does": "Choisir le modèle de chaque document dans une galerie, le régler (logo, couleur, colonnes, mentions et blocs) et voir un vrai document à jour pendant qu'on règle.",
-      "plan": "Une ligne du plan à créer (B45, décidé le 24/09)",
       "meanwhile": "En attendant, le logo et les coordonnées imprimés se règlent dans le profil :",
       "meanwhile_link": "Profil de la société"
     },
     "alerts": {
       "heading": "Les alertes sont en construction",
       "does": "Choisir ce qui mérite une alerte, à partir de quel seuil, et qui la reçoit : une facture en retard, un stock bas, un lot qui périme.",
-      "plan": "§ 8 · 115 — les alertes",
       "meanwhile": "En attendant, ce qui demande attention est listé ici :",
       "meanwhile_link": "À surveiller"
     },
     "fiscal-preset": {
       "heading": "Le préréglage fiscal est en construction",
       "does": "Appliquer d'un coup les taxes, les mentions et la numérotation qu'exige le pays de la société, puis les ajuster.",
-      "plan": "Pas encore de ligne dans le plan",
       "meanwhile": "En attendant, les taxes se règlent une à une :",
       "meanwhile_link": "Taxes"
     },
     "support-access": {
       "heading": "L'accès du support est en construction",
-      "does": "Ouvrir au support, pour un temps limité et sur votre accord, un accès en lecture à la société, et voir tout ce qu'il y a fait.",
-      "plan": "Pas encore de ligne dans le plan"
+      "does": "Ouvrir au support, pour un temps limité et sur votre accord, un accès en lecture à la société, et voir tout ce qu'il y a fait."
     },
     "texts": {
       "heading": "Les textes sont en construction",
-      "does": "Remplacer les mots de l'application par les vôtres (« Client » en « Patient », par exemple), dans chaque langue.",
-      "plan": "Pas encore de ligne dans le plan"
+      "does": "Remplacer les mots de l'application par les vôtres (« Client » en « Patient », par exemple), dans chaque langue."
     },
     "accounting_export": {
       "heading": "L’export comptable est en construction",
       "does": "Les écritures des ventes, des achats et des encaissements de la période, prêtes à reprendre dans le logiciel de votre comptable, avec un rôle comptable et les périodes clôturées.",
-      "plan": "§ 8 · 92 — l'export comptable",
       "settings": "Le plan de comptes, les codes journaux et le format du fichier exporté."
     },
     "composites": {
@@ -3301,7 +3290,6 @@
     "einvoicing": {
       "heading": "La facturation électronique est en construction",
       "does": "Transmettre les factures au format exigé par l’administration : El Fatoora par TTN en Tunisie, Factur-X par une plateforme agréée en France.",
-      "plan": "§ 8 · 93 et 145 — la facturation électronique",
       "settings": "L'identifiant sur le réseau et la plateforme par laquelle partent les factures."
     },
     "guests": {
@@ -3311,7 +3299,6 @@
     "mailing": {
       "heading": "L’envoi par e-mail est en construction",
       "does": "Envoyer une facture, un devis ou un bon au client depuis le document, et relancer automatiquement ce qui reste impayé.",
-      "plan": "§ 8 · 135 — les relances",
       "settings": "L'adresse d'envoi, la signature, le texte de chaque message et le calendrier des relances."
     },
     "menu": {
@@ -3326,14 +3313,12 @@
     "purchases": {
       "heading": "Les commandes fournisseurs sont en construction",
       "does": "Commander aux fournisseurs, recevoir la marchandise en stock et rapprocher la commande, la réception et la facture.",
-      "plan": "§ 8 · 81 et 84 — commandes fournisseurs et réceptions",
       "create": "Nouvelle commande fournisseur",
       "settings": "La numérotation des commandes fournisseur et ce que confirme une réception."
     },
     "quotes": {
       "heading": "Les devis sont en construction",
       "does": "Un devis que le client accepte devient la commande : acompte, suivi de ce qui reste à livrer et à facturer, puis la facture sans rien ressaisir.",
-      "plan": "§ 8 · 78 — le devis",
       "create": "Nouveau devis",
       "settings": "La durée de validité par défaut d'un devis, sa numérotation et les conditions imprimées en bas."
     },
@@ -3344,7 +3329,6 @@
     "recurring": {
       "heading": "Les factures récurrentes sont en construction",
       "does": "Un abonnement ou un contrat facturé chaque mois ou chaque année : les brouillons se préparent d’eux-mêmes à la date prévue.",
-      "plan": "§ 8 · 86 — les factures récurrentes",
       "create": "Nouvelle facture récurrente",
       "settings": "La fréquence proposée par défaut, le jour d'émission et si chaque facture part seule par e-mail."
     },
@@ -3355,7 +3339,6 @@
     "statements": {
       "heading": "Les plafonds de crédit sont en construction",
       "does": "Un plafond de crédit par client ou par groupe, qui prévient avant qu’une livraison dépasse ce qui est déjà dû.",
-      "plan": "§ 8 · 85 et 134 — le plafond de crédit",
       "settings": "Le plafond de crédit proposé à un nouveau client."
     },
     "venue": {
@@ -3365,13 +3348,11 @@
     "whatsapp": {
       "heading": "L’envoi par WhatsApp est en construction",
       "does": "Envoyer une facture ou un bon au client par WhatsApp, avec le lien vers le document.",
-      "plan": "§ 8 · 95 — l'envoi WhatsApp",
       "settings": "Le numéro d'envoi et le texte des messages."
     },
     "zakat": {
       "heading": "La zakat est en construction",
       "does": "Calculer la zakat de l’entreprise à la date de son hawl, selon votre école : les biens soumis, le nisab en or ou en argent, et un rappel chaque année.",
-      "plan": "§ 8 · 120 — la zakat",
       "settings": "La date du hawl, le seuil du nisab retenu et ce qui entre dans l'assiette."
     }
   },
