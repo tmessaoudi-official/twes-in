@@ -129,6 +129,19 @@ describe('PriceCalculator', () => {
     expect(text('price-calculator-markup')).toBe('~12.50 %');
   });
 
+  it('puts the price into the form counted exactly, not through a float', async () => {
+    // Audit 2026-10-06, C-5: in euros, 1.005 is 100.4999… cents as a float, which rounds down; the price is half up.
+    await open('1.005', '');
+    fixture.componentRef.setInput('scale', 2);
+    fixture.componentRef.setInput('currency', 'EUR');
+
+    await want('0');
+    expect(text('price-calculator-target')).toBe('~1.01 EUR');
+    (q('price-calculator-apply') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(form.get('unitPriceNet')!.value).toBe('1.01');
+  });
+
   it('also says the price the same percentage gives on the other basis, so 30 % is not read as the wrong one', async () => {
     await open('45.000', '60.000');
 

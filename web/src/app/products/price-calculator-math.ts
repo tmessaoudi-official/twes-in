@@ -26,17 +26,44 @@ export function markupOf(cost: number, price: number): number | null {
   return cost > 0 ? ((price - cost) / cost) * 100 : null;
 }
 
-/**
- * The selling price that earns this percentage over the cost, or null when none does: a margin of 100 % or more needs
- * an infinite price, and a percentage below zero is a loss nobody sets a price for.
- */
-export function priceFor(cost: number, percent: number, basis: PercentBasis): number | null {
-  if (!(cost >= 0) || !(percent >= 0)) return null;
-  if (basis === 'markup') return cost * (1 + percent / 100);
-  return percent < 100 ? cost / (1 - percent / 100) : null;
-}
-
 /** A number as an amount at the currency's scale, with the API's point: what the price field takes. */
 export function atCurrencyScale(value: number, scale: number): string {
   return (Math.round(value * 10 ** scale) / 10 ** scale).toFixed(scale);
+}
+
+const COST = /^\d{1,10}(\.\d{1,4})?$/;
+const PERCENT = /^\d{1,6}(\.\d{1,3})?$/;
+
+/** A decimal string as an integer and the power of ten it is counted in. */
+function scaled(text: string): [bigint, bigint] {
+  const [whole, fraction = ''] = text.split('.');
+  return [BigInt(whole + fraction), 10n ** BigInt(fraction.length)];
+}
+
+/**
+ * The selling price that earns this percentage over the cost, counted exactly from the two as typed and rounded half up
+ * at the currency's scale: what the calculator writes into the price field, so it never passes through a float. Null
+ * where none exists (a margin of 100 % or more) or either is not an amount.
+ */
+export function exactPriceFor(
+  costText: string,
+  percentText: string,
+  basis: PercentBasis,
+  scale: number,
+): string | null {
+  const [cost, percent] = [costText.trim(), percentText.trim()];
+  if (!COST.test(cost) || !PERCENT.test(percent)) return null;
+  const [c, cUnit] = scaled(cost);
+  const [p, pUnit] = scaled(percent);
+  const hundred = 100n * pUnit;
+  // price = c / cUnit × (hundred + p) / hundred for a markup, c / cUnit × hundred / (hundred − p) for a margin.
+  const [numerator, denominator] =
+    basis === 'markup'
+      ? [c * (hundred + p), cUnit * hundred]
+      : [c * hundred, cUnit * (hundred - p)];
+  if (denominator <= 0n) return null;
+  const unit = 10n ** BigInt(scale);
+  const rounded = (2n * numerator * unit + denominator) / (2n * denominator);
+  const whole = (rounded / unit).toString();
+  return scale === 0 ? whole : `${whole}.${(rounded % unit).toString().padStart(scale, '0')}`;
 }

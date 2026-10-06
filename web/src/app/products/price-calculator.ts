@@ -22,10 +22,10 @@ import { AmountPipe } from '../shared/i18n/format-pipes';
 import {
   amountOf,
   atCurrencyScale,
+  exactPriceFor,
   markupOf,
   marginOf,
   type PercentBasis,
-  priceFor,
   profitOf,
 } from './price-calculator-math';
 import { ProductsFacade } from './products-facade';
@@ -288,6 +288,8 @@ export class PriceCalculator {
   protected readonly basis = signal<PercentBasis>('margin');
   protected readonly wanted = signal('');
   protected readonly cost = signal<number | null>(null);
+  /** The cost as the form holds it, which the price to ask is counted from exactly. */
+  private readonly costText = signal('');
   protected readonly price = signal<number | null>(null);
   /** The net price as the form holds it, when the API would take it. */
   private readonly priceText = signal<string | null>(null);
@@ -315,22 +317,19 @@ export class PriceCalculator {
     return cost === null || price === null ? null : markupOf(cost, price);
   });
   /** The price for the percentage wanted, at the currency's scale; null while none is typed or none exists. */
-  protected readonly target = computed(() => {
-    const cost = this.cost();
-    const percent = amountOf(this.wanted().replace(',', '.'));
-    if (cost === null || percent === null) return null;
-    const price = priceFor(cost, percent, this.basis());
-    return price === null ? null : atCurrencyScale(price, this.scale());
-  });
+  protected readonly target = computed(() =>
+    exactPriceFor(this.costText(), this.wanted().replace(',', '.'), this.basis(), this.scale()),
+  );
 
   /** The price the same percentage gives on the other basis, so « 30 % » is never read as the wrong one of the two. */
-  protected readonly other = computed(() => {
-    const cost = this.cost();
-    const percent = amountOf(this.wanted().replace(',', '.'));
-    if (cost === null || percent === null) return null;
-    const price = priceFor(cost, percent, this.basis() === 'margin' ? 'markup' : 'margin');
-    return price === null ? null : atCurrencyScale(price, this.scale());
-  });
+  protected readonly other = computed(() =>
+    exactPriceFor(
+      this.costText(),
+      this.wanted().replace(',', '.'),
+      this.basis() === 'margin' ? 'markup' : 'margin',
+      this.scale(),
+    ),
+  );
 
   /** The price in the form with its taxes. */
   protected readonly withTax = this.preview(() => this.priceText());
@@ -346,6 +345,7 @@ export class PriceCalculator {
       const form = this.form();
       const read = (): void => {
         this.cost.set(amountOf(String(form.get('costPrice')?.value ?? '')));
+        this.costText.set(String(form.get('costPrice')?.value ?? ''));
         this.price.set(amountOf(String(form.get('unitPriceNet')?.value ?? '')));
         const text = String(form.get('unitPriceNet')?.value ?? '').trim();
         this.priceText.set(PRICE.test(text) ? text : null);
