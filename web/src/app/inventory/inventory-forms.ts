@@ -380,7 +380,7 @@ export const LOCATIONS_LIST: ListDescriptor<StockLocationListRow> = {
 
 /**
  * The location form. An existing location stays in its establishment and never sits under itself or under one of its
- * own locations; a default location stays at the top. A new one may name a parent of any establishment: the API
+ * own locations; a default location stays at the top and never becomes a quarantine. A new one may name a parent of any establishment: the API
  * refuses one of another establishment than the one chosen.
  */
 export function locationForm(
@@ -454,7 +454,10 @@ export function locationForm(
             label: `${LOCATION_FIELDS}.kind`,
             kind: 'select',
             required: true,
-            options: STOCK_LOCATION_KINDS.map((kind) => ({
+            // Every delivery falls back on the default location, so it never holds goods waiting for a decision.
+            options: STOCK_LOCATION_KINDS.filter(
+              (kind) => editing?.isDefault !== true || kind !== 'quarantine',
+            ).map((kind) => ({
               value: kind,
               label: `inventory.kinds.${kind}`,
             })),

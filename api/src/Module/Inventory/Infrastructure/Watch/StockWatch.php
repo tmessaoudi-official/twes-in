@@ -10,6 +10,8 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Infrastructure\Watch;
 
 use App\Module\Inventory\Application\StockWatchSettings;
+use App\Module\Inventory\Domain\StockLocationKind;
+use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementKind;
 use App\Module\Inventory\Infrastructure\ApiPlatform\StockPermission;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
@@ -26,7 +28,8 @@ use Doctrine\DBAL\Connection;
  * What the stock puts on « À surveiller » (docs/SPEC.md § 7, 2026-09-24 12:10): a product at or under its reorder
  * point in an establishment, one whose stock at the last 30 days' pace lasts fewer days than it takes to restock, and a
  * dated lot still on hand that expires within the threshold, and one that has expired and nobody released. On-hand is the sum of the
- * movements, as everywhere in the stock.
+ * movements, as everywhere in the stock; for the reorder point and the days left it leaves out the locations in quarantine, whose
+ * goods cannot be sold, while a lot is watched wherever it waits, since an expired one there still has to be thrown away.
  */
 final readonly class StockWatch implements DeclaresWatch
 {
@@ -108,12 +111,12 @@ final readonly class StockWatch implements DeclaresWatch
                FROM product_reorder_point rp
                JOIN product p ON p.id = rp.product_id
                JOIN establishment e ON e.id = rp.establishment_id
-               LEFT JOIN stock_location l ON l.establishment_id = rp.establishment_id
+               LEFT JOIN stock_location l ON l.establishment_id = rp.establishment_id AND l.kind <> :quarantine
                LEFT JOIN stock_movement m ON m.location_id = l.id AND m.product_id = rp.product_id
               WHERE rp.company_id = :company AND p.is_active
               GROUP BY p.id, p.name, p.reference, e.name, rp.quantity, rp.establishment_id
              HAVING COALESCE(SUM(m.quantity), 0) <= rp.quantity',
-            ['company' => $company->getId()->toRfc4122()],
+            ['company' => $company->getId()->toRfc4122(), 'quarantine' => StockLocationKind::Quarantine->value],
             'p.reference, e.name, p.id, rp.establishment_id',
             static fn (array $row): WatchItem => new WatchItem(self::REORDER_POINT, self::text($row['id']), [
                 'product' => self::text($row['name']),
@@ -126,7 +129,8 @@ final readonly class StockWatch implements DeclaresWatch
     }
 
     /**
-     * Days left is on-hand over the average daily quantity out: a product nothing left in the last 30 days is not
+     * Days left is on-hand over the average daily quantity out, a move's half that leaves being no quantity gone: a
+     * product nothing left in the last 30 days is not
      * running out, and one with nothing left on hand is its reorder point's business.
      *
      * @return array{string, array<string, mixed>, string, \Closure(array<string, mixed>): WatchItem}
@@ -135,10 +139,11 @@ final readonly class StockWatch implements DeclaresWatch
     {
         return [
             'WITH hand AS (
-                  SELECT product_id, SUM(quantity) AS on_hand FROM stock_movement WHERE company_id = :company GROUP BY product_id
+                  SELECT m.product_id, SUM(m.quantity) AS on_hand FROM stock_movement m JOIN stock_location l ON l.id = m.location_id
+                   WHERE m.company_id = :company AND l.kind <> :quarantine GROUP BY m.product_id
              ), pace AS (
                   SELECT product_id, -SUM(quantity) AS gone FROM stock_movement
-                   WHERE company_id = :company AND kind = :out AND at >= :since GROUP BY product_id
+                   WHERE company_id = :company AND kind = :out AND source_type <> :move AND at >= :since GROUP BY product_id
              )
              SELECT p.id, p.name, p.reference, h.on_hand::numeric(14, 3) AS on_hand, FLOOR(h.on_hand * :window / pace.gone)::int AS days_left, h.on_hand * :window / pace.gone AS ratio
                FROM pace JOIN hand h ON h.product_id = pace.product_id JOIN product p ON p.id = pace.product_id
@@ -146,6 +151,8 @@ final readonly class StockWatch implements DeclaresWatch
             [
                 'company' => $company->getId()->toRfc4122(),
                 'out' => StockMovementKind::Out->value,
+                'quarantine' => StockLocationKind::Quarantine->value,
+                'move' => StockMovement::SOURCE_MOVE,
                 'since' => $today->modify('-'.self::PACE_DAYS.' days')->format('Y-m-d'),
                 'window' => self::PACE_DAYS,
                 'lead' => $this->days($company, StockWatchSettings::LEAD_DAYS),

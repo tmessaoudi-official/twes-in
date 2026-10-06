@@ -92,6 +92,37 @@ final class StockAlertsTest extends ApiTestCase
         self::assertCount(4, $this->told('stock.low'), 'back above and under again is a new fall');
     }
 
+    public function testGoodsPutInQuarantineAreNoLongerOnHandSoMovingThemThereCanBeTheFall(): void
+    {
+        // 24 on the floor and a point of 10: putting 20 aside leaves 4 that can be sold, which is the fall (audit
+        // 2026-10-06, D-3). A move between two places that sell is still no fall, and goods coming back are none either.
+        $site = $this->site();
+        $this->sendJson('PUT', $this->path('products/'.$this->laptopId.'/reorder-points/'.$this->establishmentId($site)), ['quantity' => '10']);
+        self::assertResponseIsSuccessful();
+        $floor = $this->em()->find(StockLocation::class, Uuid::fromString($site));
+        self::assertNotNull($floor);
+        $now = new \DateTimeImmutable();
+        $rack = StockLocation::create($floor->getEstablishment(), $floor, StockLocationKind::Rack, 'R1', 'Rack 1', $now);
+        $aside = StockLocation::create($floor->getEstablishment(), $floor, StockLocationKind::Quarantine, 'Q1', 'Retours', $now);
+        $this->em()->persist($rack);
+        $this->em()->persist($aside);
+        $this->em()->flush();
+        $this->movement('receive', $site, '24');
+
+        $this->move($site, $rack->getId()->toRfc4122(), '20');
+        self::assertSame([], $this->told('stock.low'), 'from the floor to the rack: still 24 to sell');
+
+        $this->move($rack->getId()->toRfc4122(), $aside->getId()->toRfc4122(), '20');
+        $told = $this->told('stock.low');
+        self::assertCount(2, $told, 'twenty put aside leaves four to sell: every keeper is told');
+        $payload = json_decode(\is_string($told[0]['payload']) ? $told[0]['payload'] : '', true);
+        self::assertIsArray($payload);
+        self::assertSame('4.000', $payload['on_hand']);
+
+        $this->move($aside->getId()->toRfc4122(), $site, '5');
+        self::assertCount(2, $this->told('stock.low'), 'goods coming back from quarantine are no fall');
+    }
+
     public function testACountOverSeveralPlacesIsJudgedWholeSoGoodsFoundOnAnotherShelfAreNoFall(): void
     {
         // Five counted missing on the floor and found on the rack is stock that did not fall: the alert reads the count
@@ -144,6 +175,12 @@ final class StockAlertsTest extends ApiTestCase
     {
         $this->postJson($this->path('stock-movements'), ['operation' => $operation, 'productId' => $this->laptopId, 'locationId' => $locationId, 'quantity' => $quantity]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+    }
+
+    private function move(string $from, string $to, string $quantity): void
+    {
+        $this->postJson($this->path('stock-movements'), ['operation' => 'move', 'productId' => $this->laptopId, 'locationId' => $from, 'toLocationId' => $to, 'quantity' => $quantity]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
     }
 
     private function site(): string

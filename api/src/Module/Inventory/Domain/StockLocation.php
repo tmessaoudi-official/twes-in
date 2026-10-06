@@ -116,6 +116,10 @@ class StockLocation implements CompanyOwned
         $code = self::code($code);
         $name = self::name($name);
         $parent = $this->placedUnder($parent);
+        if ($this->isDefault && StockLocationKind::Quarantine === $kind) {
+            // Every delivery falls back on the default location, so goods there are goods that can be sold.
+            throw new InvalidStockLocation('kind', 'The default location of an establishment is never a quarantine.');
+        }
 
         $changed = [];
         if ($parent?->id->toRfc4122() !== $this->parent?->id->toRfc4122()) {

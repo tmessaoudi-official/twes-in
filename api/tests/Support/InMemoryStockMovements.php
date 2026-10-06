@@ -13,6 +13,7 @@ use App\Module\Inventory\Domain\LotOnHand;
 use App\Module\Inventory\Domain\RunningValue;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
+use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
@@ -139,11 +140,12 @@ final class InMemoryStockMovements implements StockMovementRepository
         return $sum->value;
     }
 
-    public function onHandInEstablishment(Uuid $productId, Uuid $establishmentId): string
+    public function sellableInEstablishment(Uuid $productId, Uuid $establishmentId): string
     {
         $sum = new Number('0.000');
         foreach ($this->movements as $movement) {
-            if ($movement->getProduct()->getId()->equals($productId) && $movement->getLocation()->getEstablishment()->getId()->equals($establishmentId)) {
+            if ($movement->getProduct()->getId()->equals($productId) && $movement->getLocation()->getEstablishment()->getId()->equals($establishmentId)
+                && StockLocationKind::Quarantine !== $movement->getLocation()->getKind()) {
                 $sum = $sum->add($movement->getQuantity());
             }
         }

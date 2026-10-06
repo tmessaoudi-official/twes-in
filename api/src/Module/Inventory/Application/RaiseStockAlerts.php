@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Inventory\Application;
 
 use App\Module\Inventory\Domain\ProductReorderPointRepository;
+use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use BcMath\Number;
@@ -35,8 +36,9 @@ final readonly class RaiseStockAlerts
         $falls = [];
         foreach ($saved as $movement) {
             $this->countedDifference($movement);
-            // A move changes where the goods are, not how many; only what leaves or arrives for good counts as a fall.
-            if (StockMovement::SOURCE_MOVE === $movement->getSourceType()) {
+            // Goods in quarantine cannot be sold, so what falls is what can be: a move between two places that sell nets to
+            // nothing inside its establishment, and one into quarantine takes what it puts aside.
+            if (StockLocationKind::Quarantine === $movement->getLocation()->getKind()) {
                 continue;
             }
             $key = $movement->getProduct()->getId()->toRfc4122().'|'.$movement->getLocation()->getEstablishment()->getId()->toRfc4122();
@@ -74,7 +76,7 @@ final readonly class RaiseStockAlerts
         if (null === $point || null === $reorderAt || !is_numeric($reorderAt) || !$product->isActive()) {
             return;
         }
-        $after = new Number($this->movements->onHandInEstablishment($product->getId(), $establishment->getId()));
+        $after = new Number($this->movements->sellableInEstablishment($product->getId(), $establishment->getId()));
         $before = $after->sub($net);
         $limit = new Number($reorderAt);
         if (1 === $before->compare($limit) && $after->compare($limit) <= 0) {

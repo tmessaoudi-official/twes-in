@@ -13,6 +13,7 @@ use App\Module\Inventory\Domain\LotOnHand;
 use App\Module\Inventory\Domain\RunningValue;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
+use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
@@ -269,7 +270,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return self::decimal($query->getQuery()->getSingleScalarResult());
     }
 
-    public function onHandInEstablishment(Uuid $productId, Uuid $establishmentId): string
+    public function sellableInEstablishment(Uuid $productId, Uuid $establishmentId): string
     {
         return self::decimal($this->entityManager->createQueryBuilder()
             ->select('SUM(m.quantity)')
@@ -277,8 +278,10 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->join('m.location', 'l')
             ->where('m.product = :product')
             ->andWhere('l.establishment = :establishment')
+            ->andWhere('l.kind <> :quarantine')
             ->setParameter('product', $productId, 'uuid')
             ->setParameter('establishment', $establishmentId, 'uuid')
+            ->setParameter('quarantine', StockLocationKind::Quarantine)
             ->getQuery()
             ->getSingleScalarResult());
     }

@@ -17,6 +17,7 @@ use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
@@ -147,6 +148,33 @@ final class WatchTest extends ApiTestCase
 
         $this->getJson($this->watch());
         self::assertSame(['invoices.unsold_products', 'stock.running_out', 'stock.lot_expired', 'stock.lot_expiring'], array_column($this->subjects(), 0));
+    }
+
+    public function testGoodsInQuarantineAreNotOnHandForTheReorderPointNorForWhatIsRunningOut(): void
+    {
+        // Only goods that can be sold keep a product off the list (audit 2026-10-06, D-3): VIS has 24, a point of 10 and
+        // 20 put aside; GANT has 30, sells 0.3 a day, and 20 put aside leaves it about 3 days.
+        $this->signedIn(['company.read', 'product.read', 'product.write', 'stock.read', 'stock.write']);
+        $this->receive('VIS', '24');
+        $this->sendJson('PUT', $this->company().'/products/'.$this->products['VIS'].'/reorder-points/'.$this->establishmentId, ['quantity' => '10']);
+        self::assertResponseIsSuccessful();
+        $this->receive('GANT', '30');
+        $this->deliver('GANT', '9');
+        $site = $this->location();
+        $aside = StockLocation::create($site->getEstablishment(), $site, StockLocationKind::Quarantine, 'Q1', 'Retours', new \DateTimeImmutable());
+        $this->em()->persist($aside);
+        $this->em()->flush();
+        foreach (['VIS', 'GANT'] as $reference) {
+            $this->postJson($this->company().'/stock-movements', ['operation' => 'move', 'productId' => $this->products[$reference], 'locationId' => $site->getId()->toRfc4122(), 'toLocationId' => $aside->getId()->toRfc4122(), 'quantity' => '20']);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+        }
+
+        self::assertSame([
+            ['stock.reorder_point', $this->products['VIS'], ['product' => 'Vis 6x40', 'reference' => 'VIS', 'establishment' => 'Quincaillerie', 'onHand' => '4.000', 'point' => '10.000']],
+        ], $this->rows('stock.reorder_point'));
+        self::assertSame([
+            ['stock.running_out', $this->products['GANT'], ['product' => 'Gants', 'reference' => 'GANT', 'onHand' => '1.000', 'days' => 3]],
+        ], $this->rows('stock.running_out'));
     }
 
     public function testAChequeOrTraiteFallenDueIsASubjectUntilItIsCashedOrComesBackUnpaid(): void

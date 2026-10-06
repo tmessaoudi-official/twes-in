@@ -134,6 +134,22 @@ final class StockLocationTest extends TestCase
         self::assertNull($site->getParent());
     }
 
+    public function testTheDefaultLocationNeverBecomesAQuarantineSinceEveryDeliveryFallsBackOnIt(): void
+    {
+        $site = StockLocation::defaultOf($this->main, $this->now);
+        try {
+            $site->revise(null, StockLocationKind::Quarantine, '000', 'Siège de Tunis', $this->now);
+            self::fail('The default location became a quarantine.');
+        } catch (InvalidStockLocation $refused) {
+            self::assertSame('kind', $refused->field);
+        }
+        self::assertSame(StockLocationKind::Site, $site->getKind());
+
+        // Any other location may hold goods waiting for a decision.
+        $shelf = StockLocation::create($this->main, $site, StockLocationKind::Rack, 'R1', 'Rayon 1', $this->now);
+        self::assertSame(['kind'], $shelf->revise($site, StockLocationKind::Quarantine, 'R1', 'Rayon 1', $this->now));
+    }
+
     public function testALocationIsDrawnOnItsOwnEstablishmentsFloorOrNotAtAll(): void
     {
         // The rectangle is the map's; the binding is the inventory's (docs/SPEC.md § 7, 2026-09-14). A location drawn

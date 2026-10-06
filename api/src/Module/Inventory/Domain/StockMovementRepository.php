@@ -85,11 +85,12 @@ interface StockMovementRepository
     public function onHand(Uuid $productId, Uuid $locationId, ?Uuid $lotId = null): string;
 
     /**
-     * The stock of a product in all the locations of one establishment, "0.000" when nothing ever moved there.
+     * The stock of a product that can be sold in one establishment: every location but those in quarantine, whose goods
+     * wait for a decision. "0.000" when nothing ever moved there.
      *
      * @return numeric-string
      */
-    public function onHandInEstablishment(Uuid $productId, Uuid $establishmentId): string;
+    public function sellableInEstablishment(Uuid $productId, Uuid $establishmentId): string;
 
     /**
      * The stock of a lot wherever it is in its company: how a serial number is known to be in stock once.

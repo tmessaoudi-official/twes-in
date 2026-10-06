@@ -281,6 +281,18 @@ describe('locationForm', () => {
     expect(fields[1]?.options?.map((option) => option.value)).toEqual(['']);
     expect(fields[1]?.readOnly).toBe(true);
   });
+
+  it('offers a default location every kind but quarantine, which every other location may take', () => {
+    const kinds = (editing: typeof site | null) =>
+      fieldsOf(locationForm(options, [site, zone], editing))[2]?.options?.map(
+        (option) => option.value,
+      );
+
+    expect(kinds(site)).not.toContain('quarantine');
+    expect(kinds(site)).toContain('site');
+    expect(kinds(zone)).toContain('quarantine');
+    expect(kinds(null)).toContain('quarantine');
+  });
 });
 
 describe('locationValues and locationInput', () => {

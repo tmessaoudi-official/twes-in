@@ -321,6 +321,8 @@ final readonly class KeepStock
                 throw new InvalidStockMovement('quantity', \sprintf('Only %s is at that location.', $onHand));
             }
             $this->movements->save($out, $in);
+            // Inside one establishment a move changes no total, but one into quarantine takes goods off what can be sold.
+            $this->alerts?->raise([$out, $in]);
             // One move is one change: the stock of this product moved, once.
             $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.moved', $actorUserId, $company->getId()));
 
