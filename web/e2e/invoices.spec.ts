@@ -176,6 +176,13 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     // Once issued, the next step E runs is recording a payment.
     await outOfFields(page);
     await page.keyboard.press('e');
+    // The page's two-column sections crushed the dialog's fields into ~230 px, cutting the day to « /2026 », and the
+    // way out read « Garder le paiement » with no payment yet to keep (visual audit 2026-10-06, V-27).
+    const amountWidth = await page
+      .getByTestId('field-amount')
+      .evaluate((input) => input.getBoundingClientRect().width);
+    expect(amountWidth, 'a dialog field takes the dialog’s width').toBeGreaterThan(300);
+    await expect(page.getByTestId('payment-cancel')).toHaveText(/Annuler/);
     await page.getByTestId('field-amount').fill('100');
     await page.getByTestId('field-reference').fill(`VIR ${run}`);
     await page.getByTestId('invoice-payment-record').click();

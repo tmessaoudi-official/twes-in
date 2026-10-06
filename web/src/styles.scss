@@ -2091,9 +2091,22 @@ li.twes-row-new.twes-list-card {
   }
 }
 
-// A form in a narrow column (the stock map's inspector, beside the board): the section's title and explanation sit
-// above its fields at every window width, since the 15rem label column above 1024 px assumes a full-width page.
-.twes-form-stacked .twes-form-section {
+// A form in a narrow column (the stock map's inspector, beside the board, or any dialog): the section's title and
+// explanation sit above its fields at every window width, since the 15rem label column above 1024 px assumes a
+// full-width page. In a dialog of one section the dialog's own title already names it.
+.mat-mdc-dialog-content
+  .twes-form-section:only-of-type
+  > [aria-hidden='true']:has(> .twes-form-section-title) {
+  display: none;
+}
+
+// A dialog is one column wide, so its fields stand one under the other.
+.mat-mdc-dialog-content .twes-form-fields {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.twes-form-stacked .twes-form-section,
+.mat-mdc-dialog-content .twes-form-section {
   @media (min-width: 1024px) {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;

@@ -1342,6 +1342,7 @@
       "delete_short": "Delete",
       "confirm_delete": "Confirm deletion",
       "keep": "Keep the payment",
+      "cancel": "Cancel",
       "methods": {
         "transfer": "Transfer",
         "cash": "Cash",

@@ -36,7 +36,7 @@ export interface PaymentDialogData {
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" (click)="ref.close(null)" data-testid="payment-cancel">
-        {{ 'invoices.payments.keep' | translate }}
+        {{ 'invoices.payments.cancel' | translate }}
       </button>
       <button mat-flat-button type="button" (click)="record()" data-testid="invoice-payment-record">
         {{ 'invoices.payments.record' | translate }}

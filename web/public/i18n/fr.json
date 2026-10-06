@@ -1342,6 +1342,7 @@
       "delete_short": "Supprimer",
       "confirm_delete": "Confirmer la suppression",
       "keep": "Garder le paiement",
+      "cancel": "Annuler",
       "methods": {
         "transfer": "Virement",
         "cash": "Espèces",
