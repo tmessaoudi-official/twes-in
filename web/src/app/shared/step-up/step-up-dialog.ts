@@ -7,6 +7,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { type StepUpOutcome, StepUpProof } from './step-up-proof';
 
@@ -79,12 +80,15 @@ export interface StepUpReason {
 export class StepUpDialog {
   protected readonly ref = inject<MatDialogRef<StepUpDialog, boolean>>(MatDialogRef);
   protected readonly proof = inject(StepUpProof);
+  private readonly router = inject(Router);
   /** Why the proof is asked for, as a translation key: leaving customer view unless the caller says otherwise. */
   protected readonly intro =
     inject<StepUpReason | undefined>(MAT_DIALOG_DATA, { optional: true })?.intro ?? 'step_up.intro';
   protected readonly password = new FormControl('', { nonNullable: true });
   protected readonly busy = signal(false);
-  protected readonly problem = signal<Exclude<StepUpOutcome, 'confirmed'> | null>(null);
+  protected readonly problem = signal<Exclude<StepUpOutcome, 'confirmed' | 'signed_out'> | null>(
+    null,
+  );
 
   protected async confirmPassword(): Promise<void> {
     if (this.password.value === '') {
@@ -105,7 +109,11 @@ export class StepUpDialog {
     try {
       const outcome = await proof();
       if (outcome === 'confirmed') this.ref.close(true);
-      else this.problem.set(outcome);
+      else if (outcome === 'signed_out') {
+        // The session is over: what the dialog guarded is gone with it, so the sign-in says why.
+        this.ref.close(false);
+        void this.router.navigateByUrl('/login?expired=1');
+      } else this.problem.set(outcome);
     } finally {
       this.busy.set(false);
     }

@@ -318,7 +318,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             tags: ['Auth'],
             responses: [
                 '204' => new Response('The password is the account\'s'),
-                '401' => $errorResponse('Not signed in'),
+                '401' => $errorResponse('Not signed in, or `step_up_exhausted`: that wrong answer was the fifth of this sign-in, which is now signed out'),
                 '422' => $errorResponse('The password is not the account\'s'),
                 '429' => $errorResponse('Too many attempts'),
             ],
@@ -340,7 +340,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             tags: ['Auth'],
             responses: [
                 '204' => new Response('The passkey is one of the account\'s and answered the options'),
-                '401' => $errorResponse('Not signed in'),
+                '401' => $errorResponse('Not signed in, or `step_up_exhausted`: that wrong answer was the fifth of this sign-in, which is now signed out'),
                 '422' => $errorResponse("No options to answer, or the passkey is not one of the account's or does not verify"),
                 '429' => $errorResponse('Too many attempts'),
             ],

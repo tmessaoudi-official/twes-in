@@ -31,6 +31,8 @@ export type LoginError =
   | 'breached'
   // Leaving the customer screen without a fresh proof of who is at it.
   | 'step_up_required'
+  // The wrong answer to a proof that spent the session's budget: the API signed it out.
+  | 'step_up_exhausted'
   // The browser produced no passkey: cancelled, timed out, or no authenticator to answer. Never sent by the API.
   | 'passkey_cancelled'
   // The browser refused because this device already holds a passkey for the account. Never sent by the API.

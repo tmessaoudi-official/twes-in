@@ -12,6 +12,7 @@ namespace App\Identity\Infrastructure\StepUp;
 use App\Identity\Application\Mfa\BeginPasskeyAssertion;
 use App\Identity\Application\Mfa\PasskeyRefused;
 use App\Identity\Application\StepUp\ConfirmStepUp;
+use App\Identity\Application\StepUp\StepUpExhausted;
 use App\Identity\Application\StepUp\StepUpRefused;
 use App\Identity\Infrastructure\Passkey\PasskeyChallenges;
 use App\Identity\Infrastructure\Security\SecurityUser;
@@ -59,6 +60,8 @@ final readonly class StepUpController
 
         try {
             $this->confirm->withPassword($userId, \is_string($password) ? $password : '');
+        } catch (StepUpExhausted) {
+            return $this->signedOut();
         } catch (StepUpRefused) {
             return new JsonResponse(['error' => 'invalid_credentials'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
@@ -101,11 +104,24 @@ final readonly class StepUpController
 
         try {
             $this->confirm->withPasskey($userId, $options, json_encode($credential, \JSON_THROW_ON_ERROR));
+        } catch (StepUpExhausted) {
+            return $this->signedOut();
         } catch (StepUpRefused) {
             return new JsonResponse(['error' => 'invalid_passkey'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * The sign-in spent its wrong answers: it is signed out as a logout would, which ends its session record and the
+     * phones it lent, and the account stays open for a new sign-in.
+     */
+    private function signedOut(): Response
+    {
+        $this->security->logout(false);
+
+        return new JsonResponse(['error' => 'step_up_exhausted'], Response::HTTP_UNAUTHORIZED);
     }
 
     private function currentUserId(): Uuid

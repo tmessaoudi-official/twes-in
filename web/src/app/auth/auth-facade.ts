@@ -192,7 +192,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
       await this.api.stepUpWithPassword(password);
       return 'confirmed';
     } catch (error) {
-      return stepUpOutcome(error);
+      return this.stepUpRefused(error);
     }
   }
 
@@ -203,7 +203,7 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
       await this.api.stepUpWithPasskey(credential);
       return 'confirmed';
     } catch (error) {
-      return stepUpOutcome(error);
+      return this.stepUpRefused(error);
     }
   }
 
@@ -332,6 +332,13 @@ export class AuthFacade implements Session, StepUpProof, CustomerScreenHold {
     this.statusSignal.set('authenticated');
   }
 
+  /** A refused proof; one that ended the session leaves the app signed out with it. */
+  private stepUpRefused(error: unknown): StepUpOutcome {
+    const outcome = stepUpOutcome(error);
+    if (outcome === 'signed_out') this.signedOut();
+    return outcome;
+  }
+
   private signedOut(): void {
     this.stateSignal.set(null);
     this.statusSignal.set('anonymous');
@@ -359,6 +366,8 @@ function stepUpOutcome(error: unknown): StepUpOutcome {
   switch (codeOf(error)) {
     case 'too_many_attempts':
       return 'too_many';
+    case 'step_up_exhausted':
+      return 'signed_out';
     case 'network':
       return 'network';
     case 'invalid_passkey':

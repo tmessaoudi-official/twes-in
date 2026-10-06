@@ -169,6 +169,14 @@ class User
         $this->touch($now);
     }
 
+    /** The lock lifted and the wrong guesses forgotten, as a password reset through the mailed link does. */
+    public function unlock(\DateTimeImmutable $now): void
+    {
+        $this->failedLoginCount = 0;
+        $this->lockedUntil = null;
+        $this->touch($now);
+    }
+
     public function recordSuccessfulLogin(\DateTimeImmutable $now): void
     {
         $this->failedLoginCount = 0;

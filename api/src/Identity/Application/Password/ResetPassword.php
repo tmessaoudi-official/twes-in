@@ -66,6 +66,8 @@ final readonly class ResetPassword
             }
             $user = $reset->getUser();
             $user->setPasswordHash($this->hasher->hash($newPassword), $now);
+            // Whoever used the mailed link holds the mailbox, so a lock from wrong guesses ends with it.
+            $user->unlock($now);
             $this->users->save($user);
             $this->sessions->revokeEveryOf($user, $now);
             $reset->markUsed($now);

@@ -128,6 +128,20 @@ final class PasswordResetTest extends TestCase
         self::assertSame('hash:the-other-request', $this->user->getPasswordHash());
     }
 
+    public function testAResetLiftsTheLockSoTheNewPasswordSignsInAtOnce(): void
+    {
+        // Whoever used the mailed link holds the mailbox (docs/SPEC.md § 7, the C-F3 ruling).
+        for ($i = 0; $i < 5; ++$i) {
+            $this->user->recordFailedLogin($this->clock->now(), 5, new \DateInterval('PT15M'));
+        }
+        self::assertTrue($this->user->isLockedAt($this->clock->now()));
+
+        $this->reset()->handle($this->link(), self::NEXT);
+
+        self::assertFalse($this->user->isLockedAt($this->clock->now()));
+        self::assertSame(0, $this->user->getFailedLoginCount());
+    }
+
     public function testAPasswordThePolicyRefusesLeavesTheLinkUsable(): void
     {
         $raw = $this->link();

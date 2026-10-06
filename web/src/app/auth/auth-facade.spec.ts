@@ -272,6 +272,15 @@ describe('AuthFacade', () => {
     expect(facade.me()?.customerScreenCompanyId).toBe('c1');
   });
 
+  it('signs out once the wrong answers to a proof ended the session', async () => {
+    api.me.mockResolvedValueOnce(owner);
+    await facade.load();
+    api.stepUpWithPassword.mockRejectedValueOnce(new AuthRefused('step_up_exhausted'));
+
+    expect(await facade.withPassword('cinquième')).toBe('signed_out');
+    expect(facade.me()).toBeNull();
+  });
+
   it('says how a proof of who is at the screen came out', async () => {
     api.stepUpWithPassword.mockResolvedValueOnce(undefined);
     expect(await facade.withPassword('le-bon')).toBe('confirmed');

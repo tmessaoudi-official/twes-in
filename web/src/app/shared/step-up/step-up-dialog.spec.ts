@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter, Router } from '@angular/router';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideTranslateLoader, provideTranslateService } from '@ngx-translate/core';
@@ -61,6 +62,7 @@ describe('StepUpDialog', () => {
         { provide: MatDialogRef, useValue: { close } },
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: StepUpProof, useValue: proof },
+        provideRouter([]),
       ],
     });
     fixture = TestBed.createComponent(StepUpDialog);
@@ -128,5 +130,16 @@ describe('StepUpDialog', () => {
 
     q('step-up-cancel')!.click();
     expect(close).toHaveBeenCalledWith(false);
+  });
+
+  it('closes unconfirmed and goes to the sign-in once the wrong answers ended the session', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    proof.withPassword.mockResolvedValueOnce('signed_out');
+    type('cinquième');
+    q('step-up-confirm')!.click();
+    await settle();
+
+    expect(close).toHaveBeenCalledWith(false);
+    expect(navigate).toHaveBeenCalledWith('/login?expired=1');
   });
 });

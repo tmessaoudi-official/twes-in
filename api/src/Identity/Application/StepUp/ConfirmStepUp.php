@@ -11,9 +11,9 @@ namespace App\Identity\Application\StepUp;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Identity\Application\Login\PasswordAttempts;
 use App\Identity\Application\Mfa\PasskeyAssertions;
 use App\Identity\Application\Mfa\PasskeyRefused;
+use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\UserRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -32,10 +32,13 @@ final readonly class ConfirmStepUp
 {
     public const string CONFIRMED = 'auth.step_up';
     public const string REFUSED = 'auth.step_up_refused';
+    public const string EXHAUSTED = 'auth.step_up_exhausted';
+    /** Wrong answers a sign-in may give before it ends. */
+    public const int BUDGET = 5;
 
     public function __construct(
         private UserRepository $users,
-        private PasswordAttempts $passwords,
+        private PasswordHasher $hasher,
         private PasskeyAssertions $assertions,
         private AuditTrail $audit,
         private StepUpProofs $proofs,
@@ -53,15 +56,25 @@ final readonly class ConfirmStepUp
         return null !== $at && $this->clock->now() <= $at->add(new \DateInterval($this->validFor));
     }
 
-    /** @throws StepUpRefused when the password is not the account's */
+    /**
+     * A wrong answer here is this sign-in's own, never a step toward the account lock (docs/SPEC.md § 7, the C-F3 ruling):
+     * a customer typing at the customer screen must not lock the clerk out everywhere. The fifth ends the sign-in instead,
+     * and a new one needs the password. A locked account is refused all the same, without counting.
+     *
+     * @throws StepUpRefused   when the password is not the account's
+     * @throws StepUpExhausted when that wrong answer was the last this sign-in may give
+     */
     public function withPassword(Uuid $userId, string $password, ?\DateTimeImmutable $now = null): void
     {
         $user = $this->users->ofId($userId);
 
-        if (null === $user || !$this->passwords->matches($user, $password, 'step_up')) {
+        if (null === $user || $user->isLockedAt($this->clock->now())) {
             $this->audit->record(new AuditEntry('user', $userId, self::REFUSED, $userId, ['method' => 'password']));
 
             throw new StepUpRefused();
+        }
+        if ('' === $password || !$this->hasher->verify($user->getPasswordHash(), $password)) {
+            $this->wrong($userId, 'password');
         }
 
         $this->audit->record(new AuditEntry('user', $userId, self::CONFIRMED, $userId, ['method' => 'password']));
@@ -69,7 +82,8 @@ final readonly class ConfirmStepUp
     }
 
     /**
-     * @throws StepUpRefused when the credential is not one of the account's passkeys answering the options
+     * @throws StepUpRefused   when the credential is not one of the account's passkeys answering the options
+     * @throws StepUpExhausted when that wrong answer was the last this sign-in may give
      */
     public function withPasskey(Uuid $userId, string $optionsJson, string $credentialJson, ?\DateTimeImmutable $now = null): void
     {
@@ -82,12 +96,26 @@ final readonly class ConfirmStepUp
             // The passkey's new signature counter is saved by the verification.
             $this->assertions->verify($user, $optionsJson, $credentialJson, $now ?? $this->clock->now());
         } catch (PasskeyRefused|StepUpRefused) {
-            $this->audit->record(new AuditEntry('user', $userId, self::REFUSED, $userId, ['method' => 'passkey']));
-
-            throw new StepUpRefused();
+            $this->wrong($userId, 'passkey');
         }
 
         $this->audit->record(new AuditEntry('user', $userId, self::CONFIRMED, $userId, ['method' => 'passkey']));
         $this->proofs->remember($userId, $now ?? $this->clock->now());
+    }
+
+    /**
+     * @throws StepUpRefused
+     * @throws StepUpExhausted
+     */
+    private function wrong(Uuid $userId, string $method): never
+    {
+        $this->audit->record(new AuditEntry('user', $userId, self::REFUSED, $userId, ['method' => $method]));
+        if ($this->proofs->failed($userId) >= self::BUDGET) {
+            $this->audit->record(new AuditEntry('user', $userId, self::EXHAUSTED, $userId, ['method' => $method]));
+
+            throw new StepUpExhausted();
+        }
+
+        throw new StepUpRefused();
     }
 }

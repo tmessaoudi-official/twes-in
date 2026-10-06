@@ -8,6 +8,8 @@ export type StepUpOutcome =
   | 'too_many'
   /** The account has no passkey, or the browser produced none: cancelled, timed out, or no authenticator. */
   | 'no_passkey'
+  /** That wrong answer was the session's last: it is signed out, and the account stays open for a new sign-in. */
+  | 'signed_out'
   | 'network';
 
 /**

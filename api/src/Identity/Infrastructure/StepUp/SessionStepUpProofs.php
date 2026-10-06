@@ -20,6 +20,7 @@ use Symfony\Component\Uid\Uuid;
 final readonly class SessionStepUpProofs implements StepUpProofs
 {
     private const string KEY = '_step_up_proof';
+    private const string FAILED = '_step_up_failed';
 
     public function __construct(private RequestStack $requestStack)
     {
@@ -27,7 +28,19 @@ final readonly class SessionStepUpProofs implements StepUpProofs
 
     public function remember(Uuid $userId, \DateTimeImmutable $at): void
     {
-        $this->requestStack->getSession()->set(self::KEY, ['user' => $userId->toRfc4122(), 'at' => $at->getTimestamp()]);
+        $session = $this->requestStack->getSession();
+        $session->set(self::KEY, ['user' => $userId->toRfc4122(), 'at' => $at->getTimestamp()]);
+        $session->remove(self::FAILED);
+    }
+
+    public function failed(Uuid $userId): int
+    {
+        $session = $this->requestStack->getSession();
+        $failed = $session->get(self::FAILED);
+        $count = (\is_array($failed) && $userId->toRfc4122() === ($failed['user'] ?? null) && \is_int($failed['count'] ?? null) ? $failed['count'] : 0) + 1;
+        $session->set(self::FAILED, ['user' => $userId->toRfc4122(), 'count' => $count]);
+
+        return $count;
     }
 
     public function lastFor(Uuid $userId): ?\DateTimeImmutable

@@ -49,39 +49,46 @@ final class StepUpTest extends ApiTestCase
         self::assertSame([1, 2], [$this->audited('auth.step_up'), $this->audited('auth.step_up_refused')], 'one confirmed; the wrong password and the empty body are both refusals');
     }
 
-    public function testGuessingThePasswordSharesTheBudgetOfFiveAttempts(): void
+    public function testGuessingThePasswordSharesTheBudgetOfFiveAttemptsAcrossSessions(): void
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->login('someone@twes.local', self::PASSWORD);
-
         for ($i = 0; $i < 5; ++$i) {
             $this->postJson(self::STEP_UP, ['password' => 'guess-'.$i]);
-            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        $this->login('someone@twes.local', self::PASSWORD);
+        self::assertResponseIsSuccessful();
         $this->postJson(self::STEP_UP, ['password' => self::PASSWORD]);
-        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS, 'the right password is not a way round the budget');
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS, 'the right password is not a way round the budget, nor a new sign-in');
     }
 
     /**
-     * Audit 2026-10-06, D-4: a wrong password here is a guess at the same account as a wrong one at the sign-in, so it
-     * counts toward the same lockout; otherwise an open session is a way to guess the password all day at the limiter's pace.
+     * Wrong answers here are a session's own (docs/SPEC.md § 7, the C-F3 ruling): a customer typing at the customer screen
+     * must not lock the clerk out everywhere, so the fifth ends this session and the account stays open. Guessing all
+     * day through an open session is still out of reach: a new session needs the password.
      */
-    public function testWrongPasswordsHereLockTheAccountAsWrongSignInsDo(): void
+    public function testTheFifthWrongPasswordHereEndsThisSessionAndNeverLocksTheAccount(): void
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->login('someone@twes.local', self::PASSWORD);
 
         for ($i = 0; $i < 4; ++$i) {
             $this->postJson(self::STEP_UP, ['password' => 'guess-'.$i]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         }
-        self::assertFalse($this->account('someone@twes.local')->isLockedAt(new \DateTimeImmutable()), 'four are not enough');
-        $this->postJson(self::STEP_UP, ['password' => 'guess-4']);
+        $this->client->request('GET', '/api/auth/me');
+        self::assertResponseIsSuccessful('four are not enough');
 
-        self::assertTrue($this->account('someone@twes.local')->isLockedAt(new \DateTimeImmutable()));
-        $this->client->getCookieJar()->clear();
-        $this->postJson('/api/auth/login', ['email' => 'someone@twes.local', 'password' => self::PASSWORD]);
-        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED, 'the right password no longer signs in while it is locked');
+        $this->postJson(self::STEP_UP, ['password' => 'guess-4']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        self::assertSame('step_up_exhausted', $this->stringAt($this->json(), 'error'));
+        $this->client->request('GET', '/api/auth/me');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED, 'this browser is signed out');
+
+        self::assertFalse($this->account('someone@twes.local')->isLockedAt(new \DateTimeImmutable()), 'the account is not locked');
+        $this->login('someone@twes.local', self::PASSWORD);
+        self::assertResponseIsSuccessful('the clerk signs in again at once');
     }
 
     private function account(string $email): User
