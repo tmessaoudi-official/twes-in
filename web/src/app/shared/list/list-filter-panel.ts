@@ -68,9 +68,11 @@ import type {
             {{ range.label | translate }}
           </legend>
           @for (end of ends(range); track end) {
-            <mat-form-field class="w-40" subscriptSizing="dynamic">
-              <mat-label>{{ 'list.range.' + end | translate }}</mat-label>
-              @if (range.kind === 'day') {
+            <!-- One field per kind: a suffix inside an @if beside the input is not projected, and the calendar
+                 button fell under the label instead of closing the field. -->
+            @if (range.kind === 'day') {
+              <mat-form-field class="w-40" subscriptSizing="dynamic">
+                <mat-label>{{ 'list.range.' + end | translate }}</mat-label>
                 <input
                   matInput
                   appDay
@@ -83,7 +85,10 @@ import type {
                   [attr.data-testid]="testId() + '-' + range.id + '-' + end"
                 />
                 <app-day-calendar-button matSuffix [field]="dayField" />
-              } @else {
+              </mat-form-field>
+            } @else {
+              <mat-form-field class="w-40" subscriptSizing="dynamic">
+                <mat-label>{{ 'list.range.' + end | translate }}</mat-label>
                 <input
                   matInput
                   appDecimal
@@ -92,8 +97,8 @@ import type {
                   (ngModelChange)="onRange(range, end, $event)"
                   [attr.data-testid]="testId() + '-' + range.id + '-' + end"
                 />
-              }
-            </mat-form-field>
+              </mat-form-field>
+            }
           }
         </fieldset>
       }

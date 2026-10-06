@@ -306,4 +306,15 @@ describe('DataList filters that combine', () => {
     await settle();
     expect(last().filters).toEqual({});
   });
+
+  it("puts a day's calendar button at the end of its field, beside what is typed", async () => {
+    await mount();
+    q('list-filters')!.click();
+    await settle();
+
+    const field = q('docs-table-filter-panel-issueDate-from')!.closest('mat-form-field')!;
+    const calendar = field.querySelector('app-day-calendar-button');
+    expect(calendar).not.toBeNull();
+    expect(calendar!.closest('.mat-mdc-form-field-icon-suffix')).not.toBeNull();
+  });
 });
