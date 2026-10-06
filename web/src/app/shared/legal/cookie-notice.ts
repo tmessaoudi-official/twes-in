@@ -10,10 +10,10 @@ import { LegalLink } from './legal-link';
 export const COOKIE_NOTICE_KEY = 'twes.cookie-notice';
 
 /**
- * The cookie notice: informational, since only the session cookie and the person's own display choices are stored,
- * which need no consent, so nothing waits for it. Shown until closed, then never again in this browser. It is the last
- * row of the scrolling area, held at its foot (`.twes-cookie-notice`): always in view, and taking its own place, so it
- * never lies over a button or the end of the page.
+ * The cookie notice: informational, since only the session cookie, the person's own display choices and the device's
+ * own settings are stored, which need no consent, so nothing waits for it. Shown until closed, then never again in this
+ * browser. It is the last row of the scrolling area, held at its foot (`.twes-cookie-notice`): always in view, and
+ * taking its own place, so it never lies over a button or the end of the page.
  */
 @Component({
   selector: 'app-cookie-notice',

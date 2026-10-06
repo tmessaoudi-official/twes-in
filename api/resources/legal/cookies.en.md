@@ -1,4 +1,4 @@
-This service sets a single cookie, for your session. It is strictly necessary to keep you signed in. Everything else it keeps on your device is your own display choices, listed below.
+This service sets a single cookie, for your session. It is strictly necessary to keep you signed in. Everything else it keeps on your device is your own display choices and this device’s settings (camera, scanner, customer screen), listed below.
 
 ## What there is not
 

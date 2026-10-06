@@ -17,8 +17,8 @@ export interface StoredItem {
 
 /**
  * Everything the product keeps on a visitor's device (docs/SPEC.md § 7, 2026-09-26 08:52, row 149), which the Cookies
- * page lists. Only the session cookie, strictly necessary, and the person's own display choices: nothing that needs
- * consent. `scripts/gates/stored-items.sh` reds when the code stores something this list does not declare, or this
+ * page lists. Only the session cookie, strictly necessary, the person's own display choices and this device's own
+ * settings: nothing that needs consent. `scripts/gates/stored-items.sh` reds when the code stores something this list does not declare, or this
  * list declares something nothing stores any more; keep one line per item, in this shape, for it to read.
  */
 export const STORED_ITEMS: readonly StoredItem[] = [

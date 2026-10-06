@@ -3507,7 +3507,7 @@
     "as_page": "Open as a full page",
     "notice": {
       "title": "Cookies",
-      "text": "This service sets a single cookie, for your session, and keeps your display choices on this device. No tracking, no advertising, no third-party script.",
+      "text": "This service sets a single cookie, for your session, and keeps your display choices and this device’s own settings (camera, scanner, customer screen) on it. No tracking, no advertising, no third-party script.",
       "more": "This service’s cookies",
       "close": "Got it"
     },
