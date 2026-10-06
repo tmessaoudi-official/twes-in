@@ -72,6 +72,25 @@ const OPEN_PRODUCT: RowAction<WatchRowView> = {
   shown: (view) => view.row.subjectId !== null,
 };
 
+/** The movements page, where a cost reader enters the cost of a receipt left « à compléter ». */
+const ENTER_RECEIPT_COST: RowAction<WatchRowView> = {
+  id: 'enter-cost',
+  label: 'watch.actions.enter_cost',
+  labelParams: (view) => ({ name: String(view.cells['product'] ?? '') }),
+  icon: 'request_quote',
+  link: () => ['/stock/movements'],
+  linkQuery: (view) => receiptCostQuery(view),
+  shown: (view) => view.row.subjectId !== null,
+};
+
+/** The receipt and what it received, which the movements page opens on and asks the cost of. */
+function receiptCostQuery(view: WatchRowView): Record<string, string> {
+  return {
+    productId: String(view.row.params['productId'] ?? ''),
+    costOf: view.row.subjectId ?? '',
+  };
+}
+
 function productList(
   id: string,
   columns: ListColumn<WatchRowView>[],
@@ -157,6 +176,25 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       cell('expiresOn', { width: 140 }),
       daysColumn('expired_days', 'expired_days', (days) => -days),
     ]),
+  },
+  'stock.receipt_cost_to_complete': {
+    icon: 'request_quote',
+    list: {
+      id: 'watch-receipt-cost',
+      rowId: (view) => view.id,
+      pageSizes: PAGE_SIZES,
+      link: () => ['/stock/movements'],
+      linkQuery: (view) => receiptCostQuery(view),
+      linkColumn: 'product',
+      columns: [
+        cell('product', { hideable: false }),
+        cell('reference', { width: 140 }),
+        cell('quantity', { align: 'end', width: 120 }),
+        cell('location'),
+        cell('receivedOn', { width: 140 }),
+      ],
+      actions: [ENTER_RECEIPT_COST],
+    },
   },
   'stock.lot_expiring': {
     icon: 'event_note',

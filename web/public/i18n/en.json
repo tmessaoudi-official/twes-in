@@ -1900,7 +1900,8 @@
       "code_taken": "Another location of this establishment already has this code.",
       "in_use": "This location cannot be deleted: it is the default location, or it still holds locations or movements.",
       "invalid": "This was refused. Check the product, the location and the quantity.",
-      "level_taken": "Another floor of this establishment is already at that level."
+      "level_taken": "Another floor of this establishment is already at that level.",
+      "cost_known": "The cost of this receipt is already known."
     },
     "stock": {
       "title": "Stock",
@@ -2218,6 +2219,16 @@
       "over": "{{left}} too many",
       "invalid": "Enter the quantity received",
       "unplaced": "Place every unit before saving."
+    },
+    "receipt_cost": {
+      "section": "Cost",
+      "title": "Cost of the receipt",
+      "intro": "This receipt was recorded by someone who cannot see costs. Enter what one unit cost: once entered, it does not change.",
+      "enter": "Enter the cost",
+      "enter_of": "Enter the cost of {{name}}",
+      "keep": "Later",
+      "to_complete": "Cost to complete",
+      "entered": "Receipt cost entered."
     }
   },
   "vendors": {
@@ -3149,6 +3160,10 @@
         "lot_expiring": {
           "title": "Lots expiring soon",
           "hint": "Lots in stock whose expiry date is close: sell them first."
+        },
+        "receipt_cost_to_complete": {
+          "title": "Receipt costs to complete",
+          "hint": "Receipts recorded by someone who cannot see costs: their cost is still to be entered."
         }
       }
     },
@@ -3173,12 +3188,15 @@
       "kind": "Kind",
       "number": "Number",
       "bank": "Bank",
-      "due_days": "Due in (days)"
+      "due_days": "Due in (days)",
+      "location": "Location",
+      "receivedOn": "Received on"
     },
     "actions": {
       "see_invoices": "See {{name}}'s overdue invoices",
       "open_product": "Open {{name}}",
-      "open_invoice": "Open {{name}}"
+      "open_invoice": "Open {{name}}",
+      "enter_cost": "Enter the cost of {{name}}"
     }
   },
   "coming": {

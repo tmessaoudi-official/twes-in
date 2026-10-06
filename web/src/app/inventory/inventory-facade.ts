@@ -5,6 +5,7 @@ import { InventoryApi, InventoryRefused } from './inventory-api';
 import type { PickAsked } from '../shared/form/pick-api';
 import type { ExportFormat } from '../shared/list/export-address';
 import type {
+  CostBasis,
   InventoryError,
   StockDrawingInput,
   StockDrawingRow,
@@ -198,6 +199,19 @@ export class InventoryFacade {
         const search = this.search;
         if (search !== null) await this.loadStock(companyId, search);
       },
+    );
+  }
+
+  /** The cost a cost reader enters for a receipt left « à compléter »; true once entered and the movements read again. */
+  async enterReceiptCost(
+    companyId: string,
+    movementId: string,
+    unitCost: string,
+    applyCost: CostBasis | null,
+  ): Promise<boolean> {
+    return this.write(
+      () => this.api.enterReceiptCost(companyId, movementId, unitCost, applyCost),
+      () => this.reloadMovements(companyId),
     );
   }
 

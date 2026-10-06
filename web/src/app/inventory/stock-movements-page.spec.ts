@@ -86,6 +86,19 @@ const delivered: StockMovementRow = {
   supplierReference: null,
   receivedOn: null,
   at: '2026-09-15T09:00:00+00:00',
+  costTyped: false,
+  costToComplete: false,
+};
+/** Recorded by someone who could not read costs: valued at the average until a cost reader enters its cost. */
+const uncosted: StockMovementRow = {
+  ...delivered,
+  id: 'm2',
+  kind: 'in',
+  quantity: '10.000',
+  sourceType: 'receipt',
+  sourceId: null,
+  lotCode: null,
+  costToComplete: true,
 };
 
 describe('StockMovementsPage', () => {
@@ -105,11 +118,14 @@ describe('StockMovementsPage', () => {
     ),
     reloadMovements: vi.fn(),
     loadLocations: vi.fn(),
+    receiptCost: vi.fn(),
+    enterReceiptCost: vi.fn(),
   };
   const productScans = { named: vi.fn() };
+  const readsCosts = signal(true);
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
-    hasPermission: () => true,
+    hasPermission: (permission: string) => permission !== 'product.cost.read' || readsCosts(),
   };
   let fixture: ComponentFixture<StockMovementsPage>;
 
@@ -126,6 +142,10 @@ describe('StockMovementsPage', () => {
     for (const call of [facade.loadMovements, facade.reloadMovements, facade.loadLocations]) {
       call.mockReset().mockResolvedValue(undefined);
     }
+    facade.receiptCost.mockReset().mockResolvedValue({ mode: 'average' });
+    facade.enterReceiptCost.mockReset().mockResolvedValue(true);
+    shown.set([delivered]);
+    readsCosts.set(true);
     TestBed.configureTestingModule({
       imports: [StockMovementsPage],
       providers: [
@@ -189,6 +209,55 @@ describe('StockMovementsPage', () => {
       'c1',
       expect.objectContaining({ productId: 'p1', page: 1 }),
     );
+  });
+
+  // docs/SPEC.md § 7, audit 2026-10-06 C challenge 9.
+  it('says a receipt’s cost is to complete and lets a cost reader enter it, with only what the company leaves open', async () => {
+    shown.set([uncosted]);
+    await settle();
+    expect(q('movement-cost-to-complete')).not.toBeNull();
+
+    q('row-action-enter-cost-m2')!.click();
+    await settle();
+    expect(facade.receiptCost).toHaveBeenCalledWith('c1', 'p1', '1', '0');
+    expect(
+      document.body.querySelector('[data-testid="receipt-cost-product"]')?.textContent,
+    ).toContain('ART-1 — Portable');
+    expect(document.body.querySelector('[data-testid="field-applyCost"]')).toBeNull();
+    const cost = document.body.querySelector<HTMLInputElement>('[data-testid="field-unitCost"]')!;
+    cost.value = '1200,5';
+    cost.dispatchEvent(new Event('input'));
+    document.body.querySelector<HTMLElement>('[data-testid="receipt-cost-enter"]')!.click();
+    await settle();
+
+    expect(facade.enterReceiptCost).toHaveBeenCalledWith('c1', 'm2', '1200.5', null);
+  });
+
+  it('asks the cost of the receipt « À surveiller » sent a cost reader here for, with the choice a suggesting company leaves', async () => {
+    facade.receiptCost.mockResolvedValue({ mode: 'suggest' });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture.componentRef.setInput('productId', 'p1');
+    fixture.componentRef.setInput('costOf', 'm2');
+    await settle();
+
+    expect(document.body.querySelector('[data-testid="receipt-cost-title"]')).not.toBeNull();
+    expect(document.body.querySelector('[data-testid="field-applyCost"]')).not.toBeNull();
+    document.body.querySelector<HTMLElement>('[data-testid="receipt-cost-keep"]')!.click();
+    await settle();
+    expect(navigate).toHaveBeenCalledWith([], {
+      queryParams: { costOf: null },
+      queryParamsHandling: 'merge',
+    });
+    expect(facade.enterReceiptCost).not.toHaveBeenCalled();
+  });
+
+  it('offers no cost to whoever may not read costs', async () => {
+    readsCosts.set(false);
+    shown.set([uncosted]);
+    await settle();
+
+    expect(q('movement-cost-to-complete')).not.toBeNull();
+    expect(q('row-action-enter-cost-m2')).toBeNull();
   });
 
   it('offers what the list shows as a CSV or an Excel file', async () => {

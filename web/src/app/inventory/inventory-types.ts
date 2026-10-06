@@ -2,7 +2,7 @@
 
 /** Why the API refused, as the stock screens translate it. */
 export type InventoryError =
-  'network' | 'not_found' | 'code_taken' | 'in_use' | 'invalid' | 'level_taken';
+  'network' | 'not_found' | 'code_taken' | 'in_use' | 'invalid' | 'level_taken' | 'cost_known';
 
 /** Where stock is kept, from the whole site down to one bin (docs/SPEC.md § 7, 2026-09-14). */
 export type StockLocationKind =
@@ -167,6 +167,13 @@ export interface StockMovementRow {
   supplierReference: string | null;
   receivedOn: string | null;
   at: string;
+  /** Whether somebody typed what one unit cost, rather than the average a receipt without one is valued at. */
+  costTyped: boolean;
+  /**
+   * A receipt recorded by someone who could not read costs, whose cost a cost reader is asked to enter (docs/SPEC.md
+   * § 7, audit 2026-10-06 C challenge 9).
+   */
+  costToComplete: boolean;
 }
 
 /** What the stock of one product is worth, at the weighted average of what came in. */

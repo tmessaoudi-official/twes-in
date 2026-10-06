@@ -1900,7 +1900,8 @@
       "code_taken": "Un autre emplacement de cet établissement porte déjà ce code.",
       "in_use": "Cet emplacement ne peut pas être supprimé : c’est l’emplacement par défaut, ou il contient encore des emplacements ou des mouvements.",
       "invalid": "La saisie a été refusée. Vérifiez le produit, l’emplacement et la quantité.",
-      "level_taken": "Un autre étage de cet établissement occupe déjà ce niveau."
+      "level_taken": "Un autre étage de cet établissement occupe déjà ce niveau.",
+      "cost_known": "Le coût de cette réception est déjà connu."
     },
     "stock": {
       "title": "Stock",
@@ -2218,6 +2219,16 @@
       "over": "{{left}} de trop",
       "invalid": "Saisissez la quantité reçue",
       "unplaced": "Placez chaque unité avant d’enregistrer."
+    },
+    "receipt_cost": {
+      "section": "Coût",
+      "title": "Coût de la réception",
+      "intro": "Cette réception a été saisie par quelqu’un qui ne voit pas les coûts. Saisissez ce qu’une unité a coûté : une fois saisi, il ne se change plus.",
+      "enter": "Saisir le coût",
+      "enter_of": "Saisir le coût de {{name}}",
+      "keep": "Plus tard",
+      "to_complete": "Coût à compléter",
+      "entered": "Coût de la réception saisi."
     }
   },
   "vendors": {
@@ -3149,6 +3160,10 @@
         "lot_expiring": {
           "title": "Lots bientôt périmés",
           "hint": "Des lots en stock dont la date limite approche : à vendre en priorité."
+        },
+        "receipt_cost_to_complete": {
+          "title": "Coûts de réception à compléter",
+          "hint": "Des réceptions saisies par quelqu’un qui ne voit pas les coûts : leur coût reste à saisir."
         }
       }
     },
@@ -3173,12 +3188,15 @@
       "kind": "Type",
       "number": "Numéro",
       "bank": "Banque",
-      "due_days": "Échéance dans (jours)"
+      "due_days": "Échéance dans (jours)",
+      "location": "Emplacement",
+      "receivedOn": "Reçue le"
     },
     "actions": {
       "see_invoices": "Voir les factures en retard de {{name}}",
       "open_product": "Ouvrir {{name}}",
-      "open_invoice": "Ouvrir {{name}}"
+      "open_invoice": "Ouvrir {{name}}",
+      "enter_cost": "Saisir le coût de {{name}}"
     }
   },
   "coming": {

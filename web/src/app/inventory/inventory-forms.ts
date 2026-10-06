@@ -7,6 +7,7 @@ import {
   STOCK_MOVEMENT_KINDS,
   STOCK_LOSS_REASONS,
   COST_BASES,
+  type CostBasis,
   type CostOnReceive,
   STOCK_SOURCE_TYPES,
   type StockLevelRow,
@@ -722,6 +723,63 @@ function lotFields(
           } satisfies FormField,
         ]),
   ];
+}
+
+/**
+ * What a cost reader enters for a receipt left « à compléter » (docs/SPEC.md § 7, audit 2026-10-06 C challenge 9):
+ * what one unit cost and, only where the company leaves it to the receipt, whether the product now costs that or the
+ * new average, as the receipt itself would have asked.
+ */
+export function receiptCostForm(costMode: CostOnReceive | null): FormDescriptor {
+  return {
+    id: 'stock-receipt-cost',
+    sections: [
+      {
+        id: 'cost',
+        title: 'inventory.receipt_cost.section',
+        fields: [
+          {
+            id: 'unitCost',
+            label: `${STOCK_FIELDS}.unitCost`,
+            kind: 'decimal',
+            required: true,
+            maxLength: 16,
+            pattern: COST_PATTERN,
+            hint: 'inventory.movement.cost_hint',
+          },
+          ...(costMode === 'suggest'
+            ? [
+                {
+                  id: 'applyCost',
+                  label: `${STOCK_FIELDS}.applyCost`,
+                  kind: 'select' as const,
+                  options: [
+                    { value: '', label: 'inventory.movement.apply_cost.none' },
+                    { value: 'last', label: 'inventory.movement.apply_cost.last' },
+                    { value: 'average', label: 'inventory.movement.apply_cost.average' },
+                  ],
+                  hint: 'inventory.movement.apply_cost_hint',
+                },
+              ]
+            : []),
+        ],
+      },
+    ],
+  };
+}
+
+export function receiptCostValues(): FormValues {
+  return { unitCost: '', applyCost: '' };
+}
+
+export function receiptCostInput(values: FormValues): {
+  unitCost: string;
+  applyCost: CostBasis | null;
+} {
+  return {
+    unitCost: text(values['unitCost']),
+    applyCost: COST_BASES.find((candidate) => candidate === values['applyCost']) ?? null,
+  };
 }
 
 export function movementInput(operation: StockOperation, values: FormValues): StockMovementInput {

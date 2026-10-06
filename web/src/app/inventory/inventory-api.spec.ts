@@ -51,6 +51,8 @@ const received: StockMovementRow = {
   supplierReference: null,
   receivedOn: null,
   at: '2026-09-15T09:00:00+00:00',
+  costTyped: false,
+  costToComplete: false,
 };
 
 describe('InventoryApi', () => {
@@ -404,6 +406,28 @@ describe('InventoryApi', () => {
       .expectOne('/api/companies/c1/stock-receipts')
       .flush({ detail: 'locationId' }, { status: 422, statusText: 'Unprocessable Entity' });
     await expect(refused).rejects.toMatchObject({ code: 'invalid' });
+  });
+
+  // docs/SPEC.md § 7, audit 2026-10-06 C challenge 9.
+  it('enters the cost of a receipt left to complete, and says when its cost is already known', async () => {
+    const entered = api.enterReceiptCost('c1', 'm1', '1200.5', null);
+    const post = http.expectOne('/api/companies/c1/stock-movements/m1/cost');
+    expect([post.request.method, post.request.body]).toEqual(['POST', { unitCost: '1200.5' }]);
+    post.flush({
+      id: 'm1',
+      productId: 'p1',
+      kind: 'in',
+      sourceType: 'receipt',
+      costTyped: true,
+      costToComplete: false,
+    });
+    expect(await entered).toMatchObject({ id: 'm1', costTyped: true, costToComplete: false });
+
+    const known = api.enterReceiptCost('c1', 'm1', '1300', 'last');
+    const again = http.expectOne('/api/companies/c1/stock-movements/m1/cost');
+    expect(again.request.body).toEqual({ unitCost: '1300', applyCost: 'last' });
+    again.flush({ detail: 'known' }, { status: 409, statusText: 'Conflict' });
+    await expect(known).rejects.toMatchObject({ code: 'cost_known' });
   });
 
   it('records a receipt or a count, and says why one was refused', async () => {

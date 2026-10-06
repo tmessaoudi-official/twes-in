@@ -73,6 +73,13 @@
         @if (row.note; as note) {
           <span class="block text-sm" data-testid="movement-note">{{ note }}</span>
         }
+        @if (row.costToComplete) {
+          <span
+            class="block text-sm text-on-surface-variant"
+            data-testid="movement-cost-to-complete"
+            >{{ 'inventory.receipt_cost.to_complete' | translate }}</span
+          >
+        }
       </ng-template>
     </app-data-list>
   </section>

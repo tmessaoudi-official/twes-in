@@ -27,11 +27,13 @@ import type {
   StockReceiptStockReceiptReadValidationStockReceiptWrite as StockReceiptStockReceiptRead,
   StockReceiptStockReceiptWriteValidationStockReceiptWrite as StockReceiptStockReceiptWrite,
   ReceiptCostReceiptCostRead,
+  ReceiptCostEntryReceiptCostEntryWriteValidationReceiptCostEntryWrite as ReceiptCostEntryWrite,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import type { ListPage } from '../shared/list/list-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import {
+  type CostBasis,
   type InventoryError,
   type StockDrawingInput,
   type StockDrawingRow,
@@ -516,6 +518,31 @@ export class InventoryApi {
     });
   }
 
+  /**
+   * The cost of a receipt left « à compléter », entered by a cost reader (docs/SPEC.md § 7, audit 2026-10-06 C
+   * challenge 9); a receipt whose cost is already known answers `cost_known`.
+   */
+  async enterReceiptCost(
+    companyId: string,
+    movementId: string,
+    unitCost: string,
+    applyCost: CostBasis | null,
+  ): Promise<StockMovementRow> {
+    const body: ReceiptCostEntryWrite = { unitCost, ...(applyCost === null ? {} : { applyCost }) };
+    return this.guard(
+      async () =>
+        toMovement(
+          await firstValueFrom(
+            this.http.post<StockMovementStockMovementRead>(
+              `${path(companyId, 'stock-movements', movementId)}/cost`,
+              body,
+            ),
+          ),
+        ),
+      'cost_known',
+    );
+  }
+
   private async guard<T>(call: () => Promise<T>, conflict: InventoryError = 'invalid'): Promise<T> {
     try {
       return await call();
@@ -716,5 +743,7 @@ function toMovement(
     supplierReference: raw.supplierReference ?? null,
     receivedOn: raw.receivedOn ?? null,
     at: raw.at ?? '',
+    costTyped: raw.costTyped ?? false,
+    costToComplete: raw.costToComplete ?? false,
   };
 }

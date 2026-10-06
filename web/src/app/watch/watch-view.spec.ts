@@ -55,6 +55,33 @@ describe('watchRowView', () => {
     expect(view.cells['days']).toBe(-2);
   });
 
+  it('writes a receipt whose cost is to complete with its place and the day it arrived', () => {
+    const view = watchRowView(
+      {
+        kind: 'stock.receipt_cost_to_complete',
+        subjectId: 'm1',
+        params: {
+          productId: 'p1',
+          product: 'Portable',
+          reference: 'ART-1',
+          quantity: '10.000',
+          location: 'Réserve',
+          receivedOn: '2026-10-06',
+        },
+      },
+      0,
+      figures,
+    );
+
+    expect(view.cells).toEqual({
+      product: 'Portable',
+      reference: 'ART-1',
+      quantity: '10',
+      location: 'Réserve',
+      receivedOn: '06/10/2026',
+    });
+  });
+
   it("writes a cheque fallen due with its kind said in the screen's language and its day count", () => {
     const view = watchRowView(
       {

@@ -9,6 +9,9 @@ import {
   locationValues,
   MOVEMENTS_LIST,
   movementForm,
+  receiptCostForm,
+  receiptCostInput,
+  receiptCostValues,
   movementInput,
   receiptInput,
   movementListRows,
@@ -110,6 +113,8 @@ function movement(
     supplierReference: null,
     receivedOn: null,
     at: '2026-09-15T09:00:00+00:00',
+    costTyped: false,
+    costToComplete: false,
   };
 }
 
@@ -584,6 +589,30 @@ describe('the cost of a receipt', () => {
     expect(movementInput('count', { ...values, applyCost: 'last' })).not.toHaveProperty(
       'applyCost',
     );
+  });
+});
+
+// docs/SPEC.md § 7, audit 2026-10-06 C challenge 9.
+describe('the cost a cost reader enters for a receipt left to complete', () => {
+  const asked = (mode: CostOnReceive | null) =>
+    receiptCostForm(mode)
+      .sections.flatMap((section) => section.fields)
+      .map((field) => field.id);
+
+  it('asks the cost, and what it does to the product only where the company leaves that to a receipt', () => {
+    expect(asked('suggest')).toEqual(['unitCost', 'applyCost']);
+    for (const mode of ['average', 'last', 'manual', null] as const) {
+      expect(asked(mode)).toEqual(['unitCost']);
+    }
+  });
+
+  it('sends the cost trimmed and a basis only when one was chosen', () => {
+    expect(receiptCostInput({ ...receiptCostValues(), unitCost: ' 12.5 ' })).toEqual({
+      unitCost: '12.5',
+      applyCost: null,
+    });
+    expect(receiptCostInput({ unitCost: '12.5', applyCost: 'average' }).applyCost).toBe('average');
+    expect(receiptCostInput({ unitCost: '12.5', applyCost: 'manual' }).applyCost).toBeNull();
   });
 });
 

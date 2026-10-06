@@ -27,7 +27,7 @@ final readonly class ReceiptCostWatch implements DeclaresWatch
 {
     public const string COST_TO_COMPLETE = 'stock.receipt_cost_to_complete';
 
-    private const string ROWS = 'SELECT m.id, p.name, p.reference, m.quantity, l.name AS location, COALESCE(m.received_on, m.at::date) AS received_on, m.at
+    private const string ROWS = 'SELECT m.id, m.product_id, p.name, p.reference, m.quantity, l.name AS location, COALESCE(m.received_on, m.at::date) AS received_on, m.at
           FROM stock_movement m
           JOIN product p ON p.id = m.product_id
           JOIN stock_location l ON l.id = m.location_id
@@ -76,6 +76,7 @@ final readonly class ReceiptCostWatch implements DeclaresWatch
         );
 
         return new Page(array_map(static fn (array $row): WatchItem => new WatchItem(self::COST_TO_COMPLETE, self::text($row['id']), [
+            'productId' => self::text($row['product_id']),
             'product' => self::text($row['name']),
             'reference' => self::text($row['reference']),
             'quantity' => self::text($row['quantity']),
