@@ -99,6 +99,13 @@ export class ProductPage {
     const product = this.facade.product();
     return product?.id === id ? product : undefined;
   });
+  /** How many units each of the product's packs holds, for the calculator's price per pack; none before it is saved. */
+  protected readonly packCounts = computed(
+    () =>
+      this.current()
+        ?.barcodes.filter((code) => code.role === 'pack')
+        .map((code) => code.quantity) ?? [],
+  );
   /**
    * The tab on view. It starts on the one the address names once that tab exists — the codes tab only appears when
    * the product has been read — and a reload of the same product leaves the person's own choice alone. The key is a

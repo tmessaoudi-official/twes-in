@@ -462,4 +462,31 @@ describe('ProductsApi', () => {
     del.flush(null, { status: 409, statusText: 'Conflict' });
     await expect(removed).rejects.toEqual(new ProductsRefused('in_use'));
   });
+
+  it('asks the API what a price comes to with its taxes, one line per quantity, saving nothing', async () => {
+    const counted = api.pricePreview('c1', '100.000', ['t1', 't2'], ['1', '12']);
+    const post = http.expectOne('/api/companies/c1/price-preview');
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body).toEqual({
+      unitPriceNet: '100.000',
+      taxComponentIds: ['t1', 't2'],
+      quantities: ['1', '12'],
+    });
+    post.flush({
+      prices: [
+        { quantity: '1', net: '100.000', tax: '20.190', total: '120.190' },
+        { quantity: '12', net: '1200.000', tax: '242.280', total: '1442.280' },
+      ],
+    });
+    expect(await counted).toEqual([
+      { quantity: '1', net: '100.000', tax: '20.190', total: '120.190' },
+      { quantity: '12', net: '1200.000', tax: '242.280', total: '1442.280' },
+    ]);
+
+    const refused = api.pricePreview('c1', '100.000', ['nope'], ['1']);
+    http
+      .expectOne('/api/companies/c1/price-preview')
+      .flush({}, { status: 422, statusText: 'Unprocessable Content' });
+    await expect(refused).rejects.toBeInstanceOf(ProductsRefused);
+  });
 });

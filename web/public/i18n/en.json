@@ -1844,7 +1844,7 @@
     },
     "calculator": {
       "title": "Price calculator",
-      "intro": "Before tax. Margin and markup say the same thing two ways: both start from the profit (price − cost), but margin compares it with the selling price and markup with the cost. That is why a 30 % margin gives a higher price than adding 30 % to the cost.",
+      "intro": "Before tax, margin and markup say the same thing two ways: both start from the profit (price − cost), but margin compares it with the selling price and markup with the cost. That is why a 30 % margin gives a higher price than adding 30 % to the cost.",
       "missing": "Enter the cost and the net price to see what a unit earns.",
       "profit": "Profit per unit",
       "margin": "Margin (on the price)",
@@ -1859,7 +1859,15 @@
       "markup_how": "Profit {{profit}} ÷ cost {{cost}}",
       "target_margin": "Cost {{cost}} ÷ (1 − {{percent}} %) = {{price}}: the profit is {{percent}} % of this price.",
       "target_markup": "Cost {{cost}} × (1 + {{percent}} %) = {{price}}: the profit is {{percent}} % of the cost.",
-      "no_price": "No price gives that percentage: a margin stays under 100 %."
+      "no_price": "No price gives that percentage: a margin stays under 100 %.",
+      "with_tax": "With taxes",
+      "with_tax_unavailable": "The taxes on this price cannot be counted right now.",
+      "quantity": "Quantity",
+      "per_unit": "One unit",
+      "per_pack": "Pack of {{count}}",
+      "net": "Before tax ({{currency}})",
+      "tax": "Taxes",
+      "total": "With tax ({{currency}})"
     },
     "labels": {
       "title": "Product labels",

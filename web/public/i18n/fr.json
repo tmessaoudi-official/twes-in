@@ -1844,7 +1844,7 @@
     },
     "calculator": {
       "title": "Calculateur de prix",
-      "intro": "Hors taxes. La marge et la majoration disent la même chose de deux façons : toutes deux partent du bénéfice (prix − coût), mais la marge le compare au prix de vente et la majoration au coût. C'est pourquoi une marge de 30 % donne un prix plus haut que 30 % ajoutés au coût.",
+      "intro": "Hors taxes, la marge et la majoration disent la même chose de deux façons : toutes deux partent du bénéfice (prix − coût), mais la marge le compare au prix de vente et la majoration au coût. C'est pourquoi une marge de 30 % donne un prix plus haut que 30 % ajoutés au coût.",
       "missing": "Saisissez le coût et le prix HT pour voir ce que rapporte une unité.",
       "profit": "Bénéfice par unité",
       "margin": "Marge (sur le prix)",
@@ -1859,7 +1859,15 @@
       "markup_how": "Bénéfice {{profit}} ÷ coût {{cost}}",
       "target_margin": "Coût {{cost}} ÷ (1 − {{percent}} %) = {{price}} : le bénéfice représente {{percent}} % de ce prix.",
       "target_markup": "Coût {{cost}} × (1 + {{percent}} %) = {{price}} : le bénéfice représente {{percent}} % du coût.",
-      "no_price": "Aucun prix ne donne ce pourcentage : une marge reste sous 100 %."
+      "no_price": "Aucun prix ne donne ce pourcentage : une marge reste sous 100 %.",
+      "with_tax": "Avec les taxes",
+      "with_tax_unavailable": "Les taxes de ce prix ne peuvent pas être comptées pour l'instant.",
+      "quantity": "Quantité",
+      "per_unit": "À l'unité",
+      "per_pack": "Colis de {{count}}",
+      "net": "HT ({{currency}})",
+      "tax": "Taxes",
+      "total": "TTC ({{currency}})"
     },
     "labels": {
       "title": "Étiquettes produit",

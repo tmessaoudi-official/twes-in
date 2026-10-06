@@ -9,6 +9,7 @@ import type { ExportFormat } from '../shared/list/export-address';
 import { ProductsApi, ProductsRefused } from './products-api';
 import { trackingOf } from './products-types';
 import type {
+  PricePreviewLine,
   ProductBarcode,
   ProductCategoryInput,
   ProductCategoryRow,
@@ -147,6 +148,23 @@ export class ProductsFacade {
       () => this.api.deleteCategory(companyId, id),
       () => this.reloadCategories(companyId),
     );
+  }
+
+  /**
+   * The with-tax figures of a price being typed, or null when the API could not count them (a tax it refuses, the
+   * network). Quiet: a preview that fails says so where it is shown, never as the page's error.
+   */
+  async pricePreview(
+    companyId: string,
+    unitPriceNet: string,
+    taxComponentIds: readonly string[],
+    quantities: readonly string[],
+  ): Promise<PricePreviewLine[] | null> {
+    try {
+      return await this.api.pricePreview(companyId, unitPriceNet, taxComponentIds, quantities);
+    } catch {
+      return null;
+    }
   }
 
   clearError(): void {

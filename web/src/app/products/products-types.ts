@@ -213,3 +213,14 @@ export interface ProductHomeRow {
   /** The first of its establishment: the place a receipt proposes. */
   main: boolean;
 }
+
+/**
+ * A price counted with its line taxes on one line of `quantity` (a unit, a pack) by the API's calculator, the one
+ * every document uses: before tax, the taxes and what a customer pays, each at the currency's scale.
+ */
+export interface PricePreviewLine {
+  quantity: string;
+  net: string;
+  tax: string;
+  total: string;
+}

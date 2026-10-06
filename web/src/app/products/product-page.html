@@ -73,6 +73,8 @@
                   [scale]="currencyScale()"
                   [currency]="currency()"
                   [readOnly]="!mayWrite()"
+                  [companyId]="company()?.id ?? null"
+                  [packs]="packCounts()"
                 />
               </mat-card-content>
             </mat-card>

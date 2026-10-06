@@ -26,6 +26,7 @@ import { ProductPage } from './product-page';
 import { ProductOnView } from './product-on-view';
 import type { SettingRow } from '../shared/settings/settings-types';
 import { ArticleSettings } from './article-settings-facade';
+import { PRICE_PREVIEW_DELAY } from './price-calculator';
 import { ProductsFacade } from './products-facade';
 import type {
   ProductCategoryRow,
@@ -87,6 +88,7 @@ describe('ProductPage', () => {
     createProduct: vi.fn(),
     reviseProduct: vi.fn(),
     clearError: vi.fn(),
+    pricePreview: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -144,6 +146,7 @@ describe('ProductPage', () => {
     facade.loadProduct.mockReset().mockResolvedValue(undefined);
     facade.createProduct.mockReset().mockResolvedValue({ ...laptop, id: 'p9' });
     facade.reviseProduct.mockReset().mockResolvedValue(laptop);
+    facade.pricePreview.mockReset().mockResolvedValue(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
     auth.hasModule.mockReset().mockReturnValue(true);
     articleSettings.load.mockReset().mockResolvedValue(undefined);
@@ -161,6 +164,7 @@ describe('ProductPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: ProductsFacade, useValue: facade },
+        { provide: PRICE_PREVIEW_DELAY, useValue: 0 },
         { provide: ArticleSettings, useValue: articleSettings },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
@@ -420,6 +424,22 @@ describe('ProductPage', () => {
     );
     await open('p1');
     expect(hasTab()).toBe(false);
+  });
+
+  // Audit 2026-10-06, B-9: the price per pack is the product's own packs, counted for the working company.
+  it("asks the calculator's taxes for a unit and for each of the product's packs", async () => {
+    product.set({
+      ...laptop,
+      barcodes: [
+        { role: 'unit', code: '3017620422003', quantity: 1, supplierId: null },
+        { role: 'pack', code: '13017620422000', quantity: 12, supplierId: null },
+      ],
+    });
+    await open('p1');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await settle();
+
+    expect(facade.pricePreview).toHaveBeenCalledWith('c1', '1250.500', ['t1'], ['1', '12']);
   });
 
   // docs/SPEC.md § 7, 2026-09-23 slice 5.

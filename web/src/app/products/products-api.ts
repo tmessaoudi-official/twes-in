@@ -11,6 +11,8 @@ import type {
   ProductHomeProductHomeRead,
   ProductReorderPointProductReorderPointRead,
   ProductOptionsProductOptionsRead,
+  PricePreviewPricePreviewReadValidationPricePreviewWrite as PricePreviewRead,
+  PricePreviewPricePreviewWriteValidationPricePreviewWrite as PricePreviewWrite,
   ProductBarcodeRowJsonldProductRead,
   ProductBarcodeRowProductBarcodesRead,
   ProductBarcodeRowProductRead,
@@ -39,6 +41,7 @@ import {
   type ProductCostChangeRow,
   type ProductSubstituteRow,
   type ProductInput,
+  type PricePreviewLine,
   type ProductOptions,
   type ProductRow,
   type ProductScan,
@@ -106,6 +109,30 @@ export class ProductsApi {
       toProduct(
         await firstValueFrom(this.http.get<ProductProductRead>(path(companyId, 'products', id))),
       ),
+    );
+  }
+
+  /**
+   * What `unitPriceNet` comes to with the line taxes `taxComponentIds`, one line per quantity, counted by the API: the
+   * price calculator's with-tax figures. Nothing is saved.
+   */
+  async pricePreview(
+    companyId: string,
+    unitPriceNet: string,
+    taxComponentIds: readonly string[],
+    quantities: readonly string[],
+  ): Promise<PricePreviewLine[]> {
+    const body: PricePreviewWrite = {
+      unitPriceNet,
+      taxComponentIds: [...taxComponentIds],
+      quantities: [...quantities],
+    };
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.post<PricePreviewRead>(path(companyId, 'price-preview'), body),
+        )
+      ).prices.map(({ quantity, net, tax, total }) => ({ quantity, net, tax, total })),
     );
   }
 
