@@ -92,13 +92,13 @@ describe('PriceCalculator', () => {
     await open('60.000', '100.000');
 
     expect(text('price-calculator-profit')).toBe('~40.000 TND');
-    expect(text('price-calculator-margin')).toBe('40.00 %');
-    expect(text('price-calculator-markup')).toBe('66.67 %');
+    expect(text('price-calculator-margin')).toBe('~40.00 %');
+    expect(text('price-calculator-markup')).toBe('~66.67 %');
 
     form.get('unitPriceNet')!.setValue('120.000');
     fixture.detectChanges();
     expect(text('price-calculator-profit')).toBe('~60.000 TND');
-    expect(text('price-calculator-margin')).toBe('50.00 %');
+    expect(text('price-calculator-margin')).toBe('~50.00 %');
   });
 
   it('asks for both amounts before it says anything, and offers no price without a cost', async () => {
@@ -126,7 +126,7 @@ describe('PriceCalculator', () => {
     fixture.detectChanges();
     expect(form.get('unitPriceNet')!.value).toBe('67.500');
     expect(form.get('unitPriceNet')!.dirty).toBe(true);
-    expect(text('price-calculator-markup')).toBe('12.50 %');
+    expect(text('price-calculator-markup')).toBe('~12.50 %');
   });
 
   it('also says the price the same percentage gives on the other basis, so 30 % is not read as the wrong one', async () => {

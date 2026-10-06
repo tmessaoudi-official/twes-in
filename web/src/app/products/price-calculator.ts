@@ -83,7 +83,7 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
           <div>
             <dt class="text-sm opacity-80">{{ 'products.calculator.margin' | translate }}</dt>
             <dd class="m-0 text-xl font-semibold" data-testid="price-calculator-margin">
-              {{ percentShown(margin()) }}
+              {{ percentOf(margin()) === null ? '—' : (percentOf(margin()) | amount: 2) + ' %' }}
             </dd>
             <dd class="m-0 text-sm opacity-80" data-testid="price-calculator-margin-how">
               {{
@@ -99,7 +99,7 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
           <div>
             <dt class="text-sm opacity-80">{{ 'products.calculator.markup' | translate }}</dt>
             <dd class="m-0 text-xl font-semibold" data-testid="price-calculator-markup">
-              {{ percentShown(markup()) }}
+              {{ percentOf(markup()) === null ? '—' : (percentOf(markup()) | amount: 2) + ' %' }}
             </dd>
             <dd class="m-0 text-sm opacity-80" data-testid="price-calculator-markup-how">
               {{
@@ -153,7 +153,7 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
               </button>
             }
           </div>
-          <mat-form-field class="w-40">
+          <mat-form-field class="w-40" floatLabel="always">
             <mat-label>{{ 'products.calculator.wanted' | translate }}</mat-label>
             <input
               matInput
@@ -212,6 +212,7 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
                 <button
                   mat-flat-button
                   type="button"
+                  class="self-start"
                   (click)="apply(target)"
                   data-testid="price-calculator-apply"
                 >
@@ -363,8 +364,9 @@ export class PriceCalculator {
     return value === null ? '' : atCurrencyScale(value, this.scale());
   }
 
-  protected percentShown(value: number | null): string {
-    return value === null ? '—' : `${(Math.round(value * 100) / 100).toFixed(2)} %`;
+  /** A percentage at two decimals, as the amount pipe takes it; none for a figure there is not. */
+  protected percentOf(value: number | null): string | null {
+    return value === null ? null : (Math.round(value * 100) / 100).toFixed(2);
   }
 
   protected asLines(lines: unknown): PricePreviewLine[] {
