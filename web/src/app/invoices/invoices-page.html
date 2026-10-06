@@ -65,7 +65,9 @@
         {{ row.issueDate | day }}
       </ng-template>
       <ng-template appDataListCell="dueDate" let-row>
-        {{ row.dueDate | day }}
+        @if (row.type === 'invoice') {
+          {{ row.dueDate | day }}
+        }
       </ng-template>
       <ng-template appDataListCell="total" let-row>
         <span class="tabular-nums">{{ row.total | amount: scale() }}</span>

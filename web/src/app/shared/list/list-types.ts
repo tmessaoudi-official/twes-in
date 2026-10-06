@@ -17,6 +17,11 @@ export interface ListColumn<Row> {
   /** A translation key for declared columns; custom columns carry their configured label. */
   label: string;
   value: (row: Row) => CellValue;
+  /**
+   * Whether this row has anything in the column, for a card, which names each field it shows: without it, a field
+   * drawn by a cell template is always shown and a plain one is left out when its value is empty.
+   */
+  shown?: (row: Row) => boolean;
   sortable?: boolean;
   filterable?: boolean;
   /** False keeps the column on screen whatever a person hid; defaults to true. */

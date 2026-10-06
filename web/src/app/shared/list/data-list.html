@@ -325,23 +325,25 @@
           </div>
           <dl class="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
             @for (column of cardColumns(); track column.id) {
-              <dt
-                class="text-on-surface-variant"
-                [attr.data-testid]="'list-card-label-' + column.id"
-              >
-                {{ column.label | translate }}
-              </dt>
-              <dd
-                class="min-w-0 break-words"
-                [class]="column.align === 'end' ? 'tabular-nums' : ''"
-                [attr.data-testid]="'list-card-value-' + column.id"
-              >
-                @if (cellTemplates().get(column.id); as template) {
-                  <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
-                } @else {
-                  {{ column.value(row) }}
-                }
-              </dd>
+              @if (inCard(column, row)) {
+                <dt
+                  class="text-on-surface-variant"
+                  [attr.data-testid]="'list-card-label-' + column.id"
+                >
+                  {{ column.label | translate }}
+                </dt>
+                <dd
+                  class="min-w-0 break-words"
+                  [class]="column.align === 'end' ? 'tabular-nums' : ''"
+                  [attr.data-testid]="'list-card-value-' + column.id"
+                >
+                  @if (cellTemplates().get(column.id); as template) {
+                    <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
+                  } @else {
+                    {{ column.value(row) }}
+                  }
+                </dd>
+              }
             }
           </dl>
         </li>

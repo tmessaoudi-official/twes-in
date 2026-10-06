@@ -417,6 +417,28 @@ final class InvoicesTest extends ApiTestCase
         self::assertMatchesRegularExpression('/data-testid="paid-stamp-balance">Reste dû [0-9\s\x{00A0}\x{202F},.]+ au '.preg_quote($today->format('d/m/Y'), '/').'</u', $page);
     }
 
+    public function testACreditNotePrintsNoDueDayNorTermsWhichOnlyAnInvoiceHas(): void
+    {
+        // A credit note is owed by the company, not paid by a day: « Échéance » on it read as a bill.
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $id = $this->issuedInvoice();
+        $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $creditId = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($creditId).'/issue', null);
+        self::assertResponseIsSuccessful();
+
+        $this->client->request('GET', $this->path($id).'/pdf/current');
+        $invoice = (string) $this->client->getResponse()->getContent();
+        $this->client->request('GET', $this->path($creditId).'/pdf/current');
+        $credit = (string) $this->client->getResponse()->getContent();
+
+        self::assertStringContainsString('<dt>Échéance</dt>', $invoice);
+        self::assertStringContainsString('<dt>Paiement</dt>', $invoice);
+        self::assertStringNotContainsString('<dt>Échéance</dt>', $credit);
+        self::assertStringNotContainsString('<dt>Paiement</dt>', $credit);
+    }
+
     public function testADraftPrintsOnRequestAndAnIssuedInvoicePrintsAsItWasIssued(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);

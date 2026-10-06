@@ -86,6 +86,7 @@ export const EXPENSES_LIST: ListDescriptor<ExpenseRow> = {
       // API can order a page by.
       label: `${FIELDS}.dueDate`,
       value: (row) => row.dueDate ?? '',
+      shown: (row) => row.dueDate !== null,
       defaultHidden: true,
       width: 130,
     },

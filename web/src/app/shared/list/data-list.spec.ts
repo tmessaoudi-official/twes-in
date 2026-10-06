@@ -1044,6 +1044,31 @@ describe('DataList', () => {
       }
     });
 
+    it('leaves out a field the row has nothing in, or that its column says the row does not show', async () => {
+      // A label with nothing under it (« Échéance » on a credit note, « Lot » on goods kept by none) reads as missing data.
+      host.componentInstance.descriptor.set({
+        ...declared,
+        columns: declared.columns.map((column) =>
+          column.id === 'city'
+            ? { ...column, value: (row: Customer) => (row.city === 'Sfax' ? '' : row.city) }
+            : column.id === 'balance'
+              ? { ...column, shown: (row: Customer) => row.status === 'active' }
+              : column,
+        ),
+      });
+      host.detectChanges();
+      await host.whenStable();
+      host.detectChanges();
+
+      expect(card('1')!.querySelector('[data-testid="list-card-label-city"]')).toBeNull();
+      expect(card('1')!.querySelector('[data-testid="list-card-value-balance"]')).not.toBeNull();
+      expect(
+        card('2')!.querySelector('[data-testid="list-card-value-city"]')?.textContent,
+      ).toContain('Paris');
+      expect(card('2')!.querySelector('[data-testid="list-card-label-balance"]')).toBeNull();
+      expect(card('1')!.querySelector('[data-testid="list-card-label-status"]')).not.toBeNull();
+    });
+
     it('leads with the column that names the record, and does not repeat it below', () => {
       expect(card('1')?.querySelector('[data-testid="list-card-title-1"]')?.textContent).toContain(
         'Customer 01',

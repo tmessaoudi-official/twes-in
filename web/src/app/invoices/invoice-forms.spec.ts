@@ -295,6 +295,23 @@ describe('invoice forms', () => {
     expect(row && filter?.value(row)).toBe('overdue');
   });
 
+  it('gives a credit note no due day nor anything owed on a card, which only an issued invoice has', () => {
+    const column = (id: string) => INVOICES_LIST.columns.find((candidate) => candidate.id === id);
+    const [issued, credit, draft] = invoiceListRows(
+      [
+        invoice({ status: 'issued' }),
+        invoice({ type: 'credit_note', status: 'issued' }),
+        invoice({ status: 'draft', dueDate: null }),
+      ],
+      '2026-09-16',
+    );
+    for (const id of ['dueDate', 'amountDue']) {
+      expect(column(id)?.shown?.(issued!)).toBe(true);
+      expect(column(id)?.shown?.(credit!)).toBe(false);
+      expect(column(id)?.shown?.(draft!)).toBe(false);
+    }
+  });
+
   it('offers the establishments, keeping the one a document already names, and asks the customer elsewhere', () => {
     const form = invoiceForm(options, invoice({ customerId: 'gone', establishmentId: 'closed' }));
     const fields = form.sections.flatMap((section) => section.fields);

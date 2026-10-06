@@ -99,10 +99,10 @@
 
   <dl class="facts">
     {% if invoice.issueDate %}<div><dt>{{ 'invoice.issue_date'|trans({}, t, locale) }}</dt><dd>{{ invoice.issueDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
-    {% if invoice.dueDate %}<div><dt>{{ 'invoice.due_date'|trans({}, t, locale) }}</dt><dd>{{ invoice.dueDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
+    {% if invoice.dueDate and invoice.type.value != 'credit_note' %}<div><dt>{{ 'invoice.due_date'|trans({}, t, locale) }}</dt><dd>{{ invoice.dueDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
     {% if header.supplyDate %}<div><dt>{{ 'invoice.supply_date'|trans({}, t, locale) }}</dt><dd>{{ header.supplyDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
     {% if header.customerReference %}<div><dt>{{ 'invoice.customer_reference'|trans({}, t, locale) }}</dt><dd>{{ header.customerReference }}</dd></div>{% endif %}
-    {% if header.paymentTermsDays is not null %}<div><dt>{{ 'invoice.payment'|trans({}, t, locale) }}</dt><dd>{{ 'invoice.payment_terms'|trans({'%days%': header.paymentTermsDays}, t, locale) }}</dd></div>{% endif %}
+    {% if header.paymentTermsDays is not null and invoice.type.value != 'credit_note' %}<div><dt>{{ 'invoice.payment'|trans({}, t, locale) }}</dt><dd>{{ 'invoice.payment_terms'|trans({'%days%': header.paymentTermsDays}, t, locale) }}</dd></div>{% endif %}
   </dl>
 
   <table>

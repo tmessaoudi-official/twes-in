@@ -135,6 +135,7 @@ export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {
       id: 'deliveryDate',
       label: `${FIELDS}.deliveryDate`,
       value: (row) => row.deliveryDate ?? '',
+      shown: (row) => row.deliveryDate !== null,
       sortable: true,
       width: 150,
     },

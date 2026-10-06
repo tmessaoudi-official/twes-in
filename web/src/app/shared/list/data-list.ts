@@ -263,6 +263,14 @@ export class DataList<Row> implements OnInit {
     return this.columns().filter((column) => column.id !== title?.id);
   });
 
+  /** Whether a card names this field for the row: a label with nothing under it reads as data that is missing. */
+  protected inCard(column: ListColumn<Row>, row: Row): boolean {
+    if (column.shown) return column.shown(row);
+    if (this.cellTemplates().has(column.id)) return true;
+    const value = column.value(row);
+    return value !== null && value !== '';
+  }
+
   protected readonly columnIds = computed(() => [
     ...this.columns().map((column) => column.id),
     ...(this.hasRowControls() ? [ACTIONS_COLUMN] : []),

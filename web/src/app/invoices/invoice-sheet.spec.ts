@@ -192,6 +192,13 @@ describe('InvoiceSheet', () => {
     expect(text('invoice-sheet-payment-p1')).toContain('5 950,000');
   });
 
+  it('gives a credit note no due day nor terms, which only an invoice has', async () => {
+    await open({ ...invoice, type: 'credit_note', correctsInvoiceId: 'i0', status: 'issued' });
+    expect(text('invoice-sheet-details')).toContain('10/09/2026');
+    expect(text('invoice-sheet-details')).not.toContain('Échéance');
+    expect(text('invoice-sheet-details')).not.toContain('30 jours');
+  });
+
   it('says how late a document is once its due day has passed', async () => {
     await open(invoice, '2026-10-13');
     expect(text('invoice-sheet-due')).toContain('3 j de retard');
