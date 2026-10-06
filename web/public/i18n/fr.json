@@ -698,7 +698,8 @@
       "from": "Du",
       "to": "Au",
       "min": "Au moins",
-      "max": "Au plus"
+      "max": "Au plus",
+      "inverted": "La fin précède le début : cet intervalle n’est pas appliqué."
     }
   },
   "form": {

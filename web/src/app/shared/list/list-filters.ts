@@ -54,6 +54,62 @@ export function validRangeValue(kind: RangeKind, value: string): boolean {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
+/** An interval's two ends, lower first: `from` and `to` for days, `min` and `max` for amounts. */
+function endsOf(kind: RangeKind): readonly ['from', 'to'] | readonly ['min', 'max'] {
+  return kind === 'day' ? (['from', 'to'] as const) : (['min', 'max'] as const);
+}
+
+/** Two plain amounts compared as decimals, never as floats: below zero, zero or above. */
+function compareAmounts(a: string, b: string): number {
+  const [aWhole = '', aPart = ''] = a.split('.');
+  const [bWhole = '', bPart = ''] = b.split('.');
+  if (aWhole.length !== bWhole.length) return aWhole.length - bWhole.length;
+  const width = Math.max(aPart.length, bPart.length);
+  const left = aWhole + aPart.padEnd(width, '0');
+  const right = bWhole + bPart.padEnd(width, '0');
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+/** Whether both ends of an interval hold a value and the first comes after the second, which the API refuses. */
+export function invertedRange(
+  filters: ListFilterValues,
+  range: { readonly id: string; readonly kind: RangeKind },
+): boolean {
+  const [low, high] = endsOf(range.kind);
+  const from = filters[rangeKey(range.id, low)];
+  const to = filters[rangeKey(range.id, high)];
+  if (from === undefined || to === undefined) return false;
+  if (!validRangeValue(range.kind, from) || !validRangeValue(range.kind, to)) return false;
+  return range.kind === 'day' ? from > to : compareAmounts(from, to) > 0;
+}
+
+/**
+ * The interval ends a list asks the API for: each a day or an amount the API takes, and an inverted pair left out
+ * whole, so the API never refuses the whole list for it; the filter panel says why it is not applied.
+ */
+export function rangeParams(
+  filters: ListFilterValues,
+  ranges: readonly { readonly id: string; readonly kind: RangeKind }[],
+): Record<string, string> {
+  const params: Record<string, string> = {};
+  for (const range of ranges) {
+    if (invertedRange(filters, range)) continue;
+    for (const end of endsOf(range.kind)) {
+      const value = filters[rangeKey(range.id, end)];
+      if (value !== undefined && validRangeValue(range.kind, value))
+        params[rangeKey(range.id, end)] = value;
+    }
+  }
+  return params;
+}
+
+const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The record ids a pick filter holds; anything else in a hand-edited address is left out, as an unknown facet value is. */
+export function idValues(value: string | undefined): string[] {
+  return filterValues(value).filter((each) => ID.test(each));
+}
+
 /** The filters with these keys set, an empty or null one dropped. */
 export function patchFilters(
   chosen: ListFilterValues,

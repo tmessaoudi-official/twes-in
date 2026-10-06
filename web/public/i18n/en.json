@@ -698,7 +698,8 @@
       "from": "From",
       "to": "To",
       "min": "At least",
-      "max": "At most"
+      "max": "At most",
+      "inverted": "The end comes before the start: this interval is not applied."
     }
   },
   "form": {

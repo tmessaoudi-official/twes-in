@@ -322,6 +322,35 @@ describe('DataList filters that combine', () => {
     expect(last().filters).toEqual({});
   });
 
+  it('stops filtering by an end edited into something that is not a day, and leaves what is typed', async () => {
+    // Otherwise the list kept the earlier day while the field showed another text (audit 2026-10-06, T-1).
+    await mount();
+    q('list-filters')!.click();
+    await settle();
+    await type('docs-table-filter-panel-issueDate-from', '2026-01-15');
+    expect(last().filters).toEqual({ 'issueDate.from': '2026-01-15' });
+
+    await type('docs-table-filter-panel-issueDate-from', '2026-0');
+    expect(last().filters).toEqual({});
+    expect(q('list-chip-issueDate:range')).toBeNull();
+    expect((q('docs-table-filter-panel-issueDate-from') as HTMLInputElement).value).toBe('2026-0');
+  });
+
+  it('says an interval whose end comes before its start is not applied', async () => {
+    await mount();
+    q('list-filters')!.click();
+    await settle();
+    await type('docs-table-filter-panel-issueDate-from', '2026-03-15');
+    expect(q('docs-table-filter-panel-issueDate-inverted')).toBeNull();
+
+    await type('docs-table-filter-panel-issueDate-to', '2026-03-01');
+    expect(q('docs-table-filter-panel-issueDate-inverted')?.textContent).toContain(
+      'list.range.inverted',
+    );
+    await type('docs-table-filter-panel-issueDate-to', '2026-03-31');
+    expect(q('docs-table-filter-panel-issueDate-inverted')).toBeNull();
+  });
+
   it("puts a day's calendar button at the end of its field, beside what is typed", async () => {
     await mount();
     q('list-filters')!.click();

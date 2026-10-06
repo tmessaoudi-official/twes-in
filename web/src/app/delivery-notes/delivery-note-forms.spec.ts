@@ -108,10 +108,17 @@ describe('delivery note forms', () => {
     it('combines statuses and customers, leaving out what the list does not offer', () => {
       const search = deliveryNoteSearch({
         ...query,
-        filters: { status: 'delivered,draft,nonsense', customer: 'k1,k2' },
+        filters: {
+          status: 'delivered,draft,nonsense',
+          customer:
+            '01a11304-e8c9-75fd-a04c-ec517b121291,nope,01a11304-e8c9-75fd-a04c-ec517b121292',
+        },
       });
       expect(search.status).toEqual(['draft', 'delivered']);
-      expect(search.customerIds).toEqual(['k1', 'k2']);
+      expect(search.customerIds).toEqual([
+        '01a11304-e8c9-75fd-a04c-ec517b121291',
+        '01a11304-e8c9-75fd-a04c-ec517b121292',
+      ]);
       expect(deliveryNoteSearch(query)).toMatchObject({
         status: [],
         customerIds: [],

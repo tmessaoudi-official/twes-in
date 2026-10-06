@@ -55,12 +55,20 @@ describe('portfolioSearch', () => {
   it('combines statuses, kinds and customers, leaving out what the list does not offer', () => {
     const search = portfolioSearch(
       query({
-        filters: { status: 'cashed,open,nonsense', kind: 'draft,cheque', customer: 'k1,k2' },
+        filters: {
+          status: 'cashed,open,nonsense',
+          kind: 'draft,cheque',
+          customer:
+            '01a11304-e8c9-75fd-a04c-ec517b121291,nope,01a11304-e8c9-75fd-a04c-ec517b121292',
+        },
       }),
     );
     expect(search.status).toEqual(['open', 'cashed']);
     expect(search.kinds).toEqual(['draft']);
-    expect(search.customerIds).toEqual(['k1', 'k2']);
+    expect(search.customerIds).toEqual([
+      '01a11304-e8c9-75fd-a04c-ec517b121291',
+      '01a11304-e8c9-75fd-a04c-ec517b121292',
+    ]);
   });
 
   it('keeps the ends of an interval that are a day or an amount, and drops the rest', () => {

@@ -199,7 +199,7 @@ function fold(text: string): string {
               [attr.aria-selected]="isChosen(option.value)"
               tabindex="-1"
               (click)="pick(option)"
-              (keydown.enter)="pick(option)"
+              (keydown.enter)="pickByKey(option, $event)"
             >
               <mat-icon
                 aria-hidden="true"
@@ -457,6 +457,16 @@ export class Select implements ControlValueAccessor {
 
   protected hasCount(count: number | null | undefined): boolean {
     return count !== null && count !== undefined;
+  }
+
+  /**
+   * Enter on an option the pointer focused takes that option and goes no further: the panel's own Enter would take the
+   * one the keyboard stood on as well, and in a multiple select toggle it unseen.
+   */
+  protected pickByKey(option: SelectOption, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.pick(option);
   }
 
   protected pick(option: SelectOption): void {

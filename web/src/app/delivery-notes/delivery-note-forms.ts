@@ -3,7 +3,7 @@
 import { atScale } from '../shared/i18n/format';
 import { FormArray, FormControl, FormGroup, type ValidatorFn, Validators } from '@angular/forms';
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
-import { filterValues, rangeKey, validRangeValue } from '../shared/list/list-filters';
+import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import type { PickOption } from '../shared/form/pick-field';
 import {
@@ -68,15 +68,9 @@ export function deliveryNoteSearch(query: ListQuery): DeliveryNoteSearch {
   const status = DELIVERY_NOTE_STATUSES.filter((known) =>
     filterValues(query.filters['status']).includes(known),
   );
-  const intervals = Object.fromEntries(
-    DELIVERY_NOTE_INTERVALS.flatMap(({ id }) =>
-      (['from', 'to'] as const).flatMap((end) => {
-        const value = query.filters[rangeKey(id, end)];
-        return value !== undefined && validRangeValue('day', value)
-          ? [[rangeKey(id, end), value]]
-          : [];
-      }),
-    ),
+  const intervals = rangeParams(
+    query.filters,
+    DELIVERY_NOTE_INTERVALS.map(({ id }) => ({ id, kind: 'day' as const })),
   );
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
   return {
@@ -84,7 +78,7 @@ export function deliveryNoteSearch(query: ListQuery): DeliveryNoteSearch {
     itemsPerPage: query.pageSize,
     q: query.query,
     status,
-    customerIds: filterValues(query.filters['customer']),
+    customerIds: idValues(query.filters['customer']),
     intervals,
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },

@@ -11,7 +11,7 @@ import { DayCalendarButton } from '../form/day-calendar-button';
 import { DayInput } from '../form/day-input';
 import { DecimalInput } from '../form/decimal-input';
 import { PickField, type PickOption } from '../form/pick-field';
-import { filterValues, joinValues, rangeKey, validRangeValue } from './list-filters';
+import { filterValues, joinValues, rangeKey, invertedRange, validRangeValue } from './list-filters';
 import type {
   ListFilterValues,
   ListPickFilter,
@@ -80,7 +80,7 @@ import type {
                   type="text"
                   inputmode="numeric"
                   autocomplete="off"
-                  [ngModel]="chosen()[key(range, end)] ?? ''"
+                  [ngModel]="shown(range, end)"
                   (ngModelChange)="onRange(range, end, $event)"
                   [attr.data-testid]="testId() + '-' + range.id + '-' + end"
                 />
@@ -93,12 +93,20 @@ import type {
                   matInput
                   appDecimal
                   autocomplete="off"
-                  [ngModel]="chosen()[key(range, end)] ?? ''"
+                  [ngModel]="shown(range, end)"
                   (ngModelChange)="onRange(range, end, $event)"
                   [attr.data-testid]="testId() + '-' + range.id + '-' + end"
                 />
               </mat-form-field>
             }
+          }
+          @if (inverted(range)) {
+            <p
+              class="basis-full text-sm text-error m-0"
+              [attr.data-testid]="testId() + '-' + range.id + '-inverted'"
+            >
+              {{ 'list.range.inverted' | translate }}
+            </p>
           }
         </fieldset>
       }
@@ -116,6 +124,9 @@ export class ListFilterPanel {
   /** A record just picked, so the list can name it on its chip without asking again. */
   readonly named = output<PickOption>();
 
+  /** What is typed in an interval end that is not a day or an amount yet, which the list does not filter by. */
+  private readonly drafts = signal<Readonly<Record<string, string>>>({});
+
   /** Each picker starts again from an empty box once it has taken a record: its round is what tells it so. */
   protected readonly rounds = signal<Readonly<Record<string, number>>>({});
 
@@ -127,15 +138,37 @@ export class ListFilterPanel {
     return rangeKey(range.id, end);
   }
 
-  /** What was typed is kept only once it is a day or an amount; until then the field shows it and the list ignores it. */
+  /**
+   * What was typed is kept only once it is a day or an amount; until then the field shows it and the list ignores it,
+   * an end it held before included, so the list never filters by a value the field no longer shows.
+   */
   protected onRange(
     range: ListRangeFilter,
     end: 'from' | 'to' | 'min' | 'max',
     value: unknown,
   ): void {
+    const key = this.key(range, end);
     const typed = typeof value === 'string' ? value.trim() : '';
-    if (typed === '') this.patch.emit({ [this.key(range, end)]: null });
-    else if (validRangeValue(range.kind, typed)) this.patch.emit({ [this.key(range, end)]: typed });
+    const valid = typed !== '' && validRangeValue(range.kind, typed);
+    this.drafts.update((drafts) => {
+      const next = { ...drafts };
+      if (valid || typed === '') delete next[key];
+      else next[key] = typed;
+      return next;
+    });
+    if (valid) this.patch.emit({ [key]: typed });
+    else if (typed === '' || this.chosen()[key] !== undefined) this.patch.emit({ [key]: null });
+  }
+
+  /** Whether the interval's end comes before its start: the list leaves it out, and the panel says so. */
+  protected inverted(range: ListRangeFilter): boolean {
+    return invertedRange(this.chosen(), range);
+  }
+
+  /** What an end's field shows: what is being typed, until it is a value, else the value the list filters by. */
+  protected shown(range: ListRangeFilter, end: 'from' | 'to' | 'min' | 'max'): string {
+    const key = this.key(range, end);
+    return this.drafts()[key] ?? this.chosen()[key] ?? '';
   }
 
   protected add(pick: ListPickFilter, option: PickOption | null): void {

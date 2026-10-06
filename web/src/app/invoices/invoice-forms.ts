@@ -3,7 +3,7 @@
 import { FormArray, FormControl, FormGroup, type ValidatorFn, Validators } from '@angular/forms';
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
 import { atScale } from '../shared/i18n/format';
-import { filterValues, rangeKey, validRangeValue } from '../shared/list/list-filters';
+import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import type { PickOption } from '../shared/form/pick-field';
 import { LOT_CODE_PATTERN, type ProductTracking } from '../products/products-types';
@@ -108,16 +108,7 @@ export function invoiceSearch(query: ListQuery): InvoiceSearch {
   const documentType = INVOICE_TYPES.filter((known) =>
     filterValues(query.filters['type']).includes(known),
   );
-  const intervals = Object.fromEntries(
-    INVOICE_INTERVALS.flatMap(({ id, kind }) =>
-      (kind === 'day' ? (['from', 'to'] as const) : (['min', 'max'] as const)).flatMap((end) => {
-        const value = query.filters[rangeKey(id, end)];
-        return value !== undefined && validRangeValue(kind, value)
-          ? [[rangeKey(id, end), value]]
-          : [];
-      }),
-    ),
-  );
+  const intervals = rangeParams(query.filters, INVOICE_INTERVALS);
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
@@ -125,7 +116,7 @@ export function invoiceSearch(query: ListQuery): InvoiceSearch {
     q: query.query,
     status,
     documentType,
-    customerIds: filterValues(query.filters['customer']),
+    customerIds: idValues(query.filters['customer']),
     intervals,
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },

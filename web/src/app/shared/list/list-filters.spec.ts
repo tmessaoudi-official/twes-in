@@ -3,9 +3,12 @@
 import {
   activeFilterChips,
   filterValues,
+  idValues,
+  invertedRange,
   joinValues,
   patchFilters,
   rangeKey,
+  rangeParams,
   toggleValue,
   validRangeValue,
 } from './list-filters';
@@ -68,6 +71,57 @@ describe('the interval filters', () => {
     expect(validRangeValue('amount', '1,5')).toBe(false);
     expect(validRangeValue('amount', '-1')).toBe(false);
     expect(validRangeValue('amount', '1e3')).toBe(false);
+  });
+
+  // The API refuses an inverted interval as a whole, which the list showed as its own failure (audit 2026-10-06, T-2).
+  it('are asked for when valid and in order, an inverted pair left out whole', () => {
+    const ranges = [
+      { id: 'issueDate', kind: 'day' as const },
+      { id: 'totalGross', kind: 'amount' as const },
+    ];
+    expect(
+      rangeParams(
+        { 'issueDate.from': '2026-03-15', 'issueDate.to': '2026-03-01', 'totalGross.min': '900' },
+        ranges,
+      ),
+    ).toEqual({ 'totalGross.min': '900' });
+    expect(
+      rangeParams(
+        {
+          'issueDate.from': '2026-03-01',
+          'issueDate.to': '2026-03-01',
+          'totalGross.min': '900',
+          'totalGross.max': '1000.5',
+        },
+        ranges,
+      ),
+    ).toEqual({
+      'issueDate.from': '2026-03-01',
+      'issueDate.to': '2026-03-01',
+      'totalGross.min': '900',
+      'totalGross.max': '1000.5',
+    });
+    expect(rangeParams({ 'totalGross.min': '1000.5', 'totalGross.max': '900' }, ranges)).toEqual(
+      {},
+    );
+    expect(rangeParams({ 'issueDate.from': '2026-0' }, ranges)).toEqual({});
+
+    expect(invertedRange({ 'totalGross.min': '1000.5', 'totalGross.max': '900' }, ranges[1]!)).toBe(
+      true,
+    );
+    expect(invertedRange({ 'totalGross.min': '99.99', 'totalGross.max': '100' }, ranges[1]!)).toBe(
+      false,
+    );
+    expect(invertedRange({ 'totalGross.min': '100' }, ranges[1]!)).toBe(false);
+  });
+});
+
+describe('the records a list is narrowed to', () => {
+  it('are asked for by id, anything that is not one left out as an unknown facet value is', () => {
+    expect(
+      idValues('01a11304-e8c9-75fd-a04c-ec517b121292,nope,01A11304-E8C9-75FD-A04C-EC517B121293'),
+    ).toEqual(['01a11304-e8c9-75fd-a04c-ec517b121292', '01A11304-E8C9-75FD-A04C-EC517B121293']);
+    expect(idValues(undefined)).toEqual([]);
   });
 });
 

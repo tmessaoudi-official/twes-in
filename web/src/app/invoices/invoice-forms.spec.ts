@@ -224,12 +224,16 @@ describe('invoice forms', () => {
         filters: {
           status: 'overdue,draft,nonsense',
           type: 'invoice,credit_note',
-          customer: 'k1,k2',
+          customer:
+            '01a11304-e8c9-75fd-a04c-ec517b121291,nope,01a11304-e8c9-75fd-a04c-ec517b121292',
         },
       });
       expect(search.status).toEqual(['draft', 'overdue']);
       expect(search.documentType).toEqual(['invoice', 'credit_note']);
-      expect(search.customerIds).toEqual(['k1', 'k2']);
+      expect(search.customerIds).toEqual([
+        '01a11304-e8c9-75fd-a04c-ec517b121291',
+        '01a11304-e8c9-75fd-a04c-ec517b121292',
+      ]);
     });
 
     it('keeps the ends of an interval that are a day or an amount, and drops the rest', () => {

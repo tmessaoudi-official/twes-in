@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { filterValues, rangeKey, validRangeValue } from '../shared/list/list-filters';
+import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { INSTRUMENT_KINDS, INSTRUMENT_STATUS_TONES } from './instruments-types';
 import {
@@ -107,23 +107,14 @@ export function portfolioSearch(query: ListQuery): PortfolioSearch {
   const kinds = INSTRUMENT_KINDS.filter((kind) =>
     filterValues(query.filters['kind']).includes(kind),
   );
-  const intervals = Object.fromEntries(
-    PORTFOLIO_INTERVALS.flatMap(({ id, kind }) =>
-      (kind === 'day' ? (['from', 'to'] as const) : (['min', 'max'] as const)).flatMap((end) => {
-        const value = query.filters[rangeKey(id, end)];
-        return value !== undefined && validRangeValue(kind, value)
-          ? [[rangeKey(id, end), value]]
-          : [];
-      }),
-    ),
-  );
+  const intervals = rangeParams(query.filters, PORTFOLIO_INTERVALS);
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
     itemsPerPage: query.pageSize,
     status,
     kinds,
-    customerIds: filterValues(query.filters['customer']),
+    customerIds: idValues(query.filters['customer']),
     intervals,
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },

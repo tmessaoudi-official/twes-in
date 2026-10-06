@@ -366,6 +366,22 @@ describe('Select', () => {
       expect(fixture.componentInstance.control.value).toEqual(['denmark']);
     });
 
+    it('takes Enter on an option once, never also on the one the keyboard stood on', async () => {
+      // A click focuses the option; the Enter that follows toggles it alone (audit 2026-10-06, C2-5).
+      fixture.componentInstance.control.setValue(['algeria']);
+      await settle();
+      await open();
+      const belgium = document.body.querySelectorAll('[role="option"]')[1] as HTMLElement;
+      belgium.focus();
+      belgium.click();
+      await settle();
+      expect(fixture.componentInstance.control.value).toEqual(['algeria', 'belgium']);
+
+      press(belgium, 'Enter');
+      await settle();
+      expect(fixture.componentInstance.control.value).toEqual(['algeria']);
+    });
+
     it('selects all and clears all', async () => {
       await open();
       q('sel-select-all')!.click();
