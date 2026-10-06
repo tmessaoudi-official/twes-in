@@ -78,7 +78,7 @@ final class CustomerStatementTest extends ApiTestCase
 
     public function testItStatesTheCreditLimitTheCustomerHasAndZeroWhenNoneIsSet(): void
     {
-        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
         $this->getJson($this->path());
         self::assertSame('0.000', $this->stringAt($this->json(), 'creditLimit'), 'no limit set: zero, at the currency\'s scale');
 
@@ -97,6 +97,15 @@ final class CustomerStatementTest extends ApiTestCase
         $this->issue('300');
         $this->getJson($this->path());
         self::assertTrue($this->json()['overCreditLimit'], '1300 owed passes a limit of 1200.500');
+        // Money the customer left on account is theirs against what they owe (audit 2026-10-06, E-10).
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $this->postJson($this->companyPath().'/customers/'.$this->customerId.'/credit-balance', ['amount' => '99.499', 'date' => $today]);
+        self::assertResponseStatusCodeSame(201);
+        $this->getJson($this->path());
+        self::assertTrue($this->json()['overCreditLimit'], '1300 owed less 99.499 on account is 1200.501, still past 1200.500');
+        $this->postJson($this->companyPath().'/customers/'.$this->customerId.'/credit-balance', ['amount' => '0.001', 'date' => $today]);
+        $this->getJson($this->path());
+        self::assertFalse($this->json()['overCreditLimit'], '1300 owed less 99.500 on account is exactly the limit');
 
         $this->setLimit('0', Uuid::fromString($this->customerId));
         $this->getJson($this->path());

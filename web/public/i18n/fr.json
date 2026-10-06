@@ -1156,7 +1156,7 @@
       "title": "Relevé de compte",
       "pdf": "Télécharger le PDF",
       "limit": "Plafond de crédit : {{limit}} {{currency}}.",
-      "over_limit": "Plafond de crédit dépassé : le solde dépasse {{limit}} {{currency}}.",
+      "over_limit": "Plafond de crédit dépassé : le solde, moins ce que le client a à son crédit, dépasse {{limit}} {{currency}}.",
       "from": "Du",
       "to": "Au",
       "caption": "Relevé de compte de {{name}}, en {{currency}}",

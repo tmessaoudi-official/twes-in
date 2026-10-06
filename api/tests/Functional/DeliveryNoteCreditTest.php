@@ -43,7 +43,7 @@ final class DeliveryNoteCreditTest extends ApiTestCase
         $this->em()->persist($customer);
         $this->em()->flush();
         $this->customerId = $customer->getId()->toRfc4122();
-        $this->createUser('sales@twes.local', 'password-1234', $this->company, ['delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'invoice.read', 'invoice.write', 'invoice.issue'], 'member');
+        $this->createUser('sales@twes.local', 'password-1234', $this->company, ['delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'customer.read'], 'member');
         $this->login('sales@twes.local', 'password-1234');
         self::assertResponseIsSuccessful();
     }
@@ -65,6 +65,19 @@ final class DeliveryNoteCreditTest extends ApiTestCase
 
         self::assertTrue($this->credit($this->draftNote('300'))['over'], '1000 owed and 300 delivered passes 1200');
         self::assertFalse($this->credit($this->draftNote('200'))['over'], 'exactly the limit is not past it');
+    }
+
+    public function testMoneyTheCustomerHoldsOnAccountCountsAgainstWhatTheyOwe(): void
+    {
+        $this->setLimit('1200');
+        $this->issueInvoice('1000');
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $this->postJson($this->companyPath().'/customers/'.$this->customerId.'/credit-balance', ['amount' => '100', 'date' => $today]);
+        self::assertResponseStatusCodeSame(201);
+
+        // Audit 2026-10-06, E-10: 1000 owed less 100 left on account, and 300 delivered, is exactly the limit.
+        $credit = $this->credit($this->draftNote('300'));
+        self::assertSame(['900.000', '1200.000', false], [$credit['owed'], $credit['afterDelivery'], $credit['over']]);
     }
 
     public function testADeliveredOrCancelledNoteIsNeverFlaggedBecauseThereIsNothingLeftToWarnAbout(): void

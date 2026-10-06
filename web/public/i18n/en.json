@@ -1156,7 +1156,7 @@
       "title": "Statement of account",
       "pdf": "Download the PDF",
       "limit": "Credit limit: {{limit}} {{currency}}.",
-      "over_limit": "Credit limit exceeded: the balance is above {{limit}} {{currency}}.",
+      "over_limit": "Credit limit exceeded: the balance, less what the customer holds on account, is above {{limit}} {{currency}}.",
       "from": "From",
       "to": "To",
       "caption": "Statement of account for {{name}}, in {{currency}}",

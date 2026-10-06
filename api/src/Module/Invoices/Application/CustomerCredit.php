@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Application;
 
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Customers\Domain\Customer;
+use App\Module\Invoices\Domain\CustomerCreditRepository;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
 use App\Tenancy\Domain\Company;
@@ -18,11 +19,12 @@ use Psr\Clock\ClockInterface;
 
 /**
  * Where a customer stands against their credit limit: the limit that applies to them (their own, else their group's,
- * else the company's) and what they owe today across their issued invoices, after credit notes and payments.
+ * else the company's) and what they owe today across their issued invoices, after credit notes and payments, less what
+ * they hold on account: money they left with the company is theirs against what they owe.
  */
 final readonly class CustomerCredit
 {
-    public function __construct(private StatementSource $source, private ReadSetting $settings, private ClockInterface $clock)
+    public function __construct(private StatementSource $source, private CustomerCreditRepository $balances, private ReadSetting $settings, private ClockInterface $clock)
     {
     }
 
@@ -39,6 +41,7 @@ final readonly class CustomerCredit
     {
         $tomorrow = new \DateTimeImmutable($this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'))->modify('+1 day');
 
-        return Decimal::of($this->source->balanceBefore($company->getId(), $customer->getId(), $tomorrow));
+        return Decimal::of($this->source->balanceBefore($company->getId(), $customer->getId(), $tomorrow))
+            ->sub(Decimal::of($this->balances->balance($company->getId(), $customer->getId())));
     }
 }

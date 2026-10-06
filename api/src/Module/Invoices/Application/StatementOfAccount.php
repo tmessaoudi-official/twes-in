@@ -75,6 +75,8 @@ final readonly class StatementOfAccount
         }
 
         $limit = $this->credit->limit($company, $customer);
+        // What the customer holds on account counts against what they owe, as it does for a delivery's warning.
+        $onAccount = Decimal::of($this->balances->balance($company->getId(), $customerId));
 
         return new CustomerStatement(
             $customerId->toRfc4122(),
@@ -89,8 +91,8 @@ final readonly class StatementOfAccount
             Decimal::format($credits, $scale),
             Decimal::format($balance, $scale),
             Decimal::format($limit, $scale),
-            $limit->compare(0) > 0 && $balance->compare($limit) > 0,
-            Decimal::format(Decimal::of($this->balances->balance($company->getId(), $customerId)), $scale),
+            $limit->compare(0) > 0 && $balance->sub($onAccount)->compare($limit) > 0,
+            Decimal::format($onAccount, $scale),
             $lines,
         );
     }
