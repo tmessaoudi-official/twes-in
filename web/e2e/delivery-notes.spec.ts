@@ -229,6 +229,9 @@ test('a second note is added to the draft invoice the first one started', async 
     await expect(page).toHaveURL(invoiceUrl);
     await expect(page.getByTestId('line-0-description')).toHaveValue(`Premier ${run}`);
     await expect(page.getByTestId('line-1-description')).toHaveValue(`Second ${run}`);
+    // A line taken from a note keeps the note's product and says how much of it is left to invoice.
+    await expect(page.getByTestId('line-0-product')).toBeDisabled();
+    await expect(page.getByTestId('line-0-source-left')).toBeVisible();
   } finally {
     await retire(page, customerNumber);
   }

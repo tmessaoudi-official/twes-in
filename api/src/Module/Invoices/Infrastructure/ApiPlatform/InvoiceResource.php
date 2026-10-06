@@ -278,6 +278,7 @@ final class InvoiceResource
                 'discountRate' => ['type' => ['string', 'null'], 'example' => '10'],
                 'taxComponentIds' => ['type' => ['array', 'null'], 'items' => self::ID],
                 'sourceDeliveryNoteLineId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+                'sourceLeft' => ['type' => ['string', 'null'], 'readOnly' => true, 'description' => 'On a draft invoice\'s line taken from a delivery note: the most it may invoice, what the note line delivered less what the company\'s other invoices that are not cancelled take. Null otherwise.'],
                 'productTracking' => ['type' => ['string', 'null'], 'enum' => ['none', 'lot', 'serial', null], 'description' => 'How the product\'s stock is told apart today, so a form knows whether the line names a lot. Read only.'],
                 'lotCode' => ['type' => ['string', 'null'], 'maxLength' => LotCode::MAX, 'description' => 'The lot or serial sold, for a product tracked by one.'],
                 'returned' => ['type' => 'boolean', 'description' => 'On a credit note\'s line: its goods came back to stock when the note is issued. A credit note says so line by line, since a price correction returns nothing; any other document refuses it.'],
@@ -438,8 +439,11 @@ final class InvoiceResource
     #[Groups([self::READ])]
     public ?string $footer = null;
 
-    /** @param bool $withCosts whether the caller may read costs (product.cost.read), which each issued line froze */
-    public static function of(Invoice $invoice, InvoiceFigures $figures, bool $withCosts = false): self
+    /**
+     * @param bool                  $withCosts  whether the caller may read costs (product.cost.read), which each issued line froze
+     * @param array<string, string> $sourceRoom what a draft's lines may take of their delivery note lines, by note line id
+     */
+    public static function of(Invoice $invoice, InvoiceFigures $figures, bool $withCosts = false, array $sourceRoom = []): self
     {
         $header = $invoice->getHeader();
         $resource = new self();
@@ -471,6 +475,7 @@ final class InvoiceResource
             'discountRate' => $line->getDiscountRate(),
             'taxComponentIds' => array_map(static fn (InvoiceLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $line->getTaxes()),
             'sourceDeliveryNoteLineId' => $line->getSourceDeliveryNoteLineId()?->toRfc4122(),
+            'sourceLeft' => $sourceRoom[$line->getSourceDeliveryNoteLineId()?->toRfc4122() ?? ''] ?? null,
             'productTracking' => $line->getProduct()?->getTracking()->value,
             'lotCode' => $line->getLotCode(),
             'returned' => $line->isReturned(),

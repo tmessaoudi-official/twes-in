@@ -22,10 +22,12 @@ use App\Module\Customers\Domain\CustomerRepository;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
+use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\InvoiceSearch;
+use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceTransitionRefused;
 use App\Module\Invoices\Domain\InvoiceType;
 use App\Module\Products\Domain\ProductRepository;
@@ -296,25 +298,56 @@ final readonly class ManageInvoices
                 $ids[$line->sourceDeliveryNoteLineId->toRfc4122()] = $line->sourceDeliveryNoteLineId;
             }
         }
-        if ([] === $ids) {
-            return;
-        }
-        $sources = $this->sourceLines->ofIds(array_values($ids), $company->getId());
-        $elsewhere = $this->invoices->invoicedQuantities($company->getId(), array_values($ids), false, $current->getId());
+        [$sources, $room] = $this->room($company, $current, array_values($ids));
         foreach ($lines as $index => $line) {
             $id = $line->sourceDeliveryNoteLineId?->toRfc4122();
-            if (null === $id || !isset($sources[$id])) {
+            if (null === $id || !isset($sources[$id], $room[$id])) {
                 continue;
             }
             $source = $sources[$id];
             if (!(null === $source->productId ? null === $line->productId : null !== $line->productId && $source->productId->equals($line->productId))) {
                 throw (new InvalidInvoice('productId', 'A line taken from a delivery note keeps the product the note delivered.'))->within("lines[$index]");
             }
-            $left = Decimal::of($source->quantity)->sub(Decimal::of($elsewhere[$id] ?? '0'));
-            if (is_numeric($line->quantity) && Decimal::of($line->quantity)->compare($left) > 0) {
-                throw (new InvalidInvoice('quantity', \sprintf('Only %s of this delivery note line is left to invoice.', Decimal::format($left, 3))))->within("lines[$index]");
+            if (is_numeric($line->quantity) && Decimal::of($line->quantity)->compare(Decimal::of($room[$id])) > 0) {
+                throw (new InvalidInvoice('quantity', \sprintf('Only %s of this delivery note line is left to invoice.', $room[$id])))->within("lines[$index]");
             }
         }
+    }
+
+    /**
+     * The most each of a draft invoice's lines taken from a delivery note may invoice, by delivery note line id, so a
+     * screen caps it where the revision would (docs/SPEC.md § 7, audit 2026-10-06 A-16). Empty for anything else.
+     *
+     * @return array<string, string> decimal quantities, at the scale of a quantity
+     */
+    public function roomOnSources(Company $company, Invoice $invoice): array
+    {
+        if (InvoiceStatus::Draft !== $invoice->getStatus() || InvoiceType::Invoice !== $invoice->getType()) {
+            return [];
+        }
+
+        return $this->room($company, $invoice, array_values(array_filter(array_map(static fn (InvoiceLine $line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $invoice->getLines()))))[1];
+    }
+
+    /**
+     * @param list<Uuid> $ids delivery note lines
+     *
+     * @return array{array<string, SourceDeliveryNoteLine>, array<string, string>} the note lines of the company, and
+     *                                                                             what each leaves to this invoice
+     */
+    private function room(Company $company, Invoice $invoice, array $ids): array
+    {
+        if ([] === $ids) {
+            return [[], []];
+        }
+        $sources = $this->sourceLines->ofIds($ids, $company->getId());
+        $elsewhere = $this->invoices->invoicedQuantities($company->getId(), $ids, false, $invoice->getId());
+        $room = [];
+        foreach ($sources as $id => $source) {
+            $room[$id] = Decimal::format(Decimal::of($source->quantity)->sub(Decimal::of($elsewhere[$id] ?? '0')), 3);
+        }
+
+        return [$sources, $room];
     }
 
     /** @param array{products: list<string>, units: list<string>, taxes: list<string>, documentTaxes: list<string>, sources: list<string>} $kept */

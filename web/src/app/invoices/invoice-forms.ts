@@ -446,13 +446,36 @@ function fitsUnit(options: InvoiceOptions): ValidatorFn {
   };
 }
 
+/** What each line taken from a delivery note may invoice at most, as the API answered it; kept off the form's values. */
+const SOURCE_LEFT = new WeakMap<LineGroup, string>();
+
+/** The most a line taken from a delivery note may invoice, without its padding zeros; null where nothing caps it. */
+export function sourceLeftOf(line: LineGroup): string | null {
+  return SOURCE_LEFT.get(line) ?? null;
+}
+
+/** A non-negative decimal string as thousandths, so two quantities compare exactly, never as floats. */
+function thousandths(value: string): bigint {
+  const [whole, fraction = ''] = value.trim().split('.');
+  return BigInt(whole || '0') * 1000n + BigInt((fraction + '000').slice(0, 3));
+}
+
+/** A line taken from a delivery note invoices no more than the note leaves it; the API refuses it the same way. */
+const withinSource: ValidatorFn = (control) => {
+  const line = control as LineGroup;
+  const left = SOURCE_LEFT.get(line);
+  const quantity = line.controls.quantity.value.trim();
+  if (left === undefined || !QUANTITY_PATTERN.test(quantity)) return null;
+  return thousandths(quantity) > thousandths(left) ? { aboveSource: true } : null;
+};
+
 /** One line's controls at its values; a new line counts one of the company's first unit, at the customer's discount. */
 export function lineGroup(
   line: InvoiceLine | null,
   options: InvoiceOptions,
   customer: CustomerOption | null,
 ): LineGroup {
-  return new FormGroup<LineControls>(
+  const group = new FormGroup<LineControls>(
     {
       productId: new FormControl(line?.productId ?? '', { nonNullable: true }),
       productReference: new FormControl(line?.productReference ?? '', { nonNullable: true }),
@@ -497,8 +520,13 @@ export function lineGroup(
         nonNullable: true,
       }),
     },
-    { validators: fitsUnit(options) },
+    { validators: [fitsUnit(options), withinSource] },
   );
+  if (line?.sourceLeft != null) {
+    SOURCE_LEFT.set(group, plainQuantity(line.sourceLeft));
+    group.updateValueAndValidity();
+  }
+  return group;
 }
 
 /** The document's lines as controls; a document without lines starts with one to fill in. */

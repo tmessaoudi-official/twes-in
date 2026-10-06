@@ -1274,6 +1274,7 @@
       "no_product": "Sans produit",
       "description": "Désignation",
       "quantity": "Quantité",
+      "source_left": "Reste à facturer sur le bon de livraison : {{left}}",
       "unit": "Unité",
       "lot": "Lot ou numéro de série",
       "returned": "Les marchandises sont revenues en stock",
@@ -1292,7 +1293,8 @@
         "unitId": "Choisissez une unité.",
         "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales.",
         "discountRate": "Un pourcentage de 0 à 100, avec au plus trois décimales.",
-        "lotCode": "Jusqu’à 40 caractères visibles, sans espace."
+        "lotCode": "Jusqu’à 40 caractères visibles, sans espace.",
+        "quantity_above_source": "Plus que ce qui reste à facturer sur le bon de livraison."
       },
       "no_product_found": "Aucun produit trouvé.",
       "price_list": "Tarif : {{name}}"

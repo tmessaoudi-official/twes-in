@@ -257,6 +257,10 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         $first = $this->json();
         $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$note]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'the other four on a second draft');
+        $this->getJson($this->invoicePath($this->stringAt($first, 'id')));
+        $read = $this->arrayAt($this->json(), 'lines')[0];
+        self::assertIsArray($read);
+        self::assertSame('6.000', $read['sourceLeft'] ?? null, 'the screen is told the most the line may take, its own six included');
         $line = $this->arrayAt($first, 'lines')[0];
         self::assertIsArray($line);
         $line = array_diff_key($line, ['net' => true]);
@@ -275,6 +279,9 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
 
         $revise([[...$line, 'quantity' => '5']]);
         self::assertResponseStatusCodeSame(Response::HTTP_OK, 'less is always fine');
+        $answered = $this->arrayAt($this->json(), 'lines')[0];
+        self::assertIsArray($answered);
+        self::assertSame('6.000', $answered['sourceLeft'] ?? null, 'the revision answers it too, so the screen keeps its cap after a save');
         $revise([[...$line, 'quantity' => '6']]);
         self::assertResponseStatusCodeSame(Response::HTTP_OK, 'its own six are its own, not taken twice');
     }

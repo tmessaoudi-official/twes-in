@@ -399,6 +399,7 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
       discountRate: line.discountRate ?? null,
       taxComponentIds: ids(line.taxComponentIds),
       sourceDeliveryNoteLineId: line.sourceDeliveryNoteLineId ?? null,
+      sourceLeft: line.sourceLeft ?? null,
       productReference: line.productReference ?? null,
       productName: line.productName ?? null,
       productTracking: line.productTracking == null ? null : trackingOf(line.productTracking),

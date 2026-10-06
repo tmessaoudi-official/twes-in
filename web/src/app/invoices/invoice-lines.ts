@@ -28,6 +28,7 @@ import {
   namesALot,
   offeredLineTaxes,
   pickedProduct,
+  sourceLeftOf,
 } from './invoice-forms';
 import type {
   CustomerOption,
@@ -180,6 +181,12 @@ export class InvoiceLines {
     return line.controls.sourceDeliveryNoteLineId.value !== '';
   }
 
+  /** What a line taken from a delivery note may still invoice, shown under its quantity, which it caps. */
+  protected leftOf(line: LineGroup): string | null {
+    this.revision();
+    return this.readOnly() ? null : sourceLeftOf(line);
+  }
+
   protected netOf(index: number, line: LineGroup): string | null {
     this.revision();
     return line.pristine ? (this.nets()[index] ?? null) : null;
@@ -189,6 +196,9 @@ export class InvoiceLines {
     this.revision();
     const control = line.controls[field];
     if (!control.touched || control.disabled) return null;
+    if (field === 'quantity' && control.valid && line.hasError('aboveSource')) {
+      return 'invoices.lines.errors.quantity_above_source';
+    }
     const invalid = control.invalid || (field === 'quantity' && line.hasError('quantityDecimals'));
     return invalid ? `invoices.lines.errors.${field}` : null;
   }

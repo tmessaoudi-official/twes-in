@@ -24,7 +24,7 @@
             [testId]="'line-' + i + '-product'"
             [search]="searchProducts"
             [value]="productOf(line)"
-            [disabled]="readOnly()"
+            [disabled]="readOnly() || fromDeliveryNote(line)"
             [clearable]="true"
             [noneLabel]="'invoices.lines.no_product' | translate"
             [noneFoundLabel]="'invoices.lines.no_product_found' | translate"
@@ -65,6 +65,11 @@
               (blur)="reprice(line)"
               [attr.data-testid]="'line-' + i + '-quantity'"
             />
+            @if (leftOf(line); as left) {
+              <mat-hint [attr.data-testid]="'line-' + i + '-source-left'">{{
+                'invoices.lines.source_left' | translate: { left }
+              }}</mat-hint>
+            }
           </mat-form-field>
           @if (errorKey(line, 'quantity'); as key) {
             <span

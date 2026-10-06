@@ -59,6 +59,7 @@ const issued = {
       discountRate: null,
       taxComponentIds: ['t1'],
       sourceDeliveryNoteLineId: 'dl1',
+      sourceLeft: '2.500',
       productTracking: 'lot',
       lotCode: 'L-1',
       net: '10000.000',
@@ -272,6 +273,7 @@ describe('InvoicesApi', () => {
     expect(invoice.fixedTaxes).toEqual([{ code: 'TIMBRE', amount: '1.000' }]);
     expect(invoice.lines[0]).toMatchObject({
       sourceDeliveryNoteLineId: 'dl1',
+      sourceLeft: '2.500',
       productTracking: 'lot',
       lotCode: 'L-1',
     });

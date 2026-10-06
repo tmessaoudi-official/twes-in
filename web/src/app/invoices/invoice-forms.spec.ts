@@ -12,6 +12,7 @@ import {
   INVOICES_LIST,
   lineGroup,
   pickedProduct,
+  sourceLeftOf,
   linesArray,
   paymentForm,
   paymentInput,
@@ -21,6 +22,7 @@ import {
   stillOwed,
   dropRefusedLineTaxes,
 } from './invoice-forms';
+import { FormArray } from '@angular/forms';
 import type { CustomerOption, InvoiceOptions, InvoiceRow, ProductOption } from './invoices-types';
 
 const options: InvoiceOptions = {
@@ -451,6 +453,7 @@ describe('invoice forms', () => {
             discountRate: null,
             taxComponentIds: [],
             sourceDeliveryNoteLineId: 'dl1',
+            sourceLeft: null,
             productReference: null,
             productName: null,
             productTracking: null,
@@ -468,6 +471,59 @@ describe('invoice forms', () => {
         discountRate: null,
         sourceDeliveryNoteLineId: 'dl1',
       });
+    });
+  });
+
+  describe('a line taken from a delivery note', () => {
+    const sourced = (sourceLeft: string | null) =>
+      linesArray(
+        [
+          {
+            productId: 'p1',
+            description: 'Palette',
+            quantity: '6.000',
+            unitId: 'u1',
+            unitPriceNet: '35.0000',
+            discountRate: null,
+            taxComponentIds: [],
+            sourceDeliveryNoteLineId: 'dl1',
+            sourceLeft,
+            productReference: 'PAL',
+            productName: 'Palette',
+            productTracking: null,
+            lotCode: null,
+            returned: false,
+            net: '210.000',
+          },
+        ],
+        options,
+        null,
+      ).at(0);
+
+    it('takes no more than the note leaves it, compared in exact decimals', () => {
+      const line = sourced('6.000');
+      expect(sourceLeftOf(line)).toBe('6');
+      expect(line.hasError('aboveSource')).toBe(false);
+      line.controls.quantity.setValue('6.001');
+      expect(line.hasError('aboveSource')).toBe(true);
+      line.controls.quantity.setValue('5.999');
+      expect(line.hasError('aboveSource')).toBe(false);
+      line.controls.quantity.setValue('10');
+      expect(line.hasError('aboveSource')).toBe(true);
+    });
+
+    it('is not capped where the API names no room, and the room is never sent back', () => {
+      const line = sourced(null);
+      expect(sourceLeftOf(line)).toBeNull();
+      line.controls.quantity.setValue('1000');
+      expect(line.hasError('aboveSource')).toBe(false);
+      const input = invoiceInput(
+        invoiceValues(null, options),
+        new FormArray([sourced('6.000')]),
+        [],
+        'k1',
+      );
+      expect(input.lines[0]).not.toHaveProperty('sourceLeft');
     });
   });
 

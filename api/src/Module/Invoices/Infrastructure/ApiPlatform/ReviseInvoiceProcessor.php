@@ -43,6 +43,6 @@ final readonly class ReviseInvoiceProcessor implements ProcessorInterface
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }
 
-        return InvoiceResource::of($invoice, $this->totals->figures($invoice));
+        return InvoiceResource::of($invoice, $this->totals->figures($invoice), false, $this->manage->roomOnSources($company, $invoice));
     }
 }

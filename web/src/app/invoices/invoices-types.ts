@@ -69,6 +69,11 @@ export interface InvoiceLine {
   /** The delivery note line this line invoices; a revision may keep or drop it, never add one. */
   sourceDeliveryNoteLineId: string | null;
   /**
+   * On a draft invoice's line taken from a delivery note: the most it may invoice, what the note line delivered less
+   * what the company's other invoices take (docs/SPEC.md § 7, audit 2026-10-06 A-16). Null otherwise. Read only.
+   */
+  sourceLeft: string | null;
+  /**
    * The product's reference and name as they read today, which is what lets the line be shown without the catalogue.
    * Both null for a line naming no product, or one whose product has since been deleted. Read only: the API fills
    * them from the product the line names and ignores them on the way back.
@@ -87,7 +92,7 @@ export interface InvoiceLine {
 
 export type InvoiceLineInput = Omit<
   InvoiceLine,
-  'net' | 'productReference' | 'productName' | 'productTracking'
+  'net' | 'productReference' | 'productName' | 'productTracking' | 'sourceLeft'
 >;
 
 export interface TaxTotal {

@@ -174,6 +174,7 @@ const draft: InvoiceRow = {
       discountRate: null,
       taxComponentIds: ['t1'],
       sourceDeliveryNoteLineId: null,
+      sourceLeft: null,
       productReference: 'ART-1',
       productName: 'Conception',
       productTracking: 'none',
@@ -826,6 +827,35 @@ describe('InvoicePage', () => {
     await settle();
     expect(screen.next()?.id).toBe('record-payment');
     expect(screen.forKey('p')?.id).toBe('record-payment');
+  });
+
+  // docs/SPEC.md § 7, audit 2026-10-06 A-16: a line taken from a delivery note keeps its product and its cap.
+  it('locks the product of a line taken from a delivery note, shows what the note leaves and refuses more', async () => {
+    invoice.set({
+      ...draft,
+      lines: [
+        {
+          ...draft.lines[0],
+          quantity: '6.000',
+          sourceDeliveryNoteLineId: 'dl1',
+          sourceLeft: '6.000',
+        },
+      ],
+    });
+    await open('i1');
+
+    expect((q('line-0-product') as HTMLInputElement).disabled).toBe(true);
+    expect(text('line-0-source-left')).toContain('invoices.lines.source_left');
+    expect(q('line-0-quantity-error')).toBeNull();
+
+    type('line-0-quantity', '7');
+    (q('line-0-quantity') as HTMLInputElement).dispatchEvent(new Event('blur'));
+    await settle();
+    expect(text('line-0-quantity-error')).toContain('invoices.lines.errors.quantity_above_source');
+
+    type('line-0-quantity', '6');
+    await settle();
+    expect(q('line-0-quantity-error')).toBeNull();
   });
 
   it('takes the header and lines another person saved into a quiet draft', async () => {

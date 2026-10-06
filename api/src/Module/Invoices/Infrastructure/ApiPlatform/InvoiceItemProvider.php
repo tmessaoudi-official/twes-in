@@ -36,6 +36,6 @@ final readonly class InvoiceItemProvider implements ProviderInterface
             throw new NotFoundHttpException('No such invoice.', $absent);
         }
 
-        return InvoiceResource::of($invoice, $this->totals->figures($invoice), $this->guard->may($company, ProductPermission::COST_READ));
+        return InvoiceResource::of($invoice, $this->totals->figures($invoice), $this->guard->may($company, ProductPermission::COST_READ), $this->manage->roomOnSources($company, $invoice));
     }
 }
