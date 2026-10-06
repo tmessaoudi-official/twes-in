@@ -4,11 +4,12 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
+  EstablishmentEstablishmentRead,
   CustomerScreenAvailabilityCustomerScreenAvailabilityRead,
   CustomerScreenProductsCustomerScreenProductsRead,
   CustomerScreenPromotionsCustomerScreenPromotionsRead,
 } from '../api/types.gen';
-import type { ScreenProduct } from './customer-screen-types';
+import type { ScreenPlace, ScreenProduct } from './customer-screen-types';
 
 const path = (companyId: string, resource: string): string =>
   `/api/companies/${companyId}/customer-screen/${resource}`;
@@ -23,7 +24,31 @@ const path = (companyId: string, resource: string): string =>
 export class CustomerScreenApi {
   private readonly http = inject(HttpClient);
 
-  async find(companyId: string, words: string): Promise<ScreenProduct[]> {
+  /**
+   * The establishments the screen may stand at. Reading them takes company.read; somebody without it is answered 404,
+   * which reads as no choice to make, and the screen then says the default establishment's stock.
+   */
+  async places(companyId: string): Promise<ScreenPlace[]> {
+    try {
+      const rows = await firstValueFrom(
+        this.http.get<EstablishmentEstablishmentRead[]>(
+          `/api/companies/${companyId}/establishments`,
+        ),
+      );
+      return rows.map((row) => ({
+        id: row.id ?? '',
+        code: row.code ?? '',
+        name: row.name ?? '',
+        isDefault: row.isDefault ?? false,
+      }));
+    } catch (error) {
+      if (error instanceof HttpErrorResponse && error.status === 404) return [];
+      throw error;
+    }
+  }
+
+  /** The products the words find, their stock read at the establishment named, or the default one when none is. */
+  async find(companyId: string, words: string, placeId: string | null): Promise<ScreenProduct[]> {
     const found = await firstValueFrom(
       this.http.get<CustomerScreenProductsCustomerScreenProductsRead>(path(companyId, 'products'), {
         params: new HttpParams().set('q', words),
@@ -41,6 +66,7 @@ export class CustomerScreenApi {
         companyId,
         'availability',
         ids,
+        placeId,
       ),
     ]);
     return found.items.map((item) => {
@@ -64,8 +90,14 @@ export class CustomerScreenApi {
     });
   }
 
-  private async optional<T>(companyId: string, resource: string, ids: string[]): Promise<T | null> {
-    let params = new HttpParams();
+  private async optional<T>(
+    companyId: string,
+    resource: string,
+    ids: string[],
+    placeId: string | null = null,
+  ): Promise<T | null> {
+    let params =
+      placeId === null ? new HttpParams() : new HttpParams().set('establishmentId', placeId);
     for (const id of ids) params = params.append('ids[]', id);
     try {
       return await firstValueFrom(this.http.get<T>(path(companyId, resource), { params }));

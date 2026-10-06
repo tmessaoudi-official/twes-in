@@ -9,6 +9,7 @@ export type SettingChain = 'presentation' | 'parties' | 'articles' | 'venue';
 export type SettingLevel =
   | 'platform'
   | 'company'
+  | 'establishment'
   | 'customer_group'
   | 'customer'
   | 'document'
@@ -54,7 +55,8 @@ export type SettingsError = 'not_found' | 'invalid' | 'network';
 export type PartySubject = { customerId: string } | { customerGroupId: string };
 
 /** Whom an articles-chain read or change is for, below the company: one product, or one product category. */
-export type ArticleSubject = { productId: string } | { productCategoryId: string };
+export type ArticleSubject =
+  { productId: string } | { productCategoryId: string } | { establishmentId: string };
 
 /** A read or a change names one subject at most, of either chain. */
 export type SettingSubject = PartySubject | ArticleSubject;

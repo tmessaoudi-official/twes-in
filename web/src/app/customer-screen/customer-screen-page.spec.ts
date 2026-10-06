@@ -12,9 +12,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CustomerView } from '../shared/customer-view/customer-view';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { Session } from '../shared/session/session';
+import { PageMemoryStorage } from '../shared/settings/settings-facade';
+import { CUSTOMER_SCREEN_PLACE_STORAGE } from './customer-screen-place';
 import { CustomerScreenApi } from './customer-screen-api';
 import { CustomerScreenPage } from './customer-screen-page';
-import type { ScreenProduct } from './customer-screen-types';
+import type { ScreenPlace, ScreenProduct } from './customer-screen-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -46,7 +48,10 @@ const nut: ScreenProduct = {
 };
 
 describe('CustomerScreenPage', () => {
-  const api = { find: vi.fn() };
+  const api = { find: vi.fn(), places: vi.fn() };
+  let storage: PageMemoryStorage;
+  const main: ScreenPlace = { id: 'e1', code: '000', name: 'Acme', isDefault: true };
+  const sfax: ScreenPlace = { id: 'e2', code: '001', name: 'Agence de Sfax', isDefault: false };
   const view = { on: vi.fn(), leave: vi.fn() };
   const router = { navigateByUrl: vi.fn() };
   let fixture: ComponentFixture<CustomerScreenPage>;
@@ -73,6 +78,8 @@ describe('CustomerScreenPage', () => {
 
   beforeEach(async () => {
     api.find.mockReset();
+    api.places.mockReset().mockResolvedValue([main]);
+    storage = new PageMemoryStorage();
     view.on.mockReset();
     view.leave.mockReset().mockResolvedValue(true);
     router.navigateByUrl.mockReset().mockResolvedValue(true);
@@ -82,6 +89,7 @@ describe('CustomerScreenPage', () => {
         provideTranslateService(),
         provideTranslateLoader(StaticLoader),
         { provide: CustomerScreenApi, useValue: api },
+        { provide: CUSTOMER_SCREEN_PLACE_STORAGE, useFactory: () => storage },
         { provide: CustomerView, useValue: view },
         { provide: Router, useValue: router },
         {
@@ -119,7 +127,7 @@ describe('CustomerScreenPage', () => {
 
     await look('vis');
 
-    expect(api.find).toHaveBeenCalledWith('c1', 'vis');
+    expect(api.find).toHaveBeenCalledWith('c1', 'vis', null);
     expect(all('customer-screen-name').map((e) => e.textContent?.trim())).toEqual([
       'Vis 6x40',
       'Écrou',
@@ -209,5 +217,65 @@ describe('CustomerScreenPage', () => {
     (q('customer-screen-leave') as HTMLButtonElement).click();
     await settle();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/');
+  });
+
+  // Audit 2026-10-06, B-13: the screen stands at one establishment and says that establishment's own stock.
+  describe('at a company with several establishments', () => {
+    async function reopen(): Promise<void> {
+      fixture.destroy();
+      fixture = TestBed.createComponent(CustomerScreenPage);
+      await settle();
+      await settle();
+    }
+
+    it('asks where it stands before it looks anything up, and remembers it for the company', async () => {
+      api.places.mockResolvedValue([main, sfax]);
+      await reopen();
+
+      expect(q('customer-screen-places')).not.toBeNull();
+      expect(q('customer-screen-form')).toBeNull();
+      // Nothing invites a scan the screen cannot take yet.
+      expect(q('customer-screen-welcome')).toBeNull();
+      q('customer-screen-place-001')!.click();
+      await settle();
+
+      expect(q('customer-screen-places')).toBeNull();
+      expect(q('customer-screen-place')!.textContent).toContain('Agence de Sfax');
+      expect(JSON.parse(storage.getItem('twes.customer-screen.place') ?? '{}')).toEqual({
+        c1: 'e2',
+      });
+      api.find.mockResolvedValue([screw]);
+      await look('vis');
+      expect(api.find).toHaveBeenCalledWith('c1', 'vis', 'e2');
+    });
+
+    it('stands where it stood last time, and is moved on request', async () => {
+      api.places.mockResolvedValue([main, sfax]);
+      storage.setItem('twes.customer-screen.place', JSON.stringify({ c1: 'e2', c9: 'e9' }));
+      await reopen();
+
+      expect(q('customer-screen-places')).toBeNull();
+      expect(q('customer-screen-place')!.textContent).toContain('Agence de Sfax');
+      q('customer-screen-place-change')!.click();
+      await settle();
+      expect(q('customer-screen-places')).not.toBeNull();
+    });
+
+    it("asks again when the place it remembers is no longer one of the company's", async () => {
+      api.places.mockResolvedValue([main, sfax]);
+      storage.setItem('twes.customer-screen.place', JSON.stringify({ c1: 'gone' }));
+      await reopen();
+
+      expect(q('customer-screen-places')).not.toBeNull();
+    });
+
+    it('asks nothing of a company with one establishment', async () => {
+      api.places.mockResolvedValue([main]);
+      await reopen();
+
+      expect(q('customer-screen-places')).toBeNull();
+      expect(q('customer-screen-place')).toBeNull();
+      expect(q('customer-screen-form')).not.toBeNull();
+    });
   });
 });

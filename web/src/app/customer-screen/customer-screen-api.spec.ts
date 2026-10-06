@@ -29,8 +29,9 @@ describe('CustomerScreenApi', () => {
   const answer = async (
     promotions: object | null,
     availability: object | null,
+    placeId: string | null = null,
   ): Promise<ReturnType<CustomerScreenApi['find']>> => {
-    const read = api.find('c1', 'vis');
+    const read = api.find('c1', 'vis', placeId);
     http.expectOne((r) => r.url === '/api/companies/c1/customer-screen/products').flush(found);
     // The two optional answers are asked once the products are known, for those products only.
     await Promise.resolve();
@@ -39,6 +40,8 @@ describe('CustomerScreenApi', () => {
     const stock = http.expectOne((r) => r.url === '/api/companies/c1/customer-screen/availability');
     expect(promos.request.params.getAll('ids[]')).toEqual(['p1', 'p2']);
     expect(stock.request.params.getAll('ids[]')).toEqual(['p1', 'p2']);
+    expect(stock.request.params.get('establishmentId')).toBe(placeId);
+    expect(promos.request.params.has('establishmentId')).toBe(false);
     if (promotions === null) promos.flush({}, { status: 404, statusText: 'Not Found' });
     else promos.flush(promotions);
     if (availability === null) stock.flush({}, { status: 404, statusText: 'Not Found' });
@@ -101,7 +104,7 @@ describe('CustomerScreenApi', () => {
   });
 
   it('does not ask for either when nothing was found', async () => {
-    const read = api.find('c1', 'nothing');
+    const read = api.find('c1', 'nothing', null);
     http
       .expectOne((r) => r.url === '/api/companies/c1/customer-screen/products')
       .flush({ items: [] });
@@ -109,8 +112,32 @@ describe('CustomerScreenApi', () => {
     expect(await read).toEqual([]);
   });
 
+  it('reads the stock at the establishment the screen stands at', async () => {
+    const rows = await answer({ items: [] }, { items: [{ productId: 'p1', inStock: true }] }, 'e2');
+
+    expect(rows[0].inStock).toBe(true);
+  });
+
+  it('lists the establishments the screen may stand at, and none to somebody who may not read them', async () => {
+    const listed = api.places('c1');
+    http.expectOne('/api/companies/c1/establishments').flush([
+      { id: 'e1', code: '000', name: 'Acme', isDefault: true, codePattern: '\\d{3}' },
+      { id: 'e2', code: '001', name: 'Sfax', isDefault: false },
+    ]);
+    expect(await listed).toEqual([
+      { id: 'e1', code: '000', name: 'Acme', isDefault: true },
+      { id: 'e2', code: '001', name: 'Sfax', isDefault: false },
+    ]);
+
+    const refused = api.places('c1');
+    http
+      .expectOne('/api/companies/c1/establishments')
+      .flush({}, { status: 404, statusText: 'Not Found' });
+    expect(await refused).toEqual([]);
+  });
+
   it('lets a failure that is not a missing module through, since it would hide a wrong answer', async () => {
-    const read = api.find('c1', 'vis');
+    const read = api.find('c1', 'vis', null);
     http.expectOne((r) => r.url === '/api/companies/c1/customer-screen/products').flush(found);
     await Promise.resolve();
     await Promise.resolve();

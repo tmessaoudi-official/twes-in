@@ -1747,6 +1747,7 @@
       "title": "Defaults",
       "intro_product": "What a new document line for this product starts with unless the line says otherwise. A value not set here comes from the product's category, else from the company.",
       "intro_category": "What the products filed in this category start with unless a product says otherwise. A value not set here comes from the company; a subcategory has its own values.",
+      "intro_establishment": "What this establishment sets for itself alone, such as what its customer screen says of stock. A value not set here comes from the company.",
       "save": "Save the defaults",
       "saved": "The defaults were saved.",
       "overrides": "Values set here",
@@ -3103,7 +3104,11 @@
     "from_quantity": "from {{quantity}} units",
     "between": "{{from}} to {{to}}",
     "until": "until {{date}}",
-    "since": "since {{date}}"
+    "since": "since {{date}}",
+    "places_title": "Where does this screen stand?",
+    "places_intro": "It will say this establishment's stock. The choice is kept on this device.",
+    "place": "Establishment:",
+    "place_change": "Change establishment"
   },
   "step_up": {
     "title": "Confirm it is you",
@@ -3549,6 +3554,7 @@
         "scan_gap": "The time between two keys that tells your scanner from a hand.",
         "notice": "That you closed the cookie notice.",
         "customer_view": "Whether the customer screen is open in this tab.",
+        "customer_screen_place": "The establishment this device's customer screen stands at, for each company.",
         "phone": "The link of a phone lent as a scanner."
       },
       "third_party": "No third-party script, no audience measurement, no advertising."

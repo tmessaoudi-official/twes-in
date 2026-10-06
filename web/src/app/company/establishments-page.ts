@@ -28,11 +28,21 @@ import {
 } from './establishment-forms';
 import { EstablishmentsFacade } from './establishments-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { ArticleDefaults } from '../products/article-defaults';
+import type { ArticleSubject } from '../shared/settings/settings-types';
 
 /** The places the company issues documents from, one of them its default. */
 @Component({
   selector: 'app-establishments-page',
-  imports: [MatButtonModule, MatCardModule, TranslatePipe, DataList, DataListCell, DescriptorForm],
+  imports: [
+    ArticleDefaults,
+    MatButtonModule,
+    MatCardModule,
+    TranslatePipe,
+    DataList,
+    DataListCell,
+    DescriptorForm,
+  ],
   templateUrl: './establishments-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -65,6 +75,17 @@ export class EstablishmentsPage implements OnInit {
   protected readonly rowTestId = (row: EstablishmentRow): string => `establishment-${row.code}`;
 
   protected readonly editing = signal<EstablishmentRow | 'new' | null>(null);
+  /**
+   * The establishment being revised, as its own settings read it: what its customer screen says of stock, set here
+   * for it alone (audit 2026-10-06, B-13). A new establishment has none until it exists.
+   */
+  protected readonly subject = computed<ArticleSubject | null>(
+    () => {
+      const editing = this.editing();
+      return editing === null || editing === 'new' ? null : { establishmentId: editing.id };
+    },
+    { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
+  );
   protected readonly descriptor = computed(() => {
     const editing = this.editing();
     return establishmentForm(

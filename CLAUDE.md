@@ -402,3 +402,8 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   rebuilding: `docker compose restart web` after it, and wait for « Application bundle generation complete ». A grid narrowed
   to one column still grows an implicit second one for a `col-span-2` child: reset the children's `grid-column` too (2026-10-06).
 - A template reference named like a component member (`#day` beside a `day` signal) shadows it inside the template and breaks the type check; a `matSuffix` inside an `@case`/`@switch` is not projected (NG8011), so give the field its own `@else if` branch. A swatch or icon-only button needs `appLabel` for the a11y e2e's tooltip rule AND text content for the template lint (2026-10-04).
+- A Material dialog with `autoFocus: 'first-tabbable'` moves focus only once its open animation ends: an e2e that fills the
+  first field straight away types into the page behind (the invoice payment flake). Wait for `toBeFocused()` on that field
+  first. A matSuffix inside an `@if` beside its input is not projected either (NG8011): one mat-form-field per kind (2026-10-06).
+- For the next expertise refresh: `.claude/rules/expertise-core.md` § 2 still says the locked customer screen is NOT built
+  and `hides()` is the code; it was built (rows 205, 207) and `hides()` is gone (2026-10-06).

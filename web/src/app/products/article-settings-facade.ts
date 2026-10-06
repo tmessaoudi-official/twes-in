@@ -10,11 +10,15 @@ import type {
   SettingsError,
 } from '../shared/settings/settings-types';
 
-/** The level a product's or a product category's own values are stored at. */
+/** The level a product's, a product category's or an establishment's own values are stored at. */
 export const articleLevelOf = (subject: ArticleSubject): SettingLevel =>
-  'productId' in subject ? 'product' : 'product_category';
+  'productId' in subject
+    ? 'product'
+    : 'establishmentId' in subject
+      ? 'establishment'
+      : 'product_category';
 
-/** The articles chain as one product or one product category sees it, read and changed at its own level. */
+/** The articles chain as one product, product category or establishment sees it, read and changed at its own level. */
 @Injectable({ providedIn: 'root' })
 export class ArticleSettings {
   private readonly api = inject(SettingsApi);

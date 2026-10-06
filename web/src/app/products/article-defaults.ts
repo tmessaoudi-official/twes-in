@@ -31,7 +31,7 @@ import { Feedback } from '../shared/feedback/feedback';
 const ARTICLE_CHAINS: readonly SettingChain[] = ['articles'];
 
 /**
- * A product's or a product category's defaults: the articles chain at its own level, each field starting at what the
+ * A product's, a product category's or an establishment's defaults: the articles chain at its own level, each field starting at what the
  * level above says, saved only where it was changed, with the values set here listed for a reset.
  */
 @Component({
@@ -54,7 +54,9 @@ export class ArticleDefaults {
   protected readonly intro = computed(() =>
     'productId' in this.subject()
       ? 'products.defaults.intro_product'
-      : 'products.defaults.intro_category',
+      : 'establishmentId' in this.subject()
+        ? 'products.defaults.intro_establishment'
+        : 'products.defaults.intro_category',
   );
   protected readonly writable = computed(() =>
     this.settings.rows().some((row) => row.writableLevels.includes(this.level())),

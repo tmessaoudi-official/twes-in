@@ -10,6 +10,14 @@ export interface ScreenPromotion {
   readonly endsOn: string | null;
 }
 
+/** An establishment the customer screen may stand at: it says that establishment's own stock. */
+export interface ScreenPlace {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+  readonly isDefault: boolean;
+}
+
 /** What the customer screen shows of a product, and not a field more. */
 export interface ScreenProduct {
   readonly id: string;

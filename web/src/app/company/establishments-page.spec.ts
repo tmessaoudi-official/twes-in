@@ -23,6 +23,7 @@ import {
 import type { CompanyError, EstablishmentRow } from './company-types';
 import { EstablishmentsFacade } from './establishments-facade';
 import { EstablishmentsPage } from './establishments-page';
+import { ArticleSettings } from '../products/article-settings-facade';
 import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
@@ -65,6 +66,15 @@ describe('EstablishmentsPage', () => {
     loadEstablishments: vi.fn(),
     createEstablishment: vi.fn(),
     reviseEstablishment: vi.fn(),
+    clearError: vi.fn(),
+  };
+  const articleSettings = {
+    rows: signal([]).asReadonly(),
+    busy: signal(false).asReadonly(),
+    error: signal(null).asReadonly(),
+    load: vi.fn(async () => undefined),
+    save: vi.fn(async () => true),
+    reset: vi.fn(async () => true),
     clearError: vi.fn(),
   };
   const auth = {
@@ -111,6 +121,7 @@ describe('EstablishmentsPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: EstablishmentsFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
+        { provide: ArticleSettings, useValue: articleSettings },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -198,5 +209,20 @@ describe('EstablishmentsPage', () => {
 
     expect(q('establishment-add')).toBeNull();
     expect(q('row-action-edit-e1')).toBeNull();
+  });
+
+  // Audit 2026-10-06, B-13: what the establishment's customer screen says of stock is set on the establishment.
+  it("opens an existing establishment's own settings below its form, and none for a new one", async () => {
+    articleSettings.load.mockClear();
+    q('establishment-add')!.click();
+    await settle();
+    expect(q('article-defaults')).toBeNull();
+    q('establishment-cancel')!.click();
+    await settle();
+
+    q('row-action-edit-e1')!.click();
+    await settle();
+    expect(q('article-defaults')).not.toBeNull();
+    expect(articleSettings.load).toHaveBeenCalledWith('c1', { establishmentId: 'e1' });
   });
 });

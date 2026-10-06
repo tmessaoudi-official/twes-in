@@ -1747,6 +1747,7 @@
       "title": "Valeurs par défaut",
       "intro_product": "Ce qu’une nouvelle ligne de document pour ce produit reprend, sauf si la ligne dit autre chose. Une valeur non réglée ici vient de la catégorie du produit, sinon de l’entreprise.",
       "intro_category": "Ce que reprennent les produits rangés dans cette catégorie, sauf si un produit dit autre chose. Une valeur non réglée ici vient de l’entreprise ; une sous-catégorie a ses propres valeurs.",
+      "intro_establishment": "Ce que cet établissement règle pour lui seul, comme ce que son écran client dit du stock. Une valeur non réglée ici vient de l’entreprise.",
       "save": "Enregistrer les valeurs par défaut",
       "saved": "Les valeurs par défaut ont été enregistrées.",
       "overrides": "Valeurs réglées ici",
@@ -3103,7 +3104,11 @@
     "from_quantity": "à partir de {{quantity}}",
     "between": "du {{from}} au {{to}}",
     "until": "jusqu'au {{date}}",
-    "since": "depuis le {{date}}"
+    "since": "depuis le {{date}}",
+    "places_title": "Où se trouve cet écran ?",
+    "places_intro": "Il dira le stock de cet établissement. Ce choix est gardé sur cet appareil.",
+    "place": "Établissement :",
+    "place_change": "Changer d'établissement"
   },
   "step_up": {
     "title": "Confirmez que c'est bien vous",
@@ -3549,6 +3554,7 @@
         "scan_gap": "Le délai entre deux touches qui distingue votre scanner d’une main.",
         "notice": "Que vous avez fermé le bandeau sur les cookies.",
         "customer_view": "Si l’écran client est ouvert dans cet onglet.",
+        "customer_screen_place": "L’établissement où se trouve l’écran client de cet appareil, pour chaque entreprise.",
         "phone": "Le lien d’un téléphone prêté comme scanner."
       },
       "third_party": "Aucun script tiers, aucune mesure d’audience, aucune publicité."
