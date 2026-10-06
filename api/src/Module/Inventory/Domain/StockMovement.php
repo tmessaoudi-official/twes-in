@@ -121,6 +121,13 @@ class StockMovement implements CompanyOwned
     #[ORM\Column(options: ['default' => false])]
     private bool $costToComplete = false;
 
+    /**
+     * The half of a move that left, for the half that arrives: the goods are the same, so they arrive at the cost they
+     * left at. Valued by the average instead, the arriving half found the stock the leaving half had just emptied and
+     * took the cost price, or nothing. Only ever set on a move being written, never stored.
+     */
+    private ?self $leftAs = null;
+
     /** The vendor a receipt came from, when it names one; the vendor kept, its movements keep it, a deleted one leaves none. */
     #[ORM\ManyToOne(targetEntity: Vendor::class)]
     #[ORM\JoinColumn(name: 'vendor_id', nullable: true, onDelete: 'SET NULL')]
@@ -252,10 +259,11 @@ class StockMovement implements CompanyOwned
         $moved = self::onePieceOfASerial($product, self::quantity($quantity, $product, false));
         $moveId = Uuid::v7();
 
-        return [
-            new self($product, $from, $lot, StockMovementKind::Out, new Number($moved)->mul(-1)->value, self::SOURCE_MOVE, $moveId, $recordedBy, $now),
-            new self($product, $to, $lot, StockMovementKind::In, $moved, self::SOURCE_MOVE, $moveId, $recordedBy, $now),
-        ];
+        $out = new self($product, $from, $lot, StockMovementKind::Out, new Number($moved)->mul(-1)->value, self::SOURCE_MOVE, $moveId, $recordedBy, $now);
+        $in = new self($product, $to, $lot, StockMovementKind::In, $moved, self::SOURCE_MOVE, $moveId, $recordedBy, $now);
+        $in->leftAs = $out;
+
+        return [$out, $in];
     }
 
     /**
@@ -524,6 +532,12 @@ class StockMovement implements CompanyOwned
     public function getUnitCost(): ?string
     {
         return $this->unitCost;
+    }
+
+    /** @return numeric-string|null the cost the same goods left at, when this is the arriving half of a move */
+    public function costItLeftAt(): ?string
+    {
+        return $this->leftAs?->getUnitCost();
     }
 
     /**

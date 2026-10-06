@@ -92,6 +92,27 @@ final class StockValuationTest extends ApiTestCase
         self::assertSame(['10.000', '5000.000'], [$this->line($this->laptopId)['quantity'], $this->line($this->laptopId)['value']]);
     }
 
+    public function testMovingAllOfAStockLeavesItsValueAsItWasToo(): void
+    {
+        // The half leaving takes the valued stock to nothing, and the half arriving was then valued at the average of
+        // nothing: the cost price, or no value at all.
+        $site = $this->site();
+        $this->receive($this->laptopId, $site, '10', '500');
+        $this->receive($this->mouseId, $site, '10', '20');
+        $this->postJson($this->path('stock-locations'), ['kind' => 'zone', 'code' => 'Z1', 'name' => 'Zone', 'parentId' => $site, 'establishmentId' => $this->establishmentId()]);
+        $zone = $this->stringAt($this->json(), 'id');
+
+        foreach ([$this->laptopId, $this->mouseId] as $productId) {
+            $this->postJson($this->path('stock-movements'), ['operation' => 'move', 'productId' => $productId, 'locationId' => $site, 'toLocationId' => $zone, 'quantity' => '10']);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        }
+
+        $laptop = $this->line($this->laptopId);
+        self::assertSame(['10.000', '500.0000', '5000.000', '0.000'], [$laptop['quantity'], $laptop['unitCost'], $laptop['value'], $laptop['unvaluedQuantity']], 'no cost price to fall back on');
+        $mouse = $this->line($this->mouseId);
+        self::assertSame(['10.000', '20.0000', '200.000'], [$mouse['quantity'], $mouse['unitCost'], $mouse['value']], 'not revalued at the cost price of 8');
+    }
+
     public function testAReceiptWithNoCostIsValuedAtTheProductsOwnCostPrice(): void
     {
         $this->receive($this->mouseId, $this->site(), '10', null);

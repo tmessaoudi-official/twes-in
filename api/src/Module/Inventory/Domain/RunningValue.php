@@ -74,13 +74,14 @@ final readonly class RunningValue
     }
 
     /**
-     * Values a movement in turn: one that came with no cost at the average it finds, and one that lifts the stock from
+     * Values a movement in turn: one that came with no cost at the average it finds (the arriving half of a move at the
+     * cost its leaving half took), and one that lifts the stock from
      * below nothing with its revaluation. A movement no cost is known for leaves the valued stock as it was.
      */
     public function take(StockMovement $movement): self
     {
         if (null === $movement->getUnitCost()) {
-            $average = $this->average($movement->getProduct()->getDetails()->costPrice);
+            $average = $movement->costItLeftAt() ?? $this->average($movement->getProduct()->getDetails()->costPrice);
             if (null !== $average) {
                 $movement->valuedAt($average);
             }
