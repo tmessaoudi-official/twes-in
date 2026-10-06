@@ -17,11 +17,13 @@ use App\Identity\Application\Password\ResetPassword;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
+use App\Identity\Domain\UserSession;
 use App\Tests\Support\FakeBreachedPasswordCheck;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryPasswordResetMailer;
 use App\Tests\Support\InMemoryPasswordResets;
+use App\Tests\Support\InMemorySessions;
 use App\Tests\Support\InMemoryUsers;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -37,11 +39,13 @@ final class PasswordResetTest extends TestCase
     private MockClock $clock;
     private User $user;
     private InMemoryPasswordResetMailer $mailer;
+    private InMemorySessions $sessions;
 
     protected function setUp(): void
     {
         $this->users = new InMemoryUsers();
         $this->resets = new InMemoryPasswordResets();
+        $this->sessions = new InMemorySessions();
         $this->mailer = new InMemoryPasswordResetMailer();
         $this->transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($this->transactions);
@@ -86,8 +90,11 @@ final class PasswordResetTest extends TestCase
     {
         $raw = $this->link();
         $stamp = $this->user->getSecurityStamp();
+        $session = new UserSession($this->user, 'a-session-id', 'Firefox on Linux', '192.0.2.1', $this->clock->now());
+        $this->sessions->save($session);
 
         $this->reset()->handle($raw, self::NEXT);
+        self::assertTrue($session->isRevoked(), 'the devices list no longer shows a session the new password ended');
 
         self::assertSame('hash:'.self::NEXT, $this->user->getPasswordHash());
         self::assertNotSame($stamp, $this->user->getSecurityStamp());
@@ -106,6 +113,19 @@ final class PasswordResetTest extends TestCase
         $this->clock->modify('+61 minutes');
         $this->assertNotUsable(fn () => $this->reset()->handle($raw, self::NEXT));
         self::assertSame('hash:old', $this->user->getPasswordHash());
+    }
+
+    public function testTwoUsesOfOneLinkAtOnceSetOnePasswordNotTwo(): void
+    {
+        // The other request spent the link between this one's first read and its lock (audit 2026-10-06, C-F6).
+        $raw = $this->link();
+        $this->resets->whileWaitingForTheLock = function (): void {
+            array_last($this->resets->resets)?->markUsed($this->clock->now());
+            $this->user->setPasswordHash('hash:the-other-request', $this->clock->now());
+        };
+
+        $this->assertNotUsable(fn () => $this->reset()->handle($raw, self::NEXT));
+        self::assertSame('hash:the-other-request', $this->user->getPasswordHash());
     }
 
     public function testAPasswordThePolicyRefusesLeavesTheLinkUsable(): void
@@ -152,7 +172,7 @@ final class PasswordResetTest extends TestCase
             }
         };
 
-        return new ResetPassword($this->users, $this->resets, $hasher, new NewPasswordPolicy(new FakeBreachedPasswordCheck(false)), $this->audit, $this->transactions, $this->clock);
+        return new ResetPassword($this->users, $this->resets, $hasher, new NewPasswordPolicy(new FakeBreachedPasswordCheck(false)), $this->audit, $this->transactions, $this->clock, $this->sessions);
     }
 
     private function assertNotUsable(callable $act): void

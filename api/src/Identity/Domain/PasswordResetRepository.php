@@ -13,6 +13,9 @@ interface PasswordResetRepository
 {
     public function ofTokenHash(string $tokenHash): ?PasswordReset;
 
+    /** The same link, its row locked until the transaction ends and read again, so two uses of it run one after the other. */
+    public function lockedOfTokenHash(string $tokenHash): ?PasswordReset;
+
     /**
      * The links sent to this account that have not been used.
      *

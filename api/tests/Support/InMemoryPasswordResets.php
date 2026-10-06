@@ -23,6 +23,18 @@ final class InMemoryPasswordResets implements PasswordResetRepository
         return array_find($this->resets, static fn (PasswordReset $reset): bool => $reset->getTokenHash() === $tokenHash);
     }
 
+    /** What another request does while this one waits for the lock: spends the link, say. */
+    public ?\Closure $whileWaitingForTheLock = null;
+
+    public function lockedOfTokenHash(string $tokenHash): ?PasswordReset
+    {
+        if (null !== $this->whileWaitingForTheLock) {
+            ($this->whileWaitingForTheLock)();
+        }
+
+        return $this->ofTokenHash($tokenHash);
+    }
+
     public function openFor(User $user): array
     {
         return array_values(array_filter($this->resets, static fn (PasswordReset $reset): bool => $reset->getUser()->getId()->equals($user->getId()) && !$reset->isUsed()));

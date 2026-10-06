@@ -48,6 +48,14 @@ final readonly class DoctrineUserSessionRepository implements UserSessionReposit
             ->getQuery()->execute();
     }
 
+    public function revokeEveryOf(User $user, \DateTimeImmutable $now): void
+    {
+        foreach ($this->entityManager->getRepository(UserSession::class)->findBy(['user' => $user, 'revokedAt' => null]) as $session) {
+            $session->revoke($now);
+        }
+        $this->entityManager->flush();
+    }
+
     public function save(UserSession $session): void
     {
         $this->entityManager->persist($session);

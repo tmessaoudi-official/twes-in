@@ -27,5 +27,8 @@ interface UserSessionRepository
     /** Forgets what this account's sessions were before the given moment, which no cookie can still be using. */
     public function removeOlderThan(User $user, \DateTimeImmutable $before): void;
 
+    /** Marks every session of this account ended, as a new password or security stamp ends them all. */
+    public function revokeEveryOf(User $user, \DateTimeImmutable $now): void;
+
     public function save(UserSession $session): void;
 }

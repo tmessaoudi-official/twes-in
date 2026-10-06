@@ -15,6 +15,7 @@ use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\PasswordResetRepository;
 use App\Identity\Domain\PasswordResetToken;
 use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\UserSessionRepository;
 use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;
 
@@ -35,6 +36,7 @@ final readonly class ResetPassword
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private UserSessionRepository $sessions,
     ) {
     }
 
@@ -56,10 +58,16 @@ final readonly class ResetPassword
         // Asked before the transaction opens: the breach check is a call to another service.
         $breached = $this->policy->check($newPassword);
 
-        $this->transactions->run(function () use ($reset, $newPassword, $breached, $now): void {
+        $this->transactions->run(function () use ($hash, $newPassword, $breached, $now): void {
+            // Read again under the row's lock: two uses of one link at once set one password, and the second is refused.
+            $reset = $this->resets->lockedOfTokenHash($hash);
+            if (null === $reset || !$reset->isUsableAt($now)) {
+                throw new ResetLinkNotUsable('That link cannot be used.');
+            }
             $user = $reset->getUser();
             $user->setPasswordHash($this->hasher->hash($newPassword), $now);
             $this->users->save($user);
+            $this->sessions->revokeEveryOf($user, $now);
             $reset->markUsed($now);
             $this->resets->save($reset);
             foreach ($this->resets->openFor($user) as $other) {

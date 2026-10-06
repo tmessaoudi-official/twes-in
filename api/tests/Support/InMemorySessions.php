@@ -39,6 +39,15 @@ final class InMemorySessions implements UserSessionRepository
         $this->all = array_values(array_filter($this->all, static fn (UserSession $session): bool => !$session->getUser()->getId()->equals($user->getId()) || $session->getLastSeenAt() >= $before));
     }
 
+    public function revokeEveryOf(User $user, \DateTimeImmutable $now): void
+    {
+        foreach ($this->all as $session) {
+            if ($session->getUser()->getId()->equals($user->getId())) {
+                $session->revoke($now);
+            }
+        }
+    }
+
     public function save(UserSession $session): void
     {
         if (!\in_array($session, $this->all, true)) {

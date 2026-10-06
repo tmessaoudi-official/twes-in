@@ -12,7 +12,9 @@ namespace App\Identity\Infrastructure\Doctrine;
 use App\Identity\Domain\PasswordReset;
 use App\Identity\Domain\PasswordResetRepository;
 use App\Identity\Domain\User;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 
 final readonly class DoctrinePasswordResetRepository implements PasswordResetRepository
 {
@@ -23,6 +25,22 @@ final readonly class DoctrinePasswordResetRepository implements PasswordResetRep
     public function ofTokenHash(string $tokenHash): ?PasswordReset
     {
         return $this->entityManager->getRepository(PasswordReset::class)->findOneBy(['tokenHash' => $tokenHash]);
+    }
+
+    public function lockedOfTokenHash(string $tokenHash): ?PasswordReset
+    {
+        $reset = $this->entityManager->createQueryBuilder()
+            ->select('r')
+            ->from(PasswordReset::class, 'r')
+            ->where('r.tokenHash = :hash')
+            ->setParameter('hash', $tokenHash)
+            ->getQuery()
+            // SELECT … FOR UPDATE inside the transaction; the refresh hint replaces what the first read left in memory.
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true)
+            ->getOneOrNullResult();
+
+        return $reset instanceof PasswordReset ? $reset : null;
     }
 
     public function openFor(User $user): array

@@ -79,6 +79,30 @@ final class ConnectedDevicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
     }
 
+    public function testASignedOutSessionOrOneAPasswordChangeEndedIsNoLongerListed(): void
+    {
+        // A logout ends its session and a new password ends them all; the list says so at once, not twelve hours later
+        // (audit 2026-10-06, C-F7).
+        $firefox = $this->signInAs('Firefox on Linux');
+        $safari = $this->signInAs('Safari on iPhone');
+        $this->actAs($firefox);
+        $this->postJson('/api/auth/logout', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+
+        $this->actAs($safari);
+        $this->getJson(self::PATH);
+        self::assertSame(['Safari on iPhone'], array_map(fn (array $d): string => $this->stringAt($d, 'device'), $this->jsonList()));
+
+        $this->sendJson('PUT', '/api/auth/password', ['currentPassword' => self::PASSWORD, 'newPassword' => 'another-long-password']);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->client->getCookieJar()->clear();
+        $this->client->setServerParameter('HTTP_USER_AGENT', 'Chrome on Android');
+        $this->login('someone@twes.local', 'another-long-password');
+        self::assertResponseIsSuccessful();
+        $this->getJson(self::PATH);
+        self::assertSame(['Chrome on Android'], array_map(fn (array $d): string => $this->stringAt($d, 'device'), $this->jsonList()));
+    }
+
     public function testEndingTheOthersLeavesTheCurrentOne(): void
     {
         $first = $this->signInAs('Firefox on Linux');

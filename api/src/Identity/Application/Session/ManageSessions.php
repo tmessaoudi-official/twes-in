@@ -89,6 +89,13 @@ final readonly class ManageSessions
         return array_map(static fn (UserSession $session): SessionEntry => new SessionEntry($session, $session->isFor($currentSessionId)), $live);
     }
 
+    /** The session signed out: its record ends with it. */
+    public function signedOut(UserSession $session): void
+    {
+        $session->revoke($this->clock->now());
+        $this->sessions->save($session);
+    }
+
     /** Ends one of the person's other sessions; false when there is none such, or it is the one asking. */
     public function end(User $user, Uuid $id, string $currentSessionId): bool
     {

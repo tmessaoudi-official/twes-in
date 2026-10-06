@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Identity\Application\Login\PasswordAttempts;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\UserRepository;
+use App\Identity\Domain\UserSessionRepository;
 use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -38,6 +39,7 @@ final readonly class ChangePassword
         private AuditTrail $audit,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private UserSessionRepository $sessions,
     ) {
     }
 
@@ -63,6 +65,8 @@ final readonly class ChangePassword
         $this->transactions->run(function () use ($user, $newPassword, $breached): void {
             $user->setPasswordHash($this->hasher->hash($newPassword), $this->clock->now());
             $this->users->save($user);
+            // The new stamp ends every session, this one too; the devices list says so at once.
+            $this->sessions->revokeEveryOf($user, $this->clock->now());
             if (null === $breached) {
                 $this->audit->record(new AuditEntry('user', $user->getId(), self::BREACH_CHECK_SKIPPED, $user->getId(), ['reason' => 'the breach service could not be reached']));
             }
