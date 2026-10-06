@@ -2103,6 +2103,11 @@ li.twes-row-new.twes-list-card {
 // A dialog is one column wide, so its fields stand one under the other.
 .mat-mdc-dialog-content .twes-form-fields {
   grid-template-columns: minmax(0, 1fr);
+
+  // A field spanning two columns would otherwise open a second, implicit one beside the first.
+  > * {
+    grid-column: 1 / -1;
+  }
 }
 
 .twes-form-stacked .twes-form-section,
