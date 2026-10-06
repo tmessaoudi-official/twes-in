@@ -413,10 +413,37 @@ class Invoice implements CompanyOwned
         if ([] === $added) {
             return;
         }
-        $this->writeLines([...array_map(static fn (InvoiceLine $line): InvoiceLineDetails => new InvoiceLineDetails(
+        $kept = array_map(static fn (InvoiceLine $line): InvoiceLineDetails => self::detailsOf($line, $line->getQuantity()), $this->getLines());
+        // A document invoices a note line once: the rest of a line it already took part of joins that line, which a
+        // revision of the draft would otherwise refuse.
+        $bySource = [];
+        foreach ($this->getLines() as $index => $line) {
+            $source = $line->getSourceDeliveryNoteLineId();
+            if (null !== $source) {
+                $bySource[$source->toRfc4122()] = $index;
+            }
+        }
+        $appended = [];
+        foreach ($added as $line) {
+            $index = $bySource[$line->sourceDeliveryNoteLineId?->toRfc4122() ?? ''] ?? null;
+            if (null === $index) {
+                $appended[] = $line;
+                continue;
+            }
+            $existing = $this->getLines()[$index];
+            $kept[$index] = self::detailsOf($existing, Decimal::format(Decimal::of($existing->getQuantity())->add(Decimal::of($line->quantity)), InvoiceLineDetails::QUANTITY_DECIMALS));
+        }
+        $this->writeLines([...$kept, ...$appended]);
+        $this->updatedAt = $now;
+    }
+
+    /** What a line of this draft says, with the quantity given. */
+    private static function detailsOf(InvoiceLine $line, string $quantity): InvoiceLineDetails
+    {
+        return new InvoiceLineDetails(
             $line->getProduct(),
             $line->getDescription(),
-            $line->getQuantity(),
+            $quantity,
             $line->getUnit(),
             $line->getUnitPriceNet(),
             $line->getDiscountRate(),
@@ -424,8 +451,7 @@ class Invoice implements CompanyOwned
             $line->getSourceDeliveryNoteLineId(),
             $line->getLotCode(),
             $line->isReturned(),
-        ), $this->getLines()), ...$added]);
-        $this->updatedAt = $now;
+        );
     }
 
     /**

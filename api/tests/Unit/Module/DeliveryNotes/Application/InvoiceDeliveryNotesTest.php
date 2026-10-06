@@ -31,6 +31,7 @@ use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceLine;
+use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceLineTax;
 use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceStatus;
@@ -217,7 +218,19 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $draft = $this->invoicing->draftInvoice($this->company, [$line->getId()], null, [$lineId => '4']);
 
         $this->invoicing->addToDraft($this->company, $draft->getId(), [$line->getId()], null, [$lineId => '6']);
-        self::assertSame(['4.000', '6.000'], array_map(static fn (InvoiceLine $each): string => $each->getQuantity(), $draft->getLines()));
+        // One line per note line, as a revision of the draft requires (audit 2026-10-06, E-3): the rest joins the line
+        // already there, where a second line beside it made a draft its own editor could no longer save.
+        self::assertSame([['10.000', $lineId]], array_map(static fn (InvoiceLine $each): array => [$each->getQuantity(), $each->getSourceDeliveryNoteLineId()?->toRfc4122()], $draft->getLines()));
+        $draft->revise($draft->getEstablishment(), $draft->getCustomer(), $draft->getHeader(), array_map(static fn (InvoiceLine $each): InvoiceLineDetails => new InvoiceLineDetails(
+            $each->getProduct(),
+            $each->getDescription(),
+            $each->getQuantity(),
+            $each->getUnit(),
+            $each->getUnitPriceNet(),
+            $each->getDiscountRate(),
+            array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $each->getTaxes()),
+            $each->getSourceDeliveryNoteLineId(),
+        ), $draft->getLines()), [], $this->clock->now());
 
         $this->expectException(DeliveryNoteTransitionRefused::class);
         $this->invoicing->addToDraft($this->company, $draft->getId(), [$line->getId()], null);
