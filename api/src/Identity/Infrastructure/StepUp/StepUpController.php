@@ -26,7 +26,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Proving who is at the screen again, with the password or a passkey. The answer is only yes or no: what the proof
- * unlocks is the screen's to decide, and each proof is spent by the one action it asked for.
+ * unlocks is the screen's to decide. A proof holds a few minutes, so several files in a row ask once (docs/SPEC.md
+ * § 7, H-b2); leaving the customer screen spends it, or the customer next at the screen would ride on it.
  *
  * Both proofs draw on the budget of five attempts the second factor of a login has, keyed on the account: a password
  * that could be guessed here at the limiter's pace is guessed eventually, and the right one does not get round it.

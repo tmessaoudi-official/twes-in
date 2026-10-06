@@ -31,7 +31,7 @@ final readonly class CustomerScreenLockListener
 {
     public const string LOCKED = 'customer_screen_locked';
 
-    /** Whoever it is, the way out: who is signed in, signing out, proving it again, and leaving the screen. */
+    /** Who is signed in, the way out (signing out, proving it again), and the realtime token the screen's live reload needs. */
     private const array ANY_METHOD = ['/api/auth/me', '/api/auth/logout', '/api/auth/step-up', '/api/auth/step-up/passkey', '/api/auth/step-up/passkey/options', '/api/me/realtime-token'];
 
     public function __construct(private Security $security, private CustomerScreenLock $lock)

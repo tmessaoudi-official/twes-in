@@ -15,6 +15,7 @@ const LOCKED = 'customer_screen_locked';
  * refusal still reaches whoever asked, who shows it as any other.
  */
 export const customerScreenInterceptor: HttpInterceptorFn = (request, next) => {
+  if (!request.url.startsWith('/api/')) return next(request);
   const hold = inject(CustomerScreenHold);
   const router = inject(Router);
   return next(request).pipe(
