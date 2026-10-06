@@ -75,8 +75,14 @@ final readonly class StatementOfAccount
         }
 
         $limit = $this->credit->limit($company, $customer);
-        // What the customer holds on account counts against what they owe, as it does for a delivery's warning.
-        $onAccount = Decimal::of($this->balances->balance($company->getId(), $customerId));
+        // What the customer held on account at the period's end counts against what they owed then, as it does for a
+        // delivery's warning; money put on account after it would clear a limit the customer really had passed.
+        $onAccount = Decimal::zero();
+        foreach ($this->balances->entries($company->getId(), $customerId) as $entry) {
+            if ($entry->getDate()->format('Y-m-d') <= $to->format('Y-m-d')) {
+                $onAccount = $onAccount->add(Decimal::of($entry->getAmount()));
+            }
+        }
 
         return new CustomerStatement(
             $customerId->toRfc4122(),

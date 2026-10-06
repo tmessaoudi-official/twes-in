@@ -112,6 +112,26 @@ final class CustomerStatementTest extends ApiTestCase
         self::assertFalse($this->json()['overCreditLimit'], 'a limit of zero is no limit, whatever is owed');
     }
 
+    /** Audit 2026-10-06, A-F3: a past period's statement weighs what was on account at its end, not what is there today. */
+    public function testAPastPeriodWeighsWhatWasOnAccountThenNotToday(): void
+    {
+        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
+        $this->setLimit('1000', Uuid::fromString($this->customerId));
+        $january = $this->issue('1300');
+        $this->em()->getConnection()->executeStatement("UPDATE invoice SET issue_date = '2026-01-10' WHERE id = :id", ['id' => $january]);
+        $this->postJson($this->companyPath().'/customers/'.$this->customerId.'/credit-balance', ['amount' => '100', 'date' => '2026-01-20']);
+        self::assertResponseStatusCodeSame(201);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $this->postJson($this->companyPath().'/customers/'.$this->customerId.'/credit-balance', ['amount' => '500', 'date' => $today]);
+        self::assertResponseStatusCodeSame(201);
+
+        $this->getJson($this->path().'?from=2026-01-01&to=2026-01-31');
+        self::assertSame(['1300.000', '100.000', true], [$this->json()['closingBalance'], $this->json()['creditBalance'], $this->json()['overCreditLimit']], 'in January 1300 owed less the 100 then on account passed 1000');
+
+        $this->getJson($this->path());
+        self::assertSame(['600.000', false], [$this->json()['creditBalance'], $this->json()['overCreditLimit']], 'today 600 on account brings 1300 under 1000');
+    }
+
     public function testThePeriodSplitsTheOpeningBalanceFromTheLines(): void
     {
         $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
