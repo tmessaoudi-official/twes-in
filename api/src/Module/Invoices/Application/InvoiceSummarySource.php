@@ -33,7 +33,8 @@ interface InvoiceSummarySource
     public function firstDueBy(Uuid $companyId, \DateTimeImmutable $day, int $limit): array;
 
     /**
-     * What the company's issued invoices were paid, by the month of the payment's day, from a day on.
+     * The money the company received, by the month of its day, from a day on: payments not made of credit, deposits,
+     * less refunds.
      *
      * @return array<string, string> the amount by `Y-m`
      */
@@ -48,7 +49,7 @@ interface InvoiceSummarySource
     public function vatIssued(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): array;
 
     /**
-     * What the company's issued invoices were paid between two days (from included, until excluded).
+     * The money the company received between two days (from included, until excluded), as `paidByMonth` counts it.
      */
     public function paidBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): string;
 

@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Infrastructure\Doctrine;
 
 use App\Fiscal\Domain\TaxFamily;
 use App\Module\Invoices\Application\InvoiceSummarySource;
+use App\Module\Invoices\Domain\CreditEntryKind;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceType;
 use Doctrine\DBAL\ArrayParameterType;
@@ -72,11 +73,10 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
     public function paidByMonth(Uuid $companyId, \DateTimeImmutable $from): array
     {
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT TO_CHAR(p.payment_date, \'YYYY-MM\') AS month, SUM(p.amount) AS amount FROM payment p JOIN invoice i ON i.id = p.invoice_id
-             WHERE i.company_id = :company AND i.document_type = :invoice AND i.status <> :cancelled AND i.amount_due IS NOT NULL
-               AND p.payment_date >= :from
+            'SELECT TO_CHAR(day, \'YYYY-MM\') AS month, SUM(amount) AS amount FROM ('.self::MONEY_RECEIVED.') money
+             WHERE day >= :from
              GROUP BY 1',
-            ['company' => $companyId->toRfc4122(), 'invoice' => InvoiceType::Invoice->value, 'cancelled' => InvoiceStatus::Cancelled->value, 'from' => $from->format('Y-m-d')],
+            [...self::moneyReceived($companyId), 'from' => $from->format('Y-m-d')],
         );
         $paid = [];
         foreach ($rows as $row) {
@@ -89,11 +89,32 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
     public function paidBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): string
     {
         return self::text($this->connection->fetchOne(
-            'SELECT COALESCE(SUM(p.amount), 0) FROM payment p JOIN invoice i ON i.id = p.invoice_id
-             WHERE i.company_id = :company AND i.document_type = :invoice AND i.status <> :cancelled AND i.amount_due IS NOT NULL
-               AND p.payment_date >= :from AND p.payment_date < :until',
-            ['company' => $companyId->toRfc4122(), 'invoice' => InvoiceType::Invoice->value, 'cancelled' => InvoiceStatus::Cancelled->value, 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d')],
+            'SELECT COALESCE(SUM(amount), 0) FROM ('.self::MONEY_RECEIVED.') money WHERE day >= :from AND day < :until',
+            [...self::moneyReceived($companyId), 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d')],
         ));
+    }
+
+    /**
+     * The money the company received, each on its own day (docs/SPEC.md § 7, audit E-14): payments into its issued
+     * invoices except those made of the customer's credit, which was money already received; deposits on the day they
+     * came in; and what was refunded, taken off on the day it left.
+     */
+    private const string MONEY_RECEIVED = 'SELECT p.payment_date AS day, p.amount FROM payment p JOIN invoice i ON i.id = p.invoice_id
+         WHERE i.company_id = :company AND i.document_type = :invoice AND i.status <> :cancelled AND i.amount_due IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM customer_credit_entry applied WHERE applied.payment_id = p.id)
+         UNION ALL
+         SELECT e.entry_date, e.amount FROM customer_credit_entry e WHERE e.company_id = :company AND e.kind IN (:deposit, :refunded)';
+
+    /** @return array<string, string> */
+    private static function moneyReceived(Uuid $companyId): array
+    {
+        return [
+            'company' => $companyId->toRfc4122(),
+            'invoice' => InvoiceType::Invoice->value,
+            'cancelled' => InvoiceStatus::Cancelled->value,
+            'deposit' => CreditEntryKind::Deposit->value,
+            'refunded' => CreditEntryKind::Refunded->value,
+        ];
     }
 
     public function invoicedBetween(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): array

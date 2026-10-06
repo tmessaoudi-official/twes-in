@@ -22,12 +22,15 @@ use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\Invoices\Application\InvoiceSummarySource;
 use App\Module\Invoices\Application\SummarizeInvoices;
+use App\Module\Invoices\Domain\CustomerCreditEntry;
+use App\Module\Invoices\Domain\CustomerCreditRepository;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceFigures;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceIssue;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceRepository;
+use App\Module\Invoices\Domain\Payment;
 use App\Module\Invoices\Domain\PaymentDetails;
 use App\Shared\Domain\PaymentMethod;
 use App\Shared\Domain\PrintSettings;
@@ -183,6 +186,31 @@ final class SummarizeInvoicesTest extends KernelTestCase
         self::assertSame(['441.000', '50.050', '1081.000'], [$summary->margin, $summary->marginLastMonth, $summary->marginBasis]);
     }
 
+    public function testCollectedIsMoneyReceivedOnlyCreditAppliedIsNotAndDepositsAndRefundsCountOnTheirOwnDay(): void
+    {
+        // Audit E-14: 100 paid in cash in August, sent to the balance by a credit note, then applied to another invoice
+        // in September was counted collected twice. In September money only moves through a deposit and a refund.
+        $first = $this->issued('FAC-A', 'Nabeul Bois', '2026-08-05', 0, '100.000');
+        $this->pay($first, '2026-08-10', '100');
+        $customer = $first->getCustomer();
+        $credits = static::getContainer()->get(CustomerCreditRepository::class);
+        $credits->save(CustomerCreditEntry::credited($customer, $first, 'AV-A', '100.000', new \DateTimeImmutable('2026-08-15'), null, $this->clock->now()));
+        $second = $this->issued('FAC-B', 'Nabeul Bois bis', '2026-09-03', 0, '100.000');
+        $applied = $this->pay($second, '2026-09-04', '100', PaymentMethod::Other);
+        $credits->save(CustomerCreditEntry::applied($customer, $applied, null, $this->clock->now()));
+        $credits->save(CustomerCreditEntry::deposit($customer, new PaymentDetails(new \DateTimeImmutable('2026-09-06'), '50.000', PaymentMethod::Cash), null, $this->clock->now()));
+        $credits->save(CustomerCreditEntry::credited($customer, $second, 'AV-B', '30.000', new \DateTimeImmutable('2026-09-08'), null, $this->clock->now()));
+        $credits->save(CustomerCreditEntry::refunded($customer, $second, 'AV-B', '30.000', new \DateTimeImmutable('2026-09-08'), null, $this->clock->now()));
+        $other = $this->issued('GLX-1', 'Autre', '2026-09-03', 0, '100.000', company: $this->globex);
+        $credits->save(CustomerCreditEntry::deposit($other->getCustomer(), new PaymentDetails(new \DateTimeImmutable('2026-09-06'), '999.000', PaymentMethod::Cash), null, $this->clock->now()));
+        $this->em()->clear();
+
+        $summary = $this->summarize->handle($this->company);
+
+        self::assertSame(['20.000', '100.000'], [$summary->collectedMonth, $summary->collectedLastMonth], '50 deposited less 30 refunded; the 100 of credit came in once, in August');
+        self::assertSame([['month' => '2026-08', 'amount' => '100.000'], ['month' => '2026-09', 'amount' => '20.000']], \array_slice($summary->collected, 4));
+    }
+
     public function testTheWithholdingSufferedIsWhatTheIssuedDocumentsKeptBackThisMonthAgainstTheSameDaysOfLastMonth(): void
     {
         $this->issued('FAC-W1', 'Nabeul Bois', '2026-09-10', 30, '1000.000', withholding: '10.000');
@@ -254,10 +282,12 @@ final class SummarizeInvoicesTest extends KernelTestCase
         $this->em()->getConnection()->executeStatement('UPDATE invoice_line SET unit_cost = :cost WHERE invoice_id = :invoice', ['cost' => $unitCost, 'invoice' => $invoice->getId()->toRfc4122()]);
     }
 
-    private function pay(Invoice $invoice, string $day, string $amount): void
+    private function pay(Invoice $invoice, string $day, string $amount, PaymentMethod $method = PaymentMethod::Transfer): Payment
     {
-        $invoice->recordPayment(new PaymentDetails(new \DateTimeImmutable($day), $amount, PaymentMethod::Transfer), new \DateTimeImmutable('2026-09-21'), 3, null, $this->clock->now());
+        $payment = $invoice->recordPayment(new PaymentDetails(new \DateTimeImmutable($day), $amount, $method), new \DateTimeImmutable('2026-09-21'), 3, null, $this->clock->now());
         static::getContainer()->get(InvoiceRepository::class)->save($invoice);
+
+        return $payment;
     }
 
     /** @param array<string, string> $taxes */
