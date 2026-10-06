@@ -7,7 +7,7 @@ permissive under the policy in that file, as enforced by `scripts/gates/dependen
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP) are aggregated,
 not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 105 runtime, 54 dev
+## api (Composer) — 107 runtime, 54 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -108,6 +108,7 @@ not compiled into what we distribute, and are not listed here.
 | symfony/dependency-injection | 8.1.8 | MIT | runtime |
 | symfony/deprecation-contracts | 3.7.1 | MIT | runtime |
 | symfony/doctrine-bridge | 8.1.8 | MIT | runtime |
+| symfony/doctrine-messenger | 8.1.8 | MIT | runtime |
 | symfony/dom-crawler | 8.1.5 | MIT | dev |
 | symfony/dotenv | 8.1.6 | MIT | runtime |
 | symfony/error-handler | 8.1.8 | MIT | runtime |
@@ -125,6 +126,7 @@ not compiled into what we distribute, and are not listed here.
 | symfony/intl | 8.1.5 | MIT | runtime |
 | symfony/mailer | 8.1.7 | MIT | runtime |
 | symfony/maker-bundle | 1.68.0 | MIT | dev |
+| symfony/messenger | 8.1.8 | MIT | runtime |
 | symfony/mime | 8.1.7 | MIT | runtime |
 | symfony/monolog-bridge | 8.1.6 | MIT | runtime |
 | symfony/monolog-bundle | 4.1.0 | MIT | runtime |

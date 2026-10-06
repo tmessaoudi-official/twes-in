@@ -322,7 +322,8 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   speed back first, or letting an earlier scan eat the window, lets the fade finish by itself and the mutant that
   removes the fix passes. Twice green before the sabotage caught it (2026-09-17, `data-list.spec.ts` mid-fade).
 - `make gate`'s licence half is every script `make gate-licences` runs (17 on 2026-09-19, CI's `licences` job), not
-  `dependency-licences.php` alone: running that one and calling the job green put a red on master (2026-09-17).
+  `dependency-licences.php` alone: running that one and calling the job green put a red on master (2026-09-17). A web change
+  needs it too: a new icon in a template is checked there (`icons-declared.sh`), and skipping it put a red on master again (2026-10-06).
 - The images build from the WORKING TREE (`COPY api/ ./`), untracked files included: proving a bring-up from a dirty
   tree tests the work in progress, not HEAD. Prove it from `git worktree add <tmp> HEAD` (2026-09-19, `ImportExport/` WIP).
 - php-cs-fixer rewrites a `/** @var */` above a `static $x = []` inside a method into `/* @var */`, and PHPStan then

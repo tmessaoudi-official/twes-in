@@ -10,7 +10,6 @@ declare(strict_types=1);
 namespace App\Identity\Infrastructure\Password;
 
 use App\Identity\Application\Password\NewPasswordRefused;
-use App\Identity\Application\Password\RequestPasswordReset;
 use App\Identity\Application\Password\ResetLinkNotUsable;
 use App\Identity\Application\Password\ResetPassword;
 use App\Identity\Domain\Email;
@@ -18,18 +17,20 @@ use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * Forgot password, with no session: an address asks for a mailed link, and the link's holder chooses a new password.
  * Asking is answered 204 whatever the address (an unknown one, a deactivated one, one already mailed a quarter of an
- * hour ago), so the answer never says whether an account exists; only the client budget answers differently, 429.
+ * hour ago), so the answer never says whether an account exists; only the client budget answers differently, 429. The
+ * ask is queued for the worker, which looks the account up and mails the link, so neither does the time it takes.
  */
 final readonly class PasswordResetController
 {
     public function __construct(
-        private RequestPasswordReset $request,
+        private MessageBusInterface $bus,
         private ResetPassword $reset,
         #[Target('password_reset_client')]
         private RateLimiterFactoryInterface $clientLimiter,
@@ -55,7 +56,7 @@ final readonly class PasswordResetController
         }
 
         if ($this->addressLimiter->create(hash('sha256', $email->value))->consume()->isAccepted()) {
-            $this->request->handle($email, \is_string($body['locale'] ?? null) ? $body['locale'] : null);
+            $this->bus->dispatch(new PasswordResetAsked($email->value, \is_string($body['locale'] ?? null) ? $body['locale'] : null));
         }
 
         return new Response(null, Response::HTTP_NO_CONTENT);

@@ -1,0 +1,35 @@
+# Work the request does not wait for (docs/SPEC.md § 7, 2026-10-06 02:44): the Doctrine transport on PostgreSQL, so a
+# message dispatched inside a transaction is stored with the change, woken by LISTEN/NOTIFY instead of polling, and read
+# by the worker service (compose.yaml). The table and its trigger come from a migration, never from the transport.
+framework:
+    messenger:
+        failure_transport: failed
+
+        transports:
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: async
+                    use_notify: true
+                    check_delayed_interval: 60000
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 4
+            # What failed for good, kept to be looked at and retried with messenger:failed:retry.
+            failed:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: failed
+
+        # Only what is named here leaves the request. A mail sent by a handler is sent there and then, not queued again.
+        routing:
+            App\Identity\Infrastructure\Password\PasswordResetAsked: async
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                # Queued and kept, so a test sees what the request left for the worker and hands it over itself
+                # (ApiTestCase::deliverQueued). The failed transport stays the table, so the schema is production's.
+                async: 'in-memory://'

@@ -8,9 +8,14 @@ services:
   api:
     build:
       target: prod
-    environment:
+    environment: &api-environment
       APP_ENV: prod
       APP_SECRET: "${APP_SECRET:?set APP_SECRET, a secret of this instance's own}"
       APP_MFA_KEY: "${APP_MFA_KEY:?set APP_MFA_KEY, 32 random bytes in base64}"
       REALTIME_TOKEN_KEY: "${REALTIME_TOKEN_KEY:?set REALTIME_TOKEN_KEY}"
       REALTIME_API_KEY: "${REALTIME_API_KEY:?set REALTIME_API_KEY}"
+  # The worker runs the same production image with the same secrets.
+  worker:
+    build:
+      target: prod
+    environment: *api-environment

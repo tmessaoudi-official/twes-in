@@ -29,12 +29,12 @@ services:
 
   api:
     logging: *logging
-    build:
+    build: &api-build
       context: .
       dockerfile: infra/api/Dockerfile
       # The development stage; compose.prod.yaml switches to the production one.
       target: dev
-    environment:
+    environment: &api-environment
       APP_ENV: dev
       DATABASE_URL: "postgresql://twes:${POSTGRES_PASSWORD:-twes}@postgres:5432/twes?serverVersion=18&charset=utf8"
       MAILER_DSN: smtp://mailpit:1025
@@ -64,6 +64,25 @@ services:
         condition: service_healthy
     ports:
       - "${API_PORT:-8091}:80"
+
+  # The worker (docs/SPEC.md § 7, 2026-10-06 02:44): the api image, reading the queue the API writes to
+  # (api/config/packages/messenger.yaml). It starts once the api is up, so the migrations have run and are not run twice
+  # at once. It leaves after an hour, or at 96 MB, under PHP's 128, and is started again: a long-lived PHP process is
+  # renewed rather than trusted to free everything.
+  worker:
+    logging: *logging
+    build: *api-build
+    command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=96M"]
+    restart: unless-stopped
+    environment: *api-environment
+    volumes:
+      - api-files:/app/var/files
+    # The image's check asks the web server, which this container does not run.
+    healthcheck:
+      disable: true
+    depends_on:
+      api:
+        condition: service_healthy
 
   # Realtime notifications (docs/SPEC.md § 7, 2026-09-13). Browsers reach it only through nginx on the web origin
   # (/connection/websocket) and only the api container calls its HTTP API, so no port is published. Connections

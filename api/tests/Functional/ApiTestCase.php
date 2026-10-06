@@ -26,6 +26,10 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Profiler\Profile;
+use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\ReceivedStamp;
+use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
 
 /**
  * Functional tests talk to the API the way the SPA does: JSON bodies, a random csrf-token header on every
@@ -368,6 +372,42 @@ abstract class ApiTestCase extends WebTestCase
         }
 
         return $out;
+    }
+
+    /**
+     * What the last request left for the worker, as it sits in the queue (config/packages/messenger.yaml: in memory under
+     * test). Read it before the next request: the kernel reboots then, and the queue with it.
+     *
+     * @return list<object>
+     */
+    protected function queued(): array
+    {
+        return array_map(static fn (Envelope $envelope): object => $envelope->getMessage(), array_values([...self::queue()->get()]));
+    }
+
+    /** Hands what is queued to the bus as the worker would, until nothing is left; how many it handed. */
+    protected function deliverQueued(): int
+    {
+        $queue = self::queue();
+        $bus = static::getContainer()->get(MessageBusInterface::class);
+        $handed = 0;
+        while ([] !== $envelopes = array_values([...$queue->get()])) {
+            foreach ($envelopes as $envelope) {
+                $bus->dispatch($envelope->with(new ReceivedStamp('async')));
+                $queue->ack($envelope);
+                ++$handed;
+            }
+        }
+
+        return $handed;
+    }
+
+    private static function queue(): InMemoryTransport
+    {
+        $queue = static::getContainer()->get('messenger.transport.async');
+        self::assertInstanceOf(InMemoryTransport::class, $queue);
+
+        return $queue;
     }
 
     /** The kernel reboots between requests, so an entity from before a request must be re-read, not refreshed. */

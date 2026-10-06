@@ -40,6 +40,13 @@ when@dev:
                 max_files: 14
                 level: debug
                 channels: [mailer]
+            # What the worker took from the queue, handled, retried or gave up on.
+            messenger:
+                type: rotating_file
+                path: "%kernel.logs_dir%/messenger.log"
+                max_files: 14
+                level: debug
+                channels: [messenger]
             deprecation:
                 type: rotating_file
                 path: "%kernel.logs_dir%/deprecation.log"
@@ -58,7 +65,7 @@ when@dev:
                 path: "%kernel.logs_dir%/app.log"
                 max_files: 14
                 level: debug
-                channels: ["!event", "!request", "!security", "!doctrine", "!realtime", "!mailer", "!deprecation", "!php"]
+                channels: ["!event", "!request", "!security", "!doctrine", "!realtime", "!mailer", "!messenger", "!deprecation", "!php"]
             console:
                 type: console
                 process_psr_3_messages: false

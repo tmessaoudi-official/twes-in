@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Identity\Infrastructure\Password\PasswordResetAsked;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mime\Email;
 
@@ -33,6 +34,7 @@ final class PasswordResetTest extends ApiTestCase
 
         $this->postJson(self::FORGOT, ['email' => 'someone@twes.local']);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->deliverQueued();
         $token = $this->tokenInMail();
 
         $this->postJson(self::RESET, ['token' => $token, 'newPassword' => self::NEXT]);
@@ -55,7 +57,27 @@ final class PasswordResetTest extends ApiTestCase
         $this->postJson(self::FORGOT, ['email' => 'nobody@twes.local']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertEquals([new PasswordResetAsked('nobody@twes.local', null)], $this->queued(), 'queued as a known one is');
+        self::assertSame(1, $this->deliverQueued());
         self::assertEmailCount(0);
+    }
+
+    public function testTheRequestOnlyQueuesTheAskAndTheWorkerMakesTheLinkAndMailsIt(): void
+    {
+        // Audit D-1: the answer must not tell a registered address by the time it takes, so the request does the same
+        // for every address and the token is made where nobody times it; the queue carries no token either.
+        $user = $this->createUser('someone@twes.local', self::PASSWORD);
+        $this->postJson(self::FORGOT, ['email' => 'someone@twes.local', 'locale' => 'en']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertEquals([new PasswordResetAsked('someone@twes.local', 'en')], $this->queued());
+        self::assertSame(0, $this->resetsOf($user->getId()->toRfc4122()), 'no link yet');
+        self::assertEmailCount(0);
+
+        $this->deliverQueued();
+
+        self::assertSame(1, $this->resetsOf($user->getId()->toRfc4122()));
+        self::assertEmailCount(1);
     }
 
     public function testAMalformedAddressIsRefusedAndASecondAskInTheQuarterHourSendsNothing(): void
@@ -66,10 +88,12 @@ final class PasswordResetTest extends ApiTestCase
 
         $this->postJson(self::FORGOT, ['email' => 'someone@twes.local']);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->deliverQueued();
         self::assertEmailCount(1);
 
         $this->postJson(self::FORGOT, ['email' => 'someone@twes.local']);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, 'the same answer');
+        self::assertSame(0, $this->deliverQueued());
         self::assertEmailCount(0);
     }
 
@@ -81,12 +105,21 @@ final class PasswordResetTest extends ApiTestCase
         self::assertSame('link_not_usable', $this->stringAt($this->json(), 'error'));
 
         $this->postJson(self::FORGOT, ['email' => 'someone@twes.local']);
+        $this->deliverQueued();
         $token = $this->tokenInMail();
         $this->postJson(self::RESET, ['token' => $token, 'newPassword' => 'short']);
         self::assertSame('too_short', $this->stringAt($this->json(), 'error'));
 
         $this->postJson(self::RESET, ['token' => $token, 'newPassword' => self::NEXT]);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, 'a refused password leaves the link usable');
+    }
+
+    private function resetsOf(string $userId): int
+    {
+        $count = $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM password_reset WHERE user_id = ?', [$userId]);
+        self::assertIsInt($count);
+
+        return $count;
     }
 
     private function tokenInMail(): string
