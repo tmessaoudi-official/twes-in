@@ -1987,7 +1987,8 @@
         "applyCost": "Prix de revient",
         "vendor": "Fournisseur",
         "supplierReference": "Référence du fournisseur",
-        "receivedOn": "Reçu le"
+        "receivedOn": "Reçu le",
+        "establishment": "Établissement"
       },
       "no_product_found": "Aucun produit trouvé.",
       "product_hint": "Tapez la référence ou le nom ; seuls les produits dont le stock est suivi sont proposés.",
@@ -2285,7 +2286,13 @@
       "reason": "Motif de la perte",
       "cost_to_complete": "Coût à compléter",
       "cost_to_complete_yes": "Coût à compléter",
-      "cost_to_complete_no": "Sans coût à compléter"
+      "cost_to_complete_no": "Sans coût à compléter",
+      "negative": "Sous zéro",
+      "negative_yes": "Sous zéro",
+      "negative_no": "Zéro ou plus",
+      "expired": "Péremption",
+      "expired_yes": "Périmé",
+      "expired_no": "Non périmé"
     }
   },
   "vendors": {

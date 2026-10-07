@@ -76,6 +76,25 @@ final class StockExportTest extends ApiTestCase
         self::assertStringStartsWith('ART-002', $this->csv('/exports/stock-levels.csv?order[reference]=desc')[1]);
     }
 
+    public function testTheLevelsFileHoldsWhatTheListShowsUnderEveryFilter(): void
+    {
+        foreach ([
+            'locationId[]='.$this->site => 2,
+            'negative=no' => 2,
+            'negative=yes' => 0,
+            'expired=no' => 2,
+            // Neither product is tracked by lot, so nothing can be past its use-by day.
+            'expired=yes' => 0,
+            'lotExpiresOn[to]=2000-01-01' => 0,
+            'locationId[]='.$this->site.'&negative=no&q=souris' => 1,
+        ] as $query => $rows) {
+            self::assertCount(1 + $rows, $this->csv('/exports/stock-levels.csv?'.$query), $query);
+            $this->getJson($this->path('/stock-levels?'.$query));
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($rows, $this->jsonPage()['totalItems'], $query);
+        }
+    }
+
     public function testTheMovementsAreOneRowEachAndCarryNoCost(): void
     {
         $lines = $this->csv('/exports/stock-movements.csv');

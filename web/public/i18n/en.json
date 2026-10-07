@@ -1987,7 +1987,8 @@
         "applyCost": "Cost price",
         "vendor": "Vendor",
         "supplierReference": "Supplier reference",
-        "receivedOn": "Arrived on"
+        "receivedOn": "Arrived on",
+        "establishment": "Establishment"
       },
       "no_product_found": "No product found.",
       "product_hint": "Type the reference or the name; only products whose stock is kept are offered.",
@@ -2285,7 +2286,13 @@
       "reason": "Loss reason",
       "cost_to_complete": "Cost to complete",
       "cost_to_complete_yes": "Cost to complete",
-      "cost_to_complete_no": "No cost to complete"
+      "cost_to_complete_no": "No cost to complete",
+      "negative": "Below zero",
+      "negative_yes": "Below zero",
+      "negative_no": "Zero or more",
+      "expired": "Use-by",
+      "expired_yes": "Past its use-by day",
+      "expired_no": "Not past its use-by day"
     }
   },
   "vendors": {

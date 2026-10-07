@@ -31,7 +31,8 @@ import { ListExport } from '../shared/list/list-export';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { InventoryFacade } from './inventory-facade';
-import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
+import type { PickAsked } from '../shared/form/pick-api';
+import type { ListDescriptor, ListPickSource, ListQuery } from '../shared/list/list-types';
 import {
   countInput,
   locationLabels,
@@ -39,7 +40,7 @@ import {
   movementInput,
   movementValues,
   receiptInput,
-  STOCK_LIST,
+  stockList,
   type StockListRow,
   stockListRows,
   stockSearch,
@@ -92,7 +93,7 @@ export class StockPage implements OnInit {
 
   /** Where a line's quantity came from: an address, so it is a real link rather than a button that navigates. */
   protected readonly list = computed<ListDescriptor<StockListRow>>(() => ({
-    ...STOCK_LIST,
+    ...stockList(this.facade.options()?.establishments ?? []),
     actions: [
       {
         id: 'movements',
@@ -440,6 +441,40 @@ export class StockPage implements OnInit {
       params: { name: locationLabels(this.facade.locations()).get(locationId) ?? code },
       undo: () => this.form()?.get(field)?.setValue(before),
     };
+  }
+
+  /** Where the list's product and location filters search: the API for products, the loaded locations for places. */
+  protected readonly pickSources: Readonly<Record<string, ListPickSource>> = {
+    product: {
+      search: (words) => this.pickProducts({ words }),
+      byIds: (ids) => this.pickProducts({ ids }),
+    },
+    location: {
+      search: async (words) => {
+        const wanted = words.trim().toLocaleLowerCase();
+        return this.locationChoices().filter((each) =>
+          `${each.code} ${each.name}`.toLocaleLowerCase().includes(wanted),
+        );
+      },
+      byIds: async (ids) => this.locationChoices().filter((each) => ids.includes(each.id)),
+    },
+  };
+  private async pickProducts(asked: PickAsked) {
+    const companyId = this.company()?.id;
+    if (!companyId) return [];
+    const found = await this.facade.pickProducts(companyId, asked);
+    return found.map((product) => ({
+      id: product.id,
+      code: product.reference,
+      name: product.name,
+    }));
+  }
+  private locationChoices() {
+    return [...locationLabels(this.facade.locations())].map(([id, label]) => ({
+      id,
+      code: '',
+      name: label,
+    }));
   }
 
   /** What the list last asked the API for; the page is not read until the list has said what it wants. */

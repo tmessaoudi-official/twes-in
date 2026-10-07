@@ -25,6 +25,7 @@ import {
   type StockProductOption,
   type StockSearch,
   type StockSortKey,
+  type StockEstablishmentOption,
 } from './inventory-types';
 import { toReceiptParts } from './split-receipt';
 
@@ -170,15 +171,26 @@ const SORT_KEYS: Readonly<Record<string, StockSortKey>> = {
   quantity: 'quantity',
 };
 
-/** What the API is asked for the page of stock the list shows. */
+const STOCK_INTERVALS: readonly { id: string; kind: 'day' | 'amount'; label: string }[] = [
+  { id: 'lotExpiresOn', kind: 'day', label: `${STOCK_FIELDS}.useBy` },
+];
+
+/**
+ * What the API is asked for the page of stock the list shows: every filter is sent, none applied here, since the list
+ * shows the page the API answered and a filter kept on this side would narrow that page alone.
+ */
 export function stockSearch(query: ListQuery): StockSearch {
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
     itemsPerPage: query.pageSize,
     q: query.query,
-    locationId: null,
-    establishmentId: null,
+    locationIds: idValues(query.filters['location']),
+    establishmentIds: idValues(query.filters['establishment']),
+    productIds: idValues(query.filters['product']),
+    negative: ANSWERS.find((answer) => answer === query.filters['negative']) ?? null,
+    expired: ANSWERS.find((answer) => answer === query.filters['expired']) ?? null,
+    intervals: rangeParams(query.filters, STOCK_INTERVALS),
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };
@@ -239,7 +251,58 @@ export const STOCK_LIST: ListDescriptor<StockListRow> = {
       width: 130,
     },
   ],
+  ranges: STOCK_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),
+  picks: [
+    { id: 'product', label: `${STOCK_FIELDS}.product` },
+    { id: 'location', label: `${STOCK_FIELDS}.location` },
+  ],
+  filters: [
+    // The company's establishments, which only the page knows: it fills the options in.
+    {
+      id: 'establishment',
+      label: `${STOCK_FIELDS}.establishment`,
+      multiple: true,
+      value: (row) => row.establishmentId,
+      options: [],
+    },
+    {
+      id: 'negative',
+      label: 'inventory.filters.negative',
+      value: (row) => (row.negative ? 'yes' : 'no'),
+      options: ANSWERS.map((answer) => ({
+        value: answer,
+        label: `inventory.filters.negative_${answer}`,
+      })),
+    },
+    {
+      id: 'expired',
+      label: 'inventory.filters.expired',
+      value: (row) => (row.expired ? 'yes' : 'no'),
+      options: ANSWERS.map((answer) => ({
+        value: answer,
+        label: `inventory.filters.expired_${answer}`,
+      })),
+    },
+  ],
 };
+
+/** The stock list with its establishment filter offering exactly the establishments this company has. */
+export const stockList = (
+  establishments: readonly StockEstablishmentOption[],
+): ListDescriptor<StockListRow> => ({
+  ...STOCK_LIST,
+  filters: (STOCK_LIST.filters ?? []).map((filter) =>
+    filter.id === 'establishment'
+      ? {
+          ...filter,
+          options: establishments.map((each) => ({
+            value: each.id,
+            label: `${each.code} · ${each.name}`,
+          })),
+        }
+      : filter,
+  ),
+});
 
 export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
   id: 'stock-movements',

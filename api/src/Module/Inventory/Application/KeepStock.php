@@ -30,6 +30,7 @@ use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Module\Inventory\Domain\StockValue;
 use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductCategoryRepository;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Domain\ProductTracking;
@@ -65,6 +66,7 @@ final readonly class KeepStock
         private LiveChanges $liveChanges,
         private ?RaiseStockAlerts $alerts = null,
         private ?ReceiptCosts $receiptCosts = null,
+        private ?ProductCategoryRepository $productCategories = null,
     ) {
     }
 
@@ -445,7 +447,7 @@ final readonly class KeepStock
      */
     public function searchLevels(Company $company, StockLevelSearch $search, PageRequest $page): Page
     {
-        return $this->movements->searchLevels($company->getId(), $search, $page);
+        return $this->movements->searchLevels($company->getId(), $this->widenedLevels($company, $search), $page);
     }
 
     /**
@@ -459,6 +461,35 @@ final readonly class KeepStock
     public function searchMovements(Company $company, StockMovementSearch $search, PageRequest $page): Page
     {
         return $this->movements->searchMovements($company->getId(), $this->withSublocations($company, $search), $page);
+    }
+
+    /**
+     * A stock list's location and product category picks, each widened to what sits under it (docs/SPEC.md § 7, row 197).
+     * Without the catalogue's categories (a test that builds this use case by hand), a category stands for itself alone.
+     */
+    private function widenedLevels(Company $company, StockLevelSearch $search): StockLevelSearch
+    {
+        if ([] === $search->locations && [] === $search->categories) {
+            return $search;
+        }
+        $locations = $search->locations;
+        if ([] !== $locations) {
+            $parents = [];
+            foreach ($this->locations->ofCompany($company->getId()) as $location) {
+                $parents[$location->getId()->toRfc4122()] = $location->getParent()?->getId()->toRfc4122();
+            }
+            $locations = Tree::withDescendants($locations, $parents);
+        }
+        $categories = $search->categories;
+        if ([] !== $categories && null !== $this->productCategories) {
+            $parents = [];
+            foreach ($this->productCategories->ofCompany($company->getId()) as $category) {
+                $parents[$category->getId()->toRfc4122()] = $category->getParent()?->getId()->toRfc4122();
+            }
+            $categories = Tree::withDescendants($categories, $parents);
+        }
+
+        return $search->widened($locations, $categories);
     }
 
     /**

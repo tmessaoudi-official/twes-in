@@ -46,13 +46,7 @@ final readonly class StockLevelCollectionProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): TraversablePaginator
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), StockPermission::READ);
-        $search = new StockLevelSearch(
-            Paging::text($operation),
-            // The `uuid` format has already refused anything that is not an identifier, with a 422.
-            Paging::identifier($operation, 'locationId'),
-            Paging::identifier($operation, 'establishmentId'),
-            Paging::order($operation, StockLevelSearch::SORTS),
-        );
+        $search = StockLevelSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, StockLevelSearch::SORTS), $company);
         $page = $this->stock->searchLevels($company, $search, $this->paging->request($operation, $context));
 
         $products = [];

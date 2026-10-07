@@ -618,9 +618,14 @@ function toOptions(raw: StockOptionsStockOptionsRead): StockOptions {
 function toSearchParams(search: StockSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
   if (search.q.trim() !== '') params = params.set('q', search.q.trim());
-  if (search.locationId !== null) params = params.set('locationId', search.locationId);
-  if (search.establishmentId !== null)
-    params = params.set('establishmentId', search.establishmentId);
+  for (const id of search.locationIds) params = params.append('locationId[]', id);
+  for (const id of search.establishmentIds) params = params.append('establishmentId[]', id);
+  for (const id of search.productIds) params = params.append('productId[]', id);
+  if (search.negative !== null) params = params.set('negative', search.negative);
+  if (search.expired !== null) params = params.set('expired', search.expired);
+  for (const [key, value] of Object.entries(search.intervals)) {
+    params = params.set(apiRangeKey(key), value);
+  }
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
   return params;

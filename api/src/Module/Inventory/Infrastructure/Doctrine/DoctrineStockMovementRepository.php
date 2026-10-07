@@ -424,6 +424,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->select('p.id AS product', 'l.id AS location', 'lt.id AS lot', 'lt.code AS lotCode', 'lt.expiresOn AS lotExpiresOn', 'lt.releasedAt AS lotReleasedAt', 'SUM(m.quantity) AS quantity')
             ->groupBy('p.id')->addGroupBy('l.id')->addGroupBy('lt.id')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
+        self::onTheSum($rows, $search);
         foreach ($search->order as $sort => $direction) {
             $rows->addOrderBy(self::SORTED_BY[$sort] ?? throw new \InvalidArgumentException("This list is not sorted by $sort."), $direction);
         }
@@ -434,9 +435,9 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         // number: PostgreSQL cannot count a pair of uuids as one value, and a paginator counting an aggregate counts
         // the movements instead. So the pairs are asked for and counted — one small row each, and they are the same
         // set this list used to hand back whole.
-        $total = \count($this->levelsQuery($companyId, $search)
+        $total = \count(self::onTheSum($this->levelsQuery($companyId, $search)
             ->select('p.id AS product', 'l.id AS location', 'lt.id AS lot')
-            ->groupBy('p.id')->addGroupBy('l.id')->addGroupBy('lt.id')
+            ->groupBy('p.id')->addGroupBy('l.id')->addGroupBy('lt.id'), $search)
             ->getQuery()->getArrayResult());
 
         $levels = [];
@@ -506,11 +507,34 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->join('m.product', 'p')->join('m.location', 'l')->leftJoin('m.lot', 'lt')
             ->where('m.company = :company')->setParameter('company', $companyId, 'uuid');
         self::narrowToWords($query, $search->text);
-        if (null !== $search->location) {
-            $query->andWhere('m.location = :locationId')->setParameter('locationId', $search->location, 'uuid');
+        if ([] !== $search->locations) {
+            $query->andWhere('m.location IN (:locationIds)')->setParameter('locationIds', self::ids($search->locations), ArrayParameterType::STRING);
         }
-        if (null !== $search->establishment) {
-            $query->andWhere('l.establishment = :establishmentId')->setParameter('establishmentId', $search->establishment, 'uuid');
+        if ([] !== $search->establishments) {
+            $query->andWhere('l.establishment IN (:establishmentIds)')->setParameter('establishmentIds', self::ids($search->establishments), ArrayParameterType::STRING);
+        }
+        if ([] !== $search->products) {
+            $query->andWhere('m.product IN (:productIds)')->setParameter('productIds', self::ids($search->products), ArrayParameterType::STRING);
+        }
+        if ([] !== $search->categories) {
+            $query->andWhere('p.category IN (:categoryIds)')->setParameter('categoryIds', self::ids($search->categories), ArrayParameterType::STRING);
+        }
+        if (null !== $search->expired) {
+            // What the stock list marks « périmé »: past its use-by day and not released, which a delivery note does not take.
+            $expired = 'lt.expiresOn IS NOT NULL AND lt.expiresOn < :today AND lt.releasedAt IS NULL';
+            $query->andWhere($search->expired ? $expired : "NOT ($expired)")
+                ->setParameter('today', new \DateTimeImmutable($search->today ?? 'today'), Types::DATE_IMMUTABLE);
+        }
+        Intervals::days($query, 'lt.expiresOn', 'useBy', $search->lotExpiresOn);
+
+        return $query;
+    }
+
+    /** What narrows a level by its sum: a condition on the grouped rows, so it follows the grouping. */
+    private static function onTheSum(QueryBuilder $query, StockLevelSearch $search): QueryBuilder
+    {
+        if (null !== $search->negative) {
+            $query->having($search->negative ? 'SUM(m.quantity) < 0' : 'SUM(m.quantity) >= 0');
         }
 
         return $query;

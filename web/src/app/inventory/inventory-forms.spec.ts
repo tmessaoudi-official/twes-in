@@ -18,7 +18,9 @@ import {
   movementSearch,
   movementValues,
   STOCK_LIST,
+  stockList,
   stockListRows,
+  stockSearch,
 } from './inventory-forms';
 import type {
   CostOnReceive,
@@ -803,6 +805,60 @@ describe('movementSearch', () => {
     expect(MOVEMENTS_LIST.picks?.map((pick) => pick.id)).toEqual(['product', 'location']);
     expect(MOVEMENTS_LIST.ranges?.map((range) => [range.id, range.kind])).toEqual([
       ['movedAt', 'day'],
+    ]);
+  });
+});
+
+describe('stockSearch', () => {
+  const query = {
+    pageIndex: 0,
+    pageSize: 25,
+    query: '',
+    filters: {} as Record<string, string>,
+    sort: null,
+  };
+  const id = '0199a1b2-0000-7000-8000-00000000000';
+
+  it('sends every value of every filter it knows, and drops what it does not', () => {
+    const search = stockSearch({
+      ...query,
+      filters: {
+        establishment: `${id}1,not-an-id`,
+        product: `${id}2`,
+        location: `${id}3,${id}4`,
+        negative: 'yes',
+        expired: 'no',
+        'lotExpiresOn.from': '2026-10-01',
+        'lotExpiresOn.to': '2026-02-30',
+      },
+    });
+    expect(search.establishmentIds).toEqual([`${id}1`]);
+    expect(search.productIds).toEqual([`${id}2`]);
+    expect(search.locationIds).toEqual([`${id}3`, `${id}4`]);
+    expect([search.negative, search.expired]).toEqual(['yes', 'no']);
+    expect(search.intervals).toEqual({ 'lotExpiresOn.from': '2026-10-01' });
+    expect(
+      stockSearch({ ...query, filters: { negative: 'maybe', expired: 'later' } }),
+    ).toMatchObject({
+      negative: null,
+      expired: null,
+    });
+  });
+
+  it("offers the filters ruled for the list, the establishments being the company's own", () => {
+    const list = stockList(options.establishments);
+    expect((list.filters ?? []).map((filter) => [filter.id, filter.multiple ?? false])).toEqual([
+      ['establishment', true],
+      ['negative', false],
+      ['expired', false],
+    ]);
+    expect(list.filters?.[0]?.options).toEqual([
+      { value: 'e1', label: '000 · Siège' },
+      { value: 'e2', label: '001 · Dépôt' },
+    ]);
+    expect(STOCK_LIST.picks?.map((pick) => pick.id)).toEqual(['product', 'location']);
+    expect(STOCK_LIST.ranges?.map((range) => [range.id, range.kind])).toEqual([
+      ['lotExpiresOn', 'day'],
     ]);
   });
 });

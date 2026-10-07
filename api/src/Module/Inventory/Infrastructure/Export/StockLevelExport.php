@@ -16,6 +16,7 @@ use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationRepository;
+use App\Module\Inventory\Infrastructure\ApiPlatform\StockLevelSearchReader;
 use App\Module\Inventory\Infrastructure\ApiPlatform\StockPermission;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
 use App\Module\Products\Domain\Product;
@@ -62,14 +63,7 @@ final readonly class StockLevelExport implements DeclaresExport
 
     public function rows(Company $company, ExportQuery $query): iterable
     {
-        $location = $query->text('locationId');
-        $establishment = $query->text('establishmentId');
-        $search = new StockLevelSearch(
-            $query->text(),
-            null !== $location && Uuid::isValid($location) ? Uuid::fromString($location) : null,
-            null !== $establishment && Uuid::isValid($establishment) ? Uuid::fromString($establishment) : null,
-            $query->order(StockLevelSearch::SORTS),
-        );
+        $search = StockLevelSearchReader::read($query->parameters(), $query->text(), $query->order(StockLevelSearch::SORTS), $company);
 
         for ($page = 1;; ++$page) {
             $answer = $this->stock->searchLevels($company, $search, new PageRequest($page, self::BATCH));

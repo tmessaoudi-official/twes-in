@@ -16,7 +16,10 @@ use App\Fiscal\Domain\UnitRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
+use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductTracking;
@@ -1389,6 +1392,83 @@ final class InventoryTest extends ApiTestCase
 
         $this->getJson($this->path('stock-levels').'?locationId=not-an-id');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    /**
+     * docs/SPEC.md § 7, 2026-10-06 00:15, row 197: the stock list combines its filters; a location stands for every
+     * location under it and a product category for every category under it; « périmé » and the use-by day are read in
+     * the company's own calendar.
+     */
+    public function testEveryFilterOfTheStockListCombines(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
+        $site = $this->defaultLocationId();
+        $this->postJson($this->path('stock-locations'), $this->location(['parentId' => $site, 'kind' => 'zone', 'code' => 'Z9', 'name' => 'Zone froide']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $zone = $this->stringAt($this->json(), 'id');
+        $company = $this->company();
+        $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $company->getId());
+        self::assertNotNull($unit);
+        $now = new \DateTimeImmutable();
+        $computing = ProductCategory::create($company, 'Informatique', null, $now);
+        $accessories = ProductCategory::create($company, 'Accessoires', $computing, $now);
+        $mouse = Product::create($company, 'ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '25'), $unit, $accessories, [], $now);
+        $cable = Product::create($company, 'ART-003', new ProductDetails('Câble', null, ProductKind::Goods, '5'), $unit, null, [], $now);
+        foreach ([$computing, $accessories, $mouse, $cable] as $made) {
+            $this->em()->persist($made);
+        }
+        $siteLocation = $this->em()->find(StockLocation::class, Uuid::fromString($site));
+        self::assertInstanceOf(StockLocation::class, $siteLocation);
+        // Goods that left before any arrived: the level falls below zero, as a delivery may make it.
+        $this->em()->persist(StockMovement::delivery($cable, $siteLocation, '2', Uuid::v7(), $now));
+        $this->em()->flush();
+        $this->sendJson('PUT', '/api/companies/'.$company->getId()->toRfc4122().'/products/'.$this->laptopId, ['reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $unit->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true, 'tracking' => 'lot']);
+        self::assertResponseIsSuccessful();
+        $today = new \DateTimeImmutable('today', new \DateTimeZone($company->getTimezone()));
+        $day = static fn (string $shift): string => $today->modify($shift)->format('Y-m-d');
+        foreach ([
+            ['productId' => $this->laptopId, 'locationId' => $site, 'quantity' => '3', 'lotCode' => 'L-OLD', 'lotExpiresOn' => $day('-1 day')],
+            ['productId' => $this->laptopId, 'locationId' => $zone, 'quantity' => '2', 'lotCode' => 'L-NEW', 'lotExpiresOn' => $day('+1 year')],
+            ['productId' => $mouse->getId()->toRfc4122(), 'locationId' => $site, 'quantity' => '7'],
+        ] as $receipt) {
+            $this->postJson($this->path('stock-movements'), ['operation' => 'receive', ...$receipt]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+        }
+        $rows = function (): array {
+            $keys = array_map(fn (array $row): string => $this->stringAt($row, 'productReference').'@'.$this->stringAt($row, 'locationCode').(\is_string($row['lotCode'] ?? null) ? '#'.$row['lotCode'] : ''), $this->jsonList());
+            sort($keys);
+
+            return $keys;
+        };
+        $old = 'ART-001@000#L-OLD';
+        $new = 'ART-001@Z9#L-NEW';
+
+        foreach ([
+            'establishmentId[]='.$this->establishmentId => [$old, $new, 'ART-002@000', 'ART-003@000'],
+            'negative=yes' => ['ART-003@000'],
+            'negative=no' => [$old, $new, 'ART-002@000'],
+            'expired=yes' => [$old],
+            'expired=no' => [$new, 'ART-002@000', 'ART-003@000'],
+            // The site holds the zone, so picking it lists what is on the zone too.
+            'locationId[]='.$site => [$old, $new, 'ART-002@000', 'ART-003@000'],
+            'locationId[]='.$zone => [$new],
+            'productId[]='.$mouse->getId()->toRfc4122().'&productId[]='.$cable->getId()->toRfc4122() => ['ART-002@000', 'ART-003@000'],
+            'categoryId[]='.$computing->getId()->toRfc4122() => ['ART-002@000'],
+            'categoryId[]='.$accessories->getId()->toRfc4122() => ['ART-002@000'],
+            'lotExpiresOn[to]='.$day('today') => [$old],
+            'lotExpiresOn[from]='.$day('today') => [$new],
+            'negative=no&expired=no&locationId[]='.$site => [$new, 'ART-002@000'],
+        ] as $query => $expected) {
+            $this->getJson($this->path('stock-levels').'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($expected, $rows(), $query);
+            self::assertSame(\count($expected), $this->jsonPage()['totalItems'], $query);
+        }
+
+        foreach (['negative=maybe', 'expired=perhaps', 'lotExpiresOn[from]=2026-13-01', 'categoryId[]=not-an-id', 'establishmentId[]=not-an-id'] as $refused) {
+            $this->getJson($this->path('stock-levels').'?'.$refused);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+        }
     }
 
     /** @return list<array<string, mixed>> */

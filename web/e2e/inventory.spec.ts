@@ -391,6 +391,14 @@ test('stock received at a location leaves with a validated delivery note and ret
     // The loss, and the delivery note's departure and its return when it was cancelled.
     await page.goto(`/stock/movements?productId=${fixture.productId}&source=loss,delivery_note`);
     await expect(movements.getByRole('row')).toHaveCount(4);
+
+    // And the stock list's: one product, nothing below zero, then something that cannot be (row 197).
+    const stock = page.getByTestId('stock-table');
+    await page.goto(`/stock?product=${fixture.productId}&negative=no`);
+    await expect(stock.getByRole('row')).toHaveCount(2);
+    await expect(quantity(row)).toHaveText('8');
+    await page.goto(`/stock?product=${fixture.productId}&negative=yes`);
+    await expect(page.getByTestId('list-no-match')).toBeVisible();
   } finally {
     await retire(page, reference, customerNumber, locationCode);
   }

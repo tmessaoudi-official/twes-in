@@ -30,8 +30,12 @@ const SEARCH = {
   page: 1,
   itemsPerPage: 25,
   q: '',
-  locationId: null,
-  establishmentId: null,
+  locationIds: [],
+  establishmentIds: [],
+  productIds: [],
+  negative: null,
+  expired: null,
+  intervals: {},
   order: null,
 } as const;
 const MOVEMENTS_SEARCH = {

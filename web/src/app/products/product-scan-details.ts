@@ -46,8 +46,12 @@ export class ProductScanDetails implements ScanDetails {
       page: 1,
       itemsPerPage: 100,
       q: reference,
-      locationId: null,
-      establishmentId: null,
+      locationIds: [],
+      establishmentIds: [],
+      productIds: [productId],
+      negative: null,
+      expired: null,
+      intervals: {},
       order: null,
     });
     const held = page.rows.filter((row) => row.productId === productId && Number(row.quantity) > 0);

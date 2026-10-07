@@ -23,8 +23,12 @@ const SEARCH = {
   page: 1,
   itemsPerPage: 25,
   q: '',
-  locationId: null,
-  establishmentId: null,
+  locationIds: [],
+  establishmentIds: [],
+  productIds: [],
+  negative: null,
+  expired: null,
+  intervals: {},
   order: null,
 } as const;
 
@@ -285,14 +289,18 @@ describe('InventoryApi', () => {
           page: 3,
           itemsPerPage: 50,
           q: ' vis ',
-          locationId: 'l1',
-          establishmentId: null,
+          locationIds: ['l1'],
+          establishmentIds: [],
+          productIds: [],
+          negative: 'no',
+          expired: null,
+          intervals: { 'lotExpiresOn.to': '2026-12-31' },
           order: { key: 'quantity', direction: 'desc' },
         },
         'csv',
       ),
     ).toBe(
-      '/api/companies/c%2F1/exports/stock-levels.csv?q=vis&locationId=l1&order%5Bquantity%5D=desc',
+      '/api/companies/c%2F1/exports/stock-levels.csv?q=vis&locationId%5B%5D=l1&negative=no&lotExpiresOn%5Bto%5D=2026-12-31&order%5Bquantity%5D=desc',
     );
     expect(
       api.exportMovementsUrl(
@@ -532,8 +540,12 @@ describe('InventoryApi', () => {
       page: 2,
       itemsPerPage: 50,
       q: '  portable  ',
-      locationId: 'l1',
-      establishmentId: 'e1',
+      locationIds: ['l1', 'l2'],
+      establishmentIds: ['e1'],
+      productIds: ['p1'],
+      negative: 'yes',
+      expired: 'no',
+      intervals: { 'lotExpiresOn.from': '2026-01-01' },
       order: { key: 'quantity', direction: 'desc' },
     });
     const request = http.expectOne(
@@ -545,8 +557,13 @@ describe('InventoryApi', () => {
     expect(request.request.params.get('itemsPerPage')).toBe('50');
     // Trimmed, so a trailing space is not a different search.
     expect(request.request.params.get('q')).toBe('portable');
-    expect(request.request.params.get('locationId')).toBe('l1');
-    expect(request.request.params.get('establishmentId')).toBe('e1');
+    // Each filter's values OR'd, the filters AND'd (row 197).
+    expect(request.request.params.getAll('locationId[]')).toEqual(['l1', 'l2']);
+    expect(request.request.params.getAll('establishmentId[]')).toEqual(['e1']);
+    expect(request.request.params.getAll('productId[]')).toEqual(['p1']);
+    expect(request.request.params.get('negative')).toBe('yes');
+    expect(request.request.params.get('expired')).toBe('no');
+    expect(request.request.params.get('lotExpiresOn[from]')).toBe('2026-01-01');
     expect(request.request.params.get('order[quantity]')).toBe('desc');
     request.flush({ member: [], totalItems: 0 });
     expect(await pending).toEqual({ rows: [], total: 0 });
@@ -559,7 +576,7 @@ describe('InventoryApi', () => {
         candidate.url === '/api/companies/c1/stock-levels' && candidate.method === 'GET',
     );
     expect(request.request.params.has('q')).toBe(false);
-    expect(request.request.params.has('locationId')).toBe(false);
+    expect(request.request.params.keys()).toEqual(['page', 'itemsPerPage']);
     request.flush({ member: [] });
     await expect(pending).rejects.toThrow();
   });

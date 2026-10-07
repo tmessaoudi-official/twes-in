@@ -95,8 +95,16 @@ export interface StockSearch {
   itemsPerPage: number;
   /** Words found in the product's reference or name or the location's code or name; empty finds all. */
   q: string;
-  locationId: string | null;
-  establishmentId: string | null;
+  /** Any of these, each filter's values OR'd and the filters AND'd (row 197); a location with every one under it. */
+  locationIds: readonly string[];
+  establishmentIds: readonly string[];
+  productIds: readonly string[];
+  /** What more left than came in, a quantity below zero, or the rest; null asks either. */
+  negative: 'yes' | 'no' | null;
+  /** A lot past its use-by day and not released, or the rest; null asks either. */
+  expired: 'yes' | 'no' | null;
+  /** The ends of the use-by interval, `lotExpiresOn.from` and `lotExpiresOn.to`: each already valid. */
+  intervals: Readonly<Record<string, string>>;
   order: { key: StockSortKey; direction: 'asc' | 'desc' } | null;
 }
 
