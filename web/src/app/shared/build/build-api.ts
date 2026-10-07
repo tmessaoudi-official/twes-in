@@ -1,13 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { Health } from '../../api/types.gen';
+import { SILENT } from '../feedback/activity-interceptor';
 import type { ApiBuild, PartBuild } from './build-types';
 
-/** Asked of the server every time, whatever a cache in between would answer: the point is to learn of a new one. */
-const FRESH = new HttpHeaders({ 'Cache-Control': 'no-cache' });
+/**
+ * Asked of the server every time, whatever a cache in between would answer: the point is to learn of a new one. And
+ * quietly: a poll is nothing the person did, so the activity bar does not move for it.
+ */
+const FRESH = () => ({
+  headers: new HttpHeaders({ 'Cache-Control': 'no-cache' }),
+  context: new HttpContext().set(SILENT, true),
+});
 
 /** The two places a build is said: `/version.json` beside the bundle, and `/api/health`. Null when nobody answered. */
 @Injectable({ providedIn: 'root' })
@@ -18,7 +25,7 @@ export class BuildApi {
   async web(): Promise<PartBuild | null> {
     try {
       const body = await firstValueFrom(
-        this.http.get<Partial<PartBuild>>('/version.json', { headers: FRESH }),
+        this.http.get<Partial<PartBuild>>('/version.json', FRESH()),
       );
       return { version: given(body.version), commit: given(body.commit) };
     } catch (error) {
@@ -32,7 +39,7 @@ export class BuildApi {
   async api(): Promise<ApiBuild | null> {
     let body: Partial<Health> | null;
     try {
-      body = await firstValueFrom(this.http.get<Health>('/api/health', { headers: FRESH }));
+      body = await firstValueFrom(this.http.get<Health>('/api/health', FRESH()));
     } catch (error) {
       body = error instanceof HttpErrorResponse ? (error.error as Partial<Health> | null) : null;
     }

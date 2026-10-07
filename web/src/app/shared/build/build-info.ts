@@ -56,7 +56,7 @@ export class BuildInfo {
 
   private started = false;
 
-  /** Reads both builds now, then on a timer and whenever the page comes back into view. Once, whoever asks. */
+  /** Reads both builds now, then on a timer and whenever the page comes back into view or focus. Once, whoever asks. */
   start(): void {
     if (this.started) return;
     this.started = true;
@@ -65,10 +65,13 @@ export class BuildInfo {
     const back = () => {
       if (this.document.visibilityState !== 'hidden') void this.check();
     };
+    // A tab shown again, and a window brought forward from another (which leaves the tab visible all along).
     this.document.addEventListener('visibilitychange', back);
+    this.document.defaultView?.addEventListener('focus', back);
     this.destroyRef.onDestroy(() => {
       clearInterval(timer);
       this.document.removeEventListener('visibilitychange', back);
+      this.document.defaultView?.removeEventListener('focus', back);
     });
   }
 

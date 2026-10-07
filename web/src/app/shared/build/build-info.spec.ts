@@ -101,7 +101,7 @@ describe('BuildInfo', () => {
     expect(info.newWeb()).toBe(false);
   });
 
-  it('asks again when the page comes back into view, and starts only once', async () => {
+  it('asks again when the page comes back into view or its window into focus, and starts only once', async () => {
     create();
     info.start();
     info.start();
@@ -111,6 +111,10 @@ describe('BuildInfo', () => {
     document.dispatchEvent(new Event('visibilitychange'));
     await settle();
     expect(apis.web).toHaveBeenCalledTimes(2);
+
+    window.dispatchEvent(new Event('focus'));
+    await settle();
+    expect(apis.web).toHaveBeenCalledTimes(3);
   });
 
   it('writes the line support is given: each part, its hash and its mode, and the deployment, prod left unsaid', async () => {

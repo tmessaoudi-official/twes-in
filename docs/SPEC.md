@@ -4447,6 +4447,11 @@ functional tests run in the `tools` container, on the host's network, against th
   The banner shows on every page, signed out too, and never reloads by itself. `DEPLOY_ENV` defaults to `dev` in
   compose.yaml and `prod` in compose.prod.yaml; a deployment naming none shows no chip. Alternatives: a version baked
   into the bundle at build (needs a second mechanism for live mode), the API hiding prod itself.
+- [2026-10-07 15:50] ASSUMED (review): two corrections to the build line's entry above, from the goal-end check. A page asks again
+  when its window comes into focus as well as when its tab is shown, as ruled. And it misses a release in a second case:
+  when its first read of `/version.json` fails, the next one it reads becomes its own build, so a release landing in
+  between never shows the banner in that tab; the five-minute poll and the next reload put it right. The poll is quiet
+  (the activity bar does not move for it).
 
 ## 8. Status
 
