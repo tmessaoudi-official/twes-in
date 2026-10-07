@@ -150,7 +150,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   (the only importer of the generated types), `*-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`; translations in
   `public/i18n/{fr,en}.json` with a parity test.
 - `api/translations/*.{fr,en}.yaml` — the only strings the API itself emits: the invitation mail (`emails`), fiscal
-  labels and mentions (`fiscal`), and printed documents (`pdf`, laid out in `api/templates/pdf/` and rendered by
+  labels and mentions (`fiscal`), and printed documents (`pdf`, laid out in `api/templates/pdf/`, whose `_document.css.twig` every document shares with the
+  built-in layouts and the accent, and rendered by
   Gotenberg). `ApiTranslationParityTest` keeps each pair's keys identical. Everything a person reads in the SPA lives
   in `web/public/i18n/` instead, with its own parity test.
 - `var/claude/**` — transient review output, gitignored.

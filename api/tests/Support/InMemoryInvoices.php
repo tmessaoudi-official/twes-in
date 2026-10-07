@@ -45,6 +45,17 @@ final class InMemoryInvoices implements InvoiceRepository
         return $mine;
     }
 
+    public function latestOfCompany(Uuid $companyId): ?Invoice
+    {
+        foreach ($this->ofCompany($companyId) as $invoice) {
+            if (InvoiceType::Invoice === $invoice->getType() && InvoiceStatus::Cancelled !== $invoice->getStatus()) {
+                return $invoice;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * The page the database would answer is the database's own job — searching, narrowing and ordering are SQL here,
      * and a unit test that wants them tests the real repository. This one pages what it holds, so a caller reading a

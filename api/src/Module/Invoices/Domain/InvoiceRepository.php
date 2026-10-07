@@ -37,6 +37,9 @@ interface InvoiceRepository
     /** Null for an invoice that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Invoice;
 
+    /** The company's invoice created last that is not a cancelled draft, which a design preview shows; credit notes aside. */
+    public function latestOfCompany(Uuid $companyId): ?Invoice;
+
     /** The same, its row held until the transaction this runs in ends; outside a transaction it refuses. */
     public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Invoice;
 

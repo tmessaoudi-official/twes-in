@@ -37,6 +37,27 @@ final class GotenbergPdfRendererTest extends TestCase
         self::assertMatchesRegularExpression('/^Content-Type: multipart\/form-data; boundary=/mi', implode("\n", array_filter($options['headers'], is_string(...))));
     }
 
+    public function testTheFirstPageComesBackAsAPictureAtTheSizeAndMarginsOfThePrintedPage(): void
+    {
+        $png = "\x89PNG\r\n\x1a\n picture";
+        $response = new MockResponse($png, ['http_code' => 200, 'response_headers' => ['content-type' => 'image/png']]);
+
+        $picture = new GotenbergPdfRenderer(new MockHttpClient($response), self::URL)->firstPage('<html><head><title>x</title></head><body><h1>FA-1</h1></body></html>');
+
+        self::assertSame($png, $picture);
+        self::assertSame(['POST', self::URL.'/forms/chromium/screenshot/html'], [$response->getRequestMethod(), $response->getRequestUrl()]);
+        $options = $response->getRequestOptions();
+        self::assertIsString($options['body']);
+        // A4 at 96 dots an inch, printed as a page is printed, inside the PDF's own margins.
+        foreach (['width' => '794', 'height' => '1123', 'format' => 'png', 'emulatedMediaType' => 'print'] as $field => $value) {
+            self::assertMatchesRegularExpression('/name="'.$field.'".*?\r\n\r\n'.preg_quote($value, '/').'\r\n/s', $options['body'], $field);
+        }
+        self::assertStringContainsString('<head><style>html { padding: 0.4in; }</style><title>x</title>', $options['body']);
+
+        $this->expectException(PdfRenderingFailed::class);
+        new GotenbergPdfRenderer(new MockHttpClient(new MockResponse('%PDF-1.7', ['http_code' => 200])), self::URL)->firstPage('<p>x</p>');
+    }
+
     public function testARefusalAnUnreachableServerOrAnythingButAPdfFailsTheRendering(): void
     {
         $failed = [];

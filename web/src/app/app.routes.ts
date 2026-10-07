@@ -396,6 +396,11 @@ export const routes: Routes = [
             loadComponent: () => import('./company/numbering-page').then((m) => m.NumberingPage),
           },
           {
+            path: 'company/documents',
+            loadComponent: () =>
+              import('./company/document-design-page').then((m) => m.DocumentDesignPage),
+          },
+          {
             path: 'company/custom-fields',
             loadComponent: () =>
               import('./company/custom-fields-page').then((m) => m.CustomFieldsPage),

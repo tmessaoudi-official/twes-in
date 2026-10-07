@@ -1,0 +1,124 @@
+<section class="flex max-w-6xl flex-col gap-6">
+  <h1 class="text-3xl font-semibold" data-testid="documents-title">
+    {{ 'documents.title' | translate }}
+  </h1>
+
+  @if (!company()) {
+    <p data-testid="documents-no-company">{{ 'settings.no_company' | translate }}</p>
+  } @else if (!mayManage()) {
+    <p data-testid="documents-forbidden">{{ 'settings.forbidden' | translate }}</p>
+  } @else {
+    <p class="max-w-prose">{{ 'documents.intro' | translate }}</p>
+
+    @if (error(); as code) {
+      <p role="alert" data-testid="documents-error" class="text-error">
+        {{ 'settings.errors.' + code | translate }}
+      </p>
+    }
+
+    <div class="grid items-start gap-8 2xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+      <form
+        [formGroup]="form"
+        class="flex flex-col gap-6"
+        (ngSubmit)="save()"
+        data-testid="documents-form"
+      >
+        <div class="flex flex-col gap-2">
+          <span class="font-medium" id="documents-layout-label">
+            {{ 'documents.layout' | translate }}
+          </span>
+          <mat-radio-group
+            formControlName="layout"
+            class="flex flex-col gap-2"
+            aria-labelledby="documents-layout-label"
+          >
+            @for (layout of layouts; track layout) {
+              <mat-radio-button [value]="layout" [attr.data-testid]="'documents-layout-' + layout">
+                <span class="flex flex-col">
+                  <span class="font-medium">{{
+                    'documents.layouts.' + layout + '.name' | translate
+                  }}</span>
+                  <span class="text-sm text-on-surface-variant">{{
+                    'documents.layouts.' + layout + '.hint' | translate
+                  }}</span>
+                </span>
+              </mat-radio-button>
+            }
+          </mat-radio-group>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <span class="font-medium" id="documents-accent-label">
+            {{ 'documents.accent' | translate }}
+          </span>
+          <app-colour-field
+            formControlName="accent"
+            labelledBy="documents-accent-label"
+            testId="documents-accent"
+          />
+          <span class="text-sm text-on-surface-variant">{{
+            'documents.accent_hint' | translate
+          }}</span>
+        </div>
+
+        <div class="flex flex-col gap-1">
+          <span class="font-medium">{{ 'documents.logo' | translate }}</span>
+          <a
+            routerLink="/company/profile"
+            class="text-primary underline"
+            data-testid="documents-logo-link"
+            >{{ 'documents.logo_link' | translate }}</a
+          >
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="changes() === 0 || busy() || form.invalid"
+            data-testid="documents-save"
+          >
+            {{ 'documents.save' | translate }}
+          </button>
+          <button
+            mat-button
+            type="button"
+            [disabled]="changes() === 0 || busy()"
+            (click)="cancel()"
+            data-testid="documents-cancel"
+          >
+            {{ 'documents.cancel' | translate }}
+          </button>
+        </div>
+      </form>
+
+      <figure class="m-0 flex flex-col gap-2" data-testid="documents-preview">
+        <figcaption class="flex flex-col">
+          <span class="font-medium">{{ 'documents.preview' | translate }}</span>
+          <span class="text-sm text-on-surface-variant">{{
+            'documents.preview_hint' | translate
+          }}</span>
+        </figcaption>
+        @if (picture(); as shown) {
+          <img
+            [src]="shown"
+            [alt]="'documents.preview_alt' | translate"
+            class="w-full max-w-[50rem] rounded border border-outline-variant shadow-sm transition-opacity"
+            [class.opacity-60]="previewState() === 'loading'"
+            [attr.aria-busy]="previewState() === 'loading'"
+            data-testid="documents-preview-image"
+          />
+        } @else if (previewState() === 'loading') {
+          <p role="status" data-testid="documents-preview-loading">
+            {{ 'documents.preview_states.loading' | translate }}
+          </p>
+        }
+        @if (previewState() !== 'loading' && previewState() !== 'ready') {
+          <p role="status" data-testid="documents-preview-message">
+            {{ 'documents.preview_states.' + previewState() | translate }}
+          </p>
+        }
+      </figure>
+    </div>
+  }
+</section>

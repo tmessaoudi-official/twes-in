@@ -506,6 +506,65 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
     }
 
+    public function testADesignIsTriedOnTheLatestInvoiceAsAPictureAndNothingIsStored(): void
+    {
+        $this->signedIn(['company.read', 'company.settings', 'invoice.read', 'invoice.write']);
+        $preview = $this->companyPath().'/invoice-design-preview';
+
+        $this->getJson($preview);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame('nothing_to_preview', $this->stringAt($this->json(), 'detail'), 'a company with no invoice yet is told so, not taken for a stranger');
+
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->client->request('GET', $preview.'?layout=modern&accent=%231F6FEB');
+
+        self::assertResponseIsSuccessful();
+        $response = $this->client->getResponse();
+        self::assertSame('image/png', $response->headers->get('content-type'));
+        self::assertStringContainsString('no-store', (string) $response->headers->get('cache-control'));
+        $picture = (string) $response->getContent();
+        self::assertStringStartsWith("\x89PNG", $picture);
+        foreach (['<body class="layout-modern">', '--accent: #1f6feb;', 'APERÇU', 'Carthage Conseil', "1\u{a0}250,000"] as $shown) {
+            self::assertStringContainsString($shown, $picture);
+        }
+        self::assertSame(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM file'), 'a preview is never stored');
+
+        // Left out, the company's own design stands.
+        $this->sendJson('PUT', $this->companyPath().'/settings/document.layout', ['level' => 'company', 'value' => 'compact']);
+        self::assertResponseIsSuccessful();
+        $this->client->request('GET', $preview);
+        self::assertStringContainsString('<body class="layout-compact">', (string) $this->client->getResponse()->getContent());
+
+        foreach (['?layout=fancy', '?accent=red', '?accent=%231f6feb;}body{display:none'] as $refused) {
+            $this->client->request('GET', $preview.$refused);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+        }
+    }
+
+    public function testADesignPreviewAsksForTheSettingsAndForReadingInvoices(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write']);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->sendJson('POST', '/api/auth/logout');
+        // The test client's requests reboot the kernel: the company is the one its entity manager holds now.
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $this->createUser('settings@twes.local', 'password-1234', $company, ['company.settings'], 'settings-only');
+        $this->login('settings@twes.local', 'password-1234');
+        $this->client->request('GET', $this->companyPath().'/invoice-design-preview');
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+
+        $this->sendJson('POST', '/api/auth/logout');
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $this->createUser('reader@twes.local', 'password-1234', $company, ['invoice.read'], 'reader');
+        $this->login('reader@twes.local', 'password-1234');
+        $this->client->request('GET', $this->companyPath().'/invoice-design-preview');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testAPaymentHolderRecordsAndDeletesPaymentsAndTheInvoiceSaysWhatIsStillDue(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);

@@ -3343,12 +3343,6 @@
       "does": "The period's tax returns prepared from the documents issued: the amounts per tax, what is left to declare, and a reminder of each due date.",
       "settings": "The tax regime, how often declarations are due and their deadlines."
     },
-    "document-templates": {
-      "heading": "Document templates are being built",
-      "does": "Choose the template of each document from a gallery, adjust it (logo, colour, columns, mentions and blocks) and see a real document update while you adjust.",
-      "meanwhile": "Meanwhile, the printed logo and details are set in the profile:",
-      "meanwhile_link": "Company profile"
-    },
     "alerts": {
       "heading": "Alerts are being built",
       "does": "Choose what deserves an alert, from which threshold, and who receives it: a late invoice, low stock, a lot about to expire.",
@@ -3715,5 +3709,41 @@
     "reference": "Ref. {{code}}",
     "lot": "Lot {{code}}",
     "discount_value": "Discount {{rate}}%"
+  },
+  "documents": {
+    "title": "Document templates",
+    "intro": "Choose how your invoices, credit notes and delivery notes print. An issued document keeps the design it had that day; the mandatory mentions are printed whatever the design.",
+    "layout": "Layout",
+    "layouts": {
+      "classic": {
+        "name": "Classic",
+        "hint": "Plain, with rules in the accent colour."
+      },
+      "modern": {
+        "name": "Modern",
+        "hint": "The title, the table’s head and the total on bands of colour."
+      },
+      "compact": {
+        "name": "Compact",
+        "hint": "Smaller and tighter, for documents of many lines."
+      }
+    },
+    "accent": "Accent colour",
+    "accent_hint": "Text stays readable whatever the colour: it turns white or black on the bands, and the colour is darkened where it is used as text.",
+    "logo": "Logo",
+    "logo_link": "The logo is changed in Company profile",
+    "save": "Save",
+    "cancel": "Discard changes",
+    "saved": "Document design saved.",
+    "preview": "Preview",
+    "preview_hint": "Your latest invoice, as it would print.",
+    "preview_alt": "First page of your latest invoice in the chosen design",
+    "preview_states": {
+      "loading": "Preparing the preview…",
+      "nothing": "No invoice yet: the preview will appear with your first invoice.",
+      "forbidden": "The preview shows an invoice: reading invoices is needed as well.",
+      "failed": "The preview could not be prepared. Try again in a moment.",
+      "network": "The server cannot be reached."
+    }
   }
 }

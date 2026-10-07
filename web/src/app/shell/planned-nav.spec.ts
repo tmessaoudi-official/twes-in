@@ -107,7 +107,6 @@ describe('the planned modules in the menu', () => {
 
   it('keeps the settings pages not built yet, which are not modules, in the web’s own list', () => {
     expect(COMING_NAV.map((entry) => entry.key)).toEqual([
-      'document-templates',
       'alerts',
       'fiscal-preset',
       'support-access',

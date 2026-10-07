@@ -164,6 +164,7 @@ describe('the navigation manifest', () => {
           'numbering',
           'subscription',
           'defaults',
+          'document-templates',
         ],
       ],
       ['fiscal', ['taxes', 'units']],

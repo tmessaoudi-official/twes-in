@@ -3343,12 +3343,6 @@
       "does": "Les déclarations fiscales de la période préparées depuis les documents émis : les montants par taxe, ce qui reste à déclarer, et le rappel de chaque échéance.",
       "settings": "Le régime de taxe, la périodicité des déclarations et leurs échéances."
     },
-    "document-templates": {
-      "heading": "Les modèles de documents sont en construction",
-      "does": "Choisir le modèle de chaque document dans une galerie, le régler (logo, couleur, colonnes, mentions et blocs) et voir un vrai document à jour pendant qu’on règle.",
-      "meanwhile": "En attendant, le logo et les coordonnées imprimés se règlent dans le profil :",
-      "meanwhile_link": "Profil de la société"
-    },
     "alerts": {
       "heading": "Les alertes sont en construction",
       "does": "Choisir ce qui mérite une alerte, à partir de quel seuil, et qui la reçoit : une facture en retard, un stock bas, un lot qui périme.",
@@ -3715,5 +3709,41 @@
     "reference": "Réf. {{code}}",
     "lot": "Lot {{code}}",
     "discount_value": "Remise {{rate}} %"
+  },
+  "documents": {
+    "title": "Modèles de documents",
+    "intro": "Choisissez comment s’impriment vos factures, avoirs et bons de livraison. Un document émis garde la présentation qu’il avait ce jour-là ; les mentions obligatoires sont imprimées quelle que soit la présentation.",
+    "layout": "Mise en page",
+    "layouts": {
+      "classic": {
+        "name": "Classique",
+        "hint": "Sobre, avec des filets de la couleur d’accent."
+      },
+      "modern": {
+        "name": "Moderne",
+        "hint": "Le titre, l’en-tête du tableau et le total sur des bandes de couleur."
+      },
+      "compact": {
+        "name": "Compacte",
+        "hint": "Plus petite et plus serrée, pour les documents de nombreuses lignes."
+      }
+    },
+    "accent": "Couleur d’accent",
+    "accent_hint": "Le texte reste lisible quelle que soit la couleur : il passe en blanc ou en noir sur les bandes, et la couleur est assombrie là où elle sert de texte.",
+    "logo": "Logo",
+    "logo_link": "Le logo se change dans Profil de la société",
+    "save": "Enregistrer",
+    "cancel": "Annuler les modifications",
+    "saved": "Présentation des documents enregistrée.",
+    "preview": "Aperçu",
+    "preview_hint": "Votre dernière facture, telle qu’elle s’imprimerait.",
+    "preview_alt": "Première page de votre dernière facture dans la présentation choisie",
+    "preview_states": {
+      "loading": "Préparation de l’aperçu…",
+      "nothing": "Aucune facture pour l’instant : l’aperçu apparaîtra avec votre première facture.",
+      "forbidden": "L’aperçu montre une facture : il faut aussi pouvoir lire les factures.",
+      "failed": "L’aperçu n’a pas pu être préparé. Réessayez dans un instant.",
+      "network": "Le serveur est injoignable."
+    }
   }
 }

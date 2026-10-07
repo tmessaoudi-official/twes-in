@@ -162,6 +162,27 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         return null !== $invoice && $invoice->getCompany()->getId()->equals($companyId) ? $invoice : null;
     }
 
+    public function latestOfCompany(Uuid $companyId): ?Invoice
+    {
+        // Walks idx_invoice_company_created backwards.
+        $invoice = $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->where('i.company = :company')
+            ->andWhere('i.documentType = :invoice')
+            ->andWhere('i.status <> :cancelled')
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('invoice', InvoiceType::Invoice->value)
+            ->setParameter('cancelled', InvoiceStatus::Cancelled->value)
+            ->orderBy('i.createdAt', 'DESC')
+            ->addOrderBy('i.id', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $invoice instanceof Invoice ? $invoice : null;
+    }
+
     public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Invoice
     {
         $invoice = $this->entityManager->createQueryBuilder()

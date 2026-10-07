@@ -28,14 +28,16 @@ final readonly class InvoicePage
     /** Printed across a duplicate of an issued document, and across its up-to-date copy. */
     public const string DUPLICATE = 'duplicate';
     public const string COPY = 'copy';
+    /** Printed across a document shown in a design not chosen yet: a picture of a document, never one. */
+    public const string PREVIEW = 'preview';
 
     /**
-     * @param self::DRAFT|self::CANCELLED|self::DUPLICATE|self::COPY|null $watermark
-     * @param string                                                      $language          fr or en
-     * @param list<string>                                                $mentionKeys       translation keys
-     * @param string                                                      $dateFormat        the company's `presentation.date-format`, `auto` for the language's
-     * @param string                                                      $numberFormat      the company's `presentation.number-format`, `auto` for the language's
-     * @param array<string, array<string, string>>                        $mentionParameters what fills each mention's placeholders, by key
+     * @param self::DRAFT|self::CANCELLED|self::DUPLICATE|self::COPY|self::PREVIEW|null $watermark
+     * @param string                                                                    $language          fr or en
+     * @param list<string>                                                              $mentionKeys       translation keys
+     * @param string                                                                    $dateFormat        the company's `presentation.date-format`, `auto` for the language's
+     * @param string                                                                    $numberFormat      the company's `presentation.number-format`, `auto` for the language's
+     * @param array<string, array<string, string>>                                      $mentionParameters what fills each mention's placeholders, by key
      */
     public function __construct(
         public Invoice $invoice,

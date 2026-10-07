@@ -4320,6 +4320,19 @@ functional tests run in the `tools` container, on the host's network, against th
   template's last-resort guard, which now drops only an unfilled `%name%`. Not built here: a choice of fonts (refused
   2026-09-21 19:20), paper sizes, the account statement's design. Alternatives: a layout per document type; layouts as
   separate templates (each would have to be kept printing every mention on its own).
+- [2026-10-07 09:45] ASSUMED (review): invoice design slice 1, third part: **the live preview and the « Modèles de documents »
+  page**. `GET /api/companies/{id}/invoice-design-preview?layout=&accent=` answers the company's latest invoice (not a
+  credit note, not a cancelled draft) in the design asked for, as a PNG of its first page from Gotenberg's screenshot route
+  in print media at A4's size, the PDF's margins laid inside it, across an « APERÇU » watermark, never stored. A picture
+  rather than the PDF in a frame: every response carries `frame-ancestors 'none'` and `X-Frame-Options: DENY`, which a
+  frame would have to loosen, a phone's browser shows no PDF in a frame, and the page's policy already shows `data:`
+  pictures (it is fetched, so it can say why there is none). It asks `company.settings`, the page's, and `invoice.read`,
+  since it shows an invoice (403 without it); a company with no invoice yet answers 404 `nothing_to_preview`, which the
+  page words, rather than a made-up sample. The settings menu's « Modèles de documents » leaves the « Bientôt » list for
+  `/company/documents`: the three layouts as radios with what each does, the accent as the app's own colour field, a link
+  to the logo in the profile, the preview asked for once the choice rests 300 ms, Enregistrer and Annuler les
+  modifications. Saving writes the two company settings; the generic Valeurs par défaut page shows them too. Not built:
+  a sample document for a company with no invoice, a design per document type, choosing which invoice to preview.
 
 ## 8. Status
 

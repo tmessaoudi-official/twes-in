@@ -32,4 +32,15 @@ final class FakePdfRenderer implements PdfRenderer
 
         return "%PDF-1.7\n% rendered by the fake renderer\n".$html;
     }
+
+    /** A PNG signature followed by the page, so a test reads what the picture shows. */
+    public function firstPage(string $html): string
+    {
+        if ($this->failing) {
+            throw new PdfRenderingFailed('The fake renderer is failing.');
+        }
+        $this->rendered[] = $html;
+
+        return "\x89PNG\r\n\x1a\n".$html;
+    }
 }

@@ -23,6 +23,7 @@ use App\Settings\Application\SettingContext;
 use App\Shared\Application\PdfRenderer;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Shared\Domain\AmountInWords;
+use App\Shared\Domain\DocumentDesign;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\SellerSnapshot;
 use Psr\Clock\ClockInterface;
@@ -87,6 +88,21 @@ final readonly class PrintInvoice
     }
 
     /**
+     * The company's latest invoice as a design would print it, its first page as a picture, for the screen where the
+     * design is chosen (docs/SPEC.md § 7, 2026-10-06 10:19): whatever it is, draft or issued, it prints as it would today
+     * or as it was issued, under the preview's watermark, and nothing is stored.
+     *
+     * @throws NothingToPreview   when the company has no invoice yet
+     * @throws PdfRenderingFailed
+     */
+    public function designPreview(Company $company, DocumentDesign $design): string
+    {
+        $invoice = $this->invoices->latestOfCompany($company->getId()) ?? throw new NothingToPreview();
+
+        return $this->renderer->firstPage($this->html($invoice, InvoicePage::PREVIEW, design: $design));
+    }
+
+    /**
      * Stores a numbered document's PDF as it is issued, unless it already keeps one.
      *
      * @throws InvoiceNotFound
@@ -117,6 +133,15 @@ final readonly class PrintInvoice
     /** @param InvoicePage::DRAFT|InvoicePage::CANCELLED|InvoicePage::DUPLICATE|InvoicePage::COPY|null $watermark */
     private function render(Invoice $invoice, ?string $watermark, ?InvoiceCopy $copy = null, ?\DateTimeImmutable $copiedOn = null, ?string $paidStamp = null): string
     {
+        return $this->renderer->render($this->html($invoice, $watermark, $copy, $copiedOn, $paidStamp));
+    }
+
+    /**
+     * @param InvoicePage::DRAFT|InvoicePage::CANCELLED|InvoicePage::DUPLICATE|InvoicePage::COPY|InvoicePage::PREVIEW|null $watermark
+     * @param DocumentDesign|null                                                                                          $design    in place of the one it prints in, for a preview
+     */
+    private function html(Invoice $invoice, ?string $watermark, ?InvoiceCopy $copy = null, ?\DateTimeImmutable $copiedOn = null, ?string $paidStamp = null, ?DocumentDesign $design = null): string
+    {
         $company = $invoice->getCompany();
         $customer = $invoice->getCustomer();
         $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
@@ -133,7 +158,7 @@ final readonly class PrintInvoice
 
         $figures = $this->totals->figures($invoice);
 
-        return $this->renderer->render($this->template->html(new InvoicePage(
+        return $this->template->html(new InvoicePage(
             $invoice,
             $figures,
             $invoice->getCustomerSnapshot() ?? CustomerSnapshot::of($customer),
@@ -152,8 +177,8 @@ final readonly class PrintInvoice
             $copiedOn,
             $paidStamp,
             $mentions->parameters,
-            $print->design,
-        )));
+            $design ?? $print->design,
+        ));
     }
 
     /**

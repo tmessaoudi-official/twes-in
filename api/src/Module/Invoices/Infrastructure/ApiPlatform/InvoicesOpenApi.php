@@ -32,6 +32,28 @@ final readonly class InvoicesOpenApi implements OpenApiFactoryInterface
         $openApi = ($this->decorated)($context);
         $uuid = static fn (string $name, string $description): Parameter => new Parameter($name, 'path', $description, true, schema: ['type' => 'string', 'format' => 'uuid']);
 
+        $openApi->getPaths()->addPath('/api/companies/{companyId}/invoice-design-preview', new PathItem(get: new Operation(
+            operationId: 'invoiceDesignPreview',
+            tags: ['Invoice'],
+            responses: [
+                '200' => new Response(
+                    'The company\'s latest invoice in the design, its first page as a picture, across a preview watermark',
+                    new \ArrayObject(['image/png' => new MediaType(new \ArrayObject(['type' => 'string', 'format' => 'binary']))]),
+                ),
+                '401' => new Response('Not signed in'),
+                '403' => new Response('company.settings without invoice.read'),
+                '404' => new Response('No such company, no company.settings, the module is switched off, or `nothing_to_preview`: the company has no invoice yet'),
+                '422' => new Response('A layout or an accent that is not one'),
+                '503' => new Response('The renderer could not produce the picture'),
+            ],
+            summary: 'A document design tried on the company\'s latest invoice',
+            parameters: [
+                $uuid('companyId', 'The company'),
+                new Parameter('layout', 'query', 'classic, modern or compact; the company\'s own when left out', false, schema: ['type' => 'string', 'enum' => ['classic', 'modern', 'compact']]),
+                new Parameter('accent', 'query', 'A colour written #rrggbb; the company\'s own when left out', false, schema: ['type' => 'string', 'pattern' => '^#[0-9a-fA-F]{6}$']),
+            ],
+        )));
+
         $openApi->getPaths()->addPath('/api/companies/{companyId}/invoices/{invoiceId}/pdf', new PathItem(get: new Operation(
             operationId: 'invoicePdf',
             tags: ['Invoice'],

@@ -138,6 +138,15 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
     permission: 'company.settings',
   },
   {
+    // How the company's documents print: a layout, the accent and a live preview (docs/SPEC.md § 7, 2026-10-06 10:19).
+    key: 'document-templates',
+    labelKey: 'nav.document_templates',
+    icon: 'article',
+    route: '/company/documents',
+    section: 'company',
+    permission: 'company.settings',
+  },
+  {
     key: 'taxes',
     labelKey: 'nav.taxes',
     icon: 'percent',
@@ -198,15 +207,6 @@ export const COMING_SETTINGS_ROUTE = '/company/coming';
  * (`planned-nav.ts`). An entry leaves this list in the change that builds it.
  */
 export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
-  {
-    key: 'document-templates',
-    labelKey: 'nav.document_templates',
-    icon: 'article',
-    route: `${COMING_SETTINGS_ROUTE}/document-templates`,
-    section: 'company',
-    permission: 'company.settings',
-    coming: { after: 'numbering', version: 'v1', meanwhile: '/company/profile' },
-  },
   {
     key: 'alerts',
     labelKey: 'nav.alerts',

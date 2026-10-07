@@ -159,9 +159,13 @@ describe('SettingsArea', () => {
       ['nav-members', 'nav-roles', 'nav-support-access'],
       ['nav-custom-fields', 'nav-modules', 'nav-texts'],
     ]);
+    const alerts = byTestId('nav-alerts');
+    expect(alerts?.getAttribute('href')).toBe('/company/coming/alerts');
+    expect(alerts?.querySelector('[data-testid="soon"]')?.textContent).toContain('Bientôt');
+    // Built since (docs/SPEC.md § 7, 2026-10-06 10:19): a page of its own, no longer « Bientôt ».
     const templates = byTestId('nav-document-templates');
-    expect(templates?.getAttribute('href')).toBe('/company/coming/document-templates');
-    expect(templates?.querySelector('[data-testid="soon"]')?.textContent).toContain('Bientôt');
+    expect(templates?.getAttribute('href')).toBe('/company/documents');
+    expect(templates?.querySelector('[data-testid="soon"]')).toBeNull();
     expect(byTestId('nav-numbering')?.querySelector('[data-testid="soon"]')).toBeNull();
   });
 
@@ -279,6 +283,7 @@ describe('SettingsArea', () => {
           'nav-establishments',
           'nav-numbering',
           'nav-defaults',
+          'nav-document-templates',
         ],
       ],
       ['settings-section-fiscal', 'Fiscalité', ['nav-taxes', 'nav-units']],

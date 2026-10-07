@@ -63,6 +63,7 @@ watermark:
     cancelled: 'ANNULÉ'
     duplicate: 'DUPLICATA'
     copy: 'COPIE'
+    preview: 'APERÇU'
 copy:
     duplicate: 'DUPLICATA — réimprimé le %date%'
     current: 'COPIE — état au %date%'
