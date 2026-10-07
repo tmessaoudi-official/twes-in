@@ -25,5 +25,8 @@ interface NumberingSeriesRepository
      */
     public function lockedDefaultFor(Uuid $establishmentId, string $documentType): ?NumberingSeries;
 
+    /** The same series read as it stands, unlocked: for saying which number comes next, never for taking it. */
+    public function defaultFor(Uuid $establishmentId, string $documentType): ?NumberingSeries;
+
     public function save(NumberingSeries $series): void;
 }

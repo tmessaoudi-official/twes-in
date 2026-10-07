@@ -74,6 +74,23 @@ final class NumberingSeriesTest extends TestCase
         self::assertSame(43, $series->getNextNumber());
     }
 
+    public function testTheNumberSaidBeforeIssuingIsTheOneAllocatedAndSayingItMovesNothing(): void
+    {
+        $series = self::series();
+        $series->revise(new NumberFormat('FAC-{YYYY}-{SEQ:5}'), ResetPeriod::Yearly, 41, new \DateTimeImmutable());
+
+        self::assertSame('FAC-2026-00041', $series->numberFor(new \DateTimeImmutable('2026-09-14')));
+        self::assertSame(41, $series->getNextNumber());
+        self::assertFalse($series->isNumbered());
+        self::assertSame('FAC-2026-00041', $series->allocate(new \DateTimeImmutable('2026-09-14'), new \DateTimeImmutable()));
+
+        self::assertSame('FAC-2027-00001', $series->numberFor(new \DateTimeImmutable('2027-01-02')), 'a new year starts again at one');
+        self::assertSame(42, $series->getNextNumber(), 'said, not taken');
+        self::assertSame('FAC-2026-00042', $series->numberFor(new \DateTimeImmutable('2026-12-31')));
+        $this->expectException(InvalidNumbering::class);
+        $series->numberFor(new \DateTimeImmutable('2026-08-31'));
+    }
+
     public function testAYearlySequenceStartsAgainAtOneInANewYear(): void
     {
         $series = self::series();

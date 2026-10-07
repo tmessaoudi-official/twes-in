@@ -1520,7 +1520,8 @@
       "issue_credit_note_message": "Il reçoit son numéro et ne se modifie plus.",
       "confirm_issue": "Émettre",
       "apply_credit": "Appliquer le crédit",
-      "record_overpayment": "Enregistrer un trop-perçu"
+      "record_overpayment": "Enregistrer un trop-perçu",
+      "issue_message_numbered": "Elle recevra le numéro {{number}}, pour {{total}} à {{customer}}, et ne se modifiera plus : une erreur se corrigera par un avoir."
     },
     "overpayment": {
       "title": "Enregistrer un trop-perçu",

@@ -46,6 +46,23 @@ final readonly class DoctrineNumberingSeriesRepository implements NumberingSerie
         return null !== $series && $series->getCompany()->getId()->equals($companyId) ? $series : null;
     }
 
+    public function defaultFor(Uuid $establishmentId, string $documentType): ?NumberingSeries
+    {
+        /** @var NumberingSeries|null $series */
+        $series = $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(NumberingSeries::class, 's')
+            ->where('s.establishment = :establishment')
+            ->andWhere('s.documentType = :documentType')
+            ->andWhere('s.isDefault = true')
+            ->setParameter('establishment', $establishmentId, 'uuid')
+            ->setParameter('documentType', $documentType)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $series;
+    }
+
     public function lockedDefaultFor(Uuid $establishmentId, string $documentType): ?NumberingSeries
     {
         /** @var NumberingSeries|null $series */

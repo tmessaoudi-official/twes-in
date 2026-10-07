@@ -133,27 +133,51 @@ class NumberingSeries implements CompanyOwned
      */
     public function allocate(\DateTimeImmutable $issueDay, \DateTimeImmutable $now): string
     {
-        $period = [(int) $issueDay->format('Y'), (int) $issueDay->format('n')];
-        if (null !== $this->lastNumberedYear) {
-            $last = [$this->lastNumberedYear, $this->lastNumberedMonth ?? 1];
-            if ($period < $last) {
-                throw new InvalidNumbering('issueDate', \sprintf('A number cannot be issued on %s, before %04d-%02d, the month of the last one.', $issueDay->format('Y-m-d'), $last[0], $last[1]));
-            }
-            $startsAgain = match ($this->resetPeriod) {
-                ResetPeriod::Yearly => $period[0] > $last[0],
-                ResetPeriod::Monthly => $period > $last,
-                ResetPeriod::Never => false,
-            };
-            if ($startsAgain) {
-                $this->nextNumber = 1;
-            }
-        }
+        $this->nextNumber = $this->sequenceOn($issueDay);
         $number = $this->preview($issueDay);
         ++$this->nextNumber;
-        [$this->lastNumberedYear, $this->lastNumberedMonth] = $period;
+        [$this->lastNumberedYear, $this->lastNumberedMonth] = [(int) $issueDay->format('Y'), (int) $issueDay->format('n')];
         $this->updatedAt = $now;
 
         return $number;
+    }
+
+    /**
+     * The number a document issued on that day would carry, the series left as it is: what a person is told before
+     * issuing (docs/SPEC.md § 7, 2026-09-26 23:04, a precise preview before what cannot be undone). Another document
+     * issued in between takes it first; the one issued then carries the next.
+     *
+     * @throws InvalidNumbering
+     */
+    public function numberFor(\DateTimeImmutable $issueDay): string
+    {
+        return new NumberFormat($this->format)->render($this->sequenceOn($issueDay), $issueDay, $this->establishment->getCode());
+    }
+
+    /**
+     * Where the sequence stands for a document issued on that day: at one again on the first number of a later year
+     * (yearly) or month (monthly). A day before the month of the last number is refused, because starting again there
+     * would issue that month's numbers twice.
+     *
+     * @throws InvalidNumbering
+     */
+    private function sequenceOn(\DateTimeImmutable $issueDay): int
+    {
+        if (null === $this->lastNumberedYear) {
+            return $this->nextNumber;
+        }
+        $period = [(int) $issueDay->format('Y'), (int) $issueDay->format('n')];
+        $last = [$this->lastNumberedYear, $this->lastNumberedMonth ?? 1];
+        if ($period < $last) {
+            throw new InvalidNumbering('issueDate', \sprintf('A number cannot be issued on %s, before %04d-%02d, the month of the last one.', $issueDay->format('Y-m-d'), $last[0], $last[1]));
+        }
+        $startsAgain = match ($this->resetPeriod) {
+            ResetPeriod::Yearly => $period[0] > $last[0],
+            ResetPeriod::Monthly => $period > $last,
+            ResetPeriod::Never => false,
+        };
+
+        return $startsAgain ? 1 : $this->nextNumber;
     }
 
     /**

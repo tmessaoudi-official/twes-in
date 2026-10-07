@@ -37,6 +37,11 @@ final class InMemoryNumberingSeries implements NumberingSeriesRepository
         return null;
     }
 
+    public function defaultFor(Uuid $establishmentId, string $documentType): ?NumberingSeries
+    {
+        return $this->lockedDefaultFor($establishmentId, $documentType);
+    }
+
     public function lockedDefaultFor(Uuid $establishmentId, string $documentType): ?NumberingSeries
     {
         foreach ($this->series as $series) {

@@ -15,6 +15,7 @@ import type {
   InvoiceJsonldInvoiceRead,
   InvoiceInvoiceWriteValidationInvoiceWrite as InvoiceInvoiceWrite,
   InvoiceCustomerPickInvoiceCustomerPickRead,
+  InvoiceNextNumberInvoiceNextNumberRead,
   InvoiceOptionsInvoiceOptionsRead,
   InvoiceProductPickInvoiceProductPickRead,
   InvoiceStatusCountsInvoiceStatusCountsRead,
@@ -59,6 +60,24 @@ export class InvoicesApi {
   private readonly http = inject(HttpClient);
 
   /** What the invoice form offers: the currency, and the establishments, customers, products, units and taxes. */
+  /**
+   * The number a draft would carry if it were issued now, said on the question before issuing; null when it cannot be
+   * said (the document is no longer a draft, or its establishment cannot number it today), which issuing then says.
+   */
+  async nextNumber(companyId: string, id: string): Promise<string | null> {
+    try {
+      const answer = await firstValueFrom(
+        this.http.get<InvoiceNextNumberInvoiceNextNumberRead>(
+          `${companyPath(companyId)}/invoices/${encodeURIComponent(id)}/next-number`,
+        ),
+      );
+      return answer.number;
+    } catch (error) {
+      if (error instanceof HttpErrorResponse && error.status === 409) return null;
+      throw new InvoicesRefused(codeOf(error));
+    }
+  }
+
   async options(companyId: string): Promise<InvoiceOptions> {
     return this.guard(async () =>
       toOptions(

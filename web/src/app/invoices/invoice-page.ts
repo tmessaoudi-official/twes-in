@@ -18,6 +18,7 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { RecordHistory } from '../activity/record-history';
+import { FormatFacade } from '../shared/i18n/format-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { Select, type SelectOption } from '../shared/form/select';
 import { buildFormGroup } from '../shared/form/form-builder';
@@ -128,6 +129,7 @@ export class InvoicePage {
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
   protected readonly auth = inject(AuthFacade);
+  private readonly format = inject(FormatFacade);
   private readonly router = inject(Router);
   private readonly productScans = inject(ProductScans);
   private readonly display = inject(CustomerDisplay);
@@ -495,7 +497,7 @@ export class InvoicePage {
           : {
               kind: 'corrigeable',
               title: 'invoices.actions.issue_title',
-              message: 'invoices.actions.issue_message',
+              ...this.issuePreview(),
               confirmLabel: 'invoices.actions.confirm_issue',
               keepLabel: 'invoices.actions.keep',
             },
@@ -610,6 +612,29 @@ export class InvoicePage {
     return companyId && current ? this.facade.pdfCopyUrl(companyId, current.id, kind) : null;
   }
 
+  /** The number the draft would carry if issued now, said on the question before issuing; null until known. */
+  private readonly nextNumber = signal<string | null>(null);
+  /**
+   * What issuing will do, said precisely before it is done (docs/SPEC.md § 7, 2026-09-26 23:04): the number, the
+   * total and who it is for. Until the number is known the question says what issuing does in general.
+   */
+  private issuePreview(): { message: string; messageParams?: Record<string, string> } {
+    const current = this.current();
+    const number = this.nextNumber();
+    const scale = this.scale();
+    if (!current || number === null || scale === null)
+      return { message: 'invoices.actions.issue_message' };
+    return {
+      message: 'invoices.actions.issue_message_numbered',
+      messageParams: {
+        number,
+        total:
+          `${this.format.amount(current.total, scale)} ${this.options()?.currency ?? ''}`.trim(),
+        customer: current.customerName,
+      },
+    };
+  }
+
   protected readonly canIssue = computed(
     () =>
       this.current()?.status === 'draft' &&
@@ -716,6 +741,19 @@ export class InvoicePage {
     // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45): one
     // declaration, so an action cannot be offered in one of them and missing from another.
     inject(ScreenActions).declare(this.actions);
+    // Read again whenever the draft is read again: a save, another person's change, another document issued.
+    effect(() => {
+      const companyId = this.company()?.id;
+      const current = this.current();
+      const asked = companyId && current && this.canIssue() ? current : null;
+      untracked(() => {
+        this.nextNumber.set(null);
+        if (asked === null || !companyId) return;
+        void this.facade.nextNumber(companyId, asked.id).then((number) => {
+          if (this.current() === asked) this.nextNumber.set(number);
+        });
+      });
+    });
     const scans = inject(ScanBus);
     scans.handle((scan) => this.scanned(scan));
     // What the sale comes to, each time it is read as saved; the display shows it only after a scan of this tab's.

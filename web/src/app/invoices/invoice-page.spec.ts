@@ -54,6 +54,7 @@ class StaticLoader implements TranslateLoader {
         statuses: { draft: 'Brouillon', issued: 'Émise', overdue: 'En retard', paid: 'Soldée' },
         types: { credit_note: 'Avoir' },
         credit_note_draft_title: 'Avoir en brouillon',
+        actions: { issue_message_numbered: 'N° {{number}} · {{total}} · {{customer}}' },
         credit_note: { reason_shown: 'Motif : {{reason}}' },
         fixed: { issued: 'Émis, il se corrige par un avoir.' },
         due: { left: 'Reste à encaisser', paid_of: '{{paid}} payés sur {{total}}' },
@@ -234,6 +235,7 @@ describe('InvoicePage', () => {
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     loadInvoice: vi.fn(),
+    nextNumber: vi.fn(),
     pickCustomers: vi.fn(async (_companyId: string, asked: PickAsked) =>
       'ids' in asked ? customers.filter((each) => asked.ids.includes(each.id)) : customers,
     ),
@@ -361,6 +363,7 @@ describe('InvoicePage', () => {
       (each) => granted.add(each),
     );
     facade.loadInvoice.mockReset().mockResolvedValue(undefined);
+    facade.nextNumber.mockReset().mockResolvedValue(null);
     facade.pickCustomers.mockClear();
     facade.pickProducts.mockClear();
     scans.piecesPerScan.mockReset().mockResolvedValue(null);
@@ -887,6 +890,21 @@ describe('InvoicePage', () => {
     );
     // What was confirmed as corrigeable is said so once done (docs/SPEC.md § 7, 2026-09-25 22:17).
     await vi.waitFor(() => expect(effectToasts()).toEqual(['invoices.issued:corrigeable']));
+  });
+
+  it('says before issuing the number the draft will carry, its total and who it is for', async () => {
+    facade.nextNumber.mockResolvedValue('FAC-2026-00143');
+    invoice.set(draft);
+    await open('i1');
+
+    expect(facade.nextNumber).toHaveBeenCalledWith('c1', 'i1');
+    q('document-action-issue')!.click();
+    await settle();
+
+    const message = over('confirm-message')?.textContent ?? '';
+    expect(message).toContain('N° FAC-2026-00143');
+    expect(message).toContain('Carthage');
+    expect(message).toMatch(/2\s?143/);
   });
 
   it('asks where the money already paid goes when a credit note is refused for it, and issues with the answer', async () => {

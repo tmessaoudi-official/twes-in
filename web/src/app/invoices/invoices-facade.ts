@@ -81,6 +81,15 @@ export class InvoicesFacade {
     await this.read(async () => this.summarySignal.set(await this.api.summary(companyId)));
   }
 
+  /** The number a draft would carry if issued now, or null when it cannot be said; never an error on screen. */
+  async nextNumber(companyId: string, id: string): Promise<string | null> {
+    try {
+      return await this.api.nextNumber(companyId, id);
+    } catch {
+      return null;
+    }
+  }
+
   /** What the document screen needs: the form's options, and the document unless it is new. */
   async loadInvoice(companyId: string, id: string | null): Promise<void> {
     await this.read(async () => {

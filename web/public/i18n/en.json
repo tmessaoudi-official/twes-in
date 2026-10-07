@@ -1520,7 +1520,8 @@
       "issue_credit_note_message": "It receives its number and no longer changes.",
       "confirm_issue": "Issue",
       "apply_credit": "Apply the credit",
-      "record_overpayment": "Record an overpayment"
+      "record_overpayment": "Record an overpayment",
+      "issue_message_numbered": "It will be numbered {{number}}, for {{total}} to {{customer}}, and will no longer change: a mistake is then corrected with a credit note."
     },
     "overpayment": {
       "title": "Record an overpayment",
