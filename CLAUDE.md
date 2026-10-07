@@ -421,5 +421,8 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - When a search shape changes, sweep the API CALL as well as the type (`git grep '\.customers(\|\.products('`): `price-lists-facade` builds the search literal inline without naming its type, and twice only the build found it (2026-10-07).
 - `docker compose restart api` keeps the image's own `docker-entrypoint`: an edit to `infra/api/docker-entrypoint.sh` runs only after
   `docker compose build api` and `make up` (2026-10-07: the new start step was missing from a September image).
+- Never wrap `make tools` or `make web-tools` in `timeout`: it kills the `docker compose run` client and leaves the
+  container running its suite. Three such orphans held over two cores (one for 36 hours) and timed every test out (2026-10-08).
+  Run long suites in the background without `timeout`; after a timeout, `docker ps | grep tools-run` and stop the orphan.
 - For the next expertise refresh: `.claude/rules/expertise-core.md` § 2 still says the locked customer screen is NOT built
   and `hides()` is the code; it was built (rows 205, 207), `hides()` is gone, and the lock is held by the API session (2026-10-06).

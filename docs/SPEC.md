@@ -4510,6 +4510,11 @@ functional tests run in the `tools` container, on the host's network, against th
   keeps the declared default. Existing French companies with nothing stored stop printing the words. Alternatives: the
   value written as a company row at provisioning (it would read as the company's own choice), a per-country table in code.
 
+- [2026-10-07 21:19] ASSUMED (review) [writer W3]: MON-03 (a credit note always names the invoice it corrects, its excess to the balance or a refund) is verified as already built — a credit note is created only from its invoice (`POST …/invoices/{id}/credit-notes`), and `CreditExcessTo` sends what was paid beyond the due to the balance or a refund — and nothing was rebuilt — because the row-128 code already does it. Alternatives: none needed. (row 134)
+- [2026-10-07 21:19] ASSUMED (review) [writer W3]: the customer's running account is one application service, `RunningAccount` (it replaces `CustomerCredit`), which the statement, the credit-limit alert, the delivery's warning and the new account read all go through. Its overdue figure is the invoice list's own overdue search (`InvoiceSearch::onlyOverdue`) narrowed to the customer, so the account and the « En retard » chip cannot disagree — because the ruling is « one account that the statement, overdue and credit limit all read » and the three must never tell different stories. Alternatives: a stored running balance column (refused: a second copy of money to keep in step). (row 134)
+- [2026-10-07 21:19] ASSUMED (review) [writer W3]: what the customer holds on account counts against the limit as it stood at the end of the day asked for, the same rule for the statement's period end and for today — a credit entry dated after today no longer clears today's limit, where `CustomerCredit::owed` used to add every entry whatever its date — because one account means one rule. Alternatives: keep the undated sum for today only. (row 134)
+- [2026-10-07 21:19] ASSUMED (review) [writer W3]: the account is its own read, `GET /api/companies/{companyId}/customers/{customerId}/account` (balance, overdue with count and oldest days, on account, net owed, limit, over-limit), under the statement's two rights (`customer.read` and `invoice.read`), shown as « Compte du client » at the top of the customer's « Relevé » tab above the statement — because the statement is a period and the account is today, and the tab already exists under exactly those rights. Alternatives: the figures in the customer page header (would load on every customer page, for people without invoice rights too). (row 134)
+- [2026-10-07 21:19] ASSUMED (review) [writer W3]: `ScaleGenerator::refuseUnlessScaleDatabase` accepts a parallel writer's test database (`*_test_w<n>`), with the refusal of `twes_w3` and `twes_test_prod` pinned in its test — because a writer's own test database is a test one, and the eight scale tests otherwise fail in every worktree. Alternatives: name writers' databases `twes_test5`, `twes_test6`. (process)
 - [2026-10-07 21:31] ASSUMED (review): the completeness review of wave 1a, fixed (var/claude/review/wave1a-completeness.md).
   A deposit invoice is its own KIND in the invoices list, its type filter and the CSV export: `documentType[]` takes
   `invoice`, `deposit` and `credit_note`, and `invoice` now means an invoice that is not a deposit (it meant both); the
@@ -4537,6 +4542,40 @@ functional tests run in the `tools` container, on the host's network, against th
   vector `credit-note-allocation-floors-negative-shares` now expects -0.003 / -0.002, its invoice's split signed, and
   `document-discount-tie-across-rates-*` pins the pair. Alternative: keep the signed allocation and let the credit
   note's cap absorb a one-unit difference, which would print a credit note that is not the invoice's negative.
+- [2026-10-07 23:43] AGREED: the architecture is DDD + hexagonal (as ruled 2026-09-09) + light CQRS. Every class in a
+  context's `Application/` is a COMMAND (it changes state, in one transaction, and records its audit entry, which is
+  also the live signal) or a QUERY (it only reads, and may read through optimised SQL for lists, reports and read
+  models rather than the entities). No command or query bus: a use case is called directly, so the call path stays
+  visible; Symfony Messenger stays for asynchronous work only (mail, PDFs, the outbox). One strongly consistent
+  PostgreSQL serves both sides, because gapless numbering at issue, frozen figures and the credit-note cap need it;
+  event sourcing and a separate read store are refused. A large `Manage*` class is split into its commands only when
+  its file is next edited, never in bulk. The directories keep their names (`Domain/`, `Application/`,
+  `Infrastructure/`): Clean Architecture is the same inward dependency rule, and renaming is churn. An architecture
+  test will hold the split (row 226).
+- [2026-10-07 23:52] AGREED: parallel work, after four hours of it. Three code lanes made two to three times more
+  code and review per hour, but delivered fewer CI-green commits to master than one lane did: every gate runs on one
+  machine (load 48 on 8 cores, the API suite past 590 s, a gate waiting 40 minutes for the lock), so finished slices
+  queued. Both writers pause after their current step; their commits are integrated and pushed; then ONE writer
+  resumes, running targeted tests only, while the main session runs the full gates once per integration batch on
+  master. Read-only review lanes keep running. The writer is W3 (reminders, row 135, then 92, 86/90, 96), and W2's
+  queue (107's undo and bin, 81/84, 89/114, 82/88) follows it. The main lane's order: (1) integrate the writers,
+  (2) refuse to issue without the parties' legal identity (review LEG-1 / F3), (3) the light CQRS test (row 226),
+  (4) the UI P1 batch (a save on a phone, the discount switch's focus, page titles, lists said empty while loading,
+  the line editor's spacing), (5) rows 221b–d then 222–224, (6) the reviews' P2s by batch, (7) the Invoice Ninja
+  parity ideas as new rows.
+- [2026-10-08 00:39] AGREED: the app's own guide is brought forward, ahead of the settled screens the 2026-09-25 22:16
+  order waited for: its FOUNDATION is built now (after integrating the writers and the legal P1), its CONTENT module by
+  module as each screen settles. One typed definition per tour, declared by its module beside `*_NAV` and `*_COMMANDS`,
+  drives four renderings: the in-app guide (an overlay on Angular CDK, no new dependency; Ctrl K « Guide : … », a « ? »
+  on every screen, links from empty states and « Premiers pas »); an automated Playwright playback against the demo or
+  practice company that turns CI red when a tour no longer runs, so the guide cannot lie; screenshots and docs per
+  language, regenerated each release; and recorded videos with captions drawn in the page. Four layers, each shown only
+  where its module, permission and country apply: a help drawer per screen, task tours, a glossary of concepts, and the
+  practice company to try things for real. Videos: a storyboarded 60–90 s pitch per sector (the pain, the relief, the
+  proof), produced by the same automation, and longer feature videos generated from the tours, re-made each release.
+  Narration: captions in fr / en / ar now, and a synthetic voice reading the same script; which voice service (a third
+  party and its licence) is a licensing decision put to the developer before anything is added. Shepherd.js and
+  Intro.js-like libraries are not used (copyleft or commercial licences).
 
 ## 8. Status
 
@@ -4690,7 +4729,7 @@ functional tests run in the `tools` container, on the host's network, against th
 | 131 | What an issued document keeps (§ 7 2026-09-25 16:51, DP-05 / DP-49 / DP-60 / DP-66): name and reference frozen on the line at issue with the « Un brouillon suit les changements de l'article » setting, one typed « issu de » link replacing the separate columns with required steps as a setting, a fiscal code per product carried to the line, custom fields on documents and lines | L | todo | - | |
 | 132 | Numbering (§ 7 2026-09-25 16:51, DOC-45 / MON-08 / NAV-47): drafts unnumbered, the next number editable until a series first issues then locked, never stepped back; the option « avoirs dans la suite des factures », chosen once; receipts and payments numbered where a gap is allowed; year, month and counter reset per type | M | todo | - | |
 | 133 | Cancel or reverse (§ 7 2026-09-25 16:51, DOC-16): a draft is cancelled, an issued document is only reversed by a credit note; no soft delete, no restore | S | todo | - | |
-| 134 | The customer's running account (§ 7 2026-09-25 16:51, MON-19 / MON-03): one account per customer that the statement, overdue and credit limit all read; a credit note always names the invoice it corrects, its excess going to the balance or a refund (row 128) | M | todo | - | |
+| 134 | The customer's running account (§ 7 2026-09-25 16:51, MON-19 / MON-03): one account per customer that the statement, overdue and credit limit all read; a credit note always names the invoice it corrects, its excess going to the balance or a refund (row 128) | M | done | 198393b7 | |
 | 135 | Reminders and late fees (§ 7 2026-09-25 16:51, DOC-20 / MON-15 / CLI-14): staged reminders; late fees off by default, per company, in tiers with no default amount until the law is sourced, charged on a separate debit document, never on the issued invoice | M | todo | - | |
 | 136 | Two builders and one integrator (§ 7 2026-09-25 22:16): the builder protocol, e2e split across CI jobs | S | done | a3c59203 | .github/workflows/** |
 | 137 | Effects and kinds of actions (§ 7 2026-09-25 22:16): every consequential action states its effect and whether it is annulable, corrigeable or définitif, on its button, confirmation and toast; the `data-tour` anchors on the shared components | M | done | 2118bab9 | web/src/app/shared/** |
@@ -4782,6 +4821,9 @@ functional tests run in the `tools` container, on the host's network, against th
 | 223 | A deposit draft edited after it was drawn is checked again at issue against what its quote leaves, so no deposit charges beyond its quote (goal-end check of row 208) | S | todo | - | api/src/Module/Invoices/** |
 | 224 | A delivery note's lines show their figures as typed, as an invoice's do (row 219's summary and totals), where the note carries prices, and each line's stock on hand and what the note leaves of it (row 220) | M | todo | - | api/src/Module/DeliveryNotes/** web/src/app/delivery-notes/** |
 | 225 | A final invoice's Factur-X names the deposit invoices it gives back as preceding invoices (BG-3: BT-25 number, BT-26 issue day), not only in the line text | S | todo | - | api/src/Module/Invoices/** |
+| 226 | Light CQRS held by a test (§ 7 2026-10-07 23:43): every `Application/` class is a command or a query; an architecture test reds when a query writes (persists, flushes, records audit) or a command changes state without recording its audit entry | M | todo | - | api/src/** api/tests/Architecture/** |
+| 227 | The guide's foundation (§ 7 2026-10-08 00:39): the typed tour definition, the CDK overlay engine (RGAA focus, keyboard, RTL), the help drawer and glossary frames, the automated playback that reds CI, one reference tour (the first invoice); content per module as screens settle (row 140) | L | todo | - | web/src/app/shared/tour/** web/e2e/** |
+| 228 | The pitch and feature videos (§ 7 2026-10-08 00:39): a storyboarded 60–90 s pitch per sector and feature videos generated from the tours by Playwright, captions fr / en / ar, a synthetic voice once its service is chosen | M | todo | - | web/e2e/** |
 <!-- /progress-block -->
 
 ### Delivered
