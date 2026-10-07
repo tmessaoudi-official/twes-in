@@ -3899,5 +3899,12 @@
       "draft": "Brouillon",
       "hint": "La facture du solde déduit chaque acompte émis, tel qu’il a été facturé."
     }
+  },
+  "build": {
+    "unversioned": "non versionnée",
+    "hint": "Web {{web}} · API {{api}} — cliquer pour copier",
+    "copied": "Version copiée.",
+    "new_version": "Nouvelle version disponible",
+    "reload": "Recharger"
   }
 }

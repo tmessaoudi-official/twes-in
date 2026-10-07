@@ -54,3 +54,6 @@ Thumbs.db
 
 # The icon font cut to the declared icons (scripts/subset-icons.mjs), generated before a build.
 /src/generated
+
+# Written at start by infra/web/live.sh and at build by the image: the build, never a source.
+/public/version.json

@@ -52,6 +52,84 @@ test('the legal line closes the sign-in page, centred, and opens each text over 
   await expect(page).toHaveURL(/\/login$/);
 });
 
+// docs/SPEC.md § 7, 2026-10-07 14:28 and 14:31: each part's build, its hash on hover, the whole line copied on a click.
+test('the legal line ends on the builds that answer, which a click copies for support', async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const served = await page.request.get('/version.json');
+  const web = (await served.json()) as { version: string; commit: string };
+  // nginx serves the images (CI, make up-images) and must keep no copy; the live dev server sets no caching of its own.
+  if ((served.headers()['server'] ?? '').startsWith('nginx')) {
+    expect(served.headers()['cache-control']).toBe('no-store');
+  }
+  const health = (await (await page.request.get('/api/health')).json()) as {
+    build: { version: string | null; commit: string | null; mode: string };
+    deployment: string | null;
+  };
+  // The Makefile and CI build every image with its version: an empty one here means the wiring broke.
+  expect(web.version).toMatch(/^\d{4}\.\d{2}\.\d{2}\.\d+(-dirty)?$/);
+  expect(health.build.version).toMatch(/^\d{4}\.\d{2}\.\d{2}\.\d+(-dirty)?$/);
+
+  await page.goto('/login');
+  const line = page.getByTestId('build-line');
+  await expect(line.getByTestId('build-web')).toContainText(`Web ${web.version}`);
+  await expect(line.getByTestId('build-api')).toContainText(`API ${health.build.version}`);
+  if (health.deployment === null || health.deployment === 'prod') {
+    await expect(line.getByTestId('build-deployment')).toHaveCount(0);
+  } else {
+    await expect(line.getByTestId('build-deployment')).toHaveText(`[${health.deployment}]`);
+  }
+
+  // The hashes come on hover, and on focus from the keyboard: the link before the line, then Tab.
+  await line.hover();
+  await expect(page.locator('.mat-mdc-tooltip-panel')).toContainText(
+    `Web ${web.commit} · API ${health.build.commit}`,
+  );
+  await page.mouse.move(0, 0);
+  await expect(page.locator('.mat-mdc-tooltip-panel')).toHaveCount(0);
+  await page.getByTestId('legal-footer').getByRole('link').last().focus();
+  await page.keyboard.press('Tab');
+  await expect(line).toBeFocused();
+  await expect(page.locator('.mat-mdc-tooltip-panel')).toContainText(`Web ${web.commit}`);
+  expect(await wcagViolations(page)).toEqual([]);
+  await line.click();
+  await expect(toast(page)).toContainText(/copiée|copied/);
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toContain(`Web ${web.version} (${web.commit})`);
+  expect(copied).toContain(`API ${health.build.version} (${health.build.commit})`);
+});
+
+// docs/SPEC.md § 7, 2026-10-07 14:24: a new web build is offered as a reload, never forced; a new API only moves the line.
+test('a page learns a new web build is out when it comes back into view, and reloads only when asked', async ({
+  page,
+}) => {
+  let release = false;
+  await page.route('/version.json', async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as { version: string; commit: string };
+    await route.fulfill({
+      response,
+      json: release ? { version: `${body.version}9`, commit: 'f00dfeed' } : body,
+    });
+  });
+  await page.goto('/login');
+  await expect(page.getByTestId('build-web')).toBeVisible();
+  await page.getByTestId('email').fill('typed@before.reload');
+  await expect(page.getByTestId('new-version')).toHaveCount(0);
+
+  release = true;
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await expect(page.getByTestId('new-version')).toBeVisible();
+  await expect(page.getByTestId('email')).toHaveValue('typed@before.reload');
+  expect(await wcagViolations(page)).toEqual([]);
+
+  await page.getByTestId('new-version-reload').click();
+  await expect(page.getByTestId('build-web')).toContainText('9');
+  await expect(page.getByTestId('new-version')).toHaveCount(0);
+});
+
 test('the legal line closes a signed-in page, after its content, and a settings page beside its list', async ({
   page,
 }) => {

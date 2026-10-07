@@ -325,7 +325,8 @@ export class QuotePage {
         id: 'deposit',
         label: 'quotes.actions.deposit',
         icon: 'payments',
-        disabled: busy,
+        // The dialog checks an amount against the currency's decimals, known once the options are read.
+        disabled: busy || this.scale() === null,
         run: () => void this.deposit(),
         shown: status === 'accepted' && invoiceId === null && this.mayWrite() && this.mayInvoice(),
       },
@@ -519,11 +520,12 @@ export class QuotePage {
   protected async deposit(): Promise<void> {
     const companyId = this.company()?.id;
     const quote = this.current();
-    if (!companyId || !quote || this.busy()) return;
+    const scale = this.scale();
+    if (!companyId || !quote || scale === null || this.busy()) return;
     const share = await firstValueFrom(
       this.dialog
         .open<QuoteDepositDialog, QuoteDepositDialogData, DepositShare | null>(QuoteDepositDialog, {
-          data: { total: quote.total, scale: this.scale() ?? 2 },
+          data: { total: quote.total, scale },
           autoFocus: 'first-tabbable',
         })
         .afterClosed(),

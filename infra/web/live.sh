@@ -17,4 +17,7 @@ fi
 wget -q -O /tmp/openapi.json http://api/api/docs.jsonopenapi
 OPENAPI_JSON=/tmp/openapi.json npm run api:types
 
+# The build `make up` started from (scripts/build-version.sh), as the image writes it: the source then moves on under it.
+printf '{"version":"%s","commit":"%s"}\n' "${WEB_BUILD_VERSION:-}" "${WEB_BUILD_COMMIT:-}" >public/version.json
+
 exec npm start -- --host 0.0.0.0 --port 80 --proxy-config proxy.live.json

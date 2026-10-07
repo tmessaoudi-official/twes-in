@@ -44,6 +44,13 @@ RUN composer dump-autoload --optimize --classmap-authoritative \
 # build takes this image as an additional context). Exported here, at build time, so a fresh clone needs
 # nothing outside git to build the web image; it is the same command the CI api job runs for the web job.
 
+# The build this image is (scripts/build-version.sh, passed by the Makefile and CI): `/api/health` says it and the web's
+# footer shows it. Last, so a new version reuses every layer above.
+ARG BUILD_VERSION=""
+ARG BUILD_COMMIT=""
+ENV BUILD_VERSION=$BUILD_VERSION \
+    BUILD_COMMIT=$BUILD_COMMIT
+
 # Every command the developer and CI run on this project, in one image (compose.yaml, service `tools`): the dev stage's
 # PHP plus what the gates call. Nothing of the repo is copied in; the working tree is mounted, so a gate reads what is
 # on disk. The dependencies it installs are the working tree's own (api/vendor), made by the host user.
@@ -83,3 +90,10 @@ RUN composer dump-autoload --no-dev --classmap-authoritative \
  && composer dump-env prod \
  && APP_SECRET=build-only APP_MFA_KEY=build-only REALTIME_TOKEN_KEY=build-only REALTIME_API_KEY=build-only \
     sh -c 'composer run-script --no-dev post-install-cmd --no-interaction && bin/console api:openapi:export --output=var/openapi.json'
+
+# The build this image is (scripts/build-version.sh, passed by the Makefile and CI): `/api/health` says it and the web's
+# footer shows it. Last, so a new version reuses every layer above.
+ARG BUILD_VERSION=""
+ARG BUILD_COMMIT=""
+ENV BUILD_VERSION=$BUILD_VERSION \
+    BUILD_COMMIT=$BUILD_COMMIT

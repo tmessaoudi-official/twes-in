@@ -10,6 +10,8 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { Brand } from '../brand/brand';
+import { BuildInfo } from '../build/build-info';
+import { provideQuietFeedback } from '../testing/feedback';
 import { LegalFooter } from './legal-footer';
 import { LEGAL_PAGES } from './legal-pages';
 
@@ -34,9 +36,20 @@ describe('LegalFooter', () => {
       imports: [LegalFooter],
       providers: [
         provideRouter([]),
+        ...provideQuietFeedback(),
         provideTranslateService({ lang: 'fr', fallbackLang: 'fr' }),
         provideTranslateLoader(StaticLoader),
         { provide: Brand, useValue: { name, tagline: signal('') } },
+        {
+          provide: BuildInfo,
+          useValue: {
+            web: signal({ version: '2026.10.07.3', commit: 'aaaa1111' }),
+            api: signal(null),
+            webMode: null,
+            line: signal(''),
+            start: () => undefined,
+          },
+        },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(LegalFooter);

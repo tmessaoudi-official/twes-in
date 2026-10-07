@@ -4439,6 +4439,14 @@ functional tests run in the `tools` container, on the host's network, against th
   can see: they live in a « Rentabilité » tab on each document, opened on purpose, folded by default, for `product.cost.read`
   only, never shown while the customer screen is held (margin per line and in total, below-cost warning, where each price
   came from). Built after row 218 in four steps, rows 219 to 222.
+- [2026-10-07 15:33] ASSUMED (review): how the footer's build line is built (row 218). A page takes the web build it runs from
+  `/version.json` read when it starts, not from a value compiled into the bundle, so the live dev server needs no build
+  step; a deploy landing between the page and that first read is the only way to miss one. `/api/health` answers the
+  raw values (`mode` is the kernel environment, `deployment` is `DEPLOY_ENV`) and the web leaves out what reads « prod »,
+  so a monitor reads them as they are. An image built without its version says « non versionnée » rather than a guess.
+  The banner shows on every page, signed out too, and never reloads by itself. `DEPLOY_ENV` defaults to `dev` in
+  compose.yaml and `prod` in compose.prod.yaml; a deployment naming none shows no chip. Alternatives: a version baked
+  into the bundle at build (needs a second mechanism for live mode), the API hiding prod itself.
 
 ## 8. Status
 

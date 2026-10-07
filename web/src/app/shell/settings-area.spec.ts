@@ -20,6 +20,8 @@ import { BehaviorSubject, map, of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import { ThemeFacade } from '../shared/theme/theme-facade';
+import { provideQuietBuild } from '../shared/testing/build';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 import { SettingsArea } from './settings-area';
 
 class StaticLoader implements TranslateLoader {
@@ -97,6 +99,8 @@ describe('SettingsArea', () => {
     await TestBed.configureTestingModule({
       imports: [SettingsArea],
       providers: [
+        ...provideQuietBuild(),
+        ...provideQuietFeedback(),
         provideRouter([
           { path: 'company', component: Blank },
           { path: 'members', component: Blank },

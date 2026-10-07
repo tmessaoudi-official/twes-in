@@ -34,8 +34,14 @@ services:
       dockerfile: infra/api/Dockerfile
       # The development stage; compose.prod.yaml switches to the production one.
       target: dev
+      # The build the image is, from scripts/build-version.sh, which the Makefile and CI run: empty, it says so.
+      args:
+        BUILD_VERSION: "${API_BUILD_VERSION:-}"
+        BUILD_COMMIT: "${API_BUILD_COMMIT:-}"
     environment: &api-environment
       APP_ENV: dev
+      # The deployment this is (dev, staging, prod), shown beside the build in the footer when it is not prod.
+      DEPLOY_ENV: "${DEPLOY_ENV:-dev}"
       DATABASE_URL: "postgresql://twes:${POSTGRES_PASSWORD:-twes}@postgres:5432/twes?serverVersion=18&charset=utf8"
       MAILER_DSN: smtp://mailpit:1025
       MAILER_SENDER: no-reply@twes.local
@@ -116,6 +122,9 @@ services:
       # The web image generates its TypeScript types from the OpenAPI document the api image exports at build.
       additional_contexts:
         api: service:api
+      args:
+        BUILD_VERSION: "${WEB_BUILD_VERSION:-}"
+        BUILD_COMMIT: "${WEB_BUILD_COMMIT:-}"
     depends_on:
       api:
         condition: service_healthy

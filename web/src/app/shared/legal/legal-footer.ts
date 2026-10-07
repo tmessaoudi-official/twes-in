@@ -3,17 +3,19 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Brand } from '../brand/brand';
+import { BuildLine } from '../build/build-line';
 import { LegalLink } from './legal-link';
 import { LEGAL_PAGES } from './legal-pages';
 
 /**
  * The copyright and legal-links line: slim and centred, under the content of every page, signed out too, scrolling
  * with it. The brand is the installation's own, through the `Brand` port. The licence leads to the source page, which
- * a network service under the AGPL owes its users (§ 13). Each link opens its text over the screen (`LegalLink`).
+ * a network service under the AGPL owes its users (§ 13). Each link opens its text over the screen (`LegalLink`). The
+ * line ends on the builds that answer (`BuildLine`).
  */
 @Component({
   selector: 'app-legal-footer',
-  imports: [LegalLink, TranslatePipe],
+  imports: [BuildLine, LegalLink, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <nav
@@ -31,6 +33,8 @@ import { LEGAL_PAGES } from './legal-pages';
           'legal.pages.' + slug | translate
         }}</a>
       }
+      <span aria-hidden="true">·</span>
+      <app-build-line />
     </nav>
   `,
 })

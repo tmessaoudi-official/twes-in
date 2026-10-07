@@ -38,6 +38,10 @@ services:
   web:
     build:
       target: live
+    # Written into public/version.json at start (infra/web/live.sh); the image's build arguments never reach this stage.
+    environment:
+      WEB_BUILD_VERSION: "${WEB_BUILD_VERSION:-}"
+      WEB_BUILD_COMMIT: "${WEB_BUILD_COMMIT:-}"
     volumes:
       - ./web:/app
       - web-node-modules:/app/node_modules

@@ -14,7 +14,12 @@ COPY web/ ./
 # `api` is not a stage of this file: it is the additional build context compose.yaml binds to the api service.
 # hadolint ignore=DL3022
 COPY --from=api /app/var/openapi.json /openapi.json
-RUN OPENAPI_JSON=/openapi.json npm run api:types \
+# The build this bundle is (scripts/build-version.sh, passed by the Makefile and CI), served as /version.json: a page
+# reads it when it starts and again later, and a new one means a new build is out (shared/build/build-info.ts).
+ARG BUILD_VERSION=""
+ARG BUILD_COMMIT=""
+RUN printf '{"version":"%s","commit":"%s"}\n' "$BUILD_VERSION" "$BUILD_COMMIT" > public/version.json \
+ && OPENAPI_JSON=/openapi.json npm run api:types \
  && npm run build -- --configuration production
 
 # Live development (compose.live.yaml, `make up`): the Angular dev server over web/ mounted from the host, so an edit

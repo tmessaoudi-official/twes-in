@@ -57,7 +57,7 @@ final class OpenApiTest extends KernelTestCase
         self::assertSame(['id', 'email', 'displayName', 'locale', 'isPlatformOperator'], $this->required($schemas['MeUser']));
         self::assertSame(['id', 'name', 'countryCode', 'currency', 'locale', 'timezone', 'status', 'role', 'access', 'subscription', 'logoVersion'], $this->required($schemas['MeCompany']));
         self::assertSame(['email', 'password'], $this->required($schemas['LoginRequest']));
-        self::assertSame(['status', 'database'], $this->required($schemas['Health']));
+        self::assertSame(['status', 'database', 'build', 'deployment'], $this->required($schemas['Health']));
 
         // ArrayObjects all the way down: a JSON round trip is the plain view of the schema.
         $me = json_decode(json_encode($schemas['Me'], \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);

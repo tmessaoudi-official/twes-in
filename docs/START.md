@@ -476,3 +476,26 @@ package. CI's `prod-image` job runs the same check on every push.
 A secret generated this way lives only in that shell. `APP_MFA_KEY` encrypts every authenticator secret stored, so a
 stack restarted with another key cannot read them: keep the four values if the stack is to outlive the shell.
 Profiler, dev logs and fixtures belong to `make up`'s development image.
+
+## 11. Which build is running
+
+The line at the foot of every page ends on the builds that answer: « Web 2026.10.07.3 · API 2026.10.07.5 ». Each part
+is versioned from git on its own, so a fix to one never moves the other (docs/SPEC.md § 7, 2026-10-07 14:28):
+`YYYY.MM.DD.N` is the Paris day of the last commit touching the part's folders (web: `web/`, `infra/web/`; API:
+`api/`, `infra/api/`), N counts that part's commits of that day, and « -dirty » says the image was built from
+uncommitted changes. Hover or focus the line for each part's commit hash; a click copies the whole line, mode and
+deployment included, which is what to paste when reporting a problem.
+
+- `bash scripts/build-version.sh web` (or `api`, or `--env` for all four values) says what an image built now would be.
+  The images are built without `.git`, so `make up` and CI run it and pass the result as build arguments; a
+  `docker compose up --build` of your own builds an image that says « non versionnée ». CI fetches the whole history
+  for it, since a one-commit checkout cannot count the day's changes.
+- After a part's version, its build mode shows when it is not production: `dev` for an Angular development build (what
+  `make up` serves), the API's `APP_ENV` otherwise. A last `[staging]` or `[dev]` names the deployment, from
+  `DEPLOY_ENV` (`dev` in compose.yaml, `prod` in compose.prod.yaml; a deployment sets its own). Nothing of production
+  is shown.
+- The web serves its build at `/version.json`, never cached. A page reads it when it starts, then every five minutes and
+  whenever it comes back into view; when the server holds another build, « Nouvelle version disponible — Recharger »
+  appears, and only the button reloads. A new API changes the line quietly.
+- `/api/health` answers the API's build and the deployment, as they are: `{"build": {"version", "commit", "mode"},
+  "deployment"}`.

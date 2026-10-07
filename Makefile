@@ -23,6 +23,8 @@ DOCKER_GID := $(shell stat -c %g /var/run/docker.sock 2>/dev/null)
 TOOLS_TMP := /tmp/twes-in-tools-$(HOST_UID)
 export HOST_REPO HOST_UID HOST_GID DOCKER_GID TOOLS_TMP
 export LAN_HOST LAN_ORIGIN COMPOSE_PROFILES COMPOSE_FILE
+# WEB_ and API_BUILD_VERSION and _COMMIT for the images' build arguments, worked out only where an image is built.
+BUILD_ENV = $(shell bash scripts/build-version.sh --env)
 # A directory of the host's own for the toolchain's temporary files, made here as this user or Docker makes it as root.
 TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T tools
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
@@ -50,7 +52,8 @@ web-tools-image: ## build the Node + Playwright toolchain image
 up:            ## start the whole stack LIVE: an edit under api/ or web/ shows without a rebuild (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, a phone's HTTPS door :8443), then seed
 	@# The live volumes mount inside the host's api/ and web/; made here, as this user, or Docker makes them as root.
 	mkdir -p api/vendor api/var web/node_modules web/.angular var/tmp var/cache
-	docker compose up -d --build --wait
+	@# Each image is built as the version git says it is (scripts/build-version.sh); the footer shows it.
+	env $(BUILD_ENV) docker compose up -d --build --wait
 	$(MAKE) seed
 	@echo "On this computer: http://localhost:$${WEB_PORT:-8090}"
 	@$(if $(LAN_ORIGIN),echo "From a phone on this network: $(LAN_ORIGIN) (trust once: http://$(LAN_HOST):8095/root.crt)",echo "No network address found: the phone door is off.")
@@ -146,6 +149,7 @@ in-gate-licences:
 	bash scripts/gates/tests/icons-declared.test.sh
 	bash scripts/gates/tests/float-casts.test.sh
 	bash scripts/gates/tests/decision-stamps.test.sh
+	bash scripts/tests/build-version.test.sh
 	bash infra/self-hosted/tests/logrotate.test.sh
 	bash infra/web/tests/forwarded-proto.test.sh
 	bash infra/web/tests/live-proxy.test.sh

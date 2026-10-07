@@ -24,10 +24,11 @@ final class HealthControllerTest extends TestCase
             }
         };
 
-        $response = (new HealthController($probe))();
+        $response = (new HealthController($probe, '2026.10.07.5', 'a7adf55f', 'prod', ''))();
 
         self::assertSame(503, $response->getStatusCode());
-        self::assertSame(['status' => 'degraded', 'database' => 'unreachable'], json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR));
+        // Still says which build answers: the footer reads it from a degraded API too.
+        self::assertSame(['status' => 'degraded', 'database' => 'unreachable', 'build' => ['version' => '2026.10.07.5', 'commit' => 'a7adf55f', 'mode' => 'prod'], 'deployment' => null], json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR));
     }
 
     public function testAReachableDatabaseYieldsOk(): void
@@ -39,9 +40,9 @@ final class HealthControllerTest extends TestCase
             }
         };
 
-        $response = (new HealthController($probe))();
+        $response = (new HealthController($probe, '2026.10.07.5', 'a7adf55f', 'prod', ''))();
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertSame(['status' => 'ok', 'database' => 'ok'], json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR));
+        self::assertSame(['status' => 'ok', 'database' => 'ok', 'build' => ['version' => '2026.10.07.5', 'commit' => 'a7adf55f', 'mode' => 'prod'], 'deployment' => null], json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR));
     }
 }

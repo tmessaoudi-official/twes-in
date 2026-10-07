@@ -14,6 +14,7 @@ import type { Me } from '../api/types.gen';
 import { LoginPage } from './login-page';
 import { PasskeyClient } from './passkey-client';
 import { provideStillAppearance } from '../shared/testing/appearance';
+import { provideQuietBuild } from '../shared/testing/build';
 import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
@@ -82,6 +83,7 @@ describe('LoginPage', () => {
     await TestBed.configureTestingModule({
       imports: [LoginPage],
       providers: [
+        ...provideQuietBuild(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),

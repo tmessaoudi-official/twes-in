@@ -3899,5 +3899,12 @@
       "draft": "Draft",
       "hint": "The final invoice deducts every issued deposit, as it was charged."
     }
+  },
+  "build": {
+    "unversioned": "unversioned",
+    "hint": "Web {{web}} · API {{api}} — click to copy",
+    "copied": "Version copied.",
+    "new_version": "A new version is available",
+    "reload": "Reload"
   }
 }

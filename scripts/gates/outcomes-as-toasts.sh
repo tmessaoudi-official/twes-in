@@ -29,7 +29,9 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # person's fingers with every quantity typed and is what the rows ARE until they add up, while what saving did is a toast.
 # `documents-preview-loading` and `documents-preview-message` are what a design's preview IS: the picture on its way, or
 # why there is none (no invoice yet, invoices not readable, a failure); what saving the design did is a toast.
-page_states=' login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message '
+# `new-version` is that the page runs an older build than the server holds: true until the page is reloaded, whatever
+# the person does meanwhile, and never the outcome of something they did (the footer's build line, 2026-10-07).
+page_states=' new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {

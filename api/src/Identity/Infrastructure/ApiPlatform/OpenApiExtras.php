@@ -57,10 +57,20 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
         ]);
         $schemas['Health'] = new \ArrayObject([
             'type' => 'object',
-            'required' => ['status', 'database'],
+            'required' => ['status', 'database', 'build', 'deployment'],
             'properties' => [
                 'status' => ['type' => 'string', 'enum' => ['ok', 'degraded']],
                 'database' => ['type' => 'string', 'enum' => ['ok', 'unreachable']],
+                'build' => [
+                    'type' => 'object',
+                    'required' => ['version', 'commit', 'mode'],
+                    'properties' => [
+                        'version' => ['type' => ['string', 'null'], 'description' => 'YYYY.MM.DD.N, « -dirty » when built from uncommitted changes; null when the image was built without one'],
+                        'commit' => ['type' => ['string', 'null'], 'description' => 'The short hash of the last commit the version counts'],
+                        'mode' => ['type' => 'string', 'description' => 'The kernel environment: prod, dev or test'],
+                    ],
+                ],
+                'deployment' => ['type' => ['string', 'null'], 'description' => 'The deployment this is (dev, staging, prod), null when it names none'],
             ],
         ]);
 
