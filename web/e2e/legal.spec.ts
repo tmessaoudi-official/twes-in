@@ -121,6 +121,45 @@ test.describe('a first visit', () => {
   });
 });
 
+test.describe('on a page shorter than the window', () => {
+  // The home is about 1 500 px tall: a 2 400 px window leaves room below it.
+  test.use({ viewport: { width: 1440, height: 2400 } });
+
+  test('the legal line and the notice close the panel at its foot, not mid-screen', async ({
+    page,
+  }) => {
+    // Audit 2026-10-06 V-8: both stopped under the content with the empty panel below them.
+    await signIn(page);
+    await page.evaluate((key) => localStorage.removeItem(key), NOTICE_CLOSED);
+    await page.reload();
+    await expect(page.getByTestId('greeting')).toBeVisible();
+    await expect(page.getByTestId('cookie-notice')).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const panel = document.querySelector('mat-sidenav-content')!;
+          const line = document.querySelector('main [data-testid="legal-footer"]')!;
+          const notice = document.querySelector('[data-testid="cookie-notice"]')!;
+          return [
+            Math.round(
+              panel.getBoundingClientRect().bottom - notice.getBoundingClientRect().bottom,
+            ),
+            Math.round(notice.getBoundingClientRect().top - line.getBoundingClientRect().bottom),
+          ];
+        }),
+      )
+      // The notice on the panel's foot, the legal line right above it (main's own bottom padding between them).
+      .toEqual([0, expect.any(Number)]);
+    const gap = await page.evaluate(() => {
+      const line = document.querySelector('main [data-testid="legal-footer"]')!;
+      const notice = document.querySelector('[data-testid="cookie-notice"]')!;
+      return notice.getBoundingClientRect().top - line.getBoundingClientRect().bottom;
+    });
+    expect(gap).toBeGreaterThanOrEqual(0);
+    expect(gap).toBeLessThanOrEqual(40);
+  });
+});
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 

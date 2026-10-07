@@ -1128,19 +1128,32 @@ app-cookie-notice {
   height: calc(100% - 1rem);
 }
 
-// Beside the Paramètres list, the settings page scrolls on its own and the list stays where it is (docs/SPEC.md § 7,
-// 2026-09-26 11:17, row 151). That needs `main` to take the panel's height below the top bar, which only a flex
-// column gives it — and Material's own `display: block` on the drawer content outranks the template's layered
-// `flex flex-col` utilities, so the column is declared here, unlayered, and for the settings area alone.
-@media (min-width: 1024px) {
-  .twes-shell-content:has(> main[data-settings='true']) {
+// A page shorter than the panel still fills it, so the legal line and the cookie notice close the panel at its foot
+// instead of stopping mid-screen under the content (audit V-8). A column, declared here for the reason given below,
+// and qualified with Material's class, whose own `display: block` loads after this file.
+.mat-drawer-content.twes-shell-content {
+  display: flex;
+  flex-direction: column;
+
+  > main:not([data-settings='true']) {
+    flex: 1 0 auto;
     display: flex;
     flex-direction: column;
 
-    > main {
-      flex: 1 1 0;
-      min-height: 0;
+    > app-legal-footer {
+      margin-block-start: auto;
     }
+  }
+}
+
+// Beside the Paramètres list, the settings page scrolls on its own and the list stays where it is (docs/SPEC.md § 7,
+// 2026-09-26 11:17, row 151). That needs `main` to take the panel's height below the top bar, which only a flex
+// column gives it — and Material's own `display: block` on the drawer content outranks the template's layered
+// `flex flex-col` utilities, so the column is declared above, unlayered.
+@media (min-width: 1024px) {
+  .twes-shell-content > main[data-settings='true'] {
+    flex: 1 1 0;
+    min-height: 0;
   }
 }
 
