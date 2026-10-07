@@ -34,8 +34,7 @@ final readonly class VendorCollectionProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): TraversablePaginator
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), VendorPermission::READ);
-        $active = Paging::value($operation, 'isActive');
-        $search = new VendorSearch(Paging::text($operation), \is_bool($active) ? $active : null, Paging::order($operation, VendorSearch::SORTS));
+        $search = VendorSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, VendorSearch::SORTS), $company);
 
         return $this->paging->paginator(
             $this->manage->search($company, $search, $this->paging->request($operation, $context)),

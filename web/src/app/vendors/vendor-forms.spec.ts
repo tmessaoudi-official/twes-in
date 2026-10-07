@@ -42,7 +42,12 @@ describe('vendor forms', () => {
     expect(
       vendorSearch({
         query: 'sotu',
-        filters: { status: 'inactive' },
+        filters: {
+          status: 'inactive',
+          'paymentTermsDays.min': '30',
+          'createdAt.from': '2026-03-01',
+          'createdAt.to': '2026-02-30',
+        },
         sort: { column: 'status', direction: 'desc' },
         pageIndex: 1,
         pageSize: 50,
@@ -52,6 +57,7 @@ describe('vendor forms', () => {
       itemsPerPage: 50,
       q: 'sotu',
       isActive: false,
+      intervals: { 'paymentTermsDays.min': '30', 'createdAt.from': '2026-03-01' },
       order: { key: 'isActive', direction: 'desc' },
     });
     const sortable = VENDORS_LIST.columns.filter((column) => column.sortable);
@@ -66,6 +72,13 @@ describe('vendor forms', () => {
         }).order,
       ).not.toBeNull();
     }
+  });
+
+  it('offers the intervals ruled for the list', () => {
+    expect(VENDORS_LIST.ranges?.map((range) => [range.id, range.kind])).toEqual([
+      ['paymentTermsDays', 'amount'],
+      ['createdAt', 'day'],
+    ]);
   });
 
   it('lists vendors by number with their city, payment terms and whether they are active', () => {

@@ -44,7 +44,11 @@ use Symfony\Component\Validator\Constraints as Assert;
             normalizationContext: self::NORMALIZATION,
             parameters: [
                 'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the number, name, legal name, email, address or registration numbers, whatever their case and accents; under three characters, the exact number only.'),
-                'isActive' => new QueryParameter(schema: ['type' => 'boolean'], castToNativeType: true),
+                'isActive' => new QueryParameter(schema: ['type' => 'boolean']),
+                'paymentTermsDays[min]' => new QueryParameter(schema: ['type' => 'string', 'pattern' => '^[0-9]{1,4}$'], description: 'Payment terms of at least this many days; a vendor with none is left out.'),
+                'paymentTermsDays[max]' => new QueryParameter(schema: ['type' => 'string', 'pattern' => '^[0-9]{1,4}$'], description: 'Payment terms of at most this many days; a vendor with none is left out.'),
+                'createdAt[from]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'Created on or after this day, in the company\'s own calendar.'),
+                'createdAt[to]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'Created on or before this day, in the company\'s own calendar.'),
                 'order[number]' => new QueryParameter(schema: self::DIRECTION),
                 'order[name]' => new QueryParameter(schema: self::DIRECTION),
                 'order[city]' => new QueryParameter(schema: self::DIRECTION),

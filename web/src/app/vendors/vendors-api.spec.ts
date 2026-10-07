@@ -6,7 +6,14 @@ import { TestBed } from '@angular/core/testing';
 import { VendorsApi, VendorsRefused } from './vendors-api';
 import type { VendorInput, VendorSearch } from './vendors-types';
 
-const everyVendor: VendorSearch = { page: 1, itemsPerPage: 25, q: '', isActive: null, order: null };
+const everyVendor: VendorSearch = {
+  page: 1,
+  itemsPerPage: 25,
+  q: '',
+  isActive: null,
+  intervals: {},
+  order: null,
+};
 
 const sotumag: VendorInput = {
   number: 'FRN-0001',
@@ -50,11 +57,12 @@ describe('VendorsApi', () => {
       itemsPerPage: 50,
       q: ' acier ',
       isActive: true,
+      intervals: { 'createdAt.from': '2026-01-01' },
       order: { key: 'city' as const, direction: 'desc' as const },
     };
 
     expect(api.exportUrl('c/1', search, 'csv')).toBe(
-      '/api/companies/c%2F1/exports/vendors.csv?q=acier&isActive=true&order%5Bcity%5D=desc',
+      '/api/companies/c%2F1/exports/vendors.csv?q=acier&isActive=true&createdAt%5Bfrom%5D=2026-01-01&order%5Bcity%5D=desc',
     );
   });
 
@@ -82,12 +90,13 @@ describe('VendorsApi', () => {
       itemsPerPage: 50,
       q: ' générale ',
       isActive: true,
+      intervals: { 'paymentTermsDays.min': '30', 'paymentTermsDays.max': '60' },
       order: { key: 'paymentTermsDays', direction: 'desc' },
     });
     const request = http.expectOne((req) => req.url === '/api/companies/c1/vendors');
     expect(request.request.headers.get('Accept')).toBe('application/ld+json');
     expect(request.request.params.toString()).toBe(
-      'page=3&itemsPerPage=50&q=g%C3%A9n%C3%A9rale&isActive=true&order%5BpaymentTermsDays%5D=desc',
+      'page=3&itemsPerPage=50&q=g%C3%A9n%C3%A9rale&isActive=true&paymentTermsDays%5Bmin%5D=30&paymentTermsDays%5Bmax%5D=60&order%5BpaymentTermsDays%5D=desc',
     );
     request.flush({ member: [{ id: 'v1', number: 'FRN-0001', name: 'Sotumag' }], totalItems: 101 });
 

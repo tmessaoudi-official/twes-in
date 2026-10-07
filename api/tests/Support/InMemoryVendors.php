@@ -29,7 +29,7 @@ final class InMemoryVendors implements VendorRepository
         return $mine;
     }
 
-    /** Narrows as the database does; sorts by number only, which is all the unit tests ask for. */
+    /** Narrows as the database does, but for the creation day; sorts by number only, which is all the unit tests ask for. */
     public function search(Uuid $companyId, VendorSearch $search, PageRequest $page): Page
     {
         $found = array_values(array_filter($this->ofCompany($companyId), static function (Vendor $v) use ($search): bool {
@@ -37,7 +37,9 @@ final class InMemoryVendors implements VendorRepository
             $address = $profile->address;
 
             return InMemorySearch::finds($search->text, $v->getNumber(), [$profile->name, $profile->legalName, $profile->email, $address->line1, $address->postalCode, $address->city, ...array_values($profile->identifiers)])
-                && (null === $search->active || $v->isActive() === $search->active);
+                && (null === $search->active || $v->isActive() === $search->active)
+                && (null === $search->termsAtLeast || (null !== $profile->paymentTermsDays && $profile->paymentTermsDays >= $search->termsAtLeast))
+                && (null === $search->termsAtMost || (null !== $profile->paymentTermsDays && $profile->paymentTermsDays <= $search->termsAtMost));
         }));
 
         return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);

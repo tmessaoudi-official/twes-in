@@ -14,6 +14,11 @@ export interface VendorSearch {
   /** Words found in the number, name, legal name, email, address or registration numbers; empty finds all. */
   q: string;
   isActive: boolean | null;
+  /**
+   * The ends of the intervals (row 197): `paymentTermsDays.min` and `.max` in whole days, `createdAt.from` and `.to`
+   * in the company's own calendar, each already valid.
+   */
+  intervals: Readonly<Record<string, string>>;
   order: { key: VendorSortKey; direction: 'asc' | 'desc' } | null;
 }
 

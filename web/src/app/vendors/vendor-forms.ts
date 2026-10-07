@@ -7,6 +7,7 @@ import type {
   FormSection,
   FormValues,
 } from '../shared/form/form-types';
+import { rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import type {
   VendorInput,
@@ -75,6 +76,10 @@ export const VENDORS_LIST: ListDescriptor<VendorRow> = {
       width: 120,
     },
   ],
+  ranges: [
+    { id: 'paymentTermsDays', kind: 'amount', label: `${FIELDS}.paymentTermsDays` },
+    { id: 'createdAt', kind: 'day', label: `${FIELDS}.createdAt` },
+  ],
   filters: [
     {
       id: 'status',
@@ -98,6 +103,12 @@ const SORT_KEYS: Readonly<Record<string, VendorSortKey>> = {
 };
 
 /** What the API is asked for the page of vendors the list shows. */
+const INTERVALS: readonly { id: string; kind: 'day' | 'amount'; label: string }[] = [
+  { id: 'paymentTermsDays', kind: 'amount', label: `${FIELDS}.paymentTermsDays` },
+  { id: 'createdAt', kind: 'day', label: `${FIELDS}.createdAt` },
+];
+
+/** What the API is asked for the page of vendors the list shows: every filter is sent, none applied here. */
 export function vendorSearch(query: ListQuery): VendorSearch {
   const status = query.filters['status'];
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
@@ -106,6 +117,7 @@ export function vendorSearch(query: ListQuery): VendorSearch {
     itemsPerPage: query.pageSize,
     q: query.query,
     isActive: status === 'active' ? true : status === 'inactive' ? false : null,
+    intervals: rangeParams(query.filters, INTERVALS),
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };

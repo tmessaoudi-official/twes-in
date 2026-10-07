@@ -5,7 +5,14 @@ import { VendorsApi, VendorsRefused } from './vendors-api';
 import { VendorsFacade } from './vendors-facade';
 import type { VendorInput, VendorOptions, VendorRow, VendorSearch } from './vendors-types';
 
-const everyVendor: VendorSearch = { page: 1, itemsPerPage: 25, q: '', isActive: null, order: null };
+const everyVendor: VendorSearch = {
+  page: 1,
+  itemsPerPage: 25,
+  q: '',
+  isActive: null,
+  intervals: {},
+  order: null,
+};
 
 const input: VendorInput = {
   number: 'FRN-0001',

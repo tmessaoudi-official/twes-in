@@ -90,6 +90,12 @@ test('a vendor is added with its bank account and terms, then revised', async ({
     await expect(row).toContainText('Ben Arous');
     await expect(row).toContainText('30');
     expect(await wcagViolations(page)).toEqual([]);
+
+    // Row 197: the terms as an interval of days, AND'd with the search, answered by the API.
+    await page.goto(`/vendors?q=${number}&paymentTermsDays.min=30&paymentTermsDays.max=45`);
+    await expect(row).toBeVisible();
+    await page.goto(`/vendors?q=${number}&paymentTermsDays.min=31`);
+    await expect(page.getByTestId('list-no-match')).toBeVisible();
   } finally {
     await retire(page, number);
   }

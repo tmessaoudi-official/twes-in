@@ -184,6 +184,46 @@ final class VendorsTest extends ApiTestCase
         }
     }
 
+    public function testEveryFilterOfTheListCombines(): void
+    {
+        // The company keeps Tunis time, an hour ahead of the stored UTC: 23:30 UTC on the 14th is already the 15th there.
+        foreach ([
+            ['V1', 30, true, '2026-03-10 10:00'],
+            ['V2', 60, true, '2026-03-14 23:30'],
+            ['V3', null, true, '2026-03-15 14:00'],
+            ['V4', 0, false, '2026-03-20 09:00'],
+        ] as [$number, $terms, $active, $at]) {
+            $at = new \DateTimeImmutable($at, new \DateTimeZone('UTC'));
+            $profile = new VendorProfile('Fournisseur '.$number, paymentTermsDays: $terms);
+            $vendor = Vendor::create($this->company, $number, $profile, $at);
+            $vendor->revise($number, $profile, $active, $at);
+            $this->em()->persist($vendor);
+        }
+        $this->em()->flush();
+        $this->signedIn(['vendor.read']);
+
+        foreach ([
+            // A vendor with no terms is left out by either end.
+            'paymentTermsDays[min]=30' => ['V1', 'V2'],
+            'paymentTermsDays[max]=30' => ['V1', 'V4'],
+            'paymentTermsDays[min]=0&paymentTermsDays[max]=0' => ['V4'],
+            'createdAt[from]=2026-03-15' => ['V2', 'V3', 'V4'],
+            'createdAt[from]=2026-03-15&createdAt[to]=2026-03-15' => ['V2', 'V3'],
+            'createdAt[to]=2026-03-14&paymentTermsDays[min]=1' => ['V1'],
+            'isActive=true&paymentTermsDays[max]=45' => ['V1'],
+        ] as $query => $numbers) {
+            $this->getJson($this->path().'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($numbers, array_column($this->jsonList(), 'number'), $query);
+            self::assertSame(\count($numbers), $this->jsonPage()['totalItems'], $query);
+        }
+
+        foreach (['paymentTermsDays[min]=7.5', 'paymentTermsDays[min]=thirty', 'paymentTermsDays[min]=60&paymentTermsDays[max]=30', 'createdAt[from]=2026-02-30'] as $refused) {
+            $this->getJson($this->path().'?'.$refused);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+        }
+    }
+
     /**
      * @param array<string, mixed> $changes
      *

@@ -11,6 +11,7 @@ import type {
   VendorVendorWriteValidationVendorWrite as VendorVendorWrite,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
+import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import type {
   VendorInput,
@@ -125,6 +126,9 @@ function toSearchParams(search: VendorSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
   if (search.q.trim() !== '') params = params.set('q', search.q.trim());
   if (search.isActive !== null) params = params.set('isActive', search.isActive);
+  for (const [key, value] of Object.entries(search.intervals)) {
+    params = params.set(apiRangeKey(key), value);
+  }
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
   return params;

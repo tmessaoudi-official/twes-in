@@ -124,6 +124,7 @@ describe('VendorsPage', () => {
       itemsPerPage: 25,
       q: '',
       isActive: null,
+      intervals: {},
       order: { key: 'number', direction: 'asc' },
     });
     const row = q('vendor-FRN-0001')?.textContent ?? '';

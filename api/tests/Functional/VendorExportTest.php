@@ -76,6 +76,21 @@ final class VendorExportTest extends ApiTestCase
         self::assertStringStartsWith('FRN-0002', $this->csv('/exports/vendors.csv?order[number]=desc')[1]);
     }
 
+    public function testTheFileHoldsWhatTheListShowsUnderEveryFilter(): void
+    {
+        foreach ([
+            'isActive=true' => 1,
+            'createdAt[to]=2000-01-01' => 0,
+            'createdAt[from]=2000-01-01&isActive=false' => 1,
+            'paymentTermsDays[min]=9999' => 0,
+        ] as $query => $rows) {
+            self::assertCount(1 + $rows, $this->csv('/exports/vendors.csv?'.$query), $query);
+            $this->getJson($this->path().'/vendors?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($rows, $this->jsonPage()['totalItems'], $query);
+        }
+    }
+
     public function testAnXlsxIsOfferedToo(): void
     {
         $this->client->request('GET', $this->path().'/exports/vendors.xlsx');

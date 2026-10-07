@@ -2334,7 +2334,8 @@
       "iban": "IBAN",
       "bic": "BIC",
       "paymentTermsDays": "Délai de paiement (jours)",
-      "notes": "Notes"
+      "notes": "Notes",
+      "createdAt": "Créé le"
     },
     "form": {
       "number_hint": "Lettres, chiffres et . _ / -, 32 caractères au plus, unique dans l’entreprise.",

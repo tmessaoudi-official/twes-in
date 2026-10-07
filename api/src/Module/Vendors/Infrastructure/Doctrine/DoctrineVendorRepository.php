@@ -14,8 +14,10 @@ use App\Module\Vendors\Domain\VendorRepository;
 use App\Module\Vendors\Domain\VendorSearch;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
+use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
@@ -52,6 +54,13 @@ final readonly class DoctrineVendorRepository implements VendorRepository
         if (null !== $search->active) {
             $query->andWhere('v.isActive = :active')->setParameter('active', $search->active);
         }
+        if (null !== $search->termsAtLeast) {
+            $query->andWhere('v.paymentTermsDays >= :termsMin')->setParameter('termsMin', $search->termsAtLeast, Types::INTEGER);
+        }
+        if (null !== $search->termsAtMost) {
+            $query->andWhere('v.paymentTermsDays <= :termsMax')->setParameter('termsMax', $search->termsAtMost, Types::INTEGER);
+        }
+        Intervals::moments($query, 'v.createdAt', 'created', $search->createdOn, $search->timezone);
         ListOrder::apply($query, $search->order, self::SORTED_BY, ['city', 'paymentTermsDays'], 'v.number')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 

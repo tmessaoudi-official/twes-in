@@ -15,6 +15,7 @@ use App\Module\Vendors\Application\ManageVendors;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorSearch;
 use App\Module\Vendors\Infrastructure\ApiPlatform\VendorPermission;
+use App\Module\Vendors\Infrastructure\ApiPlatform\VendorSearchReader;
 use App\Module\Vendors\Infrastructure\Import\VendorImport;
 use App\Module\Vendors\Infrastructure\Module\VendorsModule;
 use App\Shared\Domain\PageRequest;
@@ -56,7 +57,7 @@ final readonly class VendorExport implements DeclaresExport
 
     public function rows(Company $company, ExportQuery $query): iterable
     {
-        $search = new VendorSearch($query->text(), $query->flag('isActive'), $query->order(VendorSearch::SORTS));
+        $search = VendorSearchReader::read($query->parameters(), $query->text(), $query->order(VendorSearch::SORTS), $company);
         $columns = $this->columns($company);
 
         for ($page = 1;; ++$page) {
