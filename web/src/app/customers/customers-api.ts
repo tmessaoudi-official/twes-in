@@ -30,7 +30,6 @@ import {
   type CustomerRow,
   type CustomerSearch,
   type CustomersError,
-  type CreditDepositInput,
   type CustomerStatement,
   type StatementKind,
   type TaxFamily,
@@ -136,19 +135,6 @@ export class CustomersApi {
             { params },
           ),
         ),
-      ),
-    );
-  }
-
-  /** Records money received that no invoice takes; 422 for an amount that is not above zero or a day after today. */
-  async depositCredit(
-    companyId: string,
-    customerId: string,
-    deposit: CreditDepositInput,
-  ): Promise<void> {
-    await this.guard(() =>
-      firstValueFrom(
-        this.http.post(`${path(companyId, 'customers', customerId)}/credit-balance`, deposit),
       ),
     );
   }

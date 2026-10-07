@@ -99,11 +99,10 @@ final class CustomerStatementTest extends ApiTestCase
         self::assertTrue($this->json()['overCreditLimit'], '1300 owed passes a limit of 1200.500');
         // Money the customer left on account is theirs against what they owe (audit 2026-10-06, E-10).
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
-        $this->postJson($this->companyPath().'/customers/'.$this->customerId.'/credit-balance', ['amount' => '99.499', 'date' => $today]);
-        self::assertResponseStatusCodeSame(201);
+        $this->onAccount('99.499', $today);
         $this->getJson($this->path());
         self::assertTrue($this->json()['overCreditLimit'], '1300 owed less 99.499 on account is 1200.501, still past 1200.500');
-        $this->postJson($this->companyPath().'/customers/'.$this->customerId.'/credit-balance', ['amount' => '0.001', 'date' => $today]);
+        $this->onAccount('0.001', $today);
         $this->getJson($this->path());
         self::assertFalse($this->json()['overCreditLimit'], '1300 owed less 99.500 on account is exactly the limit');
 
@@ -119,11 +118,9 @@ final class CustomerStatementTest extends ApiTestCase
         $this->setLimit('1000', Uuid::fromString($this->customerId));
         $january = $this->issue('1300');
         $this->em()->getConnection()->executeStatement("UPDATE invoice SET issue_date = '2026-01-10' WHERE id = :id", ['id' => $january]);
-        $this->postJson($this->companyPath().'/customers/'.$this->customerId.'/credit-balance', ['amount' => '100', 'date' => '2026-01-20']);
-        self::assertResponseStatusCodeSame(201);
+        $this->onAccount('100', '2026-01-20');
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
-        $this->postJson($this->companyPath().'/customers/'.$this->customerId.'/credit-balance', ['amount' => '500', 'date' => $today]);
-        self::assertResponseStatusCodeSame(201);
+        $this->onAccount('500', $today);
 
         $this->getJson($this->path().'?from=2026-01-01&to=2026-01-31');
         self::assertSame(['1300.000', '100.000', true], [$this->json()['closingBalance'], $this->json()['creditBalance'], $this->json()['overCreditLimit']], 'in January 1300 owed less the 100 then on account passed 1000');
@@ -301,6 +298,21 @@ final class CustomerStatementTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
 
         return $id;
+    }
+
+    /**
+     * `$amount` left on account on `$day`: an invoice issued and paid in full that day, and that much more paid beyond it
+     * (a « trop-perçu »), so what the customer owes is unchanged.
+     */
+    private function onAccount(string $amount, string $day): void
+    {
+        $id = $this->issue('10');
+        $this->em()->getConnection()->executeStatement('UPDATE invoice SET issue_date = :day WHERE id = :id', ['day' => $day, 'id' => $id]);
+        $this->getJson($this->companyPath().'/invoices/'.$id);
+        $this->postJson($this->companyPath().'/invoices/'.$id.'/payments', ['date' => $day, 'amount' => $this->stringAt($this->json(), 'amountDue'), 'method' => 'transfer']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->companyPath().'/invoices/'.$id.'/overpayments', ['amount' => $amount, 'date' => $day]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
     }
 
     private function pay(string $invoiceId, string $amount): void

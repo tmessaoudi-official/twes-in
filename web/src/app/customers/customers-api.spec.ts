@@ -241,18 +241,6 @@ describe('CustomersApi', () => {
     await expect(pending).rejects.toMatchObject({ code: 'network' });
   });
 
-  describe('depositCredit', () => {
-    it('posts the money received to the customer’s credit balance', async () => {
-      const deposit = { date: '2026-10-02', amount: '50', reference: 'VIR-9', notes: null };
-      const pending = api.depositCredit('c 1', 'k1', deposit);
-      const request = http.expectOne('/api/companies/c%201/customers/k1/credit-balance');
-      expect(request.request.method).toBe('POST');
-      expect(request.request.body).toEqual(deposit);
-      request.flush({}, { status: 201, statusText: 'Created' });
-      await pending;
-    });
-  });
-
   describe('statement', () => {
     const raw = {
       customerId: 'k1',

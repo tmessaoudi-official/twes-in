@@ -41,6 +41,7 @@ import {
   pickedCustomer,
   shownStatus,
   stillOwed,
+  paidInFull,
 } from './invoice-forms';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { InvoiceLines } from './invoice-lines';
@@ -73,6 +74,8 @@ import { CreditExcessDialog } from './credit-excess-dialog';
 import { CreditNoteDialog } from './credit-note-dialog';
 import { InvoiceInstruments } from './invoice-instruments';
 import { PaymentDialog } from './payment-dialog';
+import { OverpaymentDialog } from './overpayment-dialog';
+import { overpaymentForm, overpaymentInput, overpaymentValues } from './overpayment-form';
 import { RecordView } from '../shared/form/record-view';
 import { taxNames } from './tax-names';
 
@@ -437,6 +440,15 @@ export class InvoicePage {
         shown: this.canApplyCredit(),
       },
       {
+        id: 'record-overpayment',
+        label: 'invoices.actions.record_overpayment',
+        icon: 'savings',
+        rare: true,
+        disabled: busy,
+        run: () => void this.openOverpayment(),
+        shown: this.canRecordOverpayment(),
+      },
+      {
         id: 'pdf',
         label:
           this.current()?.status === 'draft'
@@ -549,6 +561,10 @@ export class InvoicePage {
   protected readonly creditBalance = signal('0');
   protected readonly canApplyCredit = computed(
     () => this.canRecordPayment() && this.mayPay() && !this.isZero(this.creditBalance()),
+  );
+  /** Money paid beyond an invoice is kept to the customer's credit once the invoice is paid in full, never before. */
+  protected readonly canRecordOverpayment = computed(
+    () => paidInFull(this.current()) && this.mayPay(),
   );
 
   /**
@@ -765,12 +781,12 @@ export class InvoicePage {
     }
   }
 
-  /** An amount the API wrote as zero at any scale, "0" or "0.000". */
   /** Whether a payment can be recorded against this document, by this member: an open invoice with money owed. */
   private owes(document: InvoiceRow | null | undefined): boolean {
     return stillOwed(document) && this.mayPay();
   }
 
+  /** An amount the API wrote as zero at any scale, "0" or "0.000". */
   protected isZero(amount: string): boolean {
     return /^-?[0.]+$/.test(amount);
   }
@@ -875,6 +891,25 @@ export class InvoicePage {
     if (!companyId || id === null || this.busy()) return;
     if (await this.facade.applyCredit(companyId, id)) {
       this.feedback.success('invoices.payments.credit_applied');
+    }
+  }
+
+  /** What the customer paid beyond this invoice, kept to their credit (a « trop-perçu »). */
+  protected async openOverpayment(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    if (!companyId || id === null || this.busy()) return;
+    const descriptor = overpaymentForm();
+    const values = await firstValueFrom(
+      this.dialog
+        .open(OverpaymentDialog, {
+          data: { descriptor, group: buildFormGroup(descriptor, overpaymentValues(this.today())) },
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
+    );
+    if (values && (await this.facade.overpay(companyId, id, overpaymentInput(values)))) {
+      this.feedback.success('invoices.overpayment.recorded');
     }
   }
 

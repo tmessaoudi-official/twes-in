@@ -56,11 +56,11 @@ class CustomerCreditEntry implements CompanyOwned
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $notes;
 
-    /** The invoice credit was applied to, or the one a credit note gave money back from; null for a deposit. */
+    /** The invoice credit was applied to, the one a credit note gave money back from, or the one paid beyond. */
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $invoiceId;
 
-    /** The payment that applied it, which gives the credit back when deleted; null for a deposit. */
+    /** The payment that applied it, which gives the credit back when deleted; null for a trop-perçu. */
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $paymentId;
 
@@ -86,10 +86,10 @@ class CustomerCreditEntry implements CompanyOwned
         $this->createdAt = $now;
     }
 
-    /** Money received that no invoice took; `$details` says how much, when and how, already checked. */
-    public static function deposit(Customer $customer, PaymentDetails $details, ?Uuid $recordedBy, \DateTimeImmutable $now): self
+    /** Money the customer paid beyond `$invoice`; `$details` says how much, when and how, already checked. */
+    public static function overpayment(Invoice $invoice, PaymentDetails $details, ?Uuid $recordedBy, \DateTimeImmutable $now): self
     {
-        return new self($customer, CreditEntryKind::Deposit, $details->date, $details->amount, $details->reference, $details->notes, null, null, $recordedBy, $now);
+        return new self($invoice->getCustomer(), CreditEntryKind::Overpayment, $details->date, $details->amount, $details->reference, $details->notes, $invoice->getId(), null, $recordedBy, $now);
     }
 
     /** Credit paid into an invoice by this payment: `$payment`'s amount leaves the balance. */

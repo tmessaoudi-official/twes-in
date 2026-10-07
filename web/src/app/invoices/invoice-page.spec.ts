@@ -244,6 +244,7 @@ describe('InvoicePage', () => {
     recordPayment: vi.fn(),
     customerCredit: vi.fn(),
     applyCredit: vi.fn(),
+    overpay: vi.fn(),
     deletePayment: vi.fn(),
     clearError: vi.fn(),
     pdfUrl: (companyId: string, id: string) => `/api/companies/${companyId}/invoices/${id}/pdf`,
@@ -366,6 +367,7 @@ describe('InvoicePage', () => {
     facade.recordPayment.mockReset().mockResolvedValue(true);
     facade.customerCredit.mockReset().mockResolvedValue('0.000');
     facade.applyCredit.mockReset().mockResolvedValue(true);
+    facade.overpay.mockReset().mockResolvedValue(true);
     facade.deletePayment.mockReset().mockResolvedValue(true);
     TestBed.configureTestingModule({
       imports: [InvoicePage],
@@ -1161,6 +1163,43 @@ describe('InvoicePage', () => {
     q('document-more')?.click();
     await settle();
     expect(over('document-menu-apply-credit')).toBeNull();
+  });
+
+  it('keeps what was paid beyond an invoice paid in full to the customer’s credit, never on one still due', async () => {
+    invoice.set(issued);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-record-overpayment')).toBeNull();
+
+    invoice.set({ ...issued, status: 'paid', amountDue: '0.000' });
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    over('document-menu-record-overpayment')!.click();
+    await settle();
+    expect(over('overpayment-title')).not.toBeNull();
+    typeIn(over('field-amount') as HTMLInputElement, '50');
+    typeIn(over('field-reference') as HTMLInputElement, 'VIR-9');
+    over('overpayment-record')!.click();
+    await settle();
+
+    expect(facade.overpay).toHaveBeenCalledWith('c1', 'i1', {
+      date: todayIn('Africa/Tunis'),
+      amount: '50',
+      reference: 'VIR-9',
+      notes: null,
+    });
+    await vi.waitFor(() => expect(successToasts()).toContain('invoices.overpayment.recorded'));
+  });
+
+  it('does not offer a trop-perçu to someone who may not record a payment', async () => {
+    granted.delete('payment.write');
+    invoice.set({ ...issued, status: 'paid', amountDue: '0.000' });
+    await open('i1');
+    q('document-more')?.click();
+    await settle();
+    expect(over('document-menu-record-overpayment')).toBeNull();
   });
 
   it('deletes a payment only once confirmed', async () => {

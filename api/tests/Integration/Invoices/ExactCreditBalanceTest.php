@@ -15,11 +15,8 @@ use App\Fiscal\Domain\CustomerTaxRegimeRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
-use App\Module\Invoices\Domain\CustomerCreditEntry;
 use App\Module\Invoices\Domain\CustomerCreditRepository;
-use App\Module\Invoices\Domain\PaymentDetails;
 use App\Shared\Application\Transactions;
-use App\Shared\Domain\PaymentMethod;
 use App\Tenancy\Domain\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -46,8 +43,12 @@ final class ExactCreditBalanceTest extends KernelTestCase
         $em->persist($customer);
         $em->flush();
         $credits = static::getContainer()->get(CustomerCreditRepository::class);
-        $credits->save(CustomerCreditEntry::deposit($customer, new PaymentDetails(new \DateTimeImmutable('2026-10-01'), '99999999999.999', PaymentMethod::Transfer), null, new \DateTimeImmutable()));
-        // A thousand more of the largest deposit a row holds: a sum of eighteen digits, past what a double carries.
+        // The largest amount a row holds, as an entry recorded before entries named their invoice.
+        $em->getConnection()->executeStatement(
+            "INSERT INTO customer_credit_entry (id, entry_date, kind, amount, created_at, company_id, customer_id) VALUES (gen_random_uuid(), '2026-10-01', 'overpayment', '99999999999.999', now(), ?, ?)",
+            [$company->getId()->toRfc4122(), $customer->getId()->toRfc4122()],
+        );
+        // A thousand more of it: a sum of eighteen digits, past what a double carries.
         $em->getConnection()->executeStatement(
             'INSERT INTO customer_credit_entry (id, entry_date, kind, amount, reference, notes, invoice_id, payment_id, recorded_by, created_at, company_id, customer_id)
              SELECT gen_random_uuid(), entry_date, kind, amount, reference, notes, invoice_id, payment_id, recorded_by, created_at, company_id, customer_id

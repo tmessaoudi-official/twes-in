@@ -72,8 +72,13 @@ final class DeliveryNoteCreditTest extends ApiTestCase
         $this->setLimit('1200');
         $this->issueInvoice('1000');
         $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
-        $this->postJson($this->companyPath().'/customers/'.$this->customerId.'/credit-balance', ['amount' => '100', 'date' => $today]);
+        // 100 left on account: an invoice paid in full and that much more paid beyond it, owing nothing more.
+        $paid = $this->issueInvoice('10');
+        $this->getJson($this->companyPath().'/invoices/'.$paid);
+        $this->postJson($this->companyPath().'/invoices/'.$paid.'/payments', ['date' => $today, 'amount' => $this->stringAt($this->json(), 'amountDue'), 'method' => 'transfer']);
         self::assertResponseStatusCodeSame(201);
+        $this->postJson($this->companyPath().'/invoices/'.$paid.'/overpayments', ['amount' => '100', 'date' => $today]);
+        self::assertResponseStatusCodeSame(204);
 
         // Audit 2026-10-06, E-10: 1000 owed less 100 left on account, and 300 delivered, is exactly the limit.
         $credit = $this->credit($this->draftNote('300'));
@@ -203,7 +208,7 @@ final class DeliveryNoteCreditTest extends ApiTestCase
         return $this->stringAt($this->json(), 'id');
     }
 
-    private function issueInvoice(string $net): void
+    private function issueInvoice(string $net): string
     {
         $this->postJson($this->companyPath().'/invoices', [
             'customerId' => $this->customerId,
@@ -218,8 +223,11 @@ final class DeliveryNoteCreditTest extends ApiTestCase
             'lines' => [['description' => 'Prestation', 'quantity' => '1', 'unitId' => $this->unitId(), 'unitPriceNet' => $net, 'taxComponentIds' => []]],
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
-        $this->postJson($this->companyPath().'/invoices/'.$this->stringAt($this->json(), 'id').'/issue', null);
+        $id = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->companyPath().'/invoices/'.$id.'/issue', null);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
+
+        return $id;
     }
 
     /** The kernel reboots between requests: the company and the service are found again each time. */

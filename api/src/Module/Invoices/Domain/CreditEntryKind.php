@@ -12,8 +12,8 @@ namespace App\Module\Invoices\Domain;
 /** What moved a customer's credit balance. */
 enum CreditEntryKind: string
 {
-    /** Money received that no invoice took: it adds to the balance. */
-    case Deposit = 'deposit';
+    /** Money the customer paid beyond an invoice, a « trop-perçu »: it adds to the balance. */
+    case Overpayment = 'overpayment';
     /** Credit paid into an invoice as a payment: it takes from the balance. */
     case Applied = 'applied';
     /** What a credit note gave back of money its invoice had already been paid: it adds to the balance. */

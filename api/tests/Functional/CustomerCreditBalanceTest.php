@@ -20,8 +20,8 @@ use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * A customer's credit balance (docs/SPEC.md § 7): money received that no invoice took, kept for them and applied to an
- * invoice later. Applying records an ordinary payment on the invoice, and deleting that payment gives the credit back.
+ * A customer's credit balance (docs/SPEC.md § 7): money paid beyond an invoice (a « trop-perçu »), kept for them and
+ * applied to an invoice later. Applying records an ordinary payment on the invoice, and deleting that payment gives the credit back.
  */
 final class CustomerCreditBalanceTest extends ApiTestCase
 {
@@ -41,39 +41,59 @@ final class CustomerCreditBalanceTest extends ApiTestCase
         self::assertResponseIsSuccessful();
     }
 
-    public function testADepositIsKeptForTheCustomerAndShownOnTheirStatement(): void
+    public function testMoneyPaidBeyondAnInvoiceIsKeptToTheCustomersCreditNamingThatInvoice(): void
     {
         $this->getJson($this->creditPath());
         self::assertResponseIsSuccessful();
         self::assertSame(['0.000', []], [$this->json()['balance'], $this->json()['entries']]);
+        $invoice = $this->issue('100');
 
-        $this->postJson($this->creditPath(), ['amount' => '500', 'date' => $this->today(), 'reference' => 'VIR-9', 'notes' => 'Avance sur commande']);
+        $this->postJson($this->invoicePath($invoice).'/overpayments', ['amount' => '500', 'date' => $this->today()]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'what is still due is paid on the invoice first');
 
-        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->pay($invoice, '100');
+        $this->postJson($this->invoicePath($invoice).'/overpayments', ['amount' => '500', 'date' => $this->today(), 'reference' => 'VIR-9', 'notes' => 'Réglé deux fois']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->getJson($this->creditPath());
         $credit = $this->json();
         self::assertSame(['500.000', 1], [$credit['balance'], \count($this->arrayAt($credit, 'entries'))]);
-        $entry = $this->arrayAt($credit, 'entries')[0];
-        self::assertIsArray($entry);
-        self::assertSame(['deposit', '500.000', 'VIR-9', null], [$entry['kind'], $entry['amount'], $entry['reference'], $entry['invoiceId']]);
+        $entry = $this->rowOf($this->arrayAt($credit, 'entries')[0]);
+        self::assertSame(['overpayment', '500.000', 'VIR-9', $invoice], [$entry['kind'], $entry['amount'], $entry['reference'], $entry['invoiceId']]);
 
         $this->getJson($this->companyPath().'/customers/'.$this->customerId.'/statement');
         self::assertSame('500.000', $this->json()['creditBalance'], 'the statement states what the customer has to their credit, apart from its lines');
     }
 
-    public function testWhatIsNotMoneyReceivedIsRefused(): void
+    public function testMoneyBeforeAnyInvoiceIsNoLongerKeptAsCredit(): void
     {
-        foreach ([['0', $this->today(), 'amount'], ['-5', $this->today(), 'amount'], ['10.0005', $this->today(), 'amount'], ['10', '2999-01-01', 'date']] as [$amount, $date, $field]) {
-            $this->postJson($this->creditPath(), ['amount' => $amount, 'date' => $date]);
+        // An advance before an invoice needs a deposit invoice (docs/fiscal TN.md and FR.md § 2b): the customer-level
+        // entry is gone, and only an invoice takes what was paid beyond it.
+        $this->postJson($this->creditPath(), ['amount' => '500', 'date' => $this->today()]);
+        self::assertResponseStatusCodeSame(Response::HTTP_METHOD_NOT_ALLOWED);
+    }
+
+    public function testWhatIsNotMoneyReceivedBeyondAnIssuedInvoiceIsRefused(): void
+    {
+        $invoice = $this->issue('100');
+        $this->pay($invoice, '100');
+        foreach ([['0', $this->today(), 'amount'], ['-5', $this->today(), 'amount'], ['10.0005', $this->today(), 'amount'], ['10', '2999-01-01', 'date'], ['10', '2000-01-01', 'date']] as [$amount, $date, $field]) {
+            $this->postJson($this->invoicePath($invoice).'/overpayments', ['amount' => $amount, 'date' => $date]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $amount.' '.$date);
             self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
         }
+
+        $draft = $this->draft('50');
+        $this->postJson($this->invoicePath($draft).'/overpayments', ['amount' => '10', 'date' => $this->today()]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft was never due');
+
         $this->getJson($this->creditPath());
         self::assertSame('0.000', $this->json()['balance']);
     }
 
     public function testCreditIsAppliedToAnInvoiceAsAPaymentAndNeverBeyondTheBalanceOrWhatIsDue(): void
     {
-        $this->postJson($this->creditPath(), ['amount' => '300', 'date' => $this->today()]);
+        $this->overpaid('300');
         $invoice = $this->issue('250');
 
         $this->postJson($this->invoicePath($invoice).'/apply-credit', ['amount' => '100']);
@@ -87,7 +107,7 @@ final class CustomerCreditBalanceTest extends ApiTestCase
         self::assertIsArray($payment);
         self::assertSame(['other', '100.000'], [$payment['method'], $payment['amount']]);
         $this->getJson($this->creditPath());
-        self::assertSame(['200.000', ['applied', 'deposit']], [$this->json()['balance'], array_column($this->arrayAt($this->json(), 'entries'), 'kind')]);
+        self::assertSame(['200.000', ['applied', 'overpayment']], [$this->json()['balance'], array_column($this->arrayAt($this->json(), 'entries'), 'kind')]);
         self::assertSame($invoice, $this->rowOf($this->arrayAt($this->json(), 'entries')[0])['invoiceId'] ?? null);
 
         $this->postJson($this->invoicePath($invoice).'/apply-credit', ['amount' => '151']);
@@ -108,7 +128,7 @@ final class CustomerCreditBalanceTest extends ApiTestCase
 
     public function testWithNoAmountAsMuchCreditIsAppliedAsTheInvoiceAndTheBalanceAllow(): void
     {
-        $this->postJson($this->creditPath(), ['amount' => '300', 'date' => $this->today()]);
+        $this->overpaid('300');
         $small = $this->issue('100');
         $big = $this->issue('1000');
 
@@ -127,7 +147,7 @@ final class CustomerCreditBalanceTest extends ApiTestCase
 
     public function testDeletingThePaymentThatAppliedCreditGivesTheCreditBack(): void
     {
-        $this->postJson($this->creditPath(), ['amount' => '300', 'date' => $this->today()]);
+        $this->overpaid('300');
         $invoice = $this->issue('250');
         $this->postJson($this->invoicePath($invoice).'/apply-credit', ['amount' => '250']);
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
@@ -139,18 +159,17 @@ final class CustomerCreditBalanceTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
 
         $this->getJson($this->creditPath());
-        self::assertSame(['300.000', ['deposit']], [$this->json()['balance'], array_column($this->arrayAt($this->json(), 'entries'), 'kind')]);
+        self::assertSame(['300.000', ['overpayment']], [$this->json()['balance'], array_column($this->arrayAt($this->json(), 'entries'), 'kind')]);
     }
 
     public function testItNeedsTheRightsAndBelongsToItsCompany(): void
     {
-        $this->postJson($this->creditPath(), ['amount' => '10', 'date' => $this->today()]);
-        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $invoice = $this->overpaid('10');
 
         $this->login('reader@twes.local', 'password-1234');
         $this->getJson($this->creditPath());
         self::assertResponseIsSuccessful();
-        $this->postJson($this->creditPath(), ['amount' => '10', 'date' => $this->today()]);
+        $this->postJson($this->invoicePath($invoice).'/overpayments', ['amount' => '10', 'date' => $this->today()]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'recording money takes payment.write');
 
         $this->getJson($this->companyPath().'/customers/0192c3a4-0000-7000-8000-000000000000/credit-balance');
@@ -163,18 +182,17 @@ final class CustomerCreditBalanceTest extends ApiTestCase
      */
     public function testAnotherCompanysCustomerAndInvoiceAnswerAsUnknownOnesDo(): void
     {
-        [$theirCustomer, $theirInvoice] = $this->inGlobex(function (): array {
-            $this->postJson($this->creditPath(), ['amount' => '300', 'date' => $this->today()]);
-            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        [$theirCustomer, $theirInvoice, $theirPaid] = $this->inGlobex(function (): array {
+            $paid = $this->overpaid('300');
 
-            return [$this->customerId, $this->issue('200')];
+            return [$this->customerId, $this->issue('200'), $paid];
         });
         $theirs = $this->companyPath().'/customers/'.$theirCustomer.'/credit-balance';
 
         $this->getJson($theirs);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'their balance');
-        $this->postJson($theirs, ['amount' => '10', 'date' => $this->today()]);
-        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a deposit to their customer');
+        $this->postJson($this->invoicePath($theirPaid).'/overpayments', ['amount' => '10', 'date' => $this->today()]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'money kept for their customer');
         $this->postJson($this->invoicePath($theirInvoice).'/apply-credit', ['amount' => '100']);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'their invoice paid from a credit');
     }
@@ -218,7 +236,33 @@ final class CustomerCreditBalanceTest extends ApiTestCase
         return $named;
     }
 
+    /** An invoice issued, paid in full, and `$amount` more kept to the customer's credit from it. */
+    private function overpaid(string $amount): string
+    {
+        $invoice = $this->issue('10');
+        $this->pay($invoice, '10');
+        $this->postJson($this->invoicePath($invoice).'/overpayments', ['amount' => $amount, 'date' => $this->today()]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+
+        return $invoice;
+    }
+
+    private function pay(string $invoice, string $amount): void
+    {
+        $this->postJson($this->invoicePath($invoice).'/payments', ['date' => $this->today(), 'amount' => $amount, 'method' => 'cash', 'reference' => null, 'notes' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+    }
+
     private function issue(string $net): string
+    {
+        $id = $this->draft($net);
+        $this->postJson($this->invoicePath($id).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+
+        return $id;
+    }
+
+    private function draft(string $net): string
     {
         $this->postJson($this->companyPath().'/invoices', [
             'customerId' => $this->customerId,
@@ -233,11 +277,8 @@ final class CustomerCreditBalanceTest extends ApiTestCase
             'lines' => [['description' => 'Prestation', 'quantity' => '1', 'unitId' => $this->unitId(), 'unitPriceNet' => $net, 'taxComponentIds' => []]],
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
-        $id = $this->stringAt($this->json(), 'id');
-        $this->postJson($this->invoicePath($id).'/issue', null);
-        self::assertResponseStatusCodeSame(Response::HTTP_OK);
 
-        return $id;
+        return $this->stringAt($this->json(), 'id');
     }
 
     private function customer(string $number, string $name): Customer

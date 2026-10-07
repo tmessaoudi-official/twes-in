@@ -36,6 +36,20 @@ What the home shows is therefore the VAT **on the invoices issued in the month**
 before its performance and before any payment it comes early, and for a service paid in advance of its invoice it comes
 late. It is never called « à déclarer ».
 
+## 2b. Advances (avances, acomptes) and the deposit invoice (row 208, 2026-10-07)
+
+| Rule | What the software does | Source | Status |
+|---|---|---|---|
+| For a service, the receipt of the price or of an advance before the service is performed is the taxable event: VAT is due on the advance | planned (row 79): a deposit invoice drawn from an accepted quote, carrying VAT on the advance, split over the quote's rates in proportion to each rate's share of its total | Code de la TVA art. 5-3 [17] | unvalidated |
+| For a sale of goods the taxable event is the delivery: an advance received before it is not a taxable event | planned (row 79): the deposit invoice carries VAT on a goods advance too, which collects it earlier than the law requires, never later; an untaxed goods advance is a known gap | Code de la TVA art. 5-2 [17] | unvalidated |
+| For building works, a provisional statement or partial invoice makes VAT due | not modelled (no works regime) | Code de la TVA art. 5-5-a [17] | unvalidated |
+| Every VAT-registered business outside the régime forfaitaire issues an invoice for each operation it carries out, unless the contract stands as proof | planned (row 79): the deposit invoice is an invoice, numbered in the invoice series, with the mentions of § 7; the final invoice subtracts each deposit as lines of its own, net and tax rate by rate | Code de la TVA art. 18-II [13] | unvalidated |
+| Money received beyond what the customer's invoices owe is not an advance on a supply | the customer's « trop-perçu », recorded only while no issued invoice of theirs is still due | follows from the rules above; no text found | unvalidated |
+
+What is **not** found in a text: whether issuing an invoice that shows VAT on a goods advance makes that VAT due anyway
+(France has such a rule; none was found here); whether the 1 TND stamp of § 4 is due on a deposit invoice as on any
+invoice; and how FODEC (§ 3) applies to an advance on goods it covers. All three are open questions for the accountant.
+
 ## 3. FODEC (taxe professionnelle de compétitivité)
 
 | Rule | Preset | Source | Status |
@@ -152,6 +166,7 @@ comes after the POC (docs/SPEC.md § 2).
 - The monthly declaration itself and its forms (§ 2a), not produced; the declaration of a régime forfaitaire, not researched.
 - Matricule check letter (§ 8), not verified.
 - Regime mention wording (§ 7, § 9), unsourced.
+- Advances (§ 2b): VAT shown on a goods advance, the stamp on a deposit invoice and FODEC on an advance, not found in a text; an untaxed goods advance (art. 5-2) is not offered.
 
 ## Sources
 
@@ -171,5 +186,5 @@ comes after the POC (docs/SPEC.md § 2).
 14. EN 16931-1:2017, business rule BR-CO-17 (VAT category tax amount).
 15. Note commune n° 6/2025 (LF 2025 art. 68, 3 % withheld by delivery services from sellers without a tax card, not modelled): https://jibaya.tn/wp-content/uploads/2025/03/Note-Commune-N%C2%B006.pdf
 16. Hesabi, « Taux de retenue à la source en Tunisie 2026 » (secondary): https://hesabi.tn/actualites/taux-retenue-source-tunisie-2026
-17. Code de la TVA, art. 5 (fait générateur), read from the 2024 consolidated code: https://alliance-tunisie.com/wp-content/uploads/2024/06/CODE-DE-LA-TVA-2024.pdf
+17. Code de la TVA, art. 5 (fait générateur), read from the 2024 consolidated code: https://alliance-tunisie.com/wp-content/uploads/2024/06/CODE-DE-LA-TVA-2024.pdf ; and from the ministry's edition « mis à jour au 1er janvier 2023 » (art. 5 and 18-II): https://jibaya.tn/wp-content/uploads/2024/02/Code-de-la-taxe-sur-la-valeur-ajoutee-2023_compressed.pdf
 18. Ministère des Finances, FAQ « Quel est le fait générateur de la TVA en cas de vente de marchandises (cas des commandes successives) ? »: https://www.finances.gov.tn/fr/node/895

@@ -11,23 +11,15 @@ import {
   untracked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { firstValueFrom } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
-import { AuthFacade } from '../auth/auth-facade';
-import { Feedback } from '../shared/feedback/feedback';
 import { DayCalendarButton } from '../shared/form/day-calendar-button';
 import { DayInput } from '../shared/form/day-input';
-import { buildFormGroup } from '../shared/form/form-builder';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
-import { todayIn } from '../shared/i18n/format';
-import { CreditDepositDialog } from './credit-deposit-dialog';
-import { creditDepositForm, creditDepositInput, creditDepositValues } from './customer-forms';
 import { CustomerStatementFacade } from './customer-statement-facade';
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -61,9 +53,6 @@ const isZero = (amount: string): boolean => /^-?0*(\.0*)?$/.test(amount);
 })
 export class CustomerStatementView {
   private readonly facade = inject(CustomerStatementFacade);
-  private readonly auth = inject(AuthFacade);
-  private readonly dialog = inject(MatDialog);
-  private readonly feedback = inject(Feedback);
 
   readonly companyId = input.required<string>();
   readonly customerId = input.required<string>();
@@ -83,7 +72,6 @@ export class CustomerStatementView {
   protected readonly hasLimit = computed(() => !isZero(this.statement()?.creditLimit ?? '0'));
   /** What the customer has to their credit; zero says nothing. */
   protected readonly hasCredit = computed(() => !isZero(this.statement()?.creditBalance ?? '0'));
-  protected readonly mayDeposit = computed(() => this.auth.hasPermission('payment.write'));
   /** The days the person chose; empty leaves the period to the API. */
   protected readonly from = signal('');
   protected readonly to = signal('');
@@ -100,28 +88,6 @@ export class CustomerStatementView {
       const period = { from: this.from(), to: this.to() };
       untracked(() => void this.facade.load(companyId, customerId, period));
     });
-  }
-
-  /** Asked in a dialog; what is recorded is kept to the customer's credit and the statement is read again. */
-  protected async deposit(): Promise<void> {
-    const timezone = this.auth.me()?.company?.timezone;
-    const descriptor = creditDepositForm();
-    const group = buildFormGroup(descriptor, creditDepositValues(todayIn(timezone)));
-    const values = await firstValueFrom(
-      this.dialog
-        .open(CreditDepositDialog, { data: { descriptor, group }, autoFocus: 'first-tabbable' })
-        .afterClosed(),
-    );
-    if (!values) return;
-    if (
-      await this.facade.deposit(this.companyId(), this.customerId(), creditDepositInput(values))
-    ) {
-      this.feedback.success('customers.credit.recorded');
-      await this.facade.load(this.companyId(), this.customerId(), {
-        from: this.from(),
-        to: this.to(),
-      });
-    }
   }
 
   /** A day once it is one (or nothing, to clear the limit); what is still being typed waits. */

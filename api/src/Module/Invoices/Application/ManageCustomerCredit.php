@@ -30,14 +30,14 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A customer's credit balance (docs/SPEC.md § 7): money received that no invoice took is kept for them, and applied to
- * an invoice later as an ordinary payment. Both run in a transaction that holds the customer's row, so two applications
+ * A customer's credit balance (docs/SPEC.md § 7): money paid beyond an invoice is kept for them, and applied to an
+ * invoice later as an ordinary payment. Both run in a transaction that holds the customer's row, so two applications
  * at once never both fit the balance before either, and both are audited on the customer.
  */
 final readonly class ManageCustomerCredit
 {
     public const string ENTITY_TYPE = 'customer';
-    public const string DEPOSITED = 'customer.credit_deposited';
+    public const string OVERPAID = 'customer.credit_overpaid';
     public const string APPLIED = 'customer.credit_applied';
     /** What a payment made of credit says as its reference. */
     public const string PAYMENT_REFERENCE = 'credit_balance';
@@ -74,15 +74,19 @@ final readonly class ManageCustomerCredit
     }
 
     /**
-     * Money the customer paid that no invoice took. The day is dated from nothing up to the company's today.
+     * Money the customer paid beyond an issued invoice with nothing left due, a « trop-perçu », kept to their credit and
+     * naming that invoice. An advance before any invoice is not this: it takes a deposit invoice (docs/fiscal § 2b).
      *
-     * @throws CustomerNotFound
-     * @throws InvalidInvoice   on `amount` or `date`
+     * @throws InvoiceNotFound
+     * @throws InvoiceTransitionRefused when the invoice is not issued, or something is still due on it
+     * @throws InvalidInvoice           on `amount` or `date`
      */
-    public function deposit(Company $company, Uuid $customerId, PaymentDetails $details, ?Uuid $actorUserId): CustomerCreditEntry
+    public function overpayment(Company $company, Uuid $invoiceId, PaymentDetails $details, ?Uuid $actorUserId): CustomerCreditEntry
     {
-        return $this->transactions->run(function () use ($company, $customerId, $details, $actorUserId): CustomerCreditEntry {
-            $customer = $this->customer($company, $customerId);
+        return $this->transactions->run(function () use ($company, $invoiceId, $details, $actorUserId): CustomerCreditEntry {
+            $invoice = $this->invoices->ofIdInCompany($invoiceId, $company->getId()) ?? throw new InvoiceNotFound();
+            // The customer's row is the lock every use of the balance takes.
+            $customer = $this->customer($company, $invoice->getCustomer()->getId());
             $now = $this->clock->now();
             $today = $now->setTimezone(new \DateTimeZone($company->getTimezone()));
             $scale = $this->scales->of($company->getCurrency());
@@ -93,10 +97,11 @@ final readonly class ManageCustomerCredit
             if ($details->date->format('Y-m-d') > $today->format('Y-m-d')) {
                 throw new InvalidInvoice('date', \sprintf('Money is received today at the latest, %s.', $today->format('Y-m-d')));
             }
+            $invoice->assertPaidBeyond($details->date);
 
-            $entry = CustomerCreditEntry::deposit($customer, $details, $actorUserId, $now);
+            $entry = CustomerCreditEntry::overpayment($invoice, $details, $actorUserId, $now);
             $this->credits->save($entry);
-            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $customer->getId(), self::DEPOSITED, $actorUserId, ['amount' => $entry->getAmount(), 'date' => $details->date->format('Y-m-d')], $company->getId()));
+            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $customer->getId(), self::OVERPAID, $actorUserId, ['amount' => $entry->getAmount(), 'date' => $details->date->format('Y-m-d'), 'invoiceId' => $invoice->getId()->toRfc4122()], $company->getId()));
 
             return $entry;
         });

@@ -41,6 +41,24 @@ What the home shows is therefore the VAT **on the invoices issued in the month**
 opted for the débits, what is due is the VAT on what was received in the month, which the software does not compute
 yet. It is never called « à déclarer ».
 
+## 2b. Advances (acomptes) and the facture d'acompte (row 208, 2026-10-07)
+
+| Rule | What the software does | Source | Status |
+|---|---|---|---|
+| Every taxable person issues an invoice for each advance paid to them before the supply | planned (row 79): a deposit invoice, numbered in the invoice series, issued for an amount or a share of an accepted quote | CGI art. 289-I-1-c, as cited in BOI-TVA-DECLA-30-20-20-20 § 160 [16] | unvalidated |
+| VAT on an advance for goods is due at its receipt, up to its amount, since 1 January 2023, when every relevant element of the future supply is known, the goods precisely identified | planned (row 79): the deposit invoice carries VAT, split over the quote's rates in proportion to each rate's share of its total (an accepted quote identifies the goods) | CGI art. 269-2-a as amended by loi n° 2021-1900 art. 30; BOFiP actualité ACTU-2022-00148 of 21 December 2022; BOI-TVA-BASE-20-10 § 65 [10][17] | unvalidated |
+| VAT on an advance for a service is due at its receipt (the encaissements basis), unless the business opted for the débits | same as above | CGI art. 269-2-c [11] | unvalidated |
+| A deposit invoice may leave out a mention not known when it is issued (the exchange rate, the exact supply date, a variable quantity or price) | planned (row 79): the deposit invoice names the quote it is drawn from and the share, in lines of its own | BOI-TVA-DECLA-30-20-20-20 § 160 and § 170 [16] | unvalidated |
+| The date of the advance is printed when it differs from the invoice's date and is known then | planned (row 79): the deposit invoice is issued as the request for the advance, before it is received; an advance received before its invoice is a known gap | CGI annexe II art. 242 nonies A-I-10°; BOI-TVA-DECLA-30-20-20-10 § 160 [15] | unvalidated |
+| Deposit invoices are numbered and dated like any invoice, and the final invoice refers to each of them | planned (row 79): the final invoice made from the quote names each deposit invoice by number and date and subtracts it as lines of its own, net and VAT rate by rate, so its totals stay exact | BOI-TVA-DECLA-30-20-20-10 § 60 [15] | unvalidated |
+| In the electronic invoice, a deposit invoice is type code 386; the final invoice either deducts the deposits as negative lines or reports them as the amount already paid (EN 16931 BT-113), the first keeping each rate's VAT exact | not produced yet (§ 9) | AFNOR XP Z12-014 use cases 20 and 21, through a secondary summary (Legifiscal) [18] | unvalidated |
+| Money received beyond what the customer's invoices owe is not an advance on a supply | the customer's « trop-perçu », recorded only while no issued invoice of theirs is still due | follows from the rules above; no text found | unvalidated |
+
+What is **not** found in a text: whether a deposit drawn from several rates must be split rate by rate or may be
+invoiced at one rate (the proportional split is the software's choice, the one that keeps the final invoice's VAT per
+rate exact); and how a refunded advance is corrected (a credit note on the deposit invoice is assumed, type 503 in the
+electronic invoice [18]).
+
 ## 3. Company VAT regime: franchise en base
 
 | Rule | Preset | Source | Status |
@@ -129,6 +147,7 @@ E-invoicing comes after the POC (docs/SPEC.md § 2).
 - The CA3/CA12 themselves and the CIBS article numbers for § 2a, not researched.
 - A VAT key of letters (numbers issued without a SIREN) is accepted unchecked (§ 5).
 - Mention wording (§ 4, § 6) is unsourced beyond the articles named.
+- Advances (§ 2b): the split of a deposit over several rates and the correction of a refunded advance are not in any text found; CGI art. 289 itself was read only as cited by the BOFiP; an advance received before its deposit invoice (its date printed) is not offered.
 
 ## Sources
 
@@ -146,3 +165,7 @@ E-invoicing comes after the POC (docs/SPEC.md § 2).
 12. CGI art. 287: https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048826856
 13. BOI-TVA-DECLA-20-20-10-10 (filing dates): https://bofip.impots.gouv.fr/bofip/1001-PGP.html/identifiant=BOI-TVA-DECLA-20-20-10-10-20150506
 14. impots.gouv.fr, CA12 due date: https://www.impots.gouv.fr/professionnel/questions/je-suis-soumis-au-regime-simplifie-dimposition-la-tva-quelle-echeance-dois
+15. BOI-TVA-DECLA-30-20-20-10 (invoice mentions), 18 October 2013: https://bofip.impots.gouv.fr/export/pdf/319741
+16. BOI-TVA-DECLA-30-20-20-20 (simplified and particular invoices), 25 September 2019: https://bofip.impots.gouv.fr/export/pdf/320369
+17. BOFiP actualité ACTU-2022-00148, « Exigibilité de la TVA sur les acomptes perçus dans le cadre de livraisons de biens », 21 December 2022: https://bofip.impots.gouv.fr/bofip/13758-PGP.html/ACTU-2022-00148
+18. Legifiscal, « Facturation électronique – cas d'usage n° 20 et 21 : les acomptes » (secondary, on AFNOR XP Z12-014): https://www.legifiscal.fr/creation-entreprise/facturation-obligations/facturation-electronique-cas-usage-n20-21-acomptes.html

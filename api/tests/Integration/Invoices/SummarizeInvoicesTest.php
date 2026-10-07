@@ -205,10 +205,10 @@ final class SummarizeInvoicesTest extends KernelTestCase
         self::assertSame(['925.000', null, '2025.000'], $this->marginOf($summary), '(1025 − 500) + (1000 − 600), over 1025 + 1000');
     }
 
-    public function testCollectedIsMoneyReceivedOnlyCreditAppliedIsNotAndDepositsAndRefundsCountOnTheirOwnDay(): void
+    public function testCollectedIsMoneyReceivedOnlyCreditAppliedIsNotAndOverpaymentsAndRefundsCountOnTheirOwnDay(): void
     {
         // Audit E-14: 100 paid in cash in August, sent to the balance by a credit note, then applied to another invoice
-        // in September was counted collected twice. In September money only moves through a deposit and a refund.
+        // in September was counted collected twice. In September money only moves through a trop-perçu and a refund.
         $first = $this->issued('FAC-A', 'Nabeul Bois', '2026-08-05', 0, '100.000');
         $this->pay($first, '2026-08-10', '100');
         $customer = $first->getCustomer();
@@ -217,16 +217,16 @@ final class SummarizeInvoicesTest extends KernelTestCase
         $second = $this->issued('FAC-B', 'Nabeul Bois bis', '2026-09-03', 0, '100.000');
         $applied = $this->pay($second, '2026-09-04', '100', PaymentMethod::Other);
         $credits->save(CustomerCreditEntry::applied($customer, $applied, null, $this->clock->now()));
-        $credits->save(CustomerCreditEntry::deposit($customer, new PaymentDetails(new \DateTimeImmutable('2026-09-06'), '50.000', PaymentMethod::Cash), null, $this->clock->now()));
+        $credits->save(CustomerCreditEntry::overpayment($second, new PaymentDetails(new \DateTimeImmutable('2026-09-06'), '50.000', PaymentMethod::Cash), null, $this->clock->now()));
         $credits->save(CustomerCreditEntry::credited($customer, $second, 'AV-B', '30.000', new \DateTimeImmutable('2026-09-08'), null, $this->clock->now()));
         $credits->save(CustomerCreditEntry::refunded($customer, $second, 'AV-B', '30.000', new \DateTimeImmutable('2026-09-08'), null, $this->clock->now()));
         $other = $this->issued('GLX-1', 'Autre', '2026-09-03', 0, '100.000', company: $this->globex);
-        $credits->save(CustomerCreditEntry::deposit($other->getCustomer(), new PaymentDetails(new \DateTimeImmutable('2026-09-06'), '999.000', PaymentMethod::Cash), null, $this->clock->now()));
+        $credits->save(CustomerCreditEntry::overpayment($other, new PaymentDetails(new \DateTimeImmutable('2026-09-06'), '999.000', PaymentMethod::Cash), null, $this->clock->now()));
         $this->em()->clear();
 
         $summary = $this->summarize->handle($this->company);
 
-        self::assertSame(['20.000', '100.000'], [$summary->collectedMonth, $summary->collectedLastMonth], '50 deposited less 30 refunded; the 100 of credit came in once, in August');
+        self::assertSame(['20.000', '100.000'], [$summary->collectedMonth, $summary->collectedLastMonth], '50 paid beyond an invoice less 30 refunded; the 100 of credit came in once, in August');
         self::assertSame([['month' => '2026-08', 'amount' => '100.000'], ['month' => '2026-09', 'amount' => '20.000']], \array_slice($summary->collected, 4));
     }
 

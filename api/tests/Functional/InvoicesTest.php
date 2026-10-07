@@ -886,7 +886,7 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame(['paid', '0.000'], [$this->json()['status'], $this->json()['amountDue']], 'the cheque paid the 40 still due');
         self::assertSame([bcsub($due, '40', 3), '40.000'], array_column($this->arrayAt($this->json(), 'payments'), 'amount'));
         $this->getJson($this->companyPath().'/customers/'.$this->customerId.'/credit-balance');
-        self::assertSame(['60.000', ['deposit']], [$this->json()['balance'], array_column($this->arrayAt($this->json(), 'entries'), 'kind')], 'the 60 left over is on account');
+        self::assertSame(['60.000', ['overpayment']], [$this->json()['balance'], array_column($this->arrayAt($this->json(), 'entries'), 'kind')], 'the 60 left over is on account');
 
         // The second cheque, on the now paid invoice: none of it is due, all of it goes on account.
         $this->postJson($instruments.'/'.$second.'/cash', null);

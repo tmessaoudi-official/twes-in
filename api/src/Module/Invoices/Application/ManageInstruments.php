@@ -162,7 +162,7 @@ final readonly class ManageInstruments
                 ? $this->payments->record($company, $invoiceId, new PaymentDetails($today, Decimal::format($paid, $scale), $method, $instrument->getNumber()), $actorUserId)
                 : null;
             if ($onAccount->compare(0) > 0) {
-                $this->credit->deposit($company, $invoice->getCustomer()->getId(), new PaymentDetails($today, Decimal::format($onAccount, $scale), $method, $instrument->getNumber()), $actorUserId);
+                $this->credit->overpayment($company, $invoiceId, new PaymentDetails($today, Decimal::format($onAccount, $scale), $method, $instrument->getNumber()), $actorUserId);
             }
             $instrument->cash($payment, $today, $now);
             $this->instruments->save($instrument);

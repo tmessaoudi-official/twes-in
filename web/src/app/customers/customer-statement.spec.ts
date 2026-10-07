@@ -8,10 +8,7 @@ import {
   provideTranslateService,
   TranslateLoader,
 } from '@ngx-translate/core';
-import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
-import { AuthFacade } from '../auth/auth-facade';
-import { Feedback } from '../shared/feedback/feedback';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { CustomerStatementFacade } from './customer-statement-facade';
 import { CustomerStatementView } from './customer-statement';
@@ -81,10 +78,6 @@ describe('CustomerStatementView', () => {
   const statement = signal<CustomerStatement | null>(account);
   const error = signal<string | null>(null);
   const load = vi.fn();
-  const deposit = vi.fn();
-  const success = vi.fn();
-  const open = vi.fn();
-  const permissions = signal<readonly string[]>(['payment.write']);
 
   async function render() {
     await TestBed.configureTestingModule({
@@ -105,18 +98,8 @@ describe('CustomerStatementView', () => {
           },
         },
         {
-          provide: AuthFacade,
-          useValue: {
-            hasPermission: (permission: string) => permissions().includes(permission),
-            me: () => ({ company: { timezone: 'Africa/Tunis' } }),
-          },
-        },
-        { provide: Feedback, useValue: { success } },
-        { provide: MatDialog, useValue: { open } },
-        {
           provide: CustomerStatementFacade,
           useValue: {
-            deposit,
             statement,
             error,
             busy: signal(false),
@@ -148,10 +131,6 @@ describe('CustomerStatementView', () => {
 
   beforeEach(() => {
     load.mockReset();
-    deposit.mockReset();
-    success.mockReset();
-    open.mockReset();
-    permissions.set(['payment.write']);
     statement.set(account);
     error.set(null);
   });
@@ -234,6 +213,7 @@ describe('CustomerStatementView', () => {
     expect(text(el, 'statement-error')).toBe('Période refusée.');
     expect(el.querySelector('[data-testid="statement-table"]')).toBeNull();
   });
+
   it('says what the customer has to their credit only when there is some', async () => {
     const { fixture, el } = await render();
     expect(el.querySelector('[data-testid="statement-credit"]')).toBeNull();
@@ -244,39 +224,7 @@ describe('CustomerStatementView', () => {
     expect(text(el, 'statement-credit')).toBe('Crédit 300.000 TND');
   });
 
-  it('offers a deposit to whoever may record a payment, records what the dialog answers and reads the account again', async () => {
-    open.mockReturnValue({
-      afterClosed: () => of({ date: '2026-10-02', amount: ' 50 ', reference: 'VIR-9', notes: '' }),
-    });
-    deposit.mockResolvedValue(true);
-    const { fixture, el } = await render();
-    load.mockClear();
-
-    el.querySelector<HTMLButtonElement>('[data-testid="statement-deposit"]')!.click();
-    await fixture.whenStable();
-
-    expect(deposit).toHaveBeenCalledWith('c1', 'k1', {
-      date: '2026-10-02',
-      amount: '50',
-      reference: 'VIR-9',
-      notes: null,
-    });
-    expect(success).toHaveBeenCalledWith('customers.credit.recorded');
-    expect(load).toHaveBeenCalledWith('c1', 'k1', { from: '', to: '' });
-  });
-
-  it('records nothing when the dialog is closed', async () => {
-    open.mockReturnValue({ afterClosed: () => of(null) });
-    const { fixture, el } = await render();
-
-    el.querySelector<HTMLButtonElement>('[data-testid="statement-deposit"]')!.click();
-    await fixture.whenStable();
-
-    expect(deposit).not.toHaveBeenCalled();
-  });
-
-  it('offers no deposit without the right to record a payment', async () => {
-    permissions.set([]);
+  it('offers no money to record before an invoice: an advance takes a deposit invoice, a trop-perçu its invoice', async () => {
     const { el } = await render();
     expect(el.querySelector('[data-testid="statement-deposit"]')).toBeNull();
   });

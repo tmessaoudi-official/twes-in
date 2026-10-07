@@ -455,6 +455,16 @@ describe('InvoicesApi', () => {
     await deleted;
   });
 
+  it('keeps what was paid beyond an invoice to the customer’s credit, under that invoice', async () => {
+    const overpaid = { date: '2026-10-07', amount: '50', reference: 'VIR-9', notes: null };
+    const kept = api.overpay('c1', 'i 1', overpaid);
+    const post = http.expectOne('/api/companies/c1/invoices/i%201/overpayments');
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body).toEqual(overpaid);
+    post.flush(null, { status: 204, statusText: 'No Content' });
+    await kept;
+  });
+
   it('turns a refusal into a code the screen translates', async () => {
     for (const [status, code] of [
       [404, 'not_found'],

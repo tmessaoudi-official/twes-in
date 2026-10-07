@@ -4371,6 +4371,25 @@ functional tests run in the `tools` container, on the host's network, against th
   presets; until now only the seed did it, a development-only command on a self-hosted install). Alternatives: keep « Devis et commandes »; « Expiré »
   as withdrawn (refusing a late yes); a migration copying the preset's quote format into SQL; asking self-hosters to
   run the seed.
+- [2026-10-07 12:44] ASSUMED (review): row 208, the advance-payment rule and the facture d'acompte's shape (docs/fiscal
+  TN.md and FR.md § 2b, sourced). A deposit invoice is an invoice of its own kind, numbered in the invoice series,
+  drawn from an accepted quote for an amount or a share, with one line per rate group of the quote, each in proportion
+  to that group's share of the quote's total, so VAT is split rate by rate. It carries VAT in both countries, Tunisian
+  goods included, where art. 5-2 makes the delivery the taxable event: VAT collected early is lawful, VAT not collected
+  is the hole, and an untaxed goods advance deducted on the final invoice would print a Total HT short by the advance
+  (1000 HT at 19 %, 300 advance: HT 700, VAT 190, total 890). The final invoice made from the quote subtracts each
+  deposit as lines of its own, net and VAT, naming its number and date, so its totals and the home's figures stay exact.
+  The deposit invoice is issued as the request for the advance; money received before its invoice (whose date the
+  invoice would print) is a known gap. Alternatives: an untaxed Tunisian goods advance through a preset flag (refused
+  for the Total HT above); deducting deposits as « déjà versé » under the totals (EN 16931 BT-113: the final invoice's
+  VAT per rate is then not isolated); a deposit series of its own.
+- [2026-10-07 12:44] ASSUMED (review): row 208, the « trop-perçu ». « Enregistrer un acompte » on the customer's
+  statement goes: it recorded money before any invoice, which § 2b now says is an advance needing its own invoice.
+  In its place, an issued invoice offers « Enregistrer un trop-perçu »: money the customer paid beyond that invoice,
+  kept to their credit as an entry naming the invoice (kind `overpayment`, the stored `deposit` rows migrated), the
+  action the 2026-09-21 17:35 ruling asked for, while a payment stays capped at what is due. A cheque or traite cashed
+  beyond what is due writes the same entry. Alternatives: keep the customer-level entry renamed (still records an
+  advance with no document); let a payment above what is due send the rest to the credit (reverses the 17:35 cap).
 
 ## 8. Status
 
@@ -4598,7 +4617,7 @@ functional tests run in the `tools` container, on the host's network, against th
 | 205 | A receipt by someone without `product.cost.read` keeps its cost « à compléter » and an « À surveiller » item asks a cost reader for it (audit 2026-10-06, C challenge 9). Done: `stock_movement.cost_to_complete`, `POST …/stock-movements/{id}/cost`, the `stock.receipt_cost_to_complete` subject, « Saisir le coût » on the movements page. | M | done | - | api/src/Module/Inventory/** web/src/app/inventory/** web/src/app/watch/** |
 | 206 | The Decisions Log's 25 late stamps are marked, and a gate refuses a stamp later than the commit adding it (audit 2026-10-06, H-1). Done: `scripts/gates/decision-stamps.sh` blames § 7 once and refuses a stamp later than its line's commit in Paris time, or than now for a line not committed; 91 entries were late, not 25 (ASSUMED 2026-10-06 06:21), and carry the ruled « (stamp corrected: … ) »; CI's licence job fetches the whole history and the gate refuses a shallow clone. Uncertified: an entry edited after it was written is read against the edit's commit, so a late stamp hidden that way passes | S | done | - | docs/SPEC.md scripts/gates/** |
 | 207 | The locked customer screen: its show-stock setting per establishment, the establishment's own stock, one e2e (audit 2026-10-06, B-13). Done: the articles chain gains an establishment level between the company and the category, written by whoever may set the company's (ASSUMED 2026-10-06 09:39); `customer_screen.show_stock` declares the company and establishment levels; the availability reads the stock of the establishment's locations only, at the establishment the screen names or the default one (ASSUMED 2026-10-06 09:39); an establishment's own defaults panel sits on its page; the screen asks where it stands at a company with several, remembers it on the device per company (`twes.customer-screen.place`, on the Cookies page) and sends it; `e2e/customer-screen.spec.ts` asks, searches, remembers, changes and leaves with the password. Uncertified: the e2e's second establishment is answered by the route, since an establishment cannot be removed from the shared database; a member without company.read is never asked and sees the default establishment's stock | M | done | - | api/src/Module/Inventory/** api/src/Settings/** web/src/app/customer-screen/** web/e2e/** |
-| 208 | The « acompte » becomes « trop-perçu / crédit client », money beyond invoices only; the advance-payment rule sourced in docs/fiscal; then a numbered, taxed facture d'acompte deducted on the final invoice (audit 2026-10-06, E-9) | L | todo | - | docs/fiscal/** api/src/Module/Invoices/** web/src/app/invoices/** |
+| 208 | The « acompte » becomes « trop-perçu / crédit client », money beyond invoices only; the advance-payment rule sourced in docs/fiscal; then a numbered, taxed facture d'acompte deducted on the final invoice (audit 2026-10-06, E-9) | L | doing | - | docs/fiscal/** api/src/Module/Invoices/** web/src/app/invoices/** |
 | 209 | Per-list import, decided screen by screen with row 197's filters (audit 2026-10-06, C-11, P-5) | L | todo | - | api/src/** web/src/app/** |
 | 210 | The Données hub: the import wizard, export-all and the restore point (§ 7 2026-10-04 08:26; audit 2026-10-06, P-5) | L | todo | - | api/src/** web/src/app/** |
 | 211 | The Invoice Ninja importer (§ 7 2026-10-04 08:04), after row 210; the live re-issue of foreign-numbered invoices waits on the accountant (audit 2026-10-06, P-5) | L | todo | - | api/src/Module/** docs/research/** |

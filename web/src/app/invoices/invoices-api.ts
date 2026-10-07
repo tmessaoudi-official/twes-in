@@ -38,6 +38,7 @@ import {
   PAYMENT_METHODS,
   type CustomerOption,
   type ProductOption,
+  type OverpaymentInput,
   type PaymentInput,
   type ResolvedPrice,
 } from './invoices-types';
@@ -254,6 +255,13 @@ export class InvoicesApi {
   async applyCredit(companyId: string, id: string): Promise<void> {
     await this.guard(() =>
       firstValueFrom(this.http.post(`${invoicePath(companyId, id)}/apply-credit`, {})),
+    );
+  }
+
+  /** Keeps what the customer paid beyond this invoice to their credit; the API answers nothing. */
+  async overpay(companyId: string, id: string, overpayment: OverpaymentInput): Promise<void> {
+    await this.guard(() =>
+      firstValueFrom(this.http.post(`${invoicePath(companyId, id)}/overpayments`, overpayment)),
     );
   }
 

@@ -1212,19 +1212,7 @@
         "not_found": "Customer not found, or the statement is not available with your rights.",
         "invalid": "The period is refused: it cannot end before it starts."
       },
-      "credit_balance": "To their credit, no invoice taking it yet: {{amount}} {{currency}}."
-    },
-    "credit": {
-      "deposit": "Record a deposit",
-      "deposit_title": "Money received",
-      "date": "Date received",
-      "amount": "Amount",
-      "reference": "Reference",
-      "reference_hint": "A transfer or cheque number, say.",
-      "notes": "Notes",
-      "record": "Record the deposit",
-      "keep": "Cancel",
-      "recorded": "The deposit is kept to the customer’s credit."
+      "credit_balance": "To their credit, to take off a later invoice: {{amount}} {{currency}}."
     },
     "actions": {
       "new_quote": "New quote"
@@ -1500,7 +1488,21 @@
       "issue_credit_note_title": "Issue this credit note?",
       "issue_credit_note_message": "It receives its number and no longer changes.",
       "confirm_issue": "Issue",
-      "apply_credit": "Apply the credit"
+      "apply_credit": "Apply the credit",
+      "record_overpayment": "Record an overpayment"
+    },
+    "overpayment": {
+      "title": "Record an overpayment",
+      "hint": "Money received beyond this invoice, already paid, is kept to the customer’s credit for a later invoice. An advance paid before any invoice takes a deposit invoice.",
+      "section": "Money received beyond the invoice",
+      "date": "Date received",
+      "amount": "Amount",
+      "reference": "Reference",
+      "reference_hint": "A transfer or cheque number, say.",
+      "notes": "Notes",
+      "record": "Record the overpayment",
+      "keep": "Cancel",
+      "recorded": "The overpayment is kept to the customer’s credit."
     },
     "errors": {
       "network": "The server cannot be reached.",

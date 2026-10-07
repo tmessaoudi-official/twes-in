@@ -2,7 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { CustomersApi, CustomersRefused } from './customers-api';
-import type { CreditDepositInput, CustomersError, CustomerStatement } from './customers-types';
+import type { CustomersError, CustomerStatement } from './customers-types';
 
 /** The statement of account being read: the customer's account over the period asked for, or why it is not there. */
 @Injectable({ providedIn: 'root' })
@@ -38,22 +38,6 @@ export class CustomerStatementFacade {
       this.errorSignal.set(error instanceof CustomersRefused ? error.code : 'network');
     } finally {
       if (request === this.request) this.busySignal.set(false);
-    }
-  }
-
-  /** True once recorded; the refusal, if any, is in `error`. The statement is read again by whoever asked. */
-  async deposit(
-    companyId: string,
-    customerId: string,
-    deposit: CreditDepositInput,
-  ): Promise<boolean> {
-    this.errorSignal.set(null);
-    try {
-      await this.api.depositCredit(companyId, customerId, deposit);
-      return true;
-    } catch (error) {
-      this.errorSignal.set(error instanceof CustomersRefused ? error.code : 'network');
-      return false;
     }
   }
 

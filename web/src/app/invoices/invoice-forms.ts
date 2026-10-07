@@ -66,6 +66,12 @@ export function stillOwed(invoice: InvoiceRow | null | undefined): boolean {
   return open && !/^-?[0.]+$/.test(invoice.amountDue);
 }
 
+/** Whether money paid beyond this document may be kept to the customer's credit: an invoice paid in full. */
+export function paidInFull(invoice: InvoiceRow | null | undefined): boolean {
+  if (!invoice || invoice.type === 'credit_note') return false;
+  return invoice.status === 'paid' && /^-?[0.]+$/.test(invoice.amountDue);
+}
+
 /** Whole days from the due day to `today` (both YYYY-MM-DD): positive once late, negative while still to come. */
 export function daysLate(dueDate: string, today: string): number {
   return Math.round(

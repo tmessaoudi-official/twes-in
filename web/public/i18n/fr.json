@@ -1212,19 +1212,7 @@
         "not_found": "Client introuvable, ou relevé non accessible avec vos droits.",
         "invalid": "La période est refusée : la fin ne peut précéder le début."
       },
-      "credit_balance": "À son crédit, sans facture pour l’instant : {{amount}} {{currency}}."
-    },
-    "credit": {
-      "deposit": "Enregistrer un acompte",
-      "deposit_title": "Somme reçue",
-      "date": "Date de réception",
-      "amount": "Montant",
-      "reference": "Référence",
-      "reference_hint": "Un numéro de virement ou de chèque, par exemple.",
-      "notes": "Notes",
-      "record": "Enregistrer l’acompte",
-      "keep": "Annuler",
-      "recorded": "L’acompte est gardé au crédit du client."
+      "credit_balance": "À son crédit, à déduire d’une prochaine facture : {{amount}} {{currency}}."
     },
     "actions": {
       "new_quote": "Nouveau devis"
@@ -1500,7 +1488,21 @@
       "issue_credit_note_title": "Émettre cet avoir ?",
       "issue_credit_note_message": "Il reçoit son numéro et ne se modifie plus.",
       "confirm_issue": "Émettre",
-      "apply_credit": "Appliquer le crédit"
+      "apply_credit": "Appliquer le crédit",
+      "record_overpayment": "Enregistrer un trop-perçu"
+    },
+    "overpayment": {
+      "title": "Enregistrer un trop-perçu",
+      "hint": "L’argent reçu au-delà de cette facture, déjà réglée, est gardé au crédit du client pour une prochaine facture. Un acompte versé avant toute facture appelle une facture d’acompte.",
+      "section": "Somme reçue en trop",
+      "date": "Date de réception",
+      "amount": "Montant",
+      "reference": "Référence",
+      "reference_hint": "Un numéro de virement ou de chèque, par exemple.",
+      "notes": "Notes",
+      "record": "Enregistrer le trop-perçu",
+      "keep": "Annuler",
+      "recorded": "Le trop-perçu est gardé au crédit du client."
     },
     "errors": {
       "network": "Le serveur est injoignable.",

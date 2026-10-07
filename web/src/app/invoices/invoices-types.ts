@@ -136,6 +136,14 @@ export interface Payment {
   notes: string | null;
 }
 
+/** Money paid beyond an invoice with nothing left due, kept to the customer's credit (a « trop-perçu »). */
+export interface OverpaymentInput {
+  date: string;
+  amount: string;
+  reference: string | null;
+  notes: string | null;
+}
+
 export interface PaymentInput {
   date: string;
   amount: string;

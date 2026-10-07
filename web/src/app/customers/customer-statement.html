@@ -155,19 +155,6 @@
         }}
       </p>
     }
-    @if (mayDeposit()) {
-      <div>
-        <button
-          mat-stroked-button
-          type="button"
-          (click)="deposit()"
-          data-testid="statement-deposit"
-        >
-          <mat-icon aria-hidden="true">savings</mat-icon>
-          {{ 'customers.credit.deposit' | translate }}
-        </button>
-      </div>
-    }
     @if (hasLimit()) {
       <p
         class="text-sm"

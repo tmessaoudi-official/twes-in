@@ -584,6 +584,26 @@ class Invoice implements CompanyOwned
     }
 
     /**
+     * Whether money received on `$day` may be kept to the customer's credit as paid beyond this invoice: an issued
+     * invoice with nothing left due, the day from its issue day on. What is still due is paid on it first.
+     *
+     * @throws InvoiceTransitionRefused when this is not an issued invoice, or something is still due on it
+     * @throws InvalidInvoice           on `date`
+     */
+    public function assertPaidBeyond(\DateTimeImmutable $day): void
+    {
+        if (InvoiceType::Invoice !== $this->documentType || !$this->isIssued() || null === $this->issueDate) {
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is paid beyond.', $this->documentType->value, $this->reference(), $this->status->value));
+        }
+        if (Decimal::of($this->amountDue ?? '0')->compare(0) > 0) {
+            throw new InvoiceTransitionRefused(\sprintf('The invoice %s still has %s due: that is paid on it first.', $this->reference(), $this->amountDue));
+        }
+        if ($day->format('Y-m-d') < $this->issueDate->format('Y-m-d')) {
+            throw new InvalidInvoice('date', \sprintf('Money paid beyond an invoice is dated from its issue day, %s.', $this->issueDate->format('Y-m-d')));
+        }
+    }
+
+    /**
      * Takes an issued credit note of this invoice off what it still has due: what the
      * credit note comes to is added to what was credited, and the status follows.
      *

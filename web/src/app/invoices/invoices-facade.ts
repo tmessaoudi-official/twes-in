@@ -14,6 +14,7 @@ import type {
   InvoicesError,
   InvoiceStatusCounts,
   InvoiceSummary,
+  OverpaymentInput,
   PaymentInput,
   ProductOption,
 } from './invoices-types';
@@ -179,6 +180,10 @@ export class InvoicesFacade {
   /** True once applied, with the invoice read again. */
   async applyCredit(companyId: string, id: string): Promise<boolean> {
     return this.paymentStep(companyId, id, () => this.api.applyCredit(companyId, id));
+  }
+
+  async overpay(companyId: string, id: string, overpayment: OverpaymentInput): Promise<boolean> {
+    return this.paymentStep(companyId, id, () => this.api.overpay(companyId, id, overpayment));
   }
 
   async deletePayment(companyId: string, id: string, paymentId: string): Promise<boolean> {

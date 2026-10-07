@@ -96,14 +96,14 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
 
     /**
      * The money the company received, each on its own day (docs/SPEC.md § 7, audit E-14): payments into its issued
-     * invoices except those made of the customer's credit, which was money already received; deposits on the day they
-     * came in; and what was refunded, taken off on the day it left.
+     * invoices except those made of the customer's credit, which was money already received; what was paid beyond an
+     * invoice on the day it came in; and what was refunded, taken off on the day it left.
      */
     private const string MONEY_RECEIVED = 'SELECT p.payment_date AS day, p.amount FROM payment p JOIN invoice i ON i.id = p.invoice_id
          WHERE i.company_id = :company AND i.document_type = :invoice AND i.status <> :cancelled AND i.amount_due IS NOT NULL
            AND NOT EXISTS (SELECT 1 FROM customer_credit_entry applied WHERE applied.payment_id = p.id)
          UNION ALL
-         SELECT e.entry_date, e.amount FROM customer_credit_entry e WHERE e.company_id = :company AND e.kind IN (:deposit, :refunded)';
+         SELECT e.entry_date, e.amount FROM customer_credit_entry e WHERE e.company_id = :company AND e.kind IN (:overpayment, :refunded)';
 
     /** @return array<string, string> */
     private static function moneyReceived(Uuid $companyId): array
@@ -112,7 +112,7 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
             'company' => $companyId->toRfc4122(),
             'invoice' => InvoiceType::Invoice->value,
             'cancelled' => InvoiceStatus::Cancelled->value,
-            'deposit' => CreditEntryKind::Deposit->value,
+            'overpayment' => CreditEntryKind::Overpayment->value,
             'refunded' => CreditEntryKind::Refunded->value,
         ];
     }
