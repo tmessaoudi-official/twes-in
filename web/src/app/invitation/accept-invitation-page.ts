@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { LegalLink } from '../shared/legal/legal-link';
 import { InvitationFacade } from './invitation-facade';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 
@@ -23,6 +24,7 @@ import { SignedOutLayout } from '../auth/signed-out-layout';
     MatInputModule,
     MatButtonModule,
     TranslatePipe,
+    LegalLink,
   ],
   templateUrl: './accept-invitation-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

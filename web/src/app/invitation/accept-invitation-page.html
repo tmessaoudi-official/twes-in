@@ -11,6 +11,13 @@
       }}
     </p>
     <p class="twes-auth-intro" data-testid="invitation-email">{{ offer.email }}</p>
+    <!-- Members are told before they join that what they do is kept in the journal (docs/SPEC.md § 7, 2026-09-26 23:04). -->
+    <p class="text-sm text-on-surface-variant" data-testid="invitation-journal">
+      {{ 'invitation.journal' | translate: { company: offer.companyName } }}
+      <a appLegalLink="privacy" data-testid="invitation-privacy">{{
+        'legal.pages.privacy' | translate
+      }}</a>
+    </p>
 
     @if (offer.hasAccount) {
       <div class="flex flex-col gap-4">

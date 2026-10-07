@@ -27,7 +27,7 @@
 
 - Les données du compte, tant que le compte existe ; après sa fermeture : à compléter.
 - Les factures et les pièces comptables, dix ans.
-- Le journal d’activité : à compléter.
+- Le journal d’activité : douze mois, ou jusqu’à trois ans si l’entreprise le choisit. Il est lu par les membres à qui leur rôle le permet (le propriétaire et l’administrateur par défaut) ; l’adresse d’où vous vous connectez n’y est montrée qu’à qui gère l’équipe.
 
 ## Vos droits
 

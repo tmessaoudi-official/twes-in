@@ -659,7 +659,8 @@
       "password_refused": "That password has appeared in a data breach. Choose another one.",
       "invalid": "Invalid request.",
       "network": "The server could not be reached."
-    }
+    },
+    "journal": "What you do at {{company}} is written in its activity journal, kept twelve months by default and read by those whose role allows it. See"
   },
   "document": {
     "actions": "Document actions",

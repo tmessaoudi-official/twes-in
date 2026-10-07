@@ -28,7 +28,10 @@ class StaticLoader implements TranslateLoader {
         password: 'Mot de passe',
         password_hint: '12 caractères',
         submit: 'Créer mon compte',
+        journal:
+          'Ce que vous ferez chez {{company}} sera inscrit dans son journal d’activité. Voir',
       },
+      legal: { pages: { privacy: 'Confidentialité' } },
     });
   }
 }
@@ -105,5 +108,14 @@ describe('AcceptInvitationPage', () => {
 
     expect(invitation.accept).toHaveBeenCalledWith('a-token');
     expect(navigate).toHaveBeenCalledWith('/login');
+  });
+
+  it('tells whoever joins, before they do, that what they do is kept in the journal', async () => {
+    await render(offer);
+
+    expect(byTestId('invitation-journal')?.textContent).toContain(
+      'Ce que vous ferez chez Acme sera inscrit dans son journal d’activité',
+    );
+    expect(byTestId('invitation-privacy')?.getAttribute('href')).toBe('/legal/privacy');
   });
 });
