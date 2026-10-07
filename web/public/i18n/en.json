@@ -2767,6 +2767,16 @@
       "companies": "Companies: {{count}}",
       "accounts": "Accounts: {{count}}",
       "payments": "Payments to confirm: {{count}}"
+    },
+    "failed": {
+      "title": "Messages not sent",
+      "total": "{{count}} {count, plural, one {message was not sent after its retries} other {messages were not sent after their retries}}.",
+      "retry": "They wait on the server. Once the cause is fixed, send them again from the worker service:",
+      "kinds": {
+        "invitation": "Invitations",
+        "password_reset": "Forgotten passwords",
+        "signup": "Sign-ups"
+      }
     }
   },
   "appearance": {

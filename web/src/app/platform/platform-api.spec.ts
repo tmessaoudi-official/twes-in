@@ -130,6 +130,26 @@ describe('PlatformApi', () => {
     ]);
   });
 
+  // Row 56: what the worker gave up on, which only the operator can see and retry.
+  it('reads how many messages failed for good, and of which kinds', async () => {
+    const pending = api.failedMessages();
+    http.expectOne('/api/platform/failed-messages').flush({
+      total: 3,
+      kinds: [
+        { kind: 'PasswordResetAsked', count: 2 },
+        { kind: 'InvitationToMail', count: 1 },
+      ],
+    });
+
+    expect(await pending).toEqual({
+      total: 3,
+      kinds: [
+        { kind: 'PasswordResetAsked', count: 2 },
+        { kind: 'InvitationToMail', count: 1 },
+      ],
+    });
+  });
+
   it('finds a page of accounts by a piece of their address or name, with the companies of each', async () => {
     const found = api.accounts({
       page: 2,

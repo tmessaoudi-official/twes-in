@@ -7,6 +7,7 @@ import {
   COMPANY_COUNTRIES,
   type AccountAction,
   type CompanyCountry,
+  type FailedMessagesRead,
   type ModuleDemandRow,
   type PlatformAccountRow,
   type PlatformAccountSearch,
@@ -34,6 +35,9 @@ export class PlatformFacade {
   private readonly demandSignal = signal<readonly ModuleDemandRow[]>([]);
   /** How many companies wait for each planned module, the most asked for first. */
   readonly demand = this.demandSignal.asReadonly();
+  private readonly failedSignal = signal<FailedMessagesRead>({ total: 0, kinds: [] });
+  /** What the worker gave up on, waiting to be retried on it. */
+  readonly failed = this.failedSignal.asReadonly();
 
   /** The oldest companies waiting for a decision, a few, for the overview. */
   readonly waiting = this.waitingSignal.asReadonly();
@@ -69,18 +73,23 @@ export class PlatformFacade {
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
-  /** What the overview shows: the switches, the companies waiting, the counts and the demand for planned modules. */
+  /**
+   * What the overview shows: the switches, the companies waiting, the counts, the demand for planned modules and the
+   * messages the worker gave up on.
+   */
   async load(): Promise<void> {
     this.busySignal.set(true);
     try {
-      const [waiting, signup, every, accounts, demand] = await Promise.all([
+      const [waiting, signup, every, accounts, demand, failed] = await Promise.all([
         this.api.companies(WAITING_SEARCH),
         this.api.signup(),
         this.api.companies(COUNT_SEARCH),
         this.api.accounts(ACCOUNT_COUNT_SEARCH),
         this.api.moduleDemand(),
+        this.api.failedMessages(),
       ]);
       this.demandSignal.set(demand);
+      this.failedSignal.set(failed);
       this.waitingSignal.set(waiting.rows);
       this.waitingTotalSignal.set(waiting.total);
       this.everyCompanySignal.set(every.total);

@@ -26,6 +26,7 @@ import type {
   PlatformSignup,
   ModuleDemandRow,
   PlatformSubscriptionRow,
+  FailedMessagesRead,
 } from './platform-types';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
@@ -38,6 +39,12 @@ class StaticLoader implements TranslateLoader {
       modules: { quotes: 'Devis et commandes', zakat: 'Zakat' },
       roles: { owner: 'propriétaire', member: 'membre', clerk: 'caissier / vendeur' },
       platform: {
+        failed: {
+          title: 'Messages non partis',
+          total: 'Non partis : {{count}}',
+          retry: 'Relancez-les sur le worker :',
+          kinds: { invitation: 'Invitations', password_reset: 'Mots de passe oubliés' },
+        },
         demand: {
           title: 'Modules attendus',
           companies: 'Sociétés : {{count}}',
@@ -180,6 +187,7 @@ describe('PlatformPage', () => {
   const waitingPayments = signal<readonly WaitingPayment[]>([declared]);
   const openedSubscription = signal<string | null>(null);
   const demand = signal<readonly ModuleDemandRow[]>([]);
+  const failed = signal<FailedMessagesRead>({ total: 0, kinds: [] });
   const waitingTotal = signal(1);
   const companiesTotal = signal(1);
   const accountsTotal = signal(1);
@@ -192,6 +200,7 @@ describe('PlatformPage', () => {
     loadCompanies: vi.fn(async () => undefined),
     loadAccounts: vi.fn(async () => undefined),
     demand: demand.asReadonly(),
+    failed: failed.asReadonly(),
     waiting,
     companies,
     openCompany: vi.fn(),
@@ -230,6 +239,7 @@ describe('PlatformPage', () => {
     companies.set([row]);
     waitingPayments.set([declared]);
     demand.set([]);
+    failed.set({ total: 0, kinds: [] });
     waitingTotal.set(1);
     companiesTotal.set(1);
     accountsTotal.set(1);
@@ -550,6 +560,27 @@ describe('PlatformPage', () => {
     const { query } = await render();
 
     expect(query('platform-error')?.textContent).toContain('Introuvable');
+  });
+  // Row 56: a mail the worker gave up on is said on the overview, by kind, with how to send it again; nothing when none.
+  it('says on the overview how many messages failed for good, of which kinds, and how to retry them', async () => {
+    const { fixture, query } = await render();
+    expect(query('platform-failed')).toBeNull();
+
+    failed.set({
+      total: 3,
+      kinds: [
+        { kind: 'PasswordResetAsked', count: 2 },
+        { kind: 'SomethingNew', count: 1 },
+      ],
+    });
+    fixture.detectChanges();
+
+    expect(query('platform-failed-total')?.textContent).toContain('Non partis : 3');
+    const kinds = Array.from(
+      query('platform-failed')!.querySelectorAll('[data-testid^="failed-kind-"]'),
+    ).map((item) => item.textContent?.replace(/\s+/g, ' ').trim());
+    expect(kinds).toEqual(['Mots de passe oubliés 2', 'SomethingNew 1']);
+    expect(query('platform-failed')?.textContent).toContain('messenger:failed:retry');
   });
   // « Me prévenir » (row 150): the operator reads which planned modules companies wait for, and how many.
   it('lists the planned modules companies wait for, the most asked for first, and says when none is', async () => {

@@ -62,6 +62,7 @@ describe('PlatformFacade', () => {
     setSubscription: vi.fn(),
     stopSubscription: vi.fn(),
     moduleDemand: vi.fn(),
+    failedMessages: vi.fn(),
   };
   let facade: PlatformFacade;
 
@@ -73,6 +74,7 @@ describe('PlatformFacade', () => {
     api.moduleDemand.mockResolvedValue([
       { key: 'quotes', labelKey: 'modules.quotes', planned: 'v1', companies: 2 },
     ]);
+    api.failedMessages.mockResolvedValue({ total: 1, kinds: [{ kind: 'SignupAsked', count: 1 }] });
     TestBed.configureTestingModule({ providers: [{ provide: PlatformApi, useValue: api }] });
     facade = TestBed.inject(PlatformFacade);
   });
@@ -153,7 +155,7 @@ describe('PlatformFacade', () => {
     expect(facade.error()).toBe('already_member');
   });
 
-  it('loads the overview: the waiting companies, the switches, the counts and the demand', async () => {
+  it('loads the overview: the waiting companies, the switches, the counts, the demand and what failed', async () => {
     api.companies.mockImplementation(async (search: PlatformCompanySearch) =>
       search.status === 'pending' ? { rows: [row], total: 7 } : { rows: [row], total: 130 },
     );
@@ -169,6 +171,7 @@ describe('PlatformFacade', () => {
     expect(facade.demand()).toEqual([
       { key: 'quotes', labelKey: 'modules.quotes', planned: 'v1', companies: 2 },
     ]);
+    expect(facade.failed()).toEqual({ total: 1, kinds: [{ kind: 'SignupAsked', count: 1 }] });
     expect(facade.error()).toBeNull();
   });
 

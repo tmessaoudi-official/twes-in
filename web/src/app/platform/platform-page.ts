@@ -50,6 +50,12 @@ const COMPANY_TONES: Readonly<Record<string, StatusTone>> = {
   suspended: 'neutral',
 };
 
+/** The kinds of message the screens name; another is shown by its class name, as the worker's own commands show it. */
+const FAILED_KINDS: Readonly<Record<string, string>> = {
+  InvitationToMail: 'invitation',
+  PasswordResetAsked: 'password_reset',
+  SignupAsked: 'signup',
+};
 const PERIOD_UNITS: readonly SubscriptionTerms['periodUnit'][] = ['day', 'month', 'year'];
 const UNPAID_MODES: readonly NonNullable<SubscriptionTerms['unpaidMode']>[] = [
   'read_only',
@@ -157,6 +163,10 @@ export class PlatformPage implements OnInit {
   protected readonly periodsFor = signal<Readonly<Record<string, number>>>({});
 
   protected readonly waiting = this.platform.waiting;
+  protected readonly failed = this.platform.failed;
+  /** The translation key naming a kind of failed message, null for one the screens do not know yet. */
+  protected readonly failedKind = (kind: string): string | null =>
+    kind in FAILED_KINDS ? `platform.failed.kinds.${FAILED_KINDS[kind]}` : null;
   protected readonly signup = this.platform.signup;
   protected readonly busy = this.platform.busy;
   protected readonly error = this.platform.error;

@@ -2767,6 +2767,16 @@
       "companies": "Entreprises : {{count}}",
       "accounts": "Comptes : {{count}}",
       "payments": "Paiements à confirmer : {{count}}"
+    },
+    "failed": {
+      "title": "Messages non partis",
+      "total": "{{count}} {count, plural, one {message n’est pas parti après ses essais} other {messages ne sont pas partis après leurs essais}}.",
+      "retry": "Ils attendent sur le serveur. Une fois la cause réglée, relancez-les depuis le service worker :",
+      "kinds": {
+        "invitation": "Invitations",
+        "password_reset": "Mots de passe oubliés",
+        "signup": "Inscriptions"
+      }
     }
   },
   "appearance": {

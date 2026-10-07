@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import type {
   CompanyCompanyReadValidationCreate as CompanyCompanyRead,
   CompanyCompanyWriteValidationCreate as CompanyCompanyWrite,
+  FailedMessages,
   ModuleDemandModuleDemandRead,
   PlatformAccountPlatformAccountRead,
   PlatformCompanyPlatformCompanyRead,
@@ -20,6 +21,7 @@ import type {
   AccountAction,
   PlatformAccountSearch,
   PlatformCompanySearch,
+  FailedMessagesRead,
   ModuleDemandRow,
   PlatformSubscriptionRow,
   SubscriptionTerms,
@@ -200,6 +202,19 @@ export class PlatformApi {
         companies: read.companies,
       })),
     );
+  }
+
+  /** How many messages the worker gave up on, by kind, the most first. */
+  failedMessages(): Promise<FailedMessagesRead> {
+    return this.guard(async () => {
+      const read = await firstValueFrom(
+        this.http.get<FailedMessages>('/api/platform/failed-messages'),
+      );
+      return {
+        total: read.total,
+        kinds: read.kinds.map(({ kind, count }) => ({ kind, count })),
+      };
+    });
   }
 
   private async guard<T>(

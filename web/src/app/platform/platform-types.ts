@@ -140,6 +140,13 @@ export type PlatformError =
   'not_found' | 'own_account' | 'name_taken' | 'already_member' | 'refused' | 'network';
 
 /** A planned module and how many companies asked to be told when it arrives (« Me prévenir », row 150). */
+/** What the worker gave up on after its retries, which waits in the failed transport for the operator to retry it. */
+export interface FailedMessagesRead {
+  readonly total: number;
+  /** By the message's class name, the most first. */
+  readonly kinds: readonly { readonly kind: string; readonly count: number }[];
+}
+
 export interface ModuleDemandRow {
   readonly key: string;
   /** The translation key of the module's name. */
