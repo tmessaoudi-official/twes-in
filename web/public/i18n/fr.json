@@ -1216,6 +1216,20 @@
     },
     "actions": {
       "new_quote": "Nouveau devis"
+    },
+    "account": {
+      "title": "Compte du client",
+      "balance": "Dû sur ses factures",
+      "overdue": "En retard",
+      "overdue_detail": "{{count}} {count, plural, one {facture} other {factures}}, la plus ancienne depuis {{days}} {days, plural, one {jour} other {jours}}",
+      "on_account": "À son crédit",
+      "owed": "Solde net",
+      "limit": "Plafond de crédit : {{limit}} {{currency}}.",
+      "over_limit": "Plafond de crédit dépassé : {{limit}} {{currency}}.",
+      "errors": {
+        "network": "Le serveur est injoignable.",
+        "not_found": "Client introuvable, ou compte non accessible avec vos droits."
+      }
     }
   },
   "invoices": {

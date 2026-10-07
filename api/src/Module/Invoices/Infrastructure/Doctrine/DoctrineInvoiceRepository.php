@@ -89,6 +89,25 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         return ['all' => $all, 'statuses' => $counts];
     }
 
+    public function overdueOf(Uuid $companyId, Uuid $customerId, \DateTimeImmutable $today): array
+    {
+        // The chip's own search narrowed to the customer, so the account and the list it would open cannot disagree.
+        $row = $this->filtered($companyId, new InvoiceSearch(customers: [$customerId])->onlyOverdue($today))
+            ->select('COALESCE(SUM(i.amountDue), 0) AS amount', 'COUNT(i.id) AS n', 'MIN(i.dueDate) AS oldest')
+            ->getQuery()->getSingleResult();
+        if (!\is_array($row)) {
+            throw new \UnexpectedValueException('An overdue sum came back as no row.');
+        }
+        $amount = $row['amount'] ?? null;
+        $count = $row['n'] ?? null;
+        $oldest = $row['oldest'] ?? null;
+        if (!is_numeric($amount) || !is_numeric($count) || (null !== $oldest && !\is_string($oldest))) {
+            throw new \UnexpectedValueException('An overdue sum came back in a shape it is never written in.');
+        }
+
+        return ['amount' => (string) $amount, 'count' => (int) $count, 'oldestDueDate' => null === $oldest ? null : new \DateTimeImmutable($oldest)];
+    }
+
     /** The company's documents narrowed as a search asks, its order and its page left to the caller. */
     private function filtered(Uuid $companyId, InvoiceSearch $search): QueryBuilder
     {

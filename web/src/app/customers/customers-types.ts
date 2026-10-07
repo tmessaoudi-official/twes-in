@@ -117,6 +117,31 @@ export interface CustomerStatement {
   lines: StatementLine[];
 }
 
+/**
+ * A customer's running account at the end of the company's today: the same reading the statement ends on and the
+ * credit limit is weighed against. Amounts are the API's decimal strings at the currency's scale.
+ */
+export interface CustomerAccount {
+  currency: string;
+  currencyScale: number;
+  /** The company's today, YYYY-MM-DD. */
+  day: string;
+  /** What the customer's invoices have due. */
+  balance: string;
+  /** The part of it on invoices past their due day. */
+  overdue: string;
+  overdueCount: number;
+  /** Days the longest-late invoice is past its due day; null when none is late. */
+  oldestOverdueDays: number | null;
+  /** Money the customer left with the company that no invoice took yet. */
+  onAccount: string;
+  /** The balance less what is on account: what the limit is weighed against. */
+  owed: string;
+  /** Zero is no limit. */
+  creditLimit: string;
+  overCreditLimit: boolean;
+}
+
 export interface ContactRow {
   id: string;
   firstName: string | null;

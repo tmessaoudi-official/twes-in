@@ -1216,6 +1216,20 @@
     },
     "actions": {
       "new_quote": "New quote"
+    },
+    "account": {
+      "title": "Customer account",
+      "balance": "Due on their invoices",
+      "overdue": "Overdue",
+      "overdue_detail": "{{count}} {count, plural, one {invoice} other {invoices}}, the oldest {{days}} {days, plural, one {day} other {days}} late",
+      "on_account": "On account",
+      "owed": "Net balance",
+      "limit": "Credit limit: {{limit}} {{currency}}.",
+      "over_limit": "Credit limit exceeded: {{limit}} {{currency}}.",
+      "errors": {
+        "network": "The server cannot be reached.",
+        "not_found": "Customer not found, or the account is not available with your rights."
+      }
     }
   },
   "invoices": {

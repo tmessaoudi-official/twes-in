@@ -25,6 +25,7 @@ import {
 } from '../shared/settings/settings-facade';
 import { CustomerPage } from './customer-page';
 import { CustomerStatementFacade } from './customer-statement-facade';
+import { CustomerAccountFacade } from './customer-account-facade';
 import { CustomersFacade } from './customers-facade';
 import { PartySettings } from './party-settings-facade';
 import type { SettingRow } from '../shared/settings/settings-types';
@@ -219,6 +220,11 @@ describe('CustomerPage', () => {
     load: vi.fn().mockResolvedValue(undefined),
     pdfUrl: vi.fn().mockReturnValue('/pdf'),
   };
+  const accountFacade = {
+    account: signal(null),
+    error: signal(null),
+    load: vi.fn().mockResolvedValue(undefined),
+  };
 
   async function open(customerId: string | undefined): Promise<void> {
     fixture = TestBed.createComponent(CustomerPage);
@@ -265,6 +271,7 @@ describe('CustomerPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: CustomersFacade, useValue: facade },
         { provide: CustomerStatementFacade, useValue: statementFacade },
+        { provide: CustomerAccountFacade, useValue: accountFacade },
         { provide: LiveChanges, useValue: live },
         { provide: PartySettings, useValue: partySettings },
         { provide: AuthFacade, useValue: auth },
@@ -512,6 +519,7 @@ describe('CustomerPage', () => {
 
     expect(q('customer-tab-statement')).not.toBeNull();
     expect(statementFacade.load).toHaveBeenLastCalledWith('c1', 'k1', { from: '', to: '' });
+    expect(accountFacade.load).toHaveBeenLastCalledWith('c1', 'k1');
   });
 
   it('leaves the statement out when invoices may not be read, and for a customer still new', async () => {

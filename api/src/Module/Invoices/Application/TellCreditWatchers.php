@@ -27,7 +27,7 @@ final readonly class TellCreditWatchers
     public const string PERMISSION = 'invoice.issue';
     public const string LIMIT_PASSED = 'invoice.credit_limit_passed';
 
-    public function __construct(private CustomerCredit $credit, private MembershipRepository $memberships, private Notifications $notifications)
+    public function __construct(private RunningAccount $account, private MembershipRepository $memberships, private Notifications $notifications)
     {
     }
 
@@ -37,11 +37,11 @@ final readonly class TellCreditWatchers
             return;
         }
         $customer = $invoice->getCustomer();
-        $limit = $this->credit->limit($company, $customer);
+        $limit = $this->account->limit($company, $customer);
         if ($limit->compare(0) <= 0) {
             return;
         }
-        $owed = $this->credit->owed($company, $customer);
+        $owed = $this->account->owed($company, $customer);
         $figures = $invoice->getIssuedFigures() ?? throw new \LogicException('An issued invoice has its figures.');
         $before = $owed->sub(Decimal::of($figures->amountDue));
         if (1 !== $owed->compare($limit) || 1 === $before->compare($limit)) {

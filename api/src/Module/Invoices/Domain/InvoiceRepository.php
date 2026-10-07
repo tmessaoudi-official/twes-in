@@ -34,6 +34,14 @@ interface InvoiceRepository
      */
     public function statusCounts(Uuid $companyId, InvoiceSearch $search, \DateTimeImmutable $today): array;
 
+    /**
+     * What a customer's overdue invoices still have due on a day, how many they are and the earliest due day among
+     * them, by the very rule the overdue chip lists with.
+     *
+     * @return array{amount: string, count: int, oldestDueDate: ?\DateTimeImmutable}
+     */
+    public function overdueOf(Uuid $companyId, Uuid $customerId, \DateTimeImmutable $today): array;
+
     /** Null for an invoice that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Invoice;
 

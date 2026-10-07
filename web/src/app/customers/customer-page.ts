@@ -33,6 +33,7 @@ import {
 } from './customer-forms';
 import { CustomersFacade } from './customers-facade';
 import { CustomerStatementView } from './customer-statement';
+import { CustomerAccountView } from './customer-account';
 import { PartyDefaults } from './party-defaults';
 import type { ContactRow } from './customers-types';
 import { Feedback } from '../shared/feedback/feedback';
@@ -64,6 +65,7 @@ export const CUSTOMER_PLANNED: readonly PlannedAction[] = [
     RecordBar,
     PartyDefaults,
     CustomerStatementView,
+    CustomerAccountView,
     RecordChanged,
   ],
   templateUrl: './customer-page.html',

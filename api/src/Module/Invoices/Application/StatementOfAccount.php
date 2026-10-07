@@ -13,9 +13,7 @@ use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Customers\Application\CustomerNotFound;
 use App\Module\Customers\Domain\CustomerRepository;
-use App\Module\Invoices\Domain\CustomerCreditRepository;
 use App\Tenancy\Domain\Company;
-use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -29,10 +27,8 @@ final readonly class StatementOfAccount
     public function __construct(
         private StatementSource $source,
         private CustomerRepository $customers,
-        private ClockInterface $clock,
         private CurrencyScales $scales,
-        private CustomerCredit $credit,
-        private CustomerCreditRepository $balances,
+        private RunningAccount $account,
     ) {
     }
 
@@ -43,8 +39,7 @@ final readonly class StatementOfAccount
     public function handle(Company $company, Uuid $customerId, ?\DateTimeImmutable $from, ?\DateTimeImmutable $to): CustomerStatement
     {
         $customer = $this->customers->ofIdInCompany($customerId, $company->getId()) ?? throw new CustomerNotFound();
-        $today = new \DateTimeImmutable($this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'));
-        $to ??= $today;
+        $to ??= $this->account->today($company);
         $from ??= $to->modify('first day of january this year');
         if ($from > $to) {
             throw new InvalidStatementPeriod('The period ends before it starts.');
@@ -74,15 +69,10 @@ final readonly class StatementOfAccount
             ];
         }
 
-        $limit = $this->credit->limit($company, $customer);
-        // What the customer held on account at the period's end counts against what they owed then, as it does for a
-        // delivery's warning; money put on account after it would clear a limit the customer really had passed.
-        $onAccount = Decimal::zero();
-        foreach ($this->balances->entries($company->getId(), $customerId) as $entry) {
-            if ($entry->getDate()->format('Y-m-d') <= $to->format('Y-m-d')) {
-                $onAccount = $onAccount->add(Decimal::of($entry->getAmount()));
-            }
-        }
+        $limit = $this->account->limit($company, $customer);
+        // What the customer held at the period's end, not today: money put on account after it would clear a limit the
+        // customer really had passed then.
+        $onAccount = $this->account->onAccountAt($company, $customerId, $to);
 
         return new CustomerStatement(
             $customerId->toRfc4122(),
@@ -97,7 +87,7 @@ final readonly class StatementOfAccount
             Decimal::format($credits, $scale),
             Decimal::format($balance, $scale),
             Decimal::format($limit, $scale),
-            $limit->compare(0) > 0 && $balance->sub($onAccount)->compare($limit) > 0,
+            RunningAccount::passes($limit, $balance->sub($onAccount)),
             Decimal::format($onAccount, $scale),
             $lines,
         );

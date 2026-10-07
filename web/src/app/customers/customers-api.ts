@@ -17,6 +17,7 @@ import type {
   CustomerGroupCustomerGroupWriteValidationCustomerGroupWrite as CustomerGroupCustomerGroupWrite,
   CustomerOptionsCustomerOptionsRead,
   CustomerStatementCustomerStatementRead,
+  CustomerAccountCustomerAccountRead,
 } from '../api/types.gen';
 import {
   CUSTOMER_KINDS,
@@ -30,6 +31,7 @@ import {
   type CustomerRow,
   type CustomerSearch,
   type CustomersError,
+  type CustomerAccount,
   type CustomerStatement,
   type StatementKind,
   type TaxFamily,
@@ -133,6 +135,19 @@ export class CustomersApi {
           this.http.get<CustomerStatementCustomerStatementRead>(
             `${path(companyId, 'customers', customerId)}/statement`,
             { params },
+          ),
+        ),
+      ),
+    );
+  }
+
+  /** The customer's running account as it stands today: due, late, on account and the limit. */
+  async account(companyId: string, customerId: string): Promise<CustomerAccount> {
+    return this.guard(async () =>
+      toAccount(
+        await firstValueFrom(
+          this.http.get<CustomerAccountCustomerAccountRead>(
+            `${path(companyId, 'customers', customerId)}/account`,
           ),
         ),
       ),
@@ -423,6 +438,22 @@ function toStatement(raw: CustomerStatementCustomerStatementRead): CustomerState
       ...line,
       kind: STATEMENT_KINDS.find((kind) => kind === line.kind) ?? 'invoice',
     })),
+  };
+}
+
+function toAccount(raw: CustomerAccountCustomerAccountRead): CustomerAccount {
+  return {
+    currency: raw.currency ?? '',
+    currencyScale: raw.currencyScale ?? 2,
+    day: raw.day ?? '',
+    balance: raw.balance ?? '0',
+    overdue: raw.overdue ?? '0',
+    overdueCount: raw.overdueCount ?? 0,
+    oldestOverdueDays: raw.oldestOverdueDays ?? null,
+    onAccount: raw.onAccount ?? '0',
+    owed: raw.owed ?? '0',
+    creditLimit: raw.creditLimit ?? '0',
+    overCreditLimit: raw.overCreditLimit ?? false,
   };
 }
 

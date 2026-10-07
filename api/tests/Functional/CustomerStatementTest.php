@@ -267,6 +267,81 @@ final class CustomerStatementTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
     }
 
+    /**
+     * The customer's running account (MON-19): what their invoices have due, how much of it is late, what they hold on
+     * account and where that leaves them against their limit, read once, so that the statement, the overdue figure and
+     * the limit cannot disagree.
+     */
+    public function testTheAccountSaysWhatIsDueWhatIsLateWhatIsHeldAndTheLimit(): void
+    {
+        $other = $this->customer('CLI-0002', 'Autre')->getId()->toRfc4122();
+        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
+        $this->setLimit('100', Uuid::fromString($this->customerId));
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->setTime(0, 0);
+        $late = $this->issue('80');
+        $this->pay($late, '30');
+        $older = $this->issue('20');
+        $dueToday = $this->issue('40');
+        $othersLate = $this->issue('500', $other);
+        foreach ([[$late, '-3 days'], [$older, '-10 days'], [$dueToday, 'today'], [$othersLate, '-20 days']] as [$id, $shift]) {
+            $this->em()->getConnection()->executeStatement('UPDATE invoice SET due_date = :day WHERE id = :id', ['day' => $today->modify($shift)->format('Y-m-d'), 'id' => $id]);
+        }
+        $this->onAccount('15', $today->format('Y-m-d'));
+
+        $this->getJson($this->accountPath());
+
+        self::assertResponseIsSuccessful();
+        $account = $this->json();
+        self::assertSame(
+            ['110.000', '70.000', 2, 10, '15.000', '95.000', '100.000', false],
+            [$account['balance'], $account['overdue'], $account['overdueCount'], $account['oldestOverdueDays'], $account['onAccount'], $account['owed'], $account['creditLimit'], $account['overCreditLimit']],
+            '50 left on one invoice 3 days late and 20 on one 10 days late; 40 due today is not late; another customer\'s are not theirs',
+        );
+        self::assertSame([$this->dueAcrossInvoices(), $today->format('Y-m-d'), 'TND', 3], [$account['balance'], $account['day'], $account['currency'], $account['currencyScale']]);
+
+        $this->getJson($this->path());
+        self::assertSame([$account['balance'], $account['onAccount'], $account['creditLimit'], $account['overCreditLimit']], [$this->json()['closingBalance'], $this->json()['creditBalance'], $this->json()['creditLimit'], $this->json()['overCreditLimit']], 'the statement to today ends on the same account');
+
+        $this->issue('10');
+        $this->getJson($this->accountPath());
+        self::assertSame(['105.000', true], [$this->json()['owed'], $this->json()['overCreditLimit']], '120 due less 15 on account passes 100');
+        $this->getJson($this->path());
+        self::assertTrue($this->json()['overCreditLimit'], 'and the statement says so too');
+    }
+
+    public function testAnAccountWithNothingLateSaysNoneAndNoOldest(): void
+    {
+        $this->signedIn(['customer.read', 'invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->getJson($this->accountPath());
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['0.000', '0.000', 0, null, '0.000', '0.000', false], [$this->json()['balance'], $this->json()['overdue'], $this->json()['overdueCount'], $this->json()['oldestOverdueDays'], $this->json()['owed'], $this->json()['creditLimit'], $this->json()['overCreditLimit']]);
+    }
+
+    public function testTheAccountTakesTheStatementsRights(): void
+    {
+        $this->getJson($this->accountPath());
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+
+        $this->signedIn(['customer.read']);
+        $this->getJson($this->accountPath());
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the customer without their invoices');
+    }
+
+    public function testTheAccountNeedsTheCustomerAsWell(): void
+    {
+        $this->signedIn(['invoice.read']);
+        $this->getJson($this->accountPath());
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the invoices without the customer');
+    }
+
+    public function testTheAccountOfAnUnknownCustomerIsNotFound(): void
+    {
+        $this->signedIn(['customer.read', 'invoice.read']);
+        $this->getJson($this->companyPath().'/customers/'.self::ABSENT.'/account');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     /** @return array<string, mixed> */
     private function rowAt(mixed $line): array
     {
@@ -384,6 +459,11 @@ final class CustomerStatementTest extends ApiTestCase
     private function path(): string
     {
         return $this->companyPath().'/customers/'.$this->customerId.'/statement';
+    }
+
+    private function accountPath(): string
+    {
+        return $this->companyPath().'/customers/'.$this->customerId.'/account';
     }
 
     private function storedPdfs(): int
