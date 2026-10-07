@@ -18,6 +18,7 @@ import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { atScale } from '../shared/i18n/format';
 import { AmountPipe } from '../shared/i18n/format-pipes';
+import { type IssuedLine, IssuedLines } from '../shared/ui/issued-lines';
 import {
   applyProduct,
   dropRefusedLineTaxes,
@@ -75,6 +76,7 @@ type CheckedField = keyof Omit<
     DecimalInput,
     PickField,
     AmountPipe,
+    IssuedLines,
   ],
   templateUrl: './invoice-lines.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -117,6 +119,35 @@ export class InvoiceLines {
   private readonly offered = computed(
     () => new Set(offeredLineTaxes(this.options(), this.excluded()).map((tax) => tax.id)),
   );
+  /** The lines as an issued invoice reads them: values, never fields drawn disabled. */
+  protected readonly issued = computed<IssuedLine[]>(() => {
+    this.revision();
+    const units = new Map(this.options().units.map((unit) => [unit.id, unit]));
+    const taxes = new Map(this.options().taxes.map((tax) => [tax.id, tax.name]));
+    return this.lines().controls.map((line, index) => {
+      const value = line.getRawValue();
+      const unit = units.get(value.unitId);
+      const notes: string[] = [];
+      if (value.sourceDeliveryNoteLineId !== '') notes.push('invoices.lines.from_delivery_note');
+      if (this.returnable() && value.returned) notes.push('invoices.lines.returned');
+      return {
+        description: value.description,
+        reference: value.productId === '' ? null : value.productReference,
+        lot: value.lotCode === '' ? null : value.lotCode,
+        notes,
+        quantity: value.quantity,
+        quantityScale: unit?.decimals ?? null,
+        unit: unit?.name ?? '',
+        unitPrice: value.unitPriceNet,
+        discountRate: value.discountRate === '' ? null : value.discountRate,
+        taxes: value.taxComponentIds
+          .map((id) => taxes.get(id) ?? '')
+          .filter((name) => name !== '')
+          .join(', '),
+        net: this.nets()[index] ?? null,
+      };
+    });
+  });
 
   constructor() {
     // Another customer may pay another price: the lines picked on this screen start again from their lists.

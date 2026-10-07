@@ -3644,5 +3644,17 @@
     "clear_all": "Clear all",
     "more": "+{{count}}",
     "count": "Count: {{count}}"
+  },
+  "issued_lines": {
+    "description": "Item",
+    "quantity": "Quantity",
+    "unit": "Unit",
+    "price": "Unit price excl. tax",
+    "discount": "Discount",
+    "taxes": "Taxes",
+    "net": "Net total",
+    "reference": "Ref. {{code}}",
+    "lot": "Lot {{code}}",
+    "discount_value": "Discount {{rate}}%"
   }
 }

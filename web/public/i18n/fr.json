@@ -3644,5 +3644,17 @@
     "clear_all": "Effacer tout",
     "more": "+{{count}}",
     "count": "Nombre : {{count}}"
+  },
+  "issued_lines": {
+    "description": "Désignation",
+    "quantity": "Quantité",
+    "unit": "Unité",
+    "price": "Prix unitaire HT",
+    "discount": "Remise",
+    "taxes": "Taxes",
+    "net": "Total HT",
+    "reference": "Réf. {{code}}",
+    "lot": "Lot {{code}}",
+    "discount_value": "Remise {{rate}} %"
   }
 }

@@ -36,6 +36,7 @@ import type {
 import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { Select, type SelectOption } from '../shared/form/select';
+import { type IssuedLine, IssuedLines } from '../shared/ui/issued-lines';
 import { LineSubstitutes } from './delivery-note-line-substitutes';
 import { ProductScans } from '../products/product-scans';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
@@ -62,6 +63,7 @@ type CheckedField = keyof Omit<
     DecimalInput,
     PickField,
     LineSubstitutes,
+    IssuedLines,
   ],
   templateUrl: './delivery-note-lines.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -98,6 +100,32 @@ export class DeliveryNoteLines {
   private readonly offered = computed(
     () => new Set(offeredTaxes(this.options(), this.excludedFamilies()).map((tax) => tax.id)),
   );
+  /** The lines as a validated note reads them: values, never fields drawn disabled. */
+  protected readonly issued = computed<IssuedLine[]>(() => {
+    this.revision();
+    const units = new Map(this.options().units.map((unit) => [unit.id, unit]));
+    const taxes = new Map(this.options().taxes.map((tax) => [tax.id, tax.name]));
+    return this.lines().controls.map((line) => {
+      const value = line.getRawValue();
+      const unit = units.get(value.unitId);
+      return {
+        description: value.description,
+        reference: value.productId === '' ? null : value.productReference,
+        lot: value.lotCode === '' ? null : value.lotCode,
+        notes: [],
+        quantity: value.quantity,
+        quantityScale: unit?.decimals ?? null,
+        unit: unit?.name ?? '',
+        unitPrice: value.unitPriceNet,
+        discountRate: null,
+        taxes: value.taxComponentIds
+          .map((id) => taxes.get(id) ?? '')
+          .filter((name) => name !== '')
+          .join(', '),
+        net: null,
+      };
+    });
+  });
 
   constructor() {
     // Another customer may pay another price: the lines picked on this screen start again from their lists.

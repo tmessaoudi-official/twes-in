@@ -209,7 +209,7 @@
     }
   }
 
-  @if (form() && documentTaxChoices().length > 0) {
+  @if (form() && editable() && documentTaxChoices().length > 0) {
     <mat-card data-testid="invoice-document-taxes">
       <mat-card-content>
         <div class="flex flex-col gap-2">
@@ -223,7 +223,6 @@
               [ngModel]="documentTaxes()"
               (ngModelChange)="documentTaxes.set($event)"
               [ngModelOptions]="{ standalone: true }"
-              [disabled]="!editable()"
               [options]="documentTaxSelectOptions()"
               [label]="'invoices.document_taxes.title' | translate"
               [labelInside]="true"

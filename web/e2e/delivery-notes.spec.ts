@@ -140,7 +140,8 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
     await page.getByTestId('confirm-run').click();
     await expect(page.getByTestId('delivery-note-title')).toHaveText(/BL-\d{4}-(\d{2}-)?\d{5}/);
     const noteNumber = ((await page.getByTestId('delivery-note-title').textContent()) ?? '').trim();
-    await expect(page.getByTestId('line-0-quantity')).toBeDisabled();
+    await expect(page.getByTestId('line-0-quantity')).toHaveText('2');
+    await expect(page.getByTestId('delivery-note-lines').locator('input')).toHaveCount(0);
     expect(await wcagViolations(page)).toEqual([]);
 
     const pdf = await download(

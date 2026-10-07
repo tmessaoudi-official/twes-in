@@ -1,0 +1,110 @@
+@if (compact()) {
+  <ol class="m-0 flex list-none flex-col p-0" [attr.data-testid]="testId()">
+    @for (line of lines(); track $index; let i = $index) {
+      <li
+        class="flex flex-col gap-1 border-b border-outline-variant py-3 last:border-b-0"
+        [attr.data-testid]="'line-' + i"
+      >
+        <div class="flex items-baseline justify-between gap-3">
+          <div class="flex min-w-0 flex-col" [attr.data-testid]="'line-' + i + '-description'">
+            <ng-container *ngTemplateOutlet="what; context: { $implicit: line }"></ng-container>
+          </div>
+          @if (line.net !== null) {
+            <span
+              class="shrink-0 font-semibold tabular-nums"
+              [attr.data-testid]="'line-' + i + '-net'"
+              >{{ line.net | amount: currencyScale() }}</span
+            >
+          }
+        </div>
+        <p class="twes-dot-list m-0 text-sm text-on-surface-variant tabular-nums">
+          <span
+            ><span [attr.data-testid]="'line-' + i + '-quantity'">{{
+              line.quantity | amount: line.quantityScale
+            }}</span
+            >&nbsp;<span [attr.data-testid]="'line-' + i + '-unit'">{{ line.unit }}</span
+            >&nbsp;×&nbsp;<span [attr.data-testid]="'line-' + i + '-price'">{{
+              line.unitPrice | amount: currencyScale()
+            }}</span></span
+          >
+          @if (discountOf(line); as rate) {
+            <span [attr.data-testid]="'line-' + i + '-discount'">{{
+              'issued_lines.discount_value' | translate: { rate: rate | amount: null }
+            }}</span>
+          }
+          @if (line.taxes !== '') {
+            <span [attr.data-testid]="'line-' + i + '-taxes'">{{ line.taxes }}</span>
+          }
+        </p>
+      </li>
+    }
+  </ol>
+} @else {
+  <div class="overflow-x-auto" [attr.data-testid]="testId()">
+    <table class="twes-issued-lines w-full border-collapse text-start">
+      <thead>
+        <tr>
+          <th scope="col">{{ 'issued_lines.description' | translate }}</th>
+          <th scope="col" class="twes-number">{{ 'issued_lines.quantity' | translate }}</th>
+          <th scope="col">{{ 'issued_lines.unit' | translate }}</th>
+          <th scope="col" class="twes-number">{{ 'issued_lines.price' | translate }}</th>
+          @if (discounted()) {
+            <th scope="col" class="twes-number">{{ 'issued_lines.discount' | translate }}</th>
+          }
+          <th scope="col">{{ 'issued_lines.taxes' | translate }}</th>
+          @if (withNet()) {
+            <th scope="col" class="twes-number">{{ 'issued_lines.net' | translate }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (line of lines(); track $index; let i = $index) {
+          <tr [attr.data-testid]="'line-' + i">
+            <td [attr.data-testid]="'line-' + i + '-description'">
+              <div class="flex flex-col">
+                <ng-container *ngTemplateOutlet="what; context: { $implicit: line }"></ng-container>
+              </div>
+            </td>
+            <td class="twes-number" [attr.data-testid]="'line-' + i + '-quantity'">
+              {{ line.quantity | amount: line.quantityScale }}
+            </td>
+            <td [attr.data-testid]="'line-' + i + '-unit'">{{ line.unit }}</td>
+            <td class="twes-number" [attr.data-testid]="'line-' + i + '-price'">
+              {{ line.unitPrice | amount: currencyScale() }}
+            </td>
+            @if (discounted()) {
+              <td class="twes-number" [attr.data-testid]="'line-' + i + '-discount'">
+                @if (discountOf(line); as rate) {
+                  {{ rate | amount: null }}&nbsp;%
+                }
+              </td>
+            }
+            <td [attr.data-testid]="'line-' + i + '-taxes'">{{ line.taxes }}</td>
+            @if (withNet()) {
+              <td class="twes-number font-semibold" [attr.data-testid]="'line-' + i + '-net'">
+                {{ line.net | amount: currencyScale() }}
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+<ng-template #what let-line>
+  <span class="font-medium">{{ line.description }}</span>
+  @if (line.reference !== null || line.lot !== null || line.notes.length > 0) {
+    <span class="twes-dot-list text-sm text-on-surface-variant">
+      @if (line.reference !== null) {
+        <span>{{ 'issued_lines.reference' | translate: { code: line.reference } }}</span>
+      }
+      @if (line.lot !== null) {
+        <span>{{ 'issued_lines.lot' | translate: { code: line.lot } }}</span>
+      }
+      @for (note of line.notes; track note) {
+        <span>{{ note | translate }}</span>
+      }
+    </span>
+  }
+</ng-template>

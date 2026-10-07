@@ -1029,6 +1029,33 @@ app-cookie-notice {
   }
 }
 
+// An issued document's lines, read as the PDF lays them out: figures aligned at the end of their column.
+.twes-issued-lines {
+  th,
+  td {
+    padding: 0.625rem 0.75rem;
+    border-block-end: 1px solid var(--mat-sys-outline-variant);
+    text-align: start;
+    vertical-align: top;
+  }
+
+  th {
+    color: var(--mat-sys-on-surface-variant);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  tbody tr:last-child td {
+    border-block-end: 0;
+  }
+
+  .twes-number {
+    text-align: end;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 .twes-legal-line {
   display: flex;
   flex-wrap: wrap;

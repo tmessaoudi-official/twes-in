@@ -1069,7 +1069,13 @@ describe('InvoicePage', () => {
     expect(text('invoice-amount-due')).toContain('1 121,570');
     expect(text('payment-y1')).toContain('VIR 882104');
     expect(text('payment-y1')).toContain('1 000,000');
-    expect((q('line-0-quantity') as HTMLInputElement).disabled).toBe(true);
+    // Its lines are read, as the PDF lays them out, never fields drawn disabled.
+    expect(q('invoice-lines-issued')?.querySelector('table')).not.toBeNull();
+    expect(q('invoice-lines')?.querySelector('input, app-select, app-pick-field')).toBeNull();
+    expect(q('line-0-quantity')?.tagName).toBe('TD');
+    expect(q('line-add')).toBeNull();
+    // Its document taxes are read in the totals, which list each one: no field drawn disabled for them.
+    expect(q('invoice-document-taxes')).toBeNull();
     expect(q('document-action-save')).toBeNull();
     expect(q('document-action-issue')).toBeNull();
     expect(q('invoice-cancel')).toBeNull();

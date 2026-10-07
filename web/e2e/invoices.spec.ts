@@ -159,7 +159,10 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
     const invoiceNumber = ((await page.getByTestId('invoice-title').textContent()) ?? '').trim();
     expect(invoiceNumber).toMatch(/\d{4}/);
-    await expect(page.getByTestId('line-0-quantity')).toBeDisabled();
+    // An issued invoice's lines are read, never fields drawn disabled.
+    await expect(page.getByTestId('line-0-quantity')).toHaveText('2');
+    await expect(page.getByTestId('line-0-net')).toHaveText('1 000,000');
+    await expect(page.getByTestId('invoice-lines').locator('input')).toHaveCount(0);
     const due = ((await page.getByTestId('invoice-amount-due').textContent()) ?? '').trim();
     expect(await wcagViolations(page)).toEqual([]);
 

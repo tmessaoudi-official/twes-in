@@ -617,7 +617,9 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-title')?.textContent).toContain('BL-2026-00001');
     expect(q('delivery-note-status')?.textContent).toContain('Validé');
     expect(q('delivery-note-fixed')?.textContent).toContain('peut encore être livré');
-    expect((q('line-0-quantity') as HTMLInputElement).disabled).toBe(true);
+    expect(q('delivery-note-lines-issued')?.querySelector('table')).not.toBeNull();
+    expect(q('delivery-note-lines')?.querySelector('input, app-select, app-pick-field')).toBeNull();
+    expect(q('line-0-quantity')?.tagName).toBe('TD');
     expect(q('document-action-save')).toBeNull();
     expect(q('document-action-validate')).toBeNull();
     expect(q('line-add')).toBeNull();
