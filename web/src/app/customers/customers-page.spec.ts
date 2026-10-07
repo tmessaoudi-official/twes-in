@@ -73,6 +73,7 @@ describe('CustomersPage', () => {
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
     customFields: signal([]).asReadonly(),
+    options: signal(null).asReadonly(),
     total: signal(1).asReadonly(),
     loadListContext: vi.fn(),
     loadPage: vi.fn(),
@@ -143,8 +144,11 @@ describe('CustomersPage', () => {
       page: 1,
       itemsPerPage: 25,
       q: '',
-      kind: null,
+      kinds: [],
+      groupIds: [],
+      regimes: [],
       isActive: null,
+      intervals: {},
       order: { key: 'number', direction: 'asc' },
     });
   });

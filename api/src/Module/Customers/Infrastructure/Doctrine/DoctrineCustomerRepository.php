@@ -10,12 +10,15 @@ declare(strict_types=1);
 namespace App\Module\Customers\Infrastructure\Doctrine;
 
 use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerRepository;
 use App\Module\Customers\Domain\CustomerSearch;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
+use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
@@ -56,12 +59,18 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
         } elseif ('' !== $words) {
             $query->andWhere('LOWER(c.number) = LOWER(:number)')->setParameter('number', $words);
         }
-        if (null !== $search->kind) {
-            $query->andWhere('c.kind = :kind')->setParameter('kind', $search->kind->value);
+        if ([] !== $search->kinds) {
+            $query->andWhere('c.kind IN (:kinds)')
+                ->setParameter('kinds', array_map(static fn (CustomerKind $each): string => $each->value, $search->kinds), ArrayParameterType::STRING);
         }
-        if (null !== $search->groupId) {
-            $query->andWhere('c.group = :group')->setParameter('group', $search->groupId, 'uuid');
+        if ([] !== $search->groups) {
+            $query->andWhere('c.group IN (:groupIds)')
+                ->setParameter('groupIds', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->groups), ArrayParameterType::STRING);
         }
+        if ([] !== $search->regimes) {
+            $query->andWhere('r.code IN (:regimes)')->setParameter('regimes', $search->regimes, ArrayParameterType::STRING);
+        }
+        Intervals::moments($query, 'c.createdAt', 'created', $search->createdOn, $search->timezone);
         if (null !== $search->active) {
             $query->andWhere('c.isActive = :active')->setParameter('active', $search->active);
         }

@@ -244,6 +244,57 @@ final class CustomersTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
+    public function testEveryFilterOfTheListCombines(): void
+    {
+        $retail = CustomerGroup::create($this->company, 'Retail', null, new \DateTimeImmutable());
+        $wholesale = CustomerGroup::create($this->company, 'Wholesale', null, new \DateTimeImmutable());
+        $this->em()->persist($retail);
+        $this->em()->persist($wholesale);
+        $standard = $this->standardRegime();
+        $exempt = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'exempt');
+        self::assertNotNull($exempt);
+        // The company keeps Tunis time, an hour ahead of the stored UTC: 23:30 UTC on the 14th is already the 15th there.
+        foreach ([
+            ['A', CustomerKind::Company, $retail, $standard, true, '2026-03-10 10:00'],
+            ['B', CustomerKind::Individual, $wholesale, $exempt, true, '2026-03-14 23:30'],
+            ['C', CustomerKind::Individual, null, $standard, false, '2026-03-15 14:00'],
+            ['D', CustomerKind::Company, null, $exempt, true, '2026-03-20 09:00'],
+        ] as [$number, $kind, $group, $regime, $active, $at]) {
+            $at = new \DateTimeImmutable($at, new \DateTimeZone('UTC'));
+            $customer = Customer::create($this->company, $number, new CustomerProfile($kind, 'Client '.$number), $group, $regime, [], $at);
+            $customer->revise($number, $customer->getProfile(), $group, $regime, [], $active, $at);
+            $this->em()->persist($customer);
+        }
+        $this->em()->flush();
+        [$retailId, $wholesaleId] = [$retail->getId()->toRfc4122(), $wholesale->getId()->toRfc4122()];
+        $this->signedIn(['customer.read']);
+
+        foreach ([
+            'kind[]=company&kind[]=individual' => ['A', 'B', 'C', 'D'],
+            'kind=individual' => ['B', 'C'],
+            "customerGroupId[]=$retailId&customerGroupId[]=$wholesaleId" => ['A', 'B'],
+            "customerGroupId=$wholesaleId" => ['B'],
+            "kind[]=company&customerGroupId[]=$retailId&customerGroupId[]=$wholesaleId" => ['A'],
+            'taxRegime[]=exempt' => ['B', 'D'],
+            'taxRegime[]=exempt&taxRegime[]=standard&isActive=false' => ['C'],
+            'taxRegime=standard&kind=company' => ['A'],
+            'createdAt[from]=2026-03-15' => ['B', 'C', 'D'],
+            'createdAt[to]=2026-03-14' => ['A'],
+            'createdAt[from]=2026-03-15&createdAt[to]=2026-03-15' => ['B', 'C'],
+            'createdAt[from]=2026-03-11&kind[]=company&isActive=true' => ['D'],
+        ] as $query => $numbers) {
+            $this->getJson($this->path().'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($numbers, array_column($this->jsonList(), 'number'), $query);
+            self::assertSame(\count($numbers), $this->jsonPage()['totalItems'], $query);
+        }
+
+        foreach (['kind[]=company&kind[]=robot', 'customerGroupId[]=not-a-uuid', 'taxRegime[]=nowhere', 'createdAt[from]=2026-03-20&createdAt[to]=2026-03-10', 'createdAt[from]=2026-02-30'] as $refused) {
+            $this->getJson($this->path().'?'.$refused);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+        }
+    }
+
     private function seedCustomers(int $count): void
     {
         $regime = $this->standardRegime();

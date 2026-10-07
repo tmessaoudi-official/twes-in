@@ -1074,7 +1074,8 @@
       "taxRegime": "Régime fiscal",
       "defaultDiscountRate": "Remise par défaut (%)",
       "notes": "Notes",
-      "defaultTaxComponentIds": "Taxes par défaut"
+      "defaultTaxComponentIds": "Taxes par défaut",
+      "createdAt": "Créé le"
     },
     "form": {
       "no_group": "Aucun groupe",

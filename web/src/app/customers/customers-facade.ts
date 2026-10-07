@@ -45,14 +45,19 @@ export class CustomersFacade {
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
-  /** What the list screen needs besides its page: the groups its rows name and the custom fields it adds columns for. */
+  /**
+   * What the list screen needs besides its page: the groups its rows name and it filters by, the custom fields it adds
+   * columns for, and the options, whose tax regimes it filters by.
+   */
   async loadListContext(companyId: string): Promise<void> {
     await this.read(async () => {
-      const [groups, customFields] = await Promise.all([
+      const [groups, customFields, options] = await Promise.all([
         this.api.groups(companyId),
         this.fields.list(companyId, 'customer'),
+        this.api.options(companyId),
       ]);
       this.groupsSignal.set(groups);
+      this.optionsSignal.set(options);
       this.customFieldsSignal.set(customFields);
     });
   }

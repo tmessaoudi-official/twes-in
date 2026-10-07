@@ -6,6 +6,7 @@ import type { CustomFieldDefinition } from '../shared/custom-fields/custom-field
 import { CustomersApi, CustomersRefused } from './customers-api';
 import { CustomersFacade } from './customers-facade';
 import type {
+  CustomerOptions,
   ContactInput,
   CustomerGroupRow,
   CustomerInput,
@@ -17,9 +18,19 @@ const everyCustomer: CustomerSearch = {
   page: 1,
   itemsPerPage: 25,
   q: '',
-  kind: null,
+  kinds: [],
+  groupIds: [],
+  regimes: [],
   isActive: null,
+  intervals: {},
   order: null,
+};
+
+const options: CustomerOptions = {
+  countryCode: 'TN',
+  identifiers: [],
+  regimes: [{ code: 'exempt', label: 'Exonéré', excludedFamilies: ['vat'] }],
+  taxes: [],
 };
 
 const input: CustomerInput = {
@@ -99,12 +110,14 @@ describe('CustomersFacade', () => {
     facade = TestBed.inject(CustomersFacade);
   });
 
-  it('reads the groups the list names and the custom fields it adds columns for', async () => {
+  it('reads the groups the list names, the custom fields it adds columns for and the regimes it filters by', async () => {
     api.groups.mockResolvedValue([wholesalers]);
+    api.options.mockResolvedValue(options);
 
     await facade.loadListContext('c1');
 
     expect(facade.groups()).toEqual([wholesalers]);
+    expect(facade.options()).toEqual(options);
     expect(facade.customFields()).toEqual([sector]);
     expect(fieldsApi.list).toHaveBeenCalledWith('c1', 'customer');
     expect(api.customers).not.toHaveBeenCalled();

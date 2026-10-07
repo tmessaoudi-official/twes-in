@@ -1074,7 +1074,8 @@
       "taxRegime": "Tax regime",
       "defaultDiscountRate": "Default discount (%)",
       "notes": "Notes",
-      "defaultTaxComponentIds": "Default taxes"
+      "defaultTaxComponentIds": "Default taxes",
+      "createdAt": "Created on"
     },
     "form": {
       "no_group": "No group",

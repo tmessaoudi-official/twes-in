@@ -734,6 +734,24 @@ describe('DataList', () => {
       expect((await facetReads()).trigger).toContain('Archived');
     });
 
+    it('keeps what the address names for a facet whose options the screen has not read yet', async () => {
+      server.destroy();
+      await mount(undefined, undefined, all, { status: 'archived,gone', city: 'Sfax,Tunis' });
+      fixture.destroy();
+      server = TestBed.createComponent(ServerHost);
+      // The company's own values (its groups, its establishments) arrive after the list opens; the API judges them.
+      (server.componentInstance as { descriptor: ListDescriptor<Customer> }).descriptor = {
+        ...descriptor,
+        filters: [
+          ...(descriptor.filters ?? []),
+          { id: 'city', label: 'c.city', multiple: true, value: (row) => row.city, options: [] },
+        ],
+      };
+      await settleServer();
+
+      expect(queries()[0]?.filters).toEqual({ status: 'archived', city: 'Sfax,Tunis' });
+    });
+
     it('keeps what a person chose in the address, in place of the previous one', async () => {
       const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 

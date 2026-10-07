@@ -113,6 +113,12 @@ test("a customer in a group inherits the group's payment terms and gets a contac
     await page.reload();
     await expect(page.getByTestId('list-filter')).toHaveValue(number);
     await expect(page.getByTestId(`customer-${number}`)).toBeVisible();
+
+    // Row 197: two kinds OR'd, AND'd with a tax regime and the search, each answered by the API.
+    await page.goto(`/customers?q=${number}&kind=company,individual&regime=standard`);
+    await expect(page.getByTestId(`customer-${number}`)).toBeVisible();
+    await page.goto(`/customers?q=${number}&regime=exempt`);
+    await expect(page.getByTestId('list-no-match')).toBeVisible();
   } finally {
     await retire(page, number, groupName);
   }

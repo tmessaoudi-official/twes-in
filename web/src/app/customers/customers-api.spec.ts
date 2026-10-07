@@ -10,8 +10,11 @@ const everyCustomer: CustomerSearch = {
   page: 1,
   itemsPerPage: 25,
   q: '',
-  kind: null,
+  kinds: [],
+  groupIds: [],
+  regimes: [],
   isActive: null,
+  intervals: {},
   order: null,
 };
 
@@ -123,14 +126,15 @@ describe('CustomersApi', () => {
         {
           ...everyCustomer,
           q: ' mer ',
-          kind: 'company',
+          kinds: ['company'],
           isActive: false,
+          intervals: { 'createdAt.to': '2026-03-31' },
           order: { key: 'name', direction: 'desc' },
         },
         'xlsx',
       ),
     ).toBe(
-      '/api/companies/c%2F1/exports/customers.xlsx?q=mer&kind=company&isActive=false&order%5Bname%5D=desc',
+      '/api/companies/c%2F1/exports/customers.xlsx?q=mer&kind%5B%5D=company&isActive=false&createdAt%5Bto%5D=2026-03-31&order%5Bname%5D=desc',
     );
     expect(api.exportUrl('c1', everyCustomer, 'csv')).toBe(
       '/api/companies/c1/exports/customers.csv',
@@ -200,14 +204,17 @@ describe('CustomersApi', () => {
       page: 2,
       itemsPerPage: 50,
       q: 'carthagé',
-      kind: 'company',
+      kinds: ['company', 'individual'],
+      groupIds: ['g1', 'g2'],
+      regimes: ['exempt'],
       isActive: false,
+      intervals: { 'createdAt.from': '2026-03-01' },
       order: { key: 'customerGroup', direction: 'desc' },
     });
     const request = http.expectOne((req) => req.url === '/api/companies/c1/customers');
     expect(request.request.headers.get('Accept')).toBe('application/ld+json');
     expect(request.request.params.toString()).toBe(
-      'page=2&itemsPerPage=50&q=carthag%C3%A9&kind=company&isActive=false&order%5BcustomerGroup%5D=desc',
+      'page=2&itemsPerPage=50&q=carthag%C3%A9&kind%5B%5D=company&kind%5B%5D=individual&customerGroupId%5B%5D=g1&customerGroupId%5B%5D=g2&taxRegime%5B%5D=exempt&isActive=false&createdAt%5Bfrom%5D=2026-03-01&order%5BcustomerGroup%5D=desc',
     );
     request.flush({ member: [{ id: 'k1', ...carthage }], totalItems: 51 });
 

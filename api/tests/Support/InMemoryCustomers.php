@@ -29,7 +29,7 @@ final class InMemoryCustomers implements CustomerRepository
         return $mine;
     }
 
-    /** Narrows as the database does; sorts by number only, which is all the unit tests ask for. */
+    /** Narrows as the database does, but for the creation day; sorts by number only, which is all the unit tests ask for. */
     public function search(Uuid $companyId, CustomerSearch $search, PageRequest $page): Page
     {
         $found = array_values(array_filter($this->ofCompany($companyId), static function (Customer $c) use ($search): bool {
@@ -38,8 +38,9 @@ final class InMemoryCustomers implements CustomerRepository
             $text = InMemorySearch::finds($search->text, $c->getNumber(), [$profile->name, $profile->legalName, $profile->email, $address->line1, $address->postalCode, $address->city, ...array_values($profile->identifiers)]);
 
             return $text
-                && (null === $search->kind || $profile->kind === $search->kind)
-                && (null === $search->groupId || true === $c->getGroup()?->getId()->equals($search->groupId))
+                && ([] === $search->kinds || \in_array($profile->kind, $search->kinds, true))
+                && ([] === $search->groups || \in_array($c->getGroup()?->getId()->toRfc4122(), array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->groups), true))
+                && ([] === $search->regimes || \in_array($c->getTaxRegime()->getCode(), $search->regimes, true))
                 && (null === $search->active || $c->isActive() === $search->active);
         }));
 

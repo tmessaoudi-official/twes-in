@@ -77,14 +77,29 @@ describe('customer forms', () => {
       'status',
     ]);
     expect(CUSTOMERS_LIST.defaultSort).toEqual({ column: 'number', direction: 'asc' });
-    expect(CUSTOMERS_LIST.filters?.map((filter) => filter.id)).toEqual(['kind', 'status']);
+    expect(CUSTOMERS_LIST.filters?.map((filter) => [filter.id, filter.multiple ?? false])).toEqual([
+      ['kind', true],
+      ['status', false],
+      ['group', true],
+      ['regime', true],
+    ]);
+    expect(CUSTOMERS_LIST.ranges?.map((range) => [range.id, range.kind])).toEqual([
+      ['createdAt', 'day'],
+    ]);
   });
 
   it('asks the API for the page, words, kind, status and sort the list shows', () => {
     expect(
       customerSearch({
         query: ' amel ',
-        filters: { kind: 'individual', status: 'inactive' },
+        filters: {
+          kind: 'individual,robot',
+          status: 'inactive',
+          group: '0199a1b2-0000-7000-8000-000000000001,not-an-id',
+          regime: 'exempt,export',
+          'createdAt.from': '2026-03-01',
+          'createdAt.to': '2026-02-30',
+        },
         sort: { column: 'group', direction: 'desc' },
         pageIndex: 2,
         pageSize: 50,
@@ -93,8 +108,11 @@ describe('customer forms', () => {
       page: 3,
       itemsPerPage: 50,
       q: ' amel ',
-      kind: 'individual',
+      kinds: ['individual'],
+      groupIds: ['0199a1b2-0000-7000-8000-000000000001'],
+      regimes: ['exempt', 'export'],
       isActive: false,
+      intervals: { 'createdAt.from': '2026-03-01' },
       order: { key: 'customerGroup', direction: 'desc' },
     });
     expect(
@@ -105,7 +123,7 @@ describe('customer forms', () => {
         pageIndex: 0,
         pageSize: 25,
       }),
-    ).toMatchObject({ kind: null, isActive: true, order: { key: 'isActive', direction: 'asc' } });
+    ).toMatchObject({ kinds: [], isActive: true, order: { key: 'isActive', direction: 'asc' } });
     expect(
       customerSearch({
         query: '',

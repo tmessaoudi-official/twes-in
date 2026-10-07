@@ -53,7 +53,13 @@ export class CustomersPage implements OnInit {
   private readonly facade = inject(CustomersFacade);
   private readonly auth = inject(AuthFacade);
 
-  protected readonly list = computed(() => customersList(this.facade.customFields()));
+  protected readonly list = computed(() =>
+    customersList(
+      this.facade.customFields(),
+      this.facade.groups(),
+      this.facade.options()?.regimes ?? [],
+    ),
+  );
   protected readonly rows = computed(() =>
     customerListRows(this.facade.customers(), this.facade.groups()),
   );

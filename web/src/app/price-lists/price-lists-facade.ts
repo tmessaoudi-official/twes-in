@@ -114,8 +114,11 @@ export class PriceListsFacade {
       page: 1,
       itemsPerPage: PICK_SIZE,
       q: words,
-      kind: null,
+      kinds: [],
+      groupIds: [],
+      regimes: [],
       isActive: true,
+      intervals: {},
       order: null,
     });
     return page.rows.map((row) => ({ id: row.id, code: row.number, name: row.name }));

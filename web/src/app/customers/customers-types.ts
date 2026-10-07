@@ -19,8 +19,14 @@ export interface CustomerSearch {
   itemsPerPage: number;
   /** Words found in the number, name, legal name, email, billing address or registration numbers; empty finds all. */
   q: string;
-  kind: CustomerKind | null;
+  /** Any of these, each filter's values OR'd and the filters AND'd (row 197). */
+  kinds: readonly CustomerKind[];
+  groupIds: readonly string[];
+  /** Tax regime codes, among those of the company's fiscal preset. */
+  regimes: readonly string[];
   isActive: boolean | null;
+  /** The ends of the creation day interval, `createdAt.from` and `createdAt.to`, in the company's own calendar. */
+  intervals: Readonly<Record<string, string>>;
   order: { key: CustomerSortKey; direction: 'asc' | 'desc' } | null;
 }
 

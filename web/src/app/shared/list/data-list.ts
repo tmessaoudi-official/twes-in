@@ -453,8 +453,11 @@ export class DataList<Row> implements OnInit {
     this.searched.set(words);
     const chosen: ListFilterValues = {};
     for (const filter of descriptor.filters ?? []) {
-      const held = filterValues(params.get(filter.id) ?? undefined).filter((value) =>
-        filter.options.some((option) => option.value === value),
+      // A facet offering nothing yet is one whose options are the company's own (its groups, its establishments), read
+      // after the list opens: what the address names stays, and the API, which refuses or finds nothing, judges it.
+      const held = filterValues(params.get(filter.id) ?? undefined).filter(
+        (value) =>
+          filter.options.length === 0 || filter.options.some((option) => option.value === value),
       );
       // A single-choice filter takes the first value an address names, as it took the only one before.
       const kept = filter.multiple ? held : held.slice(0, 1);

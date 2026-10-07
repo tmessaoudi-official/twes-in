@@ -15,6 +15,7 @@ import type {
   FormSection,
   FormValues,
 } from '../shared/form/form-types';
+import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { withCustomColumns } from '../shared/list/list-view';
 import {
@@ -107,10 +108,12 @@ export const CUSTOMERS_LIST: ListDescriptor<CustomerListRow> = {
       width: 120,
     },
   ],
+  ranges: [{ id: 'createdAt', kind: 'day', label: `${FIELDS}.createdAt` }],
   filters: [
     {
       id: 'kind',
       label: `${FIELDS}.kind`,
+      multiple: true,
       value: (row) => row.kind,
       options: CUSTOMER_KINDS.map((kind) => ({ value: kind, label: `customers.kinds.${kind}` })),
     },
@@ -123,8 +126,27 @@ export const CUSTOMERS_LIST: ListDescriptor<CustomerListRow> = {
         label: `customers.statuses.${status}`,
       })),
     },
+    // The company's own groups and its preset's regimes, which only the page knows: it fills the options in.
+    {
+      id: 'group',
+      label: `${FIELDS}.customerGroupId`,
+      multiple: true,
+      value: (row) => row.customerGroupId,
+      options: [],
+    },
+    {
+      id: 'regime',
+      label: `${FIELDS}.taxRegime`,
+      multiple: true,
+      value: (row) => row.taxRegime,
+      options: [],
+    },
   ],
 };
+
+const INTERVALS: readonly { id: string; kind: 'day' | 'amount'; label: string }[] = [
+  { id: 'createdAt', kind: 'day', label: `${FIELDS}.createdAt` },
+];
 
 /** The column a person sorts by, as the API names what it sorts customers by. */
 const SORT_KEYS: Readonly<Record<string, CustomerSortKey>> = {
@@ -142,10 +164,20 @@ const SORT_KEYS: Readonly<Record<string, CustomerSortKey>> = {
  */
 export function customersList(
   fields: readonly CustomFieldDefinition[],
+  groups: readonly CustomerGroupRow[] = [],
+  regimes: readonly { code: string; label: string }[] = [],
 ): ListDescriptor<CustomerListRow> {
   const list = withCustomColumns(CUSTOMERS_LIST, customListColumns<CustomerListRow>(fields));
+  const options: Readonly<Record<string, { value: string; label: string }[]>> = {
+    group: groups.map((group) => ({ value: group.id, label: group.name })),
+    regime: regimes.map((regime) => ({ value: regime.code, label: regime.label })),
+  };
   return {
     ...list,
+    filters: (list.filters ?? []).map((filter) => {
+      const filled = options[filter.id];
+      return filled === undefined ? filter : { ...filter, options: filled };
+    }),
     columns: list.columns.map((column) => ({
       ...column,
       sortable: column.sortable === true && column.id in SORT_KEYS,
@@ -155,15 +187,18 @@ export function customersList(
 
 /** What the API is asked for the page of customers the list shows. */
 export function customerSearch(query: ListQuery): CustomerSearch {
-  const kind = CUSTOMER_KINDS.find((known) => known === query.filters['kind']) ?? null;
+  const kinds = filterValues(query.filters['kind']);
   const status = query.filters['status'];
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
     itemsPerPage: query.pageSize,
     q: query.query,
-    kind,
+    kinds: CUSTOMER_KINDS.filter((known) => kinds.includes(known)),
+    groupIds: idValues(query.filters['group']),
+    regimes: filterValues(query.filters['regime']),
     isActive: status === 'active' ? true : status === 'inactive' ? false : null,
+    intervals: rangeParams(query.filters, INTERVALS),
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };

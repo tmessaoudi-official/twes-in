@@ -4,6 +4,7 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { exportAddress, type ExportFormat } from '../shared/list/export-address';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import type {
   ApiCompaniesCompanyIdcustomersGetCollectionResponse,
@@ -308,8 +309,13 @@ const contactsPath = (companyId: string, customerId: string): string =>
 function toSearchParams(search: CustomerSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
   if (search.q.trim() !== '') params = params.set('q', search.q.trim());
-  if (search.kind !== null) params = params.set('kind', search.kind);
+  for (const kind of search.kinds) params = params.append('kind[]', kind);
+  for (const id of search.groupIds) params = params.append('customerGroupId[]', id);
+  for (const code of search.regimes) params = params.append('taxRegime[]', code);
   if (search.isActive !== null) params = params.set('isActive', search.isActive);
+  for (const [key, value] of Object.entries(search.intervals)) {
+    params = params.set(apiRangeKey(key), value);
+  }
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
   return params;

@@ -9,25 +9,26 @@ declare(strict_types=1);
 
 namespace App\Module\Customers\Infrastructure\Export;
 
+use App\Fiscal\Application\Regime\ListCustomerTaxRegimes;
+use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\ImportExport\Application\DeclaresExport;
 use App\ImportExport\Application\ExportQuery;
 use App\Module\Customers\Application\ManageCustomers;
 use App\Module\Customers\Domain\Customer;
-use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerSearch;
 use App\Module\Customers\Infrastructure\ApiPlatform\CustomerPermission;
+use App\Module\Customers\Infrastructure\ApiPlatform\CustomerSearchReader;
 use App\Module\Customers\Infrastructure\Import\CustomerImport;
 use App\Module\Customers\Infrastructure\Module\CustomersModule;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * The customers list as a file, under the columns the import reads (docs/SPEC.md § 7, row 60), so what a company
- * exports it can correct in a spreadsheet and bring back. The search, kind, group, active choice and order are the
- * list's own.
+ * exports it can correct in a spreadsheet and bring back. The search, the filters and the order are the list's own,
+ * read by the list's own reader.
  */
 final readonly class CustomerExport implements DeclaresExport
 {
@@ -37,6 +38,7 @@ final readonly class CustomerExport implements DeclaresExport
         private CustomerImport $columns,
         private ManageCustomers $manage,
         private TaxComponentRepository $taxes,
+        private ListCustomerTaxRegimes $regimes,
     ) {
     }
 
@@ -62,15 +64,8 @@ final readonly class CustomerExport implements DeclaresExport
 
     public function rows(Company $company, ExportQuery $query): iterable
     {
-        $kind = $query->choice('kind', array_column(CustomerKind::cases(), 'value'));
-        $group = $query->text('customerGroupId');
-        $search = new CustomerSearch(
-            $query->text(),
-            null === $kind ? null : CustomerKind::from($kind),
-            null !== $group && Uuid::isValid($group) ? Uuid::fromString($group) : null,
-            $query->flag('isActive'),
-            $query->order(CustomerSearch::SORTS),
-        );
+        $regimes = array_map(static fn (CustomerTaxRegime $regime): string => $regime->getCode(), $this->regimes->for($company));
+        $search = CustomerSearchReader::read($query->parameters(), $query->text(), $query->order(CustomerSearch::SORTS), $company, $regimes);
         $columns = $this->columns($company);
         $codes = [];
         foreach ($this->taxes->ofCompany($company->getId()) as $tax) {
