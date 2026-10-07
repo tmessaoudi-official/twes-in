@@ -1335,7 +1335,6 @@
       "label": "Aperçu de {{number}}",
       "terms": "{{days}} jours",
       "open": "Ouvrir",
-      "pay": "Encaisser",
       "close": "Fermer l’aperçu",
       "unreadable": "Ce document ne peut pas être lu."
     },
@@ -1349,6 +1348,7 @@
       "reference": "Référence",
       "reference_hint": "Un numéro de virement ou de chèque, par exemple.",
       "notes": "Notes",
+      "collect": "Encaisser",
       "record": "Enregistrer le paiement",
       "recorded": "Le paiement a été enregistré.",
       "delete": "Supprimer le paiement de {{amount}}",

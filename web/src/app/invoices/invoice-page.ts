@@ -406,7 +406,7 @@ export class InvoicePage {
       },
       {
         id: 'record-payment',
-        label: 'invoices.payments.record',
+        label: 'invoices.payments.collect',
         shortcut: 'p',
         next: true,
         icon: 'payments',

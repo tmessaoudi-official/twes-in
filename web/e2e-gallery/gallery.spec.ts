@@ -23,7 +23,9 @@ interface Screen {
 const SIGNED_OUT: Screen[] = [
   { key: 'login', group: 'Connexion', path: '/login' },
   { key: 'signup', group: 'Connexion', path: '/signup' },
+  { key: 'forgot-password', group: 'Connexion', path: '/forgot-password' },
   { key: 'invitation-invalid', group: 'Connexion', path: '/invitations/not-a-token' },
+  { key: 'legal-mentions', group: 'Connexion', path: '/legal/mentions' },
 ];
 
 const SIGNED_IN: Screen[] = [
@@ -65,6 +67,16 @@ const SIGNED_IN: Screen[] = [
   { key: 'stock', group: 'Stock', path: '/stock' },
   { key: 'stock-movements', group: 'Stock', path: '/stock/movements' },
   { key: 'stock-locations', group: 'Stock', path: '/stock/locations' },
+  { key: 'stock-count', group: 'Stock', path: '/stock/count' },
+  { key: 'stock-valuation', group: 'Stock', path: '/stock/valuation' },
+  { key: 'stock-plan', group: 'Stock', path: '/stock/plan' },
+  { key: 'location-labels', group: 'Stock', path: '/location-labels' },
+  { key: 'instruments', group: 'Factures', path: '/instruments' },
+  { key: 'price-lists', group: 'Produits', path: '/price-lists' },
+  { key: 'watch', group: 'À surveiller', path: '/watch' },
+  { key: 'watch-late', group: 'À surveiller', path: '/watch/invoices.late_customer' },
+  { key: 'account', group: 'Mon compte', path: '/account' },
+  { key: 'coming', group: 'Bientôt', path: '/coming/quotes' },
   { key: 'vendors', group: 'Fournisseurs', path: '/vendors' },
   {
     key: 'vendor',
@@ -83,6 +95,7 @@ const SIGNED_IN: Screen[] = [
   { key: 'expense-new', group: 'Dépenses', path: '/expenses/new' },
   { key: 'expense-categories', group: 'Dépenses', path: '/expenses/categories' },
   { key: 'platform', group: 'Plateforme', path: '/platform' },
+  { key: 'platform-legal', group: 'Plateforme', path: '/platform/legal' },
   { key: 'settings', group: 'Paramètres', path: '/settings' },
   { key: 'company', group: 'Paramètres', path: '/company' },
   { key: 'company-profile', group: 'Paramètres', path: '/company/profile' },
@@ -93,6 +106,7 @@ const SIGNED_IN: Screen[] = [
   { key: 'company-modules', group: 'Paramètres', path: '/company/modules' },
   { key: 'company-subscription', group: 'Paramètres', path: '/company/subscription' },
   { key: 'members', group: 'Paramètres', path: '/members' },
+  { key: 'company-roles', group: 'Paramètres', path: '/company/roles' },
   { key: 'fiscal-taxes', group: 'Paramètres', path: '/fiscal/taxes' },
   { key: 'fiscal-units', group: 'Paramètres', path: '/fiscal/units' },
 ];
@@ -102,6 +116,10 @@ const VIEWPORTS = [
   { name: 'phone', width: 390, height: 844 },
 ] as const;
 const SCHEMES = ['light', 'dark'] as const;
+// `GALLERY_ONLY=invoice,home` pictures those screens alone, to check one change without the whole run.
+const ONLY = (process.env['GALLERY_ONLY'] ?? '').split(',').filter((key) => key !== '');
+// The tallest picture: a long list is pictured to this height, its foot left out.
+const TALLEST = 6000;
 
 interface Shot {
   key: string;
@@ -135,10 +153,16 @@ async function open(page: Page, screen: Screen): Promise<boolean> {
   await page.goto(screen.firstRowOf);
   await settle(page);
   // A row IS a link on the column that names it (docs/SPEC.md § 7, 2026-09-19 23:16, row 71): there is no longer
-  // an "Ouvrir" in its actions, and a list without a link has no record page to picture.
+  // an "Ouvrir" in its actions, and a list without a link has no record page to picture. Its address is followed
+  // rather than clicked, and a link to a side sheet over the list (`?open=<id>`, the invoices on a desktop) is
+  // followed to the record's own page.
   const link = page.locator('a[data-testid^="list-link-"]').first();
   if ((await link.count()) === 0) return false;
-  await link.click();
+  const href = await link.getAttribute('href');
+  if (href === null) return false;
+  const target = new URL(href, page.url());
+  const sheet = target.searchParams.get('open');
+  await page.goto(sheet === null ? href : `${target.pathname}/${sheet}`);
   await page.waitForURL((url) => url.pathname !== screen.firstRowOf, { timeout: 15_000 });
   return true;
 }
@@ -148,7 +172,7 @@ async function captureAll(page: Page, screens: Screen[]): Promise<void> {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     for (const scheme of SCHEMES) {
       await page.emulateMedia({ colorScheme: scheme });
-      for (const screen of screens) {
+      for (const screen of screens.filter((each) => ONLY.length === 0 || ONLY.includes(each.key))) {
         try {
           if (!(await open(page, screen))) {
             missed.push(`${screen.key} ${viewport.name} ${scheme}: no row to open`);
@@ -159,24 +183,8 @@ async function captureAll(page: Page, screens: Screen[]): Promise<void> {
           missed.push(`${screen.key} ${viewport.name} ${scheme}: ${String(error).split('\n')[0]}`);
           continue;
         }
-        if (viewport.name === 'phone') {
-          // A full-page capture draws a fixed element where the viewport put it, so the phone's bottom bar would sit
-          // mid-picture over whatever is there. Back in the flow, it closes the page, where scrolling meets it. Set
-          // through the CSSOM: the page's Content-Security-Policy rightly refuses an injected <style>.
-          await page.evaluate(() => {
-            document
-              .querySelector<HTMLElement>('.twes-bottom-bar')
-              ?.style.setProperty('position', 'static', 'important');
-          });
-        }
         const file = `${screen.key}--${viewport.name}--${scheme}.jpg`;
-        await page.screenshot({
-          path: `${OUT}/${file}`,
-          fullPage: true,
-          type: 'jpeg',
-          quality: 78,
-          animations: 'disabled',
-        });
+        await pictureWhole(page, viewport, `${OUT}/${file}`);
         shots.push({
           key: screen.key,
           group: screen.group,
@@ -189,6 +197,29 @@ async function captureAll(page: Page, screens: Screen[]): Promise<void> {
       }
     }
   }
+}
+
+/**
+ * Pictures the whole screen in a window as tall as its content. The signed-in page scrolls inside its panel, which a
+ * full-page capture does not unroll, and draws the phone's fixed bottom bar where the first window put it, mid-picture
+ * over the content (audit 2026-10-06 V-4); in a window as tall as the page, the bar and the cookie notice sit at its
+ * foot as a person scrolling there sees them.
+ */
+async function pictureWhole(
+  page: Page,
+  viewport: (typeof VIEWPORTS)[number],
+  path: string,
+): Promise<void> {
+  const height = await page.evaluate(() => {
+    const panel = document.querySelector('mat-sidenav-content');
+    const document_ = document.documentElement;
+    const hidden = panel === null ? 0 : panel.scrollHeight - panel.clientHeight;
+    return Math.max(document_.scrollHeight, window.innerHeight + hidden);
+  });
+  await page.setViewportSize({ width: viewport.width, height: Math.min(height, TALLEST) });
+  await settle(page);
+  await page.screenshot({ path, type: 'jpeg', quality: 78, animations: 'disabled' });
+  await page.setViewportSize({ width: viewport.width, height: viewport.height });
 }
 
 /**

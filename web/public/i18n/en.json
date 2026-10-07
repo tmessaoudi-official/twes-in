@@ -1335,7 +1335,6 @@
       "label": "Preview of {{number}}",
       "terms": "{{days}} days",
       "open": "Open",
-      "pay": "Collect",
       "close": "Close the preview",
       "unreadable": "This document cannot be read."
     },
@@ -1349,6 +1348,7 @@
       "reference": "Reference",
       "reference_hint": "A transfer or cheque number, say.",
       "notes": "Notes",
+      "collect": "Collect",
       "record": "Record the payment",
       "recorded": "The payment has been recorded.",
       "delete": "Delete the payment of {{amount}}",

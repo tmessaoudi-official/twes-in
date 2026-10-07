@@ -27,7 +27,7 @@ class StaticLoader implements TranslateLoader {
       invoices: {
         statuses: { partially_paid: 'Partiellement payée', paid: 'Soldée', overdue: 'En retard' },
         fields: { issueDate: 'Émise le', dueDate: 'Échéance', establishmentId: 'Établissement' },
-        payments: { title: 'Paiements', methods: { transfer: 'Virement' } },
+        payments: { title: 'Paiements', collect: 'Encaisser', methods: { transfer: 'Virement' } },
         due: { left: 'Reste à encaisser', paid_of: '{{paid}} payés sur {{total}}' },
         home: {
           late: '{{days}} j de retard',
@@ -39,7 +39,6 @@ class StaticLoader implements TranslateLoader {
           label: 'Aperçu de {{number}}',
           terms: '{{days}} jours',
           open: 'Ouvrir',
-          pay: 'Encaisser',
           close: 'Fermer l’aperçu',
           unreadable: 'Ce document ne peut pas être lu.',
         },
@@ -208,6 +207,7 @@ describe('InvoiceSheet', () => {
     await open();
     expect(q('invoice-sheet-open')?.getAttribute('href')).toBe('/invoices/i1');
     expect(q('invoice-sheet-pay')?.getAttribute('href')).toBe('/invoices/i1?pay=1');
+    expect(text('invoice-sheet-pay')).toContain('Encaisser');
     expect(q('invoice-sheet-pdf')?.getAttribute('href')).toBe('/api/companies/c1/invoices/i1/pdf');
   });
 

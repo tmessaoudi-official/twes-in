@@ -907,6 +907,8 @@ describe('InvoicePage', () => {
     await settle();
     expect(screen.next()?.id).toBe('record-payment');
     expect(screen.forKey('p')?.id).toBe('record-payment');
+    // Named as the sheet over the list names it (audit 2026-10-06 V-4 c): one action, one word.
+    expect(screen.next()?.label).toBe('invoices.payments.collect');
   });
 
   // docs/SPEC.md § 7, audit 2026-10-06 A-16: a line taken from a delivery note keeps its product and its cap.
