@@ -324,6 +324,16 @@ final class InvitationTest extends ApiTestCase
         self::assertEmailCount(1);
         $this->getJson($unsent);
         self::assertSame([], $this->jsonList());
+
+        // Failed for good again, then invited again from the members page, as the subject's hint says: the open invitation
+        // is replaced, and the one nobody received leaves the subject.
+        static::getContainer()->get(EventDispatcherInterface::class)->dispatch($failed(3));
+        $this->getJson($unsent);
+        self::assertCount(1, $this->jsonList());
+        $this->postJson($company.'/members', ['email' => 'stranger@twes.local', 'role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->getJson($unsent);
+        self::assertSame([], $this->jsonList());
     }
 
     public function testAnInvitationReplacedBeforeTheWorkerRanIsNotMailed(): void
