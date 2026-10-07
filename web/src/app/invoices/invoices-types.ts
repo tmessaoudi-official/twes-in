@@ -5,7 +5,8 @@ import type { StatusTone } from '../shared/theme/accent-theme';
 import { type LifecycleStage, tonesOf } from '../shared/theme/lifecycle-tones';
 
 /** Why the API refused, as the invoices screens translate it. */
-export type InvoicesError = 'network' | 'not_found' | 'conflict' | 'invalid' | 'excess_to';
+export type InvoicesError =
+  'network' | 'not_found' | 'conflict' | 'invalid' | 'excess_to' | 'customer_unavailable';
 
 /** Where the part of a credit note that was already paid goes: kept to the customer's credit, or paid back. */
 export type CreditExcessTo = 'balance' | 'refund';

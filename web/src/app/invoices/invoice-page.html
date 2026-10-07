@@ -74,9 +74,11 @@
     }
   }
   @if (error(); as code) {
-    <p role="alert" data-testid="invoice-error" class="text-error">
-      {{ 'invoices.errors.' + code | translate }}
-    </p>
+    @if (code !== 'customer_unavailable') {
+      <p role="alert" data-testid="invoice-error" class="text-error">
+        {{ 'invoices.errors.' + code | translate }}
+      </p>
+    }
   }
 
   @if (current(); as invoice) {
@@ -159,9 +161,9 @@
                   inputId="invoice-customer-input"
                   [search]="searchCustomers"
                   [value]="customerShown()"
-                  [disabled]="!editable()"
+                  [disabled]="!editable() || customerLock() !== null"
                   [noneFoundLabel]="'invoices.form.no_customer_found' | translate"
-                  [hint]="'invoices.form.customer_hint' | translate"
+                  [hint]="customerLock() ?? 'invoices.form.customer_hint' | translate"
                   (picked)="chooseCustomer($event)"
                 />
                 @if (customerMissing()) {
@@ -171,6 +173,15 @@
                     data-testid="invoice-customer-error"
                   >
                     {{ 'invoices.form.customer_required' | translate }}
+                  </p>
+                }
+                @if (error() === 'customer_unavailable') {
+                  <p
+                    role="alert"
+                    class="px-2 text-xs text-error"
+                    data-testid="invoice-customer-refused"
+                  >
+                    {{ 'invoices.errors.customer_unavailable' | translate }}
                   </p>
                 }
               </div>

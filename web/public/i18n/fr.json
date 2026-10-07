@@ -1272,7 +1272,9 @@
       "internal_hint": "Gardées dans la société, jamais imprimées.",
       "customer_hint": "Tapez le numéro ou le nom du client ; les premiers trouvés vous sont proposés.",
       "customer_required": "Nommez le client de cette facture.",
-      "no_customer_found": "Aucun client trouvé."
+      "no_customer_found": "Aucun client trouvé.",
+      "customer_locked_credit_note": "Un avoir va au client de la facture qu’il corrige.",
+      "customer_locked_delivery_notes": "Les lignes reprises d’un bon de livraison gardent son client : retirez-les et enregistrez pour en choisir un autre."
     },
     "lines": {
       "title": "Lignes",
@@ -1478,7 +1480,8 @@
       "not_found": "Facture introuvable.",
       "conflict": "Le document a changé d’état entre-temps, ou son établissement n’a pas de série de numérotation des factures.",
       "invalid": "Refusé. Vérifiez le client, les lignes, la remise et, pour un paiement, son montant (au plus le reste à payer) et sa date (entre l’émission et aujourd’hui).",
-      "excess_to": "Dites où va l’argent déjà payé : au crédit du client ou remboursé."
+      "excess_to": "Dites où va l’argent déjà payé : au crédit du client ou remboursé.",
+      "customer_unavailable": "Ce client a été désactivé depuis : choisissez-en un autre, ou réactivez-le dans sa fiche."
     },
     "home": {
       "outstanding": "À encaisser",
@@ -1668,7 +1671,8 @@
       "network": "Le serveur est injoignable.",
       "not_found": "Bon de livraison introuvable.",
       "conflict": "Le bon a changé d’état entre-temps, ou son établissement n’a pas de série de numérotation des bons de livraison.",
-      "invalid": "Le bon a été refusé. Vérifiez le client, les lignes et les dates."
+      "invalid": "Le bon a été refusé. Vérifiez le client, les lignes et les dates.",
+      "customer_unavailable": "Ce client a été désactivé depuis : choisissez-en un autre, ou réactivez-le dans sa fiche."
     },
     "validated": "Le bon a été validé.",
     "cancelled": "Le bon a été annulé.",

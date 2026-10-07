@@ -169,6 +169,18 @@ export class InvoicePage {
     return invoice?.id === id ? invoice : undefined;
   });
   protected readonly isCreditNote = computed(() => this.current()?.type === 'credit_note');
+  /**
+   * Why the customer cannot change here, as a hint's key, or null: a credit note goes to the customer of the invoice it
+   * corrects, and lines taken from delivery notes stay with theirs until they are taken off and saved. The API refuses
+   * both; offering the change only to refuse it read as a broken screen (audit A-F2).
+   */
+  protected readonly customerLock = computed<string | null>(() => {
+    const current = this.current();
+    if (!current) return null;
+    if (current.type === 'credit_note') return 'invoices.form.customer_locked_credit_note';
+    const fromNotes = current.lines.some((line) => (line.sourceDeliveryNoteLineId ?? '') !== '');
+    return fromNotes ? 'invoices.form.customer_locked_delivery_notes' : null;
+  });
   protected readonly shown = computed(() => {
     const current = this.current();
     return current ? shownStatus(current, this.today()) : null;
@@ -737,6 +749,7 @@ export class InvoicePage {
     const customer = option === null ? null : (this.knownCustomers.get(option.id) ?? null);
     this.customer.set(customer);
     this.customerMissing.set(customer === null);
+    if (this.error() === 'customer_unavailable') this.facade.clearError();
     const options = this.options();
     this.documentTaxes.set(options === null ? [] : defaultDocumentTaxes(options, customer));
     this.applyCustomerDiscount();

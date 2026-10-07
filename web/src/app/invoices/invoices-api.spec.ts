@@ -469,6 +469,17 @@ describe('InvoicesApi', () => {
     }
   });
 
+  it('tells a customer that can no longer be invoiced from any other refusal, by the field the API named', async () => {
+    const refused = api.duplicate('c1', 'i1');
+    http
+      .expectOne('/api/companies/c1/invoices/i1/duplicate')
+      .flush(
+        { detail: 'customerId: The customer CLI-0007 is deactivated.' },
+        { status: 422, statusText: 'Unprocessable' },
+      );
+    await expect(refused).rejects.toEqual(new InvoicesRefused('customer_unavailable'));
+  });
+
   it('tells a credit note refused for the money already paid from any other refusal, and sends where it goes', async () => {
     const refused = api.issue('c1', 'i1');
     http

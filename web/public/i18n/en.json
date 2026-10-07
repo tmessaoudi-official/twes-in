@@ -1272,7 +1272,9 @@
       "internal_hint": "Kept inside the company, never printed.",
       "customer_hint": "Type the customer's number or name; the first few found are offered.",
       "customer_required": "Name the customer this invoice is for.",
-      "no_customer_found": "No customer found."
+      "no_customer_found": "No customer found.",
+      "customer_locked_credit_note": "A credit note goes to the customer of the invoice it corrects.",
+      "customer_locked_delivery_notes": "Lines taken from a delivery note keep its customer: take them off and save to choose another."
     },
     "lines": {
       "title": "Lines",
@@ -1478,7 +1480,8 @@
       "not_found": "Invoice not found.",
       "conflict": "The document changed state meanwhile, or its establishment has no invoice numbering series.",
       "invalid": "Refused. Check the customer, the lines, the discount and, for a payment, its amount (at most what is due) and its day (between issue and today).",
-      "excess_to": "Say where the money already paid goes, to the customer’s credit or to a refund."
+      "excess_to": "Say where the money already paid goes, to the customer’s credit or to a refund.",
+      "customer_unavailable": "This customer has been deactivated since: choose another, or reactivate it on its record."
     },
     "home": {
       "outstanding": "To collect",
@@ -1668,7 +1671,8 @@
       "network": "The server could not be reached.",
       "not_found": "Delivery note not found.",
       "conflict": "The note changed state meanwhile, or its establishment has no delivery note numbering series to number it with.",
-      "invalid": "The note was refused. Check the customer, the lines and the dates."
+      "invalid": "The note was refused. Check the customer, the lines and the dates.",
+      "customer_unavailable": "This customer has been deactivated since: choose another, or reactivate it on its record."
     },
     "validated": "The note was validated.",
     "cancelled": "The note was cancelled.",

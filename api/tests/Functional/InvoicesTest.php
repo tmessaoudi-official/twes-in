@@ -190,6 +190,10 @@ final class InvoicesTest extends ApiTestCase
         $this->signedIn(['invoice.read', 'invoice.write']);
         $piece = ['description' => 'Pièce', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '10'];
         $exempt = $this->customer('CLI-0002', 'exempt')->getId()->toRfc4122();
+        $deactivated = $this->customer('CLI-0003', 'standard');
+        $deactivated->revise('CLI-0003', $deactivated->getProfile(), null, $deactivated->getTaxRegime(), [], false, new \DateTimeImmutable());
+        $this->em()->flush();
+        $gone = $deactivated->getId()->toRfc4122();
 
         foreach ([
             ['customerId', ['customerId' => self::ABSENT]],
@@ -210,6 +214,12 @@ final class InvoicesTest extends ApiTestCase
         }
         $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => ['first' => $this->taxId('TIMBRE')]]));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a JSON object is not a list');
+
+        // A customer deactivated since is refused naming `customerId` before the colon: the screens tell it from any other
+        // refusal by that word, never by the English that follows.
+        $this->postJson($this->path(), $this->invoice(['customerId' => $gone]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringStartsWith('customerId: ', $this->stringAt($this->json(), 'detail'));
     }
 
     public function testARevisionIsAuditedAndADraftIsCancelledOnceAndThenFixed(): void

@@ -1194,6 +1194,37 @@ describe('InvoicePage', () => {
     expect(text('invoice-status')).toContain('En retard');
   });
 
+  it('keeps a credit note and an invoice of delivery notes with their customer, and says why', async () => {
+    invoice.set({ ...draft, type: 'credit_note', correctsInvoiceId: 'i0' });
+    await open('i1');
+    expect((q('invoice-customer') as HTMLInputElement).disabled).toBe(true);
+    expect(document.getElementById('invoice-customer-hint')?.textContent).toContain(
+      'invoices.form.customer_locked_credit_note',
+    );
+
+    invoice.set({ ...draft, lines: [{ ...draft.lines[0]!, sourceDeliveryNoteLineId: 'dl1' }] });
+    await open('i1');
+    expect((q('invoice-customer') as HTMLInputElement).disabled).toBe(true);
+    expect(document.getElementById('invoice-customer-hint')?.textContent).toContain(
+      'invoices.form.customer_locked_delivery_notes',
+    );
+
+    invoice.set(draft);
+    await open('i1');
+    expect((q('invoice-customer') as HTMLInputElement).disabled).toBe(false);
+  });
+
+  it('says under the customer that the API refused them, not as a refusal of the whole document', async () => {
+    invoice.set(draft);
+    await open('i1');
+    error.set('customer_unavailable');
+    await settle();
+
+    expect(text('invoice-customer-refused')).toContain('invoices.errors.customer_unavailable');
+    expect(q('invoice-error')).toBeNull();
+    error.set(null);
+  });
+
   it('drafts a credit note from an issued invoice and opens it', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     facade.creditNote.mockResolvedValue({

@@ -5,7 +5,8 @@ import { type LifecycleStage, tonesOf } from '../shared/theme/lifecycle-tones';
 import type { ProductTracking } from '../products/products-types';
 
 /** Why the API refused, as the delivery notes screens translate it. */
-export type DeliveryNotesError = 'network' | 'not_found' | 'conflict' | 'invalid';
+export type DeliveryNotesError =
+  'network' | 'not_found' | 'conflict' | 'invalid' | 'customer_unavailable';
 
 export type DeliveryNoteStatus = 'draft' | 'validated' | 'delivered' | 'cancelled' | 'invoiced';
 /** The sorts the API answers; the total is worked out per row and is not a column it can order by. */

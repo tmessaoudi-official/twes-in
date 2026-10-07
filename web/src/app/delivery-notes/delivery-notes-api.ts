@@ -37,7 +37,7 @@ import {
   type ProductOption,
   type InvoiceDraftOption,
 } from './delivery-notes-types';
-import { InvoicesApi } from '../invoices/invoices-api';
+import { InvoicesApi, refusedField } from '../invoices/invoices-api';
 import { trackingOf } from '../products/products-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
@@ -330,7 +330,8 @@ function codeOf(error: unknown): DeliveryNotesError {
     case 409:
       return 'conflict';
     default:
-      return 'invalid';
+      // A customer deactivated since the note was started, named by the field the API refused.
+      return refusedField(error) === 'customerId' ? 'customer_unavailable' : 'invalid';
   }
 }
 

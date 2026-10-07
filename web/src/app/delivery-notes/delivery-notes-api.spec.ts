@@ -385,6 +385,16 @@ describe('DeliveryNotesApi', () => {
       .flush(null, { status: 422, statusText: 'Unprocessable' });
     await expect(invalid).rejects.toEqual(new DeliveryNotesRefused('invalid'));
 
+    // A customer deactivated since, or no longer the company's, is named by the field the API refused, never its words.
+    const gone = api.create('c1', input);
+    http
+      .expectOne('/api/companies/c1/delivery-notes')
+      .flush(
+        { detail: 'customerId: The customer CLI-0007 is deactivated.' },
+        { status: 422, statusText: 'Unprocessable' },
+      );
+    await expect(gone).rejects.toEqual(new DeliveryNotesRefused('customer_unavailable'));
+
     const absent = api.note('c1', 'n9');
     http
       .expectOne('/api/companies/c1/delivery-notes/n9')

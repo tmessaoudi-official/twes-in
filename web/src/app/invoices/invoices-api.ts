@@ -320,8 +320,20 @@ export function codeOf(error: unknown): InvoicesError {
       return 'conflict';
     default:
       // A credit note that gives back money already paid is refused until it says where that money goes.
-      return isExcessRefusal(error) ? 'excess_to' : 'invalid';
+      if (isExcessRefusal(error)) return 'excess_to';
+      return refusedField(error) === 'customerId' ? 'customer_unavailable' : 'invalid';
   }
+}
+
+/**
+ * The field a 422 names before its colon (`customerId: …`), the API's stable word for what it refused; its message is
+ * English prose and is never matched.
+ */
+export function refusedField(error: HttpErrorResponse): string | null {
+  const detail = (error.error as { detail?: unknown } | null)?.detail;
+  if (error.status !== 422 || typeof detail !== 'string') return null;
+  const colon = detail.indexOf(':');
+  return colon > 0 ? detail.slice(0, colon) : null;
 }
 
 function isExcessRefusal(error: HttpErrorResponse): boolean {
