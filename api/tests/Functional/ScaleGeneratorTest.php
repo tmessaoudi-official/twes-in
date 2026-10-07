@@ -163,7 +163,7 @@ final class ScaleGeneratorTest extends ApiTestCase
 
     public function testItRefusesADatabaseThatIsNotAScaleOrTestOne(): void
     {
-        foreach (['twes', 'twes_prod', 'production'] as $name) {
+        foreach (['twes', 'twes_prod', 'production', 'twes_w3', 'twes_test_prod'] as $name) {
             try {
                 ScaleGenerator::refuseUnlessScaleDatabase($name);
                 self::fail("$name must be refused");
@@ -174,6 +174,8 @@ final class ScaleGeneratorTest extends ApiTestCase
         ScaleGenerator::refuseUnlessScaleDatabase('twes_scale');
         ScaleGenerator::refuseUnlessScaleDatabase('twes_test');
         ScaleGenerator::refuseUnlessScaleDatabase('twes_test4');
+        // A parallel writer's own test database, beside the one the main tree tests on.
+        ScaleGenerator::refuseUnlessScaleDatabase('twes_test_w3');
     }
 
     public function testEveryTableThatReachesTheInvoiceGraphIsClonedSharedOrNamedAsLeftOut(): void
