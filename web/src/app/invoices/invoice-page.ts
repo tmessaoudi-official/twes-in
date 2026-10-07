@@ -79,7 +79,7 @@ import { OverpaymentDialog } from './overpayment-dialog';
 import { overpaymentForm, overpaymentInput, overpaymentValues } from './overpayment-form';
 import { RecordView } from '../shared/form/record-view';
 import { taxNames } from './tax-names';
-import { liveFigures, toDocumentFigures } from '../shared/documents/document-figures';
+import { liveFigures, negated, toDocumentFigures } from '../shared/documents/document-figures';
 
 /**
  * One invoice or credit note: a new draft to fill in, a draft to revise, issue or cancel, or an issued document to
@@ -319,6 +319,7 @@ export class InvoicePage {
     },
   );
   protected readonly lineFigures = computed(() => this.figures()?.lines ?? null);
+  protected readonly negated = negated;
   /**
    * What the totals card shows: while the draft is edited, the figures as typed, which nothing has paid or credited
    * yet; otherwise the document as saved.

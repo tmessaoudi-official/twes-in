@@ -6,6 +6,7 @@ import {
   type DocumentFigures,
   type LineFigures,
   liveFigures,
+  negated,
   PREVIEW_DELAY,
   toDocumentFigures,
 } from './document-figures';
@@ -33,6 +34,14 @@ describe('toDocumentFigures', () => {
     expect(read.total).toBe('40.000');
     expect(read.netToPay).toBe('40.000');
     expect(read.taxes).toEqual([]);
+  });
+});
+
+describe('negated', () => {
+  it("takes an amount off, whatever sign the document gave it: a credit note's discount is already negative", () => {
+    expect(negated('3.750')).toBe('-3.750');
+    expect(negated('-3.750')).toBe('3.750');
+    expect(negated('0.000')).toBe('-0.000');
   });
 });
 

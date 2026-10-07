@@ -86,6 +86,22 @@ describe('LineFiguresView', () => {
     expect(details).toContain('FODEC · base ~30.000');
   });
 
+  it("shows a credit note's discounts, which are negative, taken off without a doubled sign", () => {
+    const { fixture, q } = render({
+      amount: '-37.500',
+      discount: '-3.750',
+      net: '-33.750',
+      documentDiscount: '-3.750',
+      total: '-36.057',
+    });
+    (q('line-0-toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const details = q('line-0-details')?.textContent ?? '';
+    expect(details).toContain('Remise de la ligne~3.750');
+    expect(q('line-0-document-discount')?.textContent?.trim()).toBe('~3.750');
+    expect(details).not.toContain('--');
+  });
+
   it('leaves out a discount the line does not have', () => {
     const { fixture, q } = render({ discount: '0.000', documentDiscount: '0.000' });
     (q('line-0-toggle') as HTMLButtonElement).click();

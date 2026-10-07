@@ -4466,6 +4466,12 @@ functional tests run in the `tools` container, on the host's network, against th
   are worked out from what is typed and not yet saved. Measured: a 60-line preview answers in 51 ms (median, 62 ms at
   worst) on the live dev stack. Delivery notes are not in this row: their lines get the same summary as row 224.
   Alternatives: figures worked out in the browser (a second calculator to keep equal), an answer on every keystroke.
+- [2026-10-07 17:22] ASSUMED (review): two additions to the live figures' entry above, from the goal-end check. A draft opened
+  and left untouched is worked out once as well, so its totals card says « calculés à l’instant sur ce qui est saisi »
+  though nothing was typed; the figures are the saved ones, worked out again. And a credit note's discounts and
+  withholdings carry its sign, as every one of its figures does: the screens show them taken off once (« Remise 10,000 »
+  on a credit note), where a minus put in front printed two, on the saved totals card too. Alternatives: the saved
+  wording until something is typed.
 
 ## 8. Status
 

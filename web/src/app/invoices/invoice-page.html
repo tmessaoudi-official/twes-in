@@ -271,7 +271,7 @@
             <dd class="text-end">{{ invoice.subtotalNet | amount: scale() }}</dd>
             @if (!isZero(invoice.documentDiscount)) {
               <dt>{{ 'invoices.totals.discount' | translate }}</dt>
-              <dd class="text-end">{{ '-' + invoice.documentDiscount | amount: scale() }}</dd>
+              <dd class="text-end">{{ negated(invoice.documentDiscount) | amount: scale() }}</dd>
               <dt>{{ 'invoices.totals.total_net' | translate }}</dt>
               <dd class="text-end">{{ invoice.totalNet | amount: scale() }}</dd>
             }
@@ -315,7 +315,7 @@
                   }}
                 }
               </dt>
-              <dd class="text-end">{{ '-' + withholding.amount | amount: scale() }}</dd>
+              <dd class="text-end">{{ negated(withholding.amount) | amount: scale() }}</dd>
             }
             @if (invoice.withholdings.length > 0 && invoice.status !== 'draft' && !isCreditNote()) {
               <dt class="font-semibold">{{ 'invoices.totals.net_due' | translate }}</dt>

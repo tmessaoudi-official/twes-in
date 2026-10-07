@@ -16,6 +16,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\QueryParameter;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\LineTotals;
@@ -90,6 +91,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/quotes/preview',
+            openapi: new OpenApiOperation(summary: 'What a new quote with this body would come to, kept nowhere.', description: 'Takes the body a save takes and answers what saving it would come to, through the calculator every document shares: each line, then the totals. Nothing is written. Asks quote.write, as saving does; refused as saving is, with the field named (422).'),
             status: 200,
             processor: PreviewQuoteProcessor::class,
             security: 'is_granted("ROLE_USER")',
@@ -100,6 +102,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/quotes/{quoteId}/preview',
+            openapi: new OpenApiOperation(summary: 'What this draft quote would come to with this body, kept nowhere.', description: 'Takes the body a save takes and answers what saving it would come to, through the calculator every document shares: each line, then the totals. Nothing is written. Asks quote.write, as saving does; refused as saving is, with the field named (422), and 409 once the document is no longer a draft.'),
             status: 200,
             processor: PreviewQuoteProcessor::class,
             security: 'is_granted("ROLE_USER")',

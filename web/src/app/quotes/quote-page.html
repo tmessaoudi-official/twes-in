@@ -193,7 +193,7 @@
             <dd class="text-end">{{ totals.subtotalNet | amount: scale() }}</dd>
             @if (!isZero(totals.documentDiscount)) {
               <dt>{{ 'quotes.totals.discount' | translate }}</dt>
-              <dd class="text-end">{{ '-' + totals.documentDiscount | amount: scale() }}</dd>
+              <dd class="text-end">{{ negated(totals.documentDiscount) | amount: scale() }}</dd>
             }
             @for (tax of totals.taxes; track tax.code + '|' + tax.rate) {
               <dt>

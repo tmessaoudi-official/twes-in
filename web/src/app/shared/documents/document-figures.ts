@@ -61,6 +61,14 @@ export interface PreviewBody {
   netToPay?: string;
 }
 
+/**
+ * An amount shown as taken off. A credit note carries its sign on every figure, its discounts and withholdings
+ * included, so putting a minus in front of one would print two.
+ */
+export function negated(amount: string): string {
+  return amount.startsWith('-') ? amount.slice(1) : `-${amount}`;
+}
+
 /** Reads a preview's answer; a line sent from position `positions[i]` lands back there, the others stay null. */
 export function toDocumentFigures(
   body: PreviewBody,

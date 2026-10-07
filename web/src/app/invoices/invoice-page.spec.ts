@@ -1834,6 +1834,39 @@ describe('InvoicePage', () => {
       expect(text('invoice-totals-note')).toContain('invoices.totals.as_saved');
     });
 
+    it('works the figures out again when a header field that changes them is typed', async () => {
+      invoice.set(draft);
+      await open('i1');
+      await rested();
+      facade.preview.mockClear();
+
+      type('field-discountAmount', '100');
+      await rested();
+      expect(facade.preview).toHaveBeenLastCalledWith(
+        'c1',
+        'i1',
+        expect.objectContaining({ discountAmount: '100' }),
+      );
+    });
+
+    it("shows a credit note's discount and withholding taken off once, though they carry its sign", async () => {
+      invoice.set({
+        ...draft,
+        type: 'credit_note',
+        correctsInvoiceId: 'i0',
+        documentDiscount: '-10.000',
+        withholdings: [{ code: 'RS1', rate: '1.000', base: '-2133.000', amount: '-21.330' }],
+      });
+      await open('i1');
+      await rested();
+
+      const totals = text('invoice-totals');
+      expect(totals).toContain('10,000');
+      expect(totals).toContain('21,330');
+      expect(totals).not.toMatch(/[−-]\s*[−-]/);
+      expect(totals).not.toMatch(/[−-]\s*(10|21,330)/);
+    });
+
     it('asks nothing of a document that no longer changes', async () => {
       invoice.set(issued);
       await open('i1');

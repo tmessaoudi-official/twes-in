@@ -16,6 +16,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\QueryParameter;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\Fiscal\Infrastructure\ApiPlatform\DocumentPreview;
 use App\Module\Invoices\Application\InvoiceInput;
 use App\Module\Invoices\Application\InvoiceLineInput;
@@ -95,6 +96,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/invoices/preview',
+            openapi: new OpenApiOperation(summary: 'What a new invoice with this body would come to, kept nowhere.', description: 'Takes the body a save takes and answers what saving it would come to, through the calculator every document shares: each line, then the totals. Nothing is written. Asks invoice.write (and, for a credit note, the right to draft one), as saving does; refused as saving is, with the field named (422).'),
             status: 200,
             processor: PreviewInvoiceProcessor::class,
             security: 'is_granted("ROLE_USER")',
@@ -105,6 +107,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/preview',
+            openapi: new OpenApiOperation(summary: 'What this draft invoice would come to with this body, kept nowhere.', description: 'Takes the body a save takes and answers what saving it would come to, through the calculator every document shares: each line, then the totals. Nothing is written. Asks invoice.write (and, for a credit note, the right to draft one), as saving does; refused as saving is, with the field named (422), and 409 once the document is no longer a draft.'),
             status: 200,
             processor: PreviewInvoiceProcessor::class,
             security: 'is_granted("ROLE_USER")',

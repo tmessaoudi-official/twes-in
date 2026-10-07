@@ -4,7 +4,7 @@ import { ChangeDetectionStrategy, Component, computed, input, signal } from '@an
 import { MatIcon } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AmountPipe } from '../i18n/format-pipes';
-import type { LineFigures } from './document-figures';
+import { type LineFigures, negated } from './document-figures';
 
 /**
  * A line's figures while it is typed, folded to its net and what it adds, tax included; unfolded, every step from
@@ -53,14 +53,14 @@ import type { LineFigures } from './document-figures';
           <dd class="text-end">{{ figures().amount | amount: scale() }}</dd>
           @if (!isZero(figures().discount)) {
             <dt>{{ 'document_figures.discount' | translate }}</dt>
-            <dd class="text-end">{{ '-' + figures().discount | amount: scale() }}</dd>
+            <dd class="text-end">{{ negated(figures().discount) | amount: scale() }}</dd>
           }
           <dt>{{ 'document_figures.net' | translate }}</dt>
           <dd class="text-end">{{ figures().net | amount: scale() }}</dd>
           @if (!isZero(figures().documentDiscount)) {
             <dt>{{ 'document_figures.document_discount' | translate }}</dt>
             <dd class="text-end" [attr.data-testid]="testId() + '-document-discount'">
-              {{ '-' + figures().documentDiscount | amount: scale() }}
+              {{ negated(figures().documentDiscount) | amount: scale() }}
             </dd>
           }
           @for (tax of taxes(); track tax.code) {
@@ -90,6 +90,7 @@ export class LineFiguresView {
   /** A tax's name by its code, as the line's own taxes name it; the code itself when none does. */
   readonly taxName = input<(code: string) => string | null>(() => null);
 
+  protected readonly negated = negated;
   /** Folded by default, on every width: the line's own fields come first. */
   protected readonly open = signal(false);
   protected readonly taxes = computed(() => {

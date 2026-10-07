@@ -128,6 +128,24 @@ final class OpenApiTest extends KernelTestCase
         }
     }
 
+    public function testAPreviewIsDescribedAsWhatItIsAndAnswersTheFiguresAlone(): void
+    {
+        self::bootKernel();
+        $paths = static::getContainer()->get(OpenApiFactoryInterface::class)()->getPaths();
+
+        foreach (['/invoices/preview', '/invoices/{invoiceId}/preview', '/quotes/preview', '/quotes/{quoteId}/preview'] as $path) {
+            $operation = $paths->getPath('/api/companies/{companyId}'.$path)?->getPost();
+            self::assertNotNull($operation, $path);
+            self::assertStringContainsString('kept nowhere', (string) $operation->getSummary(), $path);
+            $ok = ($operation->getResponses() ?? [])['200'] ?? null;
+            self::assertInstanceOf(Response::class, $ok, $path);
+            $media = $ok->getContent()?->getArrayCopy()['application/json'] ?? null;
+            self::assertInstanceOf(MediaType::class, $media, $path);
+            $schema = json_encode($media->getSchema()?->getArrayCopy(), \JSON_THROW_ON_ERROR);
+            self::assertStringContainsString('DocumentPreview', $schema, $path);
+        }
+    }
+
     /** @return list<string> */
     private function required(mixed $schema): array
     {
