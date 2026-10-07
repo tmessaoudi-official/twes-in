@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { ProductScanDetails } from './products/product-scan-details';
+import { PluralCompiler } from './shared/i18n/plural-compiler';
 import { SCAN_DETAILS } from './shared/scan/scan-details';
 import { tabInterceptor } from './shared/realtime/tab-interceptor';
 import { provideHttpClient, withInterceptors, withNoXsrfProtection } from '@angular/common/http';
@@ -14,7 +15,7 @@ import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { MatIconRegistry } from '@angular/material/icon';
 import { MatPaginatorIntl } from '@angular/material/paginator';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
-import { provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateCompiler, provideTranslateService } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { routes } from './app.routes';
 import { AuthFacade } from './auth/auth-facade';
@@ -57,6 +58,8 @@ export const appConfig: ApplicationConfig = {
       lang: 'fr',
       fallbackLang: 'fr',
       loader: provideTranslateHttpLoader({ prefix: '/i18n/', suffix: '.json' }),
+      // A count is said in the form its language gives it (`{count, plural, one {…} other {…}}`).
+      compiler: provideTranslateCompiler(PluralCompiler),
     }),
     // Presentation preferences go through the API's presentation chain; the browser keeps them only for the pages
     // shown before anyone signs in.

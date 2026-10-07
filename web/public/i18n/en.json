@@ -217,8 +217,8 @@
   },
   "company": {
     "choose": "Choose a company",
-    "unread": "{{count}} unread notification(s)",
-    "unread_elsewhere": "{{count}} unread notification(s) in your other companies",
+    "unread": "{{count}} unread {count, plural, one {notification} other {notifications}}",
+    "unread_elsewhere": "{{count}} unread {count, plural, one {notification} other {notifications}} in your other companies",
     "profile": {
       "title": "Company profile",
       "intro": "What the company's documents say about it: identity, registration numbers, address, contact, banking and printed texts.",
@@ -430,7 +430,7 @@
       "intro": "What each role is allowed to do. The three roles shipped with the product can be read but not changed; create your own for how you work.",
       "no_company": "Choose a company to manage its roles.",
       "built_in": "shipped",
-      "member_count": "{{count}} member(s)",
+      "member_count": "{{count}} {count, plural, one {member} other {members}}",
       "view": "View",
       "edit": "Edit",
       "delete": "Delete the role",
@@ -1849,7 +1849,7 @@
       "loading": "Looking up the product…",
       "none": "No product of the company answers to this code.",
       "retired": "Product withdrawn from sale",
-      "enters": "{{role}}: one scan counts {{quantity}} piece(s).",
+      "enters": "{{role}}: one scan counts {{quantity}} {quantity, plural, one {piece} other {pieces}}.",
       "lot": "Lot",
       "use_by": "Use by",
       "serial": "Serial number",
@@ -2103,7 +2103,7 @@
       "no_floor": "No floor is drawn yet. Create one to start the plan.",
       "drawn": "Drawn on this floor",
       "nothing_drawn": "No location is drawn on this floor yet.",
-      "plan_of": "Plan of {{floor}}: {{count}} rectangle(s) drawn",
+      "plan_of": "Plan of {{floor}}: {{count}} {count, plural, one {rectangle} other {rectangles}} drawn",
       "draw": "Draw a location",
       "trace": "Trace a rectangle",
       "trace_hint": "Drag on the plan to trace the footprint, then choose the location.",
@@ -2228,7 +2228,7 @@
       "remove": "Remove the line",
       "record": "Record the count",
       "incomplete": "Every line needs a quantity, and a tracked article its lot.",
-      "recorded": "Count recorded: {{count}} line(s).",
+      "recorded": "Count recorded: {{count}} {count, plural, one {line} other {lines}}.",
       "at_location": "Counting at: {{name}}",
       "tallied": "{{name}}: {{quantity}} counted",
       "read_only": "You may count, but not record: recording needs the right to write stock."
@@ -2474,7 +2474,7 @@
         "company_matricule_missing": "The company's tax number is not filled in.",
         "company_matricule_unreadable": "The company's tax number cannot be read.",
         "nothing_to_declare": "No withholding to declare this month.",
-        "incomplete_expenses": "{{count}} payment(s) to complete before the file can be written:"
+        "incomplete_expenses": "{{count}} {count, plural, one {payment} other {payments}} to complete before the file can be written:"
       },
       "problems": {
         "vendor_missing": "no supplier",
@@ -2637,7 +2637,7 @@
       "stop": "Stop managing",
       "saved": "The subscription has been saved.",
       "stopped": "The subscription is no longer managed.",
-      "days_left": "{{days}} day(s) left",
+      "days_left": "{{days}} {days, plural, one {day} other {days}} left",
       "units": {
         "day": "days",
         "month": "months",
@@ -2803,17 +2803,17 @@
   },
   "licensing": {
     "notice": {
-      "ending": "Your subscription ends in {{days}} day(s). Declare your payment to extend it.",
-      "grace": "Your subscription has expired. {{days}} day(s) left before the company becomes read-only.",
+      "ending": "Your subscription ends in {{days}} {days, plural, one {day} other {days}}. Declare your payment to extend it.",
+      "grace": "Your subscription has expired. {{days}} {days, plural, one {day} other {days}} left before the company becomes read-only.",
       "read_only": "Subscription unpaid: you can view, print and export, but create or change nothing.",
-      "held": "Payment declared, waiting to be confirmed. The company stays open for {{days}} day(s)."
+      "held": "Payment declared, waiting to be confirmed. The company stays open for {{days}} {days, plural, one {day} other {days}}."
     },
     "title": "Subscription",
     "unmanaged": "This company has no subscription to pay for.",
     "covered_until": "Covered until",
     "paid_through": "Paid through",
     "price": "Price",
-    "days_left": "{{days}} day(s) left",
+    "days_left": "{{days}} {days, plural, one {day} other {days}} left",
     "stages": {
       "trial": "Trial",
       "paid": "Paid",
@@ -2822,9 +2822,9 @@
       "unpaid": "Unpaid"
     },
     "periods": {
-      "day": "{{count}} day(s)",
-      "month": "{{count}} month(s)",
-      "year": "{{count}} year(s)"
+      "day": "{{count}} {count, plural, one {day} other {days}}",
+      "month": "{{count}} {count, plural, one {month} other {months}}",
+      "year": "{{count}} {count, plural, one {year} other {years}}"
     },
     "errors": {
       "not_managed": "This company has no subscription to pay for.",

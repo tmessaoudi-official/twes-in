@@ -217,8 +217,8 @@
   },
   "company": {
     "choose": "Choisir une entreprise",
-    "unread": "{{count}} notification(s) non lue(s)",
-    "unread_elsewhere": "{{count}} notification(s) non lue(s) dans vos autres entreprises",
+    "unread": "{{count}} {count, plural, one {notification non lue} other {notifications non lues}}",
+    "unread_elsewhere": "{{count}} {count, plural, one {notification non lue} other {notifications non lues}} dans vos autres entreprises",
     "profile": {
       "title": "Profil de la société",
       "intro": "Ce que les documents de la société disent d’elle : identité, identifiants, adresse, coordonnées, banque et mentions imprimées.",
@@ -430,7 +430,7 @@
       "intro": "Ce que chaque rôle a le droit de faire. Les trois rôles fournis avec le produit se consultent mais ne se modifient pas ; créez les vôtres pour votre organisation.",
       "no_company": "Choisissez une société pour gérer ses rôles.",
       "built_in": "fourni",
-      "member_count": "{{count}} membre(s)",
+      "member_count": "{{count}} {count, plural, one {membre} other {membres}}",
       "view": "Consulter",
       "edit": "Modifier",
       "delete": "Supprimer le rôle",
@@ -601,7 +601,7 @@
     "expand_settings": "Déployer les réglages"
   },
   "notifications": {
-    "bell": "Notifications, {{count}} non lue(s)",
+    "bell": "Notifications, {{count}} {count, plural, one {non lue} other {non lues}}",
     "title": "Notifications",
     "empty": "Aucune notification.",
     "mark_all": "Tout marquer comme lu",
@@ -684,7 +684,7 @@
     "more_actions": "Autres actions",
     "filters": "Filtres",
     "filters_open": "Afficher les filtres",
-    "filters_active": "{{count}} actif(s)",
+    "filters_active": "{{count}} {count, plural, one {actif} other {actifs}}",
     "filters_clear_all": "Effacer tout",
     "filter_chips": "Filtres actifs",
     "chip_remove": "Retirer le filtre {{label}} : {{value}}",
@@ -1849,7 +1849,7 @@
       "loading": "Recherche de l’article…",
       "none": "Aucun article de l’entreprise ne répond à ce code.",
       "retired": "Article retiré de la vente",
-      "enters": "{{role}} : une lecture compte {{quantity}} pièce(s).",
+      "enters": "{{role}} : une lecture compte {{quantity}} {quantity, plural, one {pièce} other {pièces}}.",
       "lot": "Lot",
       "use_by": "À utiliser avant le",
       "serial": "Numéro de série",
@@ -2103,7 +2103,7 @@
       "no_floor": "Aucun étage n’est encore dessiné. Créez-en un pour commencer le plan.",
       "drawn": "Dessiné sur cet étage",
       "nothing_drawn": "Aucun emplacement n’est encore dessiné sur cet étage.",
-      "plan_of": "Plan de {{floor}} : {{count}} rectangle(s) dessiné(s)",
+      "plan_of": "Plan de {{floor}} : {{count}} {count, plural, one {rectangle dessiné} other {rectangles dessinés}}",
       "draw": "Dessiner un emplacement",
       "trace": "Tracer un rectangle",
       "trace_hint": "Faites glisser sur le plan pour tracer l’emprise au sol, puis choisissez l’emplacement.",
@@ -2228,9 +2228,9 @@
       "remove": "Retirer la ligne",
       "record": "Enregistrer le comptage",
       "incomplete": "Chaque ligne a besoin d’une quantité, et d’un lot pour un article suivi.",
-      "recorded": "Comptage enregistré : {{count}} ligne(s).",
+      "recorded": "Comptage enregistré : {{count}} {count, plural, one {ligne} other {lignes}}.",
       "at_location": "Comptage à : {{name}}",
-      "tallied": "{{name}} : {{quantity}} compté(s)",
+      "tallied": "{{name}} : {{quantity}} {quantity, plural, one {compté} other {comptés}}",
       "read_only": "Vous pouvez compter, mais pas enregistrer : l’enregistrement demande le droit d’écrire le stock."
     },
     "labels": {
@@ -2474,7 +2474,7 @@
         "company_matricule_missing": "Le matricule fiscal de l’entreprise n’est pas renseigné.",
         "company_matricule_unreadable": "Le matricule fiscal de l’entreprise n’est pas lisible.",
         "nothing_to_declare": "Aucune retenue à déclarer ce mois-ci.",
-        "incomplete_expenses": "{{count}} paiement(s) à compléter avant de pouvoir écrire le fichier :"
+        "incomplete_expenses": "{{count}} {count, plural, one {paiement à compléter} other {paiements à compléter}} avant de pouvoir écrire le fichier :"
       },
       "problems": {
         "vendor_missing": "aucun fournisseur",
@@ -2637,7 +2637,7 @@
       "stop": "Ne plus gérer",
       "saved": "L’abonnement a été enregistré.",
       "stopped": "L’abonnement n’est plus géré.",
-      "days_left": "{{days}} jour(s) restant(s)",
+      "days_left": "{{days}} {days, plural, one {jour restant} other {jours restants}}",
       "units": {
         "day": "jours",
         "month": "mois",
@@ -2803,17 +2803,17 @@
   },
   "licensing": {
     "notice": {
-      "ending": "Votre abonnement se termine dans {{days}} jour(s). Déclarez votre règlement pour le prolonger.",
-      "grace": "Votre abonnement a expiré. Il vous reste {{days}} jour(s) avant que l’entreprise ne passe en lecture seule.",
+      "ending": "Votre abonnement se termine dans {{days}} {days, plural, one {jour} other {jours}}. Déclarez votre règlement pour le prolonger.",
+      "grace": "Votre abonnement a expiré. Il vous reste {{days}} {days, plural, one {jour} other {jours}} avant que l’entreprise ne passe en lecture seule.",
       "read_only": "Abonnement impayé : vous pouvez consulter, imprimer et exporter, mais plus rien créer ni modifier.",
-      "held": "Règlement déclaré, en attente de confirmation. L’entreprise reste ouverte {{days}} jour(s)."
+      "held": "Règlement déclaré, en attente de confirmation. L’entreprise reste ouverte {{days}} {days, plural, one {jour} other {jours}}."
     },
     "title": "Abonnement",
     "unmanaged": "Cette entreprise n’a pas d’abonnement à régler.",
     "covered_until": "Couvert jusqu’au",
     "paid_through": "Payé jusqu’au",
     "price": "Prix",
-    "days_left": "{{days}} jour(s) restant(s)",
+    "days_left": "{{days}} {days, plural, one {jour restant} other {jours restants}}",
     "stages": {
       "trial": "Essai",
       "paid": "À jour",
@@ -2822,9 +2822,9 @@
       "unpaid": "Impayé"
     },
     "periods": {
-      "day": "{{count}} jour(s)",
+      "day": "{{count}} {count, plural, one {jour} other {jours}}",
       "month": "{{count}} mois",
-      "year": "{{count}} an(s)"
+      "year": "{{count}} {count, plural, one {an} other {ans}}"
     },
     "errors": {
       "not_managed": "Cette entreprise n’a pas d’abonnement à régler.",
