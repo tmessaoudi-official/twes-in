@@ -43,8 +43,12 @@ use Symfony\Component\Validator\Constraints as Assert;
             normalizationContext: self::NORMALIZATION,
             parameters: [
                 'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the reference or name, or one of its codes spelled whole, whatever their case and accents; under three characters, the exact reference only.'),
-                'kind' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['goods', 'service']]),
-                'isActive' => new QueryParameter(schema: ['type' => 'boolean'], castToNativeType: true),
+                'kind[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['goods', 'service']]], description: 'Several kinds, OR\'d; a single `kind=goods` still works.', constraints: []),
+                'isActive' => new QueryParameter(schema: ['type' => 'boolean']),
+                'tracking[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['none', 'lot', 'serial']]], description: 'Several ways of telling stock apart, OR\'d; a single `tracking=lot` still works.', constraints: []),
+                'categoryId[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid']], description: 'Several categories, OR\'d, each with every category under it.', constraints: []),
+                'unitPriceNet[min]' => new QueryParameter(schema: self::AMOUNT, description: 'A selling price before tax of at least this, a decimal string.'),
+                'unitPriceNet[max]' => new QueryParameter(schema: self::AMOUNT, description: 'A selling price before tax of at most this, a decimal string.'),
                 'order[reference]' => new QueryParameter(schema: self::DIRECTION),
                 'order[name]' => new QueryParameter(schema: self::DIRECTION),
                 'order[kind]' => new QueryParameter(schema: self::DIRECTION),
@@ -80,6 +84,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 final class ProductResource
 {
     private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
+    /** A decimal string, as every amount is: a float would round it. */
+    private const array AMOUNT = ['type' => 'string', 'pattern' => '^(0|[1-9][0-9]{0,10})(\\.[0-9]{1,4})?$'];
     public const string READ = 'product:read';
     public const string WRITE = 'product:write';
     /** Nulls are answered: an absent description and a product without a category read alike. */

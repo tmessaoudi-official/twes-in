@@ -130,6 +130,14 @@ test('a product is filed in a category, priced at the currency scale and revised
     await expect(page.getByTestId(`product-${reference}`)).toContainText(categoryName);
     await expect(page.getByTestId(`product-${reference}`)).toContainText('135,000');
     await expect(page.getByTestId(`product-${reference}`)).toContainText('Heure');
+
+    // Row 197: two kinds OR'd, AND'd with a price interval and the search, each answered by the API.
+    await page.goto(
+      `/products?q=${reference}&kind=goods,service&unitPriceNet.min=130&unitPriceNet.max=140`,
+    );
+    await expect(page.getByTestId(`product-${reference}`)).toBeVisible();
+    await page.goto(`/products?q=${reference}&unitPriceNet.min=136`);
+    await expect(page.getByTestId('list-no-match')).toBeVisible();
   } finally {
     await retire(page, reference, categoryName);
   }

@@ -19,8 +19,14 @@ import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
 import { StatusBadge } from '../shared/ui/status-badge';
-import type { ListQuery } from '../shared/list/list-types';
-import { type ProductListRow, productListRows, productSearch, productsList } from './product-forms';
+import type { ListPickSource, ListQuery } from '../shared/list/list-types';
+import {
+  categoryLabels,
+  type ProductListRow,
+  productListRows,
+  productSearch,
+  productsList,
+} from './product-forms';
 import { ProductsFacade } from './products-facade';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { PRODUCTS_TABS } from './products-nav';
@@ -60,6 +66,25 @@ export class ProductsPage implements OnInit {
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('product.write'));
   protected readonly rowTestId = (row: ProductListRow): string => `product-${row.reference}`;
+  /** Where the list's category filter searches: the categories already read, each named by its path. */
+  protected readonly pickSources: Readonly<Record<string, ListPickSource>> = {
+    category: {
+      search: async (words) => {
+        const wanted = words.trim().toLocaleLowerCase();
+        return this.categoryChoices().filter((each) =>
+          each.name.toLocaleLowerCase().includes(wanted),
+        );
+      },
+      byIds: async (ids) => this.categoryChoices().filter((each) => ids.includes(each.id)),
+    },
+  };
+  private categoryChoices() {
+    return [...categoryLabels(this.facade.categories())].map(([id, name]) => ({
+      id,
+      code: '',
+      name,
+    }));
+  }
 
   /** The page the list shows last asked for; a change elsewhere reads it again. */
   private search: ProductSearch | null = null;

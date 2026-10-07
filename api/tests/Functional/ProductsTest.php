@@ -19,6 +19,7 @@ use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
@@ -361,6 +362,58 @@ final class ProductsTest extends ApiTestCase
 
         $this->getJson($this->path().'?kind=robot');
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    public function testEveryFilterOfTheListCombines(): void
+    {
+        $now = new \DateTimeImmutable();
+        $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($piece);
+        $tools = ProductCategory::create($this->company, 'Outillage', null, $now);
+        $drills = ProductCategory::create($this->company, 'Perceuses', $tools, $now);
+        $paint = ProductCategory::create($this->company, 'Peinture', null, $now);
+        foreach ([$tools, $drills, $paint] as $category) {
+            $this->em()->persist($category);
+        }
+        foreach ([
+            ['P1', ProductKind::Goods, '12.500', $tools, ProductTracking::None, true],
+            ['P2', ProductKind::Goods, '149.900', $drills, ProductTracking::Serial, true],
+            ['P3', ProductKind::Goods, '35', $paint, ProductTracking::Lot, true],
+            ['P4', ProductKind::Service, '60', null, ProductTracking::None, true],
+            ['P5', ProductKind::Goods, '8', $drills, ProductTracking::None, false],
+        ] as [$reference, $kind, $price, $category, $tracking, $active]) {
+            $details = new ProductDetails('Article '.$reference, null, $kind, $price);
+            $product = Product::create($this->company, $reference, $details, $piece, $category, [], $now);
+            $product->track($tracking, $now);
+            $product->revise($reference, $details, $piece, $category, [], $active, $now);
+            $this->em()->persist($product);
+        }
+        $this->em()->flush();
+        [$toolsId, $drillsId, $paintId] = [$tools->getId()->toRfc4122(), $drills->getId()->toRfc4122(), $paint->getId()->toRfc4122()];
+        $this->signedIn(['product.read']);
+
+        foreach ([
+            'kind[]=goods&kind[]=service' => ['P1', 'P2', 'P3', 'P4', 'P5'],
+            'kind=service' => ['P4'],
+            'tracking[]=lot&tracking[]=serial' => ['P2', 'P3'],
+            // A category stands for every category under it.
+            "categoryId[]=$toolsId" => ['P1', 'P2', 'P5'],
+            "categoryId[]=$drillsId&categoryId[]=$paintId" => ['P2', 'P3', 'P5'],
+            "categoryId[]=$toolsId&isActive=true" => ['P1', 'P2'],
+            'unitPriceNet[min]=12.5&unitPriceNet[max]=60' => ['P1', 'P3', 'P4'],
+            'unitPriceNet[min]=100' => ['P2'],
+            "kind=goods&tracking=none&categoryId=$toolsId&unitPriceNet[max]=10" => ['P5'],
+        ] as $query => $references) {
+            $this->getJson($this->path().'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($references, array_column($this->jsonList(), 'reference'), $query);
+            self::assertSame(\count($references), $this->jsonPage()['totalItems'], $query);
+        }
+
+        foreach (['kind[]=goods&kind[]=robot', 'tracking[]=batch', 'categoryId[]=not-a-uuid', 'unitPriceNet[min]=ten', 'unitPriceNet[min]=9&unitPriceNet[max]=1'] as $refused) {
+            $this->getJson($this->path().'?'.$refused);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+        }
     }
 
     /**

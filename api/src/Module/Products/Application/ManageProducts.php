@@ -40,6 +40,7 @@ use App\Settings\Application\SettingContext;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\Tree;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -77,7 +78,21 @@ final readonly class ManageProducts
     /** @return Page<Product> */
     public function search(Company $company, ProductSearch $search, PageRequest $page): Page
     {
-        return $this->products->search($company->getId(), $search, $page);
+        return $this->products->search($company->getId(), $this->withSubcategories($company, $search), $page);
+    }
+
+    /** A category picked stands for every category under it, at any depth (docs/SPEC.md § 7, row 197). */
+    private function withSubcategories(Company $company, ProductSearch $search): ProductSearch
+    {
+        if ([] === $search->categories) {
+            return $search;
+        }
+        $parents = [];
+        foreach ($this->categories->ofCompany($company->getId()) as $category) {
+            $parents[$category->getId()->toRfc4122()] = $category->getParent()?->getId()->toRfc4122();
+        }
+
+        return $search->withCategories(Tree::withDescendants($search->categories, $parents));
     }
 
     /** @return list<Product> */

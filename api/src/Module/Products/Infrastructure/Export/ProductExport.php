@@ -15,9 +15,9 @@ use App\ImportExport\Application\ExportQuery;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductSearch;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
+use App\Module\Products\Infrastructure\ApiPlatform\ProductSearchReader;
 use App\Module\Products\Infrastructure\Import\ProductImport;
 use App\Module\Products\Infrastructure\Module\ProductsModule;
 use App\Shared\Domain\PageRequest;
@@ -66,13 +66,7 @@ final readonly class ProductExport implements DeclaresExport
 
     public function rows(Company $company, ExportQuery $query): iterable
     {
-        $kind = $query->choice('kind', array_column(ProductKind::cases(), 'value'));
-        $search = new ProductSearch(
-            $query->text(),
-            null === $kind ? null : ProductKind::from($kind),
-            $query->flag('isActive'),
-            $query->order(ProductSearch::SORTS),
-        );
+        $search = ProductSearchReader::read($query->parameters(), $query->text(), $query->order(ProductSearch::SORTS));
         $columns = $this->columns($company);
         $codes = [];
         foreach ($this->taxes->ofCompany($company->getId()) as $tax) {

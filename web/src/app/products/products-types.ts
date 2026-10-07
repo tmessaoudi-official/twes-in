@@ -30,8 +30,14 @@ export interface ProductSearch {
   itemsPerPage: number;
   /** Words found in the reference or name, or one of its codes spelled whole; empty finds all. */
   q: string;
-  kind: ProductKind | null;
+  /** Any of these, each filter's values OR'd and the filters AND'd (row 197). */
+  kinds: readonly ProductKind[];
+  trackings: readonly ProductTracking[];
+  /** Each with every category under it, which the API adds. */
+  categoryIds: readonly string[];
   isActive: boolean | null;
+  /** The ends of the price interval, `unitPriceNet.min` and `unitPriceNet.max`, each already a valid decimal. */
+  intervals: Readonly<Record<string, string>>;
   order: { key: ProductSortKey; direction: 'asc' | 'desc' } | null;
 }
 

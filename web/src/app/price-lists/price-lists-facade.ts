@@ -78,8 +78,11 @@ export class PriceListsFacade {
       page: 1,
       itemsPerPage: PICK_SIZE,
       q: words,
-      kind: null,
+      kinds: [],
+      trackings: [],
+      categoryIds: [],
       isActive: true,
+      intervals: {},
       order: null,
     });
     this.remember(page.rows);

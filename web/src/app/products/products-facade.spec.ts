@@ -19,8 +19,11 @@ const everyProduct: ProductSearch = {
   page: 1,
   itemsPerPage: 25,
   q: '',
-  kind: null,
+  kinds: [],
+  trackings: [],
+  categoryIds: [],
   isActive: null,
+  intervals: {},
   order: null,
 };
 

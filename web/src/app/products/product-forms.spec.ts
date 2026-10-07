@@ -79,11 +79,32 @@ const warranty: CustomFieldDefinition = {
 };
 
 describe('product forms', () => {
+  it('offers the filters ruled for the list', () => {
+    expect(
+      (PRODUCTS_LIST.filters ?? []).map((filter) => [filter.id, filter.multiple ?? false]),
+    ).toEqual([
+      ['kind', true],
+      ['tracking', true],
+      ['status', false],
+    ]);
+    expect(PRODUCTS_LIST.picks?.map((pick) => pick.id)).toEqual(['category']);
+    expect(PRODUCTS_LIST.ranges?.map((range) => [range.id, range.kind])).toEqual([
+      ['unitPriceNet', 'amount'],
+    ]);
+  });
+
   it('asks the API for the page, words, kind, status and sort the list shows, and sorts only by what it sorts', () => {
     expect(
       productSearch({
         query: 'portable',
-        filters: { kind: 'service', status: 'inactive' },
+        filters: {
+          kind: 'service,robot',
+          status: 'inactive',
+          tracking: 'serial,batch',
+          category: '0199a1b2-0000-7000-8000-000000000001,not-an-id',
+          'unitPriceNet.min': '5',
+          'unitPriceNet.max': 'ten',
+        },
         sort: { column: 'status', direction: 'desc' },
         pageIndex: 2,
         pageSize: 50,
@@ -92,8 +113,11 @@ describe('product forms', () => {
       page: 3,
       itemsPerPage: 50,
       q: 'portable',
-      kind: 'service',
+      kinds: ['service'],
+      trackings: ['serial'],
+      categoryIds: ['0199a1b2-0000-7000-8000-000000000001'],
       isActive: false,
+      intervals: { 'unitPriceNet.min': '5' },
       order: { key: 'isActive', direction: 'desc' },
     });
     expect(
@@ -108,8 +132,11 @@ describe('product forms', () => {
       page: 1,
       itemsPerPage: 25,
       q: '',
-      kind: null,
+      kinds: [],
+      trackings: [],
+      categoryIds: [],
       isActive: null,
+      intervals: {},
       order: { key: 'category', direction: 'asc' },
     });
     for (const column of PRODUCTS_LIST.columns.filter((each) => each.sortable)) {

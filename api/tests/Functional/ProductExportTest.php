@@ -75,6 +75,23 @@ final class ProductExportTest extends ApiTestCase
         self::assertStringStartsWith('SRV-001', $this->csv('/exports/products.csv?order[reference]=desc')[1]);
     }
 
+    public function testTheFileHoldsWhatTheListShowsUnderEveryFilter(): void
+    {
+        $this->signIn(['product.read']);
+        foreach ([
+            'kind[]=goods&kind[]=service' => 2,
+            'tracking[]=none' => 2,
+            'tracking[]=lot&tracking[]=serial' => 0,
+            'unitPriceNet[min]=100' => 1,
+            'unitPriceNet[max]=100&isActive=false' => 1,
+        ] as $query => $rows) {
+            self::assertCount(1 + $rows, $this->csv('/exports/products.csv?'.$query), $query);
+            $this->getJson($this->path().'/products?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($rows, $this->jsonPage()['totalItems'], $query);
+        }
+    }
+
     public function testWhoMayNotReadCostsIsGivenNoCostColumnNorFigureInEitherFormat(): void
     {
         $this->signIn(['product.read']);

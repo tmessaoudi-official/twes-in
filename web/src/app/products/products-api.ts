@@ -26,6 +26,7 @@ import type {
   StockTotalStockTotalRead,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
+import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import {
   BARCODE_ROLES,
@@ -483,8 +484,13 @@ const path = (companyId: string, collection: string, id?: string): string =>
 function toSearchParams(search: ProductSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
   if (search.q.trim() !== '') params = params.set('q', search.q.trim());
-  if (search.kind !== null) params = params.set('kind', search.kind);
+  for (const kind of search.kinds) params = params.append('kind[]', kind);
+  for (const tracking of search.trackings) params = params.append('tracking[]', tracking);
+  for (const id of search.categoryIds) params = params.append('categoryId[]', id);
   if (search.isActive !== null) params = params.set('isActive', search.isActive);
+  for (const [key, value] of Object.entries(search.intervals)) {
+    params = params.set(apiRangeKey(key), value);
+  }
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
   return params;

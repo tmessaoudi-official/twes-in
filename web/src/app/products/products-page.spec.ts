@@ -144,8 +144,11 @@ describe('ProductsPage', () => {
       page: 1,
       itemsPerPage: 25,
       q: '',
-      kind: null,
+      kinds: [],
+      trackings: [],
+      categoryIds: [],
       isActive: null,
+      intervals: {},
       order: { key: 'reference', direction: 'asc' },
     });
     const row = (q('product-ART-001')?.textContent ?? '').replace(/\s/g, ' ');

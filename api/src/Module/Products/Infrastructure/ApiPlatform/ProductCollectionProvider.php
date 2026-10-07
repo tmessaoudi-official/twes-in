@@ -14,7 +14,6 @@ use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Domain\Product;
-use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductSearch;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -35,14 +34,7 @@ final readonly class ProductCollectionProvider implements ProviderInterface
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): TraversablePaginator
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ProductPermission::READ);
-        $kind = Paging::value($operation, 'kind');
-        $active = Paging::value($operation, 'isActive');
-        $search = new ProductSearch(
-            Paging::text($operation),
-            \is_string($kind) ? ProductKind::from($kind) : null,
-            \is_bool($active) ? $active : null,
-            Paging::order($operation, ProductSearch::SORTS),
-        );
+        $search = ProductSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, ProductSearch::SORTS));
 
         $withCosts = $this->guard->may($company, ProductPermission::COST_READ);
 

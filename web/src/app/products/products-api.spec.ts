@@ -10,8 +10,11 @@ const everyProduct: ProductSearch = {
   page: 1,
   itemsPerPage: 25,
   q: '',
-  kind: null,
+  kinds: [],
+  trackings: [],
+  categoryIds: [],
   isActive: null,
+  intervals: {},
   order: null,
 };
 
@@ -87,13 +90,16 @@ describe('ProductsApi', () => {
       page: 2,
       itemsPerPage: 50,
       q: ' vis ',
-      kind: 'goods' as const,
+      kinds: ['goods' as const],
+      trackings: [],
+      categoryIds: [],
       isActive: false,
+      intervals: { 'unitPriceNet.min': '10' },
       order: { key: 'name' as const, direction: 'asc' as const },
     };
 
     expect(api.exportUrl('c/1', search, 'csv')).toBe(
-      '/api/companies/c%2F1/exports/products.csv?q=vis&kind=goods&isActive=false&order%5Bname%5D=asc',
+      '/api/companies/c%2F1/exports/products.csv?q=vis&kind%5B%5D=goods&isActive=false&unitPriceNet%5Bmin%5D=10&order%5Bname%5D=asc',
     );
   });
 
@@ -375,14 +381,17 @@ describe('ProductsApi', () => {
       page: 2,
       itemsPerPage: 50,
       q: ' écran ',
-      kind: 'goods',
+      kinds: ['goods', 'service'],
+      trackings: ['lot', 'serial'],
+      categoryIds: ['k1'],
       isActive: false,
+      intervals: { 'unitPriceNet.min': '5', 'unitPriceNet.max': '99.5' },
       order: { key: 'category', direction: 'desc' },
     });
     const request = http.expectOne((req) => req.url === '/api/companies/c1/products');
     expect(request.request.headers.get('Accept')).toBe('application/ld+json');
     expect(request.request.params.toString()).toBe(
-      'page=2&itemsPerPage=50&q=%C3%A9cran&kind=goods&isActive=false&order%5Bcategory%5D=desc',
+      'page=2&itemsPerPage=50&q=%C3%A9cran&kind%5B%5D=goods&kind%5B%5D=service&tracking%5B%5D=lot&tracking%5B%5D=serial&categoryId%5B%5D=k1&isActive=false&unitPriceNet%5Bmin%5D=5&unitPriceNet%5Bmax%5D=99.5&order%5Bcategory%5D=desc',
     );
     request.flush({ member: [{ ...laptop, id: 'p1' }], totalItems: 77 });
 

@@ -16,6 +16,7 @@ import type {
   FormSection,
   FormValues,
 } from '../shared/form/form-types';
+import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { withCustomColumns } from '../shared/list/list-view';
 import {
@@ -127,12 +128,25 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
       width: 120,
     },
   ],
+  ranges: [{ id: 'unitPriceNet', kind: 'amount', label: `${FIELDS}.unitPriceNet` }],
+  picks: [{ id: 'category', label: `${FIELDS}.categoryId` }],
   filters: [
     {
       id: 'kind',
       label: `${FIELDS}.kind`,
+      multiple: true,
       value: (row) => row.kind,
       options: PRODUCT_KINDS.map((kind) => ({ value: kind, label: `products.kinds.${kind}` })),
+    },
+    {
+      id: 'tracking',
+      label: `${FIELDS}.tracking`,
+      multiple: true,
+      value: (row) => row.tracking,
+      options: PRODUCT_TRACKINGS.map((tracking) => ({
+        value: tracking,
+        label: `products.trackings.${tracking}`,
+      })),
     },
     {
       id: 'status',
@@ -157,16 +171,28 @@ const SORT_KEYS: Readonly<Record<string, ProductSortKey>> = {
 };
 
 /** What the API is asked for the page of products the list shows. */
+const INTERVALS: readonly { id: string; kind: 'day' | 'amount'; label: string }[] = [
+  { id: 'unitPriceNet', kind: 'amount', label: `${FIELDS}.unitPriceNet` },
+];
+
+/**
+ * What the API is asked for the page of products the list shows: every filter is sent, none applied here, since the
+ * list shows the page the API answered and a filter kept on this side would narrow that page alone.
+ */
 export function productSearch(query: ListQuery): ProductSearch {
-  const kind = PRODUCT_KINDS.find((known) => known === query.filters['kind']) ?? null;
+  const kinds = filterValues(query.filters['kind']);
+  const trackings = filterValues(query.filters['tracking']);
   const status = query.filters['status'];
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
     itemsPerPage: query.pageSize,
     q: query.query,
-    kind,
+    kinds: PRODUCT_KINDS.filter((known) => kinds.includes(known)),
+    trackings: PRODUCT_TRACKINGS.filter((known) => trackings.includes(known)),
+    categoryIds: idValues(query.filters['category']),
     isActive: status === 'active' ? true : status === 'inactive' ? false : null,
+    intervals: rangeParams(query.filters, INTERVALS),
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };

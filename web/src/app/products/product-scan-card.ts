@@ -246,8 +246,11 @@ export class ProductScanCard implements OnInit {
       page: 1,
       itemsPerPage: 10,
       q: words,
-      kind: null,
+      kinds: [],
+      trackings: [],
+      categoryIds: [],
       isActive: true,
+      intervals: {},
       order: null,
     });
     return page.rows.map((row) => ({ id: row.id, code: row.reference, name: row.name }));

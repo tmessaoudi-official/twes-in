@@ -16,8 +16,10 @@ use App\Module\Products\Domain\ProductBarcode;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Domain\ProductSearch;
+use App\Module\Products\Domain\ProductTracking;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
+use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\ArrayParameterType;
@@ -81,12 +83,22 @@ final readonly class DoctrineProductRepository implements ProductRepository
             ->leftJoin('p.category', 'c')
             ->where('p.company = :company')->setParameter('company', $companyId, 'uuid');
         $this->matchWords($query, $companyId, trim($search->text ?? ''));
-        if (null !== $search->kind) {
-            $query->andWhere('p.kind = :kind')->setParameter('kind', $search->kind->value);
+        if ([] !== $search->kinds) {
+            $query->andWhere('p.kind IN (:kinds)')
+                ->setParameter('kinds', array_map(static fn (ProductKind $each): string => $each->value, $search->kinds), ArrayParameterType::STRING);
         }
         if (null !== $search->active) {
             $query->andWhere('p.isActive = :active')->setParameter('active', $search->active);
         }
+        if ([] !== $search->trackings) {
+            $query->andWhere('p.tracking IN (:trackings)')
+                ->setParameter('trackings', array_map(static fn (ProductTracking $each): string => $each->value, $search->trackings), ArrayParameterType::STRING);
+        }
+        if ([] !== $search->categories) {
+            $query->andWhere('p.category IN (:categoryIds)')
+                ->setParameter('categoryIds', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->categories), ArrayParameterType::STRING);
+        }
+        Intervals::amounts($query, 'p.unitPriceNet', 'price', $search->unitPriceNet);
         ListOrder::apply($query, $search->order, self::SORTED_BY, ['category'], 'p.reference')
             ->setFirstResult($page->offset())->setMaxResults($page->size);
 

@@ -57,14 +57,16 @@ final class InMemoryProducts implements ProductRepository
         return $mine;
     }
 
-    /** Narrows as the database does; sorts by reference only, which is all the unit tests ask for. */
+    /** Narrows as the database does, but for the price; sorts by reference only, which is all the unit tests ask for. */
     public function search(Uuid $companyId, ProductSearch $search, PageRequest $page): Page
     {
         $found = array_values(array_filter($this->ofCompany($companyId), static function (Product $p) use ($search): bool {
             $details = $p->getDetails();
 
             return (InMemorySearch::finds($search->text, $p->getReference(), [$details->name]) || self::holds($p, $search->text))
-                && (null === $search->kind || $details->kind === $search->kind)
+                && ([] === $search->kinds || \in_array($details->kind, $search->kinds, true))
+                && ([] === $search->trackings || \in_array($p->getTracking(), $search->trackings, true))
+                && ([] === $search->categories || \in_array($p->getCategory()?->getId()->toRfc4122(), array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->categories), true))
                 && (null === $search->active || $p->isActive() === $search->active);
         }));
 
