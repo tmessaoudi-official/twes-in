@@ -77,12 +77,22 @@ final class Decimal
      * the shortfall out one smallest unit at a time to the largest floored-away remainders, ties to the earliest.
      * Flooring first is what keeps the shares from ever exceeding the total.
      *
+     * A negative total is split as the negative of its positive mirror, so a credit note's shares are its invoice's,
+     * signed: flooring a negative share would push it away from zero and hand the shortfall to another line, moving a
+     * unit of discount or tax between rates and leaving the credit note one unit off its invoice.
+     *
      * @param list<Number> $exact the unrounded shares, in document order
      *
      * @return list<Number>
      */
     public static function allocate(Number $total, array $exact, int $scale): array
     {
+        if ($total->compare(0) < 0) {
+            return array_map(
+                static fn (Number $share): Number => self::zero()->sub($share),
+                self::allocate(self::zero()->sub($total), array_map(static fn (Number $share): Number => self::zero()->sub($share), $exact), $scale),
+            );
+        }
         $unit = (new Number(1))->div(self::factor($scale), $scale);
         $floors = array_map(static fn (Number $share): Number => self::floor($share, $scale), $exact);
         $remainders = array_map(static fn (Number $share, Number $floor): Number => $share->sub($floor), $exact, $floors);

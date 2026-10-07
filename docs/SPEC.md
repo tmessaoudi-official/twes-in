@@ -4527,6 +4527,16 @@ functional tests run in the `tools` container, on the host's network, against th
   more than the line. Alternative: prorate the amount by the quantity credited, which guesses what was agreed.
   The stock line of row 220 reaches delivery notes with row 224 (the document that hands goods over); the final
   invoice's Factur-X naming its deposits as preceding invoices (BG-3) is queued as row 225.
+- [2026-10-07 22:10] ASSUMED (review): a credit note is its invoice's negative figure by figure, amending the
+  2026-09-13 DECIDED (revisit) allocation (largest remainder, ties to the earliest). The allocator splits a negative
+  total as the negative of its positive mirror, for the document discount across rate groups and lines and for the
+  per-line tax shares alike. Why: allocating the SIGNED amount floored each negative share away from zero and handed
+  the unit back to the earliest line, so with a tie across two rates the cent of discount moved from one rate to the
+  other: an invoice of 23.05 drafted a credit note of -23.06, which the cap on what a credit note may take refused,
+  leaving the invoice impossible to reverse by its own credit note (fiscal review F1, `wave2-fiscal-tests.md`). The
+  vector `credit-note-allocation-floors-negative-shares` now expects -0.003 / -0.002, its invoice's split signed, and
+  `document-discount-tie-across-rates-*` pins the pair. Alternative: keep the signed allocation and let the credit
+  note's cap absorb a one-unit difference, which would print a credit note that is not the invoice's negative.
 
 ## 8. Status
 

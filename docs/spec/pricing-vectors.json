@@ -1139,7 +1139,7 @@
     },
     {
       "id": "credit-note-allocation-floors-negative-shares",
-      "why": "The allocator's FLOOR is load-bearing on a credit, and this is the case § 3 names ('truncation toward zero is not a floor for a negative amount, and Wave 2's credit note reaches that path'). Two lines of 0.013 TND at 19 % on a CREDIT: base -0.026, group VAT -0.00494 -> -0.005. Each line's exact share is -0.00247; FLOOR gives -0.003 each (sum -0.006), the shortfall is +0.001, and the millime goes to the line with the larger floored-away remainder -- a tie (0.00053 each), so the EARLIEST line: -0.002 / -0.003, summing exactly to -0.005. Truncation toward zero gives -0.002 each, a sum of -0.004 that OVERSHOOTS the group VAT with no unit left to take back -- the broken invariant a `max(0, ...)` clamp used to hide. Same ruled mechanism as the positive allocation cases, on the other side of zero.",
+      "why": "The allocator on a CREDIT, the case § 3 names ('truncation toward zero is not a floor for a negative amount, and Wave 2's credit note reaches that path'). Two lines of 0.013 TND at 19 % on a CREDIT: base -0.026, group VAT -0.00494 -> -0.005. Each line's exact share is -0.00247. The magnitude is split as on the invoice (`per-line-vat-allocation-equal-remainders`: floors 0.002 each, the millime to the earliest of a tie, 0.003 / 0.002) and the sign follows: -0.003 / -0.002, summing exactly to -0.005 and mirroring the invoice line by line. Truncating each signed share toward zero gives -0.002 each, a sum of -0.004 that misses the group VAT with no unit left to hand out -- the broken invariant a `max(0, ...)` clamp used to hide. Flooring the SIGNED shares (-0.003 each, the millime back to the earliest) sums right but gives -0.002 / -0.003, the invoice's split reversed, which on a document discount moves a cent between rates (`document-discount-tie-across-rates-credit-note-mirrors-its-invoice`).",
       "currency": "TND",
       "document_type": "credit",
       "tax_basis": "exclusive",
@@ -1168,8 +1168,8 @@
       ],
       "vat": "-0.005",
       "vat_by_line": [
-        "-0.002",
-        "-0.003"
+        "-0.003",
+        "-0.002"
       ],
       "vat_by_line_if_truncated_toward_zero_which_is_WRONG": [
         "-0.002",
@@ -1178,6 +1178,106 @@
       "fixed_charges": [],
       "expected": {
         "total": "-0.031"
+      }
+    },
+    {
+      "id": "document-discount-tie-across-rates-invoice",
+      "why": "A document discount of one cent over two lines of 10.03 EUR at 20 % and 10 %: each rate group's exact share is 0.005, a tie, and the cent goes to the EARLIEST group, so the 20 % line nets 10.02 and the 10 % line 10.03.",
+      "currency": "EUR",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "10.03",
+          "line_net": "10.03",
+          "vat_rate": "20"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "10.03",
+          "line_net": "10.03",
+          "vat_rate": "10"
+        }
+      ],
+      "subtotal_net": "20.06",
+      "document_discount": "0.01",
+      "document_discount_by_line": [
+        "0.01",
+        "0.00"
+      ],
+      "net_after_document_discount": "20.05",
+      "vat_by_rate": [
+        {
+          "rate": "20.0000000000",
+          "base": "10.02",
+          "vat": "2.00"
+        },
+        {
+          "rate": "10.0000000000",
+          "base": "10.03",
+          "vat": "1.00"
+        }
+      ],
+      "vat": "3.00",
+      "vat_by_line": [
+        "2.00",
+        "1.00"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "23.05"
+      }
+    },
+    {
+      "id": "document-discount-tie-across-rates-credit-note-mirrors-its-invoice",
+      "why": "The same document as `document-discount-tie-across-rates-invoice`, credited unchanged. A credit note drafted from an invoice is that invoice's negative, figure by figure: the allocator splits the magnitude and the sign follows, so the cent of discount stays on the 20 % line. Allocating the signed amount instead floors each negative share away from zero and hands the cent back to the earliest line, which moves it to the 10 % line: VAT -2.01 / -1.00 and a total of -23.06 for an invoice of 23.05, which the cap on what a credit note may take then refuses, leaving the invoice impossible to reverse by its own credit note.",
+      "currency": "EUR",
+      "document_type": "credit",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "10.03",
+          "line_net": "-10.03",
+          "vat_rate": "20"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "10.03",
+          "line_net": "-10.03",
+          "vat_rate": "10"
+        }
+      ],
+      "subtotal_net": "-20.06",
+      "document_discount": "0.01",
+      "document_discount_by_line": [
+        "-0.01",
+        "0.00"
+      ],
+      "net_after_document_discount": "-20.05",
+      "vat_by_rate": [
+        {
+          "rate": "20.0000000000",
+          "base": "-10.02",
+          "vat": "-2.00"
+        },
+        {
+          "rate": "10.0000000000",
+          "base": "-10.03",
+          "vat": "-1.00"
+        }
+      ],
+      "vat": "-3.00",
+      "vat_by_line": [
+        "-2.00",
+        "-1.00"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "-23.05"
       }
     },
     {
