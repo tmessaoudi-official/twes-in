@@ -117,7 +117,23 @@ function valueAt(row: SettingRow, level: SettingLevel): unknown {
   return nearest === undefined ? row.defaultValue : nearest.value;
 }
 
+/**
+ * What a setting does, said under its short label: a sentence as a label wraps and pushes its input below the one
+ * beside it. Keyed by the setting, as its label is; each key is in both translation files (its spec checks).
+ */
+export const SETTING_HINTS: Readonly<Record<string, string>> = {
+  'watch.late_after_days': 'settings.watch.late_after_days_hint',
+  'watch.unsold_after_days': 'settings.watch.unsold_after_days_hint',
+  'credit.limit': 'settings.credit.limit_hint',
+};
+
 function fieldOf(row: SettingRow): FormField {
+  const hint = SETTING_HINTS[row.key];
+  const field = fieldOfType(row);
+  return hint === undefined ? field : { ...field, hint };
+}
+
+function fieldOfType(row: SettingRow): FormField {
   const id = fieldIdOf(row.key);
   const label = row.labelKey;
   switch (row.type) {

@@ -833,7 +833,6 @@
     }
   },
   "settings": {
-    "title": "Paramètres",
     "intro": "Les valeurs par défaut de la société. Un client, un produit ou un document peut encore en décider autrement.",
     "no_company": "Choisissez d’abord une société.",
     "forbidden": "Modifier les paramètres de la société demande la permission des paramètres.",
@@ -854,7 +853,8 @@
       "paid_stamp": "Tamponner sur la copie à jour ce que la facture est devenue (« Acquittée », « Soldée », « Réglée partiellement »)"
     },
     "credit": {
-      "limit": "Plafond de crédit du client (0 : aucun)"
+      "limit": "Plafond de crédit du client",
+      "limit_hint": "0 : aucun. Au-delà, une notification le dit après la facture qui le dépasse."
     },
     "article": {
       "default_unit": "Unité par défaut",
@@ -869,10 +869,12 @@
       "show_stock": "Dire sur l’écran client si un produit est en stock ou non"
     },
     "watch": {
-      "late_after_days": "À surveiller : un client est signalé quand une facture a ce nombre de jours de retard",
-      "unsold_after_days": "À surveiller : un produit est signalé quand il n’a pas été vendu depuis ce nombre de jours",
+      "late_after_days": "Retard signalé (jours)",
+      "unsold_after_days": "Invendu signalé (jours)",
       "lot_expiry_days": "À surveiller : un lot est signalé ce nombre de jours avant sa date limite",
-      "lead_days": "À surveiller : délai de réapprovisionnement (jours) sous lequel un stock qui s’épuise est signalé"
+      "lead_days": "À surveiller : délai de réapprovisionnement (jours) sous lequel un stock qui s’épuise est signalé",
+      "late_after_days_hint": "Dans « À surveiller », un client est signalé quand une facture a ce nombre de jours de retard.",
+      "unsold_after_days_hint": "Dans « À surveiller », un produit est signalé quand il n’a pas été vendu depuis ce nombre de jours."
     },
     "delivery_note": {
       "show_prices": "Afficher les prix sur les bons de livraison",

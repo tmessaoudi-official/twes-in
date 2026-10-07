@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import en from '../../public/i18n/en.json';
 import fr from '../../public/i18n/fr.json';
+import { SETTING_HINTS } from './shared/settings/setting-forms';
 
 /**
  * docs/SPEC.md § 5, item 5: fr and en carry the same keys. A key present in one file only would render as its
@@ -49,6 +50,12 @@ describe('translation files', () => {
 
   it('fr and en declare exactly the same keys', () => {
     expect(en).toEqual(fr);
+  });
+
+  it('says every setting hint in both languages', () => {
+    // A hint is named by key in code (shared/settings/setting-forms.ts), where no label gate looks.
+    const keys = new Set(fr);
+    expect(Object.values(SETTING_HINTS).filter((key) => !keys.has(key))).toEqual([]);
   });
 
   it('French punctuation is held to its word by the right no-break space', () => {

@@ -56,3 +56,25 @@ test("the owner sets the company's payment terms, which survive a reload until r
     await forgetCompanyTerms(page);
   }
 });
+
+test('the fields of one row line up, whatever the length of their labels', async ({ page }) => {
+  // Audit 2026-10-06 V-15: a sentence as a label pushed its input 40 px below its neighbour's, and two checkboxes
+  // centred on texts of one and two lines did not line up.
+  await signIn(page);
+  await page.goto('/settings');
+  await expect(page.getByTestId('field-document__payment_terms_days')).toBeVisible();
+  const top = (testId: string, inner: string) =>
+    page
+      .getByTestId(testId)
+      .locator(inner)
+      .first()
+      .evaluate((element) => Math.round(element.getBoundingClientRect().top));
+  const self = ':scope';
+  expect(await top('field-watch__late_after_days', self)).toBe(
+    await top('field-document__payment_terms_days', self),
+  );
+  expect(await top('field-delivery_note__show_prices', '.mdc-checkbox__background')).toBe(
+    await top('field-delivery_note__reception_block', '.mdc-checkbox__background'),
+  );
+  await expect(page.getByTestId('settings-title')).toHaveText('Valeurs par défaut');
+});

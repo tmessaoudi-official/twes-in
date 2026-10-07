@@ -60,6 +60,16 @@ const rows = [terms, language, unit];
 const customer = { id: 'customer-defaults', level: 'customer', chains: ['parties'] } as const;
 
 describe('settings at a level', () => {
+  // Audit 2026-10-06 V-15: a sentence as a label pushed its input below its neighbour's.
+  it('says what a setting does as a hint under a short label, where one is declared', () => {
+    const late = row({ key: 'watch.late_after_days', chain: 'parties', type: 'int', value: 30 });
+    const [field, other] = settingsForm([late, terms], customer).sections.flatMap(
+      (section) => section.fields,
+    );
+    expect(field.hint).toBe('settings.watch.late_after_days_hint');
+    expect(other.hint).toBeUndefined();
+  });
+
   // docs/SPEC.md § 7, 2026-09-19 21:55: a decimal or a money setting shows and takes the locale's decimal separator.
   it('asks a decimal or a money setting as a decimal field', () => {
     const rate = row({

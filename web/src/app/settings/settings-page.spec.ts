@@ -28,7 +28,8 @@ import { announceSaved } from '../shared/testing/live';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
-      settings: { title: 'Paramètres', saved: 'Enregistré' },
+      nav: { settings: 'Valeurs par défaut' },
+      settings: { saved: 'Enregistré' },
       modules: { quotes: 'Devis & commandes', zakat: 'Zakat' },
       coming: { quotes: { settings: 'La durée de validité par défaut.' } },
       shell: { soon: 'Bientôt' },
@@ -151,6 +152,12 @@ describe('SettingsPage', () => {
    * The chain a company sets is a SECTION on this page, so a new one has to draw — its own heading and its own
    * fields. A chain whose settings resolve but whose section never renders is the failure this catches.
    */
+  it('is titled by the entry it is chosen as in the settings list', async () => {
+    // Audit 2026-10-06 V-15: chosen as « Valeurs par défaut », it said « Paramètres », the whole area's name.
+    await open();
+    expect(q('settings-title')?.textContent?.trim()).toBe('Valeurs par défaut');
+  });
+
   it('draws a section for every chain, the plan’s own included', async () => {
     rows.set([terms, rackWidth]);
     await open();
