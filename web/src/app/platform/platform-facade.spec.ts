@@ -34,8 +34,8 @@ const LIST: PlatformCompanySearch = {
   page: 1,
   itemsPerPage: 25,
   q: '',
-  status: null,
-  countryCode: null,
+  statuses: [],
+  countryCodes: [],
   order: null,
 };
 const ACCOUNTS: PlatformAccountSearch = {
@@ -157,7 +157,7 @@ describe('PlatformFacade', () => {
 
   it('loads the overview: the waiting companies, the switches, the counts, the demand and what failed', async () => {
     api.companies.mockImplementation(async (search: PlatformCompanySearch) =>
-      search.status === 'pending' ? { rows: [row], total: 7 } : { rows: [row], total: 130 },
+      search.statuses.includes('pending') ? { rows: [row], total: 7 } : { rows: [row], total: 130 },
     );
     api.accounts.mockResolvedValue({ rows: [account], total: 41 });
 

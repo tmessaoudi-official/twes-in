@@ -50,8 +50,8 @@ final class InMemoryCompanies implements CompanyRepository
     /** Narrows on the name only: the owners' addresses live in memberships, which this fake does not hold. */
     public function search(CompanySearch $search, PageRequest $page): Page
     {
-        $found = array_values(array_filter($this->companies, static fn (Company $company): bool => (null === $search->status || $company->getStatus() === $search->status)
-            && (null === $search->countryCode || $company->getCountryCode() === $search->countryCode)
+        $found = array_values(array_filter($this->companies, static fn (Company $company): bool => ([] === $search->statuses || \in_array($company->getStatus(), $search->statuses, true))
+            && ([] === $search->countryCodes || \in_array($company->getCountryCode(), $search->countryCodes, true))
             && (null === $search->text || '' === trim($search->text) || str_contains(mb_strtolower($company->getName()), mb_strtolower(trim($search->text))))));
         usort($found, static fn (Company $a, Company $b): int => $a->getName() <=> $b->getName());
 

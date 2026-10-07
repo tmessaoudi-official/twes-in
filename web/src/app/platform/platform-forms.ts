@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { filterValues } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
   COMPANY_COUNTRIES,
@@ -79,6 +80,7 @@ export const COMPANIES_LIST: ListDescriptor<PlatformCompanyRow> = {
     {
       id: 'status',
       label: `${COMPANY_FIELDS}.status`,
+      multiple: true,
       value: (row) => row.status,
       options: COMPANY_STATUSES.map((status) => ({
         value: status,
@@ -88,6 +90,7 @@ export const COMPANIES_LIST: ListDescriptor<PlatformCompanyRow> = {
     {
       id: 'country',
       label: `${COMPANY_FIELDS}.country`,
+      multiple: true,
       value: (row) => row.countryCode,
       options: Object.keys(COMPANY_COUNTRIES).map((code) => ({
         value: code,
@@ -99,15 +102,15 @@ export const COMPANIES_LIST: ListDescriptor<PlatformCompanyRow> = {
 
 /** What the API is asked for the page of companies the list shows. */
 export function companySearch(query: ListQuery): PlatformCompanySearch {
-  const status = COMPANY_STATUSES.find((known) => known === query.filters['status']) ?? null;
-  const country = Object.keys(COMPANY_COUNTRIES).find((code) => code === query.filters['country']);
+  const statuses = filterValues(query.filters['status']);
+  const countries = filterValues(query.filters['country']);
   const key = query.sort === null ? undefined : COMPANY_SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
     itemsPerPage: query.pageSize,
     q: query.query,
-    status,
-    countryCode: country ?? null,
+    statuses: COMPANY_STATUSES.filter((known) => statuses.includes(known)),
+    countryCodes: Object.keys(COMPANY_COUNTRIES).filter((code) => countries.includes(code)),
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };

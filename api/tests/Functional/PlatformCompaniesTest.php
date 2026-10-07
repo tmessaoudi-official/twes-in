@@ -77,6 +77,33 @@ final class PlatformCompaniesTest extends ApiTestCase
         self::assertSame(['Bravo', 'Alpha', 'Charlie', 'Delta'], array_column($this->jsonList(), 'name'));
     }
 
+    public function testSeveralStatusesAndCountriesCombine(): void
+    {
+        $this->company('Alpha', country: 'FR');
+        $this->company('Bravo', country: 'TN');
+        $this->company('Charlie', country: 'TN', status: 'pending');
+        $this->company('Delta', country: 'FR', status: 'suspended');
+        $this->company('Echo', country: 'MA', status: 'pending');
+        $this->signedInAsOperator();
+
+        foreach ([
+            'status[]=pending&status[]=suspended' => ['Charlie', 'Delta', 'Echo'],
+            'countryCode[]=FR&countryCode[]=MA' => ['Alpha', 'Delta', 'Echo'],
+            'status[]=pending&status[]=active&countryCode[]=TN&countryCode[]=MA' => ['Bravo', 'Charlie', 'Echo'],
+            'status=suspended&countryCode=FR' => ['Delta'],
+        ] as $query => $names) {
+            $this->getJson(self::PATH.'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($names, array_column($this->jsonList(), 'name'), $query);
+            self::assertSame(\count($names), $this->jsonPage()['totalItems'], $query);
+        }
+
+        foreach (['status[]=pending&status[]=sleeping', 'countryCode[]=TN&countryCode[]=tunisia'] as $refused) {
+            $this->getJson(self::PATH.'?'.$refused);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+        }
+    }
+
     public function testARowCarriesItsOwnersAndAnUnknownStatusOrOrderIsRefused(): void
     {
         $company = $this->company('Alpha', owner: 'karim@nord.example');

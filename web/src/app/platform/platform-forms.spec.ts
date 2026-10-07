@@ -18,7 +18,7 @@ describe('the platform lists', () => {
       companySearch(
         query({
           query: 'nadia@',
-          filters: { status: 'pending', country: 'TN' },
+          filters: { status: 'pending,suspended', country: 'TN' },
           sort: { column: 'created', direction: 'desc' },
           pageIndex: 2,
           pageSize: 50,
@@ -28,8 +28,8 @@ describe('the platform lists', () => {
       page: 3,
       itemsPerPage: 50,
       q: 'nadia@',
-      status: 'pending',
-      countryCode: 'TN',
+      statuses: ['pending', 'suspended'],
+      countryCodes: ['TN'],
       order: { key: 'createdAt', direction: 'desc' },
     });
   });
@@ -42,7 +42,7 @@ describe('the platform lists', () => {
           sort: { column: 'owners', direction: 'asc' },
         }),
       ),
-    ).toMatchObject({ status: null, countryCode: null, order: null });
+    ).toMatchObject({ statuses: [], countryCodes: [], order: null });
   });
 
   it('turns the accounts state filter into what the API filters by', () => {

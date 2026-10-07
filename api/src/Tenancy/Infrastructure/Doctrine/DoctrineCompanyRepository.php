@@ -18,6 +18,7 @@ use App\Tenancy\Domain\CompanyRepository;
 use App\Tenancy\Domain\CompanySearch;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
@@ -55,11 +56,11 @@ final readonly class DoctrineCompanyRepository implements CompanyRepository
             $query->andWhere("SEARCH_TEXT(c.name) LIKE CONCAT('%', SEARCH_TEXT(:text), '%') OR EXISTS ($owners)")
                 ->setParameter('text', SearchText::escapeLike($words))->setParameter('owner', Role::OWNER);
         }
-        if (null !== $search->status) {
-            $query->andWhere('c.status = :status')->setParameter('status', $search->status);
+        if ([] !== $search->statuses) {
+            $query->andWhere('c.status IN (:statuses)')->setParameter('statuses', $search->statuses, ArrayParameterType::STRING);
         }
-        if (null !== $search->countryCode) {
-            $query->andWhere('c.countryCode = :country')->setParameter('country', $search->countryCode);
+        if ([] !== $search->countryCodes) {
+            $query->andWhere('c.countryCode IN (:countries)')->setParameter('countries', $search->countryCodes, ArrayParameterType::STRING);
         }
         ListOrder::apply($query, $search->order, ['name' => 'c.name', 'countryCode' => 'c.countryCode', 'status' => 'c.status', 'createdAt' => 'c.createdAt'], [], 'c.name')
             ->setFirstResult($page->offset())->setMaxResults($page->size);

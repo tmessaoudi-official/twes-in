@@ -470,7 +470,7 @@ describe('PlatformPage', () => {
     expect(line.textContent).toContain('En attente');
     expect(line.textContent).toContain('nadia@example.test');
     expect(facade.loadCompanies).toHaveBeenCalledWith(
-      expect.objectContaining({ page: 1, status: null }),
+      expect.objectContaining({ page: 1, statuses: [] }),
     );
     expect(query('platform-tab-count-companies')?.textContent).toContain('130');
   });

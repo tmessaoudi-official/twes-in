@@ -23,8 +23,8 @@ describe('PlatformApi', () => {
     page: 1,
     itemsPerPage: 25,
     q: '',
-    status: null,
-    countryCode: null,
+    statuses: [],
+    countryCodes: [],
     order: null,
   } as const;
 
@@ -211,15 +211,16 @@ describe('PlatformApi', () => {
     const rows = api.companies({
       ...search,
       q: 'nadia@',
-      status: 'pending',
-      countryCode: 'TN',
+      statuses: ['pending', 'suspended'],
+      countryCodes: ['TN', 'FR'],
       order: { key: 'createdAt', direction: 'asc' },
     });
 
     const request = http.expectOne((candidate) => candidate.url === '/api/platform/companies');
     expect(request.request.params.get('q')).toBe('nadia@');
-    expect(request.request.params.get('status')).toBe('pending');
-    expect(request.request.params.get('countryCode')).toBe('TN');
+    // Each filter's values OR'd, the two AND'd (row 197).
+    expect(request.request.params.getAll('status[]')).toEqual(['pending', 'suspended']);
+    expect(request.request.params.getAll('countryCode[]')).toEqual(['TN', 'FR']);
     expect(request.request.params.get('order[createdAt]')).toBe('asc');
     request.flush({ member: [], totalItems: 0 });
 
@@ -304,7 +305,7 @@ describe('PlatformApi', () => {
       .flush({}, { status: 404, statusText: 'Not Found' });
     await expect(gone).rejects.toEqual(new PlatformRefused('not_found'));
 
-    const forbidden = api.companies({ ...search, status: 'pending' });
+    const forbidden = api.companies({ ...search, statuses: ['pending'] });
     http
       .expectOne((candidate) => candidate.url === '/api/platform/companies')
       .flush({}, { status: 403, statusText: 'Forbidden' });

@@ -37,6 +37,16 @@ final class ListFiltersTest extends TestCase
         new ListFilters(['status' => ['draft', 'paid-ish']])->choices('status', ['draft', 'issued']);
     }
 
+    public function testCodesOfOneShapeAreReadOnceAndAnyOtherShapeIsRefused(): void
+    {
+        self::assertSame(['TN', 'FR'], new ListFilters(['countryCode' => ['TN', 'FR', 'TN']])->matching('countryCode', '/^[A-Z]{2}$/'));
+        self::assertSame(['TN'], new ListFilters(['countryCode' => 'TN'])->matching('countryCode', '/^[A-Z]{2}$/'), 'the old single value still works');
+        $this->expectException(InvalidFilter::class);
+        $this->expectExceptionMessage('countryCode');
+
+        new ListFilters(['countryCode' => ['TN', 'tunisia']])->matching('countryCode', '/^[A-Z]{2}$/');
+    }
+
     public function testIdentifiersAreReadWhateverTheirCaseAndRefusedWhenTheyAreNone(): void
     {
         $id = '0192a5a0-7e58-7cd2-a8c8-2f1f0f4b0c11';

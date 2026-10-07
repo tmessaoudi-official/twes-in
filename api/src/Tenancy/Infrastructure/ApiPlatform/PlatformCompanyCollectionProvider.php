@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\ProviderInterface;
 use App\Licensing\Application\CompanyStandings;
+use App\Shared\Domain\ListFilters;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Application\Company\PlatformCompanies;
 use App\Tenancy\Application\Company\PlatformCompanyView;
@@ -34,7 +35,13 @@ final readonly class PlatformCompanyCollectionProvider implements ProviderInterf
     /** @return TraversablePaginator<PlatformCompanyResource> */
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): TraversablePaginator
     {
-        $search = new CompanySearch(Paging::text($operation), Paging::text($operation, 'status'), Paging::text($operation, 'countryCode'), Paging::order($operation, CompanySearch::SORTS));
+        $filters = new ListFilters(Paging::parameters($context));
+        $search = new CompanySearch(
+            Paging::text($operation),
+            $filters->choices('status', CompanySearch::STATUSES),
+            $filters->matching('countryCode', '/^[A-Z]{2}$/'),
+            Paging::order($operation, CompanySearch::SORTS),
+        );
         $page = $this->companies->search($search, $this->paging->request($operation, $context));
         $standings = $this->standings->ofCompanies(array_map(static fn (PlatformCompanyView $view): Uuid => Uuid::fromString($view->id), $page->items));
 

@@ -315,16 +315,16 @@ const WAITING_SEARCH: PlatformCompanySearch = {
   page: 1,
   itemsPerPage: 3,
   q: '',
-  status: 'pending',
-  countryCode: null,
+  statuses: ['pending'],
+  countryCodes: [],
   order: { key: 'createdAt', direction: 'asc' },
 };
 const COUNT_SEARCH: PlatformCompanySearch = {
   page: 1,
   itemsPerPage: 1,
   q: '',
-  status: null,
-  countryCode: null,
+  statuses: [],
+  countryCodes: [],
   order: null,
 };
 const ACCOUNT_COUNT_SEARCH: PlatformAccountSearch = {

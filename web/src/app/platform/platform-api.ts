@@ -248,8 +248,8 @@ function pagingParams(page: number, itemsPerPage: number, q: string): HttpParams
 
 function companyParams(search: PlatformCompanySearch): HttpParams {
   let params = pagingParams(search.page, search.itemsPerPage, search.q);
-  if (search.status !== null) params = params.set('status', search.status);
-  if (search.countryCode !== null) params = params.set('countryCode', search.countryCode);
+  for (const status of search.statuses) params = params.append('status[]', status);
+  for (const code of search.countryCodes) params = params.append('countryCode[]', code);
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
   return params;

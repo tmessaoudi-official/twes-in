@@ -47,6 +47,24 @@ final readonly class ListFilters
     }
 
     /**
+     * Values whose set is open but whose shape is known, such as a country's code.
+     *
+     * @return list<string> the distinct values named, in the order given
+     *
+     * @throws InvalidFilter
+     */
+    public function matching(string $key, string $pattern): array
+    {
+        $values = [];
+        foreach ($this->values($key) as $value) {
+            1 === preg_match($pattern, $value) || throw new InvalidFilter($key, \sprintf('"%s" is not of the expected shape.', $value));
+            $values[$value] = $value;
+        }
+
+        return array_values($values);
+    }
+
+    /**
      * @return list<Uuid>
      *
      * @throws InvalidFilter

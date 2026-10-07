@@ -83,8 +83,9 @@ export interface PlatformCompanySearch {
   readonly page: number;
   readonly itemsPerPage: number;
   readonly q: string;
-  readonly status: CompanyStatus | null;
-  readonly countryCode: string | null;
+  /** Any of these, each filter's values OR'd and the two AND'd (row 197). */
+  readonly statuses: readonly CompanyStatus[];
+  readonly countryCodes: readonly string[];
   readonly order: {
     readonly key: 'name' | 'countryCode' | 'status' | 'createdAt';
     readonly direction: SortDirection;
