@@ -286,6 +286,26 @@
             </div>
           </div>
 
+          @if (stocks()[i]; as stock) {
+            @let unit = stockUnit(stock.unitId);
+            <p
+              class="text-xs"
+              [class.text-error]="short(stock.left)"
+              [class.text-on-surface-variant]="!short(stock.left)"
+              [attr.data-testid]="'line-' + i + '-stock'"
+            >
+              {{
+                (stock.left === null ? 'invoices.lines.stock_on_hand' : 'invoices.lines.stock_left')
+                  | translate
+                    : {
+                        onHand: stock.onHand | amount: unit.scale,
+                        left: stock.left ?? stock.onHand | amount: unit.scale,
+                        unit: unit.name,
+                      }
+              }}
+            </p>
+          }
+
           <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
             @if (taxOptionsOf(line, i); as taxes) {
               @if (taxes.length > 0) {

@@ -24,6 +24,7 @@ import {
 import { InvoicePage } from './invoice-page';
 import { InvoicesFacade } from './invoices-facade';
 import { PREVIEW_DELAY, type PreviewBody } from '../shared/documents/document-figures';
+import { InventoryFacade } from '../inventory/inventory-facade';
 import { ProductScans } from '../products/product-scans';
 import { ScanBus } from '../shared/scan/scan-bus';
 import { ScreenActions } from '../shared/actions/screen-actions';
@@ -258,6 +259,7 @@ describe('InvoicePage', () => {
       `/api/companies/${companyId}/invoices/${id}/pdf/${kind}`,
   };
   const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
+  const inventory = { onHand: vi.fn() };
   const display = { show: vi.fn(), total: vi.fn(), clear: vi.fn(), openWindow: vi.fn() };
   const granted = new Set<string>();
   const modulesOn = new Set<string>();
@@ -362,6 +364,7 @@ describe('InvoicePage', () => {
     facade.pickCustomers.mockClear();
     facade.pickProducts.mockClear();
     scans.piecesPerScan.mockReset().mockResolvedValue(null);
+    inventory.onHand.mockReset().mockResolvedValue([]);
     scans.named.mockReset().mockResolvedValue(null);
     Object.values(display).forEach((each) => each.mockReset());
     facade.create.mockReset().mockResolvedValue({ ...draft, id: 'i9' });
@@ -391,6 +394,7 @@ describe('InvoicePage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: InvoicesFacade, useValue: facade },
         { provide: ProductScans, useValue: scans },
+        { provide: InventoryFacade, useValue: inventory },
         { provide: CustomerDisplay, useValue: display },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
@@ -743,6 +747,36 @@ describe('InvoicePage', () => {
         lines: [expect.objectContaining({ discountRate: null, discountAmount: '250.5' })],
       }),
     );
+  });
+
+  it('says under a line what is on hand where the invoice is made, and when it would leave too few', async () => {
+    modulesOn.add('inventory');
+    granted.add('stock.read');
+    inventory.onHand.mockResolvedValue([{ productId: 'p1', unitId: 'u1', onHand: '5.000' }]);
+    await open(undefined);
+    expect(q('line-0-stock')).toBeNull();
+    await pick('line-0-product', 'ART-1 · Conception');
+    await settle();
+
+    expect(inventory.onHand).toHaveBeenLastCalledWith('c1', 'e1', ['p1']);
+    expect(q('line-0-stock')?.textContent).toContain('invoices.lines.stock_left');
+    expect(q('line-0-stock')?.classList).not.toContain('text-error');
+    type('line-0-quantity', '7');
+    await settle();
+    expect(q('line-0-stock')?.classList).toContain('text-error');
+    // Typing a quantity asks nothing more: what is on hand did not move.
+    expect(inventory.onHand).toHaveBeenCalledTimes(1);
+  });
+
+  it('says nothing of stock to somebody who may not read it', async () => {
+    modulesOn.add('inventory');
+    inventory.onHand.mockResolvedValue([{ productId: 'p1', unitId: 'u1', onHand: '5.000' }]);
+    await open(undefined);
+    await pick('line-0-product', 'ART-1 · Conception');
+    await settle();
+
+    expect(inventory.onHand).not.toHaveBeenCalled();
+    expect(q('line-0-stock')).toBeNull();
   });
 
   it('keeps the document taxes a draft names, and resets them when its customer changes', async () => {

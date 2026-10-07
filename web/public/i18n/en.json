@@ -1301,6 +1301,8 @@
       "description": "Description",
       "quantity": "Quantity",
       "source_left": "Left on the note: {{left}}",
+      "stock_on_hand": "In stock: {{onHand}} {{unit}}",
+      "stock_left": "In stock: {{onHand}} {{unit}} · {{left}} left after this document",
       "unit": "Unit",
       "lot": "Lot or serial number",
       "returned": "The goods came back to stock",

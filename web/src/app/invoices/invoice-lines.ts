@@ -27,6 +27,8 @@ import {
   lineDiscount,
   lineGroup,
   type LinesArray,
+  lineStock,
+  type OnHand,
   namesALot,
   offeredLineTaxes,
   pickedProduct,
@@ -44,6 +46,7 @@ import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { Select, type SelectOption } from '../shared/form/select';
 import { ProductScans } from '../products/product-scans';
+import { InventoryFacade } from '../inventory/inventory-facade';
 import { LineCatalogue } from './line-catalogue';
 import type { LineFigures } from '../shared/documents/document-figures';
 import { LineFiguresView } from '../shared/documents/line-figures';
@@ -92,6 +95,7 @@ type CheckedField = keyof Omit<
 export class InvoiceLines {
   private readonly facade = inject(LineCatalogue);
   private readonly scans = inject(ProductScans);
+  private readonly inventory = inject(InventoryFacade);
 
   readonly lines = input.required<LinesArray>();
   /** Whose company's catalogue the pickers ask; a line is never offered another company's products. */
@@ -111,6 +115,13 @@ export class InvoiceLines {
   readonly returnable = input(false);
   /** Whether a line names the lot or serial it sells: a document that hands goods over does, a quote does not. */
   readonly lots = input(true);
+  /**
+   * Whether each line says what is on hand of its product and what the document leaves: for a document that takes goods
+   * out or will, read by somebody who may read stock, while the company keeps stock.
+   */
+  readonly stock = input(false);
+  /** The establishment the document is made at, whose shelves the stock is read from; null for the main one. */
+  readonly establishmentId = input<string | null>(null);
   /** Each line's net as last saved, by position; shown while the line is unchanged. */
   readonly nets = input<readonly string[]>([]);
   /**
@@ -136,6 +147,28 @@ export class InvoiceLines {
   private readonly offered = computed(
     () => new Set(offeredLineTaxes(this.options(), this.excluded()).map((tax) => tax.id)),
   );
+  /** What the establishment holds of the lines' products whose stock is kept, by product. */
+  private readonly onHand = signal<ReadonlyMap<string, OnHand>>(new Map());
+  private stockRequest = 0;
+  /** What to ask of stock: the company, the establishment and the products named, each once, in a stable order. */
+  private readonly stockAsked = computed(
+    () => {
+      this.revision();
+      if (!this.stock() || this.readOnly() || this.companyId() === '') return null;
+      const products = [
+        ...new Set(this.lines().controls.map((line) => line.controls.productId.value)),
+      ]
+        .filter((id) => id !== '')
+        .sort();
+      return { companyId: this.companyId(), establishmentId: this.establishmentId(), products };
+    },
+    { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
+  );
+  protected readonly stocks = computed(() => {
+    this.revision();
+    return lineStock(this.lines(), this.onHand());
+  });
+
   /** The lines as an issued invoice reads them: values, never fields drawn disabled. */
   protected readonly issued = computed<IssuedLine[]>(() => {
     this.revision();
@@ -184,6 +217,10 @@ export class InvoiceLines {
           }),
         );
       }
+    });
+    effect(() => {
+      const asked = this.stockAsked();
+      untracked(() => void this.readStock(asked));
     });
     effect((onCleanup) => {
       const subscription = this.lines().events.subscribe(() =>
@@ -300,6 +337,31 @@ export class InvoiceLines {
     }
     const invalid = control.invalid || (field === 'quantity' && line.hasError('quantityDecimals'));
     return invalid ? `invoices.lines.errors.${field}` : null;
+  }
+
+  /** How a quantity of stock counted in `unitId` is shown: at its unit's decimals, with its name. */
+  protected stockUnit(unitId: string): { scale: number | null; name: string } {
+    const unit = this.options().units.find((each) => each.id === unitId);
+    return { scale: unit?.decimals ?? null, name: unit?.name ?? '' };
+  }
+
+  protected short(left: string | null): boolean {
+    return left !== null && left.startsWith('-');
+  }
+
+  /** Reads the stock again for what is asked; an answer to an earlier question is dropped. */
+  private async readStock(
+    asked: { companyId: string; establishmentId: string | null; products: string[] } | null,
+  ): Promise<void> {
+    const request = ++this.stockRequest;
+    const rows =
+      asked === null || asked.products.length === 0
+        ? []
+        : await this.inventory.onHand(asked.companyId, asked.establishmentId, asked.products);
+    if (request !== this.stockRequest) return;
+    this.onHand.set(
+      new Map(rows.map((row) => [row.productId, { unitId: row.unitId, onHand: row.onHand }])),
+    );
   }
 
   /** Whether the line is discounted by an amount rather than a rate. */

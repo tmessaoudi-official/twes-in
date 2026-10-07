@@ -22,6 +22,7 @@ import {
   stillOwed,
   dropRefusedLineTaxes,
   figuresReady,
+  lineStock,
 } from './invoice-forms';
 import { FormArray } from '@angular/forms';
 import type { CustomerOption, InvoiceOptions, InvoiceRow, ProductOption } from './invoices-types';
@@ -501,6 +502,38 @@ describe('invoice forms', () => {
       expect(lines.at(0).controls.discountKind.value).toBe('amount');
       expect(lines.at(0).controls.discountAmount.value).toBe('7.50');
       expect(lines.at(0).valid).toBe(true);
+    });
+
+    it('says what is on hand of a line’s product and what the document leaves of it, in exact decimals', () => {
+      const lines = linesArray([], options, null);
+      const fill = (at: number, values: Record<string, string>) =>
+        lines.at(at).patchValue({ unitId: 'u1', description: 'x', unitPriceNet: '1', ...values });
+      lines.push(lineGroup(null, options, null));
+      lines.push(lineGroup(null, options, null));
+      lines.push(lineGroup(null, options, null));
+      lines.push(lineGroup(null, options, null));
+      fill(0, { productId: 'p1', quantity: '3' });
+      fill(1, { productId: 'p1', quantity: '0.5', unitId: 'u2' });
+      fill(2, { productId: 'p1', quantity: '2', sourceDeliveryNoteLineId: 'dl1' });
+      fill(3, { productId: 'p1', quantity: '4' });
+      fill(4, { productId: 'p2', quantity: '1' });
+      const onHand = new Map([['p1', { unitId: 'u1', onHand: '6.500' }]]);
+
+      expect(lineStock(lines, onHand)).toEqual([
+        // Three and four of the line's own unit leave half a piece short; the delivery note already took its two.
+        { onHand: '6.500', unitId: 'u1', left: '-0.500' },
+        // Counted in another unit than the stock, it moves none, so it is told only what is there.
+        { onHand: '6.500', unitId: 'u1', left: null },
+        { onHand: '6.500', unitId: 'u1', left: null },
+        { onHand: '6.500', unitId: 'u1', left: '-0.500' },
+        // No stock is kept of it, or it is not the company's to say.
+        null,
+      ]);
+
+      lines.at(3).patchValue({ quantity: 'trois' });
+      expect(lineStock(lines, onHand)[0]?.left).toBe('3.500');
+      lines.at(0).patchValue({ productId: '' });
+      expect(lineStock(lines, onHand)[0]).toBeNull();
     });
 
     it('names the lot or serial sold only on a line of a product tracked by one', () => {

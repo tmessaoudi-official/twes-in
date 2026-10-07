@@ -471,3 +471,11 @@ export interface StockPlanShape {
   width: number;
   depth: number;
 }
+
+/** What an establishment's shelves hold of a product whose stock is kept, counted in the unit `unitId` names. */
+export interface StockOnHand {
+  productId: string;
+  unitId: string;
+  /** A decimal string, below zero when more left than came in. */
+  onHand: string;
+}

@@ -1301,6 +1301,8 @@
       "description": "Désignation",
       "quantity": "Quantité",
       "source_left": "Reste sur le bon : {{left}}",
+      "stock_on_hand": "En stock : {{onHand}} {{unit}}",
+      "stock_left": "En stock : {{onHand}} {{unit}} · reste {{left}} après ce document",
       "unit": "Unité",
       "lot": "Lot ou numéro de série",
       "returned": "Les marchandises sont revenues en stock",

@@ -26,6 +26,7 @@ import type {
   StockRepeatInput,
   StockStructureInput,
   StockStructureRow,
+  StockOnHand,
   StockSearch,
   StockValuation,
 } from './inventory-types';
@@ -128,6 +129,22 @@ export class InventoryFacade {
       return await this.api.receiptCost(companyId, productId, quantity, unitCost);
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * What the establishment holds of a document's products; none when it cannot be read, since a line is typed the same
+   * without it.
+   */
+  async onHand(
+    companyId: string,
+    establishmentId: string | null,
+    productIds: readonly string[],
+  ): Promise<StockOnHand[]> {
+    try {
+      return await this.api.onHand(companyId, establishmentId, productIds);
+    } catch {
+      return [];
     }
   }
 

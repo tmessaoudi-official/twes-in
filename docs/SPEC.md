@@ -4480,6 +4480,16 @@ functional tests run in the `tools` container, on the host's network, against th
   with « % » or the amount as money, and Factur-X writes an amount alone as the line allowance (BT-136) with no
   percentage and no base. Alternatives: an amount off each unit (« 2 dinars de remise par pièce »), which a second
   field could add later.
+- [2026-10-07 18:47] ASSUMED (review): how a line says what is on hand (row 220). An invoice's or a quote's line naming a
+  product whose stock is kept says « En stock : 5 Unité · reste 4 après ce document » under its fields, for somebody
+  holding `stock.read` while the inventory module is on, read from the document's establishment's shelves (the main one
+  when it names none), never the whole company's. « Reste » takes off every line of the document naming that product in
+  its stock unit, which is what issuing would take, so two lines of one product say the same; it turns red below zero.
+  A line in another unit, or taken from a delivery note (which handed the goods over already), says only what is on hand;
+  a line giving a deposit back, a credit note and an issued document say nothing. It is read again when the products,
+  the establishment or the company change, never on each keystroke, from `GET …/stock-options/on-hand` (Inventory's own
+  endpoint, so no module reaches another). Alternatives: the running balance line by line, a warning only below zero,
+  stock on the product picker's options.
 
 ## 8. Status
 

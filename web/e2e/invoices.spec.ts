@@ -4,6 +4,7 @@ import { inACompany, signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
 import { choose, expectFacetCount } from './select';
+import { aProduct, forget, stockKept } from './catalogue';
 
 // G7 invoices through the real stack (docs/SPEC.md § 8 row 10): in the seeded Tunisian company, the owner drafts an
 // invoice for a customer made for the run, two days of consulting at 500 under the 19 % VAT, issues it and finds it
@@ -145,6 +146,60 @@ test('a line is discounted by an amount, worked out as it is typed and kept as a
     await expect(page.getByTestId('invoice-totals')).toContainText('850,000');
   } finally {
     await retire(page, customerNumber);
+  }
+});
+
+test('a line says what is on hand where the invoice is made, and what the invoice would leave', async ({
+  page,
+}) => {
+  const reference = `E2E-STK-${Date.now().toString(36).toUpperCase()}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const productId = await aProduct(page, reference);
+  try {
+    await stockKept(page, productId, true);
+    // Received on a shelf of the main establishment, which a new invoice is made at.
+    await page.evaluate(
+      async ([csrf, id]) => {
+        const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+        const base = `/api/companies/${me.company.id}`;
+        const establishments = (await (await fetch(`${base}/establishments`)).json()) as {
+          id: string;
+          isDefault: boolean;
+        }[];
+        const main = establishments.find((each) => each.isDefault)!.id;
+        const locations = (await (await fetch(`${base}/stock-locations`)).json()) as {
+          id: string;
+          establishmentId: string;
+        }[];
+        const received = await fetch(`${base}/stock-movements`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify({
+            operation: 'receive',
+            productId: id,
+            locationId: locations.find((each) => each.establishmentId === main)!.id,
+            quantity: '5',
+          }),
+        });
+        if (!received.ok) throw new Error(`receiving answered ${received.status}`);
+      },
+      [CSRF, productId] as const,
+    );
+
+    await page.goto('/invoices/new');
+    await page.getByTestId('line-0-product').fill(reference);
+    await page.getByRole('option', { name: new RegExp(`^${reference} · `) }).click();
+    await expect(page.getByTestId('line-0-stock')).toHaveText(
+      /^(En stock\s: 5 .+ · reste 4 après ce document|In stock: 5 .+ · 4 left after this document)$/,
+    );
+    await page.getByTestId('line-0-quantity').fill('7');
+    await expect(page.getByTestId('line-0-stock')).toContainText(/-2 /);
+    await expect(page.getByTestId('line-0-stock')).toHaveClass(/text-error/);
+    expect(await wcagViolations(page)).toEqual([]);
+  } finally {
+    await stockKept(page, productId, false);
+    await forget(page, [productId]);
   }
 });
 

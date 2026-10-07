@@ -537,6 +537,62 @@ export function lineDiscount(line: {
   return { discountRate: rate === '' ? null : rate, discountAmount: amount === '' ? null : amount };
 }
 
+/** What an establishment holds of a product whose stock is kept, counted in its stock unit. */
+export interface OnHand {
+  readonly unitId: string;
+  readonly onHand: string;
+}
+
+/** What a line says of stock: what is on hand of its product and, where the line moves stock, what the document leaves. */
+export interface LineStock extends OnHand {
+  /** On hand less every line of the document taking the product in its stock unit; null where this line moves none. */
+  readonly left: string | null;
+}
+
+/** A signed decimal string as thousandths, exactly. */
+function signedThousandths(value: string): bigint {
+  const trimmed = value.trim();
+  return trimmed.startsWith('-') ? -thousandths(trimmed.slice(1)) : thousandths(trimmed);
+}
+
+function fromThousandths(value: bigint): string {
+  const sign = value < 0n ? '-' : '';
+  const digits = (value < 0n ? -value : value).toString().padStart(4, '0');
+  return `${sign}${digits.slice(0, -3)}.${digits.slice(-3)}`;
+}
+
+/**
+ * What each line says of stock, from what the establishment holds of the products whose stock is kept: nothing for a
+ * line naming no such product or giving a deposit back. Only a line in its product's stock unit, not taken from a
+ * delivery note (which handed the goods over already), takes stock when the invoice is issued, so only such a line is
+ * told what the document leaves, and only such lines are taken off it.
+ */
+export function lineStock(
+  lines: LinesArray,
+  onHand: ReadonlyMap<string, OnHand>,
+): (LineStock | null)[] {
+  const moves = (line: ReturnType<LineGroup['getRawValue']>, stock: OnHand): boolean =>
+    line.unitId === stock.unitId &&
+    line.sourceDeliveryNoteLineId === '' &&
+    line.deductsInvoiceId === '';
+  const values = lines.getRawValue();
+  const taken = new Map<string, bigint>();
+  for (const line of values) {
+    const stock = onHand.get(line.productId);
+    if (stock === undefined || !moves(line, stock) || !QUANTITY_PATTERN.test(line.quantity.trim()))
+      continue;
+    taken.set(line.productId, (taken.get(line.productId) ?? 0n) + thousandths(line.quantity));
+  }
+  return values.map((line) => {
+    const stock = line.productId === '' ? undefined : onHand.get(line.productId);
+    if (stock === undefined || line.deductsInvoiceId !== '') return null;
+    const left = moves(line, stock)
+      ? fromThousandths(signedThousandths(stock.onHand) - (taken.get(line.productId) ?? 0n))
+      : null;
+    return { unitId: stock.unitId, onHand: stock.onHand, left };
+  });
+}
+
 /** A line taken from a delivery note invoices no more than the note leaves it; the API refuses it the same way. */
 const withinSource: ValidatorFn = (control) => {
   const line = control as LineGroup;

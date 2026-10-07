@@ -3,6 +3,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { SILENT } from '../shared/feedback/activity-interceptor';
 import { InventoryApi } from './inventory-api';
 import type { StockLocationInput, StockLocationRow, StockMovementRow } from './inventory-types';
 
@@ -143,6 +144,29 @@ describe('InventoryApi', () => {
     const locations = api.locations('c1');
     http.expectOne('/api/companies/c1/stock-locations').flush([{ ...zone, kind: 'cellar' }]);
     expect(await locations).toEqual([{ ...zone, kind: 'zone' }]);
+  });
+
+  it('asks what is on hand of a document’s products at its establishment, quietly, and nothing for no product', async () => {
+    const asked = api.onHand('c1', 'e1', ['p1', 'p2']);
+    const request = http.expectOne(
+      (each) => each.url === '/api/companies/c1/stock-options/on-hand',
+    );
+    expect(request.request.params.getAll('ids[]')).toEqual(['p1', 'p2']);
+    expect(request.request.params.get('establishmentId')).toBe('e1');
+    expect(request.request.context.get(SILENT)).toBe(true);
+    request.flush({ items: [{ productId: 'p1', unitId: 'u1', onHand: '6.500' }] });
+    expect(await asked).toEqual([{ productId: 'p1', unitId: 'u1', onHand: '6.500' }]);
+
+    const main = api.onHand('c1', null, ['p1']);
+    const unnamed = http.expectOne(
+      (each) => each.url === '/api/companies/c1/stock-options/on-hand',
+    );
+    expect(unnamed.request.params.has('establishmentId')).toBe(false);
+    unnamed.flush({});
+    expect(await main).toEqual([]);
+
+    expect(await api.onHand('c1', 'e1', [])).toEqual([]);
+    http.verify();
   });
 
   it('asks what a receipt would do to a cost, leaving out what is not typed yet', async () => {

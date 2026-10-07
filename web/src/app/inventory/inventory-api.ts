@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
@@ -29,6 +29,7 @@ import type {
   StockCountStockCountWriteValidationStockCountWrite as StockCountStockCountWrite,
   StockReceiptStockReceiptWriteValidationStockReceiptWrite as StockReceiptStockReceiptWrite,
   ReceiptCostReceiptCostRead,
+  StockOnHandStockOnHandRead,
   ReceiptCostEntryReceiptCostEntryWriteValidationReceiptCostEntryWrite as ReceiptCostEntryWrite,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
@@ -65,8 +66,10 @@ import {
   type ReceiptCostView,
   type StockMovementSearch,
   type StockSearch,
+  type StockOnHand,
   type StockValuation,
 } from './inventory-types';
+import { SILENT } from '../shared/feedback/activity-interceptor';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class InventoryRefused extends Error {
@@ -110,6 +113,34 @@ export class InventoryApi {
         unitDecimals: product.unitDecimals,
         homeLocationId: product.homeLocationId ?? null,
         tracking: product.tracking ?? 'none',
+      }));
+    });
+  }
+
+  /**
+   * What the establishment's shelves hold of the products a document's lines name, for those whose stock is kept; the
+   * main establishment's when none is named. Asked in the background while lines are typed, so it shows no activity.
+   */
+  async onHand(
+    companyId: string,
+    establishmentId: string | null,
+    productIds: readonly string[],
+  ): Promise<StockOnHand[]> {
+    if (productIds.length === 0) return [];
+    return this.guard(async () => {
+      let params = new HttpParams();
+      for (const id of productIds) params = params.append('ids[]', id);
+      if (establishmentId !== null) params = params.set('establishmentId', establishmentId);
+      const answer = await firstValueFrom(
+        this.http.get<StockOnHandStockOnHandRead>(`${path(companyId, 'stock-options')}/on-hand`, {
+          params,
+          context: new HttpContext().set(SILENT, true),
+        }),
+      );
+      return (answer.items ?? []).map((item) => ({
+        productId: item.productId,
+        unitId: item.unitId,
+        onHand: item.onHand,
       }));
     });
   }
