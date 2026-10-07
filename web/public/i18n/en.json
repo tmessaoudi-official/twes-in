@@ -1245,7 +1245,8 @@
     },
     "types": {
       "invoice": "Invoice",
-      "credit_note": "Credit note"
+      "credit_note": "Credit note",
+      "deposit": "Deposit invoice"
     },
     "statuses": {
       "draft": "Draft",
@@ -1323,7 +1324,8 @@
       },
       "no_product_found": "No product found.",
       "price_unchecked": "Price not checked: the customer's price list could not be read.",
-      "price_list": "Price list: {{name}}"
+      "price_list": "Price list: {{name}}",
+      "gives_back": "Deposit given back"
     },
     "document_taxes": {
       "title": "Document charges and withholdings",
@@ -1566,7 +1568,9 @@
       "refund": "Refund it to the customer",
       "keep": "Keep it a draft",
       "issue": "Issue the credit note"
-    }
+    },
+    "deposit_draft_title": "Draft deposit invoice",
+    "from_quote": "See the quote it came from"
   },
   "delivery_notes": {
     "credit_over": "This delivery brings what the customer owes to {{owed}} + {{total}} {{currency}}, past their credit limit of {{limit}} {{currency}}.",
@@ -3840,7 +3844,8 @@
       "cancel_title": "Cancel this quote?",
       "cancel_message": "A cancelled quote can no longer be sent.",
       "confirm_cancel": "Confirm the cancellation",
-      "keep": "Keep the quote"
+      "keep": "Keep the quote",
+      "deposit": "Deposit invoice"
     },
     "answer": {
       "accept_title": "The customer accepts this quote",
@@ -3872,7 +3877,27 @@
       "conflict": "The quote changed state meanwhile, or an invoice drawn from it already exists, or its establishment has no quote numbering series.",
       "invalid": "The quote was refused. Check the customer, the lines and the dates.",
       "customer_unavailable": "This customer has been deactivated since: choose another, or reactivate them on their page.",
-      "file_refused": "The file was refused: it must be a PDF or a PNG, JPEG or WebP image of at most 10 MB, not empty, and a quote holds at most 10 files."
+      "file_refused": "The file was refused: it must be a PDF or a PNG, JPEG or WebP image of at most 10 MB, not empty, and a quote holds at most 10 files.",
+      "deposit_refused": "This deposit is refused: it stays under the quote's total and under what its other deposits leave, to the currency's smallest unit.",
+      "deposit_pending": "A deposit invoice of this quote is still a draft: issue or cancel it before invoicing the quote."
+    },
+    "deposit_drafted": "Deposit invoice drafted.",
+    "deposit": {
+      "title": "Deposit invoice",
+      "help": "A deposit on this quote of {{total}} tax included. Its taxes follow the quote lines' taxes, and the final invoice will deduct it as it was charged.",
+      "by": "Work out the deposit",
+      "by_percentage": "A percentage of the quote",
+      "by_amount": "An amount, tax included",
+      "percentage": "Percentage",
+      "percentage_hint": "Above 0 and under 100, at most three decimals.",
+      "amount": "Amount, tax included",
+      "amount_hint": "Less than the quote's total.",
+      "confirm": "Create the draft"
+    },
+    "deposits": {
+      "title": "Deposits",
+      "draft": "Draft",
+      "hint": "The final invoice deducts every issued deposit, as it was charged."
     }
   }
 }

@@ -97,6 +97,11 @@ export interface InvoiceLine {
   lotCode: string | null;
   /** On a credit note's line: its goods came back to stock when the note was issued. */
   returned: boolean;
+  /**
+   * The deposit invoice this line gives back. The API writes such a line from the deposit, its net and the taxes the
+   * deposit charged, whatever else the screen sends; a screen shows it and may only take it off.
+   */
+  deductsInvoiceId: string | null;
   /** The line after its own discount, at the currency's scale, worked out by the API. */
   net: string;
 }
@@ -187,6 +192,10 @@ export interface InvoiceRow {
   correctsInvoiceId: string | null;
   /** Why a credit note corrects its invoice, stated when it was drafted; null for an invoice. */
   creditNoteReason: string | null;
+  /** A facture d'acompte: an invoice of part of a quote, given back on the invoice of the whole. */
+  deposit: boolean;
+  /** The quote it was drafted from, a deposit or the invoice of the whole; null otherwise. */
+  quoteId: string | null;
   /** Null until the document is issued. */
   number: string | null;
   status: InvoiceStatus;

@@ -172,6 +172,9 @@ export class InvoicePage {
     return invoice?.id === id ? invoice : undefined;
   });
   protected readonly isCreditNote = computed(() => this.current()?.type === 'credit_note');
+  protected readonly mayReadQuotes = computed(
+    () => this.auth.hasPermission('quote.read') && this.auth.hasModule('quotes'),
+  );
   /**
    * Why the customer cannot change here, as a hint's key, or null: a credit note goes to the customer of the invoice it
    * corrects, and lines taken from delivery notes stay with theirs until they are taken off and saved. The API refuses

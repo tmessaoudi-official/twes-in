@@ -17,6 +17,8 @@ const draft: InvoiceRow = {
   type: 'invoice',
   correctsInvoiceId: null,
   creditNoteReason: null,
+  deposit: false,
+  quoteId: null,
   number: null,
   status: 'draft',
   customerId: 'k1',

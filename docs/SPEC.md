@@ -4407,6 +4407,38 @@ functional tests run in the `tools` container, on the host's network, against th
   partly credited cannot be deducted at all. Alternatives: a `deposit` document type; the deposit taken as a payment of
   the final invoice (its VAT then counted twice); the deducted VAT recomputed on the remaining base (a millime over the
   operation, vector `final-invoice-tax-is-the-whole-less-what-deposits-charged`).
+- [2026-10-07 14:24] AGREED: the build shown in the page footer comes after the deposit screens (row 79), which finish first. A
+  new version is announced by a banner with a « Recharger » button, never by reloading on its own, so nothing being typed
+  is lost. The build line is shown to everyone, signed in or not. The developer wants the web and the API versioned
+  apart, so a fix to one never moves the other's version; the format (version, date, hash, environment shown only off
+  production) is put back to the developer with a recommendation.
+- [2026-10-07 14:28] AGREED: the web and the API are versioned apart, each from git with nothing bumped by hand: `YYYY.MM.DD.N`
+  from the last commit touching its own folders (web: `web/`, `infra/web/`; API: `api/`, `infra/api/`), N counting that
+  part's changes that day, and that commit's short hash; a fix to one never moves the other. The footer shows both
+  versions (« Web 2026.10.07.3 · API 2026.10.07.5 »), the hashes on hover or focus, and a click copies the full build line
+  for support. The « Nouvelle version disponible — Recharger » banner fires only on a new web build; a new API updates the
+  footer line silently. A `DEPLOY_ENV` (dev, staging, prod) names the deployment, shown only when it is not prod. The
+  developer adds that each part shows its own environment, the web's and the API's, only when not prod, since an
+  Angular dev build can face a production API; how that reads is put back to the developer.
+- [2026-10-07 14:31] AGREED: how the footer's build line reads. Each part carries its own build mode right after its version,
+  shown only when it is not production (the web's Angular configuration, the API's `APP_ENV`), and one chip at the end
+  names the deployment (`DEPLOY_ENV`) when it is not prod: « Web 2026.10.07.3 dev · API 2026.10.07.5 · [staging] ». A build
+  from uncommitted changes appends « -dirty » to its version. Queued as the next row after row 79.
+
+- [2026-10-07 14:43] AGREED: every document with lines (quote, invoice, credit note, delivery note) shows its figures live
+  while it is typed, worked out by the API: a preview call runs the same calculator that writes the document, about 250 ms
+  after typing stops, so the law has one calculator; a half-typed value keeps the last good figures, marked as being
+  recalculated. Each line shows a folded one-line summary (« 3 × 12,500 − 10 % = 33,750 HT · TVA 19 % 6,413 · 40,163 TTC »)
+  that unfolds to its share of the document discount and each tax's base and amount (FODEC then TVA on top of it), folded on
+  a phone; the totals card is live too (line discounts, document discount, each rate's base and tax, timbre, retenue, net à
+  payer, deposits given back, paid, balance). Beyond Invoice Ninja: a line discount typed as a percentage or an amount,
+  stock on hand at the establishment and what the line leaves of it, quantity totals, sections with their subtotals (flat
+  in Factur-X, which has none), a savings line (always on screen, on the PDF only when the company switches it on, off by
+  default) and the amount in words (« Arrêtée la présente facture à la somme de … », a country preset: on in Tunisia, off in
+  France, switchable by the company). The developer refuses margins and price origin in the line editor, which customers
+  can see: they live in a « Rentabilité » tab on each document, opened on purpose, folded by default, for `product.cost.read`
+  only, never shown while the customer screen is held (margin per line and in total, below-cost warning, where each price
+  came from). Built after row 218 in four steps, rows 219 to 222.
 
 ## 8. Status
 
@@ -4644,6 +4676,11 @@ functional tests run in the `tools` container, on the host's network, against th
 | 215 | The scanner as its own module (§ 7 2026-10-06 21:02): key `scanning`, on by default; off removes the camera, the phone pairing, the scan buttons and the product card a scan outside a field opens, and the API answers the pairing endpoints 404; each module declares what a scan does on its screens (documents add or count a line; products and stock fill, find, count, move). Done: `api/src/Module/Scanning` with `ScanningModule` (needs products) and the `ScannerSwitch` port for the phone's endpoints; the shell's camera, phone and wedge card and « Mon compte »'s scan section follow `hasModule('scanning')`; e2e: off hides both buttons and refuses a pairing 404, on brings them back. Not certified by execution: a pairing live when the module goes off, the stock count's label switch going quiet, the shell following a switch without a reload | M | done | 58288846 | api/src/Module/Scanning/** api/tests/** web/src/app/shell/** web/src/app/account/** web/src/app/shared/scan/** web/e2e/modules.spec.ts |
 | 216 | The customer screen held by the API session (§ 7 2026-10-06 19:44, audit C-F2). Done: while held, the session answers only the screen's reads, the way out and `/api/auth/me` (`CustomerScreenLockListener`, 403 `customer_screen_locked`); `POST …/customer-screen/lock` holds it, `DELETE /api/auth/customer-screen` leaves with a fresh step-up proof and spends it; `Me.customerScreenCompanyId`; the web follows the session (`CustomerView`, the `CustomerScreenHold` port, the guard reading the sign-in first, the interceptor sending a refused tab to the screen); the per-tab stored item is gone; e2e: a new tab lands on the screen and a typed call is refused. Not certified by execution: an already open tab sent to the screen (Vitest only), the passkey proof under the hold, a company with one establishment | M | done | 04b92dfa | api/src/Identity/** api/src/Module/Products/Infrastructure/** web/src/app/shared/customer-view/** web/src/app/customer-screen/** web/e2e/customer-screen.spec.ts |
 | 217 | Invoice design, slice 1 (§ 7 2026-10-06 10:19, Q4): issuing refused when a legal mention cannot be filled, naming the setting it lacks (§ 7 2026-09-21 18:30, 2026-10-07 08:49); two or three built-in layouts and the document accent, kept with an issued document; a live preview on a « Documents » settings page beside the logo | L | done | b6134ea2 | api/src/Module/Invoices/** api/src/Module/DeliveryNotes/** api/src/Settings/** api/src/Shared/** api/templates/pdf/** api/translations/** api/tests/** web/src/app/** web/public/i18n/** web/e2e/** |
+| 218 | The build in the footer: web and API versioned apart from git (`YYYY.MM.DD.N`, hash), each part's mode and the deployment shown off production, « -dirty » for uncommitted builds, a banner with « Recharger » on a new web build (§ 7 2026-10-07 14:31) | M | todo | - | web/src/app/shared/** api/src/Shared/Infrastructure/Health/** infra/** Makefile .github/** |
+| 219 | Live document figures: an API preview through the one calculator, each line's folded summary and the live totals card, on quotes, invoices and credit notes (§ 7 2026-10-07 14:43) | L | todo | - | api/src/Module/** web/src/app/invoices/** web/src/app/quotes/** web/src/app/delivery-notes/** |
+| 220 | A line discount as a percentage or an amount, and stock on hand on a line (§ 7 2026-10-07 14:43) | M | todo | - | api/src/Fiscal/** api/src/Module/** web/src/app/invoices/** |
+| 221 | Amount in words (country preset), savings line (PDF setting), quantity totals, the « Rentabilité » tab (§ 7 2026-10-07 14:43) | M | todo | - | api/** web/src/app/** api/config/fiscal/** |
+| 222 | Sections with their subtotals on documents with lines, flat in Factur-X (§ 7 2026-10-07 14:43) | L | todo | - | api/** web/src/app/** |
 <!-- /progress-block -->
 
 ### Delivered

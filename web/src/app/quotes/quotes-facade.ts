@@ -11,6 +11,7 @@ import type { LineCatalogue } from '../invoices/line-catalogue';
 import type { PickAsked } from '../shared/form/pick-api';
 import { QuotesApi, QuotesRefused } from './quotes-api';
 import type {
+  DepositShare,
   QuoteAnswer,
   QuoteAttachment,
   QuoteInput,
@@ -150,6 +151,11 @@ export class QuotesFacade implements LineCatalogue {
   /** The accepted quote drafted into a new invoice; the answer names it. */
   async invoice(companyId: string, id: string): Promise<QuoteRow | null> {
     return this.step(() => this.api.invoice(companyId, id));
+  }
+
+  /** The quote with its new deposit listed last, or null with the reason in `error`. */
+  async deposit(companyId: string, id: string, share: DepositShare): Promise<QuoteRow | null> {
+    return this.step(() => this.api.deposit(companyId, id, share));
   }
 
   /** Attaches a file, then reads the quote's files and count again. */

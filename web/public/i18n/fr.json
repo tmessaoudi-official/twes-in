@@ -1245,7 +1245,8 @@
     },
     "types": {
       "invoice": "Facture",
-      "credit_note": "Avoir"
+      "credit_note": "Avoir",
+      "deposit": "Facture d’acompte"
     },
     "statuses": {
       "draft": "Brouillon",
@@ -1323,7 +1324,8 @@
       },
       "no_product_found": "Aucun produit trouvé.",
       "price_unchecked": "Prix non vérifié : le tarif du client n’a pas pu être lu.",
-      "price_list": "Tarif : {{name}}"
+      "price_list": "Tarif : {{name}}",
+      "gives_back": "Acompte déduit"
     },
     "document_taxes": {
       "title": "Droits et retenues du document",
@@ -1566,7 +1568,9 @@
       "refund": "Le rembourser au client",
       "keep": "Le garder en brouillon",
       "issue": "Émettre l’avoir"
-    }
+    },
+    "deposit_draft_title": "Facture d’acompte en brouillon",
+    "from_quote": "Voir le devis d’origine"
   },
   "delivery_notes": {
     "credit_over": "Cette livraison porte ce que le client doit à {{owed}} + {{total}} {{currency}}, au-delà de son plafond de crédit de {{limit}} {{currency}}.",
@@ -3840,7 +3844,8 @@
       "cancel_title": "Annuler ce devis ?",
       "cancel_message": "Un devis annulé ne peut plus être envoyé.",
       "confirm_cancel": "Confirmer l’annulation",
-      "keep": "Garder le devis"
+      "keep": "Garder le devis",
+      "deposit": "Facture d’acompte"
     },
     "answer": {
       "accept_title": "Le client accepte ce devis",
@@ -3872,7 +3877,27 @@
       "conflict": "Le devis a changé d’état entre-temps, ou une facture tirée de ce devis existe déjà, ou son établissement n’a pas de série de numérotation des devis.",
       "invalid": "Le devis a été refusé. Vérifiez le client, les lignes et les dates.",
       "customer_unavailable": "Ce client a été désactivé depuis : choisissez-en un autre, ou réactivez-le dans sa fiche.",
-      "file_refused": "Le fichier a été refusé : il doit être un PDF ou une image PNG, JPEG ou WebP d’au plus 10 Mo, non vide, et le devis compte au plus 10 fichiers."
+      "file_refused": "Le fichier a été refusé : il doit être un PDF ou une image PNG, JPEG ou WebP d’au plus 10 Mo, non vide, et le devis compte au plus 10 fichiers.",
+      "deposit_refused": "Cet acompte est refusé : il reste sous le total du devis et sous ce que ses autres acomptes laissent, au centime de la devise.",
+      "deposit_pending": "Une facture d’acompte de ce devis est encore en brouillon : émettez-la ou annulez-la avant de facturer le devis."
+    },
+    "deposit_drafted": "Facture d’acompte créée en brouillon.",
+    "deposit": {
+      "title": "Facture d’acompte",
+      "help": "Un acompte sur ce devis de {{total}} TTC. Ses taxes suivent celles des lignes du devis, et la facture du solde le déduira tel qu’il a été facturé.",
+      "by": "Calculer l’acompte",
+      "by_percentage": "Un pourcentage du devis",
+      "by_amount": "Un montant TTC",
+      "percentage": "Pourcentage",
+      "percentage_hint": "Plus de 0 et moins de 100, trois décimales au plus.",
+      "amount": "Montant TTC",
+      "amount_hint": "Moins que le total du devis.",
+      "confirm": "Créer le brouillon"
+    },
+    "deposits": {
+      "title": "Acomptes",
+      "draft": "Brouillon",
+      "hint": "La facture du solde déduit chaque acompte émis, tel qu’il a été facturé."
     }
   }
 }

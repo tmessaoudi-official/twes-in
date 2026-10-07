@@ -6,7 +6,14 @@ import type { InvoiceLine, TaxTotal } from '../invoices/invoices-types';
 
 /** Why the API refused, as the quotes screens translate it. */
 export type QuotesError =
-  'network' | 'not_found' | 'conflict' | 'invalid' | 'customer_unavailable' | 'file_refused';
+  | 'network'
+  | 'not_found'
+  | 'conflict'
+  | 'invalid'
+  | 'customer_unavailable'
+  | 'file_refused'
+  | 'deposit_refused'
+  | 'deposit_pending';
 
 export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'refused' | 'cancelled';
 export const QUOTE_STATUSES: readonly QuoteStatus[] = [
@@ -84,6 +91,8 @@ export interface QuoteRow {
   refusalReason: string | null;
   /** The draft invoice an accepted quote became. */
   invoiceId: string | null;
+  /** The deposit invoices drawn from it, cancelled drafts included, the oldest first. */
+  deposits: QuoteDeposit[];
   attachmentCount: number;
   customerReference: string | null;
   notesPrinted: string | null;
@@ -116,6 +125,19 @@ export interface QuoteInput {
   discountAmount: string | null;
   lines: QuoteLineInput[];
 }
+
+/** A deposit invoice (facture d'acompte) drawn from a quote, as the quote lists it. */
+export interface QuoteDeposit {
+  invoiceId: string;
+  /** Null while it is a draft. */
+  number: string | null;
+  status: 'draft' | 'issued' | 'partially_paid' | 'paid' | 'cancelled';
+  /** Tax and fixed charges included, at the currency's scale. */
+  total: string;
+}
+
+/** A deposit asked for: a percentage of the quote, or an amount tax included; one of them. */
+export type DepositShare = { percentage: string } | { amount: string };
 
 /** The customer's answer: the day they gave it (empty: the company's today), and why they declined, when told. */
 export interface QuoteAnswer {

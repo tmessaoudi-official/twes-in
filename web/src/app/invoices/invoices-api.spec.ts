@@ -28,6 +28,7 @@ const input: InvoiceInput = {
       sourceDeliveryNoteLineId: null,
       lotCode: null,
       returned: false,
+      deductsInvoiceId: null,
     },
   ],
 };

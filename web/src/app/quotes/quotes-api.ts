@@ -28,6 +28,7 @@ import type { ListPage } from '../shared/list/list-types';
 import { trackingOf } from '../products/products-types';
 import {
   QUOTE_STATUSES,
+  type DepositShare,
   type QuoteAnswer,
   type QuoteAttachment,
   type QuoteInput,
@@ -192,6 +193,25 @@ export class QuotesApi {
     return this.step(companyId, id, 'cancel', null);
   }
 
+  /**
+   * Draws a draft deposit invoice from the accepted quote, which the answer lists last among its deposits; 422 when
+   * the share is refused or goes beyond what the quote's deposits leave.
+   */
+  async deposit(companyId: string, id: string, share: DepositShare): Promise<QuoteRow> {
+    return this.guard(
+      async () =>
+        toQuote(
+          await firstValueFrom(
+            this.http.post<QuoteQuoteRead>(`${quotePath(companyId, id)}/deposit-invoices`, {
+              depositPercentage: 'percentage' in share ? share.percentage : null,
+              depositAmount: 'amount' in share ? share.amount : null,
+            }),
+          ),
+        ),
+      'deposit_refused',
+    );
+  }
+
   /** Drafts the accepted quote wholly into a new invoice, which the answer names; 409 when it already stands. */
   async invoice(companyId: string, id: string): Promise<QuoteRow> {
     return this.step(companyId, id, 'invoice', null);
@@ -278,6 +298,8 @@ function codeOf(error: unknown, invalid: QuotesError | undefined): QuotesError {
     case 413:
       return 'file_refused';
     default:
+      // « Facturer » while a deposit drawn from the quote is still a draft.
+      if (refusedField(error) === 'deposits') return 'deposit_pending';
       if (invalid !== undefined) return invalid;
       // A customer deactivated since the quote was started, named by the field the API refused.
       return refusedField(error) === 'customerId' ? 'customer_unavailable' : 'invalid';
@@ -338,6 +360,12 @@ function toQuote(raw: QuoteQuoteRead | QuoteJsonldQuoteRead): QuoteRow {
     answeredOn: raw.answeredOn ?? null,
     refusalReason: raw.refusalReason ?? null,
     invoiceId: raw.invoiceId ?? null,
+    deposits: (raw.deposits ?? []).map(({ invoiceId, number, status, total }) => ({
+      invoiceId,
+      number: number ?? null,
+      status,
+      total,
+    })),
     attachmentCount: raw.attachmentCount ?? 0,
     customerReference: raw.customerReference ?? null,
     notesPrinted: raw.notesPrinted ?? null,
@@ -358,6 +386,7 @@ function toQuote(raw: QuoteQuoteRead | QuoteJsonldQuoteRead): QuoteRow {
       productTracking: null,
       lotCode: null,
       returned: false,
+      deductsInvoiceId: null,
       net: line.net ?? '',
     })),
     subtotalNet: raw.subtotalNet ?? '0',

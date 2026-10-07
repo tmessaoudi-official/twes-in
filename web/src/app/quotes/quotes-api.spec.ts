@@ -124,7 +124,7 @@ describe('QuotesApi', () => {
     expect(await byIds).toEqual([]);
   });
 
-  it('reads a quote into the lines the invoice editor reads: no delivery note, no lot', async () => {
+  it('reads a quote into the lines the invoice editor reads: no delivery note, no lot, no deposit', async () => {
     const pending = api.quote('c1', 'q1');
     http.expectOne('/api/companies/c1/quotes/q1').flush(raw());
     const quote = await pending;
@@ -143,6 +143,7 @@ describe('QuotesApi', () => {
       productTracking: null,
       lotCode: null,
       returned: false,
+      deductsInvoiceId: null,
       net: '2250.000',
     });
   });
@@ -188,6 +189,42 @@ describe('QuotesApi', () => {
       request.flush(raw());
       await pending;
     }
+  });
+
+  it('draws a deposit as a percentage or an amount, and reads the deposits the quote lists', async () => {
+    const byShare = api.deposit('c1', 'q1', { percentage: '30' });
+    const share = http.expectOne('/api/companies/c1/quotes/q1/deposit-invoices');
+    expect(share.request.method).toBe('POST');
+    expect(share.request.body).toEqual({ depositPercentage: '30', depositAmount: null });
+    share.flush(
+      raw({
+        status: 'accepted',
+        deposits: [{ invoiceId: 'i1', number: null, status: 'draft', total: '803.250' }],
+      }),
+    );
+    expect((await byShare).deposits).toEqual([
+      { invoiceId: 'i1', number: null, status: 'draft', total: '803.250' },
+    ]);
+
+    const byAmount = api.deposit('c1', 'q1', { amount: '500.000' });
+    const amount = http.expectOne('/api/companies/c1/quotes/q1/deposit-invoices');
+    expect(amount.request.body).toEqual({ depositPercentage: null, depositAmount: '500.000' });
+    amount.flush(raw());
+    expect((await byAmount).deposits).toEqual([]);
+  });
+
+  it('names a refused deposit, and invoicing past a draft deposit, for what they are', async () => {
+    const deposit = api.deposit('c1', 'q1', { percentage: '99' });
+    http
+      .expectOne('/api/companies/c1/quotes/q1/deposit-invoices')
+      .flush({ detail: 'depositPercentage: beyond' }, { status: 422, statusText: 'Unprocessable' });
+    await expect(deposit).rejects.toEqual(new QuotesRefused('deposit_refused'));
+
+    const invoiced = api.invoice('c1', 'q1');
+    http
+      .expectOne('/api/companies/c1/quotes/q1/invoice')
+      .flush({ detail: 'deposits: still a draft' }, { status: 422, statusText: 'Unprocessable' });
+    await expect(invoiced).rejects.toEqual(new QuotesRefused('deposit_pending'));
   });
 
   it("sends an empty answer day as none, the company's today", async () => {

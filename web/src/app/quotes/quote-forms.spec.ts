@@ -32,6 +32,7 @@ function quote(changes: Partial<QuoteRow> = {}): QuoteRow {
     answeredOn: null,
     refusalReason: null,
     invoiceId: null,
+    deposits: [],
     attachmentCount: 0,
     customerReference: null,
     notesPrinted: null,

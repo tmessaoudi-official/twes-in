@@ -13,6 +13,8 @@
             {{ number }}
           } @else if (isCreditNote()) {
             {{ 'invoices.credit_note_draft_title' | translate }}
+          } @else if (invoice.deposit) {
+            {{ 'invoices.deposit_draft_title' | translate }}
           } @else {
             {{ 'invoices.draft_title' | translate }}
           }
@@ -30,6 +32,9 @@
           @if (isCreditNote()) {
             <span>{{ 'invoices.types.credit_note' | translate }}</span>
           }
+          @if (invoice.deposit) {
+            <span data-testid="invoice-deposit">{{ 'invoices.types.deposit' | translate }}</span>
+          }
           @if (invoice.issueDate) {
             <span>{{ 'invoices.fields.issueDate' | translate }} {{ invoice.issueDate | day }}</span>
           }
@@ -44,6 +49,16 @@
             data-testid="invoice-corrects"
             >{{ 'invoices.corrects' | translate }}</a
           >
+        }
+        @if (invoice.quoteId; as quote) {
+          @if (mayReadQuotes()) {
+            <a
+              class="text-sm underline"
+              [routerLink]="['/quotes', quote]"
+              data-testid="invoice-quote"
+              >{{ 'invoices.from_quote' | translate }}</a
+            >
+          }
         }
         @if (invoice.creditNoteReason; as reason) {
           <p class="text-sm" data-testid="invoice-credit-reason">

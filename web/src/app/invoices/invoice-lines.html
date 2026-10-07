@@ -11,218 +11,32 @@
     }
   } @else {
     @for (line of groups(); track line; let i = $index) {
-      <fieldset
-        class="flex min-w-0 flex-col gap-2 rounded-xl border border-outline-variant p-4"
-        [formGroup]="line"
-        [attr.data-testid]="'line-' + i"
-      >
-        <legend class="flex items-center gap-2 px-1 text-base font-semibold">
-          {{ 'invoices.lines.position' | translate: { position: i + 1 } }}
-          @if (fromDeliveryNote(line)) {
+      @if (givesBack(line)) {
+        <section
+          class="flex min-w-0 flex-col gap-2 rounded-xl border border-outline-variant p-4"
+          [attr.data-testid]="'line-' + i"
+          [attr.aria-label]="'invoices.lines.position' | translate: { position: i + 1 }"
+        >
+          <p class="flex items-center gap-2 text-base font-semibold">
+            {{ 'invoices.lines.position' | translate: { position: i + 1 } }}
             <span
               class="text-xs font-normal text-on-surface-variant"
-              [attr.data-testid]="'line-' + i + '-from-delivery-note'"
-              >{{ 'invoices.lines.from_delivery_note' | translate }}</span
+              [attr.data-testid]="'line-' + i + '-gives-back'"
+              >{{ 'invoices.lines.gives_back' | translate }}</span
             >
-          }
-        </legend>
-        <div class="grid gap-x-4 sm:grid-cols-6">
-          <div class="sm:col-span-3">
-            <app-pick-field
-              [label]="'invoices.lines.product' | translate"
-              [testId]="'line-' + i + '-product'"
-              [search]="searchProducts"
-              [value]="productOf(line)"
-              [disabled]="readOnly() || fromDeliveryNote(line)"
-              [clearable]="true"
-              [noneLabel]="'invoices.lines.no_product' | translate"
-              [noneFoundLabel]="'invoices.lines.no_product_found' | translate"
-              (picked)="chooseProduct(line, $event)"
-              (scanned)="scannedInto(line, $event)"
-            />
-          </div>
-
-          <div class="flex flex-col sm:col-span-3">
-            <mat-form-field>
-              <mat-label>{{ 'invoices.lines.description' | translate }}</mat-label>
-              <input
-                matInput
-                formControlName="description"
-                required
-                maxlength="5000"
-                [attr.data-testid]="'line-' + i + '-description'"
-              />
-            </mat-form-field>
-            @if (errorKey(line, 'description'); as key) {
-              <span
-                role="alert"
-                class="px-4 pt-1 pb-2 text-xs text-error"
-                [attr.data-testid]="'line-' + i + '-description-error'"
-                >{{ key | translate }}</span
-              >
+          </p>
+          <p [attr.data-testid]="'line-' + i + '-description'">
+            {{ line.controls.description.value }}
+          </p>
+          <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+            <p class="text-sm text-on-surface-variant">{{ taxNamesOf(line) }}</p>
+            @if (nets()[i]; as net) {
+              <p class="ms-auto tabular-nums" [attr.data-testid]="'line-' + i + '-net'">
+                {{ 'invoices.lines.net' | translate }}
+                <span class="font-semibold">{{ net | amount: options().currencyScale }}</span>
+              </p>
             }
           </div>
-
-          <div class="flex flex-col">
-            <mat-form-field>
-              <mat-label>{{ 'invoices.lines.quantity' | translate }}</mat-label>
-              <input
-                matInput
-                formControlName="quantity"
-                appDecimal
-                required
-                (blur)="reprice(line)"
-                [attr.data-testid]="'line-' + i + '-quantity'"
-              />
-              @if (leftOf(line); as left) {
-                <mat-hint [attr.data-testid]="'line-' + i + '-source-left'">{{
-                  'invoices.lines.source_left' | translate: { left }
-                }}</mat-hint>
-              }
-            </mat-form-field>
-            @if (errorKey(line, 'quantity'); as key) {
-              <span
-                role="alert"
-                class="px-4 pt-1 pb-2 text-xs text-error"
-                [attr.data-testid]="'line-' + i + '-quantity-error'"
-                >{{ key | translate }}</span
-              >
-            }
-          </div>
-
-          @if (namesALot(line)) {
-            <div class="flex flex-col">
-              <mat-form-field>
-                <mat-label>{{ 'invoices.lines.lot' | translate }}</mat-label>
-                <input
-                  matInput
-                  formControlName="lotCode"
-                  maxlength="40"
-                  autocomplete="off"
-                  [attr.data-testid]="'line-' + i + '-lot'"
-                />
-              </mat-form-field>
-              @if (errorKey(line, 'lotCode'); as key) {
-                <span
-                  role="alert"
-                  class="px-4 pt-1 pb-2 text-xs text-error"
-                  [attr.data-testid]="'line-' + i + '-lot-error'"
-                  >{{ key | translate }}</span
-                >
-              }
-            </div>
-          }
-
-          @if (returnable() && line.controls.productId.value !== '') {
-            <mat-checkbox
-              [checked]="line.controls.returned.value"
-              [disabled]="readOnly()"
-              (change)="toggleReturned(line, $event.checked)"
-              [attr.data-testid]="'line-' + i + '-returned'"
-              >{{ 'invoices.lines.returned' | translate }}</mat-checkbox
-            >
-          }
-
-          <div class="flex min-w-0 flex-col">
-            <app-select
-              formControlName="unitId"
-              [required]="true"
-              [label]="('invoices.lines.unit' | translate) + '*'"
-              [labelInside]="true"
-              [inputId]="'line-' + i + '-unit-input'"
-              [testId]="'line-' + i + '-unit'"
-              [options]="unitOptions()"
-            />
-            @if (errorKey(line, 'unitId'); as key) {
-              <span
-                role="alert"
-                class="px-4 pb-2 text-xs text-error"
-                [attr.data-testid]="'line-' + i + '-unit-error'"
-                >{{ key | translate }}</span
-              >
-            }
-          </div>
-
-          <div class="flex flex-col sm:col-span-2">
-            <mat-form-field>
-              <mat-label>{{ 'invoices.lines.unitPriceNet' | translate }}</mat-label>
-              <input
-                matInput
-                formControlName="unitPriceNet"
-                appDecimal
-                required
-                [attr.data-testid]="'line-' + i + '-price'"
-              />
-              <mat-hint>
-                @if (priceUnchecked(line)) {
-                  <span class="text-error" [attr.data-testid]="'line-' + i + '-price-unchecked'">{{
-                    'invoices.lines.price_unchecked' | translate
-                  }}</span>
-                } @else if (listOf(line); as list) {
-                  <span [attr.data-testid]="'line-' + i + '-price-list'">{{
-                    'invoices.lines.price_list' | translate: { name: list }
-                  }}</span>
-                } @else {
-                  {{ 'invoices.lines.price_hint' | translate: { currency: options().currency } }}
-                }
-              </mat-hint>
-            </mat-form-field>
-            @if (errorKey(line, 'unitPriceNet'); as key) {
-              <span
-                role="alert"
-                class="px-4 pb-2 text-xs text-error"
-                [attr.data-testid]="'line-' + i + '-price-error'"
-                >{{ key | translate }}</span
-              >
-            }
-          </div>
-
-          <div class="flex flex-col sm:col-span-2">
-            <mat-form-field>
-              <mat-label>{{ 'invoices.lines.discountRate' | translate }}</mat-label>
-              <input
-                matInput
-                formControlName="discountRate"
-                appDecimal
-                [attr.data-testid]="'line-' + i + '-discount'"
-              />
-              <span matTextSuffix>%</span>
-            </mat-form-field>
-            @if (errorKey(line, 'discountRate'); as key) {
-              <span
-                role="alert"
-                class="px-4 pt-1 pb-2 text-xs text-error"
-                [attr.data-testid]="'line-' + i + '-discount-error'"
-                >{{ key | translate }}</span
-              >
-            }
-          </div>
-        </div>
-
-        <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-          @if (taxOptionsOf(line, i); as taxes) {
-            @if (taxes.length > 0) {
-              <div class="min-w-64 max-w-md flex-1">
-                <app-select
-                  [multiple]="true"
-                  formControlName="taxComponentIds"
-                  [options]="taxes"
-                  [label]="'invoices.lines.taxes' | translate"
-                  [labelInside]="true"
-                  [testId]="'line-' + i + '-taxes'"
-                />
-              </div>
-            }
-          }
-          @if (netOf(i, line); as net) {
-            <p class="ms-auto tabular-nums" [attr.data-testid]="'line-' + i + '-net'">
-              {{ 'invoices.lines.net' | translate }}
-              <span class="font-semibold">{{ net | amount: options().currencyScale }}</span>
-            </p>
-          }
-        </div>
-
-        @if (!readOnly()) {
           <div class="flex justify-end">
             <button
               mat-button
@@ -234,8 +48,236 @@
               {{ 'invoices.lines.remove_short' | translate }}
             </button>
           </div>
-        }
-      </fieldset>
+        </section>
+      } @else {
+        <fieldset
+          class="flex min-w-0 flex-col gap-2 rounded-xl border border-outline-variant p-4"
+          [formGroup]="line"
+          [attr.data-testid]="'line-' + i"
+        >
+          <legend class="flex items-center gap-2 px-1 text-base font-semibold">
+            {{ 'invoices.lines.position' | translate: { position: i + 1 } }}
+            @if (fromDeliveryNote(line)) {
+              <span
+                class="text-xs font-normal text-on-surface-variant"
+                [attr.data-testid]="'line-' + i + '-from-delivery-note'"
+                >{{ 'invoices.lines.from_delivery_note' | translate }}</span
+              >
+            }
+          </legend>
+          <div class="grid gap-x-4 sm:grid-cols-6">
+            <div class="sm:col-span-3">
+              <app-pick-field
+                [label]="'invoices.lines.product' | translate"
+                [testId]="'line-' + i + '-product'"
+                [search]="searchProducts"
+                [value]="productOf(line)"
+                [disabled]="readOnly() || fromDeliveryNote(line)"
+                [clearable]="true"
+                [noneLabel]="'invoices.lines.no_product' | translate"
+                [noneFoundLabel]="'invoices.lines.no_product_found' | translate"
+                (picked)="chooseProduct(line, $event)"
+                (scanned)="scannedInto(line, $event)"
+              />
+            </div>
+
+            <div class="flex flex-col sm:col-span-3">
+              <mat-form-field>
+                <mat-label>{{ 'invoices.lines.description' | translate }}</mat-label>
+                <input
+                  matInput
+                  formControlName="description"
+                  required
+                  maxlength="5000"
+                  [attr.data-testid]="'line-' + i + '-description'"
+                />
+              </mat-form-field>
+              @if (errorKey(line, 'description'); as key) {
+                <span
+                  role="alert"
+                  class="px-4 pt-1 pb-2 text-xs text-error"
+                  [attr.data-testid]="'line-' + i + '-description-error'"
+                  >{{ key | translate }}</span
+                >
+              }
+            </div>
+
+            <div class="flex flex-col">
+              <mat-form-field>
+                <mat-label>{{ 'invoices.lines.quantity' | translate }}</mat-label>
+                <input
+                  matInput
+                  formControlName="quantity"
+                  appDecimal
+                  required
+                  (blur)="reprice(line)"
+                  [attr.data-testid]="'line-' + i + '-quantity'"
+                />
+                @if (leftOf(line); as left) {
+                  <mat-hint [attr.data-testid]="'line-' + i + '-source-left'">{{
+                    'invoices.lines.source_left' | translate: { left }
+                  }}</mat-hint>
+                }
+              </mat-form-field>
+              @if (errorKey(line, 'quantity'); as key) {
+                <span
+                  role="alert"
+                  class="px-4 pt-1 pb-2 text-xs text-error"
+                  [attr.data-testid]="'line-' + i + '-quantity-error'"
+                  >{{ key | translate }}</span
+                >
+              }
+            </div>
+
+            @if (namesALot(line)) {
+              <div class="flex flex-col">
+                <mat-form-field>
+                  <mat-label>{{ 'invoices.lines.lot' | translate }}</mat-label>
+                  <input
+                    matInput
+                    formControlName="lotCode"
+                    maxlength="40"
+                    autocomplete="off"
+                    [attr.data-testid]="'line-' + i + '-lot'"
+                  />
+                </mat-form-field>
+                @if (errorKey(line, 'lotCode'); as key) {
+                  <span
+                    role="alert"
+                    class="px-4 pt-1 pb-2 text-xs text-error"
+                    [attr.data-testid]="'line-' + i + '-lot-error'"
+                    >{{ key | translate }}</span
+                  >
+                }
+              </div>
+            }
+
+            @if (returnable() && line.controls.productId.value !== '') {
+              <mat-checkbox
+                [checked]="line.controls.returned.value"
+                [disabled]="readOnly()"
+                (change)="toggleReturned(line, $event.checked)"
+                [attr.data-testid]="'line-' + i + '-returned'"
+                >{{ 'invoices.lines.returned' | translate }}</mat-checkbox
+              >
+            }
+
+            <div class="flex min-w-0 flex-col">
+              <app-select
+                formControlName="unitId"
+                [required]="true"
+                [label]="('invoices.lines.unit' | translate) + '*'"
+                [labelInside]="true"
+                [inputId]="'line-' + i + '-unit-input'"
+                [testId]="'line-' + i + '-unit'"
+                [options]="unitOptions()"
+              />
+              @if (errorKey(line, 'unitId'); as key) {
+                <span
+                  role="alert"
+                  class="px-4 pb-2 text-xs text-error"
+                  [attr.data-testid]="'line-' + i + '-unit-error'"
+                  >{{ key | translate }}</span
+                >
+              }
+            </div>
+
+            <div class="flex flex-col sm:col-span-2">
+              <mat-form-field>
+                <mat-label>{{ 'invoices.lines.unitPriceNet' | translate }}</mat-label>
+                <input
+                  matInput
+                  formControlName="unitPriceNet"
+                  appDecimal
+                  required
+                  [attr.data-testid]="'line-' + i + '-price'"
+                />
+                <mat-hint>
+                  @if (priceUnchecked(line)) {
+                    <span
+                      class="text-error"
+                      [attr.data-testid]="'line-' + i + '-price-unchecked'"
+                      >{{ 'invoices.lines.price_unchecked' | translate }}</span
+                    >
+                  } @else if (listOf(line); as list) {
+                    <span [attr.data-testid]="'line-' + i + '-price-list'">{{
+                      'invoices.lines.price_list' | translate: { name: list }
+                    }}</span>
+                  } @else {
+                    {{ 'invoices.lines.price_hint' | translate: { currency: options().currency } }}
+                  }
+                </mat-hint>
+              </mat-form-field>
+              @if (errorKey(line, 'unitPriceNet'); as key) {
+                <span
+                  role="alert"
+                  class="px-4 pb-2 text-xs text-error"
+                  [attr.data-testid]="'line-' + i + '-price-error'"
+                  >{{ key | translate }}</span
+                >
+              }
+            </div>
+
+            <div class="flex flex-col sm:col-span-2">
+              <mat-form-field>
+                <mat-label>{{ 'invoices.lines.discountRate' | translate }}</mat-label>
+                <input
+                  matInput
+                  formControlName="discountRate"
+                  appDecimal
+                  [attr.data-testid]="'line-' + i + '-discount'"
+                />
+                <span matTextSuffix>%</span>
+              </mat-form-field>
+              @if (errorKey(line, 'discountRate'); as key) {
+                <span
+                  role="alert"
+                  class="px-4 pt-1 pb-2 text-xs text-error"
+                  [attr.data-testid]="'line-' + i + '-discount-error'"
+                  >{{ key | translate }}</span
+                >
+              }
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+            @if (taxOptionsOf(line, i); as taxes) {
+              @if (taxes.length > 0) {
+                <div class="min-w-64 max-w-md flex-1">
+                  <app-select
+                    [multiple]="true"
+                    formControlName="taxComponentIds"
+                    [options]="taxes"
+                    [label]="'invoices.lines.taxes' | translate"
+                    [labelInside]="true"
+                    [testId]="'line-' + i + '-taxes'"
+                  />
+                </div>
+              }
+            }
+            @if (netOf(i, line); as net) {
+              <p class="ms-auto tabular-nums" [attr.data-testid]="'line-' + i + '-net'">
+                {{ 'invoices.lines.net' | translate }}
+                <span class="font-semibold">{{ net | amount: options().currencyScale }}</span>
+              </p>
+            }
+          </div>
+
+          @if (!readOnly()) {
+            <div class="flex justify-end">
+              <button
+                mat-button
+                type="button"
+                (click)="remove(i)"
+                [attr.data-testid]="'line-' + i + '-remove'"
+                [attr.aria-label]="'invoices.lines.remove' | translate: { position: i + 1 }"
+              >
+                {{ 'invoices.lines.remove_short' | translate }}
+              </button>
+            </div>
+          }
+        </fieldset>
+      }
     }
   }
 

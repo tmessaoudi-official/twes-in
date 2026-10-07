@@ -227,6 +227,35 @@
       </mat-card-content>
     </mat-card>
 
+    @if (deposits().length > 0) {
+      <mat-card data-testid="quote-deposits">
+        <mat-card-content class="flex flex-col gap-2">
+          <h2 class="text-xl font-semibold">{{ 'quotes.deposits.title' | translate }}</h2>
+          <ul class="flex flex-col gap-1 tabular-nums">
+            @for (deposit of deposits(); track deposit.invoiceId; let i = $index) {
+              <li
+                class="flex flex-wrap items-center justify-between gap-2"
+                [attr.data-testid]="'quote-deposit-' + i"
+              >
+                @if (mayReadInvoices()) {
+                  <a [routerLink]="['/invoices', deposit.invoiceId]" class="underline">{{
+                    deposit.number ?? ('quotes.deposits.draft' | translate)
+                  }}</a>
+                } @else {
+                  <span>{{ deposit.number ?? ('quotes.deposits.draft' | translate) }}</span>
+                }
+                <span class="text-sm text-on-surface-variant">{{
+                  'invoices.statuses.' + deposit.status | translate
+                }}</span>
+                <span class="ms-auto font-semibold">{{ deposit.total | amount: scale() }}</span>
+              </li>
+            }
+          </ul>
+          <p class="text-xs opacity-70">{{ 'quotes.deposits.hint' | translate }}</p>
+        </mat-card-content>
+      </mat-card>
+    }
+
     <mat-card data-testid="quote-attachments-card">
       <mat-card-content class="flex flex-col gap-4">
         <div class="flex flex-wrap items-center justify-between gap-4">

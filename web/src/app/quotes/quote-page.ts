@@ -41,12 +41,15 @@ import { AmountPipe, DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { DocumentActions } from '../shared/ui/document-actions';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { QuoteAnswerDialog, type QuoteAnswered } from './quote-answer-dialog';
+import { QuoteDepositDialog, type QuoteDepositDialogData } from './quote-deposit-dialog';
 import { quoteForm, quoteInput, quoteValues, shownStatus } from './quote-forms';
 import { QuotesFacade } from './quotes-facade';
 import {
   QUOTE_STATUS_STAGES,
   QUOTE_STATUS_TONES,
+  type DepositShare,
   type QuoteAttachment,
+  type QuoteDeposit,
   type QuoteInput,
 } from './quotes-types';
 
@@ -319,6 +322,14 @@ export class QuotePage {
         shown: status === 'accepted' && invoiceId === null && this.mayWrite() && this.mayInvoice(),
       },
       {
+        id: 'deposit',
+        label: 'quotes.actions.deposit',
+        icon: 'payments',
+        disabled: busy,
+        run: () => void this.deposit(),
+        shown: status === 'accepted' && invoiceId === null && this.mayWrite() && this.mayInvoice(),
+      },
+      {
         id: 'open-invoice',
         label: 'quotes.actions.open_invoice',
         icon: 'receipt_long',
@@ -503,6 +514,33 @@ export class QuotePage {
       await this.router.navigate(['/invoices', invoiced.invoiceId]);
     }
   }
+
+  /** « Facture d'acompte »: the share asked in a dialog, then the new draft opened, the quote's deposits listing it. */
+  protected async deposit(): Promise<void> {
+    const companyId = this.company()?.id;
+    const quote = this.current();
+    if (!companyId || !quote || this.busy()) return;
+    const share = await firstValueFrom(
+      this.dialog
+        .open<QuoteDepositDialog, QuoteDepositDialogData, DepositShare | null>(QuoteDepositDialog, {
+          data: { total: quote.total, scale: this.scale() ?? 2 },
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
+    );
+    if (!share) return;
+    const drawn = await this.facade.deposit(companyId, quote.id, share);
+    const latest = drawn?.deposits.at(-1);
+    if (latest) {
+      this.feedback.success('quotes.deposit_drafted');
+      await this.router.navigate(['/invoices', latest.invoiceId]);
+    }
+  }
+
+  /** Every deposit but a cancelled draft, which never charged anything. */
+  protected readonly deposits = computed<QuoteDeposit[]>(() =>
+    (this.current()?.deposits ?? []).filter((deposit) => deposit.status !== 'cancelled'),
+  );
 
   protected async cancel(): Promise<void> {
     const companyId = this.company()?.id;

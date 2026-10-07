@@ -171,3 +171,68 @@ test('a quote is drafted, sent, accepted and invoiced into a draft invoice', asy
     await retire(page, customerNumber);
   }
 });
+
+test('an accepted quote takes a deposit invoice, which its final invoice gives back', async ({
+  page,
+}) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const customerNumber = `E2E-AC-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  try {
+    await page.goto('/quotes/new');
+    await page.getByTestId('quote-customer').fill(customerNumber);
+    await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
+    await page.getByTestId('line-0-description').fill(`Usinage ${run}`);
+    await page.getByTestId('line-0-quantity').fill('1');
+    await page.getByTestId('line-0-price').fill('1000');
+    await choose(page, 'line-0-taxes', /19/);
+    await page.getByTestId('document-action-save').click();
+    await expect(page).toHaveURL(/\/quotes\/[0-9a-f-]{36}$/);
+    const quoteUrl = page.url();
+    await page.getByTestId('document-action-send').click();
+    await page.getByTestId('confirm-run').click();
+    await expect(page.getByTestId('quote-status')).toContainText(/Envoyé|Sent/);
+    await page.getByTestId('document-action-accept').click();
+    await expect(page.getByTestId('quote-answered-on')).toBeFocused();
+    await page.getByTestId('quote-answer-confirm').click();
+    await expect(page.getByTestId('quote-status')).toContainText(/Accepté|Accepted/);
+
+    // 30 % of 1 000 + TVA 19 %: a deposit of 300 net and 57 of tax, which the final invoice takes back as charged.
+    await page.getByTestId('document-action-deposit').click();
+    await expect(page.getByTestId('quote-deposit-value')).toBeVisible();
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('quote-deposit-value').fill('30');
+    await page.getByTestId('quote-deposit-confirm').click();
+    await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
+    await expect(page.getByTestId('invoice-title')).toContainText(
+      /Facture d’acompte|Deposit invoice/,
+    );
+    await expect(page.getByTestId('invoice-deposit')).toBeVisible();
+    await expect(page.getByTestId('line-0-description')).toHaveValue(/30/);
+    await page.getByTestId('document-action-issue').click();
+    await page.getByTestId('confirm-run').click();
+    await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
+    const depositNumber = ((await page.getByTestId('invoice-title').textContent()) ?? '').trim();
+
+    await page.getByTestId('invoice-quote').click();
+    await expect(page).toHaveURL(quoteUrl);
+    await expect(page.getByTestId('quote-deposit-0')).toContainText(depositNumber);
+    // 300 + 57 of TVA, and the timbre fiscal the deposit invoice is charged as any invoice is.
+    await expect(page.getByTestId('quote-deposit-0')).toContainText('358,000');
+    expect(await wcagViolations(page)).toEqual([]);
+
+    await page.getByTestId('document-action-invoice').click();
+    await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
+    await expect(page.getByTestId('line-0-description')).toHaveValue(`Usinage ${run}`);
+    await expect(page.getByTestId('line-1-gives-back')).toBeVisible();
+    await expect(page.getByTestId('line-1-description')).toContainText(depositNumber);
+    // The whole is 1 000 net; the deposit gives back its 300, so 700 is left to charge net of tax.
+    await expect(page.getByTestId('line-1-net')).toContainText(/[-−]\s?300,000/);
+    await expect(page.getByTestId('invoice-totals')).toContainText('700,000');
+    expect(await wcagViolations(page)).toEqual([]);
+  } finally {
+    await retire(page, customerNumber);
+  }
+});

@@ -133,12 +133,15 @@ export class InvoiceLines {
       const notes: string[] = [];
       if (value.sourceDeliveryNoteLineId !== '') notes.push('invoices.lines.from_delivery_note');
       if (this.returnable() && value.returned) notes.push('invoices.lines.returned');
+      const givesBack = value.deductsInvoiceId !== '';
+      if (givesBack) notes.push('invoices.lines.gives_back');
       return {
         description: value.description,
         reference: value.productId === '' ? null : value.productReference,
         lot: value.lotCode === '' ? null : value.lotCode,
         notes,
-        quantity: value.quantity,
+        // Billed back: minus one at the deposit's price, as Factur-X writes it.
+        quantity: givesBack ? `-${value.quantity}` : value.quantity,
         quantityScale: unit?.decimals ?? null,
         unit: unit?.name ?? '',
         unitPrice: value.unitPriceNet,
@@ -213,6 +216,22 @@ export class InvoiceLines {
       this.taxChoices.set(key, options);
     }
     return options;
+  }
+
+  /** A line giving a deposit invoice back: the API writes it from the deposit, so it is shown, never edited. */
+  protected givesBack(line: LineGroup): boolean {
+    this.revision();
+    return line.controls.deductsInvoiceId.value !== '';
+  }
+
+  /** A line's taxes, named, for a line shown rather than edited. */
+  protected taxNamesOf(line: LineGroup): string {
+    this.revision();
+    const names = new Map(this.options().taxes.map((tax) => [tax.id, tax.name]));
+    return line.controls.taxComponentIds.value
+      .map((id) => names.get(id) ?? '')
+      .filter((name) => name !== '')
+      .join(', ');
   }
 
   protected fromDeliveryNote(line: LineGroup): boolean {

@@ -150,6 +150,8 @@ const draft: InvoiceRow = {
   type: 'invoice',
   correctsInvoiceId: null,
   creditNoteReason: null,
+  deposit: false,
+  quoteId: null,
   number: null,
   status: 'draft',
   customerId: 'k1',
@@ -181,6 +183,7 @@ const draft: InvoiceRow = {
       productTracking: 'none',
       lotCode: null,
       returned: false,
+      deductsInvoiceId: null,
       net: '1800.000',
     },
   ],
@@ -458,6 +461,7 @@ describe('InvoicePage', () => {
             sourceDeliveryNoteLineId: null,
             lotCode: null,
             returned: false,
+            deductsInvoiceId: null,
           },
         ],
       }),
@@ -911,6 +915,56 @@ describe('InvoicePage', () => {
     expect(screen.forKey('p')?.id).toBe('record-payment');
     // Named as the sheet over the list names it (audit 2026-10-06 V-4 c): one action, one word.
     expect(screen.next()?.label).toBe('invoices.payments.collect');
+  });
+
+  it('titles a deposit as one, and leads back to the quote it was drawn from for whoever reads quotes', async () => {
+    invoice.set({ ...draft, deposit: true, quoteId: 'q1' });
+    await open('i1');
+
+    expect(q('invoice-title')?.textContent).toContain('invoices.deposit_draft_title');
+    expect(q('invoice-deposit')?.textContent).toContain('invoices.types.deposit');
+    expect(q('invoice-quote')).toBeNull();
+
+    granted.add('quote.read');
+    modulesOn.add('quotes');
+    fixture.destroy();
+    await open('i1');
+    expect(q('invoice-quote')?.getAttribute('href')).toBe('/quotes/q1');
+  });
+
+  it('shows a line giving a deposit back as written, never edited, and sends it back as it came', async () => {
+    invoice.set({
+      ...draft,
+      quoteId: 'q1',
+      lines: [
+        draft.lines[0]!,
+        {
+          ...draft.lines[0]!,
+          productId: null,
+          productReference: null,
+          productName: null,
+          productTracking: null,
+          description: 'Acompte déjà facturé : facture F-2026-0003 du 07/10/2026',
+          unitPriceNet: '500.0000',
+          deductsInvoiceId: 'd1',
+          net: '-500.000',
+        },
+      ],
+    });
+    await open('i1');
+
+    expect(q('line-1-gives-back')?.textContent).toContain('invoices.lines.gives_back');
+    expect(q('line-1-description')?.textContent).toContain('F-2026-0003');
+    expect(q('line-1')?.querySelector('input')).toBeNull();
+    expect(q('line-0')?.querySelector('input')).not.toBeNull();
+
+    q('document-action-save')!.click();
+    await settle();
+    await vi.waitFor(() => expect(facade.revise).toHaveBeenCalled());
+    const sent = facade.revise.mock.calls.at(-1)![2] as {
+      lines: { deductsInvoiceId: string | null }[];
+    };
+    expect(sent.lines.map((line) => line.deductsInvoiceId)).toEqual([null, 'd1']);
   });
 
   // docs/SPEC.md § 7, audit 2026-10-06 A-16: a line taken from a delivery note keeps its product and its cap.

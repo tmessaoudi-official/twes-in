@@ -99,6 +99,7 @@ const draft: QuoteRow = {
   answeredOn: null,
   refusalReason: null,
   invoiceId: null,
+  deposits: [],
   attachmentCount: 0,
   customerReference: null,
   notesPrinted: null,
@@ -120,6 +121,7 @@ const draft: QuoteRow = {
       productTracking: null,
       lotCode: null,
       returned: false,
+      deductsInvoiceId: null,
       net: '500.000',
     },
   ],
@@ -164,6 +166,7 @@ describe('QuotePage', () => {
     refuse: vi.fn(),
     cancel: vi.fn(),
     invoice: vi.fn(),
+    deposit: vi.fn(),
     attach: vi.fn(),
     detach: vi.fn(),
     clearError: vi.fn(),
@@ -234,6 +237,13 @@ describe('QuotePage', () => {
     facade.refuse.mockReset().mockResolvedValue({ ...sent, status: 'refused' });
     facade.cancel.mockReset().mockResolvedValue({ ...draft, status: 'cancelled' });
     facade.invoice.mockReset().mockResolvedValue({ ...accepted, invoiceId: 'i7' });
+    facade.deposit.mockReset().mockResolvedValue({
+      ...accepted,
+      deposits: [
+        { invoiceId: 'd1', number: 'F-2026-0003', status: 'issued', total: '500.000' },
+        { invoiceId: 'd2', number: null, status: 'draft', total: '803.250' },
+      ],
+    });
     facade.pickCustomers.mockClear();
     TestBed.configureTestingModule({
       imports: [QuotePage],
@@ -400,6 +410,80 @@ describe('QuotePage', () => {
 
     expect(facade.invoice).toHaveBeenCalledWith('c1', 'q1');
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']));
+  });
+
+  it('draws a deposit for the share asked, and opens the new draft', async () => {
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    quote.set(accepted);
+    await open('q1');
+
+    q('document-action-deposit')!.click();
+    await settle();
+    const value = over('quote-deposit-value') as HTMLInputElement;
+    const confirm = over('quote-deposit-confirm') as HTMLButtonElement;
+    typeIn(value, '100');
+    await settle();
+    expect(confirm.disabled).toBe(true);
+    typeIn(value, '30');
+    await settle();
+    confirm.click();
+
+    await vi.waitFor(() =>
+      expect(facade.deposit).toHaveBeenCalledWith('c1', 'q1', { percentage: '30' }),
+    );
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'd2']));
+    expect(successToasts()).toContain('quotes.deposit_drafted');
+  });
+
+  it('asks a deposit as an amount when told, to no more decimals than the currency has', async () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    quote.set(accepted);
+    await open('q1');
+
+    q('document-action-deposit')!.click();
+    await settle();
+    (over('quote-deposit-by-amount')!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    const value = over('quote-deposit-value') as HTMLInputElement;
+    const confirm = over('quote-deposit-confirm') as HTMLButtonElement;
+    typeIn(value, '500.0001');
+    await settle();
+    expect(confirm.disabled).toBe(true);
+    typeIn(value, '500.000');
+    await settle();
+    confirm.click();
+
+    await vi.waitFor(() =>
+      expect(facade.deposit).toHaveBeenCalledWith('c1', 'q1', { amount: '500.000' }),
+    );
+  });
+
+  it('lists the deposits drawn but a cancelled draft, and draws none once invoiced or without invoices', async () => {
+    quote.set({
+      ...accepted,
+      deposits: [
+        { invoiceId: 'd0', number: null, status: 'cancelled', total: '100.000' },
+        { invoiceId: 'd1', number: 'F-2026-0003', status: 'issued', total: '500.000' },
+      ],
+    });
+    await open('q1');
+
+    expect(q('quote-deposit-0')?.querySelector('a')?.getAttribute('href')).toBe('/invoices/d1');
+    expect(q('quote-deposit-1')).toBeNull();
+    expect(q('document-action-deposit')).not.toBeNull();
+
+    quote.set({ ...accepted, invoiceId: 'i7' });
+    fixture.destroy();
+    await open('q1');
+    expect(q('document-action-deposit')).toBeNull();
+    expect(q('quote-deposits')).toBeNull();
+
+    quote.set(accepted);
+    granted.delete('invoice.write');
+    fixture.destroy();
+    await open('q1');
+    expect(q('document-action-deposit')).toBeNull();
   });
 
   it('links an invoiced quote to its invoice and invoices it no more', async () => {
