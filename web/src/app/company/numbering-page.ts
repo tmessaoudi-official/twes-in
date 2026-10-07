@@ -21,7 +21,7 @@ import type { FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { NumberingSeriesRow } from './company-types';
-import { SERIES_LIST, seriesChanges, seriesForm, seriesFormValues } from './establishment-forms';
+import { seriesChanges, seriesForm, seriesFormValues, seriesList } from './establishment-forms';
 import { EstablishmentsFacade } from './establishments-facade';
 import { renderNumber } from './number-format';
 import { Feedback } from '../shared/feedback/feedback';
@@ -42,7 +42,7 @@ export class NumberingPage implements OnInit {
 
   /** A series is never removed — it is the history of what was numbered — so editing is its one action. */
   protected readonly list = computed<ListDescriptor<NumberingSeriesRow>>(() => ({
-    ...SERIES_LIST,
+    ...seriesList(this.series()),
     actions: [
       {
         id: 'edit',

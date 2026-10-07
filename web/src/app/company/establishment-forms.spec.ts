@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { buildFormGroup } from '../shared/form/form-builder';
-import type { EstablishmentRow } from './company-types';
+import { applyFilters } from '../shared/list/list-view';
+import type { EstablishmentRow, NumberingSeriesRow } from './company-types';
 import {
   establishmentForm,
   establishmentFormValues,
@@ -9,6 +10,7 @@ import {
   seriesChanges,
   seriesForm,
   SERIES_LIST,
+  seriesList,
 } from './establishment-forms';
 
 const head: EstablishmentRow = {
@@ -92,5 +94,49 @@ describe('establishment forms', () => {
       nextNumber: 12,
       resetPeriod: 'yearly',
     });
+  });
+});
+
+describe('the series list', () => {
+  it('offers the kinds of document and the establishments its series hold, several of each at once', () => {
+    const series = (
+      id: string,
+      establishmentCode: string,
+      documentType: string,
+    ): NumberingSeriesRow => ({
+      id,
+      establishmentId: `e-${establishmentCode}`,
+      establishmentCode,
+      documentType,
+      format: '{SEQ:5}',
+      nextNumber: 1,
+      resetPeriod: 'never',
+      isDefault: true,
+      numbered: false,
+      preview: '00001',
+    });
+    const rows = [
+      series('s1', '000', 'invoice'),
+      series('s2', '000', 'delivery_note'),
+      series('s3', '001', 'invoice'),
+      series('s4', '001', 'credit_note'),
+    ];
+    const list = seriesList(rows);
+
+    expect(list.filters?.map((filter) => [filter.id, filter.multiple])).toEqual([
+      ['documentType', true],
+      ['establishment', true],
+    ]);
+    expect(list.filters?.[0]?.options.map((option) => option.value)).toEqual([
+      'credit_note',
+      'delivery_note',
+      'invoice',
+    ]);
+    expect(
+      applyFilters(rows, list.filters ?? [], {
+        documentType: 'invoice,credit_note',
+        establishment: '001',
+      }).map((row) => row.id),
+    ).toEqual(['s3', 's4']);
   });
 });

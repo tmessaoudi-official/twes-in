@@ -3,8 +3,10 @@
 import { buildFormGroup } from '../shared/form/form-builder';
 import { applicableValues, applyVisibility } from '../shared/form/form-visibility';
 import type { FormDescriptor } from '../shared/form/form-types';
+import { applyFilters } from '../shared/list/list-view';
 import {
   TAX_CREATE_FORM,
+  TAX_LIST,
   taxFormValues,
   taxInput,
   taxReviseForm,
@@ -12,6 +14,7 @@ import {
   UNIT_REVISE_FORM,
   unitFormValues,
   unitInput,
+  UNIT_LIST,
 } from './fiscal-forms';
 import type { TaxComponentRow, TaxFamily, UnitRow } from './fiscal-types';
 
@@ -152,5 +155,35 @@ describe('fiscal forms', () => {
       isActive: false,
       sortOrder: 20,
     });
+  });
+});
+
+describe('the fiscal lists', () => {
+  it('narrow by several tax families at once, and by whether a tax or a unit is still offered', () => {
+    const vat = { ...stamp, id: 'v1', code: 'TVA19', family: 'vat' as TaxFamily, isDefault: false };
+    const retired = {
+      ...stamp,
+      id: 'v2',
+      code: 'TVA7',
+      family: 'vat' as TaxFamily,
+      isActive: false,
+    };
+    const fodec = { ...stamp, id: 'l1', code: 'FODEC', family: 'levy' as TaxFamily };
+    const taxes = [stamp, vat, retired, fodec];
+    const filters = TAX_LIST.filters ?? [];
+
+    expect(filters.map((filter) => [filter.id, filter.multiple ?? false])).toEqual([
+      ['family', true],
+      ['status', false],
+    ]);
+    expect(
+      applyFilters(taxes, filters, { family: 'vat,stamp', status: 'active' }).map(
+        (row) => row.code,
+      ),
+    ).toEqual(['TIMBRE', 'TVA19']);
+    expect(applyFilters(taxes, filters, { status: 'inactive' }).map((row) => row.code)).toEqual([
+      'TVA7',
+    ]);
+    expect(UNIT_LIST.filters?.map((filter) => filter.id)).toEqual(['status']);
   });
 });

@@ -196,6 +196,41 @@ export const SERIES_LIST: ListDescriptor<NumberingSeriesRow> = {
   ],
 };
 
+/**
+ * The series list with its two natural facets, each offering what the company's series hold: the kinds of document
+ * and the establishments (row 197). Several of each can be chosen.
+ */
+export function seriesList(
+  rows: readonly NumberingSeriesRow[],
+): ListDescriptor<NumberingSeriesRow> {
+  const distinct = (values: string[]): string[] => [...new Set(values)].sort();
+  return {
+    ...SERIES_LIST,
+    filters: [
+      {
+        id: 'documentType',
+        label: `${COLUMNS}.documentType`,
+        multiple: true,
+        value: (row) => row.documentType,
+        options: distinct(rows.map((row) => row.documentType)).map((type) => ({
+          value: type,
+          label: `company.numbering.document_types.${type}`,
+        })),
+      },
+      {
+        id: 'establishment',
+        label: `${COLUMNS}.establishment`,
+        multiple: true,
+        value: (row) => row.establishmentCode,
+        options: distinct(rows.map((row) => row.establishmentCode)).map((code) => ({
+          value: code,
+          label: code,
+        })),
+      },
+    ],
+  };
+}
+
 /** Where the sequence resumes is shown without being editable once documents carry its numbers. */
 export function seriesForm(numbered: boolean): FormDescriptor {
   return {

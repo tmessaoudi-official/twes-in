@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { ListFilter, ListDescriptor } from '../shared/list/list-types';
 import {
   TAX_FAMILIES,
   type CustomerTaxRegimeRow,
@@ -198,6 +198,19 @@ export function taxInput(
 
 // Widths that match what each column holds (row 73's balance pass, finding 10): a code, a rate and two yes/no
 // columns asked for a name's room and the table was cut in the settings pane.
+/** Whether a tax or a unit is still offered: a reference table's natural facet (row 197). */
+function activeFilter<Row extends { isActive: boolean }>(label: string): ListFilter<Row> {
+  return {
+    id: 'status',
+    label,
+    value: (row) => (row.isActive ? 'active' : 'inactive'),
+    options: ['active', 'inactive'].map((status) => ({
+      value: status,
+      label: `fiscal.statuses.${status}`,
+    })),
+  };
+}
+
 export const TAX_LIST: ListDescriptor<TaxComponentRow> = {
   id: 'fiscal-taxes',
   rowId: (row) => row.id,
@@ -260,12 +273,14 @@ export const TAX_LIST: ListDescriptor<TaxComponentRow> = {
     {
       id: 'family',
       label: 'fiscal.taxes.family',
+      multiple: true,
       value: (row) => row.family,
       options: TAX_FAMILIES.map((family) => ({
         value: family,
         label: `fiscal.families.${family}`,
       })),
     },
+    activeFilter('fiscal.taxes.is_active'),
   ],
 };
 
@@ -318,6 +333,7 @@ export const UNIT_LIST: ListDescriptor<UnitRow> = {
       sortable: true,
     },
   ],
+  filters: [activeFilter('fiscal.units.is_active')],
 };
 
 const unitCommon: FormField[] = [

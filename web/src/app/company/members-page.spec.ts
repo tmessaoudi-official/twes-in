@@ -23,7 +23,7 @@ import type { MemberRow } from './company-types';
 import { MembersFacade } from './members-facade';
 import { RolesFacade } from './roles-facade';
 import type { RoleRow } from './roles-types';
-import { MembersPage } from './members-page';
+import { MEMBERS_LIST, MembersPage } from './members-page';
 import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
@@ -280,5 +280,13 @@ describe('MembersPage', () => {
     empty.detectChanges();
 
     expect(empty.nativeElement.querySelector('[data-testid="members-empty"]')).not.toBeNull();
+  });
+});
+
+describe('the members list', () => {
+  it('narrows by several roles at once', () => {
+    expect(MEMBERS_LIST.filters?.map((filter) => [filter.id, filter.multiple])).toEqual([
+      ['role', true],
+    ]);
   });
 });

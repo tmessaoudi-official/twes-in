@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { applyFilters } from '../shared/list/list-view';
 import {
   amountPattern,
   categoryForm,
@@ -11,6 +12,7 @@ import {
   expenseSearch,
   expenseValues,
   EXPENSES_LIST,
+  EXPENSE_CATEGORIES_LIST,
   classifyForm,
   tejMonths,
   paymentForm,
@@ -372,5 +374,16 @@ describe('expense forms', () => {
     });
     expect(offered.get('categoryId')).toHaveLength(3);
     expect(offered.get('taxComponentId')).toHaveLength(2);
+  });
+});
+
+describe('the expense categories list', () => {
+  it('narrows by whether a category is still offered', () => {
+    const rows = categoryListRows([vehicles, fuel, diesel, office]);
+    expect(
+      applyFilters(rows, EXPENSE_CATEGORIES_LIST.filters ?? [], { status: 'inactive' }).map(
+        (row) => row.id,
+      ),
+    ).toEqual([diesel.id]);
   });
 });

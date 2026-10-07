@@ -38,4 +38,15 @@ export const PRICE_LISTS_LIST: ListDescriptor<PriceListRow> = {
       width: 140,
     },
   ],
+  filters: [
+    {
+      id: 'state',
+      label: `${FIELDS}.state`,
+      value: (row) => (row.isActive ? 'active' : 'inactive'),
+      options: ['active', 'inactive'].map((state) => ({
+        value: state,
+        label: `price_lists.${state}`,
+      })),
+    },
+  ],
 };

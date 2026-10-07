@@ -830,6 +830,10 @@
       "invalid": "Les valeurs ont été refusées. Vérifiez que le taux, le montant et le seuil correspondent à la famille.",
       "not_found": "Introuvable.",
       "network": "Le serveur est injoignable."
+    },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive"
     }
   },
   "settings": {

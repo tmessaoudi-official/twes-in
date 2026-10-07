@@ -543,6 +543,17 @@ export const EXPENSE_CATEGORIES_LIST: ListDescriptor<ExpenseCategoryListRow> = {
       width: 130,
     },
   ],
+  filters: [
+    {
+      id: 'status',
+      label: `${CATEGORY_FIELDS}.isActive`,
+      value: (row) => (row.isActive ? 'active' : 'inactive'),
+      options: ['active', 'inactive'].map((status) => ({
+        value: status,
+        label: `expenses.categories.statuses.${status}`,
+      })),
+    },
+  ],
 };
 
 /** The category form; a category is never offered as the parent of itself or of one of its own subcategories. */

@@ -54,6 +54,7 @@ export const MEMBERS_LIST: ListDescriptor<MemberRow> = {
     {
       id: 'role',
       label: 'members.role',
+      multiple: true,
       value: (row) => row.role,
       options: [],
     },

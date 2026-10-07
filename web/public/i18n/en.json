@@ -830,6 +830,10 @@
       "invalid": "The values were refused. Check that the rate, amount and threshold match the family.",
       "not_found": "Not found.",
       "network": "The server could not be reached."
+    },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive"
     }
   },
   "settings": {

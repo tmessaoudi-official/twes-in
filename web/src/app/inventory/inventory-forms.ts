@@ -469,7 +469,45 @@ export const LOCATIONS_LIST: ListDescriptor<StockLocationListRow> = {
       width: 150,
     },
   ],
+  // The natural facets of a reference table (row 197); the establishments are the company's, filled in by the page.
+  filters: [
+    {
+      id: 'kind',
+      label: `${LOCATION_FIELDS}.kind`,
+      multiple: true,
+      value: (row) => row.kind,
+      options: STOCK_LOCATION_KINDS.map((kind) => ({
+        value: kind,
+        label: `inventory.kinds.${kind}`,
+      })),
+    },
+    {
+      id: 'establishment',
+      label: `${STOCK_FIELDS}.establishment`,
+      multiple: true,
+      value: (row) => row.establishmentId,
+      options: [],
+    },
+  ],
 };
+
+/** The locations list with its establishment facet offering exactly the establishments this company has. */
+export const locationsList = (
+  establishments: readonly StockEstablishmentOption[],
+): ListDescriptor<StockLocationListRow> => ({
+  ...LOCATIONS_LIST,
+  filters: (LOCATIONS_LIST.filters ?? []).map((filter) =>
+    filter.id === 'establishment'
+      ? {
+          ...filter,
+          options: establishments.map((each) => ({
+            value: each.id,
+            label: `${each.code} · ${each.name}`,
+          })),
+        }
+      : filter,
+  ),
+});
 
 /**
  * The location form. An existing location stays in its establishment and never sits under itself or under one of its

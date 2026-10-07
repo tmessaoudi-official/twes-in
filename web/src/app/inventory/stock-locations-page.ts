@@ -26,7 +26,7 @@ import { PageTabs } from '../shared/ui/page-tabs';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { InventoryFacade } from './inventory-facade';
 import {
-  LOCATIONS_LIST,
+  locationsList,
   locationForm,
   locationInput,
   locationListRows,
@@ -67,7 +67,7 @@ export class StockLocationsPage implements OnInit {
    * nothing to delete — the stock has to live somewhere — so the action is absent on it rather than refused.
    */
   protected readonly list = computed<ListDescriptor<StockLocationListRow>>(() => ({
-    ...LOCATIONS_LIST,
+    ...locationsList(this.facade.options()?.establishments ?? []),
     actions: [
       {
         id: 'edit',

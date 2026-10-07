@@ -6,6 +6,7 @@ import {
   locationInput,
   locationLabels,
   locationListRows,
+  locationsList,
   locationValues,
   MOVEMENTS_LIST,
   movementForm,
@@ -22,6 +23,7 @@ import {
   stockListRows,
   stockSearch,
 } from './inventory-forms';
+import { applyFilters } from '../shared/list/list-view';
 import type {
   CostOnReceive,
   StockLevelRow,
@@ -860,5 +862,26 @@ describe('stockSearch', () => {
     expect(STOCK_LIST.ranges?.map((range) => [range.id, range.kind])).toEqual([
       ['lotExpiresOn', 'day'],
     ]);
+  });
+});
+
+describe('the locations list', () => {
+  it("narrows by several kinds and several establishments, the establishments being the company's own", () => {
+    const list = locationsList(options.establishments);
+    const rows = locationListRows([site, zone, rack, depot]);
+
+    expect(list.filters?.map((filter) => [filter.id, filter.multiple])).toEqual([
+      ['kind', true],
+      ['establishment', true],
+    ]);
+    expect(list.filters?.[1]?.options.map((option) => option.label)).toEqual([
+      '000 · Siège',
+      '001 · Dépôt',
+    ]);
+    expect(
+      applyFilters(rows, list.filters ?? [], { kind: 'zone,rack', establishment: 'e1' }).map(
+        (row) => row.id,
+      ),
+    ).toEqual(['l2', 'l3']);
   });
 });

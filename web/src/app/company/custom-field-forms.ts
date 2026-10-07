@@ -63,6 +63,27 @@ export const DEFINITIONS_LIST: ListDescriptor<CustomFieldDefinition> = {
       align: 'end',
     },
   ],
+  filters: [
+    {
+      id: 'type',
+      label: `${FIELDS}.type`,
+      multiple: true,
+      value: (row) => row.type,
+      options: CUSTOM_FIELD_TYPES.map((type) => ({
+        value: type,
+        label: `company.custom_fields.types.${type}`,
+      })),
+    },
+    {
+      id: 'status',
+      label: `${FIELDS}.isActive`,
+      value: (row) => (row.isActive ? 'active' : 'retired'),
+      options: ['active', 'retired'].map((status) => ({
+        value: status,
+        label: `company.custom_fields.statuses.${status}`,
+      })),
+    },
+  ],
 };
 
 /**

@@ -2,6 +2,7 @@
 
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import type { FormValues } from '../shared/form/form-types';
+import { applyFilters } from '../shared/list/list-view';
 import {
   DEFINITIONS_LIST,
   definitionForm,
@@ -131,5 +132,26 @@ describe('custom field forms', () => {
         null,
       ).choices,
     ).toEqual([]);
+  });
+});
+
+describe('the custom fields list', () => {
+  it('narrows by several types at once and by whether a field is still asked', () => {
+    const size = { ...sector, id: 'f2', key: 'size', type: 'number' as const };
+    const old = { ...sector, id: 'f3', key: 'old', type: 'date' as const, isActive: false };
+    const filters = DEFINITIONS_LIST.filters ?? [];
+
+    expect(filters.map((filter) => [filter.id, filter.multiple ?? false])).toEqual([
+      ['type', true],
+      ['status', false],
+    ]);
+    expect(
+      applyFilters([sector, size, old], filters, { type: `${sector.type},date` }).map(
+        (row) => row.key,
+      ),
+    ).toEqual(['sector', 'old']);
+    expect(
+      applyFilters([sector, size, old], filters, { status: 'retired' }).map((row) => row.key),
+    ).toEqual(['old']);
   });
 });
