@@ -220,7 +220,8 @@
     "remove_title": "Remove this member?",
     "remove_message": "{{name}} will lose access to this company. You can invite them again.",
     "remove_confirm": "Remove",
-    "keep": "Keep"
+    "keep": "Keep",
+    "activity": "{{name}}’s activity"
   },
   "company": {
     "choose": "Choose a company",
@@ -4131,6 +4132,13 @@
         "created": "created the custom field",
         "revised": "changed the custom field"
       }
-    }
+    },
+    "history": {
+      "title": "History",
+      "none": "Nothing has been done to this record yet, or nothing the company still keeps.",
+      "all": "See everything in the activity journal"
+    },
+    "one_record": "The journal of one record.",
+    "every_record": "Every record"
   }
 }

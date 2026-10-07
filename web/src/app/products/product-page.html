@@ -148,5 +148,12 @@
         </div>
       </mat-tab>
     }
+    @if (historyOf(); as productId) {
+      <mat-tab [label]="'activity.history.title' | translate">
+        <div class="pt-4" data-testid="product-tab-history">
+          <app-record-history kind="product" [recordId]="productId" />
+        </div>
+      </mat-tab>
+    }
   </mat-tab-group>
 </section>

@@ -31,6 +31,7 @@ import { ProductReorderPoints } from './product-reorder-points-facade';
 import { ProductReorderPointsSection } from './product-reorder-points';
 import { ProductCostHistory } from './product-cost-history-facade';
 import { ProductCostHistorySection } from './product-cost-history';
+import { RecordHistory } from '../activity/record-history';
 import { ProductSubstitutes } from './product-substitutes-facade';
 import { ProductSubstitutesSection } from './product-substitutes';
 import { productForm, productInput, productValues } from './product-forms';
@@ -61,6 +62,7 @@ import { MatTabsModule } from '@angular/material/tabs';
     ProductReorderPointsSection,
     ProductSubstitutesSection,
     ProductCostHistorySection,
+    RecordHistory,
     ProductBarcodesSection,
     PriceCalculator,
   ],
@@ -206,6 +208,11 @@ export class ProductPage {
    * are not allowed to see. Setting one is the PRODUCT's own permission, so `product.write` decides whether the
    * tab is editable — a reader sees where the product lives and changes nothing.
    */
+  /** The saved product whose « Historique » may be read, for a reader of the activity journal. */
+  protected readonly historyOf = computed(() => {
+    const current = this.current();
+    return current && this.auth.hasPermission('audit.read') ? current.id : null;
+  });
   /** The saved product whose cost history may be read: where the cost itself is shown, so never to a customer looking on. */
   protected readonly costsOf = computed(() => {
     const current = this.current();

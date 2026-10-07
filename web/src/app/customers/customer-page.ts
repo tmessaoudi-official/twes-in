@@ -34,6 +34,7 @@ import {
 import { CustomersFacade } from './customers-facade';
 import { CustomerStatementView } from './customer-statement';
 import { CustomerAccountView } from './customer-account';
+import { RecordHistory } from '../activity/record-history';
 import { PartyDefaults } from './party-defaults';
 import type { ContactRow } from './customers-types';
 import { Feedback } from '../shared/feedback/feedback';
@@ -67,6 +68,7 @@ export const CUSTOMER_PLANNED: readonly PlannedAction[] = [
     CustomerStatementView,
     CustomerAccountView,
     RecordChanged,
+    RecordHistory,
   ],
   templateUrl: './customer-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -89,6 +91,8 @@ export class CustomerPage {
   protected readonly mayWrite = computed(() => this.auth.hasPermission('customer.write'));
   /** The statement is a customer's money: it takes the right to read invoices as well as customers. */
   protected readonly mayStatement = computed(() => this.auth.hasPermission('invoice.read'));
+  /** The customer's « Historique », for a reader of the activity journal. */
+  protected readonly mayHistory = computed(() => this.auth.hasPermission('audit.read'));
 
   /** Null while a new customer is filled in; undefined until the customer asked for has been read. */
   protected readonly current = computed(() => {

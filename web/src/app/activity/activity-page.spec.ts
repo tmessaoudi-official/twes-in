@@ -5,7 +5,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -172,6 +172,29 @@ describe('ActivityPage', () => {
     await announceSaved('invoice', 'i9');
 
     expect(facade.loadPage).toHaveBeenCalledWith('c1', expect.objectContaining({ page: 1 }));
+  });
+
+  it('narrows to one record when its « Historique » sent the reader, until they ask for every record', async () => {
+    const record = '0192f0a0-0000-7000-8000-00000000000a';
+    await TestBed.inject(Router).navigateByUrl(`/?kind=customer&record=${record}`);
+    facade.loadPage.mockClear();
+    fixture = TestBed.createComponent(ActivityPage);
+    await settle();
+
+    expect(facade.loadPage).toHaveBeenLastCalledWith(
+      'c1',
+      expect.objectContaining({ entityId: record, entityTypes: ['customer'] }),
+    );
+    expect(q('activity-one-record')).not.toBeNull();
+
+    q('activity-every-record')?.click();
+    await settle();
+
+    expect(facade.loadPage).toHaveBeenLastCalledWith(
+      'c1',
+      expect.objectContaining({ entityId: null, entityTypes: ['customer'] }),
+    );
+    expect(q('activity-one-record')).toBeNull();
   });
 
   it('reads the members to pick who did it only for a reader allowed to see them', async () => {

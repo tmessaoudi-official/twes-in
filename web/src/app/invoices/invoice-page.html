@@ -435,4 +435,14 @@
       }
     }
   }
+  @if (mayHistory() && current(); as invoice) {
+    <mat-card data-testid="invoice-history">
+      <mat-card-content>
+        <div class="flex flex-col gap-4">
+          <h2 class="text-lg font-semibold">{{ 'activity.history.title' | translate }}</h2>
+          <app-record-history kind="invoice" [recordId]="invoice.id" />
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
 </section>

@@ -17,6 +17,7 @@ import { MatCardModule } from '@angular/material/card';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { RecordHistory } from '../activity/record-history';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { Select, type SelectOption } from '../shared/form/select';
 import { buildFormGroup } from '../shared/form/form-builder';
@@ -115,6 +116,7 @@ export const INVOICE_PLANNED: readonly PlannedAction[] = [
     PartConflict,
     PickField,
     RecordChanged,
+    RecordHistory,
     StatusBadge,
   ],
   templateUrl: './invoice-page.html',
@@ -163,6 +165,8 @@ export class InvoicePage {
   protected readonly mayPay = computed(() => this.auth.hasPermission('payment.write'));
   /** A credit note reverses revenue, so drafting and issuing one is a manager's, where issuing an invoice is a clerk's. */
   protected readonly mayCredit = computed(() => this.auth.hasPermission('invoice.credit'));
+  /** The invoice's « Historique », for a reader of the activity journal. */
+  protected readonly mayHistory = computed(() => this.auth.hasPermission('audit.read'));
   protected readonly confirmingCancel = signal(false);
   protected readonly confirmingPaymentDelete = signal<string | null>(null);
 

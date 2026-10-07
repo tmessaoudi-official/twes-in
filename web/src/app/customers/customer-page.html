@@ -162,5 +162,12 @@
         </mat-tab>
       }
     }
+    @if (mayHistory() && current(); as customer) {
+      <mat-tab [label]="'activity.history.title' | translate">
+        <div class="pt-4" data-testid="customer-tab-history">
+          <app-record-history kind="customer" [recordId]="customer.id" />
+        </div>
+      </mat-tab>
+    }
   </mat-tab-group>
 </section>

@@ -9,7 +9,8 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { MembersFacade } from '../company/members-facade';
@@ -36,7 +37,15 @@ import type { ActivitySearch } from './activity-types';
  */
 @Component({
   selector: 'app-activity-page',
-  imports: [RouterLink, TranslatePipe, DataList, DataListCell, ListExport, MomentPipe],
+  imports: [
+    MatButtonModule,
+    RouterLink,
+    TranslatePipe,
+    DataList,
+    DataListCell,
+    ListExport,
+    MomentPipe,
+  ],
   templateUrl: './activity-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -46,6 +55,7 @@ export class ActivityPage implements OnInit {
   private readonly facade = inject(ActivityFacade);
   private readonly members = inject(MembersFacade);
   private readonly auth = inject(AuthFacade);
+  private readonly router = inject(Router);
 
   protected readonly list = ACTIVITY_LIST;
   protected readonly rows = this.facade.rows;
@@ -70,6 +80,11 @@ export class ActivityPage implements OnInit {
     },
   };
 
+  /** One record's history, when its « Historique » sent the reader here: `?record=<id>`. */
+  protected readonly record = signal(
+    recordOf(inject(ActivatedRoute).snapshot.queryParamMap.get('record')),
+  );
+  private query: ListQuery | null = null;
   private search: ActivitySearch | null = null;
   private readonly searched = signal<ActivitySearch | null>(null);
   protected readonly exporter = computed(() => {
@@ -97,9 +112,21 @@ export class ActivityPage implements OnInit {
   protected onQuery(query: ListQuery): void {
     const companyId = this.company()?.id;
     if (!companyId) return;
-    this.search = activitySearch(query);
+    this.query = query;
+    this.search = activitySearch(query, this.record());
     this.searched.set(this.search);
     void this.facade.loadPage(companyId, this.search);
+  }
+
+  /** Back to the whole journal, under the filters already chosen. */
+  protected everyRecord(): void {
+    this.record.set(null);
+    void this.router.navigate([], {
+      queryParams: { record: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    if (this.query !== null) this.onQuery(this.query);
   }
 
   private people() {
@@ -108,4 +135,11 @@ export class ActivityPage implements OnInit {
       .filter((member) => member.status === 'joined')
       .map((member) => ({ id: member.userId, code: member.email, name: member.displayName }));
   }
+}
+
+const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A record id an address names, or null for none or for anything that is not one. */
+function recordOf(value: string | null): string | null {
+  return value !== null && ID.test(value) ? value : null;
 }

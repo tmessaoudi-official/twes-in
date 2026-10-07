@@ -11,6 +11,14 @@
     <app-list-export [address]="exporter()" testId="activity-export" />
   </div>
 
+  @if (record()) {
+    <p class="flex flex-wrap items-center gap-2" data-testid="activity-one-record">
+      {{ 'activity.one_record' | translate }}
+      <button mat-button type="button" (click)="everyRecord()" data-testid="activity-every-record">
+        {{ 'activity.every_record' | translate }}
+      </button>
+    </p>
+  }
   @if (error(); as code) {
     <p role="alert" data-testid="activity-error" class="text-error">
       {{ 'activity.errors.' + code | translate }}

@@ -220,7 +220,8 @@
     "remove_title": "Retirer ce membre ?",
     "remove_message": "{{name}} n’aura plus accès à cette entreprise. Vous pourrez l’inviter à nouveau.",
     "remove_confirm": "Retirer",
-    "keep": "Garder"
+    "keep": "Garder",
+    "activity": "Activité de {{name}}"
   },
   "company": {
     "choose": "Choisir une entreprise",
@@ -4131,6 +4132,13 @@
         "created": "a créé le champ personnalisé",
         "revised": "a modifié le champ personnalisé"
       }
-    }
+    },
+    "history": {
+      "title": "Historique",
+      "none": "Rien n’a encore été fait sur cette fiche, ou plus dans ce que la société conserve.",
+      "all": "Tout voir dans le journal d’activité"
+    },
+    "one_record": "Le journal d’une seule fiche.",
+    "every_record": "Toutes les fiches"
   }
 }

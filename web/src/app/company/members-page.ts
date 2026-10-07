@@ -126,6 +126,16 @@ export class MembersPage implements OnInit {
     ...membersList(this.roles()),
     actions: [
       {
+        // A member's « Activité »: the journal narrowed to them (docs/SPEC.md § 7, 2026-09-26 23:04).
+        id: 'activity',
+        label: 'members.activity',
+        labelParams: (row) => ({ name: row.displayName }),
+        icon: 'history',
+        link: () => ['/company/activity'],
+        linkQuery: (row) => ({ actor: row.userId }),
+        shown: (row) => this.mayReadActivity() && row.status === 'joined',
+      },
+      {
         id: 'remove',
         label: 'members.remove',
         icon: 'person_remove',
@@ -150,6 +160,7 @@ export class MembersPage implements OnInit {
   protected readonly error = this.members.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('user.write'));
+  protected readonly mayReadActivity = computed(() => this.auth.hasPermission('audit.read'));
 
   protected readonly form = new FormGroup({
     email: new FormControl('', {
