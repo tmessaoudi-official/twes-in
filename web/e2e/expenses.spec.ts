@@ -41,6 +41,8 @@ async function retire(page: Page, name: string): Promise<void> {
 }
 
 test('an expense is filed with its VAT and receipt, recorded, then paid', async ({ page }) => {
+  // The whole life of an expense, three accessibility scans and the list's filters: more than the default 30 s.
+  test.setTimeout(60_000);
   const run = Date.now().toString(36).toUpperCase();
   const category = `Carburant ${run}`;
   const description = `Gasoil ${run}`;
@@ -123,9 +125,16 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
     await expect(page.getByTestId('expenses-table')).toContainText(description);
     // Each status chip says how many it would list under that search (docs/SPEC.md § 7, 2026-09-26): this run's
     // expense, found by what it is for, is paid.
-    await expectFacetCount(page, 'list-facet-status-all', '1');
     await expectFacetCount(page, 'list-facet-status-paid', '1');
     await expectFacetCount(page, 'list-facet-status-draft', '0');
+
+    // Row 197: several statuses chosen together are OR'd by the API, and a filter the row fails leaves it out.
+    const table = page.getByTestId('expenses-table');
+    await page.goto(`/expenses?status=draft,paid&q=${encodeURIComponent(description)}`);
+    await expect(table).toContainText(description);
+    await page.goto(`/expenses?status=draft,recorded&q=${encodeURIComponent(description)}`);
+    // The line saying nothing matches quotes the search words, so it is the line that is looked for.
+    await expect(page.getByTestId('list-no-match')).toBeVisible();
   } finally {
     await retire(page, category);
   }

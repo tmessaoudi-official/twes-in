@@ -2493,6 +2493,11 @@
         "withholding_rate_too_precise": "taux de retenue à plus de deux décimales",
         "tax_rate_too_precise": "taux de TVA à plus de deux décimales"
       }
+    },
+    "filters": {
+      "withheld": "Retenue à la source",
+      "withheld_yes": "Avec retenue",
+      "withheld_no": "Sans retenue"
     }
   },
   "password_reset": {

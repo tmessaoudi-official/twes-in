@@ -23,6 +23,7 @@ import {
 import { provideQuietFeedback } from '../shared/testing/feedback';
 import { ExpensesFacade } from './expenses-facade';
 import { ExpensesPage } from './expenses-page';
+import type { ListPickSource } from '../shared/list/list-types';
 import type {
   ExpenseOptions,
   ExpenseRow,
@@ -82,6 +83,7 @@ describe('ExpensesPage', () => {
     ),
     loadOptions: vi.fn(),
     loadStatusCounts: vi.fn(),
+    pickVendors: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -154,7 +156,7 @@ describe('ExpensesPage', () => {
     await create();
     expect(facade.loadPage).toHaveBeenCalledWith(
       'c1',
-      expect.objectContaining({ page: 1, itemsPerPage: 25, q: '', status: null }),
+      expect.objectContaining({ page: 1, itemsPerPage: 25, q: '', status: [], vendorIds: [] }),
     );
   });
 
@@ -163,7 +165,7 @@ describe('ExpensesPage', () => {
     await create();
     expect(facade.loadStatusCounts).toHaveBeenCalledWith(
       'c1',
-      expect.objectContaining({ q: '', vendorId: null, categoryId: null }),
+      expect.objectContaining({ q: '', vendorIds: [], categoryIds: [], intervals: {} }),
     );
     statusCounts.set({ all: 16, statuses: { draft: 2, recorded: 5, paid: 9 } });
     fixture.detectChanges();
@@ -184,7 +186,8 @@ describe('ExpensesPage', () => {
       await settle();
       return text;
     };
-    expect(await count('list-facet-status-all')).toBe('16');
+    // Several statuses can be chosen together, so there is no « all » option to count: each status says its own.
+    expect(await count('list-facet-status-draft')).toBe('2');
     expect(await count('list-facet-status-paid')).toBe('9');
   });
 
@@ -202,6 +205,48 @@ describe('ExpensesPage', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-26: the month's TEJ file, where the company declares to TEJ, which the API says.
+  // Row 197: the « Filtres » panel picks vendors through the API and categories from the ones the form already has,
+  // each named with the categories above it, since picking one lists what is filed under it too.
+  it('finds vendors through the API and categories among the company’s own, named by their path', async () => {
+    await create();
+    options.set({
+      currency: 'TND',
+      currencyScale: 3,
+      categories: [
+        { id: 'k1', name: 'Véhicule', parentId: null },
+        { id: 'k2', name: 'Carburant', parentId: 'k1' },
+        { id: 'k3', name: 'Loyer', parentId: null },
+      ],
+      taxes: [],
+      paymentMethods: ['transfer'],
+      withholdingOperationCodes: [],
+    });
+    facade.pickVendors.mockResolvedValue([
+      {
+        id: 'v1',
+        number: 'FRN-0001',
+        name: 'Sotumag',
+        paymentTermsDays: 30,
+        defaultExpenseCategoryId: null,
+      },
+    ]);
+    const sources = (
+      fixture.componentInstance as unknown as { pickSources: Record<string, ListPickSource> }
+    ).pickSources;
+
+    expect(await sources['vendor'].search('sotu')).toEqual([
+      { id: 'v1', code: 'FRN-0001', name: 'Sotumag' },
+    ]);
+    expect(facade.pickVendors).toHaveBeenCalledWith('c1', { words: 'sotu' });
+    expect(await sources['category'].search('carbu')).toEqual([
+      { id: 'k2', code: '', name: 'Véhicule › Carburant' },
+    ]);
+    expect((await sources['category'].byIds(['k3', 'k1'])).map((each) => each.name)).toEqual([
+      'Véhicule',
+      'Loyer',
+    ]);
+  });
+
   it('offers the month’s TEJ file only where the API lists TEJ operations', async () => {
     await create();
     expect(facade.loadOptions).toHaveBeenCalledWith('c1');

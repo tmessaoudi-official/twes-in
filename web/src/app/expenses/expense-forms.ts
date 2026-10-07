@@ -7,9 +7,11 @@ import type {
   FormField,
   FormValues,
 } from '../shared/form/form-types';
+import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
   EXPENSE_STATUSES,
+  PAYMENT_METHODS,
   type ExpenseCategoryInput,
   type ExpenseCategoryRow,
   type ExpenseInput,
@@ -23,6 +25,13 @@ import {
 } from './expenses-types';
 
 const FIELDS = 'expenses.fields';
+
+/** The list's intervals, as the API names them (docs/SPEC.md § 7, 2026-10-06 00:15, row 197). */
+const EXPENSE_INTERVALS: readonly { id: string; kind: 'day' | 'amount'; label: string }[] = [
+  { id: 'date', kind: 'day', label: `${FIELDS}.date` },
+  { id: 'amountGross', kind: 'amount', label: `${FIELDS}.amountGross` },
+];
+const WITHHELD = ['yes', 'no'] as const;
 const CATEGORY_FIELDS = 'expenses.categories.fields';
 
 export const EXPENSES_LIST: ListDescriptor<ExpenseRow> = {
@@ -98,15 +107,41 @@ export const EXPENSES_LIST: ListDescriptor<ExpenseRow> = {
       width: 130,
     },
   ],
+  ranges: EXPENSE_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),
+  picks: [
+    { id: 'vendor', label: `${FIELDS}.vendorId` },
+    { id: 'category', label: `${FIELDS}.categoryId` },
+  ],
   filters: [
     {
       id: 'status',
       label: `${FIELDS}.status`,
+      multiple: true,
       value: (row) => row.status,
       options: EXPENSE_STATUSES.map((status) => ({
         value: status,
         label: `expenses.statuses.${status}`,
         tone: EXPENSE_STATUS_TONES[status],
+      })),
+    },
+    {
+      id: 'paymentMethod',
+      label: `${FIELDS}.paymentMethod`,
+      multiple: true,
+      value: (row) => row.paymentMethod,
+      options: PAYMENT_METHODS.map((method) => ({
+        value: method,
+        label: `expenses.payment_methods.${method}`,
+      })),
+    },
+    {
+      // One answer: asking both is asking nothing.
+      id: 'withheld',
+      label: 'expenses.filters.withheld',
+      value: (row) => (row.withholdingAmount === null ? 'no' : 'yes'),
+      options: WITHHELD.map((answer) => ({
+        value: answer,
+        label: `expenses.filters.withheld_${answer}`,
       })),
     },
   ],
@@ -123,15 +158,20 @@ const SORT_KEYS: Readonly<Record<string, ExpenseSortKey>> = {
 
 /** What the API is asked for the page of expenses the list shows. */
 export function expenseSearch(query: ListQuery): ExpenseSearch {
-  const status = EXPENSE_STATUSES.find((known) => known === query.filters['status']) ?? null;
+  const chosen = filterValues(query.filters['status']);
+  const methods = filterValues(query.filters['paymentMethod']);
+  const withheld = WITHHELD.find((answer) => answer === query.filters['withheld']) ?? null;
   const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
   return {
     page: query.pageIndex + 1,
     itemsPerPage: query.pageSize,
     q: query.query,
-    status,
-    vendorId: null,
-    categoryId: null,
+    status: EXPENSE_STATUSES.filter((known) => chosen.includes(known)),
+    paymentMethods: PAYMENT_METHODS.filter((known) => methods.includes(known)),
+    withheld,
+    vendorIds: idValues(query.filters['vendor']),
+    categoryIds: idValues(query.filters['category']),
+    intervals: rangeParams(query.filters, EXPENSE_INTERVALS),
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };

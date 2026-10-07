@@ -46,9 +46,15 @@ use Symfony\Component\Validator\Constraints as Assert;
             outputFormats: ['jsonld' => ['application/ld+json']],
             parameters: [
                 'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in what the expense is for or in the vendor\'s reference on it, whatever their case and accents; under three characters, the exact reference only. The vendor\'s and the category\'s own names are not searched: narrow by vendorId or categoryId instead.'),
-                'status' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['draft', 'recorded', 'paid']]),
-                'vendorId' => new QueryParameter(schema: self::ID),
-                'categoryId' => new QueryParameter(schema: self::ID),
+                'status[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['draft', 'recorded', 'paid']]], description: 'Several statuses, OR\'d: `status[]=draft&status[]=paid`; a single `status=draft` is the same filter with one value.', constraints: []),
+                'paymentMethod[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['transfer', 'cash', 'check', 'card', 'other']]], description: 'Several ways of paying, OR\'d; a single `paymentMethod=cash` still works. An expense not paid yet has none and is left out by any.', constraints: []),
+                'withheld' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['yes', 'no']], description: '`yes`: something was withheld at the source when it was paid; `no`: nothing was, which includes what is not paid yet.'),
+                'vendorId[]' => new QueryParameter(schema: ['type' => 'array', 'items' => self::ID], description: 'Several vendors, OR\'d; a single `vendorId=…` still works.', constraints: []),
+                'categoryId[]' => new QueryParameter(schema: ['type' => 'array', 'items' => self::ID], description: 'Several categories, OR\'d, each with every category under it at any depth; a single `categoryId=…` still works.', constraints: []),
+                'date[from]' => new QueryParameter(schema: self::DAY, description: 'On or after this day.'),
+                'date[to]' => new QueryParameter(schema: self::DAY, description: 'On or before this day.'),
+                'amountGross[min]' => new QueryParameter(schema: self::AMOUNT, description: 'Taxes included, at least this amount.'),
+                'amountGross[max]' => new QueryParameter(schema: self::AMOUNT, description: 'Taxes included, at most this amount.'),
                 'order[date]' => new QueryParameter(schema: self::DIRECTION),
                 'order[description]' => new QueryParameter(schema: self::DIRECTION),
                 'order[vendor]' => new QueryParameter(schema: self::DIRECTION, description: 'By who was paid: the vendor\'s current name, else the payee written on the expense; an expense naming neither comes last whichever the direction.'),
@@ -128,6 +134,9 @@ final class ExpenseResource
     /** Which way one of the list's sorts reads. */
     private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
 
+    private const array DAY = ['type' => 'string', 'format' => 'date'];
+    /** A decimal string, as every amount is: a float would round it. */
+    private const array AMOUNT = ['type' => 'string', 'pattern' => '^(0|[1-9][0-9]{0,10})(\\.[0-9]{1,4})?$'];
     /** A parameter naming a row of another table. The format is what refuses anything else, with a 422. */
     private const array ID = ['type' => 'string', 'format' => 'uuid'];
 

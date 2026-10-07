@@ -28,6 +28,13 @@ export const EXPENSE_STATUS_TONES: Readonly<Record<ExpenseStatus, StatusTone>> =
   tonesOf(EXPENSE_STATUS_STAGES);
 
 export type PaymentMethod = 'transfer' | 'cash' | 'check' | 'card' | 'other';
+export const PAYMENT_METHODS: readonly PaymentMethod[] = [
+  'transfer',
+  'cash',
+  'check',
+  'card',
+  'other',
+];
 
 /**
  * The sorts the API answers. The due day is not among them: it is the vendor's payment terms counted from the
@@ -59,9 +66,16 @@ export interface ExpenseSearch {
   itemsPerPage: number;
   /** Words found in what the expense is for or in the vendor's reference on it; empty finds all. */
   q: string;
-  status: ExpenseStatus | null;
-  vendorId: string | null;
-  categoryId: string | null;
+  /** Any of these; none is every status. Each filter's values are OR'd, the filters AND'd (row 197). */
+  status: readonly ExpenseStatus[];
+  paymentMethods: readonly PaymentMethod[];
+  /** Whether something was withheld at the source when it was paid; null asks either. */
+  withheld: 'yes' | 'no' | null;
+  vendorIds: readonly string[];
+  /** Each with every category under it, which the API adds. */
+  categoryIds: readonly string[];
+  /** The ends of the intervals, by `date.from`, `amountGross.max`: each already valid. */
+  intervals: Readonly<Record<string, string>>;
   order: { key: ExpenseSortKey; direction: 'asc' | 'desc' } | null;
 }
 

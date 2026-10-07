@@ -88,7 +88,7 @@ final readonly class ManageExpenses
      */
     public function search(Company $company, ExpenseSearch $search, PageRequest $page): Page
     {
-        return $this->expenses->search($company->getId(), $search, $page);
+        return $this->expenses->search($company->getId(), $this->withSubcategories($company, $search), $page);
     }
 
     /**
@@ -98,7 +98,40 @@ final readonly class ManageExpenses
      */
     public function statusCounts(Company $company, ExpenseSearch $search): array
     {
-        return $this->expenses->statusCounts($company->getId(), $search);
+        return $this->expenses->statusCounts($company->getId(), $this->withSubcategories($company, $search));
+    }
+
+    /**
+     * A category picked stands for itself and every category under it, at any depth (docs/SPEC.md § 7, row 197): « Véhicule »
+     * lists what was filed under « Carburant » too. The list, its counts and its file all ask through here, so the three
+     * widen it alike. A company's categories are few, so they are read whole and walked here rather than in SQL; one
+     * of another company is not among them and widens to nothing more than itself, which matches no row of this one.
+     */
+    private function withSubcategories(Company $company, ExpenseSearch $search): ExpenseSearch
+    {
+        if ([] === $search->categories) {
+            return $search;
+        }
+        $children = [];
+        foreach ($this->categories->ofCompany($company->getId()) as $category) {
+            $parent = $category->getParent();
+            if (null !== $parent) {
+                $children[$parent->getId()->toRfc4122()][] = $category->getId();
+            }
+        }
+        $widened = [];
+        $waiting = $search->categories;
+        while ([] !== $waiting) {
+            $category = array_shift($waiting);
+            $key = $category->toRfc4122();
+            if (isset($widened[$key])) {
+                continue;
+            }
+            $widened[$key] = $category;
+            array_push($waiting, ...($children[$key] ?? []));
+        }
+
+        return $search->withCategories(array_values($widened));
     }
 
     /** @throws ExpenseNotFound */

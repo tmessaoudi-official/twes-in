@@ -20,6 +20,7 @@ final class ExpenseExportTest extends ApiTestCase
 {
     private Company $company;
     private string $vendorId;
+    private string $categoryId;
 
     protected function setUp(): void
     {
@@ -37,6 +38,7 @@ final class ExpenseExportTest extends ApiTestCase
         $this->postJson($this->path().'/expense-categories', ['name' => 'Loyers', 'parentId' => null, 'isActive' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $category = $this->stringAt($this->json(), 'id');
+        $this->categoryId = $category;
         $this->draft('Gasoil septembre', '2026-09-10', '100.005', null);
         $recorded = $this->draft('Loyer septembre', '2026-09-01', '500', $category);
         $this->postJson($this->path().'/expenses/'.$recorded.'/record', null);
@@ -67,6 +69,24 @@ final class ExpenseExportTest extends ApiTestCase
         self::assertCount(3, $this->csv('/exports/expenses.csv?vendorId='.$this->vendorId));
         self::assertCount(1, $this->csv('/exports/expenses.csv?q=nobody-here'), 'the header alone');
         self::assertStringContainsString('Loyer', $this->csv('/exports/expenses.csv?order[date]=asc')[1]);
+    }
+
+    /** Row 197: the file is narrowed by every filter the screen sends, read by the same reader as the list. */
+    public function testTheFileHoldsWhatTheListShowsUnderEveryFilter(): void
+    {
+        foreach ([
+            'status[]=draft&status[]=recorded' => 2,
+            'date[from]=2026-09-05' => 1,
+            'amountGross[min]=200' => 1,
+            'categoryId[]='.$this->categoryId => 1,
+            'withheld=no' => 2,
+            'paymentMethod[]=cash' => 0,
+        ] as $query => $rows) {
+            self::assertCount(1 + $rows, $this->csv('/exports/expenses.csv?'.$query), $query);
+            $this->getJson($this->path().'/expenses?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($rows, $this->jsonPage()['totalItems'], $query);
+        }
     }
 
     public function testAnXlsxIsOfferedToo(): void

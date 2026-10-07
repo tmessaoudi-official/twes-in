@@ -84,9 +84,12 @@ describe('ExpensesFacade', () => {
     page: 1,
     itemsPerPage: 25,
     q: '',
-    status: null,
-    vendorId: null,
-    categoryId: null,
+    status: [],
+    paymentMethods: [],
+    withheld: null,
+    vendorIds: [],
+    categoryIds: [],
+    intervals: {},
     order: null,
   } as const;
 

@@ -4,7 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ExpensesApi, ExpensesRefused } from './expenses-api';
-import type { ExpenseInput } from './expenses-types';
+import type { ExpenseInput, ExpenseSearch } from './expenses-types';
 
 const fuel: ExpenseInput = {
   date: '2026-09-10',
@@ -78,18 +78,21 @@ describe('ExpensesApi', () => {
   });
 
   it('names the file of what the list shows, with its words, choices and order and no page', () => {
-    const search = {
+    const search: ExpenseSearch = {
       page: 2,
       itemsPerPage: 50,
       q: ' gasoil ',
-      status: 'recorded' as const,
-      vendorId: 'v1',
-      categoryId: null,
-      order: { key: 'date' as const, direction: 'desc' as const },
+      status: ['recorded'],
+      paymentMethods: [],
+      withheld: 'yes',
+      vendorIds: ['v1'],
+      categoryIds: [],
+      intervals: { 'date.to': '2026-09-30' },
+      order: { key: 'date', direction: 'desc' },
     };
 
-    expect(api.exportUrl('c/1', search, 'csv')).toBe(
-      '/api/companies/c%2F1/exports/expenses.csv?q=gasoil&status=recorded&vendorId=v1&order%5Bdate%5D=desc',
+    expect(decodeURIComponent(api.exportUrl('c/1', search, 'csv'))).toBe(
+      '/api/companies/c/1/exports/expenses.csv?q=gasoil&status[]=recorded&withheld=yes&vendorId[]=v1&date[to]=2026-09-30&order[date]=desc',
     );
   });
 
@@ -98,9 +101,12 @@ describe('ExpensesApi', () => {
       page: 2,
       itemsPerPage: 50,
       q: '  gasoil  ',
-      status: 'recorded',
-      vendorId: 'v1',
-      categoryId: 'k1',
+      status: ['recorded', 'paid'],
+      paymentMethods: ['cash'],
+      withheld: 'no',
+      vendorIds: ['v1', 'v2'],
+      categoryIds: ['k1'],
+      intervals: { 'date.from': '2026-09-01', 'amountGross.min': '100' },
       order: { key: 'amountGross', direction: 'desc' },
     });
     const request = http.expectOne(
@@ -111,9 +117,14 @@ describe('ExpensesApi', () => {
     expect(request.request.params.get('itemsPerPage')).toBe('50');
     // Trimmed, so a trailing space is not a different search.
     expect(request.request.params.get('q')).toBe('gasoil');
-    expect(request.request.params.get('status')).toBe('recorded');
-    expect(request.request.params.get('vendorId')).toBe('v1');
-    expect(request.request.params.get('categoryId')).toBe('k1');
+    // Several values of one filter repeat its name; the API ORs them, and ANDs the filters.
+    expect(request.request.params.getAll('status[]')).toEqual(['recorded', 'paid']);
+    expect(request.request.params.getAll('paymentMethod[]')).toEqual(['cash']);
+    expect(request.request.params.get('withheld')).toBe('no');
+    expect(request.request.params.getAll('vendorId[]')).toEqual(['v1', 'v2']);
+    expect(request.request.params.getAll('categoryId[]')).toEqual(['k1']);
+    expect(request.request.params.get('date[from]')).toBe('2026-09-01');
+    expect(request.request.params.get('amountGross[min]')).toBe('100');
     expect(request.request.params.get('order[amountGross]')).toBe('desc');
     request.flush({
       member: [{ id: 'e1', description: 'Gasoil', amountGross: '119.000' }],
@@ -126,14 +137,17 @@ describe('ExpensesApi', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-26: « Dépenses »'s chips say how many each would list.
-  it('asks how many expenses each status would list, under the list’s own words, vendor and category', async () => {
+  it('asks how many expenses each status would list, under every other filter of the list', async () => {
     const pending = api.statusCounts('c1', {
       page: 2,
       itemsPerPage: 50,
       q: '  gasoil  ',
-      status: 'recorded',
-      vendorId: 'v1',
-      categoryId: 'k1',
+      status: ['recorded', 'paid'],
+      paymentMethods: ['cash'],
+      withheld: 'no',
+      vendorIds: ['v1', 'v2'],
+      categoryIds: ['k1'],
+      intervals: { 'date.from': '2026-09-01', 'amountGross.min': '100' },
       order: { key: 'amountGross', direction: 'desc' },
     });
     const request = http.expectOne(
@@ -141,7 +155,15 @@ describe('ExpensesApi', () => {
         candidate.url === '/api/companies/c1/expense-status-counts' && candidate.method === 'GET',
     );
     // The chips narrow by status themselves, and a count has no page or order.
-    expect(request.request.params.keys().sort()).toEqual(['categoryId', 'q', 'vendorId']);
+    expect(request.request.params.keys().sort()).toEqual([
+      'amountGross[min]',
+      'categoryId[]',
+      'date[from]',
+      'paymentMethod[]',
+      'q',
+      'vendorId[]',
+      'withheld',
+    ]);
     expect(request.request.params.get('q')).toBe('gasoil');
     const statuses = { draft: 2, recorded: 5, paid: 9 };
     request.flush({ all: 16, statuses });
@@ -178,9 +200,12 @@ describe('ExpensesApi', () => {
       page: 1,
       itemsPerPage: 25,
       q: '',
-      status: null,
-      vendorId: null,
-      categoryId: null,
+      status: [],
+      paymentMethods: [],
+      withheld: null,
+      vendorIds: [],
+      categoryIds: [],
+      intervals: {},
       order: null,
     });
     http.expectOne('/api/companies/c1/expense-status-counts').flush({ all: 5 });
@@ -192,9 +217,12 @@ describe('ExpensesApi', () => {
       page: 1,
       itemsPerPage: 25,
       q: '',
-      status: null,
-      vendorId: null,
-      categoryId: null,
+      status: [],
+      paymentMethods: [],
+      withheld: null,
+      vendorIds: [],
+      categoryIds: [],
+      intervals: {},
       order: null,
     });
     const request = http.expectOne(

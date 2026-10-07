@@ -16,12 +16,11 @@ use App\ImportExport\Application\ExportQuery;
 use App\Module\Expenses\Application\ManageExpenses;
 use App\Module\Expenses\Domain\Expense;
 use App\Module\Expenses\Domain\ExpenseSearch;
-use App\Module\Expenses\Domain\ExpenseStatus;
 use App\Module\Expenses\Infrastructure\ApiPlatform\ExpensePermission;
+use App\Module\Expenses\Infrastructure\ApiPlatform\ExpenseSearchReader;
 use App\Module\Expenses\Infrastructure\Module\ExpensesModule;
 use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * The expenses list as a file (docs/SPEC.md § 7, row 60): one row per expense, under the search, status, vendor,
@@ -60,16 +59,7 @@ final readonly class ExpenseExport implements DeclaresExport
 
     public function rows(Company $company, ExportQuery $query): iterable
     {
-        $status = $query->choice('status', array_column(ExpenseStatus::cases(), 'value'));
-        $vendor = $query->text('vendorId');
-        $category = $query->text('categoryId');
-        $search = new ExpenseSearch(
-            $query->text(),
-            null === $status ? null : ExpenseStatus::from($status),
-            null !== $vendor && Uuid::isValid($vendor) ? Uuid::fromString($vendor) : null,
-            null !== $category && Uuid::isValid($category) ? Uuid::fromString($category) : null,
-            $query->order(ExpenseSearch::SORTS),
-        );
+        $search = ExpenseSearchReader::read($query->parameters(), $query->text(), $query->order(ExpenseSearch::SORTS));
         $scale = $this->scales->of($company->getCurrency());
 
         for ($page = 1;; ++$page) {

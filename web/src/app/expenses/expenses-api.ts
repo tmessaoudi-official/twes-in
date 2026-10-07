@@ -19,6 +19,7 @@ import type {
   ExpenseVendorPickExpenseVendorPickRead,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
+import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import type {
@@ -411,21 +412,31 @@ function toExpense(raw: ExpenseExpenseRead | ExpenseJsonldExpenseRead): ExpenseR
 function toSearchParams(search: ExpenseSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
   if (search.q.trim() !== '') params = params.set('q', search.q.trim());
-  if (search.status !== null) params = params.set('status', search.status);
-  if (search.vendorId !== null) params = params.set('vendorId', search.vendorId);
-  if (search.categoryId !== null) params = params.set('categoryId', search.categoryId);
+  for (const status of search.status) params = params.append('status[]', status);
+  params = narrowing(params, search);
   if (search.order !== null)
     params = params.set(`order[${search.order.key}]`, search.order.direction);
   return params;
+}
+
+/** What narrows the list whatever the status, each as the API names it. */
+function narrowing(params: HttpParams, search: ExpenseSearch): HttpParams {
+  let next = params;
+  for (const method of search.paymentMethods) next = next.append('paymentMethod[]', method);
+  if (search.withheld !== null) next = next.set('withheld', search.withheld);
+  for (const id of search.vendorIds) next = next.append('vendorId[]', id);
+  for (const id of search.categoryIds) next = next.append('categoryId[]', id);
+  for (const [key, value] of Object.entries(search.intervals)) {
+    next = next.set(apiRangeKey(key), value);
+  }
+  return next;
 }
 
 /** The chips narrow by status themselves, and a count has no page or order. */
 function toCountParams(search: ExpenseSearch): HttpParams {
   let params = new HttpParams();
   if (search.q.trim() !== '') params = params.set('q', search.q.trim());
-  if (search.vendorId !== null) params = params.set('vendorId', search.vendorId);
-  if (search.categoryId !== null) params = params.set('categoryId', search.categoryId);
-  return params;
+  return narrowing(params, search);
 }
 
 function toExpenseBody(input: ExpenseInput): ExpenseExpenseWrite {

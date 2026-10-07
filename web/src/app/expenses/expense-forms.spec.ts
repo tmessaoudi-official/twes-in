@@ -62,9 +62,51 @@ describe('expense forms', () => {
       });
     });
 
-    it('passes a status it knows and drops one it does not', () => {
-      expect(expenseSearch({ ...query, filters: { status: 'recorded' } }).status).toBe('recorded');
-      expect(expenseSearch({ ...query, filters: { status: 'nonsense' } }).status).toBeNull();
+    it('passes the statuses and ways of paying it knows, and drops what it does not', () => {
+      expect(
+        expenseSearch({ ...query, filters: { status: 'recorded,nonsense,paid' } }).status,
+      ).toEqual(['recorded', 'paid']);
+      expect(
+        expenseSearch({ ...query, filters: { paymentMethod: 'cash,barter' } }).paymentMethods,
+      ).toEqual(['cash']);
+    });
+
+    // Row 197: the facets, the vendor and category picks and the intervals all reach the API.
+    it('passes whether something was withheld, the vendors and categories picked, and the intervals', () => {
+      const id = '0199a1b2-0000-7000-8000-00000000000';
+      const search = expenseSearch({
+        ...query,
+        filters: {
+          withheld: 'yes',
+          vendor: `${id}1,${id}2,not-an-id`,
+          category: `${id}3`,
+          'date.from': '2026-09-01',
+          'date.to': '2026-09-30',
+          'amountGross.min': '100',
+          'amountGross.max': 'lots',
+        },
+      });
+      expect(search.withheld).toBe('yes');
+      expect(search.vendorIds).toEqual([`${id}1`, `${id}2`]);
+      expect(search.categoryIds).toEqual([`${id}3`]);
+      expect(search.intervals).toEqual({
+        'date.from': '2026-09-01',
+        'date.to': '2026-09-30',
+        'amountGross.min': '100',
+      });
+      expect(expenseSearch({ ...query, filters: { withheld: 'maybe' } }).withheld).toBeNull();
+    });
+
+    it('offers the filters ruled for the list: several statuses and ways of paying, one answer on withholding', () => {
+      const filters = Object.fromEntries(
+        (EXPENSES_LIST.filters ?? []).map((filter) => [filter.id, filter.multiple ?? false]),
+      );
+      expect(filters).toEqual({ status: true, paymentMethod: true, withheld: false });
+      expect(EXPENSES_LIST.picks?.map((pick) => pick.id)).toEqual(['vendor', 'category']);
+      expect(EXPENSES_LIST.ranges?.map((range) => [range.id, range.kind])).toEqual([
+        ['date', 'day'],
+        ['amountGross', 'amount'],
+      ]);
     });
 
     it('passes the sort the column names, and leaves the API its own order otherwise', () => {

@@ -23,7 +23,8 @@ import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
-import type { ListFacetCounts, ListQuery } from '../shared/list/list-types';
+import type { ListFacetCounts, ListPickSource, ListQuery } from '../shared/list/list-types';
+import type { PickAsked } from '../shared/form/pick-api';
 import { keyName } from '../shared/actions/shortcuts-sheet';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import { PRESENTATION } from '../shared/settings/settings-registry';
@@ -83,6 +84,47 @@ export class ExpensesPage implements OnInit {
     const counts = this.facade.statusCounts();
     return counts === null ? null : { status: { total: counts.all, options: counts.statuses } };
   });
+  /**
+   * Where the « Filtres » panel finds a vendor or a category to narrow by, and names the ones an address holds. Vendors
+   * are searched by the API, never read whole; the categories are already here, for the form, so they are searched in
+   * the browser. A category is named with the ones above it, since picking it lists what is filed under it too.
+   */
+  protected readonly pickSources: Readonly<Record<string, ListPickSource>> = {
+    vendor: {
+      search: (words) => this.pickVendors({ words }),
+      byIds: (ids) => this.pickVendors({ ids }),
+    },
+    category: {
+      search: async (words) => {
+        const wanted = words.trim().toLocaleLowerCase();
+        return this.categoryChoices().filter((each) =>
+          each.name.toLocaleLowerCase().includes(wanted),
+        );
+      },
+      byIds: async (ids) => this.categoryChoices().filter((each) => ids.includes(each.id)),
+    },
+  };
+  private async pickVendors(asked: PickAsked) {
+    const companyId = this.company()?.id;
+    if (!companyId) return [];
+    const found = await this.facade.pickVendors(companyId, asked);
+    return found.map((vendor) => ({ id: vendor.id, code: vendor.number, name: vendor.name }));
+  }
+  private categoryChoices() {
+    const categories = this.facade.options()?.categories ?? [];
+    const byId = new Map(categories.map((category) => [category.id, category]));
+    const path = (id: string | null, seen: ReadonlySet<string>): string[] => {
+      const category = id === null || seen.has(id) ? undefined : byId.get(id);
+      return category === undefined
+        ? []
+        : [...path(category.parentId, new Set([...seen, category.id])), category.name];
+    };
+    return categories.map((category) => ({
+      id: category.id,
+      code: '',
+      name: path(category.id, new Set()).join(' › '),
+    }));
+  }
   /** The person's key for a new expense, named on the button (docs/SPEC.md § 7, 2026-09-24 22:51). */
   protected readonly newKey = computed(() => this.keys().new);
   protected readonly keyName = keyName;

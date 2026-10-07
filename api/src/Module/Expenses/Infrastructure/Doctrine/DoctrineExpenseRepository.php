@@ -15,8 +15,11 @@ use App\Module\Expenses\Domain\ExpenseSearch;
 use App\Module\Expenses\Domain\ExpenseStatus;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\PaymentMethod;
+use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
@@ -101,7 +104,7 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
     public function statusCounts(Uuid $companyId, ExpenseSearch $search): array
     {
         // The chips narrow by status themselves, so whatever status the search carried is left aside.
-        $statusFree = new ExpenseSearch($search->text, null, $search->vendor, $search->category);
+        $statusFree = $search->withoutStatus();
         $counts = array_fill_keys(array_map(static fn (ExpenseStatus $status): string => $status->value, ExpenseStatus::cases()), 0);
         /** @var list<array{status: ExpenseStatus, total: int|string}> $rows the column is mapped to the enum */
         $rows = $this->filtered($companyId, $statusFree)
@@ -129,17 +132,37 @@ final readonly class DoctrineExpenseRepository implements ExpenseRepository
         } elseif ('' !== $words) {
             $query->andWhere('LOWER(e.reference) = LOWER(:reference)')->setParameter('reference', $words);
         }
-        if (null !== $search->status) {
-            $query->andWhere('e.status = :status')->setParameter('status', $search->status->value);
+        if ([] !== $search->statuses) {
+            $query->andWhere('e.status IN (:statuses)')
+                ->setParameter('statuses', array_map(static fn (ExpenseStatus $each): string => $each->value, $search->statuses), ArrayParameterType::STRING);
         }
-        if (null !== $search->vendor) {
-            $query->andWhere('e.vendor = :vendorId')->setParameter('vendorId', $search->vendor, 'uuid');
+        if ([] !== $search->vendors) {
+            $query->andWhere('e.vendor IN (:vendorIds)')->setParameter('vendorIds', self::ids($search->vendors), ArrayParameterType::STRING);
         }
-        if (null !== $search->category) {
-            $query->andWhere('e.category = :categoryId')->setParameter('categoryId', $search->category, 'uuid');
+        if ([] !== $search->categories) {
+            $query->andWhere('e.category IN (:categoryIds)')->setParameter('categoryIds', self::ids($search->categories), ArrayParameterType::STRING);
         }
+        if ([] !== $search->paymentMethods) {
+            $query->andWhere('e.paymentMethod IN (:paymentMethods)')
+                ->setParameter('paymentMethods', array_map(static fn (PaymentMethod $each): string => $each->value, $search->paymentMethods), ArrayParameterType::STRING);
+        }
+        if (null !== $search->withheld) {
+            $query->andWhere($search->withheld ? 'e.withholdingAmount IS NOT NULL' : 'e.withholdingAmount IS NULL');
+        }
+        Intervals::days($query, 'e.date', 'date', $search->date);
+        Intervals::amounts($query, 'e.amountGross', 'gross', $search->amountGross);
 
         return $query;
+    }
+
+    /**
+     * @param list<Uuid> $ids
+     *
+     * @return list<string>
+     */
+    private static function ids(array $ids): array
+    {
+        return array_map(static fn (Uuid $each): string => $each->toRfc4122(), $ids);
     }
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Expense

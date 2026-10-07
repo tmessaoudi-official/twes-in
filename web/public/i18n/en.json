@@ -2493,6 +2493,11 @@
         "withholding_rate_too_precise": "withholding rate with more than two decimals",
         "tax_rate_too_precise": "VAT rate with more than two decimals"
       }
+    },
+    "filters": {
+      "withheld": "Withholding",
+      "withheld_yes": "With withholding",
+      "withheld_no": "Without withholding"
     }
   },
   "password_reset": {

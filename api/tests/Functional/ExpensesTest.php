@@ -602,6 +602,70 @@ final class ExpensesTest extends ApiTestCase
         }
     }
 
+    /**
+     * docs/SPEC.md § 7, 2026-10-06 00:15, row 197: the values of one filter are OR'd, different filters are AND'd, a parent
+     * category includes the ones under it, and the day and the amount are intervals with each end inclusive.
+     */
+    public function testEveryFilterOfTheListCombines(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $vehicle = $this->category('Véhicule');
+        $fuel = $this->category('Carburant', $vehicle);
+        $rent = $this->category('Loyer');
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertInstanceOf(Company::class, $company);
+        $other = Vendor::create($company, 'FRN-0002', new VendorProfile('Immobilière du Lac'), new \DateTimeImmutable());
+        $this->em()->persist($other);
+        $this->em()->flush();
+        $otherId = $other->getId()->toRfc4122();
+        // 1 190 taxes included, paid by transfer: the preset withholds 1 %.
+        $this->paid(['categoryId' => $fuel, 'amountNet' => '1000'], 'transfer', null);
+        // 11.900, paid in cash, nothing withheld; filed under the parent category itself.
+        $this->paid(['date' => '2026-08-05', 'description' => 'Péage', 'reference' => null, 'categoryId' => $vehicle, 'amountNet' => '10'], 'cash', '0');
+        // 119, still a draft, another vendor.
+        $this->postJson($this->path(), $this->expense(['date' => '2026-09-20', 'reference' => null, 'description' => 'Loyer du dépôt', 'vendorId' => $otherId, 'categoryId' => $rent, 'amountNet' => '100']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        foreach ([
+            'status[]=draft&status[]=paid' => ['Loyer du dépôt', 'Gasoil septembre', 'Péage'],
+            'status=paid' => ['Gasoil septembre', 'Péage'],
+            'paymentMethod[]=cash' => ['Péage'],
+            'paymentMethod[]=cash&paymentMethod[]=transfer' => ['Gasoil septembre', 'Péage'],
+            'withheld=yes' => ['Gasoil septembre'],
+            'withheld=no' => ['Loyer du dépôt', 'Péage'],
+            'vendorId[]='.$otherId => ['Loyer du dépôt'],
+            'categoryId[]='.$vehicle => ['Gasoil septembre', 'Péage'],
+            'categoryId[]='.$fuel => ['Gasoil septembre'],
+            'categoryId[]='.$rent.'&categoryId[]='.$fuel => ['Loyer du dépôt', 'Gasoil septembre'],
+            'date[from]=2026-09-01' => ['Loyer du dépôt', 'Gasoil septembre'],
+            'date[to]=2026-09-10' => ['Gasoil septembre', 'Péage'],
+            'date[from]=2026-09-10&date[to]=2026-09-10' => ['Gasoil septembre'],
+            'amountGross[min]=119' => ['Loyer du dépôt', 'Gasoil septembre'],
+            'amountGross[max]=119' => ['Loyer du dépôt', 'Péage'],
+            'status[]=paid&categoryId[]='.$vehicle.'&withheld=no' => ['Péage'],
+        ] as $query => $descriptions) {
+            $this->getJson($this->path().'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($descriptions, array_column($this->jsonList(), 'description'), $query);
+
+            // Each status chip counts what its filter would list under the same narrowing.
+            $narrowing = implode('&', array_filter(explode('&', $query), static fn (string $part): bool => !str_starts_with($part, 'status')));
+            $this->getJson($this->companyPath().'/expense-status-counts?'.$narrowing);
+            self::assertResponseIsSuccessful($narrowing);
+            $statuses = $this->json()['statuses'];
+            self::assertIsArray($statuses);
+            foreach (['draft', 'recorded', 'paid'] as $status) {
+                $this->getJson($this->path().'?'.ltrim($narrowing.'&status='.$status, '&'));
+                self::assertSame($this->jsonPage()['totalItems'], $statuses[$status], $narrowing.' '.$status);
+            }
+        }
+
+        foreach (['withheld=maybe', 'paymentMethod[]=barter', 'date[from]=2026-13-01', 'date[from]=2026-09-10&date[to]=2026-09-01', 'amountGross[min]=abc', 'categoryId[]=not-an-id', 'vendorId[]=not-an-id'] as $refused) {
+            $this->getJson($this->path().'?'.$refused);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+        }
+    }
+
     /** docs/SPEC.md § 7, 2026-09-26: each status chip of « Dépenses » says how many it would list. */
     public function testEachStatusChipCountsWhatItsFilterWouldList(): void
     {
@@ -651,6 +715,23 @@ final class ExpensesTest extends ApiTestCase
         $globex = $this->createCompany('Globex');
         $this->getJson('/api/companies/'.$globex->getId()->toRfc4122().'/expense-status-counts');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * An expense drafted, recorded and paid, which is what sets its way of paying and what was withheld.
+     *
+     * @param array<string, mixed> $expense
+     */
+    private function paid(array $expense, string $method, ?string $rate): void
+    {
+        $this->postJson($this->path(), $this->expense($expense));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($id).'/record', null);
+        self::assertResponseIsSuccessful();
+        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $this->postJson($this->path($id).'/pay', ['paymentMethod' => $method, 'paidOn' => $today->format('Y-m-d')] + (null === $rate ? [] : ['withholdingRate' => $rate]));
+        self::assertResponseIsSuccessful();
     }
 
     private function category(string $name, ?string $parentId = null): string
