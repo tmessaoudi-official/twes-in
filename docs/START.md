@@ -186,9 +186,9 @@ On an empty database it prints exactly that:
      customer tax regimes of TN, tax components of Demo, units of Demo, establishments of Demo, numbering series of Demo.
 ```
 
-At every start the api also copies into each company what its fiscal preset has and the company lacks
-(`app:companies:provision`), such as the numbering series of a kind of document a release added; what a company already
-has is never touched.
+At every start the api also brings the database up to the release (`app:platform:converge`): the built-in roles'
+permissions, and into each company what its fiscal preset has and the company lacks, such as the numbering series of a
+kind of document a release added. It is the seed without its operator and first company; what exists is kept.
 
 Apart from the seed, the api writes the **legal pages' shipped drafts** at every start
 (`app:legal:seed-drafts`, from `api/resources/legal/<page>.<language>.md`), only where a page has no version yet in that

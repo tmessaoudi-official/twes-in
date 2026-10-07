@@ -71,7 +71,7 @@ test('the fields of one row line up, whatever the length of their labels', async
       .evaluate((element) => Math.round(element.getBoundingClientRect().top));
   const self = ':scope';
   expect(await top('field-watch__late_after_days', self)).toBe(
-    await top('field-document__payment_terms_days', self),
+    await top('field-quote__validity_days', self),
   );
   expect(await top('field-delivery_note__show_prices', '.mdc-checkbox__background')).toBe(
     await top('field-delivery_note__reception_block', '.mdc-checkbox__background'),

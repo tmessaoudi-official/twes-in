@@ -29,7 +29,8 @@ use Psr\Clock\ClockInterface;
 /**
  * The built-in roles, the first operator, the first company, the customer tax regimes of every fiscal preset and
  * every company's taxes and units, idempotently: run on an empty database and again after a migration it
- * converges on the same rows. A company is unusable without an owner role, so the roles are seeded here too.
+ * converges on the same rows. `converge()` is the part a live database needs at every start, without the operator and
+ * the first company. A company is unusable without an owner role, so the roles are seeded here too.
  */
 final readonly class SeedPlatform
 {
@@ -78,20 +79,7 @@ final readonly class SeedPlatform
             throw new InvalidOperatorTotpSecret('--operator-totp-secret must be base32 (A-Z and 2-7), at least 16 characters.');
         }
 
-        $created = [];
-        foreach (self::BUILT_IN_ROLES as $name => $permissions) {
-            $role = $this->roles->builtIn($name);
-            if (null === $role) {
-                $this->roles->save(new Role($name, $permissions, null, $now));
-                $created[] = "role $name";
-                continue;
-            }
-            // A database seeded by an earlier release carries that release's permission set; converge on this one.
-            if ($role->redefinePermissions($permissions)) {
-                $this->roles->save($role);
-                $created[] = "role $name updated";
-            }
-        }
+        $created = $this->builtInRoles($now);
 
         if (null === $operator) {
             $operator = new User($email, $request->operatorName, $request->locale, $now);
@@ -127,13 +115,55 @@ final readonly class SeedPlatform
             $created[] = "membership $email owns {$request->companyName}";
         }
 
-        // Every company created before the fiscal presets existed gets its taxes and units on the next run: the
-        // migration records each company's preset but cannot read the preset files.
+        return [...$created, ...$this->presets()];
+    }
+
+    /**
+     * What this release expects of a database an earlier one wrote, and nothing else: the built-in roles' permission
+     * sets, the presets' customer tax regimes, and each company's copy of its preset. No operator and no first company,
+     * so every start may run it on a live database (`app:platform:converge`, `infra/api/docker-entrypoint.sh`).
+     *
+     * @return list<string> what was created or brought up, in order; empty when nothing was behind
+     */
+    public function converge(): array
+    {
+        return [...$this->builtInRoles($this->clock->now()), ...$this->presets()];
+    }
+
+    /** @return list<string> */
+    private function builtInRoles(\DateTimeImmutable $now): array
+    {
+        $created = [];
+        foreach (self::BUILT_IN_ROLES as $name => $permissions) {
+            $role = $this->roles->builtIn($name);
+            if (null === $role) {
+                $this->roles->save(new Role($name, $permissions, null, $now));
+                $created[] = "role $name";
+                continue;
+            }
+            // A database seeded by an earlier release carries that release's permission set; converge on this one.
+            if ($role->redefinePermissions($permissions)) {
+                $this->roles->save($role);
+                $created[] = "role $name updated";
+            }
+        }
+
+        return $created;
+    }
+
+    /**
+     * A preset gains what a release adds (a tax regime, a kind of document to number), and a migration cannot read the
+     * preset files: every company copies what its preset has and it lacks.
+     *
+     * @return list<string>
+     */
+    private function presets(): array
+    {
         $provisioned = [];
         foreach ($this->companies->all() as $each) {
             $provisioned = [...$provisioned, ...$this->provision->handle($each)];
         }
 
-        return [...$created, ...$this->regimes->handle(), ...$provisioned];
+        return [...$this->regimes->handle(), ...$provisioned];
     }
 }

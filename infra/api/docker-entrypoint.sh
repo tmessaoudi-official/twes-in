@@ -25,9 +25,11 @@ if [ "$1" = 'frankenphp' ] || [ "$1" = 'php' ] || [ "$1" = 'bin/console' ]; then
 		# A module arrives with a release: tell the companies that asked « Me prévenir » (docs/SPEC.md § 7,
 		# 2026-09-26). Each wait is told once, so every start may run it.
 		php bin/console app:modules:announce-arrivals --no-interaction
-		# What a company's fiscal preset gained since it was provisioned, such as a new kind of document's numbering
-		# series: a migration cannot read the presets. It copies only what a company lacks, so every start may run it.
-		php bin/console app:companies:provision --no-interaction
+		# What this release expects of rows an earlier one wrote: the built-in roles' permissions and each company's copy
+		# of its fiscal preset, such as a new kind of document's numbering series, which a migration cannot read. It
+		# creates no operator or company, sets the built-in roles to this release's sets and adds only what a company
+		# lacks, so every start may run it.
+		php bin/console app:platform:converge --no-interaction
 		# The legal pages' shipped drafts, where a page has no version yet (docs/SPEC.md § 8 row 148). Never over a
 		# version that exists, so every start may run it.
 		php bin/console app:legal:seed-drafts --no-interaction
