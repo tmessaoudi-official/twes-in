@@ -218,6 +218,7 @@ test('an accepted quote takes a deposit invoice, which its final invoice gives b
     await page.getByTestId('confirm-run').click();
     await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
     const depositNumber = ((await page.getByTestId('invoice-title').textContent()) ?? '').trim();
+    const depositId = new URL(page.url()).pathname.split('/').pop() ?? '';
 
     await page.getByTestId('invoice-quote').click();
     await expect(page).toHaveURL(quoteUrl);
@@ -235,6 +236,13 @@ test('an accepted quote takes a deposit invoice, which its final invoice gives b
     await expect(page.getByTestId('line-1-net')).toContainText(/[-−]\s?300,000/);
     await expect(page.getByTestId('invoice-totals')).toContainText('700,000');
     expect(await wcagViolations(page)).toEqual([]);
+
+    // The list names a deposit as one, as the accountant's file does: its VAT fell due when it was paid.
+    await page.goto('/invoices');
+    await page.getByTestId('list-filter').fill(depositNumber);
+    await expect(page.getByTestId(`invoice-kind-${depositId}`)).toContainText(
+      /Facture d’acompte|Deposit invoice/,
+    );
   } finally {
     await retire(page, customerNumber);
   }

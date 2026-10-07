@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceKind;
 use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\InvoiceSearch;
@@ -117,8 +118,18 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             $query->andWhere('('.implode(' OR ', $status).')');
         }
         if ([] !== $search->documentTypes) {
-            $query->andWhere('i.documentType IN (:documentTypes)')
-                ->setParameter('documentTypes', array_map(static fn (InvoiceType $each): string => $each->value, $search->documentTypes), ArrayParameterType::STRING);
+            $kinds = array_map(static fn (InvoiceKind $kind): string => match ($kind) {
+                InvoiceKind::Invoice => '(i.documentType = :kindInvoice AND i.deposit = false)',
+                InvoiceKind::Deposit => '(i.documentType = :kindInvoice AND i.deposit = true)',
+                InvoiceKind::CreditNote => 'i.documentType = :kindCreditNote',
+            }, $search->documentTypes);
+            $query->andWhere('('.implode(' OR ', array_unique($kinds)).')');
+            if ([] !== array_filter($search->documentTypes, static fn (InvoiceKind $kind): bool => InvoiceKind::CreditNote !== $kind)) {
+                $query->setParameter('kindInvoice', InvoiceType::Invoice->value);
+            }
+            if (\in_array(InvoiceKind::CreditNote, $search->documentTypes, true)) {
+                $query->setParameter('kindCreditNote', InvoiceType::CreditNote->value);
+            }
         }
         if ([] !== $search->customers) {
             $query->andWhere('i.customer IN (:customerIds)')

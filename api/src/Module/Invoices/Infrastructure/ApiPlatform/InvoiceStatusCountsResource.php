@@ -30,7 +30,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             normalizationContext: ['groups' => [self::READ]],
             parameters: [
                 'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'The list\'s own words.'),
-                'documentType[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['invoice', 'credit_note']]], description: 'Several kinds of document, OR\'d; a single `documentType=invoice` still works.', constraints: []),
+                'documentType[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['invoice', 'deposit', 'credit_note']]], description: 'Several kinds of document, OR\'d; a single `documentType=invoice` still works. `deposit` is a facture d\'acompte and `invoice` every other invoice.', constraints: []),
                 'customerId[]' => new QueryParameter(schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid']], description: 'Several customers, OR\'d; a single `customerId=…` still works.', constraints: []),
                 'issueDate[from]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'Issued on or after this day.'),
                 'issueDate[to]' => new QueryParameter(schema: ['type' => 'string', 'format' => 'date'], description: 'Issued on or before this day.'),

@@ -9,9 +9,9 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Infrastructure\ApiPlatform;
 
+use App\Module\Invoices\Domain\InvoiceKind;
 use App\Module\Invoices\Domain\InvoiceSearch;
 use App\Module\Invoices\Domain\InvoiceStatus;
-use App\Module\Invoices\Domain\InvoiceType;
 use App\Shared\Domain\InvalidFilter;
 use App\Shared\Domain\ListFilters;
 use App\Tenancy\Domain\Company;
@@ -40,7 +40,7 @@ final class InvoiceSearchReader
         return new InvoiceSearch(
             $text,
             array_map(InvoiceStatus::from(...), array_values(array_diff($statuses, [self::OVERDUE]))),
-            array_map(InvoiceType::from(...), $filters->choices('documentType', array_column(InvoiceType::cases(), 'value'))),
+            array_map(InvoiceKind::from(...), $filters->choices('documentType', array_column(InvoiceKind::cases(), 'value'))),
             $filters->uuids('customerId'),
             $order,
             $overdue ? new \DateTimeImmutable('today', new \DateTimeZone($company->getTimezone())) : null,

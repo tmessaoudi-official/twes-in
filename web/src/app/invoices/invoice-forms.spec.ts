@@ -227,13 +227,13 @@ describe('invoice forms', () => {
         ...query,
         filters: {
           status: 'overdue,draft,nonsense',
-          type: 'invoice,credit_note',
+          type: 'invoice,credit_note,deposit',
           customer:
             '01a11304-e8c9-75fd-a04c-ec517b121291,nope,01a11304-e8c9-75fd-a04c-ec517b121292',
         },
       });
       expect(search.status).toEqual(['draft', 'overdue']);
-      expect(search.documentType).toEqual(['invoice', 'credit_note']);
+      expect(search.documentType).toEqual(['invoice', 'deposit', 'credit_note']);
       expect(search.customerIds).toEqual([
         '01a11304-e8c9-75fd-a04c-ec517b121291',
         '01a11304-e8c9-75fd-a04c-ec517b121292',
@@ -301,6 +301,24 @@ describe('invoice forms', () => {
     ]);
     const [row] = invoiceListRows([invoice()], '2026-09-16');
     expect(row && filter?.value(row)).toBe('overdue');
+  });
+
+  it('tells a deposit from an invoice in the kind each row shows and the list filters by', () => {
+    const filter = INVOICES_LIST.filters?.find((each) => each.id === 'type');
+    expect(filter?.options.map((option) => [option.value, option.label])).toEqual([
+      ['invoice', 'invoices.types.invoice'],
+      ['deposit', 'invoices.types.deposit'],
+      ['credit_note', 'invoices.types.credit_note'],
+    ]);
+    const rows = invoiceListRows(
+      [invoice(), invoice({ deposit: true }), invoice({ type: 'credit_note' })],
+      '2026-09-16',
+    );
+    expect(rows.map((row) => [row.kind, filter?.value(row)])).toEqual([
+      ['invoice', 'invoice'],
+      ['deposit', 'deposit'],
+      ['credit_note', 'credit_note'],
+    ]);
   });
 
   it('gives a credit note no due day nor anything owed on a card, which only an issued invoice has', () => {

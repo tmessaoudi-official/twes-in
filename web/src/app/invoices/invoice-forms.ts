@@ -20,7 +20,8 @@ import {
   PAYMENT_METHODS,
   type ProductOption,
   type PaymentInput,
-  type InvoiceType,
+  type InvoiceKind,
+  kindOf,
   type PaymentMethod,
   type TaxFamily,
   type TaxOption,
@@ -86,7 +87,7 @@ export function paidShare(invoice: InvoiceRow): number {
   return Math.min(100, Math.max(0, Math.round((Number(invoice.amountPaid) / total) * 100)));
 }
 
-const INVOICE_TYPES: readonly InvoiceType[] = ['invoice', 'credit_note'];
+const INVOICE_KINDS: readonly InvoiceKind[] = ['invoice', 'deposit', 'credit_note'];
 /** The intervals the « Filtres » panel offers, in the order it draws them. */
 const INVOICE_INTERVALS: readonly { id: string; kind: 'day' | 'amount'; label: string }[] = [
   { id: 'issueDate', kind: 'day', label: `${FIELDS}.issueDate` },
@@ -111,7 +112,7 @@ export function invoiceSearch(query: ListQuery): InvoiceSearch {
   const status = INVOICE_SHOWN_STATUSES.filter((known) =>
     filterValues(query.filters['status']).includes(known),
   );
-  const documentType = INVOICE_TYPES.filter((known) =>
+  const documentType = INVOICE_KINDS.filter((known) =>
     filterValues(query.filters['type']).includes(known),
   );
   const intervals = rangeParams(query.filters, INVOICE_INTERVALS);
@@ -130,7 +131,11 @@ export function invoiceSearch(query: ListQuery): InvoiceSearch {
 }
 
 /** A document as the list shows it: with its customer's name and the status shown for it. */
-export type InvoiceListRow = InvoiceRow & { customer: string; shown: InvoiceShownStatus };
+export type InvoiceListRow = InvoiceRow & {
+  customer: string;
+  shown: InvoiceShownStatus;
+  kind: InvoiceKind;
+};
 
 /**
  * An issued document names the customer it was issued to; a draft, which has recorded nobody yet, names the customer
@@ -141,6 +146,7 @@ export function invoiceListRows(invoices: readonly InvoiceRow[], today: string):
     ...invoice,
     customer: invoice.recordedCustomerName ?? invoice.customerName,
     shown: shownStatus(invoice, today),
+    kind: kindOf(invoice),
   }));
 }
 
@@ -228,11 +234,8 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
       id: 'type',
       label: `${FIELDS}.type`,
       multiple: true,
-      value: (row) => row.type,
-      options: [
-        { value: 'invoice', label: 'invoices.types.invoice' },
-        { value: 'credit_note', label: 'invoices.types.credit_note' },
-      ],
+      value: (row) => row.kind,
+      options: INVOICE_KINDS.map((kind) => ({ value: kind, label: `invoices.types.${kind}` })),
     },
   ],
 };

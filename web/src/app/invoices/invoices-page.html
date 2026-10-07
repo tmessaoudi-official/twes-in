@@ -49,10 +49,12 @@
       <ng-template appDataListCell="number" let-row>
         <span class="flex flex-col">
           <span class="tabular-nums">{{ row.number ?? ('invoices.draft' | translate) }}</span>
-          @if (row.type === 'credit_note') {
-            <span class="text-xs text-on-surface-variant">{{
-              'invoices.types.credit_note' | translate
-            }}</span>
+          @if (row.kind !== 'invoice') {
+            <span
+              class="text-xs text-on-surface-variant"
+              [attr.data-testid]="'invoice-kind-' + row.id"
+              >{{ 'invoices.types.' + row.kind | translate }}</span
+            >
           }
         </span>
       </ng-template>

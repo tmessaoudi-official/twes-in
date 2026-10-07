@@ -11,6 +11,7 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
@@ -20,7 +21,12 @@ use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\SettingLevel;
+use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\CompanyProfile;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -34,6 +40,8 @@ final class DepositInvoicesTest extends ApiTestCase
     private Company $company;
     private Customer $customer;
     private string $productId;
+    /** The rate the quote's labour line carries, which the company's country offers. */
+    private string $labourTax = 'TVA19';
 
     protected function setUp(): void
     {
@@ -197,6 +205,67 @@ final class DepositInvoicesTest extends ApiTestCase
         self::assertSame(['cancelled', 'draft'], array_column($this->rows($this->json(), 'deposits'), 'status'));
     }
 
+    /**
+     * A deposit is an invoice whose VAT fell due when it was paid, so an accountant's file must tell it from a final
+     * invoice: the list, its kind filter and the export all name it a deposit, and `invoice` asks for the others.
+     */
+    public function testTheListItsKindFilterAndTheExportTellADepositFromAnInvoice(): void
+    {
+        $this->signedIn(self::WRITER);
+        $depositId = $this->deposit($this->accepted(), ['depositPercentage' => '30', 'depositAmount' => null]);
+        $this->postJson($this->companyPath().'/invoices', $this->handInvoice([['productId' => $this->productId, 'quantity' => '1']]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $plainId = $this->stringAt($this->json(), 'id');
+
+        foreach ([
+            'documentType[]=deposit' => [$depositId],
+            'documentType[]=invoice' => [$plainId],
+            'documentType[]=invoice&documentType[]=deposit' => [$depositId, $plainId],
+            'documentType[]=credit_note' => [],
+        ] as $query => $ids) {
+            $this->getJson($this->companyPath().'/invoices?'.$query);
+            self::assertResponseIsSuccessful($query);
+            $listed = array_map(fn (array $row): string => $this->stringAt($row, 'id'), $this->jsonList());
+            sort($listed);
+            sort($ids);
+            self::assertSame($ids, $listed, $query);
+        }
+
+        $this->stepUp('password-1234');
+        $this->client->request('GET', $this->companyPath().'/exports/invoices.csv');
+        self::assertResponseIsSuccessful();
+        $lines = array_values(array_filter(explode("\n", $this->client->getInternalResponse()->getContent()), static fn (string $line): bool => '' !== trim($line)));
+        $header = array_map(strval(...), str_getcsv(ltrim($lines[0], "\xEF\xBB\xBF"), escape: ''));
+        $types = array_map(static fn (string $line): string => (string) array_combine($header, array_map(strval(...), str_getcsv($line, escape: '')))['type'], \array_slice($lines, 1));
+        sort($types);
+        self::assertSame(['deposit', 'invoice'], $types);
+    }
+
+    /**
+     * A currency of two decimals: the deposit's net is worked out again in cents while its line holds three decimals,
+     * and giving it back on the final invoice must read them as the same amount.
+     */
+    public function testAFrenchDepositInEurosIsGivenBackOnTheFinalInvoice(): void
+    {
+        $this->inFrance();
+        $this->signedIn(self::WRITER);
+        $quoteId = $this->accepted();
+        $depositId = $this->deposit($quoteId, ['depositPercentage' => '30', 'depositAmount' => null]);
+        $this->issue($depositId);
+        $deposit = $this->invoice($depositId);
+
+        $this->postJson($this->quotePath($quoteId).'/invoice', null);
+
+        self::assertResponseIsSuccessful();
+        $final = $this->invoice($this->stringAt($this->json(), 'invoiceId'));
+        $givingBack = array_values(array_filter($this->rows($final, 'lines'), static fn (array $line): bool => $depositId === ($line['deductsInvoiceId'] ?? null)));
+        self::assertCount(2, $givingBack, 'one line a rate group, as the deposit charged them');
+        self::assertSame(['217.5000', '18.0000'], array_column($givingBack, 'unitPriceNet'), 'what the deposit charged net, in cents');
+        $this->getJson($this->quotePath($quoteId));
+        $whole = $this->stringAt($this->json(), 'subtotalNet');
+        self::assertSame(0, Decimal::of($this->stringAt($final, 'subtotalNet'))->add(Decimal::of($this->stringAt($deposit, 'subtotalNet')))->compare(Decimal::of($whole)), 'the final invoice and its deposit charge the quote, no more');
+    }
+
     public function testADepositAsksForWritingInvoices(): void
     {
         $this->signedIn(['quote.read', 'quote.write']);
@@ -229,7 +298,7 @@ final class DepositInvoicesTest extends ApiTestCase
             'discountAmount' => null,
             'lines' => [
                 ['productId' => $this->productId, 'quantity' => '2', 'discountRate' => '10'],
-                ['description' => 'Pose', 'quantity' => '1.5', 'unitId' => $this->unitId('HUR'), 'unitPriceNet' => '40', 'taxComponentIds' => [$this->taxId('TVA19')]],
+                ['description' => 'Pose', 'quantity' => '1.5', 'unitId' => $this->unitId('HUR'), 'unitPriceNet' => '40', 'taxComponentIds' => [$this->taxId($this->labourTax)]],
             ],
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
@@ -309,6 +378,36 @@ final class DepositInvoicesTest extends ApiTestCase
     private function negated(string $amount): string
     {
         return str_starts_with($amount, '-') ? substr($amount, 1) : '-'.$amount;
+    }
+
+    /** The same setting in a French company, able to issue: its identifiers, address and late payment rate given. */
+    private function inFrance(): void
+    {
+        $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->em()->persist($this->company);
+        $this->em()->flush();
+        static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
+        static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
+        $this->company->reviseProfile(new CompanyProfile(
+            legalName: 'Atelier Durand SARL',
+            identifiers: ['siren' => '732829320', 'siret' => '73282932000013', 'vat_number' => 'FR44732829320'],
+            addressLine1: '12 rue des Forges',
+            postalCode: '69007',
+            city: 'Lyon',
+        ));
+        $this->em()->flush();
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->company), 'document.late_payment_rate', SettingLevel::Company, 'trois fois le taux d’intérêt légal', null);
+        $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('FR', 'standard');
+        self::assertNotNull($regime);
+        $profile = new CustomerProfile(CustomerKind::Company, 'Garage Martin', 'Garage Martin SAS', ['siren' => '542065479', 'vat_number' => 'FR82542065479'], billingAddress: new PostalAddress('3 avenue Foch', null, '75016', 'Paris', 'FR'));
+        $this->customer = Customer::create($this->company, 'CLI-0001', $profile, null, $regime, [], new \DateTimeImmutable());
+        $this->em()->persist($this->customer);
+        // 402.78 a unit, two less 10 %: 725.004, of which 30 % is 217.50 in cents and 217.501 in three decimals.
+        $product = Product::create($this->company, 'ART-001', new ProductDetails('Tour CNC', null, ProductKind::Goods, '402.78'), $this->unit('C62'), null, [$this->tax('TVA20')->getId()], new \DateTimeImmutable());
+        $this->em()->persist($product);
+        $this->em()->flush();
+        $this->productId = $product->getId()->toRfc4122();
+        $this->labourTax = 'TVA10';
     }
 
     private function customer(string $number): Customer

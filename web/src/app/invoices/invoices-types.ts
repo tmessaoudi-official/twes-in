@@ -22,6 +22,16 @@ export type MentionDatumError =
 export type CreditExcessTo = 'balance' | 'refund';
 
 export type InvoiceType = 'invoice' | 'credit_note';
+/**
+ * The kind a list shows and filters by: the type, with a facture d'acompte told apart from an invoice, since its VAT
+ * fell due when it was paid and the final invoice gives it back.
+ */
+export type InvoiceKind = 'invoice' | 'deposit' | 'credit_note';
+
+export function kindOf(invoice: { type: InvoiceType; deposit: boolean }): InvoiceKind {
+  if (invoice.type === 'credit_note') return 'credit_note';
+  return invoice.deposit ? 'deposit' : 'invoice';
+}
 
 export type InvoiceStatus = 'draft' | 'issued' | 'partially_paid' | 'paid' | 'cancelled';
 export const INVOICE_STATUSES: readonly InvoiceStatus[] = [
@@ -180,7 +190,7 @@ export interface InvoiceSearch {
   q: string;
   /** Statuses the document may hold, OR'd; `overdue` is answered against the company's own day. None lists every one. */
   status: readonly InvoiceShownStatus[];
-  documentType: readonly InvoiceType[];
+  documentType: readonly InvoiceKind[];
   customerIds: readonly string[];
   /** The ends of the intervals, by `issueDate.from`, `dueDate.to`, `totalGross.min`, `amountDue.max`: each already valid. */
   intervals: Readonly<Record<string, string>>;

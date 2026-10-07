@@ -14,6 +14,7 @@ use App\ImportExport\Application\ExportQuery;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceKind;
 use App\Module\Invoices\Domain\InvoiceSearch;
 use App\Module\Invoices\Infrastructure\ApiPlatform\InvoicePermission;
 use App\Module\Invoices\Infrastructure\ApiPlatform\InvoiceSearchReader;
@@ -23,7 +24,8 @@ use App\Tenancy\Domain\Company;
 
 /**
  * The invoices and credit notes list as a file (docs/SPEC.md § 7, row 60): one row per document, under the search,
- * status, type, customer and order the screen shows. Days go out as 2026-09-15, amounts as the decimals the document
+ * status, kind, customer and order the screen shows; a deposit is named `deposit` in the type column, so the file
+ * tells it from a final invoice. Days go out as 2026-09-15, amounts as the decimals the document
  * holds, so a spreadsheet sums and sorts them without guessing a locale.
  */
 final readonly class InvoiceExport implements DeclaresExport
@@ -79,7 +81,7 @@ final readonly class InvoiceExport implements DeclaresExport
 
         return [
             $invoice->getNumber() ?? '',
-            $invoice->getType()->value,
+            InvoiceKind::of($invoice)->value,
             $invoice->getStatus()->value,
             $snapshot->number ?? $customer->getNumber(),
             $snapshot->name ?? $customer->getProfile()->name,

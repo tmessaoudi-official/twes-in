@@ -89,6 +89,10 @@ final class DemoFixturesTest extends ApiTestCase
                 "$name has a quote in every state",
             );
             self::assertSame(1, $this->numberOf("SELECT COUNT(*) FROM quote q JOIN invoice i ON i.id = q.invoice_id WHERE q.company_id = ? AND i.status <> 'draft'", [$id]), "$name invoiced an accepted quote");
+            // A deposit, paid, then given back on the final invoice of its quote (docs/fiscal § 2b): the list, its PDF and
+            // Factur-X all have one to show.
+            self::assertSame(1, $this->numberOf("SELECT COUNT(*) FROM invoice d JOIN quote q ON q.id = d.quote_id JOIN invoice f ON f.id = q.invoice_id WHERE d.company_id = ? AND d.deposit AND d.status = 'paid' AND f.status <> 'draft' AND EXISTS (SELECT 1 FROM invoice_line l WHERE l.invoice_id = f.id AND l.deducts_invoice_id = d.id)", [$id]), "$name gave a paid deposit back on its final invoice");
+            self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM customer_credit_entry WHERE company_id = ? AND kind = 'overpayment'", [$id]), "$name kept a trop-perçu to a customer's credit");
             self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM quote WHERE company_id = ? AND status = ? AND valid_until < CURRENT_DATE', [$id, 'sent']), "$name has a quote past its validity");
 
             // Through the use cases, not around them: every write left its audit row.

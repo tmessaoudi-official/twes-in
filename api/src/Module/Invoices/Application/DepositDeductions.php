@@ -71,8 +71,9 @@ final readonly class DepositDeductions
             foreach ($line->getTaxes() as $position => $tax) {
                 $taxes[$tax->getTaxComponent()->getCode()] = ($worked->taxes[$position] ?? throw new \LogicException('The deposit taxes its lines tax by tax.'))->amount;
             }
-            // Its figures are worked out again from what issuing kept; they must be the ones it printed.
-            if ($worked->net !== $fixed['net'] || 0 !== Decimal::sum(array_values(array_map(Decimal::of(...), $taxes)))->compare(Decimal::of($fixed['tax']))) {
+            // Its figures are worked out again from what issuing kept; they must be the ones it printed. Compared as
+            // amounts: a currency of two decimals works out 120.83 where the line keeps 120.830.
+            if (0 !== Decimal::of($worked->net)->compare(Decimal::of($fixed['net'])) || 0 !== Decimal::sum(array_values(array_map(Decimal::of(...), $taxes)))->compare(Decimal::of($fixed['tax']))) {
                 throw new \LogicException(\sprintf('The deposit %s no longer works out to what it printed: it cannot be given back as charged.', $number));
             }
             $lines[] = new InvoiceLineDetails(

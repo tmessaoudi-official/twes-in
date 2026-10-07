@@ -4510,6 +4510,24 @@ functional tests run in the `tools` container, on the host's network, against th
   keeps the declared default. Existing French companies with nothing stored stop printing the words. Alternatives: the
   value written as a company row at provisioning (it would read as the company's own choice), a per-country table in code.
 
+- [2026-10-07 21:31] ASSUMED (review): the completeness review of wave 1a, fixed (var/claude/review/wave1a-completeness.md).
+  A deposit invoice is its own KIND in the invoices list, its type filter and the CSV export: `documentType[]` takes
+  `invoice`, `deposit` and `credit_note`, and `invoice` now means an invoice that is not a deposit (it meant both); the
+  export's `type` column writes `deposit`; the list prints « Facture d'acompte » under the number as it prints « Avoir ».
+  Why: its VAT fell due when it was paid and the final invoice gives it back, so an accountant's file that counted it as
+  a final invoice would count that VAT twice. The delivery note's « invoice drafts to add to » now leaves deposit drafts
+  out, which is right: goods are not added onto a deposit. Alternatives: a separate `deposit` filter beside the type
+  (two controls for one question), or the type column alone (the filter could not ask for deposits). The demo dataset
+  gains a 30 % deposit, paid, given back on its quote's final invoice, and a trop-perçu kept to a customer's credit.
+  Writing that deposit in the French company found a defect: giving a deposit back compared its recomputed net to the
+  stored one as text, and a two-decimal currency writes 120.83 where the line keeps 120.830, so every French final
+  invoice after a deposit answered 500; they are compared as amounts now (`DepositInvoicesTest`, French case).
+  A line discount given as an AMOUNT stays whole when a credit note credits fewer units than the invoice line (as the
+  18:00 entry rules for any quantity change): the person types the share being given back, and the editor refuses
+  more than the line. Alternative: prorate the amount by the quantity credited, which guesses what was agreed.
+  The stock line of row 220 reaches delivery notes with row 224 (the document that hands goods over); the final
+  invoice's Factur-X naming its deposits as preceding invoices (BG-3) is queued as row 225.
+
 ## 8. Status
 
 **The one build order** (§ 7, audit 2026-10-06; it supersedes the orders of 2026-09-27 17:12, 2026-10-01 23:30, 2026-10-02
@@ -4747,12 +4765,13 @@ functional tests run in the `tools` container, on the host's network, against th
 | 216 | The customer screen held by the API session (§ 7 2026-10-06 19:44, audit C-F2). Done: while held, the session answers only the screen's reads, the way out and `/api/auth/me` (`CustomerScreenLockListener`, 403 `customer_screen_locked`); `POST …/customer-screen/lock` holds it, `DELETE /api/auth/customer-screen` leaves with a fresh step-up proof and spends it; `Me.customerScreenCompanyId`; the web follows the session (`CustomerView`, the `CustomerScreenHold` port, the guard reading the sign-in first, the interceptor sending a refused tab to the screen); the per-tab stored item is gone; e2e: a new tab lands on the screen and a typed call is refused. Not certified by execution: an already open tab sent to the screen (Vitest only), the passkey proof under the hold, a company with one establishment | M | done | 04b92dfa | api/src/Identity/** api/src/Module/Products/Infrastructure/** web/src/app/shared/customer-view/** web/src/app/customer-screen/** web/e2e/customer-screen.spec.ts |
 | 217 | Invoice design, slice 1 (§ 7 2026-10-06 10:19, Q4): issuing refused when a legal mention cannot be filled, naming the setting it lacks (§ 7 2026-09-21 18:30, 2026-10-07 08:49); two or three built-in layouts and the document accent, kept with an issued document; a live preview on a « Documents » settings page beside the logo | L | done | b6134ea2 | api/src/Module/Invoices/** api/src/Module/DeliveryNotes/** api/src/Settings/** api/src/Shared/** api/templates/pdf/** api/translations/** api/tests/** web/src/app/** web/public/i18n/** web/e2e/** |
 | 218 | The build in the footer: web and API versioned apart from git (`YYYY.MM.DD.N`, hash), each part's mode and the deployment shown off production, « -dirty » for uncommitted builds, a banner with « Recharger » on a new web build (§ 7 2026-10-07 14:31) | M | done | 485f298e | web/src/app/shared/** api/src/Shared/Infrastructure/Health/** infra/** Makefile .github/** |
-| 219 | Live document figures: an API preview through the one calculator, each line's folded summary and the live totals card, on quotes, invoices and credit notes (§ 7 2026-10-07 14:43) | L | done | b6e8dfe9 | api/src/Module/** web/src/app/invoices/** web/src/app/quotes/** web/src/app/delivery-notes/** |
-| 220 | A line discount as a percentage or an amount, and stock on hand on a line (§ 7 2026-10-07 14:43) | M | done | 6ad2d99c | api/src/Fiscal/** api/src/Module/** web/src/app/invoices/** |
+| 219 | Live document figures: an API preview through the one calculator, each line's folded summary and the live totals card, on quotes, invoices and credit notes (§ 7 2026-10-07 14:43) | L | done | b6e8dfe9 | api/src/Module/** web/src/app/invoices/** web/src/app/quotes/** |
+| 220 | A line discount as a percentage or an amount, and stock on hand on a line (§ 7 2026-10-07 14:43) | M | done | 1830352c | api/src/Fiscal/** api/src/Module/** web/src/app/invoices/** |
 | 221 | Amount in words (country preset), savings line (PDF setting), quantity totals, the « Rentabilité » tab (§ 7 2026-10-07 14:43) | M | todo | - | api/** web/src/app/** api/config/fiscal/** |
 | 222 | Sections with their subtotals on documents with lines, flat in Factur-X (§ 7 2026-10-07 14:43) | L | todo | - | api/** web/src/app/** |
 | 223 | A deposit draft edited after it was drawn is checked again at issue against what its quote leaves, so no deposit charges beyond its quote (goal-end check of row 208) | S | todo | - | api/src/Module/Invoices/** |
-| 224 | A delivery note's lines show their figures as typed, as an invoice's do (row 219's summary and totals), where the note carries prices | M | todo | - | api/src/Module/DeliveryNotes/** web/src/app/delivery-notes/** |
+| 224 | A delivery note's lines show their figures as typed, as an invoice's do (row 219's summary and totals), where the note carries prices, and each line's stock on hand and what the note leaves of it (row 220) | M | todo | - | api/src/Module/DeliveryNotes/** web/src/app/delivery-notes/** |
+| 225 | A final invoice's Factur-X names the deposit invoices it gives back as preceding invoices (BG-3: BT-25 number, BT-26 issue day), not only in the line text | S | todo | - | api/src/Module/Invoices/** |
 <!-- /progress-block -->
 
 ### Delivered

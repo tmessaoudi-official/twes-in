@@ -31,7 +31,7 @@ final readonly class InvoiceSearch
 
     /**
      * @param list<InvoiceStatus>         $statuses
-     * @param list<InvoiceType>           $documentTypes
+     * @param list<InvoiceKind>           $documentTypes the kinds a person sees, a deposit told apart from an invoice
      * @param list<Uuid>                  $customers
      * @param array<string, 'asc'|'desc'> $order         one of SORTS per key, in the order it applies
      * @param ?\DateTimeImmutable         $overdueOn     the company's own day, when overdue is among the statuses wanted: an

@@ -37,6 +37,7 @@ use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Invoices\Application\InvoiceInput;
 use App\Module\Invoices\Application\InvoiceLineInput;
 use App\Module\Invoices\Application\InvoiceWorkflow;
+use App\Module\Invoices\Application\ManageCustomerCredit;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Application\ManagePayments;
 use App\Module\Invoices\Domain\InvoiceHeader;
@@ -50,6 +51,7 @@ use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductTracking;
 use App\Module\Quotes\Application\ManageQuotes;
 use App\Module\Quotes\Application\QuoteInput;
+use App\Module\Quotes\Application\QuoteInvoices;
 use App\Module\Quotes\Application\QuoteLineInput;
 use App\Module\Quotes\Application\QuoteWorkflow;
 use App\Module\Quotes\Domain\QuoteHeader;
@@ -136,8 +138,10 @@ final class DemoCompanies extends Fixture
         private readonly ManageInvoices $invoices,
         private readonly InvoiceWorkflow $invoiceWorkflow,
         private readonly ManagePayments $payments,
+        private readonly ManageCustomerCredit $credit,
         private readonly ManageQuotes $quotes,
         private readonly QuoteWorkflow $quoteWorkflow,
+        private readonly QuoteInvoices $quoteInvoices,
         private readonly InviteToCompany $invitations,
         private readonly AcceptInvitation $acceptances,
         private readonly CapturingInvitationMailer $mailed,
@@ -507,9 +511,10 @@ final class DemoCompanies extends Fixture
      */
     private function planQuotes(Timeline $timeline, \Closure $company, array $customerIds, array $sellable, Uuid $actor): void
     {
-        /** @var list<array{customer: int, day: int, send?: int, accept?: int, refuse?: int, invoice?: int, cancel?: int}> $plan */
+        /** @var list<array{customer: int, day: int, send?: int, accept?: int, refuse?: int, deposit?: int, invoice?: int, cancel?: int}> $plan */
         $plan = [
-            ['customer' => 1, 'day' => -100, 'send' => -99, 'accept' => -90, 'invoice' => -88],
+            // A deposit of 30 %, paid, then given back on the invoice of the whole.
+            ['customer' => 1, 'day' => -100, 'send' => -99, 'accept' => -90, 'deposit' => -89, 'invoice' => -80],
             ['customer' => 4, 'day' => -50, 'send' => -49, 'accept' => -40],
             ['customer' => 6, 'day' => -70, 'send' => -70, 'refuse' => -55],
             ['customer' => 8, 'day' => -45, 'send' => -44],
@@ -543,6 +548,13 @@ final class DemoCompanies extends Fixture
                 },
                 'cancel' => function () use (&$ids, $n, $company, $actor): void {
                     $this->quoteWorkflow->cancel($company(), $ids[$n], $actor);
+                },
+                'deposit' => function () use (&$ids, $n, $company, $actor, $timeline, $quote): void {
+                    $this->quoteWorkflow->deposit($company(), $ids[$n], '30', null, $actor);
+                    $deposit = $this->quoteInvoices->depositsOf($company(), [$ids[$n]])[$ids[$n]->toRfc4122()][0] ?? throw new \LogicException('A deposit drawn is listed on its quote.');
+                    $depositId = Uuid::fromString($deposit->invoiceId);
+                    $issued = $this->invoiceWorkflow->issue($company(), $depositId, $actor)->getIssuedFigures() ?? throw new \LogicException('An issued invoice has figures.');
+                    $this->payments->record($company(), $depositId, new PaymentDetails($timeline->day($quote['deposit'] ?? 0), $issued->amountDue, PaymentMethod::Transfer), $actor);
                 },
                 'invoice' => function () use (&$ids, $n, $company, $actor): void {
                     $invoiceId = $this->quoteWorkflow->invoice($company(), $ids[$n], $actor)->getInvoiceId() ?? throw new \LogicException('An invoiced quote names its invoice.');
@@ -618,6 +630,12 @@ final class DemoCompanies extends Fixture
             } elseif (2 !== $i % 4) {
                 $pay($i, $day + 10 + 5 * ($i % 3), false);
             } // else left unpaid: overdue
+            if (0 === $i) {
+                // Paid twice over by a few dinars: a « trop-perçu » the customer keeps to their credit.
+                $timeline->at($day + 11, function () use (&$ids, $i, $demo, $timeline, $day, $company, $actor): void {
+                    $this->credit->overpayment($company(), $ids[$i], new PaymentDetails($timeline->day($day + 11), bcadd('5', '0', $demo->scale), PaymentMethod::Cash), $actor);
+                });
+            }
         }
 
         $timeline->at(-6, function () use ($input, $company, $actor): void {
