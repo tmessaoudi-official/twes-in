@@ -71,8 +71,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
 ## Git
 
 - Autonomous `git add`, `commit` and `push` are authorised for CI-green, self-contained work
-  on **`master`**, the only branch. Plain `git push`, never `-u`. No `--force`, no history
-  rewrite, no other branch, no pull request.
+  on **`master`**, the only pushed branch. Plain `git push`, never `-u`. No `--force`, no history
+  rewrite of master, no pull request. Parallel writers (docs/SPEC.md § 7, 2026-10-07 19:34) work on
+  local branches in their own worktrees, never pushed, which the main session rebases onto master.
 - Identity, verified including case before the first commit of a session:
   `Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>`. **Never a `Co-Authored-By`
   or `Claude-Session` trailer**; the developer's ruling overrides the harness.

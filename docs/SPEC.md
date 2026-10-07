@@ -4490,6 +4490,18 @@ functional tests run in the `tools` container, on the host's network, against th
   the establishment or the company change, never on each keystroke, from `GET …/stock-options/on-hand` (Inventory's own
   endpoint, so no module reaches another). Alternatives: the running balance line by line, a warning only below zero,
   stock on the product picker's options.
+- [2026-10-07 19:34] AGREED: work runs in parallel (developer, 2026-10-07 19:05–19:34). Three writers: the main session on
+  master (rows 221 to 224) integrates, gates, pushes and watches CI; two writers in their own git worktrees on local branches
+  that are never pushed, rebased onto master by the main session. Writer 2's queue: the activity journal and undo (rows
+  161, 162, 107), purchases (81, 84), reports (89, 114), the counter sale and drawer (82, 88). Writer 3's: the customer
+  account and reminders (134, 135), the accountant's exports and role (92), recurring invoices and the daily digest (86,
+  90), Arabic and right to left (96). Every heavy run takes one lock, each worktree has its own test database and API cache,
+  and writers never run the shared stack or e2e, which the main session runs after integrating. Twelve read-only review
+  lanes run in waves of three, five agents at most at once: the three-lens panel on rows 218 to 220, UI/UX and
+  accessibility, security and roles, document legality, undo and irreversibility, audit trail coverage, data safety and
+  RGPD, then performance and realtime, parametrization, Invoice Ninja parity from public documentation only, fiscal and
+  e-invoicing readiness, mockups and test gaps. Findings are fixed autonomously, each logged ASSUMED (review), and the
+  developer reviews everything at the end. « master is the only branch » now reads « the only pushed branch ».
 
 ## 8. Status
 
@@ -4729,7 +4741,7 @@ functional tests run in the `tools` container, on the host's network, against th
 | 217 | Invoice design, slice 1 (§ 7 2026-10-06 10:19, Q4): issuing refused when a legal mention cannot be filled, naming the setting it lacks (§ 7 2026-09-21 18:30, 2026-10-07 08:49); two or three built-in layouts and the document accent, kept with an issued document; a live preview on a « Documents » settings page beside the logo | L | done | b6134ea2 | api/src/Module/Invoices/** api/src/Module/DeliveryNotes/** api/src/Settings/** api/src/Shared/** api/templates/pdf/** api/translations/** api/tests/** web/src/app/** web/public/i18n/** web/e2e/** |
 | 218 | The build in the footer: web and API versioned apart from git (`YYYY.MM.DD.N`, hash), each part's mode and the deployment shown off production, « -dirty » for uncommitted builds, a banner with « Recharger » on a new web build (§ 7 2026-10-07 14:31) | M | done | 485f298e | web/src/app/shared/** api/src/Shared/Infrastructure/Health/** infra/** Makefile .github/** |
 | 219 | Live document figures: an API preview through the one calculator, each line's folded summary and the live totals card, on quotes, invoices and credit notes (§ 7 2026-10-07 14:43) | L | done | b6e8dfe9 | api/src/Module/** web/src/app/invoices/** web/src/app/quotes/** web/src/app/delivery-notes/** |
-| 220 | A line discount as a percentage or an amount, and stock on hand on a line (§ 7 2026-10-07 14:43) | M | todo | - | api/src/Fiscal/** api/src/Module/** web/src/app/invoices/** |
+| 220 | A line discount as a percentage or an amount, and stock on hand on a line (§ 7 2026-10-07 14:43) | M | done | 6ad2d99c | api/src/Fiscal/** api/src/Module/** web/src/app/invoices/** |
 | 221 | Amount in words (country preset), savings line (PDF setting), quantity totals, the « Rentabilité » tab (§ 7 2026-10-07 14:43) | M | todo | - | api/** web/src/app/** api/config/fiscal/** |
 | 222 | Sections with their subtotals on documents with lines, flat in Factur-X (§ 7 2026-10-07 14:43) | L | todo | - | api/** web/src/app/** |
 | 223 | A deposit draft edited after it was drawn is checked again at issue against what its quote leaves, so no deposit charges beyond its quote (goal-end check of row 208) | S | todo | - | api/src/Module/Invoices/** |
