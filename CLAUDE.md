@@ -414,5 +414,6 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   `$request->hasPreviousSession()`. Only the e2e of `/api/health`'s header saw it (2026-10-06, the customer-screen lock).
 - A file written after `make gate-web` ran is not gated: the plurals e2e went to CI unformatted and prettier stopped the web
   job before its lint and tests (2026-10-07). Write every file of a change, then stage, then run the gates.
+- When a search shape changes, sweep the API CALL as well as the type (`git grep '\.customers(\|\.products('`): `price-lists-facade` builds the search literal inline without naming its type, and twice only the build found it (2026-10-07).
 - For the next expertise refresh: `.claude/rules/expertise-core.md` § 2 still says the locked customer screen is NOT built
   and `hides()` is the code; it was built (rows 205, 207), `hides()` is gone, and the lock is held by the API session (2026-10-06).
