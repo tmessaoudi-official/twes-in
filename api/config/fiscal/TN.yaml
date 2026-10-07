@@ -79,6 +79,10 @@ mentions:
     invoice: []
 
 # The establishment part of a registration number: the three digits closing a matricule fiscal (docs/fiscal/TN.md § 8).
+# The defaults this country gives settings where custom differs by country (docs/fiscal/TN.md § 7).
+settings:
+    document.amount_in_words: true
+
 establishment:
     default_code: '000'
     code_pattern: '^[0-9]{3}$'

@@ -29,6 +29,7 @@ final readonly class FiscalPreset
      * @param array<string, PresetNumbering> $numbering          by document type
      * @param list<PresetUnit>               $units
      * @param PresetEstablishment            $establishment      how the country codes a company's establishments
+     * @param array<string, mixed>           $settings           the defaults the country gives settings, by key
      */
     public function __construct(
         public string $country,
@@ -45,6 +46,7 @@ final readonly class FiscalPreset
         public array $numbering,
         public array $units,
         public PresetEstablishment $establishment,
+        public array $settings = [],
     ) {
     }
 

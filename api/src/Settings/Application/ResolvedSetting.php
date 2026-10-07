@@ -16,8 +16,9 @@ use App\Settings\Domain\SettingLevel;
 final readonly class ResolvedSetting
 {
     /**
-     * @param SettingLevel|null    $source   null when the declared default is in force
+     * @param SettingLevel|null    $source   null when the default is in force
      * @param array<string, mixed> $explicit the values stored along the chain that still apply, by level, most general first
+     * @param mixed                $default  what applies when nothing is stored: the country's, else the declared one
      */
     public function __construct(
         public string $key,
@@ -25,6 +26,7 @@ final readonly class ResolvedSetting
         public mixed $value,
         public ?SettingLevel $source,
         public array $explicit,
+        public mixed $default,
     ) {
     }
 }

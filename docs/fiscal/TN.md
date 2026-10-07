@@ -115,6 +115,10 @@ suspension (loi n° 2006-85), the suspended VAT amount. These are document field
 lists them as translation keys under `mentions`, and each customer regime names its own mention. **The wording of
 the regime mentions is unsourced.**
 
+The total written out in words beneath the figures (« Arrêtée la présente facture à la somme de … ») is a custom of
+Tunisian invoices, not a requirement found in art. 18-II: the preset turns `document.amount_in_words` on by default
+under `settings`, and a company may turn it off. Status: custom, unsourced as law.
+
 ## 8. Tax identifier (matricule fiscal)
 
 | Rule | Preset | Source | Status |

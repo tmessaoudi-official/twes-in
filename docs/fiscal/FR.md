@@ -88,6 +88,10 @@ The document fields are printed at G6 and G7. The preset lists the printed wordi
 `fiscal.mention.fr.late_payment`, `fiscal.mention.fr.recovery_indemnity` and `fiscal.mention.fr.no_early_discount`.
 Their wording is unsourced beyond the articles named.
 
+French invoices are not customarily closed with their total written out in words, and no mention requires it: the
+preset turns `document.amount_in_words` off by default under `settings`, and a company may turn it on. Status: custom,
+unsourced as law.
+
 ## 5. Identifiers
 
 | Identifier | Preset pattern | Source | Status |

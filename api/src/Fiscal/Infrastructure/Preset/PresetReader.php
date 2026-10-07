@@ -87,7 +87,26 @@ final readonly class PresetReader
             $this->numbering($this->node($config, 'numbering', 'numbering')),
             $this->units($this->node($config, 'units', 'units')),
             $this->establishment($this->node($config, 'establishment', 'establishment')),
+            $this->settings($config),
         );
+    }
+
+    /**
+     * @param array<mixed> $config
+     *
+     * @return array<string, mixed>
+     */
+    private function settings(array $config): array
+    {
+        $settings = [];
+        foreach (\is_array($config['settings'] ?? null) ? $config['settings'] : [] as $key => $value) {
+            if (!\is_string($key) || 1 !== preg_match('/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_-]*)+$/', $key)) {
+                $this->refuse('settings', \sprintf('"%s" is not a setting key', (string) $key));
+            }
+            $settings[$key] = $value;
+        }
+
+        return $settings;
     }
 
     /**

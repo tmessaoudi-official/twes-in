@@ -74,6 +74,13 @@ final class FiscalPresetConfiguration implements ConfigurationInterface
                     ->arrayNode('invoice')->scalarPrototype()->end()->end()
                 ->end()
             ->end()
+            // The defaults the country gives settings where custom differs by country, by setting key; the keys hold dots,
+            // so they are kept as written. Which keys exist and which values they take is checked by the Settings side.
+            ->arrayNode('settings')
+                ->normalizeKeys(false)
+                ->useAttributeAsKey('key')
+                ->variablePrototype()->end()
+            ->end()
             ->arrayNode('establishment')->isRequired()
                 ->children()
                     ->scalarNode('default_code')->isRequired()->cannotBeEmpty()->end()

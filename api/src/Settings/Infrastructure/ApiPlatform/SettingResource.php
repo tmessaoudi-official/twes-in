@@ -196,7 +196,7 @@ final class SettingResource
         $resource->type = $definition->type->value;
         $resource->labelKey = $definition->labelKey;
         $resource->module = $definition->module;
-        $resource->default = $definition->default;
+        $resource->default = $setting->default;
         $resource->value = $setting->value;
         $resource->source = $setting->source?->value;
         foreach ($setting->explicit as $level => $value) {

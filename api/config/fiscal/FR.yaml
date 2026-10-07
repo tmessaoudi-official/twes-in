@@ -91,6 +91,10 @@ mentions:
         - fiscal.mention.fr.no_early_discount
 
 # The establishment part of a registration number: the five-digit NIC closing a SIRET (docs/fiscal/FR.md § 5).
+# The defaults this country gives settings where custom differs by country (docs/fiscal/FR.md § 4).
+settings:
+    document.amount_in_words: false
+
 establishment:
     default_code: '00001'
     code_pattern: '^[0-9]{5}$'
