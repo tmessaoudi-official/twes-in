@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import type { PreviewBody } from '../shared/documents/document-figures';
+import { SILENT } from '../shared/feedback/activity-interceptor';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIdquotesGetCollectionResponse,
   QuoteAttachmentQuoteAttachmentRead,
+  QuoteDocumentPreviewDocumentPreviewValidationQuoteWrite,
   QuoteCustomerPickQuoteCustomerPickRead,
   QuoteJsonldQuoteRead,
   QuoteOptionsQuoteOptionsRead,
@@ -165,6 +168,17 @@ export class QuotesApi {
           this.http.put<QuoteQuoteRead>(quotePath(companyId, id), toBody(input)),
         ),
       ),
+    );
+  }
+
+  /** What the quote would come to with what is typed, kept nowhere; quiet, and a refusal is thrown. */
+  async preview(companyId: string, id: string | null, input: QuoteInput): Promise<PreviewBody> {
+    const path =
+      id === null ? `${quotePath(companyId)}/preview` : `${quotePath(companyId, id)}/preview`;
+    return firstValueFrom(
+      this.http.post<QuoteDocumentPreviewDocumentPreviewValidationQuoteWrite>(path, toBody(input), {
+        context: new HttpContext().set(SILENT, true),
+      }),
     );
   }
 

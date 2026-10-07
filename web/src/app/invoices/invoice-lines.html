@@ -30,7 +30,15 @@
           </p>
           <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
             <p class="text-sm text-on-surface-variant">{{ taxNamesOf(line) }}</p>
-            @if (nets()[i]; as net) {
+            @if (figuresOf(i); as figures) {
+              <app-line-figures
+                [figures]="figures"
+                [scale]="options().currencyScale"
+                [position]="i + 1"
+                [testId]="'line-' + i"
+                [taxName]="taxNamesFor(line)"
+              />
+            } @else if (nets()[i]; as net) {
               <p class="ms-auto tabular-nums" [attr.data-testid]="'line-' + i + '-net'">
                 {{ 'invoices.lines.net' | translate }}
                 <span class="font-semibold">{{ net | amount: options().currencyScale }}</span>
@@ -255,7 +263,15 @@
                 </div>
               }
             }
-            @if (netOf(i, line); as net) {
+            @if (figuresOf(i); as figures) {
+              <app-line-figures
+                [figures]="figures"
+                [scale]="options().currencyScale"
+                [position]="i + 1"
+                [testId]="'line-' + i"
+                [taxName]="taxNamesFor(line)"
+              />
+            } @else if (netOf(i, line); as net) {
               <p class="ms-auto tabular-nums" [attr.data-testid]="'line-' + i + '-net'">
                 {{ 'invoices.lines.net' | translate }}
                 <span class="font-semibold">{{ net | amount: options().currencyScale }}</span>

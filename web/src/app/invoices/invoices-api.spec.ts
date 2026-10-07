@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { InvoicesApi, InvoicesRefused } from './invoices-api';
 import type { InvoiceInput } from './invoices-types';
+import { SILENT } from '../shared/feedback/activity-interceptor';
 
 const input: InvoiceInput = {
   customerId: 'k1',
@@ -583,5 +584,19 @@ describe('InvoicesApi', () => {
       '/api/companies/c1/invoices/i%201/pdf/duplicate',
     );
     expect(api.pdfCopyUrl('c1', 'i1', 'current')).toBe('/api/companies/c1/invoices/i1/pdf/current');
+  });
+
+  it("asks what is typed would come to, quietly, on the draft's own path once it exists", async () => {
+    const fresh = api.preview('c1', null, input);
+    const asked = http.expectOne('/api/companies/c1/invoices/preview');
+    expect(asked.request.method).toBe('POST');
+    expect(asked.request.context.get(SILENT)).toBe(true);
+    expect(asked.request.body).toMatchObject({ customerId: input.customerId });
+    asked.flush({ total: '1.000' });
+    expect(await fresh).toEqual({ total: '1.000' });
+
+    const draft = api.preview('c1', 'i1', input);
+    http.expectOne('/api/companies/c1/invoices/i1/preview').flush({ total: '2.000' });
+    expect(await draft).toEqual({ total: '2.000' });
   });
 });

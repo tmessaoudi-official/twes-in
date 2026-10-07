@@ -18,6 +18,7 @@ import type {
   PaymentInput,
   ProductOption,
 } from './invoices-types';
+import type { PreviewBody } from '../shared/documents/document-figures';
 
 /** The invoices and credit notes of the company being worked in, the document open on screen and what its form offers. */
 @Injectable({ providedIn: 'root' })
@@ -134,6 +135,22 @@ export class InvoicesFacade {
 
   async revise(companyId: string, id: string, input: InvoiceInput): Promise<InvoiceRow | null> {
     return this.step(() => this.api.revise(companyId, id, input));
+  }
+
+  /**
+   * What is typed would come to, or null when the API refuses it as it stands: a draft being typed is often not one
+   * yet, so a refusal here is no error to report, and the screen's error is left alone.
+   */
+  async preview(
+    companyId: string,
+    id: string | null,
+    input: InvoiceInput,
+  ): Promise<PreviewBody | null> {
+    try {
+      return await this.api.preview(companyId, id, input);
+    } catch {
+      return null;
+    }
   }
 
   /** Saves what is on screen, then issues it: a document is never issued with content other than the one shown. */

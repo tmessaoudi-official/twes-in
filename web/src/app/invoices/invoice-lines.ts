@@ -43,6 +43,8 @@ import { PickField, type PickOption } from '../shared/form/pick-field';
 import { Select, type SelectOption } from '../shared/form/select';
 import { ProductScans } from '../products/product-scans';
 import { LineCatalogue } from './line-catalogue';
+import type { LineFigures } from '../shared/documents/document-figures';
+import { LineFiguresView } from '../shared/documents/line-figures';
 
 type CheckedField = keyof Omit<
   LineControls,
@@ -78,6 +80,7 @@ type CheckedField = keyof Omit<
     PickField,
     AmountPipe,
     IssuedLines,
+    LineFiguresView,
   ],
   templateUrl: './invoice-lines.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -98,12 +101,19 @@ export class InvoiceLines {
   readonly priceLists = input(false);
   readonly readOnly = input(false);
   private readonly taxChoices = new Map<string, SelectOption[]>();
+  /** The same function while a line charges the same taxes, so the figures are not handed a new input at every check. */
+  private readonly taxNamers = new Map<string, (code: string) => string | null>();
   /** Whether the document is a credit note, whose lines may say their goods came back to stock. */
   readonly returnable = input(false);
   /** Whether a line names the lot or serial it sells: a document that hands goods over does, a quote does not. */
   readonly lots = input(true);
   /** Each line's net as last saved, by position; shown while the line is unchanged. */
   readonly nets = input<readonly string[]>([]);
+  /**
+   * Each line's figures as the document stands typed, by position, or null where none are known yet; they take the
+   * saved net's place.
+   */
+  readonly figures = input<readonly (LineFigures | null)[] | null>(null);
 
   /** Bumped on every value, status or touched change, so an OnPush template re-reads the lines. */
   private readonly revision = signal(0);
@@ -246,6 +256,27 @@ export class InvoiceLines {
   protected leftOf(line: LineGroup): string | null {
     this.revision();
     return this.readOnly() || this.errorKey(line, 'quantity') !== null ? null : sourceLeftOf(line);
+  }
+
+  protected figuresOf(index: number): LineFigures | null {
+    return this.figures()?.[index] ?? null;
+  }
+
+  /** How a line's figures name its taxes: by the names of the taxes the line charges, found by their code. */
+  protected taxNamesFor(line: LineGroup): (code: string) => string | null {
+    this.revision();
+    const charged = new Set(line.controls.taxComponentIds.value);
+    const pairs = this.options()
+      .taxes.filter((tax) => charged.has(tax.id))
+      .map((tax): [string, string] => [tax.code, tax.name]);
+    const key = JSON.stringify(pairs);
+    let named = this.taxNamers.get(key);
+    if (named === undefined) {
+      const names = new Map(pairs);
+      named = (code: string) => names.get(code) ?? null;
+      this.taxNamers.set(key, named);
+    }
+    return named;
   }
 
   protected netOf(index: number, line: LineGroup): string | null {

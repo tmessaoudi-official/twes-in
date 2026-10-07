@@ -31,6 +31,7 @@ import {
 } from '../shared/testing/feedback';
 import { QuotePage } from './quote-page';
 import { QuotesFacade } from './quotes-facade';
+import { PREVIEW_DELAY } from '../shared/documents/document-figures';
 import type { QuoteAttachment, QuoteRow, QuotesError } from './quotes-types';
 
 class StaticLoader implements TranslateLoader {
@@ -169,6 +170,7 @@ describe('QuotePage', () => {
     deposit: vi.fn(),
     attach: vi.fn(),
     detach: vi.fn(),
+    preview: vi.fn(),
     clearError: vi.fn(),
     attachmentUrl: (c: string, id: string, a: string) =>
       `/api/companies/${c}/quotes/${id}/attachments/${a}/content`,
@@ -232,6 +234,7 @@ describe('QuotePage', () => {
     facade.loadQuote.mockReset().mockResolvedValue(undefined);
     facade.create.mockReset().mockResolvedValue({ ...draft, id: 'q9' });
     facade.revise.mockReset().mockResolvedValue(draft);
+    facade.preview.mockReset().mockResolvedValue(null);
     facade.reviseAndSend.mockReset().mockResolvedValue(sent);
     facade.accept.mockReset().mockResolvedValue(accepted);
     facade.refuse.mockReset().mockResolvedValue({ ...sent, status: 'refused' });
@@ -264,6 +267,7 @@ describe('QuotePage', () => {
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+        { provide: PREVIEW_DELAY, useValue: 0 },
       ],
     });
   });
@@ -492,5 +496,45 @@ describe('QuotePage', () => {
 
     expect(q('document-action-invoice')).toBeNull();
     expect(q('quote-invoice')?.getAttribute('href')).toBe('/invoices/i7');
+  });
+
+  // docs/SPEC.md § 7, the live line figures: a quote is worked out as it is typed, as an invoice is.
+  it('works the quote out as it is typed, and shows the line and the totals as they would be saved', async () => {
+    quote.set(draft);
+    await open('q1');
+    facade.preview.mockResolvedValue({
+      lines: [
+        {
+          amount: '750.000',
+          discount: '0.000',
+          net: '750.000',
+          documentDiscount: '0.000',
+          taxes: [{ code: 'TVA19', base: '750.000', amount: '142.500' }],
+          total: '892.500',
+        },
+      ],
+      subtotalNet: '750.000',
+      documentDiscount: '0.000',
+      totalNet: '750.000',
+      taxes: [{ code: 'TVA19', rate: '19.000', base: '750.000', amount: '142.500' }],
+      totalTax: '142.500',
+      total: '892.500',
+    });
+
+    typeIn(q('line-0-quantity') as HTMLInputElement, '3');
+    await settle();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    await settle();
+
+    expect(facade.preview).toHaveBeenLastCalledWith(
+      'c1',
+      'q1',
+      expect.objectContaining({ lines: [expect.objectContaining({ quantity: '3' })] }),
+    );
+    const text = (id: string) => (q(id)?.textContent ?? '').replace(/\s+/g, ' ');
+    expect(text('line-0-net')).toContain('750,000');
+    expect(text('quote-total')).toContain('892,500');
+    expect(text('quote-totals-note')).toContain('document_figures.as_typed');
   });
 });

@@ -23,6 +23,7 @@ import {
 } from '../shared/settings/settings-facade';
 import { InvoicePage } from './invoice-page';
 import { InvoicesFacade } from './invoices-facade';
+import { PREVIEW_DELAY, type PreviewBody } from '../shared/documents/document-figures';
 import { ProductScans } from '../products/product-scans';
 import { ScanBus } from '../shared/scan/scan-bus';
 import { ScreenActions } from '../shared/actions/screen-actions';
@@ -249,6 +250,7 @@ describe('InvoicePage', () => {
     applyCredit: vi.fn(),
     overpay: vi.fn(),
     deletePayment: vi.fn(),
+    preview: vi.fn(),
     clearError: vi.fn(),
     pdfUrl: (companyId: string, id: string) => `/api/companies/${companyId}/invoices/${id}/pdf`,
     pdfCopyUrl: (companyId: string, id: string, kind: string) =>
@@ -372,6 +374,7 @@ describe('InvoicePage', () => {
     facade.applyCredit.mockReset().mockResolvedValue(true);
     facade.overpay.mockReset().mockResolvedValue(true);
     facade.deletePayment.mockReset().mockResolvedValue(true);
+    facade.preview.mockReset().mockResolvedValue(null);
     TestBed.configureTestingModule({
       imports: [InvoicePage],
       providers: [
@@ -392,6 +395,7 @@ describe('InvoicePage', () => {
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+        { provide: PREVIEW_DELAY, useValue: 0 },
       ],
     });
   });
@@ -1741,6 +1745,117 @@ describe('InvoicePage', () => {
       await settle();
       expect(await scanned('3017620422003')).toEqual({ kind: 'unclaimed' });
       expect(scans.named).not.toHaveBeenCalled();
+    });
+  });
+
+  // docs/SPEC.md § 7, the live line figures: worked out by the API's one calculator once typing rests, kept nowhere.
+  describe('figures as typed', () => {
+    const twice: PreviewBody = {
+      lines: [
+        {
+          amount: '3600.000',
+          discount: '0.000',
+          net: '3600.000',
+          documentDiscount: '0.000',
+          taxes: [{ code: 'TVA19', base: '3600.000', amount: '684.000' }],
+          total: '4284.000',
+        },
+      ],
+      subtotalNet: '3600.000',
+      documentDiscount: '0.000',
+      totalNet: '3600.000',
+      taxes: [{ code: 'TVA19', rate: '19.000', base: '3600.000', amount: '684.000' }],
+      totalTax: '684.000',
+      fixedTaxes: [{ code: 'TIMBRE', amount: '1.000' }],
+      total: '4285.000',
+      withholdings: [{ code: 'RS1', rate: '1.000', base: '4285.000', amount: '42.850' }],
+      netToPay: '4242.150',
+    };
+
+    /** Typing rests (the delay is nought here), the API answers, the screen draws it. */
+    async function rested(): Promise<void> {
+      await settle();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+      await settle();
+    }
+
+    it('works the draft out as it is typed, and shows each line and the totals as they would be saved', async () => {
+      invoice.set(draft);
+      await open('i1');
+      await rested();
+      facade.preview.mockResolvedValue(twice);
+
+      type('line-0-quantity', '2');
+      await rested();
+
+      expect(facade.preview).toHaveBeenLastCalledWith(
+        'c1',
+        'i1',
+        expect.objectContaining({
+          customerId: 'k1',
+          documentTaxComponentIds: ['s1'],
+          lines: [expect.objectContaining({ quantity: '2', unitPriceNet: '1800.000' })],
+        }),
+      );
+      expect(text('line-0-net')).toContain('3 600,000');
+      expect(text('line-0-total')).toContain('4 284,000');
+      expect(text('invoice-total')).toContain('4 285,000');
+      expect(text('invoice-net-due')).toContain('4 242,150');
+      expect(text('invoice-totals-note')).toContain('document_figures.as_typed');
+    });
+
+    it('leaves a line not ready yet out, without figures, and works the others out', async () => {
+      invoice.set(draft);
+      await open('i1');
+      facade.preview.mockResolvedValue(twice);
+      q('line-add')!.click();
+      await rested();
+
+      const [, , asked] = facade.preview.mock.lastCall!;
+      expect(asked.lines).toHaveLength(1);
+      expect(q('line-0-toggle')).not.toBeNull();
+      expect(q('line-1-toggle')).toBeNull();
+    });
+
+    it('shows the saved figures when the API refuses what is typed, never figures of something else', async () => {
+      invoice.set(draft);
+      await open('i1');
+      facade.preview.mockResolvedValue(twice);
+      type('line-0-quantity', '2');
+      await rested();
+      expect(text('invoice-total')).toContain('4 285,000');
+
+      facade.preview.mockResolvedValue(null);
+      type('line-0-quantity', '3');
+      await rested();
+      expect(q('line-0-toggle')).toBeNull();
+      expect(text('invoice-total')).toContain('2 143,000');
+      expect(text('invoice-totals-note')).toContain('invoices.totals.as_saved');
+    });
+
+    it('asks nothing of a document that no longer changes', async () => {
+      invoice.set(issued);
+      await open('i1');
+      await rested();
+      expect(facade.preview).not.toHaveBeenCalled();
+    });
+
+    it('keeps working the figures out over another document, whose form is a new one', async () => {
+      invoice.set(draft);
+      await open('i1');
+      fixture.componentRef.setInput('invoiceId', 'i2');
+      invoice.set({ ...draft, id: 'i2' });
+      await rested();
+      facade.preview.mockClear();
+
+      type('line-0-quantity', '4');
+      await rested();
+      expect(facade.preview).toHaveBeenLastCalledWith(
+        'c1',
+        'i2',
+        expect.objectContaining({ lines: [expect.objectContaining({ quantity: '4' })] }),
+      );
     });
   });
 });

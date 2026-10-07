@@ -4453,6 +4453,20 @@ functional tests run in the `tools` container, on the host's network, against th
   between never shows the banner in that tab; the five-minute poll and the next reload put it right. The poll is quiet
   (the activity bar does not move for it).
 
+- [2026-10-07 17:03] ASSUMED (review): how the live figures are built (row 219). The figures are asked of the API 250 ms after
+  typing rests, through `POST …/invoices/preview` and `…/quotes/preview` (`…/{id}/preview` for a saved draft, so a credit
+  note is worked out as one), which take the save's body and keep nothing; a later keystroke replaces an answer still on
+  its way, and the same content is not asked twice. They need what saving needs, `invoice.write` or `quote.write` (and the
+  credit right on a credit note): whoever may only read a draft sees its saved figures. A line still missing its
+  quantity, unit or price is left out and shows no figures while the others do; one not described yet is worked out all
+  the same. Nothing is asked before the document names its customer, and a draft the API refuses shows the saved figures,
+  never stale ones. Each line is folded to its net and its total including tax on every width, and unfolds to quantity ×
+  price, its discount, its share of the document discount and each of its taxes on its own base (a tax is a line's share
+  of the document's, so a line's tax can move by a millime when another line changes). The totals card says the figures
+  are worked out from what is typed and not yet saved. Measured: a 60-line preview answers in 51 ms (median, 62 ms at
+  worst) on the live dev stack. Delivery notes are not in this row: their lines get the same summary as row 224.
+  Alternatives: figures worked out in the browser (a second calculator to keep equal), an answer on every keystroke.
+
 ## 8. Status
 
 **The one build order** (§ 7, audit 2026-10-06; it supersedes the orders of 2026-09-27 17:12, 2026-10-01 23:30, 2026-10-02
@@ -4695,6 +4709,7 @@ functional tests run in the `tools` container, on the host's network, against th
 | 221 | Amount in words (country preset), savings line (PDF setting), quantity totals, the « Rentabilité » tab (§ 7 2026-10-07 14:43) | M | todo | - | api/** web/src/app/** api/config/fiscal/** |
 | 222 | Sections with their subtotals on documents with lines, flat in Factur-X (§ 7 2026-10-07 14:43) | L | todo | - | api/** web/src/app/** |
 | 223 | A deposit draft edited after it was drawn is checked again at issue against what its quote leaves, so no deposit charges beyond its quote (goal-end check of row 208) | S | todo | - | api/src/Module/Invoices/** |
+| 224 | A delivery note's lines show their figures as typed, as an invoice's do (row 219's summary and totals), where the note carries prices | M | todo | - | api/src/Module/DeliveryNotes/** web/src/app/delivery-notes/** |
 <!-- /progress-block -->
 
 ### Delivered

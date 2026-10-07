@@ -414,6 +414,19 @@ export interface LineControls {
 export type LineGroup = FormGroup<LineControls>;
 export type LinesArray = FormArray<LineGroup>;
 
+/**
+ * Whether a line holds what its figures are worked out from: a quantity, a unit, a price and a discount the API would
+ * take. Its description is not among them, and a line not ready yet leaves the others' figures alone.
+ */
+export function figuresReady(line: LineGroup): boolean {
+  const { quantity, unitId, unitPriceNet, discountRate } = line.controls;
+  return (
+    [quantity, unitId, unitPriceNet, discountRate].every((control) => !control.invalid) &&
+    !line.hasError('quantityDecimals') &&
+    !line.hasError('aboveSource')
+  );
+}
+
 /** Whether a line asks which lot or serial it sells. */
 export function namesALot(line: LineGroup): boolean {
   const tracking = line.controls.productTracking.value;

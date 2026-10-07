@@ -18,7 +18,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { InvoiceLines } from '../invoices/invoice-lines';
-import { linesArray, pickedCustomer } from '../invoices/invoice-forms';
+import { figuresReady, linesArray, pickedCustomer } from '../invoices/invoice-forms';
+import { liveFigures, toDocumentFigures } from '../shared/documents/document-figures';
 import type { CustomerOption } from '../invoices/invoices-types';
 import { LineCatalogue } from '../invoices/line-catalogue';
 import { taxNames } from '../invoices/tax-names';
@@ -208,6 +209,50 @@ export class QuotePage {
     ],
   });
   protected readonly nets = computed(() => (this.current()?.lines ?? []).map((line) => line.net));
+  /** Bumped by every value the form or the lines take, so the figures read what is typed now. */
+  private readonly typed = signal(0);
+  /**
+   * What the figures are asked for: the quote as it would be saved, with the lines that can be worked out yet. A quote
+   * that no longer changes, or that is not for anyone yet, asks nothing.
+   */
+  private readonly previewDraft = computed(() => {
+    this.typed();
+    const companyId = this.company()?.id;
+    const id = this.id();
+    const form = this.form();
+    const lines = this.lines();
+    const customerId = this.customer()?.id ?? '';
+    if (!this.editable() || !companyId || form === null || lines === null || customerId === '')
+      return null;
+    return untracked(() => {
+      const input = quoteInput(form.getRawValue(), lines, customerId);
+      const positions = lines.controls.flatMap((line, index) =>
+        figuresReady(line) ? [index] : [],
+      );
+      const sent = positions.map((index) => {
+        const line = input.lines[index]!;
+        // A line's figures do not depend on its words: one not described yet is still worked out.
+        return line.description === '' ? { ...line, description: '…' } : line;
+      });
+      return { companyId, id, input: { ...input, lines: sent }, positions, count: lines.length };
+    });
+  });
+  /** The figures as the quote stands typed, from the API's one calculator, or null until it has answered. */
+  protected readonly figures = liveFigures(
+    () => this.previewDraft(),
+    async ({ companyId, id, input, positions, count }) => {
+      const body = await this.facade.preview(companyId, id, input);
+      return body === null ? null : toDocumentFigures(body, positions, count);
+    },
+  );
+  protected readonly lineFigures = computed(() => this.figures()?.lines ?? null);
+  /** What the totals card shows: the figures as typed while the draft is edited, otherwise the quote as saved. */
+  protected readonly shownTotals = computed(() => {
+    const live = this.editable() ? this.figures() : null;
+    if (live !== null) return { ...live, live: true };
+    const current = this.current();
+    return current ? { ...current, live: false } : null;
+  });
 
   /** What is typed and not saved, counted so that leaving the page asks first. */
   private readonly savedHeader = computed(() => {
@@ -378,6 +423,16 @@ export class QuotePage {
       untracked(() => {
         if (companyId) void this.facade.loadQuote(companyId, id);
       });
+    });
+    effect((onCleanup) => {
+      const form = this.form();
+      const lines = this.lines();
+      const bump = (): void => this.typed.update((typed) => typed + 1);
+      const subscriptions = [
+        form?.valueChanges.subscribe(bump),
+        lines?.valueChanges.subscribe(bump),
+      ];
+      onCleanup(() => subscriptions.forEach((subscription) => subscription?.unsubscribe()));
     });
     effect(() => {
       const lines = this.lines();

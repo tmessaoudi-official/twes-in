@@ -3906,5 +3906,15 @@
     "copied": "Version copiée.",
     "new_version": "Nouvelle version disponible",
     "reload": "Recharger"
+  },
+  "document_figures": {
+    "toggle": "Détail des montants de la ligne {{position}}",
+    "net": "Net HT",
+    "total": "Total TTC",
+    "amount": "Quantité × prix",
+    "discount": "Remise de la ligne",
+    "document_discount": "Part de la remise du document",
+    "tax": "{{name}} · base {{base}}",
+    "as_typed": "En {{currency}}, calculés à l’instant sur ce qui est saisi : rien n’est enregistré tant que vous n’enregistrez pas."
   }
 }

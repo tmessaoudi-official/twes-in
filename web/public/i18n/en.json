@@ -3906,5 +3906,15 @@
     "copied": "Version copied.",
     "new_version": "A new version is available",
     "reload": "Reload"
+  },
+  "document_figures": {
+    "toggle": "Figures of line {{position}}",
+    "net": "Net",
+    "total": "Total incl. tax",
+    "amount": "Quantity × price",
+    "discount": "Line discount",
+    "document_discount": "Share of the document discount",
+    "tax": "{{name}} · base {{base}}",
+    "as_typed": "In {{currency}}, worked out just now from what is typed: nothing is kept until you save."
   }
 }

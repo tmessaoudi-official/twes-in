@@ -97,6 +97,7 @@ describe('InvoicesFacade', () => {
     pdfUrl: vi.fn(),
     summary: vi.fn(),
     statusCounts: vi.fn(),
+    preview: vi.fn(),
   };
   let facade: InvoicesFacade;
 
@@ -242,5 +243,15 @@ describe('InvoicesFacade', () => {
     api.invoices.mockRejectedValue(new Error('offline'));
     await facade.loadPage('c1', search);
     expect(facade.error()).toBe('network');
+  });
+
+  it('hands what is typed comes to, and takes a refusal of a draft being typed as no figures, not as an error', async () => {
+    api.preview.mockResolvedValueOnce({ total: '1.000' });
+    expect(await facade.preview('c1', 'i1', input)).toEqual({ total: '1.000' });
+    expect(api.preview).toHaveBeenCalledWith('c1', 'i1', input);
+
+    api.preview.mockRejectedValueOnce(new InvoicesRefused('invalid'));
+    expect(await facade.preview('c1', null, input)).toBeNull();
+    expect(facade.error()).toBeNull();
   });
 });

@@ -227,6 +227,7 @@
             [customer]="customer()"
             [priceLists]="auth.hasModule('price_lists')"
             [nets]="nets()"
+            [figures]="lineFigures()"
             [readOnly]="!editable()"
             [returnable]="isCreditNote()"
           />
@@ -260,7 +261,7 @@
     </mat-card>
   }
 
-  @if (current(); as invoice) {
+  @if (shownTotals(); as invoice) {
     <mat-card data-testid="invoice-totals">
       <mat-card-content>
         <div class="flex flex-col gap-2">
@@ -336,8 +337,11 @@
               <dd class="text-end font-semibold">{{ invoice.amountDue | amount: scale() }}</dd>
             }
           </dl>
-          <p class="text-xs opacity-70">
-            {{ 'invoices.totals.as_saved' | translate: { currency: options()?.currency } }}
+          <p class="text-xs opacity-70" data-testid="invoice-totals-note">
+            {{
+              (invoice.live ? 'document_figures.as_typed' : 'invoices.totals.as_saved')
+                | translate: { currency: options()?.currency }
+            }}
           </p>
         </div>
       </mat-card-content>

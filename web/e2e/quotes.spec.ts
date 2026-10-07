@@ -123,6 +123,9 @@ test('a quote is drafted, sent, accepted and invoiced into a draft invoice', asy
     await page.getByTestId('line-0-quantity').fill('2');
     await page.getByTestId('line-0-price').fill('1250');
     await choose(page, 'line-0-taxes', /19/);
+    // A new quote is worked out as it is typed, totals included, before it is saved.
+    await expect(page.getByTestId('line-0-total')).toHaveText('2 975,000');
+    await expect(page.getByTestId('quote-total')).toHaveText('2 975,000');
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('document-action-save').click();
 

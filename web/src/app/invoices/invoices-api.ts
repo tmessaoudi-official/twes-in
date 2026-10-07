@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { exportAddress, type ExportFormat } from '../shared/list/export-address';
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import type { PreviewBody } from '../shared/documents/document-figures';
+import { SILENT } from '../shared/feedback/activity-interceptor';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
+  InvoiceDocumentPreviewDocumentPreviewValidationInvoiceWrite,
   ApiCompaniesCompanyIdinvoicesGetCollectionResponse,
   CustomerCreditBalanceCustomerCreditBalanceRead,
   InvoiceInvoiceCreditValidationInvoiceCredit as InvoiceInvoiceCredit,
@@ -206,6 +209,24 @@ export class InvoicesApi {
         await firstValueFrom(
           this.http.put<InvoiceInvoiceRead>(invoicePath(companyId, id), toBody(input)),
         ),
+      ),
+    );
+  }
+
+  /**
+   * What the document would come to with what is typed, kept nowhere: a draft's own path when it exists, so a credit
+   * note is worked out as one. Quiet, since typing is not an action; a refusal is thrown, as any other answer.
+   */
+  async preview(companyId: string, id: string | null, input: InvoiceInput): Promise<PreviewBody> {
+    const path =
+      id === null ? `${invoicePath(companyId)}/preview` : `${invoicePath(companyId, id)}/preview`;
+    return firstValueFrom(
+      this.http.post<InvoiceDocumentPreviewDocumentPreviewValidationInvoiceWrite>(
+        path,
+        toBody(input),
+        {
+          context: new HttpContext().set(SILENT, true),
+        },
       ),
     );
   }

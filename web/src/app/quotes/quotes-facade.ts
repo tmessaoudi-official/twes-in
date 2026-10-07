@@ -20,6 +20,7 @@ import type {
   QuotesError,
   QuoteStatusCounts,
 } from './quotes-types';
+import type { PreviewBody } from '../shared/documents/document-figures';
 
 /**
  * The quotes of the company being worked in, the quote open on screen, its files and what its form offers. It is
@@ -115,6 +116,22 @@ export class QuotesFacade implements LineCatalogue {
 
   async revise(companyId: string, id: string, input: QuoteInput): Promise<QuoteRow | null> {
     return this.step(() => this.api.revise(companyId, id, input));
+  }
+
+  /**
+   * What is typed would come to, or null when the API refuses it as it stands: a draft being typed is often not one
+   * yet, so a refusal here is no error to report, and the screen's error is left alone.
+   */
+  async preview(
+    companyId: string,
+    id: string | null,
+    input: QuoteInput,
+  ): Promise<PreviewBody | null> {
+    try {
+      return await this.api.preview(companyId, id, input);
+    } catch {
+      return null;
+    }
   }
 
   /** Saves what is on screen, then marks it sent: a quote is never numbered with content other than the one shown. */

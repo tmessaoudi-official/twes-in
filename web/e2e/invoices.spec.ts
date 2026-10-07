@@ -138,6 +138,16 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.getByTestId('line-0-quantity').fill('2');
     await page.getByTestId('line-0-price').fill('500');
     await choose(page, 'line-0-taxes', /19/);
+    // Worked out as it is typed, before anything is saved (docs/SPEC.md § 7, the live line figures).
+    await expect(page.getByTestId('line-0-net')).toHaveText('1 000,000');
+    await expect(page.getByTestId('line-0-total')).toHaveText('1 190,000');
+    await expect(page.getByTestId('invoice-totals-note')).toContainText(
+      /calculés à l’instant|worked out just now/,
+    );
+    await page.getByTestId('line-0-toggle').click();
+    await expect(
+      page.getByTestId('line-0-details').locator('[data-testid^="line-0-figure-tax-"]'),
+    ).toHaveText(['190,000']);
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('document-action-save').click();
 

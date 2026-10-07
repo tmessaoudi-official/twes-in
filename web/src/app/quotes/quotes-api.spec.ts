@@ -6,6 +6,7 @@ import { TestBed } from '@angular/core/testing';
 import { InvoicesApi } from '../invoices/invoices-api';
 import { QuotesApi, QuotesRefused } from './quotes-api';
 import type { QuoteInput } from './quotes-types';
+import { SILENT } from '../shared/feedback/activity-interceptor';
 
 const input: QuoteInput = {
   customerId: 'k1',
@@ -277,5 +278,19 @@ describe('QuotesApi', () => {
       priceListName: 'Gros',
     });
     expect(invoices.productPrice).toHaveBeenCalledWith('c1', 'p1', 'k1', '2');
+  });
+
+  it("asks what is typed would come to, quietly, on the draft's own path once it exists", async () => {
+    const fresh = api.preview('c1', null, input);
+    const asked = http.expectOne('/api/companies/c1/quotes/preview');
+    expect(asked.request.method).toBe('POST');
+    expect(asked.request.context.get(SILENT)).toBe(true);
+    expect(asked.request.body).toMatchObject({ customerId: input.customerId });
+    asked.flush({ total: '1.000' });
+    expect(await fresh).toEqual({ total: '1.000' });
+
+    const draft = api.preview('c1', 'q1', input);
+    http.expectOne('/api/companies/c1/quotes/q1/preview').flush({ total: '2.000' });
+    expect(await draft).toEqual({ total: '2.000' });
   });
 });
