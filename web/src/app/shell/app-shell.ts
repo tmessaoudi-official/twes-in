@@ -116,6 +116,7 @@ export function initialsOf(displayName: string): string {
  */
 /** The phone's bottom bar height, which what is held at the page's foot stands on. */
 const BOTTOM_BAR_HEIGHT = '--twes-bottom-bar-height';
+const TOP_BAR_HEIGHT = '--twes-top-bar-height';
 
 @Component({
   selector: 'app-shell',
@@ -262,6 +263,7 @@ export class AppShell {
   /** « Créer »'s menu, wherever it is drawn: the rail's button from a tablet up, the phone's bar below. */
   private readonly createTrigger = viewChild('createTrigger', { read: MatMenuTrigger });
   private readonly bottomBarElement = viewChild<ElementRef<HTMLElement>>('bottomBarNav');
+  private readonly topBarElement = viewChild<ElementRef<HTMLElement>>('topBar');
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   /**
    * The phone's bottom bar: the most used destinations first (`PHONE_BAR_FIRST`), then the sidebar's next ones, three
@@ -352,6 +354,21 @@ export class AppShell {
       }
       const observer = new ResizeObserver(() =>
         host.style.setProperty(BOTTOM_BAR_HEIGHT, `${bar.offsetHeight}px`),
+      );
+      observer.observe(bar);
+      onCleanup(() => observer.disconnect());
+    });
+    // The top bar stays at the panel's top while it scrolls: what else sticks there (a document's action bar) sticks
+    // below it, by its measured height, or slides under it and hides its title (audit V-29).
+    effect((onCleanup) => {
+      const bar = this.topBarElement()?.nativeElement;
+      const host = this.host.nativeElement;
+      if (bar === undefined || typeof ResizeObserver === 'undefined') {
+        host.style.removeProperty(TOP_BAR_HEIGHT);
+        return;
+      }
+      const observer = new ResizeObserver(() =>
+        host.style.setProperty(TOP_BAR_HEIGHT, `${bar.offsetHeight}px`),
       );
       observer.observe(bar);
       onCleanup(() => observer.disconnect());

@@ -197,6 +197,34 @@ html {
   }
 }
 
+// A line of facts parted by « · » (a document's status line). Each fact after the first carries the « · » before it in
+// the gap it is pulled back into, and a fact that starts a wrapped line has it clipped, so no line begins with an
+// orphan « · » (audit V-3).
+.twes-dot-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 1rem;
+  overflow: hidden;
+
+  > * + * {
+    margin-inline-start: -1rem;
+
+    &::before {
+      content: '·';
+      display: inline-block;
+      width: 1rem;
+      text-align: center;
+    }
+  }
+}
+
+// A tab strip holding a single tab says nothing the page's title does not (a new product has its record alone, audit
+// V-12): the page shows that tab's content without it.
+.mat-mdc-tab-group:has(.mat-mdc-tab-labels > .mdc-tab:only-child) > .mat-mdc-tab-header {
+  display: none;
+}
+
 // An icon keeps its size in a flex row beside a long text, which otherwise shrinks it and cuts its glyph (audit V-23).
 .mat-icon {
   flex-shrink: 0;
@@ -2056,7 +2084,7 @@ th.mat-mdc-header-cell.twes-row-actions {
  */
 .twes-document-header {
   position: sticky;
-  top: 0;
+  top: var(--twes-top-bar-height, 0px);
   z-index: 2;
   padding-block: 0.5rem;
   background: var(--mat-sys-surface);

@@ -84,6 +84,9 @@ test('a product is filed in a category, priced at the currency scale and revised
     expect(await wcagViolations(page)).toEqual([]);
 
     await page.goto('/products/new');
+    // A new product has its record alone: no strip holding one tab (audit 2026-10-06 V-12).
+    await expect(page.getByTestId('field-reference')).toBeVisible();
+    await expect(page.getByTestId('product-tabs').getByRole('tab')).toBeHidden();
     await page.getByTestId('field-reference').fill(reference);
     await page.getByTestId('field-name').fill(`Audit fiscal ${run}`);
     await page.getByTestId('field-kind').click();

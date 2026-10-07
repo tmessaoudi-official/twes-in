@@ -3,7 +3,7 @@
 import { Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -11,13 +11,19 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { DocumentActions } from './document-actions';
+import type { PlannedAction } from '../actions/planned-actions';
 import type { ScreenAction } from '../actions/screen-action';
+import { Session, type SessionState } from '../session/session';
+import { ThemeFacade } from '../theme/theme-facade';
+import { WINDOW_CLASS, type WindowClass } from './window-class';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       document: { actions: 'Actions', more_actions: 'More actions' },
-      actions: { final_group: 'Final' },
+      actions: { final_group: 'Final', coming: 'Coming to this screen' },
+      shell: { soon: 'Soon' },
+      p: { email: 'Send by e-mail', repeat: 'Make recurring' },
       d: {
         issue: 'Issue',
         pdf: 'PDF',
@@ -32,17 +38,26 @@ class StaticLoader implements TranslateLoader {
   }
 }
 
+@Component({ selector: 'app-blank', template: '' })
+class Blank {}
+
 @Component({
   imports: [DocumentActions],
-  template: `<app-document-actions [actions]="actions()" />`,
+  template: `<app-document-actions [actions]="actions()" [planned]="planned()" />`,
 })
 class Host {
   readonly actions = signal<ScreenAction[]>([]);
+  readonly planned = signal<PlannedAction[]>([]);
 }
 
 describe('DocumentActions', () => {
   let fixture: ComponentFixture<Host>;
   const ran: string[] = [];
+  const showComing = signal(true);
+  const width = signal<WindowClass>('expanded');
+  const me = signal<SessionState | null>(null);
+  const email: PlannedAction = { module: 'mailing', label: 'p.email', icon: 'forward_to_inbox' };
+  const repeat: PlannedAction = { module: 'recurring', label: 'p.repeat', icon: 'event_repeat' };
 
   const q = (testId: string): HTMLElement | null =>
     document.body.querySelector(`[data-testid="${testId}"]`) as HTMLElement | null;
@@ -81,15 +96,25 @@ describe('DocumentActions', () => {
 
   beforeEach(async () => {
     ran.length = 0;
+    showComing.set(true);
+    width.set('expanded');
+    me.set({
+      user: { id: 'u1' },
+      company: { id: 'c1', countryCode: 'FR', currency: 'EUR' },
+      plannedModules: [{ key: 'mailing', planned: 'v1' }],
+    } as SessionState);
     TestBed.configureTestingModule({
       imports: [Host],
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: 'coming/:key', component: Blank }]),
         provideTranslateService({
           lang: 'en',
           loader: provideTranslateLoader(() => new StaticLoader()),
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+        { provide: Session, useValue: { me } },
+        { provide: ThemeFacade, useValue: { showComing } },
+        { provide: WINDOW_CLASS, useValue: width },
       ],
     });
     fixture = TestBed.createComponent(Host);
@@ -195,6 +220,70 @@ describe('DocumentActions', () => {
     q('document-more')!.click();
     await settle();
     expect(q('document-menu-final')).toBeNull();
+  });
+
+  // Audit 2026-10-06 V-3, V-5 and V-29: the planned group, first in the bar, pushed the working actions onto a second
+  // row on a desktop and drew a second « ⋯ » beside the « ⋮ » on a phone.
+  it('lists what is coming last in its one menu, under its own heading, and draws none of it in the bar', async () => {
+    fixture.componentInstance.actions.set([issue, cancel]);
+    fixture.componentInstance.planned.set([email, repeat]);
+    await settle();
+    expect(q('planned-actions')).toBeNull();
+    expect(document.body.querySelectorAll('[data-testid="document-more"]')).toHaveLength(1);
+
+    q('document-more')!.click();
+    await settle();
+    const entries = [
+      ...document.body.querySelectorAll<HTMLElement>(
+        '[data-testid^="document-menu-"], [data-testid^="document-planned-"]',
+      ),
+    ].map((entry) => entry.getAttribute('data-testid'));
+    // Only what the catalogue still plans: « recurring » is not planned for this session.
+    expect(entries).toEqual([
+      'document-menu-final',
+      'document-menu-cancel',
+      'document-planned-heading',
+      'document-planned-mailing',
+    ]);
+    expect(q('document-planned-heading')?.textContent).toContain('Coming to this screen');
+    expect(q('document-planned-mailing')?.textContent).toContain('Soon');
+
+    q('document-planned-mailing')!.click();
+    await settle();
+    expect(TestBed.inject(Router).url).toBe('/coming/mailing');
+  });
+
+  it('opens a menu for what is coming alone, and leaves it out once what is coming is hidden', async () => {
+    fixture.componentInstance.actions.set([issue]);
+    fixture.componentInstance.planned.set([email]);
+    await settle();
+    expect(q('document-more')).not.toBeNull();
+
+    showComing.set(false);
+    await settle();
+    expect(q('document-more')).toBeNull();
+  });
+
+  // Audit 2026-10-06 V-3: on a phone the bar wrapped into three rows, its « ⋮ » alone on one of them.
+  it('keeps only the next step in the bar on a phone, the frequent actions first in its menu', async () => {
+    width.set('compact');
+    await settle();
+    const bar = [...document.body.querySelectorAll('[data-testid^="document-action-"]')].map(
+      (each) => each.getAttribute('data-testid'),
+    );
+    expect(bar).toEqual(['document-action-issue']);
+
+    q('document-more')!.click();
+    await settle();
+    const menu = [...document.body.querySelectorAll('[data-testid^="document-menu-"]')].map(
+      (each) => each.getAttribute('data-testid'),
+    );
+    expect(menu).toEqual([
+      'document-menu-pdf',
+      'document-menu-duplicate',
+      'document-menu-final',
+      'document-menu-cancel',
+    ]);
   });
 
   it('names the "⋮" it draws', () => {

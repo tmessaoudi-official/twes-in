@@ -238,7 +238,7 @@
     <!-- On a phone the bar names the company and carries the search, the bell and the member. Wider, the rail has
          the rest and the bar keeps the search at its centre, always there (docs/SPEC.md § 7, 2026-09-26 08:52, row
          146), with the scanning controls at its end. -->
-    <header class="sticky top-0 z-10">
+    <header #topBar class="sticky top-0 z-10">
       <mat-toolbar class="twes-shell-bar gap-2" [class.is-slim]="!handset()">
         @if (handset()) {
           <div class="flex min-w-0 shrink items-center gap-2" data-testid="top-bar-leading">

@@ -73,7 +73,7 @@ function fold(text: string): string {
     @if (labelInside() && label() !== '') {
       <span
         [id]="labelId"
-        class="pointer-events-none absolute -top-2 left-3 z-10 bg-surface px-1 text-xs leading-4 text-on-surface-variant"
+        class="pointer-events-none absolute -top-2 left-3 z-[1] bg-surface px-1 text-xs leading-4 text-on-surface-variant"
         >{{ label() }}</span
       >
     }

@@ -302,6 +302,25 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('payment-dialog-title')).toHaveCount(0);
 
+    // On a phone the status line wraps, and no line of it starts with a « · » (audit 2026-10-06 V-3): a fact that
+    // starts a line has its separator clipped, one past the line's start (`.twes-dot-list`).
+    const wide = page.viewportSize()!;
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const line = document.querySelector('[data-testid="invoice-status"]')!;
+          const left = line.getBoundingClientRect().left;
+          const facts = [...line.children].map((fact) => fact.getBoundingClientRect());
+          // The first fact starts the line and has no « · »; any other at the line's start would show its own.
+          return (
+            facts.length > 1 && facts.slice(1).every((fact) => Math.abs(fact.left - left) >= 1)
+          );
+        }),
+      )
+      .toBe(true);
+    await page.setViewportSize(wide);
+
     // A credit note is rare, so it sits behind "⋮".
     await page.getByTestId('document-more').click();
     await page.getByTestId('document-menu-credit-note').click();

@@ -21,23 +21,20 @@
         }
       </h1>
       @if (current(); as invoice) {
-        <p
-          class="flex flex-wrap items-center gap-x-1 text-sm text-on-surface-variant"
-          data-testid="invoice-status"
-        >
+        <p class="twes-dot-list text-sm text-on-surface-variant" data-testid="invoice-status">
           @if (shown(); as status) {
             <app-status-badge [tone]="tones[status]" [struck]="stages[status] === 'withdrawn'">
               {{ 'invoices.statuses.' + status | translate }}
             </app-status-badge>
           }
           @if (isCreditNote()) {
-            · {{ 'invoices.types.credit_note' | translate }}
+            <span>{{ 'invoices.types.credit_note' | translate }}</span>
           }
           @if (invoice.issueDate) {
-            · {{ 'invoices.fields.issueDate' | translate }} {{ invoice.issueDate | day }}
+            <span>{{ 'invoices.fields.issueDate' | translate }} {{ invoice.issueDate | day }}</span>
           }
           @if (invoice.dueDate && !isCreditNote()) {
-            · {{ 'invoices.fields.dueDate' | translate }} {{ invoice.dueDate | day }}
+            <span>{{ 'invoices.fields.dueDate' | translate }} {{ invoice.dueDate | day }}</span>
           }
         </p>
         @if (invoice.correctsInvoiceId; as corrected) {

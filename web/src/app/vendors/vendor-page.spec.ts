@@ -146,18 +146,29 @@ describe('VendorPage', () => {
 
   // docs/SPEC.md § 7, 2026-09-19 21:55: a page names nothing it has not loaded.
   // docs/SPEC.md § 7, 2026-09-26 10:08 and 18:17 (row 150, slice 5).
+  /** What the bar's « ⋮ » lists as coming (audit 2026-10-06 V-3: no longer a group in the bar). */
+  async function plannedInMenu(): Promise<string[]> {
+    const more = q('record-more');
+    if (more === null) return [];
+    more.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return [
+      ...document.body.querySelectorAll('.cdk-overlay-container [data-testid^="record-planned-"]'),
+    ]
+      .map((each) => each.getAttribute('data-testid') ?? '')
+      .filter((id) => id !== 'record-planned-heading');
+  }
+
   it('offers nothing planned while a vendor is new', async () => {
     await open(undefined);
-    expect(q('planned-actions')).toBeNull();
+    expect(await plannedInMenu()).toEqual([]);
   });
 
   it('shows what a vendor will offer once its planned modules ship', async () => {
     vendor.set(sotumag);
     await open('v1');
-    const drawn = [...fixture.nativeElement.querySelectorAll('[data-testid^="planned-action-"]')];
-    expect(drawn.map((each: Element) => each.getAttribute('data-testid'))).toEqual([
-      'planned-action-purchases',
-    ]);
+    expect(await plannedInMenu()).toEqual(['record-planned-purchases']);
   });
 
   it('titles a vendor still loading as nothing, never as a new one', async () => {

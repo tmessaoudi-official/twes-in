@@ -443,3 +443,48 @@ test('a person chooses how days and figures read in Préférences, which outlive
     await forget(page, 'presentation.number-format');
   }
 });
+
+test.describe('a document scrolled under the top bar', () => {
+  test.use({ viewport: { width: 1280, height: 560 } });
+
+  test('keeps its header in view below the top bar, with no field label drawn over it', async ({
+    page,
+  }) => {
+    // Audit 2026-10-06 V-29: the header stuck at the panel's top, under the shell's bar, and the select labels
+    // (z-index 10) were drawn over what showed of it.
+    await signIn(page);
+    await inACompany(page, CSRF);
+    await page.goto('/invoices/new');
+    await expect(page.getByTestId('invoice-title')).toBeVisible();
+    await page.evaluate(() => {
+      const panel = document.querySelector('mat-sidenav-content')!;
+      panel.scrollTop = panel.scrollHeight;
+    });
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const bar = document
+            .querySelector('.twes-shell-content > header')!
+            .getBoundingClientRect();
+          const header = document.querySelector('.twes-document-header')!.getBoundingClientRect();
+          const title = document.querySelector('[data-testid="invoice-title"]')!;
+          const box = title.getBoundingClientRect();
+          const hit = document.elementFromPoint(box.left + 4, box.top + box.height / 2);
+          // Every select's label, wherever the scroll left it: any of them passes under the header in turn.
+          const over = [...document.querySelectorAll('app-select > span[id]')];
+          return {
+            below: Math.round(header.top - bar.bottom),
+            titleShown: hit !== null && title.contains(hit),
+            // A label lets the pointer through, so no hit test finds it: what paints it over the header is a z-index
+            // at least the header's, in the panel they share.
+            labelsOver: over.filter(
+              (label) =>
+                Number(getComputedStyle(label).zIndex) >=
+                Number(getComputedStyle(document.querySelector('.twes-document-header')!).zIndex),
+            ).length,
+          };
+        }),
+      )
+      .toEqual({ below: 0, titleShown: true, labelsOver: 0 });
+  });
+});

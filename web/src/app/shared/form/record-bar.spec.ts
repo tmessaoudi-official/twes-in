@@ -3,13 +3,18 @@
 import { Component, computed, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import type { PlannedAction } from '../actions/planned-actions';
 import type { ScreenAction } from '../actions/screen-action';
+import { Session, type SessionState } from '../session/session';
+import { ThemeFacade } from '../theme/theme-facade';
+import { WINDOW_CLASS, type WindowClass } from '../ui/window-class';
 import { RecordBar } from './record-bar';
 
 class StaticLoader implements TranslateLoader {
@@ -21,6 +26,10 @@ class StaticLoader implements TranslateLoader {
         unsaved: '{{count}} unsaved changes',
         one_unsaved: '1 unsaved change',
       },
+      actions: { coming: 'Coming to this screen' },
+      document: { more_actions: 'More actions' },
+      shell: { soon: 'Soon' },
+      p: { quote: 'New quote' },
       danger: {
         title: 'Sure?',
         message: 'Really?',
@@ -35,11 +44,15 @@ class StaticLoader implements TranslateLoader {
  * The host declares what the bar draws, exactly as a record page does: one list, which also reaches the keyboard,
  * the palette and the "?" sheet. The bar decides only where each one is drawn.
  */
+@Component({ selector: 'app-blank', template: '' })
+class Blank {}
+
 @Component({
   imports: [RecordBar],
-  template: `<app-record-bar [changes]="changes()" [actions]="actions()" />`,
+  template: `<app-record-bar [changes]="changes()" [actions]="actions()" [planned]="planned()" />`,
 })
 class Host {
+  readonly planned = signal<PlannedAction[]>([]);
   readonly changes = signal(0);
   readonly busy = signal(false);
   readonly did: string[] = [];
@@ -83,6 +96,14 @@ class Host {
 
 describe('RecordBar', () => {
   let fixture: ComponentFixture<Host>;
+  const width = signal<WindowClass>('expanded');
+  const showComing = signal(true);
+  const me = signal<SessionState | null>(null);
+  const quote: PlannedAction = { module: 'quotes', label: 'p.quote', icon: 'request_quote' };
+  const inMenu = (prefix: string) =>
+    [...document.body.querySelectorAll(`.cdk-overlay-container [data-testid^="${prefix}"]`)].map(
+      (each) => each.getAttribute('data-testid'),
+    );
 
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
@@ -94,9 +115,20 @@ describe('RecordBar', () => {
   }
 
   beforeEach(async () => {
+    width.set('expanded');
+    showComing.set(true);
+    me.set({
+      user: { id: 'u1' },
+      company: { id: 'c1', countryCode: 'FR', currency: 'EUR' },
+      plannedModules: [{ key: 'quotes', planned: 'v1' }],
+    } as SessionState);
     TestBed.configureTestingModule({
       imports: [Host],
       providers: [
+        provideRouter([{ path: 'coming/:key', component: Blank }]),
+        { provide: Session, useValue: { me } },
+        { provide: ThemeFacade, useValue: { showComing } },
+        { provide: WINDOW_CLASS, useValue: width },
         provideTranslateService({
           lang: 'en',
           loader: provideTranslateLoader(() => new StaticLoader()),
@@ -189,5 +221,50 @@ describe('RecordBar', () => {
     (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
     await settle();
     expect(fixture.componentInstance.did).toEqual(['danger']);
+  });
+
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
+  // Audit 2026-10-06 V-12: on a phone a product's bar stacked its actions one per row before any content.
+  it('keeps the next step in the bar on a phone and folds the others into its « ⋮ »', async () => {
+    fixture.componentInstance.changes.set(2);
+    width.set('compact');
+    await settle();
+    expect(q('record-save')).not.toBeNull();
+    expect(q('record-revert')).toBeNull();
+
+    q('record-more')!.click();
+    await settle();
+    expect(inMenu('record-menu-')).toEqual(['record-menu-revert']);
+    (document.querySelector('[data-testid="record-menu-revert"]') as HTMLElement).click();
+    await settle();
+    expect(fixture.componentInstance.did).toEqual(['revert']);
+  });
+
+  it('draws no « ⋮ » on a wide window with nothing to fold', () => {
+    expect(q('record-more')).toBeNull();
+  });
+
+  // Audit 2026-10-06 V-3 and V-12: what is coming sits last in the one menu, never as a group in the bar.
+  it('lists what is coming in its « ⋮ », under its own heading, and opens its page', async () => {
+    fixture.componentInstance.planned.set([quote]);
+    await settle();
+    expect(q('planned-actions')).toBeNull();
+
+    q('record-more')!.click();
+    await settle();
+    expect(inMenu('record-planned-')).toEqual(['record-planned-heading', 'record-planned-quotes']);
+    expect(document.querySelector('[data-testid="record-planned-quotes"]')?.textContent).toContain(
+      'Soon',
+    );
+    (document.querySelector('[data-testid="record-planned-quotes"]') as HTMLElement).click();
+    await settle();
+    expect(TestBed.inject(Router).url).toBe('/coming/quotes');
+
+    showComing.set(false);
+    await settle();
+    expect(q('record-more')).toBeNull();
   });
 });

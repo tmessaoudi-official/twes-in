@@ -317,18 +317,38 @@ describe('DeliveryNotePage', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-26 10:08 and 18:17 (row 150, slice 5).
+
+  /** What the « ⋮ » menu lists under a test id prefix, in order, its headings left out. */
+  async function inMenu(prefix: string): Promise<string[]> {
+    const more = q('document-more');
+    if (more === null) return [];
+    more.click();
+    await settle();
+    const listed = [
+      ...document.body.querySelectorAll(`.cdk-overlay-container [data-testid^="${prefix}"]`),
+    ]
+      .map((each) => each.getAttribute('data-testid') ?? '')
+      .filter((id) => !id.endsWith('-heading') && id !== 'document-menu-final');
+    (document.activeElement as HTMLElement | null)?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }),
+    );
+    await settle();
+    return listed;
+  }
+  /** What the menu lists as coming (audit 2026-10-06 V-3: no longer a group in the bar). */
+  const plannedInMenu = () => inMenu('document-planned-');
+
   it('offers nothing planned while a delivery note is new', async () => {
     await open(undefined);
-    expect(q('planned-actions')).toBeNull();
+    expect(await plannedInMenu()).toEqual([]);
   });
 
   it('shows what a delivery note will offer once its planned modules ship', async () => {
     note.set(draft);
     await open('n1');
-    const drawn = [...fixture.nativeElement.querySelectorAll('[data-testid^="planned-action-"]')];
-    expect(drawn.map((each: Element) => each.getAttribute('data-testid'))).toEqual([
-      'planned-action-mailing',
-      'planned-action-whatsapp',
+    expect(await plannedInMenu()).toEqual([
+      'document-planned-mailing',
+      'document-planned-whatsapp',
     ]);
   });
 
@@ -636,7 +656,7 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-fixed')).toBeNull();
     expect(q('document-action-deliver')).toBeNull();
     expect(q('delivery-note-delivered-on')).toBeNull();
-    expect(q('document-more')).toBeNull();
+    expect(await inMenu('document-menu-')).toEqual([]);
     expect(q('document-action-pdf')).not.toBeNull();
   });
 
@@ -645,13 +665,13 @@ describe('DeliveryNotePage', () => {
     await open('n1');
     expect(q('delivery-note-fixed')?.textContent).toContain('attend sa facture');
     expect(q('delivery-note-fixed')?.textContent).not.toContain('livré.');
-    expect(q('document-more')).toBeNull();
+    expect(await inMenu('document-menu-')).toEqual([]);
 
     note.set({ ...validated, status: 'cancelled' });
     await settle();
     expect(q('delivery-note-fixed')?.textContent).toContain('Annulé, il peut encore être imprimé');
     expect(q('document-action-deliver')).toBeNull();
-    expect(q('document-more')).toBeNull();
+    expect(await inMenu('document-menu-')).toEqual([]);
   });
 
   // docs/SPEC.md § 7, 2026-09-24 22:51: E runs the state's next step, whichever document it is.
@@ -679,7 +699,7 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-read-only')).not.toBeNull();
     expect(q('document-action-save')).toBeNull();
     expect(q('document-action-validate')).toBeNull();
-    expect(q('document-more')).toBeNull();
+    expect(await inMenu('document-menu-')).toEqual([]);
     expect(q('line-add')).toBeNull();
     expect(q('document-action-pdf')).not.toBeNull();
   });

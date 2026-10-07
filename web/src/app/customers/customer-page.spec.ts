@@ -296,19 +296,29 @@ describe('CustomerPage', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-26 10:08 and 18:17 (row 150, slice 5).
+  /** What the bar's « ⋮ » lists as coming (audit 2026-10-06 V-3: no longer a group in the bar). */
+  async function plannedInMenu(): Promise<string[]> {
+    const more = q('record-more');
+    if (more === null) return [];
+    more.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return [
+      ...document.body.querySelectorAll('.cdk-overlay-container [data-testid^="record-planned-"]'),
+    ]
+      .map((each) => each.getAttribute('data-testid') ?? '')
+      .filter((id) => id !== 'record-planned-heading');
+  }
+
   it('offers nothing planned while a customer is new', async () => {
     await open(undefined);
-    expect(q('planned-actions')).toBeNull();
+    expect(await plannedInMenu()).toEqual([]);
   });
 
   it('shows what a customer will offer once its planned modules ship', async () => {
     customer.set(carthage);
     await open('k1');
-    const drawn = [...fixture.nativeElement.querySelectorAll('[data-testid^="planned-action-"]')];
-    expect(drawn.map((each: Element) => each.getAttribute('data-testid'))).toEqual([
-      'planned-action-quotes',
-      'planned-action-statements',
-    ]);
+    expect(await plannedInMenu()).toEqual(['record-planned-quotes', 'record-planned-statements']);
   });
 
   it('creates a customer, then opens it by its identifier', async () => {

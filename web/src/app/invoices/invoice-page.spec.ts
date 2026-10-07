@@ -1307,29 +1307,48 @@ describe('InvoicePage', () => {
   });
 
   // docs/SPEC.md § 7, 2026-09-26 10:08 and 18:17 (row 150, slice 5).
+
+  /** What the « ⋮ » menu lists as coming, in order (audit 2026-10-06 V-3: no longer a group in the bar). */
+  async function plannedInMenu(): Promise<string[]> {
+    const more = q('document-more');
+    if (more === null) return [];
+    more.click();
+    await settle();
+    const listed = [
+      ...document.body.querySelectorAll(
+        '.cdk-overlay-container [data-testid^="document-planned-"]',
+      ),
+    ]
+      .map((each) => each.getAttribute('data-testid') ?? '')
+      .filter((id) => id !== 'document-planned-heading');
+    (document.activeElement as HTMLElement | null)?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }),
+    );
+    await settle();
+    return listed;
+  }
+
   it('offers nothing planned while an invoice is new', async () => {
     await open(undefined);
-    expect(q('planned-actions')).toBeNull();
+    expect(await plannedInMenu()).toEqual([]);
   });
 
   it('shows what an invoice will offer once its planned modules ship', async () => {
     invoice.set(issued);
     await open('i1');
-    const drawn = [...fixture.nativeElement.querySelectorAll('[data-testid^="planned-action-"]')];
-    expect(drawn.map((each: Element) => each.getAttribute('data-testid'))).toEqual([
-      'planned-action-mailing',
-      'planned-action-whatsapp',
-      'planned-action-recurring',
+    expect(await plannedInMenu()).toEqual([
+      'document-planned-mailing',
+      'document-planned-whatsapp',
+      'document-planned-recurring',
     ]);
-    // Before the working ones, so the filled next step stays last, where the hand ends up.
-    const bar = q('document-actions');
-    expect(bar?.firstElementChild?.contains(q('planned-actions'))).toBe(true);
 
     // A credit note is never made recurring.
     invoice.set({ ...issued, type: 'credit_note', correctsInvoiceId: 'i0' });
     await settle();
-    expect(q('planned-action-mailing')).not.toBeNull();
-    expect(q('planned-action-recurring')).toBeNull();
+    expect(await plannedInMenu()).toEqual([
+      'document-planned-mailing',
+      'document-planned-whatsapp',
+    ]);
   });
 
   it('shows a reader the invoice and its PDF without a way to change it', async () => {

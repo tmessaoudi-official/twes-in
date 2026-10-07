@@ -1,13 +1,10 @@
 <div
-  class="flex flex-wrap items-center justify-end gap-2"
+  class="flex flex-wrap items-center gap-2"
   role="group"
   [attr.aria-label]="label() | translate"
   data-testid="document-actions"
   data-tour="document-actions"
 >
-  @if (planned().length > 0) {
-    <app-planned-actions [actions]="planned()" />
-  }
   @for (action of visible(); track action.id) {
     @if (action.href; as href) {
       <a
@@ -57,7 +54,7 @@
       </button>
     }
   }
-  @if (rare().length > 0) {
+  @if (menu().length > 0 || coming().length > 0) {
     <button
       mat-icon-button
       type="button"
@@ -117,6 +114,31 @@
               }}</mat-icon>
             }
             <span>{{ action.label | translate: action.labelParams }}</span>
+          </button>
+        }
+      }
+      @if (coming().length > 0) {
+        @if (menu().length > 0) {
+          <mat-divider />
+        }
+        <div
+          class="px-4 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
+          data-testid="document-planned-heading"
+        >
+          {{ 'actions.coming' | translate }}
+        </div>
+        @for (action of coming(); track action.module) {
+          <button
+            mat-menu-item
+            type="button"
+            (click)="openComing(action)"
+            [attr.data-testid]="'document-planned-' + action.module"
+          >
+            <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+            <span class="twes-rail-title">
+              <span>{{ action.label | translate }}</span>
+              <span class="twes-soon" data-testid="soon">{{ 'shell.soon' | translate }}</span>
+            </span>
           </button>
         }
       }

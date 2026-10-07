@@ -15,10 +15,7 @@
         }
       </h1>
       @if (current(); as note) {
-        <p
-          class="flex flex-wrap items-center gap-x-1 text-sm text-on-surface-variant"
-          data-testid="delivery-note-status"
-        >
+        <p class="twes-dot-list text-sm text-on-surface-variant" data-testid="delivery-note-status">
           <app-status-badge
             [tone]="tones[note.status]"
             [struck]="stages[note.status] === 'withdrawn'"
@@ -26,10 +23,15 @@
             {{ 'delivery_notes.statuses.' + note.status | translate }}
           </app-status-badge>
           @if (note.issueDate) {
-            · {{ 'delivery_notes.fields.issueDate' | translate }} {{ note.issueDate | day }}
+            <span
+              >{{ 'delivery_notes.fields.issueDate' | translate }} {{ note.issueDate | day }}</span
+            >
           }
           @if (note.deliveryDate && (note.status === 'delivered' || note.status === 'invoiced')) {
-            · {{ 'delivery_notes.fields.deliveryDate' | translate }} {{ note.deliveryDate | day }}
+            <span
+              >{{ 'delivery_notes.fields.deliveryDate' | translate }}
+              {{ note.deliveryDate | day }}</span
+            >
           }
         </p>
       }

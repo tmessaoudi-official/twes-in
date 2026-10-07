@@ -11,6 +11,7 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
+import { ThemeFacade } from '../shared/theme/theme-facade';
 import { CompanyProfileFacade } from './company-profile-facade';
 import { CompanyProfilePage } from './company-profile-page';
 import type { CompanyError, CompanyProfile } from './company-types';
@@ -86,6 +87,8 @@ describe('CompanyProfilePage', () => {
       imports: [CompanyProfilePage],
       providers: [
         ...provideQuietFeedback(),
+        // The record bar hides what is coming when « Montrer ce qui arrive » is off.
+        { provide: ThemeFacade, useValue: { showComing: signal(true) } },
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',
