@@ -33,6 +33,10 @@ final class DocumentCheckConstraintsTest extends KernelTestCase
         yield 'a delivery note has a known status' => ['delivery_note', 'ck_delivery_note_status', 'status'];
         yield 'an expense is not negative' => ['expense', 'ck_expense_amount_net', 'amount_net'];
         yield 'an expense has a known status' => ['expense', 'ck_expense_status', 'status'];
+        yield 'an invoice line\'s discount is a rate or an amount' => ['invoice_line', 'ck_invoice_line_discount_once', 'discount_amount'];
+        yield 'an invoice line\'s discount amount is not negative' => ['invoice_line', 'ck_invoice_line_discount_amount', 'discount_amount'];
+        yield 'a quote line\'s discount is a rate or an amount' => ['quote_line', 'ck_quote_line_discount_once', 'discount_amount'];
+        yield 'a quote line\'s discount amount is not negative' => ['quote_line', 'ck_quote_line_discount_amount', 'discount_amount'];
     }
 
     #[DataProvider('checks')]

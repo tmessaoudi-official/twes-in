@@ -18,8 +18,8 @@ use App\Module\Products\Domain\Product;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * One line as it is written: what is sold, how much of it in which unit, its net unit price, a discount rate reducing
- * its tax base, and the taxes charged on it. A quantity is positive and never finer than its unit counts; the quantity
+ * One line as it is written: what is sold, how much of it in which unit, its net unit price, a discount reducing its tax
+ * base, as a rate or as the line's whole amount but never both, and the taxes charged on it. A quantity is positive and never finer than its unit counts; the quantity
  * is kept with three decimals, the price with four, the discount as a percentage with three. Only a line tax sits on a
  * line, each at most once. A line drafted from a delivery note names the delivery note line it invoices. On a credit
  * note, a line with a product may say its goods came back to stock. A line giving a deposit invoice back names no
@@ -33,12 +33,18 @@ final readonly class InvoiceLineDetails
     private const string QUANTITY = '/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/';
     private const string PRICE = '/^(0|[1-9][0-9]{0,9})(\.[0-9]{1,4})?$/';
     private const string RATE = '/^(0|[1-9][0-9]{0,2})(\.[0-9]{1,3})?$/';
+    private const string AMOUNT = '/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/';
 
     public string $description;
     public string $quantity;
     public string $unitPriceNet;
-    /** A percentage with three decimals; null for no discount. */
+    /** A percentage with three decimals; null for no discount, or one given as an amount. */
     public ?string $discountRate;
+    /**
+     * The line's whole discount as an amount, with three decimals; null for none, or one given as a rate. Its currency's
+     * scale and that it is at most the line are the document's to check, which knows both.
+     */
+    public ?string $discountAmount;
     /** @var list<TaxComponent> */
     public array $taxes;
     /** The lot or serial sold, for a product tracked by one; null when the line names none. */
@@ -50,10 +56,11 @@ final readonly class InvoiceLineDetails
      * @param string|null        $lotCode                  the lot or serial sold; blank or null for none
      * @param bool               $returned                 the goods of a credit note's line came back to stock; only a credit note may say so, which its document checks
      * @param Deduction|null     $deduction                the deposit invoice this line gives back; its document checks whose it is
+     * @param string|null        $discountAmount           the line's whole discount as an amount, in place of a rate; blank or null for none
      *
      * @throws InvalidInvoice
      */
-    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, public ?Uuid $sourceDeliveryNoteLineId = null, ?string $lotCode = null, public bool $returned = false, public ?Deduction $deduction = null)
+    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, public ?Uuid $sourceDeliveryNoteLineId = null, ?string $lotCode = null, public bool $returned = false, public ?Deduction $deduction = null, ?string $discountAmount = null)
     {
         if ($returned && null === $product) {
             throw new InvalidInvoice('returned', 'A line returns goods to stock only when it names a product.');
@@ -66,6 +73,10 @@ final readonly class InvoiceLineDetails
         $this->quantity = self::quantity(trim($quantity), $unit);
         $this->unitPriceNet = self::price(trim($unitPriceNet));
         $this->discountRate = self::rate(trim($discountRate ?? ''));
+        $this->discountAmount = self::amount(trim($discountAmount ?? ''));
+        if (null !== $this->discountRate && null !== $this->discountAmount) {
+            throw new InvalidInvoice('discountAmount', 'A line\'s discount is a rate or an amount, not both.');
+        }
 
         $ids = [];
         foreach ($taxes as $tax) {
@@ -88,7 +99,7 @@ final readonly class InvoiceLineDetails
     /** @throws InvalidInvoice */
     private function assertGivesBack(Deduction $deduction): void
     {
-        if (null !== $this->product || null !== $this->discountRate || null !== $this->lotCode || $this->returned || null !== $this->sourceDeliveryNoteLineId || '1.000' !== $this->quantity) {
+        if (null !== $this->product || null !== $this->discountRate || null !== $this->discountAmount || null !== $this->lotCode || $this->returned || null !== $this->sourceDeliveryNoteLineId || '1.000' !== $this->quantity) {
             throw new InvalidInvoice('deductsInvoiceId', 'A line giving a deposit back counts one, names no product, lot or delivery note and takes no discount.');
         }
         $codes = array_map(static fn (TaxComponent $tax): string => $tax->getCode(), $this->taxes);
@@ -100,7 +111,7 @@ final readonly class InvoiceLineDetails
         }
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null} what two lines are compared on */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null, string|null} what two lines are compared on */
     public function values(): array
     {
         return [
@@ -115,6 +126,7 @@ final readonly class InvoiceLineDetails
             $this->lotCode,
             $this->returned,
             $this->deduction?->values(),
+            $this->discountAmount,
         ];
     }
 
@@ -159,6 +171,19 @@ final readonly class InvoiceLineDetails
         [$units, $decimals] = [...explode('.', $price), ''];
 
         return $units.'.'.str_pad($decimals, self::PRICE_DECIMALS, '0');
+    }
+
+    /** @throws InvalidInvoice */
+    private static function amount(string $amount): ?string
+    {
+        if ('' === $amount) {
+            return null;
+        }
+        if (1 !== preg_match(self::AMOUNT, $amount)) {
+            throw new InvalidInvoice('discountAmount', 'A discount amount is a decimal number from 0 with at most three decimals.');
+        }
+
+        return Decimal::format(Decimal::of($amount), 3);
     }
 
     private static function rate(string $rate): ?string

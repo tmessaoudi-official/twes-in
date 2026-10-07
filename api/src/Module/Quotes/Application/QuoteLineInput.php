@@ -18,7 +18,10 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class QuoteLineInput
 {
-    /** @param list<Uuid>|null $taxComponentIds null for the product's default taxes; an empty list for none */
+    /**
+     * @param list<Uuid>|null $taxComponentIds null for the product's default taxes; an empty list for none
+     * @param string|null     $discountAmount  the line's whole discount as an amount, in place of a rate
+     */
     public function __construct(
         public ?Uuid $productId,
         public ?string $description,
@@ -27,6 +30,7 @@ final readonly class QuoteLineInput
         public ?string $unitPriceNet = null,
         public ?string $discountRate = null,
         public ?array $taxComponentIds = null,
+        public ?string $discountAmount = null,
     ) {
     }
 }

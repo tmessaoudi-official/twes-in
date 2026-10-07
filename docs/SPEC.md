@@ -4472,6 +4472,14 @@ functional tests run in the `tools` container, on the host's network, against th
   withholdings carry its sign, as every one of its figures does: the screens show them taken off once (« Remise 10,000 »
   on a credit note), where a minus put in front printed two, on the saved totals card too. Alternatives: the saved
   wording until something is typed.
+- [2026-10-07 18:00] ASSUMED (review): a line's discount as an amount (row 220) is the WHOLE line's discount, not an
+  amount off each unit: it stays as typed when the quantity changes, is at most what the line comes to (quantity × price,
+  rounded to the currency), and has the currency's decimals. A line says its discount one way, a rate or an amount;
+  sending both is refused on `lines[i].discountAmount`, and PostgreSQL holds the same rule. A credit note carries the
+  sign, as it does every amount; a deposit's give-back line takes neither. The PDF's discount column prints the rate
+  with « % » or the amount as money, and Factur-X writes an amount alone as the line allowance (BT-136) with no
+  percentage and no base. Alternatives: an amount off each unit (« 2 dinars de remise par pièce »), which a second
+  field could add later.
 
 ## 8. Status
 

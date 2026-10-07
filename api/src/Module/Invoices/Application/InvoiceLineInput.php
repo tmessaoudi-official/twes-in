@@ -25,6 +25,7 @@ final readonly class InvoiceLineInput
      * @param string|null     $lotCode                  the lot or serial sold, for a product tracked by one
      * @param bool            $returned                 the goods of a credit note's line came back to stock
      * @param Uuid|null       $deductsInvoiceId         a deposit invoice of the customer, given back on this document
+     * @param string|null     $discountAmount           the line's whole discount as an amount, in place of a rate
      */
     public function __construct(
         public ?Uuid $productId,
@@ -38,6 +39,7 @@ final readonly class InvoiceLineInput
         public ?string $lotCode = null,
         public bool $returned = false,
         public ?Uuid $deductsInvoiceId = null,
+        public ?string $discountAmount = null,
     ) {
     }
 }

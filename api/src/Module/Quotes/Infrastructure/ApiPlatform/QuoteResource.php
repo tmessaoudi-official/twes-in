@@ -353,7 +353,8 @@ final class QuoteResource
                 'quantity' => ['type' => 'string', 'pattern' => '^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$', 'example' => '2.5'],
                 'unitId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
                 'unitPriceNet' => ['type' => ['string', 'null'], 'pattern' => '^(0|[1-9][0-9]{0,9})(\.[0-9]{1,4})?$', 'example' => '1250.5000'],
-                'discountRate' => ['type' => ['string', 'null'], 'pattern' => '^(0|[1-9][0-9]{0,2})(\.[0-9]{1,3})?$', 'example' => '10'],
+                'discountRate' => ['type' => ['string', 'null'], 'pattern' => '^(0|[1-9][0-9]{0,2})(\.[0-9]{1,3})?$', 'example' => '10', 'description' => 'A percentage of the line; null when the line has no discount or one given as an amount.'],
+                'discountAmount' => ['type' => ['string', 'null'], 'pattern' => '^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$', 'example' => '150', 'description' => 'The line\'s whole discount as an amount, at most the line and at the currency\'s scale, in place of a rate: a line sending both is refused on `lines[i].discountAmount`. It stays the line\'s whatever its quantity.'],
                 'taxComponentIds' => ['type' => ['array', 'null'], 'items' => self::ID],
                 'net' => ['type' => 'string', 'readOnly' => true],
             ],
@@ -367,6 +368,7 @@ final class QuoteResource
         'unitId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
         'unitPriceNet' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'discountRate' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
+        'discountAmount' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'taxComponentIds' => new Assert\Optional([
             new Assert\Type('list', groups: [self::WRITE]),
             new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
@@ -440,6 +442,7 @@ final class QuoteResource
             'unitId' => $line->getUnit()->getId()->toRfc4122(),
             'unitPriceNet' => $line->getUnitPriceNet(),
             'discountRate' => $line->getDiscountRate(),
+            'discountAmount' => $line->getDiscountAmount(),
             'taxComponentIds' => array_map(static fn (QuoteLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $line->getTaxes()),
             'net' => $figures->net,
         ], $quote->getLines(), $totals->lines);
@@ -471,6 +474,7 @@ final class QuoteResource
                 self::text($line, 'unitPriceNet'),
                 self::text($line, 'discountRate'),
                 \is_array($taxIds) ? array_values(array_map(static fn (mixed $id): Uuid => Uuid::fromString(\is_string($id) ? $id : ''), $taxIds)) : null,
+                self::text($line, 'discountAmount'),
             );
         }
 

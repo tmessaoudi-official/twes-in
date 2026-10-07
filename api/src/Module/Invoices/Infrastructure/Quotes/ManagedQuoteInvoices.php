@@ -198,6 +198,7 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
             $line->getUnitPriceNet(),
             $line->getDiscountRate(),
             array_map(static fn (QuoteLineTax $tax) => $tax->getTaxComponent(), $line->getTaxes()),
+            discountAmount: $line->getDiscountAmount(),
         ), $quote->getLines());
     }
 

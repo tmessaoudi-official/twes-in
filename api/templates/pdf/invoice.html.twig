@@ -106,7 +106,7 @@
           <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
           <td>{{ line.unit.name }}</td>
           <td class="number">{{ line.unitPriceNet|decimal(scale, locale, page.numberFormat) }}</td>
-          <td class="number">{% if line.discountRate %}{{ line.discountRate|decimal(0, locale, page.numberFormat) }} %{% endif %}</td>
+          <td class="number">{% if line.discountRate %}{{ line.discountRate|decimal(0, locale, page.numberFormat) }} %{% elseif line.discountAmount %}{{ line.discountAmount|decimal(scale, locale, page.numberFormat) }}{% endif %}</td>
           <td>{{ line.taxes|map(tax => tax.code)|join(', ') }}</td>
           <td class="number">{{ figures.lines[loop.index0].net|decimal(scale, locale, page.numberFormat) }}</td>
         </tr>

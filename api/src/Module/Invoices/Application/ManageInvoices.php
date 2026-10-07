@@ -436,7 +436,7 @@ final readonly class ManageInvoices
             ?? throw new InvalidInvoice('unitPriceNet', 'A line without a product states its price.');
         $description = null === $line->description || '' === trim($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
 
-        return new InvoiceLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->sourceDeliveryNoteLineId, $line->lotCode, $line->returned);
+        return new InvoiceLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->sourceDeliveryNoteLineId, $line->lotCode, $line->returned, discountAmount: $line->discountAmount);
     }
 
     /**

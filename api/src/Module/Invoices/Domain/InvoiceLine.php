@@ -66,6 +66,9 @@ class InvoiceLine implements CompanyOwned
     #[ORM\Column(type: Types::DECIMAL, precision: 6, scale: 3, nullable: true)]
     private ?string $discountRate;
 
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $discountAmount;
+
     /** The line after its own discount, as issuing fixed it; null on a draft, whose figures are worked out on every read. */
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
     private ?string $lineNet = null;
@@ -119,6 +122,7 @@ class InvoiceLine implements CompanyOwned
         $this->unit = $details->unit;
         $this->unitPriceNet = $details->unitPriceNet;
         $this->discountRate = $details->discountRate;
+        $this->discountAmount = $details->discountAmount;
         $this->sourceDeliveryNoteLineId = $details->sourceDeliveryNoteLineId;
         $this->lotCode = $details->lotCode;
         $this->returned = $details->returned;
@@ -159,7 +163,7 @@ class InvoiceLine implements CompanyOwned
         return ['net' => $this->lineNet, 'tax' => $this->lineTax, 'gross' => $this->lineGross];
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null} compared the way InvoiceLineDetails::values() is */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null, string|null} compared the way InvoiceLineDetails::values() is */
     public function values(): array
     {
         return [
@@ -174,6 +178,7 @@ class InvoiceLine implements CompanyOwned
             $this->lotCode,
             $this->returned,
             $this->getDeduction()?->values(),
+            $this->discountAmount,
         ];
     }
 
@@ -241,6 +246,12 @@ class InvoiceLine implements CompanyOwned
     public function getDiscountRate(): ?string
     {
         return $this->discountRate;
+    }
+
+    /** The line's whole discount as an amount, with three decimals; null for none, or one given as a rate. */
+    public function getDiscountAmount(): ?string
+    {
+        return $this->discountAmount;
     }
 
     /** The delivery note line it invoices; null for a line written by hand. */

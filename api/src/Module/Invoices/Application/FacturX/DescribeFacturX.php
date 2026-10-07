@@ -184,11 +184,15 @@ final readonly class DescribeFacturX
         $percent = null;
         $basis = null;
         $discount = null;
+        // The amount the line's discount was taken from, rounded as the calculator rounded it: what is left is the net.
+        $gross = Decimal::round(Decimal::of($line->getQuantity())->mul(Decimal::of($line->getUnitPriceNet()), Decimal::WORKING_SCALE), $scale);
+        $amountOff = $line->getDiscountAmount();
         if (null !== $rate && 0 !== Decimal::of($rate)->compare(0)) {
             $percent = self::rate(Decimal::of($rate));
-            // The amount the line's discount was taken from, rounded as the calculator rounded it: what is left is the net.
-            $gross = Decimal::round(Decimal::of($line->getQuantity())->mul(Decimal::of($line->getUnitPriceNet()), Decimal::WORKING_SCALE), $scale);
             $basis = Decimal::format($gross, $scale);
+            $discount = Decimal::format($gross->sub(Decimal::of($net)), $scale);
+        } elseif (null !== $amountOff && 0 !== Decimal::of($amountOff)->compare(0)) {
+            // An amount alone (BT-136): no percentage (BT-138), so no base it was taken of (BT-137) either.
             $discount = Decimal::format($gross->sub(Decimal::of($net)), $scale);
         }
 

@@ -43,6 +43,9 @@ final class PricingVectorsTest extends TestCase
         'deduction_unsupported_inclusive' => UnsupportedTaxCombination::class,
         'deduction_exceeds_document' => InvalidDocument::class,
         'deduction_without_its_tax_amounts' => InvalidDocument::class,
+        'line_discount_exceeds_line' => InvalidDocument::class,
+        'line_discount_twice' => InvalidDocument::class,
+        'line_discount_negative' => InvalidDocument::class,
     ];
 
     public function testEverySectionHasCases(): void
@@ -201,6 +204,7 @@ final class PricingVectorsTest extends TestCase
                 $pick(self::list($line, 'taxes')),
                 true === ($line['deduction'] ?? false),
                 self::amounts($line, 'deducted_taxes'),
+                discountAmount: self::nullableString($line, 'discount_amount'),
             );
         }
 
@@ -226,6 +230,7 @@ final class PricingVectorsTest extends TestCase
                 self::string($line, $priceField),
                 self::nullableString($line, 'discount_rate'),
                 $taxes,
+                discountAmount: self::nullableString($line, 'discount_amount'),
             );
         }
         $charges = array_map(

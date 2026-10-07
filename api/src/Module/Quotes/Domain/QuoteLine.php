@@ -63,6 +63,9 @@ class QuoteLine implements CompanyOwned
     #[ORM\Column(type: Types::DECIMAL, precision: 6, scale: 3, nullable: true)]
     private ?string $discountRate;
 
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $discountAmount;
+
     /** @var Collection<int, QuoteLineTax> */
     #[ORM\OneToMany(targetEntity: QuoteLineTax::class, mappedBy: 'line', cascade: ['persist'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC'])]
@@ -81,6 +84,7 @@ class QuoteLine implements CompanyOwned
         $this->unit = $details->unit;
         $this->unitPriceNet = $details->unitPriceNet;
         $this->discountRate = $details->discountRate;
+        $this->discountAmount = $details->discountAmount;
         $this->taxes = new ArrayCollection();
         foreach ($details->taxes as $index => $tax) {
             $this->taxes->add(new QuoteLineTax($this, $index + 1, $tax));
@@ -109,7 +113,7 @@ class QuoteLine implements CompanyOwned
         }
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>} compared the way QuoteLineDetails::values() is */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null} compared the way QuoteLineDetails::values() is */
     public function values(): array
     {
         return [
@@ -120,6 +124,7 @@ class QuoteLine implements CompanyOwned
             $this->unitPriceNet,
             $this->discountRate,
             array_map(static fn (QuoteLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $this->getTaxes()),
+            $this->discountAmount,
         ];
     }
 
@@ -167,6 +172,12 @@ class QuoteLine implements CompanyOwned
     public function getDiscountRate(): ?string
     {
         return $this->discountRate;
+    }
+
+    /** The line's whole discount as an amount, with three decimals; null for none, or one given as a rate. */
+    public function getDiscountAmount(): ?string
+    {
+        return $this->discountAmount;
     }
 
     /** @return list<QuoteLineTax> in the order they are printed */

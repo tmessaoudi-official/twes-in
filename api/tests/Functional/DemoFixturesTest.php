@@ -63,6 +63,8 @@ final class DemoFixturesTest extends ApiTestCase
                 "$name has an invoice in every state",
             );
             self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM invoice WHERE company_id = ? AND document_type = 'credit_note' AND status = 'issued'", [$id]), "$name has an issued credit note");
+            self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM invoice_line l JOIN invoice i ON i.id = l.invoice_id WHERE i.company_id = ? AND i.status <> 'draft' AND l.discount_amount > 0", [$id]), "$name has an issued line discounted by an amount");
+            self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM quote_line l JOIN quote q ON q.id = l.quote_id WHERE q.company_id = ? AND l.discount_amount > 0', [$id]), "$name has a quote line discounted by an amount");
             self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM invoice WHERE company_id = ? AND document_type = 'invoice' AND status IN ('issued', 'partially_paid') AND due_date < CURRENT_DATE", [$id]), "$name has an overdue invoice");
             self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM invoice WHERE company_id = ? AND document_type = 'invoice' AND status = 'issued' AND due_date >= CURRENT_DATE", [$id]), "$name has an invoice not yet due");
             self::assertSame(0, $this->numberOf("SELECT COUNT(*) FROM invoice WHERE company_id = ? AND status = 'paid' AND amount_due <> 0", [$id]), 'a paid invoice owes nothing');

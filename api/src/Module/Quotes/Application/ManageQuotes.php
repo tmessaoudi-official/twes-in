@@ -282,7 +282,7 @@ final readonly class ManageQuotes
             ?? throw new InvalidQuote('unitPriceNet', 'A line without a product states its price.');
         $description = null === $line->description || '' === trim($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
 
-        return new QuoteLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']));
+        return new QuoteLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->discountAmount);
     }
 
     /**

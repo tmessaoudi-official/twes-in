@@ -300,6 +300,27 @@ final class QuotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, 'a file attached by mistake comes off');
     }
 
+    /** A quote's line discounted by an amount says so, is refused as an invoice's is, and its invoice keeps it. */
+    public function testALineDiscountByAnAmountIsKeptIntoTheInvoice(): void
+    {
+        $this->signedIn(self::WRITER);
+        $pose = ['description' => 'Pose', 'quantity' => '1.5', 'unitId' => $this->unitId('HUR'), 'unitPriceNet' => '40', 'taxComponentIds' => [$this->taxId('TVA19')]];
+        $this->postJson($this->path(), $this->quote(['lines' => [[...$pose, 'discountRate' => '5', 'discountAmount' => '5']]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('lines[0].discountAmount', (string) $this->client->getResponse()->getContent());
+        $this->postJson($this->path(), $this->quote(['lines' => [[...$pose, 'discountAmount' => '60.001']]]));
+        self::assertStringContainsString('lines[0].discountAmount', (string) $this->client->getResponse()->getContent());
+
+        $id = $this->sent(['lines' => [[...$pose, 'discountAmount' => '12']]]);
+        $this->getJson($this->path($id));
+        self::assertSame([['12.000', null, '48.000']], array_map(null, array_column($this->arrayAt($this->json(), 'lines'), 'discountAmount'), array_column($this->arrayAt($this->json(), 'lines'), 'discountRate'), array_column($this->arrayAt($this->json(), 'lines'), 'net')));
+
+        $this->postJson($this->path($id).'/accept', ['answeredOn' => null]);
+        $this->postJson($this->path($id).'/invoice', null);
+        $this->getJson($this->companyPath().'/invoices/'.$this->stringAt($this->json(), 'invoiceId'));
+        self::assertSame([['12.000', '48.000']], array_map(null, array_column($this->arrayAt($this->json(), 'lines'), 'discountAmount'), array_column($this->arrayAt($this->json(), 'lines'), 'net')));
+    }
+
     /** @param array<string, mixed> $changes */
     private function sent(array $changes = []): string
     {

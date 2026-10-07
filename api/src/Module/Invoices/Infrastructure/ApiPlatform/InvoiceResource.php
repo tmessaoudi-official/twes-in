@@ -311,7 +311,8 @@ final class InvoiceResource
                 'quantity' => ['type' => 'string', 'pattern' => '^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$', 'example' => '2.5'],
                 'unitId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
                 'unitPriceNet' => ['type' => ['string', 'null'], 'pattern' => '^(0|[1-9][0-9]{0,9})(\.[0-9]{1,4})?$', 'example' => '1250.5000'],
-                'discountRate' => ['type' => ['string', 'null'], 'example' => '10'],
+                'discountRate' => ['type' => ['string', 'null'], 'pattern' => '^(0|[1-9][0-9]{0,2})(\.[0-9]{1,3})?$', 'example' => '10', 'description' => 'A percentage of the line; null when the line has no discount or one given as an amount.'],
+                'discountAmount' => ['type' => ['string', 'null'], 'pattern' => '^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$', 'example' => '150', 'description' => 'The line\'s whole discount as an amount, at most the line and at the currency\'s scale, in place of a rate: a line sending both is refused on `lines[i].discountAmount`. It stays the line\'s whatever its quantity.'],
                 'taxComponentIds' => ['type' => ['array', 'null'], 'items' => self::ID],
                 'sourceDeliveryNoteLineId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
                 'sourceLeft' => ['type' => ['string', 'null'], 'readOnly' => true, 'description' => 'On a draft invoice\'s line taken from a delivery note: the most it may invoice, what the note line delivered less what the company\'s other invoices that are not cancelled take. Null otherwise.'],
@@ -332,6 +333,7 @@ final class InvoiceResource
         'unitId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
         'unitPriceNet' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'discountRate' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
+        'discountAmount' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'taxComponentIds' => new Assert\Optional([
             new Assert\Type('list', groups: [self::WRITE]),
             new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
@@ -518,6 +520,7 @@ final class InvoiceResource
             'unitId' => $line->getUnit()->getId()->toRfc4122(),
             'unitPriceNet' => $line->getUnitPriceNet(),
             'discountRate' => $line->getDiscountRate(),
+            'discountAmount' => $line->getDiscountAmount(),
             'taxComponentIds' => array_map(static fn (InvoiceLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $line->getTaxes()),
             'sourceDeliveryNoteLineId' => $line->getSourceDeliveryNoteLineId()?->toRfc4122(),
             'sourceLeft' => $sourceRoom[$line->getSourceDeliveryNoteLineId()?->toRfc4122() ?? ''] ?? null,
@@ -574,6 +577,7 @@ final class InvoiceResource
                 self::text($line, 'lotCode'),
                 true === ($line['returned'] ?? false),
                 self::uuid(self::text($line, 'deductsInvoiceId')),
+                self::text($line, 'discountAmount'),
             );
         }
 

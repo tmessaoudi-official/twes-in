@@ -17,7 +17,8 @@ use App\Module\Products\Domain\Product;
 
 /**
  * One line as it is written, the way an invoice line is, since an accepted quote becomes one: what is offered, how
- * much of it in which unit, its net unit price, a discount rate reducing its tax base, and the taxes charged on it. A
+ * much of it in which unit, its net unit price, a discount reducing its tax base, as a rate or as the line's whole amount
+ * but never both, and the taxes charged on it. A
  * quantity is positive and never finer than its unit counts; it is kept with three decimals, the price with four, the
  * discount as a percentage with three. Only a line tax sits on a line, each at most once.
  */
@@ -29,21 +30,25 @@ final readonly class QuoteLineDetails
     private const string QUANTITY = '/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/';
     private const string PRICE = '/^(0|[1-9][0-9]{0,9})(\.[0-9]{1,4})?$/';
     private const string RATE = '/^(0|[1-9][0-9]{0,2})(\.[0-9]{1,3})?$/';
+    private const string AMOUNT = '/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/';
 
     public string $description;
     public string $quantity;
     public string $unitPriceNet;
-    /** A percentage with three decimals; null for no discount. */
+    /** A percentage with three decimals; null for no discount, or one given as an amount. */
     public ?string $discountRate;
+    /** The line's whole discount as an amount, with three decimals; the quote checks its currency's scale and the line. */
+    public ?string $discountAmount;
     /** @var list<TaxComponent> */
     public array $taxes;
 
     /**
      * @param list<TaxComponent> $taxes
+     * @param string|null        $discountAmount the line's whole discount as an amount, in place of a rate; blank or null for none
      *
      * @throws InvalidQuote
      */
-    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes)
+    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, ?string $discountAmount = null)
     {
         $description = trim($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
@@ -53,6 +58,10 @@ final readonly class QuoteLineDetails
         $this->quantity = self::quantity(trim($quantity), $unit);
         $this->unitPriceNet = self::price(trim($unitPriceNet));
         $this->discountRate = self::rate(trim($discountRate ?? ''));
+        $this->discountAmount = self::amount(trim($discountAmount ?? ''));
+        if (null !== $this->discountRate && null !== $this->discountAmount) {
+            throw new InvalidQuote('discountAmount', 'A line\'s discount is a rate or an amount, not both.');
+        }
 
         $ids = [];
         foreach ($taxes as $tax) {
@@ -68,7 +77,7 @@ final readonly class QuoteLineDetails
         $this->taxes = $taxes;
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>} what two lines are compared on */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null} what two lines are compared on */
     public function values(): array
     {
         return [
@@ -79,6 +88,7 @@ final readonly class QuoteLineDetails
             $this->unitPriceNet,
             $this->discountRate,
             array_map(static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(), $this->taxes),
+            $this->discountAmount,
         ];
     }
 
@@ -106,6 +116,19 @@ final readonly class QuoteLineDetails
         [$units, $decimals] = [...explode('.', $price), ''];
 
         return $units.'.'.str_pad($decimals, self::PRICE_DECIMALS, '0');
+    }
+
+    /** @throws InvalidQuote */
+    private static function amount(string $amount): ?string
+    {
+        if ('' === $amount) {
+            return null;
+        }
+        if (1 !== preg_match(self::AMOUNT, $amount)) {
+            throw new InvalidQuote('discountAmount', 'A discount amount is a decimal number from 0 with at most three decimals.');
+        }
+
+        return Decimal::format(Decimal::of($amount), 3);
     }
 
     private static function rate(string $rate): ?string

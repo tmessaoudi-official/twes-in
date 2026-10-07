@@ -291,6 +291,7 @@ class Invoice implements CompanyOwned
             $line->getUnitPriceNet(),
             $line->getDiscountRate(),
             array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
+            discountAmount: $line->getDiscountAmount(),
         ), array_values(array_filter($invoice->getLines(), static fn (InvoiceLine $line): bool => null === $line->getDeduction()))));
         $copy->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
         $copy->retakeTaxes();
@@ -343,6 +344,7 @@ class Invoice implements CompanyOwned
             null,
             LotCode::carried($line->getProduct(), $line->getLotCode()),
             deduction: $line->getDeduction(),
+            discountAmount: $line->getDiscountAmount(),
         ), $invoice->getLines()));
         $credit->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
         $credit->retakeTaxes();
@@ -537,6 +539,7 @@ class Invoice implements CompanyOwned
             $line->getLotCode(),
             $line->isReturned(),
             $line->getDeduction(),
+            $line->getDiscountAmount(),
         );
     }
 

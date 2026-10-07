@@ -110,6 +110,22 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         self::assertStringContainsString('<title>Facture d’acompte </title>', $html);
     }
 
+    public function testALineDiscountIsPrintedAsItWasGivenAsARateOrAnAmount(): void
+    {
+        self::bootKernel();
+        $line = $this->invoice->getLines()[0];
+        $tax = [$line->getTaxes()[0]->getTaxComponent()];
+        $this->invoice = Invoice::create($this->invoice->getCompany(), $this->invoice->getEstablishment(), $this->invoice->getCustomer(), new InvoiceHeader(), [
+            new InvoiceLineDetails(null, 'Réglage', '2', $line->getUnit(), '150', '10', $tax),
+            new InvoiceLineDetails(null, 'Pose', '1', $line->getUnit(), '80', null, $tax, discountAmount: '12.5'),
+        ], [], new \DateTimeImmutable('2026-10-07 09:00:00'));
+
+        $html = $this->html(new DocumentDesign(), [], []);
+
+        self::assertMatchesRegularExpression('#<td class="number">10\s%</td>#u', $html, 'a rate with its sign');
+        self::assertMatchesRegularExpression('#<td class="number">12,50</td>#u', $html, 'an amount as money is written');
+    }
+
     /**
      * A layout restyles the one content every document prints; it may not take any of it away. Its rules never hide,
      * fade or move anything, and never touch the watermark or a mention.

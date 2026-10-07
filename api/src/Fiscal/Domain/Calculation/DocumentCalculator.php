@@ -31,9 +31,12 @@ final class DocumentCalculator
         foreach ($document->lines as $line) {
             // A deduction gives back what a deposit invoice already charged, so it runs against the document's sign.
             $amount = Decimal::round(Decimal::of($line->quantity)->mul(Decimal::of($line->unitPrice), Decimal::WORKING_SCALE)->mul($line->deduction ? -$sign : $sign), $scale);
-            $discount = null === $line->discountRate
-                ? Decimal::zero()
-                : Decimal::round($amount->mul(Rate::fromPercentage($line->discountRate)->fraction(), Decimal::WORKING_SCALE), $scale);
+            $discount = match (true) {
+                null !== $line->discountRate => Decimal::round($amount->mul(Rate::fromPercentage($line->discountRate)->fraction(), Decimal::WORKING_SCALE), $scale),
+                // The line's whole discount, typed positive: the document carries the sign, as it does the amount's.
+                null !== $line->discountAmount => Decimal::of($line->discountAmount)->mul($sign),
+                default => Decimal::zero(),
+            };
             $amounts[] = $amount;
             $discounts[] = $discount;
             $typed[] = $amount->sub($discount);
@@ -344,6 +347,26 @@ final class DocumentCalculator
         return array_map(static fn (TaxInput $tax) => $groups[$tax->code], $taxes);
     }
 
+    /** A line's discount as an amount: said one way only, positive, money at the currency's scale, at most the line. */
+    private function guardDiscountAmount(LineInput $line, int $i, int $scale): void
+    {
+        $discount = (string) $line->discountAmount;
+        if (null !== $line->discountRate) {
+            throw new InvalidDocument(\sprintf('Line %d: a discount is a rate or an amount, not both.', $i + 1));
+        }
+        if ($line->deduction) {
+            throw new InvalidDocument(\sprintf('Line %d: a deduction takes no discount; the deposit it gives back already did.', $i + 1));
+        }
+        if (Decimal::of($discount)->compare(0) < 0) {
+            throw new InvalidDocument(\sprintf('Line %d: a discount amount is never negative; a credit note carries the sign.', $i + 1));
+        }
+        $this->fitsScale($discount, $scale, \sprintf('Line %d: the discount', $i + 1));
+        $amount = Decimal::round(Decimal::of($line->quantity)->mul(Decimal::of($line->unitPrice), Decimal::WORKING_SCALE), $scale);
+        if (Decimal::of($discount)->compare($amount) > 0) {
+            throw new InvalidDocument(\sprintf('Line %d: a discount of %s is more than the line, %s.', $i + 1, $discount, Decimal::format($amount, $scale)));
+        }
+    }
+
     private function guard(DocumentInput $document): void
     {
         if ($document->scale < 0 || $document->scale > 4) {
@@ -376,6 +399,9 @@ final class DocumentCalculator
                 if ($rate->compare(0) < 0 || $rate->compare(100) > 0) {
                     throw new InvalidDocument(\sprintf('Line %d: a discount rate lies between 0 and 100.', $i + 1));
                 }
+            }
+            if (null !== $line->discountAmount) {
+                $this->guardDiscountAmount($line, $i, $document->scale);
             }
             foreach ($line->taxes as $tax) {
                 if (TaxKind::PercentageLine !== $tax->kind) {

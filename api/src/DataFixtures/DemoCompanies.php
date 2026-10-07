@@ -522,7 +522,8 @@ final class DemoCompanies extends Fixture
         foreach ($plan as $n => $quote) {
             $customerId = $customerIds[$quote['customer'] % \count($customerIds)];
             $lines = [
-                new QuoteLineInput($sellable[(2 * $n + 1) % \count($sellable)], null, (string) (3 + $n)),
+                // A discount as an amount on one quote in two, small enough for the cheapest product the catalogue sells.
+                new QuoteLineInput($sellable[(2 * $n + 1) % \count($sellable)], null, (string) (3 + $n), discountAmount: 1 === $n % 2 ? '0.1' : null),
                 new QuoteLineInput($sellable[(2 * $n + 4) % \count($sellable)], null, '1', discountRate: 0 === $n % 2 ? '5' : null),
             ];
             $header = new QuoteHeader(customerReference: 0 === $n ? 'DA-2026-014' : null, discountAmount: 1 === $n ? '10' : null);
@@ -572,7 +573,7 @@ final class DemoCompanies extends Fixture
         $input = static function (int $i) use ($customerIds, $sellable): InvoiceInput {
             $lines = [];
             for ($k = 0; $k <= $i % 3; ++$k) {
-                $lines[] = new InvoiceLineInput($sellable[(7 * $i + 11 * $k) % \count($sellable)], null, (string) (1 + ($i + $k) % 4), discountRate: 0 === $i % 5 && 0 === $k ? '10' : null);
+                $lines[] = new InvoiceLineInput($sellable[(7 * $i + 11 * $k) % \count($sellable)], null, (string) (1 + ($i + $k) % 4), discountRate: 0 === $i % 5 && 0 === $k ? '10' : null, discountAmount: 0 === $i % 5 && 1 === $k ? '0.1' : null);
             }
 
             return new InvoiceInput(

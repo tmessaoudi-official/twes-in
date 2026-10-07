@@ -117,6 +117,21 @@ final class DescribeFacturXTest extends TestCase
         self::assertCoherent($cii);
     }
 
+    /** A line discounted by an amount is an allowance of that amount alone: no percentage, and so no base it was taken of. */
+    public function testALineDiscountByAnAmountIsAnAllowanceOfThatAmountAlone(): void
+    {
+        $line = $this->line('Arbre usiné', '3', 'C62', '100', null, 'TVA20');
+        $invoice = $this->issued($this->customer('standard'), [
+            new InvoiceLineDetails(null, $line->description, $line->quantity, $line->unit, $line->unitPriceNet, null, $line->taxes, discountAmount: '30'),
+        ]);
+
+        $cii = $this->describe->describe($this->company, $invoice->getId());
+
+        self::assertSame([['1', 'Arbre usiné', null, '100.0000', '3.000', 'C62', null, null, '30.00', 'S', '20.00', null, '270.00']], array_map(self::lineRow(...), $cii->lines));
+        self::assertSame(['270.00', '0.00', '270.00', '54.00', '324.00', '324.00'], self::totals($cii));
+        self::assertCoherent($cii);
+    }
+
     public function testACreditNoteIsA381ReferencingTheInvoiceItCorrectsInPositiveAmounts(): void
     {
         $invoice = $this->issued($this->customer('standard'), [$this->line('Réglage du tour', '2', 'C62', '150', null, 'TVA20')]);

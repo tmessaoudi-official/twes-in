@@ -39,13 +39,15 @@ final readonly class QuoteTotals
     }
 
     /**
-     * The totals, or what refuses them named: a document discount finer than the currency or above the lines' net on
+     * The totals, or what refuses them named: a line's discount amount finer than the currency or above the line on
+     * `lines[i].discountAmount`, a document discount finer than the currency or above the lines' net on
      * `discountAmount`, anything else the calculator refuses on `lines`.
      *
      * @throws InvalidQuote
      */
     public function checked(Quote $quote): DocumentTotals
     {
+        $this->checkLineDiscounts($quote);
         $discount = $quote->getHeader()->discountAmount;
         if (null !== $discount) {
             $scale = $this->scales->of($quote->getCompany()->getCurrency());
@@ -68,6 +70,26 @@ final readonly class QuoteTotals
         }
     }
 
+    /** @throws InvalidQuote */
+    private function checkLineDiscounts(Quote $quote): void
+    {
+        $scale = $this->scales->of($quote->getCompany()->getCurrency());
+        foreach ($quote->getLines() as $i => $line) {
+            $discount = $line->getDiscountAmount();
+            if (null === $discount) {
+                continue;
+            }
+            $field = \sprintf('lines[%d].discountAmount', $i);
+            if (0 !== Decimal::round(Decimal::of($discount), $scale)->compare(Decimal::of($discount))) {
+                throw new InvalidQuote($field, \sprintf('The currency %s has %d decimals.', $quote->getCompany()->getCurrency(), $scale));
+            }
+            $amount = Decimal::round(Decimal::of($line->getQuantity())->mul(Decimal::of($line->getUnitPriceNet()), Decimal::WORKING_SCALE), $scale);
+            if (Decimal::of($discount)->compare($amount) > 0) {
+                throw new InvalidQuote($field, \sprintf('A line\'s discount is at most what the line comes to, %s.', Decimal::format($amount, $scale)));
+            }
+        }
+    }
+
     /**
      * @throws InvalidDocument           when the quote cannot be totalled
      * @throws UnsupportedTaxCombination when the lines combine taxes the calculator does not
@@ -85,6 +107,7 @@ final readonly class QuoteTotals
             $line->getUnitPriceNet(),
             $line->getDiscountRate(),
             array_map(static fn (QuoteLineTax $tax): TaxInput => TaxInput::percentage($tax->getCode(), Rate::fromPercentage($tax->getRate()), $tax->entersVatBase()), $line->getTaxes()),
+            discountAmount: $line->getDiscountAmount(),
         ), $quote->getLines());
 
         return new DocumentCalculator()->calculate(new DocumentInput(

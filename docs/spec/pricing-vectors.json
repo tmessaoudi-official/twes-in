@@ -8,7 +8,8 @@
     "gross": "gross = net + vat",
     "vat_rounding": "Each percentage tax is rounded where the document's rounding point says. per_rate_group, the default of both presets and the order of EN 16931 BR-CO-17, sums the base of the lines sharing the tax and rounds once; per_line rounds on each line and sums. The two differ by a millime on some inputs, and cases below pin both.",
     "authored_field": "A product stores WHICH field the user typed (authored_by: profit_rate or net_price). The typed field is authoritative and is NEVER recomputed; only the other is derived. Changing the cost preserves the RATE and moves the PRICE — and when the price was the typed field, the rate implied by the typed pair is what carries forward, so authorship transfers to the rate.",
-    "tax_components": "A line carries a SET of tax components (docs/SPEC.md § 3). A percentage component flagged enters_vat_base (a levy: Tunisia's FODEC) is computed on the line's discounted net first, and its amount joins the base of every other percentage component on that line. A fixed_document component is added after every tax, outside every base and every discount. A withholding_total component applies when the document's total excluding fixed charges reaches its threshold in absolute value, is computed on that amount, and reduces the amount due, never the total. Tax-inclusive entry is refused on a line carrying a flagged component or more than one percentage component (ruled 2026-09-13). Cases written with `components` name each line's taxes by code in `lines[].taxes` and the document's in `document_taxes`; the older cases write a VAT rate per line or per document and `fixed_charges`, which the consumer maps onto the same components."
+    "tax_components": "A line carries a SET of tax components (docs/SPEC.md § 3). A percentage component flagged enters_vat_base (a levy: Tunisia's FODEC) is computed on the line's discounted net first, and its amount joins the base of every other percentage component on that line. A fixed_document component is added after every tax, outside every base and every discount. A withholding_total component applies when the document's total excluding fixed charges reaches its threshold in absolute value, is computed on that amount, and reduces the amount due, never the total. Tax-inclusive entry is refused on a line carrying a flagged component or more than one percentage component (ruled 2026-09-13). Cases written with `components` name each line's taxes by code in `lines[].taxes` and the document's in `document_taxes`; the older cases write a VAT rate per line or per document and `fixed_charges`, which the consumer maps onto the same components.",
+    "line_discount": "A line's discount is either a rate or an amount, never both. A rate takes its share of the line's amount, rounded to the currency; an amount is the discount of the whole line as typed, at the currency's scale, at most the line's amount, and it does not move when the quantity does. Either way the rounded discount is subtracted from the line's amount before the document discount and before any tax, and a credit note carries the sign. A deduction of a deposit takes neither."
   },
   "conventions": {
     "amounts": "Decimal strings at exactly the currency's own scale. TND has THREE decimals (1 dinar = 1000 millimes), EUR two, JPY none. A two-decimal assumption is wrong for the default currency.",
@@ -2902,6 +2903,199 @@
         "total": "0.002",
         "withholding": [],
         "amount_due": "0.002"
+      }
+    },
+    {
+      "id": "line-discount-as-an-amount-reduces-the-vat-base",
+      "why": "The same line as line-discount-reduces-the-vat-base with the discount typed as an amount: 10 x 15.000 = 150.000, 20.000 off the line -> line net 130.000, VAT at 19 % on 130.000 = 24.700. The amount is the line's whole discount, not a discount per unit.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "10",
+          "unit_net": "15.000",
+          "discount_amount": "20.000",
+          "line_discount": "20.000",
+          "line_net": "130.000",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "130.000",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "130.000",
+          "vat": "24.700"
+        }
+      ],
+      "vat": "24.700",
+      "vat_by_line": [
+        "24.700"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "154.700"
+      }
+    },
+    {
+      "id": "line-discount-amount-on-a-credit-note-carries-its-sign",
+      "why": "A credit note writes its discount amount positive, as every amount it is typed with, and carries the sign itself: the line's amount, its discount and its net all turn negative.",
+      "currency": "TND",
+      "document_type": "credit",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "10",
+          "unit_net": "15.000",
+          "discount_amount": "20.000",
+          "line_discount": "-20.000",
+          "line_net": "-130.000",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "-130.000",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "-130.000",
+          "vat": "-24.700"
+        }
+      ],
+      "vat": "-24.700",
+      "vat_by_line": [
+        "-24.700"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "-154.700"
+      }
+    },
+    {
+      "id": "inclusive-line-discount-as-an-amount-comes-off-the-gross",
+      "why": "Under inclusive tax the amount is taken off the gross the line was typed in, before extraction: 2 x 119.000 = 238.000 gross, 38.000 off -> 200.000 gross at 19 % -> net 168.067, VAT 31.933.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "inclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "2",
+          "unit_gross": "119.000",
+          "discount_amount": "38.000",
+          "line_discount": "38.000",
+          "line_gross": "200.000",
+          "line_net": "168.067",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "168.067",
+      "subtotal_gross": "200.000",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "168.067",
+          "vat": "31.933"
+        }
+      ],
+      "vat": "31.933",
+      "vat_by_line": [
+        "31.933"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "200.000"
+      }
+    },
+    {
+      "id": "line-discount-amount-above-the-line-is-refused",
+      "why": "A line cannot be discounted below nothing: 150.000 of goods with 150.001 off is refused, never clamped.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "10",
+          "unit_net": "15.000",
+          "discount_amount": "150.001",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "0",
+      "vat": "0",
+      "fixed_charges": [],
+      "expected": {
+        "error": "line_discount_exceeds_line"
+      }
+    },
+    {
+      "id": "line-discount-as-a-rate-and-an-amount-is-refused",
+      "why": "A line says its discount one way: a rate and an amount together are refused, never added.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "10",
+          "unit_net": "15.000",
+          "discount_rate": "10",
+          "discount_amount": "5.000",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "0",
+      "vat": "0",
+      "fixed_charges": [],
+      "expected": {
+        "error": "line_discount_twice"
+      }
+    },
+    {
+      "id": "line-discount-amount-finer-than-the-currency-is-refused",
+      "why": "A discount amount is money: four decimals in a three-decimal currency is refused, never rounded.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "10",
+          "unit_net": "15.000",
+          "discount_amount": "1.0005",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "0",
+      "vat": "0",
+      "fixed_charges": [],
+      "expected": {
+        "error": "amount_scale_exceeds_currency"
+      }
+    },
+    {
+      "id": "line-discount-amount-negative-is-refused",
+      "why": "A discount amount is typed positive on every document; a negative one would charge more and is refused.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "10",
+          "unit_net": "15.000",
+          "discount_amount": "-1.000",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "0",
+      "vat": "0",
+      "fixed_charges": [],
+      "expected": {
+        "error": "line_discount_negative"
       }
     }
   ],

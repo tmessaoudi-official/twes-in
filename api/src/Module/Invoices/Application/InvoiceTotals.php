@@ -42,13 +42,15 @@ final readonly class InvoiceTotals
     }
 
     /**
-     * The totals, or what refuses them named: a document discount finer than the currency or above the lines' net on
+     * The totals, or what refuses them named: a line's discount amount finer than the currency or above the line on
+     * `lines[i].discountAmount`, a document discount finer than the currency or above the lines' net on
      * `discountAmount`, anything else the calculator refuses on `lines`.
      *
      * @throws InvalidInvoice
      */
     public function checked(Invoice $invoice): DocumentTotals
     {
+        $this->checkLineDiscounts($invoice);
         $discount = $invoice->getHeader()->discountAmount;
         if (null !== $discount) {
             $scale = $this->scales->of($invoice->getCompany()->getCurrency());
@@ -68,6 +70,26 @@ final readonly class InvoiceTotals
             return $this->of($invoice);
         } catch (InvalidDocument|UnsupportedTaxCombination $refused) {
             throw new InvalidInvoice('lines', $refused->getMessage());
+        }
+    }
+
+    /** @throws InvalidInvoice */
+    private function checkLineDiscounts(Invoice $invoice): void
+    {
+        $scale = $this->scales->of($invoice->getCompany()->getCurrency());
+        foreach ($invoice->getLines() as $i => $line) {
+            $discount = $line->getDiscountAmount();
+            if (null === $discount) {
+                continue;
+            }
+            $field = \sprintf('lines[%d].discountAmount', $i);
+            if (0 !== Decimal::round(Decimal::of($discount), $scale)->compare(Decimal::of($discount))) {
+                throw new InvalidInvoice($field, \sprintf('The currency %s has %d decimals.', $invoice->getCompany()->getCurrency(), $scale));
+            }
+            $amount = Decimal::round(Decimal::of($line->getQuantity())->mul(Decimal::of($line->getUnitPriceNet()), Decimal::WORKING_SCALE), $scale);
+            if (Decimal::of($discount)->compare($amount) > 0) {
+                throw new InvalidInvoice($field, \sprintf('A line\'s discount is at most what the line comes to, %s.', Decimal::format($amount, $scale)));
+            }
         }
     }
 
@@ -114,6 +136,7 @@ final readonly class InvoiceTotals
             array_map(static fn (InvoiceLineTax $tax): TaxInput => TaxInput::percentage($tax->getCode(), Rate::fromPercentage($tax->getRate()), $tax->entersVatBase()), $line->getTaxes()),
             null !== $line->getDeduction(),
             self::deducted($line),
+            $line->getDiscountAmount(),
         ), $invoice->getLines());
         $corrected = InvoiceType::CreditNote === $invoice->getType() ? $invoice->getCorrectedInvoice() : null;
         $remaining = null === $corrected ? null : $this->remainingWithholdings($corrected, $invoice);

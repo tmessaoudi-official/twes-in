@@ -1456,6 +1456,41 @@ final class InvoicesTest extends ApiTestCase
     }
 
     /**
+     * A line's discount is a rate or an amount (docs/SPEC.md § 7, the live line figures, row 220): an amount is the
+     * whole line's, kept with three decimals, and every way a line is copied keeps it.
+     */
+    public function testALineDiscountIsARateOrAnAmountAndEveryCopyKeepsIt(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit']);
+        $line = ['description' => 'Conseil', 'quantity' => '2', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '500', 'taxComponentIds' => [$this->taxId('TVA19')]];
+
+        foreach ([['discountRate' => '10', 'discountAmount' => '5'], ['discountAmount' => '1000.001'], ['discountAmount' => '1.0005'], ['discountAmount' => '-1'], ['discountAmount' => 'dix']] as $refused) {
+            $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, ...$refused]]]));
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, json_encode($refused, \JSON_THROW_ON_ERROR));
+            self::assertStringContainsString('lines[0].discountAmount', (string) $this->client->getResponse()->getContent());
+        }
+
+        $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'discountAmount' => '150']]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->stringAt($this->json(), 'id');
+        $lines = $this->arrayAt($this->json(), 'lines');
+        self::assertSame([['150.000', null, '850.000']], array_map(null, array_column($lines, 'discountAmount'), array_column($lines, 'discountRate'), array_column($lines, 'net')));
+        self::assertSame(['850.000', '161.500', '1011.500'], [$this->json()['subtotalNet'], $this->json()['totalTax'], $this->json()['total']]);
+
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'discountAmount' => '100']]]));
+        self::assertSame(['100.000', '900.000'], [$this->arrayAt($this->json(), 'lines')[0]['discountAmount'] ?? null, $this->arrayAt($this->json(), 'lines')[0]['net'] ?? null], 'a revision changing the amount alone changes the line');
+
+        $this->postJson($this->path($id).'/duplicate', null);
+        self::assertSame(['100.000'], array_column($this->arrayAt($this->json(), 'lines'), 'discountAmount'), 'a copy keeps it');
+
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path($id).'/credit-notes', ['creditNoteReason' => 'Retour']);
+        $credit = $this->json();
+        self::assertSame([['100.000', '-900.000']], array_map(null, array_column($this->arrayAt($credit, 'lines'), 'discountAmount'), array_column($this->arrayAt($credit, 'lines'), 'net')), 'a credit note gives it back with the line');
+    }
+
+    /**
      * @param array<string, mixed> $changes
      *
      * @return array<string, mixed>
