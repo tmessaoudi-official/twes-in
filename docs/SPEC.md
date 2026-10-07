@@ -4306,6 +4306,20 @@ functional tests run in the `tools` container, on the host's network, against th
   no payment, while it still needs an exempt customer's provision. The demo's French company gives both. Alternatives: a
   warning at issue (refused by the 18:30 ruling); the rate as a decimal (« trois fois le taux d'intérêt légal » is a lawful
   rate it cannot hold); the reference as a customer column (a group or the whole company often shares one provision).
+- [2026-10-07 09:14] ASSUMED (review): invoice design slice 1, second part: **three built-in layouts and the document accent**.
+  `document.layout` (`classic`, `modern`, `compact`) and `document.accent` (a colour, `#1f2328` by default, the ink documents
+  always printed in) are company settings, kept with an invoice, a credit note or a delivery note when it is issued or
+  validated (`print_settings`), so a copy prints as the original did. A layout is a stylesheet over the one content every
+  document prints (`templates/pdf/_document.css.twig`, which both documents now share instead of copying): classic is
+  today's look with the rules in the accent; modern puts the title, the table's head and the total on bands of the accent;
+  compact is smaller and tighter. A test renders every layout with every mention of every preset and refuses a layout
+  rule that hides, fades, moves or names the watermark or a mention, which is how « every legally required mention printed
+  whatever the design does » (2026-10-01 23:30) is held. The printed colours are derived from the accent so text stays
+  readable on any pick (white or black on its bands, the accent darkened to 4.5:1 as text on paper), as the screen's own
+  accent does. Found while looking at the renders: a filled mention holding a percent sign (« 12 % ») was dropped by the
+  template's last-resort guard, which now drops only an unfilled `%name%`. Not built here: a choice of fonts (refused
+  2026-09-21 19:20), paper sizes, the account statement's design. Alternatives: a layout per document type; layouts as
+  separate templates (each would have to be kept printing every mention on its own).
 
 ## 8. Status
 

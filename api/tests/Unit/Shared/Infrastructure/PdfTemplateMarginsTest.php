@@ -33,5 +33,13 @@ final class PdfTemplateMarginsTest extends TestCase
                 self::assertStringNotContainsString('margin', $rule, "$name leaves its page margins to the renderer");
             }
         }
+
+        // A partial every document includes (its shared stylesheet and layouts) may not set them either.
+        $partials = glob(\dirname(__DIR__, 4).'/templates/pdf/_*.twig') ?: [];
+        self::assertNotSame([], $partials, 'the shared stylesheet is found');
+        foreach ($partials as $partial) {
+            preg_match_all('/@page\s*\{([^}]*)\}/', (string) file_get_contents($partial), $rules);
+            self::assertSame([], array_filter($rules[1], static fn (string $rule): bool => str_contains($rule, 'margin')), basename($partial).' leaves the page margins to the renderer');
+        }
     }
 }

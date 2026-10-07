@@ -12,6 +12,7 @@ namespace App\Module\Invoices\Application;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceFigures;
+use App\Shared\Domain\DocumentDesign;
 use App\Tenancy\Domain\SellerSnapshot;
 
 /**
@@ -60,6 +61,8 @@ final readonly class InvoicePage
         /** What an up-to-date copy stamps: `paid`, `settled` or `partial`; null on every other output or when the company keeps it off. */
         public ?string $paidStamp = null,
         public array $mentionParameters = [],
+        /** The layout and accent it prints in: as issuing kept them, or the company's today for a draft. */
+        public DocumentDesign $design = new DocumentDesign(),
     ) {
     }
 

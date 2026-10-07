@@ -12,6 +12,7 @@ namespace App\Module\DeliveryNotes\Application;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
+use App\Shared\Domain\DocumentDesign;
 use App\Tenancy\Domain\SellerSnapshot;
 
 /**
@@ -43,6 +44,8 @@ final readonly class DeliveryNotePage
         /** The company's `presentation.date-format` and `presentation.number-format`, `auto` for the language's. */
         public string $dateFormat = 'auto',
         public string $numberFormat = 'auto',
+        /** The layout and accent it prints in: as validation kept them, or the company's today for a draft. */
+        public DocumentDesign $design = new DocumentDesign(),
     ) {
     }
 }

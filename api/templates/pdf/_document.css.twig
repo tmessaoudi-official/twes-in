@@ -1,0 +1,55 @@
+{#- What every printed document shares, and its design (docs/SPEC.md § 7, 2026-10-06 10:19): the base rules, the accent's
+    colours as DocumentDesign derives them, and each built-in layout as rules over the one content every document prints.
+    A layout restyles; it never hides, moves out of the page or recolours the watermark, and it names no mention, so no
+    design can leave out what the law asks a document to say. Included inside each document's <style>, which then adds
+    its own rules. `design` is a DocumentDesign. -#}
+{#- DocumentDesign accepts nothing but #rrggbb and derives the rest: Twig's CSS escaping would write `#` as `\23 `, which
+    is not a colour, so these four print as they are. #}
+{% autoescape false %}
+    :root {
+      --accent: {{ design.accent }};
+      --accent-ink: {{ design.inkOnAccent }};
+      --accent-text: {{ design.accentOnPaper }};
+      --accent-tint: {{ design.tint }};
+    }
+{% endautoescape %}
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Inter", "Helvetica Neue", Arial, sans-serif; font-size: 10pt; line-height: 1.4; color: #1f2328; }
+    .parties { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    .party { width: 48%; }
+    .party h2 { margin: 0 0 4px; font-size: 9pt; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #57606a; }
+    .logo { display: block; max-width: 180px; max-height: 64px; object-fit: contain; margin-bottom: 8px; }
+    .company-name { font-size: 14pt; font-weight: 700; }
+    .title { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--accent-text); padding-bottom: 6px; margin-bottom: 12px; }
+    .title h1 { margin: 0; font-size: 18pt; color: var(--accent-text); }
+    .facts { display: grid; grid-template-columns: repeat(4, auto); gap: 4px 16px; margin-bottom: 16px; }
+    .facts dt { font-size: 8pt; color: #57606a; }
+    .facts dd { margin: 0; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: .04em; color: #57606a; border-bottom: 1px solid #d0d7de; padding: 4px; }
+    td { padding: 6px 4px; border-bottom: 1px solid #eaeef2; vertical-align: top; }
+    .number { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .totals { margin-left: auto; margin-top: 12px; }
+    .totals td { border: 0; padding: 2px 4px; }
+    .totals .grand td { border-top: 2px solid var(--accent-text); font-weight: 700; padding-top: 6px; }
+    .mention, .remarks { margin-top: 16px; }
+    .muted { color: #57606a; }
+    .watermark { position: fixed; top: 45%; left: 0; right: 0; text-align: center; transform: rotate(-30deg); font-size: 96pt; font-weight: 800; color: rgba(207, 34, 46, .14); letter-spacing: .1em; }
+
+    {# Modern: the title, the table's head and the total on bands of the accent. #}
+    .layout-modern .party h2 { color: var(--accent-text); }
+    .layout-modern .title { align-items: center; border-bottom: 0; border-radius: 4px; padding: 10px 14px; background: var(--accent); color: var(--accent-ink); }
+    .layout-modern .title h1 { color: var(--accent-ink); }
+    .layout-modern th { color: var(--accent-text); background: var(--accent-tint); border-bottom: 2px solid var(--accent); padding: 6px 4px; }
+    .layout-modern .totals .grand td { border-top: 0; background: var(--accent); color: var(--accent-ink); padding: 6px 4px; }
+
+    {# Compact: smaller and tighter, for a document of many lines. #}
+    .layout-compact { font-size: 8.5pt; line-height: 1.3; }
+    .layout-compact .parties { margin-bottom: 12px; }
+    .layout-compact .company-name { font-size: 12pt; }
+    .layout-compact .logo { max-height: 48px; }
+    .layout-compact .title { margin-bottom: 8px; padding-bottom: 4px; }
+    .layout-compact .title h1 { font-size: 14pt; }
+    .layout-compact .facts { margin-bottom: 8px; gap: 2px 12px; }
+    .layout-compact th { padding: 2px 4px; }
+    .layout-compact td { padding: 3px 4px; }

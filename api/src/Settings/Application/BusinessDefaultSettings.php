@@ -13,6 +13,7 @@ use App\Settings\Domain\SettingChain;
 use App\Settings\Domain\SettingDefinition;
 use App\Settings\Domain\SettingLevel;
 use App\Settings\Domain\SettingType;
+use App\Shared\Domain\DocumentDesign;
 
 /**
  * The business defaults a company sets once and its customers, products and documents override (docs/SPEC.md § 3
@@ -46,6 +47,12 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
         $partiesNotDocument = [SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer];
         yield new SettingDefinition('document.late_payment_rate', SettingType::Text, '', SettingChain::Parties, $partiesNotDocument, 'settings.document.late_payment_rate', self::MODULE, maxLength: 200);
         yield new SettingDefinition('document.exemption_reference', SettingType::Text, '', SettingChain::Parties, $partiesNotDocument, 'settings.document.exemption_reference', self::MODULE, maxLength: 200);
+
+        // How every document the company prints looks (docs/SPEC.md § 7, 2026-10-06 10:19): a built-in layout and an accent,
+        // kept with a document when it is issued. The company's alone: a document is the company's, whoever it goes to.
+        // Written out, so the labels gate can read them; a test keeps them DocumentLayout's cases.
+        yield new SettingDefinition('document.layout', SettingType::Enum, 'classic', SettingChain::Parties, [SettingLevel::Company], 'settings.document.layout', self::MODULE, choices: ['classic', 'modern', 'compact']);
+        yield new SettingDefinition('document.accent', SettingType::Colour, DocumentDesign::DEFAULT_ACCENT, SettingChain::Parties, [SettingLevel::Company], 'settings.document.accent', self::MODULE);
 
         // Whether an up-to-date copy stamps what became of the invoice: « Acquittée », « Soldée » or « Réglée partiellement ».
         // Off unless the company asks, because a stamp on a document reads as a statement the seller makes.

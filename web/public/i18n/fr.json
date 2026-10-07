@@ -856,7 +856,9 @@
       "amount_in_words": "Écrire le total en lettres sur les documents",
       "paid_stamp": "Tamponner sur la copie à jour ce que la facture est devenue (« Acquittée », « Soldée », « Réglée partiellement »)",
       "late_payment_rate": "Taux des pénalités de retard (imprimé là où la loi le demande, ex. « trois fois le taux d’intérêt légal »)",
-      "exemption_reference": "Texte d’exonération de TVA (imprimé pour un client exonéré, ex. « article 261-4-4° du CGI »)"
+      "exemption_reference": "Texte d’exonération de TVA (imprimé pour un client exonéré, ex. « article 261-4-4° du CGI »)",
+      "layout": "Mise en page des documents",
+      "accent": "Couleur d’accent des documents"
     },
     "credit": {
       "limit": "Plafond de crédit du client",
@@ -923,6 +925,11 @@
         "language": {
           "fr": "Français",
           "en": "Anglais"
+        },
+        "layout": {
+          "classic": "Classique",
+          "modern": "Moderne",
+          "compact": "Compacte"
         }
       },
       "presentation": {

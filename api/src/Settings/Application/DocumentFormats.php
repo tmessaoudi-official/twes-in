@@ -9,11 +9,13 @@ declare(strict_types=1);
 
 namespace App\Settings\Application;
 
+use App\Shared\Domain\DocumentDesign;
+use App\Shared\Domain\DocumentLayout;
 use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Domain\Company;
 
 /**
- * How a printed document writes its days and figures (docs/SPEC.md § 7, 2026-09-25 12:45, row 130): the company's own
+ * How a printed document writes its days and figures (docs/SPEC.md § 7, 2026-09-25 12:45, row 130), and how it looks: the company's own
  * `presentation.date-format` and `presentation.number-format`, since a printed document is the company's and never the
  * person's who printed it. `auto` leaves both to the document's language.
  */
@@ -38,6 +40,19 @@ final readonly class DocumentFormats
         $notes = $settings->value($atCustomer, 'document.printed_notes');
         $formats = self::of($settings, $company);
 
-        return new PrintSettings(\is_string($notes) ? $notes : '', $formats['dateFormat'], $formats['numberFormat'], true === $settings->value($atCustomer, 'document.amount_in_words'), true === $settings->value($atCustomer, 'document.how_to_pay'));
+        return new PrintSettings(\is_string($notes) ? $notes : '', $formats['dateFormat'], $formats['numberFormat'], true === $settings->value($atCustomer, 'document.amount_in_words'), true === $settings->value($atCustomer, 'document.how_to_pay'), self::design($settings, $company));
+    }
+
+    /** The company's layout and accent, which every document it prints takes. */
+    public static function design(ReadSetting $settings, Company $company): DocumentDesign
+    {
+        $context = new SettingContext($company);
+        $layout = $settings->value($context, 'document.layout');
+        $accent = $settings->value($context, 'document.accent');
+
+        return new DocumentDesign(
+            DocumentLayout::tryFrom(\is_string($layout) ? $layout : '') ?? DocumentLayout::Classic,
+            \is_string($accent) ? $accent : DocumentDesign::DEFAULT_ACCENT,
+        );
     }
 }

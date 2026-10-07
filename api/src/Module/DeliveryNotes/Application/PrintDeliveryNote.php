@@ -103,6 +103,7 @@ final readonly class PrintDeliveryNote
             $printing->receptionBlock,
             $printing->print->dateFormat,
             $printing->print->numberFormat,
+            $printing->print->design,
         )));
     }
 

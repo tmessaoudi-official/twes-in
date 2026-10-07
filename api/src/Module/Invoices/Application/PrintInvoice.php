@@ -152,6 +152,7 @@ final readonly class PrintInvoice
             $copiedOn,
             $paidStamp,
             $mentions->parameters,
+            $print->design,
         )));
     }
 

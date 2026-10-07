@@ -856,7 +856,9 @@
       "amount_in_words": "Write the total out in words on documents",
       "paid_stamp": "Stamp what became of the invoice on its up-to-date copy (« Paid », « Settled », « Partly paid »)",
       "late_payment_rate": "Late payment penalty rate (printed where the law asks for it, e.g. « three times the legal interest rate »)",
-      "exemption_reference": "VAT exemption provision (printed for an exempt customer, e.g. « article 261-4-4° du CGI »)"
+      "exemption_reference": "VAT exemption provision (printed for an exempt customer, e.g. « article 261-4-4° du CGI »)",
+      "layout": "Document layout",
+      "accent": "Document accent colour"
     },
     "credit": {
       "limit": "Customer credit limit",
@@ -923,6 +925,11 @@
         "language": {
           "fr": "French",
           "en": "English"
+        },
+        "layout": {
+          "classic": "Classic",
+          "modern": "Modern",
+          "compact": "Compact"
         }
       },
       "presentation": {

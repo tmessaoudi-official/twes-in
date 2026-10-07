@@ -10,36 +10,16 @@
   <title>{{ 'delivery_note.title'|trans({}, t, locale) }} {{ note.number }}</title>
   <style>
     @page { size: A4; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: "Inter", "Helvetica Neue", Arial, sans-serif; font-size: 10pt; line-height: 1.4; color: #1f2328; }
-    .parties { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
-    .party { width: 48%; }
-    .party h2 { margin: 0 0 4px; font-size: 9pt; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #57606a; }
-    .logo { display: block; max-width: 180px; max-height: 64px; object-fit: contain; margin-bottom: 8px; }
-    .company-name { font-size: 14pt; font-weight: 700; }
-    .title { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #1f2328; padding-bottom: 6px; margin-bottom: 12px; }
-    .title h1 { margin: 0; font-size: 18pt; }
-    .facts { display: grid; grid-template-columns: repeat(4, auto); gap: 4px 16px; margin-bottom: 16px; }
-    .facts dt { font-size: 8pt; color: #57606a; }
-    .facts dd { margin: 0; font-weight: 600; }
-    table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: .04em; color: #57606a; border-bottom: 1px solid #d0d7de; padding: 4px; }
-    td { padding: 6px 4px; border-bottom: 1px solid #eaeef2; vertical-align: top; }
-    .number { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .totals { margin-left: auto; margin-top: 12px; width: 50%; }
-    .totals td { border: 0; padding: 2px 4px; }
-    .totals .grand td { border-top: 2px solid #1f2328; font-weight: 700; padding-top: 6px; }
-    .mention, .remarks { margin-top: 16px; }
+{% include 'pdf/_document.css.twig' with {design: page.design} only %}
+    .totals { width: 50%; }
     .reception { margin-top: 24px; break-inside: avoid; }
     .reception h2 { font-size: 9pt; margin: 0 0 4px; }
     .reception table { margin: 0; }
     .reception td { width: 33.33%; height: 30mm; vertical-align: top; border: 1px solid #afb8c1; padding: 6px; font-size: 8pt; color: #57606a; }
     .reception .reserves { height: 18mm; border: 1px solid #afb8c1; border-top: 0; padding: 6px; font-size: 8pt; color: #57606a; }
-    .muted { color: #57606a; }
-    .watermark { position: fixed; top: 45%; left: 0; right: 0; text-align: center; transform: rotate(-30deg); font-size: 96pt; font-weight: 800; color: rgba(207, 34, 46, .14); letter-spacing: .1em; }
   </style>
 </head>
-<body>
+<body class="{{ 'layout-' ~ page.design.layout.value }}">
   {%- if page.watermark %}
     <div class="watermark">{{ ('watermark.' ~ page.watermark)|trans({}, t, locale) }}</div>
   {%- endif %}

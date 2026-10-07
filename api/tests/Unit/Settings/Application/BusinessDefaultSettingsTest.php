@@ -14,6 +14,8 @@ use App\Settings\Application\SettingCatalog;
 use App\Settings\Domain\SettingChain;
 use App\Settings\Domain\SettingDefinition;
 use App\Settings\Domain\SettingLevel;
+use App\Shared\Domain\DocumentDesign;
+use App\Shared\Domain\DocumentLayout;
 use PHPUnit\Framework\TestCase;
 
 final class BusinessDefaultSettingsTest extends TestCase
@@ -28,7 +30,7 @@ final class BusinessDefaultSettingsTest extends TestCase
     public function testThePartiesChainCarriesTheDocumentDefaults(): void
     {
         self::assertSame(
-            ['document.payment_terms_days', 'document.language', 'document.printed_notes', 'document.how_to_pay', 'document.amount_in_words', 'document.late_payment_rate', 'document.exemption_reference', 'document.paid_stamp', 'credit.limit'],
+            ['document.payment_terms_days', 'document.language', 'document.printed_notes', 'document.how_to_pay', 'document.amount_in_words', 'document.late_payment_rate', 'document.exemption_reference', 'document.layout', 'document.accent', 'document.paid_stamp', 'credit.limit'],
             array_map(static fn (SettingDefinition $definition) => $definition->key, $this->catalog->ofChain(SettingChain::Parties)),
         );
         $terms = $this->definition('document.payment_terms_days');
@@ -37,6 +39,17 @@ final class BusinessDefaultSettingsTest extends TestCase
         self::assertNull($terms->refusal(0));
         // A customer group, a customer and a document override the company, as their screens arrive.
         self::assertSame([SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer, SettingLevel::Document], $terms->overridableAt);
+    }
+
+    public function testADocumentsDesignOffersEveryBuiltInLayoutAndIsTheCompanysAlone(): void
+    {
+        $layout = $this->definition('document.layout');
+        $accent = $this->definition('document.accent');
+
+        self::assertSame(array_map(static fn (DocumentLayout $each): string => $each->value, DocumentLayout::cases()), $layout->choices);
+        self::assertSame([DocumentLayout::Classic->value, DocumentDesign::DEFAULT_ACCENT], [$layout->default, $accent->default]);
+        self::assertSame([[SettingLevel::Company], [SettingLevel::Company]], [$layout->overridableAt, $accent->overridableAt]);
+        self::assertNotNull($accent->refusal('red;}body{display:none'));
     }
 
     public function testACreditLimitIsAMoneyAmountWhereZeroMeansNoLimitAndOnlyAPartyHasOne(): void

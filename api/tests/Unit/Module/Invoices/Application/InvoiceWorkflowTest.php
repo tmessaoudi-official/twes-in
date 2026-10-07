@@ -41,6 +41,8 @@ use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\SettingLevel;
+use App\Shared\Domain\DocumentDesign;
+use App\Shared\Domain\DocumentLayout;
 use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Domain\Company;
@@ -147,10 +149,13 @@ final class InvoiceWorkflowTest extends TestCase
         $customer = $this->customer('standard', null);
         $this->change->change(new SettingContext($this->company, customerId: $customer->getId()), 'document.printed_notes', SettingLevel::Customer, 'Virement à 30 jours.', null);
         $this->change->change(new SettingContext($this->company), 'presentation.date-format', SettingLevel::Company, 'ymd', null);
+        $this->change->change(new SettingContext($this->company), 'document.layout', SettingLevel::Company, 'modern', null);
+        $this->change->change(new SettingContext($this->company), 'document.accent', SettingLevel::Company, '#1F6FEB', null);
 
         $invoice = $this->workflow->issue($this->company, $this->draft($customer)->getId(), null);
+        $this->change->change(new SettingContext($this->company), 'document.layout', SettingLevel::Company, 'compact', null);
 
-        self::assertEquals(new PrintSettings('Virement à 30 jours.', 'ymd', 'auto', true, true), $invoice->getPrintSettings(), 'the words and how to pay are on by default and frozen with the rest');
+        self::assertEquals(new PrintSettings('Virement à 30 jours.', 'ymd', 'auto', true, true, new DocumentDesign(DocumentLayout::Modern, '#1f6feb')), $invoice->getPrintSettings(), 'the words and how to pay are on by default, and the design is frozen with the rest');
     }
 
     public function testIssuingACreditNoteNumbersItInItsOwnSeriesAndTakesItOffItsInvoiceInTheSameTransaction(): void
