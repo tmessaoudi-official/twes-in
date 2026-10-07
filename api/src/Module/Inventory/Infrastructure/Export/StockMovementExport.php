@@ -13,13 +13,12 @@ use App\ImportExport\Application\DeclaresExport;
 use App\ImportExport\Application\ExportQuery;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Domain\StockMovement;
-use App\Module\Inventory\Domain\StockMovementKind;
 use App\Module\Inventory\Domain\StockMovementSearch;
+use App\Module\Inventory\Infrastructure\ApiPlatform\StockMovementSearchReader;
 use App\Module\Inventory\Infrastructure\ApiPlatform\StockPermission;
 use App\Module\Inventory\Infrastructure\Module\InventoryModule;
 use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * The stock movements list as a file (docs/SPEC.md § 7, row 60): one row per movement, under the product, location,
@@ -56,17 +55,7 @@ final readonly class StockMovementExport implements DeclaresExport
 
     public function rows(Company $company, ExportQuery $query): iterable
     {
-        $product = $query->text('productId');
-        $location = $query->text('locationId');
-        $search = new StockMovementSearch(
-            null !== $product && Uuid::isValid($product) ? Uuid::fromString($product) : null,
-            null !== $location && Uuid::isValid($location) ? Uuid::fromString($location) : null,
-            $query->text(),
-            StockMovementKind::tryFrom((string) $query->text('kind')),
-            $query->text('sourceType'),
-            $query->order(StockMovementSearch::SORTS),
-            $query->text('lot'),
-        );
+        $search = StockMovementSearchReader::read($query->parameters(), $query->text(), $query->order(StockMovementSearch::SORTS), $company);
 
         for ($page = 1;; ++$page) {
             $answer = $this->stock->searchMovements($company, $search, new PageRequest($page, self::BATCH));

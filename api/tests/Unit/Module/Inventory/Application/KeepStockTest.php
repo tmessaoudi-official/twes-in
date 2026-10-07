@@ -305,10 +305,10 @@ final class KeepStockTest extends TestCase
         $this->clock->modify('+1 hour');
         $cable = $this->keep->receive($this->company, $this->cable->getId(), $this->site->getId(), '2', null);
 
-        $ofLaptop = new StockMovementSearch($this->laptop->getId());
+        $ofLaptop = new StockMovementSearch([$this->laptop->getId()]);
         self::assertSame([$counted, $received], $this->page($ofLaptop)->items);
         self::assertSame([$cable, $counted, $received], $this->page(new StockMovementSearch())->items, "without a product, the company's own");
-        self::assertSame([], $this->page(new StockMovementSearch($this->support->getId()))->items);
+        self::assertSame([], $this->page(new StockMovementSearch([$this->support->getId()]))->items);
 
         // A page says how many there are in all, so a screen showing two of three says three rather than two.
         $first = $this->page($ofLaptop, new PageRequest(1, 1));

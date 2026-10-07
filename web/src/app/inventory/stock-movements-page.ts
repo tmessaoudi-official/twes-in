@@ -28,10 +28,17 @@ import { AmountPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
-import type { ListDescriptor, ListQuery, RowAction } from '../shared/list/list-types';
+import type { PickAsked } from '../shared/form/pick-api';
+import type {
+  ListDescriptor,
+  ListPickSource,
+  ListQuery,
+  RowAction,
+} from '../shared/list/list-types';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { InventoryFacade } from './inventory-facade';
 import {
+  locationLabels,
   MOVEMENTS_LIST,
   movementListRows,
   movementSearch,
@@ -192,13 +199,56 @@ export class StockMovementsPage {
     void this.facade.loadMovements(companyId, search);
   }
 
-  /** The address names the product or the lot; the list names everything else. */
-  private search(query: ListQuery) {
+  /**
+   * The address may name a product (from its page) or a lot; the list names everything else. A product the address names
+   * is one more of the products asked for, so a pick made on the list adds to it rather than replacing it.
+   */
+  private search(query: ListQuery): StockMovementSearch {
+    const listed = movementSearch(query);
+    const named = this.productId();
     return {
-      ...movementSearch(query),
-      productId: this.productId() ?? null,
+      ...listed,
+      productIds:
+        named === undefined || listed.productIds.includes(named)
+          ? listed.productIds
+          : [named, ...listed.productIds],
       lot: this.lot() ?? null,
     };
+  }
+
+  /**
+   * Where the « Filtres » panel finds a product or a location to narrow by, and names the ones an address holds. Products
+   * are searched by the API, never read whole; the locations are already here, each named by its path, since picking
+   * one lists what moved under it too.
+   */
+  protected readonly pickSources: Readonly<Record<string, ListPickSource>> = {
+    product: {
+      search: (words) => this.pickProducts({ words }),
+      byIds: (ids) => this.pickProducts({ ids }),
+    },
+    location: {
+      search: async (words) => {
+        const wanted = words.trim().toLocaleLowerCase();
+        return this.locationChoices().filter((each) =>
+          `${each.code} ${each.name}`.toLocaleLowerCase().includes(wanted),
+        );
+      },
+      byIds: async (ids) => this.locationChoices().filter((each) => ids.includes(each.id)),
+    },
+  };
+  private async pickProducts(asked: PickAsked) {
+    const companyId = this.company()?.id;
+    if (!companyId) return [];
+    const found = await this.facade.pickProducts(companyId, asked);
+    return found.map((product) => ({
+      id: product.id,
+      code: product.reference,
+      name: product.name,
+    }));
+  }
+  private locationChoices() {
+    const labels = locationLabels(this.facade.locations());
+    return [...labels].map(([id, label]) => ({ id, code: '', name: label }));
   }
 
   /**

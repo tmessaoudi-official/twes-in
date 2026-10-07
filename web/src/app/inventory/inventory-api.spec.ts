@@ -301,16 +301,21 @@ describe('InventoryApi', () => {
           page: 2,
           itemsPerPage: 25,
           q: '',
-          productId: 'p1',
-          locationId: null,
-          kind: 'in',
-          sourceType: null,
+          productIds: ['p1'],
+          locationIds: [],
+          kinds: ['in'],
+          sourceTypes: [],
+          reasons: [],
+          costToComplete: null,
+          intervals: {},
           lot: ' L-1 ',
           order: null,
         },
         'xlsx',
       ),
-    ).toBe('/api/companies/c%2F1/exports/stock-movements.xlsx?productId=p1&kind=in&lot=L-1');
+    ).toBe(
+      '/api/companies/c%2F1/exports/stock-movements.xlsx?productId%5B%5D=p1&kind%5B%5D=in&lot=L-1',
+    );
   });
 
   it('asks for one page of movements, sending only what the search narrows to', async () => {
@@ -318,24 +323,36 @@ describe('InventoryApi', () => {
       page: 2,
       itemsPerPage: 25,
       q: ' portable ',
-      productId: 'p 1',
-      locationId: null,
-      kind: 'in',
-      sourceType: null,
+      productIds: ['p 1'],
+      locationIds: ['l1', 'l2'],
+      kinds: ['in', 'out'],
+      sourceTypes: ['credit_note'],
+      reasons: ['broken'],
+      costToComplete: 'yes',
+      intervals: { 'movedAt.from': '2026-10-01' },
       lot: ' L-2408 ',
       order: { key: 'quantity', direction: 'asc' },
     });
     const asked = http.expectOne((request) => request.url === '/api/companies/c1/stock-movements');
     expect(asked.request.headers.get('Accept')).toBe('application/ld+json');
     expect([...asked.request.params.keys()].sort()).toEqual([
+      'costToComplete',
       'itemsPerPage',
-      'kind',
+      'kind[]',
+      'locationId[]',
       'lot',
+      'movedAt[from]',
       'order[quantity]',
       'page',
-      'productId',
+      'productId[]',
       'q',
+      'reason[]',
+      'sourceType[]',
     ]);
+    // Several values of one filter repeat its name; the API ORs them, and ANDs the filters (row 197).
+    expect(asked.request.params.getAll('kind[]')).toEqual(['in', 'out']);
+    expect(asked.request.params.getAll('locationId[]')).toEqual(['l1', 'l2']);
+    expect(asked.request.params.get('movedAt[from]')).toBe('2026-10-01');
     // The words are sent trimmed, and what the search left out is left out rather than sent empty.
     expect(asked.request.params.get('q')).toBe('portable');
     expect(asked.request.params.get('lot')).toBe('L-2408');
@@ -346,10 +363,13 @@ describe('InventoryApi', () => {
       page: 1,
       itemsPerPage: 25,
       q: '',
-      productId: null,
-      locationId: null,
-      kind: null,
-      sourceType: null,
+      productIds: [],
+      locationIds: [],
+      kinds: [],
+      sourceTypes: [],
+      reasons: [],
+      costToComplete: null,
+      intervals: {},
       lot: null,
       order: null,
     });

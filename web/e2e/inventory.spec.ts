@@ -300,6 +300,8 @@ test('a delivery shared over two places lands whole at both', async ({ page }) =
 test('stock received at a location leaves with a validated delivery note and returns when it is cancelled', async ({
   page,
 }) => {
+  // A whole delivery cycle, two accessibility scans and the history's filters: more than the default 30 s.
+  test.setTimeout(60_000);
   const run = Date.now().toString(36).toUpperCase();
   const reference = `E2E-STK-${run}`;
   const customerNumber = `E2E-STK-${run}`;
@@ -381,6 +383,14 @@ test('stock received at a location leaves with a validated delivery note and ret
     await expect(page.getByTestId('movement-reason')).toContainText('Cassée');
     await expect(page.getByTestId('movement-note')).toContainText('Tombé du comptoir');
     expect(await wcagViolations(page)).toEqual([]);
+
+    // Row 197: the product the address names combines with the list's own filters, each answered by the API.
+    await page.goto(`/stock/movements?productId=${fixture.productId}&reason=broken`);
+    await expect(movements.getByRole('row')).toHaveCount(2);
+    await expect(page.getByTestId('movement-reason')).toContainText('Cassée');
+    // The loss, and the delivery note's departure and its return when it was cancelled.
+    await page.goto(`/stock/movements?productId=${fixture.productId}&source=loss,delivery_note`);
+    await expect(movements.getByRole('row')).toHaveCount(4);
   } finally {
     await retire(page, reference, customerNumber, locationCode);
   }

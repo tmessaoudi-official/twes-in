@@ -21,6 +21,7 @@ use App\Module\Inventory\Domain\StockValue;
 use App\Module\Inventory\Domain\TypedCost;
 use App\Module\Products\Domain\Product;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\DateRange;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use BcMath\Number;
@@ -287,10 +288,13 @@ final class InMemoryStockMovements implements StockMovementRepository
         $matching = array_values(array_filter(
             $this->movements,
             static fn (StockMovement $m) => $m->getCompany()->getId()->equals($companyId)
-                && (null === $search->product || $m->getProduct()->getId()->equals($search->product))
-                && (null === $search->location || $m->getLocation()->getId()->equals($search->location))
-                && (null === $search->kind || $m->getKind() === $search->kind)
-                && (null === $search->sourceType || $m->getSourceType() === $search->sourceType)
+                && ([] === $search->products || \in_array($m->getProduct()->getId()->toRfc4122(), array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->products), true))
+                && ([] === $search->locations || \in_array($m->getLocation()->getId()->toRfc4122(), array_map(static fn (Uuid $id): string => $id->toRfc4122(), $search->locations), true))
+                && ([] === $search->kinds || \in_array($m->getKind(), $search->kinds, true))
+                && ([] === $search->sourceTypes || \in_array($m->getSourceType(), $search->sourceTypes, true))
+                && ([] === $search->reasons || \in_array($m->getReason(), $search->reasons, true))
+                && (null === $search->costToComplete || $m->isCostToComplete() === $search->costToComplete)
+                && (null === $search->movedOn || self::movedOn($m->getAt(), $search->movedOn, $search->timezone))
                 && ('' === trim($search->lot ?? '') || mb_strtolower((string) $m->getLot()?->getCode()) === mb_strtolower(trim((string) $search->lot)))
                 && ('' === $words || str_contains(mb_strtolower(
                     $m->getProduct()->getReference().' '.$m->getProduct()->getDetails()->name.' '.$m->getLocation()->getCode().' '.$m->getLocation()->getName(),
@@ -318,5 +322,13 @@ final class InMemoryStockMovements implements StockMovementRepository
     private function call(string $name, Uuid $productId, Uuid $locationId): string
     {
         return \sprintf('%s %s %s%s', $name, $productId->toRfc4122(), $locationId->toRfc4122(), true === $this->transactions?->active() ? ' in transaction' : '');
+    }
+
+    /** The day a movement happened on in the company's calendar, inside the interval: what the database's moments answer. */
+    private static function movedOn(\DateTimeImmutable $at, DateRange $range, string $timezone): bool
+    {
+        $day = $at->setTimezone(new \DateTimeZone($timezone))->format('Y-m-d');
+
+        return (null === $range->from || $day >= $range->from) && (null === $range->to || $day <= $range->to);
     }
 }

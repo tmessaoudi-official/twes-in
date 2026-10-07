@@ -1271,12 +1271,70 @@ final class InventoryTest extends ApiTestCase
         return [$width, $depth];
     }
 
+    /** @param array<string, mixed> $movement */
+    private function moved(array $movement): void
+    {
+        $this->postJson($this->path('stock-movements'), ['productId' => $this->laptopId, ...$movement]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, (string) $this->client->getResponse()->getContent());
+    }
+
     private function defaultLocationId(): string
     {
         $this->getJson($this->path('stock-locations'));
         self::assertResponseIsSuccessful();
 
         return $this->stringAt($this->jsonList()[0], 'id');
+    }
+
+    /**
+     * docs/SPEC.md § 7, 2026-10-06 00:15, row 197: the movements list combines its filters (the values of one OR'd, the
+     * filters AND'd), a location stands for every location under it, and the day is the company's own.
+     */
+    public function testEveryFilterOfTheMovementsListCombines(): void
+    {
+        // No « voir les coûts »: a receipt is then filed with its cost left « à compléter ».
+        $this->signedIn(['stock.read', 'stock.write']);
+        $site = $this->defaultLocationId();
+        $this->postJson($this->path('stock-locations'), $this->location(['parentId' => $site, 'kind' => 'rack', 'code' => 'R1', 'name' => 'Rayon 1']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $rack = $this->stringAt($this->json(), 'id');
+        $this->moved(['operation' => 'receive', 'locationId' => $site, 'quantity' => '10']);
+        $this->moved(['operation' => 'receive', 'locationId' => $rack, 'quantity' => '5']);
+        $this->moved(['operation' => 'count', 'locationId' => $site, 'quantity' => '8']);
+        $this->moved(['operation' => 'loss', 'locationId' => $rack, 'quantity' => '1', 'reason' => 'broken', 'note' => null]);
+        $this->moved(['operation' => 'loss', 'locationId' => $site, 'quantity' => '1', 'reason' => 'stolen', 'note' => null]);
+        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company()->getTimezone()));
+        $day = static fn (string $shift): string => $today->modify($shift)->format('Y-m-d');
+        // Newest first: what each movement is, by the source and the quantity it wrote.
+        $read = fn (): array => array_map(fn (array $row): string => $this->stringAt($row, 'sourceType').' '.$this->stringAt($row, 'quantity'), $this->jsonList());
+
+        foreach ([
+            'kind[]=in&kind[]=adjustment' => ['count -2.000', 'receipt 5.000', 'receipt 10.000'],
+            'kind=out' => ['loss -1.000', 'loss -1.000'],
+            'sourceType[]=loss&sourceType[]=count' => ['loss -1.000', 'loss -1.000', 'count -2.000'],
+            'reason[]=broken' => ['loss -1.000'],
+            'reason[]=broken&reason[]=stolen' => ['loss -1.000', 'loss -1.000'],
+            'costToComplete=yes' => ['receipt 5.000', 'receipt 10.000'],
+            'costToComplete=no' => ['loss -1.000', 'loss -1.000', 'count -2.000'],
+            'locationId[]='.$rack => ['loss -1.000', 'receipt 5.000'],
+            // The site holds the rack, so picking it lists what moved on the rack too.
+            'locationId[]='.$site.'&kind=in' => ['receipt 5.000', 'receipt 10.000'],
+            'productId[]='.$this->laptopId.'&kind=in' => ['receipt 5.000', 'receipt 10.000'],
+            'movedAt[from]='.$day('today') => ['loss -1.000', 'loss -1.000', 'count -2.000', 'receipt 5.000', 'receipt 10.000'],
+            'movedAt[to]='.$day('-1 day') => [],
+            'movedAt[from]='.$day('+1 day') => [],
+            'movedAt[from]='.$day('today').'&movedAt[to]='.$day('today').'&locationId[]='.$rack.'&costToComplete=no' => ['loss -1.000'],
+        ] as $query => $expected) {
+            $this->getJson($this->path('stock-movements').'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($expected, $read(), $query);
+            self::assertSame(\count($expected), $this->jsonPage()['totalItems'], $query);
+        }
+
+        foreach (['kind[]=sideways', 'reason[]=vanished', 'costToComplete=maybe', 'movedAt[from]=2026-02-30', 'locationId[]=not-an-id'] as $refused) {
+            $this->getJson($this->path('stock-movements').'?'.$refused);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+        }
     }
 
     public function testTheStockListIsAPageSearchedNarrowedAndSortedByTheApi(): void

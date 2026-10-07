@@ -2280,6 +2280,12 @@
       "keep": "Later",
       "to_complete": "Cost to complete",
       "entered": "Receipt cost entered."
+    },
+    "filters": {
+      "reason": "Loss reason",
+      "cost_to_complete": "Cost to complete",
+      "cost_to_complete_yes": "Cost to complete",
+      "cost_to_complete_no": "No cost to complete"
     }
   },
   "vendors": {

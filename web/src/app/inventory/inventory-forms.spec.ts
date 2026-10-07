@@ -15,6 +15,7 @@ import {
   movementInput,
   receiptInput,
   movementListRows,
+  movementSearch,
   movementValues,
   STOCK_LIST,
   stockListRows,
@@ -750,5 +751,58 @@ describe('a receipt shared over several places', () => {
     for (const id of ['vendor', 'supplierReference', 'receivedOn']) {
       expect(columns.find((column) => column.id === id)?.defaultHidden).toBe(true);
     }
+  });
+});
+
+// Row 197: the movements list combines its filters, each sent to the API, which pages the history.
+describe('movementSearch', () => {
+  const query = {
+    pageIndex: 0,
+    pageSize: 25,
+    query: '',
+    filters: {} as Record<string, string>,
+    sort: null,
+  };
+  const id = '0199a1b2-0000-7000-8000-00000000000';
+
+  it('sends every value of every filter it knows, and drops what it does not', () => {
+    const search = movementSearch({
+      ...query,
+      filters: {
+        kind: 'in,sideways,out',
+        source: 'credit_note,receipt',
+        reason: 'broken,vanished',
+        costToComplete: 'yes',
+        product: `${id}1`,
+        location: `${id}2,${id}3`,
+        'movedAt.from': '2026-10-01',
+        'movedAt.to': '2026-02-30',
+      },
+    });
+    expect(search.kinds).toEqual(['in', 'out']);
+    expect(search.sourceTypes).toEqual(['receipt', 'credit_note']);
+    expect(search.reasons).toEqual(['broken']);
+    expect(search.costToComplete).toBe('yes');
+    expect(search.productIds).toEqual([`${id}1`]);
+    expect(search.locationIds).toEqual([`${id}2`, `${id}3`]);
+    expect(search.intervals).toEqual({ 'movedAt.from': '2026-10-01' });
+    expect(
+      movementSearch({ ...query, filters: { costToComplete: 'maybe' } }).costToComplete,
+    ).toBeNull();
+  });
+
+  it('offers the filters ruled for the list', () => {
+    expect(
+      (MOVEMENTS_LIST.filters ?? []).map((filter) => [filter.id, filter.multiple ?? false]),
+    ).toEqual([
+      ['kind', true],
+      ['source', true],
+      ['reason', true],
+      ['costToComplete', false],
+    ]);
+    expect(MOVEMENTS_LIST.picks?.map((pick) => pick.id)).toEqual(['product', 'location']);
+    expect(MOVEMENTS_LIST.ranges?.map((range) => [range.id, range.kind])).toEqual([
+      ['movedAt', 'day'],
+    ]);
   });
 });

@@ -102,6 +102,25 @@ final class StockExportTest extends ApiTestCase
         self::assertCount(3, $this->csv('/exports/stock-movements.csv?locationId='.$this->site));
     }
 
+    /** Row 197: the file is narrowed by every filter the movements screen sends, read by the same reader as the list. */
+    public function testTheMovementsFileHoldsWhatTheListShowsUnderEveryFilter(): void
+    {
+        foreach ([
+            'kind[]=in&kind[]=out' => 2,
+            'sourceType[]=receipt&sourceType[]=loss' => 2,
+            // Both receipts were filed by someone who sees costs, so neither waits for one.
+            'costToComplete=yes' => 0,
+            'reason[]=broken' => 0,
+            'locationId[]='.$this->site => 2,
+            'movedAt[to]=2000-01-01' => 0,
+        ] as $query => $rows) {
+            self::assertCount(1 + $rows, $this->csv('/exports/stock-movements.csv?'.$query), $query);
+            $this->getJson($this->path('/stock-movements?'.$query));
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($rows, $this->jsonPage()['totalItems'], $query);
+        }
+    }
+
     public function testAnXlsxIsOfferedForTheLevelsToo(): void
     {
         $this->client->request('GET', $this->path('/exports/stock-levels.xlsx'));

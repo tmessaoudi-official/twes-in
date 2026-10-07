@@ -14,7 +14,6 @@ use ApiPlatform\State\Pagination\TraversablePaginator;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Domain\StockMovement;
-use App\Module\Inventory\Domain\StockMovementKind;
 use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -39,15 +38,7 @@ final readonly class StockMovementCollectionProvider implements ProviderInterfac
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): TraversablePaginator
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), StockPermission::READ);
-        $search = new StockMovementSearch(
-            Paging::identifier($operation, 'productId'),
-            Paging::identifier($operation, 'locationId'),
-            Paging::text($operation),
-            StockMovementKind::tryFrom((string) Paging::text($operation, 'kind')),
-            Paging::text($operation, 'sourceType'),
-            Paging::order($operation, StockMovementSearch::SORTS),
-            Paging::text($operation, 'lot'),
-        );
+        $search = StockMovementSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, StockMovementSearch::SORTS), $company);
 
         return $this->paging->paginator(
             $this->stock->searchMovements($company, $search, $this->paging->request($operation, $context)),

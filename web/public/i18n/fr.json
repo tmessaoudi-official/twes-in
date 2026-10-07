@@ -2280,6 +2280,12 @@
       "keep": "Plus tard",
       "to_complete": "Coût à compléter",
       "entered": "Coût de la réception saisi."
+    },
+    "filters": {
+      "reason": "Motif de la perte",
+      "cost_to_complete": "Coût à compléter",
+      "cost_to_complete_yes": "Coût à compléter",
+      "cost_to_complete_no": "Sans coût à compléter"
     }
   },
   "vendors": {

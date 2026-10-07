@@ -115,10 +115,17 @@ export interface StockMovementSearch {
   itemsPerPage: number;
   /** Words found in the product's reference or name or the location's code or name; empty finds all. */
   q: string;
-  productId: string | null;
-  locationId: string | null;
-  kind: StockMovementKind | null;
-  sourceType: StockSourceType | null;
+  /** Any of these, each filter's values OR'd and the filters AND'd (row 197). */
+  productIds: readonly string[];
+  /** Each with every location under it, which the API adds. */
+  locationIds: readonly string[];
+  kinds: readonly StockMovementKind[];
+  sourceTypes: readonly StockSourceType[];
+  reasons: readonly StockLossReason[];
+  /** A receipt whose cost waits to be entered, or every other movement; null asks either. */
+  costToComplete: 'yes' | 'no' | null;
+  /** The ends of the day interval, `movedAt.from` and `movedAt.to`, in the company's own calendar: each already valid. */
+  intervals: Readonly<Record<string, string>>;
   /** A lot or serial code, matched whole whatever its case: where a recall starts (row 63 slice 10). */
   lot: string | null;
   order: { key: StockMovementSortKey; direction: 'asc' | 'desc' } | null;

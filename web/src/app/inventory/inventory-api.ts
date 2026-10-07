@@ -32,6 +32,7 @@ import type {
   ReceiptCostEntryReceiptCostEntryWriteValidationReceiptCostEntryWrite as ReceiptCostEntryWrite,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
+import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import {
@@ -629,10 +630,15 @@ function toSearchParams(search: StockSearch): HttpParams {
 function toMovementParams(search: StockMovementSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
   if (search.q.trim() !== '') params = params.set('q', search.q.trim());
-  if (search.productId !== null) params = params.set('productId', search.productId);
-  if (search.locationId !== null) params = params.set('locationId', search.locationId);
-  if (search.kind !== null) params = params.set('kind', search.kind);
-  if (search.sourceType !== null) params = params.set('sourceType', search.sourceType);
+  for (const id of search.productIds) params = params.append('productId[]', id);
+  for (const id of search.locationIds) params = params.append('locationId[]', id);
+  for (const kind of search.kinds) params = params.append('kind[]', kind);
+  for (const type of search.sourceTypes) params = params.append('sourceType[]', type);
+  for (const reason of search.reasons) params = params.append('reason[]', reason);
+  if (search.costToComplete !== null) params = params.set('costToComplete', search.costToComplete);
+  for (const [key, value] of Object.entries(search.intervals)) {
+    params = params.set(apiRangeKey(key), value);
+  }
   if (search.lot !== null && search.lot.trim() !== '')
     params = params.set('lot', search.lot.trim());
   if (search.order !== null)

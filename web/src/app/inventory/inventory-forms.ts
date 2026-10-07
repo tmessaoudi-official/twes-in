@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
+import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
   STOCK_LOCATION_KINDS,
@@ -14,7 +15,6 @@ import {
   type StockLocationInput,
   type StockLocationRow,
   type StockMovementInput,
-  type StockMovementKind,
   type StockMovementRow,
   type StockMovementSearch,
   type StockMovementSortKey,
@@ -25,7 +25,6 @@ import {
   type StockProductOption,
   type StockSearch,
   type StockSortKey,
-  type StockSourceType,
 } from './inventory-types';
 import { toReceiptParts } from './split-receipt';
 
@@ -132,33 +131,37 @@ const MOVEMENT_SORT_KEYS: Readonly<Record<string, StockMovementSortKey>> = {
   source: 'source',
 };
 
+/** The movements list's interval: the day goods moved on, in the company's own calendar (row 197). */
+const MOVEMENT_INTERVALS: readonly { id: string; kind: 'day' | 'amount'; label: string }[] = [
+  { id: 'movedAt', kind: 'day', label: `${STOCK_FIELDS}.at` },
+];
+const ANSWERS = ['yes', 'no'] as const;
+
 /**
  * What the movements list asks the API for. Both faceted filters are sent, not applied here: the list shows the page
  * the API answered, so a filter kept on this side would narrow that page alone and read as the whole history.
  */
 export function movementSearch(query: ListQuery): StockMovementSearch {
   const key = query.sort === null ? undefined : MOVEMENT_SORT_KEYS[query.sort.column];
-  const kind = query.filters['kind'] ?? '';
-  const sourceType = query.filters['source'] ?? '';
+  const kinds = filterValues(query.filters['kind']);
+  const sources = filterValues(query.filters['source']);
+  const reasons = filterValues(query.filters['reason']);
   return {
     page: query.pageIndex + 1,
     itemsPerPage: query.pageSize,
     q: query.query,
-    productId: null,
-    locationId: null,
-    kind: isMovementKind(kind) ? kind : null,
-    sourceType: isSourceType(sourceType) ? sourceType : null,
+    productIds: idValues(query.filters['product']),
+    locationIds: idValues(query.filters['location']),
+    kinds: STOCK_MOVEMENT_KINDS.filter((known) => kinds.includes(known)),
+    sourceTypes: STOCK_SOURCE_TYPES.filter((known) => sources.includes(known)),
+    reasons: STOCK_LOSS_REASONS.filter((known) => reasons.includes(known)),
+    costToComplete: ANSWERS.find((answer) => answer === query.filters['costToComplete']) ?? null,
+    intervals: rangeParams(query.filters, MOVEMENT_INTERVALS),
     lot: null,
     order:
       query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
   };
 }
-
-const isMovementKind = (value: string): value is StockMovementKind =>
-  (STOCK_MOVEMENT_KINDS as readonly string[]).includes(value);
-
-const isSourceType = (value: string): value is StockSourceType =>
-  (STOCK_SOURCE_TYPES as readonly string[]).includes(value);
 
 const SORT_KEYS: Readonly<Record<string, StockSortKey>> = {
   reference: 'reference',
@@ -316,10 +319,16 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
       width: 140,
     },
   ],
+  ranges: MOVEMENT_INTERVALS.map(({ id, kind, label }) => ({ id, kind, label })),
+  picks: [
+    { id: 'product', label: `${STOCK_FIELDS}.product` },
+    { id: 'location', label: `${STOCK_FIELDS}.location` },
+  ],
   filters: [
     {
       id: 'kind',
       label: `${STOCK_FIELDS}.kind`,
+      multiple: true,
       value: (row) => row.kind,
       options: STOCK_MOVEMENT_KINDS.map((kind) => ({
         value: kind,
@@ -329,10 +338,31 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
     {
       id: 'source',
       label: `${STOCK_FIELDS}.source`,
+      multiple: true,
       value: (row) => row.sourceType,
       options: STOCK_SOURCE_TYPES.map((type) => ({
         value: type,
         label: `inventory.sources.${type}`,
+      })),
+    },
+    {
+      // Why goods were written off; a movement that is not a loss has no reason and is left out by any.
+      id: 'reason',
+      label: 'inventory.filters.reason',
+      multiple: true,
+      value: (row) => row.reason ?? '',
+      options: STOCK_LOSS_REASONS.map((reason) => ({
+        value: reason,
+        label: `inventory.loss.reasons.${reason}`,
+      })),
+    },
+    {
+      id: 'costToComplete',
+      label: 'inventory.filters.cost_to_complete',
+      value: (row) => (row.costToComplete ? 'yes' : 'no'),
+      options: ANSWERS.map((answer) => ({
+        value: answer,
+        label: `inventory.filters.cost_to_complete_${answer}`,
       })),
     },
   ],

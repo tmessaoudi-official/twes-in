@@ -35,6 +35,27 @@ final class Intervals
         }
     }
 
+    /**
+     * An interval of days over a moment column, stored in UTC: each day is the company's own, from its first instant to
+     * the first instant of the next, so a movement at 00:30 in Tunis belongs to that day and not to the one before.
+     */
+    public static function moments(QueryBuilder $query, string $column, string $name, ?DateRange $range, string $timezone): void
+    {
+        if (null === $range) {
+            return;
+        }
+        $zone = new \DateTimeZone($timezone);
+        $utc = new \DateTimeZone('UTC');
+        if (null !== $range->from) {
+            $query->andWhere("$column >= :{$name}_from")
+                ->setParameter("{$name}_from", new \DateTimeImmutable($range->from, $zone)->setTimezone($utc), Types::DATETIME_IMMUTABLE);
+        }
+        if (null !== $range->to) {
+            $query->andWhere("$column < :{$name}_before")
+                ->setParameter("{$name}_before", new \DateTimeImmutable($range->to, $zone)->modify('+1 day')->setTimezone($utc), Types::DATETIME_IMMUTABLE);
+        }
+    }
+
     public static function amounts(QueryBuilder $query, string $column, string $name, ?DecimalRange $range): void
     {
         if (null === $range) {

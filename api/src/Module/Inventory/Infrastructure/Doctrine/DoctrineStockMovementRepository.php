@@ -14,8 +14,10 @@ use App\Module\Inventory\Domain\RunningValue;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockLocationKind;
+use App\Module\Inventory\Domain\StockLossReason;
 use App\Module\Inventory\Domain\StockLot;
 use App\Module\Inventory\Domain\StockMovement;
+use App\Module\Inventory\Domain\StockMovementKind;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Module\Inventory\Domain\StockValue;
@@ -23,10 +25,12 @@ use App\Module\Inventory\Domain\TypedCost;
 use App\Module\Products\Domain\Product;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
+use App\Shared\Infrastructure\Doctrine\Intervals;
 use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use BcMath\Number;
 use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
@@ -222,18 +226,27 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->select('m', 'p', 'l', 'lt', 'v')->from(StockMovement::class, 'm')
             ->join('m.product', 'p')->join('m.location', 'l')->leftJoin('m.lot', 'lt')->leftJoin('m.vendor', 'v')
             ->where('m.company = :company')->setParameter('company', $companyId, 'uuid');
-        if (null !== $search->product) {
-            $query->andWhere('m.product = :product')->setParameter('product', $search->product, 'uuid');
+        if ([] !== $search->products) {
+            $query->andWhere('m.product IN (:products)')->setParameter('products', self::ids($search->products), ArrayParameterType::STRING);
         }
-        if (null !== $search->location) {
-            $query->andWhere('m.location = :location')->setParameter('location', $search->location, 'uuid');
+        if ([] !== $search->locations) {
+            $query->andWhere('m.location IN (:locations)')->setParameter('locations', self::ids($search->locations), ArrayParameterType::STRING);
         }
-        if (null !== $search->kind) {
-            $query->andWhere('m.kind = :kind')->setParameter('kind', $search->kind->value);
+        if ([] !== $search->kinds) {
+            $query->andWhere('m.kind IN (:kinds)')
+                ->setParameter('kinds', array_map(static fn (StockMovementKind $each): string => $each->value, $search->kinds), ArrayParameterType::STRING);
         }
-        if (null !== $search->sourceType) {
-            $query->andWhere('m.sourceType = :sourceType')->setParameter('sourceType', $search->sourceType);
+        if ([] !== $search->sourceTypes) {
+            $query->andWhere('m.sourceType IN (:sourceTypes)')->setParameter('sourceTypes', $search->sourceTypes, ArrayParameterType::STRING);
         }
+        if ([] !== $search->reasons) {
+            $query->andWhere('m.reason IN (:reasons)')
+                ->setParameter('reasons', array_map(static fn (StockLossReason $each): string => $each->value, $search->reasons), ArrayParameterType::STRING);
+        }
+        if (null !== $search->costToComplete) {
+            $query->andWhere('m.costToComplete = :costToComplete')->setParameter('costToComplete', $search->costToComplete, ParameterType::BOOLEAN);
+        }
+        Intervals::moments($query, 'm.at', 'moved', $search->movedOn, $search->timezone);
         $lot = trim($search->lot ?? '');
         if ('' !== $lot) {
             $query->andWhere('LOWER(lt.code) = LOWER(:lot)')->setParameter('lot', $lot);
@@ -250,6 +263,16 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         $movements = iterator_to_array($paginator, false);
 
         return new Page($movements, \count($paginator), $page);
+    }
+
+    /**
+     * @param list<Uuid> $ids
+     *
+     * @return list<string>
+     */
+    private static function ids(array $ids): array
+    {
+        return array_map(static fn (Uuid $each): string => $each->toRfc4122(), $ids);
     }
 
     /**

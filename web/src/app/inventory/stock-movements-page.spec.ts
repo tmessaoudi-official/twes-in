@@ -33,6 +33,7 @@ import type {
   StockOptions,
 } from './inventory-types';
 import { StockMovementsPage } from './stock-movements-page';
+import type { ListPickSource } from '../shared/list/list-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -106,12 +107,24 @@ describe('StockMovementsPage', () => {
   const facade = {
     options: signal<StockOptions | null>(options).asReadonly(),
     levels: signal<readonly StockLevelRow[]>([]).asReadonly(),
-    locations: signal<readonly StockLocationRow[]>([site]).asReadonly(),
+    locations: signal<readonly StockLocationRow[]>([
+      site,
+      {
+        ...site,
+        id: 'l2',
+        parentId: 'l1',
+        kind: 'rack',
+        code: 'R1',
+        name: 'Rayon 1',
+        isDefault: false,
+      },
+    ]).asReadonly(),
     movements: shown.asReadonly(),
     movementsTotal: signal(1).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal<InventoryError | null>(null).asReadonly(),
     loadMovements: vi.fn(),
+    pickProducts: vi.fn(),
     exportMovementsUrl: vi.fn(
       (companyId: string, _search: unknown, format: string) =>
         `/api/companies/${companyId}/exports/stock-movements.${format}`,
@@ -176,7 +189,7 @@ describe('StockMovementsPage', () => {
 
     expect(facade.loadMovements).toHaveBeenCalledWith(
       'c1',
-      expect.objectContaining({ productId: 'p1' }),
+      expect.objectContaining({ productIds: ['p1'] }),
     );
     const row = q('stock-movement-m1')?.textContent ?? '';
     expect(row).toContain('ART-1 — Portable');
@@ -187,6 +200,37 @@ describe('StockMovementsPage', () => {
     expect(q('stock-movements-all')?.getAttribute('href')).toBe('/stock/movements');
   });
 
+  // Row 197: the « Filtres » panel picks products through the API and locations from the ones the page holds, each
+  // named by its path, since picking one lists what moved under it too.
+  it('finds products through the API and locations among the company’s own, named by their path', async () => {
+    await settle();
+    facade.pickProducts.mockResolvedValue([
+      {
+        id: 'p1',
+        reference: 'ART-1',
+        name: 'Portable',
+        unitCode: 'C62',
+        unitDecimals: 0,
+        homeLocationId: null,
+        tracking: 'none',
+      },
+    ]);
+    const sources = (
+      fixture.componentInstance as unknown as { pickSources: Record<string, ListPickSource> }
+    ).pickSources;
+
+    expect(await sources['product'].search('port')).toEqual([
+      { id: 'p1', code: 'ART-1', name: 'Portable' },
+    ]);
+    expect(facade.pickProducts).toHaveBeenCalledWith('c1', { words: 'port' });
+    expect(await sources['location'].search('rayon')).toEqual([
+      { id: 'l2', code: '', name: '000 › R1 — Rayon 1' },
+    ]);
+    expect((await sources['location'].byIds(['l1'])).map((each) => each.name)).toEqual([
+      '000 — Siège',
+    ]);
+  });
+
   it("reads the company's latest movements when no product is named, and again when one is", async () => {
     await settle();
     // The list asks first, and the page it asks for is what the API is sent — never the whole history.
@@ -194,10 +238,13 @@ describe('StockMovementsPage', () => {
       page: 1,
       itemsPerPage: 25,
       q: '',
-      productId: null,
-      locationId: null,
-      kind: null,
-      sourceType: null,
+      productIds: [],
+      locationIds: [],
+      kinds: [],
+      sourceTypes: [],
+      reasons: [],
+      costToComplete: null,
+      intervals: {},
       lot: null,
       order: { key: 'movedAt', direction: 'desc' },
     });
@@ -207,7 +254,7 @@ describe('StockMovementsPage', () => {
     await settle();
     expect(facade.loadMovements).toHaveBeenLastCalledWith(
       'c1',
-      expect.objectContaining({ productId: 'p1', page: 1 }),
+      expect.objectContaining({ productIds: ['p1'], page: 1 }),
     );
   });
 
@@ -297,7 +344,7 @@ describe('StockMovementsPage', () => {
 
     expect(facade.loadMovements).toHaveBeenLastCalledWith(
       'c1',
-      expect.objectContaining({ lot: 'L-2408', productId: null }),
+      expect.objectContaining({ lot: 'L-2408', productIds: [] }),
     );
     expect(q('stock-movements-of-lot')?.textContent).toContain('Mouvements du lot L-2408.');
     expect(q('stock-movements-all')?.getAttribute('href')).toBe('/stock/movements');

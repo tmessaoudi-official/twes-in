@@ -40,6 +40,7 @@ use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
+use App\Shared\Domain\Tree;
 use App\Tenancy\Domain\Company;
 use BcMath\Number;
 use Psr\Clock\ClockInterface;
@@ -457,7 +458,25 @@ final readonly class KeepStock
      */
     public function searchMovements(Company $company, StockMovementSearch $search, PageRequest $page): Page
     {
-        return $this->movements->searchMovements($company->getId(), $search, $page);
+        return $this->movements->searchMovements($company->getId(), $this->withSublocations($company, $search), $page);
+    }
+
+    /**
+     * A location picked stands for itself and every location under it (docs/SPEC.md § 7, row 197): the site lists what
+     * moved on its racks. The list and its file both ask through here. A company's locations are read whole, as the
+     * location screens read them; one of another company stands for itself alone, which matches no row of this one.
+     */
+    private function withSublocations(Company $company, StockMovementSearch $search): StockMovementSearch
+    {
+        if ([] === $search->locations) {
+            return $search;
+        }
+        $parents = [];
+        foreach ($this->locations->ofCompany($company->getId()) as $location) {
+            $parents[$location->getId()->toRfc4122()] = $location->getParent()?->getId()->toRfc4122();
+        }
+
+        return $search->withLocations(Tree::withDescendants($search->locations, $parents));
     }
 
     /**

@@ -37,6 +37,7 @@ use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Shared\Domain\PaymentMethod;
+use App\Shared\Domain\Tree;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -102,36 +103,21 @@ final readonly class ManageExpenses
     }
 
     /**
-     * A category picked stands for itself and every category under it, at any depth (docs/SPEC.md § 7, row 197): « Véhicule »
-     * lists what was filed under « Carburant » too. The list, its counts and its file all ask through here, so the three
-     * widen it alike. A company's categories are few, so they are read whole and walked here rather than in SQL; one
-     * of another company is not among them and widens to nothing more than itself, which matches no row of this one.
+     * A category picked stands for itself and every category under it (docs/SPEC.md § 7, row 197). The list, its counts
+     * and its file all ask through here, so the three widen it alike. A company's categories are few, so they are read
+     * whole; one of another company is not among them and stands for itself alone, which matches no row of this one.
      */
     private function withSubcategories(Company $company, ExpenseSearch $search): ExpenseSearch
     {
         if ([] === $search->categories) {
             return $search;
         }
-        $children = [];
+        $parents = [];
         foreach ($this->categories->ofCompany($company->getId()) as $category) {
-            $parent = $category->getParent();
-            if (null !== $parent) {
-                $children[$parent->getId()->toRfc4122()][] = $category->getId();
-            }
-        }
-        $widened = [];
-        $waiting = $search->categories;
-        while ([] !== $waiting) {
-            $category = array_shift($waiting);
-            $key = $category->toRfc4122();
-            if (isset($widened[$key])) {
-                continue;
-            }
-            $widened[$key] = $category;
-            array_push($waiting, ...($children[$key] ?? []));
+            $parents[$category->getId()->toRfc4122()] = $category->getParent()?->getId()->toRfc4122();
         }
 
-        return $search->withCategories(array_values($widened));
+        return $search->withCategories(Tree::withDescendants($search->categories, $parents));
     }
 
     /** @throws ExpenseNotFound */
