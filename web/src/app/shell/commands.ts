@@ -5,6 +5,7 @@ import { DELIVERY_NOTES_COMMANDS } from '../delivery-notes/delivery-notes-nav';
 import { EXPENSES_COMMANDS } from '../expenses/expenses-nav';
 import { INVOICES_COMMANDS } from '../invoices/invoices-nav';
 import { PRODUCTS_COMMANDS } from '../products/products-nav';
+import { QUOTES_COMMANDS } from '../quotes/quotes-nav';
 import { VENDORS_COMMANDS } from '../vendors/vendors-nav';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import type { Gated, NavEntry } from './nav-manifest';
@@ -69,6 +70,7 @@ export function screenCommands(actions: readonly ScreenAction[]): readonly Scree
 /** Every module's commands, each declared by its module's web feature. */
 export const MODULE_COMMANDS: readonly NavigateCommand[] = [
   ...INVOICES_COMMANDS,
+  ...QUOTES_COMMANDS,
   ...CUSTOMERS_COMMANDS,
   ...PRODUCTS_COMMANDS,
   ...DELIVERY_NOTES_COMMANDS,

@@ -99,6 +99,7 @@ numbering:
     invoice: { format: 'FA-{YYYY}-{MM}-{SEQ:5}', reset: yearly }
     credit_note: { format: 'AV-{YYYY}-{MM}-{SEQ:5}', reset: yearly }
     delivery_note: { format: 'BL-{YYYY}-{MM}-{SEQ:5}', reset: yearly }
+    quote: { format: 'DEV-{YYYY}-{MM}-{SEQ:5}', reset: yearly }
 
 # UN/ECE Recommendation 20 codes, which EN 16931 (BT-130) expects on every invoice line.
 units:

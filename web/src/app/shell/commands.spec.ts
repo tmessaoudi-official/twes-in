@@ -4,6 +4,7 @@ import en from '../../../public/i18n/en.json';
 import fr from '../../../public/i18n/fr.json';
 import { CUSTOMERS_COMMANDS } from '../customers/customers-nav';
 import { DELIVERY_NOTES_COMMANDS } from '../delivery-notes/delivery-notes-nav';
+import { QUOTES_COMMANDS } from '../quotes/quotes-nav';
 import { EXPENSES_COMMANDS } from '../expenses/expenses-nav';
 import { INVOICES_COMMANDS } from '../invoices/invoices-nav';
 import { PRODUCTS_COMMANDS } from '../products/products-nav';
@@ -90,6 +91,7 @@ describe('MODULE_COMMANDS', () => {
   it("gathers each module's own commands, each gated by its module and a write permission", () => {
     expect(MODULE_COMMANDS).toEqual([
       ...INVOICES_COMMANDS,
+      ...QUOTES_COMMANDS,
       ...CUSTOMERS_COMMANDS,
       ...PRODUCTS_COMMANDS,
       ...DELIVERY_NOTES_COMMANDS,
@@ -100,6 +102,7 @@ describe('MODULE_COMMANDS', () => {
       MODULE_COMMANDS.map((command) => [command.route, command.module, command.permission]),
     ).toEqual([
       ['/invoices/new', 'invoices', 'invoice.write'],
+      ['/quotes/new', 'quotes', 'quote.write'],
       ['/customers/new', 'customers', 'customer.write'],
       ['/products/new', 'products', 'product.write'],
       ['/delivery-notes/new', 'delivery_notes', 'delivery_note.write'],

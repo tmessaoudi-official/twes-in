@@ -29,7 +29,8 @@ use Psr\Clock\ClockInterface;
  * A company copies its fiscal preset's tax components and units into its own rows, named in its language, and edits
  * that copy from then on (docs/SPEC.md § 3 Fiscal presets). It also starts with one default establishment, coded the
  * preset's way and named after the company, and one default numbering series per document type the preset numbers, on
- * that establishment. Idempotent: a company that already has taxes, units, establishments or series keeps them untouched.
+ * that establishment. Idempotent: a company that already has taxes, units or establishments keeps them untouched, and
+ * one that has series gains only those of a document type it has none of.
  */
 final readonly class ProvisionCompany
 {
@@ -92,9 +93,13 @@ final readonly class ProvisionCompany
             $copied[] = \sprintf('establishments of %s', $company->getName());
         }
 
-        if ([] === $this->series->ofCompany($company->getId())) {
+        // Per document type, so a type the preset numbers since the company was created (the quote) reaches it on the
+        // next run, while every series it already has is left as it is.
+        $numbered = array_map(static fn (NumberingSeries $series): string => $series->getDocumentType(), $this->series->ofCompany($company->getId()));
+        $missing = array_diff_key($preset->numbering, array_flip($numbered));
+        if ([] !== $missing) {
             $default = array_find($establishments, static fn (Establishment $e): bool => $e->isDefault()) ?? $establishments[0];
-            foreach ($preset->numbering as $documentType => $numbering) {
+            foreach ($missing as $documentType => $numbering) {
                 $this->series->save(NumberingSeries::create($company, $default, $documentType, new NumberFormat($numbering->format), ResetPeriod::from($numbering->reset), true, $now));
             }
             $copied[] = \sprintf('numbering series of %s', $company->getName());

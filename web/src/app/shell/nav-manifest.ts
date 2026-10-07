@@ -6,6 +6,7 @@ import { INVENTORY_NAV } from '../inventory/inventory-nav';
 import { INVOICES_NAV } from '../invoices/invoices-nav';
 import { PRICE_LISTS_NAV } from '../price-lists/price-lists-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
+import { QUOTES_NAV } from '../quotes/quotes-nav';
 import { VENDORS_NAV } from '../vendors/vendors-nav';
 import { EXPENSES_NAV } from '../expenses/expenses-nav';
 import type { IconName } from '../shared/icons/icons';
@@ -279,6 +280,7 @@ export const DEV_NAV: readonly NavEntry[] = [];
 /** Every module's entries, each declared by its module's web feature. */
 export const MODULE_NAV: readonly NavEntry[] = [
   ...INVOICES_NAV,
+  ...QUOTES_NAV,
   ...DELIVERY_NOTES_NAV,
   ...CUSTOMERS_NAV,
   ...PRODUCTS_NAV,

@@ -185,6 +185,10 @@
       "company": "Société",
       "members": "Équipe",
       "fiscal": "Fiscalité"
+    },
+    "quote": {
+      "read": "Voir les devis",
+      "write": "Créer, modifier et répondre aux devis"
     }
   },
   "members": {
@@ -343,7 +347,8 @@
       "document_types": {
         "invoice": "Facture",
         "credit_note": "Avoir",
-        "delivery_note": "Bon de livraison"
+        "delivery_note": "Bon de livraison",
+        "quote": "Devis"
       },
       "reset": {
         "yearly": "Chaque année",
@@ -487,7 +492,7 @@
     "portal": "Portail client",
     "price_lists": "Tarifs",
     "purchases": "Commandes fournisseurs",
-    "quotes": "Devis et commandes",
+    "quotes": "Devis",
     "ratings": "Avis",
     "recurring": "Factures récurrentes",
     "register": "Caisse",
@@ -547,7 +552,8 @@
       "delivery_notes": "Livraisons"
     },
     "stock_valuation": "Valorisation du stock",
-    "price_lists": "Tarifs"
+    "price_lists": "Tarifs",
+    "quotes": "Devis"
   },
   "shell": {
     "scan_tools": "Scanner",
@@ -1030,6 +1036,10 @@
       "title": "Ce qui arrive",
       "intro": "Les réglages des modules à venir, dits en mots : rien n’est encore à choisir.",
       "more": "En savoir plus sur {{module}}"
+    },
+    "quote": {
+      "validity_days": "Durée de validité d’un devis (jours)",
+      "signature_block": "Imprimer le bloc « Bon pour accord » (date, nom, signature) sur les devis"
     }
   },
   "customers": {
@@ -1215,6 +1225,9 @@
       "record": "Enregistrer l’acompte",
       "keep": "Annuler",
       "recorded": "L’acompte est gardé au crédit du client."
+    },
+    "actions": {
+      "new_quote": "Nouveau devis"
     }
   },
   "invoices": {
@@ -3406,12 +3419,6 @@
       "create": "Nouvelle commande fournisseur",
       "settings": "La numérotation des commandes fournisseur et ce que confirme une réception."
     },
-    "quotes": {
-      "heading": "Les devis sont en construction",
-      "does": "Un devis que le client accepte devient la commande : acompte, suivi de ce qui reste à livrer et à facturer, puis la facture sans rien ressaisir.",
-      "create": "Nouveau devis",
-      "settings": "La durée de validité par défaut d’un devis, sa numérotation et les conditions imprimées en bas."
-    },
     "ratings": {
       "heading": "Les avis sont en construction",
       "does": "Recueillir l’avis des clients après leur passage et suivre la note de l’établissement."
@@ -3567,7 +3574,6 @@
     "send_email": "Envoyer par e-mail",
     "send_whatsapp": "Envoyer par WhatsApp",
     "make_recurring": "Rendre récurrente",
-    "new_quote": "Nouveau devis",
     "credit_limit": "Plafond de crédit",
     "new_purchase": "Nouvelle commande fournisseur"
   },
@@ -3744,6 +3750,127 @@
       "forbidden": "L’aperçu montre une facture : il faut aussi pouvoir lire les factures.",
       "failed": "L’aperçu n’a pas pu être préparé. Réessayez dans un instant.",
       "network": "Le serveur est injoignable."
+    }
+  },
+  "quotes": {
+    "title": "Devis",
+    "add": "Nouveau devis",
+    "none": "Aucun devis pour l’instant.",
+    "no_company": "Choisissez d’abord une société.",
+    "new_title": "Nouveau devis",
+    "draft_title": "Devis en brouillon",
+    "draft": "Brouillon",
+    "back": "Retour aux devis",
+    "saved": "Le brouillon a été enregistré.",
+    "read_only": "Vous pouvez consulter les devis, pas les modifier.",
+    "sent": "Le devis est marqué envoyé : il porte son numéro et sa date de validité.",
+    "accepted": "Le devis est marqué accepté.",
+    "refused": "Le devis est marqué refusé.",
+    "cancelled": "Le devis a été annulé.",
+    "invoiced": "Le devis est devenu une facture en brouillon.",
+    "invoiced_link": "Voir la facture tirée de ce devis",
+    "refusal_shown": "Motif du refus : {{reason}}",
+    "fixed": {
+      "sent": "Ce devis est envoyé et ne change plus ; il attend la réponse du client.",
+      "accepted": "Ce devis est accepté et ne change plus ; il peut devenir une facture.",
+      "refused": "Ce devis est refusé et ne change plus ; il peut encore être imprimé.",
+      "cancelled": "Ce devis est annulé et ne change plus ; il peut encore être imprimé."
+    },
+    "statuses": {
+      "draft": "Brouillon",
+      "sent": "Envoyé",
+      "expired": "Expiré",
+      "accepted": "Accepté",
+      "refused": "Refusé",
+      "cancelled": "Annulé"
+    },
+    "sections": {
+      "parties": "Client et établissement",
+      "terms": "Conditions",
+      "notes": "Remarques"
+    },
+    "fields": {
+      "number": "Numéro",
+      "status": "Statut",
+      "customer": "Client",
+      "customerId": "Client",
+      "establishmentId": "Établissement",
+      "customerReference": "Référence du client",
+      "issueDate": "Émis le",
+      "validUntil": "Valable jusqu’au",
+      "answeredOn": "Réponse le",
+      "total": "Total TTC",
+      "discountAmount": "Remise sur le devis (HT)",
+      "notesPrinted": "Remarques imprimées sur le devis",
+      "notesInternal": "Notes internes"
+    },
+    "form": {
+      "reference_hint": "La référence de la demande du client, imprimée sur le devis.",
+      "discount_hint": "Un montant hors taxes, réparti sur les lignes ; au plus ce que les lignes totalisent.",
+      "printed_hint": "Imprimées sur le devis.",
+      "internal_hint": "Gardées dans la société, jamais imprimées.",
+      "customer_hint": "Tapez le numéro ou le nom du client ; les premiers trouvés vous sont proposés.",
+      "customer_required": "Nommez le client de ce devis.",
+      "no_customer_found": "Aucun client trouvé."
+    },
+    "totals": {
+      "title": "Totaux",
+      "subtotal": "Total HT",
+      "discount": "Remise",
+      "tax": "{{code}} {{rate}} % · base {{base}}",
+      "tax_named": "{{name}} · base {{base}}",
+      "total": "Total TTC",
+      "as_saved": "En {{currency}}, tels qu’enregistrés en dernier. Le timbre et la retenue à la source sont ceux de la facture."
+    },
+    "actions": {
+      "save": "Enregistrer le brouillon",
+      "send": "Marquer envoyé",
+      "send_title": "Marquer ce devis envoyé ?",
+      "send_message": "Il reçoit son numéro et sa date de validité, et ses lignes ne se modifient plus.",
+      "confirm_send": "Marquer envoyé",
+      "accept": "Marquer accepté",
+      "refuse": "Marquer refusé",
+      "invoice": "Facturer",
+      "open_invoice": "Voir la facture",
+      "pdf": "Télécharger le PDF",
+      "pdf_draft": "Aperçu du PDF",
+      "cancel": "Annuler le devis",
+      "cancel_title": "Annuler ce devis ?",
+      "cancel_message": "Un devis annulé ne peut plus être envoyé.",
+      "confirm_cancel": "Confirmer l’annulation",
+      "keep": "Garder le devis"
+    },
+    "answer": {
+      "accept_title": "Le client accepte ce devis",
+      "refuse_title": "Le client refuse ce devis",
+      "accept_confirm": "Marquer accepté",
+      "refuse_confirm": "Marquer refusé",
+      "answered_on": "Réponse le",
+      "answered_on_hint": "Laissée vide, aujourd’hui. Au plus tôt le jour d’envoi du devis.",
+      "signed": "Joindre le bon pour accord signé (facultatif)",
+      "reason": "Motif du refus (facultatif)",
+      "reason_hint": "Gardé avec le devis, jamais dans le journal d’audit."
+    },
+    "attachments": {
+      "title": "Pièces jointes",
+      "add": "Joindre un fichier",
+      "hint": "Le bon pour accord signé, la demande du client… PDF, PNG, JPEG ou WebP, jusqu’à 10 Mo et 10 fichiers.",
+      "none": "Aucune pièce jointe pour l’instant.",
+      "remove": "Retirer {{name}}",
+      "remove_short": "Retirer",
+      "added": "{{name}} est joint au devis.",
+      "removed": "{{name}} est retiré du devis."
+    },
+    "suggest": {
+      "invoice": "Facturer"
+    },
+    "errors": {
+      "network": "Le serveur est injoignable.",
+      "not_found": "Devis introuvable, ou le module Factures est désactivé.",
+      "conflict": "Le devis a changé d’état entre-temps, ou une facture tirée de ce devis existe déjà, ou son établissement n’a pas de série de numérotation des devis.",
+      "invalid": "Le devis a été refusé. Vérifiez le client, les lignes et les dates.",
+      "customer_unavailable": "Ce client a été désactivé depuis : choisissez-en un autre, ou réactivez-le dans sa fiche.",
+      "file_refused": "Le fichier a été refusé : il doit être un PDF ou une image PNG, JPEG ou WebP d’au plus 10 Mo, non vide, et le devis compte au plus 10 fichiers."
     }
   }
 }

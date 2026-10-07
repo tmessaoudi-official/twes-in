@@ -185,6 +185,10 @@
       "company": "Company",
       "members": "Team",
       "fiscal": "Fiscal"
+    },
+    "quote": {
+      "read": "See quotes",
+      "write": "Create, edit and answer quotes"
     }
   },
   "members": {
@@ -343,7 +347,8 @@
       "document_types": {
         "invoice": "Invoice",
         "credit_note": "Credit note",
-        "delivery_note": "Delivery note"
+        "delivery_note": "Delivery note",
+        "quote": "Quote"
       },
       "reset": {
         "yearly": "Every year",
@@ -487,7 +492,7 @@
     "portal": "Customer portal",
     "price_lists": "Price lists",
     "purchases": "Purchase orders",
-    "quotes": "Quotes and orders",
+    "quotes": "Quotes",
     "ratings": "Ratings",
     "recurring": "Recurring invoices",
     "register": "Till",
@@ -547,7 +552,8 @@
       "delivery_notes": "Deliveries"
     },
     "stock_valuation": "Stock valuation",
-    "price_lists": "Price lists"
+    "price_lists": "Price lists",
+    "quotes": "Quotes"
   },
   "shell": {
     "scan_tools": "Scanner",
@@ -1030,6 +1036,10 @@
       "title": "Coming",
       "intro": "The settings of the modules to come, in words: nothing is there to choose yet.",
       "more": "More about {{module}}"
+    },
+    "quote": {
+      "validity_days": "How long a quote binds (days)",
+      "signature_block": "Print the “Agreed” block (date, name, signature) on quotes"
     }
   },
   "customers": {
@@ -1215,6 +1225,9 @@
       "record": "Record the deposit",
       "keep": "Cancel",
       "recorded": "The deposit is kept to the customer’s credit."
+    },
+    "actions": {
+      "new_quote": "New quote"
     }
   },
   "invoices": {
@@ -3406,12 +3419,6 @@
       "create": "New purchase order",
       "settings": "The numbering of supplier orders and what a reception confirms."
     },
-    "quotes": {
-      "heading": "Quotes are under construction",
-      "does": "A quote the customer accepts becomes the order: a deposit, what is left to deliver and invoice, then the invoice with nothing typed twice.",
-      "create": "New quote",
-      "settings": "A quote's default validity, its numbering and the terms printed at its foot."
-    },
     "ratings": {
       "heading": "Ratings are under construction",
       "does": "Collect customers' feedback after their visit and follow the venue's rating."
@@ -3567,7 +3574,6 @@
     "send_email": "Send by email",
     "send_whatsapp": "Send by WhatsApp",
     "make_recurring": "Make recurring",
-    "new_quote": "New quote",
     "credit_limit": "Credit limit",
     "new_purchase": "New supplier order"
   },
@@ -3744,6 +3750,127 @@
       "forbidden": "The preview shows an invoice: reading invoices is needed as well.",
       "failed": "The preview could not be prepared. Try again in a moment.",
       "network": "The server cannot be reached."
+    }
+  },
+  "quotes": {
+    "title": "Quotes",
+    "add": "New quote",
+    "none": "No quotes yet.",
+    "no_company": "Choose a company first.",
+    "new_title": "New quote",
+    "draft_title": "Draft quote",
+    "draft": "Draft",
+    "back": "Back to quotes",
+    "saved": "The draft was saved.",
+    "read_only": "You can read quotes, not change them.",
+    "sent": "The quote is marked sent: it carries its number and its validity date.",
+    "accepted": "The quote is marked accepted.",
+    "refused": "The quote is marked refused.",
+    "cancelled": "The quote was cancelled.",
+    "invoiced": "The quote became a draft invoice.",
+    "invoiced_link": "See the invoice drawn from this quote",
+    "refusal_shown": "Reason for refusal: {{reason}}",
+    "fixed": {
+      "sent": "This quote is sent and no longer changes; it waits for the customer's answer.",
+      "accepted": "This quote is accepted and no longer changes; it can become an invoice.",
+      "refused": "This quote is refused and no longer changes; it can still be printed.",
+      "cancelled": "This quote is cancelled and no longer changes; it can still be printed."
+    },
+    "statuses": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "expired": "Expired",
+      "accepted": "Accepted",
+      "refused": "Refused",
+      "cancelled": "Cancelled"
+    },
+    "sections": {
+      "parties": "Customer and establishment",
+      "terms": "Terms",
+      "notes": "Remarks"
+    },
+    "fields": {
+      "number": "Number",
+      "status": "Status",
+      "customer": "Customer",
+      "customerId": "Customer",
+      "establishmentId": "Establishment",
+      "customerReference": "Customer reference",
+      "issueDate": "Issued on",
+      "validUntil": "Valid until",
+      "answeredOn": "Answered on",
+      "total": "Total incl. tax",
+      "discountAmount": "Quote discount (before tax)",
+      "notesPrinted": "Remarks printed on the quote",
+      "notesInternal": "Internal notes"
+    },
+    "form": {
+      "reference_hint": "The reference of the customer's request, printed on the quote.",
+      "discount_hint": "An amount before tax, spread over the lines; at most what the lines come to.",
+      "printed_hint": "Printed on the quote.",
+      "internal_hint": "Kept inside the company, never printed.",
+      "customer_hint": "Type the customer's number or name; the first few found are offered.",
+      "customer_required": "Name the customer this quote is for.",
+      "no_customer_found": "No customer found."
+    },
+    "totals": {
+      "title": "Totals",
+      "subtotal": "Total before tax",
+      "discount": "Discount",
+      "tax": "{{code}} {{rate}} % · base {{base}}",
+      "tax_named": "{{name}} · base {{base}}",
+      "total": "Total incl. tax",
+      "as_saved": "In {{currency}}, as last saved. The stamp and the withholding are the invoice's."
+    },
+    "actions": {
+      "save": "Save the draft",
+      "send": "Mark sent",
+      "send_title": "Mark this quote sent?",
+      "send_message": "It gets its number and its validity date, and its lines no longer change.",
+      "confirm_send": "Mark sent",
+      "accept": "Mark accepted",
+      "refuse": "Mark refused",
+      "invoice": "Invoice",
+      "open_invoice": "See the invoice",
+      "pdf": "Download the PDF",
+      "pdf_draft": "Preview the PDF",
+      "cancel": "Cancel the quote",
+      "cancel_title": "Cancel this quote?",
+      "cancel_message": "A cancelled quote can no longer be sent.",
+      "confirm_cancel": "Confirm the cancellation",
+      "keep": "Keep the quote"
+    },
+    "answer": {
+      "accept_title": "The customer accepts this quote",
+      "refuse_title": "The customer refuses this quote",
+      "accept_confirm": "Mark accepted",
+      "refuse_confirm": "Mark refused",
+      "answered_on": "Answered on",
+      "answered_on_hint": "Left empty, today. No earlier than the day the quote was sent.",
+      "signed": "Attach the signed agreement (optional)",
+      "reason": "Reason for refusal (optional)",
+      "reason_hint": "Kept with the quote, never in the audit trail."
+    },
+    "attachments": {
+      "title": "Attachments",
+      "add": "Attach a file",
+      "hint": "The signed agreement, the customer's request… PDF, PNG, JPEG or WebP, up to 10 MB and 10 files.",
+      "none": "No attachment yet.",
+      "remove": "Remove {{name}}",
+      "remove_short": "Remove",
+      "added": "{{name}} is attached to the quote.",
+      "removed": "{{name}} is removed from the quote."
+    },
+    "suggest": {
+      "invoice": "Invoice"
+    },
+    "errors": {
+      "network": "The server cannot be reached.",
+      "not_found": "Quote not found, or the Invoices module is off.",
+      "conflict": "The quote changed state meanwhile, or an invoice drawn from it already exists, or its establishment has no quote numbering series.",
+      "invalid": "The quote was refused. Check the customer, the lines and the dates.",
+      "customer_unavailable": "This customer has been deactivated since: choose another, or reactivate them on their page.",
+      "file_refused": "The file was refused: it must be a PDF or a PNG, JPEG or WebP image of at most 10 MB, not empty, and a quote holds at most 10 files."
     }
   }
 }

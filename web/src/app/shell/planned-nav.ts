@@ -29,13 +29,6 @@ export interface PlannedPlace {
 export const PLANNED_NAV: readonly PlannedPlace[] = [
   // Selling.
   {
-    key: 'quotes',
-    icon: 'request_quote',
-    section: 'sell',
-    after: 'invoices',
-    create: true,
-  },
-  {
     key: 'recurring',
     icon: 'event_repeat',
     section: 'sell',

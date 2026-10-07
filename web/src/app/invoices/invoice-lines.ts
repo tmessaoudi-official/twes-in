@@ -42,7 +42,7 @@ import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { Select, type SelectOption } from '../shared/form/select';
 import { ProductScans } from '../products/product-scans';
-import { InvoicesFacade } from './invoices-facade';
+import { LineCatalogue } from './line-catalogue';
 
 type CheckedField = keyof Omit<
   LineControls,
@@ -58,7 +58,8 @@ type CheckedField = keyof Omit<
  * A document's lines, edited in place: a product fills a line's description, unit, price and default taxes, a new
  * line takes the customer's discount, and every value stays editable. Each line tax the customer may be charged is a
  * box; a tax already on a line stays offered, so it can be taken off. A line drafted from a delivery note says so.
- * The API works the figures out when the document is saved.
+ * The API works the figures out when the document is saved. A quote's screen uses it too, providing its own
+ * `LineCatalogue` and asking no lot.
  *
  * Kept apart from the delivery notes' lines on purpose: an invoice line adds a discount and where it came from, and a
  * shared document lines component is recorded for the architecture pass (docs/SPEC.md § 8 row 43).
@@ -82,7 +83,7 @@ type CheckedField = keyof Omit<
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InvoiceLines {
-  private readonly facade = inject(InvoicesFacade);
+  private readonly facade = inject(LineCatalogue);
   private readonly scans = inject(ProductScans);
 
   readonly lines = input.required<LinesArray>();
@@ -99,6 +100,8 @@ export class InvoiceLines {
   private readonly taxChoices = new Map<string, SelectOption[]>();
   /** Whether the document is a credit note, whose lines may say their goods came back to stock. */
   readonly returnable = input(false);
+  /** Whether a line names the lot or serial it sells: a document that hands goods over does, a quote does not. */
+  readonly lots = input(true);
   /** Each line's net as last saved, by position; shown while the line is unchanged. */
   readonly nets = input<readonly string[]>([]);
 
@@ -176,7 +179,7 @@ export class InvoiceLines {
   /** A line of a product tracked by lot or serial asks which one it sells. */
   protected namesALot(line: LineGroup): boolean {
     this.revision();
-    return namesALot(line);
+    return this.lots() && namesALot(line);
   }
 
   protected groups(): LineGroup[] {

@@ -56,11 +56,12 @@ final class ModulesTest extends ApiTestCase
             ['key' => 'invoices', 'labelKey' => 'modules.invoices', 'dependencies' => ['customers', 'products'], 'permissions' => ['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'invoice.credit'], 'enabled' => true],
             ['key' => 'price_lists', 'labelKey' => 'modules.price_lists', 'dependencies' => ['customers', 'products'], 'permissions' => [], 'enabled' => true],
             ['key' => 'products', 'labelKey' => 'modules.products', 'dependencies' => [], 'permissions' => ['product.read', 'product.write', 'product.cost.read'], 'enabled' => true],
+            ['key' => 'quotes', 'labelKey' => 'modules.quotes', 'dependencies' => ['customers'], 'permissions' => ['quote.read', 'quote.write'], 'enabled' => true],
             ['key' => 'scanning', 'labelKey' => 'modules.scanning', 'dependencies' => ['products'], 'permissions' => [], 'enabled' => true],
             ['key' => 'vendors', 'labelKey' => 'modules.vendors', 'dependencies' => [], 'permissions' => ['vendor.read', 'vendor.write'], 'enabled' => true],
         ], array_values(array_filter($this->jsonList(), static fn (array $row) => !isset($row['planned']))));
         $this->getJson('/api/auth/me');
-        self::assertSame(['customers', 'delivery_notes', 'expenses', 'fixture_ledger', 'inventory', 'invoices', 'price_lists', 'products', 'scanning', 'vendors'], $this->arrayAt($this->json(), 'modules'));
+        self::assertSame(['customers', 'delivery_notes', 'expenses', 'fixture_ledger', 'inventory', 'invoices', 'price_lists', 'products', 'quotes', 'scanning', 'vendors'], $this->arrayAt($this->json(), 'modules'));
     }
 
     // docs/SPEC.md § 7, 2026-09-26 10:08 (row 150): the complete product shows, each module not built yet as planned,
@@ -84,7 +85,6 @@ final class ModulesTest extends ApiTestCase
             ['menu', 'later', ['products']],
             ['portal', 'later', ['customers', 'invoices']],
             ['purchases', 'v1', ['inventory', 'products', 'vendors']],
-            ['quotes', 'v1', ['customers', 'invoices']],
             ['ratings', 'later', ['venue']],
             ['recurring', 'v1', ['invoices']],
             ['register', 'v1', ['invoices', 'products']],
@@ -142,6 +142,8 @@ final class ModulesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $this->sendJson('PUT', $this->path('price_lists'), ['enabled' => false]);
         self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $this->path('quotes'), ['enabled' => false]);
+        self::assertResponseIsSuccessful();
         $this->sendJson('PUT', $this->path('customers'), ['enabled' => false]);
 
         self::assertResponseIsSuccessful();
@@ -154,7 +156,7 @@ final class ModulesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson('/api/auth/me');
         self::assertSame(['expenses', 'inventory', 'products', 'scanning', 'vendors'], $this->arrayAt($this->json(), 'modules'), 'products, inventory, the scanner, vendors and expenses need no customers and stay on');
-        self::assertSame(['module.disabled', 'module.disabled', 'module.disabled', 'module.disabled', 'module.disabled'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'module'"));
+        self::assertSame(['module.disabled', 'module.disabled', 'module.disabled', 'module.disabled', 'module.disabled', 'module.disabled'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'module'"));
 
         $this->sendJson('PUT', $this->path('customers'), ['enabled' => true]);
         self::assertResponseIsSuccessful();
@@ -172,11 +174,13 @@ final class ModulesTest extends ApiTestCase
         self::assertStringContainsString('fixture_ledger', (string) $this->client->getResponse()->getContent());
         self::assertStringContainsString('delivery_notes', (string) $this->client->getResponse()->getContent());
         self::assertStringContainsString('invoices', (string) $this->client->getResponse()->getContent());
+        self::assertStringContainsString('quotes', (string) $this->client->getResponse()->getContent());
 
         $this->sendJson('PUT', $this->path('fixture_ledger'), ['enabled' => false]);
         $this->sendJson('PUT', $this->path('delivery_notes'), ['enabled' => false]);
         $this->sendJson('PUT', $this->path('invoices'), ['enabled' => false]);
         $this->sendJson('PUT', $this->path('price_lists'), ['enabled' => false]);
+        $this->sendJson('PUT', $this->path('quotes'), ['enabled' => false]);
         $this->sendJson('PUT', $this->path('customers'), ['enabled' => false]);
         self::assertResponseIsSuccessful();
 
@@ -289,7 +293,7 @@ final class ModulesTest extends ApiTestCase
         $this->postJson($this->companyPath().'/product-categories', ['name' => 'Logiciel']);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson('/api/auth/me');
-        self::assertSame(['customers', 'expenses', 'fixture_ledger', 'vendors'], $this->arrayAt($this->json(), 'modules'));
+        self::assertSame(['customers', 'expenses', 'fixture_ledger', 'quotes', 'vendors'], $this->arrayAt($this->json(), 'modules'), 'quotes need no products: a line may be written by hand');
 
         $this->sendJson('PUT', $this->path('products'), ['enabled' => true]);
         $this->getJson($this->companyPath().'/product-categories');

@@ -19,6 +19,8 @@ use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Infrastructure\Doctrine\DoctrineInvoiceRepository;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Infrastructure\Doctrine\DoctrineProductRepository;
+use App\Module\Quotes\Domain\Quote;
+use App\Module\Quotes\Infrastructure\Doctrine\DoctrineQuoteRepository;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Infrastructure\Doctrine\DoctrineVendorRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -41,6 +43,7 @@ final class SearchIndexesTest extends KernelTestCase
         yield 'invoices' => [Invoice::class, 'i', DoctrineInvoiceRepository::MATCHES_WORDS, 'idx_invoice_search'];
         yield 'expenses' => [Expense::class, 'e', DoctrineExpenseRepository::MATCHES_WORDS, 'idx_expense_search'];
         yield 'delivery notes' => [DeliveryNote::class, 'n', DoctrineDeliveryNoteRepository::MATCHES_WORDS, 'idx_delivery_note_search'];
+        yield 'quotes' => [Quote::class, 'q', DoctrineQuoteRepository::MATCHES_WORDS, 'idx_quote_search'];
     }
 
     /** @param class-string $entity */

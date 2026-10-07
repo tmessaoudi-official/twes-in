@@ -48,6 +48,11 @@ use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductTracking;
+use App\Module\Quotes\Application\ManageQuotes;
+use App\Module\Quotes\Application\QuoteInput;
+use App\Module\Quotes\Application\QuoteLineInput;
+use App\Module\Quotes\Application\QuoteWorkflow;
+use App\Module\Quotes\Domain\QuoteHeader;
 use App\Module\Vendors\Application\ManageVendors;
 use App\Module\Vendors\Application\VendorInput;
 use App\Module\Vendors\Domain\VendorProfile;
@@ -131,6 +136,8 @@ final class DemoCompanies extends Fixture
         private readonly ManageInvoices $invoices,
         private readonly InvoiceWorkflow $invoiceWorkflow,
         private readonly ManagePayments $payments,
+        private readonly ManageQuotes $quotes,
+        private readonly QuoteWorkflow $quoteWorkflow,
         private readonly InviteToCompany $invitations,
         private readonly AcceptInvitation $acceptances,
         private readonly CapturingInvitationMailer $mailed,
@@ -187,6 +194,7 @@ final class DemoCompanies extends Fixture
 
         $this->planExpenses($demo, $timeline, $company, $vendors, $tax, $actor);
         $this->planDeliveryNotes($timeline, $company, $customerIds, $goods, $tracked, $actor);
+        $this->planQuotes($timeline, $company, $customerIds, $sellable, $actor);
         $this->planInvoices($demo, $timeline, $company, $customerIds, $sellable, $actor);
         $timeline->run();
     }
@@ -485,6 +493,65 @@ final class DemoCompanies extends Fixture
                     $invoice = $this->invoiceDeliveryNotes->draftInvoice($company(), [$ids[$n]], $actor);
                     $this->invoiceWorkflow->issue($company(), $invoice->getId(), $actor);
                 });
+            }
+        }
+    }
+
+    /**
+     * Seven quotes, one in each state the list tells apart: accepted and invoiced, accepted, refused, sent and expired, sent
+     * and still binding, a draft and a draft cancelled. Each binds for the company's 30 days.
+     *
+     * @param \Closure(): Company $company
+     * @param list<Uuid>          $customerIds
+     * @param list<Uuid>          $sellable
+     */
+    private function planQuotes(Timeline $timeline, \Closure $company, array $customerIds, array $sellable, Uuid $actor): void
+    {
+        /** @var list<array{customer: int, day: int, send?: int, accept?: int, refuse?: int, invoice?: int, cancel?: int}> $plan */
+        $plan = [
+            ['customer' => 1, 'day' => -100, 'send' => -99, 'accept' => -90, 'invoice' => -88],
+            ['customer' => 4, 'day' => -50, 'send' => -49, 'accept' => -40],
+            ['customer' => 6, 'day' => -70, 'send' => -70, 'refuse' => -55],
+            ['customer' => 8, 'day' => -45, 'send' => -44],
+            ['customer' => 5, 'day' => -6, 'send' => -5],
+            ['customer' => 10, 'day' => -2],
+            ['customer' => 11, 'day' => -30, 'cancel' => -29],
+        ];
+        /** @var array<int, Uuid> $ids */
+        $ids = [];
+        foreach ($plan as $n => $quote) {
+            $customerId = $customerIds[$quote['customer'] % \count($customerIds)];
+            $lines = [
+                new QuoteLineInput($sellable[(2 * $n + 1) % \count($sellable)], null, (string) (3 + $n)),
+                new QuoteLineInput($sellable[(2 * $n + 4) % \count($sellable)], null, '1', discountRate: 0 === $n % 2 ? '5' : null),
+            ];
+            $header = new QuoteHeader(customerReference: 0 === $n ? 'DA-2026-014' : null, discountAmount: 1 === $n ? '10' : null);
+            $timeline->at($quote['day'], function () use (&$ids, $n, $company, $customerId, $header, $lines, $actor): void {
+                $ids[$n] = $this->quotes->create($company(), new QuoteInput($customerId, null, $header, $lines), $actor)->getId();
+            });
+            // Each step reads the quote's id when it runs, after the creation step wrote it.
+            $steps = [
+                'send' => function () use (&$ids, $n, $company, $actor): void {
+                    $this->quoteWorkflow->send($company(), $ids[$n], $actor);
+                },
+                'accept' => function () use (&$ids, $n, $company, $actor): void {
+                    $this->quoteWorkflow->accept($company(), $ids[$n], null, $actor);
+                },
+                'refuse' => function () use (&$ids, $n, $company, $actor): void {
+                    $this->quoteWorkflow->refuse($company(), $ids[$n], null, 'Délai de livraison trop long.', $actor);
+                },
+                'cancel' => function () use (&$ids, $n, $company, $actor): void {
+                    $this->quoteWorkflow->cancel($company(), $ids[$n], $actor);
+                },
+                'invoice' => function () use (&$ids, $n, $company, $actor): void {
+                    $invoiceId = $this->quoteWorkflow->invoice($company(), $ids[$n], $actor)->getInvoiceId() ?? throw new \LogicException('An invoiced quote names its invoice.');
+                    $this->invoiceWorkflow->issue($company(), $invoiceId, $actor);
+                },
+            ];
+            foreach ($steps as $step => $run) {
+                if (isset($quote[$step])) {
+                    $timeline->at($quote[$step], $run);
+                }
             }
         }
     }

@@ -1,0 +1,147 @@
+{# A quote on A4, rendered by Gotenberg's Chromium. Everything it says comes from translations/pdf and fiscal in the
+   quote's language; amounts go through the decimal filter, never through a float. Nothing here runs a script. A sent
+   quote prints what sending kept: its customer, its seller, its tax rates and how it prints. #}
+{%- set t = 'pdf' -%}
+{#- The company's date and number format win over the language's. -#}
+{%- set dateFormat = date_pattern(page.dateFormat, 'format.date'|trans({}, t, locale)) -%}
+{%- set figures = page.totals -%}
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ 'quote.title'|trans({}, t, locale) }} {{ quote.number }}</title>
+  <style>
+    @page { size: A4; }
+{% include 'pdf/_document.css.twig' with {design: page.design} only %}
+    .totals { width: 55%; }
+    .validity { margin: 12px 0 0; }
+    .agreement { margin-top: 24px; break-inside: avoid; }
+    .agreement h2 { font-size: 9pt; margin: 0 0 4px; }
+    .agreement table { margin: 0; }
+    .agreement td { width: 33.33%; height: 30mm; vertical-align: top; border: 1px solid #afb8c1; padding: 6px; font-size: 8pt; color: #57606a; }
+  </style>
+</head>
+<body class="{{ 'layout-' ~ page.design.layout.value }}">
+  {%- if page.watermark %}
+    <div class="watermark">{{ ('watermark.' ~ page.watermark)|trans({}, t, locale) }}</div>
+  {%- endif %}
+
+  <div class="parties">
+    <div class="party">
+      {%- if logo %}<img class="logo" src="{{ logo }}" alt="">{% endif %}
+      <div class="company-name">{{ seller.name }}{% if seller.legalForm %} {{ seller.legalForm }}{% endif %}</div>
+      {%- for key, value in seller.identifiers %}
+        <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : {{ value }}</div>
+      {%- endfor %}
+      {%- if seller.address.line1 %}
+        <div>{{ seller.address.line1 }}</div>
+        {% if seller.address.line2 %}<div>{{ seller.address.line2 }}</div>{% endif %}
+        <div>{{ seller.address.postalCode }} {{ seller.address.city }}</div>
+      {%- endif %}
+      {% if seller.phone %}<div>{{ 'company.phone'|trans({}, t, locale) }} {{ seller.phone }}</div>{% endif %}
+      {% if seller.email %}<div>{{ 'company.email'|trans({}, t, locale) }} {{ seller.email }}</div>{% endif %}
+    </div>
+    <div class="party">
+      <h2>{{ 'quote.customer'|trans({}, t, locale) }}</h2>
+      <div class="company-name">{{ customer.legalName ?? customer.name }}</div>
+      {% if customer.legalName %}<div>{{ customer.name }}</div>{% endif %}
+      <div class="muted">{{ 'quote.customer_number'|trans({}, t, locale) }} {{ customer.number }}</div>
+      {%- for key, value in customer.identifiers %}
+        <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : {{ value }}</div>
+      {%- endfor %}
+      {%- set billing = customer.billingAddress %}
+      {% if billing.line1 %}<div>{{ billing.line1 }}</div>{% endif %}
+      {% if billing.line2 %}<div>{{ billing.line2 }}</div>{% endif %}
+      {% if billing.postalCode or billing.city %}<div>{{ billing.postalCode }} {{ billing.city }}</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="title">
+    <h1>{{ 'quote.title'|trans({}, t, locale) }}</h1>
+    {% if quote.number %}<strong>{{ quote.number }}</strong>{% endif %}
+  </div>
+
+  <dl class="facts">
+    {% if quote.issueDate %}<div><dt>{{ 'quote.issue_date'|trans({}, t, locale) }}</dt><dd>{{ quote.issueDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
+    {% if quote.validUntil %}<div><dt>{{ 'quote.valid_until'|trans({}, t, locale) }}</dt><dd>{{ quote.validUntil|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
+    {% if header.customerReference %}<div><dt>{{ 'quote.customer_reference'|trans({}, t, locale) }}</dt><dd>{{ header.customerReference }}</dd></div>{% endif %}
+  </dl>
+
+  <table>
+    <thead>
+      <tr>
+        <th>{{ 'line.description'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'line.quantity'|trans({}, t, locale) }}</th>
+        <th>{{ 'line.unit'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'line.unit_price'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'line.discount'|trans({}, t, locale) }}</th>
+        <th>{{ 'line.taxes'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'line.net'|trans({}, t, locale) }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {%- for line in quote.lines %}
+        <tr>
+          <td>{{ line.description|nl2br }}</td>
+          <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
+          <td>{{ line.unit.name }}</td>
+          <td class="number">{{ line.unitPriceNet|decimal(scale, locale, page.numberFormat) }}</td>
+          <td class="number">{% if line.discountRate %}{{ line.discountRate|decimal(0, locale, page.numberFormat) }} %{% endif %}</td>
+          <td>{{ line.taxes|map(tax => tax.code)|join(', ') }}</td>
+          <td class="number">{{ figures.lines[loop.index0].net|decimal(scale, locale, page.numberFormat) }}</td>
+        </tr>
+      {%- endfor %}
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr><td>{{ 'totals.subtotal'|trans({}, t, locale) }}</td><td class="number">{{ figures.subtotalNet|decimal(scale, locale, page.numberFormat) }}</td></tr>
+    {%- if header.discountAmount %}
+      <tr><td>{{ 'totals.document_discount'|trans({}, t, locale) }}</td><td class="number">{{ figures.documentDiscount|deduction(scale, locale, page.numberFormat) }}</td></tr>
+      <tr><td>{{ 'totals.total_net'|trans({}, t, locale) }}</td><td class="number">{{ figures.netAfterDocumentDiscount|decimal(scale, locale, page.numberFormat) }}</td></tr>
+    {%- endif %}
+    {%- for tax in figures.taxes %}
+      <tr>
+        <td>{{ tax.code }} {{ tax.rate.percentage()|decimal(0, locale, page.numberFormat) }} % <span class="muted">({{ tax.base|decimal(scale, locale, page.numberFormat) }})</span></td>
+        <td class="number">{{ tax.amount|decimal(scale, locale, page.numberFormat) }}</td>
+      </tr>
+    {%- endfor %}
+    <tr><td>{{ 'totals.total_tax'|trans({}, t, locale) }}</td><td class="number">{{ figures.totalTax|decimal(scale, locale, page.numberFormat) }}</td></tr>
+    <tr class="grand"><td>{{ 'totals.total'|trans({}, t, locale) }}</td><td class="number">{{ figures.total|decimal(scale, locale, page.numberFormat) }}</td></tr>
+  </table>
+  <p class="muted">{{ 'totals.currency'|trans({'%currency%': seller.currency}, t, locale) }}</p>
+  {%- if quote.validUntil %}
+    <p class="validity" data-testid="validity">{{ 'quote.validity'|trans({'%date%': quote.validUntil|date(dateFormat, 'UTC')}, t, locale) }}</p>
+  {%- endif %}
+
+  {%- if customer.taxMentionKey %}
+    {%- set mention = customer.taxMentionKey|trans({}, 'fiscal', locale) %}
+    {#- A mention still waiting for its parameters (a legal reference) is not printed half-written. #}
+    {%- if not (mention matches '/%[a-z_]+%/') %}
+      <p class="mention">{{ mention }}</p>
+    {%- endif %}
+  {%- endif %}
+
+  {%- if header.notesPrinted or page.printedNotes %}
+    <div class="remarks">
+      <h2 class="muted" style="font-size: 9pt; margin: 0 0 4px;">{{ 'quote.remarks'|trans({}, t, locale) }}</h2>
+      {% if header.notesPrinted %}<p style="margin: 0;">{{ header.notesPrinted|nl2br }}</p>{% endif %}
+      {% if page.printedNotes %}<p style="margin: 4px 0 0;">{{ page.printedNotes|nl2br }}</p>{% endif %}
+    </div>
+  {%- endif %}
+
+  {#- « Bon pour accord »: where the customer dates, names and signs the quote it accepts, a quote setting on by default. #}
+  {%- if page.signatureBlock %}
+    <section class="agreement" data-testid="agreement">
+      <h2>{{ 'quote.agreement.title'|trans({}, t, locale) }}</h2>
+      <table>
+        <tr>
+          <td>{{ 'quote.agreement.when'|trans({}, t, locale) }}</td>
+          <td>{{ 'quote.agreement.name'|trans({}, t, locale) }}</td>
+          <td>{{ 'quote.agreement.signature'|trans({}, t, locale) }}</td>
+        </tr>
+      </table>
+    </section>
+  {%- endif %}
+</body>
+</html>

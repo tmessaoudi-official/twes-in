@@ -318,7 +318,7 @@ describe('CustomerPage', () => {
   it('shows what a customer will offer once its planned modules ship', async () => {
     customer.set(carthage);
     await open('k1');
-    expect(await plannedInMenu()).toEqual(['record-planned-quotes', 'record-planned-statements']);
+    expect(await plannedInMenu()).toEqual(['record-planned-statements']);
   });
 
   it('creates a customer, then opens it by its identifier', async () => {

@@ -54,7 +54,7 @@ final class EstablishmentsTest extends ApiTestCase
 
         $this->getJson('/api/companies/'.$this->company->getId()->toRfc4122().'/numbering-series');
         $codes = array_map(fn (array $row): string => $this->stringAt($row, 'establishmentCode'), $this->jsonList());
-        self::assertSame(['000', '000', '000', '001', '001', '001'], $codes);
+        self::assertSame(['000', '000', '000', '000', '001', '001', '001', '001'], $codes);
         $count = $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM audit_log WHERE action = 'establishment.created'");
         self::assertEquals(1, $count);
     }

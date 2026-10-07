@@ -5,6 +5,7 @@ import fr from '../../../public/i18n/fr.json';
 import { CUSTOMERS_NAV } from '../customers/customers-nav';
 import { PRICE_LISTS_NAV } from '../price-lists/price-lists-nav';
 import { DELIVERY_NOTES_NAV } from '../delivery-notes/delivery-notes-nav';
+import { QUOTES_NAV } from '../quotes/quotes-nav';
 import { INVOICES_NAV } from '../invoices/invoices-nav';
 import { INVENTORY_NAV } from '../inventory/inventory-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
@@ -180,7 +181,10 @@ describe('the navigation manifest', () => {
     expect(SIDEBAR_SECTIONS).toEqual(['sell', 'manage']);
     expect(navSections(sidebar, SIDEBAR_SECTIONS).map((g) => [g.section, keys(g.entries)])).toEqual(
       [
-        ['sell', ['home', 'invoices', 'delivery-notes', 'customers', 'products', 'price_lists']],
+        [
+          'sell',
+          ['home', 'invoices', 'quotes', 'delivery-notes', 'customers', 'products', 'price_lists'],
+        ],
         ['manage', ['stock', 'vendors', 'expenses', 'watch']],
       ],
     );
@@ -281,8 +285,12 @@ describe('the navigation manifest', () => {
     expect(
       EXPENSES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
     ).toEqual([['expenses', 'expenses', 'expense.read', '/expenses']]);
+    expect(
+      QUOTES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
+    ).toEqual([['quotes', 'quotes', 'quote.read', '/quotes']]);
     expect(MODULE_NAV).toEqual([
       ...INVOICES_NAV,
+      ...QUOTES_NAV,
       ...DELIVERY_NOTES_NAV,
       ...CUSTOMERS_NAV,
       ...PRODUCTS_NAV,

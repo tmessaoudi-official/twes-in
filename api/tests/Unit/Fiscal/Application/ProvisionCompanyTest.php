@@ -157,7 +157,7 @@ final class ProvisionCompanyTest extends TestCase
 
         $series = $this->series->ofCompany($company->getId());
         self::assertSame(
-            ['credit_note' => 'AV-{YYYY}-{MM}-{SEQ:5}', 'delivery_note' => 'BL-{YYYY}-{MM}-{SEQ:5}', 'invoice' => 'FAC-{YYYY}-{MM}-{SEQ:5}'],
+            ['credit_note' => 'AV-{YYYY}-{MM}-{SEQ:5}', 'delivery_note' => 'BL-{YYYY}-{MM}-{SEQ:5}', 'invoice' => 'FAC-{YYYY}-{MM}-{SEQ:5}', 'quote' => 'DEV-{YYYY}-{MM}-{SEQ:5}'],
             array_combine(array_map(static fn (NumberingSeries $s) => $s->getDocumentType(), $series), array_map(static fn (NumberingSeries $s) => $s->getFormat(), $series)),
         );
         foreach ($series as $each) {
@@ -175,6 +175,23 @@ final class ProvisionCompanyTest extends TestCase
 
         self::assertSame([], $this->provision->handle($company));
         self::assertCount(1, $this->establishments->ofCompany($company->getId()));
-        self::assertCount(3, $this->series->ofCompany($company->getId()));
+        self::assertCount(4, $this->series->ofCompany($company->getId()));
+    }
+
+    public function testADocumentTypeThePresetNumbersSinceIsGivenItsSeriesAloneAndTheOthersAreLeftAlone(): void
+    {
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->provision->handle($company);
+        $quote = array_find($this->series->series, static fn (NumberingSeries $s): bool => 'quote' === $s->getDocumentType());
+        self::assertNotNull($quote);
+        $this->series->series = array_values(array_filter($this->series->series, static fn (NumberingSeries $s): bool => $s !== $quote));
+        $invoice = array_find($this->series->series, static fn (NumberingSeries $s): bool => 'invoice' === $s->getDocumentType());
+
+        self::assertSame(['numbering series of Acme'], $this->provision->handle($company));
+
+        $types = array_map(static fn (NumberingSeries $s): string => $s->getDocumentType(), $this->series->ofCompany($company->getId()));
+        sort($types);
+        self::assertSame(['credit_note', 'delivery_note', 'invoice', 'quote'], $types);
+        self::assertSame($invoice, array_find($this->series->series, static fn (NumberingSeries $s): bool => 'invoice' === $s->getDocumentType()));
     }
 }

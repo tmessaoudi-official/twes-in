@@ -24,7 +24,6 @@ final readonly class PlannedModules
     {
         $this->manifests = $manifests ?? [
             // Selling.
-            new ModuleManifest('quotes', 'modules.quotes', ['customers', 'invoices'], planned: 'v1'),
             new ModuleManifest('works', 'modules.works', ['invoices', 'quotes'], planned: 'v1'),
             new ModuleManifest('register', 'modules.register', ['invoices', 'products'], planned: 'v1'),
             new ModuleManifest('recurring', 'modules.recurring', ['invoices'], planned: 'v1'),

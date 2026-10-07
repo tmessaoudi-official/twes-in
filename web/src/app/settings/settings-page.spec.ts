@@ -30,8 +30,8 @@ class StaticLoader implements TranslateLoader {
     return of({
       nav: { settings: 'Valeurs par défaut' },
       settings: { saved: 'Enregistré' },
-      modules: { quotes: 'Devis & commandes', zakat: 'Zakat' },
-      coming: { quotes: { settings: 'La durée de validité par défaut.' } },
+      modules: { recurring: 'Factures récurrentes', zakat: 'Zakat' },
+      coming: { recurring: { settings: 'La fréquence et le jour de chaque facture.' } },
       shell: { soon: 'Bientôt' },
     });
   }
@@ -91,7 +91,7 @@ describe('SettingsPage', () => {
       // A key this page declares no card for is left out.
       plannedModules: [
         { key: 'zakat', planned: 'later' },
-        { key: 'quotes', planned: 'v1' },
+        { key: 'recurring', planned: 'v1' },
         { key: 'ratings', planned: 'later' },
       ],
     }),
@@ -231,14 +231,14 @@ describe('SettingsPage', () => {
 
     const cards = [...fixture.nativeElement.querySelectorAll('[data-testid^="settings-coming-"]')];
     expect(cards.map((card: Element) => card.getAttribute('data-testid'))).toEqual([
-      'settings-coming-quotes',
+      'settings-coming-recurring',
       'settings-coming-zakat',
     ]);
-    const quotes = q('settings-coming-quotes');
-    expect(quotes?.textContent).toContain('Devis & commandes');
-    expect(quotes?.textContent).toContain('La durée de validité par défaut.');
-    expect(quotes?.querySelector('[data-testid="soon"]')?.textContent?.trim()).toBe('Bientôt');
-    expect(quotes?.querySelector('a')?.getAttribute('href')).toBe('/coming/quotes');
+    const recurring = q('settings-coming-recurring');
+    expect(recurring?.textContent).toContain('Factures récurrentes');
+    expect(recurring?.textContent).toContain('La fréquence et le jour de chaque facture.');
+    expect(recurring?.querySelector('[data-testid="soon"]')?.textContent?.trim()).toBe('Bientôt');
+    expect(recurring?.querySelector('a')?.getAttribute('href')).toBe('/coming/recurring');
     // No fake field, and no default that would read as already chosen.
     expect(
       q('settings-coming')?.querySelector('input, select, textarea, mat-select, mat-slide-toggle'),

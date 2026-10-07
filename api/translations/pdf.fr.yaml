@@ -34,6 +34,20 @@ invoice:
     credit_transfer: 'Excédent d’avoir'
     payment_terms: 'À %days% jours'
     remarks: 'Remarques'
+quote:
+    title: 'Devis'
+    customer: 'Client'
+    customer_number: 'Code client'
+    issue_date: 'Date'
+    valid_until: 'Valable jusqu’au'
+    customer_reference: 'Votre référence'
+    remarks: 'Remarques'
+    validity: 'Ce devis engage nos prix jusqu’au %date% inclus.'
+    agreement:
+        title: 'Bon pour accord'
+        when: 'Date'
+        name: 'Nom'
+        signature: 'Signature et cachet'
 line:
     discount: 'Remise'
     description: 'Désignation'

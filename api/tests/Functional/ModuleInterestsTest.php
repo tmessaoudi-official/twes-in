@@ -36,18 +36,18 @@ final class ModuleInterestsTest extends ApiTestCase
     {
         $this->signedIn($this->company, ['company.read', 'company.settings']);
 
-        $this->sendJson('PUT', $this->path('quotes').'/interest', ['interested' => true]);
+        $this->sendJson('PUT', $this->path('recurring').'/interest', ['interested' => true]);
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['quotes', 'v1', true, false], [$this->json()['key'], $this->json()['planned'], $this->json()['interested'], $this->json()['enabled']]);
+        self::assertSame(['recurring', 'v1', true, false], [$this->json()['key'], $this->json()['planned'], $this->json()['interested'], $this->json()['enabled']]);
         $this->getJson($this->path());
         $rows = array_column($this->jsonList(), null, 'key');
-        self::assertTrue($rows['quotes']['interested']);
+        self::assertTrue($rows['recurring']['interested']);
         self::assertFalse($rows['zakat']['interested']);
         self::assertArrayNotHasKey('interested', $rows['customers'], 'a real module is switched, never waited for');
         self::assertSame(['module.interest_recorded'], $this->auditActions());
 
-        $this->sendJson('PUT', $this->path('quotes').'/interest', ['interested' => false]);
+        $this->sendJson('PUT', $this->path('recurring').'/interest', ['interested' => false]);
 
         self::assertResponseIsSuccessful();
         self::assertFalse($this->json()['interested']);
@@ -64,7 +64,7 @@ final class ModuleInterestsTest extends ApiTestCase
         self::assertStringContainsString('customers is already available', $this->stringAt($this->json(), 'detail'));
         $this->sendJson('PUT', $this->path('payroll').'/interest', ['interested' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
-        $this->sendJson('PUT', $this->path('quotes').'/interest', ['interested' => null]);
+        $this->sendJson('PUT', $this->path('recurring').'/interest', ['interested' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM module_interest'));
     }
@@ -74,9 +74,9 @@ final class ModuleInterestsTest extends ApiTestCase
         $globex = $this->createCompany('Globex');
         $this->signedIn($this->company, ['company.read', 'invoice.write']);
 
-        $this->sendJson('PUT', $this->path('quotes').'/interest', ['interested' => true]);
+        $this->sendJson('PUT', $this->path('recurring').'/interest', ['interested' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
-        $this->sendJson('PUT', '/api/companies/'.$globex->getId()->toRfc4122().'/modules/quotes/interest', ['interested' => true]);
+        $this->sendJson('PUT', '/api/companies/'.$globex->getId()->toRfc4122().'/modules/recurring/interest', ['interested' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 
         self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM module_interest'));
@@ -85,8 +85,8 @@ final class ModuleInterestsTest extends ApiTestCase
     public function testTheOperatorReadsTheDemandAcrossEveryCompanyMostAskedFirst(): void
     {
         $globex = $this->createCompany('Globex');
-        $this->waits($this->company, 'quotes');
-        $this->waits($globex, 'quotes');
+        $this->waits($this->company, 'recurring');
+        $this->waits($globex, 'recurring');
         $this->waits($globex, 'zakat');
         $this->createUser('op@twes.local', self::PASSWORD, operator: true);
         $this->login('op@twes.local', self::PASSWORD);
@@ -96,9 +96,9 @@ final class ModuleInterestsTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $demand = $this->jsonList();
-        self::assertCount(21, $demand, 'every planned module, asked for or not');
-        self::assertSame([['quotes', 2], ['zakat', 1], ['accounting_export', 0]], array_map(static fn (array $row) => [$row['key'], $row['companies']], \array_slice($demand, 0, 3)));
-        self::assertSame(['key' => 'quotes', 'labelKey' => 'modules.quotes', 'planned' => 'v1', 'companies' => 2], $demand[0]);
+        self::assertCount(20, $demand, 'every planned module, asked for or not');
+        self::assertSame([['recurring', 2], ['zakat', 1], ['accounting_export', 0]], array_map(static fn (array $row) => [$row['key'], $row['companies']], \array_slice($demand, 0, 3)));
+        self::assertSame(['key' => 'recurring', 'labelKey' => 'modules.recurring', 'planned' => 'v1', 'companies' => 2], $demand[0]);
     }
 
     public function testACompanyMemberDoesNotReadTheDemand(): void
@@ -117,7 +117,7 @@ final class ModuleInterestsTest extends ApiTestCase
         $owner = $this->createUser('owner@acme.test', self::PASSWORD, $this->company, ['*']);
         $this->createUser('clerk@acme.test', self::PASSWORD, $this->company, ['company.read', 'invoice.write'], 'member');
         $this->waits($this->company, 'customers');
-        $this->waits($this->company, 'quotes');
+        $this->waits($this->company, 'recurring');
 
         self::assertStringContainsString('Told 1 waiting company', $this->announce());
         self::assertSame('', $this->announce(), 'a restart tells nobody again');
@@ -126,7 +126,7 @@ final class ModuleInterestsTest extends ApiTestCase
         self::assertCount(1, $told);
         self::assertSame($owner->getId()->toRfc4122(), $told[0]['recipient_id']);
         self::assertSame(['module' => 'customers', 'label_key' => 'modules.customers', 'company' => 'Acme'], json_decode($this->stringAt($told[0], 'payload'), true));
-        self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM module_interest WHERE module_key = 'quotes' AND announced_at IS NULL"));
+        self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM module_interest WHERE module_key = 'recurring' AND announced_at IS NULL"));
     }
 
     public function testTheApiImageTellsTheArrivalsAfterItsMigrationsAtEveryStart(): void

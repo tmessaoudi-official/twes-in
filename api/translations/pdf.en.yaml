@@ -34,6 +34,20 @@ invoice:
     credit_transfer: 'Credit note excess'
     payment_terms: 'Within %days% days'
     remarks: 'Remarks'
+quote:
+    title: 'Quote'
+    customer: 'Customer'
+    customer_number: 'Customer number'
+    issue_date: 'Date'
+    valid_until: 'Valid until'
+    customer_reference: 'Your reference'
+    remarks: 'Remarks'
+    validity: 'The prices of this quote hold until %date% inclusive.'
+    agreement:
+        title: 'Agreed'
+        when: 'Date'
+        name: 'Name'
+        signature: 'Signature and stamp'
 line:
     discount: 'Discount'
     description: 'Description'

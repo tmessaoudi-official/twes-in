@@ -47,7 +47,6 @@ import { MatTabsModule } from '@angular/material/tabs';
 /** One customer: a new one to fill in, or an existing one with the people to write to there. */
 /** What a customer will offer once its planned modules ship (docs/SPEC.md § 7, 2026-09-26 18:17, row 150), shown « Bientôt » beside what it offers today. */
 export const CUSTOMER_PLANNED: readonly PlannedAction[] = [
-  { module: 'quotes', label: 'planned_actions.new_quote', icon: 'request_quote' },
   { module: 'statements', label: 'planned_actions.credit_limit', icon: 'account_balance_wallet' },
 ];
 
@@ -247,8 +246,25 @@ export class CustomerPage {
         run: () => this.revert(),
         shown: may && changes > 0,
       },
+      {
+        id: 'new-quote',
+        label: 'customers.actions.new_quote',
+        icon: 'request_quote',
+        run: () => void this.newQuote(),
+        shown:
+          this.current() != null &&
+          this.auth.hasPermission('quote.write') &&
+          this.auth.hasModule('quotes'),
+      },
     ];
   });
+
+  /** A new quote for this customer, chosen on it as if picked. */
+  private async newQuote(): Promise<void> {
+    const id = this.id();
+    if (id !== null)
+      await this.router.navigate(['/quotes/new'], { queryParams: { customerId: id } });
+  }
 
   /** From the bar beside the title, which holds no form of its own. */
   protected saveFromBar(): void {

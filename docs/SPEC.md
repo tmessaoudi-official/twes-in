@@ -4334,6 +4334,43 @@ functional tests run in the `tools` container, on the host's network, against th
   modifications. Saving writes the two company settings; the generic Valeurs par défaut page shows them too. Not built:
   a sample document for a company with no invoice, a design per document type, choosing which invoice to preview.
 
+- [2026-10-07 10:21] ASSUMED (review): **Devis, slice 1** (row 78, pitch Q4 after invoice design). The quote is its own
+  record with its own `quote` series (`DEV-{YYYY}-{MM}-{SEQ:5}` in both presets, a migration giving every existing
+  establishment one), never the order: 2026-09-21 14:55 stands over 2026-09-20 00:45, and the commande client stays its
+  own record, not built in this slice. A draft names its establishment, customer and lines (product, description,
+  quantity, unit, price before tax, line discount, taxes) and a document discount, figured by the calculator the
+  invoice uses but without document taxes: the timbre and the withholding belong to the invoice that will be issued.
+  « Marquer envoyé » is a manual mark, since nothing sends mail yet: it numbers the quote, fixes its issue day, what
+  the customer and the seller were called, how it prints, its figures, and its validity date from a new
+  `quote.validity_days` setting (30 days; company, customer group, customer). A sent quote is then accepted or refused;
+  past its validity date it reads « Expiré », worked out from the company's day and never stored, and may still be
+  accepted, since accepting it is the company's own gesture once the customer has agreed. A draft may be cancelled; a
+  sent quote has no way out other than accepted or refused (withdrawing one is unruled and not built). « Marquer accepté »
+  offers to attach the signed scan through the quote's attachments (the expense attachments' rules), so the paper comes
+  back; the « Bon pour accord » block prints from a new `quote.signature_block` setting, on by default, as the delivery
+  note's reception block does (2026-10-03 20:58). An accepted quote is invoiced WHOLLY into a new draft invoice, through
+  a port the quotes module owns and the invoices module answers, and remembers that invoice; the ruled conversion
+  « wholly or partly, more than once » into a commande client arrives with the commande. Permissions `quote.read` and
+  `quote.write`. Alternatives: wait for the commande client before any conversion; partial conversion now; refusing to
+  accept an expired quote; the timbre on the quote's total; mailing on « Envoyer ».
+
+- [2026-10-07 11:12] ASSUMED (review): Devis, two consequences of slice 1. The quotes module needs only customers, not
+  invoices: a line may be written by hand, and a company may quote without invoicing here. « Facturer » on an accepted
+  quote then needs the invoices module on and `invoice.write` as well, as invoicing delivery notes does (404 with
+  invoices off, 403 without the permission). The built-in clerk and member draft and answer quotes (`quote.read`,
+  `quote.write`), as they draft delivery notes; only the admin held every permission before, and the seed converges an
+  existing database on the new sets. Alternatives: quotes requiring invoices (switching invoices off would first need
+  quotes off); quotes for the admin alone; a read-only clerk.
+- [2026-10-07 11:41] ASSUMED (review): Devis, three choices of the web slice. The module is named « Devis » / « Quotes »
+  where it was planned as « Devis et commandes »: the commande client is a module of its own, not built. A sent quote past
+  its validity day shows « Expiré » in the tone of what needs acting on (it can still be accepted, which a late yes
+  often is), while refused and cancelled are struck through as withdrawn. A company provisioned before quotes gains its
+  quote series at the api's next start: `app:companies:provision` runs after the migrations and copies what a company's
+  preset has and it lacks (a migration cannot read the presets; `app:seed` did it only for development, and would
+  create its Demo company and operator on a self-hosted install). Alternatives: keep « Devis et commandes »; « Expiré »
+  as withdrawn (refusing a late yes); a migration copying the preset's quote format into SQL; asking self-hosters to
+  run the seed.
+
 ## 8. Status
 
 **The one build order** (§ 7, audit 2026-10-06; it supersedes the orders of 2026-09-27 17:12, 2026-10-01 23:30, 2026-10-02
@@ -4430,7 +4467,7 @@ functional tests run in the `tools` container, on the host's network, against th
 | 75 | Country pack (§ 7 2026-09-20): taxes and levies, mentions per situation AND per language, identifiers with their named check strategies, numbering constraints, formats, rounding, archive duration; the strategy registry; a conformance test loading every pack; rows 44 and 46 folded in | L | todo | - | api/config/fiscal/** api/src/Fiscal/** api/tests/** docs/fiscal/** |
 | 76 | Catalogue (§ 7 2026-09-20): a family with axis values gathering variants that stay products; purchase, stock and sales units with conversion; one second-language name printed when the document is in that language | L | todo | - | api/src/Module/Products/** api/migrations/** api/tests/** web/src/app/products/** web/public/i18n/** |
 | 77 | Price lists (§ 7 2026-09-20): per customer or group, quantity breaks, validity dates, keyed to area and channel; they decide a line's unit price before any discount. Slice 1 (the API: lists, rows, the resolver and `GET .../products/{id}/price`) is in, and so is slice 2 (the module is real and the « Tarifs » screen lists, files, edits and deletes lists with their prices); and an invoice line now starts at the customer's list price for its quantity (asked again when the quantity is left; a price the person typed stays), and the lines picked on the screen are priced again when the customer changes, a delivery note's lines likewise; area and channel wait for the Venue (row 83) and the Register (row 82), which are what they key to Reopened (audit 2026-10-06, A-5): a product line reaching the API without a price takes the price-list price in the use case. A-5 done: `ManageInvoices` and `ManageDeliveryNotes` ask their own ports, `InvoiceLinePrices` and `DeliveryNoteLinePrices`, which the price lists answer through `ResolveUnitPrice` on the company's day, at the shelf price while the module is off; a typed price stays. | M | doing | 607da913 | api/src/Module/PriceLists/** api/src/Module/Customers/** api/migrations/** api/tests/** web/src/app/** |
-| 78 | Quote (§ 7 2026-09-20): issued, sent, accepted or refused, and acting as the order — what is delivered and what remains, partial delivery, no separate sales-order type | L | todo | - | api/src/Module/Quotes/** api/migrations/** api/tests/** web/src/app/quotes/** web/e2e/** |
+| 78 | Devis (§ 7 2026-09-21 14:55, 2026-10-07 10:21): its own record and series; draft, « Marquer envoyé » numbering it with its validity date, accepted (signed scan attached) or refused, « Expiré » worked out; printed with the « Bon pour accord » block; an accepted quote invoiced wholly into a draft invoice. Partial conversion into a commande client comes with the commande | L | doing | - | api/src/Module/Quotes/** api/src/Module/Invoices/** api/src/ModuleRegistry/** api/config/** api/migrations/** api/templates/pdf/** api/translations/** api/src/DataFixtures/** api/tests/** web/src/app/** web/public/i18n/** web/e2e/** |
 | 79 | Deposits (§ 7 2026-09-20): a deposit invoice with its own number and VAT, subtracted from the final invoice by the engine and never typed | M | todo | - | api/src/Module/Invoices/** api/migrations/** api/tests/** web/src/app/invoices/** |
 | 80 | Projets (§ 7 2026-09-27 17:20, replacing the job of 2026-09-20 01:18): tasks standing alone or in projects, status, assignee, due date and reminders, a kanban, timers, tasks billed on the existing quotes and invoices by time or at a fixed price with every hour billed once, a quote built from tasks; material, output and scrap when Stock is on; after row 162 | L | todo | - | api/src/Module/Projects/** api/migrations/** api/tests/** web/src/app/projects/** web/e2e/** |
 | 81 | Purchase order and goods receipt (§ 7 2026-09-20): an order sent to a vendor with expected dates, receipts against it (partial allowed) moving stock into a location and recording unit cost | L | todo | - | api/src/Module/Purchasing/** api/migrations/** api/tests/** web/src/app/purchasing/** web/e2e/** |

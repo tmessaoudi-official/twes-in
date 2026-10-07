@@ -32,7 +32,7 @@ final class NumberingSeriesTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $rows = $this->jsonList();
-        self::assertSame(['credit_note', 'delivery_note', 'invoice'], array_map(fn (array $row): string => $this->stringAt($row, 'documentType'), $rows));
+        self::assertSame(['credit_note', 'delivery_note', 'invoice', 'quote'], array_map(fn (array $row): string => $this->stringAt($row, 'documentType'), $rows));
         $invoice = $rows[2];
         self::assertSame('FAC-{YYYY}-{MM}-{SEQ:5}', $invoice['format']);
         self::assertSame(1, $invoice['nextNumber']);

@@ -73,7 +73,7 @@ final class ManageEstablishmentsTest extends TestCase
 
         self::assertFalse($sfax->isDefault());
         self::assertSame('Sfax', $sfax->getCity());
-        self::assertSame(['credit_note', 'delivery_note', 'invoice'], array_map(static fn (NumberingSeries $s): string => $s->getDocumentType(), $this->seriesOfEstablishment($sfax)));
+        self::assertSame(['credit_note', 'delivery_note', 'invoice', 'quote'], array_map(static fn (NumberingSeries $s): string => $s->getDocumentType(), $this->seriesOfEstablishment($sfax)));
         $copy = $this->seriesOf($sfax, 'invoice');
         self::assertSame('F{EST}{YY}-{SEQ:4}', $copy->getFormat());
         self::assertSame(1, $copy->getNextNumber());

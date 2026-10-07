@@ -81,6 +81,13 @@ final class DemoFixturesTest extends ApiTestCase
             );
             self::assertSame(['draft', 'paid', 'recorded'], $this->column('SELECT DISTINCT status FROM expense WHERE company_id = ? ORDER BY status', [$id]));
             self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM stock_movement WHERE company_id = ? AND quantity < 0', [$id]), "$name's deliveries took goods out of stock");
+            self::assertSame(
+                ['accepted', 'cancelled', 'draft', 'refused', 'sent'],
+                $this->column('SELECT DISTINCT status FROM quote WHERE company_id = ? ORDER BY status', [$id]),
+                "$name has a quote in every state",
+            );
+            self::assertSame(1, $this->numberOf("SELECT COUNT(*) FROM quote q JOIN invoice i ON i.id = q.invoice_id WHERE q.company_id = ? AND i.status <> 'draft'", [$id]), "$name invoiced an accepted quote");
+            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM quote WHERE company_id = ? AND status = ? AND valid_until < CURRENT_DATE', [$id, 'sent']), "$name has a quote past its validity");
 
             // Through the use cases, not around them: every write left its audit row.
             self::assertGreaterThan(100, $this->numberOf('SELECT COUNT(*) FROM audit_log WHERE company_id = ?', [$id]), "$name was written through the audited use cases");

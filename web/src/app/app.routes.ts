@@ -11,6 +11,7 @@ import {
 } from './auth/auth-guard';
 import { CUSTOMERS_MODULE } from './customers/customers-nav';
 import { DELIVERY_NOTES_MODULE } from './delivery-notes/delivery-notes-nav';
+import { QUOTES_MODULE } from './quotes/quotes-nav';
 import { INVOICES_MODULE } from './invoices/invoices-nav';
 import { EXPENSES_MODULE } from './expenses/expenses-nav';
 import { INVENTORY_MODULE } from './inventory/inventory-nav';
@@ -222,6 +223,22 @@ export const routes: Routes = [
         path: 'instruments',
         canActivate: [moduleGuard(INVOICES_MODULE)],
         loadComponent: () => import('./invoices/portfolio-page').then((m) => m.PortfolioPage),
+      },
+      {
+        path: 'quotes',
+        canActivate: [moduleGuard(QUOTES_MODULE)],
+        loadComponent: () => import('./quotes/quotes-page').then((m) => m.QuotesPage),
+      },
+      {
+        // Before ':quoteId', which would otherwise take "new" for an identifier.
+        path: 'quotes/new',
+        canActivate: [moduleGuard(QUOTES_MODULE)],
+        loadComponent: () => import('./quotes/quote-page').then((m) => m.QuotePage),
+      },
+      {
+        path: 'quotes/:quoteId',
+        canActivate: [moduleGuard(QUOTES_MODULE)],
+        loadComponent: () => import('./quotes/quote-page').then((m) => m.QuotePage),
       },
       {
         path: 'delivery-notes',

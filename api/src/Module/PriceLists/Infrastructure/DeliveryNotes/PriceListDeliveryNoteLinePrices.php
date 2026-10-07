@@ -10,33 +10,19 @@ declare(strict_types=1);
 namespace App\Module\PriceLists\Infrastructure\DeliveryNotes;
 
 use App\Module\DeliveryNotes\Application\DeliveryNoteLinePrices;
-use App\Module\PriceLists\Application\ResolveUnitPrice;
-use App\Module\PriceLists\Infrastructure\Module\PriceListsModule;
+use App\Module\PriceLists\Infrastructure\StartingPrices;
 use App\Module\Products\Domain\Product;
-use App\ModuleRegistry\Application\ModuleStates;
-use BcMath\Number;
-use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Answers the delivery notes module's `DeliveryNoteLinePrices` port out of this module, as `GET .../products/{id}/price` answers the
- * screen: on the company's own day, and with the shelf price while the company has price lists off. A quantity that is
- * not a positive number is the line's to refuse, so it is priced at the shelf here rather than refused twice.
- */
+/** Answers the delivery notes module's `DeliveryNoteLinePrices` port out of this module. */
 final readonly class PriceListDeliveryNoteLinePrices implements DeliveryNoteLinePrices
 {
-    public function __construct(private ResolveUnitPrice $resolve, private ModuleStates $modules, private ClockInterface $clock)
+    public function __construct(private StartingPrices $prices)
     {
     }
 
     public function startingPrice(Product $product, Uuid $customerId, string $quantity): string
     {
-        $company = $product->getCompany();
-        if (!is_numeric($quantity) || 1 !== preg_match('/^\d+(\.\d+)?$/', $quantity) || 1 !== new Number($quantity)->compare(0) || !$this->modules->isEnabled($company->getId(), PriceListsModule::KEY)) {
-            return $product->getDetails()->unitPriceNet;
-        }
-        $day = new \DateTimeImmutable($this->clock->now()->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'));
-
-        return $this->resolve->of($product, $customerId, $quantity, $day)->unitPriceNet;
+        return $this->prices->of($product, $customerId, $quantity);
     }
 }
