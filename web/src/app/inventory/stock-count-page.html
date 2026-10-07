@@ -1,4 +1,4 @@
-<app-page-tabs [tabs]="tabs" label="nav.stock">
+<app-page-tabs [tabs]="tabs" label="nav.stock" selected="/stock/count">
   <section class="flex flex-col gap-6" data-testid="stock-count">
     <header class="flex flex-col gap-1">
       <h1 class="m-0 text-3xl font-semibold">{{ 'inventory.count.title' | translate }}</h1>
@@ -36,7 +36,12 @@
             (ngModelChange)="code.set($event)"
           />
         </mat-form-field>
-        <button mat-stroked-button type="submit" data-testid="stock-count-add">
+        <button
+          mat-stroked-button
+          type="submit"
+          class="twes-field-button"
+          data-testid="stock-count-add"
+        >
           {{ 'inventory.count.add' | translate }}
         </button>
       </form>
@@ -98,7 +103,7 @@
         {{ 'inventory.count.read_only' | translate }}
       </p>
     }
-    @if (mayWrite()) {
+    @if (mayWrite() && lines().length > 0) {
       <div class="flex justify-end">
         <button
           mat-flat-button

@@ -198,6 +198,17 @@ describe('StockCountPage', () => {
     expect(unsaved.count()).toBe(0);
   });
 
+  it('offers to record only once something is counted', async () => {
+    // Audit 2026-10-06 V-23 (d): a filled « Enregistrer le comptage » stood under an empty count.
+    expect(q('stock-count-empty')).not.toBeNull();
+    expect(q('stock-count-record')).toBeNull();
+
+    scans.named.mockResolvedValue(scanOf('p1'));
+    await scanned('3017620422003');
+    await settle();
+    expect(q('stock-count-record')).not.toBeNull();
+  });
+
   it('tells a member who may not write stock that they may count but not record', async () => {
     granted.delete('stock.write');
     fixture = TestBed.createComponent(StockCountPage);

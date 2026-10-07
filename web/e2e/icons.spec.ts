@@ -35,3 +35,31 @@ test('every icon on the main screens is drawn, none left as its name in letters'
     expect(inLetters, path).toEqual([]);
   }
 });
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('no icon is squeezed narrower than it is drawn beside a long text', async ({ page }) => {
+    // Audit 2026-10-06 V-23 (c): a flex row of an icon and a long title shrank the icon to 21 px of its 24, which cut
+    // the clock of « Clients en retard de paiement ».
+    test.setTimeout(90_000);
+    await signIn(page);
+    await inACompany(page, CSRF);
+    for (const path of ['/watch/invoices.late_customer', '/', '/invoices', '/account']) {
+      await page.goto(path);
+      await expect(page.locator('mat-icon:visible').first()).toBeVisible();
+      await page.waitForLoadState('networkidle');
+      await page.evaluate(() => document.fonts.ready);
+      const squeezed = await page.$$eval('mat-icon', (icons) =>
+        icons
+          .filter((icon) => icon instanceof HTMLElement && icon.offsetParent !== null)
+          .filter(
+            (icon) =>
+              icon.getBoundingClientRect().width + 1 < parseFloat(getComputedStyle(icon).fontSize),
+          )
+          .map((icon) => `${icon.textContent?.trim()} ${icon.getBoundingClientRect().width}`),
+      );
+      expect(squeezed, path).toEqual([]);
+    }
+  });
+});

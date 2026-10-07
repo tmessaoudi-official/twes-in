@@ -286,6 +286,26 @@ describe('AccountPage', () => {
       fixture.detectChanges();
     }
 
+    it('labels each field above it, as every other form does, and says the length rule under the new one', async () => {
+      // Audit 2026-10-06 V-23 (b): the labels sat inside the fields, and on a phone the rule was cut off.
+      const root = await render('security');
+      for (const id of [
+        'account-password-current',
+        'account-password-new',
+        'account-password-again',
+      ]) {
+        const input = byTestId(root, id) as HTMLInputElement;
+        const label = root.querySelector(`label[for="${input.id}"]`);
+        expect(input.id, id).not.toBe('');
+        expect(label?.closest('mat-form-field'), id).toBeNull();
+      }
+      expect(root.querySelector('[data-testid="account-password"] mat-label')).toBeNull();
+      expect(
+        byTestId(root, 'account-password-new')?.closest('mat-form-field')?.querySelector('mat-hint')
+          ?.textContent,
+      ).toContain('account.password.new_hint');
+    });
+
     it('asks for the current password and the new one twice, and refuses two that differ without asking the API', async () => {
       const root = await render('security');
 

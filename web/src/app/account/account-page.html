@@ -46,39 +46,55 @@
                 <p class="m-0 text-sm text-on-surface-variant">
                   {{ 'account.password.intro' | translate }}
                 </p>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                  <mat-label>{{ 'account.password.current' | translate }}</mat-label>
-                  <input
-                    matInput
-                    type="password"
-                    autocomplete="current-password"
-                    [value]="passwordCurrent()"
-                    (input)="passwordCurrent.set($any($event.target).value)"
-                    data-testid="account-password-current"
-                  />
-                </mat-form-field>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                  <mat-label>{{ 'account.password.new' | translate }}</mat-label>
-                  <input
-                    matInput
-                    type="password"
-                    autocomplete="new-password"
-                    [value]="passwordNew()"
-                    (input)="passwordNew.set($any($event.target).value)"
-                    data-testid="account-password-new"
-                  />
-                </mat-form-field>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                  <mat-label>{{ 'account.password.again' | translate }}</mat-label>
-                  <input
-                    matInput
-                    type="password"
-                    autocomplete="new-password"
-                    [value]="passwordAgain()"
-                    (input)="passwordAgain.set($any($event.target).value)"
-                    data-testid="account-password-again"
-                  />
-                </mat-form-field>
+                <div class="flex min-w-0 flex-col gap-1.5">
+                  <label class="twes-field-label" for="account-password-current">{{
+                    'account.password.current' | translate
+                  }}</label>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <input
+                      matInput
+                      id="account-password-current"
+                      type="password"
+                      autocomplete="current-password"
+                      [value]="passwordCurrent()"
+                      (input)="passwordCurrent.set($any($event.target).value)"
+                      data-testid="account-password-current"
+                    />
+                  </mat-form-field>
+                </div>
+                <div class="flex min-w-0 flex-col gap-1.5">
+                  <label class="twes-field-label" for="account-password-new">{{
+                    'account.password.new' | translate
+                  }}</label>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <input
+                      matInput
+                      id="account-password-new"
+                      type="password"
+                      autocomplete="new-password"
+                      [value]="passwordNew()"
+                      (input)="passwordNew.set($any($event.target).value)"
+                      data-testid="account-password-new"
+                    />
+                    <mat-hint>{{ 'account.password.new_hint' | translate }}</mat-hint>
+                  </mat-form-field>
+                </div>
+                <div class="flex min-w-0 flex-col gap-1.5">
+                  <label class="twes-field-label" for="account-password-again">{{
+                    'account.password.again' | translate
+                  }}</label>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <input
+                      matInput
+                      id="account-password-again"
+                      type="password"
+                      autocomplete="new-password"
+                      [value]="passwordAgain()"
+                      (input)="passwordAgain.set($any($event.target).value)"
+                      data-testid="account-password-again"
+                    />
+                  </mat-form-field>
+                </div>
                 @if (passwordProblem(); as problem) {
                   <p
                     role="alert"

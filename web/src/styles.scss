@@ -197,6 +197,18 @@ html {
   }
 }
 
+// An icon keeps its size in a flex row beside a long text, which otherwise shrinks it and cuts its glyph (audit V-23).
+.mat-icon {
+  flex-shrink: 0;
+}
+
+// A button on the line of a text field, such as « Ajouter » beside the count's code, as tall as the field's outline.
+.twes-field-button {
+  --mat-button-outlined-container-height: 2.5rem;
+  --mat-button-filled-container-height: 2.5rem;
+  --mat-button-tonal-container-height: 2.5rem;
+}
+
 // A checkbox's box on its label's first line, not centred on the whole text: two checkboxes side by side, one label of
 // one line and one of two, otherwise sit at two heights (audit V-15). The label's padding keeps a one-line label
 // where Material centres it on the box's 40 px touch area.

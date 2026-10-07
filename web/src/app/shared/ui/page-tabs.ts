@@ -27,7 +27,7 @@ export interface PageTab {
           routerLinkActive
           #active="routerLinkActive"
           [routerLinkActiveOptions]="{ exact: true }"
-          [active]="active.isActive"
+          [active]="selected() === null ? active.isActive : selected() === tab.route"
           [attr.data-testid]="tab.testId"
         >
           {{ tab.labelKey | translate }}
@@ -44,4 +44,9 @@ export class PageTabs {
   readonly tabs = input.required<readonly PageTab[]>();
   /** The translation key naming the tabs' navigation. */
   readonly label = input.required<string>();
+  /**
+   * The route of the tab a page is, when it opens at an address of its own as well (count mode at a location's QR
+   * code); left out, the tab whose address is the page's is selected.
+   */
+  readonly selected = input<string | null>(null);
 }

@@ -27,6 +27,17 @@ test('count mode tallies what is scanned at a location and records it as the sto
     await page.goto('/stock');
     await page.getByTestId('stock-count-tab').click();
     await expect(page.getByTestId('stock-count-empty')).toBeVisible();
+    // Nothing to record yet, and « Ajouter » as tall as the code field beside it (audit 2026-10-06 V-23 d).
+    await expect(page.getByTestId('stock-count-record')).toHaveCount(0);
+    const heights = await page.evaluate(() =>
+      [
+        '[data-testid="stock-count-add"]',
+        'form:has([data-testid="stock-count-code"]) .mat-mdc-text-field-wrapper',
+      ].map((selector) =>
+        Math.round(document.querySelector(selector)!.getBoundingClientRect().height),
+      ),
+    );
+    expect(heights[0]).toBe(heights[1]);
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await scan(page, code);
     await expect(page.getByTestId('stock-count-0-counted')).toHaveValue('1');

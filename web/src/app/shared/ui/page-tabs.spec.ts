@@ -33,6 +33,16 @@ class Host {
   ];
 }
 
+@Component({
+  imports: [PageTabs],
+  template: `<app-page-tabs [tabs]="tabs" label="tabs.label" selected="/customers"
+    ><p>La page</p></app-page-tabs
+  >`,
+})
+class NamedHost {
+  readonly tabs = new Host().tabs;
+}
+
 describe('PageTabs', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -41,6 +51,7 @@ describe('PageTabs', () => {
         provideRouter([
           { path: 'customers', component: Blank },
           { path: 'customers/groups', component: Blank },
+          { path: 'customers/elsewhere/:id', component: Blank },
         ]),
         provideTranslateService({
           lang: 'fr',
@@ -70,5 +81,20 @@ describe('PageTabs', () => {
     expect(tab('customers-tab')?.getAttribute('aria-selected')).toBe('false');
     expect(tab('customer-groups-link')?.getAttribute('aria-selected')).toBe('true');
     expect(tab('page')?.closest('[role="tabpanel"]')).not.toBeNull();
+  });
+
+  it('selects the tab a page names, when the page opens at an address of its own', async () => {
+    // Audit 2026-10-06 V-23 (a): count mode opened from a location's QR code selected no tab.
+    const fixture = TestBed.createComponent(NamedHost);
+    await TestBed.inject(Router).navigateByUrl('/customers/elsewhere/7');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const selected = (id: string) =>
+      el.querySelector(`[data-testid="${id}"]`)?.getAttribute('aria-selected');
+
+    expect(selected('customers-tab')).toBe('true');
+    expect(selected('customer-groups-link')).toBe('false');
   });
 });
