@@ -29,7 +29,8 @@ final class DocumentCalculator
         $discounts = [];
         $typed = [];
         foreach ($document->lines as $line) {
-            $amount = Decimal::round(Decimal::of($line->quantity)->mul(Decimal::of($line->unitPrice), Decimal::WORKING_SCALE)->mul($sign), $scale);
+            // A deduction gives back what a deposit invoice already charged, so it runs against the document's sign.
+            $amount = Decimal::round(Decimal::of($line->quantity)->mul(Decimal::of($line->unitPrice), Decimal::WORKING_SCALE)->mul($line->deduction ? -$sign : $sign), $scale);
             $discount = null === $line->discountRate
                 ? Decimal::zero()
                 : Decimal::round($amount->mul(Rate::fromPercentage($line->discountRate)->fraction(), Decimal::WORKING_SCALE), $scale);
@@ -43,6 +44,9 @@ final class DocumentCalculator
         $discounted = [];
         foreach ($typed as $i => $value) {
             $discounted[] = $value->sub($shares[$i]);
+        }
+        if (Decimal::sum($discounted)->mul($sign)->compare(0) < 0) {
+            throw new InvalidDocument('The deductions of deposit invoices cannot exceed what the document charges.');
         }
 
         $inclusive = TaxBasis::Inclusive === $document->basis;
@@ -130,7 +134,8 @@ final class DocumentCalculator
 
     /**
      * Two levels, one rule: across the groups of lines carrying the same set of taxes, pro rata by base, then
-     * across each group's lines. Largest remainder at both levels, ties to the earliest.
+     * across each group's lines. Largest remainder at both levels, ties to the earliest. A deduction takes no share:
+     * the deposit it gives back was computed on figures already discounted.
      *
      * @param list<LineInput> $lines
      * @param list<Number>    $bases
@@ -142,13 +147,15 @@ final class DocumentCalculator
         if (0 === $discount->compare(0)) {
             return array_map(static fn () => Decimal::zero(), $bases);
         }
-        $total = Decimal::sum($bases);
+        $charged = array_keys(array_filter($lines, static fn (LineInput $line) => !$line->deduction));
+        $total = Decimal::sum(array_map(static fn (int $i) => $bases[$i], $charged));
         if (Decimal::absolute($discount)->compare(Decimal::absolute($total)) > 0) {
             throw new InvalidDocument('A document discount cannot exceed the amount it discounts.');
         }
 
         $groups = [];
-        foreach ($lines as $i => $line) {
+        foreach ($charged as $i) {
+            $line = $lines[$i];
             $groups[implode("\0", array_map(static fn (TaxInput $tax) => $tax->code, $line->taxes))][] = $i;
         }
         $groups = array_values($groups);
@@ -178,7 +185,9 @@ final class DocumentCalculator
     }
 
     /**
-     * Tax-exclusive: each percentage tax on its lines' discounted nets, a levy entering the VAT base first.
+     * Tax-exclusive: each percentage tax on its lines' discounted nets, a levy entering the VAT base first. A deduction
+     * gives back what its deposit charged, as it was charged: the charged lines are rounded as one document and the
+     * deposits' amounts come off that, so deposits and final invoice add up to the undivided operation.
      *
      * @param list<Number> $nets
      *
@@ -204,18 +213,30 @@ final class DocumentCalculator
                 }
                 $bases[] = $base;
             }
-            $exact = array_map(static fn (Number $base) => $base->mul($rate, Decimal::WORKING_SCALE), $bases);
+            $exact = [];
+            foreach ($carriers as $k => $i) {
+                if (!$document->lines[$i]->deduction) {
+                    $exact[] = $bases[$k]->mul($rate, Decimal::WORKING_SCALE);
+                }
+            }
             if (RoundingPoint::PerLine === $document->roundingPoint) {
-                $amounts = array_map(static fn (Number $share) => Decimal::round($share, $scale), $exact);
-                $amount = Decimal::sum($amounts);
+                $shares = array_map(static fn (Number $share) => Decimal::round($share, $scale), $exact);
             } else {
-                $amount = Decimal::round(Decimal::sum($exact), $scale);
-                $amounts = Decimal::allocate($amount, $exact, $scale);
+                $shares = Decimal::allocate(Decimal::round(Decimal::sum($exact), $scale), $exact, $scale);
+            }
+            $sign = $document->credit ? -1 : 1;
+            $amounts = [];
+            $next = 0;
+            foreach ($carriers as $i) {
+                $line = $document->lines[$i];
+                $amounts[] = $line->deduction
+                    ? Decimal::of($line->deductedTaxes[$tax->code])->mul(-$sign)
+                    : $shares[$next++];
             }
             foreach ($carriers as $k => $i) {
                 $computed[$i][$tax->code] = [$bases[$k], $amounts[$k]];
             }
-            $groups[$tax->code] = [$tax, Decimal::sum($bases), $amount, $carriers];
+            $groups[$tax->code] = [$tax, Decimal::sum($bases), Decimal::sum($amounts), $carriers];
         }
 
         return [$nets, $this->inLineOrder($document, $computed), $this->inFirstAppearance($taxes, $groups)];
@@ -332,6 +353,23 @@ final class DocumentCalculator
         foreach ($document->lines as $i => $line) {
             if (Decimal::of($line->quantity)->compare(0) < 0 || Decimal::of($line->unitPrice)->compare(0) < 0) {
                 throw new InvalidDocument(\sprintf('Line %d: a quantity or a unit price is never negative; a credit note carries the sign.', $i + 1));
+            }
+            if ($line->deduction && null !== $line->discountRate) {
+                throw new InvalidDocument(\sprintf('Line %d: a deduction takes no discount; the deposit it gives back already did.', $i + 1));
+            }
+            if ($line->deduction && TaxBasis::Inclusive === $document->basis) {
+                throw new UnsupportedTaxCombination(\sprintf('Line %d: a deduction of a deposit invoice is net of tax and cannot be entered tax-inclusive.', $i + 1));
+            }
+            $codes = array_map(static fn (TaxInput $tax) => $tax->code, $line->taxes);
+            $stated = array_map(strval(...), array_keys($line->deductedTaxes));
+            if ($line->deduction ? ([] !== array_diff($codes, $stated) || [] !== array_diff($stated, $codes)) : [] !== $stated) {
+                throw new InvalidDocument(\sprintf('Line %d: a deduction states what its deposit charged of each of its taxes, and only a deduction does.', $i + 1));
+            }
+            foreach ($line->deductedTaxes as $code => $amount) {
+                if (Decimal::of($amount)->compare(0) < 0) {
+                    throw new InvalidDocument(\sprintf('Line %d: what a deposit charged of %s is never negative; the document carries the sign.', $i + 1, $code));
+                }
+                $this->fitsScale($amount, $document->scale, \sprintf('Line %d: the %s its deposit charged', $i + 1, $code));
             }
             if (null !== $line->discountRate) {
                 $rate = Decimal::of($line->discountRate);

@@ -63,6 +63,61 @@ final class DocumentCalculatorTest extends TestCase
         $this->calculate([new LineInput('1', '10.000', null, [$this->vat('19')])], '10.001');
     }
 
+    public function testADeductionTakesNoLineDiscountBecauseTheDepositAlreadyDid(): void
+    {
+        $this->expectException(InvalidDocument::class);
+        $this->expectExceptionMessageMatches('/deduction/');
+        $this->calculate([
+            new LineInput('1', '100.000', null, [$this->vat('19')]),
+            new LineInput('1', '30.000', '10', [$this->vat('19')], deduction: true, deductedTaxes: ['TVA' => '5.700']),
+        ]);
+    }
+
+    public function testDeductionsBeyondTheDocumentAreRefusedByName(): void
+    {
+        $this->expectException(InvalidDocument::class);
+        $this->expectExceptionMessageMatches('/deduction/');
+        $this->calculate([
+            new LineInput('1', '100.000', null, [$this->vat('19')]),
+            new LineInput('1', '100.001', null, [$this->vat('19')], deduction: true, deductedTaxes: ['TVA' => '19.000']),
+        ]);
+    }
+
+    public function testDeductionsEqualToTheDocumentLeaveNothingDue(): void
+    {
+        $totals = new DocumentCalculator()->calculate(new DocumentInput(3, false, TaxBasis::Exclusive, RoundingPoint::PerRateGroup, [
+            new LineInput('1', '100.000', null, [$this->vat('19')]),
+            new LineInput('1', '100.000', null, [$this->vat('19')], deduction: true, deductedTaxes: ['TVA' => '19.000']),
+        ]));
+        self::assertSame('0.000', $totals->amountDue);
+    }
+
+    public function testTheDocumentDiscountIsMeasuredAgainstTheChargedLinesAlone(): void
+    {
+        $this->expectException(InvalidDocument::class);
+        $this->expectExceptionMessageMatches('/discount/');
+        $this->calculate([
+            new LineInput('1', '100.000', null, [$this->vat('19')]),
+            new LineInput('1', '30.000', null, [$this->vat('19')], deduction: true, deductedTaxes: ['TVA' => '5.700']),
+        ], '100.001');
+    }
+
+    public function testOnlyADeductionStatesWhatADepositCharged(): void
+    {
+        $this->expectException(InvalidDocument::class);
+        $this->expectExceptionMessageMatches('/only a deduction/');
+        $this->calculate([new LineInput('1', '100.000', null, [$this->vat('19')], deductedTaxes: ['TVA' => '19.000'])]);
+    }
+
+    public function testWhatADepositChargedIsNeverFinerThanTheCurrency(): void
+    {
+        $this->expectException(InvalidDocument::class);
+        $this->calculate([
+            new LineInput('1', '100.000', null, [$this->vat('19')]),
+            new LineInput('1', '30.000', null, [$this->vat('19')], deduction: true, deductedTaxes: ['TVA' => '5.7001']),
+        ]);
+    }
+
     public function testANegativeFigureRoundingToZeroIsWrittenAsZero(): void
     {
         self::assertSame('0.000', Decimal::format(new Number('-0.0004'), 3));

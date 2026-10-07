@@ -14,6 +14,7 @@ use App\Fiscal\Domain\Calculation\AuthoredPrice;
 use App\Fiscal\Domain\Calculation\DocumentCalculator;
 use App\Fiscal\Domain\Calculation\DocumentInput;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
+use App\Fiscal\Domain\Calculation\InvalidDocument;
 use App\Fiscal\Domain\Calculation\LineInput;
 use App\Fiscal\Domain\Calculation\LineTax;
 use App\Fiscal\Domain\Calculation\ProductPricing;
@@ -39,6 +40,9 @@ final class PricingVectorsTest extends TestCase
     private const array ERRORS = [
         'compound_inclusive_unsupported' => UnsupportedTaxCombination::class,
         'amount_scale_exceeds_currency' => AmountTooPrecise::class,
+        'deduction_unsupported_inclusive' => UnsupportedTaxCombination::class,
+        'deduction_exceeds_document' => InvalidDocument::class,
+        'deduction_without_its_tax_amounts' => InvalidDocument::class,
     ];
 
     public function testEverySectionHasCases(): void
@@ -195,6 +199,8 @@ final class PricingVectorsTest extends TestCase
                 self::string($line, \array_key_exists('unit_net', $line) ? 'unit_net' : 'unit_gross'),
                 self::nullableString($line, 'discount_rate'),
                 $pick(self::list($line, 'taxes')),
+                true === ($line['deduction'] ?? false),
+                self::amounts($line, 'deducted_taxes'),
             );
         }
 
@@ -414,6 +420,22 @@ final class PricingVectorsTest extends TestCase
         self::assertIsString($node[$key], "$key is a string");
 
         return $node[$key];
+    }
+
+    /**
+     * @param array<string, mixed> $node
+     *
+     * @return array<string, string> an object of amounts by code; empty when absent
+     */
+    private static function amounts(array $node, string $key): array
+    {
+        $amounts = [];
+        foreach (self::object(['node' => $node[$key] ?? []], 'node') as $code => $amount) {
+            self::assertIsString($amount);
+            $amounts[(string) $code] = $amount;
+        }
+
+        return $amounts;
     }
 
     /** @param array<string, mixed> $node */

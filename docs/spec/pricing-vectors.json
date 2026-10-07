@@ -19,7 +19,8 @@
     "per_line_vat": "PER-LINE VAT IS ALLOCATED, NEVER RECOMPUTED (developer ruling, 2026-07-31: a per-line VAT figure is required). Under per_rate_group the group's VAT is rounded ONCE on the summed base, so `line_net x rate` rounded per line does not add up to it. The rule is LARGEST REMAINDER with ties to the EARLIEST line: floor each line's exact share to the currency's scale, then hand the shortfall out one smallest-unit at a time to the lines with the largest floored-away remainder. Flooring first is load-bearing -- rounding to nearest lets the shares EXCEED the group figure, and there is then no way to take a unit back from a line without picking a victim. **The invariant every tier must satisfy: the per-line column sums EXACTLY to vat. A line column that does not add up to the total printed beneath it is a document a tax authority reads as arithmetically wrong.** Largest-remainder rather than 'put the difference on the last line' because the latter makes DOCUMENT ORDER significant to a tax figure, so re-ordering two lines would change which line is taxed what -- while the total stays right, so no reviewer would see it.",
     "tax_basis": "EVERY document_totals case DECLARES `tax_basis`: `exclusive` (the authored line figures are net of VAT, `unit_net` / `line_net`) or `inclusive` (they are what the customer pays, `unit_gross` / `line_gross`, and the kernel EXTRACTS the net). Ruled 2026-08-23: inclusive tax extracts PER RATE GROUP, reusing `vat_rounding_point` rather than adding a second axis -- the group's net is gross / (1 + rate) rounded ONCE on the summed gross, and the VAT is the residue; under `per_line` each line extracts on its own. On the half-grid tie the NET is the figure rounded half-up and the VAT absorbs the residue (0.111 TND at 20 % -> 0.093 / 0.018). Both settings are a TENANT setting read server-side, like the rounding point; a client may choose neither. A tier that hard-codes one of them fails half of these vectors -- that is deliberate.",
     "discounts": "A LINE discount is a RATE (`discount_rate`, written as a user types it) and REDUCES THE VAT BASE: the allowance `line_discount` is the rounded amount printed beside the line, and `line_net` is the amount minus it (ruled 2026-08-23; EN 16931 BT-136 reduces BT-131, which feeds BT-116). A DOCUMENT discount is an AMOUNT (`document_discount`) and is allocated PRO-RATA BY BASE across rate groups by the same largest-remainder rule as per-line VAT, ties to the earliest group (ruled 2026-08-23); `vat_by_rate[].document_discount` is each group's share and `vat_by_rate[].base` is the base AFTER it. Under `per_line` each group's share is split again across its lines by the same rule (`document_discount_by_line`), so every line's VAT is rounded on a DISCOUNTED net and the per-line column still sums exactly to the total. `net_after_document_discount` is EN 16931's BT-109. Under `inclusive` tax both discounts apply to GROSS figures before extraction. Fixed charges are outside every base and untouched by every discount.",
-    "credit_sign": "EVERY document_totals case DECLARES `document_type` (`invoice` or `credit`). On a `credit` every INPUT is authored exactly as on an invoice -- positive quantities, prices, rates, discounts and charges -- and every COMPUTED figure is NEGATIVE: line amounts, discounts, nets, bases, VAT, charges and the total. The sign is a property of the document type (EN 16931 type code 381), not of a line: the calculator refuses a negative quantity or unit price on every type, so an invoice and a credit note are the same arithmetic with the sign applied once at the entry to the kernel, and a negative tie or a negative allocation share reaches the same rounding and flooring code the positive cases pin."
+    "credit_sign": "EVERY document_totals case DECLARES `document_type` (`invoice` or `credit`). On a `credit` every INPUT is authored exactly as on an invoice -- positive quantities, prices, rates, discounts and charges -- and every COMPUTED figure is NEGATIVE: line amounts, discounts, nets, bases, VAT, charges and the total. The sign is a property of the document type (EN 16931 type code 381), not of a line: the calculator refuses a negative quantity or unit price on every type, so an invoice and a credit note are the same arithmetic with the sign applied once at the entry to the kernel, and a negative tie or a negative allocation share reaches the same rounding and flooring code the positive cases pin.",
+    "deductions": "A line marked `deduction: true` gives back what a deposit invoice (facture d'acompte) already invoiced: it is authored positive like every line -- the deposit line's net as `unit_net`, quantity 1, the deposit line's own taxes -- and the calculator gives it the opposite sign of the document's. It states, in `deducted_taxes`, the amount of each of its taxes the deposit charged on that line, and those amounts are subtracted as they are, never recomputed: the final invoice's tax is the whole operation's tax, rounded as one document, less what the deposits already charged (BOI-TVA-DECLA-30-20-20-10 § 60; docs/fiscal FR.md and TN.md § 2b), so the deposits and the final invoice add up to the undivided invoice to the smallest unit. Its net reduces the bases of the taxes it carries. It takes no line discount and no share of the document discount, which the deposit already reflected; the document discount is measured against the charged lines alone. A deduction is refused under tax-inclusive entry, without an amount for each of its taxes, and when the deductions would take the document below zero."
   },
   "cases": [
     {
@@ -2124,6 +2125,783 @@
           "0.001"
         ],
         "net_after_document_discount": "2.998"
+      }
+    },
+    {
+      "id": "deposit-deduction-reduces-every-tax-it-carries",
+      "why": "The final invoice of a 1000.000 TND sale carrying FODEC and VAT 19 %, after a deposit invoice of 30 % (net 300.000, FODEC 3.000, VAT on 303.000 = 57.570). The deduction line names the deposit's net and taxes: FODEC on 700.000 = 7.000, VAT on 707.000 = 134.330, and the stamp of the final invoice is its own. Deposit 361.570 + final 842.330 = the undivided invoice's 1202.900 plus the deposit's own stamp. Subtracting the deposit after taxes instead (charging tax on 1000.000 and deducting 361.570 as a payment) would collect the deposit's tax twice.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "FODEC",
+          "kind": "percentage_line",
+          "rate": "1",
+          "enters_vat_base": true
+        },
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        },
+        {
+          "code": "TIMBRE",
+          "kind": "fixed_document",
+          "amount": "1.000"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "10",
+          "unit_net": "100.000",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "300.000",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ],
+          "deduction": true,
+          "deducted_taxes": {
+            "FODEC": "3.000",
+            "TVA19": "57.570"
+          }
+        }
+      ],
+      "document_taxes": [
+        "TIMBRE"
+      ],
+      "expected": {
+        "subtotal_net": "700.000",
+        "tax_breakdown": [
+          {
+            "code": "FODEC",
+            "base": "700.000",
+            "amount": "7.000"
+          },
+          {
+            "code": "TVA19",
+            "base": "707.000",
+            "amount": "134.330"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "FODEC",
+              "base": "1000.000",
+              "amount": "10.000"
+            },
+            {
+              "code": "TVA19",
+              "base": "1010.000",
+              "amount": "191.900"
+            }
+          ],
+          [
+            {
+              "code": "FODEC",
+              "base": "-300.000",
+              "amount": "-3.000"
+            },
+            {
+              "code": "TVA19",
+              "base": "-303.000",
+              "amount": "-57.570"
+            }
+          ]
+        ],
+        "total_tax": "141.330",
+        "fixed_charges": [
+          {
+            "code": "TIMBRE",
+            "amount": "1.000"
+          }
+        ],
+        "total": "842.330",
+        "withholding": [],
+        "amount_due": "842.330"
+      }
+    },
+    {
+      "id": "deposit-deduction-rounds-with-its-rate-group",
+      "why": "A deposit of a third of 1000.000 at 19 %: the deposit invoice charged 333.333 and VAT 63.333 (63.33327 rounded). The final invoice's VAT is the whole's, 190.000, less the 63.333 the deposit charged: 126.667, and deposit and final add up to the undivided invoice.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "1000.000",
+          "taxes": [
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "333.333",
+          "taxes": [
+            "TVA19"
+          ],
+          "deduction": true,
+          "deducted_taxes": {
+            "TVA19": "63.333"
+          }
+        }
+      ],
+      "document_taxes": [],
+      "expected": {
+        "subtotal_net": "666.667",
+        "tax_breakdown": [
+          {
+            "code": "TVA19",
+            "base": "666.667",
+            "amount": "126.667"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "TVA19",
+              "base": "1000.000",
+              "amount": "190.000"
+            }
+          ],
+          [
+            {
+              "code": "TVA19",
+              "base": "-333.333",
+              "amount": "-63.333"
+            }
+          ]
+        ],
+        "total_tax": "126.667",
+        "fixed_charges": [],
+        "total": "793.334",
+        "withholding": [],
+        "amount_due": "793.334"
+      }
+    },
+    {
+      "id": "deposit-deduction-takes-no-share-of-the-document-discount",
+      "why": "The document discount of 10.000 was granted on the 100.000 the customer buys; the deposit of 30.000 was already computed on discounted figures, so the deduction takes no share of it: the charged line carries all 10.000, the base is 100 - 30 - 10 = 60.000 and the VAT 11.400. Allocating by base across both lines would hand the deduction a negative share and move discount between them.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "2",
+          "unit_net": "50.000",
+          "taxes": [
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "30.000",
+          "taxes": [
+            "TVA19"
+          ],
+          "deduction": true,
+          "deducted_taxes": {
+            "TVA19": "5.700"
+          }
+        }
+      ],
+      "document_taxes": [],
+      "document_discount": "10.000",
+      "expected": {
+        "subtotal_net": "70.000",
+        "tax_breakdown": [
+          {
+            "code": "TVA19",
+            "base": "60.000",
+            "amount": "11.400"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "TVA19",
+              "base": "90.000",
+              "amount": "17.100"
+            }
+          ],
+          [
+            {
+              "code": "TVA19",
+              "base": "-30.000",
+              "amount": "-5.700"
+            }
+          ]
+        ],
+        "total_tax": "11.400",
+        "fixed_charges": [],
+        "total": "71.400",
+        "withholding": [],
+        "amount_due": "71.400",
+        "document_discount_by_line": [
+          "10.000",
+          "0.000"
+        ],
+        "net_after_document_discount": "60.000"
+      }
+    },
+    {
+      "id": "credit-note-reverses-a-deposit-deduction",
+      "why": "A credit note of a final invoice reverses it whole: the charged line turns negative and the deduction positive, so the credit refunds exactly what the final invoice charged (-700.000 and -133.000), never the deposit, which keeps its own invoice.",
+      "currency": "TND",
+      "document_type": "credit",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "10",
+          "unit_net": "100.000",
+          "taxes": [
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "300.000",
+          "taxes": [
+            "TVA19"
+          ],
+          "deduction": true,
+          "deducted_taxes": {
+            "TVA19": "57.000"
+          }
+        }
+      ],
+      "document_taxes": [],
+      "expected": {
+        "subtotal_net": "-700.000",
+        "tax_breakdown": [
+          {
+            "code": "TVA19",
+            "base": "-700.000",
+            "amount": "-133.000"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "TVA19",
+              "base": "-1000.000",
+              "amount": "-190.000"
+            }
+          ],
+          [
+            {
+              "code": "TVA19",
+              "base": "300.000",
+              "amount": "57.000"
+            }
+          ]
+        ],
+        "total_tax": "-133.000",
+        "fixed_charges": [],
+        "total": "-833.000",
+        "withholding": [],
+        "amount_due": "-833.000"
+      }
+    },
+    {
+      "id": "deductions-beyond-the-document-are-refused",
+      "why": "Deposits of 120.000 against a sale of 100.000 would print a final invoice owing a negative amount: what was overpaid is a credit, not a negative invoice, so the calculator refuses it.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "100.000",
+          "taxes": [
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "120.000",
+          "taxes": [
+            "TVA19"
+          ],
+          "deduction": true,
+          "deducted_taxes": {
+            "TVA19": "22.800"
+          }
+        }
+      ],
+      "document_taxes": [],
+      "expected": {
+        "error": "deduction_exceeds_document"
+      }
+    },
+    {
+      "id": "deposit-deduction-under-inclusive-entry-is-refused",
+      "why": "A deposit is deducted at its net and its tax; tax-inclusive entry extracts the net from a gross, and no source says how a deduction rounds there, so it is refused as compound tax-inclusive entry is.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "inclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_gross": "119.000",
+          "taxes": [
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_gross": "35.700",
+          "taxes": [
+            "TVA19"
+          ],
+          "deduction": true,
+          "deducted_taxes": {
+            "TVA19": "5.700"
+          }
+        }
+      ],
+      "document_taxes": [],
+      "expected": {
+        "error": "deduction_unsupported_inclusive"
+      }
+    },
+    {
+      "id": "final-invoice-tax-is-the-whole-less-what-deposits-charged",
+      "why": "A sale of 2250.000 carrying FODEC and VAT 19 % and 60.000 carrying VAT alone, after a 30 % deposit invoice of 675.000 and 18.000. The deposit charged FODEC 6.750 and VAT 132.953 (132.9525 rounded up), allocated 129.533 and 3.420 across its two lines. The whole operation's VAT is 443.175; the final invoice's is 443.175 - 132.953 = 310.222. Recomputing the VAT on the remaining base instead gives 1632.75 x 19 % = 310.2225 -> 310.223, and the two invoices would charge a millime more VAT than the operation carries.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "FODEC",
+          "kind": "percentage_line",
+          "rate": "1",
+          "enters_vat_base": true
+        },
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "2250.000",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "60.000",
+          "taxes": [
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "675.000",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ],
+          "deduction": true,
+          "deducted_taxes": {
+            "FODEC": "6.750",
+            "TVA19": "129.533"
+          }
+        },
+        {
+          "quantity": "1",
+          "unit_net": "18.000",
+          "taxes": [
+            "TVA19"
+          ],
+          "deduction": true,
+          "deducted_taxes": {
+            "TVA19": "3.420"
+          }
+        }
+      ],
+      "document_taxes": [],
+      "expected": {
+        "subtotal_net": "1617.000",
+        "tax_breakdown": [
+          {
+            "code": "FODEC",
+            "base": "1575.000",
+            "amount": "15.750"
+          },
+          {
+            "code": "TVA19",
+            "base": "1632.750",
+            "amount": "310.222"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "FODEC",
+              "base": "2250.000",
+              "amount": "22.500"
+            },
+            {
+              "code": "TVA19",
+              "base": "2272.500",
+              "amount": "431.775"
+            }
+          ],
+          [
+            {
+              "code": "TVA19",
+              "base": "60.000",
+              "amount": "11.400"
+            }
+          ],
+          [
+            {
+              "code": "FODEC",
+              "base": "-675.000",
+              "amount": "-6.750"
+            },
+            {
+              "code": "TVA19",
+              "base": "-681.750",
+              "amount": "-129.533"
+            }
+          ],
+          [
+            {
+              "code": "TVA19",
+              "base": "-18.000",
+              "amount": "-3.420"
+            }
+          ]
+        ],
+        "total_tax": "325.972",
+        "fixed_charges": [],
+        "total": "1942.972",
+        "withholding": [],
+        "amount_due": "1942.972"
+      }
+    },
+    {
+      "id": "final-invoice-tax-per-line-takes-the-deposits-amounts",
+      "why": "The same final invoice under per-line rounding: each charged line rounds its own tax, and each deduction line takes the amount the deposit charged as it is.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_line",
+      "components": [
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "10.005",
+          "taxes": [
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "3.335",
+          "taxes": [
+            "TVA19"
+          ],
+          "deduction": true,
+          "deducted_taxes": {
+            "TVA19": "0.634"
+          }
+        }
+      ],
+      "document_taxes": [],
+      "expected": {
+        "subtotal_net": "6.670",
+        "tax_breakdown": [
+          {
+            "code": "TVA19",
+            "base": "6.670",
+            "amount": "1.267"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "TVA19",
+              "base": "10.005",
+              "amount": "1.901"
+            }
+          ],
+          [
+            {
+              "code": "TVA19",
+              "base": "-3.335",
+              "amount": "-0.634"
+            }
+          ]
+        ],
+        "total_tax": "1.267",
+        "fixed_charges": [],
+        "total": "7.937",
+        "withholding": [],
+        "amount_due": "7.937"
+      }
+    },
+    {
+      "id": "a-deduction-without-the-amount-of-each-of-its-taxes-is-refused",
+      "why": "What a deposit charged is subtracted as it was charged, so a deduction line that does not say how much of one of its taxes the deposit charged cannot be totalled.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "FODEC",
+          "kind": "percentage_line",
+          "rate": "1",
+          "enters_vat_base": true
+        },
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "100.000",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "30.000",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ],
+          "deduction": true,
+          "deducted_taxes": {
+            "TVA19": "5.757"
+          }
+        }
+      ],
+      "document_taxes": [],
+      "expected": {
+        "error": "deduction_without_its_tax_amounts"
+      }
+    },
+    {
+      "id": "deduction-takes-the-share-its-deposit-allocated",
+      "why": "A deposit of two lines of 1.002 at 19 % rounded its VAT once, 0.38076 -> 0.381, and gave the remaining millime to the earlier line: 0.191 and 0.190. The final invoice subtracts those two amounts, 0.381 in all, from the 1.900 of what it charges: 1.519. Rounding each deduction line on its own would subtract 0.190 twice and charge 1.520.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "10.000",
+          "taxes": [
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "1.002",
+          "taxes": [
+            "TVA19"
+          ],
+          "deduction": true,
+          "deducted_taxes": {
+            "TVA19": "0.191"
+          }
+        },
+        {
+          "quantity": "1",
+          "unit_net": "1.002",
+          "taxes": [
+            "TVA19"
+          ],
+          "deduction": true,
+          "deducted_taxes": {
+            "TVA19": "0.190"
+          }
+        }
+      ],
+      "document_taxes": [],
+      "expected": {
+        "subtotal_net": "7.996",
+        "tax_breakdown": [
+          {
+            "code": "TVA19",
+            "base": "7.996",
+            "amount": "1.519"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "TVA19",
+              "base": "10.000",
+              "amount": "1.900"
+            }
+          ],
+          [
+            {
+              "code": "TVA19",
+              "base": "-1.002",
+              "amount": "-0.191"
+            }
+          ],
+          [
+            {
+              "code": "TVA19",
+              "base": "-1.002",
+              "amount": "-0.190"
+            }
+          ]
+        ],
+        "total_tax": "1.519",
+        "fixed_charges": [],
+        "total": "9.515",
+        "withholding": [],
+        "amount_due": "9.515"
+      }
+    },
+    {
+      "id": "a-deduction-takes-no-part-in-rounding-the-charged-tax",
+      "why": "The charged line's VAT is 1.003 x 19 % = 0.19057 -> 0.191, rounded among the charged lines alone; the deduction takes off the 0.190 its deposit charged, leaving 0.001. Letting the deduction into the allocation would floor the charged 0.19057 to 0.190, hand the millime to the deduction's larger remainder, and charge nothing.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "1.003",
+          "taxes": [
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "1.002",
+          "taxes": [
+            "TVA19"
+          ],
+          "deduction": true,
+          "deducted_taxes": {
+            "TVA19": "0.190"
+          }
+        }
+      ],
+      "document_taxes": [],
+      "expected": {
+        "subtotal_net": "0.001",
+        "tax_breakdown": [
+          {
+            "code": "TVA19",
+            "base": "0.001",
+            "amount": "0.001"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "TVA19",
+              "base": "1.003",
+              "amount": "0.191"
+            }
+          ],
+          [
+            {
+              "code": "TVA19",
+              "base": "-1.002",
+              "amount": "-0.190"
+            }
+          ]
+        ],
+        "total_tax": "0.001",
+        "fixed_charges": [],
+        "total": "0.002",
+        "withholding": [],
+        "amount_due": "0.002"
       }
     }
   ],
