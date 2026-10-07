@@ -54,10 +54,12 @@ async function retire(page: Page, id: string): Promise<void> {
   await page.evaluate(
     async ([csrf, customerId]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      const base = `/api/companies/${me.company.id}/customers/${customerId}`;
+      const customers = `/api/companies/${me.company.id}/customers`;
       // The write shape has no id: a body naming one is refused.
-      const { id: _id, ...fields } = (await (await fetch(base)).json()) as { id: string };
-      const revised = await fetch(base, {
+      const { id, ...fields } = (await (await fetch(`${customers}/${customerId}`)).json()) as {
+        id: string;
+      };
+      const revised = await fetch(`${customers}/${id}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json', 'csrf-token': csrf },
         body: JSON.stringify({ ...fields, isActive: false }),
