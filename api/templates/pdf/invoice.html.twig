@@ -124,7 +124,7 @@
         <tr>
           <td>{{ line.description|nl2br }}</td>
           <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
-          <td>{{ line.unit.code }}</td>
+          <td>{{ line.unit.name }}</td>
           <td class="number">{{ line.unitPriceNet|decimal(scale, locale, page.numberFormat) }}</td>
           <td class="number">{% if line.discountRate %}{{ line.discountRate|decimal(0, locale, page.numberFormat) }} %{% endif %}</td>
           <td>{{ line.taxes|map(tax => tax.code)|join(', ') }}</td>

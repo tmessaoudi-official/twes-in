@@ -49,12 +49,13 @@ final class StockValuationResource
         'type' => 'array',
         'items' => [
             'type' => 'object',
-            'required' => ['productId', 'productReference', 'productName', 'unitCode', 'quantity', 'unitCost', 'value', 'unvaluedQuantity', 'estimatedQuantity'],
+            'required' => ['productId', 'productReference', 'productName', 'unitCode', 'unitName', 'quantity', 'unitCost', 'value', 'unvaluedQuantity', 'estimatedQuantity'],
             'properties' => [
                 'productId' => ['type' => 'string'],
                 'productReference' => ['type' => 'string'],
                 'productName' => ['type' => 'string'],
                 'unitCode' => ['type' => 'string'],
+                'unitName' => ['type' => 'string'],
                 'quantity' => ['type' => 'string'],
                 'unitCost' => ['type' => ['string', 'null'], 'description' => 'The average cost of one unit; null when no stock of it has a cost.'],
                 'value' => ['type' => 'string'],

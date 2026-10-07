@@ -113,7 +113,7 @@ final readonly class SummarizeInvoices
             $chaseCount,
             $amount($chaseAmount),
             array_map(static fn (string $month, Number $sum): array => ['month' => $month, 'amount' => $amount($sum)], array_keys($collected), $collected),
-            array_map(static fn (array $tax): array => ['code' => $tax['code'], 'rate' => $tax['rate'], 'amount' => $amount(Decimal::of($tax['amount']))], $vat),
+            array_map(static fn (array $tax): array => ['code' => $tax['code'], 'rate' => $tax['rate'], 'name' => $tax['name'], 'amount' => $amount(Decimal::of($tax['amount']))], $vat),
             $amount(Decimal::sum(array_map(static fn (array $tax): Number => Decimal::of($tax['amount']), $vat))),
             $amount(Decimal::of($now['net'])),
             $amount(Decimal::of($before['net'])),

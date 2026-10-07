@@ -319,6 +319,8 @@ export interface MonthCollected {
 export interface VatCollected {
   readonly code: string;
   readonly rate: string;
+  /** The company's name for the tax, which says its rate; null once it no longer has the tax at that rate. */
+  readonly name: string | null;
   readonly amount: string;
 }
 

@@ -159,7 +159,12 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
     public function vatIssued(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): array
     {
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT t ->> \'code\' AS code, t ->> \'rate\' AS rate, SUM((t ->> \'amount\')::numeric) AS amount
+            'SELECT v.code, v.rate, v.amount, (
+                 SELECT c.name FROM tax_component c
+                 WHERE c.company_id = :company AND c.code = v.code AND c.rate = v.rate::numeric
+             ) AS name
+             FROM (
+             SELECT t ->> \'code\' AS code, t ->> \'rate\' AS rate, SUM((t ->> \'amount\')::numeric) AS amount
              FROM invoice i CROSS JOIN LATERAL jsonb_array_elements(i.tax_breakdown) t
              WHERE i.company_id = :company AND i.status <> :cancelled AND i.amount_due IS NOT NULL
                AND i.issue_date >= :from AND i.issue_date < :until
@@ -167,11 +172,12 @@ final readonly class DoctrineInvoiceSummarySource implements InvoiceSummarySourc
                    SELECT 1 FROM invoice_line l JOIN invoice_line_tax lt ON lt.line_id = l.id JOIN tax_component c ON c.id = lt.tax_component_id
                    WHERE l.invoice_id = i.id AND lt.code = t ->> \'code\' AND c.family = :vat
                )
-             GROUP BY 1, 2',
+             GROUP BY 1, 2
+             ) v',
             ['company' => $companyId->toRfc4122(), 'cancelled' => InvoiceStatus::Cancelled->value, 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d'), 'vat' => TaxFamily::Vat->value],
         );
 
-        return array_map(static fn (array $row): array => ['code' => self::text($row['code']), 'rate' => self::text($row['rate']), 'amount' => self::text($row['amount'])], $rows);
+        return array_map(static fn (array $row): array => ['code' => self::text($row['code']), 'rate' => self::text($row['rate']), 'name' => null === $row['name'] ? null : self::text($row['name']), 'amount' => self::text($row['amount'])], $rows);
     }
 
     /** @return array{0: array<string, mixed>, 1: array<string, ArrayParameterType>} */

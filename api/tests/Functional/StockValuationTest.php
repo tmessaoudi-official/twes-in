@@ -63,6 +63,8 @@ final class StockValuationTest extends ApiTestCase
 
         $line = $this->line($this->laptopId);
         self::assertSame(['20.000', '600.0000', '12000.000'], [$line['quantity'], $line['unitCost'], $line['value']]);
+        // The unit is named as the screen says it; its code is the settings' word.
+        self::assertSame(['C62', 'Unité'], [$line['unitCode'], $line['unitName']]);
         self::assertSame('12000.000', $this->valuation()['total']);
     }
 

@@ -68,6 +68,7 @@ function level(productId: string, locationId: string, quantity: string): StockLe
     productReference: `ART-${productId.slice(1)}`,
     productName: productId === 'p1' ? 'Portable' : 'Article',
     unitCode: 'p1' === productId ? 'C62' : 'KGM',
+    unitName: 'p1' === productId ? 'Unité' : 'Kilogramme',
     unitDecimals: 'p1' === productId ? 0 : 3,
     locationId,
     locationCode: '000',
@@ -207,6 +208,17 @@ describe('the list rows', () => {
       ['ART-2 — Farine', 'Z9 — Zone froide', 3],
       ['ART-7 — Article', '000 — Siège', 3],
     ]);
+  });
+
+  it("names a stock row's unit as the screens say it, never by its code", () => {
+    const unit = STOCK_LIST.columns.find((column) => column.id === 'unit');
+    const [piece, flour] = stockListRows(
+      [level('p1', 'l1', '3'), level('p2', 'l1', '3')],
+      [site],
+      '2026-10-07',
+    );
+    expect(unit?.value(piece!)).toBe('Unité');
+    expect(unit?.value(flour!)).toBe('Kilogramme');
   });
 
   it('shows the columns people read in each list', () => {

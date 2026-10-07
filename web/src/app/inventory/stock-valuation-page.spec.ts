@@ -45,6 +45,7 @@ const worth: StockValuation = {
       productReference: 'ART-001',
       productName: 'Portable',
       unitCode: 'C62',
+      unitName: 'Unité',
       quantity: '20.000',
       unitCost: '600.0000',
       value: '12000.000',
@@ -56,6 +57,7 @@ const worth: StockValuation = {
       productReference: 'ART-002',
       productName: 'Souris',
       unitCode: 'C62',
+      unitName: 'Unité',
       quantity: '3.000',
       unitCost: null,
       value: '0.000',
@@ -123,6 +125,9 @@ describe('StockValuationPage', () => {
     const row = q('stock-valuation-ART-001')?.textContent ?? '';
     expect(row).toContain('Portable');
     expect(row).toMatch(/600/);
+    // The quantity as the screen writes a number, the unit by its name; its code is the settings' word.
+    expect(row).toMatch(/20,000\s*Unité/);
+    expect(row).not.toContain('C62');
     expect(q('stock-valuation-unvalued-note')).not.toBeNull();
     expect(q('stock-valuation-total-estimated')).toBeNull();
     expect(q('stock-valuation-estimated-note')).toBeNull();

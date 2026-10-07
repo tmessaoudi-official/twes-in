@@ -182,7 +182,12 @@
               <ul class="flex flex-wrap gap-x-3 gap-y-1 text-sm text-on-surface-variant">
                 @for (tax of s.vat; track tax.code + tax.rate) {
                   <li class="tabular-nums">
-                    {{ tax.code }} {{ tax.amount | amount: s.currencyScale }}
+                    @if (tax.name) {
+                      {{ tax.name }}
+                    } @else {
+                      {{ tax.code }} {{ tax.rate | amount: 0 }}&nbsp;%
+                    }
+                    {{ tax.amount | amount: s.currencyScale }}
                   </li>
                 }
               </ul>

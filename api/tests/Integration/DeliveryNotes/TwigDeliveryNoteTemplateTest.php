@@ -74,7 +74,7 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         foreach ([
             '<html lang="fr">', 'Bon de livraison', 'BL-2026-00001', '15/09/2026', '20/09/2026', 'PO-77',
             'Acme Distribution', 'Carthage Conseil SARL', 'CLI-0007', 'Matricule fiscal', '1234567APM000', 'Rue de Rome',
-            'Portable &lt;14&quot;&gt;', 'C62', "1\u{a0}250,000", "2\u{a0}500,000", 'FODEC', "2\u{a0}525,000",
+            'Portable &lt;14&quot;&gt;', '<td>Unité</td>', "1\u{a0}250,000", "2\u{a0}500,000", 'FODEC', "2\u{a0}525,000",
             'Exportation exonérée de la TVA.', 'Livrer au quai 3.', 'Marchandise voyageant aux risques du client.',
             // The reception block (docs/SPEC.md § 7, 2026-09-24 22:51, on by default): three cells and a line for réserves.
             'Réception', 'Date et heure', 'Nom', 'Signature et cachet', 'Réserves',
@@ -83,6 +83,8 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         }
         self::assertStringNotContainsString('BROUILLON', $html);
         self::assertStringNotContainsString('<script', $html, 'a printed page runs nothing');
+        // The unit as a reader names it; its UN/ECE code is the e-invoice's word, not the page's.
+        self::assertStringNotContainsString('C62', $html);
     }
 
     public function testWithoutPricesAndInEnglishACancelledNoteSaysSo(): void

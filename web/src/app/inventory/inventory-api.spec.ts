@@ -96,6 +96,7 @@ describe('InventoryApi', () => {
       productReference: 'ART-1',
       productName: 'Portable',
       unitCode: 'C62',
+      unitName: 'Unité',
       unitDecimals: 0,
       locationId: 'l1',
       locationCode: '000',

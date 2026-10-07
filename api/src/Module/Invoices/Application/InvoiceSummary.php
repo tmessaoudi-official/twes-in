@@ -21,7 +21,7 @@ final readonly class InvoiceSummary
      * @param list<array{bucket: string, amount: string, count: int}>                                                                 $aging     not yet due, then 1–15, 16–30, 31–45 and over 45 days late
      * @param list<array{invoiceId: string, number: string, customerName: string, dueDate: string, amountDue: string, daysLate: int}> $toChase   the latest first, then the soonest due, at most four
      * @param list<array{month: string, amount: string}>                                                                              $collected the money received in the last six months, the oldest first, this month last
-     * @param list<array{code: string, rate: string, amount: string}>                                                                 $vat       by tax, the highest rate first
+     * @param list<array{code: string, rate: string, name: ?string, amount: string}>                                                  $vat       by tax, the highest rate first
      */
     public function __construct(
         public string $currency,

@@ -73,6 +73,10 @@ final class StockLevelResource
     #[Groups([self::READ])]
     public string $unitCode = '';
 
+    /** That unit as the screens name it; the code is the settings' word. */
+    #[Groups([self::READ])]
+    public string $unitName = '';
+
     /**
      * How many decimals that unit counts in, so a row shows its quantity the way the unit is counted without the
      * screen holding the whole catalogue to look it up in (docs/SPEC.md § 7, 2026-09-17, ruling 3).

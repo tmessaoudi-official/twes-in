@@ -122,10 +122,10 @@ final class InvoiceSummaryResource
     #[Groups([self::READ])]
     public array $collected = [];
 
-    /** @var list<array{code: string, rate: string, amount: string}> */
+    /** @var list<array{code: string, rate: string, name: ?string, amount: string}> */
     #[ApiProperty(schema: [
         'type' => 'array',
-        'items' => ['type' => 'object', 'required' => ['code', 'rate', 'amount'], 'properties' => ['code' => self::TEXT, 'rate' => self::TEXT, 'amount' => self::TEXT]],
+        'items' => ['type' => 'object', 'required' => ['code', 'rate', 'name', 'amount'], 'properties' => ['code' => self::TEXT, 'rate' => self::TEXT, 'name' => ['type' => ['string', 'null']], 'amount' => self::TEXT]],
     ])]
     #[Groups([self::READ])]
     public array $vat = [];

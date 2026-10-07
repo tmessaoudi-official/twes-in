@@ -54,6 +54,7 @@ final readonly class StockValuationProvider implements ProviderInterface
                 'productReference' => $product?->getReference() ?? '',
                 'productName' => $product?->getDetails()->name ?? '',
                 'unitCode' => $product?->getUnit()->getCode() ?? '',
+                'unitName' => $product?->getUnit()->getName() ?? '',
                 'quantity' => $value->quantity,
                 'unitCost' => 1 === $valued->compare(0) ? new Number($value->value)->div($valued, 10)->round(4)->value : null,
                 'value' => $amount->value,

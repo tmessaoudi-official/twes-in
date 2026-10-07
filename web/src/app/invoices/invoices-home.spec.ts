@@ -115,7 +115,10 @@ const summary: InvoiceSummary = {
     { month: '2026-08', amount: '400.000' },
     { month: '2026-09', amount: '800.000' },
   ],
-  vat: [{ code: 'TVA19', rate: '19.000', amount: '171.000' }],
+  vat: [
+    { code: 'TVA19', rate: '19.000', name: 'TVA 19 %', amount: '164.000' },
+    { code: 'TVA7', rate: '7.000', name: null, amount: '7.000' },
+  ],
   vatTotal: '171.000',
   invoicedMonth: '1881.000',
   invoicedLastMonth: '1850.050',
@@ -194,7 +197,10 @@ describe('InvoicesHome', () => {
     expect(text('home-collected')).toContain('Encaissé en septembre');
     expect(text('home-collected')).toContain('800,000');
     expect(text('home-vat')).toContain('171,000');
-    expect(text('home-vat')).toContain('TVA19');
+    // Each tax by the company's name for it; one it no longer has at that rate by the code and rate it was charged at.
+    expect(text('home-vat')).toContain('TVA 19 % 164,000');
+    expect(text('home-vat')).not.toContain('TVA19');
+    expect(text('home-vat')).toContain('TVA7 7 % 7,000');
   });
 
   it('puts the margin first, against the same days of last month, with the sales it speaks of', () => {

@@ -35,6 +35,7 @@ const level = (extra: Partial<StockLevelRow>): StockLevelRow => ({
   productReference: 'NUT-400',
   productName: 'Nutella',
   unitCode: 'C62',
+  unitName: 'Unité',
   unitDecimals: 0,
   locationId: 'l-1',
   locationCode: 'SHOP',

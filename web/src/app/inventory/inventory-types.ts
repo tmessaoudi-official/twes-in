@@ -132,6 +132,8 @@ export interface StockLevelRow {
   productReference: string;
   productName: string;
   unitCode: string;
+  /** The unit as the screens name it; the code is the settings' word. */
+  unitName: string;
   /** How many decimals that unit counts in, so a row is shown as its unit counts without the whole catalogue. */
   unitDecimals: number;
   locationId: string;
@@ -193,6 +195,8 @@ export interface StockValuationLine {
   productReference: string;
   productName: string;
   unitCode: string;
+  /** The unit as the screens name it; the code is the settings' word. */
+  unitName: string;
   quantity: string;
   /** The average cost of one unit, four decimals; null when no stock of it has a cost. */
   unitCost: string | null;

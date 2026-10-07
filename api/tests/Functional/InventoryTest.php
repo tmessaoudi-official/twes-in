@@ -316,6 +316,7 @@ final class InventoryTest extends ApiTestCase
             'productReference' => 'ART-001',
             'productName' => 'Portable 14"',
             'unitCode' => 'C62',
+            'unitName' => 'Unité',
             'locationId' => $siteId,
             'locationCode' => '000',
             'locationName' => 'Acme',

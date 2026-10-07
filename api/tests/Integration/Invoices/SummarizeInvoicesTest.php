@@ -118,7 +118,10 @@ final class SummarizeInvoicesTest extends KernelTestCase
             ['month' => '2026-08', 'amount' => '400.000'],
             ['month' => '2026-09', 'amount' => '800.000'],
         ], $summary->collected);
-        self::assertSame([[['code' => 'TVA19', 'rate' => '19.000', 'amount' => '171.000']], '171.000'], [$summary->vat, $summary->vatTotal]);
+        // Each tax named as the company names it, which already says its rate; its code belongs to the tax settings.
+        $vat = static::getContainer()->get(TaxComponentRepository::class)->ofCodeInCompany('TVA19', $this->company->getId())?->getName();
+        self::assertNotNull($vat);
+        self::assertSame([[['code' => 'TVA19', 'rate' => '19.000', 'name' => $vat, 'amount' => '171.000']], '171.000'], [$summary->vat, $summary->vatTotal]);
     }
 
     public function testAnInvoiceDueTodayIsNotLateAndOneDueInAWeekIsToChase(): void

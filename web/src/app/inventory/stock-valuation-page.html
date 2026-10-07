@@ -72,7 +72,9 @@
                   <span class="font-medium">{{ line.productName }}</span>
                   <span class="opacity-80"> · {{ line.productReference }}</span>
                 </td>
-                <td class="p-2 text-end tabular-nums">{{ line.quantity }} {{ line.unitCode }}</td>
+                <td class="p-2 text-end tabular-nums">
+                  {{ line.quantity | amount: null }} {{ line.unitName }}
+                </td>
                 <td class="p-2 text-end tabular-nums">
                   @if (line.unitCost !== null) {
                     {{ line.unitCost | amount: 4 }}

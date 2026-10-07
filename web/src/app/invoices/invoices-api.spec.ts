@@ -135,7 +135,10 @@ describe('InvoicesApi', () => {
       toChaseCount: 4,
       toChaseAmount: '2331.050',
       collected: [{ month: '2026-09', amount: '800.000' }],
-      vat: [{ code: 'TVA19', rate: '19.000', amount: '171.000' }],
+      vat: [
+        { code: 'TVA19', rate: '19.000', name: 'TVA 19 %', amount: '171.000' },
+        { code: 'TVA7', rate: '7.000', name: null, amount: '7.000' },
+      ],
       vatTotal: '171.000',
       invoicedMonth: '1881.000',
       invoicedLastMonth: '1850.050',
@@ -150,6 +153,7 @@ describe('InvoicesApi', () => {
     });
     const summary = await pending;
     expect(summary.aging.map((each) => each.bucket)).toEqual(['not_due', 'days_over_45']);
+    expect(summary.vat.map((tax) => tax.name)).toEqual(['TVA 19 %', null]);
     expect(summary).toMatchObject({
       today: '2026-09-21',
       oldestOverdueDays: 82,

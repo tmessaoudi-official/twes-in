@@ -220,7 +220,7 @@ export const STOCK_LIST: ListDescriptor<StockListRow> = {
       align: 'end',
       width: 160,
     },
-    { id: 'unit', label: `${STOCK_FIELDS}.unit`, value: (row) => row.unitCode, width: 100 },
+    { id: 'unit', label: `${STOCK_FIELDS}.unit`, value: (row) => row.unitName, width: 100 },
     // A tracked product's stock is a number per lot (docs/SPEC.md § 7, 2026-09-22 11:10); an untracked one shows none.
     {
       id: 'lot',

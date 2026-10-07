@@ -43,8 +43,10 @@ interface InvoiceSummarySource
     /**
      * The VAT-family taxes of the documents issued from a day to before another, credit notes included, by code and rate.
      * A tax is VAT when a line of its document charges a VAT-family component of that code: issuing keeps only the code.
+     * Each is named as the company names that code while it still has it at that rate, null otherwise: the rate a
+     * document froze stays true, a name given since to another rate would not.
      *
-     * @return list<array{code: string, rate: string, amount: string}>
+     * @return list<array{code: string, rate: string, name: ?string, amount: string}>
      */
     public function vatIssued(Uuid $companyId, \DateTimeImmutable $from, \DateTimeImmutable $until): array;
 
