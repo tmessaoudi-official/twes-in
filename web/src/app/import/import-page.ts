@@ -20,6 +20,7 @@ import { ImportFacade } from './import-facade';
 import type { ImportMode, ImportRejection } from './import-types';
 import { FileDrop } from '../shared/form/file-drop';
 import { IMPORT_MAX_BYTES } from '../shared/form/file-limits';
+import { WINDOW_CLASS } from '../shared/ui/window-class';
 
 /**
  * One screen for every subject a module declares as importable (docs/SPEC.md § 8 row 59). It is driven entirely by
@@ -45,6 +46,7 @@ export class ImportPage {
   private readonly api = inject(ImportApi);
   private readonly auth = inject(AuthFacade);
   private readonly translate = inject(TranslateService);
+  private readonly windowClass = inject(WINDOW_CLASS);
 
   protected readonly guide = this.facade.guide;
   protected readonly report = this.facade.report;
@@ -64,7 +66,28 @@ export class ImportPage {
    * and the other a key; this is the one place that knows both spellings.
    */
   protected readonly subjectKey = computed(() => this.subject().replace(/-/g, '_'));
-  protected readonly identity = computed(() => this.guide()?.identity.join(', ') ?? '');
+  protected readonly compact = computed(() => this.windowClass() === 'compact');
+
+  /**
+   * The columns a row is found again by, each named as its heading reads with its key beside it, as the file writes
+   * it. A method, read at each check like `reasonOf`, so a change of language renames them.
+   */
+  protected identity(): string {
+    const guide = this.guide();
+    if (guide === null) return '';
+    return guide.identity
+      .map((key) => {
+        const column = guide.columns.find((candidate) => candidate.key === key);
+        const heading =
+          column === undefined
+            ? null
+            : column.headingKey !== null
+              ? (this.translate.instant(column.headingKey) as string)
+              : column.label;
+        return heading === null || heading === '' || heading === key ? key : `${heading} (${key})`;
+      })
+      .join(', ');
+  }
 
   constructor() {
     effect(() => {

@@ -20,63 +20,6 @@
   }
 
   @if (guide(); as guide) {
-    <div class="flex flex-col gap-3">
-      <h2 class="text-xl font-semibold">{{ 'import.columns_title' | translate }}</h2>
-      <div class="flex flex-wrap items-center gap-3">
-        <a
-          mat-stroked-button
-          [href]="templateUrl('csv')"
-          [download]="subject() + '.csv'"
-          data-testid="import-template-csv"
-        >
-          <mat-icon aria-hidden="true">download</mat-icon>
-          {{ 'import.template_csv' | translate }}
-        </a>
-        <a
-          mat-stroked-button
-          [href]="templateUrl('xlsx')"
-          [download]="subject() + '.xlsx'"
-          data-testid="import-template-xlsx"
-        >
-          <mat-icon aria-hidden="true">download</mat-icon>
-          {{ 'import.template_xlsx' | translate }}
-        </a>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm" data-testid="import-columns">
-          <thead class="text-left text-on-surface-variant">
-            <tr>
-              <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.column' | translate }}</th>
-              <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.heading' | translate }}</th>
-              <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.example' | translate }}</th>
-              <th scope="col" class="py-2 font-medium">{{ 'import.note' | translate }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (column of guide.columns; track column.key) {
-              <tr class="border-t border-outline-variant align-top">
-                <th scope="row" class="py-2 pr-4 text-left font-mono font-normal">
-                  {{ column.key }}
-                  @if (column.required) {
-                    <span class="text-error" [attr.title]="'import.required' | translate">*</span>
-                  }
-                </th>
-                <td class="py-2 pr-4">
-                  {{ column.headingKey ? (column.headingKey | translate) : column.label }}
-                </td>
-                <td class="py-2 pr-4 font-mono text-on-surface-variant">{{ column.example }}</td>
-                <td class="py-2 text-on-surface-variant">
-                  {{ column.noteKey ? (column.noteKey | translate) : '' }}
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      <p class="text-sm text-on-surface-variant">{{ 'import.required_note' | translate }}</p>
-    </div>
-
     <div class="flex flex-col gap-4">
       <h2 class="text-xl font-semibold">{{ 'import.file_title' | translate }}</h2>
 
@@ -183,6 +126,98 @@
           </table>
         </div>
       }
+    </div>
+  }
+  @if (guide(); as guide) {
+    <div class="flex flex-col gap-3">
+      <h2 class="text-xl font-semibold">{{ 'import.columns_title' | translate }}</h2>
+      <div class="flex flex-wrap items-center gap-3">
+        <a
+          mat-stroked-button
+          [href]="templateUrl('csv')"
+          [download]="subject() + '.csv'"
+          data-testid="import-template-csv"
+        >
+          <mat-icon aria-hidden="true">download</mat-icon>
+          {{ 'import.template_csv' | translate }}
+        </a>
+        <a
+          mat-stroked-button
+          [href]="templateUrl('xlsx')"
+          [download]="subject() + '.xlsx'"
+          data-testid="import-template-xlsx"
+        >
+          <mat-icon aria-hidden="true">download</mat-icon>
+          {{ 'import.template_xlsx' | translate }}
+        </a>
+      </div>
+
+      @if (compact()) {
+        <ul class="m-0 flex list-none flex-col p-0" data-testid="import-columns">
+          @for (column of guide.columns; track column.key) {
+            <li class="flex flex-col gap-0.5 border-t border-outline-variant py-3">
+              <span class="font-medium">
+                {{ column.headingKey ? (column.headingKey | translate) : column.label }}
+                @if (column.required) {
+                  <span class="text-error" [attr.title]="'import.required' | translate">*</span>
+                }
+              </span>
+              <span class="text-sm"
+                ><span class="text-on-surface-variant">{{ 'import.column' | translate }}</span
+                >&nbsp;<code class="font-mono">{{ column.key }}</code></span
+              >
+              @if (column.example) {
+                <span class="text-sm"
+                  ><span class="text-on-surface-variant">{{ 'import.example' | translate }}</span
+                  >&nbsp;<code class="font-mono">{{ column.example }}</code></span
+                >
+              }
+              @if (column.noteKey) {
+                <span class="text-sm text-on-surface-variant">{{
+                  column.noteKey | translate
+                }}</span>
+              }
+            </li>
+          }
+        </ul>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm" data-testid="import-columns">
+            <thead class="text-left text-on-surface-variant">
+              <tr>
+                <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.column' | translate }}</th>
+                <th scope="col" class="py-2 pr-4 font-medium">
+                  {{ 'import.heading' | translate }}
+                </th>
+                <th scope="col" class="py-2 pr-4 font-medium">
+                  {{ 'import.example' | translate }}
+                </th>
+                <th scope="col" class="py-2 font-medium">{{ 'import.note' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (column of guide.columns; track column.key) {
+                <tr class="border-t border-outline-variant align-top">
+                  <th scope="row" class="py-2 pr-4 text-left font-mono font-normal">
+                    {{ column.key }}
+                    @if (column.required) {
+                      <span class="text-error" [attr.title]="'import.required' | translate">*</span>
+                    }
+                  </th>
+                  <td class="py-2 pr-4">
+                    {{ column.headingKey ? (column.headingKey | translate) : column.label }}
+                  </td>
+                  <td class="py-2 pr-4 font-mono text-on-surface-variant">{{ column.example }}</td>
+                  <td class="py-2 text-on-surface-variant">
+                    {{ column.noteKey ? (column.noteKey | translate) : '' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      <p class="text-sm text-on-surface-variant">{{ 'import.required_note' | translate }}</p>
     </div>
   }
 </section>

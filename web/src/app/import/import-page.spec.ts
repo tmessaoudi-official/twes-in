@@ -19,6 +19,7 @@ import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/f
 import { ImportFacade } from './import-facade';
 import { ImportPage } from './import-page';
 import type { ImportGuide, ImportRefusal, ImportReport } from './import-types';
+import { WINDOW_CLASS, type WindowClass } from '../shared/ui/window-class';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -26,6 +27,7 @@ class StaticLoader implements TranslateLoader {
       import: {
         title: 'Importer des {{subject}}',
         subjects: { opening_stock: 'stocks de départ' },
+        opening_stock: { reference: 'Référence' },
         identity: 'Une ligne est retrouvée par : {{columns}}. Au plus {{rows}} lignes par fichier.',
         preview: 'Prévisualiser',
         store: 'Importer',
@@ -91,6 +93,7 @@ describe('ImportPage', () => {
     hasPermission: vi.fn(),
   };
   let fixture: ComponentFixture<ImportPage>;
+  const width = signal<WindowClass>('expanded');
 
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
@@ -128,6 +131,7 @@ describe('ImportPage', () => {
     facade.run.mockReset().mockResolvedValue(undefined);
     facade.forget.mockReset();
     auth.hasPermission.mockReset().mockReturnValue(true);
+    width.set('expanded');
     TestBed.configureTestingModule({
       imports: [ImportPage],
       providers: [
@@ -144,6 +148,7 @@ describe('ImportPage', () => {
         { provide: ImportFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
+        { provide: WINDOW_CLASS, useValue: width },
       ],
     });
     fixture = TestBed.createComponent(ImportPage);
@@ -154,8 +159,30 @@ describe('ImportPage', () => {
   it('asks the API what this company’s file holds, and says what a row is found again by', async () => {
     expect(facade.load).toHaveBeenCalledWith('c1', 'opening-stock');
     expect(q('import-title')?.textContent).toContain('stocks de départ');
-    expect(q('import-identity')?.textContent).toContain('reference, location_code');
+    // A column is named as its heading reads, its key beside it as the file writes it.
+    expect(q('import-identity')?.textContent).toContain('Référence (reference), location_code');
     expect(q('import-identity')?.textContent).toContain('2000');
+  });
+
+  it('asks for the file before it describes the columns, which are there to consult', () => {
+    const file = q('import-file');
+    const columns = q('import-columns');
+    expect(file).not.toBeNull();
+    expect(columns).not.toBeNull();
+    expect(file!.compareDocumentPosition(columns!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('describes each column as an entry of a list on a phone, never a table cut at the edge', async () => {
+    width.set('compact');
+    await settle();
+
+    expect(q('import-columns')?.tagName).toBe('UL');
+    const entries = fixture.nativeElement.querySelectorAll('[data-testid="import-columns"] > li');
+    expect(entries.length).toBe(2);
+    expect(entries[0].textContent).toContain('reference');
+    expect(entries[0].textContent).toContain('Référence');
+    expect(entries[0].textContent).toContain('VIS-6X40');
+    expect(entries[1].textContent).toContain('Quantité comptée');
   });
 
   it('describes every column the guide names, whichever way its heading comes', () => {

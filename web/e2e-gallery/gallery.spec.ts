@@ -39,6 +39,7 @@ const SIGNED_IN: Screen[] = [
   },
   { key: 'customer-new', group: 'Clients', path: '/customers/new' },
   { key: 'customer-groups', group: 'Clients', path: '/customers/groups' },
+  { key: 'customers-import', group: 'Clients', path: '/imports/customers' },
   { key: 'products', group: 'Produits', path: '/products' },
   {
     key: 'product',
