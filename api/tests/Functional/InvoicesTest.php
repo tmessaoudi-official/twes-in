@@ -1478,7 +1478,8 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame(['850.000', '161.500', '1011.500'], [$this->json()['subtotalNet'], $this->json()['totalTax'], $this->json()['total']]);
 
         $this->sendJson('PUT', $this->path($id), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [[...$line, 'discountAmount' => '100']]]));
-        self::assertSame(['100.000', '900.000'], [$this->arrayAt($this->json(), 'lines')[0]['discountAmount'] ?? null, $this->arrayAt($this->json(), 'lines')[0]['net'] ?? null], 'a revision changing the amount alone changes the line');
+        $revised = $this->arrayAt($this->json(), 'lines');
+        self::assertSame([['100.000', '900.000']], array_map(null, array_column($revised, 'discountAmount'), array_column($revised, 'net')), 'a revision changing the amount alone changes the line');
 
         $this->postJson($this->path($id).'/duplicate', null);
         self::assertSame(['100.000'], array_column($this->arrayAt($this->json(), 'lines'), 'discountAmount'), 'a copy keeps it');
