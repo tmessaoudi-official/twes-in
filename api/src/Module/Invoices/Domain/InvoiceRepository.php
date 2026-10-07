@@ -42,6 +42,14 @@ interface InvoiceRepository
      */
     public function overdueOf(Uuid $companyId, Uuid $customerId, \DateTimeImmutable $today): array;
 
+    /**
+     * Every overdue invoice of the company on a day, by the overdue chip's rule, the longest late first: what a reminder
+     * run reads, a row each, without loading the documents.
+     *
+     * @return list<array{invoiceId: Uuid, number: string, customerId: Uuid, customerName: string, dueDate: \DateTimeImmutable, amountDue: string}>
+     */
+    public function overdueRows(Uuid $companyId, \DateTimeImmutable $today): array;
+
     /** Null for an invoice that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Invoice;
 

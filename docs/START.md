@@ -455,7 +455,8 @@ and compile time: the first attempt spent about 2 minutes on those alone.
 - installs no dev packages (`composer install --no-dev`) and warms the cache at build.
 
 `compose.prod.yaml` switches the api and worker services to that target; the worker is the same image reading the queue
-(`messenger:consume async`), and a deployment runs one beside the API. Production refuses to start without secrets of
+(`messenger:consume async scheduler_default`: the queue and the schedule), and a deployment runs one, and only one,
+beside the API. Production refuses to start without secrets of
 its own, so give it four:
 
 ```sh

@@ -65,6 +65,7 @@ final class ScaleGenerator
         'delivery_note_line_tax' => 'delivery notes: a follow-up slice',
         'expense' => 'expenses: a follow-up slice',
         'file' => 'stored files, PDFs included: a clone has none and renders on first request',
+        'invoice_reminder' => 'the reminder stages late invoices reached: a clone has reached none',
         'payment_declaration' => 'a customer\'s declared payments: a follow-up slice',
         'payment_instrument' => 'cheques and traites received: a clone starts with none, as with a customer\'s credit',
         'product_cost_change' => 'the cost history of a product: a clone starts with none',

@@ -102,6 +102,22 @@ final class InMemoryInvoices implements InvoiceRepository
         return ['amount' => $amount->value, 'count' => $count, 'oldestDueDate' => $oldest];
     }
 
+    /** As overdueOf: each late invoice's amount due as issued. */
+    public function overdueRows(Uuid $companyId, \DateTimeImmutable $today): array
+    {
+        $rows = [];
+        foreach ($this->ofCompany($companyId) as $invoice) {
+            $due = $invoice->getDueDate();
+            if (InvoiceType::Invoice === $invoice->getType() && \in_array($invoice->getStatus(), [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid], true) && null !== $due && $due < $today) {
+                $figures = $invoice->getIssuedFigures();
+                $rows[] = ['invoiceId' => $invoice->getId(), 'number' => $invoice->getNumber() ?? '', 'customerId' => $invoice->getCustomer()->getId(), 'customerName' => $invoice->getCustomer()->getProfile()->name, 'dueDate' => $due, 'amountDue' => null === $figures ? '0' : $figures->amountDue];
+            }
+        }
+        usort($rows, static fn (array $a, array $b): int => $a['dueDate'] <=> $b['dueDate'] ?: strcmp($a['number'], $b['number']));
+
+        return $rows;
+    }
+
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Invoice
     {
         $stale = $this->staleReads[$id->toRfc4122()] ?? null;

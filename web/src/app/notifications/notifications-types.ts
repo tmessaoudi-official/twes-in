@@ -39,6 +39,7 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'stock.count_difference',
   'stock.low',
   'invoice.credit_limit_passed',
+  'invoice.reminder_due',
   'subscription.payment_declared',
   'subscription.payment_decided',
   'module.arrived',
@@ -102,6 +103,11 @@ const RECORDS = new Map<string, NotificationRecord>([
   [
     'invoice.credit_limit_passed',
     { icon: 'credit_score', route: '/invoices', permission: 'invoice.read' },
+  ],
+  // A late invoice reached a stage of the reminder calendar: the overdue invoices are where it is chased.
+  [
+    'invoice.reminder_due',
+    { icon: 'notifications_active', route: '/invoices', permission: 'invoice.read' },
   ],
   // An operator's: the company that declared it is not one of theirs, so it leads to the platform queue.
   [

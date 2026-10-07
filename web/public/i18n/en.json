@@ -640,7 +640,8 @@
       "module_arrived": "« {{label}} » has arrived: you can switch it on for {{company}} in Modules.",
       "stock_count_difference": "The count of {{product}} ({{reference}}) at {{location}} found a difference of {{difference}}.",
       "stock_low": "{{product}} ({{reference}}) is down to {{on_hand}} at {{establishment}}, at or under its reorder point of {{point}}.",
-      "invoice_credit_limit_passed": "{{customer}} is over their credit limit: {{owed}} {{currency}} owed against {{limit}} after invoice {{number}}."
+      "invoice_credit_limit_passed": "{{customer}} is over their credit limit: {{owed}} {{currency}} owed against {{limit}} after invoice {{number}}.",
+      "invoice_reminder_due": "Reminder {{stage}} to send: invoice {{number}} of {{customer}}, {{amount_due}} {{currency}}, is {{days_late}} days late."
     }
   },
   "invitation": {
@@ -1049,6 +1050,14 @@
     },
     "activity": {
       "retention_months": "How long the activity journal is kept (months, 12 to 36)"
+    },
+    "reminders": {
+      "enabled": "Reminders of late invoices",
+      "enabled_hint": "When an invoice reaches a stage of the calendar, the people who issue invoices are told it is time to remind the customer. Nothing is sent to the customer.",
+      "stages": "Reminder stages (days late)",
+      "stages_hint": "Up to five numbers separated by commas, for example 7, 15, 30.",
+      "hour": "Reminder hour",
+      "hour_hint": "From this hour each day, the stages reached are recorded."
     }
   },
   "customers": {

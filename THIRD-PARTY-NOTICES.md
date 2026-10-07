@@ -7,7 +7,7 @@ permissive under the policy in that file, as enforced by `scripts/gates/dependen
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP) are aggregated,
 not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 107 runtime, 54 dev
+## api (Composer) — 108 runtime, 54 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -146,6 +146,7 @@ not compiled into what we distribute, and are not listed here.
 | symfony/rate-limiter | 8.1.6 | MIT | runtime |
 | symfony/routing | 8.1.8 | MIT | runtime |
 | symfony/runtime | 8.1.0 | MIT | runtime |
+| symfony/scheduler | 8.1.8 | MIT | runtime |
 | symfony/security-bundle | 8.1.8 | MIT | runtime |
 | symfony/security-core | 8.1.8 | MIT | runtime |
 | symfony/security-csrf | 8.1.0 | MIT | runtime |

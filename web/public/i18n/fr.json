@@ -640,7 +640,8 @@
       "module_arrived": "« {{label}} » est arrivé : vous pouvez l’activer pour {{company}} dans Modules.",
       "stock_count_difference": "Le comptage de {{product}} ({{reference}}) à {{location}} a trouvé un écart de {{difference}}.",
       "stock_low": "{{product}} ({{reference}}) est tombé à {{on_hand}} à {{establishment}}, au niveau ou sous son seuil de réapprovisionnement de {{point}}.",
-      "invoice_credit_limit_passed": "{{customer}} dépasse sa limite de crédit : {{owed}} {{currency}} dus pour {{limit}} après la facture {{number}}."
+      "invoice_credit_limit_passed": "{{customer}} dépasse sa limite de crédit : {{owed}} {{currency}} dus pour {{limit}} après la facture {{number}}.",
+      "invoice_reminder_due": "Relance {{stage}} à faire : la facture {{number}} de {{customer}}, {{amount_due}} {{currency}}, a {{days_late}} jours de retard."
     }
   },
   "invitation": {
@@ -1049,6 +1050,14 @@
     },
     "activity": {
       "retention_months": "Durée de conservation du journal d’activité (mois, de 12 à 36)"
+    },
+    "reminders": {
+      "enabled": "Relances des factures en retard",
+      "enabled_hint": "Quand une facture atteint une étape du calendrier, ceux qui émettent les factures sont prévenus qu’il est temps de relancer le client. Rien n’est envoyé au client.",
+      "stages": "Étapes de relance (jours de retard)",
+      "stages_hint": "Jusqu’à cinq nombres séparés par des virgules, par exemple 7, 15, 30.",
+      "hour": "Heure des relances",
+      "hour_hint": "À partir de cette heure, chaque jour, les étapes atteintes sont relevées."
     }
   },
   "customers": {

@@ -55,6 +55,19 @@ describe('credit limit notifications', () => {
   });
 });
 
+describe('reminder notifications', () => {
+  it('have words and lead to the invoices, where the late one is chased', () => {
+    expect(notificationKey('invoice.reminder_due')).toBe(
+      'notifications.types.invoice_reminder_due',
+    );
+    expect(notificationRecord('invoice.reminder_due')).toEqual({
+      icon: 'notifications_active',
+      route: '/invoices',
+      permission: 'invoice.read',
+    });
+  });
+});
+
 describe('module notifications', () => {
   it('have words and lead to the modules page for whoever may switch one on', () => {
     expect(notificationKey('module.arrived')).toBe('notifications.types.module_arrived');

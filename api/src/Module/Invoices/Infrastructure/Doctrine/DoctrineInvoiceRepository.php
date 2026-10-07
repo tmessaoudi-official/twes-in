@@ -108,6 +108,23 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         return ['amount' => (string) $amount, 'count' => (int) $count, 'oldestDueDate' => null === $oldest ? null : new \DateTimeImmutable($oldest)];
     }
 
+    public function overdueRows(Uuid $companyId, \DateTimeImmutable $today): array
+    {
+        $rows = $this->filtered($companyId, new InvoiceSearch()->onlyOverdue($today))
+            ->select('i.id AS invoiceId', 'i.number AS number', 'c.id AS customerId', 'c.name AS customerName', 'i.dueDate AS dueDate', 'i.amountDue AS amountDue')
+            ->orderBy('i.dueDate')->addOrderBy('i.number')
+            ->getQuery()->getArrayResult();
+
+        return array_values(array_map(static function (mixed $row): array {
+            if (!\is_array($row) || !($row['invoiceId'] ?? null) instanceof Uuid || !($row['customerId'] ?? null) instanceof Uuid || !($row['dueDate'] ?? null) instanceof \DateTimeImmutable
+                || !\is_string($row['number'] ?? null) || !\is_string($row['customerName'] ?? null) || !is_numeric($row['amountDue'] ?? null)) {
+                throw new \UnexpectedValueException('An overdue invoice came back in a shape it is never written in.');
+            }
+
+            return ['invoiceId' => $row['invoiceId'], 'number' => $row['number'], 'customerId' => $row['customerId'], 'customerName' => $row['customerName'], 'dueDate' => $row['dueDate'], 'amountDue' => (string) $row['amountDue']];
+        }, $rows));
+    }
+
     /** The company's documents narrowed as a search asks, its order and its page left to the caller. */
     private function filtered(Uuid $companyId, InvoiceSearch $search): QueryBuilder
     {

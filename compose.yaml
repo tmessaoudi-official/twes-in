@@ -74,11 +74,13 @@ services:
   # The worker (docs/SPEC.md § 7, 2026-10-06 02:44): the api image, reading the queue the API writes to
   # (api/config/packages/messenger.yaml). It starts once the api is up, so the migrations have run and are not run twice
   # at once. It leaves after an hour, or at 96 MB, under PHP's 128, and is started again: a long-lived PHP process is
-  # renewed rather than trusted to free everything.
+  # renewed rather than trusted to free everything. It also runs the schedule
+  # (api/src/Shared/Infrastructure/Scheduler/Schedule.php), read as the `scheduler_default` transport: one worker, so
+  # each task runs once.
   worker:
     logging: *logging
     build: *api-build
-    command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=96M"]
+    command: ["php", "bin/console", "messenger:consume", "async", "scheduler_default", "--time-limit=3600", "--memory-limit=96M"]
     restart: unless-stopped
     environment: *api-environment
     volumes:

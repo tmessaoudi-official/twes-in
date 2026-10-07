@@ -28,7 +28,7 @@ services:
   # The worker reads the same mounted source. A consumer keeps the code it started with, so it leaves after a minute
   # and is started again on what is there then; the api container has installed the dependencies by the time it starts.
   worker:
-    command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=60", "--memory-limit=96M"]
+    command: ["php", "bin/console", "messenger:consume", "async", "scheduler_default", "--time-limit=60", "--memory-limit=96M"]
     volumes:
       - ./api:/app
       - api-vendor:/app/vendor
