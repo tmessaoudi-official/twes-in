@@ -15,6 +15,9 @@ test('a count reads in the form French gives it', async ({ page }) => {
   await expect(list).toContainText(/\d+ membres?\b/);
   await expect(list).not.toContainText('plural');
   await expect(list).not.toContainText('(s)');
-  const owners = list.locator('li').filter({ hasText: /propriétaire/i }).first();
+  const owners = list
+    .locator('li')
+    .filter({ hasText: /propriétaire/i })
+    .first();
   await expect(owners).toContainText(/\b1 membre\b(?!s)|\b([02-9]|\d{2,}) membres\b/);
 });
