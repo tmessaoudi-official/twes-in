@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Calculation\Decimal;
+use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\TaxKind;
@@ -229,6 +230,27 @@ final readonly class ManageInvoices
 
             return $invoice;
         });
+    }
+
+    /**
+     * The figures a new invoice, or the draft `$id` revised, would have, from what a save would send: checked as the
+     * save checks it, worked out by the calculator that saves them, and kept nowhere. Nothing is locked, written or
+     * audited.
+     *
+     * @throws InvoiceNotFound
+     * @throws InvoiceNotDraft
+     * @throws InvalidInvoice
+     */
+    public function preview(Company $company, InvoiceInput $input, ?Uuid $id): DocumentTotals
+    {
+        $current = null === $id ? null : $this->get($company, $id);
+        $current?->assertDraft('changes');
+        [$establishment, $customer, $lines, $documentTaxes] = $this->checked($company, $input, $current);
+        $draft = null === $current
+            ? Invoice::create($company, $establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now())
+            : $current->previewOf($establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now());
+
+        return $this->totals->checked($draft);
     }
 
     /**

@@ -16,6 +16,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\QueryParameter;
+use App\Fiscal\Infrastructure\ApiPlatform\DocumentPreview;
 use App\Module\Invoices\Application\InvoiceInput;
 use App\Module\Invoices\Application\InvoiceLineInput;
 use App\Module\Invoices\Domain\InvalidInvoice;
@@ -89,6 +90,27 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: self::NORMALIZATION,
+            denormalizationContext: ['groups' => [self::WRITE]],
+            validationContext: ['groups' => [self::WRITE]],
+        ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/invoices/preview',
+            status: 200,
+            processor: PreviewInvoiceProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            output: DocumentPreview::class,
+            normalizationContext: ['groups' => [DocumentPreview::READ]],
+            denormalizationContext: ['groups' => [self::WRITE]],
+            validationContext: ['groups' => [self::WRITE]],
+        ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/preview',
+            status: 200,
+            processor: PreviewInvoiceProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            output: DocumentPreview::class,
+            normalizationContext: ['groups' => [DocumentPreview::READ]],
             denormalizationContext: ['groups' => [self::WRITE]],
             validationContext: ['groups' => [self::WRITE]],
         ),

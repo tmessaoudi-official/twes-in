@@ -362,23 +362,7 @@ class Invoice implements CompanyOwned
     public function revise(Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $documentTaxes, \DateTimeImmutable $now): array
     {
         $this->assertDraft('changes');
-        $establishment = $this->establishmentOfThisCompany($establishment);
-        $customer = $this->customerOfThisCompany($customer);
-        if (null !== $this->correctsInvoice && !$customer->getId()->equals($this->correctsInvoice->getCustomer()->getId())) {
-            throw new InvalidInvoice('customerId', 'A credit note goes to the customer of the invoice it corrects.');
-        }
-        $lines = $this->deductionsFor($this->linesOfThisCompany($lines), $customer);
-        $documentTaxes = $this->documentTaxesOfThisCompany($documentTaxes);
-        // Delivery notes are invoiced to their customer, numbered in their establishment's series: a draft that still
-        // invoices note lines keeps both, or one customer's delivered goods are invoiced to another.
-        if (array_any($lines, static fn (InvoiceLineDetails $line): bool => null !== $line->sourceDeliveryNoteLineId)) {
-            if (!$customer->getId()->equals($this->customer->getId())) {
-                throw new InvalidInvoice('customerId', 'An invoice of delivery notes stays with their customer: take their lines off first.');
-            }
-            if (!$establishment->getId()->equals($this->establishment->getId())) {
-                throw new InvalidInvoice('establishmentId', 'An invoice of delivery notes stays with their establishment: take their lines off first.');
-            }
-        }
+        [$establishment, $customer, $lines, $documentTaxes] = $this->checkedRevision($establishment, $customer, $lines, $documentTaxes);
 
         $changed = [];
         if (!$establishment->getId()->equals($this->establishment->getId())) {
@@ -415,6 +399,71 @@ class Invoice implements CompanyOwned
         $this->updatedAt = $now;
 
         return $changed;
+    }
+
+    /**
+     * What this draft would be once revised as given, worked out apart from it, for its figures while it is typed: a
+     * document of the same kind, correcting the same invoice, checked as `revise` checks a revision. It is never saved
+     * and nothing holds it: no collection of the invoice it corrects names it, so nothing of it can be written.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     * @param list<TaxComponent>       $documentTaxes
+     *
+     * @throws InvoiceNotDraft
+     * @throws InvalidInvoice
+     */
+    public function previewOf(Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $documentTaxes, \DateTimeImmutable $now): self
+    {
+        $this->assertDraft('changes');
+        [$establishment, $customer, $lines, $documentTaxes] = $this->checkedRevision($establishment, $customer, $lines, $documentTaxes);
+        $preview = new self($this->company, $now);
+        $preview->documentType = $this->documentType;
+        $preview->correctsInvoice = $this->correctsInvoice;
+        $preview->deposit = $this->deposit;
+        $preview->quoteId = $this->quoteId;
+        $preview->establishment = $establishment;
+        $preview->customer = $customer;
+        $preview->apply($header);
+        $preview->writeDocumentTaxes($documentTaxes);
+        $preview->writeLines($lines);
+        if (null !== $preview->correctsInvoice) {
+            $preview->retakeTaxes();
+        }
+
+        return $preview;
+    }
+
+    /**
+     * A revision's parties, lines and document taxes, checked against what this draft is.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     * @param list<TaxComponent>       $documentTaxes
+     *
+     * @return array{Establishment, Customer, list<InvoiceLineDetails>, list<TaxComponent>}
+     *
+     * @throws InvalidInvoice
+     */
+    private function checkedRevision(Establishment $establishment, Customer $customer, array $lines, array $documentTaxes): array
+    {
+        $establishment = $this->establishmentOfThisCompany($establishment);
+        $customer = $this->customerOfThisCompany($customer);
+        if (null !== $this->correctsInvoice && !$customer->getId()->equals($this->correctsInvoice->getCustomer()->getId())) {
+            throw new InvalidInvoice('customerId', 'A credit note goes to the customer of the invoice it corrects.');
+        }
+        $lines = $this->deductionsFor($this->linesOfThisCompany($lines), $customer);
+        $documentTaxes = $this->documentTaxesOfThisCompany($documentTaxes);
+        // Delivery notes are invoiced to their customer, numbered in their establishment's series: a draft that still
+        // invoices note lines keeps both, or one customer's delivered goods are invoiced to another.
+        if (array_any($lines, static fn (InvoiceLineDetails $line): bool => null !== $line->sourceDeliveryNoteLineId)) {
+            if (!$customer->getId()->equals($this->customer->getId())) {
+                throw new InvalidInvoice('customerId', 'An invoice of delivery notes stays with their customer: take their lines off first.');
+            }
+            if (!$establishment->getId()->equals($this->establishment->getId())) {
+                throw new InvalidInvoice('establishmentId', 'An invoice of delivery notes stays with their establishment: take their lines off first.');
+            }
+        }
+
+        return [$establishment, $customer, $lines, $documentTaxes];
     }
 
     /**

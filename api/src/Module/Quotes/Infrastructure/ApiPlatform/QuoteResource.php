@@ -20,6 +20,7 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\LineTotals;
 use App\Fiscal\Domain\Calculation\TaxTotal;
+use App\Fiscal\Infrastructure\ApiPlatform\DocumentPreview;
 use App\Module\Quotes\Application\QuoteDeposit;
 use App\Module\Quotes\Application\QuoteInput;
 use App\Module\Quotes\Application\QuoteLineInput;
@@ -84,6 +85,27 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: self::NORMALIZATION,
+            denormalizationContext: ['groups' => [self::WRITE]],
+            validationContext: ['groups' => [self::WRITE]],
+        ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/quotes/preview',
+            status: 200,
+            processor: PreviewQuoteProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            output: DocumentPreview::class,
+            normalizationContext: ['groups' => [DocumentPreview::READ]],
+            denormalizationContext: ['groups' => [self::WRITE]],
+            validationContext: ['groups' => [self::WRITE]],
+        ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/quotes/{quoteId}/preview',
+            status: 200,
+            processor: PreviewQuoteProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            output: DocumentPreview::class,
+            normalizationContext: ['groups' => [DocumentPreview::READ]],
             denormalizationContext: ['groups' => [self::WRITE]],
             validationContext: ['groups' => [self::WRITE]],
         ),

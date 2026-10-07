@@ -17,6 +17,7 @@ use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
 use App\Files\Domain\Attachment;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
+use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
@@ -108,6 +109,24 @@ final readonly class ManageQuotes
 
             return $quote;
         });
+    }
+
+    /**
+     * The figures a new quote, or the draft `$id` revised, would have, from what a save would send: checked as the save
+     * checks it, worked out by the calculator that saves them, and kept nowhere. Nothing is locked, written or audited.
+     *
+     * @throws QuoteNotFound
+     * @throws QuoteNotDraft
+     * @throws InvalidQuote
+     */
+    public function preview(Company $company, QuoteInput $input, ?Uuid $id): DocumentTotals
+    {
+        $current = null === $id ? null : $this->get($company, $id);
+        $current?->assertDraft('changes');
+        [$establishment, $customer, $lines] = $this->checked($company, $input, $current);
+
+        // A quote names no other document, so what it would be is a new one of the same parts, saved nowhere.
+        return $this->totals->checked(Quote::create($company, $establishment, $customer, $input->header, $lines, $this->clock->now()));
     }
 
     /**
