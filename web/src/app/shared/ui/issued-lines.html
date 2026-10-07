@@ -31,6 +31,11 @@
             <span [attr.data-testid]="'line-' + i + '-discount'">{{
               'issued_lines.discount_value' | translate: { rate: rate | amount: null }
             }}</span>
+          } @else if (amountOffOf(line); as off) {
+            <span [attr.data-testid]="'line-' + i + '-discount'">{{
+              'issued_lines.discount_amount_value'
+                | translate: { amount: off | amount: currencyScale() }
+            }}</span>
           }
           @if (line.taxes !== '') {
             <span [attr.data-testid]="'line-' + i + '-taxes'">{{ line.taxes }}</span>
@@ -76,6 +81,8 @@
               <td class="twes-number" [attr.data-testid]="'line-' + i + '-discount'">
                 @if (discountOf(line); as rate) {
                   {{ rate | amount: null }}&nbsp;%
+                } @else if (amountOffOf(line); as off) {
+                  {{ off | amount: currencyScale() }}
                 }
               </td>
             }

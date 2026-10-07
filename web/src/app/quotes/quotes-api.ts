@@ -392,6 +392,7 @@ function toQuote(raw: QuoteQuoteRead | QuoteJsonldQuoteRead): QuoteRow {
       unitId: line.unitId ?? '',
       unitPriceNet: line.unitPriceNet ?? '',
       discountRate: line.discountRate ?? null,
+      discountAmount: line.discountAmount ?? null,
       taxComponentIds: [...(line.taxComponentIds ?? [])],
       sourceDeliveryNoteLineId: null,
       sourceLeft: null,

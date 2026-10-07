@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { InvoiceOptions } from '../invoices/invoices-types';
-import type { LinesArray } from '../invoices/invoice-forms';
+import { lineDiscount, type LinesArray } from '../invoices/invoice-forms';
 import type { FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
 import { filterValues, idValues, rangeParams } from '../shared/list/list-filters';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
@@ -246,7 +246,7 @@ export function quoteInput(values: FormValues, lines: LinesArray, customerId: st
       quantity: line.quantity.trim(),
       unitId: line.unitId,
       unitPriceNet: line.unitPriceNet.trim(),
-      discountRate: line.discountRate.trim() === '' ? null : line.discountRate.trim(),
+      ...lineDiscount(line),
       taxComponentIds: [...line.taxComponentIds],
     })),
   };

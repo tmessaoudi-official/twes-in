@@ -1307,6 +1307,8 @@
       "unitPriceNet": "Unit price before tax",
       "price_hint": "In {{currency}}, with at most four decimals.",
       "discountRate": "Discount",
+      "discount_by_amount": "Discount in %: give it in {{unit}}",
+      "discount_by_rate": "Discount in {{unit}}: give it in %",
       "taxes": "Line taxes",
       "net": "Line total before tax:",
       "add": "Add a line",
@@ -1319,8 +1321,10 @@
         "unitId": "Choose a unit.",
         "unitPriceNet": "A price from 0, with at most four decimals.",
         "discountRate": "A percentage from 0 to 100, with at most three decimals.",
+        "discountAmount": "An amount from 0, with no more decimals than the currency has.",
         "lotCode": "Up to 40 visible characters, no spaces.",
-        "quantity_above_source": "More than is left to invoice on the delivery note."
+        "quantity_above_source": "More than is left to invoice on the delivery note.",
+        "discount_above_line": "More than the line: a discount takes off at most the line’s amount."
       },
       "no_product_found": "No product found.",
       "price_unchecked": "Price not checked: the customer's price list could not be read.",
@@ -3720,7 +3724,8 @@
     "net": "Net total",
     "reference": "Ref. {{code}}",
     "lot": "Lot {{code}}",
-    "discount_value": "Discount {{rate}}%"
+    "discount_value": "Discount {{rate}}%",
+    "discount_amount_value": "Discount {{amount}}"
   },
   "documents": {
     "title": "Document templates",

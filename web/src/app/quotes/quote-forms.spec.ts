@@ -126,6 +126,7 @@ describe('quote forms', () => {
           unitId: 'u1',
           unitPriceNet: '40',
           discountRate: null,
+          discountAmount: null,
           taxComponentIds: [],
         },
       ],

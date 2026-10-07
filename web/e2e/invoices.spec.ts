@@ -114,6 +114,40 @@ async function retire(page: Page, number: string): Promise<void> {
   );
 }
 
+test('a line is discounted by an amount, worked out as it is typed and kept as an amount', async ({
+  page,
+}) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const customerNumber = `E2E-INVA-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  try {
+    await page.goto('/invoices/new');
+    await page.getByTestId('invoice-customer').fill(customerNumber);
+    await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
+    await page.getByTestId('line-0-description').fill('Conseil, deux jours');
+    await page.getByTestId('line-0-quantity').fill('2');
+    await page.getByTestId('line-0-price').fill('500');
+    await choose(page, 'line-0-taxes', /19/);
+    await page.getByTestId('line-0-discount-kind').click();
+    await expect(page.getByTestId('line-0-discount-kind')).toHaveText('TND');
+    await page.getByTestId('line-0-discount').fill('150');
+    await expect(page.getByTestId('line-0-net')).toHaveText('850,000');
+    await expect(page.getByTestId('line-0-total')).toHaveText('1 011,500');
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('document-action-save').click();
+
+    await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
+    await page.reload();
+    await expect(page.getByTestId('line-0-discount-kind')).toHaveText('TND');
+    await expect(page.getByTestId('line-0-discount')).toHaveValue('150,000');
+    await expect(page.getByTestId('invoice-totals')).toContainText('850,000');
+  } finally {
+    await retire(page, customerNumber);
+  }
+});
+
 test('an invoice is drafted, issued, printed, paid, and corrected by a credit note', async ({
   page,
 }) => {

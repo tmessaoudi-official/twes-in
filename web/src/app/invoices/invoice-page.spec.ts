@@ -176,6 +176,7 @@ const draft: InvoiceRow = {
       unitId: 'u1',
       unitPriceNet: '1800.0000',
       discountRate: null,
+      discountAmount: null,
       taxComponentIds: ['t1'],
       sourceDeliveryNoteLineId: null,
       sourceLeft: null,
@@ -461,6 +462,7 @@ describe('InvoicePage', () => {
             unitId: 'u1',
             unitPriceNet: '1800.000',
             discountRate: '5',
+            discountAmount: null,
             taxComponentIds: ['t1'],
             sourceDeliveryNoteLineId: null,
             lotCode: null,
@@ -706,6 +708,41 @@ describe('InvoicePage', () => {
     await pick('invoice-customer', 'CLI-2 · Méditerranée');
     expect((q('line-0-discount') as HTMLInputElement).value).toBe('5');
     expect((q('line-1-discount') as HTMLInputElement).value).toBe('12');
+  });
+
+  it('discounts a line by an amount, which the customer’s rate never replaces, and no more than the line', async () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await open(undefined);
+    await pick('invoice-customer', 'CLI-1 · Carthage');
+    await pick('line-0-product', 'ART-1 · Conception');
+    expect(q('line-0-discount-kind')?.textContent?.trim()).toBe('%');
+
+    q('line-0-discount-kind')!.click();
+    await settle();
+    expect(q('line-0-discount-kind')?.textContent?.trim()).toBe('TND');
+    expect((q('line-0-discount') as HTMLInputElement).value).toBe('');
+    type('line-0-discount', '1800,001');
+    (q('line-0-discount') as HTMLInputElement).dispatchEvent(new Event('blur'));
+    await settle();
+    expect(q('line-0-discount-error')?.textContent).toContain(
+      'invoices.lines.errors.discount_above_line',
+    );
+
+    type('line-0-discount', '250,5');
+    await settle();
+    expect(q('line-0-discount-error')).toBeNull();
+    // A customer discounting by 5 % gives the line, which no rate discounts any more, nothing more.
+    await pick('invoice-customer', 'CLI-2 · Méditerranée');
+    expect((q('line-0-discount') as HTMLInputElement).value).toBe('250,5');
+    q('document-action-save')!.click();
+    await settle();
+
+    expect(facade.create).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({
+        lines: [expect.objectContaining({ discountRate: null, discountAmount: '250.5' })],
+      }),
+    );
   });
 
   it('keeps the document taxes a draft names, and resets them when its customer changes', async () => {

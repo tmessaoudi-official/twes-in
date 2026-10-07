@@ -118,6 +118,7 @@ export class DeliveryNoteLines {
         unit: unit?.name ?? '',
         unitPrice: value.unitPriceNet,
         discountRate: null,
+        discountAmount: null,
         taxes: value.taxComponentIds
           .map((id) => taxes.get(id) ?? '')
           .filter((name) => name !== '')

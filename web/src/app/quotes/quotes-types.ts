@@ -113,6 +113,8 @@ export interface QuoteLineInput {
   unitId: string;
   unitPriceNet: string;
   discountRate: string | null;
+  /** The discount as an amount taken off the whole line, in place of a rate. Never both. */
+  discountAmount: string | null;
   taxComponentIds: string[];
 }
 

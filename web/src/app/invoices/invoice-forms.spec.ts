@@ -21,6 +21,7 @@ import {
   paidShare,
   stillOwed,
   dropRefusedLineTaxes,
+  figuresReady,
 } from './invoice-forms';
 import { FormArray } from '@angular/forms';
 import type { CustomerOption, InvoiceOptions, InvoiceRow, ProductOption } from './invoices-types';
@@ -423,6 +424,85 @@ describe('invoice forms', () => {
       expect(line.controls.discountRate.valid).toBe(true);
     });
 
+    it('discounts a line by a rate or by an amount, one at a time, never more than the line', () => {
+      const lines = linesArray([], options, carthage);
+      const line = lines.at(0);
+      line.patchValue({ description: 'Vis', unitId: 'u1', quantity: '3', unitPriceNet: '50' });
+      expect(line.controls.discountRate.value).toBe('5');
+
+      // Switching to an amount drops the rate, so the API is never sent both.
+      line.controls.discountKind.setValue('amount');
+      expect(line.controls.discountRate.value).toBe('');
+      line.patchValue({ discountAmount: ' 20 ' });
+      expect(figuresReady(line)).toBe(true);
+      expect(invoiceInput(invoiceValues(null, options), lines, [], 'k1').lines[0]).toMatchObject({
+        discountRate: null,
+        discountAmount: '20',
+      });
+
+      // The line comes to 3 × 50: the whole of it may be taken off, not a thousandth more.
+      line.patchValue({ discountAmount: '150.001' });
+      expect(line.hasError('discountAboveLine')).toBe(true);
+      expect(figuresReady(line)).toBe(false);
+      line.patchValue({ discountAmount: '150' });
+      expect(line.hasError('discountAboveLine')).toBe(false);
+      // No finer than the currency counts, nor below zero.
+      line.patchValue({ discountAmount: '1.2345' });
+      expect(line.controls.discountAmount.invalid).toBe(true);
+      line.patchValue({ discountAmount: '-1' });
+      expect(line.controls.discountAmount.invalid).toBe(true);
+
+      line.controls.discountKind.setValue('rate');
+      expect(line.controls.discountAmount.value).toBe('');
+      line.patchValue({ discountRate: '10' });
+      expect(invoiceInput(invoiceValues(null, options), lines, [], 'k1').lines[0]).toMatchObject({
+        discountRate: '10',
+        discountAmount: null,
+      });
+    });
+
+    it('compares a discount with its line as the API rounds the line, at the currency’s scale', () => {
+      const line = lineGroup(null, options, null);
+      // 3 × 0.3335 is 1.0005, which the line comes to as 1.001.
+      line.patchValue({ unitId: 'u1', quantity: '3', unitPriceNet: '0.3335' });
+      line.controls.discountKind.setValue('amount');
+      line.patchValue({ discountAmount: '1.001' });
+      expect(line.hasError('discountAboveLine')).toBe(false);
+      line.patchValue({ discountAmount: '1.002' });
+      expect(line.hasError('discountAboveLine')).toBe(true);
+    });
+
+    it('reads a line discounted by an amount back as one, at the currency’s scale', () => {
+      const lines = linesArray(
+        [
+          {
+            productId: null,
+            description: 'Palette',
+            quantity: '2.000',
+            unitId: 'u1',
+            unitPriceNet: '35.0000',
+            discountRate: null,
+            discountAmount: '7.500',
+            taxComponentIds: [],
+            sourceDeliveryNoteLineId: null,
+            sourceLeft: null,
+            productReference: null,
+            productName: null,
+            productTracking: null,
+            lotCode: null,
+            returned: false,
+            deductsInvoiceId: null,
+            net: '62.500',
+          },
+        ],
+        { ...options, currencyScale: 2 },
+        null,
+      );
+      expect(lines.at(0).controls.discountKind.value).toBe('amount');
+      expect(lines.at(0).controls.discountAmount.value).toBe('7.50');
+      expect(lines.at(0).valid).toBe(true);
+    });
+
     it('names the lot or serial sold only on a line of a product tracked by one', () => {
       // docs/SPEC.md § 7, 2026-09-24 12:40 row 5.
       const lines = linesArray([], options, null);
@@ -475,6 +555,7 @@ describe('invoice forms', () => {
             unitId: 'u1',
             unitPriceNet: '35.0000',
             discountRate: null,
+            discountAmount: null,
             taxComponentIds: [],
             sourceDeliveryNoteLineId: 'dl1',
             sourceLeft: null,
@@ -510,6 +591,7 @@ describe('invoice forms', () => {
             unitId: 'u1',
             unitPriceNet: '35.0000',
             discountRate: null,
+            discountAmount: null,
             taxComponentIds: [],
             sourceDeliveryNoteLineId: 'dl1',
             sourceLeft,

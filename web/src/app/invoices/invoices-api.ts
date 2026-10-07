@@ -452,6 +452,7 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
       unitId: line.unitId ?? '',
       unitPriceNet: line.unitPriceNet ?? '',
       discountRate: line.discountRate ?? null,
+      discountAmount: line.discountAmount ?? null,
       taxComponentIds: ids(line.taxComponentIds),
       sourceDeliveryNoteLineId: line.sourceDeliveryNoteLineId ?? null,
       sourceLeft: line.sourceLeft ?? null,

@@ -24,6 +24,8 @@ export interface IssuedLine {
   readonly unitPrice: string;
   /** A percentage as a decimal string; `null` or zero is no discount. */
   readonly discountRate: string | null;
+  /** The discount as an amount off the whole line, in place of a rate; `null` or zero is none. */
+  readonly discountAmount: string | null;
   /** The line's taxes, named. */
   readonly taxes: string;
   /** The line's net as last saved. */
@@ -51,7 +53,7 @@ export class IssuedLines {
 
   protected readonly compact = computed(() => this.windowClass() === 'compact');
   protected readonly discounted = computed(() =>
-    this.lines().some((line) => this.discountOf(line) !== null),
+    this.lines().some((line) => this.discountOf(line) !== null || this.amountOffOf(line) !== null),
   );
   protected readonly withNet = computed(() => this.lines().some((line) => line.net !== null));
 
@@ -60,5 +62,11 @@ export class IssuedLines {
     const rate = line.discountRate?.trim() ?? '';
     if (rate === '' || Number(rate) === 0) return null;
     return rate.includes('.') ? rate.replace(/0+$/, '').replace(/\.$/, '') : rate;
+  }
+
+  /** The amount the line's discount takes off, or `null` when it is given as a rate or takes none. */
+  protected amountOffOf(line: IssuedLine): string | null {
+    const amount = line.discountAmount?.trim() ?? '';
+    return amount === '' || /^[0.]+$/.test(amount) ? null : amount;
   }
 }

@@ -24,6 +24,7 @@ import {
   dropRefusedLineTaxes,
   type LineControls,
   type LineGroup,
+  lineDiscount,
   lineGroup,
   type LinesArray,
   namesALot,
@@ -38,6 +39,7 @@ import type {
   TaxFamily,
   TaxOption,
 } from './invoices-types';
+import { Label } from '../shared/a11y/label';
 import { DecimalInput } from '../shared/form/decimal-input';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { Select, type SelectOption } from '../shared/form/select';
@@ -54,6 +56,7 @@ type CheckedField = keyof Omit<
   | 'productTracking'
   | 'taxComponentIds'
   | 'sourceDeliveryNoteLineId'
+  | 'discountKind'
 >;
 
 /**
@@ -81,6 +84,7 @@ type CheckedField = keyof Omit<
     AmountPipe,
     IssuedLines,
     LineFiguresView,
+    Label,
   ],
   templateUrl: './invoice-lines.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -155,7 +159,7 @@ export class InvoiceLines {
         quantityScale: unit?.decimals ?? null,
         unit: unit?.name ?? '',
         unitPrice: value.unitPriceNet,
-        discountRate: value.discountRate === '' ? null : value.discountRate,
+        ...lineDiscount(value),
         taxes: value.taxComponentIds
           .map((id) => taxes.get(id) ?? '')
           .filter((name) => name !== '')
@@ -291,8 +295,24 @@ export class InvoiceLines {
     if (field === 'quantity' && control.valid && line.hasError('aboveSource')) {
       return 'invoices.lines.errors.quantity_above_source';
     }
+    if (field === 'discountAmount' && control.valid && line.hasError('discountAboveLine')) {
+      return 'invoices.lines.errors.discount_above_line';
+    }
     const invalid = control.invalid || (field === 'quantity' && line.hasError('quantityDecimals'));
     return invalid ? `invoices.lines.errors.${field}` : null;
+  }
+
+  /** Whether the line is discounted by an amount rather than a rate. */
+  protected byAmount(line: LineGroup): boolean {
+    this.revision();
+    return line.controls.discountKind.value === 'amount';
+  }
+
+  /** Discounts the line the other way, by a rate or by an amount; what was typed the first way goes. */
+  protected switchDiscount(line: LineGroup): void {
+    const kind = line.controls.discountKind;
+    kind.setValue(kind.value === 'rate' ? 'amount' : 'rate');
+    kind.markAsDirty();
   }
 
   protected add(): void {

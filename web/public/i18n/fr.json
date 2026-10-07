@@ -1307,6 +1307,8 @@
       "unitPriceNet": "Prix unitaire HT",
       "price_hint": "En {{currency}}, avec au plus quatre décimales.",
       "discountRate": "Remise",
+      "discount_by_amount": "Remise en % : la donner en {{unit}}",
+      "discount_by_rate": "Remise en {{unit}} : la donner en %",
       "taxes": "Taxes de la ligne",
       "net": "Total HT de la ligne :",
       "add": "Ajouter une ligne",
@@ -1319,8 +1321,10 @@
         "unitId": "Choisissez une unité.",
         "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales.",
         "discountRate": "Un pourcentage de 0 à 100, avec au plus trois décimales.",
+        "discountAmount": "Un montant à partir de 0, sans plus de décimales que la devise n’en compte.",
         "lotCode": "Jusqu’à 40 caractères visibles, sans espace.",
-        "quantity_above_source": "Plus que ce qui reste à facturer sur le bon de livraison."
+        "quantity_above_source": "Plus que ce qui reste à facturer sur le bon de livraison.",
+        "discount_above_line": "Plus que la ligne : une remise retire au plus le montant de la ligne."
       },
       "no_product_found": "Aucun produit trouvé.",
       "price_unchecked": "Prix non vérifié : le tarif du client n’a pas pu être lu.",
@@ -3720,7 +3724,8 @@
     "net": "Total HT",
     "reference": "Réf. {{code}}",
     "lot": "Lot {{code}}",
-    "discount_value": "Remise {{rate}} %"
+    "discount_value": "Remise {{rate}} %",
+    "discount_amount_value": "Remise {{amount}}"
   },
   "documents": {
     "title": "Modèles de documents",

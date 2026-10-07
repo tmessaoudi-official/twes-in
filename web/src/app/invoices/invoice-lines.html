@@ -227,17 +227,55 @@
             </div>
 
             <div class="flex flex-col sm:col-span-2">
-              <mat-form-field>
-                <mat-label>{{ 'invoices.lines.discountRate' | translate }}</mat-label>
-                <input
-                  matInput
-                  formControlName="discountRate"
-                  appDecimal
-                  [attr.data-testid]="'line-' + i + '-discount'"
-                />
-                <span matTextSuffix>%</span>
-              </mat-form-field>
-              @if (errorKey(line, 'discountRate'); as key) {
+              <!-- One field per way of discounting: a suffix inside an @if beside its input is not projected. -->
+              @if (byAmount(line)) {
+                <mat-form-field>
+                  <mat-label>{{ 'invoices.lines.discountRate' | translate }}</mat-label>
+                  <input
+                    matInput
+                    formControlName="discountAmount"
+                    appDecimal
+                    [attr.data-testid]="'line-' + i + '-discount'"
+                  />
+                  <button
+                    matSuffix
+                    mat-button
+                    type="button"
+                    class="me-1"
+                    [appLabel]="
+                      'invoices.lines.discount_by_rate' | translate: { unit: options().currency }
+                    "
+                    [attr.data-testid]="'line-' + i + '-discount-kind'"
+                    (click)="switchDiscount(line)"
+                  >
+                    {{ options().currency }}
+                  </button>
+                </mat-form-field>
+              } @else {
+                <mat-form-field>
+                  <mat-label>{{ 'invoices.lines.discountRate' | translate }}</mat-label>
+                  <input
+                    matInput
+                    formControlName="discountRate"
+                    appDecimal
+                    [attr.data-testid]="'line-' + i + '-discount'"
+                  />
+                  <button
+                    matSuffix
+                    mat-button
+                    type="button"
+                    class="me-1"
+                    [appLabel]="
+                      'invoices.lines.discount_by_amount' | translate: { unit: options().currency }
+                    "
+                    [attr.data-testid]="'line-' + i + '-discount-kind'"
+                    (click)="switchDiscount(line)"
+                  >
+                    %
+                  </button>
+                </mat-form-field>
+              }
+              @if (errorKey(line, byAmount(line) ? 'discountAmount' : 'discountRate'); as key) {
                 <span
                   role="alert"
                   class="px-4 pt-1 pb-2 text-xs text-error"

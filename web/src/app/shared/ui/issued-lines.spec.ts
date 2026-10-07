@@ -26,6 +26,7 @@ class StaticLoader implements TranslateLoader {
         reference: 'Ref. {{code}}',
         lot: 'Lot {{code}}',
         discount_value: 'Discount {{rate}} %',
+        discount_amount_value: 'Discount {{amount}}',
       },
       n: { returned: 'Back in stock' },
     });
@@ -50,6 +51,7 @@ const screws: IssuedLine = {
   unit: 'Pièce',
   unitPrice: '0.2500',
   discountRate: '10.000',
+  discountAmount: null,
   taxes: 'TVA 19 %',
   net: '2.700',
 };
@@ -64,6 +66,7 @@ const advice: IssuedLine = {
   unit: 'Heure',
   unitPrice: '80.0000',
   discountRate: null,
+  discountAmount: null,
   taxes: '',
   net: '120.000',
 };
@@ -126,8 +129,22 @@ describe('IssuedLines', () => {
     expect(text('line-1-discount')).toBe('');
   });
 
+  it('shows a discount given as an amount as money, at the currency’s scale', async () => {
+    await show([advice, { ...advice, discountAmount: '7.5' }]);
+
+    expect(text('line-0-discount')).toBe('');
+    expect(text('line-1-discount')).toBe('~7.500');
+
+    width.set('compact');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(q('line-0-discount')).toBeNull();
+    expect(text('line-1-discount')).toBe('Discount ~7.500');
+  });
+
   it('leaves out the discount and net columns when no line has one', async () => {
-    await show([{ ...advice, net: null }]);
+    await show([{ ...advice, net: null, discountAmount: '0.000' }]);
 
     const headers = [...(q('lines')?.querySelectorAll('th[scope="col"]') ?? [])].map((th) =>
       th.textContent?.trim(),

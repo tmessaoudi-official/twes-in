@@ -399,6 +399,10 @@ export interface LineControls {
   unitId: FormControl<string>;
   unitPriceNet: FormControl<string>;
   discountRate: FormControl<string>;
+  /** The discount as an amount off the whole line, asked in place of the rate when `discountKind` says so. */
+  discountAmount: FormControl<string>;
+  /** Whether the line is discounted by a rate or by an amount: the API takes one or the other, never both. */
+  discountKind: FormControl<DiscountKind>;
   taxComponentIds: FormControl<string[]>;
   sourceDeliveryNoteLineId: FormControl<string>;
   /** The lot or serial sold; asked only for a product tracked by one (docs/SPEC.md § 7, 2026-09-24 12:40 row 5). */
@@ -411,6 +415,8 @@ export interface LineControls {
   productTracking: FormControl<ProductTracking | ''>;
 }
 
+export type DiscountKind = 'rate' | 'amount';
+
 export type LineGroup = FormGroup<LineControls>;
 export type LinesArray = FormArray<LineGroup>;
 
@@ -419,11 +425,14 @@ export type LinesArray = FormArray<LineGroup>;
  * take. Its description is not among them, and a line not ready yet leaves the others' figures alone.
  */
 export function figuresReady(line: LineGroup): boolean {
-  const { quantity, unitId, unitPriceNet, discountRate } = line.controls;
+  const { quantity, unitId, unitPriceNet, discountRate, discountAmount } = line.controls;
   return (
-    [quantity, unitId, unitPriceNet, discountRate].every((control) => !control.invalid) &&
+    [quantity, unitId, unitPriceNet, discountRate, discountAmount].every(
+      (control) => !control.invalid,
+    ) &&
     !line.hasError('quantityDecimals') &&
-    !line.hasError('aboveSource')
+    !line.hasError('aboveSource') &&
+    !line.hasError('discountAboveLine')
   );
 }
 
@@ -476,6 +485,58 @@ function thousandths(value: string): bigint {
   return BigInt(whole || '0') * 1000n + BigInt((fraction + '000').slice(0, 3));
 }
 
+/** A non-negative decimal string as a whole number of units of 10^-`scale`, read exactly. */
+function scaled(value: string, scale: number): bigint {
+  const [whole, fraction = ''] = value.trim().split('.');
+  return (
+    BigInt(whole || '0') * 10n ** BigInt(scale) +
+    BigInt((fraction + '0'.repeat(scale)).slice(0, scale))
+  );
+}
+
+/** An amount the currency counts: at most eleven digits, then no more decimals than the currency has. */
+function currencyAmount(scale: number): RegExp {
+  return new RegExp(`^(0|[1-9][0-9]{0,10})${scale > 0 ? `([.][0-9]{1,${scale}})?` : ''}$`);
+}
+
+/**
+ * A discount given as an amount takes off at most the whole line, quantity × price rounded to the currency as the
+ * API rounds it (half away from zero); the API refuses more the same way.
+ */
+function discountWithinLine(options: InvoiceOptions): ValidatorFn {
+  return (control) => {
+    const line = control as LineGroup;
+    const { quantity, unitPriceNet, discountAmount, discountKind } = line.controls;
+    if (
+      discountKind.value !== 'amount' ||
+      discountAmount.invalid ||
+      discountAmount.value.trim() === ''
+    )
+      return null;
+    if (
+      !QUANTITY_PATTERN.test(quantity.value.trim()) ||
+      !PRICE_PATTERN.test(unitPriceNet.value.trim())
+    )
+      return null;
+    // Thousandths × ten-thousandths: the line exact, to the ten-millionth.
+    const exact = scaled(quantity.value, 3) * scaled(unitPriceNet.value, 4);
+    const step = 10n ** BigInt(7 - options.currencyScale);
+    const rounded = ((exact + step / 2n) / step) * step;
+    return scaled(discountAmount.value, 7) > rounded ? { discountAboveLine: true } : null;
+  };
+}
+
+/** A line's discount as the API takes it: the rate or the amount the line is discounted by, the other one null. */
+export function lineDiscount(line: {
+  discountKind: DiscountKind;
+  discountRate: string;
+  discountAmount: string;
+}): { discountRate: string | null; discountAmount: string | null } {
+  const rate = line.discountKind === 'rate' ? line.discountRate.trim() : '';
+  const amount = line.discountKind === 'amount' ? line.discountAmount.trim() : '';
+  return { discountRate: rate === '' ? null : rate, discountAmount: amount === '' ? null : amount };
+}
+
 /** A line taken from a delivery note invoices no more than the note leaves it; the API refuses it the same way. */
 const withinSource: ValidatorFn = (control) => {
   const line = control as LineGroup;
@@ -518,6 +579,14 @@ export function lineGroup(
           : plainQuantity(line.discountRate ?? ''),
         { nonNullable: true, validators: [matches(RATE_PATTERN)] },
       ),
+      discountAmount: new FormControl(
+        line?.discountAmount == null ? '' : atScale(line.discountAmount, options.currencyScale),
+        { nonNullable: true, validators: [matches(currencyAmount(options.currencyScale))] },
+      ),
+      discountKind: new FormControl<DiscountKind>(
+        line?.discountAmount == null ? 'rate' : 'amount',
+        { nonNullable: true },
+      ),
       taxComponentIds: new FormControl<string[]>(
         line === null
           ? defaultLineTaxes(options, excludedFor(customer))
@@ -537,8 +606,14 @@ export function lineGroup(
         nonNullable: true,
       }),
     },
-    { validators: [fitsUnit(options), withinSource] },
+    { validators: [fitsUnit(options), withinSource, discountWithinLine(options)] },
   );
+  // The other way of discounting is emptied, so what is sent is never both.
+  group.controls.discountKind.valueChanges.subscribe((kind) => {
+    const dropped = kind === 'rate' ? group.controls.discountAmount : group.controls.discountRate;
+    dropped.setValue('');
+    dropped.markAsPristine();
+  });
   if (line?.sourceLeft != null) {
     SOURCE_LEFT.set(group, plainQuantity(line.sourceLeft));
     group.updateValueAndValidity();
@@ -681,7 +756,7 @@ export function invoiceInput(
       quantity: line.quantity.trim(),
       unitId: line.unitId,
       unitPriceNet: line.unitPriceNet.trim(),
-      discountRate: line.discountRate.trim() === '' ? null : line.discountRate.trim(),
+      ...lineDiscount(line),
       taxComponentIds: [...line.taxComponentIds],
       sourceDeliveryNoteLineId:
         line.sourceDeliveryNoteLineId === '' ? null : line.sourceDeliveryNoteLineId,

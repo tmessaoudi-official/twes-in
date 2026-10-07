@@ -25,6 +25,7 @@ const input: InvoiceInput = {
       unitId: 'u1',
       unitPriceNet: '1800',
       discountRate: '10',
+      discountAmount: null,
       taxComponentIds: ['t1'],
       sourceDeliveryNoteLineId: null,
       lotCode: null,
@@ -59,6 +60,7 @@ const issued = {
       unitId: 'u1',
       unitPriceNet: '10000.0000',
       discountRate: null,
+      discountAmount: '500.000',
       taxComponentIds: ['t1'],
       sourceDeliveryNoteLineId: 'dl1',
       sourceLeft: '2.500',
@@ -279,6 +281,8 @@ describe('InvoicesApi', () => {
     expect(invoice.amountDue).toBe('5951.000');
     expect(invoice.fixedTaxes).toEqual([{ code: 'TIMBRE', amount: '1.000' }]);
     expect(invoice.lines[0]).toMatchObject({
+      discountRate: null,
+      discountAmount: '500.000',
       sourceDeliveryNoteLineId: 'dl1',
       sourceLeft: '2.500',
       productTracking: 'lot',

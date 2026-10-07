@@ -76,6 +76,8 @@ export interface InvoiceLine {
   unitPriceNet: string;
   /** A percentage with up to three decimals; null for none. */
   discountRate: string | null;
+  /** The discount as an amount taken off the whole line, in place of a rate; null for none. Never both. */
+  discountAmount: string | null;
   taxComponentIds: string[];
   /** The delivery note line this line invoices; a revision may keep or drop it, never add one. */
   sourceDeliveryNoteLineId: string | null;

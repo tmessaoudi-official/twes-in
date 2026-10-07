@@ -114,6 +114,7 @@ const draft: QuoteRow = {
       unitId: 'u1',
       unitPriceNet: '250.0000',
       discountRate: null,
+      discountAmount: null,
       taxComponentIds: ['t1'],
       sourceDeliveryNoteLineId: null,
       sourceLeft: null,
