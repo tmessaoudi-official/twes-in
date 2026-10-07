@@ -64,7 +64,12 @@ describe('DocumentDesignPage', () => {
   };
   const picture = signal<string | null>(null);
   const state = signal<PreviewState>('loading');
-  const design = { picture: picture.asReadonly(), state: state.asReadonly(), preview: vi.fn() };
+  const design = {
+    picture: picture.asReadonly(),
+    state: state.asReadonly(),
+    preview: vi.fn(),
+    without: vi.fn((why: PreviewState) => state.set(why)),
+  };
   const permissions = new Set<string>();
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -206,6 +211,16 @@ describe('DocumentDesignPage', () => {
 
     expect(q('documents-preview-image')).toBeNull();
     expect(q('documents-preview-message')?.textContent).toContain('Aucune facture pour l’instant');
+  });
+
+  it('says the preview failed, not that it is coming, when the settings never arrived', async () => {
+    settings.load.mockImplementation(async () => rows.set([]));
+    await open();
+
+    expect(design.preview).not.toHaveBeenCalled();
+    expect(q('documents-preview-loading')).toBeNull();
+    expect(q('documents-preview-message')).not.toBeNull();
+    expect(state()).toBe('failed');
   });
 
   it('is the settings page’s: without the permission it reads nothing', async () => {

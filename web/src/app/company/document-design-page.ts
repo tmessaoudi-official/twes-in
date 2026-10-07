@@ -116,6 +116,8 @@ export class DocumentDesignPage implements OnInit {
     await this.settings.load(companyId);
     if (this.changes() === 0) {
       this.adopt(savedDesign(this.settings.rows()));
+      // Settings that never arrived leave no accent: the form stays invalid, and the preview says it failed.
+      if (this.form.invalid) this.design.without('failed');
       await this.showPreview();
     } else {
       this.saved.set(savedDesign(this.settings.rows()));

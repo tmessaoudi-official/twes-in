@@ -50,4 +50,13 @@ describe('DocumentDesignFacade', () => {
 
     expect([facade.picture(), facade.state()]).toEqual([null, 'nothing']);
   });
+
+  it('says why there is nothing to ask for, and an answer still on its way does not undo it', async () => {
+    const late = facade.preview('c1', { layout: 'classic', accent: '#1f2328' });
+    facade.without('failed');
+    answers[0]!.settle('data:classic');
+    await late;
+
+    expect([facade.picture(), facade.state()]).toEqual([null, 'failed']);
+  });
 });

@@ -19,6 +19,13 @@ export class DocumentDesignFacade {
   readonly picture = this.pictureSignal.asReadonly();
   readonly state = this.stateSignal.asReadonly();
 
+  /** No picture, and why: what the page says when it has no design to ask for. Drops any answer still on its way. */
+  without(why: Exclude<PreviewState, 'loading' | 'ready'>): void {
+    this.asked++;
+    this.pictureSignal.set(null);
+    this.stateSignal.set(why);
+  }
+
   async preview(companyId: string, design: DocumentDesign): Promise<void> {
     const ask = ++this.asked;
     this.stateSignal.set('loading');
