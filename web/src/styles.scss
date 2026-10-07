@@ -1488,6 +1488,12 @@ app-signed-out-layout {
   justify-content: center;
   gap: 1.25rem;
   padding: 2.5rem 1rem 1.5rem;
+
+  // On a phone the wordmark's arrow, centred under the language and scheme menus, rose into their row (audit V-23):
+  // the brand starts below it.
+  @media (max-width: 599px) {
+    padding-block-start: 5rem;
+  }
 }
 
 .twes-auth-brand {

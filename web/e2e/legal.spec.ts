@@ -275,3 +275,25 @@ test('the security contact the operator fills in is published in security.txt', 
   expect(text).toContain(`Contact: mailto:${address}\n`);
   expect(text).toMatch(/^Expires: \d{4}-\d{2}-\d{2}T00:00:00Z$/m);
 });
+
+test.describe('signed out on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, storageState: { cookies: [], origins: [] } });
+
+  test('the brand sits under the language and scheme row, its arrow clear of it', async ({
+    page,
+  }) => {
+    // Audit 2026-10-06 V-23 (e): the arrow over the « i » rose into the row of the language and scheme menus.
+    for (const path of ['/login', '/legal/mentions']) {
+      await page.goto(path);
+      await expect(page.getByTestId('brand-tagline')).toBeVisible();
+      const [toolbarBottom, arrowTop] = await page.evaluate(() => {
+        const arrow = document.querySelector('.twes-wordmark-arrow')!;
+        return [
+          document.querySelector('.twes-auth-toolbar')!.getBoundingClientRect().bottom,
+          arrow.getBoundingClientRect().top + parseFloat(getComputedStyle(arrow, '::after').top),
+        ];
+      });
+      expect(arrowTop, path).toBeGreaterThanOrEqual(toolbarBottom + 4);
+    }
+  });
+});
