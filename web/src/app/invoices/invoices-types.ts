@@ -6,7 +6,17 @@ import { type LifecycleStage, tonesOf } from '../shared/theme/lifecycle-tones';
 
 /** Why the API refused, as the invoices screens translate it. */
 export type InvoicesError =
-  'network' | 'not_found' | 'conflict' | 'invalid' | 'excess_to' | 'customer_unavailable';
+  | 'network'
+  | 'not_found'
+  | 'conflict'
+  | 'invalid'
+  | 'excess_to'
+  | 'customer_unavailable'
+  | MentionDatumError;
+
+/** A legal mention issuing could not fill, by the setting that fills it (docs/SPEC.md § 7, 2026-09-21 18:30). */
+export type MentionDatumError =
+  'missing_late_payment_rate' | 'missing_exemption_reference' | 'missing_mention';
 
 /** Where the part of a credit note that was already paid goes: kept to the customer's credit, or paid back. */
 export type CreditExcessTo = 'balance' | 'refund';

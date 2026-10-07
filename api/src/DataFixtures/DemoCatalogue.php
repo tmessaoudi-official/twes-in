@@ -206,6 +206,8 @@ final class DemoCatalogue
                 ['name' => 'Énergie Verte Rhône', 'city' => 'Lyon', 'category' => 'Énergie', 'amount' => '210.00'],
             ],
             contacts: [['Claire', 'Dubois', 'Gérante'], ['Antoine', 'Lambert', 'Directeur'], ['Émilie', 'Rousseau', 'Architecte'], ['Nicolas', 'Chevalier', 'Chef de cuisine'], ['Hélène', 'Gauthier', 'Libraire'], ['Pierre', 'Masson', 'Directeur']],
+            // Demo values, not advice: the rate the penalties run at, and the provision its one exempt customer is under.
+            mentionData: ['document.late_payment_rate' => 'trois fois le taux d’intérêt légal', 'document.exemption_reference' => 'article 261-4-4° du CGI'],
         );
     }
 

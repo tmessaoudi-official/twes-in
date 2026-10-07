@@ -17,6 +17,9 @@ use App\Fiscal\Domain\UnitRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
+use App\Settings\Application\ChangeSettings;
+use App\Settings\Application\SettingContext;
+use App\Settings\Domain\SettingLevel;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
@@ -47,6 +50,8 @@ final class FacturXTest extends ApiTestCase
             bic: 'AGRIFRPP',
         ));
         $this->em()->flush();
+        // A French invoice states its late payment penalties' rate, or it is not issued (FrenchMentionsTest).
+        static::getContainer()->get(ChangeSettings::class)->change(new SettingContext($this->company), 'document.late_payment_rate', SettingLevel::Company, 'trois fois le taux d’intérêt légal', null);
         $this->customerId = $this->customer($this->company, 'standard', ['siren' => '542065479', 'vat_number' => 'FR82542065479'])->getId()->toRfc4122();
     }
 

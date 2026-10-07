@@ -47,6 +47,13 @@ final readonly class DemoCompany
         public array $expenseCategories,
         public array $vendors,
         public array $contacts,
+        /**
+         * What the preset's mentions state and the company gives (docs/SPEC.md § 7, 2026-09-21 18:30), setting key => value,
+         * written at the company level: without them a document whose mention needs one is not issued.
+         *
+         * @var array<string, string>
+         */
+        public array $mentionData = [],
     ) {
     }
 }

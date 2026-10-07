@@ -854,7 +854,9 @@
       "printed_notes": "Notes imprimées sur les documents",
       "how_to_pay": "Imprimer sur les factures comment payer (IBAN, BIC, numéro à rappeler)",
       "amount_in_words": "Écrire le total en lettres sur les documents",
-      "paid_stamp": "Tamponner sur la copie à jour ce que la facture est devenue (« Acquittée », « Soldée », « Réglée partiellement »)"
+      "paid_stamp": "Tamponner sur la copie à jour ce que la facture est devenue (« Acquittée », « Soldée », « Réglée partiellement »)",
+      "late_payment_rate": "Taux des pénalités de retard (imprimé là où la loi le demande, ex. « trois fois le taux d’intérêt légal »)",
+      "exemption_reference": "Texte d’exonération de TVA (imprimé pour un client exonéré, ex. « article 261-4-4° du CGI »)"
     },
     "credit": {
       "limit": "Plafond de crédit du client",
@@ -1486,7 +1488,10 @@
       "conflict": "Le document a changé d’état entre-temps, ou son établissement n’a pas de série de numérotation des factures.",
       "invalid": "Refusé. Vérifiez le client, les lignes, la remise et, pour un paiement, son montant (au plus le reste à payer) et sa date (entre l’émission et aujourd’hui).",
       "excess_to": "Dites où va l’argent déjà payé : au crédit du client ou remboursé.",
-      "customer_unavailable": "Ce client a été désactivé depuis : choisissez-en un autre, ou réactivez-le dans sa fiche."
+      "customer_unavailable": "Ce client a été désactivé depuis : choisissez-en un autre, ou réactivez-le dans sa fiche.",
+      "missing_late_payment_rate": "Une facture doit indiquer le taux des pénalités de retard : renseignez-le dans Valeurs par défaut (ou dans l’onglet Valeurs par défaut du client), ou écrivez votre propre texte de pénalités dans Profil de la société.",
+      "missing_exemption_reference": "Ce client est exonéré de TVA : le document doit citer le texte qui l’exonère. Renseignez-le dans l’onglet Valeurs par défaut du client, ou dans Valeurs par défaut pour tous.",
+      "missing_mention": "Une mention légale de ce document ne peut pas être complétée : le document n’est pas émis."
     },
     "home": {
       "outstanding": "À encaisser",

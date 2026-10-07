@@ -56,6 +56,7 @@ use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\RecordingInvoiceTemplate;
 use App\Tests\Support\ShippedFiscalPresets;
+use App\Tests\Support\ShippedMentionWording;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -97,7 +98,7 @@ final class PrintInvoiceTest extends TestCase
         $this->print = new PrintInvoice(
             $this->invoices,
             $this->totals,
-            new InvoiceMentions(ShippedFiscalPresets::presets(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets())),
+            new InvoiceMentions(ShippedFiscalPresets::presets(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), ShippedMentionWording::wording(), new ReadSetting($resolve)),
             $this->template,
             $this->renderer,
             new Files($this->storage, $this->records, $this->clock),

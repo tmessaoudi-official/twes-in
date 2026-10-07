@@ -11,6 +11,7 @@ namespace App\Tests\Unit\Fiscal\Infrastructure;
 
 use App\Fiscal\Application\Preset\FiscalPreset;
 use App\Fiscal\Infrastructure\Preset\YamlFiscalPresets;
+use App\Module\Invoices\Application\InvoiceMentions;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 
@@ -41,6 +42,35 @@ final class FiscalTranslationsTest extends TestCase
             $missing = array_values(array_diff(array_unique($used), array_keys($this->messages($locale))));
             self::assertSame([], $missing, "fiscal.$locale.yaml lacks a key a preset uses");
         }
+    }
+
+    /**
+     * A mention's placeholders are what issuing fills from the company's settings: each language waits for the same
+     * ones, and each is one a setting fills, or every document printing it would be refused.
+     */
+    public function testEveryPlaceholderAMentionHoldsIsOneASettingFillsInBothLanguages(): void
+    {
+        $holding = 0;
+        foreach (array_keys($this->messages('fr')) as $key) {
+            if (!str_starts_with($key, 'fiscal.mention.')) {
+                continue;
+            }
+            $placeholders = array_map(fn (string $locale): array => $this->placeholders($this->messages($locale)[$key]), ['fr', 'en']);
+            self::assertSame($placeholders[0], $placeholders[1], "$key waits for the same in both languages");
+            self::assertSame([], array_values(array_diff($placeholders[0], array_keys(InvoiceMentions::DATA))), "$key waits for something no setting fills");
+            $holding += [] === $placeholders[0] ? 0 : 1;
+        }
+        self::assertGreaterThanOrEqual(2, $holding, 'the French late payment and exemption mentions hold placeholders');
+    }
+
+    /** @return list<string> */
+    private function placeholders(string $message): array
+    {
+        preg_match_all('/%([a-z_]+)%/', $message, $found);
+        $names = array_values(array_unique($found[1]));
+        sort($names);
+
+        return $names;
     }
 
     /** @return list<string> */

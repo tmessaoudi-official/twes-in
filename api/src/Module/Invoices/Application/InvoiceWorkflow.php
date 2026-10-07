@@ -76,6 +76,12 @@ final readonly class InvoiceWorkflow
             $invoice = $this->invoices->lockedOfIdInCompany($id, $company->getId()) ?? throw new InvoiceNotFound();
             $invoice->assertDraft('is issued');
             $type = $invoice->getType();
+            $customer = $invoice->getCustomer();
+            $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
+            $language = $this->settings->value($context, 'document.language');
+            $language = \is_string($language) ? $language : 'fr';
+            // Before the series: a document refused for a mention it cannot print takes no number.
+            $mentions = $this->mentions->forIssue($company, $customer, $type, $language);
             $allocated = $this->numbers->allocate($company, $invoice->getEstablishment(), $type->value);
             if ($this->invoices->numberTaken($company->getId(), $type, $allocated->number)) {
                 throw new InvoiceNumberTaken(\sprintf('The number %s is already on another document of this company: give the %s series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $type->value, $invoice->getEstablishment()->getCode()));
@@ -88,22 +94,20 @@ final readonly class InvoiceWorkflow
                 $corrected = $this->invoices->lockedOfIdInCompany($correctedId, $company->getId()) ?? throw new \LogicException('A credit note corrects an invoice of its own company.');
             }
 
-            $customer = $invoice->getCustomer();
-            $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
             $terms = $invoice->getHeader()->paymentTermsDays ?? $this->settings->value($context, 'document.payment_terms_days');
-            $language = $this->settings->value($context, 'document.language');
             $profile = $company->getProfile();
             $invoice->issue(
                 new InvoiceIssue(
                     $allocated->number,
                     $allocated->issueDate,
                     \is_int($terms) ? $terms : 0,
-                    \is_string($language) ? $language : 'fr',
-                    $this->mentions->keys($company, $customer),
+                    $language,
+                    $mentions->keys,
                     $profile->latePenaltyText,
                     $profile->invoiceFooterText,
                     $actorUserId,
                     DocumentFormats::print($this->settings, $context, $company),
+                    $mentions->parameters,
                 ),
                 fn (Invoice $issuing): InvoiceFigures => null === $corrected ? $this->totals->issued($issuing) : $corrected->fitsCredit($this->totals->issued($issuing)),
                 $now = $this->clock->now(),

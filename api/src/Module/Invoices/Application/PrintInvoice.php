@@ -125,9 +125,10 @@ final readonly class PrintInvoice
         if (null === $issuedLanguage) {
             $language = $this->settings->value($context, 'document.language');
             $profile = $company->getProfile();
-            [$language, $mentionKeys, $latePenaltyText, $footer] = [\is_string($language) ? $language : 'fr', $this->mentions->keys($company, $customer), $profile->latePenaltyText, $profile->invoiceFooterText];
+            $language = \is_string($language) ? $language : 'fr';
+            [$mentions, $latePenaltyText, $footer] = [$this->mentions->asTheyStand($company, $customer, $invoice->getType(), $language), $profile->latePenaltyText, $profile->invoiceFooterText];
         } else {
-            [$language, $mentionKeys, $latePenaltyText, $footer] = [$issuedLanguage, $invoice->getMentionKeys(), $invoice->getLatePenaltyText(), $invoice->getFooter()];
+            [$language, $mentions, $latePenaltyText, $footer] = [$issuedLanguage, new PrintedMentions($invoice->getMentionKeys(), $invoice->getMentionParameters()), $invoice->getLatePenaltyText(), $invoice->getFooter()];
         }
 
         $figures = $this->totals->figures($invoice);
@@ -140,7 +141,7 @@ final readonly class PrintInvoice
             $watermark,
             $language,
             $print->printedNotes,
-            $mentionKeys,
+            $mentions->keys,
             $latePenaltyText,
             $footer,
             $print->dateFormat,
@@ -150,6 +151,7 @@ final readonly class PrintInvoice
             $copy,
             $copiedOn,
             $paidStamp,
+            $mentions->parameters,
         )));
     }
 

@@ -19,7 +19,10 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class InvoiceIssue
 {
-    /** @param list<string> $mentionKeys translation keys, printed in the document's language */
+    /**
+     * @param list<string>                         $mentionKeys       translation keys, printed in the document's language
+     * @param array<string, array<string, string>> $mentionParameters what fills each mention's placeholders, by key
+     */
     public function __construct(
         public string $number,
         public \DateTimeImmutable $issueDate,
@@ -30,6 +33,7 @@ final readonly class InvoiceIssue
         public ?string $footer,
         public ?Uuid $issuedBy,
         public PrintSettings $print,
+        public array $mentionParameters = [],
     ) {
     }
 }

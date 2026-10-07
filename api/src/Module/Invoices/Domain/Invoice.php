@@ -129,7 +129,7 @@ class Invoice implements CompanyOwned
     #[ORM\Column(name: 'footer_snapshot', type: Types::TEXT, nullable: true)]
     private ?string $footer = null;
 
-    /** @var array<string, mixed>|null {keys: list<string>, latePenaltyText: string|null}, written by issuing */
+    /** @var array<string, mixed>|null {keys: list<string>, latePenaltyText: string|null, parameters?: array<string, array<string, string>>}, written by issuing */
     #[ORM\Column(name: 'mentions_snapshot', type: Types::JSON, nullable: true, options: ['jsonb' => true])]
     private ?array $mentions = null;
 
@@ -511,7 +511,7 @@ class Invoice implements CompanyOwned
         $this->paymentTermsDays = $issue->paymentTermsDays;
         $this->dueDate = $this->issueDate->modify(\sprintf('+%d days', $issue->paymentTermsDays));
         $this->language = $issue->language;
-        $this->mentions = ['keys' => $issue->mentionKeys, 'latePenaltyText' => $issue->latePenaltyText];
+        $this->mentions = ['keys' => $issue->mentionKeys, 'latePenaltyText' => $issue->latePenaltyText, 'parameters' => $issue->mentionParameters];
         $this->footer = $issue->footer;
         $this->issuedAt = $now;
         $this->issuedBy = $issue->issuedBy;
@@ -767,6 +767,30 @@ class Invoice implements CompanyOwned
         $keys = $this->mentions['keys'] ?? [];
 
         return \is_array($keys) ? array_values(array_filter($keys, is_string(...))) : [];
+    }
+
+    /**
+     * What filled each mention's placeholders at issue, by key; empty for a document issued before mentions were filled,
+     * whose waiting mentions were left out.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public function getMentionParameters(): array
+    {
+        $parameters = [];
+        $kept = $this->mentions['parameters'] ?? [];
+        foreach (\is_array($kept) ? $kept : [] as $key => $values) {
+            if (!\is_string($key) || !\is_array($values)) {
+                continue;
+            }
+            foreach ($values as $name => $value) {
+                if (\is_string($name) && \is_string($value)) {
+                    $parameters[$key][$name] = $value;
+                }
+            }
+        }
+
+        return $parameters;
     }
 
     /** The company's late penalty text as it read at issue; null when it had none or on a draft. */

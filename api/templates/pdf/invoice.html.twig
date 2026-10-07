@@ -174,8 +174,9 @@
   <p class="muted">{{ 'totals.currency'|trans({'%currency%': seller.currency}, t, locale) }}</p>
 
   {%- for key in page.mentionKeys %}
-    {%- set mention = key|trans({}, 'fiscal', locale) %}
-    {#- A mention still waiting for its parameters (a legal reference) is not printed half-written. #}
+    {%- set mention = key|trans(page.mentionParametersOf(key), 'fiscal', locale) %}
+    {#- A mention still waiting for its parameters (a legal reference) is not printed half-written: issuing refuses
+        one, so only a document issued before mentions were filled reaches this. #}
     {%- if '%' not in mention %}
       <p class="mention">{{ mention }}</p>
     {%- endif %}

@@ -177,6 +177,9 @@ final class DemoCompanies extends Fixture
         $this->profiles->handle($company(), $demo->profile, $actor);
         $this->addTesters($companyId, $actor);
         $this->settings->change(new SettingContext($company()), 'article.stock_tracking', SettingLevel::Company, true, $actor);
+        foreach ($demo->mentionData as $key => $value) {
+            $this->settings->change(new SettingContext($company()), $key, SettingLevel::Company, $value, $actor);
+        }
 
         $customerIds = $this->writeCustomers($demo, $company, $tax, $actor, $settle);
         $vendors = $this->writeVendors($demo, $company, $actor);

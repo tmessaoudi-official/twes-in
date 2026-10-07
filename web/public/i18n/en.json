@@ -854,7 +854,9 @@
       "printed_notes": "Notes printed on documents",
       "how_to_pay": "Print how to pay on invoices (IBAN, BIC, number to quote)",
       "amount_in_words": "Write the total out in words on documents",
-      "paid_stamp": "Stamp what became of the invoice on its up-to-date copy (« Paid », « Settled », « Partly paid »)"
+      "paid_stamp": "Stamp what became of the invoice on its up-to-date copy (« Paid », « Settled », « Partly paid »)",
+      "late_payment_rate": "Late payment penalty rate (printed where the law asks for it, e.g. « three times the legal interest rate »)",
+      "exemption_reference": "VAT exemption provision (printed for an exempt customer, e.g. « article 261-4-4° du CGI »)"
     },
     "credit": {
       "limit": "Customer credit limit",
@@ -1486,7 +1488,10 @@
       "conflict": "The document changed state meanwhile, or its establishment has no invoice numbering series.",
       "invalid": "Refused. Check the customer, the lines, the discount and, for a payment, its amount (at most what is due) and its day (between issue and today).",
       "excess_to": "Say where the money already paid goes, to the customer’s credit or to a refund.",
-      "customer_unavailable": "This customer has been deactivated since: choose another, or reactivate it on its record."
+      "customer_unavailable": "This customer has been deactivated since: choose another, or reactivate it on its record.",
+      "missing_late_payment_rate": "An invoice must state its late payment penalty rate: set it in Defaults (or in the customer’s Defaults tab), or write your own penalty text in Company profile.",
+      "missing_exemption_reference": "This customer is exempt from VAT: the document must cite the provision it is exempt under. Set it in the customer’s Defaults tab, or in Defaults for everyone.",
+      "missing_mention": "A legal mention of this document cannot be completed: the document is not issued."
     },
     "home": {
       "outstanding": "To collect",

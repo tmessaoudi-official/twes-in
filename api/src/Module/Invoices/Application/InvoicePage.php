@@ -30,10 +30,11 @@ final readonly class InvoicePage
 
     /**
      * @param self::DRAFT|self::CANCELLED|self::DUPLICATE|self::COPY|null $watermark
-     * @param string                                                      $language     fr or en
-     * @param list<string>                                                $mentionKeys  translation keys
-     * @param string                                                      $dateFormat   the company's `presentation.date-format`, `auto` for the language's
-     * @param string                                                      $numberFormat the company's `presentation.number-format`, `auto` for the language's
+     * @param string                                                      $language          fr or en
+     * @param list<string>                                                $mentionKeys       translation keys
+     * @param string                                                      $dateFormat        the company's `presentation.date-format`, `auto` for the language's
+     * @param string                                                      $numberFormat      the company's `presentation.number-format`, `auto` for the language's
+     * @param array<string, array<string, string>>                        $mentionParameters what fills each mention's placeholders, by key
      */
     public function __construct(
         public Invoice $invoice,
@@ -58,6 +59,22 @@ final readonly class InvoicePage
         public ?\DateTimeImmutable $copiedOn = null,
         /** What an up-to-date copy stamps: `paid`, `settled` or `partial`; null on every other output or when the company keeps it off. */
         public ?string $paidStamp = null,
+        public array $mentionParameters = [],
     ) {
+    }
+
+    /**
+     * A mention's placeholders as the translator takes them, `%name%` to its value.
+     *
+     * @return array<string, string>
+     */
+    public function mentionParametersOf(string $key): array
+    {
+        $parameters = [];
+        foreach ($this->mentionParameters[$key] ?? [] as $name => $value) {
+            $parameters['%'.$name.'%'] = $value;
+        }
+
+        return $parameters;
     }
 }

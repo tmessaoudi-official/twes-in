@@ -480,6 +480,29 @@ describe('InvoicesApi', () => {
     await expect(refused).rejects.toEqual(new InvoicesRefused('customer_unavailable'));
   });
 
+  it('names the setting a legal mention lacks, by the word the refusal leads with', async () => {
+    for (const [detail, code] of [
+      [
+        'document.late_payment_rate: The mention fiscal.mention.fr.late_payment cannot be printed without it.',
+        'missing_late_payment_rate',
+      ],
+      [
+        'document.exemption_reference: The mention fiscal.mention.fr.exempt cannot be printed without it.',
+        'missing_exemption_reference',
+      ],
+      [
+        'mention.siren: The mention fiscal.mention.xx.new cannot be printed without it.',
+        'missing_mention',
+      ],
+    ] as const) {
+      const refused = api.issue('c1', 'i1');
+      http
+        .expectOne('/api/companies/c1/invoices/i1/issue')
+        .flush({ detail }, { status: 422, statusText: 'Unprocessable' });
+      await expect(refused).rejects.toEqual(new InvoicesRefused(code));
+    }
+  });
+
   it('tells a credit note refused for the money already paid from any other refusal, and sends where it goes', async () => {
     const refused = api.issue('c1', 'i1');
     http

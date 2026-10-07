@@ -321,8 +321,20 @@ export function codeOf(error: unknown): InvoicesError {
     default:
       // A credit note that gives back money already paid is refused until it says where that money goes.
       if (isExcessRefusal(error)) return 'excess_to';
-      return refusedField(error) === 'customerId' ? 'customer_unavailable' : 'invalid';
+      return fieldCode(refusedField(error));
   }
+}
+
+/** The settings a legal mention may wait for, as the API names them, and what the screen says for each. */
+const MENTION_DATA: Readonly<Record<string, InvoicesError>> = {
+  'document.late_payment_rate': 'missing_late_payment_rate',
+  'document.exemption_reference': 'missing_exemption_reference',
+};
+
+function fieldCode(field: string | null): InvoicesError {
+  if (field === 'customerId') return 'customer_unavailable';
+  if (field === null) return 'invalid';
+  return MENTION_DATA[field] ?? (field.startsWith('mention.') ? 'missing_mention' : 'invalid');
 }
 
 /**

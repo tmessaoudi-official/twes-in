@@ -22,6 +22,7 @@ use App\Module\Invoices\Application\InvoiceMentions;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\InvoiceWorkflow;
+use App\Module\Invoices\Application\MentionDatumMissing;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
@@ -55,6 +56,7 @@ use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\RecordingDomainEvents;
 use App\Tests\Support\ShippedFiscalPresets;
+use App\Tests\Support\ShippedMentionWording;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -99,7 +101,7 @@ final class InvoiceWorkflowTest extends TestCase
             new AllocateNumber($this->series, $this->transactions, $this->clock),
             $this->transactions,
             new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()),
-            new InvoiceMentions(ShippedFiscalPresets::presets(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets())),
+            new InvoiceMentions(ShippedFiscalPresets::presets(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), ShippedMentionWording::wording(), new ReadSetting($resolve)),
             new ReadSetting($resolve),
             $this->events,
             $this->audit,
@@ -309,6 +311,34 @@ final class InvoiceWorkflowTest extends TestCase
 
         self::assertSame([[InvoiceStatus::Draft, null], [InvoiceStatus::Draft, null]], [[$empty->getStatus(), $empty->getNumber()], [$invoice->getStatus(), $invoice->getNumber()]]);
         self::assertSame([[], [], 0], [$this->audit->entries, $this->events->published, $this->transactions->committed]);
+    }
+
+    public function testAMentionThatCannotBeFilledRefusesTheIssueBeforeANumberIsTakenAndWhatFillsItIsKept(): void
+    {
+        new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, $this->series, ShippedFiscalPresets::scales(), $this->clock)
+            ->handle($atelier = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris'));
+        $now = $this->clock->now();
+        $customer = Customer::create($atelier, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Garage Martin'), null, new CustomerTaxRegime('FR', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
+        $unit = $this->units->ofCodeInCompany('C62', $atelier->getId());
+        $vat = $this->taxes->ofCodeInCompany('TVA20', $atelier->getId());
+        self::assertNotNull($unit);
+        self::assertNotNull($vat);
+        $draft = Invoice::create($atelier, $this->establishments->ofCompany($atelier->getId())[0], $customer, new InvoiceHeader(), [new InvoiceLineDetails(null, 'Réglage', '1', $unit, '100', null, [$vat])], [], $now);
+        $this->invoices->save($draft);
+
+        try {
+            $this->workflow->issue($atelier, $draft->getId(), null);
+            self::fail('a French invoice was issued without the rate of its late payment penalties');
+        } catch (MentionDatumMissing $refused) {
+            self::assertSame(['fiscal.mention.fr.late_payment', 'document.late_payment_rate'], [$refused->mention, $refused->datum]);
+        }
+        self::assertSame([InvoiceStatus::Draft, null, [], 0], [$draft->getStatus(), $draft->getNumber(), $this->audit->entries, $this->transactions->committed]);
+
+        $this->change->change(new SettingContext($atelier), 'document.late_payment_rate', SettingLevel::Company, '12 %', null);
+        $issued = $this->workflow->issue($atelier, $draft->getId(), null);
+        $this->change->change(new SettingContext($atelier), 'document.late_payment_rate', SettingLevel::Company, '15 %', null);
+
+        self::assertSame(['FA-2026-09-00001', ['fiscal.mention.fr.late_payment' => ['rate' => '12 %']]], [$issued->getNumber(), $issued->getMentionParameters()]);
     }
 
     /** @param list<InvoiceLineDetails>|null $lines */

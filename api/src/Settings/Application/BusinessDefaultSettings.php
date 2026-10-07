@@ -40,6 +40,13 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
         // close (« Arrêtée la présente facture à la somme de … »), so it is on unless a company turns it off.
         yield new SettingDefinition('document.amount_in_words', SettingType::Bool, true, SettingChain::Parties, $parties, 'settings.document.amount_in_words', self::MODULE);
 
+        // What a printed legal mention states and the law leaves to the seller (docs/SPEC.md § 7, 2026-09-21 18:30): the rate
+        // of late payment penalties a French invoice must state, and the provision an exempt customer is exempt under.
+        // Empty is not given, and issuing a document whose mention needs it is refused; a customer may differ from the rest.
+        $partiesNotDocument = [SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer];
+        yield new SettingDefinition('document.late_payment_rate', SettingType::Text, '', SettingChain::Parties, $partiesNotDocument, 'settings.document.late_payment_rate', self::MODULE, maxLength: 200);
+        yield new SettingDefinition('document.exemption_reference', SettingType::Text, '', SettingChain::Parties, $partiesNotDocument, 'settings.document.exemption_reference', self::MODULE, maxLength: 200);
+
         // Whether an up-to-date copy stamps what became of the invoice: « Acquittée », « Soldée » or « Réglée partiellement ».
         // Off unless the company asks, because a stamp on a document reads as a statement the seller makes.
         yield new SettingDefinition('document.paid_stamp', SettingType::Bool, false, SettingChain::Parties, [SettingLevel::Company], 'settings.document.paid_stamp', self::MODULE);
