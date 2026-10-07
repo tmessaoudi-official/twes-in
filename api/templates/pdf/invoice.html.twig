@@ -4,7 +4,7 @@
 {%- set t = 'pdf' -%}
 {#- The company's date and number format win over the language's. -#}
 {%- set dateFormat = date_pattern(page.dateFormat, 'format.date'|trans({}, t, locale)) -%}
-{%- set title = (invoice.type.value == 'credit_note' ? 'invoice.credit_note_title' : 'invoice.title')|trans({}, t, locale) -%}
+{%- set title = (invoice.type.value == 'credit_note' ? 'invoice.credit_note_title' : (invoice.deposit ? 'invoice.deposit_title' : 'invoice.title'))|trans({}, t, locale) -%}
 <!DOCTYPE html>
 <html lang="{{ locale }}">
 <head>

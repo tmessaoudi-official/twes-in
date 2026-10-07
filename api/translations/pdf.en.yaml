@@ -21,6 +21,10 @@ delivery_note:
         reserves: 'Reservations'
 invoice:
     title: 'Invoice'
+    deposit_title: 'Deposit invoice'
+    deposit_share_line: '%share%% deposit on quote %number%'
+    deposit_line: 'Deposit on quote %number%'
+    deduction_line: 'Deposit already invoiced: invoice %number% of %date%'
     credit_note_title: 'Credit note'
     corrects: 'Credit note for invoice %number% of %date%'
     reason: 'Reason: %reason%'

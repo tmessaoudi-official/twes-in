@@ -47,6 +47,7 @@ use App\Tests\Support\InMemorySourceDeliveryNoteLines;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\ShelfLinePrices;
+use App\Tests\Support\ShippedDepositDeductions;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
@@ -80,7 +81,7 @@ final class ManageInvoicesTest extends TestCase
         $transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($transactions);
         $this->totals = new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
-        $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), $this->sourceLines = new InMemorySourceDeliveryNoteLines());
+        $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), $this->sourceLines = new InMemorySourceDeliveryNoteLines(), ShippedDepositDeductions::of($this->invoices, $this->totals));
         $this->invoices->transactions = $transactions;
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->provision->handle($this->company);

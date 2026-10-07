@@ -45,6 +45,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_invoice_customer', columns: ['customer_id'])]
 #[ORM\Index(name: 'idx_invoice_corrects', columns: ['corrects_invoice_id'])]
 #[ORM\Index(name: 'idx_invoice_pdf_file', columns: ['pdf_file_id'])]
+#[ORM\Index(name: 'idx_invoice_quote', columns: ['company_id', 'quote_id'], options: ['where' => '(quote_id IS NOT NULL)'])]
 #[ORM\UniqueConstraint(name: 'uniq_invoice_company_type_number', columns: ['company_id', 'document_type', 'number'])]
 class Invoice implements CompanyOwned
 {
@@ -68,6 +69,14 @@ class Invoice implements CompanyOwned
     #[ORM\ManyToOne(targetEntity: self::class, inversedBy: 'corrections')]
     #[ORM\JoinColumn(name: 'corrects_invoice_id', nullable: true)]
     private ?Invoice $correctsInvoice = null;
+
+    /** A facture d'acompte: an invoice of part of an operation, given back on the invoice of the whole. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $deposit = false;
+
+    /** The quote it was drafted from, a deposit or the invoice of the whole; an id, quotes being their own module. */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $quoteId = null;
 
     /** Why a credit note corrects its invoice, stated when it is created; null on an invoice. */
     #[ORM\Column(name: 'credit_note_reason', length: self::CREDIT_NOTE_REASON_MAX, nullable: true)]
@@ -232,13 +241,15 @@ class Invoice implements CompanyOwned
      *
      * @throws InvalidInvoice
      */
-    public static function create(Company $company, Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $documentTaxes, \DateTimeImmutable $now): self
+    public static function create(Company $company, Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $documentTaxes, \DateTimeImmutable $now, ?Uuid $quoteId = null, bool $deposit = false): self
     {
         $invoice = new self($company, $now);
+        $invoice->deposit = $deposit;
+        $invoice->quoteId = $quoteId;
         $invoice->establishment = $invoice->establishmentOfThisCompany($establishment);
         $invoice->customer = $invoice->customerOfThisCompany($customer);
         $invoice->apply($header);
-        $invoice->writeLines($invoice->linesOfThisCompany($lines));
+        $invoice->writeLines($invoice->deductionsFor($invoice->linesOfThisCompany($lines), $invoice->customer));
         $invoice->writeDocumentTaxes($invoice->documentTaxesOfThisCompany($documentTaxes));
 
         return $invoice;
@@ -271,6 +282,7 @@ class Invoice implements CompanyOwned
             $header->notesInternal,
             $header->discountAmount,
         ));
+        // A copy is a new sale: what the original gave back of a deposit is not given back a second time.
         $copy->writeLines(array_map(static fn (InvoiceLine $line): InvoiceLineDetails => new InvoiceLineDetails(
             $line->getProduct(),
             $line->getDescription(),
@@ -279,7 +291,7 @@ class Invoice implements CompanyOwned
             $line->getUnitPriceNet(),
             $line->getDiscountRate(),
             array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
-        ), $invoice->getLines()));
+        ), array_values(array_filter($invoice->getLines(), static fn (InvoiceLine $line): bool => null === $line->getDeduction()))));
         $copy->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
         $copy->retakeTaxes();
 
@@ -330,6 +342,7 @@ class Invoice implements CompanyOwned
             array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
             null,
             LotCode::carried($line->getProduct(), $line->getLotCode()),
+            deduction: $line->getDeduction(),
         ), $invoice->getLines()));
         $credit->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
         $credit->retakeTaxes();
@@ -354,7 +367,7 @@ class Invoice implements CompanyOwned
         if (null !== $this->correctsInvoice && !$customer->getId()->equals($this->correctsInvoice->getCustomer()->getId())) {
             throw new InvalidInvoice('customerId', 'A credit note goes to the customer of the invoice it corrects.');
         }
-        $lines = $this->linesOfThisCompany($lines);
+        $lines = $this->deductionsFor($this->linesOfThisCompany($lines), $customer);
         $documentTaxes = $this->documentTaxesOfThisCompany($documentTaxes);
         // Delivery notes are invoiced to their customer, numbered in their establishment's series: a draft that still
         // invoices note lines keeps both, or one customer's delivered goods are invoiced to another.
@@ -447,6 +460,19 @@ class Invoice implements CompanyOwned
         $this->updatedAt = $now;
     }
 
+    /**
+     * What its lines giving this deposit back say, as they say it.
+     *
+     * @return list<InvoiceLineDetails>
+     */
+    public function linesGivingBack(Uuid $depositId): array
+    {
+        return array_values(array_map(
+            static fn (InvoiceLine $line): InvoiceLineDetails => self::detailsOf($line, $line->getQuantity()),
+            array_filter($this->getLines(), static fn (InvoiceLine $line): bool => true === $line->getDeduction()?->deposit->getId()->equals($depositId)),
+        ));
+    }
+
     /** What a line of this draft says, with the quantity given. */
     private static function detailsOf(InvoiceLine $line, string $quantity): InvoiceLineDetails
     {
@@ -461,6 +487,7 @@ class Invoice implements CompanyOwned
             $line->getSourceDeliveryNoteLineId(),
             $line->getLotCode(),
             $line->isReturned(),
+            $line->getDeduction(),
         );
     }
 
@@ -1051,6 +1078,33 @@ class Invoice implements CompanyOwned
     }
 
     /**
+     * Lines giving deposits back, each of a deposit of the same company and customer, and only on an invoice that is not
+     * itself a deposit: a credit note carries them from the invoice it corrects. Whether a deposit may still be given
+     * back is the use case's to say, which sees the company's other invoices.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     *
+     * @return list<InvoiceLineDetails>
+     */
+    private function deductionsFor(array $lines, Customer $customer): array
+    {
+        foreach ($lines as $index => $line) {
+            $deposit = $line->deduction?->deposit;
+            if (null === $deposit) {
+                continue;
+            }
+            if ($this->deposit) {
+                throw new InvalidInvoice("lines[$index].deductsInvoiceId", 'A deposit invoice gives no other deposit back.');
+            }
+            if (!$deposit->company->getId()->equals($this->company->getId()) || !$deposit->customer->getId()->equals($customer->getId())) {
+                throw new InvalidInvoice("lines[$index].deductsInvoiceId", 'An invoice gives back the deposits of its own customer.');
+            }
+        }
+
+        return $lines;
+    }
+
+    /**
      * Fixed charges and withholdings of its own company, each once.
      *
      * @param list<TaxComponent> $taxes
@@ -1090,6 +1144,28 @@ class Invoice implements CompanyOwned
     public function getType(): InvoiceType
     {
         return $this->documentType;
+    }
+
+    /** Whether it is a facture d'acompte, given back on the invoice of the whole operation. */
+    public function isDeposit(): bool
+    {
+        return $this->deposit;
+    }
+
+    /** The quote it was drafted from; null for a document written otherwise. */
+    public function getQuoteId(): ?Uuid
+    {
+        return $this->quoteId;
+    }
+
+    /**
+     * Whether another invoice may give this deposit back: issued, and not corrected by an issued credit note, which
+     * would leave it giving back more than it still charges.
+     */
+    public function isDeductible(): bool
+    {
+        return $this->deposit && $this->isIssued()
+            && !array_any($this->getCorrections(), static fn (self $credit): bool => $credit->isIssued());
     }
 
     /** The invoice a credit note corrects; null for an invoice. */

@@ -169,6 +169,16 @@ final class InvoiceResource
     #[Groups([self::READ])]
     public ?string $correctsInvoiceId = null;
 
+    /** A facture d'acompte: an invoice of part of an operation, given back on the invoice of the whole. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public bool $deposit = false;
+
+    /** The quote it was drafted from, a deposit or the invoice of the whole; null otherwise. */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'format' => 'uuid'])]
+    #[Groups([self::READ])]
+    public ?string $quoteId = null;
+
     /** Why a credit note corrects its invoice, stated when it is drafted and printed on it; null for an invoice. */
     #[Assert\NotBlank(normalizer: 'trim', groups: [self::CREDIT])]
     #[Assert\Length(max: Invoice::CREDIT_NOTE_REASON_MAX, groups: [self::CREDIT])]
@@ -257,8 +267,9 @@ final class InvoiceResource
      * The lines, in order. A line naming a product may leave out its description, unit, price and taxes (null), which
      * then come from the product; a line of a draft drafted from delivery notes names the delivery note line it invoices,
      * which a revision may keep or drop but never add; a line of a product tracked by lot or serial may name the one
-     * sold (docs/SPEC.md § 7, 2026-09-24 12:40 row 5); a credit note's line may say its goods came back to stock; `net` is answered, never read: the line after its
-     * own discount.
+     * sold (docs/SPEC.md § 7, 2026-09-24 12:40 row 5); a credit note's line may say its goods came back to stock; a line
+     * naming a deposit invoice gives it back, written by the API from the deposit whatever else it says; `net` is
+     * answered, never read: the line after its own discount.
      *
      * @var list<array<string, mixed>>
      */
@@ -282,6 +293,7 @@ final class InvoiceResource
                 'productTracking' => ['type' => ['string', 'null'], 'enum' => ['none', 'lot', 'serial', null], 'description' => 'How the product\'s stock is told apart today, so a form knows whether the line names a lot. Read only.'],
                 'lotCode' => ['type' => ['string', 'null'], 'maxLength' => LotCode::MAX, 'description' => 'The lot or serial sold, for a product tracked by one.'],
                 'returned' => ['type' => 'boolean', 'description' => 'On a credit note\'s line: its goods came back to stock when the note is issued. A credit note says so line by line, since a price correction returns nothing; any other document refuses it.'],
+                'deductsInvoiceId' => ['type' => ['string', 'null'], 'format' => 'uuid', 'description' => 'A deposit invoice of the customer this line gives back, net and taxes as the deposit charged them. Sent on one line, it is written as one line per line of the deposit, from the deposit; what else the line says is not read. Null on any other line.'],
                 'net' => ['type' => 'string', 'readOnly' => true],
                 'unitCost' => ['type' => ['string', 'null'], 'readOnly' => true, 'description' => 'What one unit of its product cost the company when the line was issued; null on a draft, when unknown, and for a caller without product.cost.read.'],
             ],
@@ -302,6 +314,7 @@ final class InvoiceResource
         'sourceDeliveryNoteLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
         'lotCode' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'returned' => new Assert\Optional([new Assert\Type('bool', groups: [self::WRITE])], groups: [self::WRITE]),
+        'deductsInvoiceId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public array $lines = [];
@@ -455,6 +468,8 @@ final class InvoiceResource
         $resource->id = $invoice->getId()->toRfc4122();
         $resource->type = $invoice->getType()->value;
         $resource->correctsInvoiceId = $invoice->getCorrectedInvoice()?->getId()->toRfc4122();
+        $resource->deposit = $invoice->isDeposit();
+        $resource->quoteId = $invoice->getQuoteId()?->toRfc4122();
         $resource->creditNoteReason = $invoice->getCreditNoteReason();
         $resource->number = $invoice->getNumber();
         $resource->status = $invoice->getStatus()->value;
@@ -484,6 +499,7 @@ final class InvoiceResource
             'productTracking' => $line->getProduct()?->getTracking()->value,
             'lotCode' => $line->getLotCode(),
             'returned' => $line->isReturned(),
+            'deductsInvoiceId' => $line->getDeduction()?->deposit->getId()->toRfc4122(),
             'net' => $fixed['net'],
             'unitCost' => $withCosts ? $line->getUnitCost() : null,
         ], $invoice->getLines(), $figures->lines);
@@ -532,6 +548,7 @@ final class InvoiceResource
                 self::uuid(self::text($line, 'sourceDeliveryNoteLineId')),
                 self::text($line, 'lotCode'),
                 true === ($line['returned'] ?? false),
+                self::uuid(self::text($line, 'deductsInvoiceId')),
             );
         }
 

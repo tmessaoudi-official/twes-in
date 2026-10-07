@@ -57,6 +57,7 @@ use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\RecordingDomainEvents;
+use App\Tests\Support\ShippedDepositDeductions;
 use App\Tests\Support\ShippedFiscalPresets;
 use App\Tests\Support\ShippedMentionWording;
 use PHPUnit\Framework\TestCase;
@@ -109,6 +110,7 @@ final class InvoiceWorkflowTest extends TestCase
             $this->audit,
             $this->clock,
             new InMemoryCustomerCredits(),
+            ShippedDepositDeductions::of($this->invoices, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())),
         );
     }
 

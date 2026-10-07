@@ -21,6 +21,10 @@ delivery_note:
         reserves: 'Réserves'
 invoice:
     title: 'Facture'
+    deposit_title: 'Facture d’acompte'
+    deposit_share_line: 'Acompte de %share% % sur le devis %number%'
+    deposit_line: 'Acompte sur le devis %number%'
+    deduction_line: 'Acompte déjà facturé : facture %number% du %date%'
     credit_note_title: 'Avoir'
     corrects: 'Avoir sur la facture %number% du %date%'
     reason: 'Motif : %reason%'

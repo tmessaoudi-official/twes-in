@@ -202,6 +202,47 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         return $invoice instanceof Invoice ? $invoice : null;
     }
 
+    public function givingBack(Uuid $companyId, Uuid $depositId): array
+    {
+        $invoices = $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->where('i.company = :company')
+            ->andWhere('i.documentType = :type')
+            ->andWhere('i.status <> :cancelled')
+            ->andWhere('i.id IN (SELECT IDENTITY(l.invoice) FROM '.InvoiceLine::class.' l WHERE l.deductsInvoice = :deposit)')
+            ->orderBy('i.createdAt')
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('type', InvoiceType::Invoice->value)
+            ->setParameter('cancelled', InvoiceStatus::Cancelled->value)
+            ->setParameter('deposit', $depositId, 'uuid')
+            ->getQuery()
+            ->getResult();
+
+        return array_values(array_filter(\is_array($invoices) ? $invoices : [], static fn (mixed $invoice): bool => $invoice instanceof Invoice));
+    }
+
+    public function depositsOfQuotes(Uuid $companyId, array $quoteIds): array
+    {
+        if ([] === $quoteIds) {
+            return [];
+        }
+        $invoices = $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->where('i.company = :company')
+            ->andWhere('i.deposit = true')
+            ->andWhere('i.quoteId IN (:quotes)')
+            ->orderBy('i.createdAt')
+            ->addOrderBy('i.id')
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('quotes', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $quoteIds), ArrayParameterType::STRING)
+            ->getQuery()
+            ->getResult();
+
+        return array_values(array_filter(\is_array($invoices) ? $invoices : [], static fn (mixed $invoice): bool => $invoice instanceof Invoice));
+    }
+
     public function carryingDeliveryNoteLines(Uuid $companyId, array $deliveryNoteLineIds): array
     {
         if ([] === $deliveryNoteLineIds) {

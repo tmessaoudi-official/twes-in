@@ -99,6 +99,17 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         }
     }
 
+    public function testADepositInvoiceIsTitledAsOne(): void
+    {
+        self::bootKernel();
+        $line = $this->invoice->getLines()[0];
+        $this->invoice = Invoice::create($this->invoice->getCompany(), $this->invoice->getEstablishment(), $this->invoice->getCustomer(), new InvoiceHeader(), [new InvoiceLineDetails(null, 'Acompte de 30 % sur le devis DEV-2026-00001', '1', $line->getUnit(), '90', null, [$line->getTaxes()[0]->getTaxComponent()])], [], new \DateTimeImmutable('2026-10-07 09:00:00'), deposit: true);
+
+        $html = $this->html(new DocumentDesign(), [], []);
+
+        self::assertStringContainsString('<title>Facture d’acompte </title>', $html);
+    }
+
     /**
      * A layout restyles the one content every document prints; it may not take any of it away. Its rules never hide,
      * fade or move anything, and never touch the watermark or a mention.

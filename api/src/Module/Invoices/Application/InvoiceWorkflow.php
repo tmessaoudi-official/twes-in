@@ -55,6 +55,7 @@ final readonly class InvoiceWorkflow
         private AuditTrail $audit,
         private ClockInterface $clock,
         private CustomerCreditRepository $credits,
+        private DepositDeductions $deductions,
     ) {
     }
 
@@ -76,6 +77,9 @@ final readonly class InvoiceWorkflow
             $invoice = $this->invoices->lockedOfIdInCompany($id, $company->getId()) ?? throw new InvoiceNotFound();
             $invoice->assertDraft('is issued');
             $type = $invoice->getType();
+            if (InvoiceType::Invoice === $type) {
+                $this->stillGivenBack($company, $invoice);
+            }
             $customer = $invoice->getCustomer();
             $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
             $language = $this->settings->value($context, 'document.language');
@@ -138,6 +142,30 @@ final readonly class InvoiceWorkflow
         $this->events->publish(...$invoice->releaseEvents());
 
         return $invoice;
+    }
+
+    /**
+     * The deposits a draft gives back may still be given back by it: each deposit is held until the issue commits, so
+     * two invoices issued at once cannot both give it back, and one credited since the draft was written is refused.
+     *
+     * @throws InvalidInvoice
+     */
+    private function stillGivenBack(Company $company, Invoice $invoice): void
+    {
+        $deposits = [];
+        foreach ($invoice->getLines() as $index => $line) {
+            $deposit = $line->getDeduction()?->deposit;
+            if (null === $deposit || isset($deposits[$deposit->getId()->toRfc4122()])) {
+                continue;
+            }
+            $deposits[$deposit->getId()->toRfc4122()] = true;
+            $held = $this->invoices->lockedOfIdInCompany($deposit->getId(), $company->getId()) ?? throw new \LogicException('A deposit given back is of the same company.');
+            try {
+                $this->deductions->assertDeductible($company, $held, $invoice);
+            } catch (InvalidInvoice $refused) {
+                throw $refused->within("lines[$index]");
+            }
+        }
     }
 
     /** The excess becomes the customer's: kept to their credit, or recorded as paid back the same day. */

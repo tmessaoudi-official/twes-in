@@ -65,6 +65,23 @@ interface InvoiceRepository
      */
     public function invoicedQuantities(Uuid $companyId, array $deliveryNoteLineIds, bool $issuedOnly = false, ?Uuid $except = null): array;
 
+    /**
+     * The company's invoices that are not cancelled with a line giving this deposit invoice back; a credit note
+     * reversing one is not among them.
+     *
+     * @return list<Invoice>
+     */
+    public function givingBack(Uuid $companyId, Uuid $depositId): array;
+
+    /**
+     * The company's deposit invoices drafted from these quotes, cancelled drafts included, the oldest first.
+     *
+     * @param list<Uuid> $quoteIds
+     *
+     * @return list<Invoice>
+     */
+    public function depositsOfQuotes(Uuid $companyId, array $quoteIds): array;
+
     /** Whether a document of this type of the company already carries this number. */
     public function numberTaken(Uuid $companyId, InvoiceType $type, string $number): bool;
 

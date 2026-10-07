@@ -69,6 +69,7 @@ final readonly class ManageInvoices
         private InvoiceLinePrices $linePrices,
         private ExcludedTaxFamilies $excluded,
         private SourceDeliveryNoteLines $sourceLines,
+        private DepositDeductions $deductions,
     ) {
     }
 
@@ -126,18 +127,19 @@ final readonly class ManageInvoices
     }
 
     /**
-     * A draft of lines already written, such as a delivery note's (docs/SPEC.md § 7, 2026-09-14): its document taxes are
-     * those a draft leaving them out has, and it is audited as created with what it was drafted from.
+     * A draft of lines already written, such as a delivery note's (docs/SPEC.md § 7, 2026-09-14) or a quote's: its
+     * document taxes are those a draft leaving them out has, and it is audited as created with what it was drafted from.
+     * A quote's names it, and its deposit invoices say so.
      *
      * @param list<InvoiceLineDetails> $lines
      * @param array<string, mixed>     $origin
      *
      * @throws InvalidInvoice
      */
-    public function createFromLines(Company $company, Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $origin, ?Uuid $actorUserId): Invoice
+    public function createFromLines(Company $company, Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $origin, ?Uuid $actorUserId, ?Uuid $quoteId = null, bool $deposit = false): Invoice
     {
-        return $this->transactions->run(function () use ($company, $establishment, $customer, $header, $lines, $origin, $actorUserId): Invoice {
-            $invoice = Invoice::create($company, $establishment, $customer, $header, $lines, $this->documentTaxes($company, $customer, null, []), $this->clock->now());
+        return $this->transactions->run(function () use ($company, $establishment, $customer, $header, $lines, $origin, $actorUserId, $quoteId, $deposit): Invoice {
+            $invoice = Invoice::create($company, $establishment, $customer, $header, $lines, $this->documentTaxes($company, $customer, null, []), $this->clock->now(), $quoteId, $deposit);
             $this->totals->checked($invoice);
             $this->invoices->save($invoice);
             $this->record($company, $invoice->getId(), self::CREATED, $origin, $actorUserId);
@@ -272,15 +274,48 @@ final readonly class ManageInvoices
 
         $kept = self::named($current);
         $lines = [];
+        $givenBack = [];
+        $language = null;
         foreach ($input->lines as $index => $line) {
             try {
-                $lines[] = $this->line($company, $customer, $line, $kept);
+                if (null === $line->deductsInvoiceId) {
+                    $lines[] = $this->line($company, $customer, $line, $kept);
+                    continue;
+                }
+                // One line naming a deposit stands for all of it, written again from the deposit.
+                if (isset($givenBack[$line->deductsInvoiceId->toRfc4122()])) {
+                    continue;
+                }
+                $givenBack[$line->deductsInvoiceId->toRfc4122()] = true;
+                if (null !== $current && InvoiceType::CreditNote === $current->getType()) {
+                    $lines = [...$lines, ...$this->keptOnACreditNote($current, $line->deductsInvoiceId)];
+                    continue;
+                }
+                $language ??= $this->deductions->language($company, $customer);
+                $lines = [...$lines, ...$this->deductions->linesGivingBack($company, $line->deductsInvoiceId, $current, $language)];
             } catch (InvalidInvoice $refused) {
                 throw $refused->within("lines[$index]");
             }
         }
 
         return [$establishment, $customer, $lines, $this->documentTaxes($company, $customer, $input->documentTaxComponentIds, $kept['documentTaxes'])];
+    }
+
+    /**
+     * A credit note reverses what its invoice gave back of a deposit, and gives back nothing else.
+     *
+     * @return list<InvoiceLineDetails>
+     *
+     * @throws InvalidInvoice
+     */
+    private function keptOnACreditNote(Invoice $credit, Uuid $depositId): array
+    {
+        $lines = $credit->linesGivingBack($depositId);
+        if ([] === $lines) {
+            throw new InvalidInvoice('deductsInvoiceId', 'A credit note gives back only the deposits the invoice it corrects gave back.');
+        }
+
+        return $lines;
     }
 
     /**

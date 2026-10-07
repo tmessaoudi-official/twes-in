@@ -112,6 +112,8 @@ final readonly class InvoiceTotals
             $line->getUnitPriceNet(),
             $line->getDiscountRate(),
             array_map(static fn (InvoiceLineTax $tax): TaxInput => TaxInput::percentage($tax->getCode(), Rate::fromPercentage($tax->getRate()), $tax->entersVatBase()), $line->getTaxes()),
+            null !== $line->getDeduction(),
+            self::deducted($line),
         ), $invoice->getLines());
         $corrected = InvoiceType::CreditNote === $invoice->getType() ? $invoice->getCorrectedInvoice() : null;
         $remaining = null === $corrected ? null : $this->remainingWithholdings($corrected, $invoice);
@@ -142,6 +144,24 @@ final readonly class InvoiceTotals
             $documentDiscount,
             $documentTaxes,
         ));
+    }
+
+    /**
+     * What a line giving a deposit back subtracts of each of its taxes, by the code the line charges it under.
+     *
+     * @return array<string, string>
+     */
+    private static function deducted(InvoiceLine $line): array
+    {
+        $amounts = [];
+        foreach ($line->getTaxes() as $tax) {
+            $amount = $tax->getDeductedAmount();
+            if (null !== $amount) {
+                $amounts[$tax->getCode()] = $amount;
+            }
+        }
+
+        return $amounts;
     }
 
     /**

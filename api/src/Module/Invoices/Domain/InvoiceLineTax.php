@@ -56,15 +56,25 @@ class InvoiceLineTax implements CompanyOwned
     #[ORM\Column]
     private bool $entersVatBase;
 
+    /** On a line giving a deposit back, what the deposit charged of this tax; null on any other line. */
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $deductedAmount;
+
     /** @internal a line's taxes are written by its line */
-    public function __construct(InvoiceLine $line, int $position, TaxComponent $taxComponent)
+    public function __construct(InvoiceLine $line, int $position, TaxComponent $taxComponent, ?string $deductedAmount = null)
     {
         $this->id = Uuid::v7();
         $this->line = $line;
         $this->company = $line->getCompany();
         $this->position = $position;
         $this->taxComponent = $taxComponent;
+        $this->deductedAmount = $deductedAmount;
         $this->retake();
+    }
+
+    public function getDeductedAmount(): ?string
+    {
+        return $this->deductedAmount;
     }
 
     /** @internal the code, rate and VAT base behaviour its component has now */

@@ -38,6 +38,9 @@ final readonly class QuoteWorkflow
     public const string REFUSED = 'quote.refused';
     public const string CANCELLED = 'quote.cancelled';
     public const string INVOICED = 'quote.invoiced';
+    public const string DEPOSIT_DRAFTED = 'quote.deposit_drafted';
+    private const string PERCENTAGE = '/^(0|[1-9][0-9]?)(\.[0-9]{1,3})?$/';
+    private const string AMOUNT = '/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/';
 
     public function __construct(
         private QuoteRepository $quotes,
@@ -161,6 +164,46 @@ final readonly class QuoteWorkflow
 
             return $quote;
         });
+    }
+
+    /**
+     * « Facture d'acompte »: a draft deposit invoice for a share of an accepted quote not yet invoiced, a percentage
+     * above 0 and below 100, or an amount tax included; one of them, never both (docs/fiscal FR.md and TN.md § 2b).
+     *
+     * @throws QuoteNotFound
+     * @throws QuoteTransitionRefused when the quote is not accepted, or already on an invoice
+     * @throws InvalidQuote           on `depositPercentage` or `depositAmount`
+     * @throws QuoteInvoicingRefused  when the share leaves the quote short, or the invoice refuses it
+     */
+    public function deposit(Company $company, Uuid $id, ?string $percentage, ?string $amount, ?Uuid $actorUserId): Quote
+    {
+        if ((null === $percentage) === (null === $amount)) {
+            throw new InvalidQuote(null === $percentage ? 'depositPercentage' : 'depositAmount', 'A deposit is a percentage of the quote or an amount, one of them.');
+        }
+        if (null !== $percentage && (1 !== preg_match(self::PERCENTAGE, $percentage) || self::zero($percentage))) {
+            throw new InvalidQuote('depositPercentage', 'A deposit is a percentage above 0 and below 100, with at most three decimals.');
+        }
+        if (null !== $amount && (1 !== preg_match(self::AMOUNT, $amount) || self::zero($amount))) {
+            throw new InvalidQuote('depositAmount', 'A deposit is a positive amount with at most three decimals.');
+        }
+
+        return $this->transactions->run(function () use ($company, $id, $percentage, $amount, $actorUserId): Quote {
+            $quote = $this->locked($company, $id);
+            $earlier = $quote->getInvoiceId();
+            if (null !== $earlier && $this->invoices->stands($company, $earlier)) {
+                throw new QuoteTransitionRefused(\sprintf('The quote %s is already on an invoice: a deposit comes before it.', $quote->getNumber() ?? $quote->getId()->toRfc4122()));
+            }
+            $quote->assertInvoiceable();
+            $invoiceId = $this->invoices->depositFrom($quote, $percentage, $amount, $actorUserId);
+            $this->record($company, $quote, self::DEPOSIT_DRAFTED, ['invoiceId' => $invoiceId->toRfc4122()], $actorUserId);
+
+            return $quote;
+        });
+    }
+
+    private static function zero(string $decimal): bool
+    {
+        return '' === trim(str_replace('.', '', $decimal), '0');
     }
 
     /** Held until the transaction ends and read as it stands: a status check on it cannot be overtaken by another request. */

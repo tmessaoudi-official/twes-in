@@ -20,6 +20,7 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\LineTotals;
 use App\Fiscal\Domain\Calculation\TaxTotal;
+use App\Module\Quotes\Application\QuoteDeposit;
 use App\Module\Quotes\Application\QuoteInput;
 use App\Module\Quotes\Application\QuoteLineInput;
 use App\Module\Quotes\Domain\InvalidQuote;
@@ -125,6 +126,16 @@ use Symfony\Component\Validator\Constraints as Assert;
             normalizationContext: self::NORMALIZATION,
         ),
         new Post(
+            uriTemplate: '/companies/{companyId}/quotes/{quoteId}/deposit-invoices',
+            status: 200,
+            processor: DepositQuoteProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            normalizationContext: self::NORMALIZATION,
+            denormalizationContext: ['groups' => [self::DEPOSIT]],
+            validationContext: ['groups' => [self::DEPOSIT]],
+        ),
+        new Post(
             uriTemplate: '/companies/{companyId}/quotes/{quoteId}/invoice',
             status: 200,
             processor: InvoiceQuoteProcessor::class,
@@ -141,6 +152,7 @@ final class QuoteResource
     public const string WRITE = 'quote:write';
     public const string ANSWER = 'quote:answer';
     public const string REFUSE = 'quote:refuse';
+    public const string DEPOSIT = 'quote:deposit';
     /** Nulls are answered: a draft's absent number and a line without a product read alike; no identifiers read `{}`. */
     private const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
     private const array TEXT_OR_NULL = ['type' => ['string', 'null']];
@@ -239,6 +251,39 @@ final class QuoteResource
     #[Groups([self::READ])]
     public ?string $invoiceId = null;
 
+    /**
+     * The deposit invoices drawn from the quote (POST .../deposit-invoices), cancelled drafts included, the oldest first.
+     *
+     * @var list<array{invoiceId: string, number: string|null, status: string, total: string}>
+     */
+    #[ApiProperty(writable: false, schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['invoiceId', 'number', 'status', 'total'],
+            'properties' => [
+                'invoiceId' => self::ID,
+                'number' => self::TEXT_OR_NULL,
+                'status' => ['type' => 'string', 'enum' => ['draft', 'issued', 'partially_paid', 'paid', 'cancelled']],
+                'total' => ['type' => 'string', 'description' => 'Tax and fixed charges included, at the currency\'s scale.'],
+            ],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $deposits = [];
+
+    /** Sent to draw a deposit: a percentage of the quote above 0 and below 100; or null, with an amount. */
+    #[ApiProperty(readable: false, schema: ['type' => ['string', 'null'], 'example' => '30'])]
+    #[Assert\Type('string', groups: [self::DEPOSIT])]
+    #[Groups([self::DEPOSIT])]
+    public ?string $depositPercentage = null;
+
+    /** Sent to draw a deposit: an amount tax included below the quote's total; or null, with a percentage. */
+    #[ApiProperty(readable: false, schema: ['type' => ['string', 'null'], 'example' => '500.000'])]
+    #[Assert\Type('string', groups: [self::DEPOSIT])]
+    #[Groups([self::DEPOSIT])]
+    public ?string $depositAmount = null;
+
     /** How many files are attached, such as the signed copy (GET .../attachments). */
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
@@ -336,7 +381,8 @@ final class QuoteResource
     public string $total = '0';
 
     /** @param \DateTimeImmutable $today the company's day, which says whether a sent quote has expired */
-    public static function of(Quote $quote, DocumentTotals $totals, \DateTimeImmutable $today, int $attachmentCount): self
+    /** @param list<QuoteDeposit> $deposits */
+    public static function of(Quote $quote, DocumentTotals $totals, \DateTimeImmutable $today, int $attachmentCount, array $deposits = []): self
     {
         $header = $quote->getHeader();
         $resource = new self();
@@ -355,6 +401,7 @@ final class QuoteResource
         $resource->refusalReason = $quote->getRefusalReason();
         $resource->invoiceId = $quote->getInvoiceId()?->toRfc4122();
         $resource->attachmentCount = $attachmentCount;
+        $resource->deposits = array_map(static fn (QuoteDeposit $deposit): array => ['invoiceId' => $deposit->invoiceId, 'number' => $deposit->number, 'status' => $deposit->status, 'total' => $deposit->total], $deposits);
         $resource->customerReference = $header->customerReference;
         $resource->notesPrinted = $header->notesPrinted;
         $resource->notesInternal = $header->notesInternal;

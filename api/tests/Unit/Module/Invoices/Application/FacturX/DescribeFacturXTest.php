@@ -25,6 +25,7 @@ use App\Module\Invoices\Application\FacturX\DescribeFacturX;
 use App\Module\Invoices\Application\FacturX\FacturXRefused;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceTotals;
+use App\Module\Invoices\Domain\Deduction;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceIssue;
@@ -131,6 +132,31 @@ final class DescribeFacturXTest extends TestCase
         self::assertSame([['1', 'Réglage du tour', null, '150.0000', '2.000', 'C62', null, null, null, 'S', '20.00', null, '300.00']], array_map(self::lineRow(...), $cii->lines));
         self::assertSame([['S', '20.00', null, '300.00', '60.00']], array_map(self::breakdown(...), $cii->vatBreakdown));
         self::assertSame(['300.00', '0.00', '300.00', '60.00', '360.00', '360.00'], self::totals($cii));
+    }
+
+    public function testADepositIsA386AndTheFinalInvoiceBillsItBackAsMinusOneAtItsPrice(): void
+    {
+        $customer = $this->customer('standard');
+        $establishment = $this->establishments->ofCompany($this->company->getId())[0];
+        $deposit = Invoice::create($this->company, $establishment, $customer, new InvoiceHeader(paymentTermsDays: 30), [$this->line('Acompte de 30 % sur le devis DEV-2026-00001', '1', 'C62', '300', null, 'TVA20')], [], $this->clock->now(), deposit: true);
+        $deposit->issue(new InvoiceIssue('FA-2026-00001', new \DateTimeImmutable('2026-09-15'), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
+        $this->invoices->save($deposit);
+        $back = $this->line('Acompte déjà facturé : facture FA-2026-00001 du 15/09/2026', '1', 'C62', '300', null, 'TVA20');
+        $final = Invoice::create($this->company, $establishment, $customer, new InvoiceHeader(paymentTermsDays: 30), [
+            $this->line('Tour CNC', '1', 'C62', '1000', null, 'TVA20'),
+            new InvoiceLineDetails(null, $back->description, '1', $back->unit, '300', null, $back->taxes, deduction: new Deduction($deposit, ['TVA20' => '60.00'])),
+        ], [], $this->clock->now());
+        $final->issue(new InvoiceIssue('FA-2026-00002', new \DateTimeImmutable('2026-09-30'), 30, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto')), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
+        $this->invoices->save($final);
+
+        self::assertSame('386', $this->describe->describe($this->company, $deposit->getId())->typeCode);
+        $cii = $this->describe->describe($this->company, $final->getId());
+
+        self::assertSame('380', $cii->typeCode);
+        self::assertSame(['300.0000', '-1.000', '-300.00'], [$cii->lines[1]->netPrice, $cii->lines[1]->quantity, $cii->lines[1]->lineTotal]);
+        self::assertSame([['S', '20.00', null, '700.00', '140.00']], array_map(self::breakdown(...), $cii->vatBreakdown));
+        self::assertSame(['700.00', '0.00', '700.00', '140.00', '840.00', '840.00'], self::totals($cii));
+        self::assertCoherent($cii);
     }
 
     public function testASaleToAnotherEuBusinessCarriesNoVatUnderTheRegimesCategory(): void

@@ -77,7 +77,7 @@ final class ScaleGenerator
     /** Foreign keys of a cloned table that a copy points at a row of its own copy, or empties: `table.column`. */
     private const array REMAPPED = [
         'invoice.corrects_invoice_id', 'invoice.customer_id', 'invoice.pdf_file_id',
-        'invoice_line.invoice_id', 'invoice_line_tax.line_id', 'invoice_tax.invoice_id', 'payment.invoice_id',
+        'invoice_line.invoice_id', 'invoice_line.deducts_invoice_id', 'invoice_line_tax.line_id', 'invoice_tax.invoice_id', 'payment.invoice_id',
     ];
 
     /** Copies that share one set of customers. */
@@ -290,6 +290,8 @@ final class ScaleGenerator
             [
                 'id' => $derived('id'),
                 'corrects_invoice_id' => $derived('corrects_invoice_id'),
+                // Quotes are not cloned: a copy names none, its deposits staying deposits of their own copy.
+                'quote_id' => 'NULL',
                 'customer_id' => 'nc.id',
                 // A placeholder, so the unique index has something to hold; the real number is assigned last.
                 'number' => "CASE WHEN src.number IS NULL THEN NULL ELSE '~' || scale.derived_id(src.id, x.c)::text END",
@@ -309,7 +311,7 @@ final class ScaleGenerator
         $this->insert(
             'invoice_line',
             "FROM invoice_line src CROSS JOIN $copies WHERE src.company_id = :company AND $isBase",
-            ['id' => $derived('id'), 'invoice_id' => $derived('invoice_id'), 'source_delivery_note_line_id' => 'NULL'],
+            ['id' => $derived('id'), 'invoice_id' => $derived('invoice_id'), 'deducts_invoice_id' => $derived('deducts_invoice_id'), 'source_delivery_note_line_id' => 'NULL'],
             ['company' => $company],
         );
         $this->insert(

@@ -28,6 +28,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_invoice_line_product', columns: ['product_id'])]
 #[ORM\Index(name: 'idx_invoice_line_unit', columns: ['unit_id'])]
 #[ORM\Index(name: 'idx_invoice_line_source_delivery_note_line', columns: ['source_delivery_note_line_id'])]
+#[ORM\Index(name: 'idx_invoice_line_deducts_invoice', columns: ['deducts_invoice_id'])]
 class InvoiceLine implements CompanyOwned
 {
     #[ORM\Id]
@@ -95,6 +96,11 @@ class InvoiceLine implements CompanyOwned
     #[ORM\Column(options: ['default' => false])]
     private bool $returned;
 
+    /** The deposit invoice this line gives back; null for any other line. */
+    #[ORM\ManyToOne(targetEntity: Invoice::class)]
+    #[ORM\JoinColumn(name: 'deducts_invoice_id', nullable: true)]
+    private ?Invoice $deductsInvoice;
+
     /** @var Collection<int, InvoiceLineTax> */
     #[ORM\OneToMany(targetEntity: InvoiceLineTax::class, mappedBy: 'line', cascade: ['persist'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC'])]
@@ -116,9 +122,10 @@ class InvoiceLine implements CompanyOwned
         $this->sourceDeliveryNoteLineId = $details->sourceDeliveryNoteLineId;
         $this->lotCode = $details->lotCode;
         $this->returned = $details->returned;
+        $this->deductsInvoice = $details->deduction?->deposit;
         $this->taxes = new ArrayCollection();
         foreach ($details->taxes as $index => $tax) {
-            $this->taxes->add(new InvoiceLineTax($this, $index + 1, $tax));
+            $this->taxes->add(new InvoiceLineTax($this, $index + 1, $tax, $details->deduction?->taxes[$tax->getCode()] ?? null));
         }
     }
 
@@ -152,7 +159,7 @@ class InvoiceLine implements CompanyOwned
         return ['net' => $this->lineNet, 'tax' => $this->lineTax, 'gross' => $this->lineGross];
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool} compared the way InvoiceLineDetails::values() is */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null} compared the way InvoiceLineDetails::values() is */
     public function values(): array
     {
         return [
@@ -166,7 +173,22 @@ class InvoiceLine implements CompanyOwned
             $this->sourceDeliveryNoteLineId?->toRfc4122(),
             $this->lotCode,
             $this->returned,
+            $this->getDeduction()?->values(),
         ];
+    }
+
+    /** What this line gives back of a deposit invoice; null for any other line. */
+    public function getDeduction(): ?Deduction
+    {
+        if (null === $this->deductsInvoice) {
+            return null;
+        }
+        $taxes = [];
+        foreach ($this->getTaxes() as $tax) {
+            $taxes[$tax->getTaxComponent()->getCode()] = $tax->getDeductedAmount() ?? throw new \LogicException('A line giving a deposit back states what it charged of each of its taxes.');
+        }
+
+        return new Deduction($this->deductsInvoice, $taxes);
     }
 
     /** Whether the goods of this line of a credit note came back to stock when it was issued. */

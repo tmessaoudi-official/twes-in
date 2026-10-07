@@ -32,7 +32,7 @@ use Symfony\Component\Uid\Uuid;
 /**
  * An issued French invoice or credit note in the terms of EN 16931, for the Factur-X EN 16931
  * profile: read from what issuing fixed and never recomputed, a credit note's negative figures written positive under
- * type code 381. What the standard needs and the document or its company lacks is refused, every gap named at once, and
+ * type code 381, a deposit invoice 386. What the standard needs and the document or its company lacks is refused, every gap named at once, and
  * nothing is guessed: a line without VAT takes the category its regime declares in the fiscal preset, or none at all.
  *
  * The seller is the company as issuing froze it (SellerSnapshot), so a company that moves or changes bank later rewrites
@@ -114,7 +114,8 @@ final readonly class DescribeFacturX
         $total = $amount($figures->total);
 
         return new CiiInvoice(
-            $credit ? '381' : '380',
+            // UNTDID 1001: 386 a prepayment invoice, the facture d'acompte (docs/fiscal FR.md § 2b).
+            $credit ? '381' : ($invoice->isDeposit() ? '386' : '380'),
             $number,
             $issueDate,
             $seller->currency,
@@ -196,7 +197,8 @@ final readonly class DescribeFacturX
             $line->getDescription(),
             $line->getProduct()?->getReference(),
             Decimal::format(Decimal::of($line->getUnitPriceNet()), self::PRICE_SCALE),
-            Decimal::format(Decimal::of($line->getQuantity()), self::QUANTITY_SCALE),
+            // A line giving a deposit back bills minus one at its price: EN 16931 refuses a negative price (BR-27).
+            Decimal::format(Decimal::of($line->getQuantity())->mul(null === $line->getDeduction() ? 1 : -1), self::QUANTITY_SCALE),
             $line->getUnit()->getCode(),
             $percent,
             $basis,

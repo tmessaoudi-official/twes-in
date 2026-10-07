@@ -14,7 +14,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * A line as it is written. What a line naming a product leaves out comes from that product: its name, its unit, its
  * price, and its default taxes the customer's regime charges; a line without a product states all of them. A discount
- * left out is no discount. A line of a draft drafted from delivery notes names the delivery note line it invoices.
+ * left out is no discount. A line of a draft drafted from delivery notes names the delivery note line it invoices. A
+ * line naming a deposit invoice gives that deposit back, and everything else it says is the API's to write.
  */
 final readonly class InvoiceLineInput
 {
@@ -23,6 +24,7 @@ final readonly class InvoiceLineInput
      * @param Uuid|null       $sourceDeliveryNoteLineId only one its draft already invoices
      * @param string|null     $lotCode                  the lot or serial sold, for a product tracked by one
      * @param bool            $returned                 the goods of a credit note's line came back to stock
+     * @param Uuid|null       $deductsInvoiceId         a deposit invoice of the customer, given back on this document
      */
     public function __construct(
         public ?Uuid $productId,
@@ -35,6 +37,7 @@ final readonly class InvoiceLineInput
         public ?Uuid $sourceDeliveryNoteLineId = null,
         public ?string $lotCode = null,
         public bool $returned = false,
+        public ?Uuid $deductsInvoiceId = null,
     ) {
     }
 }

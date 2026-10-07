@@ -4390,6 +4390,23 @@ functional tests run in the `tools` container, on the host's network, against th
   action the 2026-09-21 17:35 ruling asked for, while a payment stays capped at what is due. A cheque or traite cashed
   beyond what is due writes the same entry. Alternatives: keep the customer-level entry renamed (still records an
   advance with no document); let a payment above what is due send the rest to the credit (reverses the 17:35 cap).
+- [2026-10-07 13:44] ASSUMED (review): row 79, how the facture d'acompte of the 12:44 entry is built. (1) Its « own
+  kind » is a flag on an invoice (`deposit`), not a third document type: it is numbered in the invoice series, issued,
+  paid, printed and credited as any invoice, and only its title (« Facture d'acompte », Factur-X type code 386), the
+  quote it comes from and its deduction differ; a type would branch every place an invoice is handled. (2) It is drawn
+  from an accepted quote not yet invoiced, for a percentage (above 0, below 100) or an amount tax included below the
+  quote's total before fixed charges; the share is the percentage, or the amount over that total, and each rate group's
+  line nets that share of the group's base after the quote's discount, so an amount lands within a millime of what was
+  asked; the deposits of one quote never exceed a group's base. (3) The final invoice gives each deposit back as
+  deduction lines naming its number and date, built by the API from the issued deposit and never priced by the screen:
+  the deposit line's net and the tax amounts it charged, subtracted as charged (pricing vectors, convention
+  `deductions`), so the final invoice's VAT is the operation's less the deposits'. A deposit is deducted once, by one
+  invoice not cancelled, of its own customer, and only while it is issued with no issued credit note; checked when the
+  draft is saved and again at issue. A duplicate drops the deductions; a credit note of the final invoice carries them.
+  (4) The invoice drafted from the quote deducts every deposit of that quote still deductible. Known gap: a deposit
+  partly credited cannot be deducted at all. Alternatives: a `deposit` document type; the deposit taken as a payment of
+  the final invoice (its VAT then counted twice); the deducted VAT recomputed on the remaining base (a millime over the
+  operation, vector `final-invoice-tax-is-the-whole-less-what-deposits-charged`).
 
 ## 8. Status
 
@@ -4488,7 +4505,7 @@ functional tests run in the `tools` container, on the host's network, against th
 | 76 | Catalogue (§ 7 2026-09-20): a family with axis values gathering variants that stay products; purchase, stock and sales units with conversion; one second-language name printed when the document is in that language | L | todo | - | api/src/Module/Products/** api/migrations/** api/tests/** web/src/app/products/** web/public/i18n/** |
 | 77 | Price lists (§ 7 2026-09-20): per customer or group, quantity breaks, validity dates, keyed to area and channel; they decide a line's unit price before any discount. Slice 1 (the API: lists, rows, the resolver and `GET .../products/{id}/price`) is in, and so is slice 2 (the module is real and the « Tarifs » screen lists, files, edits and deletes lists with their prices); and an invoice line now starts at the customer's list price for its quantity (asked again when the quantity is left; a price the person typed stays), and the lines picked on the screen are priced again when the customer changes, a delivery note's lines likewise; area and channel wait for the Venue (row 83) and the Register (row 82), which are what they key to Reopened (audit 2026-10-06, A-5): a product line reaching the API without a price takes the price-list price in the use case. A-5 done: `ManageInvoices` and `ManageDeliveryNotes` ask their own ports, `InvoiceLinePrices` and `DeliveryNoteLinePrices`, which the price lists answer through `ResolveUnitPrice` on the company's day, at the shelf price while the module is off; a typed price stays. | M | doing | 607da913 | api/src/Module/PriceLists/** api/src/Module/Customers/** api/migrations/** api/tests/** web/src/app/** |
 | 78 | Devis (§ 7 2026-09-21 14:55, 2026-10-07 10:21): its own record and series; draft, « Marquer envoyé » numbering it with its validity date, accepted (signed scan attached) or refused, « Expiré » worked out; printed with the « Bon pour accord » block; an accepted quote invoiced wholly into a draft invoice. Partial conversion into a commande client comes with the commande | L | done | de3e6f8b | api/src/Module/Quotes/** api/src/Module/Invoices/** api/src/ModuleRegistry/** api/config/** api/migrations/** api/templates/pdf/** api/translations/** api/src/DataFixtures/** api/tests/** web/src/app/** web/public/i18n/** web/e2e/** |
-| 79 | Deposits (§ 7 2026-09-20): a deposit invoice with its own number and VAT, subtracted from the final invoice by the engine and never typed | M | todo | - | api/src/Module/Invoices/** api/migrations/** api/tests/** web/src/app/invoices/** |
+| 79 | Deposits (§ 7 2026-09-20): a deposit invoice with its own number and VAT, subtracted from the final invoice by the engine and never typed | M | doing | - | api/src/Module/Invoices/** api/migrations/** api/tests/** web/src/app/invoices/** |
 | 80 | Projets (§ 7 2026-09-27 17:20, replacing the job of 2026-09-20 01:18): tasks standing alone or in projects, status, assignee, due date and reminders, a kanban, timers, tasks billed on the existing quotes and invoices by time or at a fixed price with every hour billed once, a quote built from tasks; material, output and scrap when Stock is on; after row 162 | L | todo | - | api/src/Module/Projects/** api/migrations/** api/tests/** web/src/app/projects/** web/e2e/** |
 | 81 | Purchase order and goods receipt (§ 7 2026-09-20): an order sent to a vendor with expected dates, receipts against it (partial allowed) moving stock into a location and recording unit cost | L | todo | - | api/src/Module/Purchasing/** api/migrations/** api/tests/** web/src/app/purchasing/** web/e2e/** |
 | 82 | Register, the counter sale (§ 7 2026-09-20): one full screen on scanner and keyboard, receipt or invoice from the same sale, cash with change, card, on account and mixed payments, returns writing a credit note and restocking; sales idempotent and queued in shape so offline can be added later | L | todo | - | api/src/Module/Register/** api/migrations/** api/tests/** web/src/app/register/** web/e2e/** |

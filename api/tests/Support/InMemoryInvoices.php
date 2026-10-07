@@ -142,6 +142,20 @@ final class InMemoryInvoices implements InvoiceRepository
         return $quantities;
     }
 
+    public function givingBack(Uuid $companyId, Uuid $depositId): array
+    {
+        return array_values(array_filter($this->ofCompany($companyId), static fn (Invoice $invoice): bool => InvoiceType::Invoice === $invoice->getType()
+            && InvoiceStatus::Cancelled !== $invoice->getStatus()
+            && array_any($invoice->getLines(), static fn (InvoiceLine $line): bool => true === $line->getDeduction()?->deposit->getId()->equals($depositId))));
+    }
+
+    public function depositsOfQuotes(Uuid $companyId, array $quoteIds): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $quoteIds);
+
+        return array_values(array_filter($this->ofCompany($companyId), static fn (Invoice $invoice): bool => $invoice->isDeposit() && \in_array($invoice->getQuoteId()?->toRfc4122(), $wanted, true)));
+    }
+
     public function numberTaken(Uuid $companyId, InvoiceType $type, string $number): bool
     {
         return [] !== array_filter($this->ofCompany($companyId), static fn (Invoice $invoice): bool => $invoice->getType() === $type && $invoice->getNumber() === $number);
