@@ -1,0 +1,52 @@
+<section class="flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-col gap-1">
+      <h1 class="text-3xl font-semibold" data-testid="activity-title">
+        {{ 'activity.title' | translate }}
+      </h1>
+      <p class="text-on-surface-variant" data-testid="activity-intro">
+        {{ 'activity.intro' | translate }}
+      </p>
+    </div>
+    <app-list-export [address]="exporter()" testId="activity-export" />
+  </div>
+
+  @if (error(); as code) {
+    <p role="alert" data-testid="activity-error" class="text-error">
+      {{ 'activity.errors.' + code | translate }}
+    </p>
+  }
+
+  <app-data-list
+    [descriptor]="list"
+    [rows]="rows()"
+    [total]="total()"
+    [pickSources]="pickSources"
+    (queryChange)="onQuery($event)"
+    testId="activity-table"
+    [rowTestId]="rowTestId"
+    emptyKey="activity.none"
+    emptyTestId="activity-empty"
+  >
+    <ng-template appDataListCell="at" let-row>{{ row.at | moment }}</ng-template>
+    <ng-template appDataListCell="actor" let-row>
+      {{ row.actorName ?? ('activity.nobody' | translate) }}
+    </ng-template>
+    <ng-template appDataListCell="action" let-row>
+      @if (actionKey(row.action); as key) {
+        {{ key | translate }}
+      } @else {
+        <code>{{ row.action }}</code>
+      }
+    </ng-template>
+    <ng-template appDataListCell="record" let-row>
+      @if (recordLink(row); as link) {
+        <a [routerLink]="link" class="underline" data-testid="activity-record">
+          {{ kindKey(row.entityType) ?? row.entityType | translate }}
+        </a>
+      } @else {
+        {{ kindKey(row.entityType) ?? row.entityType | translate }}
+      }
+    </ng-template>
+  </app-data-list>
+</section>

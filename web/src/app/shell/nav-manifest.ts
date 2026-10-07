@@ -180,6 +180,15 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
     permission: 'company.settings',
   },
   {
+    // « Journal d'activité »: what was done in the company, by whom (docs/SPEC.md § 7, 2026-09-26 23:04).
+    key: 'activity',
+    labelKey: 'nav.activity',
+    icon: 'history',
+    route: '/company/activity',
+    section: 'team',
+    permission: 'audit.read',
+  },
+  {
     key: 'custom-fields',
     labelKey: 'nav.custom_fields',
     icon: 'dynamic_form',

@@ -26,8 +26,11 @@ interface DeclaresExport
     /** The permission that reads the list on screen, so a file shows nobody anything the list would not. */
     public function permission(): string;
 
-    /** The key of the module the list belongs to: switched off, its list cannot be exported either. */
-    public function module(): string;
+    /**
+     * The key of the module the list belongs to: switched off, its list cannot be exported either. Null for a list of
+     * the core, such as the activity journal, which no company can switch off.
+     */
+    public function module(): ?string;
 
     /** @return list<string> the header row, for THIS company: its preset's registration numbers, its own custom fields */
     public function columns(Company $company): array;

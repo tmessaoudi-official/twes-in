@@ -42,7 +42,7 @@ final readonly class SeedPlatform
      */
     public const array BUILT_IN_ROLES = [
         Role::OWNER => [Permission::WILDCARD],
-        Role::ADMIN => ['company.read', 'company.settings', 'user.read', 'user.write', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write', 'customer.read', 'customer.write', 'product.read', 'product.write', 'product.cost.read', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'quote.read', 'quote.write', 'stock.read', 'stock.write', 'vendor.read', 'vendor.write', 'expense.read', 'expense.write', 'fiscal.read', 'fiscal.write'],
+        Role::ADMIN => ['company.read', 'company.settings', 'user.read', 'user.write', 'audit.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write', 'customer.read', 'customer.write', 'product.read', 'product.write', 'product.cost.read', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate', 'quote.read', 'quote.write', 'stock.read', 'stock.write', 'vendor.read', 'vendor.write', 'expense.read', 'expense.write', 'fiscal.read', 'fiscal.write'],
         Role::MEMBER => ['company.read', 'invoice.read', 'invoice.write', 'customer.read', 'customer.write', 'product.read', 'delivery_note.read', 'delivery_note.write', 'quote.read', 'quote.write', 'stock.read', 'vendor.read', 'expense.read', 'fiscal.read'],
         Role::CLERK => ['company.read', 'invoice.read', 'invoice.write', 'invoice.issue', 'payment.write', 'customer.read', 'product.read', 'delivery_note.read', 'delivery_note.write', 'quote.read', 'quote.write', 'stock.read'],
     ];

@@ -380,6 +380,10 @@ export const routes: Routes = [
             loadComponent: () => import('./company/roles-page').then((m) => m.RolesPage),
           },
           {
+            path: 'company/activity',
+            loadComponent: () => import('./activity/activity-page').then((m) => m.ActivityPage),
+          },
+          {
             path: 'fiscal/taxes',
             loadComponent: () =>
               import('./fiscal/fiscal-taxes-page').then((m) => m.FiscalTaxesPage),

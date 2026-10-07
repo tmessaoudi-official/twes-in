@@ -53,7 +53,8 @@ final readonly class ExportCatalogue
     public function declarationFor(string $key, Company $company): DeclaresExport
     {
         $declaration = $this->declaration($key);
-        if (!$this->modules->isEnabled($company->getId(), $declaration->module())) {
+        $module = $declaration->module();
+        if (null !== $module && !$this->modules->isEnabled($company->getId(), $module)) {
             throw new UnknownExportSubject(\sprintf('Nothing named "%s" can be exported.', $key));
         }
 

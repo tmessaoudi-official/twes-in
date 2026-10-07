@@ -189,6 +189,9 @@
     "quote": {
       "read": "See quotes",
       "write": "Create, edit and answer quotes"
+    },
+    "audit": {
+      "read": "See the activity journal"
     }
   },
   "members": {
@@ -553,7 +556,8 @@
     },
     "stock_valuation": "Stock valuation",
     "price_lists": "Price lists",
-    "quotes": "Quotes"
+    "quotes": "Quotes",
+    "activity": "Activity journal"
   },
   "shell": {
     "scan_tools": "Scanner",
@@ -1040,6 +1044,9 @@
     "quote": {
       "validity_days": "How long a quote binds (days)",
       "signature_block": "Print the “Agreed” block (date, name, signature) on quotes"
+    },
+    "activity": {
+      "retention_months": "How long the activity journal is kept (months, 12 to 36)"
     }
   },
   "customers": {
@@ -3937,5 +3944,193 @@
     "document_discount": "Share of the document discount",
     "tax": "{{name}} · base {{base}}",
     "as_typed": "In {{currency}}, worked out just now from what is typed: nothing is kept until you save."
+  },
+  "activity": {
+    "title": "Activity journal",
+    "intro": "What was done in the company, by whom and to what. What changed is named, never its value.",
+    "none": "Nothing in the journal for these filters.",
+    "nobody": "Nobody (not signed in)",
+    "errors": {
+      "not_found": "This journal is not available.",
+      "invalid": "These filters could not be read.",
+      "network": "The server does not answer. Try again in a moment."
+    },
+    "fields": {
+      "at": "When",
+      "actor": "Who",
+      "action": "What",
+      "record": "Record",
+      "fields": "Fields changed",
+      "ip": "Address"
+    },
+    "kinds": {
+      "customer": "Customer",
+      "contact": "Contact",
+      "customer_group": "Customer group",
+      "product": "Product",
+      "product_category": "Product category",
+      "price_list": "Price list",
+      "vendor": "Vendor",
+      "quote": "Quote",
+      "invoice": "Invoice",
+      "delivery_note": "Delivery note",
+      "expense": "Expense",
+      "expense_category": "Expense category",
+      "stock_location": "Stock location",
+      "user": "Account",
+      "membership": "Member",
+      "invitation": "Invitation",
+      "role": "Role",
+      "company": "Company",
+      "establishment": "Establishment",
+      "numbering_series": "Numbering",
+      "tax_component": "Tax",
+      "unit": "Unit",
+      "custom_field": "Custom field",
+      "setting": "Setting",
+      "module": "Module",
+      "export": "Export"
+    },
+    "actions": {
+      "auth": {
+        "login": "signed in",
+        "logout": "signed out",
+        "login_failed": "sign-in refused",
+        "mfa_enrolled": "turned on two-step sign-in",
+        "mfa_failed": "two-step code refused",
+        "mfa_verified": "confirmed their second factor",
+        "passkey_registered": "registered a passkey",
+        "passkey_removed": "removed a passkey",
+        "password_changed": "changed their password",
+        "password_reset": "reset their password",
+        "recovery_codes_regenerated": "renewed their recovery codes",
+        "step_up": "confirmed who they are"
+      },
+      "company": {
+        "profile_revised": "changed the company profile",
+        "logo_changed": "changed the logo",
+        "logo_removed": "removed the logo",
+        "mfa_required_changed": "changed the two-step requirement"
+      },
+      "customer": {
+        "created": "created the customer",
+        "revised": "changed the customer",
+        "credit_applied": "applied the customer’s credit"
+      },
+      "contact": {
+        "created": "added a contact",
+        "revised": "changed a contact",
+        "deleted": "deleted a contact"
+      },
+      "customer_group": {
+        "created": "created the customer group",
+        "revised": "changed the customer group",
+        "deleted": "deleted the customer group"
+      },
+      "product": {
+        "created": "created the product",
+        "revised": "changed the product"
+      },
+      "product_category": {
+        "created": "created the product category",
+        "revised": "changed the product category",
+        "deleted": "deleted the product category"
+      },
+      "price_list": {
+        "created": "created the price list",
+        "revised": "changed the price list",
+        "deleted": "deleted the price list"
+      },
+      "vendor": {
+        "created": "created the vendor",
+        "revised": "changed the vendor"
+      },
+      "quote": {
+        "created": "created the quote",
+        "revised": "changed the quote",
+        "sent": "sent the quote",
+        "accepted": "marked the quote accepted",
+        "refused": "marked the quote refused",
+        "cancelled": "cancelled the quote",
+        "invoiced": "invoiced the quote"
+      },
+      "invoice": {
+        "created": "created the invoice",
+        "revised": "changed the invoice",
+        "issued": "issued the invoice",
+        "cancelled": "cancelled the invoice",
+        "credited": "credited the invoice"
+      },
+      "payment": {
+        "recorded": "recorded a payment",
+        "deleted": "deleted a payment"
+      },
+      "delivery_note": {
+        "created": "created the delivery note",
+        "revised": "changed the delivery note",
+        "validated": "validated the delivery note",
+        "delivered": "delivered the delivery note",
+        "cancelled": "cancelled the delivery note",
+        "invoiced": "invoiced the delivery note"
+      },
+      "expense": {
+        "created": "created the expense",
+        "revised": "changed the expense",
+        "recorded": "recorded the expense",
+        "paid": "paid the expense",
+        "deleted": "deleted the expense"
+      },
+      "expense_category": {
+        "created": "created the expense category",
+        "revised": "changed the expense category"
+      },
+      "stock_location": {
+        "created": "created the location",
+        "revised": "changed the location",
+        "deleted": "deleted the location"
+      },
+      "role": {
+        "created": "created the role",
+        "revised": "changed the role",
+        "deleted": "deleted the role"
+      },
+      "membership": {
+        "removed": "removed a member"
+      },
+      "invitation": {
+        "sent": "sent an invitation",
+        "accepted": "accepted the invitation"
+      },
+      "setting": {
+        "changed": "changed a setting",
+        "reset": "reset a setting"
+      },
+      "module": {
+        "enabled": "turned a module on",
+        "disabled": "turned a module off"
+      },
+      "export": {
+        "downloaded": "downloaded an export"
+      },
+      "establishment": {
+        "created": "created the establishment",
+        "revised": "changed the establishment"
+      },
+      "numbering_series": {
+        "revised": "changed the numbering"
+      },
+      "tax_component": {
+        "created": "created the tax",
+        "revised": "changed the tax"
+      },
+      "unit": {
+        "created": "created the unit",
+        "revised": "changed the unit"
+      },
+      "custom_field": {
+        "created": "created the custom field",
+        "revised": "changed the custom field"
+      }
+    }
   }
 }

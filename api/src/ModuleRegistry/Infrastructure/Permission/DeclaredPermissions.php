@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\ModuleRegistry\Infrastructure\Permission;
 
+use App\Audit\Infrastructure\ApiPlatform\AuditPermission;
 use App\Fiscal\Infrastructure\ApiPlatform\FiscalPermission;
 use App\ModuleRegistry\Application\ModuleCatalog;
 use App\ModuleRegistry\Infrastructure\ApiPlatform\ModulePermission;
@@ -38,7 +39,7 @@ final readonly class DeclaredPermissions implements KnownPermissions
     /** What a role may grant outside any module, in the order the screen reads them. */
     private const array UNMODULED = [
         'company' => [ModulePermission::READ, ModulePermission::WRITE],
-        'members' => [MemberPermission::READ, MemberPermission::WRITE],
+        'members' => [MemberPermission::READ, MemberPermission::WRITE, AuditPermission::READ],
         'fiscal' => [FiscalPermission::READ, FiscalPermission::WRITE],
     ];
 

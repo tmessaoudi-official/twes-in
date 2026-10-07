@@ -189,6 +189,9 @@
     "quote": {
       "read": "Voir les devis",
       "write": "Créer, modifier et répondre aux devis"
+    },
+    "audit": {
+      "read": "Voir le journal d’activité"
     }
   },
   "members": {
@@ -553,7 +556,8 @@
     },
     "stock_valuation": "Valorisation du stock",
     "price_lists": "Tarifs",
-    "quotes": "Devis"
+    "quotes": "Devis",
+    "activity": "Journal d’activité"
   },
   "shell": {
     "scan_tools": "Scanner",
@@ -1040,6 +1044,9 @@
     "quote": {
       "validity_days": "Durée de validité d’un devis (jours)",
       "signature_block": "Imprimer le bloc « Bon pour accord » (date, nom, signature) sur les devis"
+    },
+    "activity": {
+      "retention_months": "Durée de conservation du journal d’activité (mois, de 12 à 36)"
     }
   },
   "customers": {
@@ -3937,5 +3944,193 @@
     "document_discount": "Part de la remise du document",
     "tax": "{{name}} · base {{base}}",
     "as_typed": "En {{currency}}, calculés à l’instant sur ce qui est saisi : rien n’est enregistré tant que vous n’enregistrez pas."
+  },
+  "activity": {
+    "title": "Journal d’activité",
+    "intro": "Ce qui a été fait dans la société, par qui et sur quoi. Ce qui a changé est nommé, jamais sa valeur.",
+    "none": "Rien dans le journal pour ces filtres.",
+    "nobody": "Personne (non connecté)",
+    "errors": {
+      "not_found": "Ce journal n’est pas accessible.",
+      "invalid": "Ces filtres n’ont pas pu être lus.",
+      "network": "Le serveur ne répond pas. Réessayez dans un instant."
+    },
+    "fields": {
+      "at": "Quand",
+      "actor": "Qui",
+      "action": "Quoi",
+      "record": "Fiche",
+      "fields": "Champs modifiés",
+      "ip": "Adresse"
+    },
+    "kinds": {
+      "customer": "Client",
+      "contact": "Contact",
+      "customer_group": "Groupe de clients",
+      "product": "Article",
+      "product_category": "Catégorie d’articles",
+      "price_list": "Liste de prix",
+      "vendor": "Fournisseur",
+      "quote": "Devis",
+      "invoice": "Facture",
+      "delivery_note": "Bon de livraison",
+      "expense": "Dépense",
+      "expense_category": "Catégorie de dépenses",
+      "stock_location": "Emplacement de stock",
+      "user": "Compte",
+      "membership": "Membre",
+      "invitation": "Invitation",
+      "role": "Rôle",
+      "company": "Société",
+      "establishment": "Établissement",
+      "numbering_series": "Numérotation",
+      "tax_component": "Taxe",
+      "unit": "Unité",
+      "custom_field": "Champ personnalisé",
+      "setting": "Paramètre",
+      "module": "Module",
+      "export": "Export"
+    },
+    "actions": {
+      "auth": {
+        "login": "s’est connecté",
+        "logout": "s’est déconnecté",
+        "login_failed": "connexion refusée",
+        "mfa_enrolled": "a activé la double authentification",
+        "mfa_failed": "code de double authentification refusé",
+        "mfa_verified": "a confirmé son second facteur",
+        "passkey_registered": "a enregistré une clé d’accès",
+        "passkey_removed": "a retiré une clé d’accès",
+        "password_changed": "a changé son mot de passe",
+        "password_reset": "a réinitialisé son mot de passe",
+        "recovery_codes_regenerated": "a renouvelé ses codes de secours",
+        "step_up": "a confirmé son identité"
+      },
+      "company": {
+        "profile_revised": "a modifié le profil de la société",
+        "logo_changed": "a changé le logo",
+        "logo_removed": "a retiré le logo",
+        "mfa_required_changed": "a changé l’exigence de double authentification"
+      },
+      "customer": {
+        "created": "a créé le client",
+        "revised": "a modifié le client",
+        "credit_applied": "a imputé un avoir du client"
+      },
+      "contact": {
+        "created": "a ajouté un contact",
+        "revised": "a modifié un contact",
+        "deleted": "a supprimé un contact"
+      },
+      "customer_group": {
+        "created": "a créé le groupe de clients",
+        "revised": "a modifié le groupe de clients",
+        "deleted": "a supprimé le groupe de clients"
+      },
+      "product": {
+        "created": "a créé l’article",
+        "revised": "a modifié l’article"
+      },
+      "product_category": {
+        "created": "a créé la catégorie d’articles",
+        "revised": "a modifié la catégorie d’articles",
+        "deleted": "a supprimé la catégorie d’articles"
+      },
+      "price_list": {
+        "created": "a créé la liste de prix",
+        "revised": "a modifié la liste de prix",
+        "deleted": "a supprimé la liste de prix"
+      },
+      "vendor": {
+        "created": "a créé le fournisseur",
+        "revised": "a modifié le fournisseur"
+      },
+      "quote": {
+        "created": "a créé le devis",
+        "revised": "a modifié le devis",
+        "sent": "a envoyé le devis",
+        "accepted": "a marqué le devis accepté",
+        "refused": "a marqué le devis refusé",
+        "cancelled": "a annulé le devis",
+        "invoiced": "a facturé le devis"
+      },
+      "invoice": {
+        "created": "a créé la facture",
+        "revised": "a modifié la facture",
+        "issued": "a émis la facture",
+        "cancelled": "a annulé la facture",
+        "credited": "a établi un avoir sur la facture"
+      },
+      "payment": {
+        "recorded": "a enregistré un paiement",
+        "deleted": "a supprimé un paiement"
+      },
+      "delivery_note": {
+        "created": "a créé le bon de livraison",
+        "revised": "a modifié le bon de livraison",
+        "validated": "a validé le bon de livraison",
+        "delivered": "a livré le bon de livraison",
+        "cancelled": "a annulé le bon de livraison",
+        "invoiced": "a facturé le bon de livraison"
+      },
+      "expense": {
+        "created": "a créé la dépense",
+        "revised": "a modifié la dépense",
+        "recorded": "a enregistré la dépense",
+        "paid": "a payé la dépense",
+        "deleted": "a supprimé la dépense"
+      },
+      "expense_category": {
+        "created": "a créé la catégorie de dépenses",
+        "revised": "a modifié la catégorie de dépenses"
+      },
+      "stock_location": {
+        "created": "a créé l’emplacement",
+        "revised": "a modifié l’emplacement",
+        "deleted": "a supprimé l’emplacement"
+      },
+      "role": {
+        "created": "a créé le rôle",
+        "revised": "a modifié le rôle",
+        "deleted": "a supprimé le rôle"
+      },
+      "membership": {
+        "removed": "a retiré un membre"
+      },
+      "invitation": {
+        "sent": "a envoyé une invitation",
+        "accepted": "a accepté l’invitation"
+      },
+      "setting": {
+        "changed": "a changé un paramètre",
+        "reset": "a rétabli un paramètre"
+      },
+      "module": {
+        "enabled": "a activé un module",
+        "disabled": "a désactivé un module"
+      },
+      "export": {
+        "downloaded": "a téléchargé un export"
+      },
+      "establishment": {
+        "created": "a créé l’établissement",
+        "revised": "a modifié l’établissement"
+      },
+      "numbering_series": {
+        "revised": "a modifié la numérotation"
+      },
+      "tax_component": {
+        "created": "a créé la taxe",
+        "revised": "a modifié la taxe"
+      },
+      "unit": {
+        "created": "a créé l’unité",
+        "revised": "a modifié l’unité"
+      },
+      "custom_field": {
+        "created": "a créé le champ personnalisé",
+        "revised": "a modifié le champ personnalisé"
+      }
+    }
   }
 }

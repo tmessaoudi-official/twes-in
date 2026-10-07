@@ -65,6 +65,7 @@ export const ICONS = [
   'gavel',
   'group',
   'group_add',
+  'history',
   'home',
   'hourglass_top',
   'inventory_2',
