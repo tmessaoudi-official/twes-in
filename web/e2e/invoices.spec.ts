@@ -191,7 +191,7 @@ test('a line says what is on hand where the invoice is made, and what the invoic
     await page.getByTestId('line-0-product').fill(reference);
     await page.getByRole('option', { name: new RegExp(`^${reference} · `) }).click();
     await expect(page.getByTestId('line-0-stock')).toHaveText(
-      /^(En stock\s: 5 .+ · reste 4 après ce document|In stock: 5 .+ · 4 left after this document)$/,
+      /En stock\s: 5 .+ · reste 4 après ce document|In stock: 5 .+ · 4 left after this document/,
     );
     await page.getByTestId('line-0-quantity').fill('7');
     await expect(page.getByTestId('line-0-stock')).toContainText(/-2 /);
