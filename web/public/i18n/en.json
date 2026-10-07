@@ -3221,6 +3221,12 @@
           "title": "Receipt costs to complete",
           "hint": "Receipts recorded by someone who cannot see costs: their cost is still to be entered."
         }
+      },
+      "members": {
+        "invitation_unsent": {
+          "title": "Invitations not sent",
+          "hint": "Invitations whose mail did not go out, even after several tries: the person received no link. Invite them again from Members."
+        }
       }
     },
     "columns": {
@@ -3246,7 +3252,10 @@
       "bank": "Bank",
       "due_days": "Due in (days)",
       "location": "Location",
-      "receivedOn": "Received on"
+      "receivedOn": "Received on",
+      "email": "Address",
+      "role": "Role",
+      "invitedOn": "Invited on"
     },
     "actions": {
       "see_invoices": "See {{name}}'s overdue invoices",

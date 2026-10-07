@@ -55,6 +55,44 @@ describe('watchRowView', () => {
     expect(view.cells['days']).toBe(-2);
   });
 
+  it('writes an unsent invitation with its address, its role as the members page names it and its days', () => {
+    const say = (key: string): string => (key === 'roles.member' ? 'membre' : key);
+    const shipped = watchRowView(
+      {
+        kind: 'members.invitation_unsent',
+        subjectId: 'i1',
+        params: {
+          email: 'sami@example.tn',
+          role: 'member',
+          roleBuiltIn: 1,
+          invitedOn: '2026-10-06',
+          expiresOn: '2026-10-13',
+        },
+      },
+      0,
+      figures,
+      say,
+    );
+    expect([
+      shipped.cells['email'],
+      shipped.cells['role'],
+      shipped.cells['invitedOn'],
+      shipped.cells['expiresOn'],
+    ]).toEqual(['sami@example.tn', 'Membre', '06/10/2026', '13/10/2026']);
+
+    const own = watchRowView(
+      {
+        kind: 'members.invitation_unsent',
+        subjectId: 'i2',
+        params: { email: 'a@b.tn', role: 'Comptable', roleBuiltIn: 0, invitedOn: '2026-10-06' },
+      },
+      1,
+      figures,
+      say,
+    );
+    expect(own.cells['role']).toBe('Comptable');
+  });
+
   it('writes a receipt whose cost is to complete with its place and the day it arrived', () => {
     const view = watchRowView(
       {

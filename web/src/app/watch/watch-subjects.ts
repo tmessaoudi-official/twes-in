@@ -177,6 +177,23 @@ export const WATCH_SUBJECTS: Readonly<Record<string, WatchSubjectView>> = {
       daysColumn('expired_days', 'expired_days', (days) => -days),
     ]),
   },
+  // An invitation whose mail failed for good: the person got no link, so the way in is the members page, to invite again.
+  'members.invitation_unsent': {
+    icon: 'forward_to_inbox',
+    list: {
+      id: 'watch-invitation-unsent',
+      rowId: (view) => view.id,
+      pageSizes: PAGE_SIZES,
+      link: () => ['/members'],
+      linkColumn: 'email',
+      columns: [
+        cell('email', { hideable: false }),
+        cell('role', { width: 180 }),
+        cell('invitedOn', { width: 140 }),
+        cell('expiresOn', { width: 140 }),
+      ],
+    },
+  },
   'stock.receipt_cost_to_complete': {
     icon: 'request_quote',
     list: {

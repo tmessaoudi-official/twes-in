@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { CapitalizePipe } from '../shared/i18n/capitalize-pipe';
 import type { FormatFacade } from '../shared/i18n/format-facade';
 import type { WatchRow } from './watch-types';
 
@@ -44,8 +45,17 @@ export function watchRowView(
     'number',
     'bank',
     'location',
+    'email',
   ] as const) {
     if (name in params) cells[name] = text(params, name);
+  }
+  // A shipped role is translated as the members page names it, raised; a role the company made is its own name.
+  if ('role' in params) {
+    const role = text(params, 'role');
+    cells['role'] =
+      Number(params['roleBuiltIn'] ?? 0) === 1
+        ? new CapitalizePipe().transform(say(`roles.${role}`))
+        : role;
   }
   if ('kind' in params) cells['kind'] = say(`invoices.instruments.kinds.${text(params, 'kind')}`);
   if ('invoices' in params) cells['invoices'] = Number(params['invoices']);
@@ -58,6 +68,7 @@ export function watchRowView(
   }
   if ('expiresOn' in params) cells['expiresOn'] = figures.day(text(params, 'expiresOn'));
   if ('receivedOn' in params) cells['receivedOn'] = figures.day(text(params, 'receivedOn'));
+  if ('invitedOn' in params) cells['invitedOn'] = figures.day(text(params, 'invitedOn'));
   if ('days' in params) cells['days'] = Number(params['days']);
   return { id: String(index), row, cells };
 }

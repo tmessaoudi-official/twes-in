@@ -16,10 +16,13 @@ use App\Tenancy\Domain\Invitation;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;
 use App\Tenancy\Infrastructure\Invitation\InvitationToMail;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\Envelope;
+use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\ReceivedStamp;
+use Symfony\Component\Messenger\Stamp\RedeliveryStamp;
 use Symfony\Component\Mime\Email as MimeEmail;
 
 /**
@@ -276,6 +279,51 @@ final class InvitationTest extends ApiTestCase
         $this->signOut();
         $this->getJson('/api/invitations/'.$token);
         self::assertResponseIsSuccessful();
+    }
+
+    public function testAnInvitationWhoseMailFailedForGoodIsWatchedUntilItIsMailed(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
+        $this->createUser('reader@twes.local', 'password-1234', $this->company, ['company.read'], Role::MEMBER);
+        $this->login('owner@twes.local', 'password-1234');
+        $company = '/api/companies/'.$this->company->getId()->toRfc4122();
+        $this->postJson($company.'/members', ['email' => 'stranger@twes.local', 'role' => Role::MEMBER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        [$message] = $this->queued();
+        self::assertInstanceOf(InvitationToMail::class, $message);
+        // What the worker says when a message fails, after the retries it has made: Symfony's retry listener runs first and
+        // decides from the envelope's redelivery count (`max_retries: 3`), so a first failure is tried again and a fourth is
+        // for good.
+        $failed = static fn (int $retries): WorkerMessageFailedEvent => new WorkerMessageFailedEvent(
+            new Envelope($message, [new ReceivedStamp('async'), ...(0 === $retries ? [] : [new RedeliveryStamp($retries)])]),
+            'async',
+            new \RuntimeException('The mail server is unreachable.'),
+        );
+        $unsent = $company.'/watch/members.invitation_unsent';
+
+        static::getContainer()->get(EventDispatcherInterface::class)->dispatch($failed(0));
+        $this->getJson($unsent);
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->jsonList(), 'a mail the worker will try again is not a failure yet');
+
+        static::getContainer()->get(EventDispatcherInterface::class)->dispatch($failed(3));
+        $this->getJson($unsent);
+        self::assertResponseIsSuccessful();
+        $rows = $this->jsonList();
+        self::assertCount(1, $rows);
+        self::assertSame($message->invitationId, $rows[0]['subjectId'] ?? null);
+        self::assertSame('stranger@twes.local', $this->arrayAt($rows[0], 'params')['email'] ?? null);
+
+        $this->login('reader@twes.local', 'password-1234');
+        $this->getJson($unsent);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the subject is for whoever may invite');
+
+        // Sent again (`messenger:failed:retry`), the mail goes out and the invitation leaves the subject.
+        $this->login('owner@twes.local', 'password-1234');
+        static::getContainer()->get(MessageBusInterface::class)->dispatch(new Envelope($message, [new ReceivedStamp('async')]));
+        self::assertEmailCount(1);
+        $this->getJson($unsent);
+        self::assertSame([], $this->jsonList());
     }
 
     public function testAnInvitationReplacedBeforeTheWorkerRanIsNotMailed(): void

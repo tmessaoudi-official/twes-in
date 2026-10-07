@@ -66,6 +66,13 @@ class Invitation implements CompanyOwned
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $acceptedAt = null;
 
+    /**
+     * When the worker gave up mailing it, after its retries; null while it was mailed or is being. Written by the worker's
+     * failure listener (`InvitationMailFailed`), outside this entity: by then the handler's entity manager may be closed.
+     */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $mailFailedAt = null;
+
     public function __construct(
         Company $company,
         Email $email,
@@ -99,6 +106,8 @@ class Invitation implements CompanyOwned
     public function renewToken(InvitationToken $token): void
     {
         $this->tokenHash = $token->hash();
+        // A new sending is under way: a failure before it no longer stands, and the worker says so again if this one fails.
+        $this->mailFailedAt = null;
     }
 
     /** @throws \DomainException when it was already used or has expired */
@@ -158,5 +167,10 @@ class Invitation implements CompanyOwned
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getMailFailedAt(): ?\DateTimeImmutable
+    {
+        return $this->mailFailedAt;
     }
 }

@@ -3221,6 +3221,12 @@
           "title": "Coûts de réception à compléter",
           "hint": "Des réceptions saisies par quelqu’un qui ne voit pas les coûts : leur coût reste à saisir."
         }
+      },
+      "members": {
+        "invitation_unsent": {
+          "title": "Invitations non envoyées",
+          "hint": "Des invitations dont le mail n’est pas parti, même après plusieurs essais : la personne n’a reçu aucun lien. Invitez-la de nouveau depuis Membres."
+        }
       }
     },
     "columns": {
@@ -3246,7 +3252,10 @@
       "bank": "Banque",
       "due_days": "Échéance dans (jours)",
       "location": "Emplacement",
-      "receivedOn": "Reçue le"
+      "receivedOn": "Reçue le",
+      "email": "Adresse",
+      "role": "Rôle",
+      "invitedOn": "Invitée le"
     },
     "actions": {
       "see_invoices": "Voir les factures en retard de {{name}}",

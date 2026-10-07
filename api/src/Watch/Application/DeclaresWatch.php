@@ -25,8 +25,11 @@ interface DeclaresWatch
     /** Stable, lowercase: the prefix of every kind it answers (`invoices`, `stock`), and the order of the list. */
     public function key(): string;
 
-    /** The key of the module it belongs to: switched off, its subjects are not shown. */
-    public function module(): string;
+    /**
+     * The key of the module it belongs to: switched off, its subjects are not shown. Null for a subject of the core
+     * (the members), shown whatever is switched on, as a first step of the core is.
+     */
+    public function module(): ?string;
 
     /** The permission that reads its subject: a member whose role lacks it is shown none of its subjects. */
     public function permission(): string;

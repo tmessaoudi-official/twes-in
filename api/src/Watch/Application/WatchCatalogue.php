@@ -80,6 +80,8 @@ final readonly class WatchCatalogue
     /** @param \Closure(string): bool $may */
     private function shown(DeclaresWatch $declaration, Company $company, \Closure $may): bool
     {
-        return $this->modules->isEnabled($company->getId(), $declaration->module()) && $may($declaration->permission());
+        $module = $declaration->module();
+
+        return (null === $module || $this->modules->isEnabled($company->getId(), $module)) && $may($declaration->permission());
     }
 }
