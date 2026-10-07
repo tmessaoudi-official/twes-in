@@ -71,6 +71,9 @@ import {
 } from './inventory-types';
 import { SILENT } from '../shared/feedback/activity-interceptor';
 
+/** How many products one question about stock on hand may name (`StockOnHandResource::MOST`). */
+const ON_HAND_MOST = 100;
+
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class InventoryRefused extends Error {
   constructor(readonly code: InventoryError) {
@@ -118,7 +121,7 @@ export class InventoryApi {
   }
 
   /**
-   * What the establishment's shelves hold of the products a document's lines name, for those whose stock is kept; the
+   * What the establishment's shelves hold of the first hundred products a document's lines name, for those whose stock is kept; the
    * main establishment's when none is named. Asked in the background while lines are typed, so it shows no activity.
    */
   async onHand(
@@ -129,7 +132,8 @@ export class InventoryApi {
     if (productIds.length === 0) return [];
     return this.guard(async () => {
       let params = new HttpParams();
-      for (const id of productIds) params = params.append('ids[]', id);
+      // The API takes at most this many at once: a longer document is told of its first hundred.
+      for (const id of productIds.slice(0, ON_HAND_MOST)) params = params.append('ids[]', id);
       if (establishmentId !== null) params = params.set('establishmentId', establishmentId);
       const answer = await firstValueFrom(
         this.http.get<StockOnHandStockOnHandRead>(`${path(companyId, 'stock-options')}/on-hand`, {

@@ -165,6 +165,13 @@ describe('InventoryApi', () => {
     unnamed.flush({});
     expect(await main).toEqual([]);
 
+    const many = Array.from({ length: 101 }, (_, at) => `p${at}`);
+    const first = api.onHand('c1', 'e1', many);
+    const capped = http.expectOne((each) => each.url === '/api/companies/c1/stock-options/on-hand');
+    expect(capped.request.params.getAll('ids[]')).toEqual(many.slice(0, 100));
+    capped.flush({ items: [] });
+    await first;
+
     expect(await api.onHand('c1', 'e1', [])).toEqual([]);
     http.verify();
   });

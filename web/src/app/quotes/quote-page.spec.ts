@@ -15,6 +15,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import type { CustomerOption, InvoiceOptions, ProductOption } from '../invoices/invoices-types';
 import { ProductScans } from '../products/product-scans';
+import { InventoryFacade } from '../inventory/inventory-facade';
 import type { PickAsked } from '../shared/form/pick-api';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
@@ -178,6 +179,7 @@ describe('QuotePage', () => {
     pdfUrl: (c: string, id: string) => `/api/companies/${c}/quotes/${id}/pdf`,
   };
   const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
+  const inventory = { onHand: vi.fn() };
   const granted = new Set<string>();
   const modules = new Set<string>();
   const auth = {
@@ -232,6 +234,7 @@ describe('QuotePage', () => {
     modules.clear();
     ['quotes', 'invoices', 'products'].forEach((each) => modules.add(each));
     scans.piecesPerScan.mockReset().mockResolvedValue(null);
+    inventory.onHand.mockReset().mockResolvedValue([]);
     facade.loadQuote.mockReset().mockResolvedValue(undefined);
     facade.create.mockReset().mockResolvedValue({ ...draft, id: 'q9' });
     facade.revise.mockReset().mockResolvedValue(draft);
@@ -264,6 +267,7 @@ describe('QuotePage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: QuotesFacade, useValue: facade },
         { provide: ProductScans, useValue: scans },
+        { provide: InventoryFacade, useValue: inventory },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -275,6 +279,26 @@ describe('QuotePage', () => {
 
   afterEach(() => {
     document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
+  it('says under a line what is on hand where the quote is made, for whoever may read stock', async () => {
+    modules.add('inventory');
+    granted.add('stock.read');
+    inventory.onHand.mockResolvedValue([{ productId: 'p1', unitId: 'u1', onHand: '1.000' }]);
+    quote.set(draft);
+    await open('q1');
+    await settle();
+
+    expect(inventory.onHand).toHaveBeenLastCalledWith('c1', 'e1', ['p1']);
+    expect(q('line-0-stock')?.textContent).toContain('invoices.lines.stock_left');
+    expect(q('line-0-stock')?.classList).toContain('text-error');
+
+    granted.delete('stock.read');
+    inventory.onHand.mockClear();
+    await open('q1');
+    await settle();
+    expect(inventory.onHand).not.toHaveBeenCalled();
+    expect(q('line-0-stock')).toBeNull();
   });
 
   it('marks a draft sent only once asked, with the lines shown saved first', async () => {

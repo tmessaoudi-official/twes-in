@@ -768,6 +768,24 @@ describe('InvoicePage', () => {
     expect(inventory.onHand).toHaveBeenCalledTimes(1);
   });
 
+  it('says nothing of stock on a credit note, which takes no goods out', async () => {
+    modulesOn.add('inventory');
+    granted.add('stock.read');
+    inventory.onHand.mockResolvedValue([{ productId: 'p1', unitId: 'u1', onHand: '5.000' }]);
+    invoice.set({ ...draft, type: 'credit_note', correctsInvoiceId: 'i0' });
+    await open('i1');
+    await settle();
+
+    expect(inventory.onHand).not.toHaveBeenCalled();
+    expect(q('line-0-stock')).toBeNull();
+
+    // The same draft as an invoice does say it.
+    invoice.set(draft);
+    await open('i1');
+    await settle();
+    expect(q('line-0-stock')).not.toBeNull();
+  });
+
   it('says nothing of stock to somebody who may not read it', async () => {
     modulesOn.add('inventory');
     inventory.onHand.mockResolvedValue([{ productId: 'p1', unitId: 'u1', onHand: '5.000' }]);
