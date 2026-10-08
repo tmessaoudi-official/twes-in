@@ -7,6 +7,7 @@ import { SILENT } from '../shared/feedback/activity-interceptor';
 import { isPeriodClosed } from '../shared/documents/period-closed';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { filenameOf } from '../shared/files/save-file';
 import type {
   InvoiceDocumentPreviewDocumentPreviewValidationInvoiceWrite,
   ApiCompaniesCompanyIdinvoicesGetCollectionResponse,
@@ -36,6 +37,9 @@ import {
   type InvoiceOptions,
   type InvoiceRow,
   type CreditExcessTo,
+  type FacturXAnswer,
+  type FacturXFormat,
+  type FacturXRefusalCode,
   type InvoiceSearch,
   type InvoicesError,
   type InvoiceStatusCounts,
@@ -324,6 +328,35 @@ export class InvoicesApi {
     return `${invoicePath(companyId, id)}/pdf`;
   }
 
+  /**
+   * An issued document's Factur-X, fetched rather than linked, so a refusal is said in the page: 409 for a draft, 422
+   * with every datum the document lacks. Any other failure is refused as usual.
+   */
+  async facturX(companyId: string, id: string, format: FacturXFormat): Promise<FacturXAnswer> {
+    try {
+      const response = await firstValueFrom(
+        this.http.get(`${invoicePath(companyId, id)}/factur-x.${format}`, {
+          observe: 'response',
+          responseType: 'blob',
+        }),
+      );
+      return {
+        kind: 'file',
+        file: response.body ?? new Blob([]),
+        filename: filenameOf(response.headers.get('Content-Disposition')) ?? `factur-x.${format}`,
+      };
+    } catch (error) {
+      if (
+        error instanceof HttpErrorResponse &&
+        (error.status === 409 || error.status === 422) &&
+        error.error instanceof Blob
+      ) {
+        return toFacturXRefusal(JSON.parse(await error.error.text()) as RawFacturXRefusal);
+      }
+      throw new InvoicesRefused(codeOf(error));
+    }
+  }
+
   /** A duplicate (the document as issued) or an up-to-date copy (with what was paid since), printed on request. */
   pdfCopyUrl(companyId: string, id: string, kind: 'duplicate' | 'current'): string {
     return `${invoicePath(companyId, id)}/pdf/${kind}`;
@@ -386,6 +419,21 @@ const PARTY_IDENTITY: Readonly<Record<string, InvoicesError>> = {
   seller_identity: 'missing_seller_identity',
   customer_identity: 'missing_customer_identity',
 };
+
+interface RawFacturXRefusal {
+  code: FacturXRefusalCode;
+  params?: Record<string, string | number>;
+  gaps?: { code: string; params?: Record<string, string | number | string[]> }[];
+}
+
+function toFacturXRefusal(raw: RawFacturXRefusal): FacturXAnswer {
+  return {
+    kind: 'refused',
+    code: raw.code,
+    params: { ...(raw.params ?? {}) },
+    gaps: (raw.gaps ?? []).map((gap) => ({ code: gap.code, params: { ...(gap.params ?? {}) } })),
+  };
+}
 
 function fieldCode(field: string | null): InvoicesError {
   if (field === 'customerId') return 'customer_unavailable';

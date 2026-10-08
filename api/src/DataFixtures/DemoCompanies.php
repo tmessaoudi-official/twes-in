@@ -111,6 +111,21 @@ final class DemoCompanies extends Fixture
     private const int FIRST_DAY = -170;
     private const int INVOICES = 28;
     private const array STREETS = ['rue de la République', 'avenue de la Liberté', 'rue des Jardins', 'place du Marché'];
+    /**
+     * Each demo customer's town and its postal code, so that every address is whole: a document's Factur-X names the
+     * buyer's postal code and country (EN 16931 BG-8), and an address without them is refused.
+     */
+    private const array POSTAL_CODES = [
+        'Tunis' => '1000', 'Sfax' => '3000', 'Sousse' => '4000', 'Houmt Souk' => '4180', 'Kairouan' => '3100',
+        'Bizerte' => '7000', 'Nabeul' => '8000', 'Gabès' => '6000', 'Tozeur' => '2200', 'Monastir' => '5000',
+        'Hammamet' => '8050', 'Tabarka' => '8110', 'Mahdia' => '5100', 'Béja' => '9000', 'Zaghouan' => '1100',
+        'Kasserine' => '1200', 'Jendouba' => '8100', 'Siliana' => '6100', 'Ariana' => '2080', 'Ben Arous' => '2013',
+        'Manouba' => '2010', 'Kébili' => '4200', 'Médenine' => '4100', 'La Marsa' => '2070', 'Hamburg' => '20095',
+        'Lyon' => '69002', 'Annecy' => '74000', 'Grenoble' => '38000', 'Villeurbanne' => '69100', 'Bron' => '69500',
+        'Chambéry' => '73000', 'Paris' => '75003', 'Mâcon' => '71000', 'Valence' => '26000', 'Beaune' => '21200',
+        'Vienne' => '38200', 'Aix-les-Bains' => '73100', 'Écully' => '69130', 'Givors' => '69700', 'Cluny' => '71250',
+        'Oyonnax' => '01100', 'Caluire' => '69300', 'Berlin' => '10115', 'Genève' => '1201',
+    ];
     private const array METHODS = [PaymentMethod::Transfer, PaymentMethod::Check, PaymentMethod::Cash, PaymentMethod::Card];
 
     public function __construct(
@@ -250,7 +265,7 @@ final class DemoCompanies extends Fixture
                 identifiers: $row->identifiers,
                 email: $row->individual ? "$slug@courriel.example" : "contact@$slug.example",
                 phone: $this->phone($demo->country, $n),
-                billingAddress: new PostalAddress(\sprintf('%d, %s', 3 + 4 * $n, self::STREETS[$n % \count(self::STREETS)]), null, null, $row->city, $row->country),
+                billingAddress: new PostalAddress(\sprintf('%d, %s', 3 + 4 * $n, self::STREETS[$n % \count(self::STREETS)]), null, self::POSTAL_CODES[$row->city] ?? throw new \LogicException("No postal code is given for $row->city."), $row->city, $row->country ?? $demo->country),
                 defaultDiscountRate: 0 === $row->group ? '5' : null,
             );
             $withholds = $row->withheld && null !== $demo->withholdingCode;

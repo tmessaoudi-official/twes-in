@@ -648,6 +648,18 @@ describe('DeliveryNotePage', () => {
     await vi.waitFor(() => expect(effectToasts()).toEqual(['delivery_notes.cancelled:definitif']));
   });
 
+  /** A draft's PDF is a preview, not the document: it says so, as an invoice's and a quote's do. */
+  it('calls a draft’s PDF a preview and a numbered note’s the PDF itself', async () => {
+    note.set(draft);
+    await open('n1');
+    expect(q('document-action-pdf')?.textContent).toContain('delivery_notes.actions.pdf_draft');
+
+    note.set(validated);
+    await settle();
+    expect(q('document-action-pdf')?.textContent).toContain('delivery_notes.actions.pdf');
+    expect(q('document-action-pdf')?.textContent).not.toContain('pdf_draft');
+  });
+
   it('shows an invoiced note with its delivery day and PDF, neither delivered nor cancelled again', async () => {
     note.set({ ...validated, status: 'invoiced', deliveryDate: '2026-09-20' });
     await open('n1');

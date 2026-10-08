@@ -435,5 +435,8 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   `main.ts`'s static imports in `dist/web/browser-stats.json` for the inputs. A shell-level service importing a feature's
   whole API class puts it on the first page (`ProductScanDetails` carried all of `InventoryApi`, 13.5 kB): load it with
   `await import()` where the shell needs one call of it (2026-10-08).
+- Never remove `.cdk-overlay-container` in the middle of a spec: the CDK keeps the detached element and opens every later
+  menu off the document, so a following `toBeNull()` passes on nothing (a mutant survived it, 2026-10-08). To open a second
+  page in one case, `fixture.destroy()` the first, which closes its menu; leave the removal to `afterEach`.
 - For the next expertise refresh: `.claude/rules/expertise-core.md` § 2 still says the locked customer screen is NOT built
   and `hides()` is the code; it was built (rows 205, 207), `hides()` is gone, and the lock is held by the API session (2026-10-06).

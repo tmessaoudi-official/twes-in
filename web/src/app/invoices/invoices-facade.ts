@@ -7,6 +7,8 @@ import type { PickAsked } from '../shared/form/pick-api';
 import type {
   CreditExcessTo,
   CustomerOption,
+  FacturXAnswer,
+  FacturXFormat,
   InvoiceInput,
   InvoiceOptions,
   InvoiceRow,
@@ -227,6 +229,24 @@ export class InvoicesFacade {
 
   pdfCopyUrl(companyId: string, id: string, kind: 'duplicate' | 'current'): string {
     return this.api.pdfCopyUrl(companyId, id, kind);
+  }
+
+  /** An issued document's Factur-X, or why it is not written; null when the call failed, with the error said. */
+  async facturX(
+    companyId: string,
+    id: string,
+    format: FacturXFormat,
+  ): Promise<FacturXAnswer | null> {
+    this.busySignal.set(true);
+    this.errorSignal.set(null);
+    try {
+      return await this.api.facturX(companyId, id, format);
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return null;
+    } finally {
+      this.busySignal.set(false);
+    }
   }
 
   clearError(): void {

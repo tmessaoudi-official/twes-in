@@ -1586,7 +1586,9 @@
       "confirm_issue": "Émettre",
       "apply_credit": "Appliquer le crédit",
       "record_overpayment": "Enregistrer un trop-perçu",
-      "issue_message_numbered": "Elle recevra le numéro {{number}}, pour {{total}} à {{customer}}, et ne se modifiera plus : une erreur se corrigera par un avoir."
+      "issue_message_numbered": "Elle recevra le numéro {{number}}, pour {{total}} à {{customer}}, et ne se modifiera plus : une erreur se corrigera par un avoir.",
+      "factur_x_pdf": "Factur-X (PDF/A-3)",
+      "factur_x_xml": "Factur-X (XML seul)"
     },
     "overpayment": {
       "title": "Enregistrer un trop-perçu",
@@ -1689,6 +1691,35 @@
           "title": "Enregistrer, puis émettre",
           "body": "Enregistrez le brouillon autant de fois qu’il le faut. « Émettre » lui donne son numéro pour de bon : une facture émise ne se modifie plus, elle se corrige par un avoir."
         }
+      }
+    },
+    "factur_x": {
+      "refused_title": "Factur-X non écrit",
+      "close": "Fermer",
+      "refused": {
+        "not_issued": "Un brouillon n’a pas de Factur-X : il s’écrit une fois la facture émise.",
+        "preset_not_supported": "Factur-X ne s’écrit que pour une entreprise française.",
+        "incomplete_document": "Il manque ce que la norme EN 16931 demande. Complétez-le, puis téléchargez à nouveau :"
+      },
+      "gaps": {
+        "seller_siren_missing": "Le SIREN de votre entreprise (profil de l’entreprise)",
+        "seller_vat_number_missing": "Le numéro de TVA intracommunautaire de votre entreprise (profil de l’entreprise)",
+        "seller_address_incomplete": "L’adresse de votre entreprise : {{missing}}",
+        "buyer_address_incomplete": "L’adresse du client : {{missing}}",
+        "buyer_vat_number_missing": "Le numéro de TVA intracommunautaire du client",
+        "line_tax_unsupported": "Ligne {{line}} : la taxe {{code}} n’a pas d’équivalent en Factur-X",
+        "line_vat_ambiguous": "Ligne {{line}} : plusieurs TVA ({{codes}}), une seule est admise",
+        "vat_category_unknown": "Ligne {{line}} : la catégorie de la TVA {{code}} est inconnue",
+        "vat_exemption_undeclared": "Ligne {{line}} : le motif d’exonération du régime {{regime}} n’est pas indiqué",
+        "document_tax_unsupported": "La taxe {{code}} du document n’a pas d’équivalent en Factur-X",
+        "vat_rate_shared": "Le taux de {{rate}} % est porté par deux TVA ({{codes}})",
+        "vat_rounding_differs": "Le total de la TVA à {{rate}} % ne retombe pas sur la somme de ses lignes"
+      },
+      "parts": {
+        "line1": "la rue",
+        "postalCode": "le code postal",
+        "city": "la ville",
+        "countryCode": "le pays"
       }
     }
   },
@@ -1911,7 +1942,6 @@
       "title": "Catégories de produits",
       "intro": "Les catégories rangent les produits en arborescence. Une catégorie qui contient encore des sous-catégories ou des produits ne peut pas être supprimée.",
       "add": "Ajouter une catégorie",
-      "delete": "Supprimer",
       "delete_named": "Supprimer {{name}}",
       "saved": "La catégorie a été enregistrée.",
       "none": "Aucune catégorie pour l’instant.",

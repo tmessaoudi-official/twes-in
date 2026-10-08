@@ -10,10 +10,14 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\DataFixtures\DemoCompanies;
+use App\Module\Invoices\Application\FacturX\ExportFacturX;
+use App\Module\Invoices\Application\FacturX\FacturXRefused;
+use App\Tenancy\Domain\Company;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\Console\Tester\ApplicationTester;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * The demo dataset (docs/SPEC.md § 7, 2026-09-19): two companies the seeded operator owns, filled through the use
@@ -121,6 +125,28 @@ final class DemoFixturesTest extends ApiTestCase
         self::assertSame(0, $this->numberOf("SELECT COUNT(*) FROM stock_movement m JOIN product p ON p.id = m.product_id WHERE (p.tracking = 'none') <> (m.lot_id IS NULL)", []), 'a movement names a lot exactly when its product tracks one');
         self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM stock_movement WHERE source_type = 'delivery_note' AND lot_id IS NOT NULL", []), 'a delivery note took goods from their lots');
         self::assertInstanceOf(NativeClock::class, Clock::get(), 'the clock the load moved is given back');
+
+        // Every document the French company issued is written as Factur-X, so the invoice screen's « Factur-X » has a
+        // file to hand over rather than a list of what the demo forgot (a customer's postal code, its country). Two
+        // are refused, and the screen shows why: a sale to the customer whose regime is plain « exempt », which names
+        // no exempting article, and the intra-community sale, whose customer cannot yet hold a VAT number of its own
+        // country.
+        $mercier = $this->row("SELECT id FROM company WHERE name = 'Atelier Mercier'", [])['id'];
+        self::assertIsString($mercier);
+        $company = $this->em()->find(Company::class, Uuid::fromString($mercier));
+        self::assertInstanceOf(Company::class, $company);
+        $export = static::getContainer()->get(ExportFacturX::class);
+        $refused = [];
+        foreach ($this->column("SELECT id FROM invoice WHERE company_id = ? AND status NOT IN ('draft', 'cancelled') ORDER BY number", [$mercier]) as $invoiceId) {
+            self::assertIsString($invoiceId);
+            try {
+                $export->xml($company, Uuid::fromString($invoiceId));
+            } catch (FacturXRefused $refusal) {
+                $refused[] = array_column($refusal->gaps, 'code');
+            }
+        }
+        sort($refused);
+        self::assertSame([['buyer_vat_number_missing'], ['vat_exemption_undeclared']], $refused);
     }
 
     public function testASecondLoadChangesNothing(): void

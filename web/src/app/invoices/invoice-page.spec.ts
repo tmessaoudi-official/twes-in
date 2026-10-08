@@ -22,6 +22,7 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { InvoicePage } from './invoice-page';
+import { FileSaver } from '../shared/files/save-file';
 import { InvoicesFacade } from './invoices-facade';
 import { PREVIEW_DELAY, type PreviewBody } from '../shared/documents/document-figures';
 import { InventoryFacade } from '../inventory/inventory-facade';
@@ -261,7 +262,11 @@ describe('InvoicePage', () => {
     pdfUrl: (companyId: string, id: string) => `/api/companies/${companyId}/invoices/${id}/pdf`,
     pdfCopyUrl: (companyId: string, id: string, kind: string) =>
       `/api/companies/${companyId}/invoices/${id}/pdf/${kind}`,
+    facturX: vi.fn(),
   };
+  const saver = { save: vi.fn() };
+  /** The company's country, which says whether Factur-X is written for it at all; none in most cases. */
+  let country: string | undefined;
   const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
   const inventory = { onHand: vi.fn() };
   const display = { show: vi.fn(), total: vi.fn(), clear: vi.fn(), openWindow: vi.fn() };
@@ -271,7 +276,7 @@ describe('InvoicePage', () => {
   const auth = {
     me: () => ({
       user: { id: 'u1' },
-      company: { id: 'c1', name: 'Acme', timezone: 'Africa/Tunis' },
+      company: { id: 'c1', name: 'Acme', timezone: 'Africa/Tunis', countryCode: country },
       plannedModules: [
         { key: 'mailing', planned: 'v1' },
         { key: 'whatsapp', planned: 'v1' },
@@ -360,6 +365,9 @@ describe('InvoicePage', () => {
     invoice.set(null);
     granted.clear();
     modulesOn.clear();
+    country = undefined;
+    facade.facturX.mockReset();
+    saver.save.mockReset();
     facade.productPrice.mockReset().mockResolvedValue(null);
     ['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write'].forEach(
       (each) => granted.add(each),
@@ -404,6 +412,7 @@ describe('InvoicePage', () => {
         { provide: CustomerDisplay, useValue: display },
         { provide: RecurringApi, useValue: recurring },
         { provide: AuthFacade, useValue: auth },
+        { provide: FileSaver, useValue: saver },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -1283,6 +1292,93 @@ describe('InvoicePage', () => {
     await settle();
     expect(over('document-menu-print-duplicate')).toBeNull();
     expect(over('document-menu-print-current')).toBeNull();
+  });
+
+  /** Factur-X is written for a French company's issued documents only, so nobody else is offered it. */
+  it('offers the Factur-X files of a French company’s issued invoice, and of nothing else', async () => {
+    country = 'FR';
+    invoice.set(issued);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-factur-x-pdf')).not.toBeNull();
+    expect(over('document-menu-factur-x-xml')).not.toBeNull();
+
+    // The menu opened above would stay open, and the next page would read it as its own.
+    fixture.destroy();
+    invoice.set(draft);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-factur-x-pdf')).toBeNull();
+
+    // A cancelled invoice was issued once, but the API writes Factur-X only of what stands.
+    fixture.destroy();
+    invoice.set({ ...issued, status: 'cancelled' });
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-factur-x-pdf')).toBeNull();
+
+    fixture.destroy();
+    country = 'TN';
+    invoice.set(issued);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-factur-x-pdf')).toBeNull();
+    expect(over('document-menu-factur-x-xml')).toBeNull();
+  });
+
+  it('hands over the Factur-X file under the name the API gave it', async () => {
+    country = 'FR';
+    const file = new Blob(['<xml/>']);
+    facade.facturX.mockResolvedValue({
+      kind: 'file',
+      file,
+      filename: 'FA-2026-00001-factur-x.xml',
+    });
+    invoice.set(issued);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    over('document-menu-factur-x-xml')!.click();
+    await settle();
+
+    expect(facade.facturX).toHaveBeenCalledWith('c1', 'i1', 'xml');
+    expect(saver.save).toHaveBeenCalledWith(file, 'FA-2026-00001-factur-x.xml');
+  });
+
+  /** A refused file says what is missing, item by item, rather than leaving a download that never comes. */
+  it('names every gap that keeps the Factur-X from being written', async () => {
+    country = 'FR';
+    facade.facturX.mockResolvedValue({
+      kind: 'refused',
+      code: 'incomplete_document',
+      params: {},
+      gaps: [
+        { code: 'seller_siren_missing', params: {} },
+        { code: 'buyer_address_incomplete', params: { missing: ['postalCode', 'city'] } },
+      ],
+    });
+    invoice.set(issued);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    over('document-menu-factur-x-pdf')!.click();
+    await settle();
+
+    expect(saver.save).not.toHaveBeenCalled();
+    expect(over('factur-x-refusal')?.textContent).toContain(
+      'invoices.factur_x.refused.incomplete_document',
+    );
+    expect(over('factur-x-gap-seller_siren_missing')).not.toBeNull();
+    expect(over('factur-x-gap-buyer_address_incomplete')?.textContent).toContain(
+      'invoices.factur_x.gaps.buyer_address_incomplete',
+    );
+    over('factur-x-close')!.click();
+    await settle();
+    await vi.waitFor(() => expect(over('factur-x-refusal')).toBeNull());
   });
 
   it('records a payment on the company’s today, for what is still due unless changed', async () => {

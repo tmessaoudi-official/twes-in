@@ -22,6 +22,12 @@ export function saveFile(file: Blob, filename: string): void {
   }
 }
 
+/** The name a `Content-Disposition` header gives its file, quoted or not, as Symfony writes it. */
+export function filenameOf(disposition: string | null): string | null {
+  const match = /filename="?([^";]+)"?/.exec(disposition ?? '');
+  return match?.[1] ?? null;
+}
+
 /** `saveFile` behind a class, so a component that downloads can be tested without a browser download. */
 @Injectable({ providedIn: 'root' })
 export class FileSaver {

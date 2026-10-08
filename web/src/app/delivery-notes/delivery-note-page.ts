@@ -353,7 +353,10 @@ export class DeliveryNotePage {
       },
       {
         id: 'pdf',
-        label: 'delivery_notes.actions.pdf',
+        label:
+          this.current()?.status === 'draft'
+            ? 'delivery_notes.actions.pdf_draft'
+            : 'delivery_notes.actions.pdf',
         icon: 'picture_as_pdf',
         href: this.pdfUrl() ?? undefined,
         shown: this.pdfUrl() !== null,

@@ -59,7 +59,9 @@ import { InvoicesFacade } from './invoices-facade';
 import {
   INVOICE_STATUS_TONES,
   INVOICE_STATUS_STAGES,
+  FACTUR_X_COUNTRIES,
   type CustomerOption,
+  type FacturXFormat,
   type InvoiceInput,
   type InvoiceRow,
   type Payment,
@@ -68,6 +70,8 @@ import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { unsavedChanges } from '../shared/form/dirty-count';
 import { MatDialog } from '@angular/material/dialog';
+import { FileSaver } from '../shared/files/save-file';
+import { FacturXRefusalDialog } from './factur-x-refusal-dialog';
 import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
 import type { PlannedAction } from '../shared/actions/planned-actions';
@@ -144,6 +148,7 @@ export class InvoicePage {
   private readonly unsaved = inject(UnsavedChanges);
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
+  private readonly saver = inject(FileSaver);
   private readonly recurring = inject(RecurringApi);
   protected readonly auth = inject(AuthFacade);
   private readonly format = inject(FormatFacade);
@@ -557,6 +562,24 @@ export class InvoicePage {
         shown: this.pdfUrl() !== null,
       },
       {
+        id: 'factur-x-pdf',
+        label: 'invoices.actions.factur_x_pdf',
+        icon: 'picture_as_pdf',
+        rare: true,
+        disabled: busy,
+        run: () => void this.facturX('pdf'),
+        shown: this.offersFacturX(),
+      },
+      {
+        id: 'factur-x-xml',
+        label: 'invoices.actions.factur_x_xml',
+        icon: 'description',
+        rare: true,
+        disabled: busy,
+        run: () => void this.facturX('xml'),
+        shown: this.offersFacturX(),
+      },
+      {
         id: 'print-duplicate',
         label: 'invoices.actions.print_duplicate',
         icon: 'file_copy',
@@ -669,6 +692,18 @@ export class InvoicePage {
   protected readonly canCancel = computed(
     () => this.current()?.status === 'draft' && this.mayTouch(),
   );
+  /** Factur-X is written for a company whose preset the API serves, of a document issued and not cancelled. */
+  protected readonly offersFacturX = computed(() => {
+    const status = this.current()?.status;
+    const country = this.company()?.countryCode;
+    return (
+      status !== undefined &&
+      status !== 'draft' &&
+      status !== 'cancelled' &&
+      country !== undefined &&
+      FACTUR_X_COUNTRIES.includes(country)
+    );
+  });
   protected readonly isOpen = computed(() => {
     const status = this.current()?.status;
     return status === 'issued' || status === 'partially_paid' || status === 'paid';
@@ -1088,6 +1123,20 @@ export class InvoicePage {
     if (await this.facade.applyCredit(companyId, id)) {
       this.feedback.success('invoices.payments.credit_applied');
     }
+  }
+
+  /** An issued document's Factur-X handed over as a file, or what keeps it from being written said in a dialog. */
+  protected async facturX(format: FacturXFormat): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    if (!companyId || id === null || this.busy()) return;
+    const answer = await this.facade.facturX(companyId, id, format);
+    if (answer === null) return;
+    if (answer.kind === 'file') {
+      this.saver.save(answer.file, answer.filename);
+      return;
+    }
+    this.dialog.open(FacturXRefusalDialog, { data: answer, autoFocus: 'first-tabbable' });
   }
 
   /** What the customer paid beyond this invoice, kept to their credit (a « trop-perçu »). */

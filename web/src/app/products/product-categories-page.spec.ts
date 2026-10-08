@@ -34,6 +34,7 @@ class StaticLoader implements TranslateLoader {
         categories: {
           errors: { in_use: 'Cette catégorie contient encore des produits.' },
           delete_message: '{{name}} sera supprimée.',
+          delete_named: 'Supprimer {{name}}',
         },
       },
     });
@@ -193,6 +194,8 @@ describe('ProductCategoriesPage', () => {
     // Deleting is destructive, so it sits behind "⋮" rather than under the pointer.
     q('row-more-k2')!.click();
     await settle();
+    // The menu names the row it deletes, as the customer groups' does.
+    expect(inMenu('row-menu-delete-k2')?.textContent).toContain('Supprimer Portables');
     inMenu('row-menu-delete-k2')!.click();
     await settle();
     // Destructive, so it asks first, and the question names the row rather than asking about "it".

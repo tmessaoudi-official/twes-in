@@ -76,7 +76,8 @@ export class ProductCategoriesPage implements OnInit {
       },
       {
         id: 'delete',
-        label: 'products.categories.delete',
+        label: 'products.categories.delete_named',
+        labelParams: (row) => ({ name: row.name }),
         icon: 'delete',
         destructive: true,
         run: (row) => void this.remove(row),

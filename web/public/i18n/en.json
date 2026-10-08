@@ -1586,7 +1586,9 @@
       "confirm_issue": "Issue",
       "apply_credit": "Apply the credit",
       "record_overpayment": "Record an overpayment",
-      "issue_message_numbered": "It will be numbered {{number}}, for {{total}} to {{customer}}, and will no longer change: a mistake is then corrected with a credit note."
+      "issue_message_numbered": "It will be numbered {{number}}, for {{total}} to {{customer}}, and will no longer change: a mistake is then corrected with a credit note.",
+      "factur_x_pdf": "Factur-X (PDF/A-3)",
+      "factur_x_xml": "Factur-X (XML only)"
     },
     "overpayment": {
       "title": "Record an overpayment",
@@ -1689,6 +1691,35 @@
           "title": "Save, then issue",
           "body": "Save the draft as often as you need. « Issue » gives it its number for good: an issued invoice is never changed again, it is corrected by a credit note."
         }
+      }
+    },
+    "factur_x": {
+      "refused_title": "No Factur-X written",
+      "close": "Close",
+      "refused": {
+        "not_issued": "A draft has no Factur-X: it is written once the invoice is issued.",
+        "preset_not_supported": "Factur-X is written only for a French company.",
+        "incomplete_document": "What the EN 16931 standard asks for is missing. Fill it in, then download again:"
+      },
+      "gaps": {
+        "seller_siren_missing": "Your company’s SIREN (company profile)",
+        "seller_vat_number_missing": "Your company’s EU VAT number (company profile)",
+        "seller_address_incomplete": "Your company’s address: {{missing}}",
+        "buyer_address_incomplete": "The customer’s address: {{missing}}",
+        "buyer_vat_number_missing": "The customer’s EU VAT number",
+        "line_tax_unsupported": "Line {{line}}: tax {{code}} has no Factur-X equivalent",
+        "line_vat_ambiguous": "Line {{line}}: several VAT taxes ({{codes}}), only one is allowed",
+        "vat_category_unknown": "Line {{line}}: the category of VAT {{code}} is unknown",
+        "vat_exemption_undeclared": "Line {{line}}: the exemption reason of the {{regime}} regime is not given",
+        "document_tax_unsupported": "The document’s tax {{code}} has no Factur-X equivalent",
+        "vat_rate_shared": "The {{rate}}% rate is carried by two VAT taxes ({{codes}})",
+        "vat_rounding_differs": "The {{rate}}% VAT total does not add up to its lines"
+      },
+      "parts": {
+        "line1": "the street",
+        "postalCode": "the postcode",
+        "city": "the city",
+        "countryCode": "the country"
       }
     }
   },
@@ -1911,7 +1942,6 @@
       "title": "Product categories",
       "intro": "Categories file products in a tree. A category that still holds subcategories or products cannot be deleted.",
       "add": "Add a category",
-      "delete": "Delete",
       "delete_named": "Delete {{name}}",
       "saved": "The category was saved.",
       "none": "No category yet.",

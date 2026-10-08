@@ -3,6 +3,7 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { filenameOf } from '../shared/files/save-file';
 import { isPeriodClosed } from '../shared/documents/period-closed';
 import type {
   ApiCompaniesCompanyIdexpensesGetCollectionResponse,
@@ -442,12 +443,6 @@ function toCountParams(search: ExpenseSearch): HttpParams {
 
 function toExpenseBody(input: ExpenseInput): ExpenseExpenseWrite {
   return { ...input };
-}
-
-/** `attachment; filename=…`, quoted or not, as Symfony writes it. */
-function filenameOf(disposition: string | null): string | null {
-  const match = /filename="?([^";]+)"?/.exec(disposition ?? '');
-  return match?.[1] ?? null;
 }
 
 interface RawTejRefusal {

@@ -26,6 +26,30 @@ export type PartyIdentityError = 'missing_seller_identity' | 'missing_customer_i
 /** Where the part of a credit note that was already paid goes: kept to the customer's credit, or paid back. */
 export type CreditExcessTo = 'balance' | 'refund';
 
+/** The two Factur-X files of an issued document: the EN 16931 XML alone, or embedded in its PDF as PDF/A-3. */
+export type FacturXFormat = 'pdf' | 'xml';
+
+/** Why the API writes no Factur-X: a draft, a company outside the presets it serves, or data EN 16931 asks for. */
+export type FacturXRefusalCode = 'not_issued' | 'preset_not_supported' | 'incomplete_document';
+
+/** One datum a document lacks, by its code, with what the screen needs to say which line or field. */
+export interface FacturXGap {
+  code: string;
+  params: Readonly<Record<string, string | number | readonly string[]>>;
+}
+
+export type FacturXAnswer =
+  | { kind: 'file'; file: Blob; filename: string }
+  | {
+      kind: 'refused';
+      code: FacturXRefusalCode;
+      params: Readonly<Record<string, string | number>>;
+      gaps: readonly FacturXGap[];
+    };
+
+/** The countries whose preset the API writes Factur-X for; the API refuses every other as `preset_not_supported`. */
+export const FACTUR_X_COUNTRIES: readonly string[] = ['FR'];
+
 export type InvoiceType = 'invoice' | 'credit_note';
 /**
  * The kind a list shows and filters by: the type, with a facture d'acompte told apart from an invoice, since its VAT
