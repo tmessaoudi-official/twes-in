@@ -2414,6 +2414,22 @@
         "open_stock": "Open in Stock",
         "truth": "The plan says what the movements recorded: goods received into a bin of the rack count here.",
         "reading": "Reading what it holds…"
+      },
+      "search": {
+        "label": "Find a product",
+        "hint": "Reference, name or barcode, or scan",
+        "none_found": "No stocked product",
+        "nowhere": "No stock is recorded for this product.",
+        "places_here": "{{count}} {count, plural, one {place} other {places}} on this floor",
+        "places_elsewhere": "{{count}} more on other floors",
+        "undrawn": "{{quantity}} {{unit}} in places not drawn: {{codes}}",
+        "floor_hits": "{{count}} {count, plural, one {place} other {places}}",
+        "where": "Where it is",
+        "line": "{{code}}: {{quantity}}",
+        "floor_total": "Total on this floor: {{quantity}} {{unit}}",
+        "open_product": "Product file",
+        "clear": "Clear the search",
+        "scanned": "Looked up on the plan: {{name}}"
       }
     },
     "scan": {

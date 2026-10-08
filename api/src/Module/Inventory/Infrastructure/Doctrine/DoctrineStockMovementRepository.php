@@ -415,6 +415,32 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return $levels;
     }
 
+    public function levelsOf(Uuid $companyId, Uuid $productId): array
+    {
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('IDENTITY(m.product) AS product', 'IDENTITY(m.location) AS location', 'lt.id AS lot', 'lt.code AS lotCode', 'lt.expiresOn AS lotExpiresOn', 'lt.releasedAt AS lotReleasedAt', 'SUM(m.quantity) AS quantity')
+            ->from(StockMovement::class, 'm')
+            ->leftJoin('m.lot', 'lt')
+            ->where('m.company = :company')
+            ->andWhere('m.product = :product')
+            ->groupBy('m.product', 'm.location', 'lt.id')
+            ->orderBy('IDENTITY(m.location)')
+            ->addOrderBy('lt.id')
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('product', $productId, 'uuid')
+            ->getQuery()
+            ->getArrayResult();
+
+        $levels = [];
+        foreach ($rows as $row) {
+            if (\is_array($row) && \is_string($row['product'] ?? null) && \is_string($row['location'] ?? null)) {
+                $levels[] = self::level(Uuid::fromString($row['product']), Uuid::fromString($row['location']), $row);
+            }
+        }
+
+        return $levels;
+    }
+
     public function searchLevels(Uuid $companyId, StockLevelSearch $search, PageRequest $page): Page
     {
         // Grouped on the three primary keys, so PostgreSQL lets the order read the product's, the location's and the

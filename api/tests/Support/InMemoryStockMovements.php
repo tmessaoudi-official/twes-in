@@ -270,6 +270,11 @@ final class InMemoryStockMovements implements StockMovementRepository
         }, array_keys($sums), $sums);
     }
 
+    public function levelsOf(Uuid $companyId, Uuid $productId): array
+    {
+        return array_values(array_filter($this->levels($companyId), static fn (StockLevel $level): bool => $level->productId->equals($productId)));
+    }
+
     /**
      * The page the database would answer is the database's own job — grouping, searching and ordering are SQL here,
      * and a unit test that wants them tests the real repository. This one pages what it has totalled, so a caller

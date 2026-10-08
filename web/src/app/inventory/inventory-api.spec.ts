@@ -101,6 +101,65 @@ describe('InventoryApi', () => {
     ]);
   });
 
+  /** The map's search: where a product is, the product's own words carried by every row. */
+  it('reads where a product is, and leaves its words empty when it is nowhere', async () => {
+    const found = api.whereabouts('c 1', 'p1');
+    http
+      .expectOne(
+        (request) =>
+          request.url === '/api/companies/c%201/stock-whereabouts' &&
+          request.params.get('productId') === 'p1',
+      )
+      .flush([
+        {
+          key: 'l1',
+          floorId: 'f1',
+          locationId: 'l1',
+          locationCode: 'R1',
+          locationName: 'Rayonnage 1',
+          productReference: 'VIS-6X40',
+          productName: 'Vis 6x40',
+          unitName: 'Pièce',
+          unitDecimals: 0,
+          quantity: '8.000',
+          lines: [
+            { locationId: 'b1', locationCode: 'R1-A1', locationName: 'Bac A1', quantity: '8.000' },
+          ],
+        },
+      ]);
+
+    expect(await found).toEqual({
+      productId: 'p1',
+      productReference: 'VIS-6X40',
+      productName: 'Vis 6x40',
+      unitName: 'Pièce',
+      unitDecimals: 0,
+      rows: [
+        {
+          floorId: 'f1',
+          locationId: 'l1',
+          locationCode: 'R1',
+          locationName: 'Rayonnage 1',
+          quantity: '8.000',
+          lines: [
+            { locationId: 'b1', locationCode: 'R1-A1', locationName: 'Bac A1', quantity: '8.000' },
+          ],
+        },
+      ],
+    });
+
+    const nowhere = api.whereabouts('c1', 'p2');
+    http.expectOne((request) => request.url === '/api/companies/c1/stock-whereabouts').flush([]);
+    expect(await nowhere).toEqual({
+      productId: 'p2',
+      productReference: '',
+      productName: '',
+      unitName: '',
+      unitDecimals: 3,
+      rows: [],
+    });
+  });
+
   it('reads the options, the stock and the locations', async () => {
     const options = api.options('c 1');
     http.expectOne('/api/companies/c%201/stock-options').flush({

@@ -2267,3 +2267,31 @@ li.twes-row-new.twes-list-card {
   color: var(--mat-sys-on-surface);
   box-shadow: var(--mat-sys-level3);
 }
+
+/*
+ * The stock map's search: a place holding what was searched is lit in the warning tone, which the approved canvas
+ * draws amber. These are SVG fills, so they read the tone's own variables; being global, they also win over the
+ * rack's and the selection's fill utilities, so a lit place stays lit when it is chosen, and says so by its outline.
+ */
+.twes-map-hit {
+  fill: var(--twes-status-warning-bg);
+  stroke: var(--twes-status-warning-fg);
+  stroke-width: 0.08;
+}
+.twes-map-hit.fill-secondary-container {
+  stroke-width: 0.16;
+}
+.twes-map-hit-label {
+  fill: var(--twes-status-warning-fg);
+}
+.twes-map-hit-badge {
+  fill: var(--twes-status-warning-fg);
+}
+.twes-map-hit-badge-text {
+  fill: var(--twes-status-warning-bg);
+  font-weight: 600;
+}
+.twes-map-hit-chip {
+  background-color: var(--twes-status-warning-bg);
+  color: var(--twes-status-warning-fg);
+}

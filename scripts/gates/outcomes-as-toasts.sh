@@ -31,9 +31,12 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # why there is none (no invoice yet, invoices not readable, a failure); what saving the design did is a toast.
 # `new-version` is that the page runs an older build than the server holds: true until the page is reloaded, whatever
 # the person does meanwhile, and never the outcome of something they did.
+# `stock-map-found` is what the map's search found — where the product is, on which floors, what lies undrawn — and
+# what the board IS while the search stands, read again when stock moves; choosing the product was the person's act,
+# and its outcome is the plan lit, not a moment to toast.
 # `list-loading` is what a list IS until its first answer arrives, said in place of « vide », which a shop owner reads as
 # lost data; it is never the outcome of something the person did there.
-page_states=' list-loading new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message '
+page_states=' list-loading new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {

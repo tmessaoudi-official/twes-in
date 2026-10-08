@@ -30,6 +30,7 @@ import type {
   StockOnHand,
   StockSearch,
   StockValuation,
+  Whereabouts,
 } from './inventory-types';
 
 /** The stock of the company being worked in: what is on hand, how it moved, where it is kept, and the forms' options. */
@@ -60,6 +61,8 @@ export class InventoryFacade {
   private structuresFloorId: string | null = null;
   private readonly contentsSignal = signal<LocationContents | null>(null);
   private contentsRequest = 0;
+  private readonly whereaboutsSignal = signal<Whereabouts | null>(null);
+  private whereaboutsRequest = 0;
   private readonly busySignal = signal(false);
   private reads = 0;
   private readonly errorSignal = signal<InventoryError | null>(null);
@@ -81,6 +84,8 @@ export class InventoryFacade {
   readonly structures = this.structuresSignal.asReadonly();
   /** What the place chosen on the map holds and what has its home there; null while nothing is chosen. */
   readonly contents = this.contentsSignal.asReadonly();
+  /** Where the product searched on the map is; null while nothing is searched. */
+  readonly whereabouts = this.whereaboutsSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
@@ -356,6 +361,36 @@ export class InventoryFacade {
   }
 
   /** The place in hand, read again: a movement elsewhere may have filled or emptied it. */
+  /**
+   * Finds a product on the map, latest search only. Its own words are asked by id beside it, since a product found
+   * nowhere answers no row to carry them; a product no stock is kept of answers neither, and reads as not found.
+   */
+  async loadWhereabouts(companyId: string, productId: string | null): Promise<void> {
+    const request = ++this.whereaboutsRequest;
+    if (productId === null) {
+      this.whereaboutsSignal.set(null);
+      return;
+    }
+    await this.read(async () => {
+      const [found, [product]] = await Promise.all([
+        this.api.whereabouts(companyId, productId),
+        this.api.pickProducts(companyId, { ids: [productId] }),
+      ]);
+      if (request !== this.whereaboutsRequest) return;
+      this.whereaboutsSignal.set({
+        ...found,
+        productReference: found.productReference || (product?.reference ?? ''),
+        productName: found.productName || (product?.name ?? ''),
+        unitDecimals: found.rows.length > 0 ? found.unitDecimals : (product?.unitDecimals ?? 3),
+      });
+    });
+  }
+
+  async reloadWhereabouts(companyId: string): Promise<void> {
+    const productId = this.whereaboutsSignal()?.productId ?? null;
+    if (productId !== null) await this.loadWhereabouts(companyId, productId);
+  }
+
   async reloadContents(companyId: string): Promise<void> {
     const locationId = this.contentsSignal()?.locationId ?? null;
     if (locationId !== null) await this.loadContents(companyId, locationId);

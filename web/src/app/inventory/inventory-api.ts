@@ -25,6 +25,7 @@ import type {
   StockStructureStockStructureWriteValidationStockStructureWrite as StockStructureStockStructureWrite,
   StockProductPickStockProductPickRead,
   StockVendorPickStockVendorPickRead,
+  StockWhereaboutStockWhereaboutRead,
   StockReceiptStockReceiptReadValidationStockReceiptWrite as StockReceiptStockReceiptRead,
   StockCountStockCountReadValidationStockCountWrite as StockCountStockCountRead,
   StockCountStockCountWriteValidationStockCountWrite as StockCountStockCountWrite,
@@ -41,6 +42,7 @@ import {
   type CostBasis,
   type InventoryError,
   type LocationHomeRow,
+  type Whereabouts,
   type StockDrawingInput,
   type StockDrawingRow,
   type StructureKind,
@@ -235,6 +237,41 @@ export class InventoryApi {
         main: raw.main ?? false,
       })),
     );
+  }
+
+  /**
+   * Where a product is, as the map lights it. The product's own words come with every row, so an answer with no row
+   * at all leaves them empty: the caller already knows what it asked for.
+   */
+  async whereabouts(companyId: string, productId: string): Promise<Whereabouts> {
+    return this.guard(async () => {
+      const raw = await firstValueFrom(
+        this.http.get<StockWhereaboutStockWhereaboutRead[]>(path(companyId, 'stock-whereabouts'), {
+          params: { productId },
+        }),
+      );
+      const [first] = raw;
+      return {
+        productId,
+        productReference: first?.productReference ?? '',
+        productName: first?.productName ?? '',
+        unitName: first?.unitName ?? '',
+        unitDecimals: first?.unitDecimals ?? 3,
+        rows: raw.map((row) => ({
+          floorId: row.floorId ?? null,
+          locationId: row.locationId ?? null,
+          locationCode: row.locationCode ?? null,
+          locationName: row.locationName ?? null,
+          quantity: row.quantity,
+          lines: row.lines.map((line) => ({
+            locationId: line.locationId,
+            locationCode: line.locationCode,
+            locationName: line.locationName,
+            quantity: line.quantity,
+          })),
+        })),
+      };
+    });
   }
 
   /** Every location of the company; reading them gives each establishment its default location. */

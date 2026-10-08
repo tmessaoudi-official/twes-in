@@ -79,6 +79,82 @@
       }
     </div>
 
+    <!--
+      Reading the plan is mostly asking where something is: the search stands above the board, in Consulter only, so a
+      highlight never hides a shape being moved. A scanner typing here, or anywhere on the page, does the same.
+    -->
+    @if (company() && floors().length > 0 && !arranging()) {
+      <div class="flex flex-col gap-3">
+        <app-pick-field
+          class="w-full max-w-xl"
+          [label]="'inventory.plan.search.label' | translate"
+          [hint]="'inventory.plan.search.hint' | translate"
+          [noneFoundLabel]="'inventory.plan.search.none_found' | translate"
+          testId="stock-map-search"
+          [search]="searchProducts"
+          [value]="searchPick()"
+          (picked)="searchFor($event)"
+        />
+        @if (found(); as now) {
+          <div
+            class="flex flex-wrap items-start gap-x-4 gap-y-2 rounded-xl border border-outline-variant bg-surface-container-low p-4"
+            role="status"
+            data-testid="stock-map-found"
+          >
+            <div class="me-auto flex min-w-0 flex-col gap-1">
+              <p class="font-semibold">{{ now.productName }} · {{ now.productReference }}</p>
+              @if (foundPlaces().length === 0 && undrawn() === null) {
+                <p class="text-sm" data-testid="stock-map-nowhere">
+                  {{ 'inventory.plan.search.nowhere' | translate }}
+                </p>
+              } @else {
+                <p class="text-sm">
+                  {{ 'inventory.plan.search.places_here' | translate: { count: hits().size } }}
+                  @if (elsewhere() > 0) {
+                    ·
+                    {{
+                      'inventory.plan.search.places_elsewhere' | translate: { count: elsewhere() }
+                    }}
+                  }
+                </p>
+              }
+              @if (undrawn(); as rest) {
+                <p class="text-sm text-on-surface-variant" data-testid="stock-map-undrawn">
+                  {{
+                    'inventory.plan.search.undrawn'
+                      | translate
+                        : {
+                            quantity: rest.quantity | amount: now.unitDecimals,
+                            unit: now.unitName,
+                            codes: undrawnCodes(),
+                          }
+                  }}
+                </p>
+              }
+            </div>
+            <div class="flex flex-wrap gap-2">
+              @if (mayReadProducts()) {
+                <a
+                  mat-button
+                  [routerLink]="['/products', now.productId]"
+                  data-testid="stock-map-search-product"
+                  >{{ 'inventory.plan.search.open_product' | translate }}</a
+                >
+              }
+              <button
+                mat-button
+                type="button"
+                (click)="searchFor(null)"
+                data-testid="stock-map-search-clear"
+              >
+                {{ 'inventory.plan.search.clear' | translate }}
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
     @if (!company()) {
       <p data-testid="stock-map-no-company">{{ 'inventory.no_company' | translate }}</p>
     }
@@ -185,7 +261,16 @@
                 (click)="showFloor(one.id)"
                 [attr.data-testid]="'stock-floor-' + one.id"
               >
-                <span class="font-medium">{{ one.name }}</span>
+                <span class="flex flex-wrap items-center gap-2">
+                  <span class="font-medium">{{ one.name }}</span>
+                  @if (hitsByFloor().get(one.id); as count) {
+                    <span
+                      class="twes-map-hit-chip rounded-full px-2 text-xs font-medium"
+                      [attr.data-testid]="'stock-floor-hits-' + one.id"
+                      >{{ 'inventory.plan.search.floor_hits' | translate: { count } }}</span
+                    >
+                  }
+                </span>
                 <span class="text-sm tabular-nums text-on-surface-variant">
                   {{
                     'inventory.plan.floor_meta'
@@ -711,6 +796,7 @@
               @for (shape of shapes(); track shape.drawing.id) {
                 <g
                   [attr.data-testid]="'stock-drawing-group-' + shape.drawing.locationCode"
+                  [class.opacity-30]="found() !== null && !hits().has(shape.drawing.locationId)"
                   [class.hidden]="!shown(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')"
                   [class.pointer-events-none]="
                     isLocked(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')
@@ -738,6 +824,8 @@
                     [class.fill-surface-container-high]="shape.drawing.locationKind !== 'rack'"
                     [class.stroke-outline]="shape.drawing.locationKind !== 'rack'"
                     [class.fill-secondary-container]="shape.drawing.id === selectedId()"
+                    [class.twes-map-hit]="hits().has(shape.drawing.locationId)"
+                    [attr.data-hit]="found() === null ? null : hits().has(shape.drawing.locationId)"
                     (pointerdown)="grab($event, shape.drawing, null)"
                     (click)="select(shape.drawing)"
                     [attr.data-testid]="'stock-drawing-rect-' + shape.drawing.locationCode"
@@ -761,10 +849,37 @@
                     [class.fill-on-surface]="
                       shape.drawing.id !== selectedId() && shape.drawing.locationKind !== 'rack'
                     "
+                    [class.twes-map-hit-label]="hits().has(shape.drawing.locationId)"
                     [attr.data-testid]="'stock-drawing-label-' + shape.drawing.id"
                   >
                     {{ shape.label }}
                   </text>
+                  <!-- What the search found here, in a pill at the far corner, so the light is never colour alone. -->
+                  @if (hitBadges().get(shape.drawing.id); as badge) {
+                    <g
+                      class="pointer-events-none"
+                      [attr.data-testid]="'stock-map-hit-' + shape.drawing.locationCode"
+                    >
+                      <rect
+                        [attr.x]="badge.x"
+                        [attr.y]="badge.y"
+                        [attr.width]="badge.width"
+                        [attr.height]="badge.height"
+                        [attr.rx]="badge.height / 2"
+                        class="twes-map-hit-badge"
+                      />
+                      <text
+                        [attr.x]="badge.x + badge.width / 2"
+                        [attr.y]="badge.y + badge.height / 2"
+                        [attr.font-size]="badge.font"
+                        text-anchor="middle"
+                        dominant-baseline="central"
+                        class="twes-map-hit-badge-text"
+                      >
+                        {{ badge.quantity | amount: badge.decimals }}
+                      </text>
+                    </g>
+                  }
 
                   <!--
                     Drawn inside the group that turns the rectangle, so the handles turn with it: the one on a rack's
@@ -1294,6 +1409,70 @@
               <p class="text-sm text-on-surface-variant">
                 {{ 'inventory.plan.structure_note' | translate }}
               </p>
+            </div>
+          } @else if (found() !== null && foundPlaces().length > 0) {
+            <!-- « Où elle se trouve »: each drawn place holding it, this floor first; a card goes to the place. -->
+            <div
+              class="flex flex-col gap-3 rounded-xl border border-outline-variant bg-surface p-4"
+              data-testid="stock-map-where"
+            >
+              <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+                {{ 'inventory.plan.search.where' | translate }}
+              </h2>
+              <ul class="flex flex-col gap-2">
+                @for (place of foundPlaces(); track place.row.locationId) {
+                  <li>
+                    <button
+                      type="button"
+                      class="flex w-full flex-col gap-1 rounded-lg border border-outline-variant p-3 text-start hover:bg-surface-container-high"
+                      (click)="goTo(place.row)"
+                      [attr.data-testid]="'stock-map-where-' + place.row.locationId"
+                    >
+                      <span class="flex w-full items-baseline justify-between gap-3">
+                        <span class="font-medium">
+                          {{ place.row.locationCode }} · {{ place.row.locationName }}
+                        </span>
+                        <span class="whitespace-nowrap font-semibold tabular-nums">
+                          {{ place.row.quantity | amount: found()!.unitDecimals }}
+                          {{ found()!.unitName }}
+                        </span>
+                      </span>
+                      @if (!place.here) {
+                        <span class="text-sm text-on-surface-variant">{{ place.floorName }}</span>
+                      }
+                      @if (place.row.lines.length > 1) {
+                        <span class="text-sm text-on-surface-variant">
+                          @for (line of place.row.lines; track line.locationId; let last = $last) {
+                            {{
+                              'inventory.plan.search.line'
+                                | translate
+                                  : {
+                                      code: line.locationCode,
+                                      quantity: line.quantity | amount: found()!.unitDecimals,
+                                    }
+                            }}
+                            @if (!last) {
+                              ·
+                            }
+                          }
+                        </span>
+                      }
+                    </button>
+                  </li>
+                }
+              </ul>
+              @if (hits().size > 0) {
+                <p class="text-sm font-medium" data-testid="stock-map-floor-total">
+                  {{
+                    'inventory.plan.search.floor_total'
+                      | translate
+                        : {
+                            quantity: floorTotal() | amount: found()!.unitDecimals,
+                            unit: found()!.unitName,
+                          }
+                  }}
+                </p>
+              }
             </div>
           } @else {
             <!-- Only beside the board: narrower, a sentence above the floors would push them down for nothing. -->

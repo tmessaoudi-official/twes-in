@@ -2414,6 +2414,22 @@
         "open_stock": "Ouvrir dans Stock",
         "truth": "Le plan dit ce que les mouvements ont enregistré : une marchandise reçue dans un bac du rayonnage compte ici.",
         "reading": "Lecture de ce qu’il contient…"
+      },
+      "search": {
+        "label": "Chercher un article",
+        "hint": "Référence, nom ou code-barres, ou scannez",
+        "none_found": "Aucun article suivi en stock",
+        "nowhere": "Aucun stock n’est enregistré pour cet article.",
+        "places_here": "{{count}} {count, plural, one {endroit} other {endroits}} sur cet étage",
+        "places_elsewhere": "{{count}} {count, plural, one {autre} other {autres}} sur d’autres étages",
+        "undrawn": "{{quantity}} {{unit}} dans des emplacements non dessinés : {{codes}}",
+        "floor_hits": "{{count}} {count, plural, one {endroit} other {endroits}}",
+        "where": "Où elle se trouve",
+        "line": "{{code}} : {{quantity}}",
+        "floor_total": "Total sur cet étage : {{quantity}} {{unit}}",
+        "open_product": "Fiche article",
+        "clear": "Effacer la recherche",
+        "scanned": "Cherché sur le plan : {{name}}"
       }
     },
     "scan": {

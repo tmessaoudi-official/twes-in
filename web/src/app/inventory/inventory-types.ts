@@ -163,6 +163,37 @@ export interface LocationContents {
   homes: readonly LocationHomeRow[];
 }
 
+/** One place's share of a product found on the map, its lots together. */
+export interface WhereaboutLine {
+  locationId: string;
+  locationCode: string;
+  locationName: string;
+  quantity: string;
+}
+
+/**
+ * Where a product is, as the map lights it: a drawn place holding some, on its floor, with what each place at or
+ * under it holds; or, with no floor and no place, what lies where nothing is drawn.
+ */
+export interface WhereaboutRow {
+  floorId: string | null;
+  locationId: string | null;
+  locationCode: string | null;
+  locationName: string | null;
+  quantity: string;
+  lines: readonly WhereaboutLine[];
+}
+
+/** A product found on the map: what it is, how its stock is counted, and where it is. */
+export interface Whereabouts {
+  productId: string;
+  productReference: string;
+  productName: string;
+  unitName: string;
+  unitDecimals: number;
+  rows: readonly WhereaboutRow[];
+}
+
 export interface StockLevelRow {
   /** The product and the location together: a row is the pair, and neither alone names it. */
   id: string;

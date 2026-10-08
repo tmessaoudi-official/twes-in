@@ -22,6 +22,8 @@ import { firstValueFrom, map } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { PickField, type PickOption } from '../shared/form/pick-field';
+import { type Scan, ScanBus, type ScanOutcome } from '../shared/scan/scan-bus';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import { dirtyCount } from '../shared/form/dirty-count';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
@@ -41,7 +43,9 @@ import {
   type StockStructureRow,
   type StockStructureShape,
   type StructureKind,
+  type WhereaboutRow,
 } from './inventory-types';
+import { sumQuantities } from './stock-quantities';
 import {
   drawingForm,
   drawingInput,
@@ -226,6 +230,7 @@ const PENDING_PIECE: StockStructureRow = {
     TranslatePipe,
     DescriptorForm,
     Label,
+    PickField,
   ],
   templateUrl: './stock-map-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -448,6 +453,134 @@ export class StockMapPage implements OnInit {
     };
   });
 
+  // ——— the search: where a product is, lit on the plan ———
+
+  /** The product searched, kept in the URL like the mode, so a search can be sent as a link and survives a reload. */
+  private readonly productAsked = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('product'))),
+    { initialValue: null },
+  );
+  /** Searching is reading: Aménager lights nothing, so no highlight ever hides a shape being moved. */
+  private readonly searchedId = computed(() => (this.arranging() ? null : this.productAsked()));
+  protected readonly found = computed(() => {
+    const found = this.facade.whereabouts();
+    return found !== null && found.productId === this.searchedId() ? found : null;
+  });
+  protected readonly searchPick = computed<PickOption | null>(() => {
+    const found = this.found();
+    return found === null
+      ? null
+      : { id: found.productId, code: found.productReference, name: found.productName };
+  });
+  /** Only goods whose stock is kept can be anywhere, so the picker offers those alone. */
+  protected readonly searchProducts = async (words: string): Promise<readonly PickOption[]> => {
+    const companyId = this.company()?.id;
+    if (!companyId) return [];
+    return (await this.facade.pickProducts(companyId, { words })).map((product) => ({
+      id: product.id,
+      code: product.reference,
+      name: product.name,
+    }));
+  };
+  /** The drawn places holding the product on the floor shown, by the location drawn. */
+  protected readonly hits = computed(() => {
+    const floorId = this.floor()?.id ?? null;
+    const hits = new Map<string, WhereaboutRow>();
+    for (const row of this.found()?.rows ?? []) {
+      if (row.floorId !== null && row.floorId === floorId && row.locationId !== null)
+        hits.set(row.locationId, row);
+    }
+    return hits;
+  });
+  /** How many drawn places hold it on each floor, which the list of floors says. */
+  protected readonly hitsByFloor = computed(() => {
+    const counts = new Map<string, number>();
+    for (const row of this.found()?.rows ?? []) {
+      if (row.floorId !== null) counts.set(row.floorId, (counts.get(row.floorId) ?? 0) + 1);
+    }
+    return counts;
+  });
+  /** Every drawn place holding it, the floor shown first and then the floors as they are listed. */
+  protected readonly foundPlaces = computed(() => {
+    const floors = this.floors();
+    const shown = this.floor()?.id ?? null;
+    const rank = (floorId: string | null): number =>
+      floorId === shown ? -1 : floors.findIndex((one) => one.id === floorId);
+    return (this.found()?.rows ?? [])
+      .filter((row) => row.floorId !== null)
+      .map((row) => ({
+        row,
+        floorName: floors.find((one) => one.id === row.floorId)?.name ?? '',
+        here: row.floorId === shown,
+      }))
+      .sort((one, other) => rank(one.row.floorId) - rank(other.row.floorId));
+  });
+  protected readonly elsewhere = computed(
+    () => this.foundPlaces().filter((place) => !place.here).length,
+  );
+  /** What lies where nothing is drawn: said, never dropped, since the map is only as true as what it can show. */
+  protected readonly undrawn = computed(
+    () => this.found()?.rows.find((row) => row.floorId === null) ?? null,
+  );
+  protected readonly undrawnCodes = computed(
+    () =>
+      this.undrawn()
+        ?.lines.map((line) => line.locationCode)
+        .join(', ') ?? '',
+  );
+  protected readonly floorTotal = computed(() =>
+    sumQuantities([...this.hits().values()].map((row) => row.quantity)),
+  );
+  /**
+   * Each lit place's quantity, in a pill over its far corner sized to what it will say: the digits, the decimals the
+   * unit counts and a space every three digits. Its type follows the view, so a whole floor seen at once still reads
+   * its figures, and never goes below the labels' own size.
+   */
+  protected readonly hitBadges = computed(() => {
+    const decimals = this.found()?.unitDecimals ?? 0;
+    // The board fits the view by its longer side, so that side is what sets how large a metre is drawn.
+    const shown = this.viewed();
+    const font = Math.max(LABEL_FONT, Math.max(shown.width, shown.height) / 40);
+    const height = font * 1.5;
+    const badges = new Map<
+      string,
+      {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        font: number;
+        quantity: string;
+        decimals: number;
+      }
+    >();
+    for (const shape of this.shapes()) {
+      const row = this.hits().get(shape.drawing.locationId);
+      if (row === undefined) continue;
+      const whole = row.quantity.replace('-', '').split('.')[0];
+      const characters =
+        whole.length +
+        Math.floor((whole.length - 1) / 3) +
+        (decimals > 0 ? decimals + 1 : 0) +
+        (row.quantity.startsWith('-') ? 1 : 0);
+      const width = Math.max(height, (characters * 0.62 + 0.8) * font);
+      badges.set(shape.drawing.id, {
+        x: shape.rect.x + shape.rect.width - width / 2,
+        // Above the shape and not on it, where a long rack writes its own label.
+        y: shape.rect.y - height * 1.15,
+        width,
+        height,
+        font,
+        quantity: row.quantity,
+        decimals,
+      });
+    }
+    return badges;
+  });
+  protected readonly mayReadProducts = computed(() => this.auth.hasPermission('product.read'));
+  /** The search answered for a floor already chosen: a floor holding none of it is opened once, never again. */
+  private jumpedFor: string | null = null;
+
   /** The chosen rectangle as it is drawn, for the size the panel says. */
   protected readonly selectedShape = computed(
     () => this.shapes().find((shape) => shape.drawing.id === this.selectedId()) ?? null,
@@ -565,6 +698,32 @@ export class StockMapPage implements OnInit {
       if (companyId) untracked(() => void this.facade.loadContents(companyId, locationId));
     });
 
+    effect(() => {
+      const companyId = this.company()?.id;
+      const productId = this.searchedId();
+      if (companyId) untracked(() => void this.facade.loadWhereabouts(companyId, productId));
+    });
+
+    // A search opens the floor holding the product when the one shown holds none of it, once per search: a person who
+    // then opens another floor is not sent back to it.
+    effect(() => {
+      const found = this.found();
+      const floors = this.floors();
+      if (found === null) {
+        this.jumpedFor = null;
+        return;
+      }
+      if (floors.length === 0 || found.productId === this.jumpedFor) return;
+      this.jumpedFor = found.productId;
+      const shown = untracked(() => this.floor()?.id);
+      if (found.rows.some((row) => row.floorId === shown)) return;
+      const holding = floors.find((one) => found.rows.some((row) => row.floorId === one.id));
+      if (holding) untracked(() => void this.showFloor(holding.id));
+    });
+
+    // A scan in Consulter is a search; while arranging it is left to the product card, as anywhere else.
+    inject(ScanBus).handle((scan) => this.scanned(scan));
+
     // What a form holds and the API does not is unsaved work, here as on a record page: leaving the page asks first.
     this.unsavedChanges.declare(this.pendingChanges);
 
@@ -609,6 +768,32 @@ export class StockMapPage implements OnInit {
       queryParams: { mode: mode === 'arrange' ? 'arrange' : null },
       queryParamsHandling: 'merge',
     });
+  }
+
+  protected async searchFor(option: PickOption | null): Promise<void> {
+    await this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { product: option?.id ?? null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  /** From a card of « Où elle se trouve » to the place itself: its floor opened, the place chosen. */
+  protected async goTo(row: WhereaboutRow): Promise<void> {
+    if (row.floorId === null || row.locationId === null) return;
+    if (row.floorId !== this.floor()?.id) await this.showFloor(row.floorId);
+    const drawing = this.facade.drawings().find((one) => one.locationId === row.locationId);
+    if (drawing) this.select(drawing);
+  }
+
+  /** A code scanned while reading the plan: the stocked product it names, looked for, its whole code offered first. */
+  private async scanned(scan: Scan): Promise<ScanOutcome> {
+    const companyId = this.company()?.id;
+    if (!companyId || this.arranging()) return { kind: 'unclaimed' };
+    const [product] = await this.facade.pickProducts(companyId, { words: scan.code });
+    if (product === undefined) return { kind: 'unclaimed' };
+    await this.searchFor({ id: product.id, code: product.reference, name: product.name });
+    return { kind: 'done', key: 'inventory.plan.search.scanned', params: { name: product.name } };
   }
 
   /** A company with no floor yet starts its plan where floors are made. */
@@ -658,13 +843,17 @@ export class StockMapPage implements OnInit {
         await this.facade.loadPlanContext(companyId);
         await this.facade.reloadDrawings(companyId);
         await this.facade.reloadStructures(companyId);
+        await this.facade.reloadWhereabouts(companyId);
       },
       this.destroyRef,
     );
     // What a place holds changes with every movement anywhere, and with the homes a product file sets.
     this.live.reloadOn(
       ['stock', 'product', 'product_home_location', 'delivery_note', 'invoice'],
-      () => this.facade.reloadContents(companyId),
+      async () => {
+        await this.facade.reloadContents(companyId);
+        await this.facade.reloadWhereabouts(companyId);
+      },
       this.destroyRef,
     );
     await this.facade.loadPlanContext(companyId);

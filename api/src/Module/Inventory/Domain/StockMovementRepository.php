@@ -123,6 +123,9 @@ interface StockMovementRepository
     /** @return list<StockLevel> every product, location and lot of the company something moved in */
     public function levels(Uuid $companyId): array;
 
+    /** @return list<StockLevel> every location and lot one product of the company moved in, by location then lot */
+    public function levelsOf(Uuid $companyId, Uuid $productId): array;
+
     /**
      * One page of the same, searched, narrowed and sorted by the database. The page is bounded; the grouping behind
      * it is not — see StockLevelSearch.

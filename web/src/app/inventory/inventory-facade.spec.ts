@@ -93,6 +93,8 @@ describe('InventoryFacade', () => {
     drawings: vi.fn(),
     floors: vi.fn(),
     locationHomes: vi.fn(),
+    whereabouts: vi.fn(),
+    pickProducts: vi.fn(),
   };
   let facade: InventoryFacade;
 
@@ -110,8 +112,48 @@ describe('InventoryFacade', () => {
     api.drawings.mockReset().mockResolvedValue([]);
     api.floors.mockReset().mockResolvedValue([]);
     api.locationHomes.mockReset().mockResolvedValue([]);
+    api.whereabouts.mockReset();
+    api.pickProducts.mockReset().mockResolvedValue([]);
     TestBed.configureTestingModule({ providers: [{ provide: InventoryApi, useValue: api }] });
     facade = TestBed.inject(InventoryFacade);
+  });
+
+  /** A product found nowhere answers no row to carry its words, so they come from the product itself. */
+  it('finds a product on the map, its name from the product when no row carries it', async () => {
+    api.whereabouts.mockResolvedValue({
+      productId: 'p1',
+      productReference: '',
+      productName: '',
+      unitName: '',
+      unitDecimals: 3,
+      rows: [],
+    });
+    api.pickProducts.mockResolvedValue([
+      {
+        id: 'p1',
+        reference: 'VIS-6X40',
+        name: 'Vis 6x40',
+        unitCode: 'C62',
+        unitDecimals: 0,
+        homeLocationId: null,
+        tracking: 'none',
+      },
+    ]);
+
+    await facade.loadWhereabouts('c1', 'p1');
+
+    expect(api.pickProducts).toHaveBeenCalledWith('c1', { ids: ['p1'] });
+    expect(facade.whereabouts()).toEqual({
+      productId: 'p1',
+      productReference: 'VIS-6X40',
+      productName: 'Vis 6x40',
+      unitName: '',
+      unitDecimals: 0,
+      rows: [],
+    });
+
+    await facade.loadWhereabouts('c1', null);
+    expect(facade.whereabouts()).toBeNull();
   });
 
   /**

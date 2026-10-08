@@ -34,9 +34,11 @@ import type {
   StockLocationRow,
   StockOptions,
   StockStructureRow,
+  Whereabouts,
 } from './inventory-types';
 import { StockMapPage } from './stock-map-page';
 import { WINDOW_CLASS, type WindowClass } from '../shared/ui/window-class';
+import { ScanBus } from '../shared/scan/scan-bus';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -47,6 +49,11 @@ class StaticLoader implements TranslateLoader {
           nothing_drawn: 'Rien n’est encore dessiné sur cet étage.',
           no_floor: 'Aucun étage n’est encore dessiné.',
           here: { empty_home: '{{product}} a sa place ici ({{place}}) et il n’y en a plus.' },
+          search: {
+            undrawn: '{{quantity}} {{unit}} dans des emplacements non dessinés : {{codes}}',
+            floor_total: 'Total sur cet étage : {{quantity}} {{unit}}',
+            line: '{{code}} : {{quantity}}',
+          },
         },
         errors: { level_taken: 'Ce niveau est déjà occupé.' },
       },
@@ -135,8 +142,13 @@ describe('StockMapPage', () => {
   const drawings = signal<readonly StockDrawingRow[]>([drawn]);
   const structures = signal<readonly StockStructureRow[]>([wall]);
   const contents = signal<LocationContents | null>(null);
+  const whereabouts = signal<Whereabouts | null>(null);
   const facade = {
     contents: contents.asReadonly(),
+    whereabouts: whereabouts.asReadonly(),
+    loadWhereabouts: vi.fn(),
+    reloadWhereabouts: vi.fn(),
+    pickProducts: vi.fn(),
     loadContents: vi.fn(),
     reloadContents: vi.fn(),
     options: signal<StockOptions | null>(options).asReadonly(),
@@ -198,6 +210,10 @@ describe('StockMapPage', () => {
     structures.set([wall]);
     contents.set(null);
     facade.loadContents.mockReset().mockResolvedValue(undefined);
+    whereabouts.set(null);
+    facade.loadWhereabouts.mockReset().mockResolvedValue(undefined);
+    facade.reloadWhereabouts.mockReset().mockResolvedValue(undefined);
+    facade.pickProducts.mockReset().mockResolvedValue([]);
     facade.reloadContents.mockReset().mockResolvedValue(undefined);
     facade.loadPlanContext.mockReset().mockResolvedValue(undefined);
     facade.loadDrawings.mockReset().mockResolvedValue(undefined);
@@ -1652,5 +1668,142 @@ describe('StockMapPage', () => {
 
     expect(facade.loadContents).not.toHaveBeenCalledWith('c1', 'l1');
     expect(q('stock-contents')).toBeNull();
+  });
+
+  // ——— the search: where a product is, lit on the plan ———
+
+  /** R1 holds eight, three itself and five in its bin; the rest lies at the reception, which is drawn nowhere. */
+  const vis: Whereabouts = {
+    productId: 'p1',
+    productReference: 'VIS-6X40',
+    productName: 'Vis 6x40 zinguée',
+    unitName: 'Pièce',
+    unitDecimals: 0,
+    rows: [
+      {
+        floorId: 'f1',
+        locationId: 'l1',
+        locationCode: 'R1',
+        locationName: 'Rayonnage 1',
+        quantity: '8.000',
+        lines: [
+          { locationId: 'l1', locationCode: 'R1', locationName: 'Rayonnage 1', quantity: '3.000' },
+          { locationId: 'l3', locationCode: 'R1-A1', locationName: 'Bac A1', quantity: '5.000' },
+        ],
+      },
+      {
+        floorId: null,
+        locationId: null,
+        locationCode: null,
+        locationName: null,
+        quantity: '2.000',
+        lines: [
+          { locationId: 'l9', locationCode: 'RECEP', locationName: 'Réception', quantity: '2.000' },
+        ],
+      },
+    ],
+  };
+
+  async function search(url: string, found: Whereabouts | null): Promise<void> {
+    facade.loadWhereabouts.mockImplementation(
+      async (_company: string, productId: string | null) => {
+        whereabouts.set(productId === null ? null : found);
+      },
+    );
+    await TestBed.inject(Router).navigateByUrl(url);
+    await settle();
+    await settle();
+  }
+
+  it('lights where the product is, with its quantity, and dims the rest of the floor', async () => {
+    drawings.set([
+      drawn,
+      { ...drawn, id: 'd2', locationId: 'l2', locationCode: 'Z1', locationKind: 'zone' },
+    ]);
+    await search('/?product=p1', vis);
+
+    expect(facade.loadWhereabouts).toHaveBeenLastCalledWith('c1', 'p1');
+    expect(q('stock-drawing-rect-R1')?.getAttribute('data-hit')).toBe('true');
+    expect(q('stock-map-hit-R1')?.textContent).toContain('8');
+    expect(q('stock-drawing-rect-Z1')?.getAttribute('data-hit')).toBe('false');
+    expect(q('stock-map-hit-Z1')).toBeNull();
+    expect(q('stock-map-found')?.textContent).toContain('Vis 6x40 zinguée');
+    // Never dropped: what lies where nothing is drawn is said, place by place.
+    expect(q('stock-map-undrawn')?.textContent).toContain(
+      '2 Pièce dans des emplacements non dessinés : RECEP',
+    );
+    // The floor holding it says so in the list of floors, the other does not.
+    expect(q('stock-floor-hits-f1')).not.toBeNull();
+    expect(q('stock-floor-hits-f2')).toBeNull();
+  });
+
+  it('lists where it is beside the plan and goes to a place from its card', async () => {
+    await search('/?product=p1', vis);
+
+    const card = q('stock-map-where-l1') as HTMLElement;
+    expect(card.textContent).toContain('R1');
+    expect(card.textContent).toContain('R1-A1');
+    expect(q('stock-map-floor-total')?.textContent).toContain('Total sur cet étage : 8 Pièce');
+
+    card.click();
+    await settle();
+    expect(q('stock-map-selection')?.textContent).toContain('R1');
+  });
+
+  it('opens the floor holding the product when the one shown holds none', async () => {
+    await search('/?product=p1', {
+      ...vis,
+      rows: [{ ...vis.rows[0], floorId: 'f2' }],
+    });
+
+    expect(facade.loadDrawings).toHaveBeenLastCalledWith('c1', 'f2');
+    expect(q('stock-floor-f2')?.getAttribute('aria-current')).toBe('true');
+  });
+
+  it('says when the product is nowhere, and clears the search from the URL', async () => {
+    await search('/?product=p1', { ...vis, rows: [] });
+
+    expect(q('stock-map-nowhere')).not.toBeNull();
+    expect(q('stock-drawing-rect-R1')?.getAttribute('data-hit')).toBe('false');
+
+    press('stock-map-search-clear');
+    await settle();
+    expect(TestBed.inject(Router).url).toBe('/');
+    expect(facade.loadWhereabouts).toHaveBeenLastCalledWith('c1', null);
+  });
+
+  it('searches nothing while arranging', async () => {
+    await search('/?mode=arrange&product=p1', vis);
+
+    expect(facade.loadWhereabouts).toHaveBeenLastCalledWith('c1', null);
+    expect(q('stock-map-search')).toBeNull();
+  });
+
+  it('takes a scan in Consulter as a search, and leaves it to the card while arranging', async () => {
+    await consult();
+    facade.pickProducts.mockResolvedValue([
+      {
+        id: 'p1',
+        reference: 'VIS-6X40',
+        name: 'Vis 6x40 zinguée',
+        unitCode: 'C62',
+        unitDecimals: 0,
+        homeLocationId: null,
+        tracking: 'none',
+      },
+    ]);
+
+    const outcome = await TestBed.inject(ScanBus).receive('6191234567890', 'wedge');
+    await settle();
+
+    expect(facade.pickProducts).toHaveBeenLastCalledWith('c1', { words: '6191234567890' });
+    expect(outcome.kind).toBe('done');
+    expect(TestBed.inject(Router).url).toBe('/?product=p1');
+
+    await TestBed.inject(Router).navigateByUrl('/?mode=arrange');
+    await settle();
+    expect((await TestBed.inject(ScanBus).receive('6191234567890', 'wedge')).kind).toBe(
+      'unclaimed',
+    );
   });
 });
