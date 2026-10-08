@@ -233,6 +233,7 @@ const PENDING_PIECE: StockStructureRow = {
     PickField,
   ],
   templateUrl: './stock-map-page.html',
+  styleUrl: './stock-map-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StockMapPage implements OnInit {
