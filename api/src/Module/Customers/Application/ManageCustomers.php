@@ -24,7 +24,6 @@ use App\Fiscal\Domain\TaxComponentRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerGroup;
 use App\Module\Customers\Domain\CustomerGroupRepository;
-use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerRepository;
 use App\Module\Customers\Domain\CustomerSearch;
 use App\Module\Customers\Domain\InvalidCustomer;
@@ -164,8 +163,7 @@ final readonly class ManageCustomers
             }
         }
 
-        $country = $input->profile->billingAddress->countryCode;
-        $domesticBusiness = CustomerKind::Company === $input->profile->kind && (null === $country || $country === $company->getCountryCode());
+        $domesticBusiness = $input->profile->isDomesticBusiness($company->getCountryCode());
         $refusal = IdentifierRules::refusal($preset, $input->profile->identifiers, $domesticBusiness ? IdentifierRules::BUSINESS_CUSTOMER : '');
         if (null !== $refusal) {
             throw new InvalidCustomer($refusal->field, $refusal->message, $refusal->reason, $refusal->params);

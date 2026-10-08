@@ -11,13 +11,14 @@ namespace App\Tenancy\Infrastructure\FirstSteps;
 
 use App\FirstSteps\Application\DeclaresFirstStep;
 use App\Fiscal\Application\Preset\FiscalPresets;
-use App\Fiscal\Application\Preset\IdentifierRules;
+use App\Tenancy\Application\Company\SellerIdentity;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyProfileResource;
 
 /**
  * « Profil et matricule »: what every document prints about the company — its legal name, its address, and each
- * registration number its fiscal preset requires of a company, in the shape the preset expects.
+ * registration number its fiscal preset requires of a company, in the shape the preset expects. The same rule refuses
+ * to issue an invoice, so the step is done exactly when the company's own profile no longer stops one.
  */
 final readonly class CompanyProfileStep implements DeclaresFirstStep
 {
@@ -47,11 +48,6 @@ final readonly class CompanyProfileStep implements DeclaresFirstStep
 
     public function isDone(Company $company): bool
     {
-        $profile = $company->getProfile();
-        if (null === $profile->legalName || null === $profile->addressLine1 || null === $profile->city) {
-            return false;
-        }
-
-        return null === IdentifierRules::refusal($this->presets->get($company->getFiscalPreset()), $profile->identifiers, IdentifierRules::COMPANY);
+        return [] === SellerIdentity::missing($company, $this->presets->get($company->getFiscalPreset()));
     }
 }

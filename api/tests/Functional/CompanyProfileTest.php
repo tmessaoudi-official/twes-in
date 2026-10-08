@@ -19,7 +19,7 @@ final class CompanyProfileTest extends ApiTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->company = $this->createCompany('Acme');
+        $this->company = $this->createCompany('Acme', named: false);
     }
 
     public function testAReaderSeesTheProfileWithWhatItsPresetAsksFor(): void

@@ -4591,6 +4591,20 @@ functional tests run in the `tools` container, on the host's network, against th
   Narration: captions in fr / en / ar now, and a synthetic voice reading the same script; which voice service (a third
   party and its licence) is a licensing decision put to the developer before anything is added. Shepherd.js and
   Intro.js-like libraries are not used (copyleft or commercial licences).
+- [2026-10-08 01:52] ASSUMED (review): issuing refuses an invoice, a deposit invoice or a credit note whose parties cannot be
+  named as Code de la TVA art. 18-II and CGI annexe II art. 242 nonies A ask (review LEG-1 / F3), BEFORE it takes a
+  number, answering 422 `seller_identity: …` or `customer_identity: …` with the missing fields, which the screen turns
+  into « complétez le Profil de la société » or « complétez sa fiche ». The seller: its legal name, an address line and
+  a city (the issuing establishment's when it has its own, as the PDF prints it), and each identifier its preset
+  requires of a company, in its shape — the same rule as the « Premiers pas » profile step, which now reads it, so the
+  step is done exactly when the profile stops refusing. The customer: a billing address line and city, whatever its
+  kind (a walk-in sale will get the counter's ticket, row 82, not an invoice), and the identifiers its preset requires of
+  a business customer at home, read again at issue because a preset may come to require one after the customer was
+  saved. Not required: the postal code (F3 asked for it); the French VAT number, which stays preset data
+  (`required_for: []` in FR.yaml), so a French seller issues without one until the preset says otherwise. Delivery notes
+  are not checked: no invoice text binds them. The seed keeps a new company's profile empty, as signup does; the e2e
+  setup names Demo before any scenario issues. Alternatives not taken: warn instead of refusing; require the postal
+  code; check when the draft is saved rather than at issue.
 
 ## 8. Status
 
@@ -4839,6 +4853,7 @@ functional tests run in the `tools` container, on the host's network, against th
 | 226 | Light CQRS held by a test (§ 7 2026-10-07 23:43): every `Application/` class is a command or a query; an architecture test reds when a query writes (persists, flushes, records audit) or a command changes state without recording its audit entry | M | todo | - | api/src/** api/tests/Architecture/** |
 | 227 | The guide's foundation (§ 7 2026-10-08 00:39): the typed tour definition, the CDK overlay engine (RGAA focus, keyboard, RTL), the help drawer and glossary frames, the automated playback that reds CI, one reference tour (the first invoice); content per module as screens settle (row 140) | L | todo | - | web/src/app/shared/tour/** web/e2e/** |
 | 228 | The pitch and feature videos (§ 7 2026-10-08 00:39): a storyboarded 60–90 s pitch per sector and feature videos generated from the tours by Playwright, captions fr / en / ar, a synthetic voice once its service is chosen | M | todo | - | web/e2e/** |
+| 229 | An invoice names both its parties as the law asks before it takes a number (review LEG-1 / F3, § 7 2026-10-08 01:52) | M | doing | - | api/src/Module/Invoices/** api/src/Tenancy/** web/src/app/invoices/** web/e2e/** |
 <!-- /progress-block -->
 
 ### Delivered

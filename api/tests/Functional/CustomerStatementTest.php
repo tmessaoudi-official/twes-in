@@ -15,8 +15,6 @@ use App\Fiscal\Domain\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
 use App\Module\Customers\Domain\Customer;
-use App\Module\Customers\Domain\CustomerKind;
-use App\Module\Customers\Domain\CustomerProfile;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\SettingLevel;
@@ -436,7 +434,7 @@ final class CustomerStatementTest extends ApiTestCase
     {
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company, $number, new CustomerProfile(CustomerKind::Company, $name), null, $regime, $defaultTaxes, new \DateTimeImmutable());
+        $customer = Customer::create($this->company, $number, self::aTunisianBusiness($name), null, $regime, $defaultTaxes, new \DateTimeImmutable());
         $this->em()->persist($customer);
         $this->em()->flush();
 

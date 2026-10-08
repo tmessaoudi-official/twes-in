@@ -77,6 +77,17 @@ final readonly class CustomerProfile
         $this->notes = self::text($notes);
     }
 
+    /**
+     * A company billed at the seller's own country, the customer a preset may require registration numbers of: one
+     * abroad is registered under another country's rules, and a billing address with no country is taken as home.
+     */
+    public function isDomesticBusiness(string $sellerCountryCode): bool
+    {
+        $country = $this->billingAddress->countryCode;
+
+        return CustomerKind::Company === $this->kind && (null === $country || $country === $sellerCountryCode);
+    }
+
     /** @return list<string> the fields whose value differs from the other profile's, in declaration order */
     public function differencesFrom(self $other): array
     {

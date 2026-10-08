@@ -14,8 +14,6 @@ use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\UnitRepository;
 use App\Module\Customers\Domain\Customer;
-use App\Module\Customers\Domain\CustomerKind;
-use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\Invoices\Application\RemindLateInvoices;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
@@ -244,7 +242,7 @@ final class InvoiceRemindersTest extends ApiTestCase
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
         $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
-        $customer = Customer::create($company, $number, new CustomerProfile(CustomerKind::Company, $name), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($company, $number, self::aTunisianBusiness($name), null, $regime, [], new \DateTimeImmutable());
         $this->em()->persist($customer);
         $this->em()->flush();
 

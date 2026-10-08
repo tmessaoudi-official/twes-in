@@ -63,6 +63,68 @@ export async function inACompany(page: Page, csrf: string): Promise<void> {
   }, csrf);
 }
 
+/** What a PUT of the company profile accepts, in the order the API reads it. */
+const PROFILE_FIELDS = [
+  'legalName',
+  'legalForm',
+  'identifiers',
+  'addressLine1',
+  'addressLine2',
+  'postalCode',
+  'city',
+  'email',
+  'phone',
+  'website',
+  'iban',
+  'bic',
+  'vatRegime',
+  'invoiceFooterText',
+  'latePenaltyText',
+];
+
+/**
+ * Gives the working company the legal name, address and matricule fiscal an invoice must print, keeping whatever it
+ * already holds. The seed creates Demo with an empty profile, as a new company is, and issuing refuses a company that
+ * cannot be named, so the scenarios that issue would otherwise depend on company-profile.spec having run first.
+ */
+export async function namedAsTheLawAsks(page: Page, csrf: string): Promise<void> {
+  await page.evaluate(
+    async ([token, fields]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const path = `/api/companies/${me.company.id}/profile`;
+      const held = (await (await fetch(path)).json()) as Record<string, unknown>;
+      const identifiers = (held['identifiers'] ?? {}) as Record<string, string>;
+      if (
+        held['legalName'] &&
+        held['addressLine1'] &&
+        held['city'] &&
+        identifiers['matricule_fiscal']
+      )
+        return;
+      const profile = Object.fromEntries(fields.map((key) => [key, held[key] ?? null]));
+      const answered = await fetch(path, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', 'csrf-token': token },
+        body: JSON.stringify({
+          ...profile,
+          legalName: held['legalName'] ?? 'Demo SARL',
+          identifiers: {
+            ...identifiers,
+            matricule_fiscal: identifiers['matricule_fiscal'] ?? '1234567A/B/M/000',
+          },
+          addressLine1: held['addressLine1'] ?? 'Rue de Marseille',
+          postalCode: held['postalCode'] ?? '1000',
+          city: held['city'] ?? 'Tunis',
+          vatRegime: held['vatRegime'] ?? 'standard',
+        }),
+      });
+      if (!answered.ok)
+        throw new Error(`naming the company answered ${answered.status}: ${await answered.text()}`);
+    },
+    [csrf, PROFILE_FIELDS] as const,
+  );
+}
+
 /** Signs the operator in from the login page, the password and then a code, on a session of its own. */
 export async function signInWithCode(page: Page): Promise<void> {
   await page.goto('/login');

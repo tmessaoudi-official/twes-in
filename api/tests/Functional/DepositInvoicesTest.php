@@ -390,7 +390,7 @@ final class DepositInvoicesTest extends ApiTestCase
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->company->reviseProfile(new CompanyProfile(
             legalName: 'Atelier Durand SARL',
-            identifiers: ['siren' => '732829320', 'siret' => '73282932000013', 'vat_number' => 'FR44732829320'],
+            identifiers: ['siren' => '732829320', 'siret' => '73282932000074', 'vat_number' => 'FR44732829320'],
             addressLine1: '12 rue des Forges',
             postalCode: '69007',
             city: 'Lyon',
@@ -414,7 +414,7 @@ final class DepositInvoicesTest extends ApiTestCase
     {
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $customer = Customer::create($this->company, $number, new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
+        $customer = Customer::create($this->company, $number, self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], new \DateTimeImmutable());
         $this->em()->persist($customer);
         $this->em()->flush();
 

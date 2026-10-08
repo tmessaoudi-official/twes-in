@@ -15,8 +15,6 @@ use App\Fiscal\Domain\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
 use App\Module\Customers\Domain\Customer;
-use App\Module\Customers\Domain\CustomerKind;
-use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineDetails;
@@ -487,7 +485,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
     {
         $taxRegime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($taxRegime);
-        $customer = Customer::create($company ?? $this->company, $number, new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $taxRegime, [], new \DateTimeImmutable());
+        $customer = Customer::create($company ?? $this->company, $number, self::aTunisianBusiness('Carthage Conseil'), null, $taxRegime, [], new \DateTimeImmutable());
         $this->em()->persist($customer);
         $this->em()->flush();
 

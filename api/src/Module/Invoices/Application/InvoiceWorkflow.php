@@ -56,6 +56,7 @@ final readonly class InvoiceWorkflow
         private ClockInterface $clock,
         private CustomerCreditRepository $credits,
         private DepositDeductions $deductions,
+        private PartyIdentity $parties,
     ) {
     }
 
@@ -63,11 +64,12 @@ final readonly class InvoiceWorkflow
      * @throws InvoiceNotFound
      * @throws InvoiceNotDraft
      * @throws InvalidInvoice
-     * @throws NoNumberingSeries  when the invoice's establishment numbers no document of its type
-     * @throws InvalidNumbering   when the company's day comes before the month of the series' last number
-     * @throws InvoiceNumberTaken when another establishment of the company already gave the number
-     * @throws InvalidInvoice     on `amountDue` when a credit note comes to more than its invoice invoiced less its earlier credit notes;
-     *                            on `excessTo` when part of it was already paid and it does not say where that goes
+     * @throws NoNumberingSeries    when the invoice's establishment numbers no document of its type
+     * @throws InvalidNumbering     when the company's day comes before the month of the series' last number
+     * @throws InvoiceNumberTaken   when another establishment of the company already gave the number
+     * @throws PartyIdentityMissing when the seller or the customer cannot be named as the law asks
+     * @throws InvalidInvoice       on `amountDue` when a credit note comes to more than its invoice invoiced less its earlier credit notes;
+     *                              on `excessTo` when part of it was already paid and it does not say where that goes
      */
     public function issue(Company $company, Uuid $id, ?Uuid $actorUserId, ?CreditExcessTo $excessTo = null): Invoice
     {
@@ -81,6 +83,8 @@ final readonly class InvoiceWorkflow
                 $this->stillGivenBack($company, $invoice);
             }
             $customer = $invoice->getCustomer();
+            // Before the series, as a mention is: an invoice that cannot name its parties takes no number.
+            $this->parties->assertNamed($company, $invoice->getEstablishment(), $customer);
             $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
             $language = $this->settings->value($context, 'document.language');
             $language = \is_string($language) ? $language : 'fr';

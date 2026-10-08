@@ -41,7 +41,7 @@ final class DeliveryNotesTest extends ApiTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->company = $this->createCompany('Acme');
+        $this->company = $this->createCompany('Acme', named: false);
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $this->customerId = $this->customer('CLI-0001', 'standard')->getId()->toRfc4122();

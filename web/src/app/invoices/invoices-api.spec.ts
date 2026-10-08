@@ -519,6 +519,25 @@ describe('InvoicesApi', () => {
     }
   });
 
+  it('names the party an invoice cannot name as the law asks, by the word the refusal leads with', async () => {
+    for (const [detail, code] of [
+      [
+        'seller_identity: An invoice cannot name its seller without legalName, identifiers.matricule_fiscal.',
+        'missing_seller_identity',
+      ],
+      [
+        'customer_identity: An invoice cannot name its customer without billingAddressLine1.',
+        'missing_customer_identity',
+      ],
+    ] as const) {
+      const refused = api.issue('c1', 'i1');
+      http
+        .expectOne('/api/companies/c1/invoices/i1/issue')
+        .flush({ detail }, { status: 422, statusText: 'Unprocessable' });
+      await expect(refused).rejects.toEqual(new InvoicesRefused(code));
+    }
+  });
+
   it('tells a credit note refused for the money already paid from any other refusal, and sends where it goes', async () => {
     const refused = api.issue('c1', 'i1');
     http

@@ -17,6 +17,7 @@ use App\Module\Invoices\Application\InvoiceNumberTaken;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\InvoiceWorkflow;
 use App\Module\Invoices\Application\MentionDatumMissing;
+use App\Module\Invoices\Application\PartyIdentityMissing;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
@@ -32,7 +33,7 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 /**
  * Issues a draft. What the company's numbering cannot give (no series, a day before its last month, a number another
  * establishment already gave) is a 409, like a document that is no longer a draft; what the draft lacks is a 422, and
- * so is a legal mention that cannot be filled, led by the setting that fills it.
+ * so is a legal mention that cannot be filled, led by the setting that fills it, and a party the invoice cannot name.
  *
  * @implements ProcessorInterface<mixed, InvoiceResource>
  */
@@ -66,6 +67,9 @@ final readonly class IssueInvoiceProcessor implements ProcessorInterface
         } catch (MentionDatumMissing $missing) {
             // The setting to give leads, as a refused field does: the screen names it from that word alone.
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $missing->datum, $missing->getMessage()), $missing);
+        } catch (PartyIdentityMissing $unnamed) {
+            // `seller_identity` or `customer_identity` leads: the screen says which form to complete from that word.
+            throw new UnprocessableEntityHttpException(\sprintf('%s_identity: %s', $unnamed->party, $unnamed->getMessage()), $unnamed);
         }
 
         return InvoiceResource::of($invoice, $this->totals->figures($invoice), $this->guard->may($company, ProductPermission::COST_READ));

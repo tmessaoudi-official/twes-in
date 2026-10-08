@@ -379,8 +379,15 @@ const MENTION_DATA: Readonly<Record<string, InvoicesError>> = {
   'document.exemption_reference': 'missing_exemption_reference',
 };
 
+/** The parties issuing may find unnamed, as the API names them, and what the screen says for each. */
+const PARTY_IDENTITY: Readonly<Record<string, InvoicesError>> = {
+  seller_identity: 'missing_seller_identity',
+  customer_identity: 'missing_customer_identity',
+};
+
 function fieldCode(field: string | null): InvoicesError {
   if (field === 'customerId') return 'customer_unavailable';
+  if (field !== null && field in PARTY_IDENTITY) return PARTY_IDENTITY[field];
   if (field === null) return 'invalid';
   return MENTION_DATA[field] ?? (field.startsWith('mention.') ? 'missing_mention' : 'invalid');
 }

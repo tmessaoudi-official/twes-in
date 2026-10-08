@@ -12,11 +12,15 @@ export type InvoicesError =
   | 'invalid'
   | 'excess_to'
   | 'customer_unavailable'
-  | MentionDatumError;
+  | MentionDatumError
+  | PartyIdentityError;
 
 /** A legal mention issuing could not fill, by the setting that fills it (docs/SPEC.md § 7, 2026-09-21 18:30). */
 export type MentionDatumError =
   'missing_late_payment_rate' | 'missing_exemption_reference' | 'missing_mention';
+
+/** A party the invoice must name as the law asks, missing what the law asks of it: issuing waits for its profile. */
+export type PartyIdentityError = 'missing_seller_identity' | 'missing_customer_identity';
 
 /** Where the part of a credit note that was already paid goes: kept to the customer's credit, or paid back. */
 export type CreditExcessTo = 'balance' | 'refund';

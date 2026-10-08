@@ -43,7 +43,7 @@ final class FirstStepsTest extends ApiTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->company = $this->createCompany('Quincaillerie');
+        $this->company = $this->createCompany('Quincaillerie', named: false);
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
     }
 

@@ -14,8 +14,6 @@ use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\UnitRepository;
 use App\Module\Customers\Domain\Customer;
-use App\Module\Customers\Domain\CustomerKind;
-use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Products\Domain\Product;
@@ -1145,7 +1143,7 @@ final class InventoryTest extends ApiTestCase
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
         $now = new \DateTimeImmutable();
-        $customer = Customer::create($this->company(), 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, $regime, [], $now);
+        $customer = Customer::create($this->company(), 'CLI-0001', self::aTunisianBusiness('Carthage Conseil'), null, $regime, [], $now);
         $this->em()->persist($customer);
         $this->em()->flush();
 

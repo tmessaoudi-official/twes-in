@@ -20,7 +20,9 @@ use App\Module\Customers\Domain\CustomerProfile;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\SettingLevel;
+use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\CompanyProfile;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -37,13 +39,14 @@ final class FrenchMentionsTest extends ApiTestCase
     {
         parent::setUp();
         $this->company = new Company('Atelier Durand', 'FR', 'EUR', 'fr', 'Europe/Paris');
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siren' => '732829320', 'siret' => '73282932000074'], addressLine1: '12 rue des Forges', postalCode: '69007', city: 'Lyon'));
         $this->em()->persist($this->company);
         $this->em()->flush();
         static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
         static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
         $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('FR', 'exempt');
         self::assertNotNull($regime);
-        $this->customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'École Martin'), null, $regime, [], new \DateTimeImmutable());
+        $this->customer = Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'École Martin', identifiers: ['siren' => '542065479'], billingAddress: new PostalAddress('3 avenue Foch', null, '75016', 'Paris', 'FR')), null, $regime, [], new \DateTimeImmutable());
         $this->em()->persist($this->customer);
         $this->em()->flush();
         $this->createUser('sales@twes.local', 'password-1234', $this->company, ['invoice.read', 'invoice.write', 'invoice.issue'], 'member');

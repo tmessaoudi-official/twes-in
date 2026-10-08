@@ -1554,7 +1554,9 @@
       "customer_unavailable": "Ce client a été désactivé depuis : choisissez-en un autre, ou réactivez-le dans sa fiche.",
       "missing_late_payment_rate": "Une facture doit indiquer le taux des pénalités de retard : renseignez-le dans Valeurs par défaut (ou dans l’onglet Valeurs par défaut du client), ou écrivez votre propre texte de pénalités dans Profil de la société.",
       "missing_exemption_reference": "Ce client est exonéré de TVA : le document doit citer le texte qui l’exonère. Renseignez-le dans l’onglet Valeurs par défaut du client, ou dans Valeurs par défaut pour tous.",
-      "missing_mention": "Une mention légale de ce document ne peut pas être complétée : le document n’est pas émis."
+      "missing_mention": "Une mention légale de ce document ne peut pas être complétée : le document n’est pas émis.",
+      "missing_seller_identity": "Une facture doit nommer votre société comme la loi le demande : sa raison sociale, son adresse et ses numéros fiscaux (matricule fiscal, SIREN…). Complétez le Profil de la société ; la facture reste un brouillon et ne prend aucun numéro.",
+      "missing_customer_identity": "Une facture doit nommer le client comme la loi le demande : son adresse de facturation et, pour une entreprise de votre pays, ses numéros fiscaux. Complétez sa fiche ; la facture reste un brouillon et ne prend aucun numéro."
     },
     "home": {
       "outstanding": "À encaisser",

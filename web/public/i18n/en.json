@@ -1554,7 +1554,9 @@
       "customer_unavailable": "This customer has been deactivated since: choose another, or reactivate it on its record.",
       "missing_late_payment_rate": "An invoice must state its late payment penalty rate: set it in Defaults (or in the customer’s Defaults tab), or write your own penalty text in Company profile.",
       "missing_exemption_reference": "This customer is exempt from VAT: the document must cite the provision it is exempt under. Set it in the customer’s Defaults tab, or in Defaults for everyone.",
-      "missing_mention": "A legal mention of this document cannot be completed: the document is not issued."
+      "missing_mention": "A legal mention of this document cannot be completed: the document is not issued.",
+      "missing_seller_identity": "An invoice must name your company as the law asks: its legal name, its address and its tax numbers (matricule fiscal, SIREN…). Complete the Company profile; the invoice stays a draft and takes no number.",
+      "missing_customer_identity": "An invoice must name the customer as the law asks: its billing address and, for a business in your country, its tax numbers. Complete the customer’s record; the invoice stays a draft and takes no number."
     },
     "home": {
       "outstanding": "To collect",

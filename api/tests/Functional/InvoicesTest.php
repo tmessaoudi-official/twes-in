@@ -16,8 +16,6 @@ use App\Fiscal\Domain\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
 use App\Module\Customers\Domain\Customer;
-use App\Module\Customers\Domain\CustomerKind;
-use App\Module\Customers\Domain\CustomerProfile;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Products\Domain\Product;
@@ -1517,7 +1515,7 @@ final class InvoicesTest extends ApiTestCase
     {
         $taxRegime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', $regime);
         self::assertNotNull($taxRegime);
-        $profile = new CustomerProfile(CustomerKind::Company, 'Carthage Conseil', defaultDiscountRate: $defaultDiscountRate);
+        $profile = self::aTunisianBusiness('Carthage Conseil', $defaultDiscountRate);
         $customer = Customer::create($company ?? $this->company, $number, $profile, null, $taxRegime, $defaultTaxes, new \DateTimeImmutable());
         $this->em()->persist($customer);
         $this->em()->flush();

@@ -42,7 +42,7 @@ final class FacturXTest extends ApiTestCase
         $this->company = $this->frenchCompany('Atelier Durand');
         $this->company->reviseProfile(new CompanyProfile(
             legalName: 'Atelier Durand SARL',
-            identifiers: ['siren' => '732829320', 'siret' => '73282932000013', 'vat_number' => 'FR44732829320'],
+            identifiers: ['siren' => '732829320', 'siret' => '73282932000074', 'vat_number' => 'FR44732829320'],
             addressLine1: '12 rue des Forges',
             postalCode: '69007',
             city: 'Lyon',
@@ -143,7 +143,8 @@ final class FacturXTest extends ApiTestCase
 
         // What is judged is the seller as issuing froze it, so the gaps must be there when the invoice is issued.
         $this->company = $this->reloaded();
-        $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siren' => '732829320'], addressLine1: '12 rue des Forges', city: 'Lyon'));
+        // Named as issuing asks, but short of what EN 16931 asks beyond it: the VAT number and the postal code.
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siren' => '732829320', 'siret' => '73282932000074'], addressLine1: '12 rue des Forges', city: 'Lyon'));
         $this->em()->flush();
         $id = $this->issued(['lines' => [$this->line('Réglage', '1', 'C62', '10', 'TVA20')]]);
 

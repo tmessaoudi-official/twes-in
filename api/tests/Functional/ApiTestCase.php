@@ -15,7 +15,11 @@ use App\Identity\Domain\User;
 use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
 use App\Identity\Infrastructure\Mfa\SodiumSecretCipher;
 use App\Identity\Infrastructure\Security\CsrfRequestListener;
+use App\Module\Customers\Domain\CustomerKind;
+use App\Module\Customers\Domain\CustomerProfile;
+use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\CompanyProfile;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Permission;
 use App\Tenancy\Domain\Role;
@@ -89,13 +93,29 @@ abstract class ApiTestCase extends WebTestCase
         return $user;
     }
 
-    protected function createCompany(string $name = 'Demo'): Company
+    /**
+     * A Tunisian company, named as an invoice must name its seller unless `$named` is false: issuing refuses a company
+     * without its legal name, address and matricule fiscal, and the tests that are not about that issue all the same.
+     */
+    protected function createCompany(string $name = 'Demo', bool $named = true): Company
     {
         $company = new Company($name, 'TN', 'TND', 'fr', 'Africa/Tunis');
+        if ($named) {
+            $company->reviseProfile(new CompanyProfile(legalName: $name.' SARL', identifiers: ['matricule_fiscal' => '1234567A/B/M/000'], addressLine1: 'Rue de Marseille', postalCode: '1000', city: 'Tunis'));
+        }
         $this->em()->persist($company);
         $this->em()->flush();
 
         return $company;
+    }
+
+    /**
+     * A business customer at home in Tunisia, named as an invoice must name it: its billing address and its matricule
+     * fiscal. Issuing refuses a customer without them, and the tests that are not about that issue all the same.
+     */
+    protected static function aTunisianBusiness(string $name, ?string $defaultDiscountRate = null): CustomerProfile
+    {
+        return new CustomerProfile(CustomerKind::Company, $name, identifiers: ['matricule_fiscal' => '7654321A/B/M/000'], billingAddress: new PostalAddress('Rue de Rome', null, '1000', 'Tunis', 'TN'), defaultDiscountRate: $defaultDiscountRate);
     }
 
     /** The SPA's token: one random value per page load, sent as a header (framework.csrf_protection, header only). */

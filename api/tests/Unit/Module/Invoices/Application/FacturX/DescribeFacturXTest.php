@@ -188,7 +188,7 @@ final class DescribeFacturXTest extends TestCase
 
     public function testADocumentLackingWhatTheStandardAsksForIsRefusedNamingEveryGap(): void
     {
-        $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siret' => '73282932000013'], addressLine1: '12 rue des Forges'));
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SARL', identifiers: ['siret' => '73282932000074'], addressLine1: '12 rue des Forges'));
         $exempt = $this->customer('exempt', [TaxFamily::Vat], country: null);
         $invoice = $this->issued($exempt, [$this->line('Formation', '1', 'C62', '500', null)]);
 
@@ -328,7 +328,7 @@ final class DescribeFacturXTest extends TestCase
     {
         return new CompanyProfile(
             legalName: 'Atelier Durand SARL',
-            identifiers: ['siren' => '732829320', 'siret' => '73282932000013', 'vat_number' => 'FR44732829320'],
+            identifiers: ['siren' => '732829320', 'siret' => '73282932000074', 'vat_number' => 'FR44732829320'],
             addressLine1: '12 rue des Forges',
             postalCode: '69007',
             city: 'Lyon',

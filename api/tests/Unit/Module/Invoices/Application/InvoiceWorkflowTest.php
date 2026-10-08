@@ -23,6 +23,7 @@ use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\InvoiceWorkflow;
 use App\Module\Invoices\Application\MentionDatumMissing;
+use App\Module\Invoices\Application\PartyIdentity;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
@@ -43,6 +44,7 @@ use App\Settings\Application\SettingContext;
 use App\Settings\Domain\SettingLevel;
 use App\Shared\Domain\DocumentDesign;
 use App\Shared\Domain\DocumentLayout;
+use App\Shared\Domain\PostalAddress;
 use App\Shared\Domain\PrintSettings;
 use App\Tenancy\Application\Numbering\AllocateNumber;
 use App\Tenancy\Domain\Company;
@@ -66,6 +68,9 @@ use Symfony\Component\Uid\Uuid;
 
 final class InvoiceWorkflowTest extends TestCase
 {
+    /** A matricule fiscal of the shape the Tunisian preset expects, which issuing asks of a company and a business customer. */
+    private const array MATRICULE = ['matricule_fiscal' => '1234567A/B/M/000'];
+
     private MockClock $clock;
     private InMemoryUnits $units;
     private InMemoryTaxComponents $taxes;
@@ -111,7 +116,11 @@ final class InvoiceWorkflowTest extends TestCase
             $this->clock,
             new InMemoryCustomerCredits(),
             ShippedDepositDeductions::of($this->invoices, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())),
+            new PartyIdentity(ShippedFiscalPresets::presets()),
         );
+        foreach ([$this->company, $this->globex] as $company) {
+            $company->reviseProfile(new CompanyProfile(legalName: $company->getName().' SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'));
+        }
     }
 
     public function testIssuingNumbersTheInvoiceWithWhatItsCustomerAndCompanySayAndTellsOnceItIsStored(): void
@@ -120,7 +129,7 @@ final class InvoiceWorkflowTest extends TestCase
         $atCustomer = new SettingContext($this->company, customerId: $customer->getId());
         $this->change->change($atCustomer, 'document.language', SettingLevel::Customer, 'en', null);
         $this->change->change($atCustomer, 'document.payment_terms_days', SettingLevel::Customer, 60, null);
-        $this->company->reviseProfile(new CompanyProfile(invoiceFooterText: 'Merci de votre confiance', latePenaltyText: 'Pénalité de retard : 1 % par mois'));
+        $this->company->reviseProfile(new CompanyProfile(legalName: 'Acme SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis', invoiceFooterText: 'Merci de votre confiance', latePenaltyText: 'Pénalité de retard : 1 % par mois'));
         $invoice = $this->draft($customer);
         $actor = Uuid::v7();
 
@@ -324,8 +333,9 @@ final class InvoiceWorkflowTest extends TestCase
     {
         new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, $this->series, ShippedFiscalPresets::scales(), $this->clock)
             ->handle($atelier = new Company('Atelier', 'FR', 'EUR', 'fr', 'Europe/Paris'));
+        $atelier->reviseProfile(new CompanyProfile(legalName: 'Atelier SARL', identifiers: ['siren' => '732829320', 'siret' => '73282932000074'], addressLine1: '12 rue des Forges', postalCode: '69007', city: 'Lyon'));
         $now = $this->clock->now();
-        $customer = Customer::create($atelier, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Garage Martin'), null, new CustomerTaxRegime('FR', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
+        $customer = Customer::create($atelier, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Garage Martin', identifiers: ['siren' => '542065479'], billingAddress: new PostalAddress('3 avenue Foch', null, '75016', 'Paris', 'FR')), null, new CustomerTaxRegime('FR', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
         $unit = $this->units->ofCodeInCompany('C62', $atelier->getId());
         $vat = $this->taxes->ofCodeInCompany('TVA20', $atelier->getId());
         self::assertNotNull($unit);
@@ -409,6 +419,6 @@ final class InvoiceWorkflowTest extends TestCase
         $now = $this->clock->now();
         $families = null === $mentionKey ? [] : [TaxFamily::Vat];
 
-        return Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', $regime, 'fiscal.regime.'.$regime, $families, $mentionKey, 0, $now), [], $now);
+        return Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil', identifiers: self::MATRICULE, billingAddress: new PostalAddress('Rue de Rome', null, '1000', 'Tunis', 'TN')), null, new CustomerTaxRegime('TN', $regime, 'fiscal.regime.'.$regime, $families, $mentionKey, 0, $now), [], $now);
     }
 }
