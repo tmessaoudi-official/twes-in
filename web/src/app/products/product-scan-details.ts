@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
-import { InventoryApi } from '../inventory/inventory-api';
 import type { StockLevelRow } from '../inventory/inventory-types';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import type { ScanDetails } from '../shared/scan/scan-details';
@@ -21,7 +20,7 @@ const PLACES_MAX = 3;
 @Injectable({ providedIn: 'root' })
 export class ProductScanDetails implements ScanDetails {
   private readonly scans = inject(ProductScans);
-  private readonly inventory = inject(InventoryApi);
+  private readonly injector = inject(Injector);
   private readonly auth = inject(AuthFacade);
   private readonly format = inject(FormatFacade);
   private readonly translate = inject(TranslateService);
@@ -42,7 +41,10 @@ export class ProductScanDetails implements ScanDetails {
     productId: string,
     reference: string,
   ): Promise<string[]> {
-    const page = await this.inventory.levels(companyId, {
+    // The stock's client is read on the first scan, not with the first page: this card is in the shell's bundle, and
+    // the whole client there would grow the first page with every change to the stock screens.
+    const { InventoryApi } = await import('../inventory/inventory-api');
+    const page = await this.injector.get(InventoryApi).levels(companyId, {
       page: 1,
       itemsPerPage: 100,
       q: reference,

@@ -1816,7 +1816,8 @@
       "pdf_draft": "Aperçu du PDF",
       "validate_title": "Valider ce bon ?",
       "validate_message": "Il reçoit son numéro et ses lignes ne se modifient plus.",
-      "confirm_validate": "Valider"
+      "confirm_validate": "Valider",
+      "on_map": "Voir sur le plan"
     },
     "errors": {
       "network": "Le serveur est injoignable.",
@@ -2429,7 +2430,15 @@
         "floor_total": "Total sur cet étage : {{quantity}} {{unit}}",
         "open_product": "Fiche article",
         "clear": "Effacer la recherche",
-        "scanned": "Cherché sur le plan : {{name}}"
+        "scanned": "Cherché sur le plan : {{name}}",
+        "note_title": "Bon de livraison {{note}}",
+        "lines_title": "{{count}} {count, plural, one {article} other {articles}} à trouver",
+        "note_lines": "{{count}} {count, plural, one {ligne} other {lignes}}",
+        "note_nowhere": "{{count}} {count, plural, one {ligne introuvable} other {lignes introuvables}} sur le plan",
+        "where_lines": "Où prendre chaque ligne",
+        "line_nowhere": "Aucun stock n’est enregistré pour cet article.",
+        "lines_badge": "{{count}} {count, plural, one {ligne} other {lignes}}",
+        "unknown_product": "Article introuvable"
       }
     },
     "scan": {

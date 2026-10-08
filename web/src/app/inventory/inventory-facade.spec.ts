@@ -119,20 +119,21 @@ describe('InventoryFacade', () => {
   });
 
   /** A product found nowhere answers no row to carry its words, so they come from the product itself. */
-  it('finds a product on the map, its name from the product when no row carries it', async () => {
-    api.whereabouts.mockResolvedValue({
+  it('finds goods on the map in the order asked, naming from the product those found nowhere', async () => {
+    const vis = {
       productId: 'p1',
-      productReference: '',
-      productName: '',
-      unitName: '',
-      unitDecimals: 3,
+      productReference: 'VIS-6X40',
+      productName: 'Vis 6x40',
+      unitName: 'Pièce',
+      unitDecimals: 0,
       rows: [],
-    });
+    };
+    api.whereabouts.mockResolvedValue([vis]);
     api.pickProducts.mockResolvedValue([
       {
-        id: 'p1',
-        reference: 'VIS-6X40',
-        name: 'Vis 6x40',
+        id: 'p2',
+        reference: 'RON-M6',
+        name: 'Rondelle M6',
         unitCode: 'C62',
         unitDecimals: 0,
         homeLocationId: null,
@@ -140,20 +141,38 @@ describe('InventoryFacade', () => {
       },
     ]);
 
-    await facade.loadWhereabouts('c1', 'p1');
+    await facade.loadWhereabouts('c1', ['p2', 'p1']);
 
-    expect(api.pickProducts).toHaveBeenCalledWith('c1', { ids: ['p1'] });
+    expect(api.whereabouts).toHaveBeenCalledWith('c1', ['p2', 'p1']);
+    expect(api.pickProducts).toHaveBeenCalledWith('c1', { ids: ['p2'] });
     expect(facade.whereabouts()).toEqual({
-      productId: 'p1',
-      productReference: 'VIS-6X40',
-      productName: 'Vis 6x40',
-      unitName: '',
-      unitDecimals: 0,
-      rows: [],
+      productIds: ['p2', 'p1'],
+      products: [
+        {
+          productId: 'p2',
+          productReference: 'RON-M6',
+          productName: 'Rondelle M6',
+          unitName: '',
+          unitDecimals: 0,
+          rows: [],
+        },
+        vis,
+      ],
     });
 
-    await facade.loadWhereabouts('c1', null);
+    await facade.loadWhereabouts('c1', []);
     expect(facade.whereabouts()).toBeNull();
+  });
+
+  /** The picker resolves twenty ids at a time, so a long note's missing lines are asked for in several questions. */
+  it('asks the words of many products found nowhere twenty at a time', async () => {
+    api.whereabouts.mockResolvedValue([]);
+    const ids = Array.from({ length: 45 }, (_, at) => `p${at}`);
+
+    await facade.loadWhereabouts('c1', ids);
+
+    expect(api.pickProducts.mock.calls.map(([, asked]) => asked.ids.length)).toEqual([20, 20, 5]);
+    expect(facade.whereabouts()?.products).toHaveLength(45);
   });
 
   /**

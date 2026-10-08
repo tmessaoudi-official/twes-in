@@ -151,6 +151,46 @@
               </button>
             </div>
           </div>
+        } @else if (note(); as looking) {
+          <!-- A delivery note's lines, looked for together from the note: what to pick, and from where. -->
+          <div
+            class="flex flex-wrap items-start gap-x-4 gap-y-2 rounded-xl border border-outline-variant bg-surface-container-low p-4"
+            role="status"
+            data-testid="stock-map-note"
+          >
+            <div class="me-auto flex min-w-0 flex-col gap-1">
+              <p class="font-semibold">
+                @if (noteAsked(); as number) {
+                  {{ 'inventory.plan.search.note_title' | translate: { note: number } }}
+                } @else {
+                  {{
+                    'inventory.plan.search.lines_title'
+                      | translate: { count: looking.products.length }
+                  }}
+                }
+              </p>
+              <p class="text-sm">
+                {{
+                  'inventory.plan.search.note_lines' | translate: { count: looking.products.length }
+                }}
+                ·
+                {{ 'inventory.plan.search.places_here' | translate: { count: hits().size } }}
+              </p>
+              @if (noteNowhere() > 0) {
+                <p class="text-sm text-on-surface-variant" data-testid="stock-map-note-nowhere">
+                  {{ 'inventory.plan.search.note_nowhere' | translate: { count: noteNowhere() } }}
+                </p>
+              }
+            </div>
+            <button
+              mat-button
+              type="button"
+              (click)="searchFor(null)"
+              data-testid="stock-map-search-clear"
+            >
+              {{ 'inventory.plan.search.clear' | translate }}
+            </button>
+          </div>
         }
       </div>
     }
@@ -796,7 +836,7 @@
               @for (shape of shapes(); track shape.drawing.id) {
                 <g
                   [attr.data-testid]="'stock-drawing-group-' + shape.drawing.locationCode"
-                  [class.opacity-30]="found() !== null && !hits().has(shape.drawing.locationId)"
+                  [class.opacity-30]="search() !== null && !hits().has(shape.drawing.locationId)"
                   [class.hidden]="!shown(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')"
                   [class.pointer-events-none]="
                     isLocked(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')
@@ -825,7 +865,9 @@
                     [class.stroke-outline]="shape.drawing.locationKind !== 'rack'"
                     [class.fill-secondary-container]="shape.drawing.id === selectedId()"
                     [class.twes-map-hit]="hits().has(shape.drawing.locationId)"
-                    [attr.data-hit]="found() === null ? null : hits().has(shape.drawing.locationId)"
+                    [attr.data-hit]="
+                      search() === null ? null : hits().has(shape.drawing.locationId)
+                    "
                     (pointerdown)="grab($event, shape.drawing, null)"
                     (click)="select(shape.drawing)"
                     [attr.data-testid]="'stock-drawing-rect-' + shape.drawing.locationCode"
@@ -876,7 +918,13 @@
                         dominant-baseline="central"
                         class="twes-map-hit-badge-text"
                       >
-                        {{ badge.quantity | amount: badge.decimals }}
+                        @if (badge.quantity !== null) {
+                          {{ badge.quantity | amount: badge.decimals }}
+                        } @else {
+                          {{
+                            'inventory.plan.search.lines_badge' | translate: { count: badge.count }
+                          }}
+                        }
                       </text>
                     </g>
                   }
@@ -1472,6 +1520,72 @@
                           }
                   }}
                 </p>
+              }
+            </div>
+          } @else if (note(); as looking) {
+            <!-- A note's lines one by one, in the note's order: where to pick each, this floor first. -->
+            <div
+              class="flex flex-col gap-3 rounded-xl border border-outline-variant bg-surface p-4"
+              data-testid="stock-map-note-lines"
+            >
+              <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+                {{ 'inventory.plan.search.where_lines' | translate }}
+              </h2>
+              @for (group of noteGroups(); track group.product.productId) {
+                <section
+                  class="flex flex-col gap-2"
+                  [attr.data-testid]="'stock-map-note-line-' + group.product.productId"
+                >
+                  <h3 class="font-medium">
+                    @if (group.product.productReference !== '') {
+                      {{ group.product.productReference }} · {{ group.product.productName }}
+                    } @else {
+                      {{ 'inventory.plan.search.unknown_product' | translate }}
+                    }
+                  </h3>
+                  @if (group.product.rows.length === 0) {
+                    <p class="text-sm text-on-surface-variant">
+                      {{ 'inventory.plan.search.line_nowhere' | translate }}
+                    </p>
+                  }
+                  @for (place of group.places; track place.row.locationId) {
+                    <button
+                      type="button"
+                      class="flex w-full items-baseline justify-between gap-3 rounded-lg border border-outline-variant p-3 text-start hover:bg-surface-container-high"
+                      (click)="goTo(place.row)"
+                      [attr.data-testid]="
+                        'stock-map-note-place-' +
+                        group.product.productId +
+                        '-' +
+                        place.row.locationId
+                      "
+                    >
+                      <span class="flex flex-col">
+                        <span>{{ place.row.locationCode }} · {{ place.row.locationName }}</span>
+                        @if (!place.here) {
+                          <span class="text-sm text-on-surface-variant">{{ place.floorName }}</span>
+                        }
+                      </span>
+                      <span class="whitespace-nowrap font-semibold tabular-nums">
+                        {{ place.row.quantity | amount: group.product.unitDecimals }}
+                        {{ group.product.unitName }}
+                      </span>
+                    </button>
+                  }
+                  @if (group.undrawn; as rest) {
+                    <p class="text-sm text-on-surface-variant">
+                      {{
+                        'inventory.plan.search.undrawn'
+                          | translate
+                            : {
+                                quantity: rest.quantity | amount: group.product.unitDecimals,
+                                unit: group.product.unitName,
+                                codes: group.undrawnCodes,
+                              }
+                      }}
+                    </p>
+                  }
+                </section>
               }
             </div>
           } @else {

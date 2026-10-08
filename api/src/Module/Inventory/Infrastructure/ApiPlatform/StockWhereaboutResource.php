@@ -19,7 +19,7 @@ use App\Module\Products\Domain\Product;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
- * Where a product is, as the stock map lights it: one row per drawn place holding some, the floor it is drawn on and
+ * Where goods are, as the stock map lights them: for each product asked, one row per drawn place holding some, the floor it is drawn on and
  * what each place at or under it holds, then one row with no place for what lies where nothing is drawn. Read with
  * stock.read, as the map is.
  */
@@ -33,9 +33,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
             normalizationContext: ['groups' => [self::READ], 'skip_null_values' => false],
             parameters: [
                 'productId' => new QueryParameter(
-                    schema: ['type' => 'string', 'format' => 'uuid'],
-                    description: 'The product to find.',
-                    required: true,
+                    schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid'], 'maxItems' => self::MOST],
+                    description: 'The products to find, answered in this order: one for a search, a delivery note\'s lines together. Left out, nothing is answered.',
+                    constraints: [],
                 ),
             ],
         ),
@@ -44,6 +44,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
 final class StockWhereaboutResource
 {
     public const string READ = 'stock_whereabout:read';
+    /** As many products as one question may name: more lines than a delivery note holds in practice, and a bound. */
+    public const int MOST = 100;
 
     // No identifier: a row is an answer about a product, reached only through the uriTemplate above.
     #[ApiProperty(identifier: false)]
@@ -64,6 +66,10 @@ final class StockWhereaboutResource
     public ?string $locationName = null;
 
     /** What was found, repeated on each row so that one row says all of it. */
+    #[ApiProperty(required: true)]
+    #[Groups([self::READ])]
+    public string $productId = '';
+
     #[ApiProperty(required: true)]
     #[Groups([self::READ])]
     public string $productReference = '';
@@ -104,6 +110,7 @@ final class StockWhereaboutResource
         $resource->locationId = $place?->getId()->toRfc4122();
         $resource->locationCode = $place?->getCode();
         $resource->locationName = $place?->getName();
+        $resource->productId = $product->getId()->toRfc4122();
         $resource->productReference = $product->getReference();
         $resource->productName = $product->getDetails()->name;
         $resource->unitName = $product->getUnit()->getName();

@@ -17,7 +17,7 @@ use BcMath\Number;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Where one product is, as the stock map lights it: what a place holds counts for the nearest drawn place at or above
+ * Where goods are, as the stock map lights them: what a place holds counts for the nearest drawn place at or above
  * it, so a bin's goods light its rack. What lies under no drawn place is one more answer, never left out: the map is
  * only as true as what it says it cannot show.
  */
@@ -30,18 +30,36 @@ final readonly class FindOnMap
     }
 
     /**
-     * The drawn places holding some, ground floor first and by code within a floor, then the undrawn rest if there is
-     * any. A place whose movements cancel out holds none and is no answer.
+     * For each product asked, in the order asked: the drawn places holding some, ground floor first and by code within a
+     * floor, then the undrawn rest if there is any. A place whose movements cancel out holds none and is no answer. The
+     * places are read once for every product, since a delivery note asks for all of its lines together.
      *
-     * @return list<MapHolding>
+     * @param list<Uuid> $productIds
+     *
+     * @return array<string, list<MapHolding>> by the product's id
      */
-    public function of(Company $company, Uuid $productId): array
+    public function of(Company $company, array $productIds): array
     {
         $byId = [];
         foreach ($this->locations->ofCompany($company->getId()) as $location) {
             $byId[$location->getId()->toRfc4122()] = $location;
         }
 
+        $found = [];
+        foreach ($productIds as $productId) {
+            $found[$productId->toRfc4122()] = $this->holdings($company, $productId, $byId);
+        }
+
+        return $found;
+    }
+
+    /**
+     * @param array<string, StockLocation> $byId
+     *
+     * @return list<MapHolding>
+     */
+    private function holdings(Company $company, Uuid $productId, array $byId): array
+    {
         $held = [];
         foreach ($this->movements->levelsOf($company->getId(), $productId) as $level) {
             $key = $level->locationId->toRfc4122();

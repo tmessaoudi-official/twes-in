@@ -51,7 +51,7 @@ final class StockMapSearchTest extends ApiTestCase
         $this->place('R2', 'rack', null);
         $this->place('R3', 'rack', null);
         $this->place('RECEP', 'zone', null);
-        $this->product();
+        $this->productId = $this->product();
         $ground = $this->floor('Rez-de-chaussée', 0);
         $upstairs = $this->floor('Étage 1', 1);
         // Drawn upstairs first, so the order read back is the floors', not the drawing's.
@@ -65,8 +65,10 @@ final class StockMapSearchTest extends ApiTestCase
         $this->receive('RECEP', '2');
         $this->receive('SITE', '1');
 
-        $this->getJson($this->path('stock-whereabouts').'?productId='.$this->productId);
+        $this->getJson($this->path('stock-whereabouts').'?productId[]='.$this->productId);
         self::assertResponseIsSuccessful();
+        $asked = array_column($this->jsonList(), 'productId');
+        self::assertSame(array_fill(0, \count($asked), $this->productId), $asked);
         self::assertSame([
             [$ground, $this->locationIds['R1'], 'R1', '8.000', [['R1', '3.000'], ['R1-A1', '5.000']]],
             [$upstairs, $this->locationIds['R2'], 'R2', '4.000', [['R2', '4.000']]],
@@ -80,17 +82,45 @@ final class StockMapSearchTest extends ApiTestCase
             array_map(static fn (mixed $line): array => \is_array($line) ? [$line['locationCode'] ?? null, $line['quantity'] ?? null] : [], \is_array($row['lines'] ?? null) ? $row['lines'] : []),
         ], $this->jsonList()));
 
-        // A product of no company of ours is nowhere, and asking without one is a question badly put.
-        $this->getJson($this->path('stock-whereabouts').'?productId='.Uuid::v7()->toRfc4122());
+        // A product of no company of ours is nowhere, and a question naming none is answered with nothing.
+        $this->getJson($this->path('stock-whereabouts').'?productId[]='.Uuid::v7()->toRfc4122());
         self::assertResponseIsSuccessful();
         self::assertSame([], $this->jsonList());
         $this->getJson($this->path('stock-whereabouts'));
-        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->jsonList());
 
         // The map is read with the stock: somebody who reads only the catalogue reads neither.
         $this->signedIn(['product.read'], 'catalogue@twes.local', 'catalogue');
-        $this->getJson($this->path('stock-whereabouts').'?productId='.$this->productId);
+        $this->getJson($this->path('stock-whereabouts').'?productId[]='.$this->productId);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /** A delivery note's lines are found together, each row naming its product, in the order they were asked. */
+    public function testSeveralProductsAreFoundInOneAnswerInTheOrderAsked(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
+        $this->place('R1', 'rack', null);
+        $this->place('R2', 'rack', null);
+        $this->productId = $this->product();
+        $washers = $this->product('RON-M6', 'Rondelle M6');
+        $ground = $this->floor('Rez-de-chaussée', 0);
+        $this->draw($ground, 'R1');
+        $this->draw($ground, 'R2');
+        $this->receive('R1', '3');
+        $this->receive('R2', '40', $washers);
+        $this->receive('R1', '10', $washers);
+
+        // Asked twice, as a note naming one product on two lines asks: answered once, where it was first asked.
+        $this->getJson($this->path('stock-whereabouts').'?productId[]='.$washers.'&productId[]='.$this->productId.'&productId[]='.$washers);
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            [$washers, 'RON-M6', 'R1', '10.000'],
+            [$washers, 'RON-M6', 'R2', '40.000'],
+            [$this->productId, 'VIS-6X40', 'R1', '3.000'],
+        ], array_map(static fn (array $row): array => [
+            $row['productId'] ?? null, $row['productReference'] ?? null, $row['locationCode'] ?? null, $row['quantity'] ?? null,
+        ], $this->jsonList()));
     }
 
     private function place(string $code, string $kind, ?string $parent): void
@@ -112,13 +142,13 @@ final class StockMapSearchTest extends ApiTestCase
         $this->locationIds[$code] = $this->stringAt($this->json(), 'id');
     }
 
-    private function product(): void
+    private function product(string $reference = 'VIS-6X40', string $name = 'Vis 6x40'): string
     {
         $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($piece);
         $this->postJson($this->path('products'), [
-            'reference' => 'VIS-6X40',
-            'name' => 'Vis 6x40',
+            'reference' => $reference,
+            'name' => $name,
             'description' => null,
             'kind' => 'goods',
             'unitId' => $piece->getId()->toRfc4122(),
@@ -131,7 +161,8 @@ final class StockMapSearchTest extends ApiTestCase
             'isActive' => true,
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
-        $this->productId = $this->stringAt($this->json(), 'id');
+
+        return $this->stringAt($this->json(), 'id');
     }
 
     private function floor(string $name, int $level): string
@@ -150,9 +181,9 @@ final class StockMapSearchTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
     }
 
-    private function receive(string $code, string $quantity): void
+    private function receive(string $code, string $quantity, ?string $productId = null): void
     {
-        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->productId, 'locationId' => $this->locationIds[$code], 'quantity' => $quantity]);
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $productId ?? $this->productId, 'locationId' => $this->locationIds[$code], 'quantity' => $quantity]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
     }
 

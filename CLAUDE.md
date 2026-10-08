@@ -431,5 +431,9 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - Restart `api` and `worker` one at a time under `make up`: both entrypoints run `cache:clear` on the shared `var/cache`, and
   together the api exited on the other's half-renamed `de_/` directory (2026-10-08). A gate's `composer install` clears that
   cache too, and the live web tier's start then fetched the OpenAPI document from a cold worker: 128M and 30 s ran out.
+- Over the first page's 1 MB budget, measure before trimming: build with the budget lifted and `--stats-json`, then walk
+  `main.ts`'s static imports in `dist/web/browser-stats.json` for the inputs. A shell-level service importing a feature's
+  whole API class puts it on the first page (`ProductScanDetails` carried all of `InventoryApi`, 13.5 kB): load it with
+  `await import()` where the shell needs one call of it (2026-10-08).
 - For the next expertise refresh: `.claude/rules/expertise-core.md` § 2 still says the locked customer screen is NOT built
   and `hides()` is the code; it was built (rows 205, 207), `hides()` is gone, and the lock is held by the API session (2026-10-06).

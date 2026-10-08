@@ -34,6 +34,7 @@ import type {
   StockLocationRow,
   StockOptions,
   StockStructureRow,
+  MapSearch,
   Whereabouts,
 } from './inventory-types';
 import { StockMapPage } from './stock-map-page';
@@ -53,6 +54,8 @@ class StaticLoader implements TranslateLoader {
             undrawn: '{{quantity}} {{unit}} dans des emplacements non dessinés : {{codes}}',
             floor_total: 'Total sur cet étage : {{quantity}} {{unit}}',
             line: '{{code}} : {{quantity}}',
+            note_title: 'Bon de livraison {{note}}',
+            lines_badge: '{{count}} lignes',
           },
         },
         errors: { level_taken: 'Ce niveau est déjà occupé.' },
@@ -142,7 +145,7 @@ describe('StockMapPage', () => {
   const drawings = signal<readonly StockDrawingRow[]>([drawn]);
   const structures = signal<readonly StockStructureRow[]>([wall]);
   const contents = signal<LocationContents | null>(null);
-  const whereabouts = signal<Whereabouts | null>(null);
+  const whereabouts = signal<MapSearch | null>(null);
   const facade = {
     contents: contents.asReadonly(),
     whereabouts: whereabouts.asReadonly(),
@@ -1704,10 +1707,25 @@ describe('StockMapPage', () => {
     ],
   };
 
-  async function search(url: string, found: Whereabouts | null): Promise<void> {
+  /** The URL asked for, and what the facade answers for each product it names. */
+  async function search(url: string, ...found: Whereabouts[]): Promise<void> {
     facade.loadWhereabouts.mockImplementation(
-      async (_company: string, productId: string | null) => {
-        whereabouts.set(productId === null ? null : found);
+      async (_company: string, productIds: readonly string[]) => {
+        whereabouts.set(
+          productIds.length === 0
+            ? null
+            : {
+                productIds,
+                products: productIds.map(
+                  (id) =>
+                    found.find((one) => one.productId === id) ?? {
+                      ...vis,
+                      productId: id,
+                      rows: [],
+                    },
+                ),
+              },
+        );
       },
     );
     await TestBed.inject(Router).navigateByUrl(url);
@@ -1722,7 +1740,7 @@ describe('StockMapPage', () => {
     ]);
     await search('/?product=p1', vis);
 
-    expect(facade.loadWhereabouts).toHaveBeenLastCalledWith('c1', 'p1');
+    expect(facade.loadWhereabouts).toHaveBeenLastCalledWith('c1', ['p1']);
     expect(q('stock-drawing-rect-R1')?.getAttribute('data-hit')).toBe('true');
     expect(q('stock-map-hit-R1')?.textContent).toContain('8');
     expect(q('stock-drawing-rect-Z1')?.getAttribute('data-hit')).toBe('false');
@@ -1769,13 +1787,42 @@ describe('StockMapPage', () => {
     press('stock-map-search-clear');
     await settle();
     expect(TestBed.inject(Router).url).toBe('/');
-    expect(facade.loadWhereabouts).toHaveBeenLastCalledWith('c1', null);
+    expect(facade.loadWhereabouts).toHaveBeenLastCalledWith('c1', []);
+  });
+
+  /** A delivery note opens the map on its lines: each line said where it is, and the places lit with how many lines. */
+  it('lights where a delivery note’s lines are, line by line, and says the lines found nowhere', async () => {
+    const washers: Whereabouts = {
+      ...vis,
+      productId: 'p2',
+      productReference: 'RON-M6',
+      productName: 'Rondelle M6',
+      rows: [{ ...vis.rows[0], quantity: '40.000', lines: [] }],
+    };
+    await search('/?products=p1,p2,p3&note=BL-0012', vis, washers);
+
+    expect(facade.loadWhereabouts).toHaveBeenLastCalledWith('c1', ['p1', 'p2', 'p3']);
+    expect(q('stock-map-note')?.textContent).toContain('Bon de livraison BL-0012');
+    expect(q('stock-map-found')).toBeNull();
+    // Two of the note's lines are on R1, and the pill says so rather than a quantity of either.
+    expect(q('stock-drawing-rect-R1')?.getAttribute('data-hit')).toBe('true');
+    expect(q('stock-map-hit-R1')?.textContent).toContain('2 lignes');
+    expect(q('stock-map-note-line-p3')).not.toBeNull();
+    expect(q('stock-map-note-nowhere')).not.toBeNull();
+
+    (q('stock-map-note-place-p2-l1') as HTMLElement).click();
+    await settle();
+    expect(q('stock-map-selection')?.textContent).toContain('R1');
+
+    press('stock-map-search-clear');
+    await settle();
+    expect(TestBed.inject(Router).url).toBe('/');
   });
 
   it('searches nothing while arranging', async () => {
     await search('/?mode=arrange&product=p1', vis);
 
-    expect(facade.loadWhereabouts).toHaveBeenLastCalledWith('c1', null);
+    expect(facade.loadWhereabouts).toHaveBeenLastCalledWith('c1', []);
     expect(q('stock-map-search')).toBeNull();
   });
 

@@ -30,8 +30,11 @@ import type {
   StockOnHand,
   StockSearch,
   StockValuation,
-  Whereabouts,
+  MapSearch,
 } from './inventory-types';
+
+/** How many ids the stock product picker resolves in one question (its `ids` parameter's own bound). */
+const PICK_IDS_MOST = 20;
 
 /** The stock of the company being worked in: what is on hand, how it moved, where it is kept, and the forms' options. */
 @Injectable({ providedIn: 'root' })
@@ -61,7 +64,7 @@ export class InventoryFacade {
   private structuresFloorId: string | null = null;
   private readonly contentsSignal = signal<LocationContents | null>(null);
   private contentsRequest = 0;
-  private readonly whereaboutsSignal = signal<Whereabouts | null>(null);
+  private readonly whereaboutsSignal = signal<MapSearch | null>(null);
   private whereaboutsRequest = 0;
   private readonly busySignal = signal(false);
   private reads = 0;
@@ -84,7 +87,7 @@ export class InventoryFacade {
   readonly structures = this.structuresSignal.asReadonly();
   /** What the place chosen on the map holds and what has its home there; null while nothing is chosen. */
   readonly contents = this.contentsSignal.asReadonly();
-  /** Where the product searched on the map is; null while nothing is searched. */
+  /** Where the goods searched on the map are; null while nothing is searched. */
   readonly whereabouts = this.whereaboutsSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
@@ -362,33 +365,50 @@ export class InventoryFacade {
 
   /** The place in hand, read again: a movement elsewhere may have filled or emptied it. */
   /**
-   * Finds a product on the map, latest search only. Its own words are asked by id beside it, since a product found
-   * nowhere answers no row to carry them; a product no stock is kept of answers neither, and reads as not found.
+   * Finds goods on the map, latest search only, each product asked answered in the order asked. The words of a
+   * product found nowhere are asked by id beside it, a few at a time as the picker takes them, since it answers no
+   * row to carry them; one no stock is kept of answers neither, and reads as not found.
    */
-  async loadWhereabouts(companyId: string, productId: string | null): Promise<void> {
+  async loadWhereabouts(companyId: string, productIds: readonly string[]): Promise<void> {
     const request = ++this.whereaboutsRequest;
-    if (productId === null) {
+    if (productIds.length === 0) {
       this.whereaboutsSignal.set(null);
       return;
     }
     await this.read(async () => {
-      const [found, [product]] = await Promise.all([
-        this.api.whereabouts(companyId, productId),
-        this.api.pickProducts(companyId, { ids: [productId] }),
-      ]);
+      const found = await this.api.whereabouts(companyId, productIds);
+      const missing = productIds.filter((id) => !found.some((one) => one.productId === id));
+      const named: StockProductOption[] = [];
+      for (let at = 0; at < missing.length; at += PICK_IDS_MOST) {
+        named.push(
+          ...(await this.api.pickProducts(companyId, {
+            ids: missing.slice(at, at + PICK_IDS_MOST),
+          })),
+        );
+      }
       if (request !== this.whereaboutsRequest) return;
       this.whereaboutsSignal.set({
-        ...found,
-        productReference: found.productReference || (product?.reference ?? ''),
-        productName: found.productName || (product?.name ?? ''),
-        unitDecimals: found.rows.length > 0 ? found.unitDecimals : (product?.unitDecimals ?? 3),
+        productIds,
+        products: productIds.map((id) => {
+          const one = found.find((product) => product.productId === id);
+          if (one !== undefined) return one;
+          const product = named.find((option) => option.id === id);
+          return {
+            productId: id,
+            productReference: product?.reference ?? '',
+            productName: product?.name ?? '',
+            unitName: '',
+            unitDecimals: product?.unitDecimals ?? 3,
+            rows: [],
+          };
+        }),
       });
     });
   }
 
   async reloadWhereabouts(companyId: string): Promise<void> {
-    const productId = this.whereaboutsSignal()?.productId ?? null;
-    if (productId !== null) await this.loadWhereabouts(companyId, productId);
+    const productIds = this.whereaboutsSignal()?.productIds ?? [];
+    if (productIds.length > 0) await this.loadWhereabouts(companyId, productIds);
   }
 
   async reloadContents(companyId: string): Promise<void> {

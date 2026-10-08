@@ -101,63 +101,49 @@ describe('InventoryApi', () => {
     ]);
   });
 
-  /** The map's search: where a product is, the product's own words carried by every row. */
-  it('reads where a product is, and leaves its words empty when it is nowhere', async () => {
-    const found = api.whereabouts('c 1', 'p1');
+  /** The map's search: one answer per product found, in the order asked; a product found nowhere is absent. */
+  it('reads where goods are, grouped by product in the order asked', async () => {
+    const row = (productId: string, reference: string, code: string, quantity: string) => ({
+      key: code,
+      floorId: 'f1',
+      locationId: code,
+      locationCode: code,
+      locationName: code,
+      productId,
+      productReference: reference,
+      productName: reference,
+      unitName: 'Pièce',
+      unitDecimals: 0,
+      quantity,
+      lines: [{ locationId: code, locationCode: code, locationName: code, quantity }],
+    });
+    const found = api.whereabouts('c 1', ['p2', 'p1', 'p3']);
     http
       .expectOne(
         (request) =>
           request.url === '/api/companies/c%201/stock-whereabouts' &&
-          request.params.get('productId') === 'p1',
+          request.params.getAll('productId[]')?.join() === 'p2,p1,p3',
       )
       .flush([
-        {
-          key: 'l1',
-          floorId: 'f1',
-          locationId: 'l1',
-          locationCode: 'R1',
-          locationName: 'Rayonnage 1',
-          productReference: 'VIS-6X40',
-          productName: 'Vis 6x40',
-          unitName: 'Pièce',
-          unitDecimals: 0,
-          quantity: '8.000',
-          lines: [
-            { locationId: 'b1', locationCode: 'R1-A1', locationName: 'Bac A1', quantity: '8.000' },
-          ],
-        },
+        row('p2', 'RON-M6', 'R1', '10.000'),
+        row('p2', 'RON-M6', 'R2', '40.000'),
+        row('p1', 'VIS', 'R1', '3.000'),
       ]);
 
-    expect(await found).toEqual({
-      productId: 'p1',
-      productReference: 'VIS-6X40',
-      productName: 'Vis 6x40',
+    const answer = await found;
+    expect(answer.map((one) => [one.productId, one.rows.map((r) => r.locationCode)])).toEqual([
+      ['p2', ['R1', 'R2']],
+      ['p1', ['R1']],
+    ]);
+    expect(answer[0]).toMatchObject({
+      productReference: 'RON-M6',
       unitName: 'Pièce',
       unitDecimals: 0,
-      rows: [
-        {
-          floorId: 'f1',
-          locationId: 'l1',
-          locationCode: 'R1',
-          locationName: 'Rayonnage 1',
-          quantity: '8.000',
-          lines: [
-            { locationId: 'b1', locationCode: 'R1-A1', locationName: 'Bac A1', quantity: '8.000' },
-          ],
-        },
-      ],
     });
 
-    const nowhere = api.whereabouts('c1', 'p2');
-    http.expectOne((request) => request.url === '/api/companies/c1/stock-whereabouts').flush([]);
-    expect(await nowhere).toEqual({
-      productId: 'p2',
-      productReference: '',
-      productName: '',
-      unitName: '',
-      unitDecimals: 3,
-      rows: [],
-    });
+    // Nothing asked, nothing sent.
+    expect(await api.whereabouts('c1', [])).toEqual([]);
+    http.verify();
   });
 
   it('reads the options, the stock and the locations', async () => {

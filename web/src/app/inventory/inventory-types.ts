@@ -194,6 +194,15 @@ export interface Whereabouts {
   rows: readonly WhereaboutRow[];
 }
 
+/**
+ * What the map was asked to find, in the order asked — one product for a search, a delivery note's lines together —
+ * and each of them, found or not: a product found nowhere is said, never left out.
+ */
+export interface MapSearch {
+  productIds: readonly string[];
+  products: readonly Whereabouts[];
+}
+
 export interface StockLevelRow {
   /** The product and the location together: a row is the pair, and neither alone names it. */
   id: string;

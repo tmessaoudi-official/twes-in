@@ -1102,6 +1102,54 @@ describe('DeliveryNotePage', () => {
       expect(display.openWindow).toHaveBeenCalled();
     });
 
+    /** Where to pick a note's goods is the stock map's to say, lit for every product the note names, each once. */
+    it('opens the stock map on the note’s products for whoever reads the stock', async () => {
+      modules.add('inventory');
+      granted.add('stock.read');
+      const line = validated.lines[0];
+      note.set({
+        ...validated,
+        lines: [line, { ...line, productId: 'p2' }, { ...line }, { ...line, productId: null }],
+      });
+      await open('n1');
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+      const action = TestBed.inject(ScreenActions)
+        .actions()
+        .find((each) => each.id === 'on-map');
+      expect(action?.shown).toBe(true);
+      action?.run?.();
+
+      expect(navigate).toHaveBeenCalledWith(['/stock/plan'], {
+        queryParams: { products: 'p1,p2', note: 'BL-2026-00001' },
+      });
+    });
+
+    it('offers no stock map without the inventory module or the right to read the stock', async () => {
+      granted.add('stock.read');
+      note.set(validated);
+      await open('n1');
+
+      const action = TestBed.inject(ScreenActions)
+        .actions()
+        .find((each) => each.id === 'on-map');
+      expect(action?.shown ?? false).toBe(false);
+    });
+
+    it('offers no stock map once the note is delivered or cancelled, when nothing is left to pick', async () => {
+      modules.add('inventory');
+      granted.add('stock.read');
+      for (const status of ['delivered', 'cancelled'] as const) {
+        note.set({ ...validated, status });
+        await open('n1');
+
+        const action = TestBed.inject(ScreenActions)
+          .actions()
+          .find((each) => each.id === 'on-map');
+        expect(action?.shown ?? false, status).toBe(false);
+      }
+    });
+
     it('leaves a scan to the card once the note is validated', async () => {
       note.set(validated);
       await open('n1');

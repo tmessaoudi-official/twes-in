@@ -359,6 +359,13 @@ export class DeliveryNotePage {
         shown: this.pdfUrl() !== null,
       },
       {
+        id: 'on-map',
+        label: 'delivery_notes.actions.on_map',
+        icon: 'warehouse',
+        run: () => void this.openOnMap(),
+        shown: this.mapProductIds().length > 0,
+      },
+      {
         id: 'customer-display',
         label: 'customer_display.open',
         icon: 'connected_tv',
@@ -398,10 +405,33 @@ export class DeliveryNotePage {
   );
   /** A validated or delivered note becomes an invoice, while the invoices module is on for a writer of invoices. */
   protected readonly canInvoice = computed(() => this.invoiceable(this.current()?.status));
+  /**
+   * The products the saved note names, each once and in its order, which the stock map lights to say where to pick
+   * them; none where the stock is not kept or not readable here, so the action is offered only where it can answer,
+   * and none once the note is delivered or cancelled, when nothing is left to pick.
+   */
+  protected readonly mapProductIds = computed(() => {
+    if (!this.auth.hasModule('inventory') || !this.auth.hasPermission('stock.read')) return [];
+    const status = this.current()?.status;
+    if (status !== 'draft' && status !== 'validated') return [];
+    const ids = (this.current()?.lines ?? []).flatMap((line) =>
+      line.productId === null ? [] : [line.productId],
+    );
+    return [...new Set(ids)];
+  });
   protected readonly canCancel = computed(() => {
     const status = this.current()?.status;
     return (status === 'draft' || status === 'validated') && this.mayValidate();
   });
+
+  protected async openOnMap(): Promise<void> {
+    await this.router.navigate(['/stock/plan'], {
+      queryParams: {
+        products: this.mapProductIds().join(','),
+        note: this.current()?.number ?? null,
+      },
+    });
+  }
 
   /**
    * A scan on a draft puts its product on the lines as a till does (docs/SPEC.md § 7, 2026-09-23 09:30), the same

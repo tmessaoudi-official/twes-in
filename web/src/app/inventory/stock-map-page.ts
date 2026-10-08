@@ -454,19 +454,45 @@ export class StockMapPage implements OnInit {
     };
   });
 
-  // ——— the search: where a product is, lit on the plan ———
+  // ——— the search: where goods are, lit on the plan ———
 
-  /** The product searched, kept in the URL like the mode, so a search can be sent as a link and survives a reload. */
-  private readonly productAsked = toSignal(
-    this.route.queryParamMap.pipe(map((params) => params.get('product'))),
+  /**
+   * What the map is asked to find, kept in the URL like the mode so it can be sent as a link and survives a reload: one
+   * product searched (`product`), or a delivery note's lines (`products`, with the note's `note` number to name them).
+   */
+  private readonly askedIds = toSignal(
+    this.route.queryParamMap.pipe(
+      map((params) => {
+        const many = params.get('products');
+        const one = params.get('product');
+        if (many !== null) return many.split(',').filter((id) => id !== '');
+        return one === null ? [] : [one];
+      }),
+    ),
+    { initialValue: [] as string[] },
+  );
+  protected readonly noteAsked = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('note'))),
     { initialValue: null },
   );
   /** Searching is reading: Aménager lights nothing, so no highlight ever hides a shape being moved. */
-  private readonly searchedId = computed(() => (this.arranging() ? null : this.productAsked()));
-  protected readonly found = computed(() => {
-    const found = this.facade.whereabouts();
-    return found !== null && found.productId === this.searchedId() ? found : null;
+  private readonly searchedIds = computed(() => (this.arranging() ? [] : this.askedIds()), {
+    equal: sameIds,
   });
+  /** The answer for what is asked now, never a late one for what was asked before. */
+  protected readonly search = computed(() => {
+    const search = this.facade.whereabouts();
+    return search !== null && sameIds(search.productIds, this.searchedIds()) ? search : null;
+  });
+  /** One product searched from the field or a scan, which the banner and « Où elle se trouve » speak of. */
+  protected readonly found = computed(() => {
+    const search = this.search();
+    return search !== null && search.productIds.length === 1 && this.noteAsked() === null
+      ? (search.products[0] ?? null)
+      : null;
+  });
+  /** A delivery note's lines, looked for together: what the note's banner and its line-by-line list speak of. */
+  protected readonly note = computed(() => (this.found() === null ? this.search() : null));
   protected readonly searchPick = computed<PickOption | null>(() => {
     const found = this.found();
     return found === null
@@ -483,31 +509,44 @@ export class StockMapPage implements OnInit {
       name: product.name,
     }));
   };
-  /** The drawn places holding the product on the floor shown, by the location drawn. */
+  /**
+   * The drawn places on the floor shown holding anything looked for, by the location drawn: what one product holds
+   * there, or how many of a note's lines are found there.
+   */
   protected readonly hits = computed(() => {
     const floorId = this.floor()?.id ?? null;
-    const hits = new Map<string, WhereaboutRow>();
-    for (const row of this.found()?.rows ?? []) {
-      if (row.floorId !== null && row.floorId === floorId && row.locationId !== null)
-        hits.set(row.locationId, row);
+    const hits = new Map<string, { quantity: string | null; count: number }>();
+    const products = this.search()?.products ?? [];
+    for (const product of products) {
+      for (const row of product.rows) {
+        if (row.floorId === null || row.floorId !== floorId || row.locationId === null) continue;
+        const hit = hits.get(row.locationId);
+        hits.set(row.locationId, {
+          quantity: products.length === 1 ? row.quantity : null,
+          count: (hit?.count ?? 0) + 1,
+        });
+      }
     }
     return hits;
   });
-  /** How many drawn places hold it on each floor, which the list of floors says. */
+  /** How many drawn places hold something looked for on each floor, which the list of floors says. */
   protected readonly hitsByFloor = computed(() => {
-    const counts = new Map<string, number>();
-    for (const row of this.found()?.rows ?? []) {
-      if (row.floorId !== null) counts.set(row.floorId, (counts.get(row.floorId) ?? 0) + 1);
+    const places = new Map<string, Set<string>>();
+    for (const product of this.search()?.products ?? []) {
+      for (const row of product.rows) {
+        if (row.floorId === null || row.locationId === null) continue;
+        places.set(row.floorId, (places.get(row.floorId) ?? new Set()).add(row.locationId));
+      }
     }
-    return counts;
+    return new Map([...places].map(([floorId, held]) => [floorId, held.size]));
   });
-  /** Every drawn place holding it, the floor shown first and then the floors as they are listed. */
-  protected readonly foundPlaces = computed(() => {
+  /** The drawn places of some rows, the floor shown first and then the floors as they are listed. */
+  private placesOf(rows: readonly WhereaboutRow[]) {
     const floors = this.floors();
     const shown = this.floor()?.id ?? null;
     const rank = (floorId: string | null): number =>
       floorId === shown ? -1 : floors.findIndex((one) => one.id === floorId);
-    return (this.found()?.rows ?? [])
+    return rows
       .filter((row) => row.floorId !== null)
       .map((row) => ({
         row,
@@ -515,7 +554,9 @@ export class StockMapPage implements OnInit {
         here: row.floorId === shown,
       }))
       .sort((one, other) => rank(one.row.floorId) - rank(other.row.floorId));
-  });
+  }
+  /** Every drawn place holding the product searched. */
+  protected readonly foundPlaces = computed(() => this.placesOf(this.found()?.rows ?? []));
   protected readonly elsewhere = computed(
     () => this.foundPlaces().filter((place) => !place.here).length,
   );
@@ -523,19 +564,34 @@ export class StockMapPage implements OnInit {
   protected readonly undrawn = computed(
     () => this.found()?.rows.find((row) => row.floorId === null) ?? null,
   );
-  protected readonly undrawnCodes = computed(
-    () =>
-      this.undrawn()
-        ?.lines.map((line) => line.locationCode)
-        .join(', ') ?? '',
-  );
+  protected readonly undrawnCodes = computed(() => codesOf(this.undrawn()));
   protected readonly floorTotal = computed(() =>
-    sumQuantities([...this.hits().values()].map((row) => row.quantity)),
+    sumQuantities(
+      (this.found()?.rows ?? [])
+        .filter((row) => row.floorId !== null && row.floorId === this.floor()?.id)
+        .map((row) => row.quantity),
+    ),
+  );
+  /** A note's lines one by one: where each is, what lies undrawn of it, and the lines found nowhere at all. */
+  protected readonly noteGroups = computed(() =>
+    (this.note()?.products ?? []).map((product) => {
+      const undrawn = product.rows.find((row) => row.floorId === null) ?? null;
+      return {
+        product,
+        places: this.placesOf(product.rows),
+        undrawn,
+        undrawnCodes: codesOf(undrawn),
+      };
+    }),
+  );
+  protected readonly noteNowhere = computed(
+    () => this.noteGroups().filter((group) => group.product.rows.length === 0).length,
   );
   /**
-   * Each lit place's quantity, in a pill over its far corner sized to what it will say: the digits, the decimals the
-   * unit counts and a space every three digits. Its type follows the view, so a whole floor seen at once still reads
-   * its figures, and never goes below the labels' own size.
+   * Each lit place's figure, in a pill over its far corner sized to what it will say: one product's quantity — its
+   * digits, the decimals the unit counts and a space every three digits — or how many of a note's lines are there.
+   * Its type follows the view, so a whole floor seen at once still reads its figures, and never goes below the labels'
+   * own size.
    */
   protected readonly hitBadges = computed(() => {
     const decimals = this.found()?.unitDecimals ?? 0;
@@ -551,19 +607,16 @@ export class StockMapPage implements OnInit {
         width: number;
         height: number;
         font: number;
-        quantity: string;
+        quantity: string | null;
+        count: number;
         decimals: number;
       }
     >();
     for (const shape of this.shapes()) {
-      const row = this.hits().get(shape.drawing.locationId);
-      if (row === undefined) continue;
-      const whole = row.quantity.replace('-', '').split('.')[0];
+      const hit = this.hits().get(shape.drawing.locationId);
+      if (hit === undefined) continue;
       const characters =
-        whole.length +
-        Math.floor((whole.length - 1) / 3) +
-        (decimals > 0 ? decimals + 1 : 0) +
-        (row.quantity.startsWith('-') ? 1 : 0);
+        hit.quantity === null ? String(hit.count).length + 7 : figureLength(hit.quantity, decimals);
       const width = Math.max(height, (characters * 0.62 + 0.8) * font);
       badges.set(shape.drawing.id, {
         x: shape.rect.x + shape.rect.width - width / 2,
@@ -572,7 +625,8 @@ export class StockMapPage implements OnInit {
         width,
         height,
         font,
-        quantity: row.quantity,
+        quantity: hit.quantity,
+        count: hit.count,
         decimals,
       });
     }
@@ -701,24 +755,26 @@ export class StockMapPage implements OnInit {
 
     effect(() => {
       const companyId = this.company()?.id;
-      const productId = this.searchedId();
-      if (companyId) untracked(() => void this.facade.loadWhereabouts(companyId, productId));
+      const productIds = this.searchedIds();
+      if (companyId) untracked(() => void this.facade.loadWhereabouts(companyId, productIds));
     });
 
-    // A search opens the floor holding the product when the one shown holds none of it, once per search: a person who
+    // A search opens the floor holding the goods when the one shown holds none of them, once per search: a person who
     // then opens another floor is not sent back to it.
     effect(() => {
-      const found = this.found();
+      const search = this.search();
       const floors = this.floors();
-      if (found === null) {
+      if (search === null) {
         this.jumpedFor = null;
         return;
       }
-      if (floors.length === 0 || found.productId === this.jumpedFor) return;
-      this.jumpedFor = found.productId;
+      const key = search.productIds.join(',');
+      if (floors.length === 0 || key === this.jumpedFor) return;
+      this.jumpedFor = key;
+      const rows = search.products.flatMap((product) => product.rows);
       const shown = untracked(() => this.floor()?.id);
-      if (found.rows.some((row) => row.floorId === shown)) return;
-      const holding = floors.find((one) => found.rows.some((row) => row.floorId === one.id));
+      if (rows.some((row) => row.floorId === shown)) return;
+      const holding = floors.find((one) => rows.some((row) => row.floorId === one.id));
       if (holding) untracked(() => void this.showFloor(holding.id));
     });
 
@@ -771,10 +827,11 @@ export class StockMapPage implements OnInit {
     });
   }
 
+  /** A search from the field or a scan replaces whatever was looked for, a delivery note's lines included. */
   protected async searchFor(option: PickOption | null): Promise<void> {
     await this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { product: option?.id ?? null },
+      queryParams: { product: option?.id ?? null, products: null, note: null },
       queryParamsHandling: 'merge',
     });
   }
@@ -1765,4 +1822,25 @@ function shapeOf(drawing: StockDrawingRow, rect: PlanRectangle, mode: PlanLabelM
     labelTitle: whole,
     labelTurn: along ? `rotate(90 ${labelX} ${labelY})` : null,
   };
+}
+
+/** Whether two lists name the same products in the same order, so an equal question is not asked again. */
+function sameIds(one: readonly string[], other: readonly string[]): boolean {
+  return one.length === other.length && one.every((id, at) => id === other[at]);
+}
+
+/** The places of an undrawn row, by code, as a sentence lists them. */
+function codesOf(row: WhereaboutRow | null): string {
+  return row?.lines.map((line) => line.locationCode).join(', ') ?? '';
+}
+
+/** How many characters a quantity takes once shown: its digits, a space every three, its decimals and its sign. */
+function figureLength(quantity: string, decimals: number): number {
+  const whole = quantity.replace('-', '').split('.')[0];
+  return (
+    whole.length +
+    Math.floor((whole.length - 1) / 3) +
+    (decimals > 0 ? decimals + 1 : 0) +
+    (quantity.startsWith('-') ? 1 : 0)
+  );
 }

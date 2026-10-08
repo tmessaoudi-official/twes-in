@@ -1816,7 +1816,8 @@
       "pdf_draft": "Preview the PDF",
       "validate_title": "Validate this note?",
       "validate_message": "It receives its number and its lines no longer change.",
-      "confirm_validate": "Validate"
+      "confirm_validate": "Validate",
+      "on_map": "See on the plan"
     },
     "errors": {
       "network": "The server could not be reached.",
@@ -2429,7 +2430,15 @@
         "floor_total": "Total on this floor: {{quantity}} {{unit}}",
         "open_product": "Product file",
         "clear": "Clear the search",
-        "scanned": "Looked up on the plan: {{name}}"
+        "scanned": "Looked up on the plan: {{name}}",
+        "note_title": "Delivery note {{note}}",
+        "lines_title": "{{count}} {count, plural, one {product} other {products}} to find",
+        "note_lines": "{{count}} {count, plural, one {line} other {lines}}",
+        "note_nowhere": "{{count}} {count, plural, one {line} other {lines}} not found on the plan",
+        "where_lines": "Where to pick each line",
+        "line_nowhere": "No stock is recorded for this product.",
+        "lines_badge": "{{count}} {count, plural, one {line} other {lines}}",
+        "unknown_product": "Product not found"
       }
     },
     "scan": {

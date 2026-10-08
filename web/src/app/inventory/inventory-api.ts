@@ -240,37 +240,50 @@ export class InventoryApi {
   }
 
   /**
-   * Where a product is, as the map lights it. The product's own words come with every row, so an answer with no row
-   * at all leaves them empty: the caller already knows what it asked for.
+   * Where goods are, as the map lights them: one answer per product that is somewhere, in the order asked. A product
+   * found nowhere answers no row, so it is absent here and the caller, which knows what it asked for, says so.
    */
-  async whereabouts(companyId: string, productId: string): Promise<Whereabouts> {
+  async whereabouts(companyId: string, productIds: readonly string[]): Promise<Whereabouts[]> {
+    if (productIds.length === 0) return [];
     return this.guard(async () => {
+      let params = new HttpParams();
+      for (const id of productIds) params = params.append('productId[]', id);
       const raw = await firstValueFrom(
         this.http.get<StockWhereaboutStockWhereaboutRead[]>(path(companyId, 'stock-whereabouts'), {
-          params: { productId },
+          params,
         }),
       );
-      const [first] = raw;
-      return {
-        productId,
-        productReference: first?.productReference ?? '',
-        productName: first?.productName ?? '',
-        unitName: first?.unitName ?? '',
-        unitDecimals: first?.unitDecimals ?? 3,
-        rows: raw.map((row) => ({
-          floorId: row.floorId ?? null,
-          locationId: row.locationId ?? null,
-          locationCode: row.locationCode ?? null,
-          locationName: row.locationName ?? null,
-          quantity: row.quantity,
-          lines: row.lines.map((line) => ({
-            locationId: line.locationId,
-            locationCode: line.locationCode,
-            locationName: line.locationName,
-            quantity: line.quantity,
-          })),
-        })),
-      };
+      const found = new Map<string, Whereabouts>();
+      for (const row of raw) {
+        const product = found.get(row.productId) ?? {
+          productId: row.productId,
+          productReference: row.productReference,
+          productName: row.productName,
+          unitName: row.unitName,
+          unitDecimals: row.unitDecimals,
+          rows: [],
+        };
+        found.set(row.productId, {
+          ...product,
+          rows: [
+            ...product.rows,
+            {
+              floorId: row.floorId ?? null,
+              locationId: row.locationId ?? null,
+              locationCode: row.locationCode ?? null,
+              locationName: row.locationName ?? null,
+              quantity: row.quantity,
+              lines: row.lines.map((line) => ({
+                locationId: line.locationId,
+                locationCode: line.locationCode,
+                locationName: line.locationName,
+                quantity: line.quantity,
+              })),
+            },
+          ],
+        });
+      }
+      return [...found.values()];
     });
   }
 
