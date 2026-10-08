@@ -3,6 +3,7 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { isPeriodClosed } from '../shared/documents/period-closed';
 import type {
   ApiCompaniesCompanyIdexpensesGetCollectionResponse,
   ExpenseAttachmentExpenseAttachmentRead,
@@ -367,7 +368,7 @@ function codeOf(error: unknown, refusals: Refusals): ExpensesError {
     case 413:
       return 'file_too_large';
     default:
-      return refusals.invalid;
+      return isPeriodClosed(error) ? 'period_closed' : refusals.invalid;
   }
 }
 

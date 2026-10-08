@@ -4,6 +4,7 @@ import { exportAddress, type ExportFormat } from '../shared/list/export-address'
 import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import type { PreviewBody } from '../shared/documents/document-figures';
 import { SILENT } from '../shared/feedback/activity-interceptor';
+import { isPeriodClosed } from '../shared/documents/period-closed';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
@@ -369,6 +370,7 @@ export function codeOf(error: unknown): InvoicesError {
     default:
       // A credit note that gives back money already paid is refused until it says where that money goes.
       if (isExcessRefusal(error)) return 'excess_to';
+      if (isPeriodClosed(error)) return 'period_closed';
       return fieldCode(refusedField(error));
   }
 }

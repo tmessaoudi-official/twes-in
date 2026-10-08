@@ -48,6 +48,8 @@ final readonly class AllocateNumber
 
         $now = $this->clock->now();
         $day = $now->setTimezone(new \DateTimeZone($company->getTimezone()));
+        // Every numbered document takes its day here, so this one refusal keeps each of them out of a closed period.
+        $company->assertOpenOn($day);
         $number = $series->allocate($day, $now);
         $this->series->save($series);
 

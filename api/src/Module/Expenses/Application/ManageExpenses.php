@@ -167,6 +167,8 @@ final readonly class ManageExpenses
     {
         return $this->transactions->run(function () use ($company, $id, $actorUserId): Expense {
             $expense = $this->get($company, $id);
+            // Entering it in the books dates it there: a closed period takes no vendor invoice.
+            $company->assertOpenOn($expense->getDate());
             $expense->record($this->clock->now());
             $this->expenses->save($expense);
             $this->record($company, $expense->getId(), self::RECORDED, [], $actorUserId);
@@ -188,6 +190,7 @@ final readonly class ManageExpenses
     {
         return $this->transactions->run(function () use ($company, $id, $method, $paidOn, $actorUserId, $withholdingRate, $operationCode): Expense {
             $expense = $this->get($company, $id);
+            $company->assertOpenOn($paidOn);
             $now = $this->clock->now();
             $rate = $withholdingRate ?? $this->suggestedWithholdingRate($company, $expense);
             $expense->pay($method, $paidOn, $now->setTimezone(new \DateTimeZone($company->getTimezone())), $now, $rate, $this->scales->of($company->getCurrency()), $operationCode);

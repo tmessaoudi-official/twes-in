@@ -168,7 +168,7 @@ describe('the navigation manifest', () => {
           'document-templates',
         ],
       ],
-      ['fiscal', ['taxes', 'units']],
+      ['fiscal', ['taxes', 'units', 'closing']],
       ['team', ['members', 'roles', 'activity']],
       ['customisation', ['custom-fields', 'modules']],
     ]);
@@ -209,7 +209,7 @@ describe('the navigation manifest', () => {
           'alerts',
         ],
       ],
-      ['fiscal', ['taxes', 'units', 'fiscal-preset']],
+      ['fiscal', ['taxes', 'units', 'closing', 'fiscal-preset']],
       ['team', ['members', 'roles', 'activity', 'support-access']],
       ['customisation', ['custom-fields', 'modules', 'texts']],
     ]);

@@ -62,6 +62,13 @@ class Company
     #[ORM\Column]
     private bool $mfaRequired = false;
 
+    /**
+     * The last day of the closed period: no document is dated on or before it. Null while nothing is closed. It moves
+     * forward only, and never reaches the company's today.
+     */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $closedThrough = null;
+
     #[ORM\Column(length: 200, nullable: true)]
     private ?string $legalName = null;
 
@@ -284,5 +291,52 @@ class Company
         $this->updatedAt = $now ?? new \DateTimeImmutable();
 
         return true;
+    }
+
+    public function getClosedThrough(): ?\DateTimeImmutable
+    {
+        return $this->closedThrough;
+    }
+
+    /**
+     * Closes the books through a day before today, and never opens them again: a day before the one already closed is
+     * refused, and the same day changes nothing.
+     *
+     * @param \DateTimeImmutable $today the company's own day
+     *
+     * @return bool whether this changed anything
+     *
+     * @throws InvalidClosing
+     */
+    public function closeThrough(\DateTimeImmutable $day, \DateTimeImmutable $today, ?\DateTimeImmutable $now = null): bool
+    {
+        $asked = $day->format('Y-m-d');
+        if ($asked >= $today->format('Y-m-d')) {
+            throw new InvalidClosing(\sprintf('closedThrough: the books close through a day before today, %s, which is still being worked.', $today->format('Y-m-d')));
+        }
+        $current = $this->closedThrough?->format('Y-m-d');
+        if (null !== $current && $asked < $current) {
+            throw new InvalidClosing(\sprintf('closedThrough: the books are closed through %s, and a closed period never opens again.', $current));
+        }
+        if ($asked === $current) {
+            return false;
+        }
+        $this->closedThrough = new \DateTimeImmutable($asked, new \DateTimeZone('UTC'));
+        $this->updatedAt = $now ?? new \DateTimeImmutable();
+
+        return true;
+    }
+
+    /**
+     * Refuses a document dated on or before the last closed day.
+     *
+     * @throws PeriodClosed
+     */
+    public function assertOpenOn(\DateTimeImmutable $day): void
+    {
+        $closed = $this->closedThrough?->format('Y-m-d');
+        if (null !== $closed && $day->format('Y-m-d') <= $closed) {
+            throw new PeriodClosed(\sprintf('closedPeriod: the books are closed through %s, and no document is dated on or before it (%s).', $closed, $day->format('Y-m-d')));
+        }
     }
 }

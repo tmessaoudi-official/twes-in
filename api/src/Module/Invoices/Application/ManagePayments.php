@@ -55,6 +55,7 @@ final readonly class ManagePayments
     {
         return $this->transactions->run(function () use ($company, $invoiceId, $details, $actorUserId): Payment {
             $invoice = $this->invoices->lockedOfIdInCompany($invoiceId, $company->getId()) ?? throw new InvoiceNotFound();
+            $company->assertOpenOn($details->date);
             $now = $this->clock->now();
             $today = $now->setTimezone(new \DateTimeZone($company->getTimezone()));
             $payment = $invoice->recordPayment($details, $today, $this->scales->of($company->getCurrency()), $actorUserId, $now);
@@ -74,6 +75,8 @@ final readonly class ManagePayments
         $this->transactions->run(function () use ($company, $invoiceId, $paymentId, $actorUserId): void {
             $invoice = $this->invoices->lockedOfIdInCompany($invoiceId, $company->getId()) ?? throw new InvoiceNotFound();
             $payment = $invoice->payment($paymentId) ?? throw new PaymentNotFound();
+            // A payment of a closed period stays in it: taking it out would change books already closed.
+            $company->assertOpenOn($payment->getDate());
             // The money a credit note gave back was paid: taking the payment away would count it twice.
             if ($this->credits->hasGivenBack($company->getId(), $invoice->getId())) {
                 throw new InvoiceTransitionRefused(\sprintf('The invoice %s gave money back through a credit note: its payments are kept.', $invoice->getNumber() ?? $invoice->getId()->toRfc4122()));

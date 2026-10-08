@@ -473,6 +473,11 @@ export const routes: Routes = [
               import('./company/company-security-page').then((m) => m.CompanySecurityPage),
           },
           {
+            path: 'company/closing',
+            title: 'nav.closing',
+            loadComponent: () => import('./company/closing-page').then((m) => m.ClosingPage),
+          },
+          {
             path: 'company/establishments',
             title: 'nav.establishments',
             loadComponent: () =>

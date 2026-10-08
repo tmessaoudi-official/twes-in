@@ -85,6 +85,7 @@ final readonly class ManageCustomerCredit
     {
         return $this->transactions->run(function () use ($company, $invoiceId, $details, $actorUserId): CustomerCreditEntry {
             $invoice = $this->invoices->ofIdInCompany($invoiceId, $company->getId()) ?? throw new InvoiceNotFound();
+            $company->assertOpenOn($details->date);
             // The customer's row is the lock every use of the balance takes.
             $customer = $this->customer($company, $invoice->getCustomer()->getId());
             $now = $this->clock->now();

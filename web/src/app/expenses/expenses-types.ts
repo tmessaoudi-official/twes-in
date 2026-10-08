@@ -11,7 +11,8 @@ export type ExpensesError =
   | 'name_taken'
   | 'invalid'
   | 'file_refused'
-  | 'file_too_large';
+  | 'file_too_large'
+  | 'period_closed';
 
 export type ExpenseStatus = 'draft' | 'recorded' | 'paid';
 

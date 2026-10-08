@@ -12,6 +12,7 @@ export type InvoicesError =
   | 'invalid'
   | 'excess_to'
   | 'customer_unavailable'
+  | 'period_closed'
   | MentionDatumError
   | PartyIdentityError;
 

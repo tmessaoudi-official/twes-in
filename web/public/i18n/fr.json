@@ -474,6 +474,28 @@
         "not_found": "Cette entreprise est introuvable.",
         "invalid": "La modification a été refusée."
       }
+    },
+    "closing": {
+      "title": "Clôture des comptes",
+      "no_company": "Choisissez une entreprise pour clôturer ses comptes.",
+      "intro": "Une fois les comptes clôturés jusqu’à un jour, aucune facture, aucun avoir, aucun bon, aucun paiement et aucune dépense n’est daté de ce jour ou d’avant. Une période close ne se rouvre jamais.",
+      "none": "Aucune période n’est close.",
+      "closed_through": "Les comptes sont clos jusqu’au {{day}} inclus.",
+      "day": "Clôturer jusqu’au",
+      "day_hint": "Au plus tard hier : la journée en cours reste ouverte.",
+      "close": "Clôturer",
+      "closed": "Comptes clôturés.",
+      "ask": {
+        "title": "Clôturer les comptes ?",
+        "message": "Plus aucun document ne pourra être daté du {{day}} ou d’avant, et cette période ne se rouvrira pas.",
+        "confirm": "Clôturer",
+        "keep": "Ne pas clôturer"
+      },
+      "errors": {
+        "network": "Impossible de joindre le serveur. Réessayez.",
+        "not_found": "Cette entreprise est introuvable.",
+        "invalid": "Ce jour est refusé : il doit être avant aujourd’hui et après le dernier jour déjà clos."
+      }
     }
   },
   "modules": {
@@ -530,6 +552,7 @@
     "company_profile": "Profil de la société",
     "establishments": "Établissements",
     "numbering": "Numérotation des documents",
+    "closing": "Clôture des comptes",
     "invoices": "Factures",
     "customers": "Clients",
     "customer_groups": "Groupes de clients",
@@ -1577,7 +1600,8 @@
       "missing_exemption_reference": "Ce client est exonéré de TVA : le document doit citer le texte qui l’exonère. Renseignez-le dans l’onglet Valeurs par défaut du client, ou dans Valeurs par défaut pour tous.",
       "missing_mention": "Une mention légale de ce document ne peut pas être complétée : le document n’est pas émis.",
       "missing_seller_identity": "Une facture doit nommer votre société comme la loi le demande : sa raison sociale, son adresse et ses numéros fiscaux (matricule fiscal, SIREN…). Complétez le Profil de la société ; la facture reste un brouillon et ne prend aucun numéro.",
-      "missing_customer_identity": "Une facture doit nommer le client comme la loi le demande : son adresse de facturation et, pour une entreprise de votre pays, ses numéros fiscaux. Complétez sa fiche ; la facture reste un brouillon et ne prend aucun numéro."
+      "missing_customer_identity": "Une facture doit nommer le client comme la loi le demande : son adresse de facturation et, pour une entreprise de votre pays, ses numéros fiscaux. Complétez sa fiche ; la facture reste un brouillon et ne prend aucun numéro.",
+      "period_closed": "Les comptes sont clos à cette date : choisissez un jour après la clôture."
     },
     "home": {
       "outstanding": "À encaisser",
@@ -2591,7 +2615,8 @@
       "name_taken": "Une autre catégorie sous le même parent porte déjà ce nom.",
       "invalid": "La modification a été refusée. Vérifiez le fournisseur, la catégorie, la taxe et le montant.",
       "file_refused": "Le fichier a été refusé : il doit être un PDF ou une image PNG, JPEG ou WebP d’au plus 10 Mo, non vide, et la dépense compte au plus 10 fichiers.",
-      "file_too_large": "Le fichier dépasse 10 Mo."
+      "file_too_large": "Le fichier dépasse 10 Mo.",
+      "period_closed": "Les comptes sont clos à cette date : choisissez un jour après la clôture."
     },
     "withheld": "Retenue à la source {{rate}} % : {{amount}} · versé {{paid}}",
     "tej": {

@@ -164,6 +164,15 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
     permission: 'fiscal.read',
   },
   {
+    // The closed period: no document is dated on or before its last day.
+    key: 'closing',
+    labelKey: 'nav.closing',
+    icon: 'lock',
+    route: '/company/closing',
+    section: 'fiscal',
+    permission: 'company.settings',
+  },
+  {
     key: 'members',
     labelKey: 'nav.members',
     icon: 'group',

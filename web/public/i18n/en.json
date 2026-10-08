@@ -474,6 +474,28 @@
         "not_found": "This company could not be found.",
         "invalid": "The change was refused."
       }
+    },
+    "closing": {
+      "title": "Closing the books",
+      "no_company": "Choose a company to close its books.",
+      "intro": "Once the books are closed through a day, no invoice, credit note, delivery note, payment or expense is dated on or before it. A closed period never opens again.",
+      "none": "No period is closed.",
+      "closed_through": "The books are closed through {{day}}.",
+      "day": "Close through",
+      "day_hint": "Yesterday at the latest: the day under way stays open.",
+      "close": "Close",
+      "closed": "Books closed.",
+      "ask": {
+        "title": "Close the books?",
+        "message": "No document can be dated on {{day}} or before any more, and this period will not open again.",
+        "confirm": "Close",
+        "keep": "Do not close"
+      },
+      "errors": {
+        "network": "The server could not be reached. Try again.",
+        "not_found": "This company cannot be found.",
+        "invalid": "This day is refused: it must be before today and after the last day already closed."
+      }
     }
   },
   "modules": {
@@ -530,6 +552,7 @@
     "company_profile": "Company profile",
     "establishments": "Establishments",
     "numbering": "Document numbering",
+    "closing": "Closing the books",
     "invoices": "Invoices",
     "customers": "Customers",
     "customer_groups": "Customer groups",
@@ -1577,7 +1600,8 @@
       "missing_exemption_reference": "This customer is exempt from VAT: the document must cite the provision it is exempt under. Set it in the customer’s Defaults tab, or in Defaults for everyone.",
       "missing_mention": "A legal mention of this document cannot be completed: the document is not issued.",
       "missing_seller_identity": "An invoice must name your company as the law asks: its legal name, its address and its tax numbers (matricule fiscal, SIREN…). Complete the Company profile; the invoice stays a draft and takes no number.",
-      "missing_customer_identity": "An invoice must name the customer as the law asks: its billing address and, for a business in your country, its tax numbers. Complete the customer’s record; the invoice stays a draft and takes no number."
+      "missing_customer_identity": "An invoice must name the customer as the law asks: its billing address and, for a business in your country, its tax numbers. Complete the customer’s record; the invoice stays a draft and takes no number.",
+      "period_closed": "The books are closed on that day: choose a day after the closing."
     },
     "home": {
       "outstanding": "To collect",
@@ -2591,7 +2615,8 @@
       "name_taken": "Another category under the same parent already has this name.",
       "invalid": "The change was refused. Check the vendor, the category, the tax and the amount.",
       "file_refused": "The file was refused: it must be a PDF, PNG, JPEG or WebP image of up to 10 MB, not empty, and the expense may hold at most 10 files.",
-      "file_too_large": "The file is larger than 10 MB."
+      "file_too_large": "The file is larger than 10 MB.",
+      "period_closed": "The books are closed on that day: choose a day after the closing."
     },
     "withheld": "Withheld at {{rate}}%: {{amount}} · paid {{paid}}",
     "tej": {

@@ -31,6 +31,7 @@ class StaticLoader implements TranslateLoader {
         members: 'Membres',
         taxes: 'Taxes',
         units: 'Unités',
+        closing: 'Clôture des comptes',
         settings: 'Valeurs par défaut',
         company_profile: 'Profil de la société',
         company_security: 'Sécurité',
@@ -159,7 +160,7 @@ describe('SettingsArea', () => {
         'nav-document-templates',
         'nav-alerts',
       ],
-      ['nav-taxes', 'nav-units', 'nav-fiscal-preset'],
+      ['nav-taxes', 'nav-units', 'nav-closing', 'nav-fiscal-preset'],
       ['nav-members', 'nav-roles', 'nav-support-access'],
       ['nav-custom-fields', 'nav-modules', 'nav-texts'],
     ]);
@@ -290,7 +291,7 @@ describe('SettingsArea', () => {
           'nav-document-templates',
         ],
       ],
-      ['settings-section-fiscal', 'Fiscalité', ['nav-taxes', 'nav-units']],
+      ['settings-section-fiscal', 'Fiscalité', ['nav-taxes', 'nav-units', 'nav-closing']],
       ['settings-section-team', 'Équipe', ['nav-members', 'nav-roles']],
       ['settings-section-customisation', 'Personnalisation', ['nav-custom-fields', 'nav-modules']],
     ]);
@@ -335,7 +336,7 @@ describe('SettingsArea', () => {
     filter.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     expect(groups()).toEqual([
-      ['settings-section-fiscal', 'Fiscalité', ['nav-taxes', 'nav-units']],
+      ['settings-section-fiscal', 'Fiscalité', ['nav-taxes', 'nav-units', 'nav-closing']],
     ]);
 
     filter.value = 'zzz';

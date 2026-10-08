@@ -1,0 +1,53 @@
+<section class="flex max-w-3xl flex-col gap-6">
+  <h1 class="text-3xl font-semibold" data-testid="closing-title">
+    {{ 'company.closing.title' | translate }}
+  </h1>
+
+  @if (!company()) {
+    <p data-testid="closing-no-company">{{ 'company.closing.no_company' | translate }}</p>
+  } @else {
+    <p class="max-w-prose">{{ 'company.closing.intro' | translate }}</p>
+
+    @if (error(); as code) {
+      <p role="alert" data-testid="closing-error" class="text-error">
+        {{ 'company.closing.errors.' + code | translate }}
+      </p>
+    }
+
+    @if (closing(); as current) {
+      <p class="text-lg" data-testid="closing-state">
+        @if (current.closedThrough; as closed) {
+          {{ 'company.closing.closed_through' | translate: { day: (closed | day) } }}
+        } @else {
+          {{ 'company.closing.none' | translate }}
+        }
+      </p>
+
+      @if (current.writable) {
+        <form class="flex flex-wrap items-start gap-4" [formGroup]="form" (ngSubmit)="close()">
+          <mat-form-field>
+            <mat-label>{{ 'company.closing.day' | translate }}</mat-label>
+            <input
+              matInput
+              type="date"
+              formControlName="day"
+              [max]="latest()"
+              [min]="current.closedThrough ?? ''"
+              data-testid="closing-day"
+            />
+            <mat-hint>{{ 'company.closing.day_hint' | translate }}</mat-hint>
+          </mat-form-field>
+          <button
+            mat-flat-button
+            type="submit"
+            class="mt-2"
+            [disabled]="busy()"
+            data-testid="closing-close"
+          >
+            {{ 'company.closing.close' | translate }}
+          </button>
+        </form>
+      }
+    }
+  }
+</section>
