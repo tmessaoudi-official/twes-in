@@ -82,6 +82,10 @@ import {
   screenCommands,
 } from './commands';
 import { TOURS } from './tours';
+import { glossaryFor } from './glossary';
+import { type HelpChoice, HelpPanel, type HelpPanelData } from './help-panel';
+import type { Tour } from '../shared/tour/tour';
+import { TourGuide } from '../shared/tour/tour-guide';
 import {
   CORE_NAV,
   MANAGE_NAV,
@@ -163,6 +167,7 @@ export class AppShell {
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+  private readonly guide = inject(TourGuide);
   private readonly screen = inject(ScreenActions);
   private paletteOpen = false;
   private shortcutsOpen = false;
@@ -497,7 +502,7 @@ export class AppShell {
 
     if (matchesShortcut(event, '?')) {
       event.preventDefault();
-      this.openShortcuts();
+      this.openHelp();
       return;
     }
 
@@ -582,7 +587,33 @@ export class AppShell {
     this.heldShortcut = null;
   }
 
-  /** The "?" sheet: what this page's keys are, and the ones that work everywhere. */
+  /**
+   * The « ? » of every screen: the guides this person may follow, those standing on the page on view first, the words
+   * the screens use in this company's country, and the way to the keys. A chosen guide starts once the panel is gone.
+   */
+  protected openHelp(): void {
+    if (this.shortcutsOpen) return;
+    this.shortcutsOpen = true;
+    const here = this.router.url.split(/[?#]/)[0];
+    const standsHere = (tour: Tour) => tour.steps.some((step) => step.route === here);
+    const tours = [...this.visible(TOURS)].sort(
+      (a, b) => Number(standsHere(b)) - Number(standsHere(a)),
+    );
+    this.dialog
+      .open<HelpPanel, HelpPanelData, HelpChoice>(HelpPanel, {
+        width: 'min(36rem, calc(100vw - 2rem))',
+        autoFocus: 'dialog',
+        data: { tours, glossary: glossaryFor(this.me()?.company?.countryCode) },
+      })
+      .afterClosed()
+      .subscribe((choice) => {
+        this.shortcutsOpen = false;
+        if (choice === 'shortcuts') this.openShortcuts();
+        else if (choice !== undefined) void this.guide.start(choice.tour);
+      });
+  }
+
+  /** The keyboard's sheet: what this page's keys are, and the ones that work everywhere. */
   protected openShortcuts(): void {
     if (this.shortcutsOpen) return;
     this.shortcutsOpen = true;

@@ -604,13 +604,14 @@
       "new": "New document, from its list",
       "next": "Next step: issue, record a payment, validate…",
       "sidebar": "Collapse or expand the menu",
-      "help": "Show this list",
+      "help": "Open help",
       "close": "Close",
       "settings_list": "Collapse or expand the settings list"
     },
     "soon": "Soon",
     "collapse_settings": "Collapse the settings",
-    "expand_settings": "Expand the settings"
+    "expand_settings": "Expand the settings",
+    "help": "Help"
   },
   "notifications": {
     "bell": "Notifications, {{count}} unread",
@@ -4219,5 +4220,47 @@
     "close": "Close the guide",
     "step": "Step {{index}} of {{count}}",
     "missing": "What this step points at is not shown on this screen: go on to the next one."
+  },
+  "help": {
+    "title": "Help",
+    "guides": "Guided tours",
+    "no_guide": "No guided tour is offered here yet.",
+    "glossary": "The words on the screens",
+    "shortcuts": "Keyboard shortcuts",
+    "close": "Close"
+  },
+  "glossary": {
+    "invoice": {
+      "term": "Invoice",
+      "definition": "The document that records a sale. It takes its number when issued, with no gap in the series, and is never changed afterwards: a credit note corrects it."
+    },
+    "credit_note": {
+      "term": "Credit note",
+      "definition": "The document that cancels or reduces all or part of an issued invoice, without ever changing it."
+    },
+    "quote": {
+      "term": "Quote",
+      "definition": "A priced offer made to the customer; once accepted, it can become an invoice or a delivery note."
+    },
+    "delivery_note": {
+      "term": "Delivery note",
+      "definition": "It goes with the goods handed to the customer; once validated, it takes them out of stock."
+    },
+    "stamp_duty": {
+      "term": "Stamp duty",
+      "definition": "A fixed duty that the Tunisian finance law adds to every invoice."
+    },
+    "withholding": {
+      "term": "Withholding tax",
+      "definition": "The part of a payment the customer keeps and pays to the State itself on behalf of its supplier, who deducts it from its own tax."
+    },
+    "vat_franchise": {
+      "term": "VAT franchise",
+      "definition": "A small French business that does not charge VAT, below turnover thresholds; its invoices say so."
+    },
+    "reverse_charge": {
+      "term": "Reverse charge",
+      "definition": "The customer declares and pays the VAT; the invoice says so."
+    }
   }
 }

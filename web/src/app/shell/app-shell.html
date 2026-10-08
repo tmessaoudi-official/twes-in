@@ -328,6 +328,16 @@
               </a>
             }
           }
+          <button
+            mat-icon-button
+            type="button"
+            (click)="openHelp()"
+            [appLabel]="'shell.help' | translate"
+            aria-keyshortcuts="?"
+            data-testid="help-open"
+          >
+            <mat-icon aria-hidden="true">help</mat-icon>
+          </button>
           @if (scanCount(); as count) {
             <button
               mat-stroked-button

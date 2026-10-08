@@ -47,3 +47,28 @@ test('every guide the palette offers runs from its first step to its last', asyn
     await expect(page.locator('[data-tour-active]')).toHaveCount(0);
   }
 });
+
+test('the help opens on « ? », says the words of the company’s country and starts a guide over the page', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await expect(page.getByTestId('greeting')).toBeVisible();
+
+  await page.keyboard.press('?');
+  await expect(page.getByTestId('help-title')).toBeVisible();
+  await expect(page.getByTestId('glossary-invoice')).toBeVisible();
+  await page.getByTestId('help-guide-first-invoice').click();
+
+  await expect(page.getByTestId('help-title')).toHaveCount(0);
+  await expect(page.getByTestId('tour-card')).toBeVisible();
+  await expect(page.getByTestId('tour-progress')).toHaveText(/Étape 1 sur/);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('tour-card')).toHaveCount(0);
+
+  await page.getByTestId('help-open').click();
+  await page.getByTestId('help-shortcuts').click();
+  await expect(page.getByTestId('help-title')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toContainText('Raccourcis clavier');
+});

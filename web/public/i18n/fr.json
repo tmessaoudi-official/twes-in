@@ -604,13 +604,14 @@
       "new": "Nouveau document, depuis sa liste",
       "next": "Étape suivante : émettre, encaisser, valider…",
       "sidebar": "Réduire ou déployer le menu",
-      "help": "Afficher cette liste",
+      "help": "Ouvrir l’aide",
       "close": "Fermer",
       "settings_list": "Réduire ou déployer la liste des réglages"
     },
     "soon": "Bientôt",
     "collapse_settings": "Réduire les réglages",
-    "expand_settings": "Déployer les réglages"
+    "expand_settings": "Déployer les réglages",
+    "help": "Aide"
   },
   "notifications": {
     "bell": "Notifications, {{count}} {count, plural, one {non lue} other {non lues}}",
@@ -4219,5 +4220,47 @@
     "close": "Fermer le guide",
     "step": "Étape {{index}} sur {{count}}",
     "missing": "Ce que montre cette étape n’est pas affiché sur cet écran : passez à la suivante."
+  },
+  "help": {
+    "title": "Aide",
+    "guides": "Visites guidées",
+    "no_guide": "Aucune visite guidée n’est encore proposée ici.",
+    "glossary": "Les mots des écrans",
+    "shortcuts": "Raccourcis clavier",
+    "close": "Fermer"
+  },
+  "glossary": {
+    "invoice": {
+      "term": "Facture",
+      "definition": "Le document qui constate une vente. Il prend son numéro à l’émission, sans trou dans la suite, et ne se modifie plus ensuite : il se corrige par un avoir."
+    },
+    "credit_note": {
+      "term": "Avoir",
+      "definition": "Le document qui annule ou réduit tout ou partie d’une facture émise, sans jamais la modifier."
+    },
+    "quote": {
+      "term": "Devis",
+      "definition": "Une proposition chiffrée faite au client ; acceptée, elle peut devenir une facture ou un bon de livraison."
+    },
+    "delivery_note": {
+      "term": "Bon de livraison",
+      "definition": "Il accompagne les marchandises remises au client ; validé, il les sort du stock."
+    },
+    "stamp_duty": {
+      "term": "Timbre fiscal",
+      "definition": "Un droit fixe que la loi de finances tunisienne ajoute à chaque facture."
+    },
+    "withholding": {
+      "term": "Retenue à la source",
+      "definition": "La part d’un paiement que le client garde et verse lui-même à l’État pour le compte de son fournisseur, qui la déduit de son impôt."
+    },
+    "vat_franchise": {
+      "term": "Franchise en base de TVA",
+      "definition": "Une petite entreprise française qui ne facture pas la TVA, sous des plafonds de chiffre d’affaires ; ses factures le disent."
+    },
+    "reverse_charge": {
+      "term": "Autoliquidation",
+      "definition": "C’est le client qui déclare et paie la TVA ; la facture le mentionne."
+    }
   }
 }

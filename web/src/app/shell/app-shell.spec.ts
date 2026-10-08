@@ -35,6 +35,9 @@ import {
 } from '../shared/settings/settings-facade';
 import { PRESENTATION } from '../shared/settings/settings-registry';
 import { ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
+import { TourGuide } from '../shared/tour/tour-guide';
+import { HelpPanel } from './help-panel';
+import { TOURS } from './tours';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { ProductScanCard, type ProductScanCardData } from '../products/product-scan-card';
 import { ProductOnView } from '../products/product-on-view';
@@ -1133,18 +1136,30 @@ describe('AppShell', () => {
     expect(open).toHaveBeenCalledTimes(2);
   });
 
-  it('opens the shortcut sheet with ?, listing what this page and the shell answer', async () => {
+  it('opens the help with ?, and from it the shortcut sheet when the person asks for the keys', async () => {
     await render();
-    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
-      afterClosed: () => of(undefined),
-    } as never);
+    const answers: unknown[] = ['shortcuts', undefined];
+    const open = vi
+      .spyOn(TestBed.inject(MatDialog), 'open')
+      .mockImplementation(() => ({ afterClosed: () => of(answers.shift()) }) as never);
 
     document.body.dispatchEvent(
       new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }),
     );
 
-    expect(open).toHaveBeenCalledTimes(1);
-    expect(open.mock.calls[0][0]).toBe(ShortcutsSheet);
+    expect(open.mock.calls.map((call) => call[0])).toEqual([HelpPanel, ShortcutsSheet]);
+  });
+
+  it('starts the guide chosen in the help, over the page itself', async () => {
+    const { byTestId } = await render();
+    const start = vi.spyOn(TestBed.inject(TourGuide), 'start').mockResolvedValue(undefined);
+    vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of({ tour: TOURS[0] }),
+    } as never);
+
+    byTestId('help-open')!.click();
+
+    expect(start).toHaveBeenCalledWith(TOURS[0]);
   });
 
   it('runs what the screen on view declared for a key, and ignores that key while typing', async () => {
