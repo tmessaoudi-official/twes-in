@@ -26,7 +26,7 @@ use PHPUnit\Framework\TestCase;
 final class AuditedChangesTest extends TestCase
 {
     /** Use cases whose audit row is the record of an authentication event, kept even when the request that caused it fails. */
-    private const array AUTH_EVENTS = [
+    public const array AUTH_EVENTS = [
         RecordFailedLogin::class => 'a refused password is on record even though the login fails',
         RecordSuccessfulLogin::class => 'the login event itself',
         RecordLogout::class => 'the logout event itself',

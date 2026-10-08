@@ -163,6 +163,13 @@ A Symfony `UserInterface` implementation, an `#[ApiResource]` class, a console c
 Infrastructure: the security user is a wrapper around the domain `User`, loaded by a custom user
 provider through the repository port; the `Me` resource is built from the use case's plain output. Configuration (`api/config/`) wires each port to its adapter.
 
+**Commands and queries** (light CQRS, § 7 2026-10-07 23:43). A use case is a command when it takes the
+`Transactions` port: it changes state in one transaction and records its audit entry, which is also the live
+signal screens reload on. Every other use case is a query and only reads. No bus: a use case is called directly.
+`tests/Architecture/CommandsAndQueriesTest` reds on a query that writes or takes the audit trail, and on a command
+that takes no audit trail; what departs from that is listed there with its reason, and a listed use case that no
+longer departs must be struck off.
+
 **Domain conventions.** Identity is created in the constructor (UUID v7 through `symfony/uid`), so an
 aggregate is valid before it is persisted. Value objects where an invariant exists (email, permission,
 money, tax rate); they are stored through custom DBAL types or embeddables, Doctrine's documented ways.
@@ -4850,10 +4857,10 @@ functional tests run in the `tools` container, on the host's network, against th
 | 223 | A deposit draft edited after it was drawn is checked again at issue against what its quote leaves, so no deposit charges beyond its quote (goal-end check of row 208) | S | todo | - | api/src/Module/Invoices/** |
 | 224 | A delivery note's lines show their figures as typed, as an invoice's do (row 219's summary and totals), where the note carries prices, and each line's stock on hand and what the note leaves of it (row 220) | M | todo | - | api/src/Module/DeliveryNotes/** web/src/app/delivery-notes/** |
 | 225 | A final invoice's Factur-X names the deposit invoices it gives back as preceding invoices (BG-3: BT-25 number, BT-26 issue day), not only in the line text | S | todo | - | api/src/Module/Invoices/** |
-| 226 | Light CQRS held by a test (§ 7 2026-10-07 23:43): every `Application/` class is a command or a query; an architecture test reds when a query writes (persists, flushes, records audit) or a command changes state without recording its audit entry | M | todo | - | api/src/** api/tests/Architecture/** |
+| 226 | Light CQRS held by a test (§ 7 2026-10-07 23:43): every `Application/` class is a command or a query; an architecture test reds when a query writes (persists, flushes, records audit) or a command changes state without recording its audit entry | M | doing | - | api/src/** api/tests/Architecture/** |
 | 227 | The guide's foundation (§ 7 2026-10-08 00:39): the typed tour definition, the CDK overlay engine (RGAA focus, keyboard, RTL), the help drawer and glossary frames, the automated playback that reds CI, one reference tour (the first invoice); content per module as screens settle (row 140) | L | todo | - | web/src/app/shared/tour/** web/e2e/** |
 | 228 | The pitch and feature videos (§ 7 2026-10-08 00:39): a storyboarded 60–90 s pitch per sector and feature videos generated from the tours by Playwright, captions fr / en / ar, a synthetic voice once its service is chosen | M | todo | - | web/e2e/** |
-| 229 | An invoice names both its parties as the law asks before it takes a number (review LEG-1 / F3, § 7 2026-10-08 01:52) | M | doing | - | api/src/Module/Invoices/** api/src/Tenancy/** web/src/app/invoices/** web/e2e/** |
+| 229 | An invoice names both its parties as the law asks before it takes a number (review LEG-1 / F3, § 7 2026-10-08 01:52) | M | done | 56ca4edf | api/src/Module/Invoices/** api/src/Tenancy/** web/src/app/invoices/** web/e2e/** |
 <!-- /progress-block -->
 
 ### Delivered

@@ -259,7 +259,7 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - The API runs in FrankenPHP's worker mode: one kernel serves many requests. A service keeping anything a request set
   after construction implements `ResetInterface`, or it reaches the next person's request; `WorkerModeTest` runs requests
   on one kernel as the worker does (2026-09-27, row 167).
-- Never name a PHPUnit helper `run()` or `count()`: both are final on `TestCase` and the whole file fails to load.
+- Never name a PHPUnit helper `run()`, `count()` or `name()`: all are final on `TestCase` and the whole file fails to load.
 - `\DomainException` extends `\LogicException`, so a test catching `\LogicException` also passes on every domain refusal
   (`InvalidInvoice` and the like): assert the refusal is not the domain one, or the guard under test can vanish unseen
   (2026-09-15: a credit note of another invoice looked refused while only its amount was).
