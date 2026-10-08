@@ -2261,7 +2261,7 @@
     "plan": {
       "title": "Stock plan",
       "floors": "Floors",
-      "no_floor": "No floor is drawn yet. Create one to start the plan.",
+      "no_floor": "The plan shows where every item is kept, floor by floor. It is drawn in three steps:",
       "drawn": "Drawn on this floor",
       "nothing_drawn": "No location is drawn on this floor yet.",
       "plan_of": "Plan of {{floor}}: {{count}} {count, plural, one {rectangle} other {rectangles}} drawn",
@@ -2442,7 +2442,9 @@
         "where_lines": "Where to pick each line",
         "line_nowhere": "No stock is recorded for this product.",
         "lines_badge": "{{count}} {count, plural, one {line} other {lines}}",
-        "unknown_product": "Product not found"
+        "unknown_product": "Product not found",
+        "nowhere_drawn": "This item is in no drawn place.",
+        "open_stock": "See its stock"
       },
       "volume": {
         "note": "The 3D is for looking only. To change anything, go back to the 2D plan.",
@@ -2466,6 +2468,19 @@
         "overview": "Overview",
         "top": "Top view",
         "read_only": "The 3D is looked at in View; in Arrange, the plan is 2D."
+      },
+      "first": {
+        "title": "Draw your depot",
+        "create": "Create the first floor",
+        "wider": "The plan is drawn on a wider screen. Here it is read, searched and scanned.",
+        "ask": "The first floor is drawn by someone who may arrange the stock.",
+        "arrange": "Arrange this floor",
+        "done": "done",
+        "steps": {
+          "measure": "Measure the floor, its width and its depth",
+          "build": "Put up the walls, doors and posts (optional)",
+          "place": "Place your racks and zones, each on its stock location"
+        }
       }
     },
     "scan": {
@@ -3777,6 +3792,9 @@
       },
       "products": {
         "first": "Create a first product"
+      },
+      "stock": {
+        "map": "Draw your depot"
       }
     }
   },

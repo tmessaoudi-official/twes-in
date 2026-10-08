@@ -97,6 +97,7 @@ import {
   type StockMapView,
 } from '../shared/settings/settings-registry';
 import { StockMapVolume } from './stock-map-volume';
+import { StockMapFirstSteps } from './stock-map-first-steps';
 import { LABEL_FONT, STRUCTURE_LABEL_FONT, fitLabel, planLabel } from './stock-map-labels';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
 
@@ -234,6 +235,7 @@ const PENDING_PIECE: StockStructureRow = {
     Label,
     PickField,
     StockMapVolume,
+    StockMapFirstSteps,
   ],
   templateUrl: './stock-map-page.html',
   styleUrl: './stock-map-page.css',

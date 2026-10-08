@@ -36,7 +36,7 @@ use Symfony\Component\Uid\Uuid;
  */
 final class FirstStepsTest extends ApiTestCase
 {
-    private const array ALL = ['company.profile', 'fiscal.taxes', 'customers.first', 'products.first', 'company.brand', 'company.members'];
+    private const array ALL = ['company.profile', 'fiscal.taxes', 'customers.first', 'products.first', 'stock.map', 'company.brand', 'company.members'];
 
     private Company $company;
 
@@ -55,7 +55,7 @@ final class FirstStepsTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame(self::ALL, array_column($this->steps(), 'key'));
         self::assertSame([], $this->done(), 'provisioning the preset\'s taxes is not the owner looking at them');
-        self::assertSame(6, $this->json()['remaining'] ?? null);
+        self::assertSame(7, $this->json()['remaining'] ?? null);
 
         $company = $this->managed();
         $company->reviseProfile(new CompanyProfile('Quincaillerie SARL', 'SARL', ['matricule_fiscal' => '1234567A/B/M/000'], '12 rue de Rome', null, '1001', 'Tunis'));
@@ -82,6 +82,11 @@ final class FirstStepsTest extends ApiTestCase
         $this->em()->flush();
         $this->getJson($this->path());
         self::assertSame(['company.profile', 'fiscal.taxes', 'customers.first', 'products.first', 'company.brand'], $this->done());
+        self::assertSame(2, $this->json()['remaining'] ?? null);
+
+        $this->drawAFloor();
+        $this->getJson($this->path());
+        self::assertSame(['company.profile', 'fiscal.taxes', 'customers.first', 'products.first', 'stock.map', 'company.brand'], $this->done());
         self::assertSame(1, $this->json()['remaining'] ?? null);
 
         $this->createUser('second@twes.local', 'password-1234', $this->managed(), ['company.read'], 'clerk');
@@ -101,6 +106,29 @@ final class FirstStepsTest extends ApiTestCase
         $this->em()->getConnection()->executeStatement($insert, [Uuid::v7()->toRfc4122(), 'soon@twes.local', 'member', str_repeat('b', 64), '7 days', $this->company->getId()->toRfc4122()]);
         $this->getJson($this->path());
         self::assertContains('company.members', $this->done());
+    }
+
+    /** « Dessiner votre dépôt » asks the stock's writer, and only while the stock is kept. */
+    public function testTheDepotIsDrawnOnceAFloorExistsAndIsAskedOfWhoMayArrangeTheStock(): void
+    {
+        $this->signedIn(['company.read', 'stock.read'], 'reader@twes.local', 'reader');
+        $this->getJson($this->path());
+        self::assertNotContains('stock.map', array_column($this->steps(), 'key'), 'reading the stock is not arranging it');
+        $this->sendJson('POST', '/api/auth/logout');
+
+        $this->signedIn(['*']);
+        $this->getJson($this->path());
+        self::assertContains('stock.map', array_column($this->steps(), 'key'));
+        self::assertNotContains('stock.map', $this->done());
+
+        $this->drawAFloor();
+        $this->getJson($this->path());
+        self::assertContains('stock.map', $this->done());
+
+        $this->em()->persist(ModuleState::of($this->managed(), 'inventory', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->getJson($this->path());
+        self::assertNotContains('stock.map', array_column($this->steps(), 'key'), 'the stock switched off');
     }
 
     public function testEachStepIsShownToWhoMayDoItWhileItsModuleIsOn(): void
@@ -146,6 +174,18 @@ final class FirstStepsTest extends ApiTestCase
     {
         $this->createUser($email, 'password-1234', $this->managed(), $permissions, $role);
         $this->login($email, 'password-1234');
+    }
+
+    /** A floor as the stock map writes one: the company's first establishment, its ground floor. */
+    private function drawAFloor(): void
+    {
+        $connection = $this->em()->getConnection();
+        $establishment = $connection->fetchOne('SELECT id FROM establishment WHERE company_id = ? ORDER BY code LIMIT 1', [$this->company->getId()->toRfc4122()]);
+        self::assertIsString($establishment);
+        $connection->executeStatement(
+            'INSERT INTO venue_area (id, company_id, establishment_id, name, level, image_opacity, created_at, updated_at) VALUES (?, ?, ?, ?, 0, 35, NOW(), NOW())',
+            [Uuid::v7()->toRfc4122(), $this->company->getId()->toRfc4122(), $establishment, 'Rez-de-chaussée'],
+        );
     }
 
     private function ownerId(): string

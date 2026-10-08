@@ -21,6 +21,7 @@ export const FIRST_STEP_LINKS: Readonly<Record<string, string>> = {
   'fiscal.taxes': '/fiscal/taxes',
   'customers.first': '/customers/new',
   'products.first': '/products/new',
+  'stock.map': '/stock/plan',
   'company.brand': '/settings',
   'company.members': '/members',
 };
@@ -31,6 +32,7 @@ export const FIRST_STEPS_KINDS = [
   'tax_component',
   'customer',
   'product',
+  'venue_area',
   'setting',
   'membership',
   'invitation',

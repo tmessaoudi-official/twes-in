@@ -49,11 +49,25 @@ class StaticLoader implements TranslateLoader {
           plan_of: 'Plan de {{floor}} : {{count}} rectangle(s)',
           nothing_drawn: 'Rien n’est encore dessiné sur cet étage.',
           no_floor: 'Aucun étage n’est encore dessiné.',
+          first: {
+            title: 'Dessinez votre dépôt',
+            create: 'Créer le premier étage',
+            wider: 'Le plan se dessine sur un écran plus large.',
+            ask: 'Le premier étage est dessiné par une personne qui peut aménager le stock.',
+            arrange: 'Aménager cet étage',
+            done: 'fait',
+            steps: {
+              measure: 'Mesurez l’étage',
+              build: 'Posez les murs',
+              place: 'Posez vos rayonnages',
+            },
+          },
           here: { empty_home: '{{product}} a sa place ici ({{place}}) et il n’y en a plus.' },
           search: {
             undrawn: '{{quantity}} {{unit}} dans des emplacements non dessinés : {{codes}}',
             floor_total: 'Total sur cet étage : {{quantity}} {{unit}}',
             line: '{{code}} : {{quantity}}',
+            nowhere_drawn: 'Cet article n’est sur aucun emplacement dessiné.',
             note_title: 'Bon de livraison {{note}}',
             lines_badge: '{{count}} lignes',
           },
@@ -330,6 +344,78 @@ describe('StockMapPage', () => {
 
     expect(q('stock-map-no-floor')?.textContent).toContain('Aucun étage');
     expect(q('stock-map-svg')).toBeNull();
+  });
+
+  /** The first thing a depot without a plan sees: what a plan is made of, and the one press that starts it. */
+  it('shows how a plan is drawn when there is no floor, and starts the first one on a press', async () => {
+    await TestBed.inject(Router).navigateByUrl('/');
+    floors.set([]);
+    await settle();
+
+    expect(q('stock-map-first-use')?.textContent).toContain('Dessinez votre dépôt');
+    expect(q('stock-map-step-measure')?.textContent).toContain('Mesurez l’étage');
+    expect(q('stock-map-step-place')).not.toBeNull();
+    expect(q('stock-map-step-done-measure')).toBeNull();
+    expect(q('stock-floor-add')?.textContent).toContain('Créer le premier étage');
+
+    q('stock-floor-add')!.click();
+    await settle();
+    expect(TestBed.inject(Router).url).toBe('/?mode=arrange');
+    expect(q('field-name')).not.toBeNull();
+    // The card has done its work: no second button stands beside the form it opened.
+    expect(q('stock-floor-add')).toBeNull();
+  });
+
+  it('tells a phone that the plan is drawn on a wider screen, rather than offering to draw it there', async () => {
+    windowClass.set('compact');
+    floors.set([]);
+    await settle();
+
+    expect(q('stock-map-first-wider')).not.toBeNull();
+    expect(q('stock-floor-add')).toBeNull();
+    expect(q('stock-map-first-ask')).toBeNull();
+  });
+
+  it('tells somebody who may not arrange the stock who draws the plan', async () => {
+    auth.hasPermission.mockReturnValue(false);
+    floors.set([]);
+    fixture = TestBed.createComponent(StockMapPage);
+    await settle();
+
+    expect(q('stock-map-first-ask')?.textContent).toContain('aménager le stock');
+    expect(q('stock-floor-add')).toBeNull();
+  });
+
+  /** Each step is ticked from what the floor holds, never by hand: a measured floor and a wall tick two of three. */
+  it('ticks the steps an empty floor has already been through', async () => {
+    floors.set([upstairs, { ...ground, widthMetres: '20.00', depthMetres: '12.00' }]);
+    drawings.set([]);
+    await settle();
+
+    expect(q('stock-map-first-floor')).not.toBeNull();
+    expect(q('stock-map-step-done-measure')).not.toBeNull();
+    expect(q('stock-map-step-done-build')).not.toBeNull();
+    expect(q('stock-map-step-done-place')).toBeNull();
+    // Already arranging, so nothing to send there.
+    expect(q('stock-map-first-arrange')).toBeNull();
+
+    structures.set([]);
+    await settle();
+    expect(q('stock-map-step-done-build')).toBeNull();
+  });
+
+  it('sends an empty floor seen in Consulter to Aménager, and steps aside once something is drawn', async () => {
+    await TestBed.inject(Router).navigateByUrl('/');
+    drawings.set([]);
+    await settle();
+
+    q('stock-map-first-arrange')!.click();
+    await settle();
+    expect(TestBed.inject(Router).url).toBe('/?mode=arrange');
+
+    drawings.set([drawn]);
+    await settle();
+    expect(q('stock-map-first-floor')).toBeNull();
   });
 
   it('draws a location on the floor being looked at, snapped to the grid', async () => {
@@ -1827,6 +1913,15 @@ describe('StockMapPage', () => {
     await settle();
     expect(TestBed.inject(Router).url).toBe('/');
     expect(facade.loadWhereabouts).toHaveBeenLastCalledWith('c1', []);
+  });
+
+  it('says a product held only where nothing is drawn is not on the plan, and where it is instead', async () => {
+    await search('/?product=p1', { ...vis, rows: [vis.rows[1]] });
+
+    expect(q('stock-map-nowhere')).toBeNull();
+    expect(q('stock-map-nowhere-drawn')?.textContent).toContain('aucun emplacement dessiné');
+    expect(q('stock-map-undrawn')?.textContent).toContain('RECEP');
+    expect(q('stock-map-search-stock')?.getAttribute('href')).toBe('/stock?product=p1');
   });
 
   /** A delivery note opens the map on its lines: each line said where it is, and the places lit with how many lines. */

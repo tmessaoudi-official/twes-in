@@ -2261,7 +2261,7 @@
     "plan": {
       "title": "Plan du stock",
       "floors": "Étages",
-      "no_floor": "Aucun étage n’est encore dessiné. Créez-en un pour commencer le plan.",
+      "no_floor": "Le plan montre où chaque article est rangé, étage par étage. Il se dessine en trois temps :",
       "drawn": "Dessiné sur cet étage",
       "nothing_drawn": "Aucun emplacement n’est encore dessiné sur cet étage.",
       "plan_of": "Plan de {{floor}} : {{count}} {count, plural, one {rectangle dessiné} other {rectangles dessinés}}",
@@ -2442,7 +2442,9 @@
         "where_lines": "Où prendre chaque ligne",
         "line_nowhere": "Aucun stock n’est enregistré pour cet article.",
         "lines_badge": "{{count}} {count, plural, one {ligne} other {lignes}}",
-        "unknown_product": "Article introuvable"
+        "unknown_product": "Article introuvable",
+        "nowhere_drawn": "Cet article n’est sur aucun emplacement dessiné.",
+        "open_stock": "Voir son stock"
       },
       "volume": {
         "note": "La 3D ne sert qu’à regarder. Pour modifier quoi que ce soit, revenez au plan 2D.",
@@ -2466,6 +2468,19 @@
         "overview": "Vue d’ensemble",
         "top": "Vue de dessus",
         "read_only": "La 3D se regarde en Consulter ; en Aménager, le plan est en 2D."
+      },
+      "first": {
+        "title": "Dessinez votre dépôt",
+        "create": "Créer le premier étage",
+        "wider": "Le plan se dessine sur un écran plus large. Ici, on le lit, on cherche et on scanne.",
+        "ask": "Le premier étage est dessiné par une personne qui peut aménager le stock.",
+        "arrange": "Aménager cet étage",
+        "done": "fait",
+        "steps": {
+          "measure": "Mesurez l’étage, sa largeur et sa profondeur",
+          "build": "Posez les murs, les portes et les poteaux (facultatif)",
+          "place": "Posez vos rayonnages et vos zones, chacun sur son emplacement de stock"
+        }
       }
     },
     "scan": {
@@ -3777,6 +3792,9 @@
       },
       "products": {
         "first": "Créer un premier article"
+      },
+      "stock": {
+        "map": "Dessiner votre dépôt"
       }
     }
   },

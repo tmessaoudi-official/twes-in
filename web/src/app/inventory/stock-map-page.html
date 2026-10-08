@@ -136,6 +136,11 @@
                 <p class="text-sm" data-testid="stock-map-nowhere">
                   {{ 'inventory.plan.search.nowhere' | translate }}
                 </p>
+              } @else if (foundPlaces().length === 0) {
+                <!-- Held, but nowhere drawn: the map says it cannot show it, and where it is instead, just below. -->
+                <p class="text-sm" data-testid="stock-map-nowhere-drawn">
+                  {{ 'inventory.plan.search.nowhere_drawn' | translate }}
+                </p>
               } @else {
                 <p class="text-sm">
                   {{ 'inventory.plan.search.places_here' | translate: { count: hits().size } }}
@@ -170,6 +175,13 @@
                   >{{ 'inventory.plan.search.open_product' | translate }}</a
                 >
               }
+              <a
+                mat-button
+                routerLink="/stock"
+                [queryParams]="{ product: now.productId }"
+                data-testid="stock-map-search-stock"
+                >{{ 'inventory.plan.search.open_stock' | translate }}</a
+              >
               <button
                 mat-button
                 type="button"
@@ -282,24 +294,47 @@
     </ng-template>
 
     @if (company() && floors().length === 0) {
-      <p data-testid="stock-map-no-floor">{{ 'inventory.plan.no_floor' | translate }}</p>
+      <!--
+        A company that has never drawn its depot sees what a plan is and how it is made, in the brief's three steps,
+        with one thing to press. Whoever cannot draw here is told who can, and where, rather than shown a button that
+        is not theirs.
+      -->
+      <section
+        class="flex max-w-2xl flex-col gap-4 rounded-xl border border-outline-variant p-4"
+        data-testid="stock-map-first-use"
+      >
+        <h2 class="text-xl font-semibold">{{ 'inventory.plan.first.title' | translate }}</h2>
+        <p data-testid="stock-map-no-floor">{{ 'inventory.plan.no_floor' | translate }}</p>
+        <app-stock-map-first-steps [pictured]="true" />
+        @if (!floorFormGroup()) {
+          @if (mayDraw()) {
+            <div>
+              <button
+                mat-flat-button
+                type="button"
+                (click)="startFirstFloor()"
+                data-testid="stock-floor-add"
+              >
+                {{ 'inventory.plan.first.create' | translate }}
+              </button>
+            </div>
+          } @else if (mayWrite()) {
+            <p class="text-sm text-on-surface-variant" data-testid="stock-map-first-wider">
+              {{ 'inventory.plan.first.wider' | translate }}
+            </p>
+          } @else {
+            <p class="text-sm text-on-surface-variant" data-testid="stock-map-first-ask">
+              {{ 'inventory.plan.first.ask' | translate }}
+            </p>
+          }
+        }
+      </section>
       @if (floorFormGroup()) {
         <mat-card>
           <mat-card-content>
             <ng-container [ngTemplateOutlet]="floorFormTemplate" />
           </mat-card-content>
         </mat-card>
-      } @else if (mayDraw()) {
-        <div>
-          <button
-            mat-flat-button
-            type="button"
-            (click)="startFirstFloor()"
-            data-testid="stock-floor-add"
-          >
-            {{ 'inventory.plan.add_floor' | translate }}
-          </button>
-        </div>
       }
     } @else if (company()) {
       <!--
@@ -1046,6 +1081,40 @@
                   </g>
                 }
               </svg>
+
+              <!--
+                A floor with nothing on it says how it gets its racks, ticked as far as it has gone; it steps aside
+                the moment a rectangle is being placed, and sits in a corner so the bare floor stays there to trace on.
+              -->
+              @if (
+                floorDrawings().length === 0 &&
+                editing() === null &&
+                editingStructure() === null &&
+                !tracing()
+              ) {
+                <div
+                  class="pointer-events-none absolute start-3 top-3 flex max-w-sm flex-col gap-3 rounded-xl border border-outline-variant bg-surface p-4"
+                  data-testid="stock-map-first-floor"
+                >
+                  <app-stock-map-first-steps
+                    [measured]="floorSize() !== null"
+                    [built]="floorStructures().length > 0"
+                    [drawn]="false"
+                  />
+                  @if (!arranging() && mayDraw()) {
+                    <div>
+                      <button
+                        type="button"
+                        class="pointer-events-auto min-h-9 rounded-md border border-outline-variant px-3 text-sm font-medium"
+                        (click)="chooseMode('arrange')"
+                        data-testid="stock-map-first-arrange"
+                      >
+                        {{ 'inventory.plan.first.arrange' | translate }}
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
 
               <!--
                 Coming nearer, going back and moving what is shown, each by a single press: WCAG 2.5.7 asks a map for
