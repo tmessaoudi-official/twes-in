@@ -248,6 +248,30 @@ export function pannedBy(view: PlanView, dx: number, dy: number): PlanView {
   return { scale: view.scale, cx: view.cx - dx, cy: view.cy - dy };
 }
 
+/**
+ * A pan button or an arrow key: what is shown moves the way it points, and its centre is written back where the
+ * floor's edge held it, so a press past the edge is not banked for the way back.
+ */
+export function steppedBy(fit: PlanFrame, view: PlanView, dx: number, dy: number): PlanView {
+  const shown = shownFrame(fit, { scale: view.scale, cx: view.cx + dx, cy: view.cy + dy });
+
+  return {
+    scale: view.scale,
+    cx: tidy(shown.x + shown.width / 2),
+    cy: tidy(shown.y + shown.height / 2),
+  };
+}
+
+/** The lengths a scale bar may say: the ones a person reads at a glance and can count on the grid. */
+const SCALE_BAR_LENGTHS = [0.5, 1, 2, 5, 10, 20, 50, 100] as const;
+
+/** The scale bar's length for what is shown: the longest round one that takes no more than a fifth of it. */
+export function scaleBarMetres(shownWidth: number): number {
+  const most = shownWidth / 5;
+
+  return SCALE_BAR_LENGTHS.filter((length) => length <= most).at(-1) ?? SCALE_BAR_LENGTHS[0];
+}
+
 function held(value: number, least: number, most: number): number {
   return Math.min(most, Math.max(least, value));
 }

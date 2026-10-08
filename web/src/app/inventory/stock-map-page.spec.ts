@@ -6,13 +6,15 @@ import type { FormGroup } from '@angular/forms';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { ThemeFacade } from '../shared/theme/theme-facade';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
@@ -158,6 +160,7 @@ describe('StockMapPage', () => {
     hasPermission: vi.fn(),
   };
   const windowClass = signal<WindowClass>('expanded');
+  const showComing = signal(true);
   let fixture: ComponentFixture<StockMapPage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -202,6 +205,7 @@ describe('StockMapPage', () => {
     facade.repeatDrawing.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
     windowClass.set('expanded');
+    showComing.set(true);
     TestBed.configureTestingModule({
       imports: [StockMapPage],
       providers: [
@@ -221,8 +225,11 @@ describe('StockMapPage', () => {
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: WINDOW_CLASS, useValue: windowClass.asReadonly() },
+        { provide: ThemeFacade, useValue: { showComing } },
       ],
     });
+    // Most of what is tested here is drawing, which only Aménager offers; Consulter's own cases go back to the plain URL.
+    await TestBed.inject(Router).navigateByUrl('/?mode=arrange');
     fixture = TestBed.createComponent(StockMapPage);
     await settle();
   });
@@ -1101,24 +1108,24 @@ describe('StockMapPage', () => {
   });
 
   /**
-   * Finding B (§ 7, 2026-09-22): the form holding Enregistrer opened UNDER the board, off-screen at 900 px, and nothing
-   * on the board said a save was owed. It now takes the tool column's place beside the board, and gives it back.
+   * Finding B: the form holding Enregistrer opened UNDER the board, off-screen at 900 px, and nothing on the board
+   * said a save was owed. It opens in the panel level with the board, which the board's own line points to, and the
+   * tools stay where they are so the next shape is one press away.
    */
-  it('opens the form in place of the tools, beside the board, and gives the tools back on cancel', async () => {
+  it('opens the form in the panel beside the board, which says a save is owed', async () => {
     (q('stock-structure-tool-door') as HTMLElement).click();
     await settle();
 
     const inspector = q('stock-map-inspector') as HTMLElement;
     expect(inspector).not.toBeNull();
     expect(inspector.querySelector('[data-testid="stock-structure-form"]')).not.toBeNull();
-    expect(q('stock-structure-tool-door')).toBeNull();
+    expect(q('stock-structure-tool-door')).not.toBeNull();
     expect(q('stock-map-not-saved')).not.toBeNull();
 
     (q('stock-structure-cancel') as HTMLElement).click();
     await settle();
 
     expect(q('stock-map-inspector')).toBeNull();
-    expect(q('stock-structure-tool-door')).not.toBeNull();
     expect(q('stock-map-not-saved')).toBeNull();
   });
 
@@ -1360,5 +1367,180 @@ describe('StockMapPage', () => {
     expect(
       fixture.nativeElement.querySelector('[data-testid^="stock-drawing-rect-"]'),
     ).not.toBeNull();
+  });
+
+  // ——— Consulter and Aménager: reading never moves anything (the brief's § 5.1) ———
+
+  async function consult(): Promise<void> {
+    await TestBed.inject(Router).navigateByUrl('/');
+    await settle();
+  }
+
+  it('opens in Consulter, where a press on a rack only chooses it', async () => {
+    await consult();
+
+    expect(q('stock-map-mode-read')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('stock-map-trace')).toBeNull();
+    expect(q('stock-shape-rack')).toBeNull();
+    expect(q('stock-structure-tool-wall')).toBeNull();
+    expect(q('stock-drawing-add')).toBeNull();
+
+    const rect = firstRect();
+    expect(rect.getAttribute('class')).not.toContain('cursor-move');
+    fire(rect, 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 200, 100);
+    fire(document, 'pointerup', 200, 100);
+    rect.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await settle();
+
+    expect(q('stock-drawing-form')).toBeNull();
+    expect(q('stock-map-selection')?.textContent).toContain('R1');
+    expect(q('stock-drawing-edit')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('circle').length).toBe(0);
+  });
+
+  /** The mode is view state kept in the URL, so a link or a reload lands where the person was. */
+  it('goes into Aménager through the URL', async () => {
+    await consult();
+    press('stock-map-mode-arrange');
+    await settle();
+
+    expect(TestBed.inject(Router).url).toBe('/?mode=arrange');
+    expect(q('stock-map-mode-arrange')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('stock-map-trace')).not.toBeNull();
+  });
+
+  it('shows whoever cannot arrange a « Lecture » chip, and no switch', async () => {
+    auth.hasPermission.mockReturnValue(false);
+    fixture = TestBed.createComponent(StockMapPage);
+    await settle();
+
+    expect(q('stock-map-reading')).not.toBeNull();
+    expect(q('stock-map-mode-arrange')).toBeNull();
+    expect(q('stock-map-trace')).toBeNull();
+  });
+
+  it('reads on a phone even from an Aménager link', async () => {
+    windowClass.set('compact');
+    fixture = TestBed.createComponent(StockMapPage);
+    await settle();
+
+    expect(q('stock-map-reading')).not.toBeNull();
+    expect(q('stock-shape-rack')).toBeNull();
+  });
+
+  it('asks before leaving Aménager with a shape posed and not saved', async () => {
+    const unsaved = TestBed.inject(UnsavedChanges);
+    const ask = vi.spyOn(unsaved, 'confirmLeave').mockReturnValue(of(false));
+    press('stock-shape-rack');
+    await settle();
+    expect(unsaved.count()).toBeGreaterThan(0);
+
+    press('stock-map-mode-read');
+    await settle();
+
+    expect(ask).toHaveBeenCalled();
+    expect(TestBed.inject(Router).url).toBe('/?mode=arrange');
+    expect(q('stock-drawing-form')).not.toBeNull();
+
+    ask.mockReturnValue(of(true));
+    press('stock-map-mode-read');
+    // The answer arrives first and the navigation after it, a turn later.
+    await settle();
+    await settle();
+
+    expect(TestBed.inject(Router).url).toBe('/');
+    expect(q('stock-drawing-form')).toBeNull();
+  });
+
+  /** The list is the plan's keyboard path, so the building is in it too: a wall was reachable only by pointing. */
+  it('lists the building, choosing a piece in Consulter and opening it in Aménager', async () => {
+    await consult();
+    press('stock-structure-row-s1');
+    await settle();
+
+    expect(q('stock-structure-row-s1')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('stock-map-selection')?.textContent).toContain('Mur nord');
+    expect(q('stock-structure-form')).toBeNull();
+
+    press('stock-map-mode-arrange');
+    await settle();
+    press('stock-structure-row-s1');
+    await settle();
+
+    expect(q('stock-structure-form')).not.toBeNull();
+  });
+
+  /** The canvas's own bar: a 24 m floor shown whole reads « 5 m ». */
+  it('draws a scale bar in round metres', async () => {
+    floors.set([{ ...ground, widthMetres: '24.000', depthMetres: '14.000' }]);
+    await settle();
+
+    expect(q('stock-map-scale')?.textContent?.trim()).toBe('5 m');
+  });
+
+  /** WCAG 2.5.7: what a drag does on the board, a single press does too. */
+  it('moves a nearer view with the arrows, which wait until there is somewhere to go', async () => {
+    expect((q('stock-map-pan-right') as HTMLButtonElement).disabled).toBe(true);
+
+    press('stock-map-zoom-in');
+    await settle();
+    const before = partOf(viewBox(), 0);
+    press('stock-map-pan-right');
+    await settle();
+
+    expect(partOf(viewBox(), 0)).toBeGreaterThan(before);
+  });
+
+  it('answers + − and the arrows when the board has the focus', async () => {
+    await consult();
+    const board = q('stock-map-board') as HTMLElement;
+    const key = (name: string): void => {
+      board.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true }));
+    };
+
+    key('+');
+    await settle();
+    expect(q('stock-map-zoom')?.textContent).toContain('140');
+
+    const before = partOf(viewBox(), 1);
+    key('ArrowDown');
+    await settle();
+    expect(partOf(viewBox(), 1)).toBeGreaterThan(before);
+
+    key('-');
+    await settle();
+    expect(q('stock-map-zoom')?.textContent).toContain('100');
+  });
+
+  /** A view not built yet says so where it will be, as long as the person asked to see what is coming. */
+  it('names the façade and the volume « Bientôt », and hides them when what is coming is hidden', async () => {
+    expect(q('stock-map-view-plan')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('stock-map-view-facade')?.getAttribute('aria-disabled')).toBe('true');
+    expect(q('stock-map-view-volume')?.querySelector('[data-testid="soon"]')).not.toBeNull();
+
+    showComing.set(false);
+    await settle();
+
+    expect(q('stock-map-view-facade')).toBeNull();
+    expect(q('stock-map-view-volume')).toBeNull();
+  });
+
+  /**
+   * A rack seen from above is long and narrow: across its 1,20 m only « R1 » fits, so its name read « VIS-… ». A shape
+   * much deeper than wide writes its label along its length, as a label on a real rack's end would read.
+   */
+  it('writes a long narrow rack’s label along its length rather than cutting it', async () => {
+    drawings.set([{ ...drawn, width: '1.200', depth: '8.000' }]);
+    press('stock-map-label-both');
+    await settle();
+
+    const label = q('stock-drawing-label-d1') as unknown as SVGTextElement;
+    expect(label.textContent?.trim()).toBe('R1 · Rayonnage 1');
+    expect(label.getAttribute('transform')).toMatch(/^rotate\(90 /);
+
+    drawings.set([drawn]);
+    await settle();
+    expect(q('stock-drawing-label-d1')?.getAttribute('transform')).toBeNull();
   });
 });

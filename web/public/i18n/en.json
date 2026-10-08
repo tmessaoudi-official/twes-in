@@ -2254,7 +2254,6 @@
     "keep": "Keep",
     "plan": {
       "title": "Stock plan",
-      "intro": "Each floor is a plan: zones and racks are rectangles on it, in metres, snapped to the quarter-metre. A bin is not drawn here — it is placed in its rack’s front view.",
       "floors": "Floors",
       "no_floor": "No floor is drawn yet. Create one to start the plan.",
       "drawn": "Drawn on this floor",
@@ -2366,8 +2365,45 @@
       "zoom_in": "Come nearer",
       "zoom_out": "Step back",
       "fit": "Fit",
-      "not_saved": "Not saved yet — Save is on the left",
-      "view_hint": "Wheel to come nearer, drag to move"
+      "not_saved": "Not saved yet: Save, alongside",
+      "views": "Ways to look at the floor",
+      "view_names": {
+        "plan": "Plan",
+        "facade": "Front",
+        "volume": "3D volume"
+      },
+      "view_coming": {
+        "facade": "A rack’s front, its columns and levels, is coming soon.",
+        "volume": "The 3D volume, to look around the depot, is coming soon."
+      },
+      "mode": "Mode",
+      "modes": {
+        "read": "Look",
+        "arrange": "Arrange"
+      },
+      "reading": "Read only",
+      "floor_meta": "Level {{level}} · {{count}} {count, plural, one {location drawn} other {locations drawn}}",
+      "legend": "Key",
+      "legend_items": {
+        "rack": "Rack",
+        "zone": "Zone, aisle",
+        "wall": "Wall, post",
+        "door": "Door, dock"
+      },
+      "building": "The building",
+      "arranging": "Arranging: {{floor}}",
+      "arrange_hint": "Drag a shape to move it, its handles to resize it; nothing is saved until Save.",
+      "read_note": "Reading: touching the plan moves nothing",
+      "keys_hint": "Wheel or + / − to come nearer, arrows to move around",
+      "board": "Floor plan. + and − to come nearer, arrows to move around.",
+      "pan": {
+        "up": "Move up",
+        "down": "Move down",
+        "left": "Move left",
+        "right": "Move right"
+      },
+      "panel_hint_read": "Touch a rectangle on the plan, or pick it in the list, to see what it is.",
+      "panel_hint_arrange": "Pick a shape to place: it lands in the middle, selected. Drag it or type its measurements, then Save."
     },
     "scan": {
       "filled": "{{name}}: article, lot and quantity filled in",

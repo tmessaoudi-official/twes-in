@@ -97,4 +97,20 @@ describe('PageTabs', () => {
     expect(selected('customers-tab')).toBe('true');
     expect(selected('customer-groups-link')).toBe('false');
   });
+
+  /** A page keeping its own state in the address — a mode, a search — is still that tab. */
+  it('keeps the tab selected whatever the address carries after its path', async () => {
+    const fixture = TestBed.createComponent(Host);
+    await TestBed.inject(Router).navigateByUrl('/customers/groups?mode=arrange#top');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    const selected = (id: string) =>
+      el.querySelector(`[data-testid="${id}"]`)?.getAttribute('aria-selected');
+
+    expect(selected('customer-groups-link')).toBe('true');
+    expect(selected('customers-tab')).toBe('false');
+  });
 });

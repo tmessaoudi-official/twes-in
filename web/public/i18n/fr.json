@@ -2254,7 +2254,6 @@
     "keep": "Garder",
     "plan": {
       "title": "Plan du stock",
-      "intro": "Chaque étage est un plan : les zones et les rayonnages y sont des rectangles, en mètres, alignés sur le quart de mètre. Un bac ne se dessine pas ici — il se range dans la vue de face de son rayonnage.",
       "floors": "Étages",
       "no_floor": "Aucun étage n’est encore dessiné. Créez-en un pour commencer le plan.",
       "drawn": "Dessiné sur cet étage",
@@ -2366,8 +2365,45 @@
       "zoom_in": "Voir de plus près",
       "zoom_out": "Voir de plus loin",
       "fit": "Ajuster",
-      "not_saved": "Pas encore enregistré — Enregistrer est à gauche",
-      "view_hint": "Molette pour approcher, glisser pour déplacer"
+      "not_saved": "Pas encore enregistré : Enregistrer, ci-contre",
+      "views": "Façon de regarder l’étage",
+      "view_names": {
+        "plan": "Plan",
+        "facade": "Façade",
+        "volume": "Volume 3D"
+      },
+      "view_coming": {
+        "facade": "La façade d’un rayonnage, ses colonnes et ses niveaux, arrive bientôt.",
+        "volume": "Le volume en 3D, pour regarder le dépôt, arrive bientôt."
+      },
+      "mode": "Mode",
+      "modes": {
+        "read": "Consulter",
+        "arrange": "Aménager"
+      },
+      "reading": "Lecture",
+      "floor_meta": "Niveau {{level}} · {{count}} {count, plural, one {emplacement dessiné} other {emplacements dessinés}}",
+      "legend": "Légende",
+      "legend_items": {
+        "rack": "Rayonnage",
+        "zone": "Zone, allée",
+        "wall": "Mur, poteau",
+        "door": "Porte, quai"
+      },
+      "building": "Le bâtiment",
+      "arranging": "Aménagement : {{floor}}",
+      "arrange_hint": "Glissez une forme pour la déplacer, ses poignées pour la redimensionner ; rien n’est enregistré avant Enregistrer.",
+      "read_note": "Lecture : rien ne bouge en touchant le plan",
+      "keys_hint": "Molette ou + / − pour approcher, flèches pour se déplacer",
+      "board": "Plan de l’étage. + et − pour approcher, flèches pour se déplacer.",
+      "pan": {
+        "up": "Vers le haut",
+        "down": "Vers le bas",
+        "left": "Vers la gauche",
+        "right": "Vers la droite"
+      },
+      "panel_hint_read": "Touchez un rectangle du plan, ou choisissez-le dans la liste, pour voir ce qu’il est.",
+      "panel_hint_arrange": "Choisissez une forme à poser : elle se pose au centre, sélectionnée. Glissez-la ou tapez ses mesures, puis Enregistrer."
     },
     "scan": {
       "filled": "{{name}} : article, lot et quantité remplis",

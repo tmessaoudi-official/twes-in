@@ -21,6 +21,13 @@ interface Fixture {
 /** A measurement as the screen shows it — the locale's comma — read back as a number. */
 const comma = (shown: string): number => Number(shown.replace(',', '.'));
 
+/**
+ * A floor's button by its name. Its accessible name carries its level and what is drawn on it after the name, so an
+ * exact match would miss it; the name is the start of it.
+ */
+const floorButton = (name: string): RegExp =>
+  new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+
 /** A rack under the default establishment's own location, through the API. */
 async function prepare(page: Page, code: string): Promise<Fixture> {
   return page.evaluate(
@@ -140,8 +147,13 @@ test.describe('the drawn stock map', () => {
     const fixture = await prepare(page, code);
 
     try {
+      // The map opens reading; arranging is a mode the URL keeps, so a reload lands back in it.
       await page.goto('/stock/plan');
       await expect(page.getByTestId('stock-map-title')).toBeVisible();
+      await expect(page.getByTestId('stock-map-mode-read')).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByTestId('stock-shape-rack')).toHaveCount(0);
+      await page.getByTestId('stock-map-mode-arrange').click();
+      await expect(page).toHaveURL(/\/stock\/plan\?mode=arrange$/);
 
       // A floor of the establishment, at a level no other floor of this run occupies.
       await page.getByTestId('stock-floor-add').click();
@@ -152,7 +164,7 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('stock-floor-save').click();
       await expect(toast(page)).toContainText('Étage enregistré');
 
-      await page.getByRole('button', { name: floorName, exact: true }).click();
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
 
       // The palette, end to end: its sizes are settings the API resolves for this company, so what the button says
       // and what the form is posed at must be the same measurement. Abandoned, not saved — this case's rack is
@@ -238,7 +250,7 @@ test.describe('the drawn stock map', () => {
 
       // It survives the round trip: what the drag wrote is what the API kept.
       await page.reload();
-      await page.getByRole('button', { name: floorName, exact: true }).click();
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
       await expect(rect).toHaveAttribute('x', String(dragged));
 
       // Erased: the rectangle goes, the rack stays a rack.
@@ -318,7 +330,7 @@ test.describe('the drawn stock map', () => {
     const fixture = await prepare(page, code);
 
     try {
-      await page.goto('/stock/plan');
+      await page.goto('/stock/plan?mode=arrange');
       await page.getByTestId('stock-floor-add').click();
       await page.getByTestId('field-name').fill(floorName);
       await page.getByTestId('field-level').fill(String(fixture.level));
@@ -326,7 +338,7 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('field-depthMetres').fill('20');
       await page.getByTestId('stock-floor-save').click();
       await expect(toast(page)).toContainText('Étage enregistré');
-      await page.getByRole('button', { name: floorName, exact: true }).click();
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
 
       await page.getByTestId('stock-drawing-add').click();
       await page.getByTestId('field-locationId').click();
@@ -383,7 +395,7 @@ test.describe('the drawn stock map', () => {
 
       // Read back off the plan itself, by the rectangles' own metres, and compared with the preview.
       await page.reload();
-      await page.getByRole('button', { name: floorName, exact: true }).click();
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
       // `evaluateAll` does not wait, so the count is asserted first: the source rectangle and the three copies.
       await expect(page.locator('[data-testid^="stock-drawing-rect-"]')).toHaveCount(4);
       const drawnNow = await page
@@ -426,7 +438,7 @@ test.describe('the drawn stock map', () => {
     const fixture = await prepare(page, code);
 
     try {
-      await page.goto('/stock/plan');
+      await page.goto('/stock/plan?mode=arrange');
       await page.getByTestId('stock-floor-add').click();
       await page.getByTestId('field-name').fill(floorName);
       await page.getByTestId('field-level').fill(String(fixture.level));
@@ -434,7 +446,7 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('field-depthMetres').fill('20');
       await page.getByTestId('stock-floor-save').click();
       await expect(toast(page)).toContainText('Étage enregistré');
-      await page.getByRole('button', { name: floorName, exact: true }).click();
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
 
       // The tool says what it poses, and the form opens at exactly that: both come from `venue.structure.*`, so a
       // tool posing a constant instead of the company's own door would disagree with its own label here.
@@ -504,7 +516,7 @@ test.describe('the drawn stock map', () => {
     const fixture = await prepare(page, code);
 
     try {
-      await page.goto('/stock/plan');
+      await page.goto('/stock/plan?mode=arrange');
       await page.getByTestId('stock-floor-add').click();
       await page.getByTestId('field-name').fill(floorName);
       await page.getByTestId('field-level').fill(String(fixture.level));
@@ -512,7 +524,7 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('field-depthMetres').fill('20');
       await page.getByTestId('stock-floor-save').click();
       await expect(toast(page)).toContainText('Étage enregistré');
-      await page.getByRole('button', { name: floorName, exact: true }).click();
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
 
       // One rack, and one wall to prove the building keeps its name under every choice.
       await page.getByTestId('stock-drawing-add').click();
@@ -564,7 +576,7 @@ test.describe('the drawn stock map', () => {
 
       // A preference, not a moment: the next visit opens on the numbering this store actually reads.
       await page.reload();
-      await page.getByRole('button', { name: floorName, exact: true }).click();
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
       await expect(label).toHaveText(`Rayonnage ${code}`);
       await expect(page.getByTestId('stock-map-label-name')).toHaveAttribute(
         'aria-pressed',

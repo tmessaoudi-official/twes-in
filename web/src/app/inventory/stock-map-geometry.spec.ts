@@ -13,6 +13,8 @@ import {
   pointerMetres,
   fitView,
   pannedBy,
+  scaleBarMetres,
+  steppedBy,
   shownFrame,
   zoomedAt,
   PLAN_ZOOM_MAX,
@@ -511,5 +513,41 @@ describe('zoom and pan', () => {
 
   it('fits the whole floor again from its own frame', () => {
     expect(fitView(floor)).toEqual({ scale: 1, cx: 12, cy: 7 });
+  });
+
+  /** A pan button looks further that way: the shown part moves with the arrow, not against it as a hand does. */
+  it('steps what is shown the way an arrow points', () => {
+    const view = steppedBy(floor, { scale: 2, cx: 12, cy: 7 }, 3, -1);
+
+    expect(shownFrame(floor, view)).toEqual({ x: 9, y: 2.5, width: 12, height: 7 });
+  });
+
+  /**
+   * Held at the floor's edge as it goes: a centre pushed past the edge by five presses would need five presses back
+   * before the plan moved at all, and the arrow would read as broken.
+   */
+  it('stops at the edge, so the first press back moves the plan at once', () => {
+    let view = { scale: 2, cx: 12, cy: 7 };
+    for (let press = 0; press < 5; press++) view = steppedBy(floor, view, 4, 0);
+
+    expect(shownFrame(floor, view).x).toBe(12);
+    expect(shownFrame(floor, steppedBy(floor, view, -4, 0)).x).toBe(8);
+  });
+});
+
+describe('scaleBarMetres', () => {
+  /** The canvas's own bar: a 24 m floor shown whole reads « 5 m ». */
+  it('rounds to a length a person reads at a glance', () => {
+    expect(scaleBarMetres(26)).toBe(5);
+    expect(scaleBarMetres(60)).toBe(10);
+    expect(scaleBarMetres(12)).toBe(2);
+    expect(scaleBarMetres(6)).toBe(1);
+    expect(scaleBarMetres(130)).toBe(20);
+  });
+
+  /** Nearer than a metre fills a fifth of the board, the bar halves rather than outgrowing what is shown. */
+  it('goes under a metre only when a metre would not fit', () => {
+    expect(scaleBarMetres(3)).toBe(0.5);
+    expect(scaleBarMetres(0)).toBe(0.5);
   });
 });

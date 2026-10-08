@@ -2,7 +2,7 @@
 
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatTabsModule } from '@angular/material/tabs';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { type IsActiveMatchOptions, RouterLink, RouterLinkActive } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 
 export interface PageTab {
@@ -26,7 +26,7 @@ export interface PageTab {
           [routerLink]="tab.route"
           routerLinkActive
           #active="routerLinkActive"
-          [routerLinkActiveOptions]="{ exact: true }"
+          [routerLinkActiveOptions]="matching"
           [active]="selected() === null ? active.isActive : selected() === tab.route"
           [attr.data-testid]="tab.testId"
         >
@@ -49,4 +49,15 @@ export class PageTabs {
    * code); left out, the tab whose address is the page's is selected.
    */
   readonly selected = input<string | null>(null);
+
+  /**
+   * Each tab is its own path exactly, and only its path: what a page keeps after it — a mode, a search, a fragment —
+   * is that page's state, and `exact: true` would match the query too, leaving the open tab unmarked.
+   */
+  protected readonly matching: IsActiveMatchOptions = {
+    paths: 'exact',
+    queryParams: 'ignored',
+    fragment: 'ignored',
+    matrixParams: 'ignored',
+  };
 }

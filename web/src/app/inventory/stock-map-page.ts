@@ -12,14 +12,20 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NgTemplateOutlet } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { firstValueFrom, map } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import { dirtyCount } from '../shared/form/dirty-count';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { ThemeFacade } from '../shared/theme/theme-facade';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { Label } from '../shared/a11y/label';
@@ -62,7 +68,9 @@ import {
   PLAN_ZOOM_STEP,
   planFrame,
   pointerMetres,
+  scaleBarMetres,
   shownFrame,
+  steppedBy,
   zoomedAt,
   repeatedFrom,
   resizedTo,
@@ -144,7 +152,12 @@ interface PlanShape {
   label: string;
   /** The whole of it, carried as the drawn element's title so cutting the label hides nothing from the reader. */
   labelTitle: string;
+  /** How the label is turned to run along a long narrow shape, or `null` where it reads across it. */
+  labelTurn: string | null;
 }
+
+/** How much deeper than wide a shape must be before its label runs along its length rather than across it. */
+const ALONG_RATIO = 1.5;
 
 /**
  * One piece of the building as the plan draws it, and where its name is written when it has one — which most
@@ -162,6 +175,15 @@ interface StructureShape {
   label: string;
   labelTitle: string;
 }
+
+/** The board's two modes: Consulter reads and never moves anything, Aménager draws (the brief's § 5.1). */
+type PlanMode = 'read' | 'arrange';
+
+/** The three ways of looking at a floor; only the plan exists yet, the other two say « Bientôt ». */
+const PLAN_VIEWS = ['plan', 'facade', 'volume'] as const;
+
+/** How far one press of a pan arrow or an arrow key moves what is shown: a fifth of it, so the eye keeps its place. */
+const PAN_STEP = 0.2;
 
 /** One row of the layers panel: what it is, and how many things are on it right now. */
 interface PlanLayer {
@@ -193,7 +215,15 @@ const PENDING_PIECE: StockStructureRow = {
  */
 @Component({
   selector: 'app-stock-map-page',
-  imports: [PageTabs, MatButtonModule, MatCardModule, TranslatePipe, DescriptorForm, Label],
+  imports: [
+    PageTabs,
+    MatButtonModule,
+    MatCardModule,
+    NgTemplateOutlet,
+    TranslatePipe,
+    DescriptorForm,
+    Label,
+  ],
   templateUrl: './stock-map-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -204,7 +234,25 @@ export class StockMapPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly settings = inject(SettingsFacade);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly unsavedChanges = inject(UnsavedChanges);
   protected readonly tabs = INVENTORY_TABS;
+
+  /** Whether planned views are shown, marked « Bientôt », or left out: the person's own choice. */
+  protected readonly showComing = inject(ThemeFacade).showComing;
+  protected readonly views = PLAN_VIEWS;
+
+  /**
+   * The mode is view state, kept in the URL so a link or a reload lands where the person was, and never a setting:
+   * the page always opens reading. A mode switch only shows a mode that is plainly shown, which is why whoever
+   * cannot arrange gets the « Lecture » chip in its place.
+   */
+  private readonly modeAsked = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('mode'))),
+    { initialValue: null },
+  );
+  protected readonly arranging = computed(() => this.mayDraw() && this.modeAsked() === 'arrange');
 
   /**
    * What the plan writes on its rectangles. A preference and not a moment: a store reads its own numbering every
@@ -362,6 +410,10 @@ export class StockMapPage implements OnInit {
   protected readonly selected = computed(
     () => this.facade.drawings().find((drawing) => drawing.id === this.selectedId()) ?? null,
   );
+  /** The chosen rectangle as it is drawn, for the size the panel says. */
+  protected readonly selectedShape = computed(
+    () => this.shapes().find((shape) => shape.drawing.id === this.selectedId()) ?? null,
+  );
 
   // ——— the rectangle form ———
 
@@ -466,6 +518,66 @@ export class StockMapPage implements OnInit {
       );
       onCleanup(() => watching.unsubscribe());
     });
+
+    // What a form holds and the API does not is unsaved work, here as on a record page: leaving the page asks first.
+    this.unsavedChanges.declare(this.pendingChanges);
+
+    // Out of Aménager by any road — the switch, the browser's Back, a window narrowed to a phone — nothing stays
+    // half-drawn behind a board that no longer shows the tools to finish it.
+    effect(() => {
+      if (!this.arranging()) untracked(() => this.putToolsDown());
+    });
+  }
+
+  /** How many things on the board are not saved: a posed shape counts once, a changed one by its fields. */
+  private readonly pendingChanges = computed(() => {
+    const piece = this.editingStructure();
+    const values = this.structureValuesNow();
+    const structureChanges =
+      piece === null || values === null
+        ? 0
+        : dirtyCount(
+            values,
+            structureValues(piece === 'new' ? null : piece, this.structureTools()),
+          );
+
+    return (
+      (this.editing() === 'new' ? 1 : 0) +
+      (piece === 'new' ? 1 : 0) +
+      this.unsaved() +
+      structureChanges
+    );
+  });
+
+  /**
+   * Consulter or Aménager. Leaving Aménager with something posed and not saved asks the same question leaving a
+   * record page does, since a mode switch drops the form exactly as a navigation would.
+   */
+  protected async chooseMode(mode: PlanMode): Promise<void> {
+    if (mode === (this.arranging() ? 'arrange' : 'read')) return;
+    if (mode === 'read' && !(await firstValueFrom(this.unsavedChanges.confirmLeave()))) return;
+
+    if (mode === 'read') this.putToolsDown();
+    await this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { mode: mode === 'arrange' ? 'arrange' : null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  /** A company with no floor yet starts its plan where floors are made. */
+  protected async startFirstFloor(): Promise<void> {
+    await this.chooseMode('arrange');
+    this.openFloor('new');
+  }
+
+  private putToolsDown(): void {
+    this.editing.set(null);
+    this.editingStructure.set(null);
+    this.editingFloor.set(null);
+    this.repeating.set(false);
+    this.tracing.set(false);
+    this.drag = null;
   }
 
   /** A rectangle being drawn for a location not yet chosen: enough of a row for the plan to show it taking shape. */
@@ -528,6 +640,19 @@ export class StockMapPage implements OnInit {
     this.editingStructure.set(null);
   }
 
+  /** Choosing a piece of the building to read about it, which is all a press on one does in Consulter. */
+  protected selectStructure(piece: StockStructureRow): void {
+    this.selectedStructureId.set(piece.id);
+    this.selectedId.set(null);
+    this.editingStructure.set(null);
+  }
+
+  /** A piece pressed on the plan or in the list: read in Consulter, opened in Aménager. */
+  protected pressStructure(piece: StockStructureRow): void {
+    if (this.arranging()) this.openStructure(piece);
+    else this.selectStructure(piece);
+  }
+
   protected draw(target: StockDrawingRow | 'new'): void {
     this.facade.clearError();
     this.editingFloor.set(null);
@@ -557,7 +682,7 @@ export class StockMapPage implements OnInit {
   /** The handles around the rectangle being worked on, in its OWN unturned corners: the group turns them with it. */
   protected readonly handles = computed(() => {
     const shape = this.shapes().find((one) => one.drawing.id === this.selectedId());
-    if (shape === undefined || !this.mayDraw()) return [];
+    if (shape === undefined || !this.arranging()) return [];
 
     return handlesThatFit(shape.rect, this.handleRadius()).map((handle) => {
       const at = handleAt(shape.rect, handle);
@@ -569,7 +694,7 @@ export class StockMapPage implements OnInit {
   /** The same handles around a piece of the building, which now moves and resizes exactly as a rack does. */
   protected readonly structureHandles = computed(() => {
     const shape = this.builtShapes().find((one) => one.piece.id === this.selectedStructureId());
-    if (shape === undefined || !this.mayDraw()) return [];
+    if (shape === undefined || !this.arranging()) return [];
 
     return handlesThatFit(shape.rect, this.handleRadius()).map((handle) => {
       const at = handleAt(shape.rect, handle);
@@ -599,7 +724,7 @@ export class StockMapPage implements OnInit {
    * possible at all: a palette that poses rectangles is not a reading tool (decision 8).
    */
   protected readonly palette = computed<readonly StockPlanShape[]>(() =>
-    this.mayDraw() ? (this.facade.options()?.planShapes ?? []) : [],
+    this.arranging() ? (this.facade.options()?.planShapes ?? []) : [],
   );
 
   /**
@@ -743,7 +868,7 @@ export class StockMapPage implements OnInit {
   private drag: Drag | null = null;
 
   protected grab(event: PointerEvent, drawing: StockDrawingRow, handle: PlanHandle | null): void {
-    if (!this.mayDraw() || event.button !== 0) return;
+    if (!this.arranging() || event.button !== 0) return;
 
     // Choosing it first is what the handles are drawn around, and what the gesture below then works on.
     this.select(drawing);
@@ -762,7 +887,7 @@ export class StockMapPage implements OnInit {
     piece: StockStructureRow,
     handle: PlanHandle | null,
   ): void {
-    if (!this.mayDraw() || event.button !== 0) return;
+    if (!this.arranging() || event.button !== 0) return;
 
     this.openStructure(piece);
     const shape = this.builtShapes().find((one) => one.piece.id === piece.id);
@@ -812,7 +937,9 @@ export class StockMapPage implements OnInit {
     }
     const view = this.view();
     if (view === null || event.button !== 0) return;
-    if ((event.target as Element).tagName.toLowerCase() !== 'svg') return;
+    // In Aménager a press on a shape is that shape's; in Consulter nothing moves but the view, so it is the view's
+    // wherever it lands, and a press that does not travel is still the click that chooses a rack.
+    if (this.arranging() && (event.target as Element).tagName.toLowerCase() !== 'svg') return;
 
     const surface = event.currentTarget as SVGSVGElement;
     const box = surface.getBoundingClientRect();
@@ -873,6 +1000,69 @@ export class StockMapPage implements OnInit {
     this.view.set(null);
   }
 
+  /**
+   * One press of a pan arrow, or an arrow key on the board: what a drag of the view does, done by a single press,
+   * which WCAG 2.5.7 asks of a map. Nothing to move to while the whole floor is shown.
+   */
+  protected step(across: number, down: number): void {
+    const view = this.view();
+    if (view === null) return;
+    const shown = this.viewed();
+
+    this.look(
+      steppedBy(
+        this.frame(),
+        view,
+        across * shown.width * PAN_STEP,
+        down * shown.height * PAN_STEP,
+      ),
+    );
+  }
+
+  /**
+   * The board's own keys, the convention of web maps: + and − come nearer and go back, the arrows move what is
+   * shown. Only when the board itself has the focus, so a button inside it keeps its own Enter and Space.
+   */
+  protected boardKey(event: KeyboardEvent): void {
+    if (event.target !== event.currentTarget) return;
+    const moves: Record<string, () => void> = {
+      '+': () => this.zoomBy(PLAN_ZOOM_STEP),
+      '=': () => this.zoomBy(PLAN_ZOOM_STEP),
+      '-': () => this.zoomBy(1 / PLAN_ZOOM_STEP),
+      ArrowLeft: () => this.step(-1, 0),
+      ArrowRight: () => this.step(1, 0),
+      ArrowUp: () => this.step(0, -1),
+      ArrowDown: () => this.step(0, 1),
+    };
+    const move = moves[event.key];
+    if (move === undefined) return;
+
+    // The arrows would otherwise scroll the page as well as the plan.
+    event.preventDefault();
+    move();
+  }
+
+  /**
+   * The scale bar, in metres on the floor so it stays true at every zoom: at the bottom of what is shown, near its
+   * start, a round length a person reads at a glance and can count on the grid.
+   */
+  protected readonly scaleBar = computed(() => {
+    const shown = this.viewed();
+    const length = scaleBarMetres(shown.width);
+    const x = shown.x + shown.width * 0.03;
+    const y = shown.y + shown.height * 0.95;
+
+    return {
+      x,
+      y,
+      length,
+      tick: shown.height * 0.015,
+      font: shown.width / 45,
+      stroke: shown.width / 400,
+      label: length < 1 ? `${length * 100} cm` : `${length} m`,
+    };
+  });
+
   /** Showing the whole floor is held as "no view at all", so the two ways of saying it cannot disagree. */
   private look(view: PlanView): void {
     this.view.set(view.scale <= PLAN_ZOOM_MIN ? null : view);
@@ -886,7 +1076,7 @@ export class StockMapPage implements OnInit {
     origin: PlanRectangle | null,
     handle: PlanHandle | null,
   ): void {
-    if (!this.mayDraw() || event.button !== 0) return;
+    if (!this.arranging() || event.button !== 0) return;
     const surface = (event.target as Element).closest('svg');
     if (surface === null) return;
 
@@ -1021,7 +1211,7 @@ export class StockMapPage implements OnInit {
    * It is drawn UNDER the stock, and its layer locks, so a wall is not picked up while a rack is being moved.
    */
   protected readonly structureTools = computed<readonly StockStructureShape[]>(() =>
-    this.mayDraw() ? (this.facade.options()?.structureShapes ?? []) : [],
+    this.arranging() ? (this.facade.options()?.structureShapes ?? []) : [],
   );
 
   protected readonly editingStructure = signal<StockStructureRow | 'new' | null>(null);
@@ -1191,7 +1381,7 @@ export class StockMapPage implements OnInit {
    * form that moves a wall — the one place on this page where a permission was simply not asked for.
    */
   protected openStructure(target: StockStructureRow | 'new'): void {
-    if (!this.mayDraw()) return;
+    if (!this.arranging()) return;
     // The posed piece is drawn by the saved pieces' template, so a press on it arrives here too. It is already the
     // piece being edited: opening its zeroed placeholder as a saved row reset the form and made it vanish (§ 7,
     // 2026-09-22, finding A).
@@ -1314,19 +1504,23 @@ function builtOf(
 
 /** One rectangle as the SVG needs it: where it turns about, and where its code is written inside it. */
 function shapeOf(drawing: StockDrawingRow, rect: PlanRectangle, mode: PlanLabelMode): PlanShape {
+  const whole = planLabel(drawing.locationCode, drawing.locationName, mode);
+  // A rack seen from above is long and narrow, and across it only a code's first letters fit: there the label runs
+  // down its length, turned a quarter, its letters standing on the rack's middle line.
+  const along = rect.depth > rect.width * ALONG_RATIO;
+  const labelX = along ? rect.x + rect.width / 2 - LABEL_FONT * 0.35 : rect.x + 0.15;
+  const labelY = along ? rect.y + 0.15 : rect.y + Math.min(0.45, rect.depth * 0.7);
+
   return {
     drawing,
     rect,
     centreX: rect.x + rect.width / 2,
     centreY: rect.y + rect.depth / 2,
     // Written inside the rectangle and turned with it, so a label never floats off its own rack.
-    labelX: rect.x + 0.15,
-    labelY: rect.y + Math.min(0.45, rect.depth * 0.7),
-    label: fitLabel(
-      planLabel(drawing.locationCode, drawing.locationName, mode),
-      rect.width,
-      LABEL_FONT,
-    ),
-    labelTitle: planLabel(drawing.locationCode, drawing.locationName, mode),
+    labelX,
+    labelY,
+    label: fitLabel(whole, along ? rect.depth : rect.width, LABEL_FONT),
+    labelTitle: whole,
+    labelTurn: along ? `rotate(90 ${labelX} ${labelY})` : null,
   };
 }
