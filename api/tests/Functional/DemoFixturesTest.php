@@ -83,6 +83,18 @@ final class DemoFixturesTest extends ApiTestCase
             );
             self::assertSame(['draft', 'paid', 'recorded'], $this->column('SELECT DISTINCT status FROM expense WHERE company_id = ? ORDER BY status', [$id]));
             self::assertGreaterThan(0, $this->numberOf('SELECT COUNT(*) FROM stock_movement WHERE company_id = ? AND quantity < 0', [$id]), "$name's deliveries took goods out of stock");
+            // The stock map opens on a drawn depot: a measured floor, its racks and zones drawn, the building around
+            // them, and the goods sitting in the racks that are their homes, so a search on the map has places to light.
+            self::assertSame(1, $this->numberOf('SELECT COUNT(*) FROM venue_area WHERE company_id = ? AND width_metres > 0 AND depth_metres > 0', [$id]), "$name has a measured floor");
+            self::assertGreaterThanOrEqual(3, $this->numberOf("SELECT COUNT(*) FROM stock_location WHERE company_id = ? AND kind = 'rack' AND spot_id IS NOT NULL", [$id]), "$name's racks are drawn");
+            self::assertSame(2, $this->numberOf("SELECT COUNT(*) FROM stock_location WHERE company_id = ? AND kind = 'zone' AND spot_id IS NOT NULL", [$id]), "$name's reception and dispatch zones are drawn");
+            self::assertSame(
+                ['dock', 'door', 'post', 'wall'],
+                $this->column('SELECT DISTINCT kind FROM venue_structure WHERE company_id = ? ORDER BY kind', [$id]),
+                "$name's building has its walls, a door, a post and a dock",
+            );
+            self::assertSame(0, $this->numberOf("SELECT COUNT(*) FROM (SELECT m.product_id FROM stock_movement m JOIN product p ON p.id = m.product_id JOIN stock_location l ON l.id = m.location_id WHERE m.company_id = ? AND p.tracking = 'none' GROUP BY m.product_id HAVING SUM(CASE WHEN l.kind = 'rack' AND l.spot_id IS NOT NULL THEN m.quantity ELSE 0 END) <= 0) held", [$id]), "every one of $name's goods is held in a drawn rack");
+            self::assertSame(0, $this->numberOf("SELECT COUNT(*) FROM product p WHERE p.company_id = ? AND p.kind = 'goods' AND p.is_active AND NOT EXISTS (SELECT 1 FROM product_home_location h WHERE h.product_id = p.id)", [$id]), "every one of $name's goods has a home");
             self::assertSame(
                 ['accepted', 'cancelled', 'draft', 'refused', 'sent'],
                 $this->column('SELECT DISTINCT status FROM quote WHERE company_id = ? ORDER BY status', [$id]),

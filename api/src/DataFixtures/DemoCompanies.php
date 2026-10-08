@@ -30,10 +30,9 @@ use App\Module\Expenses\Application\ExpenseInput;
 use App\Module\Expenses\Application\ManageExpenseCategories;
 use App\Module\Expenses\Application\ManageExpenses;
 use App\Module\Expenses\Domain\ExpenseDetails;
+use App\Module\Inventory\Application\KeepProductHomes;
 use App\Module\Inventory\Application\KeepStock;
-use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Domain\NamedLot;
-use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Invoices\Application\InvoiceInput;
 use App\Module\Invoices\Application\InvoiceLineInput;
 use App\Module\Invoices\Application\InvoiceWorkflow;
@@ -128,7 +127,8 @@ final class DemoCompanies extends Fixture
         private readonly ManageContacts $contacts,
         private readonly ManageProductCategories $productCategories,
         private readonly ManageProducts $products,
-        private readonly ManageStockLocations $stockLocations,
+        private readonly DemoDepot $depot,
+        private readonly KeepProductHomes $homes,
         private readonly KeepStock $stock,
         private readonly ManageExpenseCategories $expenseCategories,
         private readonly ManageVendors $vendors,
@@ -298,10 +298,14 @@ final class DemoCompanies extends Fixture
             $establishment = $each->isDefault() ? $each : $establishment;
         }
         $establishment ??= throw new \LogicException("$demo->name was provisioned without a default establishment.");
-        // Deliveries take goods out of the default location; the racks are there to be seen on the locations screen.
-        $shelf = $this->stockLocations->defaultOf($establishment)->getId();
-        $this->stockLocations->create($company(), $establishment->getId(), null, StockLocationKind::Rack, 'RAYON-A', 'Rayonnage A', $actor);
-        $this->stockLocations->create($company(), $establishment->getId(), null, StockLocationKind::Rack, 'RAYON-B', 'Rayonnage B', $actor);
+        // Each family of goods has its rack on the drawn depot, the rack is its goods' home, and they are received
+        // there: deliveries leave from a product's home, and the stock map has goods to show where they lie.
+        $families = array_values(array_unique(array_map(
+            static fn (array $row): string => $row['category'],
+            array_values(array_filter($demo->products, static fn (array $row): bool => !isset($row['service']) && !isset($row['inactive']))),
+        )));
+        $racks = $this->depot->draw($company(), $establishment->getId(), $families, $actor);
+        $settle();
 
         $sellable = [];
         $goods = [];
@@ -322,10 +326,14 @@ final class DemoCompanies extends Fixture
             if (!isset($row['inactive'])) {
                 $sellable[] = $product->getId();
             }
-            if (!isset($row['inactive']) && !$service && ProductTracking::None === $tracking) {
+            $shelf = isset($row['inactive']) || $service ? null : $racks[$row['category']] ?? null;
+            if (null !== $shelf) {
+                $this->homes->set($company(), $product->getId(), $shelf, $actor);
+            }
+            if (null !== $shelf && ProductTracking::None === $tracking) {
                 $goods[] = $product->getId();
                 $this->stock->receive($company(), $product->getId(), $shelf, (string) (40 + (37 * $n) % 160), $actor);
-            } elseif (!isset($row['inactive']) && !$service) {
+            } elseif (null !== $shelf) {
                 $tracked[] = $product->getId();
                 $this->receiveTracked($company(), $product->getId(), $tracking, $shelf, $row['ref'], $actor);
             }
