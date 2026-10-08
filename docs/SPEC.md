@@ -4877,14 +4877,14 @@ functional tests run in the `tools` container, on the host's network, against th
 | 224 | A delivery note's lines show their figures as typed, as an invoice's do (row 219's summary and totals), where the note carries prices, and each line's stock on hand and what the note leaves of it (row 220) | M | todo | - | api/src/Module/DeliveryNotes/** web/src/app/delivery-notes/** |
 | 225 | A final invoice's Factur-X names the deposit invoices it gives back as preceding invoices (BG-3: BT-25 number, BT-26 issue day), not only in the line text | S | todo | - | api/src/Module/Invoices/** |
 | 226 | Light CQRS held by a test (§ 7 2026-10-07 23:43): every `Application/` class is a command or a query; an architecture test reds when a query writes (persists, flushes, records audit) or a command changes state without recording its audit entry | M | done | 4fb9cfe2 | api/src/** api/tests/Architecture/** |
-| 227 | The guide's foundation (§ 7 2026-10-08 00:39): the typed tour definition, the CDK overlay engine (RGAA focus, keyboard, RTL), the help drawer and glossary frames, the automated playback that reds CI, one reference tour (the first invoice); content per module as screens settle (row 140) | L | todo | - | web/src/app/shared/tour/** web/e2e/** |
+| 227 | The guide's foundation (§ 7 2026-10-08 00:39): the typed tour definition, the CDK overlay engine (RGAA focus, keyboard, RTL), the help drawer and glossary frames, the automated playback that reds CI, one reference tour (the first invoice); content per module as screens settle (row 140) | L | doing | - | web/src/app/shared/tour/** web/e2e/** |
 | 228 | The pitch and feature videos (§ 7 2026-10-08 00:39): a storyboarded 60–90 s pitch per sector and feature videos generated from the tours by Playwright, captions fr / en / ar, a synthetic voice once its service is chosen | M | todo | - | web/e2e/** |
 | 229 | An invoice names both its parties as the law asks before it takes a number (review LEG-1 / F3, § 7 2026-10-08 01:52) | M | done | 56ca4edf | api/src/Module/Invoices/** api/src/Tenancy/** web/src/app/invoices/** web/e2e/** |
 | 230 | Every page names itself in its tab (route `title` keys, `PageTitles`), and a move to another page puts focus on its heading (`RouteFocus`) (review T-E09, RGAA 8.6 / 12.7; § 7 2026-10-07 23:52 main lane 4) | M | done | bb320509 | web/src/app/** web/e2e/** |
 | 231 | A list says it is loading, or that it could not load, never « vide » before its answer (review T-E02; main lane 4) | M | done | 853429f1 | web/src/app/** |
-| 232 | A new or draft document can be saved from a phone, not only from the overflow menu (review T-E01; main lane 4) | S | doing | - | web/src/app/** |
-| 233 | The line discount's percent / amount switch keeps focus and names its unit (review T-E08; main lane 4) | S | doing | - | web/src/app/** |
-| 234 | The line editors space their fields so labels never sit on the field above (review T-E07; main lane 4) | S | doing | - | web/src/app/** |
+| 232 | A new or draft document can be saved from a phone, not only from the overflow menu (review T-E01; main lane 4) | S | done | e6f58383 | web/src/app/** |
+| 233 | The line discount's percent / amount switch keeps focus and names its unit (review T-E08; main lane 4) | S | done | 07c5f2f0 | web/src/app/** |
+| 234 | The line editors space their fields so labels never sit on the field above (review T-E07; main lane 4) | S | done | 97d4564e | web/src/app/** |
 <!-- /progress-block -->
 
 ### Delivered

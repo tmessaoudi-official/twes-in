@@ -74,7 +74,14 @@ import { ScanGap } from '../shared/scan/scan-gap';
 import { ScanWedge } from '../shared/scan/scan-wedge';
 import { SCANNING_MODULE } from '../shared/scan/scanning-module';
 import { CommandPalette, type CommandPaletteData } from './command-palette';
-import { type Command, MODULE_COMMANDS, navCommands, screenCommands } from './commands';
+import {
+  type Command,
+  guideCommands,
+  MODULE_COMMANDS,
+  navCommands,
+  screenCommands,
+} from './commands';
+import { TOURS } from './tours';
 import {
   CORE_NAV,
   MANAGE_NAV,
@@ -249,6 +256,7 @@ export class AppShell {
     ]),
     // What is not built yet, after what works, marked, and gone with « Montrer ce qui arrive » (row 150).
     ...(this.theme.showComing() ? plannedCommands(this.me()?.plannedModules) : []),
+    ...this.visible(guideCommands(TOURS)),
   ]);
   /** What « Créer » offers this person: the modules' creations they may make, in the palette's order. */
   protected readonly createCommands = computed(() => [

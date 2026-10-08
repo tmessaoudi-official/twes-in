@@ -576,7 +576,8 @@
       "find": "Rechercher un client, une facture, un produit…",
       "screen": "Sur cette page",
       "create": "Créer",
-      "goto": "Aller à"
+      "goto": "Aller à",
+      "guide": "Guides"
     },
     "create": "Créer",
     "user_menu": "Compte",
@@ -1614,7 +1615,29 @@
       "issue": "Émettre l’avoir"
     },
     "deposit_draft_title": "Facture d’acompte en brouillon",
-    "from_quote": "Voir le devis d’origine"
+    "from_quote": "Voir le devis d’origine",
+    "tours": {
+      "first_invoice": {
+        "title": "Votre première facture",
+        "command": "Guide : votre première facture",
+        "list": {
+          "title": "Vos factures",
+          "body": "Toutes les factures de la société sont ici. Tapez un numéro ou le nom d’un client pour en retrouver une."
+        },
+        "create": {
+          "title": "Créer une facture",
+          "body": "« Créer » ouvre une nouvelle facture, un devis ou un client depuis n’importe quel écran."
+        },
+        "form": {
+          "title": "Le client, puis les lignes",
+          "body": "Choisissez le client : ses conditions de paiement, sa remise et sa langue s’appliquent d’elles-mêmes. Ajoutez ensuite les lignes plus bas."
+        },
+        "actions": {
+          "title": "Enregistrer, puis émettre",
+          "body": "Enregistrez le brouillon autant de fois qu’il le faut. « Émettre » lui donne son numéro pour de bon : une facture émise ne se modifie plus, elle se corrige par un avoir."
+        }
+      }
+    }
   },
   "delivery_notes": {
     "credit_over": "Cette livraison porte ce que le client doit à {{owed}} + {{total}} {{currency}}, au-delà de son plafond de crédit de {{limit}} {{currency}}.",
@@ -4188,5 +4211,13 @@
     "expense": "Dépense",
     "legal_texts": "Textes légaux",
     "legal": "Informations légales"
+  },
+  "tour": {
+    "next": "Suivant",
+    "back": "Précédent",
+    "finish": "Terminer",
+    "close": "Fermer le guide",
+    "step": "Étape {{index}} sur {{count}}",
+    "missing": "Ce que montre cette étape n’est pas affiché sur cet écran : passez à la suivante."
   }
 }

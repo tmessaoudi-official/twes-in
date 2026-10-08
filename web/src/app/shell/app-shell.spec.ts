@@ -1120,7 +1120,9 @@ describe('AppShell', () => {
       'goto-reports',
     ]);
     expect(
-      config.data.commands.filter((command) => command.group !== 'screen' && command.coming),
+      config.data.commands.filter(
+        (command) => (command.group === 'create' || command.group === 'goto') && command.coming,
+      ),
     ).toHaveLength(3);
 
     press({ metaKey: true });

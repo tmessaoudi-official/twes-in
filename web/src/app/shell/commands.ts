@@ -10,13 +10,14 @@ import { VENDORS_COMMANDS } from '../vendors/vendors-nav';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import type { Gated, NavEntry } from './nav-manifest';
 import type { IconName } from '../shared/icons/icons';
+import type { Tour } from '../shared/tour/tour';
 
 /**
  * Where a command sits in the palette: what the screen on view can do, then what it creates, then where it goes.
  * The screen's own actions come first because they are the half that changes — everything below is on every page.
  */
-export type CommandGroup = 'screen' | 'create' | 'goto';
-export const COMMAND_GROUPS: readonly CommandGroup[] = ['screen', 'create', 'goto'];
+export type CommandGroup = 'screen' | 'create' | 'goto' | 'guide';
+export const COMMAND_GROUPS: readonly CommandGroup[] = ['screen', 'create', 'goto', 'guide'];
 
 /**
  * One line of the command palette (Ctrl K). A module declares its own beside its navigation, gated like a navigation
@@ -48,7 +49,26 @@ export interface ScreenCommand extends CommandBase {
   readonly action: ScreenAction;
 }
 
-export type Command = NavigateCommand | ScreenCommand;
+/** A command that starts a guided tour, gated as its module declared it. */
+export interface GuideCommand extends CommandBase {
+  readonly group: 'guide';
+  readonly tour: Tour;
+}
+
+export type Command = NavigateCommand | ScreenCommand | GuideCommand;
+
+/** The tours as palette lines, after everything else: « Guide : … », which typing « guide » finds. */
+export function guideCommands(tours: readonly Tour[]): readonly GuideCommand[] {
+  return tours.map((tour) => ({
+    key: `guide-${tour.key}`,
+    labelKey: tour.commandKey,
+    icon: 'help',
+    group: 'guide' as const,
+    tour,
+    ...(tour.permission === undefined ? {} : { permission: tour.permission }),
+    ...(tour.module === undefined ? {} : { module: tour.module }),
+  }));
+}
 
 /**
  * The screen's declaration as palette lines. What it cannot run *for now* is left out rather than shown refused:

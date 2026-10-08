@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { runAction } from '../shared/actions/run-action';
+import { TourGuide } from '../shared/tour/tour-guide';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { COMMAND_GROUPS, type Command, matchCommands } from './commands';
 
@@ -30,6 +31,7 @@ export class CommandPalette {
   /** The confirming dialog a destructive action opens; the palette's own ref closes before it. */
   private readonly confirm = inject(MatDialog);
   private readonly router = inject(Router);
+  private readonly guide = inject(TourGuide);
   private readonly translate = inject(TranslateService);
   /** Re-reads the labels when the translations arrive or the language changes. */
   private readonly language = toSignal(this.translate.onLangChange, { initialValue: null });
@@ -84,6 +86,10 @@ export class CommandPalette {
    */
   protected run(command: Command): void {
     this.dialog.close();
+    if (command.group === 'guide') {
+      void this.guide.start(command.tour);
+      return;
+    }
     if (command.group !== 'screen') {
       void this.router.navigateByUrl(command.route);
       return;

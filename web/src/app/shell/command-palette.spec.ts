@@ -11,6 +11,8 @@ import {
 import { of } from 'rxjs';
 import { CommandPalette } from './command-palette';
 import type { Command } from './commands';
+import type { Tour } from '../shared/tour/tour';
+import { TourGuide } from '../shared/tour/tour-guide';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -18,6 +20,7 @@ class StaticLoader implements TranslateLoader {
       nav: { home: 'Accueil', expenses: 'Dépenses' },
       expenses: { new_title: 'Nouvelle dépense' },
       modules: { quotes: 'Devis' },
+      g: { command: 'Guide : votre première facture' },
       shell: {
         soon: 'Bientôt',
         commands: {
@@ -27,6 +30,7 @@ class StaticLoader implements TranslateLoader {
           goto: 'Aller à',
           empty: 'Aucune commande ne correspond',
           hint: 'Chaque module ajoute ses propres commandes',
+          guide: 'Guides',
         },
       },
     });
@@ -134,6 +138,28 @@ describe('CommandPalette', () => {
     expect(input.getAttribute('aria-activedescendant')).toBe('command-new-expense');
     await key('ArrowUp');
     expect(input.getAttribute('aria-activedescendant')).toBe('command-goto-expenses');
+  });
+
+  it('starts a guide from its line, the last group of all, and closes', async () => {
+    const tour: Tour = { key: 'first', titleKey: 'g.title', commandKey: 'g.command', steps: [] };
+    const start = vi.fn().mockResolvedValue(undefined);
+    TestBed.overrideProvider(TourGuide, { useValue: { start } });
+    TestBed.overrideProvider(MAT_DIALOG_DATA, {
+      useValue: {
+        commands: [
+          ...COMMANDS,
+          { key: 'guide-first', labelKey: 'g.command', icon: 'help', group: 'guide', tour },
+        ],
+      },
+    });
+    const { options, type, key } = await render();
+
+    expect(options().at(-1)).toBe('Guide : votre première facture');
+    await type('guide');
+    await key('Enter');
+
+    expect(start).toHaveBeenCalledWith(tour);
+    expect(close).toHaveBeenCalled();
   });
 
   it('runs the active command with Enter: goes to its route and closes', async () => {

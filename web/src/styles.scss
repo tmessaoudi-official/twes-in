@@ -2253,3 +2253,17 @@ li.twes-row-new.twes-list-card {
     }
   }
 }
+
+// What a tour step points at: ringed in the primary colour, outside its own box so nothing it holds moves.
+[data-tour-active] {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: 4px;
+  border-radius: 0.5rem;
+}
+
+// A tour step's card, raised over the page it does not hold.
+.twes-tour-card {
+  background-color: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface);
+  box-shadow: var(--mat-sys-level3);
+}

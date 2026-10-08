@@ -576,7 +576,8 @@
       "find": "Search a customer, an invoice, a product…",
       "screen": "On this page",
       "create": "Create",
-      "goto": "Go to"
+      "goto": "Go to",
+      "guide": "Guides"
     },
     "create": "Create",
     "user_menu": "Account",
@@ -1614,7 +1615,29 @@
       "issue": "Issue the credit note"
     },
     "deposit_draft_title": "Draft deposit invoice",
-    "from_quote": "See the quote it came from"
+    "from_quote": "See the quote it came from",
+    "tours": {
+      "first_invoice": {
+        "title": "Your first invoice",
+        "command": "Guide: your first invoice",
+        "list": {
+          "title": "Your invoices",
+          "body": "Every invoice of the company is here. Type a number or a customer's name to find one."
+        },
+        "create": {
+          "title": "Create an invoice",
+          "body": "« Create » opens a new invoice, quote or customer from any screen."
+        },
+        "form": {
+          "title": "The customer, then the lines",
+          "body": "Choose the customer: their payment terms, discount and language apply by themselves. Then add the lines below."
+        },
+        "actions": {
+          "title": "Save, then issue",
+          "body": "Save the draft as often as you need. « Issue » gives it its number for good: an issued invoice is never changed again, it is corrected by a credit note."
+        }
+      }
+    }
   },
   "delivery_notes": {
     "credit_over": "This delivery brings what the customer owes to {{owed}} + {{total}} {{currency}}, past their credit limit of {{limit}} {{currency}}.",
@@ -4188,5 +4211,13 @@
     "expense": "Expense",
     "legal_texts": "Legal texts",
     "legal": "Legal information"
+  },
+  "tour": {
+    "next": "Next",
+    "back": "Back",
+    "finish": "Finish",
+    "close": "Close the guide",
+    "step": "Step {{index}} of {{count}}",
+    "missing": "What this step points at is not shown on this screen: go on to the next one."
   }
 }
