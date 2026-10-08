@@ -37,6 +37,9 @@ final readonly class PresentationSettings implements DeclaresSettings
         yield new SettingDefinition('presentation.sidebar', SettingType::Enum, 'expanded', $chain, $shared, 'settings.presentation.sidebar', self::MODULE, choices: ['expanded', 'rail']);
         yield new SettingDefinition('presentation.sidebar-settings', SettingType::Enum, 'expanded', $chain, $shared, 'settings.presentation.sidebar_settings', self::MODULE, choices: ['expanded', 'rail']);
         yield new SettingDefinition('presentation.plan-labels', SettingType::Enum, 'code', $chain, $shared, 'settings.presentation.plan_labels', self::MODULE, choices: ['code', 'name', 'both']);
+        // Whether the stock map opens on its plan or its volume, which is for looking only: the plan until a person, a role
+        // or the company chooses.
+        yield new SettingDefinition('presentation.stock-map-view', SettingType::Enum, 'plan', $chain, $shared, 'settings.presentation.stock_map_view', self::MODULE, choices: ['plan', 'volume']);
         yield new SettingDefinition('presentation.language', SettingType::Enum, 'fr', $chain, $shared, 'settings.presentation.language', self::MODULE, choices: ['fr', 'en']);
         // « Montrer ce qui arrive » (docs/SPEC.md § 7, 2026-09-25 17:22): the vision's parts not built yet, marked. The
         // company may hide them for everyone; a member for themself.

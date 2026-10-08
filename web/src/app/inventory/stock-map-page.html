@@ -18,12 +18,41 @@
             @if (one === 'plan') {
               <button
                 type="button"
-                class="min-h-9 rounded-md bg-secondary-container px-3 text-sm font-medium"
-                aria-pressed="true"
+                class="min-h-9 rounded-md px-3 text-sm font-medium"
+                [class.bg-secondary-container]="!volumeShown()"
+                [attr.aria-pressed]="!volumeShown()"
+                (click)="chooseView('plan')"
                 data-testid="stock-map-view-plan"
               >
                 {{ 'inventory.plan.view_names.plan' | translate }}
               </button>
+            } @else if (one === 'volume') {
+              <!--
+                Arranging is done on the plan: there the volume is named and says why it waits, rather than
+                vanishing from the switch the moment the mode changes.
+              -->
+              @if (arranging()) {
+                <button
+                  type="button"
+                  class="min-h-9 whitespace-nowrap rounded-md px-3 text-sm text-on-surface-variant"
+                  aria-disabled="true"
+                  [appLabel]="'inventory.plan.volume.read_only' | translate"
+                  data-testid="stock-map-view-volume"
+                >
+                  {{ 'inventory.plan.view_names.volume' | translate }}
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="min-h-9 whitespace-nowrap rounded-md px-3 text-sm font-medium"
+                  [class.bg-secondary-container]="volumeShown()"
+                  [attr.aria-pressed]="volumeShown()"
+                  (click)="chooseView('volume')"
+                  data-testid="stock-map-view-volume"
+                >
+                  {{ 'inventory.plan.view_names.volume' | translate }}
+                </button>
+              }
             } @else if (showComing()) {
               <!--
                 Reached and named, never a dead end: a view that is not built says so where it will be, rather than
@@ -533,273 +562,275 @@
             </div>
           }
 
-          <!--
-            What the plan writes on its rectangles. A store arrives with its building already numbered, or already
-            named, or moving from one to the other — so this is the reader's choice, remembered, and not a column.
-          -->
-          <div class="flex flex-col gap-1">
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
-              {{ 'inventory.plan.labels' | translate }}
-            </h2>
-            <div
-              class="flex flex-wrap gap-1"
-              role="group"
-              [attr.aria-label]="'inventory.plan.labels' | translate"
-            >
-              @for (mode of labelModes; track mode) {
-                <button
-                  type="button"
-                  class="rounded-md border border-outline-variant px-2 py-1 text-sm"
-                  [class.bg-secondary-container]="labelMode() === mode"
-                  [attr.aria-pressed]="labelMode() === mode"
-                  (click)="chooseLabels(mode)"
-                  [attr.data-testid]="'stock-map-label-' + mode"
-                >
-                  {{ 'inventory.plan.label_modes.' + mode | translate }}
-                </button>
-              }
-            </div>
-          </div>
-
-          <!--
-            The layers panel. Showing and hiding is reading, so it is there in both modes; a locked layer is still drawn
-            and still reachable by keyboard, it simply stops answering the pointer, which only matters while arranging.
-          -->
-          <div class="flex flex-col gap-1">
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
-              {{ 'inventory.plan.layers' | translate }}
-            </h2>
-            <ul class="flex flex-col gap-1" data-testid="stock-map-layers">
-              @for (layer of layers(); track layer.id) {
-                <li class="flex items-center gap-2">
-                  <span class="grow text-sm">
-                    {{ 'inventory.plan.layer_names.' + layer.id | translate }}
-                  </span>
-                  <span
-                    class="tabular-nums text-sm text-on-surface-variant"
-                    [attr.data-testid]="'stock-layer-count-' + layer.id"
-                  >
-                    {{ layer.count }}
-                  </span>
+          <!-- Labels and layers are the plan's: the volume has its own switches, and two controls for one wall mislead. -->
+          @if (!volumeShown()) {
+            <!--
+              What the plan writes on its rectangles. A store arrives with its building already numbered, or already
+              named, or moving from one to the other — so this is the reader's choice, remembered, and not a column.
+            -->
+            <div class="flex flex-col gap-1">
+              <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+                {{ 'inventory.plan.labels' | translate }}
+              </h2>
+              <div
+                class="flex flex-wrap gap-1"
+                role="group"
+                [attr.aria-label]="'inventory.plan.labels' | translate"
+              >
+                @for (mode of labelModes; track mode) {
                   <button
                     type="button"
                     class="rounded-md border border-outline-variant px-2 py-1 text-sm"
-                    [class.bg-secondary-container]="!shown(layer.id)"
-                    [attr.aria-pressed]="!shown(layer.id)"
-                    (click)="toggleShown(layer.id)"
-                    [appLabel]="'inventory.plan.layer_shown' | translate"
-                    [attr.data-testid]="'stock-layer-shown-' + layer.id"
+                    [class.bg-secondary-container]="labelMode() === mode"
+                    [attr.aria-pressed]="labelMode() === mode"
+                    (click)="chooseLabels(mode)"
+                    [attr.data-testid]="'stock-map-label-' + mode"
                   >
-                    {{
-                      (shown(layer.id) ? 'inventory.plan.shown' : 'inventory.plan.hidden')
-                        | translate
-                    }}
+                    {{ 'inventory.plan.label_modes.' + mode | translate }}
                   </button>
-                  @if (arranging()) {
+                }
+              </div>
+            </div>
+
+            <!--
+              The layers panel. Showing and hiding is reading, so it is there in both modes; a locked layer is still drawn
+              and still reachable by keyboard, it simply stops answering the pointer, which only matters while arranging.
+            -->
+            <div class="flex flex-col gap-1">
+              <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+                {{ 'inventory.plan.layers' | translate }}
+              </h2>
+              <ul class="flex flex-col gap-1" data-testid="stock-map-layers">
+                @for (layer of layers(); track layer.id) {
+                  <li class="flex items-center gap-2">
+                    <span class="grow text-sm">
+                      {{ 'inventory.plan.layer_names.' + layer.id | translate }}
+                    </span>
+                    <span
+                      class="tabular-nums text-sm text-on-surface-variant"
+                      [attr.data-testid]="'stock-layer-count-' + layer.id"
+                    >
+                      {{ layer.count }}
+                    </span>
                     <button
                       type="button"
                       class="rounded-md border border-outline-variant px-2 py-1 text-sm"
-                      [class.bg-secondary-container]="isLocked(layer.id)"
-                      [attr.aria-pressed]="isLocked(layer.id)"
-                      (click)="toggleLocked(layer.id)"
-                      [appLabel]="'inventory.plan.layer_locked' | translate"
-                      [attr.data-testid]="'stock-layer-locked-' + layer.id"
+                      [class.bg-secondary-container]="!shown(layer.id)"
+                      [attr.aria-pressed]="!shown(layer.id)"
+                      (click)="toggleShown(layer.id)"
+                      [appLabel]="'inventory.plan.layer_shown' | translate"
+                      [attr.data-testid]="'stock-layer-shown-' + layer.id"
                     >
                       {{
-                        (isLocked(layer.id) ? 'inventory.plan.locked' : 'inventory.plan.unlocked')
+                        (shown(layer.id) ? 'inventory.plan.shown' : 'inventory.plan.hidden')
                           | translate
                       }}
                     </button>
-                  }
-                </li>
-              }
-            </ul>
-          </div>
+                    @if (arranging()) {
+                      <button
+                        type="button"
+                        class="rounded-md border border-outline-variant px-2 py-1 text-sm"
+                        [class.bg-secondary-container]="isLocked(layer.id)"
+                        [attr.aria-pressed]="isLocked(layer.id)"
+                        (click)="toggleLocked(layer.id)"
+                        [appLabel]="'inventory.plan.layer_locked' | translate"
+                        [attr.data-testid]="'stock-layer-locked-' + layer.id"
+                      >
+                        {{
+                          (isLocked(layer.id) ? 'inventory.plan.locked' : 'inventory.plan.unlocked')
+                            | translate
+                        }}
+                      </button>
+                    }
+                  </li>
+                }
+              </ul>
+            </div>
+          }
         </div>
 
         <!-- ——— the board, as tall as the window allows ——— -->
-        <div
-          class="flex min-w-0 flex-col overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest [grid-area:board]"
-        >
-          <div
-            class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-outline-variant px-3 py-2 text-sm"
-          >
-            @if (arranging()) {
-              @if (owesSave()) {
-                <span
-                  role="status"
-                  class="rounded-full bg-primary-container px-3 py-1 text-xs font-medium text-on-primary-container"
-                  data-testid="stock-map-not-saved"
-                >
-                  {{ 'inventory.plan.not_saved' | translate }}
-                </span>
-              } @else {
-                <span class="font-medium" data-testid="stock-map-arranging">
-                  {{ 'inventory.plan.arranging' | translate: { floor: floor()?.name ?? '' } }}
-                </span>
-              }
-              <span class="text-on-surface-variant">{{
-                'inventory.plan.arrange_hint' | translate
-              }}</span>
-            } @else {
-              <span
-                class="rounded-full bg-surface-container-high px-3 py-1 text-xs font-medium"
-                data-testid="stock-map-read-note"
-                >{{ 'inventory.plan.read_note' | translate }}</span
+        @if (volumeShown()) {
+          <!--
+            Fetched the first time someone opens the volume, three.js and all, and never with the first page: the
+            placeholder holds the board's place meanwhile, so nothing below it jumps.
+          -->
+          <div class="min-w-0 [grid-area:board]">
+            @defer (on immediate) {
+              <app-stock-map-volume
+                [floorName]="floor()?.name ?? ''"
+                [size]="floorSize()"
+                [drawings]="floorDrawings()"
+                [structures]="floorStructures()"
+                [lit]="litIds()"
+              />
+            } @placeholder {
+              <p
+                class="flex h-[55dvh] min-h-[20rem] items-center justify-center rounded-xl border border-outline-variant text-on-surface-variant"
+                data-testid="stock-volume-loading"
               >
-              <!-- A wheel and keys a phone has neither of: there the board is read by touch. -->
-              <span class="hidden text-on-surface-variant md:inline">{{
-                'inventory.plan.keys_hint' | translate
-              }}</span>
+                {{ 'inventory.plan.volume.loading' | translate }}
+              </p>
+            } @error {
+              <p
+                role="status"
+                class="rounded-xl border border-outline-variant p-4 text-on-surface-variant"
+                data-testid="stock-volume-failed"
+              >
+                {{ 'inventory.plan.volume.failed' | translate }}
+              </p>
             }
           </div>
-          <!--
-            The board takes the focus itself, so its keys are the board's and not the page's: + and − come nearer, the
-            arrows move what is shown. Its buttons keep their own Enter and Space.
-          -->
+        } @else {
           <div
-            class="relative h-[55dvh] min-h-[20rem] focus-visible:outline-2 focus-visible:outline-primary lg:h-[max(26rem,calc(100dvh-22rem))]"
-            tabindex="0"
-            role="group"
-            [attr.aria-label]="'inventory.plan.board' | translate"
-            (keydown)="boardKey($event)"
-            data-testid="stock-map-board"
+            class="flex min-w-0 flex-col overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest [grid-area:board]"
           >
+            <div
+              class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-outline-variant px-3 py-2 text-sm"
+            >
+              @if (arranging()) {
+                @if (owesSave()) {
+                  <span
+                    role="status"
+                    class="rounded-full bg-primary-container px-3 py-1 text-xs font-medium text-on-primary-container"
+                    data-testid="stock-map-not-saved"
+                  >
+                    {{ 'inventory.plan.not_saved' | translate }}
+                  </span>
+                } @else {
+                  <span class="font-medium" data-testid="stock-map-arranging">
+                    {{ 'inventory.plan.arranging' | translate: { floor: floor()?.name ?? '' } }}
+                  </span>
+                }
+                <span class="text-on-surface-variant">{{
+                  'inventory.plan.arrange_hint' | translate
+                }}</span>
+              } @else {
+                <span
+                  class="rounded-full bg-surface-container-high px-3 py-1 text-xs font-medium"
+                  data-testid="stock-map-read-note"
+                  >{{ 'inventory.plan.read_note' | translate }}</span
+                >
+                <!-- A wheel and keys a phone has neither of: there the board is read by touch. -->
+                <span class="hidden text-on-surface-variant md:inline">{{
+                  'inventory.plan.keys_hint' | translate
+                }}</span>
+              }
+            </div>
             <!--
-              The gestures live on the rectangles, never on the sheet: pointer events on the whole plan would fight
-              the page's own scrolling on a touch screen. Once someone has come nearer, the board is what they are
-              moving, and it holds the finger for that.
+              The board takes the focus itself, so its keys are the board's and not the page's: + and − come nearer, the
+              arrows move what is shown. Its buttons keep their own Enter and Space.
             -->
-            <svg
-              [attr.viewBox]="viewBox()"
-              class="block h-full w-full select-none"
-              role="img"
-              [attr.aria-label]="'inventory.plan.plan_of' | translate: planLabel()"
-              data-testid="stock-map-svg"
-              [class.cursor-crosshair]="tracing()"
-              [class.cursor-grab]="!tracing() && zoom() > 1"
-              [class.touch-none]="tracing() || zoom() > 1"
-              (wheel)="wheel($event)"
-              (pointerdown)="press($event)"
-              (document:pointermove)="drags($event)"
-              (document:pointerup)="drops($event)"
-              (document:pointercancel)="drops($event)"
-              (document:keydown.escape)="abandon()"
+            <div
+              class="relative h-[55dvh] min-h-[20rem] focus-visible:outline-2 focus-visible:outline-primary lg:h-[max(26rem,calc(100dvh-22rem))]"
+              tabindex="0"
+              role="group"
+              [attr.aria-label]="'inventory.plan.board' | translate"
+              (keydown)="boardKey($event)"
+              data-testid="stock-map-board"
             >
               <!--
-                The floor itself, drawn first and under everything: its edge, and a grid a person can count metres on.
-                Pointer-transparent on purpose — a press on bare floor must reach the sheet, which is what arms a trace
-                and moves the view; a rectangle here catching it would silently end both.
+                The gestures live on the rectangles, never on the sheet: pointer events on the whole plan would fight
+                the page's own scrolling on a touch screen. Once someone has come nearer, the board is what they are
+                moving, and it holds the finger for that.
               -->
-              @if (floorSize(); as size) {
-                <g class="pointer-events-none" data-testid="stock-floor-layer">
-                  <rect
-                    x="0"
-                    y="0"
-                    [attr.width]="size.width"
-                    [attr.height]="size.depth"
-                    [attr.stroke-width]="handleRadius() / 4"
-                    class="fill-surface stroke-outline"
-                    data-testid="stock-floor-outline"
-                  />
-                  @for (x of gridLines().xs; track x) {
-                    <line
-                      [attr.x1]="x"
-                      y1="0"
-                      [attr.x2]="x"
-                      [attr.y2]="size.depth"
-                      [attr.stroke-width]="handleRadius() / 10"
-                      class="stroke-outline-variant"
-                    />
-                  }
-                  @for (y of gridLines().ys; track y) {
-                    <line
-                      x1="0"
-                      [attr.y1]="y"
-                      [attr.x2]="size.width"
-                      [attr.y2]="y"
-                      [attr.stroke-width]="handleRadius() / 10"
-                      class="stroke-outline-variant"
-                    />
-                  }
-                </g>
-              }
-              <!--
-                The repeat's preview, dotted because nothing is created yet, and drawn UNDER what is already there
-                so a copy landing on an existing rack does not hide it.
-              -->
-              @for (copy of repeatPreview(); track $index) {
-                <rect
-                  [attr.x]="copy.x"
-                  [attr.y]="copy.y"
-                  [attr.width]="copy.width"
-                  [attr.height]="copy.depth"
-                  [attr.transform]="
-                    'rotate(' +
-                    copy.rotation +
-                    ' ' +
-                    (copy.x + copy.width / 2) +
-                    ' ' +
-                    (copy.y + copy.depth / 2) +
-                    ')'
-                  "
-                  [attr.rx]="0.1"
-                  [attr.stroke-width]="0.05"
-                  stroke-dasharray="0.3 0.2"
-                  class="fill-primary-container/40 stroke-primary"
-                  [class.stroke-error]="repeatOffFloor()"
-                  [attr.data-testid]="'stock-repeat-preview-' + $index"
-                />
-              }
-              <!--
-                The building, drawn FIRST so it sits under the stock: a rack against a wall is what the eye and the
-                pointer both find. A locked layer keeps `pointer-events: none`, so a wall is not caught while a rack
-                is being moved.
-              -->
-              @if (shown('structure')) {
-                <g
-                  [class.pointer-events-none]="isLocked('structure')"
-                  data-testid="stock-structure-layer"
-                >
-                  @for (built of builtShapes(); track built.piece.id) {
+              <svg
+                [attr.viewBox]="viewBox()"
+                class="block h-full w-full select-none"
+                role="img"
+                [attr.aria-label]="'inventory.plan.plan_of' | translate: planLabel()"
+                data-testid="stock-map-svg"
+                [class.cursor-crosshair]="tracing()"
+                [class.cursor-grab]="!tracing() && zoom() > 1"
+                [class.touch-none]="tracing() || zoom() > 1"
+                (wheel)="wheel($event)"
+                (pointerdown)="press($event)"
+                (document:pointermove)="drags($event)"
+                (document:pointerup)="drops($event)"
+                (document:pointercancel)="drops($event)"
+                (document:keydown.escape)="abandon()"
+              >
+                <!--
+                  The floor itself, drawn first and under everything: its edge, and a grid a person can count metres on.
+                  Pointer-transparent on purpose — a press on bare floor must reach the sheet, which is what arms a trace
+                  and moves the view; a rectangle here catching it would silently end both.
+                -->
+                @if (floorSize(); as size) {
+                  <g class="pointer-events-none" data-testid="stock-floor-layer">
                     <rect
-                      [attr.x]="built.rect.x"
-                      [attr.y]="built.rect.y"
-                      [attr.width]="built.rect.width"
-                      [attr.height]="built.rect.depth"
-                      [attr.transform]="
-                        'rotate(' +
-                        built.rect.rotation +
-                        ' ' +
-                        built.centreX +
-                        ' ' +
-                        built.centreY +
-                        ')'
-                      "
-                      [attr.stroke-width]="built.piece.id === selectedStructureId() ? 0.08 : 0.04"
-                      [class]="arranging() ? 'cursor-move touch-none' : 'cursor-pointer'"
-                      class="stroke-on-surface-variant"
-                      [class.fill-on-surface-variant]="
-                        built.piece.kind === 'wall' || built.piece.kind === 'post'
-                      "
-                      [class.fill-surface]="built.piece.kind === 'door'"
-                      [class.fill-surface-container-highest]="built.piece.kind === 'dock'"
-                      [class.fill-secondary-container]="built.piece.id === selectedStructureId()"
-                      (pointerdown)="grabStructure($event, built.piece, null)"
-                      (click)="pressStructure(built.piece)"
-                      [attr.data-testid]="'stock-structure-' + built.piece.kind"
-                    >
-                      <title>{{ built.labelTitle }}</title>
-                    </rect>
-                    <!--
-                      Only where the store named it. A wall named nothing writes nothing: an empty label would put
-                      a blank box on every partition of the building, which is most of them.
-                    -->
-                    @if (built.label !== '') {
-                      <text
-                        [attr.x]="built.labelX"
-                        [attr.y]="built.labelY"
-                        [attr.font-size]="structureLabelFont"
+                      x="0"
+                      y="0"
+                      [attr.width]="size.width"
+                      [attr.height]="size.depth"
+                      [attr.stroke-width]="handleRadius() / 4"
+                      class="fill-surface stroke-outline"
+                      data-testid="stock-floor-outline"
+                    />
+                    @for (x of gridLines().xs; track x) {
+                      <line
+                        [attr.x1]="x"
+                        y1="0"
+                        [attr.x2]="x"
+                        [attr.y2]="size.depth"
+                        [attr.stroke-width]="handleRadius() / 10"
+                        class="stroke-outline-variant"
+                      />
+                    }
+                    @for (y of gridLines().ys; track y) {
+                      <line
+                        x1="0"
+                        [attr.y1]="y"
+                        [attr.x2]="size.width"
+                        [attr.y2]="y"
+                        [attr.stroke-width]="handleRadius() / 10"
+                        class="stroke-outline-variant"
+                      />
+                    }
+                  </g>
+                }
+                <!--
+                  The repeat's preview, dotted because nothing is created yet, and drawn UNDER what is already there
+                  so a copy landing on an existing rack does not hide it.
+                -->
+                @for (copy of repeatPreview(); track $index) {
+                  <rect
+                    [attr.x]="copy.x"
+                    [attr.y]="copy.y"
+                    [attr.width]="copy.width"
+                    [attr.height]="copy.depth"
+                    [attr.transform]="
+                      'rotate(' +
+                      copy.rotation +
+                      ' ' +
+                      (copy.x + copy.width / 2) +
+                      ' ' +
+                      (copy.y + copy.depth / 2) +
+                      ')'
+                    "
+                    [attr.rx]="0.1"
+                    [attr.stroke-width]="0.05"
+                    stroke-dasharray="0.3 0.2"
+                    class="fill-primary-container/40 stroke-primary"
+                    [class.stroke-error]="repeatOffFloor()"
+                    [attr.data-testid]="'stock-repeat-preview-' + $index"
+                  />
+                }
+                <!--
+                  The building, drawn FIRST so it sits under the stock: a rack against a wall is what the eye and the
+                  pointer both find. A locked layer keeps `pointer-events: none`, so a wall is not caught while a rack
+                  is being moved.
+                -->
+                @if (shown('structure')) {
+                  <g
+                    [class.pointer-events-none]="isLocked('structure')"
+                    data-testid="stock-structure-layer"
+                  >
+                    @for (built of builtShapes(); track built.piece.id) {
+                      <rect
+                        [attr.x]="built.rect.x"
+                        [attr.y]="built.rect.y"
+                        [attr.width]="built.rect.width"
+                        [attr.height]="built.rect.depth"
                         [attr.transform]="
                           'rotate(' +
                           built.rect.rotation +
@@ -809,269 +840,306 @@
                           built.centreY +
                           ')'
                         "
-                        class="pointer-events-none fill-on-surface-variant"
-                        [attr.data-testid]="'stock-structure-name-' + built.piece.id"
+                        [attr.stroke-width]="built.piece.id === selectedStructureId() ? 0.08 : 0.04"
+                        [class]="arranging() ? 'cursor-move touch-none' : 'cursor-pointer'"
+                        class="stroke-on-surface-variant"
+                        [class.fill-on-surface-variant]="
+                          built.piece.kind === 'wall' || built.piece.kind === 'post'
+                        "
+                        [class.fill-surface]="built.piece.kind === 'door'"
+                        [class.fill-surface-container-highest]="built.piece.kind === 'dock'"
+                        [class.fill-secondary-container]="built.piece.id === selectedStructureId()"
+                        (pointerdown)="grabStructure($event, built.piece, null)"
+                        (click)="pressStructure(built.piece)"
+                        [attr.data-testid]="'stock-structure-' + built.piece.kind"
                       >
-                        {{ built.label }}
-                      </text>
+                        <title>{{ built.labelTitle }}</title>
+                      </rect>
+                      <!--
+                        Only where the store named it. A wall named nothing writes nothing: an empty label would put
+                        a blank box on every partition of the building, which is most of them.
+                      -->
+                      @if (built.label !== '') {
+                        <text
+                          [attr.x]="built.labelX"
+                          [attr.y]="built.labelY"
+                          [attr.font-size]="structureLabelFont"
+                          [attr.transform]="
+                            'rotate(' +
+                            built.rect.rotation +
+                            ' ' +
+                            built.centreX +
+                            ' ' +
+                            built.centreY +
+                            ')'
+                          "
+                          class="pointer-events-none fill-on-surface-variant"
+                          [attr.data-testid]="'stock-structure-name-' + built.piece.id"
+                        >
+                          {{ built.label }}
+                        </text>
+                      }
                     }
-                  }
-                  <!--
-                    Drawn after every piece so they are never buried under one, and with the same radius as the
-                    stock's: a wall is resized by its corners exactly as a rayonnage is.
-                  -->
-                  @for (grip of structureHandles(); track grip.key) {
-                    <circle
-                      [attr.cx]="grip.x"
-                      [attr.cy]="grip.y"
-                      [attr.r]="handleRadius()"
-                      [attr.stroke-width]="handleRadius() / 3"
-                      class="cursor-nwse-resize touch-none fill-surface stroke-primary"
-                      (pointerdown)="grabStructure($event, selectedStructure()!, grip.handle)"
-                      [attr.data-testid]="'stock-structure-handle-' + grip.key"
-                    />
-                  }
-                </g>
-              }
-              @for (shape of shapes(); track shape.drawing.id) {
-                <g
-                  [attr.data-testid]="'stock-drawing-group-' + shape.drawing.locationCode"
-                  [class.opacity-30]="search() !== null && !hits().has(shape.drawing.locationId)"
-                  [class.hidden]="!shown(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')"
-                  [class.pointer-events-none]="
-                    isLocked(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')
-                  "
-                  [attr.transform]="
-                    'rotate(' +
-                    shape.rect.rotation +
-                    ' ' +
-                    shape.centreX +
-                    ' ' +
-                    shape.centreY +
-                    ')'
-                  "
-                >
-                  <rect
-                    [attr.x]="shape.rect.x"
-                    [attr.y]="shape.rect.y"
-                    [attr.width]="shape.rect.width"
-                    [attr.height]="shape.rect.depth"
-                    [attr.rx]="0.1"
-                    [attr.stroke-width]="shape.drawing.id === selectedId() ? 0.08 : 0.04"
-                    [class]="arranging() ? 'cursor-move touch-none' : 'cursor-pointer'"
-                    [class.fill-primary-container]="shape.drawing.locationKind === 'rack'"
-                    [class.stroke-primary]="shape.drawing.locationKind === 'rack'"
-                    [class.fill-surface-container-high]="shape.drawing.locationKind !== 'rack'"
-                    [class.stroke-outline]="shape.drawing.locationKind !== 'rack'"
-                    [class.fill-secondary-container]="shape.drawing.id === selectedId()"
-                    [class.twes-map-hit]="hits().has(shape.drawing.locationId)"
-                    [attr.data-hit]="
-                      search() === null ? null : hits().has(shape.drawing.locationId)
-                    "
-                    (pointerdown)="grab($event, shape.drawing, null)"
-                    (click)="select(shape.drawing)"
-                    [attr.data-testid]="'stock-drawing-rect-' + shape.drawing.locationCode"
-                  >
                     <!--
-                      The WHOLE label, on the rectangle and not on the text: a label cut to fit hides nothing this
-                      way, and the text itself takes no pointer, so a title there would never be shown to anyone.
+                      Drawn after every piece so they are never buried under one, and with the same radius as the
+                      stock's: a wall is resized by its corners exactly as a rayonnage is.
                     -->
-                    <title>{{ shape.labelTitle }}</title>
-                  </rect>
-                  <text
-                    [attr.x]="shape.labelX"
-                    [attr.y]="shape.labelY"
-                    [attr.font-size]="labelFont"
-                    [attr.transform]="shape.labelTurn"
-                    class="pointer-events-none"
-                    [class.fill-on-secondary-container]="shape.drawing.id === selectedId()"
-                    [class.fill-on-primary-container]="
-                      shape.drawing.id !== selectedId() && shape.drawing.locationKind === 'rack'
-                    "
-                    [class.fill-on-surface]="
-                      shape.drawing.id !== selectedId() && shape.drawing.locationKind !== 'rack'
-                    "
-                    [class.twes-map-hit-label]="hits().has(shape.drawing.locationId)"
-                    [attr.data-testid]="'stock-drawing-label-' + shape.drawing.id"
-                  >
-                    {{ shape.label }}
-                  </text>
-                  <!-- What the search found here, in a pill at the far corner, so the light is never colour alone. -->
-                  @if (hitBadges().get(shape.drawing.id); as badge) {
-                    <g
-                      class="pointer-events-none"
-                      [attr.data-testid]="'stock-map-hit-' + shape.drawing.locationCode"
-                    >
-                      <rect
-                        [attr.x]="badge.x"
-                        [attr.y]="badge.y"
-                        [attr.width]="badge.width"
-                        [attr.height]="badge.height"
-                        [attr.rx]="badge.height / 2"
-                        class="twes-map-hit-badge"
-                      />
-                      <text
-                        [attr.x]="badge.x + badge.width / 2"
-                        [attr.y]="badge.y + badge.height / 2"
-                        [attr.font-size]="badge.font"
-                        text-anchor="middle"
-                        dominant-baseline="central"
-                        class="twes-map-hit-badge-text"
-                      >
-                        @if (badge.quantity !== null) {
-                          {{ badge.quantity | amount: badge.decimals }}
-                        } @else {
-                          {{
-                            'inventory.plan.search.lines_badge' | translate: { count: badge.count }
-                          }}
-                        }
-                      </text>
-                    </g>
-                  }
-
-                  <!--
-                    Drawn inside the group that turns the rectangle, so the handles turn with it: the one on a rack's
-                    end stays on its end whatever angle it stands at. Everything they do is also in the form.
-                  -->
-                  @if (shape.drawing.id === selectedId()) {
-                    @for (grip of handles(); track grip.key) {
+                    @for (grip of structureHandles(); track grip.key) {
                       <circle
                         [attr.cx]="grip.x"
                         [attr.cy]="grip.y"
                         [attr.r]="handleRadius()"
                         [attr.stroke-width]="handleRadius() / 3"
                         class="cursor-nwse-resize touch-none fill-surface stroke-primary"
-                        (pointerdown)="grab($event, shape.drawing, grip.handle)"
+                        (pointerdown)="grabStructure($event, selectedStructure()!, grip.handle)"
+                        [attr.data-testid]="'stock-structure-handle-' + grip.key"
                       />
                     }
-                  }
-                </g>
-              }
-              <!-- The scale bar, in metres on the floor, so it says the truth at every zoom. -->
-              @if (scaleBar(); as bar) {
-                <g class="pointer-events-none" data-testid="stock-map-scale-bar">
-                  <path
-                    [attr.d]="
-                      'M' +
-                      bar.x +
-                      ' ' +
-                      (bar.y - bar.tick) +
-                      'V' +
-                      bar.y +
-                      'H' +
-                      (bar.x + bar.length) +
-                      'V' +
-                      (bar.y - bar.tick)
+                  </g>
+                }
+                @for (shape of shapes(); track shape.drawing.id) {
+                  <g
+                    [attr.data-testid]="'stock-drawing-group-' + shape.drawing.locationCode"
+                    [class.opacity-30]="search() !== null && !hits().has(shape.drawing.locationId)"
+                    [class.hidden]="
+                      !shown(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')
                     "
-                    [attr.stroke-width]="bar.stroke"
-                    fill="none"
-                    class="stroke-on-surface"
-                  />
-                  <text
-                    [attr.x]="bar.x"
-                    [attr.y]="bar.y - bar.tick * 1.6"
-                    [attr.font-size]="bar.font"
-                    class="fill-on-surface"
-                    data-testid="stock-map-scale"
+                    [class.pointer-events-none]="
+                      isLocked(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')
+                    "
+                    [attr.transform]="
+                      'rotate(' +
+                      shape.rect.rotation +
+                      ' ' +
+                      shape.centreX +
+                      ' ' +
+                      shape.centreY +
+                      ')'
+                    "
                   >
-                    {{ bar.label }}
-                  </text>
-                </g>
-              }
-            </svg>
+                    <rect
+                      [attr.x]="shape.rect.x"
+                      [attr.y]="shape.rect.y"
+                      [attr.width]="shape.rect.width"
+                      [attr.height]="shape.rect.depth"
+                      [attr.rx]="0.1"
+                      [attr.stroke-width]="shape.drawing.id === selectedId() ? 0.08 : 0.04"
+                      [class]="arranging() ? 'cursor-move touch-none' : 'cursor-pointer'"
+                      [class.fill-primary-container]="shape.drawing.locationKind === 'rack'"
+                      [class.stroke-primary]="shape.drawing.locationKind === 'rack'"
+                      [class.fill-surface-container-high]="shape.drawing.locationKind !== 'rack'"
+                      [class.stroke-outline]="shape.drawing.locationKind !== 'rack'"
+                      [class.fill-secondary-container]="shape.drawing.id === selectedId()"
+                      [class.twes-map-hit]="hits().has(shape.drawing.locationId)"
+                      [attr.data-hit]="
+                        search() === null ? null : hits().has(shape.drawing.locationId)
+                      "
+                      (pointerdown)="grab($event, shape.drawing, null)"
+                      (click)="select(shape.drawing)"
+                      [attr.data-testid]="'stock-drawing-rect-' + shape.drawing.locationCode"
+                    >
+                      <!--
+                        The WHOLE label, on the rectangle and not on the text: a label cut to fit hides nothing this
+                        way, and the text itself takes no pointer, so a title there would never be shown to anyone.
+                      -->
+                      <title>{{ shape.labelTitle }}</title>
+                    </rect>
+                    <text
+                      [attr.x]="shape.labelX"
+                      [attr.y]="shape.labelY"
+                      [attr.font-size]="labelFont"
+                      [attr.transform]="shape.labelTurn"
+                      class="pointer-events-none"
+                      [class.fill-on-secondary-container]="shape.drawing.id === selectedId()"
+                      [class.fill-on-primary-container]="
+                        shape.drawing.id !== selectedId() && shape.drawing.locationKind === 'rack'
+                      "
+                      [class.fill-on-surface]="
+                        shape.drawing.id !== selectedId() && shape.drawing.locationKind !== 'rack'
+                      "
+                      [class.twes-map-hit-label]="hits().has(shape.drawing.locationId)"
+                      [attr.data-testid]="'stock-drawing-label-' + shape.drawing.id"
+                    >
+                      {{ shape.label }}
+                    </text>
+                    <!-- What the search found here, in a pill at the far corner, so the light is never colour alone. -->
+                    @if (hitBadges().get(shape.drawing.id); as badge) {
+                      <g
+                        class="pointer-events-none"
+                        [attr.data-testid]="'stock-map-hit-' + shape.drawing.locationCode"
+                      >
+                        <rect
+                          [attr.x]="badge.x"
+                          [attr.y]="badge.y"
+                          [attr.width]="badge.width"
+                          [attr.height]="badge.height"
+                          [attr.rx]="badge.height / 2"
+                          class="twes-map-hit-badge"
+                        />
+                        <text
+                          [attr.x]="badge.x + badge.width / 2"
+                          [attr.y]="badge.y + badge.height / 2"
+                          [attr.font-size]="badge.font"
+                          text-anchor="middle"
+                          dominant-baseline="central"
+                          class="twes-map-hit-badge-text"
+                        >
+                          @if (badge.quantity !== null) {
+                            {{ badge.quantity | amount: badge.decimals }}
+                          } @else {
+                            {{
+                              'inventory.plan.search.lines_badge'
+                                | translate: { count: badge.count }
+                            }}
+                          }
+                        </text>
+                      </g>
+                    }
 
-            <!--
-              Coming nearer, going back and moving what is shown, each by a single press: WCAG 2.5.7 asks a map for
-              exactly these, so that nothing on the board needs a drag.
-            -->
-            <div
-              class="absolute bottom-3 end-3 flex items-end gap-2"
-              role="group"
-              [attr.aria-label]="'inventory.plan.view' | translate"
-            >
-              <!-- Left to right whatever the language: the plan itself is never mirrored, so its arrows are not. -->
-              <div class="grid grid-cols-3 gap-1" dir="ltr">
-                <span></span>
-                <button
-                  type="button"
-                  class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
-                  [disabled]="zoom() <= 1"
-                  (click)="step(0, -1)"
-                  [appLabel]="'inventory.plan.pan.up' | translate"
-                  data-testid="stock-map-pan-up"
-                >
-                  ▲
-                </button>
-                <span></span>
-                <button
-                  type="button"
-                  class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
-                  [disabled]="zoom() <= 1"
-                  (click)="step(-1, 0)"
-                  [appLabel]="'inventory.plan.pan.left' | translate"
-                  data-testid="stock-map-pan-left"
-                >
-                  ◀
-                </button>
-                <button
-                  type="button"
-                  class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
-                  [disabled]="zoom() <= 1"
-                  (click)="step(0, 1)"
-                  [appLabel]="'inventory.plan.pan.down' | translate"
-                  data-testid="stock-map-pan-down"
-                >
-                  ▼
-                </button>
-                <button
-                  type="button"
-                  class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
-                  [disabled]="zoom() <= 1"
-                  (click)="step(1, 0)"
-                  [appLabel]="'inventory.plan.pan.right' | translate"
-                  data-testid="stock-map-pan-right"
-                >
-                  ▶
-                </button>
-              </div>
-              <div class="flex flex-col items-center gap-1">
-                <button
-                  type="button"
-                  class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
-                  (click)="zoomBy(1.4)"
-                  [appLabel]="'inventory.plan.zoom_in' | translate"
-                  data-testid="stock-map-zoom-in"
-                >
-                  +
-                </button>
-                <span
-                  class="rounded bg-surface px-1 text-xs tabular-nums text-on-surface-variant"
-                  data-testid="stock-map-zoom"
-                  >{{ zoomLabel() }}</span
-                >
-                <button
-                  type="button"
-                  class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
-                  (click)="zoomBy(1 / 1.4)"
-                  [disabled]="zoom() <= 1"
-                  [appLabel]="'inventory.plan.zoom_out' | translate"
-                  data-testid="stock-map-zoom-out"
-                >
-                  −
-                </button>
-              </div>
-              <button
-                type="button"
-                class="h-9 rounded-md border border-outline-variant bg-surface px-3 text-sm disabled:opacity-40"
-                (click)="fitAll()"
-                [disabled]="zoom() <= 1"
-                data-testid="stock-map-fit"
+                    <!--
+                      Drawn inside the group that turns the rectangle, so the handles turn with it: the one on a rack's
+                      end stays on its end whatever angle it stands at. Everything they do is also in the form.
+                    -->
+                    @if (shape.drawing.id === selectedId()) {
+                      @for (grip of handles(); track grip.key) {
+                        <circle
+                          [attr.cx]="grip.x"
+                          [attr.cy]="grip.y"
+                          [attr.r]="handleRadius()"
+                          [attr.stroke-width]="handleRadius() / 3"
+                          class="cursor-nwse-resize touch-none fill-surface stroke-primary"
+                          (pointerdown)="grab($event, shape.drawing, grip.handle)"
+                        />
+                      }
+                    }
+                  </g>
+                }
+                <!-- The scale bar, in metres on the floor, so it says the truth at every zoom. -->
+                @if (scaleBar(); as bar) {
+                  <g class="pointer-events-none" data-testid="stock-map-scale-bar">
+                    <path
+                      [attr.d]="
+                        'M' +
+                        bar.x +
+                        ' ' +
+                        (bar.y - bar.tick) +
+                        'V' +
+                        bar.y +
+                        'H' +
+                        (bar.x + bar.length) +
+                        'V' +
+                        (bar.y - bar.tick)
+                      "
+                      [attr.stroke-width]="bar.stroke"
+                      fill="none"
+                      class="stroke-on-surface"
+                    />
+                    <text
+                      [attr.x]="bar.x"
+                      [attr.y]="bar.y - bar.tick * 1.6"
+                      [attr.font-size]="bar.font"
+                      class="fill-on-surface"
+                      data-testid="stock-map-scale"
+                    >
+                      {{ bar.label }}
+                    </text>
+                  </g>
+                }
+              </svg>
+
+              <!--
+                Coming nearer, going back and moving what is shown, each by a single press: WCAG 2.5.7 asks a map for
+                exactly these, so that nothing on the board needs a drag.
+              -->
+              <div
+                class="absolute bottom-3 end-3 flex items-end gap-2"
+                role="group"
+                [attr.aria-label]="'inventory.plan.view' | translate"
               >
-                {{ 'inventory.plan.fit' | translate }}
-              </button>
+                <!-- Left to right whatever the language: the plan itself is never mirrored, so its arrows are not. -->
+                <div class="grid grid-cols-3 gap-1" dir="ltr">
+                  <span></span>
+                  <button
+                    type="button"
+                    class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
+                    [disabled]="zoom() <= 1"
+                    (click)="step(0, -1)"
+                    [appLabel]="'inventory.plan.pan.up' | translate"
+                    data-testid="stock-map-pan-up"
+                  >
+                    ▲
+                  </button>
+                  <span></span>
+                  <button
+                    type="button"
+                    class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
+                    [disabled]="zoom() <= 1"
+                    (click)="step(-1, 0)"
+                    [appLabel]="'inventory.plan.pan.left' | translate"
+                    data-testid="stock-map-pan-left"
+                  >
+                    ◀
+                  </button>
+                  <button
+                    type="button"
+                    class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
+                    [disabled]="zoom() <= 1"
+                    (click)="step(0, 1)"
+                    [appLabel]="'inventory.plan.pan.down' | translate"
+                    data-testid="stock-map-pan-down"
+                  >
+                    ▼
+                  </button>
+                  <button
+                    type="button"
+                    class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
+                    [disabled]="zoom() <= 1"
+                    (click)="step(1, 0)"
+                    [appLabel]="'inventory.plan.pan.right' | translate"
+                    data-testid="stock-map-pan-right"
+                  >
+                    ▶
+                  </button>
+                </div>
+                <div class="flex flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
+                    (click)="zoomBy(1.4)"
+                    [appLabel]="'inventory.plan.zoom_in' | translate"
+                    data-testid="stock-map-zoom-in"
+                  >
+                    +
+                  </button>
+                  <span
+                    class="rounded bg-surface px-1 text-xs tabular-nums text-on-surface-variant"
+                    data-testid="stock-map-zoom"
+                    >{{ zoomLabel() }}</span
+                  >
+                  <button
+                    type="button"
+                    class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
+                    (click)="zoomBy(1 / 1.4)"
+                    [disabled]="zoom() <= 1"
+                    [appLabel]="'inventory.plan.zoom_out' | translate"
+                    data-testid="stock-map-zoom-out"
+                  >
+                    −
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="h-9 rounded-md border border-outline-variant bg-surface px-3 text-sm disabled:opacity-40"
+                  (click)="fitAll()"
+                  [disabled]="zoom() <= 1"
+                  data-testid="stock-map-fit"
+                >
+                  {{ 'inventory.plan.fit' | translate }}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        }
 
         <!-- ——— the panel: whatever is chosen, read in Consulter, edited in Aménager ——— -->
         <div

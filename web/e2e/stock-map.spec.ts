@@ -590,4 +590,99 @@ test.describe('the drawn stock map', () => {
       if (!page.isClosed()) await clean(page, fixture, floorName);
     }
   });
+  /**
+   * The volume through the real stack: three.js fetched on the first press, the floor drawn by a real browser, the
+   * choice kept on the account. What is asserted is what a person reads; a frame's time is load, not evidence.
+   */
+  test('looks at a floor in volume, keeps the choice, and arranges on the plan', async ({
+    page,
+  }) => {
+    const stamp = Date.now().toString().slice(-8);
+    const code = `VOL${stamp}`;
+    const floorName = `Volume ${stamp}`;
+
+    await signIn(page);
+    await inACompany(page, CSRF);
+    const fixture = await prepare(page, code);
+
+    try {
+      await page.goto('/stock/plan?mode=arrange');
+      await page.getByTestId('stock-floor-add').click();
+      await page.getByTestId('field-name').fill(floorName);
+      await page.getByTestId('field-level').fill(String(fixture.level));
+      await page.getByTestId('field-widthMetres').fill('20');
+      await page.getByTestId('field-depthMetres').fill('10');
+      await page.getByTestId('stock-floor-save').click();
+      await expect(toast(page)).toContainText('Étage enregistré');
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
+
+      await page.getByTestId('stock-drawing-add').click();
+      await page.getByTestId('field-locationId').click();
+      await page.getByRole('option', { name: new RegExp(code) }).click();
+      await page.getByTestId('field-x').fill('2');
+      await page.getByTestId('field-y').fill('2');
+      await page.getByTestId('field-width').fill('6');
+      await page.getByTestId('field-depth').fill('1');
+      await page.getByTestId('stock-drawing-save').click();
+      await expect(toast(page)).toContainText('Rectangle enregistré');
+
+      // Arranging is done on the plan: the volume is named there, and waits for Consulter.
+      await expect(page.getByTestId('stock-map-view-volume')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+
+      await page.getByTestId('stock-map-mode-read').click();
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
+      await page.getByTestId('stock-map-view-volume').click();
+      await expect(page.getByTestId('stock-map-view-volume')).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      await expect(page.getByTestId('stock-map-board')).toHaveCount(0);
+      // French holds the colon with a no-break space, which a pattern's \\s reads and a typed space would not.
+      await expect(page.getByTestId('stock-volume-summary')).toContainText(
+        new RegExp(`${floorName}\\s:\\s1 rayonnage`),
+      );
+      // Drawn where the browser can, said where it cannot: either way the person is told, never shown a blank.
+      const drawnOrSaid = page
+        .getByTestId('stock-volume-turn-right')
+        .or(page.getByTestId('stock-volume-missing'));
+      await expect(drawnOrSaid).toBeVisible();
+      if (await page.getByTestId('stock-volume-turn-right').isVisible()) {
+        await page.getByTestId('stock-volume-turn-right').click();
+        await page.getByTestId('stock-volume-top').click();
+        await expect(page.getByTestId('stock-volume-canvas')).toBeVisible();
+      }
+      await page.screenshot({ path: test.info().outputPath('volume.png') });
+
+      // A preference, not a moment: the next visit opens on the volume.
+      await page.reload();
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
+      await expect(page.getByTestId('stock-map-view-volume')).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      await expect(page.getByTestId('stock-volume-summary')).toContainText(floorName);
+
+      // Aménager draws on the plan whatever was chosen.
+      await page.getByTestId('stock-map-mode-arrange').click();
+      await expect(page.getByTestId('stock-map-board')).toBeVisible();
+      await expect(page.getByTestId('stock-volume')).toHaveCount(0);
+    } finally {
+      if (!page.isClosed()) {
+        // Forgotten, so every other scenario on this shared account opens on the plan as it expects to.
+        const status = await page.evaluate(async (csrf) => {
+          const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+          const response = await fetch(
+            `/api/companies/${me.company.id}/settings/presentation.stock-map-view?level=user`,
+            { method: 'DELETE', headers: { 'csrf-token': csrf } },
+          );
+          return response.status;
+        }, CSRF);
+        expect([204, 404]).toContain(status);
+        await clean(page, fixture, floorName);
+      }
+    }
+  });
 });

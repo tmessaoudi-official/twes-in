@@ -174,7 +174,7 @@ not compiled into what we distribute, and are not listed here.
 | webmozart/assert | 2.4.1 | MIT | runtime |
 | willdurand/negotiation | 3.1.0 | MIT | runtime |
 
-## web (npm) — 39 runtime, 551 dev
+## web (npm) — 40 runtime, 558 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -229,6 +229,7 @@ not compiled into what we distribute, and are not listed here.
 | @csstools/css-parser-algorithms | 4.0.2 | MIT | dev |
 | @csstools/css-syntax-patches-for-csstree | 1.1.15 | MIT-0 | dev |
 | @csstools/css-tokenizer | 4.0.2 | MIT | dev |
+| @dimforge/rapier3d-compat | 0.12.0 | Apache-2.0 | dev |
 | @esbuild/aix-ppc64 | 0.28.2 | MIT | dev |
 | @esbuild/android-arm | 0.28.2 | MIT | dev |
 | @esbuild/android-arm64 | 0.28.2 | MIT | dev |
@@ -416,6 +417,7 @@ not compiled into what we distribute, and are not listed here.
 | @tailwindcss/oxide-win32-arm64-msvc | 4.3.3 | MIT | dev |
 | @tailwindcss/oxide-win32-x64-msvc | 4.3.3 | MIT | dev |
 | @tailwindcss/postcss | 4.3.3 | MIT | dev |
+| @tweenjs/tween.js | 23.1.3 | MIT | dev |
 | @types/chai | 5.2.3 | MIT | dev |
 | @types/deep-eql | 4.0.2 | MIT | dev |
 | @types/emscripten | 1.41.6 | MIT | runtime |
@@ -425,6 +427,9 @@ not compiled into what we distribute, and are not listed here.
 | @types/jsesc | 2.5.1 | MIT | dev |
 | @types/json-schema | 7.0.15 | MIT | dev |
 | @types/node | 26.6.4 | MIT | runtime |
+| @types/stats.js | 0.17.4 | MIT | dev |
+| @types/three | 0.186.0 | MIT | dev |
+| @types/webxr | 0.5.24 | MIT | dev |
 | @typescript-eslint/eslint-plugin | 8.71.0 | MIT | dev |
 | @typescript-eslint/parser | 8.71.0 | MIT | dev |
 | @typescript-eslint/project-service | 8.71.0 | MIT | dev |
@@ -533,6 +538,7 @@ not compiled into what we distribute, and are not listed here.
 | fast-uri | 3.1.8 | BSD-3-Clause | dev |
 | fast-wrap-ansi | 0.2.2 | MIT | dev |
 | fdir | 6.5.0 | MIT | dev |
+| fflate | 0.8.3 | MIT | dev |
 | file-entry-cache | 11.1.5 | MIT | dev |
 | find-up | 5.0.0 | MIT | dev |
 | flat-cache | 6.1.23 | MIT | dev |
@@ -621,6 +627,7 @@ not compiled into what we distribute, and are not listed here.
 | marked | 18.0.14 | MIT | runtime |
 | material-symbols | 0.47.6 | Apache-2.0 | runtime |
 | mdn-data | 2.27.1 | CC0-1.0 | dev |
+| meshoptimizer | 1.1.1 | MIT | dev |
 | mimic-function | 5.0.1 | MIT | dev |
 | minimatch | 10.2.6 | BlueOak-1.0.0 | dev |
 | mrmime | 2.0.1 | MIT | dev |
@@ -723,6 +730,7 @@ not compiled into what we distribute, and are not listed here.
 | tagged-tag | 1.0.0 | MIT | runtime |
 | tailwindcss | 4.3.3 | MIT | dev |
 | tapable | 2.3.3 | MIT | dev |
+| three | 0.186.1 | MIT | runtime |
 | tinybench | 6.2.0 | MIT | dev |
 | tinyexec | 1.3.1 | MIT | dev |
 | tinyglobby | 0.2.17 | MIT | dev |

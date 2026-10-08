@@ -952,7 +952,8 @@
       "scan_recount_ms": "Camera scan: delay before a code counts again (ms)",
       "shortcuts": "Keyboard shortcuts",
       "folded_sections": "Folded menu sections",
-      "settings_list": "Settings list"
+      "settings_list": "Settings list",
+      "stock_map_view": "Stock map view"
     },
     "choices": {
       "stock": {
@@ -1024,6 +1025,10 @@
         "settings-list": {
           "expanded": "Expanded",
           "rail": "Icons only"
+        },
+        "stock-map-view": {
+          "plan": "2D plan",
+          "volume": "3D volume"
         }
       }
     },
@@ -2374,8 +2379,7 @@
         "volume": "3D volume"
       },
       "view_coming": {
-        "facade": "A rack’s front, its columns and levels, is coming soon.",
-        "volume": "The 3D volume, to look around the depot, is coming soon."
+        "facade": "A rack’s front, its columns and levels, is coming soon."
       },
       "mode": "Mode",
       "modes": {
@@ -2439,6 +2443,29 @@
         "line_nowhere": "No stock is recorded for this product.",
         "lines_badge": "{{count}} {count, plural, one {line} other {lines}}",
         "unknown_product": "Product not found"
+      },
+      "volume": {
+        "note": "The 3D is for looking only. To change anything, go back to the 2D plan.",
+        "keys_hint": "Drag to turn, wheel to come nearer, Shift and drag to move",
+        "shown": "What the 3D shows",
+        "toggles": {
+          "building": "Walls, doors, posts",
+          "ground": "Floor surface",
+          "heights": "Rack heights"
+        },
+        "summary": "{{floor}}: {{racks}} {racks, plural, one {rack} other {racks}}, {{zones}} {zones, plural, one {zone} other {zones}}",
+        "lit": "{{count}} {count, plural, one {place lit} other {places lit}}",
+        "missing": "This browser cannot show the 3D (WebGL 2 is not available here). The 2D plan shows the same floor.",
+        "loading": "Loading the 3D view…",
+        "failed": "The 3D view could not be loaded. The 2D plan shows the same floor.",
+        "view": "Look at the floor",
+        "turn_left": "Turn left",
+        "turn_right": "Turn right",
+        "closer": "Come nearer",
+        "further": "Move back",
+        "overview": "Overview",
+        "top": "Top view",
+        "read_only": "The 3D is looked at in View; in Arrange, the plan is 2D."
       }
     },
     "scan": {

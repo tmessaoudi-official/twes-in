@@ -952,7 +952,8 @@
       "scan_recount_ms": "Scan par caméra : délai avant de recompter un code (ms)",
       "shortcuts": "Raccourcis clavier",
       "folded_sections": "Sections repliées des menus",
-      "settings_list": "Liste des réglages"
+      "settings_list": "Liste des réglages",
+      "stock_map_view": "Vue du plan du stock"
     },
     "choices": {
       "stock": {
@@ -1024,6 +1025,10 @@
         "settings-list": {
           "expanded": "Déployée",
           "rail": "Icônes seules"
+        },
+        "stock-map-view": {
+          "plan": "Plan 2D",
+          "volume": "Volume 3D"
         }
       }
     },
@@ -2374,8 +2379,7 @@
         "volume": "Volume 3D"
       },
       "view_coming": {
-        "facade": "La façade d’un rayonnage, ses colonnes et ses niveaux, arrive bientôt.",
-        "volume": "Le volume en 3D, pour regarder le dépôt, arrive bientôt."
+        "facade": "La façade d’un rayonnage, ses colonnes et ses niveaux, arrive bientôt."
       },
       "mode": "Mode",
       "modes": {
@@ -2439,6 +2443,29 @@
         "line_nowhere": "Aucun stock n’est enregistré pour cet article.",
         "lines_badge": "{{count}} {count, plural, one {ligne} other {lignes}}",
         "unknown_product": "Article introuvable"
+      },
+      "volume": {
+        "note": "La 3D ne sert qu’à regarder. Pour modifier quoi que ce soit, revenez au plan 2D.",
+        "keys_hint": "Glisser pour tourner, molette pour approcher, Maj et glisser pour déplacer",
+        "shown": "Ce que montre la 3D",
+        "toggles": {
+          "building": "Murs, portes, poteaux",
+          "ground": "Surface au sol",
+          "heights": "Hauteur des rayonnages"
+        },
+        "summary": "{{floor}} : {{racks}} {racks, plural, one {rayonnage} other {rayonnages}}, {{zones}} {zones, plural, one {zone} other {zones}}",
+        "lit": "{{count}} {count, plural, one {endroit allumé} other {endroits allumés}}",
+        "missing": "Ce navigateur ne sait pas afficher la 3D (WebGL 2 n’y est pas disponible). Le plan 2D montre le même étage.",
+        "loading": "Chargement de la vue 3D…",
+        "failed": "La vue 3D n’a pas pu être chargée. Le plan 2D montre le même étage.",
+        "view": "Regarder l’étage",
+        "turn_left": "Tourner vers la gauche",
+        "turn_right": "Tourner vers la droite",
+        "closer": "Approcher",
+        "further": "Reculer",
+        "overview": "Vue d’ensemble",
+        "top": "Vue de dessus",
+        "read_only": "La 3D se regarde en Consulter ; en Aménager, le plan est en 2D."
       }
     },
     "scan": {

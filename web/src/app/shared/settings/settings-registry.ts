@@ -21,6 +21,9 @@ export type SidebarState = 'expanded' | 'rail';
  */
 export const PLAN_LABEL_MODES = ['code', 'name', 'both'] as const;
 export type PlanLabelMode = (typeof PLAN_LABEL_MODES)[number];
+/** How the stock map shows a floor: the plan, or the volume, which is for looking only. */
+export const STOCK_MAP_VIEWS = ['plan', 'volume'] as const;
+export type StockMapView = (typeof STOCK_MAP_VIEWS)[number];
 
 /**
  * The accent used until someone chooses one; the platform → company → role → user chain takes over at G3b
@@ -111,6 +114,15 @@ export const PRESENTATION = {
     'presentation.plan-labels',
     'code',
     oneOf<PlanLabelMode>(...PLAN_LABEL_MODES),
+  ),
+  /**
+   * Whether the stock map opens on the plan or the volume, kept for each person everywhere they sign in. The plan
+   * until someone chooses: the volume is offered on every screen, a phone's included, and never imposed.
+   */
+  stockMapView: defineSetting<StockMapView>(
+    'presentation.stock-map-view',
+    'plan',
+    oneOf<StockMapView>(...STOCK_MAP_VIEWS),
   ),
   language: defineSetting<Language>(
     'presentation.language',

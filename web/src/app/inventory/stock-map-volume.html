@@ -1,0 +1,133 @@
+<div
+  class="flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest"
+>
+  <div
+    class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-outline-variant px-3 py-2 text-sm"
+  >
+    <span
+      class="rounded-full bg-surface-container-high px-3 py-1 text-xs font-medium"
+      data-testid="stock-volume-note"
+      >{{ 'inventory.plan.volume.note' | translate }}</span
+    >
+    <!-- A wheel and a shift key a phone has neither of: there the floor turns under two fingers. -->
+    <span class="hidden text-on-surface-variant md:inline">{{
+      'inventory.plan.volume.keys_hint' | translate
+    }}</span>
+  </div>
+  <div
+    class="flex flex-wrap items-center gap-2 border-b border-outline-variant px-3 py-2 text-sm"
+    role="group"
+    [attr.aria-label]="'inventory.plan.volume.shown' | translate"
+  >
+    @for (name of toggleNames; track name) {
+      <button
+        type="button"
+        class="min-h-9 rounded-md border border-outline-variant px-3 text-sm"
+        [class.bg-secondary-container]="toggles()[name]"
+        [attr.aria-pressed]="toggles()[name]"
+        (click)="toggle(name)"
+        [attr.data-testid]="'stock-volume-toggle-' + name"
+      >
+        {{ 'inventory.plan.volume.toggles.' + name | translate }}
+      </button>
+    }
+    <span class="ms-auto text-on-surface-variant" data-testid="stock-volume-summary">
+      {{
+        'inventory.plan.volume.summary'
+          | translate: { floor: floorName(), racks: counts().racks, zones: counts().zones }
+      }}
+      @if (counts().lit > 0) {
+        · {{ 'inventory.plan.volume.lit' | translate: { count: counts().lit } }}
+      }
+    </span>
+  </div>
+  <div
+    class="relative h-[55dvh] min-h-[20rem] lg:h-[max(26rem,calc(100dvh-22rem))]"
+    data-testid="stock-volume"
+  >
+    @if (webgl() === 'missing') {
+      <p role="status" class="p-4 text-on-surface-variant" data-testid="stock-volume-missing">
+        {{ 'inventory.plan.volume.missing' | translate }}
+      </p>
+    }
+    <!--
+      The canvas takes the focus itself, so its arrow keys move the floor and not the page. What it shows is said in
+      words above it, the only way a reader who cannot see it has the same answer.
+    -->
+    <canvas
+      #canvas
+      class="block h-full w-full focus-visible:outline-2 focus-visible:outline-primary"
+      [class.hidden]="webgl() === 'missing'"
+      tabindex="0"
+      role="img"
+      [attr.aria-label]="
+        'inventory.plan.volume.summary'
+          | translate: { floor: floorName(), racks: counts().racks, zones: counts().zones }
+      "
+      data-testid="stock-volume-canvas"
+    ></canvas>
+    @if (webgl() === 'ready') {
+      <!-- Turning, coming nearer and the two places to look from, each by a single press: nothing here needs a drag. -->
+      <div
+        class="absolute bottom-3 end-3 flex flex-wrap items-end justify-end gap-2"
+        role="group"
+        [attr.aria-label]="'inventory.plan.volume.view' | translate"
+      >
+        <div class="flex gap-1" dir="ltr">
+          <button
+            type="button"
+            class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm"
+            (click)="turn(-1)"
+            [appLabel]="'inventory.plan.volume.turn_left' | translate"
+            data-testid="stock-volume-turn-left"
+          >
+            ↺
+          </button>
+          <button
+            type="button"
+            class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm"
+            (click)="turn(1)"
+            [appLabel]="'inventory.plan.volume.turn_right' | translate"
+            data-testid="stock-volume-turn-right"
+          >
+            ↻
+          </button>
+          <button
+            type="button"
+            class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm"
+            (click)="approach(true)"
+            [appLabel]="'inventory.plan.volume.closer' | translate"
+            data-testid="stock-volume-closer"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm"
+            (click)="approach(false)"
+            [appLabel]="'inventory.plan.volume.further' | translate"
+            data-testid="stock-volume-further"
+          >
+            −
+          </button>
+        </div>
+        <button
+          type="button"
+          class="h-9 rounded-md border border-outline-variant bg-surface px-3 text-sm"
+          (click)="preset('overview')"
+          data-testid="stock-volume-overview"
+        >
+          {{ 'inventory.plan.volume.overview' | translate }}
+        </button>
+        <button
+          type="button"
+          class="h-9 rounded-md border border-outline-variant bg-surface px-3 text-sm"
+          (click)="preset('top')"
+          data-testid="stock-volume-top"
+        >
+          {{ 'inventory.plan.volume.top' | translate }}
+        </button>
+      </div>
+    }
+  </div>
+</div>

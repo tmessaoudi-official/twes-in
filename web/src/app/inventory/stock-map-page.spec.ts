@@ -253,7 +253,10 @@ describe('StockMapPage', () => {
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: WINDOW_CLASS, useValue: windowClass.asReadonly() },
-        { provide: ThemeFacade, useValue: { showComing } },
+        {
+          provide: ThemeFacade,
+          useValue: { showComing, scheme: signal('light'), accent: signal('#1f6feb') },
+        },
       ],
     });
     // Most of what is tested here is drawing, which only Aménager offers; Consulter's own cases go back to the plain URL.
@@ -1542,16 +1545,52 @@ describe('StockMapPage', () => {
   });
 
   /** A view not built yet says so where it will be, as long as the person asked to see what is coming. */
-  it('names the façade and the volume « Bientôt », and hides them when what is coming is hidden', async () => {
+  it('names the façade « Bientôt », and hides it when what is coming is hidden', async () => {
     expect(q('stock-map-view-plan')?.getAttribute('aria-pressed')).toBe('true');
     expect(q('stock-map-view-facade')?.getAttribute('aria-disabled')).toBe('true');
-    expect(q('stock-map-view-volume')?.querySelector('[data-testid="soon"]')).not.toBeNull();
+    expect(q('stock-map-view-facade')?.querySelector('[data-testid="soon"]')).not.toBeNull();
 
     showComing.set(false);
     await settle();
 
     expect(q('stock-map-view-facade')).toBeNull();
-    expect(q('stock-map-view-volume')).toBeNull();
+    expect(q('stock-map-view-volume')).not.toBeNull();
+  });
+
+  /** The volume is for looking: chosen in Consulter it takes the board's place, and the choice is kept. */
+  it('opens the volume in place of the plan in Consulter, and remembers it', async () => {
+    await consult();
+    q('stock-map-view-volume')?.click();
+    await settle();
+
+    expect(TestBed.inject(SettingsFacade).value(PRESENTATION.stockMapView)()).toBe('volume');
+    expect(q('stock-map-view-volume')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('stock-map-view-plan')?.getAttribute('aria-pressed')).toBe('false');
+    expect(q('stock-map-board')).toBeNull();
+    expect(q('stock-volume')).not.toBeNull();
+    // The plan's own switches step aside: the volume has its own.
+    expect(q('stock-map-layers')).toBeNull();
+    expect(q('stock-map-label-code')).toBeNull();
+
+    q('stock-map-view-plan')?.click();
+    await settle();
+
+    expect(TestBed.inject(SettingsFacade).value(PRESENTATION.stockMapView)()).toBe('plan');
+    expect(q('stock-map-board')).not.toBeNull();
+  });
+
+  it('arranges on the plan whatever view was chosen, and says the volume waits in Consulter', async () => {
+    TestBed.inject(SettingsFacade).set(PRESENTATION.stockMapView, 'volume');
+    await settle();
+
+    expect(q('stock-map-board')).not.toBeNull();
+    expect(q('stock-volume')).toBeNull();
+    const volume = q('stock-map-view-volume');
+    expect(volume?.getAttribute('aria-disabled')).toBe('true');
+    volume?.click();
+    await settle();
+    expect(TestBed.inject(SettingsFacade).value(PRESENTATION.stockMapView)()).toBe('volume');
+    expect(q('stock-map-board')).not.toBeNull();
   });
 
   /**

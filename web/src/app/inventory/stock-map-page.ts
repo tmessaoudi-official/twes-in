@@ -94,7 +94,9 @@ import {
   PLAN_LABEL_MODES,
   PRESENTATION,
   type PlanLabelMode,
+  type StockMapView,
 } from '../shared/settings/settings-registry';
+import { StockMapVolume } from './stock-map-volume';
 import { LABEL_FONT, STRUCTURE_LABEL_FONT, fitLabel, planLabel } from './stock-map-labels';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
 
@@ -231,6 +233,7 @@ const PENDING_PIECE: StockStructureRow = {
     DescriptorForm,
     Label,
     PickField,
+    StockMapVolume,
   ],
   templateUrl: './stock-map-page.html',
   styleUrl: './stock-map-page.css',
@@ -268,6 +271,14 @@ export class StockMapPage implements OnInit {
    * day and should not re-choose it on every visit (docs/SPEC.md § 7, 2026-09-22).
    */
   protected readonly labelMode = this.settings.value(PRESENTATION.planLabels);
+  /**
+   * The volume is for looking: it is shown in Consulter when chosen, and Aménager always draws on the plan, so a
+   * person never arranges in a view that cannot be arranged in. The choice itself is kept for the next visit.
+   */
+  protected readonly viewChosen = this.settings.value(PRESENTATION.stockMapView);
+  protected readonly volumeShown = computed(
+    () => !this.arranging() && this.viewChosen() === 'volume',
+  );
   protected readonly labelModes = PLAN_LABEL_MODES;
   /** Bound rather than written in the template, so what is drawn and what is measured cannot drift apart. */
   protected readonly labelFont = LABEL_FONT;
@@ -529,6 +540,11 @@ export class StockMapPage implements OnInit {
     }
     return hits;
   });
+  /** What the volume stands up: the floor's saved rectangles and building, never an edit in progress. */
+  protected readonly floorDrawings = this.facade.drawings;
+  protected readonly floorStructures = this.facade.structures;
+  /** The same places, as the volume lights them. */
+  protected readonly litIds = computed(() => new Set(this.hits().keys()));
   /** How many drawn places hold something looked for on each floor, which the list of floors says. */
   protected readonly hitsByFloor = computed(() => {
     const places = new Map<string, Set<string>>();
@@ -1643,6 +1659,11 @@ export class StockMapPage implements OnInit {
    */
   protected isLocked(layer: string): boolean {
     return this.locked().includes(layer);
+  }
+
+  protected chooseView(view: StockMapView): void {
+    if (view === 'volume' && this.arranging()) return;
+    this.settings.set(PRESENTATION.stockMapView, view);
   }
 
   /** Writing it down is the whole point: the next visit opens on the numbering this store actually reads. */
