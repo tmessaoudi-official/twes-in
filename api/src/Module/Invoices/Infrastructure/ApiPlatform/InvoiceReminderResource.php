@@ -17,7 +17,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
  * A stage of the company's reminder calendar an invoice reached (`reminders.stages`): the day it was time to remind the
- * customer and how late the invoice was then. It records that the stage was reached, never that anything was sent.
+ * customer, how late the invoice was then and the late fee it drafted. It records that the stage was reached, never
+ * that anything was sent.
  * Read with `invoice.read`.
  */
 #[ApiResource(
@@ -52,6 +53,10 @@ final class InvoiceReminderResource
     #[Groups([self::READ])]
     public string $reachedOn = '';
 
+    /** The draft invoice of the late fee the stage charged, if the company charges one there. */
+    #[Groups([self::READ])]
+    public ?string $lateFeeInvoiceId = null;
+
     public static function of(InvoiceReminder $reminder): self
     {
         $resource = new self();
@@ -59,6 +64,7 @@ final class InvoiceReminderResource
         $resource->stage = $reminder->getStage();
         $resource->daysLate = $reminder->getDaysLate();
         $resource->reachedOn = $reminder->getReachedOn()->format('Y-m-d');
+        $resource->lateFeeInvoiceId = $reminder->getLateFeeInvoiceId()?->toRfc4122();
 
         return $resource;
     }

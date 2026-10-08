@@ -25,6 +25,7 @@ invoice:
     deposit_share_line: '%share%% deposit on quote %number%'
     deposit_line: 'Deposit on quote %number%'
     deduction_line: 'Deposit already invoiced: invoice %number% of %date%'
+    late_fee_line: 'Late fee: invoice %number%, reminder %stage% (%days% days late)'
     credit_note_title: 'Credit note'
     corrects: 'Credit note for invoice %number% of %date%'
     reason: 'Reason: %reason%'

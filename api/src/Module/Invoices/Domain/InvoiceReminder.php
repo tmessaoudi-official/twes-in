@@ -18,12 +18,14 @@ use Symfony\Component\Uid\Uuid;
 /**
  * A stage of the company's reminder calendar that a late invoice reached: the first, second… stage, how late the
  * invoice was that day and when it was recorded. A stage is reached once per invoice; it says it was time to remind
- * the customer, not that anything was sent to them.
+ * the customer, not that anything was sent to them. Where the company charges a late fee at that stage, it names the
+ * draft of the fee.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'invoice_reminder')]
 #[ORM\UniqueConstraint(name: 'uniq_invoice_reminder_stage', columns: ['invoice_id', 'stage'])]
 #[ORM\Index(name: 'idx_invoice_reminder_company', columns: ['company_id'])]
+#[ORM\Index(name: 'idx_invoice_reminder_late_fee', columns: ['late_fee_invoice_id'], options: ['where' => '(late_fee_invoice_id IS NOT NULL)'])]
 class InvoiceReminder implements CompanyOwned
 {
     #[ORM\Id]
@@ -50,6 +52,10 @@ class InvoiceReminder implements CompanyOwned
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $recordedAt;
+
+    /** The draft invoice of the late fee this stage charged, if it charged one. */
+    #[ORM\Column(name: 'late_fee_invoice_id', type: 'uuid', nullable: true)]
+    private ?Uuid $lateFeeInvoiceId = null;
 
     public function __construct(Company $company, Uuid $invoiceId, int $stage, int $daysLate, \DateTimeImmutable $reachedOn, \DateTimeImmutable $now)
     {
@@ -98,5 +104,10 @@ class InvoiceReminder implements CompanyOwned
     public function getRecordedAt(): \DateTimeImmutable
     {
         return $this->recordedAt;
+    }
+
+    public function getLateFeeInvoiceId(): ?Uuid
+    {
+        return $this->lateFeeInvoiceId;
     }
 }

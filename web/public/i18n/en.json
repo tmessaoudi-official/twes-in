@@ -643,6 +643,7 @@
       "stock_count_difference": "The count of {{product}} ({{reference}}) at {{location}} found a difference of {{difference}}.",
       "stock_low": "{{product}} ({{reference}}) is down to {{on_hand}} at {{establishment}}, at or under its reorder point of {{point}}.",
       "invoice_credit_limit_passed": "{{customer}} is over their credit limit: {{owed}} {{currency}} owed against {{limit}} after invoice {{number}}.",
+      "invoice_late_fee_drafted": "Reminder {{stage}} to send: invoice {{number}} of {{customer}}, {{amount_due}} {{currency}}, is {{days_late}} days late. A late fee of {{late_fee}} {{currency}} is prepared as a draft.",
       "invoice_reminder_due": "Reminder {{stage}} to send: invoice {{number}} of {{customer}}, {{amount_due}} {{currency}}, is {{days_late}} days late."
     }
   },
@@ -1063,6 +1064,12 @@
       "stages_hint": "Up to five numbers separated by commas, for example 7, 15, 30.",
       "hour": "Reminder hour",
       "hour_hint": "From this hour each day, the stages reached are recorded."
+    },
+    "late_fees": {
+      "enabled": "Late fees",
+      "enabled_hint": "When an invoice reaches a reminder stage, a late fee is prepared as a draft invoice for the customer. Nothing is issued without you.",
+      "tiers": "Fee per reminder stage",
+      "tiers_hint": "An amount or a percentage of what is still owed for each stage, separated by semicolons, for example 5; 10; 2%. A stage left empty costs nothing. No amount is proposed by default."
     }
   },
   "customers": {

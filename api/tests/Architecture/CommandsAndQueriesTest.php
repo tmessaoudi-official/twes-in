@@ -60,7 +60,7 @@ final class CommandsAndQueriesTest extends TestCase
         NotificationCentre::class => 'whether a person has read their own notifications',
         PrintDeliveryNote::class => 'the PDF of a note already issued, stored once when issuing could not render it',
         PrintInvoice::class => 'the PDF of a document already issued, stored once when issuing could not render it',
-        RemindLateInvoices::class => 'a scheduled run with no actor; the stage it records stops it telling twice, and its notification is the signal',
+        RemindLateInvoices::class => 'a scheduled run with no actor; the stage it records stops it telling twice, its notification is the signal, and a late fee it drafts goes through ManageInvoices, which audits it',
         ForgetSettings::class => 'a part of deleting the subject, whose own use case records the deletion',
         SeedPlatform::class => 'the seed and the convergence at start, which no person changes',
         PinCompanyAtSignIn::class => "a person's own choice of the company a sign-in opens",

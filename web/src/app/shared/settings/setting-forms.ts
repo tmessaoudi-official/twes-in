@@ -125,6 +125,11 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
   'watch.late_after_days': 'settings.watch.late_after_days_hint',
   'watch.unsold_after_days': 'settings.watch.unsold_after_days_hint',
   'credit.limit': 'settings.credit.limit_hint',
+  'reminders.enabled': 'settings.reminders.enabled_hint',
+  'reminders.stages': 'settings.reminders.stages_hint',
+  'reminders.hour': 'settings.reminders.hour_hint',
+  'late_fees.enabled': 'settings.late_fees.enabled_hint',
+  'late_fees.tiers': 'settings.late_fees.tiers_hint',
 };
 
 function fieldOf(row: SettingRow): FormField {

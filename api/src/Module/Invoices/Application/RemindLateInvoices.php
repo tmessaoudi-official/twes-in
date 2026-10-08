@@ -28,13 +28,15 @@ use Symfony\Component\Uid\Uuid;
  * Staged reminders (DOC-20, MON-16). From the company's hour on its own day, every overdue invoice — by the overdue
  * chip's rule — that reached a stage of the calendar it had not reached yet records that stage and tells the people who
  * issue invoices it is time to remind the customer. An invoice already past several stages records only the highest,
- * so switching reminders on never floods anyone. Nothing reaches the customer here: sending comes with the channels
- * that will read these same stages.
+ * so switching reminders on never floods anyone. Where the company charges a late fee at the stage, its draft is
+ * written once the stage is recorded and the notice says so; a late fee's own lateness is reminded, never charged.
+ * Nothing reaches the customer here: sending comes with the channels that will read these same stages.
  */
 final readonly class RemindLateInvoices
 {
     public const string PERMISSION = 'invoice.issue';
     public const string REMINDER_DUE = 'invoice.reminder_due';
+    public const string LATE_FEE_DRAFTED = 'invoice.late_fee_drafted';
 
     public function __construct(
         private InvoiceRepository $invoices,
@@ -45,6 +47,7 @@ final readonly class RemindLateInvoices
         private Notifications $notifications,
         private CurrencyScales $scales,
         private ClockInterface $clock,
+        private DraftLateFee $lateFees,
     ) {
     }
 
@@ -68,7 +71,9 @@ final readonly class RemindLateInvoices
         if ([] === $late) {
             return 0;
         }
-        $reached = $this->reminders->highestStages($company->getId(), array_map(static fn (array $row): Uuid => $row['invoiceId'], $late));
+        $ids = array_map(static fn (array $row): Uuid => $row['invoiceId'], $late);
+        $reached = $this->reminders->highestStages($company->getId(), $ids);
+        $fees = array_flip($this->reminders->lateFeesAmong($company->getId(), $ids));
         $scale = $this->scales->of($company->getCurrency());
         $reminded = [];
         $recorded = 0;
@@ -87,7 +92,7 @@ final readonly class RemindLateInvoices
                 continue;
             }
             ++$recorded;
-            $this->tell($company, [
+            $payload = [
                 'invoice_id' => $row['invoiceId']->toRfc4122(),
                 'number' => $row['number'],
                 'customer_id' => $customer,
@@ -97,7 +102,14 @@ final readonly class RemindLateInvoices
                 'amount_due' => Decimal::format(Decimal::of($row['amountDue']), $scale),
                 'currency' => $company->getCurrency(),
                 'company' => $company->getName(),
-            ]);
+            ];
+            $fee = isset($fees[$row['invoiceId']->toRfc4122()]) ? null : $this->lateFees->handle($company, $row['invoiceId'], $stage, $daysLate, $row['amountDue']);
+            if (null === $fee) {
+                $this->tell($company, self::REMINDER_DUE, $payload);
+                continue;
+            }
+            $this->reminders->recordLateFee($company->getId(), $row['invoiceId'], $stage, $fee['invoiceId']);
+            $this->tell($company, self::LATE_FEE_DRAFTED, [...$payload, 'late_fee' => $fee['fee'], 'late_fee_invoice_id' => $fee['invoiceId']->toRfc4122()]);
         }
 
         return $recorded;
@@ -131,11 +143,11 @@ final readonly class RemindLateInvoices
     }
 
     /** @param array<string, string|int> $payload */
-    private function tell(Company $company, array $payload): void
+    private function tell(Company $company, string $type, array $payload): void
     {
         foreach ($this->memberships->ofCompany($company->getId()) as $membership) {
             if ($membership->getRole()->grants(self::PERMISSION)) {
-                $this->notifications->publish(new Notification('user:'.$membership->getUser()->getId()->toRfc4122(), self::REMINDER_DUE, $payload));
+                $this->notifications->publish(new Notification('user:'.$membership->getUser()->getId()->toRfc4122(), $type, $payload));
             }
         }
     }

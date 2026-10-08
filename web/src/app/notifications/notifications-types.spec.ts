@@ -66,6 +66,13 @@ describe('reminder notifications', () => {
       permission: 'invoice.read',
     });
   });
+
+  it('say when the stage drafted a late fee, which waits among the invoices', () => {
+    expect(notificationKey('invoice.late_fee_drafted')).toBe(
+      'notifications.types.invoice_late_fee_drafted',
+    );
+    expect(notificationRecord('invoice.late_fee_drafted')?.route).toBe('/invoices');
+  });
 });
 
 describe('module notifications', () => {

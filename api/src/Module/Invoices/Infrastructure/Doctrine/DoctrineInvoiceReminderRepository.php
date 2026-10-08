@@ -82,4 +82,26 @@ final readonly class DoctrineInvoiceReminderRepository implements InvoiceReminde
 
         return $reminders;
     }
+
+    public function recordLateFee(Uuid $companyId, Uuid $invoiceId, int $stage, Uuid $feeInvoiceId): void
+    {
+        $this->entityManager->getConnection()->executeStatement(
+            'UPDATE invoice_reminder SET late_fee_invoice_id = :fee WHERE company_id = :company AND invoice_id = :invoice AND stage = :stage',
+            ['fee' => $feeInvoiceId->toRfc4122(), 'company' => $companyId->toRfc4122(), 'invoice' => $invoiceId->toRfc4122(), 'stage' => $stage],
+        );
+    }
+
+    public function lateFeesAmong(Uuid $companyId, array $invoiceIds): array
+    {
+        if ([] === $invoiceIds) {
+            return [];
+        }
+        $ids = $this->entityManager->getConnection()->fetchFirstColumn(
+            'SELECT DISTINCT late_fee_invoice_id FROM invoice_reminder WHERE company_id = :company AND late_fee_invoice_id IN (:invoices)',
+            ['company' => $companyId->toRfc4122(), 'invoices' => array_map(static fn (Uuid $id): string => $id->toRfc4122(), $invoiceIds)],
+            ['invoices' => ArrayParameterType::STRING],
+        );
+
+        return array_map(static fn (mixed $id): string => \is_string($id) ? $id : throw new \UnexpectedValueException('A late fee id came back in a shape it is never written in.'), $ids);
+    }
 }

@@ -643,6 +643,7 @@
       "stock_count_difference": "Le comptage de {{product}} ({{reference}}) à {{location}} a trouvé un écart de {{difference}}.",
       "stock_low": "{{product}} ({{reference}}) est tombé à {{on_hand}} à {{establishment}}, au niveau ou sous son seuil de réapprovisionnement de {{point}}.",
       "invoice_credit_limit_passed": "{{customer}} dépasse sa limite de crédit : {{owed}} {{currency}} dus pour {{limit}} après la facture {{number}}.",
+      "invoice_late_fee_drafted": "Relance {{stage}} à faire : la facture {{number}} de {{customer}}, {{amount_due}} {{currency}}, a {{days_late}} jours de retard. Frais de retard de {{late_fee}} {{currency}} préparés en brouillon.",
       "invoice_reminder_due": "Relance {{stage}} à faire : la facture {{number}} de {{customer}}, {{amount_due}} {{currency}}, a {{days_late}} jours de retard."
     }
   },
@@ -1063,6 +1064,12 @@
       "stages_hint": "Jusqu’à cinq nombres séparés par des virgules, par exemple 7, 15, 30.",
       "hour": "Heure des relances",
       "hour_hint": "À partir de cette heure, chaque jour, les étapes atteintes sont relevées."
+    },
+    "late_fees": {
+      "enabled": "Frais de retard",
+      "enabled_hint": "Quand une facture atteint une étape de relance, des frais de retard sont préparés en brouillon de facture pour le client. Rien n’est émis sans vous.",
+      "tiers": "Frais par étape de relance",
+      "tiers_hint": "Un montant ou un pourcentage du reste dû par étape, séparés par des points-virgules, par exemple 5 ; 10 ; 2 %. Une étape laissée vide ne coûte rien. Aucun montant n’est proposé par défaut."
     }
   },
   "customers": {

@@ -143,6 +143,121 @@ final class InvoiceRemindersTest extends ApiTestCase
         self::assertIsString($rows[0]['reachedOn'] ?? null);
     }
 
+    public function testLateFeesAreOffUntilTheCompanyTurnsThemOn(): void
+    {
+        $this->set('late_fees.tiers', '10', null);
+        $invoice = $this->issue('100');
+        $this->dueDaysAgo($invoice, 8);
+
+        $this->runAt('09:00');
+
+        self::assertSame([[$invoice, 1, 8]], $this->reminders(), 'the reminder is still recorded');
+        self::assertSame([], $this->drafts(), 'tiers written but the fee left off: no fee is drafted');
+        self::assertSame(['invoice.reminder_due'], array_column($this->toldTo($this->userId), 'type'));
+    }
+
+    public function testTheStagesTierDraftsTheFeeForTheCustomerAndNeverIssuesIt(): void
+    {
+        $this->set('late_fees.enabled', true, null);
+        $this->set('late_fees.tiers', '5 ; 10', null);
+        $invoice = $this->issue('100');
+        $number = $this->stringAt($this->getInvoice($invoice), 'number');
+        $this->dueDaysAgo($invoice, 16);
+
+        $this->runAt('09:00');
+
+        $drafts = $this->drafts();
+        self::assertCount(1, $drafts, 'one fee, for the stage reached');
+        $fee = $this->getInvoice($drafts[0]);
+        self::assertSame(['draft', null, $this->customerId], [$fee['status'] ?? '', \array_key_exists('number', $fee) ? $fee['number'] : 'no number field', $fee['customerId'] ?? ''], 'a draft for the late invoice\'s customer, never issued');
+        $lines = $fee['lines'] ?? null;
+        self::assertIsArray($lines);
+        self::assertCount(1, $lines);
+        self::assertIsArray($lines[0]);
+        self::assertSame(['10.0000', []], [$lines[0]['unitPriceNet'] ?? '', $lines[0]['taxComponentIds'] ?? null], 'the second tier, with no tax on the line until a person adds one');
+        $description = $lines[0]['description'] ?? '';
+        self::assertIsString($description);
+        self::assertStringContainsString($number, $description, 'the line names the late invoice');
+        self::assertStringContainsString('relance 2', $description);
+
+        $told = $this->toldTo($this->userId);
+        self::assertSame(['invoice.late_fee_drafted'], array_column($told, 'type'), 'one notice, saying the fee is drafted');
+        self::assertSame(['10.000', $drafts[0], 2], [$told[0]['payload']['late_fee'] ?? null, $told[0]['payload']['late_fee_invoice_id'] ?? null, $told[0]['payload']['stage'] ?? null]);
+
+        $this->getJson($this->companyPath().'/invoices/'.$invoice.'/reminders');
+        self::assertResponseIsSuccessful();
+        self::assertSame($drafts[0], $this->jsonList()[0]['lateFeeInvoiceId'] ?? null, 'the stage names the fee it drafted');
+
+        $this->runAt('11:00');
+        self::assertCount(1, $this->drafts(), 'never drafted twice for one stage');
+    }
+
+    public function testAShareIsOfWhatTheInvoiceStillOwes(): void
+    {
+        $this->set('late_fees.enabled', true, null);
+        $this->set('late_fees.tiers', '2 %', null);
+        $invoice = $this->issue('200');
+        $this->pay($invoice, '50');
+        $this->dueDaysAgo($invoice, 7);
+
+        $this->runAt('09:00');
+
+        $drafts = $this->drafts();
+        self::assertCount(1, $drafts);
+        self::assertSame('3.000', $this->getInvoice($drafts[0])['totalNet'] ?? null, '2 % of the 150 still owed');
+    }
+
+    public function testAFeeIsNeverChargedOnAFeeAndAStageWithNoTierChargesNothing(): void
+    {
+        $this->set('late_fees.enabled', true, null);
+        $this->set('late_fees.tiers', '10 ; ; 30', null);
+        $invoice = $this->issue('100');
+        $this->dueDaysAgo($invoice, 8);
+        $this->runAt('09:00');
+        $fee = $this->drafts()[0] ?? self::fail('the first stage drafts its fee');
+        $this->postJson($this->companyPath().'/invoices/'.$fee.'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $this->dueDaysAgo($fee, 40);
+        $this->dueDaysAgo($invoice, 16);
+
+        $this->runAt('10:00');
+
+        self::assertSame([], $this->drafts(), 'the fee, late itself, is reminded but draws no fee; the second stage has no tier');
+        self::assertContains([$fee, 3, 40], $this->reminders(), 'the fee is still reminded');
+    }
+
+    public function testAFeeThatCannotBeDraftedLeavesTheReminderStanding(): void
+    {
+        $this->set('late_fees.enabled', true, null);
+        $this->set('late_fees.tiers', '10', null);
+        $invoice = $this->issue('100');
+        $this->dueDaysAgo($invoice, 8);
+        $this->em()->getConnection()->executeStatement("UPDATE unit SET code = 'XXX' WHERE company_id = :c AND code = 'C62'", ['c' => $this->company->getId()->toRfc4122()]);
+
+        $this->runAt('09:00');
+
+        self::assertSame([[$invoice, 1, 8]], $this->reminders());
+        self::assertSame([], $this->drafts());
+        self::assertSame(['invoice.reminder_due'], array_column($this->toldTo($this->userId), 'type'), 'the reminder is told as without a fee');
+    }
+
+    /** @return list<string> the company's drafts, oldest first */
+    private function drafts(): array
+    {
+        $ids = $this->em()->getConnection()->fetchFirstColumn("SELECT id FROM invoice WHERE company_id = :c AND status = 'draft' ORDER BY created_at, id", ['c' => $this->company->getId()->toRfc4122()]);
+
+        return array_map(static fn (mixed $id): string => \is_string($id) ? $id : throw new \UnexpectedValueException('an invoice id'), $ids);
+    }
+
+    /** @return array<string, mixed> */
+    private function getInvoice(string $id): array
+    {
+        $this->getJson($this->companyPath().'/invoices/'.$id);
+        self::assertResponseIsSuccessful();
+
+        return $this->json();
+    }
+
     /** Runs the reminders as the hourly task would, at a time of the company's own day, today. */
     private function runAt(string $time): void
     {
@@ -170,7 +285,7 @@ final class InvoiceRemindersTest extends ApiTestCase
     /** @return list<array{type: string, payload: array<mixed>}> */
     private function toldTo(string $userId): array
     {
-        $rows = $this->em()->getConnection()->fetchAllAssociative("SELECT type, payload FROM inbox_item WHERE recipient_id = :u AND type = 'invoice.reminder_due'", ['u' => $userId]);
+        $rows = $this->em()->getConnection()->fetchAllAssociative("SELECT type, payload FROM inbox_item WHERE recipient_id = :u AND type IN ('invoice.reminder_due', 'invoice.late_fee_drafted') ORDER BY created_at", ['u' => $userId]);
         $out = [];
         foreach ($rows as $row) {
             self::assertIsString($row['type']);
