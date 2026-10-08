@@ -70,11 +70,15 @@ test('the fields of one row line up, whatever the length of their labels', async
       .first()
       .evaluate((element) => Math.round(element.getBoundingClientRect().top));
   const self = ':scope';
-  expect(await top('field-watch__late_after_days', self)).toBe(
+  // Two pairs that share a row: two fields whose labels run to a sentence, and two checkboxes.
+  expect(await top('field-document__late_payment_rate', self)).toBe(
+    await top('field-document__exemption_reference', self),
+  );
+  expect(await top('field-reminders__hour', self)).toBe(
     await top('field-quote__validity_days', self),
   );
-  expect(await top('field-delivery_note__show_prices', '.mdc-checkbox__background')).toBe(
-    await top('field-delivery_note__reception_block', '.mdc-checkbox__background'),
+  expect(await top('field-document__how_to_pay', '.mdc-checkbox__background')).toBe(
+    await top('field-document__amount_in_words', '.mdc-checkbox__background'),
   );
   await expect(page.getByTestId('settings-title')).toHaveText('Valeurs par défaut');
 });

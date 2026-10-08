@@ -253,8 +253,9 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     // E runs the state's next step, and asks first exactly as the button does.
     await outOfFields(page);
     await page.keyboard.press('e');
-    // The question says what issuing will do: the number the draft takes, its total, who it is for.
-    await expect(page.getByTestId('confirm-message')).toContainText('1 190,000');
+    // The question says what issuing will do: the number the draft takes, its total, who it is for. The total is what
+    // the invoice will ask for, the timbre fiscal's dinar with it.
+    await expect(page.getByTestId('confirm-message')).toContainText('1 191,000');
     await expect(page.getByTestId('confirm-message')).toContainText(/\d{4}/);
     await page.getByTestId('confirm-run').click();
     await expect(page.getByTestId('document-action-issue')).toHaveCount(0);

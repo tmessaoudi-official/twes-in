@@ -32,7 +32,7 @@ test('a product just created is in the activity journal, said in words, and open
     await expect(page).toHaveURL(new RegExp(`/products/${ids[0]}$`));
 
     // The product's own « Historique » says the same, and leads back to the journal narrowed to it.
-    await page.getByRole('tab', { name: 'Historique' }).click();
+    await page.getByRole('tab', { name: 'Historique', exact: true }).click();
     await expect(page.getByTestId('record-history-entry').first()).toContainText(
       'a créé l’article',
     );
