@@ -192,6 +192,9 @@
     },
     "audit": {
       "read": "Voir le journal d’activité"
+    },
+    "accounting": {
+      "export": "Exporter les journaux comptables"
     }
   },
   "members": {
@@ -581,7 +584,8 @@
     "stock_valuation": "Valorisation du stock",
     "price_lists": "Tarifs",
     "quotes": "Devis",
-    "activity": "Journal d’activité"
+    "activity": "Journal d’activité",
+    "accounting_export": "Export comptable"
   },
   "shell": {
     "scan_tools": "Scanner",
@@ -4304,6 +4308,31 @@
     "reverse_charge": {
       "term": "Autoliquidation",
       "definition": "C’est le client qui déclare et paie la TVA ; la facture le mentionne."
+    }
+  },
+  "accounting_export": {
+    "title": "Export comptable",
+    "intro": "Les fichiers que votre comptable reprend dans son logiciel pour une période : les ventes, les achats, les encaissements et la TVA. Seuls les documents émis et les dépenses inscrites en comptabilité y figurent ; un avoir y est en négatif.",
+    "from": "Du",
+    "to": "Au",
+    "period_invalid": "Choisissez deux jours dans l’ordre, à un an d’écart au plus.",
+    "files": {
+      "sales-journal": {
+        "name": "Journal des ventes",
+        "does": "Chaque facture et chaque avoir émis sur la période, une ligne par taxe."
+      },
+      "purchases-journal": {
+        "name": "Journal des achats",
+        "does": "Chaque dépense inscrite en comptabilité sur la période, avec sa taxe et sa retenue."
+      },
+      "payments-journal": {
+        "name": "Journal des encaissements",
+        "does": "Chaque paiement reçu sur une facture pendant la période."
+      },
+      "vat-summary": {
+        "name": "Récapitulatif de TVA",
+        "does": "Les bases et les taxes des ventes et des achats, par taxe et par taux. Il ne dit pas ce qui est dû."
+      }
     }
   }
 }

@@ -192,6 +192,9 @@
     },
     "audit": {
       "read": "See the activity journal"
+    },
+    "accounting": {
+      "export": "Export the accounting journals"
     }
   },
   "members": {
@@ -581,7 +584,8 @@
     "stock_valuation": "Stock valuation",
     "price_lists": "Price lists",
     "quotes": "Quotes",
-    "activity": "Activity journal"
+    "activity": "Activity journal",
+    "accounting_export": "Accounting export"
   },
   "shell": {
     "scan_tools": "Scanner",
@@ -4304,6 +4308,31 @@
     "reverse_charge": {
       "term": "Reverse charge",
       "definition": "The customer declares and pays the VAT; the invoice says so."
+    }
+  },
+  "accounting_export": {
+    "title": "Accounting export",
+    "intro": "The files your accountant takes into their software for a period: sales, purchases, payments received and VAT. Only issued documents and expenses entered in the books are in them; a credit note is negative.",
+    "from": "From",
+    "to": "To",
+    "period_invalid": "Choose two days in order, a year apart at most.",
+    "files": {
+      "sales-journal": {
+        "name": "Sales journal",
+        "does": "Each invoice and credit note issued in the period, one row per tax."
+      },
+      "purchases-journal": {
+        "name": "Purchases journal",
+        "does": "Each expense entered in the books in the period, with its tax and withholding."
+      },
+      "payments-journal": {
+        "name": "Payments journal",
+        "does": "Each payment received on an invoice during the period."
+      },
+      "vat-summary": {
+        "name": "VAT summary",
+        "does": "The bases and taxes of sales and purchases, by tax and rate. It does not say what is due."
+      }
     }
   }
 }

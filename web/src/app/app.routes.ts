@@ -14,6 +14,7 @@ import { DELIVERY_NOTES_MODULE } from './delivery-notes/delivery-notes-nav';
 import { QUOTES_MODULE } from './quotes/quotes-nav';
 import { INVOICES_MODULE } from './invoices/invoices-nav';
 import { EXPENSES_MODULE } from './expenses/expenses-nav';
+import { ACCOUNTING_EXPORT_MODULE } from './accounting-export/accounting-export-nav';
 import { INVENTORY_MODULE } from './inventory/inventory-nav';
 import { PRICE_LISTS_MODULE } from './price-lists/price-lists-nav';
 import { PRODUCTS_MODULE } from './products/products-nav';
@@ -393,6 +394,13 @@ export const routes: Routes = [
         title: 'titles.expense',
         canActivate: [moduleGuard(EXPENSES_MODULE)],
         loadComponent: () => import('./expenses/expense-page').then((m) => m.ExpensePage),
+      },
+      {
+        path: 'accounting-export',
+        title: 'nav.accounting_export',
+        canActivate: [moduleGuard(ACCOUNTING_EXPORT_MODULE)],
+        loadComponent: () =>
+          import('./accounting-export/accounting-export-page').then((m) => m.AccountingExportPage),
       },
       {
         // The platform's operators run signup and decide on the companies waiting for approval here.

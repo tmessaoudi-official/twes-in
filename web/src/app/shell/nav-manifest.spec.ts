@@ -11,6 +11,7 @@ import { INVENTORY_NAV } from '../inventory/inventory-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
 import { VENDORS_NAV } from '../vendors/vendors-nav';
 import { EXPENSES_NAV } from '../expenses/expenses-nav';
+import { ACCOUNTING_EXPORT_NAV } from '../accounting-export/accounting-export-nav';
 import {
   COMING_NAV,
   CORE_NAV,
@@ -185,7 +186,7 @@ describe('the navigation manifest', () => {
           'sell',
           ['home', 'invoices', 'quotes', 'delivery-notes', 'customers', 'products', 'price_lists'],
         ],
-        ['manage', ['stock', 'vendors', 'expenses', 'watch']],
+        ['manage', ['stock', 'vendors', 'expenses', 'accounting_export', 'watch']],
       ],
     );
   });
@@ -288,6 +289,16 @@ describe('the navigation manifest', () => {
     expect(
       QUOTES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
     ).toEqual([['quotes', 'quotes', 'quote.read', '/quotes']]);
+    expect(
+      ACCOUNTING_EXPORT_NAV.map((entry) => [
+        entry.key,
+        entry.module,
+        entry.permission,
+        entry.route,
+      ]),
+    ).toEqual([
+      ['accounting_export', 'accounting_export', 'accounting.export', '/accounting-export'],
+    ]);
     expect(MODULE_NAV).toEqual([
       ...INVOICES_NAV,
       ...QUOTES_NAV,
@@ -298,6 +309,7 @@ describe('the navigation manifest', () => {
       ...INVENTORY_NAV,
       ...VENDORS_NAV,
       ...EXPENSES_NAV,
+      ...ACCOUNTING_EXPORT_NAV,
     ]);
     expect(MODULE_NAV.filter((entry) => entry.module === undefined)).toEqual([]);
   });

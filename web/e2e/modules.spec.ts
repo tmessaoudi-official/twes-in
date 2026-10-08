@@ -6,7 +6,7 @@ import { toast } from './toast';
 
 // G5 module registry through the real stack: in the seeded company, the owner switches the customers module off,
 // its entries leave the navigation, its page sends them home and its API answers 404; switching it back on brings
-// all of it back. Delivery notes and invoices need customers, so they are switched off first and back on last. The
+// all of it back. Delivery notes and invoices need customers, and the accountant's files need invoices, so they are switched off first and back on last. The
 // suite shares one database and runs serially, and every module switched off is switched on again whatever happens,
 // so no other scenario ever finds one off.
 const CSRF = '0123456789abcdef0123456789abcdef';
@@ -41,6 +41,7 @@ test('a module switched off leaves the navigation, its pages and its API until i
 }) => {
   await signIn(page);
   try {
+    await switchModule(page, 'accounting_export', false);
     await switchModule(page, 'invoices', false);
     await switchModule(page, 'delivery_notes', false);
     await switchModule(page, 'price_lists', false);
@@ -65,6 +66,7 @@ test('a module switched off leaves the navigation, its pages and its API until i
     await switchModule(page, 'price_lists', true);
     // Invoices, delivery notes and quotes were switched off first, and need customers back before they come back on.
     await switchModule(page, 'invoices', true);
+    await switchModule(page, 'accounting_export', true);
     await switchModule(page, 'quotes', true);
   }
 });

@@ -51,7 +51,6 @@ export const PLANNED_SETTINGS: readonly PlannedSetting[] = [
   { module: 'register', label: 'coming.register.settings' },
   { module: 'purchases', label: 'coming.purchases.settings' },
   { module: 'declarations', label: 'coming.declarations.settings' },
-  { module: 'accounting_export', label: 'coming.accounting_export.settings' },
   { module: 'einvoicing', label: 'coming.einvoicing.settings' },
   { module: 'currencies', label: 'coming.currencies.settings' },
   { module: 'zakat', label: 'coming.zakat.settings' },

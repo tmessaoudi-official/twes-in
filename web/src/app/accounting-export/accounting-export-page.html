@@ -1,0 +1,42 @@
+<section class="flex max-w-3xl flex-col gap-6">
+  <h1 class="text-3xl font-semibold" data-testid="accounting-export-title">
+    {{ 'accounting_export.title' | translate }}
+  </h1>
+  <p class="max-w-prose">{{ 'accounting_export.intro' | translate }}</p>
+
+  <form class="flex flex-wrap gap-4" [formGroup]="period">
+    <mat-form-field>
+      <mat-label>{{ 'accounting_export.from' | translate }}</mat-label>
+      <input matInput type="date" formControlName="from" data-testid="accounting-export-from" />
+    </mat-form-field>
+    <mat-form-field>
+      <mat-label>{{ 'accounting_export.to' | translate }}</mat-label>
+      <input matInput type="date" formControlName="to" data-testid="accounting-export-to" />
+    </mat-form-field>
+  </form>
+
+  @if (addresses(); as make) {
+    <ul class="flex flex-col divide-y divide-outline-variant">
+      @for (file of files; track file) {
+        <li
+          class="flex flex-wrap items-center justify-between gap-4 py-3"
+          [attr.data-testid]="'accounting-file-' + file"
+        >
+          <span class="flex max-w-prose flex-col">
+            <span class="font-medium">{{
+              'accounting_export.files.' + file + '.name' | translate
+            }}</span>
+            <span class="text-sm text-on-surface-variant">{{
+              'accounting_export.files.' + file + '.does' | translate
+            }}</span>
+          </span>
+          <app-list-export [address]="make(file)" [testId]="'accounting-export-' + file" />
+        </li>
+      }
+    </ul>
+  } @else {
+    <p role="alert" class="text-error" data-testid="accounting-export-period-error">
+      {{ 'accounting_export.period_invalid' | translate }}
+    </p>
+  }
+</section>

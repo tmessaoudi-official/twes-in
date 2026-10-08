@@ -37,7 +37,6 @@ final readonly class PlannedModules
             // Money and compliance.
             new ModuleManifest('reports', 'modules.reports', [], planned: 'v1'),
             new ModuleManifest('declarations', 'modules.declarations', ['invoices'], planned: 'v1'),
-            new ModuleManifest('accounting_export', 'modules.accounting_export', ['invoices'], planned: 'v1'),
             new ModuleManifest('einvoicing', 'modules.einvoicing', ['invoices'], planned: 'v1'),
             new ModuleManifest('currencies', 'modules.currencies', ['invoices'], planned: 'later'),
             new ModuleManifest('zakat', 'modules.zakat', [], planned: 'later'),

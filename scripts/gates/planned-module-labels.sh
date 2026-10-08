@@ -12,7 +12,8 @@
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
-floor=${PLANNED_MODULE_LABELS_FLOOR:-20}
+# Below what is still planned, and lowered as modules ship and leave the list: a broken pattern finds next to none.
+floor=${PLANNED_MODULE_LABELS_FLOOR:-15}
 
 # Every wanted key in one language, in one pass: each must be present, a string, and not blank. The dots are nesting,
 # as ngx-translate reads them. Prints the keys that are not.

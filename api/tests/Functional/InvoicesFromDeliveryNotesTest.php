@@ -395,6 +395,8 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
         $this->postJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoices/from-delivery-notes', ['deliveryNoteIds' => [$theirs]]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 
+        // The accountant's files read the invoices: off while invoices are switched off, so invoices may be.
+        $this->sendJson('PUT', $this->companyPath().'/modules/accounting_export', ['enabled' => false]);
         foreach (['delivery_notes', 'invoices'] as $module) {
             $this->sendJson('PUT', $this->companyPath().'/modules/'.$module, ['enabled' => false]);
             self::assertResponseIsSuccessful();
@@ -403,6 +405,7 @@ final class InvoicesFromDeliveryNotesTest extends ApiTestCase
             $this->sendJson('PUT', $this->companyPath().'/modules/'.$module, ['enabled' => true]);
             self::assertResponseIsSuccessful();
         }
+        $this->sendJson('PUT', $this->companyPath().'/modules/accounting_export', ['enabled' => true]);
         $this->postJson($this->fromNotesPath(), ['deliveryNoteIds' => [$mine]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
     }

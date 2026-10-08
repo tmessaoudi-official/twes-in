@@ -9,6 +9,7 @@ import { PRODUCTS_NAV } from '../products/products-nav';
 import { QUOTES_NAV } from '../quotes/quotes-nav';
 import { VENDORS_NAV } from '../vendors/vendors-nav';
 import { EXPENSES_NAV } from '../expenses/expenses-nav';
+import { ACCOUNTING_EXPORT_NAV } from '../accounting-export/accounting-export-nav';
 import type { IconName } from '../shared/icons/icons';
 
 /**
@@ -306,6 +307,7 @@ export const MODULE_NAV: readonly NavEntry[] = [
   ...INVENTORY_NAV,
   ...VENDORS_NAV,
   ...EXPENSES_NAV,
+  ...ACCOUNTING_EXPORT_NAV,
 ];
 
 /**

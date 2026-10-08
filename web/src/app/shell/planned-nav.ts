@@ -84,12 +84,6 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
   },
   { key: 'declarations', icon: 'event_note', section: 'manage', after: 'reports' },
   {
-    key: 'accounting_export',
-    icon: 'output',
-    section: 'manage',
-    after: 'declarations',
-  },
-  {
     key: 'einvoicing',
     icon: 'receipt_long',
     section: 'manage',
