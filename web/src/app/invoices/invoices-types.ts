@@ -410,3 +410,17 @@ export interface InvoiceSummary {
   readonly withheldMonth: string;
   readonly withheldLastMonth: string;
 }
+
+/**
+ * A stage of the company's reminder calendar the invoice reached: the day it was time to remind the customer, how late
+ * the invoice was then, and the draft of the late fee the stage charged, if the company charges one there.
+ */
+export interface InvoiceReminderRow {
+  id: string;
+  /** One for the calendar's first stage. */
+  stage: number;
+  daysLate: number;
+  /** The company's day, YYYY-MM-DD. */
+  reachedOn: string;
+  lateFeeInvoiceId: string | null;
+}

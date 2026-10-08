@@ -1402,6 +1402,13 @@
       "left": "Reste à encaisser",
       "paid_of": "{{paid}} payés sur {{total}}"
     },
+    "reminders": {
+      "title": "Relances",
+      "stage": "Relance {{stage}}, le {{day}} : {{count}} {count, plural, one {jour} other {jours}} de retard",
+      "fee": "Frais de retard en brouillon",
+      "note": "Chaque étape dit qu’il était temps de relancer le client : rien ne lui a été envoyé.",
+      "error": "Les relances de cette facture n’ont pas pu être lues."
+    },
     "sheet": {
       "label": "Aperçu de {{number}}",
       "terms": "{{days}} jours",

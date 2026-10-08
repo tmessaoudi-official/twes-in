@@ -123,6 +123,9 @@
           </div>
         </mat-card-content>
       </mat-card>
+      @if (company(); as owner) {
+        <app-invoice-reminders [companyId]="owner.id" [invoiceId]="invoice.id" />
+      }
     }
   }
 

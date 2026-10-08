@@ -76,6 +76,7 @@ import { ScreenActions } from '../shared/actions/screen-actions';
 import { CreditExcessDialog } from './credit-excess-dialog';
 import { CreditNoteDialog } from './credit-note-dialog';
 import { InvoiceInstruments } from './invoice-instruments';
+import { InvoiceReminders } from './invoice-reminders';
 import { PaymentDialog } from './payment-dialog';
 import { OverpaymentDialog } from './overpayment-dialog';
 import { overpaymentForm, overpaymentInput, overpaymentValues } from './overpayment-form';
@@ -109,6 +110,7 @@ export const INVOICE_PLANNED: readonly PlannedAction[] = [
     AmountPipe,
     DayPipe,
     InvoiceInstruments,
+    InvoiceReminders,
     DescriptorForm,
     Select,
     DocumentActions,

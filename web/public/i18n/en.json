@@ -1402,6 +1402,13 @@
       "left": "Still to collect",
       "paid_of": "{{paid}} paid of {{total}}"
     },
+    "reminders": {
+      "title": "Reminders",
+      "stage": "Reminder {{stage}}, on {{day}}: {{count}} {count, plural, one {day} other {days}} late",
+      "fee": "Late fee in draft",
+      "note": "Each stage says it was time to remind the customer: nothing was sent to them.",
+      "error": "The reminders of this invoice could not be read."
+    },
     "sheet": {
       "label": "Preview of {{number}}",
       "terms": "{{days}} days",
