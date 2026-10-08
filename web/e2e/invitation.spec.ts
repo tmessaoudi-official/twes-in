@@ -92,7 +92,8 @@ test('an address that already has an account joins from the mailed link with not
   expect(opened).toEqual([201, 201]);
   const theirs = await browser.newContext();
   const theirPage = await theirs.newPage();
-  await theirPage.goto(`/invitations/${await invitationTokenFor(request, existing)}`);
+  const firstToken = await invitationTokenFor(request, existing);
+  await theirPage.goto(`/invitations/${firstToken}`);
   await theirPage.getByTestId('invitation-name').fill('Existing Person');
   await theirPage.getByTestId('invitation-password').fill(NEW_PASSWORD);
   await theirPage.getByTestId('invitation-submit').click();
@@ -113,7 +114,7 @@ test('an address that already has an account joins from the mailed link with not
     fullPage: true,
   });
 
-  await theirPage.goto(`/invitations/${await invitationTokenFor(request, existing)}`);
+  await theirPage.goto(`/invitations/${await invitationTokenFor(request, existing, firstToken)}`);
   await expect(theirPage.getByTestId('invitation-has-account')).toBeVisible();
   await expect(theirPage.getByTestId('invitation-name')).toHaveCount(0);
   await expect(theirPage.getByTestId('invitation-password')).toHaveCount(0);

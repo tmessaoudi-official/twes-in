@@ -32,22 +32,35 @@ export async function mailTo(
   throw new Error(`no matching mail for ${to} arrived at Mailpit`);
 }
 
-/** The raw token of the newest link of that kind mailed to that address. */
+/**
+ * The raw token of the newest link of that kind mailed to that address. A token already used is passed as `unlike`
+ * when a second mail is awaited: the worker sends mail asynchronously, so until the second one arrives the newest
+ * mail is still the first.
+ */
 async function tokenFor(
   request: APIRequestContext,
   to: string,
   path: 'invitations' | 'signup',
+  unlike?: string,
 ): Promise<string> {
   const pattern = new RegExp(`/${path}/([0-9a-f]{64})`);
-  const found = pattern.exec(await mailTo(request, to, () => true));
-  if (!found) {
-    throw new Error(`the mail to ${to} carries no /${path}/ link`);
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const found = pattern.exec(await mailTo(request, to, () => true));
+    if (!found) {
+      throw new Error(`the mail to ${to} carries no /${path}/ link`);
+    }
+    if (found[1] !== unlike) return found[1];
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  return found[1];
+  throw new Error(`no new /${path}/ link to ${to} arrived at Mailpit`);
 }
 
-export function invitationTokenFor(request: APIRequestContext, to: string): Promise<string> {
-  return tokenFor(request, to, 'invitations');
+export function invitationTokenFor(
+  request: APIRequestContext,
+  to: string,
+  unlike?: string,
+): Promise<string> {
+  return tokenFor(request, to, 'invitations', unlike);
 }
 
 export function signupTokenFor(request: APIRequestContext, to: string): Promise<string> {
