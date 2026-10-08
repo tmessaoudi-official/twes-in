@@ -34,6 +34,20 @@ final readonly class PrintSettings
     ) {
     }
 
+    /**
+     * The « Vous économisez … » figure to print: what the discounts took off, when the document asked for the line and
+     * something was taken off. A credit note's figures carry its sign, so it never prints one; nor does a document
+     * issued before the figure was kept.
+     */
+    public function savingsPrinted(?string $savings): ?string
+    {
+        if (!$this->savingsLine || null === $savings || str_starts_with($savings, '-') || 1 !== preg_match('/[1-9]/', $savings)) {
+            return null;
+        }
+
+        return $savings;
+    }
+
     /** A delivery note asks for no payment: it carries goods, not a bill. */
     public function withoutHowToPay(): self
     {

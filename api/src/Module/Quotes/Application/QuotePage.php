@@ -45,6 +45,8 @@ final readonly class QuotePage
         public string $numberFormat = 'auto',
         /** The layout and accent it prints in: as sending kept them, or the company's today for a draft. */
         public DocumentDesign $design = new DocumentDesign(),
+        /** What the discounts take off, printed as « Vous économisez … »; null where the company keeps it off or nothing is taken off. */
+        public ?string $savings = null,
     ) {
     }
 }

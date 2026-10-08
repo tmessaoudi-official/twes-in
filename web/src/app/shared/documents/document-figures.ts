@@ -72,6 +72,14 @@ export function negated(amount: string): string {
   return amount.startsWith('-') ? amount.slice(1) : `-${amount}`;
 }
 
+/**
+ * Whether the discounts take anything off: a credit note's carry its sign, so they never read as saved, and an invoice
+ * issued before the figure was kept has none.
+ */
+export function savesSomething(savings: string | null): savings is string {
+  return savings !== null && !savings.startsWith('-') && /[1-9]/.test(savings);
+}
+
 /** Reads a preview's answer; a line sent from position `positions[i]` lands back there, the others stay null. */
 export function toDocumentFigures(
   body: PreviewBody,

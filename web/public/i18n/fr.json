@@ -3936,7 +3936,8 @@
       "tax": "{{code}} {{rate}} % · base {{base}}",
       "tax_named": "{{name}} · base {{base}}",
       "total": "Total TTC",
-      "as_saved": "En {{currency}}, tels qu’enregistrés en dernier. Le timbre et la retenue à la source sont ceux de la facture."
+      "as_saved": "En {{currency}}, tels qu’enregistrés en dernier. Le timbre et la retenue à la source sont ceux de la facture.",
+      "savings": "Vous économisez (remises, HT)"
     },
     "actions": {
       "save": "Enregistrer le brouillon",

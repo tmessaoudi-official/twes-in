@@ -109,6 +109,9 @@
     <tr><td>{{ 'totals.total_tax'|trans({}, t, locale) }}</td><td class="number">{{ figures.totalTax|decimal(scale, locale, page.numberFormat) }}</td></tr>
     <tr class="grand"><td>{{ 'totals.total'|trans({}, t, locale) }}</td><td class="number">{{ figures.total|decimal(scale, locale, page.numberFormat) }}</td></tr>
   </table>
+  {%- if page.savings %}
+    <p data-testid="savings">{{ 'totals.savings'|trans({'%amount%': page.savings|decimal(scale, locale, page.numberFormat)}, t, locale) }}</p>
+  {%- endif %}
   <p class="muted">{{ 'totals.currency'|trans({'%currency%': seller.currency}, t, locale) }}</p>
   {%- if quote.validUntil %}
     <p class="validity" data-testid="validity">{{ 'quote.validity'|trans({'%date%': quote.validUntil|date(dateFormat, 'UTC')}, t, locale) }}</p>

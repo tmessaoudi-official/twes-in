@@ -82,7 +82,12 @@ import { OverpaymentDialog } from './overpayment-dialog';
 import { overpaymentForm, overpaymentInput, overpaymentValues } from './overpayment-form';
 import { RecordView } from '../shared/form/record-view';
 import { taxNames } from './tax-names';
-import { liveFigures, negated, toDocumentFigures } from '../shared/documents/document-figures';
+import {
+  liveFigures,
+  negated,
+  savesSomething,
+  toDocumentFigures,
+} from '../shared/documents/document-figures';
 
 /**
  * One invoice or credit note: a new draft to fill in, a draft to revise, issue or cancel, or an issued document to
@@ -920,10 +925,7 @@ export class InvoicePage {
   }
 
   /** An amount the API wrote as zero at any scale, "0" or "0.000". */
-  /** Whether the discounts take anything off: a credit note's carry its sign, and an old issued invoice kept none. */
-  protected saves(savings: string | null): savings is string {
-    return savings !== null && !savings.startsWith('-') && !this.isZero(savings);
-  }
+  protected readonly saves = savesSomething;
 
   protected isZero(amount: string): boolean {
     return /^-?[0.]+$/.test(amount);

@@ -179,7 +179,7 @@ final readonly class PrintInvoice
             $paidStamp,
             $mentions->parameters,
             $design ?? $print->design,
-            $print->savingsLine && InvoiceType::CreditNote !== $invoice->getType() && null !== $figures->savings && Decimal::of($figures->savings)->compare(0) > 0 ? $figures->savings : null,
+            InvoiceType::CreditNote === $invoice->getType() ? null : $print->savingsPrinted($figures->savings),
         ));
     }
 

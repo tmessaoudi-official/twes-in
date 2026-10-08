@@ -406,6 +406,7 @@ function toQuote(raw: QuoteQuoteRead | QuoteJsonldQuoteRead): QuoteRow {
     })),
     subtotalNet: raw.subtotalNet ?? '0',
     documentDiscount: raw.documentDiscount ?? '0',
+    savings: raw.savings ?? '0',
     taxes: (raw.taxes ?? []).map(({ code, rate, base, amount }) => ({ code, rate, base, amount })),
     totalTax: raw.totalTax ?? '0',
     total: raw.total ?? '0',

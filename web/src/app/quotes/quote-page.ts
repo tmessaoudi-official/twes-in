@@ -19,7 +19,12 @@ import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { InvoiceLines } from '../invoices/invoice-lines';
 import { figuresReady, linesArray, pickedCustomer } from '../invoices/invoice-forms';
-import { liveFigures, negated, toDocumentFigures } from '../shared/documents/document-figures';
+import {
+  liveFigures,
+  negated,
+  savesSomething,
+  toDocumentFigures,
+} from '../shared/documents/document-figures';
 import type { CustomerOption } from '../invoices/invoices-types';
 import { LineCatalogue } from '../invoices/line-catalogue';
 import { taxNames } from '../invoices/tax-names';
@@ -256,6 +261,7 @@ export class QuotePage {
   );
   protected readonly lineFigures = computed(() => this.figures()?.lines ?? null);
   protected readonly negated = negated;
+  protected readonly saves = savesSomething;
   /** What the totals card shows: the figures as typed while the draft is edited, otherwise the quote as saved. */
   protected readonly shownTotals = computed(() => {
     const live = this.editable() ? this.figures() : null;

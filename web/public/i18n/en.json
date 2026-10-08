@@ -3936,7 +3936,8 @@
       "tax": "{{code}} {{rate}} % · base {{base}}",
       "tax_named": "{{name}} · base {{base}}",
       "total": "Total incl. tax",
-      "as_saved": "In {{currency}}, as last saved. The stamp and the withholding are the invoice's."
+      "as_saved": "In {{currency}}, as last saved. The stamp and the withholding are the invoice's.",
+      "savings": "You save (discounts, excl. tax)"
     },
     "actions": {
       "save": "Save the draft",

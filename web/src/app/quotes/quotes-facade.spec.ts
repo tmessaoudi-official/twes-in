@@ -36,6 +36,7 @@ const sent: QuoteRow = {
   lines: [],
   subtotalNet: '0',
   documentDiscount: '0',
+  savings: '0.000',
   taxes: [],
   totalTax: '0',
   total: '0',

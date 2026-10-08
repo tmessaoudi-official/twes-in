@@ -130,6 +130,7 @@ const draft: QuoteRow = {
   ],
   subtotalNet: '500.000',
   documentDiscount: '0.000',
+  savings: '0.000',
   taxes: [{ code: 'TVA19', rate: '19.000', base: '500.000', amount: '95.000' }],
   totalTax: '95.000',
   total: '595.000',
@@ -561,5 +562,13 @@ describe('QuotePage', () => {
     expect(text('line-0-net')).toContain('750,000');
     expect(text('quote-total')).toContain('892,500');
     expect(text('quote-totals-note')).toContain('document_figures.as_typed');
+    expect(q('quote-savings')).toBeNull();
+  });
+
+  it('says what the discounts save, saved or as typed', async () => {
+    quote.set({ ...draft, savings: '75.000' });
+    await open('q1');
+
+    expect((q('quote-savings')?.textContent ?? '').replace(/\s+/g, ' ')).toContain('75,000');
   });
 });

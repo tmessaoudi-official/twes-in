@@ -101,6 +101,8 @@ export interface QuoteRow {
   lines: QuoteLine[];
   subtotalNet: string;
   documentDiscount: string;
+  /** What the line discounts and the document discount take off together. */
+  savings: string;
   taxes: TaxTotal[];
   totalTax: string;
   total: string;

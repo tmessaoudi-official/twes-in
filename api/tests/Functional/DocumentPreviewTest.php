@@ -170,7 +170,7 @@ final class DocumentPreviewTest extends ApiTestCase
         $this->postJson($this->companyPath().'/quotes', $body);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $saved = $this->json();
-        foreach (['subtotalNet', 'documentDiscount', 'taxes', 'totalTax', 'total'] as $key) {
+        foreach (['subtotalNet', 'documentDiscount', 'savings', 'taxes', 'totalTax', 'total'] as $key) {
             self::assertSame($saved[$key], $preview[$key], "the preview's $key is what the save stored");
         }
         self::assertSame('33.750', $this->rows($preview, 'lines')[0]['net']);

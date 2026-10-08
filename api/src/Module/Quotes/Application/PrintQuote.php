@@ -49,10 +49,11 @@ final readonly class PrintQuote
             QuoteStatus::Sent, QuoteStatus::Accepted, QuoteStatus::Refused => null,
         };
         $printing = $quote->getPrintSettings() ?? QuotePrinting::today($this->settings, $quote);
+        $totals = $this->totals->of($quote);
 
         return new PrintedQuote(self::fileName($quote), $this->renderer->render($this->template->html(new QuotePage(
             $quote,
-            $this->totals->of($quote),
+            $totals,
             $quote->getCustomerSnapshot() ?? CustomerSnapshot::of($quote->getCustomer()),
             $quote->getSellerSnapshot() ?? SellerSnapshot::of($quote->getCompany(), $quote->getEstablishment()),
             $watermark,
@@ -62,6 +63,7 @@ final readonly class PrintQuote
             $printing->print->dateFormat,
             $printing->print->numberFormat,
             $printing->print->design,
+            $printing->print->savingsPrinted($totals->savings()),
         ))));
     }
 

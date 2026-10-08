@@ -67,5 +67,19 @@ final class TwigQuoteTemplateTest extends KernelTestCase
 
         self::assertMatchesRegularExpression('#<td class="number">10\s%</td>#u', $html, 'a rate with its sign');
         self::assertMatchesRegularExpression('#<td class="number">12,50</td>#u', $html, 'an amount as money is written');
+        self::assertStringNotContainsString('data-testid="savings"', $html, 'only when the company asks');
+
+        $html = static::getContainer()->get(QuoteTemplate::class)->html(new QuotePage(
+            $quote,
+            $totals->of($quote),
+            CustomerSnapshot::of($customer),
+            SellerSnapshot::of($company, $quote->getEstablishment()),
+            QuotePage::DRAFT,
+            'fr',
+            '',
+            false,
+            savings: '42.500',
+        ));
+        self::assertMatchesRegularExpression('#<p data-testid="savings">Vous économisez 42,50 HT grâce aux remises\.</p>#u', $html);
     }
 }

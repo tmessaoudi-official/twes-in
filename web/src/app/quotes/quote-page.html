@@ -222,6 +222,12 @@
             <dd class="text-end font-semibold" data-testid="quote-total">
               {{ totals.total | amount: scale() }}
             </dd>
+            @if (saves(totals.savings)) {
+              <dt>{{ 'quotes.totals.savings' | translate }}</dt>
+              <dd class="text-end" data-testid="quote-savings">
+                {{ totals.savings | amount: scale() }}
+              </dd>
+            }
           </dl>
           <p class="text-xs opacity-70" data-testid="quote-totals-note">
             {{

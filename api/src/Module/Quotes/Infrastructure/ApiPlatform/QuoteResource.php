@@ -387,6 +387,11 @@ final class QuoteResource
     #[Groups([self::READ])]
     public string $documentDiscount = '0';
 
+    /** What the line discounts and the document discount take off together. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $savings = '0';
+
     /** @var list<array{code: string, rate: string, base: string, amount: string}> each line tax over the lines carrying it */
     #[ApiProperty(writable: false, schema: [
         'type' => 'array',
@@ -448,6 +453,7 @@ final class QuoteResource
         ], $quote->getLines(), $totals->lines);
         $resource->subtotalNet = $totals->subtotalNet;
         $resource->documentDiscount = $totals->documentDiscount;
+        $resource->savings = $totals->savings();
         $resource->taxes = array_map(static fn (TaxTotal $tax): array => [
             'code' => $tax->code,
             'rate' => Decimal::format(Decimal::of($tax->rate->percentage()), 3),
