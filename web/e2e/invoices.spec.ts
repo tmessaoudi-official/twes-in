@@ -286,6 +286,9 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     // way out read « Garder le paiement » with no payment yet to keep (visual audit 2026-10-06, V-27).
     // A field spanning two columns, the notes, made a second column of its own in the one-column dialog grid.
     await expect(page.getByTestId('field-wrapper-notes')).toBeVisible();
+    // The dialog grows into place, and a box measured mid-way reads narrower: its first field takes the cursor only
+    // once it has finished opening, so the widths are read after that.
+    await expect(page.getByTestId('field-date')).toBeFocused();
     for (const field of ['date', 'amount', 'method', 'reference', 'notes']) {
       const width = await page
         .getByTestId(`field-wrapper-${field}`)
