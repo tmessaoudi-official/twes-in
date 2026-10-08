@@ -85,6 +85,12 @@ final class YamlFiscalPresetsTest extends TestCase
         self::assertSame('fiscal.mention.fr.franchise', $fr->companyVatRegimes[1]->mentionKey);
         self::assertSame([IdentifierCheck::Luhn, IdentifierCheck::Siret, IdentifierCheck::FrenchVatKey], array_map(static fn ($identifier) => $identifier->check, $fr->identifiers));
         self::assertNull($tn->identifiers[0]->check, "the matricule fiscal's check letter is not sourced (docs/fiscal/TN.md § 8)");
+        // Every other member state's VAT number, by the prefix VIES gives it (Greece is EL), and Northern Ireland's.
+        self::assertSame(
+            ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'EL', 'ES', 'FI', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'XI'],
+            array_keys($fr->identifiers[2]->foreignPatterns),
+        );
+        self::assertSame([], $tn->identifiers[0]->foreignPatterns);
         self::assertSame(['fiscal.mention.fr.late_payment', 'fiscal.mention.fr.recovery_indemnity', 'fiscal.mention.fr.no_early_discount'], $fr->invoiceMentions);
 
         // What a regime removing VAT means in an EN 16931 invoice (BT-118, BT-121): declared where the article is known,
@@ -154,6 +160,11 @@ final class YamlFiscalPresetsTest extends TestCase
         yield 'a name missing its English' => ['tax_components.0.names.en', self::REMOVE, 'en'];
         yield 'an identifier pattern that does not compile' => ['identifiers.0.pattern', '([0-9]', 'pattern'];
         yield 'an identifier check the product does not implement' => ['identifiers.0.check', 'mod23', 'check'];
+        yield 'a foreign pattern for the preset’s own country' => ['identifiers.0.foreign_patterns', ['TN' => '^TN[0-9]{9}$'], 'foreign_patterns.TN'];
+        yield 'a foreign pattern that is not its prefix’s' => ['identifiers.0.foreign_patterns', ['DE' => '^AT[0-9]{9}$'], 'foreign_patterns.DE'];
+        yield 'a foreign pattern open at its end' => ['identifiers.0.foreign_patterns', ['DE' => '^DE[0-9]{9}'], 'foreign_patterns.DE'];
+        yield 'a foreign pattern that does not compile' => ['identifiers.0.foreign_patterns', ['DE' => '^DE([0-9]{9}$'], 'foreign_patterns.DE'];
+        yield 'a foreign prefix that is not two capitals' => ['identifiers.0.foreign_patterns', ['de' => '^de[0-9]{9}$'], 'foreign_patterns.de'];
         yield 'a regime excluding a family that does not exist' => ['customer_tax_regimes.1.excluded_families', ['tva'], 'excluded_families'];
         yield 'a regime code used twice' => ['customer_tax_regimes.1.code', 'standard', 'standard'];
         yield 'a translation key outside the fiscal domain' => ['customer_tax_regimes.1.mention_key', 'mention.exempt', 'mention_key'];

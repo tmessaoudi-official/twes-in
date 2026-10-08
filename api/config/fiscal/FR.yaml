@@ -27,6 +27,37 @@ identifiers:
       pattern: '^FR[0-9A-Z]{2}[0-9]{9}$'
       required_for: []
       check: fr_vat_key
+      # Another member state's number, held by a customer or a supplier there, never by the company: the shapes
+      # VIES publishes (docs/fiscal/FR.md § 5a), by the prefix the number starts with. Northern Ireland trades goods
+      # under XI.
+      foreign_patterns:
+          AT: '^ATU[0-9]{8}$'
+          BE: '^BE[01][0-9]{9}$'
+          BG: '^BG[0-9]{9,10}$'
+          CY: '^CY[0-9]{8}[A-Z]$'
+          CZ: '^CZ[0-9]{8,10}$'
+          DE: '^DE[0-9]{9}$'
+          DK: '^DK[0-9]{8}$'
+          EE: '^EE[0-9]{9}$'
+          EL: '^EL[0-9]{9}$'
+          ES: '^ES(?:[0-9A-Z][0-9]{7}[A-Z]|[A-Z][0-9]{7}[0-9])$'
+          FI: '^FI[0-9]{8}$'
+          HR: '^HR[0-9]{11}$'
+          HU: '^HU[0-9]{8}$'
+          IE: '^IE(?:[0-9][0-9A-Z+*][0-9]{5}[A-Z]|[0-9]{7}[A-Z]{2})$'
+          IT: '^IT[0-9]{11}$'
+          LT: '^LT(?:[0-9]{9}|[0-9]{12})$'
+          LU: '^LU[0-9]{8}$'
+          LV: '^LV[0-9]{11}$'
+          MT: '^MT[0-9]{8}$'
+          NL: '^NL[0-9A-Z+*]{12}$'
+          PL: '^PL[0-9]{10}$'
+          PT: '^PT[0-9]{9}$'
+          RO: '^RO[0-9]{2,10}$'
+          SE: '^SE[0-9]{12}$'
+          SI: '^SI[0-9]{8}$'
+          SK: '^SK[0-9]{10}$'
+          XI: '^XI(?:[0-9]{9}|[0-9]{12}|GD[0-9]{3}|HA[0-9]{3})$'
 
 tax_components:
     - code: TVA20

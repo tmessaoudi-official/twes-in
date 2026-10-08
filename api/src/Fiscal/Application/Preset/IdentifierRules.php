@@ -11,7 +11,8 @@ namespace App\Fiscal\Application\Preset;
 
 /**
  * What a preset asks of the registration numbers someone carries, a company or a business customer: only the
- * identifiers it knows, each with its shape and its check, and those it requires of that holder present.
+ * identifiers it knows, each with its shape and its check, and those it requires of that holder present. Anyone but
+ * the company may hold another state's number where the preset lists that state's pattern.
  */
 final class IdentifierRules
 {
@@ -39,10 +40,12 @@ final class IdentifierRules
                 }
                 continue;
             }
-            if (1 !== preg_match('#'.str_replace('#', '\#', $identifier->pattern).'#u', $value)) {
+            // Another state's number has that state's shape; the preset's check digits are its own country's alone.
+            $foreign = $identifier->foreignPatternOf($value, $holder);
+            if (1 !== preg_match('#'.str_replace('#', '\#', $foreign ?? $identifier->pattern).'#u', $value)) {
                 return new IdentifierRefusal($field, \sprintf('This %s does not have the shape the %s preset expects.', $identifier->key, $preset->country), 'identifier_shape', ['identifier' => $identifier->key]);
             }
-            if (null !== $identifier->check && !$identifier->check->accepts($value)) {
+            if (null === $foreign && null !== $identifier->check && !$identifier->check->accepts($value)) {
                 return new IdentifierRefusal($field, \sprintf('This %s fails its check digits.', $identifier->key), 'identifier_checksum', ['identifier' => $identifier->key]);
             }
         }

@@ -79,7 +79,7 @@ final readonly class PresetReader
             $languages,
             RoundingPoint::from($this->string($rounding, 'vat_point', 'rounding.vat_point')),
             TaxBasis::from($this->string($rounding, 'tax_basis', 'rounding.tax_basis')),
-            $this->identifiers($this->node($config, 'identifiers', 'identifiers')),
+            $this->identifiers($this->node($config, 'identifiers', 'identifiers'), $country),
             $this->components($this->node($config, 'tax_components', 'tax_components'), $minorUnit),
             $this->regimes($this->node($config, 'customer_tax_regimes', 'customer_tax_regimes'), 'customer_tax_regimes'),
             $this->regimes($this->node($config, 'company_vat_regimes', 'company_vat_regimes'), 'company_vat_regimes'),
@@ -114,7 +114,7 @@ final readonly class PresetReader
      *
      * @return list<PresetIdentifier>
      */
-    private function identifiers(array $nodes): array
+    private function identifiers(array $nodes, string $country): array
     {
         $identifiers = [];
         foreach (array_values($nodes) as $i => $node) {
@@ -124,16 +124,48 @@ final readonly class PresetReader
             if (false === @preg_match("\x01".$pattern."\x01u", '')) {
                 $this->refuse("$path.pattern", 'is not a valid regular expression');
             }
+            $foreign = $this->foreignPatterns($node, "$path.foreign_patterns", $country);
+            if ([] !== $foreign && 1 !== preg_match('/^\^.*\$$/', $pattern)) {
+                $this->refuse("$path.pattern", 'must be anchored at both ends when other states\' patterns join it');
+            }
             $identifiers[] = new PresetIdentifier(
                 $this->string($node, 'key', "$path.key"),
                 $this->translationKey($node, 'label_key', "$path.label_key"),
                 $pattern,
                 $this->strings($node, 'required_for', "$path.required_for"),
                 \is_string($node['check'] ?? null) ? IdentifierCheck::from($node['check']) : null,
+                $foreign,
             );
         }
 
         return $identifiers;
+    }
+
+    /**
+     * Each by the two capitals a number of that state starts with (VIES writes Greece's EL, not GR, so they are not
+     * country codes): its pattern starts with them and is anchored at both ends, so the patterns join into one a form
+     * can check against.
+     *
+     * @param array<mixed> $node
+     *
+     * @return array<string, string>
+     */
+    private function foreignPatterns(array $node, string $path, string $country): array
+    {
+        $patterns = [];
+        foreach (\is_array($node['foreign_patterns'] ?? null) ? $node['foreign_patterns'] : [] as $prefix => $pattern) {
+            $prefix = (string) $prefix;
+            if (1 !== preg_match('/^[A-Z]{2}$/', $prefix) || $prefix === $country) {
+                $this->refuse("$path.$prefix", "must be two capitals naming a state other than $country");
+            }
+            if (!\is_string($pattern) || !str_starts_with($pattern, '^'.$prefix) || !str_ends_with($pattern, '$') || false === @preg_match("\x01".$pattern."\x01u", '')) {
+                $this->refuse("$path.$prefix", "must be a valid regular expression starting ^$prefix and ending $");
+            }
+            $patterns[$prefix] = $pattern;
+        }
+        ksort($patterns, \SORT_STRING);
+
+        return $patterns;
     }
 
     /**

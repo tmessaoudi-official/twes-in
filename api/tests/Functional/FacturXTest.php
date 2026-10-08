@@ -279,6 +279,43 @@ final class FacturXTest extends ApiTestCase
         return $xpath;
     }
 
+    public function testAnIntraCommunityCustomerHoldsItsOwnCountrysVatNumberAndItsInvoiceNamesIt(): void
+    {
+        $this->createUser('desk@twes.local', 'password-1234', $this->company, ['customer.read', 'customer.write', 'invoice.read', 'invoice.write', 'invoice.issue'], 'member');
+        $this->login('desk@twes.local', 'password-1234');
+        $customers = '/api/companies/'.$this->company->getId()->toRfc4122().'/customers';
+
+        $this->getJson('/api/companies/'.$this->company->getId()->toRfc4122().'/customer-options');
+        self::assertResponseIsSuccessful();
+        $vat = array_values(array_filter($this->arrayAt($this->json(), 'identifiers'), static fn (mixed $identifier): bool => \is_array($identifier) && 'vat_number' === $identifier['key']))[0];
+        self::assertIsString($vat['pattern']);
+        self::assertSame(1, preg_match('#'.$vat['pattern'].'#', 'DE123456789'), 'the form accepts what the API accepts');
+
+        $german = [
+            'number' => 'CLI-0002', 'kind' => 'company', 'name' => 'Holzwerk Berlin', 'taxRegime' => 'intra_eu',
+            'billingAddressLine1' => 'Torstraße 1', 'billingPostalCode' => '10119', 'billingCity' => 'Berlin', 'billingCountryCode' => 'DE',
+            'defaultTaxComponentIds' => [], 'isActive' => true,
+        ];
+        $this->postJson($customers, [...$german, 'identifiers' => ['vat_number' => 'DE12345678']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('identifiers.vat_number', (string) $this->client->getResponse()->getContent());
+        $this->postJson($customers, [...$german, 'identifiers' => ['vat_number' => 'DE123456789']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->customerId = $this->stringAt($this->json(), 'id');
+
+        $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($unit);
+        $id = $this->issued(['lines' => [['description' => 'Arbre usiné', 'quantity' => '4', 'unitId' => $unit->getId()->toRfc4122(), 'unitPriceNet' => '80', 'discountRate' => null, 'taxComponentIds' => []]]]);
+        $this->client->request('GET', $this->path($id).'/factur-x.xml');
+
+        self::assertResponseIsSuccessful();
+        $read = self::xpath((string) $this->client->getResponse()->getContent());
+        self::assertSame(['DE123456789', 'K'], [
+            $read->evaluate('string(//ram:BuyerTradeParty/ram:SpecifiedTaxRegistration/ram:ID[@schemeID="VA"])'),
+            $read->evaluate('string(//ram:ApplicableHeaderTradeSettlement/ram:ApplicableTradeTax/ram:CategoryCode)'),
+        ]);
+    }
+
     /** @return list<string> */
     private static function strings(\DOMXPath $xpath, string $query): array
     {

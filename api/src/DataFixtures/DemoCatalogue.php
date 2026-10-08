@@ -137,7 +137,7 @@ final class DemoCatalogue
         foreach (['Camille Laurent' => 'Lyon', 'Julien Faure' => 'Grenoble', 'Sophie Bonnet' => 'Annecy', 'Thomas Robert' => 'Lyon'] as $name => $city) {
             $customers[] = new DemoCustomer($name, $city, individual: true, group: 2);
         }
-        $customers[] = new DemoCustomer('Holzwerk Berlin GmbH', 'Berlin', 'DE', regime: 'intra_eu');
+        $customers[] = new DemoCustomer('Holzwerk Berlin GmbH', 'Berlin', 'DE', regime: 'intra_eu', identifiers: ['vat_number' => 'DE123456789']);
         $customers[] = new DemoCustomer('Maison Dubois SA', 'Genève', 'CH', regime: 'export');
 
         return new DemoCompany(

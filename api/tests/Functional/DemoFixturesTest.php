@@ -133,10 +133,9 @@ final class DemoFixturesTest extends ApiTestCase
         );
 
         // Every document the French company issued is written as Factur-X, so the invoice screen's « Factur-X » has a
-        // file to hand over rather than a list of what the demo forgot (a customer's postal code, its country). Two
-        // are refused, and the screen shows why: a sale to the customer whose regime is plain « exempt », which names
-        // no exempting article, and the intra-community sale, whose customer cannot yet hold a VAT number of its own
-        // country.
+        // file to hand over rather than a list of what the demo forgot (a customer's postal code, its country). One
+        // is refused, and the screen shows why: a sale to the customer whose regime is plain « exempt », which names
+        // no exempting article. The intra-community sale is written, its German customer holding its own VAT number.
         $mercier = $this->row("SELECT id FROM company WHERE name = 'Atelier Mercier'", [])['id'];
         self::assertIsString($mercier);
         $company = $this->em()->find(Company::class, Uuid::fromString($mercier));
@@ -152,7 +151,7 @@ final class DemoFixturesTest extends ApiTestCase
             }
         }
         sort($refused);
-        self::assertSame([['buyer_vat_number_missing'], ['vat_exemption_undeclared']], $refused);
+        self::assertSame([['vat_exemption_undeclared']], $refused);
     }
 
     public function testASecondLoadChangesNothing(): void

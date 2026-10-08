@@ -47,7 +47,7 @@ final readonly class CustomerOptionsProvider implements ProviderInterface
             $options->identifiers[] = new CustomerIdentifierOption(
                 $identifier->key,
                 $this->translator->trans($identifier->labelKey, [], 'fiscal', $locale),
-                $identifier->pattern,
+                $identifier->patternFor(IdentifierRules::BUSINESS_CUSTOMER),
                 \in_array(IdentifierRules::BUSINESS_CUSTOMER, $identifier->requiredFor, true),
             );
         }

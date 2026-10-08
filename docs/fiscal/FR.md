@@ -105,6 +105,49 @@ The preset names each identifier's check beside its pattern: `luhn` for the SIRE
 La Poste's SIREN 356000000 a digit sum divisible by five) and `fr_vat_key` for the VAT number, whose key is checked
 only when it is two digits. Unvalidated, like the rest of this section.
 
+## 5a. Other member states' VAT numbers
+
+An intra-community customer is named on the invoice by its own VAT number, issued by its own state (CGI annexe II
+art. 242 nonies A [6]; in the electronic invoice BT-48, which BR-IC-04 requires for an intra-community supply [9]). So a
+customer, or a supplier, may hold another member state's number, held to that state's shape; the company's own number
+keeps France's pattern and key above. The shapes are the European Commission's, as its VIES service publishes them
+(« VAT identification number structure » [19]). VIES writes some numbers with spaces between blocks (`FRXX 999999999`,
+`DK99 99 99 99`); the patterns take the number without them, as § 5 does for France's. No other state's check digits
+are applied (Known gaps).
+
+| Prefix | VIES format | Preset pattern (`vat_number.foreign_patterns`) | Status |
+|---|---|---|---|
+| AT | ATU99999999 (the first position after the prefix is always « U ») | `^ATU[0-9]{8}$` | unvalidated |
+| BE | BE0999999999, BE1999999999 | `^BE[01][0-9]{9}$` | unvalidated |
+| BG | BG999999999 or BG9999999999 | `^BG[0-9]{9,10}$` | unvalidated |
+| CY | CY99999999L | `^CY[0-9]{8}[A-Z]$` | unvalidated |
+| CZ | CZ99999999, CZ999999999 or CZ9999999999 | `^CZ[0-9]{8,10}$` | unvalidated |
+| DE | DE999999999 | `^DE[0-9]{9}$` | unvalidated |
+| DK | DK99 99 99 99 | `^DK[0-9]{8}$` | unvalidated |
+| EE | EE999999999 | `^EE[0-9]{9}$` | unvalidated |
+| EL (Greece) | EL999999999 | `^EL[0-9]{9}$` | unvalidated |
+| ES | ESX9999999X, the first and last characters a letter or a digit, never both digits | `^ES(?:[0-9A-Z][0-9]{7}[A-Z]\|[A-Z][0-9]{7}[0-9])$` | unvalidated |
+| FI | FI99999999 | `^FI[0-9]{8}$` | unvalidated |
+| HR | HR99999999999 | `^HR[0-9]{11}$` | unvalidated |
+| HU | HU99999999 | `^HU[0-9]{8}$` | unvalidated |
+| IE | IE9S99999L or IE9999999WI (W and I read as letters, which the legend does not define) | `^IE(?:[0-9][0-9A-Z+*][0-9]{5}[A-Z]\|[0-9]{7}[A-Z]{2})$` | unvalidated |
+| IT | IT99999999999 | `^IT[0-9]{11}$` | unvalidated |
+| LT | LT999999999 or LT999999999999 | `^LT(?:[0-9]{9}\|[0-9]{12})$` | unvalidated |
+| LU | LU99999999 | `^LU[0-9]{8}$` | unvalidated |
+| LV | LV99999999999 | `^LV[0-9]{11}$` | unvalidated |
+| MT | MT99999999 | `^MT[0-9]{8}$` | unvalidated |
+| NL | NLSSSSSSSSSSSS (S a letter, a digit, « + » or « * ») | `^NL[0-9A-Z+*]{12}$` | unvalidated |
+| PL | PL9999999999 | `^PL[0-9]{10}$` | unvalidated |
+| PT | PT999999999 | `^PT[0-9]{9}$` | unvalidated |
+| RO | RO999999999, 2 to 10 digits | `^RO[0-9]{2,10}$` | unvalidated |
+| SE | SE999999999999 | `^SE[0-9]{12}$` | unvalidated |
+| SI | SI99999999 | `^SI[0-9]{8}$` | unvalidated |
+| SK | SK9999999999 | `^SK[0-9]{10}$` | unvalidated |
+| XI (Northern Ireland) | XI999 9999 99, XI999 9999 99 999, XIGD999, XIHA999 | `^XI(?:[0-9]{9}\|[0-9]{12}\|GD[0-9]{3}\|HA[0-9]{3})$` | unvalidated |
+
+Northern Ireland is not a member state, but VIES checks its numbers for the goods it trades with the Union under the
+prefix XI; a customer there holds one.
+
 ## 6. Customer tax regimes
 
 | Code | Excludes | Mention | Status |
@@ -150,6 +193,8 @@ E-invoicing comes after the POC (docs/SPEC.md § 2).
 - The encaissements basis for services (§ 2a): the VAT on what was received in a period, not computed; the débits option is not recorded on the company.
 - The CA3/CA12 themselves and the CIBS article numbers for § 2a, not researched.
 - A VAT key of letters (numbers issued without a SIREN) is accepted unchecked (§ 5).
+- Another member state's VAT number (§ 5a) is checked for its shape only, never for that state's check digits, and its
+  prefix is not compared with the customer's country.
 - Mention wording (§ 4, § 6) is unsourced beyond the articles named.
 - Advances (§ 2b): the split of a deposit over several rates and the correction of a refunded advance are not in any text found; CGI art. 289 itself was read only as cited by the BOFiP; an advance received before its deposit invoice (its date printed) is not offered.
 
@@ -173,3 +218,4 @@ E-invoicing comes after the POC (docs/SPEC.md § 2).
 16. BOI-TVA-DECLA-30-20-20-20 (simplified and particular invoices), 25 September 2019: https://bofip.impots.gouv.fr/export/pdf/320369
 17. BOFiP actualité ACTU-2022-00148, « Exigibilité de la TVA sur les acomptes perçus dans le cadre de livraisons de biens », 21 December 2022: https://bofip.impots.gouv.fr/bofip/13758-PGP.html/ACTU-2022-00148
 18. Legifiscal, « Facturation électronique – cas d'usage n° 20 et 21 : les acomptes » (secondary, on AFNOR XP Z12-014): https://www.legifiscal.fr/creation-entreprise/facturation-obligations/facturation-electronique-cas-usage-n20-21-acomptes.html
+19. European Commission, VIES, FAQ « VAT identification number structure »: https://ec.europa.eu/taxation_customs/vies/#/faq ; the table was read from the page's own English text, https://ec.europa.eu/taxation_customs/vies/assets/i18n/en.json (keys `faq_label_<prefix>format`, `faq_lbl_remarks`, `faq_txt_notes`), on 2026-10-09.

@@ -39,7 +39,7 @@ final readonly class VendorOptionsProvider implements ProviderInterface
             $options->identifiers[] = new VendorIdentifierOption(
                 $identifier->key,
                 $this->translator->trans($identifier->labelKey, [], 'fiscal', $locale),
-                $identifier->pattern,
+                $identifier->patternFor(''),
             );
         }
 
