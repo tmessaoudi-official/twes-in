@@ -139,6 +139,9 @@
     {%- endfor %}
     <tr class="due"><td>{{ 'totals.amount_due'|trans({}, t, locale) }}</td><td class="number">{{ figures.amountDue|decimal(scale, locale, page.numberFormat) }}</td></tr>
   </table>
+  {%- if page.savings %}
+    <p data-testid="savings">{{ 'totals.savings'|trans({'%amount%': page.savings|decimal(scale, locale, page.numberFormat)}, t, locale) }}</p>
+  {%- endif %}
   {%- if page.amountInWords %}
     <p data-testid="amount-in-words">{{ (invoice.type.value == 'credit_note' ? 'totals.in_words_credit_note' : 'totals.in_words')|trans({}, t, locale) }} {{ page.amountInWords }}.</p>
   {%- endif %}

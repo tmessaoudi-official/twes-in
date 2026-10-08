@@ -72,6 +72,7 @@ const invoice: InvoiceRow = {
   lines: [],
   subtotalNet: '10000.000',
   documentDiscount: '0.000',
+  savings: null,
   totalNet: '10000.000',
   taxes: [],
   totalTax: '1900.000',

@@ -871,6 +871,7 @@
       "printed_notes": "Notes printed on documents",
       "how_to_pay": "Print how to pay on invoices (IBAN, BIC, number to quote)",
       "amount_in_words": "Write the total out in words on documents",
+      "savings_line": "Print under the totals what the discounts save (“You save …”)",
       "paid_stamp": "Stamp what became of the invoice on its up-to-date copy (« Paid », « Settled », « Partly paid »)",
       "late_payment_rate": "Late payment penalty rate (printed where the law asks for it, e.g. « three times the legal interest rate »)",
       "exemption_reference": "VAT exemption provision (printed for an exempt customer, e.g. « article 261-4-4° du CGI »)",
@@ -1387,7 +1388,8 @@
       "paid": "Paid so far",
       "credited": "Credit notes",
       "left": "Amount due",
-      "as_saved": "In {{currency}}, as last saved."
+      "as_saved": "In {{currency}}, as last saved.",
+      "savings": "You save (discounts, excl. tax)"
     },
     "due": {
       "left": "Still to collect",

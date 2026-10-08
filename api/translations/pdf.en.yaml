@@ -69,6 +69,7 @@ totals:
     in_words_credit_note: 'This credit note is closed at the sum, tax included, of:'
     subtotal: 'Total excl. tax'
     total_tax: 'Total tax'
+    savings: 'You save %amount% excl. tax through the discounts.'
     total: 'Total incl. tax'
     currency: 'Amounts in %currency%'
 payment:

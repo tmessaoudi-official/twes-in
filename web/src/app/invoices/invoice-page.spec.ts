@@ -193,6 +193,7 @@ const draft: InvoiceRow = {
   ],
   subtotalNet: '1800.000',
   documentDiscount: '0.000',
+  savings: null,
   totalNet: '1800.000',
   taxes: [{ code: 'TVA19', rate: '19.000', base: '1800.000', amount: '342.000' }],
   totalTax: '342.000',
@@ -1982,6 +1983,35 @@ describe('InvoicePage', () => {
       expect(totals).toContain('21,330');
       expect(totals).not.toMatch(/[−-]\s*[−-]/);
       expect(totals).not.toMatch(/[−-]\s*(10|21,330)/);
+    });
+
+    it('says what the discounts save as it is typed, and nothing when none is given', async () => {
+      invoice.set(draft);
+      await open('i1');
+      await rested();
+      facade.preview.mockResolvedValue({ ...twice, savings: '360.000' });
+      type('line-0-quantity', '2');
+      await rested();
+      expect(text('invoice-savings')).toContain('360,000');
+
+      facade.preview.mockResolvedValue({ ...twice, savings: '0.000' });
+      type('line-0-quantity', '3');
+      await rested();
+      expect(q('invoice-savings')).toBeNull();
+    });
+
+    it('says nothing saved on a credit note, whose discounts give money back', async () => {
+      invoice.set({
+        ...draft,
+        type: 'credit_note',
+        correctsInvoiceId: 'i0',
+        documentDiscount: '-10.000',
+        savings: '-10.000',
+      });
+      await open('i1');
+      await rested();
+
+      expect(q('invoice-savings')).toBeNull();
     });
 
     it('asks nothing of a document that no longer changes', async () => {

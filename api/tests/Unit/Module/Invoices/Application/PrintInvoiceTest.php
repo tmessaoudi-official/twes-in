@@ -247,6 +247,49 @@ final class PrintInvoiceTest extends TestCase
         self::assertNotNull($this->template->pages[0]->amountInWords);
     }
 
+    public function testWhatTheDiscountsSaveIsPrintedOnlyWhenTheCompanyAsksForIt(): void
+    {
+        $draft = $this->draft($this->customer('standard', null), '10');
+        $this->print->pdf($this->company, $draft->getId());
+        self::assertNull($this->template->pages[0]->savings, 'off by default');
+
+        $this->change->change(new SettingContext($this->company), 'document.savings_line', SettingLevel::Company, true, null);
+        $this->print->pdf($this->company, $draft->getId());
+
+        self::assertSame('1.000', $this->template->pages[1]->savings);
+    }
+
+    public function testADocumentWithoutADiscountPrintsNoSavingsLineEvenWhenAsked(): void
+    {
+        $this->change->change(new SettingContext($this->company), 'document.savings_line', SettingLevel::Company, true, null);
+        $draft = $this->draft($this->customer('standard', null));
+
+        $this->print->pdf($this->company, $draft->getId());
+
+        self::assertNull($this->template->pages[0]->savings);
+    }
+
+    public function testAnIssuedInvoiceKeepsItsSavingsLineWhateverTheSettingSaysByThen(): void
+    {
+        $invoice = $this->issued($this->customer('standard', null), new PrintSettings('', 'auto', 'auto', savingsLine: true), '10');
+
+        $this->print->pdf($this->company, $invoice->getId());
+
+        self::assertSame('1.000', $this->template->pages[0]->savings);
+    }
+
+    public function testACreditNotePrintsNoSavingsLine(): void
+    {
+        $invoice = $this->issued($this->customer('standard', null), new PrintSettings('', 'auto', 'auto', savingsLine: true), '10');
+        $credit = Invoice::creditNoteFor($invoice, 'Retour', $this->clock->now());
+        $credit->issue(new InvoiceIssue('AV-2026-00001', new \DateTimeImmutable('2026-09-15'), 0, 'fr', [], null, null, null, new PrintSettings('', 'auto', 'auto', savingsLine: true)), fn (Invoice $issuing) => $this->totals->issued($issuing), $this->clock->now());
+        $this->invoices->save($credit);
+
+        $this->print->pdf($this->company, $credit->getId());
+
+        self::assertNull($this->template->pages[0]->savings);
+    }
+
     public function testHowToPayIsPrintedOnInvoicesUnlessTheSettingTurnsItOff(): void
     {
         $draft = $this->draft($this->customer('standard', null));
@@ -380,7 +423,7 @@ final class PrintInvoiceTest extends TestCase
         self::assertSame([[], null], [$this->records->files, $draft->getPdfFile()]);
     }
 
-    private function draft(Customer $customer): Invoice
+    private function draft(Customer $customer, ?string $discountRate = null): Invoice
     {
         $unit = $this->units->ofCodeInCompany('C62', $this->company->getId());
         $vat = $this->taxes->ofCodeInCompany('TVA19', $this->company->getId());
@@ -390,16 +433,16 @@ final class PrintInvoiceTest extends TestCase
         self::assertNotNull($stamp);
         $taxes = [] === $customer->getTaxRegime()->getExcludedFamilies() ? [$vat] : [];
         $invoice = Invoice::create($this->company, $this->establishments->ofCompany($this->company->getId())[0], $customer, new InvoiceHeader(), [
-            new InvoiceLineDetails(null, 'Pièce', '1', $unit, '10', null, $taxes),
+            new InvoiceLineDetails(null, 'Pièce', '1', $unit, '10', $discountRate, $taxes),
         ], [$stamp], $this->clock->now());
         $this->invoices->save($invoice);
 
         return $invoice;
     }
 
-    private function issued(Customer $customer, PrintSettings $print = new PrintSettings('', 'auto', 'auto')): Invoice
+    private function issued(Customer $customer, PrintSettings $print = new PrintSettings('', 'auto', 'auto'), ?string $discountRate = null): Invoice
     {
-        $invoice = $this->draft($customer);
+        $invoice = $this->draft($customer, $discountRate);
         $invoice->issue(
             new InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15'), 30, 'en', $customer->getTaxRegime()->getMentionKey() ? [$customer->getTaxRegime()->getMentionKey()] : [], null, 'Merci', null, $print),
             fn (Invoice $issuing) => $this->totals->issued($issuing),

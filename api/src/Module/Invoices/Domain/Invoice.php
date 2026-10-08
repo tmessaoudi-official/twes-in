@@ -157,6 +157,10 @@ class Invoice implements CompanyOwned
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
     private ?string $totalNet = null;
 
+    /** What the discounts took off, written at issue; null on a draft and on a document issued before it was kept. */
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $savings = null;
+
     /** @var list<array<string, mixed>>|null */
     #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
     private ?array $taxBreakdown = null;
@@ -573,6 +577,7 @@ class Invoice implements CompanyOwned
         $this->subtotalNet = $fixed->subtotalNet;
         $this->documentDiscount = $fixed->documentDiscount;
         $this->totalNet = $fixed->totalNet;
+        $this->savings = $fixed->savings;
         $this->taxBreakdown = $fixed->taxes;
         $this->totalTax = $fixed->totalTax;
         $this->fixedTaxes = $fixed->fixedTaxes;
@@ -828,6 +833,7 @@ class Invoice implements CompanyOwned
             $lines,
             $this->amountPaid,
             $this->amountCredited,
+            $this->savings,
         );
     }
 

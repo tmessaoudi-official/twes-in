@@ -70,6 +70,7 @@ totals:
     subtotal: 'Total HT'
     total_tax: 'Total des taxes'
     total: 'Total TTC'
+    savings: 'Vous économisez %amount% HT grâce aux remises.'
     currency: 'Montants en %currency%'
 payment:
     how_to_pay: 'Comment payer'

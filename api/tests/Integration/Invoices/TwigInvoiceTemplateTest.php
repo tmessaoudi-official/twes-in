@@ -126,6 +126,14 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         self::assertMatchesRegularExpression('#<td class="number">12,50</td>#u', $html, 'an amount as money is written');
     }
 
+    public function testWhatTheDiscountsSaveIsPrintedUnderTheTotalsOnlyWhenGiven(): void
+    {
+        self::bootKernel();
+
+        self::assertStringNotContainsString('data-testid="savings"', $this->html(new DocumentDesign(), [], []));
+        self::assertMatchesRegularExpression('#<p data-testid="savings">Vous économisez 42,50 HT grâce aux remises\.</p>#u', $this->html(new DocumentDesign(), [], [], '42.500'));
+    }
+
     /**
      * A layout restyles the one content every document prints; it may not take any of it away. Its rules never hide,
      * fade or move anything, and never touch the watermark or a mention.
@@ -167,7 +175,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
      * @param list<string>                         $keys
      * @param array<string, array<string, string>> $parameters
      */
-    private function html(DocumentDesign $design, array $keys, array $parameters): string
+    private function html(DocumentDesign $design, array $keys, array $parameters, ?string $savings = null): string
     {
         $template = static::getContainer()->get(InvoiceTemplate::class);
         $company = $this->invoice->getCompany();
@@ -185,6 +193,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
             null,
             mentionParameters: $parameters,
             design: $design,
+            savings: $savings,
         ));
     }
 }

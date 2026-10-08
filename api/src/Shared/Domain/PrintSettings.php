@@ -29,25 +29,27 @@ final readonly class PrintSettings
         public bool $howToPay = false,
         /** Its layout and accent; a document issued before designs existed printed the classic way. */
         public DocumentDesign $design = new DocumentDesign(),
+        /** Whether what the discounts took off is printed under the totals; a document issued before the setting existed has none. */
+        public bool $savingsLine = false,
     ) {
     }
 
     /** A delivery note asks for no payment: it carries goods, not a bill. */
     public function withoutHowToPay(): self
     {
-        return new self($this->printedNotes, $this->dateFormat, $this->numberFormat, $this->amountInWords, false, $this->design);
+        return new self($this->printedNotes, $this->dateFormat, $this->numberFormat, $this->amountInWords, false, $this->design, $this->savingsLine);
     }
 
-    /** @return array{printedNotes: string, dateFormat: string, numberFormat: string, amountInWords: bool, howToPay: bool, layout: string, accent: string} */
+    /** @return array{printedNotes: string, dateFormat: string, numberFormat: string, amountInWords: bool, howToPay: bool, savingsLine: bool, layout: string, accent: string} */
     public function toArray(): array
     {
-        return ['printedNotes' => $this->printedNotes, 'dateFormat' => $this->dateFormat, 'numberFormat' => $this->numberFormat, 'amountInWords' => $this->amountInWords, 'howToPay' => $this->howToPay, ...$this->design->toArray()];
+        return ['printedNotes' => $this->printedNotes, 'dateFormat' => $this->dateFormat, 'numberFormat' => $this->numberFormat, 'amountInWords' => $this->amountInWords, 'howToPay' => $this->howToPay, 'savingsLine' => $this->savingsLine, ...$this->design->toArray()];
     }
 
     /** @param array<string, mixed> $data */
     public static function fromArray(array $data): self
     {
-        return new self(self::text($data, 'printedNotes'), self::text($data, 'dateFormat'), self::text($data, 'numberFormat'), true === ($data['amountInWords'] ?? false), true === ($data['howToPay'] ?? false), DocumentDesign::fromArray($data));
+        return new self(self::text($data, 'printedNotes'), self::text($data, 'dateFormat'), self::text($data, 'numberFormat'), true === ($data['amountInWords'] ?? false), true === ($data['howToPay'] ?? false), DocumentDesign::fromArray($data), true === ($data['savingsLine'] ?? false));
     }
 
     /** @param array<string, mixed> $data */

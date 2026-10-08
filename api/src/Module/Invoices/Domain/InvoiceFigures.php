@@ -42,6 +42,8 @@ final readonly class InvoiceFigures
         public array $lines,
         public string $amountPaid = '0.000',
         public string $amountCredited = '0.000',
+        /** What the discounts take off, in the prices' terms; null on a document issued before it was kept. */
+        public ?string $savings = null,
     ) {
     }
 
@@ -66,6 +68,7 @@ final readonly class InvoiceFigures
 
                 return ['net' => $line->net, 'tax' => Decimal::format($lineTax, $scale), 'gross' => Decimal::format(Decimal::sum([Decimal::of($line->net), $lineTax]), $scale)];
             }, $totals->lines),
+            savings: $totals->savings(),
         )->atScale($scale);
     }
 
@@ -97,6 +100,7 @@ final readonly class InvoiceFigures
             array_map(static fn (array $line): array => ['net' => $amount($line['net']), 'tax' => $amount($line['tax']), 'gross' => $amount($line['gross'])], $this->lines),
             $amount($this->amountPaid),
             $amount($this->amountCredited),
+            null === $this->savings ? null : $amount($this->savings),
         );
     }
 

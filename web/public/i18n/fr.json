@@ -871,6 +871,7 @@
       "printed_notes": "Notes imprimées sur les documents",
       "how_to_pay": "Imprimer sur les factures comment payer (IBAN, BIC, numéro à rappeler)",
       "amount_in_words": "Écrire le total en lettres sur les documents",
+      "savings_line": "Imprimer sous les totaux ce que les remises font économiser (« Vous économisez… »)",
       "paid_stamp": "Tamponner sur la copie à jour ce que la facture est devenue (« Acquittée », « Soldée », « Réglée partiellement »)",
       "late_payment_rate": "Taux des pénalités de retard (imprimé là où la loi le demande, ex. « trois fois le taux d’intérêt légal »)",
       "exemption_reference": "Texte d’exonération de TVA (imprimé pour un client exonéré, ex. « article 261-4-4° du CGI »)",
@@ -1387,7 +1388,8 @@
       "paid": "Déjà payé",
       "credited": "Avoirs",
       "left": "Reste à payer",
-      "as_saved": "En {{currency}}, tels qu’enregistrés en dernier."
+      "as_saved": "En {{currency}}, tels qu’enregistrés en dernier.",
+      "savings": "Vous économisez (remises, HT)"
     },
     "due": {
       "left": "Reste à encaisser",

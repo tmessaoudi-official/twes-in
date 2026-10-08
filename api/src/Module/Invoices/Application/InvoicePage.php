@@ -65,6 +65,8 @@ final readonly class InvoicePage
         public array $mentionParameters = [],
         /** The layout and accent it prints in: as issuing kept them, or the company's today for a draft. */
         public DocumentDesign $design = new DocumentDesign(),
+        /** What the discounts took off, printed as « Vous économisez … »; null where the company keeps it off, on a credit note, or when nothing was taken off. */
+        public ?string $savings = null,
     ) {
     }
 

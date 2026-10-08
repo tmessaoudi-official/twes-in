@@ -235,6 +235,8 @@ export interface InvoiceRow {
   lines: InvoiceLine[];
   subtotalNet: string;
   documentDiscount: string;
+  /** What the discounts take off together; null on a document issued before it was kept. */
+  savings: string | null;
   totalNet: string;
   taxes: TaxTotal[];
   totalTax: string;

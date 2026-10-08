@@ -37,6 +37,8 @@ export interface DocumentFigures {
   readonly lines: readonly (LineFigures | null)[];
   readonly subtotalNet: string;
   readonly documentDiscount: string;
+  /** What the line discounts and the document discount take off together. */
+  readonly savings: string;
   readonly totalNet: string;
   readonly taxes: readonly RatedFigure[];
   readonly totalTax: string;
@@ -52,6 +54,7 @@ export interface PreviewBody {
   lines?: LineFigures[];
   subtotalNet?: string;
   documentDiscount?: string;
+  savings?: string;
   totalNet?: string;
   taxes?: RatedFigure[];
   totalTax?: string;
@@ -84,6 +87,7 @@ export function toDocumentFigures(
     lines,
     subtotalNet: body.subtotalNet ?? '0',
     documentDiscount: body.documentDiscount ?? '0',
+    savings: body.savings ?? '0',
     totalNet: body.totalNet ?? '0',
     taxes: body.taxes ?? [],
     totalTax: body.totalTax ?? '0',

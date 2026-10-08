@@ -69,11 +69,12 @@ final class DocumentPreviewTest extends ApiTestCase
         self::assertSame(['FODEC', 'TVA19'], array_column($this->rows($lines[0], 'taxes'), 'code'));
         self::assertSame(['33.750', '34.088'], array_column($this->rows($lines[0], 'taxes'), 'base'), 'VAT is charged on the FODEC too');
         self::assertSame('20.000', $lines[1]['net']);
+        self::assertSame('3.750', $preview['savings'], 'what the discounts take off');
 
         $this->postJson($this->companyPath().'/invoices', $body);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         $saved = $this->json();
-        foreach (['subtotalNet', 'documentDiscount', 'totalNet', 'taxes', 'totalTax', 'fixedTaxes', 'total', 'withholdings', 'netToPay'] as $key) {
+        foreach (['subtotalNet', 'documentDiscount', 'savings', 'totalNet', 'taxes', 'totalTax', 'fixedTaxes', 'total', 'withholdings', 'netToPay'] as $key) {
             self::assertSame($saved[$key], $preview[$key], "the preview's $key is what the save stored");
         }
         self::assertSame(array_column($this->rows($saved, 'lines'), 'net'), array_column($lines, 'net'));
@@ -178,6 +179,7 @@ final class DocumentPreviewTest extends ApiTestCase
         $this->postJson($this->companyPath().'/quotes/'.$id.'/preview', [...$body, 'discountAmount' => '3.75']);
         self::assertResponseIsSuccessful();
         self::assertSame('3.750', $this->json()['documentDiscount']);
+        self::assertSame('7.500', $this->json()['savings'], 'the line discount and the document discount together');
         self::assertSame(['33.750', '3.750'], [$this->rows($this->json(), 'lines')[0]['net'], $this->rows($this->json(), 'lines')[0]['documentDiscount']], 'a line says its share of the document discount');
         self::assertSame($this->json()['total'], $this->rows($this->json(), 'lines')[0]['total'], 'the only line adds what the quote comes to, its share of the discount taken off');
     }

@@ -49,6 +49,10 @@ final class DocumentPreview
     #[Groups([self::READ])]
     public string $documentDiscount = '0';
 
+    #[ApiProperty(description: 'What the line discounts and the document discount take off together.')]
+    #[Groups([self::READ])]
+    public string $savings = '0';
+
     #[ApiProperty(description: 'The net after the document discount.')]
     #[Groups([self::READ])]
     public string $totalNet = '0';
@@ -92,6 +96,7 @@ final class DocumentPreview
         }, $totals->lines);
         $preview->subtotalNet = $at($totals->subtotalNet);
         $preview->documentDiscount = $at($totals->documentDiscount);
+        $preview->savings = $at($totals->savings());
         $preview->totalNet = $at($totals->netAfterDocumentDiscount);
         $preview->taxes = array_map($rated, $totals->taxes);
         $preview->totalTax = $at($totals->totalTax);

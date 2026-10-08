@@ -33,4 +33,16 @@ final readonly class DocumentTotals
         public string $amountDue,
     ) {
     }
+
+    /**
+     * What the discounts take off the document, every line's and the document's together, in the prices' own terms: the
+     * figure a « Vous économisez » line states. The sum of amounts already at the currency's scale keeps that scale.
+     */
+    public function savings(): string
+    {
+        return (string) Decimal::sum([
+            ...array_map(static fn (LineTotals $line) => Decimal::of($line->discount), $this->lines),
+            Decimal::of($this->documentDiscount),
+        ]);
+    }
 }

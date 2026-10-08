@@ -338,6 +338,12 @@
               <dt class="font-semibold">{{ 'invoices.totals.left' | translate }}</dt>
               <dd class="text-end font-semibold">{{ invoice.amountDue | amount: scale() }}</dd>
             }
+            @if (!isCreditNote() && saves(invoice.savings)) {
+              <dt>{{ 'invoices.totals.savings' | translate }}</dt>
+              <dd class="text-end" data-testid="invoice-savings">
+                {{ invoice.savings | amount: scale() }}
+              </dd>
+            }
           </dl>
           <p class="text-xs opacity-70" data-testid="invoice-totals-note">
             {{

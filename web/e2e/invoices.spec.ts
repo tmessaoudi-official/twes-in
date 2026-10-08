@@ -139,6 +139,8 @@ test('a line is discounted by an amount, worked out as it is typed and kept as a
     await page.getByTestId('line-0-discount').fill('150');
     await expect(page.getByTestId('line-0-net')).toHaveText('850,000');
     await expect(page.getByTestId('line-0-total')).toHaveText('1 011,500');
+    // What the discount saves is said as it is typed, and again once saved.
+    await expect(page.getByTestId('invoice-savings')).toHaveText('150,000');
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('document-action-save').click();
 
@@ -147,6 +149,7 @@ test('a line is discounted by an amount, worked out as it is typed and kept as a
     await expect(page.getByTestId('line-0-discount-kind')).toHaveText('TND');
     await expect(page.getByTestId('line-0-discount')).toHaveValue('150,000');
     await expect(page.getByTestId('invoice-totals')).toContainText('850,000');
+    await expect(page.getByTestId('invoice-savings')).toHaveText('150,000');
   } finally {
     await retire(page, customerNumber);
   }

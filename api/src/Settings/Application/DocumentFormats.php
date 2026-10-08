@@ -40,7 +40,7 @@ final readonly class DocumentFormats
         $notes = $settings->value($atCustomer, 'document.printed_notes');
         $formats = self::of($settings, $company);
 
-        return new PrintSettings(\is_string($notes) ? $notes : '', $formats['dateFormat'], $formats['numberFormat'], true === $settings->value($atCustomer, 'document.amount_in_words'), true === $settings->value($atCustomer, 'document.how_to_pay'), self::design($settings, $company));
+        return new PrintSettings(\is_string($notes) ? $notes : '', $formats['dateFormat'], $formats['numberFormat'], true === $settings->value($atCustomer, 'document.amount_in_words'), true === $settings->value($atCustomer, 'document.how_to_pay'), self::design($settings, $company), true === $settings->value($atCustomer, 'document.savings_line'));
     }
 
     /** The company's layout and accent, which every document it prints takes. */

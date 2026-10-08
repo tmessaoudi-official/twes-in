@@ -492,6 +492,7 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
     })),
     subtotalNet: raw.subtotalNet ?? '0',
     documentDiscount: raw.documentDiscount ?? '0',
+    savings: raw.savings ?? null,
     totalNet: raw.totalNet ?? '0',
     taxes: (raw.taxes ?? []).map(({ code, rate, base, amount }) => ({ code, rate, base, amount })),
     totalTax: raw.totalTax ?? '0',

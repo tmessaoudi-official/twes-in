@@ -37,6 +37,7 @@ const draft: InvoiceRow = {
   lines: [],
   subtotalNet: '0.000',
   documentDiscount: '0.000',
+  savings: null,
   totalNet: '0.000',
   taxes: [],
   totalTax: '0.000',

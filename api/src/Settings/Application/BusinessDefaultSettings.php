@@ -41,6 +41,10 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
         // close (« Arrêtée la présente facture à la somme de … »), so it is on unless a company turns it off.
         yield new SettingDefinition('document.amount_in_words', SettingType::Bool, true, SettingChain::Parties, $parties, 'settings.document.amount_in_words', self::MODULE);
 
+        // What the discounts took off, printed under the totals as « Vous économisez … ». Always on screen; on paper only when
+        // the company asks, as a line that sells is the seller's choice to make.
+        yield new SettingDefinition('document.savings_line', SettingType::Bool, false, SettingChain::Parties, $parties, 'settings.document.savings_line', self::MODULE);
+
         // What a printed legal mention states and the law leaves to the seller (docs/SPEC.md § 7, 2026-09-21 18:30): the rate
         // of late payment penalties a French invoice must state, and the provision an exempt customer is exempt under.
         // Empty is not given, and issuing a document whose mention needs it is refused; a customer may differ from the rest.

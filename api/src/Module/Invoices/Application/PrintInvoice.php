@@ -17,6 +17,7 @@ use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\InvoiceStatus;
+use App\Module\Invoices\Domain\InvoiceType;
 use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
@@ -178,6 +179,7 @@ final readonly class PrintInvoice
             $paidStamp,
             $mentions->parameters,
             $design ?? $print->design,
+            $print->savingsLine && InvoiceType::CreditNote !== $invoice->getType() && null !== $figures->savings && Decimal::of($figures->savings)->compare(0) > 0 ? $figures->savings : null,
         ));
     }
 

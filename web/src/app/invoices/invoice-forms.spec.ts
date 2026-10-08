@@ -119,6 +119,7 @@ function invoice(overrides: Partial<InvoiceRow> = {}): InvoiceRow {
     lines: [],
     subtotalNet: '1200.000',
     documentDiscount: '0.000',
+    savings: null,
     totalNet: '1200.000',
     taxes: [],
     totalTax: '228.000',

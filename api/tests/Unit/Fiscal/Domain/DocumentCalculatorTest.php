@@ -118,6 +118,26 @@ final class DocumentCalculatorTest extends TestCase
         ]);
     }
 
+    public function testWhatTheDiscountsSaveIsEveryLineDiscountAndTheDocumentDiscount(): void
+    {
+        $totals = new DocumentCalculator()->calculate(new DocumentInput(3, false, TaxBasis::Exclusive, RoundingPoint::PerRateGroup, [
+            new LineInput('3', '12.500', '10', [$this->vat('19')]),
+            new LineInput('2', '20.000', null, [$this->vat('19')], discountAmount: '5.000'),
+            new LineInput('1', '8.000', null, [$this->vat('19')]),
+        ], '2.000'));
+
+        self::assertSame('10.750', $totals->savings());
+    }
+
+    public function testADocumentWithoutAnyDiscountSavesNothing(): void
+    {
+        $totals = new DocumentCalculator()->calculate(new DocumentInput(3, false, TaxBasis::Exclusive, RoundingPoint::PerRateGroup, [
+            new LineInput('1', '8.000', null, [$this->vat('19')]),
+        ]));
+
+        self::assertSame('0.000', $totals->savings());
+    }
+
     public function testANegativeFigureRoundingToZeroIsWrittenAsZero(): void
     {
         self::assertSame('0.000', Decimal::format(new Number('-0.0004'), 3));

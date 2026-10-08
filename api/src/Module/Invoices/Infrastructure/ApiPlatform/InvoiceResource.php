@@ -356,6 +356,11 @@ final class InvoiceResource
     #[Groups([self::READ])]
     public string $documentDiscount = '0';
 
+    /** What the line discounts and the document discount take off together; null on a document issued before it was kept. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $savings = null;
+
     /** The subtotal less the document discount: the base of the taxes. */
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
@@ -533,6 +538,7 @@ final class InvoiceResource
         ], $invoice->getLines(), $figures->lines);
         $resource->subtotalNet = $figures->subtotalNet;
         $resource->documentDiscount = $figures->documentDiscount;
+        $resource->savings = $figures->savings;
         $resource->totalNet = $figures->totalNet;
         $resource->taxes = $figures->taxes;
         $resource->totalTax = $figures->totalTax;
