@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\DeliveryNotes;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
@@ -121,8 +122,19 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         }
     }
 
-    /** @param DeliveryNotePage::DRAFT|DeliveryNotePage::CANCELLED|null $watermark */
-    private function html(?string $watermark, bool $showPrices, string $language, string $printedNotes, bool $receptionBlock = true, string $dateFormat = 'auto', string $numberFormat = 'auto'): string
+    public function testWhatTheNoteCarriesInEachUnitIsPrintedUnderItsLines(): void
+    {
+        self::assertStringNotContainsString('data-testid="quantities"', $this->html(null, false, 'fr', ''));
+
+        $html = $this->html(null, false, 'en', '', quantities: [new QuantityTotal('Piece', 0, '12'), new QuantityTotal('kg', 3, '3.5')]);
+        self::assertMatchesRegularExpression('#data-testid="quantities">Quantities: 12 Piece · 3.500 kg</p>#u', $html);
+    }
+
+    /**
+     * @param DeliveryNotePage::DRAFT|DeliveryNotePage::CANCELLED|null $watermark
+     * @param list<QuantityTotal>                                      $quantities
+     */
+    private function html(?string $watermark, bool $showPrices, string $language, string $printedNotes, bool $receptionBlock = true, string $dateFormat = 'auto', string $numberFormat = 'auto', array $quantities = []): string
     {
         self::bootKernel();
         $template = static::getContainer()->get(DeliveryNoteTemplate::class);
@@ -132,6 +144,6 @@ final class TwigDeliveryNoteTemplateTest extends KernelTestCase
         $seller = $this->note->getSellerSnapshot();
         self::assertInstanceOf(SellerSnapshot::class, $seller);
 
-        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $snapshot, $seller, $watermark, $showPrices, $language, $printedNotes, $receptionBlock, $dateFormat, $numberFormat));
+        return $template->html(new DeliveryNotePage($this->note, $this->totals->of($this->note), $snapshot, $seller, $watermark, $showPrices, $language, $printedNotes, $receptionBlock, $dateFormat, $numberFormat, quantities: $quantities));
     }
 }

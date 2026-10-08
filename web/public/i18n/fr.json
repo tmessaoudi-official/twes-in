@@ -4026,7 +4026,8 @@
     "discount": "Remise de la ligne",
     "document_discount": "Part de la remise du document",
     "tax": "{{name}} · base {{base}}",
-    "as_typed": "En {{currency}}, calculés à l’instant sur ce qui est saisi : rien n’est enregistré tant que vous n’enregistrez pas."
+    "as_typed": "En {{currency}}, calculés à l’instant sur ce qui est saisi : rien n’est enregistré tant que vous n’enregistrez pas.",
+    "quantities": "Quantités :"
   },
   "activity": {
     "title": "Journal d’activité",

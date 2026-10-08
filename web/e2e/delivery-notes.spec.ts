@@ -210,6 +210,35 @@ async function validatedNote(
   await expect(page.getByTestId('delivery-note-title')).toHaveText(/BL-\d{4}-(\d{2}-)?\d{5}/);
 }
 
+test('the lines say what they carry in each unit as they are typed', async ({ page }) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const customerNumber = `E2E-DNQ-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  try {
+    await page.goto('/delivery-notes/new');
+    await page.getByTestId('delivery-note-customer').fill(customerNumber);
+    await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
+    await page.getByTestId('line-0-description').fill('Vis');
+    await page.getByTestId('line-0-quantity').fill('2');
+    // One line already says what it carries.
+    await expect(page.getByTestId('delivery-note-quantities')).toHaveCount(0);
+    await page.getByTestId('line-add').click();
+    await page.getByTestId('line-1-description').fill('Écrous');
+    await page.getByTestId('line-1-quantity').fill('3');
+    await expect(page.getByTestId('delivery-note-quantities')).toContainText(/Quantités\s*:\s*5\s/);
+    await page
+      .getByTestId('delivery-note-quantities')
+      .screenshot({ path: test.info().outputPath('quantities.png') });
+    await page
+      .getByTestId('delivery-note-lines')
+      .screenshot({ path: test.info().outputPath('lines.png') });
+  } finally {
+    await retire(page, customerNumber);
+  }
+});
+
 test('a second note is added to the draft invoice the first one started', async ({ page }) => {
   const run = Date.now().toString(36).toUpperCase();
   const customerNumber = `E2E-DA-${run}`;

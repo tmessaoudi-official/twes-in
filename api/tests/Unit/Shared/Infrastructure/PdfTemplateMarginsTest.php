@@ -26,6 +26,10 @@ final class PdfTemplateMarginsTest extends TestCase
 
         foreach ($templates as $template) {
             $name = basename($template);
+            // A partial (`_name`) is drawn inside a document, which declares the page.
+            if (str_starts_with($name, '_')) {
+                continue;
+            }
             preg_match_all('/@page\s*\{([^}]*)\}/', (string) file_get_contents($template), $rules);
             self::assertNotSame([], $rules[1], "$name declares its page");
             foreach ($rules[1] as $rule) {

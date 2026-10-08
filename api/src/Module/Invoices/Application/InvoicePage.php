@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Application;
 
+use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceFigures;
@@ -38,6 +39,7 @@ final readonly class InvoicePage
      * @param string                                                                    $dateFormat        the company's `presentation.date-format`, `auto` for the language's
      * @param string                                                                    $numberFormat      the company's `presentation.number-format`, `auto` for the language's
      * @param array<string, array<string, string>>                                      $mentionParameters what fills each mention's placeholders, by key
+     * @param list<QuantityTotal>                                                       $quantities
      */
     public function __construct(
         public Invoice $invoice,
@@ -67,6 +69,8 @@ final readonly class InvoicePage
         public DocumentDesign $design = new DocumentDesign(),
         /** What the discounts took off, printed as « Vous économisez … »; null where the company keeps it off, on a credit note, or when nothing was taken off. */
         public ?string $savings = null,
+        /** What the lines come to in each unit, empty for a single line. */
+        public array $quantities = [],
     ) {
     }
 

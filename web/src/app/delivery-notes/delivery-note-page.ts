@@ -64,6 +64,7 @@ import { InvoicePartDialog, type InvoicePartLine } from './invoice-part-dialog';
 import { InvoiceTargetDialog, type InvoiceTarget } from './invoice-target-dialog';
 import { RecordView } from '../shared/form/record-view';
 import { taxNames } from '../invoices/tax-names';
+import { QuantityTotalsView } from '../shared/documents/quantity-totals';
 
 /**
  * One delivery note: a new draft to fill in, a draft to revise and validate, or a numbered note to deliver, cancel
@@ -78,6 +79,7 @@ export const DELIVERY_NOTE_PLANNED: readonly PlannedAction[] = [
 @Component({
   selector: 'app-delivery-note-page',
   imports: [
+    QuantityTotalsView,
     MatButtonModule,
     MatCardModule,
     MatFormFieldModule,

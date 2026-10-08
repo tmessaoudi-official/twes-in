@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Quotes\Application;
 
 use App\Fiscal\Domain\Calculation\DocumentTotals;
+use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Quotes\Domain\Quote;
 use App\Shared\Domain\DocumentDesign;
@@ -28,7 +29,8 @@ final readonly class QuotePage
 
     /**
      * @param self::DRAFT|self::CANCELLED|null $watermark
-     * @param string                           $language  fr or en
+     * @param string                           $language   fr or en
+     * @param list<QuantityTotal>              $quantities what the lines come to in each unit, empty for a single line
      */
     public function __construct(
         public Quote $quote,
@@ -47,6 +49,7 @@ final readonly class QuotePage
         public DocumentDesign $design = new DocumentDesign(),
         /** What the discounts take off, printed as « Vous économisez … »; null where the company keeps it off or nothing is taken off. */
         public ?string $savings = null,
+        public array $quantities = [],
     ) {
     }
 }

@@ -259,6 +259,17 @@ final class PrintInvoiceTest extends TestCase
         self::assertSame('1.000', $this->template->pages[1]->savings);
     }
 
+    public function testTheLinesAreCountedInEachUnitOnceThereAreSeveral(): void
+    {
+        $this->print->pdf($this->company, $this->draft($this->customer('standard', null), null, 3)->getId());
+        $this->print->pdf($this->company, $this->draft($this->customer('standard', null))->getId());
+
+        [$several, $one] = $this->template->pages;
+        self::assertCount(1, $several->quantities);
+        self::assertSame('3', $several->quantities[0]->quantity);
+        self::assertSame([], $one->quantities, 'one line already says it');
+    }
+
     public function testADocumentWithoutADiscountPrintsNoSavingsLineEvenWhenAsked(): void
     {
         $this->change->change(new SettingContext($this->company), 'document.savings_line', SettingLevel::Company, true, null);
@@ -423,7 +434,7 @@ final class PrintInvoiceTest extends TestCase
         self::assertSame([[], null], [$this->records->files, $draft->getPdfFile()]);
     }
 
-    private function draft(Customer $customer, ?string $discountRate = null): Invoice
+    private function draft(Customer $customer, ?string $discountRate = null, int $lineCount = 1): Invoice
     {
         $unit = $this->units->ofCodeInCompany('C62', $this->company->getId());
         $vat = $this->taxes->ofCodeInCompany('TVA19', $this->company->getId());
@@ -432,9 +443,11 @@ final class PrintInvoiceTest extends TestCase
         self::assertNotNull($vat);
         self::assertNotNull($stamp);
         $taxes = [] === $customer->getTaxRegime()->getExcludedFamilies() ? [$vat] : [];
-        $invoice = Invoice::create($this->company, $this->establishments->ofCompany($this->company->getId())[0], $customer, new InvoiceHeader(), [
+        $invoice = Invoice::create($this->company, $this->establishments->ofCompany($this->company->getId())[0], $customer, new InvoiceHeader(), array_fill(
+            0,
+            $lineCount,
             new InvoiceLineDetails(null, 'Pièce', '1', $unit, '10', $discountRate, $taxes),
-        ], [$stamp], $this->clock->now());
+        ), [$stamp], $this->clock->now());
         $this->invoices->save($invoice);
 
         return $invoice;

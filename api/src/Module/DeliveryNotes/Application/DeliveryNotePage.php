@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\DeliveryNotes\Application;
 
 use App\Fiscal\Domain\Calculation\DocumentTotals;
+use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Shared\Domain\DocumentDesign;
@@ -28,7 +29,8 @@ final readonly class DeliveryNotePage
 
     /**
      * @param self::DRAFT|self::CANCELLED|null $watermark
-     * @param string                           $language  fr or en
+     * @param string                           $language   fr or en
+     * @param list<QuantityTotal>              $quantities what the lines come to in each unit, empty for a single line
      */
     public function __construct(
         public DeliveryNote $note,
@@ -46,6 +48,7 @@ final readonly class DeliveryNotePage
         public string $numberFormat = 'auto',
         /** The layout and accent it prints in: as validation kept them, or the company's today for a draft. */
         public DocumentDesign $design = new DocumentDesign(),
+        public array $quantities = [],
     ) {
     }
 }

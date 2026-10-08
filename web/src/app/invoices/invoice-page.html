@@ -236,6 +236,11 @@
             [stock]="showsStock()"
             [establishmentId]="typedEstablishment()"
           />
+          <app-quantity-totals
+            [lines]="lines"
+            [units]="options.units"
+            testId="invoice-quantities"
+          />
         </mat-card-content>
       </mat-card>
     }

@@ -12,8 +12,10 @@ namespace App\Module\DeliveryNotes\Application;
 use App\Files\Application\Files;
 use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
+use App\Fiscal\Domain\Calculation\QuantityTotals;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
+use App\Module\DeliveryNotes\Domain\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Settings\Application\ReadSetting;
@@ -104,6 +106,7 @@ final readonly class PrintDeliveryNote
             $printing->print->dateFormat,
             $printing->print->numberFormat,
             $printing->print->design,
+            QuantityTotals::ofUnits(array_map(static fn (DeliveryNoteLine $line): array => [$line->getUnit(), $line->getQuantity()], $note->getLines())),
         )));
     }
 

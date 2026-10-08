@@ -1,0 +1,5 @@
+{#- What the lines come to in each unit, under the lines of every document that carries them: `quantities` is a list of
+    QuantityTotal, empty for a single line, each written with its unit's decimals. -#}
+{%- if quantities %}
+  <p class="muted" data-testid="quantities">{{ 'totals.quantities'|trans({}, t, locale) }} {% for each in quantities %}{{ each.quantity|decimal(each.decimals, locale, numberFormat) }} {{ each.unitName }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+{%- endif %}

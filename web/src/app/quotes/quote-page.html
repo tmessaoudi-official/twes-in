@@ -180,6 +180,7 @@
             [stock]="showsStock()"
             [establishmentId]="typedEstablishment()"
           />
+          <app-quantity-totals [lines]="lines" [units]="options.units" testId="quote-quantities" />
         </mat-card-content>
       </mat-card>
     }

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Quotes;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
@@ -79,7 +80,9 @@ final class TwigQuoteTemplateTest extends KernelTestCase
             '',
             false,
             savings: '42.500',
+            quantities: [new QuantityTotal('pièce', 0, '3')],
         ));
         self::assertMatchesRegularExpression('#<p data-testid="savings">Vous économisez 42,50 HT grâce aux remises\.</p>#u', $html);
+        self::assertMatchesRegularExpression('#data-testid="quantities">Quantités\x{00A0}: 3 pièce</p>#u', $html);
     }
 }

@@ -4026,7 +4026,8 @@
     "discount": "Line discount",
     "document_discount": "Share of the document discount",
     "tax": "{{name}} · base {{base}}",
-    "as_typed": "In {{currency}}, worked out just now from what is typed: nothing is kept until you save."
+    "as_typed": "In {{currency}}, worked out just now from what is typed: nothing is kept until you save.",
+    "quantities": "Quantities:"
   },
   "activity": {
     "title": "Activity journal",

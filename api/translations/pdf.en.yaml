@@ -71,6 +71,7 @@ totals:
     subtotal: 'Total excl. tax'
     total_tax: 'Total tax'
     savings: 'You save %amount% excl. tax through the discounts.'
+    quantities: 'Quantities:'
     total: 'Total incl. tax'
     currency: 'Amounts in %currency%'
 payment:

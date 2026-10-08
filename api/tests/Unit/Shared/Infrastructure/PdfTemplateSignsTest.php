@@ -44,7 +44,10 @@ final class PdfTemplateSignsTest extends TestCase
             $figures += preg_match_all('/\|(?:decimal|deduction)\(/', $source);
             self::assertSame(0, preg_match_all('/\|(?:decimal|deduction)\([^)]*\blocale\)/', $source), basename($template).' formats a figure by the language alone');
             self::assertSame(0, preg_match_all('/\|date\((?!dateFormat\b)/', $source), basename($template).' writes a day in a format of its own');
-            self::assertStringContainsString("date_pattern(page.dateFormat, 'format.date'|trans({}, t, locale))", $source, basename($template));
+            // A partial (`_name`) writes no day of its own: the document it is drawn into sets the pattern.
+            if (!str_starts_with(basename($template), '_')) {
+                self::assertStringContainsString("date_pattern(page.dateFormat, 'format.date'|trans({}, t, locale))", $source, basename($template));
+            }
         }
         self::assertGreaterThanOrEqual(20, $figures, 'both layouts (25 figures on 2026-09-26)\' figures are found, so an empty set cannot pass');
     }

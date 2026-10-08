@@ -58,6 +58,7 @@ import {
   type QuoteDeposit,
   type QuoteInput,
 } from './quotes-types';
+import { QuantityTotalsView } from '../shared/documents/quantity-totals';
 
 /** What a quote will offer once its planned modules ship, shown « Bientôt » beside what it offers today. */
 export const QUOTE_PLANNED: readonly PlannedAction[] = [
@@ -85,6 +86,7 @@ export const QUOTE_PLANNED: readonly PlannedAction[] = [
     DocumentActions,
     FileDrop,
     InvoiceLines,
+    QuantityTotalsView,
     PartConflict,
     PickField,
     RecordChanged,

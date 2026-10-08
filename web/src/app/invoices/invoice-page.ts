@@ -88,6 +88,7 @@ import {
   savesSomething,
   toDocumentFigures,
 } from '../shared/documents/document-figures';
+import { QuantityTotalsView } from '../shared/documents/quantity-totals';
 
 /**
  * One invoice or credit note: a new draft to fill in, a draft to revise, issue or cancel, or an issued document to
@@ -121,6 +122,7 @@ export const INVOICE_PLANNED: readonly PlannedAction[] = [
     DocumentActions,
     RecordView,
     InvoiceLines,
+    QuantityTotalsView,
     PartConflict,
     PickField,
     RecordChanged,

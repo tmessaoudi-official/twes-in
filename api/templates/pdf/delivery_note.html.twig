@@ -100,6 +100,7 @@
       {%- endfor %}
     </tbody>
   </table>
+  {%- include 'pdf/_quantities.html.twig' with {quantities: page.quantities, t: t, locale: locale, numberFormat: page.numberFormat} only %}
 
   {%- if page.showPrices %}
     <table class="totals">

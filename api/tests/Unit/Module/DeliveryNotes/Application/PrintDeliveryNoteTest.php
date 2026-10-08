@@ -110,6 +110,16 @@ final class PrintDeliveryNoteTest extends TestCase
         self::assertSame([[], [], null], [$this->records->files, $this->storage->contents, $draft->getPdfFile()]);
     }
 
+    public function testTheGoodsAreCountedInEachUnitOnceThereAreSeveralLines(): void
+    {
+        $this->print->pdf($this->company, $this->draft(3)->getId());
+        $this->print->pdf($this->company, $this->draft()->getId());
+
+        [$several, $one] = $this->template->pages;
+        self::assertSame(['6'], array_map(static fn ($each) => $each->quantity, $several->quantities));
+        self::assertSame([], $one->quantities, 'one line already says it');
+    }
+
     public function testAValidatedNoteIsStoredOnceThenServedAsStored(): void
     {
         $note = $this->validated();
@@ -221,13 +231,15 @@ final class PrintDeliveryNoteTest extends TestCase
         );
     }
 
-    private function draft(): DeliveryNote
+    private function draft(int $lineCount = 1): DeliveryNote
     {
         $unit = $this->units->ofCodeInCompany('C62', $this->company->getId());
         self::assertNotNull($unit);
-        $note = DeliveryNote::create($this->company, $this->establishments->ofCompany($this->company->getId())[0], $this->customer, new DeliveryNoteHeader(), [
+        $note = DeliveryNote::create($this->company, $this->establishments->ofCompany($this->company->getId())[0], $this->customer, new DeliveryNoteHeader(), array_fill(
+            0,
+            $lineCount,
             new DeliveryNoteLineDetails(null, 'Pièce', '2', $unit, '100', []),
-        ], $this->clock->now());
+        ), $this->clock->now());
         $this->notes->save($note);
 
         return $note;

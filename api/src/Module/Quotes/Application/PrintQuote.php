@@ -9,8 +9,10 @@ declare(strict_types=1);
 
 namespace App\Module\Quotes\Application;
 
+use App\Fiscal\Domain\Calculation\QuantityTotals;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Quotes\Domain\Quote;
+use App\Module\Quotes\Domain\QuoteLine;
 use App\Module\Quotes\Domain\QuoteRepository;
 use App\Module\Quotes\Domain\QuoteStatus;
 use App\Settings\Application\ReadSetting;
@@ -64,6 +66,7 @@ final readonly class PrintQuote
             $printing->print->numberFormat,
             $printing->print->design,
             $printing->print->savingsPrinted($totals->savings()),
+            QuantityTotals::ofUnits(array_map(static fn (QuoteLine $line): array => [$line->getUnit(), $line->getQuantity()], $quote->getLines())),
         ))));
     }
 

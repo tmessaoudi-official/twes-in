@@ -93,6 +93,7 @@
       {%- endfor %}
     </tbody>
   </table>
+  {%- include 'pdf/_quantities.html.twig' with {quantities: page.quantities, t: t, locale: locale, numberFormat: page.numberFormat} only %}
 
   <table class="totals">
     <tr><td>{{ 'totals.subtotal'|trans({}, t, locale) }}</td><td class="number">{{ figures.subtotalNet|decimal(scale, locale, page.numberFormat) }}</td></tr>

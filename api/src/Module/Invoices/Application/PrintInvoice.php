@@ -13,8 +13,11 @@ use App\Files\Application\Files;
 use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
 use App\Fiscal\Domain\Calculation\Decimal;
+use App\Fiscal\Domain\Calculation\QuantityTotal;
+use App\Fiscal\Domain\Calculation\QuantityTotals;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceType;
@@ -180,7 +183,20 @@ final readonly class PrintInvoice
             $mentions->parameters,
             $design ?? $print->design,
             InvoiceType::CreditNote === $invoice->getType() ? null : $print->savingsPrinted($figures->savings),
+            self::quantities($invoice),
         ));
+    }
+
+    /**
+     * What the lines carry in each unit; a line giving a deposit back carries nothing.
+     *
+     * @return list<QuantityTotal>
+     */
+    private static function quantities(Invoice $invoice): array
+    {
+        $lines = array_values(array_filter($invoice->getLines(), static fn (InvoiceLine $line): bool => null === $line->getDeduction()));
+
+        return QuantityTotals::ofUnits(array_map(static fn (InvoiceLine $line): array => [$line->getUnit(), $line->getQuantity()], $lines));
     }
 
     /**

@@ -11,6 +11,7 @@ namespace App\Tests\Integration\Invoices;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
@@ -134,6 +135,15 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         self::assertMatchesRegularExpression('#<p data-testid="savings">Vous économisez 42,50 HT grâce aux remises\.</p>#u', $this->html(new DocumentDesign(), [], [], '42.500'));
     }
 
+    public function testWhatTheLinesComeToInEachUnitIsPrintedUnderThemWithEachUnitsDecimals(): void
+    {
+        self::bootKernel();
+
+        self::assertStringNotContainsString('data-testid="quantities"', $this->html(new DocumentDesign(), [], []));
+        $html = $this->html(new DocumentDesign(), [], [], quantities: [new QuantityTotal('pièce', 0, '12'), new QuantityTotal('kg', 3, '3.5')]);
+        self::assertMatchesRegularExpression('#data-testid="quantities">Quantités\x{00A0}: 12 pièce · 3,500 kg</p>#u', $html);
+    }
+
     /**
      * A layout restyles the one content every document prints; it may not take any of it away. Its rules never hide,
      * fade or move anything, and never touch the watermark or a mention.
@@ -174,8 +184,9 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
     /**
      * @param list<string>                         $keys
      * @param array<string, array<string, string>> $parameters
+     * @param list<QuantityTotal>                  $quantities
      */
-    private function html(DocumentDesign $design, array $keys, array $parameters, ?string $savings = null): string
+    private function html(DocumentDesign $design, array $keys, array $parameters, ?string $savings = null, array $quantities = []): string
     {
         $template = static::getContainer()->get(InvoiceTemplate::class);
         $company = $this->invoice->getCompany();
@@ -194,6 +205,7 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
             mentionParameters: $parameters,
             design: $design,
             savings: $savings,
+            quantities: $quantities,
         ));
     }
 }
