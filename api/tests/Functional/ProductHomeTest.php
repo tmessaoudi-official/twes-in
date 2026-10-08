@@ -219,6 +219,48 @@ final class ProductHomeTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'reading a product is not revising one');
     }
 
+    /**
+     * The stock map's « Ce qu'il y a ici » names what has its home on a rack, so a shelf that should hold something
+     * and holds nothing reads as empty and to be refilled: the rack answers for itself and for every place under it,
+     * read with the stock permission as the rest of the map is.
+     */
+    public function testALocationSaysWhichGoodsHaveTheirHomeThereOrUnderIt(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
+        $this->ground();
+        $company = '/api/companies/'.$this->company->getId()->toRfc4122();
+        $this->postJson($company.'/stock-locations', [
+            'establishmentId' => $this->establishmentId,
+            'parentId' => $this->rackId,
+            'kind' => 'bin',
+            'code' => 'R1-A1',
+            'name' => 'Bac A1',
+        ]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $binId = $this->stringAt($this->json(), 'id');
+        $this->sendJson('PUT', $this->homes(), ['locationId' => $binId]);
+        self::assertResponseIsSuccessful();
+
+        $this->getJson($company.'/stock-locations/'.$this->rackId.'/homes');
+        self::assertResponseIsSuccessful();
+        self::assertSame([[$this->productId, 'VIS-6X40', 'Vis 6x40', $binId, 'R1-A1']], array_map(
+            static fn (array $home): array => [$home['productId'] ?? null, $home['productReference'] ?? null, $home['productName'] ?? null, $home['locationId'] ?? null, $home['locationCode'] ?? null],
+            $this->jsonList(),
+        ), 'the bin under the rack is the rack’s');
+
+        $this->getJson($company.'/stock-locations/'.$this->bayId.'/homes');
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->jsonList(), 'a place nothing calls home');
+
+        $this->getJson($company.'/stock-locations/'.Uuid::v7()->toRfc4122().'/homes');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a place of no company of ours');
+
+        // Somebody who reads products and not stock does not read the map, nor this.
+        $this->signedIn(['product.read'], 'catalogue@twes.local', 'catalogue');
+        $this->getJson($company.'/stock-locations/'.$this->rackId.'/homes');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     private function company(): Company
     {
         $company = $this->em()->find(Company::class, $this->company->getId());

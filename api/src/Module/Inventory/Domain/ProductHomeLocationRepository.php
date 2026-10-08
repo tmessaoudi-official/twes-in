@@ -37,6 +37,16 @@ interface ProductHomeLocationRepository
      */
     public function ofProducts(array $productIds, Uuid $companyId): array;
 
+    /**
+     * The homes at any of these places, active products only, by location code then product reference: what a place
+     * should hold, which is what makes one that holds nothing read as to be refilled.
+     *
+     * @param list<Uuid> $locationIds
+     *
+     * @return list<ProductHomeLocation>
+     */
+    public function atLocations(array $locationIds, Uuid $companyId): array;
+
     public function save(ProductHomeLocation $home): void;
 
     public function remove(ProductHomeLocation $home): void;

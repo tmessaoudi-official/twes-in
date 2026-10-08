@@ -28,6 +28,7 @@ import { provideQuietFeedback, successToasts } from '../shared/testing/feedback'
 import { InventoryFacade } from './inventory-facade';
 import type {
   InventoryError,
+  LocationContents,
   StockDrawingRow,
   StockFloorRow,
   StockLocationRow,
@@ -45,6 +46,7 @@ class StaticLoader implements TranslateLoader {
           plan_of: 'Plan de {{floor}} : {{count}} rectangle(s)',
           nothing_drawn: 'Rien n’est encore dessiné sur cet étage.',
           no_floor: 'Aucun étage n’est encore dessiné.',
+          here: { empty_home: '{{product}} a sa place ici ({{place}}) et il n’y en a plus.' },
         },
         errors: { level_taken: 'Ce niveau est déjà occupé.' },
       },
@@ -132,7 +134,11 @@ describe('StockMapPage', () => {
   const floors = signal<readonly StockFloorRow[]>([upstairs, ground]);
   const drawings = signal<readonly StockDrawingRow[]>([drawn]);
   const structures = signal<readonly StockStructureRow[]>([wall]);
+  const contents = signal<LocationContents | null>(null);
   const facade = {
+    contents: contents.asReadonly(),
+    loadContents: vi.fn(),
+    reloadContents: vi.fn(),
     options: signal<StockOptions | null>(options).asReadonly(),
     locations: signal<readonly StockLocationRow[]>([rack, zone, bin]).asReadonly(),
     floors: floors.asReadonly(),
@@ -190,6 +196,9 @@ describe('StockMapPage', () => {
     floors.set([upstairs, ground]);
     drawings.set([drawn]);
     structures.set([wall]);
+    contents.set(null);
+    facade.loadContents.mockReset().mockResolvedValue(undefined);
+    facade.reloadContents.mockReset().mockResolvedValue(undefined);
     facade.loadPlanContext.mockReset().mockResolvedValue(undefined);
     facade.loadDrawings.mockReset().mockResolvedValue(undefined);
     facade.reloadDrawings.mockReset().mockResolvedValue(undefined);
@@ -1542,5 +1551,106 @@ describe('StockMapPage', () => {
     drawings.set([drawn]);
     await settle();
     expect(q('stock-drawing-label-d1')?.getAttribute('transform')).toBeNull();
+  });
+
+  // ——— « Ce qu'il y a ici »: what a chosen place holds (the brief's § 5.1, right panel) ———
+
+  const level = {
+    id: 'p1:b1',
+    productId: 'p1',
+    productReference: 'VIS-6X40',
+    productName: 'Vis 6x40 zinguée',
+    unitCode: 'C62',
+    unitName: 'Pièce',
+    unitDecimals: 0,
+    locationId: 'b1',
+    locationCode: 'R1-B2',
+    locationName: 'Bac B2',
+    establishmentId: 'e1',
+    quantity: '340.000',
+    lotId: null,
+    lotCode: null,
+    lotExpiresOn: null,
+    lotReleased: false,
+  };
+
+  it('reads what a chosen rack holds, bins included, and says which home is empty', async () => {
+    await consult();
+    facade.loadContents.mockImplementation(async (_company: string, locationId: string | null) => {
+      contents.set(
+        locationId === null
+          ? null
+          : {
+              locationId,
+              levels: [level],
+              total: 1,
+              homes: [
+                {
+                  productId: 'p1',
+                  productReference: 'VIS-6X40',
+                  productName: 'Vis 6x40 zinguée',
+                  locationId: 'b1',
+                  locationCode: 'R1-B2',
+                  main: true,
+                },
+                {
+                  productId: 'p2',
+                  productReference: 'RON-M6',
+                  productName: 'Rondelle M6',
+                  locationId: 'l1',
+                  locationCode: 'R1',
+                  main: true,
+                },
+              ],
+            },
+      );
+    });
+
+    press('stock-drawing-R1');
+    await settle();
+
+    expect(facade.loadContents).toHaveBeenLastCalledWith('c1', 'l1');
+    const line = q('stock-contents-line-p1:b1') as HTMLElement;
+    expect(line.textContent).toContain('Vis 6x40 zinguée');
+    // The bin it is in, because « R1 » alone sends a person along a six-metre rack.
+    expect(line.textContent).toContain('R1-B2');
+    expect(line.textContent).toContain('340');
+    expect(line.textContent).toContain('Pièce');
+    // A home with nothing in it is the shelf to refill; one holding stock is not named again.
+    expect(q('stock-contents-empty-home-p2')?.textContent).toContain('Rondelle M6');
+    expect(q('stock-contents-empty-home-p1')).toBeNull();
+    expect(q('stock-contents-more')).toBeNull();
+
+    // One page read of three rows: the panel says there is more and where to read it all, and calls no home empty —
+    // the good may well be on the page it did not read.
+    contents.set({ ...contents()!, total: 3 });
+    await settle();
+    expect(q('stock-contents-more')?.getAttribute('href')).toBe('/stock?location=l1');
+    expect(q('stock-contents-empty-home-p2')).toBeNull();
+  });
+
+  it('says plainly when a place holds nothing, and reads nothing for the building', async () => {
+    await consult();
+    facade.loadContents.mockImplementation(async (_company: string, locationId: string | null) => {
+      contents.set(locationId === null ? null : { locationId, levels: [], total: 0, homes: [] });
+    });
+
+    press('stock-drawing-R1');
+    await settle();
+    expect(q('stock-contents-nothing')).not.toBeNull();
+
+    press('stock-structure-row-s1');
+    await settle();
+    expect(facade.loadContents).toHaveBeenLastCalledWith('c1', null);
+    expect(q('stock-contents-nothing')).toBeNull();
+  });
+
+  /** Aménager's panel is the shape's form and its actions; reading the shelf there would only slow a gesture down. */
+  it('reads no contents while arranging', async () => {
+    press('stock-drawing-R1');
+    await settle();
+
+    expect(facade.loadContents).not.toHaveBeenCalledWith('c1', 'l1');
+    expect(q('stock-contents')).toBeNull();
   });
 });

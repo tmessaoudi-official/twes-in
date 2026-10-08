@@ -2402,8 +2402,19 @@
         "left": "Vers la gauche",
         "right": "Vers la droite"
       },
-      "panel_hint_read": "Touchez un rectangle du plan, ou choisissez-le dans la liste, pour voir ce qu’il est.",
-      "panel_hint_arrange": "Choisissez une forme à poser : elle se pose au centre, sélectionnée. Glissez-la ou tapez ses mesures, puis Enregistrer."
+      "panel_hint_read": "Touchez un rectangle du plan, ou choisissez-le dans la liste, pour voir ce qu’il contient.",
+      "panel_hint_arrange": "Choisissez une forme à poser : elle se pose au centre, sélectionnée. Glissez-la ou tapez ses mesures, puis Enregistrer.",
+      "here": {
+        "title": "Ce qu’il y a ici",
+        "lot": "lot {{lot}}",
+        "nothing": "Rien n’est rangé ici, d’après les mouvements enregistrés.",
+        "more": "{{count}} {count, plural, one {ligne de plus} other {lignes de plus}} : tout voir dans Stock",
+        "empty_home": "{{product}} a sa place ici ({{place}}) et il n’y en a plus : vide, à réassortir.",
+        "movements": "Mouvements",
+        "open_stock": "Ouvrir dans Stock",
+        "truth": "Le plan dit ce que les mouvements ont enregistré : une marchandise reçue dans un bac du rayonnage compte ici.",
+        "reading": "Lecture de ce qu’il contient…"
+      }
     },
     "scan": {
       "filled": "{{name}} : article, lot et quantité remplis",

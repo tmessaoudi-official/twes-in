@@ -11,6 +11,7 @@ namespace App\Module\Inventory\Infrastructure\Doctrine;
 
 use App\Module\Inventory\Domain\ProductHomeLocation;
 use App\Module\Inventory\Domain\ProductHomeLocationRepository;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -59,6 +60,29 @@ final readonly class DoctrineProductHomeLocationRepository implements ProductHom
         }
 
         return $byProduct;
+    }
+
+    public function atLocations(array $locationIds, Uuid $companyId): array
+    {
+        if ([] === $locationIds) {
+            return [];
+        }
+        /** @var list<ProductHomeLocation> $homes */
+        $homes = $this->entityManager->createQueryBuilder()
+            ->select('h', 'p', 'l')
+            ->from(ProductHomeLocation::class, 'h')
+            ->join('h.product', 'p')
+            ->join('h.location', 'l')
+            ->where('h.location IN (:locations)')
+            ->andWhere('h.company = :company')
+            ->andWhere('p.isActive = true')
+            ->setParameter('locations', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $locationIds), ArrayParameterType::STRING)
+            ->setParameter('company', $companyId)
+            ->orderBy('l.code', 'ASC')->addOrderBy('p.reference', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $homes;
     }
 
     public function save(ProductHomeLocation $home): void

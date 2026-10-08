@@ -18,6 +18,7 @@ use App\Module\Inventory\Domain\StockLocationRepository;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductRepository;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Tree;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -63,6 +64,27 @@ final readonly class KeepProductHomes
         $this->product($company, $productId);
 
         return $this->homes->ofProduct($productId, $company->getId());
+    }
+
+    /**
+     * The goods at home at this place or at any place under it — a rack answers for its bins — so a place that should
+     * hold something and holds nothing can say so.
+     *
+     * @return list<ProductHomeLocation>
+     *
+     * @throws InvalidStockLocation
+     */
+    public function at(Company $company, Uuid $locationId): array
+    {
+        $parents = [];
+        foreach ($this->locations->ofCompany($company->getId()) as $location) {
+            $parents[$location->getId()->toRfc4122()] = $location->getParent()?->getId()->toRfc4122();
+        }
+        if (!\array_key_exists($locationId->toRfc4122(), $parents)) {
+            throw new InvalidStockLocation('locationId', 'No stock location of this company has this id.');
+        }
+
+        return $this->homes->atLocations(Tree::withDescendants([$locationId], $parents), $company->getId());
     }
 
     /**

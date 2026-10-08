@@ -7,6 +7,7 @@ import type { ExportFormat } from '../shared/list/export-address';
 import type {
   CostBasis,
   InventoryError,
+  LocationContents,
   StockDrawingInput,
   StockDrawingRow,
   StockFloorInput,
@@ -57,6 +58,8 @@ export class InventoryFacade {
   private structuresRequest = 0;
   /** Which floor's building is in hand, so a live change reads that same floor again. */
   private structuresFloorId: string | null = null;
+  private readonly contentsSignal = signal<LocationContents | null>(null);
+  private contentsRequest = 0;
   private readonly busySignal = signal(false);
   private reads = 0;
   private readonly errorSignal = signal<InventoryError | null>(null);
@@ -76,6 +79,8 @@ export class InventoryFacade {
   readonly drawings = this.drawingsSignal.asReadonly();
   /** The building on that same floor: its own layer, because nothing on it holds goods. */
   readonly structures = this.structuresSignal.asReadonly();
+  /** What the place chosen on the map holds and what has its home there; null while nothing is chosen. */
+  readonly contents = this.contentsSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
@@ -317,6 +322,45 @@ export class InventoryFacade {
     });
   }
 
+  /**
+   * What a place holds, with every place under it, and what has its home there — for the stock map's « Ce qu'il y a
+   * ici ». Only the latest choice's answer is shown: a person going from rack to rack sends one read per press, and
+   * they need not come back in order. One page of the stock, the largest the API serves; the panel says when there is
+   * more.
+   */
+  async loadContents(companyId: string, locationId: string | null): Promise<void> {
+    const request = ++this.contentsRequest;
+    if (locationId === null) {
+      this.contentsSignal.set(null);
+      return;
+    }
+    await this.read(async () => {
+      const [page, homes] = await Promise.all([
+        this.api.levels(companyId, {
+          page: 1,
+          itemsPerPage: CONTENTS_PAGE,
+          q: '',
+          locationIds: [locationId],
+          establishmentIds: [],
+          productIds: [],
+          negative: null,
+          expired: null,
+          intervals: {},
+          order: { key: 'location', direction: 'asc' },
+        }),
+        this.api.locationHomes(companyId, locationId),
+      ]);
+      if (request !== this.contentsRequest) return;
+      this.contentsSignal.set({ locationId, levels: page.rows, total: page.total, homes });
+    });
+  }
+
+  /** The place in hand, read again: a movement elsewhere may have filled or emptied it. */
+  async reloadContents(companyId: string): Promise<void> {
+    const locationId = this.contentsSignal()?.locationId ?? null;
+    if (locationId !== null) await this.loadContents(companyId, locationId);
+  }
+
   /** The floor in hand, read again: what a live change brought belongs on it or does not. */
   async reloadDrawings(companyId: string): Promise<void> {
     const floorId = this.drawingsFloorId;
@@ -494,6 +538,9 @@ export class InventoryFacade {
     }
   }
 }
+
+/** The most rows of stock the panel of a place reads at once: the API's own largest page. */
+const CONTENTS_PAGE = 100;
 
 function codeOf(error: unknown): InventoryError {
   return error instanceof InventoryRefused ? error.code : 'network';

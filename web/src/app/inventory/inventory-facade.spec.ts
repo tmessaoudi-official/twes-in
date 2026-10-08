@@ -92,6 +92,7 @@ describe('InventoryFacade', () => {
     repeatDrawing: vi.fn(),
     drawings: vi.fn(),
     floors: vi.fn(),
+    locationHomes: vi.fn(),
   };
   let facade: InventoryFacade;
 
@@ -108,8 +109,35 @@ describe('InventoryFacade', () => {
     api.repeatDrawing.mockReset().mockResolvedValue([]);
     api.drawings.mockReset().mockResolvedValue([]);
     api.floors.mockReset().mockResolvedValue([]);
+    api.locationHomes.mockReset().mockResolvedValue([]);
     TestBed.configureTestingModule({ providers: [{ provide: InventoryApi, useValue: api }] });
     facade = TestBed.inject(InventoryFacade);
+  });
+
+  /**
+   * Going from rack to rack sends one read per press, and they need not come back in order: the panel shows the rack
+   * chosen last, never the first one's late answer.
+   */
+  it('reads what a place holds, keeping only the answer for the place chosen last', async () => {
+    let answerFirst: (page: { rows: unknown[]; total: number }) => void = () => undefined;
+    api.levels
+      .mockReturnValueOnce(new Promise((resolve) => (answerFirst = resolve)))
+      .mockResolvedValueOnce({ rows: [level], total: 1 });
+
+    const first = facade.loadContents('c1', 'r1');
+    await facade.loadContents('c1', 'r2');
+    answerFirst({ rows: [], total: 0 });
+    await first;
+
+    expect(api.levels).toHaveBeenLastCalledWith(
+      'c1',
+      expect.objectContaining({ locationIds: ['r2'], itemsPerPage: 100 }),
+    );
+    expect(api.locationHomes).toHaveBeenCalledWith('c1', 'r2');
+    expect(facade.contents()).toEqual({ locationId: 'r2', levels: [level], total: 1, homes: [] });
+
+    await facade.loadContents('c1', null);
+    expect(facade.contents()).toBeNull();
   });
 
   it('reads one page of stock with what it names: the options and the locations', async () => {

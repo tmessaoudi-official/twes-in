@@ -140,6 +140,29 @@ export interface StockMovementSearch {
 }
 
 /** What is on hand of one product at one location: the sum of its movements, which may fall below zero. */
+/** A good whose home is a place or a place under it, as the stock map reads it from the place. */
+export interface LocationHomeRow {
+  productId: string;
+  productReference: string;
+  productName: string;
+  /** The place the home is: the one asked about, or a bin under it. */
+  locationId: string;
+  locationCode: string;
+  main: boolean;
+}
+
+/**
+ * What a place on the map holds — its stock and that of every place under it, one page of it — and what has its home
+ * there, so a home holding nothing reads as empty.
+ */
+export interface LocationContents {
+  locationId: string;
+  levels: readonly StockLevelRow[];
+  /** How many rows the stock has in all; more than `levels` when it outgrew one page. */
+  total: number;
+  homes: readonly LocationHomeRow[];
+}
+
 export interface StockLevelRow {
   /** The product and the location together: a row is the pair, and neither alone names it. */
   id: string;

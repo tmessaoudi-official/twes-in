@@ -2402,8 +2402,19 @@
         "left": "Move left",
         "right": "Move right"
       },
-      "panel_hint_read": "Touch a rectangle on the plan, or pick it in the list, to see what it is.",
-      "panel_hint_arrange": "Pick a shape to place: it lands in the middle, selected. Drag it or type its measurements, then Save."
+      "panel_hint_read": "Touch a rectangle on the plan, or pick it in the list, to see what it holds.",
+      "panel_hint_arrange": "Pick a shape to place: it lands in the middle, selected. Drag it or type its measurements, then Save.",
+      "here": {
+        "title": "What is here",
+        "lot": "lot {{lot}}",
+        "nothing": "Nothing is stored here, according to the recorded movements.",
+        "more": "{{count}} more {count, plural, one {line} other {lines}}: see them all in Stock",
+        "empty_home": "{{product}} has its place here ({{place}}) and none is left: empty, to be refilled.",
+        "movements": "Movements",
+        "open_stock": "Open in Stock",
+        "truth": "The plan says what the movements recorded: goods received into a bin of the rack count here.",
+        "reading": "Reading what it holds…"
+      }
     },
     "scan": {
       "filled": "{{name}}: article, lot and quantity filled in",

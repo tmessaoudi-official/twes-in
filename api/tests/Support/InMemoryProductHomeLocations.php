@@ -55,6 +55,20 @@ final class InMemoryProductHomeLocations implements ProductHomeLocationRepositor
         return $byProduct;
     }
 
+    public function atLocations(array $locationIds, Uuid $companyId): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $locationIds);
+        $found = array_values(array_filter(
+            $this->homes,
+            static fn (ProductHomeLocation $h): bool => \in_array($h->getLocation()->getId()->toRfc4122(), $wanted, true)
+                && $h->getCompany()->getId()->equals($companyId)
+                && $h->getProduct()->isActive(),
+        ));
+        usort($found, static fn (ProductHomeLocation $a, ProductHomeLocation $b): int => [$a->getLocation()->getCode(), $a->getProduct()->getReference()] <=> [$b->getLocation()->getCode(), $b->getProduct()->getReference()]);
+
+        return $found;
+    }
+
     public function save(ProductHomeLocation $home): void
     {
         foreach ($this->homes as $known) {

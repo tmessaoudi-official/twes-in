@@ -5,6 +5,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIdstockLevelsGetCollectionResponse,
+  LocationHomeLocationHomeRead,
   ApiCompaniesCompanyIdstockMovementsGetCollectionResponse,
   RepeatStockDrawingRepeatStockDrawingReadStockDrawingReadValidationRepeatStockDrawingWrite as RepeatStockDrawingRepeatStockDrawingReadStockDrawingRead,
   RepeatStockDrawingRepeatStockDrawingWriteValidationRepeatStockDrawingWrite as RepeatStockDrawingRepeatStockDrawingWrite,
@@ -39,6 +40,7 @@ import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import {
   type CostBasis,
   type InventoryError,
+  type LocationHomeRow,
   type StockDrawingInput,
   type StockDrawingRow,
   type StructureKind,
@@ -213,6 +215,26 @@ export class InventoryApi {
       if (page.totalItems === undefined) throw new Error('A page of stock came without its total.');
       return { rows: page.member.map(toLevel), total: page.totalItems };
     });
+  }
+
+  /** The goods whose home is this place or a place under it, for the stock map's « Ce qu'il y a ici ». */
+  async locationHomes(companyId: string, locationId: string): Promise<LocationHomeRow[]> {
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<LocationHomeLocationHomeRead[]>(
+            `${path(companyId, 'stock-locations', locationId)}/homes`,
+          ),
+        )
+      ).map((raw) => ({
+        productId: raw.productId ?? '',
+        productReference: raw.productReference ?? '',
+        productName: raw.productName ?? '',
+        locationId: raw.locationId ?? '',
+        locationCode: raw.locationCode ?? '',
+        main: raw.main ?? false,
+      })),
+    );
   }
 
   /** Every location of the company; reading them gives each establishment its default location. */

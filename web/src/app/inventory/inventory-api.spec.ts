@@ -74,6 +74,33 @@ describe('InventoryApi', () => {
 
   afterEach(() => http.verify());
 
+  /** The stock map's « Ce qu'il y a ici »: the goods whose home is a place or a place under it. */
+  it('reads which goods have their home at a place', async () => {
+    const homes = api.locationHomes('c 1', 'l/1');
+    http.expectOne('/api/companies/c%201/stock-locations/l%2F1/homes').flush([
+      {
+        id: 'h1',
+        productId: 'p1',
+        productReference: 'VIS-6X40',
+        productName: 'Vis 6x40',
+        locationId: 'b1',
+        locationCode: 'R1-A1',
+        main: true,
+      },
+    ]);
+
+    expect(await homes).toEqual([
+      {
+        productId: 'p1',
+        productReference: 'VIS-6X40',
+        productName: 'Vis 6x40',
+        locationId: 'b1',
+        locationCode: 'R1-A1',
+        main: true,
+      },
+    ]);
+  });
+
   it('reads the options, the stock and the locations', async () => {
     const options = api.options('c 1');
     http.expectOne('/api/companies/c%201/stock-options').flush({
