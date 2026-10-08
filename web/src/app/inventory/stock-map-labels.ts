@@ -45,6 +45,33 @@ export const LABEL_FONT = 0.32;
 export const STRUCTURE_LABEL_FONT = 0.28;
 
 /**
+ * The smallest a label may read on screen, in pixels. Sized in metres alone, a whole floor on a phone wrote 5-pixel
+ * letters nobody could read; a board fitting more metres in its width needs its labels larger in metres.
+ */
+export const LABEL_PIXELS = 12;
+export const STRUCTURE_LABEL_PIXELS = 11;
+
+/** The share of a rectangle's narrow side its label may stand in, so the letters never touch its edges. */
+const CROSS_SHARE = 0.8;
+
+/**
+ * The size a label is drawn at, in metres: at least its own size, as large as a person reads on this board, and never
+ * taller than the rectangle it names allows, since a label spilling onto the floor reads as naming whatever it lands
+ * on. `pixelsPerMetre` is null until the board is measured, and `cross` is null for a name written beside its piece.
+ */
+export function labelFont(
+  base: number,
+  pixels: number,
+  pixelsPerMetre: number | null,
+  cross: number | null,
+): number {
+  const readable = pixelsPerMetre === null ? base : Math.max(base, pixels / pixelsPerMetre);
+  if (cross === null) return readable;
+
+  return Math.min(readable, Math.max(base, cross * CROSS_SHARE));
+}
+
+/**
  * The share of the font size one character takes, averaged over mixed-case text in the page's own sans-serif.
  *
  * Measured, not guessed: on the rendered plan a 35-character label at `LABEL_FONT` ran 6,1 m across a 3,9 m rack,

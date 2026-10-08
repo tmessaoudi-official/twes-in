@@ -6,11 +6,13 @@ import {
   computed,
   DestroyRef,
   effect,
+  ElementRef,
   inject,
   linkedSignal,
   OnInit,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NgTemplateOutlet } from '@angular/common';
@@ -28,7 +30,7 @@ import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-bu
 import { dirtyCount } from '../shared/form/dirty-count';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { ThemeFacade } from '../shared/theme/theme-facade';
-import { AmountPipe } from '../shared/i18n/format-pipes';
+import { AmountPipe, MeasurePipe } from '../shared/i18n/format-pipes';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { Label } from '../shared/a11y/label';
@@ -98,7 +100,15 @@ import {
 } from '../shared/settings/settings-registry';
 import { StockMapVolume } from './stock-map-volume';
 import { StockMapFirstSteps } from './stock-map-first-steps';
-import { LABEL_FONT, STRUCTURE_LABEL_FONT, fitLabel, planLabel } from './stock-map-labels';
+import {
+  LABEL_FONT,
+  LABEL_PIXELS,
+  STRUCTURE_LABEL_FONT,
+  STRUCTURE_LABEL_PIXELS,
+  fitLabel,
+  labelFont,
+  planLabel,
+} from './stock-map-labels';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
 
 /** Above this many metres a floor's grid is drawn every five metres rather than every one. */
@@ -162,6 +172,8 @@ interface PlanShape {
   labelTitle: string;
   /** How the label is turned to run along a long narrow shape, or `null` where it reads across it. */
   labelTurn: string | null;
+  /** The label's size in metres, readable on this board and held inside the rectangle. */
+  font: number;
 }
 
 /** How much deeper than wide a shape must be before its label runs along its length rather than across it. */
@@ -182,6 +194,7 @@ interface StructureShape {
   /** A piece has no code, so this is its name — under every choice, or the building vanishes under "codes". */
   label: string;
   labelTitle: string;
+  font: number;
 }
 
 /** The board's two modes: Consulter reads and never moves anything, Aménager draws (the brief's § 5.1). */
@@ -230,6 +243,7 @@ const PENDING_PIECE: StockStructureRow = {
     NgTemplateOutlet,
     RouterLink,
     AmountPipe,
+    MeasurePipe,
     TranslatePipe,
     DescriptorForm,
     Label,
@@ -282,9 +296,12 @@ export class StockMapPage implements OnInit {
     () => !this.arranging() && this.viewChosen() === 'volume',
   );
   protected readonly labelModes = PLAN_LABEL_MODES;
-  /** Bound rather than written in the template, so what is drawn and what is measured cannot drift apart. */
-  protected readonly labelFont = LABEL_FONT;
-  protected readonly structureLabelFont = STRUCTURE_LABEL_FONT;
+  /**
+   * The drawing's size on screen, measured, so that a metre's length in pixels is known: what the scale bar is drawn
+   * at and what the labels must reach to be read. Null until measured, and in jsdom, which has no ResizeObserver.
+   */
+  private readonly surfaceElement = viewChild<ElementRef<SVGSVGElement>>('surface');
+  private readonly surface = signal<{ width: number; height: number } | null>(null);
 
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
@@ -330,6 +347,7 @@ export class StockMapPage implements OnInit {
   /** What is drawn on the floor being looked at: what was saved, with the one being edited shown as it now stands. */
   protected readonly shapes = computed<PlanShape[]>(() => {
     const editing = this.editing();
+    const pixels = this.pixelsPerMetre();
     const preview = this.previewRect();
     const shapes = this.facade.drawings().map((drawing) => {
       const [saved] = planRectangles([drawing]);
@@ -338,11 +356,11 @@ export class StockMapPage implements OnInit {
           ? preview
           : (saved ?? { x: 0, y: 0, width: 0, depth: 0, rotation: 0, height: 0 });
 
-      return shapeOf(drawing, shown, this.labelMode());
+      return shapeOf(drawing, shown, this.labelMode(), pixels);
     });
 
     if (editing === 'new' && preview !== null)
-      shapes.push(shapeOf(this.pendingRow(), preview, this.labelMode()));
+      shapes.push(shapeOf(this.pendingRow(), preview, this.labelMode(), pixels));
 
     return shapes;
   });
@@ -414,6 +432,21 @@ export class StockMapPage implements OnInit {
   });
 
   protected readonly zoom = computed(() => this.view()?.scale ?? PLAN_ZOOM_MIN);
+  /** The floor's proportions as framed, which the drawing takes below a wide screen. */
+  protected readonly planAspect = computed(() => {
+    const frame = this.frame();
+
+    return frame.height > 0 ? frame.width / frame.height : 1;
+  });
+
+  /** How many pixels a metre takes as shown: the frame is fitted whole by its tighter side, as `xMidYMid meet` does. */
+  protected readonly pixelsPerMetre = computed(() => {
+    const surface = this.surface();
+    const shown = this.viewed();
+    if (surface === null || shown.width <= 0 || shown.height <= 0) return null;
+
+    return Math.min(surface.width / shown.width, surface.height / shown.height);
+  });
   protected readonly zoomLabel = computed(() => `${Math.round(this.zoom() * 100)} %`);
 
   protected readonly viewBox = computed(() => {
@@ -731,6 +764,19 @@ export class StockMapPage implements OnInit {
   });
 
   constructor() {
+    effect((onCleanup) => {
+      const element = this.surfaceElement()?.nativeElement;
+      if (element === undefined || typeof ResizeObserver === 'undefined') {
+        this.surface.set(null);
+        return;
+      }
+      const observer = new ResizeObserver(([entry]) => {
+        const { width, height } = entry.contentRect;
+        this.surface.set(width > 0 && height > 0 ? { width, height } : null);
+      });
+      observer.observe(element);
+      onCleanup(() => observer.disconnect());
+    });
     // The one wire from the form back to the plan. Both a typed measurement and a dragged one arrive here, so the
     // drawing cannot be right for one and stale for the other.
     effect((onCleanup) => {
@@ -995,6 +1041,13 @@ export class StockMapPage implements OnInit {
    */
   private readonly windowClass = inject(WINDOW_CLASS);
   protected readonly mayDraw = computed(() => this.mayWrite() && this.windowClass() !== 'compact');
+  /**
+   * The arrows that move a nearer view. A phone shows them only once there is somewhere to move: greyed out at
+   * 100 %, they took a row of its screen and pushed the rest of the plan's controls under its bottom bar.
+   */
+  protected readonly panArrows = computed(
+    () => this.windowClass() !== 'compact' || this.zoom() > 1,
+  );
 
   /** The handles around the rectangle being worked on, in its OWN unturned corners: the group turns them with it. */
   protected readonly handles = computed(() => {
@@ -1360,23 +1413,16 @@ export class StockMapPage implements OnInit {
   }
 
   /**
-   * The scale bar, in metres on the floor so it stays true at every zoom: at the bottom of what is shown, near its
-   * start, a round length a person reads at a glance and can count on the grid.
+   * The scale bar: a round length a person reads at a glance and can count on the grid, drawn under the plan as long
+   * as that many metres are on screen, so it stays true at every zoom without standing on anything drawn.
    */
   protected readonly scaleBar = computed(() => {
-    const shown = this.viewed();
-    const length = scaleBarMetres(shown.width);
-    const x = shown.x + shown.width * 0.03;
-    const y = shown.y + shown.height * 0.95;
+    const length = scaleBarMetres(this.viewed().width);
+    const pixels = this.pixelsPerMetre();
 
     return {
-      x,
-      y,
-      length,
-      tick: shown.height * 0.015,
-      font: shown.width / 45,
-      stroke: shown.width / 400,
       label: length < 1 ? `${length * 100} cm` : `${length} m`,
+      pixels: pixels === null ? null : length * pixels,
     };
   });
 
@@ -1587,6 +1633,7 @@ export class StockMapPage implements OnInit {
           };
     const kindNow = String(values?.['kind'] ?? 'wall');
 
+    const pixels = this.pixelsPerMetre();
     const shapes = this.facade.structures().map((piece) => {
       const [saved] = structureRectangles([piece]);
       const shown =
@@ -1600,11 +1647,14 @@ export class StockMapPage implements OnInit {
           : piece,
         shown,
         this.labelMode(),
+        pixels,
       );
     });
 
     if (editing === 'new' && preview !== null) {
-      shapes.push(builtOf({ ...PENDING_PIECE, kind: kindOf(kindNow) }, preview, this.labelMode()));
+      shapes.push(
+        builtOf({ ...PENDING_PIECE, kind: kindOf(kindNow) }, preview, this.labelMode(), pixels),
+      );
     }
 
     return shapes;
@@ -1809,29 +1859,50 @@ function builtOf(
   piece: StockStructureRow,
   rect: PlanRectangle,
   mode: PlanLabelMode,
+  pixelsPerMetre: number | null,
 ): StructureShape {
+  // A wall is a thin rectangle, so its name sits above the line rather than inside a 0,20 m band nothing fits in.
+  const beside = rect.depth < 0.6;
+  const font = labelFont(
+    STRUCTURE_LABEL_FONT,
+    STRUCTURE_LABEL_PIXELS,
+    pixelsPerMetre,
+    beside ? null : rect.depth,
+  );
+
   return {
     piece,
     rect,
     centreX: rect.x + rect.width / 2,
     centreY: rect.y + rect.depth / 2,
-    // A wall is a thin rectangle, so its name sits above the line rather than inside a 0,20 m band nothing fits in.
     labelX: rect.x + 0.15,
-    labelY: rect.depth < 0.6 ? rect.y - 0.12 : rect.y + Math.min(0.45, rect.depth * 0.7),
+    labelY: beside ? rect.y - 0.12 : rect.y + baseline(font, rect.depth),
     // A piece carries no code, so `planLabel` answers its name whatever the mode — that is the point of passing it.
-    label: fitLabel(planLabel('', piece.name, mode), rect.width, STRUCTURE_LABEL_FONT),
+    label: fitLabel(planLabel('', piece.name, mode), rect.width, font),
     labelTitle: planLabel('', piece.name, mode),
+    font,
   };
 }
 
+/** Where a label's baseline sits below its rectangle's top edge: its letters inside, as near the top as they fit. */
+function baseline(font: number, depth: number): number {
+  return Math.min(Math.max(0.45, font * 1.05), depth * 0.7);
+}
+
 /** One rectangle as the SVG needs it: where it turns about, and where its code is written inside it. */
-function shapeOf(drawing: StockDrawingRow, rect: PlanRectangle, mode: PlanLabelMode): PlanShape {
+function shapeOf(
+  drawing: StockDrawingRow,
+  rect: PlanRectangle,
+  mode: PlanLabelMode,
+  pixelsPerMetre: number | null,
+): PlanShape {
   const whole = planLabel(drawing.locationCode, drawing.locationName, mode);
   // A rack seen from above is long and narrow, and across it only a code's first letters fit: there the label runs
   // down its length, turned a quarter, its letters standing on the rack's middle line.
   const along = rect.depth > rect.width * ALONG_RATIO;
-  const labelX = along ? rect.x + rect.width / 2 - LABEL_FONT * 0.35 : rect.x + 0.15;
-  const labelY = along ? rect.y + 0.15 : rect.y + Math.min(0.45, rect.depth * 0.7);
+  const font = labelFont(LABEL_FONT, LABEL_PIXELS, pixelsPerMetre, along ? rect.width : rect.depth);
+  const labelX = along ? rect.x + rect.width / 2 - font * 0.35 : rect.x + 0.15;
+  const labelY = along ? rect.y + 0.15 : rect.y + baseline(font, rect.depth);
 
   return {
     drawing,
@@ -1841,9 +1912,10 @@ function shapeOf(drawing: StockDrawingRow, rect: PlanRectangle, mode: PlanLabelM
     // Written inside the rectangle and turned with it, so a label never floats off its own rack.
     labelX,
     labelY,
-    label: fitLabel(whole, along ? rect.depth : rect.width, LABEL_FONT),
+    label: fitLabel(whole, along ? rect.depth : rect.width, font),
     labelTitle: whole,
     labelTurn: along ? `rotate(90 ${labelX} ${labelY})` : null,
+    font,
   };
 }
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { PLAN_LABEL_MODES } from '../shared/settings/settings-registry';
-import { LABEL_FONT, fitLabel, planLabel } from './stock-map-labels';
+import { LABEL_FONT, fitLabel, labelFont, planLabel } from './stock-map-labels';
 
 /**
  * What the plan writes on a rectangle (docs/SPEC.md § 7, 2026-09-22). A store that has numbered its building reads
@@ -75,5 +75,29 @@ describe('fitLabel', () => {
     expect(fitLabel('Rayonnage 1', 2, LABEL_FONT / 2).length).toBeGreaterThan(
       fitLabel('Rayonnage 1', 2, LABEL_FONT).length,
     );
+  });
+});
+
+/** A label is drawn in metres, and must still read on screen: a whole floor on a phone draws a metre 14 pixels long. */
+describe('labelFont', () => {
+  it('keeps its own size until the board is measured', () => {
+    expect(labelFont(LABEL_FONT, 12, null, 1.2)).toBe(LABEL_FONT);
+  });
+
+  it('grows to the pixels asked for where a metre is drawn small', () => {
+    expect(labelFont(LABEL_FONT, 12, 14, 1.2) * 14).toBeCloseTo(12);
+  });
+
+  it('never grows below its own size where a metre is drawn large', () => {
+    expect(labelFont(LABEL_FONT, 12, 200, 1.2)).toBe(LABEL_FONT);
+  });
+
+  it('stands inside the rectangle it names, never below its own size', () => {
+    expect(labelFont(LABEL_FONT, 12, 14, 0.6)).toBeCloseTo(0.48);
+    expect(labelFont(LABEL_FONT, 12, 14, 0.2)).toBe(LABEL_FONT);
+  });
+
+  it('grows freely for a name written beside its piece', () => {
+    expect(labelFont(LABEL_FONT, 12, 14, null) * 14).toBeCloseTo(12);
   });
 });

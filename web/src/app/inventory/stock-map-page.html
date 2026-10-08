@@ -113,9 +113,13 @@
       highlight never hides a shape being moved. A scanner typing here, or anywhere on the page, does the same.
     -->
     @if (company() && floors().length > 0 && !arranging()) {
-      <div class="flex flex-col gap-3">
+      <!--
+        On a wide screen what was found stands beside the search rather than above the board: there, it pushed the
+        board's own controls below the window.
+      -->
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-start">
         <app-pick-field
-          class="w-full max-w-xl"
+          class="w-full max-w-xl lg:max-w-sm lg:shrink-0"
           [label]="'inventory.plan.search.label' | translate"
           [hint]="'inventory.plan.search.hint' | translate"
           [noneFoundLabel]="'inventory.plan.search.none_found' | translate"
@@ -126,7 +130,7 @@
         />
         @if (found(); as now) {
           <div
-            class="flex flex-wrap items-start gap-x-4 gap-y-2 rounded-xl border border-outline-variant bg-surface-container-low p-4"
+            class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-outline-variant bg-surface-container-low p-4 lg:flex-1 lg:px-4 lg:py-2"
             role="status"
             data-testid="stock-map-found"
           >
@@ -195,7 +199,7 @@
         } @else if (note(); as looking) {
           <!-- A delivery note's lines, looked for together from the note: what to pick, and from where. -->
           <div
-            class="flex flex-wrap items-start gap-x-4 gap-y-2 rounded-xl border border-outline-variant bg-surface-container-low p-4"
+            class="flex min-w-0 flex-wrap items-start gap-x-4 gap-y-2 rounded-xl border border-outline-variant bg-surface-container-low p-4 lg:flex-1 lg:px-4 lg:py-2"
             role="status"
             data-testid="stock-map-note"
           >
@@ -384,7 +388,7 @@
                     @if (floorSize(); as size) {
                       ·
                       <span data-testid="stock-floor-size"
-                        >{{ size.width }} × {{ size.depth }} m</span
+                        >{{ size.width | measure }} × {{ size.depth | measure }} m</span
                       >
                     }
                   }
@@ -436,11 +440,22 @@
                 <span class="inline-block h-3 w-5 rounded-sm bg-on-surface-variant"></span>
                 {{ 'inventory.plan.legend_items.wall' | translate }}
               </span>
+              <!-- Both are openings in a wall, drawn as gaps: a dock's edge is dashed, so the two never read as one. -->
               <span class="flex items-center gap-2 text-sm">
                 <span
-                  class="inline-block h-3 w-5 rounded-sm border border-on-surface-variant bg-surface-container-highest"
+                  class="inline-block h-3 w-5 rounded-sm border border-on-surface-variant bg-surface"
                 ></span>
-                {{ 'inventory.plan.legend_items.door' | translate }}
+                <span data-testid="stock-map-legend-door">{{
+                  'inventory.plan.legend_items.door' | translate
+                }}</span>
+              </span>
+              <span class="flex items-center gap-2 text-sm">
+                <span
+                  class="inline-block h-3 w-5 rounded-sm border border-dashed border-on-surface-variant bg-surface"
+                ></span>
+                <span data-testid="stock-map-legend-dock">{{
+                  'inventory.plan.legend_items.dock' | translate
+                }}</span>
               </span>
             </div>
           }
@@ -468,7 +483,7 @@
                         {{ 'inventory.plan.shape_names.' + shape.shape | translate }}
                       </span>
                       <span class="tabular-nums text-sm text-on-surface-variant">
-                        {{ shape.width }} × {{ shape.depth }} m
+                        {{ shape.width | measure }} × {{ shape.depth | measure }} m
                       </span>
                     </button>
                   }
@@ -528,7 +543,7 @@
                         {{ 'inventory.plan.structure_kinds.' + tool.kind | translate }}
                       </span>
                       <span class="tabular-nums text-sm text-on-surface-variant">
-                        {{ tool.width }} × {{ tool.depth }} m
+                        {{ tool.width | measure }} × {{ tool.depth | measure }} m
                       </span>
                     </button>
                   }
@@ -559,7 +574,7 @@
                   {{ shape.drawing.locationName }}
                 </span>
                 <span class="tabular-nums text-on-surface-variant">
-                  {{ shape.rect.width }} × {{ shape.rect.depth }} m
+                  {{ shape.rect.width | measure }} × {{ shape.rect.depth | measure }} m
                 </span>
               </button>
             } @empty {
@@ -589,7 +604,7 @@
                       built.piece.name
                     }}</span>
                     <span class="tabular-nums text-on-surface-variant">
-                      {{ built.rect.width }} × {{ built.rect.depth }} m
+                      {{ built.rect.width | measure }} × {{ built.rect.depth | measure }} m
                     </span>
                   </button>
                 }
@@ -718,7 +733,7 @@
           </div>
         } @else {
           <div
-            class="flex min-w-0 flex-col overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest [grid-area:board]"
+            class="flex min-w-0 flex-col self-start overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest [grid-area:board]"
           >
             <div
               class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-outline-variant px-3 py-2 text-sm"
@@ -757,7 +772,7 @@
               arrows move what is shown. Its buttons keep their own Enter and Space.
             -->
             <div
-              class="relative h-[55dvh] min-h-[20rem] focus-visible:outline-2 focus-visible:outline-primary lg:h-[max(26rem,calc(100dvh-22rem))]"
+              class="flex flex-col focus-visible:outline-2 focus-visible:outline-primary lg:h-[max(20rem,calc(100dvh-24rem))]"
               tabindex="0"
               role="group"
               [attr.aria-label]="'inventory.plan.board' | translate"
@@ -765,140 +780,116 @@
               data-testid="stock-map-board"
             >
               <!--
+                Below a wide screen the drawing takes the floor's own proportions, up to most of the screen: a wide
+                floor in a tall box filled its top and left the rest of the board blank.
+              -->
+              <div
+                class="relative min-h-48 max-lg:aspect-(--plan-aspect) max-lg:max-h-[60dvh] lg:min-h-0 lg:flex-1"
+                [style.--plan-aspect]="planAspect()"
+              >
+                <!--
                 The gestures live on the rectangles, never on the sheet: pointer events on the whole plan would fight
                 the page's own scrolling on a touch screen. Once someone has come nearer, the board is what they are
                 moving, and it holds the finger for that.
               -->
-              <svg
-                [attr.viewBox]="viewBox()"
-                class="block h-full w-full select-none"
-                role="img"
-                [attr.aria-label]="'inventory.plan.plan_of' | translate: planLabel()"
-                data-testid="stock-map-svg"
-                [class.cursor-crosshair]="tracing()"
-                [class.cursor-grab]="!tracing() && zoom() > 1"
-                [class.touch-none]="tracing() || zoom() > 1"
-                (wheel)="wheel($event)"
-                (pointerdown)="press($event)"
-                (document:pointermove)="drags($event)"
-                (document:pointerup)="drops($event)"
-                (document:pointercancel)="drops($event)"
-                (document:keydown.escape)="abandon()"
-              >
-                <!--
+                <svg
+                  #surface
+                  [attr.viewBox]="viewBox()"
+                  class="block h-full w-full select-none"
+                  role="img"
+                  [attr.aria-label]="'inventory.plan.plan_of' | translate: planLabel()"
+                  data-testid="stock-map-svg"
+                  [class.cursor-crosshair]="tracing()"
+                  [class.cursor-grab]="!tracing() && zoom() > 1"
+                  [class.touch-none]="tracing() || zoom() > 1"
+                  (wheel)="wheel($event)"
+                  (pointerdown)="press($event)"
+                  (document:pointermove)="drags($event)"
+                  (document:pointerup)="drops($event)"
+                  (document:pointercancel)="drops($event)"
+                  (document:keydown.escape)="abandon()"
+                >
+                  <!--
                   The floor itself, drawn first and under everything: its edge, and a grid a person can count metres on.
                   Pointer-transparent on purpose — a press on bare floor must reach the sheet, which is what arms a trace
                   and moves the view; a rectangle here catching it would silently end both.
                 -->
-                @if (floorSize(); as size) {
-                  <g class="pointer-events-none" data-testid="stock-floor-layer">
-                    <rect
-                      x="0"
-                      y="0"
-                      [attr.width]="size.width"
-                      [attr.height]="size.depth"
-                      [attr.stroke-width]="handleRadius() / 4"
-                      class="fill-surface stroke-outline"
-                      data-testid="stock-floor-outline"
-                    />
-                    @for (x of gridLines().xs; track x) {
-                      <line
-                        [attr.x1]="x"
-                        y1="0"
-                        [attr.x2]="x"
-                        [attr.y2]="size.depth"
-                        [attr.stroke-width]="handleRadius() / 10"
-                        class="stroke-outline-variant"
+                  @if (floorSize(); as size) {
+                    <g class="pointer-events-none" data-testid="stock-floor-layer">
+                      <rect
+                        x="0"
+                        y="0"
+                        [attr.width]="size.width"
+                        [attr.height]="size.depth"
+                        [attr.stroke-width]="handleRadius() / 4"
+                        class="fill-surface stroke-outline"
+                        data-testid="stock-floor-outline"
                       />
-                    }
-                    @for (y of gridLines().ys; track y) {
-                      <line
-                        x1="0"
-                        [attr.y1]="y"
-                        [attr.x2]="size.width"
-                        [attr.y2]="y"
-                        [attr.stroke-width]="handleRadius() / 10"
-                        class="stroke-outline-variant"
-                      />
-                    }
-                  </g>
-                }
-                <!--
+                      @for (x of gridLines().xs; track x) {
+                        <line
+                          [attr.x1]="x"
+                          y1="0"
+                          [attr.x2]="x"
+                          [attr.y2]="size.depth"
+                          [attr.stroke-width]="handleRadius() / 10"
+                          class="stroke-outline-variant"
+                        />
+                      }
+                      @for (y of gridLines().ys; track y) {
+                        <line
+                          x1="0"
+                          [attr.y1]="y"
+                          [attr.x2]="size.width"
+                          [attr.y2]="y"
+                          [attr.stroke-width]="handleRadius() / 10"
+                          class="stroke-outline-variant"
+                        />
+                      }
+                    </g>
+                  }
+                  <!--
                   The repeat's preview, dotted because nothing is created yet, and drawn UNDER what is already there
                   so a copy landing on an existing rack does not hide it.
                 -->
-                @for (copy of repeatPreview(); track $index) {
-                  <rect
-                    [attr.x]="copy.x"
-                    [attr.y]="copy.y"
-                    [attr.width]="copy.width"
-                    [attr.height]="copy.depth"
-                    [attr.transform]="
-                      'rotate(' +
-                      copy.rotation +
-                      ' ' +
-                      (copy.x + copy.width / 2) +
-                      ' ' +
-                      (copy.y + copy.depth / 2) +
-                      ')'
-                    "
-                    [attr.rx]="0.1"
-                    [attr.stroke-width]="0.05"
-                    stroke-dasharray="0.3 0.2"
-                    class="fill-primary-container/40 stroke-primary"
-                    [class.stroke-error]="repeatOffFloor()"
-                    [attr.data-testid]="'stock-repeat-preview-' + $index"
-                  />
-                }
-                <!--
+                  @for (copy of repeatPreview(); track $index) {
+                    <rect
+                      [attr.x]="copy.x"
+                      [attr.y]="copy.y"
+                      [attr.width]="copy.width"
+                      [attr.height]="copy.depth"
+                      [attr.transform]="
+                        'rotate(' +
+                        copy.rotation +
+                        ' ' +
+                        (copy.x + copy.width / 2) +
+                        ' ' +
+                        (copy.y + copy.depth / 2) +
+                        ')'
+                      "
+                      [attr.rx]="0.1"
+                      [attr.stroke-width]="0.05"
+                      stroke-dasharray="0.3 0.2"
+                      class="fill-primary-container/40 stroke-primary"
+                      [class.stroke-error]="repeatOffFloor()"
+                      [attr.data-testid]="'stock-repeat-preview-' + $index"
+                    />
+                  }
+                  <!--
                   The building, drawn FIRST so it sits under the stock: a rack against a wall is what the eye and the
                   pointer both find. A locked layer keeps `pointer-events: none`, so a wall is not caught while a rack
                   is being moved.
                 -->
-                @if (shown('structure')) {
-                  <g
-                    [class.pointer-events-none]="isLocked('structure')"
-                    data-testid="stock-structure-layer"
-                  >
-                    @for (built of builtShapes(); track built.piece.id) {
-                      <rect
-                        [attr.x]="built.rect.x"
-                        [attr.y]="built.rect.y"
-                        [attr.width]="built.rect.width"
-                        [attr.height]="built.rect.depth"
-                        [attr.transform]="
-                          'rotate(' +
-                          built.rect.rotation +
-                          ' ' +
-                          built.centreX +
-                          ' ' +
-                          built.centreY +
-                          ')'
-                        "
-                        [attr.stroke-width]="built.piece.id === selectedStructureId() ? 0.08 : 0.04"
-                        [class]="arranging() ? 'cursor-move touch-none' : 'cursor-pointer'"
-                        class="stroke-on-surface-variant"
-                        [class.fill-on-surface-variant]="
-                          built.piece.kind === 'wall' || built.piece.kind === 'post'
-                        "
-                        [class.fill-surface]="built.piece.kind === 'door'"
-                        [class.fill-surface-container-highest]="built.piece.kind === 'dock'"
-                        [class.fill-secondary-container]="built.piece.id === selectedStructureId()"
-                        (pointerdown)="grabStructure($event, built.piece, null)"
-                        (click)="pressStructure(built.piece)"
-                        [attr.data-testid]="'stock-structure-' + built.piece.kind"
-                      >
-                        <title>{{ built.labelTitle }}</title>
-                      </rect>
-                      <!--
-                        Only where the store named it. A wall named nothing writes nothing: an empty label would put
-                        a blank box on every partition of the building, which is most of them.
-                      -->
-                      @if (built.label !== '') {
-                        <text
-                          [attr.x]="built.labelX"
-                          [attr.y]="built.labelY"
-                          [attr.font-size]="structureLabelFont"
+                  @if (shown('structure')) {
+                    <g
+                      [class.pointer-events-none]="isLocked('structure')"
+                      data-testid="stock-structure-layer"
+                    >
+                      @for (built of builtShapes(); track built.piece.id) {
+                        <rect
+                          [attr.x]="built.rect.x"
+                          [attr.y]="built.rect.y"
+                          [attr.width]="built.rect.width"
+                          [attr.height]="built.rect.depth"
                           [attr.transform]="
                             'rotate(' +
                             built.rect.rotation +
@@ -908,303 +899,322 @@
                             built.centreY +
                             ')'
                           "
-                          class="pointer-events-none fill-on-surface-variant"
-                          [attr.data-testid]="'stock-structure-name-' + built.piece.id"
+                          [attr.stroke-width]="0.04"
+                          [class]="arranging() ? 'cursor-move touch-none' : 'cursor-pointer'"
+                          class="stroke-on-surface-variant"
+                          [class.fill-on-surface-variant]="
+                            built.piece.kind === 'wall' || built.piece.kind === 'post'
+                          "
+                          [class.fill-surface]="
+                            built.piece.kind === 'door' || built.piece.kind === 'dock'
+                          "
+                          [attr.stroke-dasharray]="built.piece.kind === 'dock' ? '0.25 0.12' : null"
+                          [class.twes-map-chosen]="built.piece.id === selectedStructureId()"
+                          (pointerdown)="grabStructure($event, built.piece, null)"
+                          (click)="pressStructure(built.piece)"
+                          [attr.data-testid]="'stock-structure-' + built.piece.kind"
                         >
-                          {{ built.label }}
-                        </text>
+                          <title>{{ built.labelTitle }}</title>
+                        </rect>
+                        <!--
+                        Only where the store named it. A wall named nothing writes nothing: an empty label would put
+                        a blank box on every partition of the building, which is most of them.
+                      -->
+                        @if (built.label !== '') {
+                          <text
+                            [attr.x]="built.labelX"
+                            [attr.y]="built.labelY"
+                            [attr.font-size]="built.font"
+                            [attr.transform]="
+                              'rotate(' +
+                              built.rect.rotation +
+                              ' ' +
+                              built.centreX +
+                              ' ' +
+                              built.centreY +
+                              ')'
+                            "
+                            class="pointer-events-none fill-on-surface-variant"
+                            [attr.data-testid]="'stock-structure-name-' + built.piece.id"
+                          >
+                            {{ built.label }}
+                          </text>
+                        }
                       }
-                    }
-                    <!--
+                      <!--
                       Drawn after every piece so they are never buried under one, and with the same radius as the
                       stock's: a wall is resized by its corners exactly as a rayonnage is.
                     -->
-                    @for (grip of structureHandles(); track grip.key) {
-                      <circle
-                        [attr.cx]="grip.x"
-                        [attr.cy]="grip.y"
-                        [attr.r]="handleRadius()"
-                        [attr.stroke-width]="handleRadius() / 3"
-                        class="cursor-nwse-resize touch-none fill-surface stroke-primary"
-                        (pointerdown)="grabStructure($event, selectedStructure()!, grip.handle)"
-                        [attr.data-testid]="'stock-structure-handle-' + grip.key"
-                      />
-                    }
-                  </g>
-                }
-                @for (shape of shapes(); track shape.drawing.id) {
-                  <g
-                    [attr.data-testid]="'stock-drawing-group-' + shape.drawing.locationCode"
-                    [class.opacity-30]="search() !== null && !hits().has(shape.drawing.locationId)"
-                    [class.hidden]="
-                      !shown(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')
-                    "
-                    [class.pointer-events-none]="
-                      isLocked(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')
-                    "
-                    [attr.transform]="
-                      'rotate(' +
-                      shape.rect.rotation +
-                      ' ' +
-                      shape.centreX +
-                      ' ' +
-                      shape.centreY +
-                      ')'
-                    "
-                  >
-                    <rect
-                      [attr.x]="shape.rect.x"
-                      [attr.y]="shape.rect.y"
-                      [attr.width]="shape.rect.width"
-                      [attr.height]="shape.rect.depth"
-                      [attr.rx]="0.1"
-                      [attr.stroke-width]="shape.drawing.id === selectedId() ? 0.08 : 0.04"
-                      [class]="arranging() ? 'cursor-move touch-none' : 'cursor-pointer'"
-                      [class.fill-primary-container]="shape.drawing.locationKind === 'rack'"
-                      [class.stroke-primary]="shape.drawing.locationKind === 'rack'"
-                      [class.fill-surface-container-high]="shape.drawing.locationKind !== 'rack'"
-                      [class.stroke-outline]="shape.drawing.locationKind !== 'rack'"
-                      [class.fill-secondary-container]="shape.drawing.id === selectedId()"
-                      [class.twes-map-hit]="hits().has(shape.drawing.locationId)"
-                      [attr.data-hit]="
-                        search() === null ? null : hits().has(shape.drawing.locationId)
-                      "
-                      (pointerdown)="grab($event, shape.drawing, null)"
-                      (click)="select(shape.drawing)"
-                      [attr.data-testid]="'stock-drawing-rect-' + shape.drawing.locationCode"
-                    >
-                      <!--
-                        The WHOLE label, on the rectangle and not on the text: a label cut to fit hides nothing this
-                        way, and the text itself takes no pointer, so a title there would never be shown to anyone.
-                      -->
-                      <title>{{ shape.labelTitle }}</title>
-                    </rect>
-                    <text
-                      [attr.x]="shape.labelX"
-                      [attr.y]="shape.labelY"
-                      [attr.font-size]="labelFont"
-                      [attr.transform]="shape.labelTurn"
-                      class="pointer-events-none"
-                      [class.fill-on-secondary-container]="shape.drawing.id === selectedId()"
-                      [class.fill-on-primary-container]="
-                        shape.drawing.id !== selectedId() && shape.drawing.locationKind === 'rack'
-                      "
-                      [class.fill-on-surface]="
-                        shape.drawing.id !== selectedId() && shape.drawing.locationKind !== 'rack'
-                      "
-                      [class.twes-map-hit-label]="hits().has(shape.drawing.locationId)"
-                      [attr.data-testid]="'stock-drawing-label-' + shape.drawing.id"
-                    >
-                      {{ shape.label }}
-                    </text>
-                    <!-- What the search found here, in a pill at the far corner, so the light is never colour alone. -->
-                    @if (hitBadges().get(shape.drawing.id); as badge) {
-                      <g
-                        class="pointer-events-none"
-                        [attr.data-testid]="'stock-map-hit-' + shape.drawing.locationCode"
-                      >
-                        <rect
-                          [attr.x]="badge.x"
-                          [attr.y]="badge.y"
-                          [attr.width]="badge.width"
-                          [attr.height]="badge.height"
-                          [attr.rx]="badge.height / 2"
-                          class="twes-map-hit-badge"
-                        />
-                        <text
-                          [attr.x]="badge.x + badge.width / 2"
-                          [attr.y]="badge.y + badge.height / 2"
-                          [attr.font-size]="badge.font"
-                          text-anchor="middle"
-                          dominant-baseline="central"
-                          class="twes-map-hit-badge-text"
-                        >
-                          @if (badge.quantity !== null) {
-                            {{ badge.quantity | amount: badge.decimals }}
-                          } @else {
-                            {{
-                              'inventory.plan.search.lines_badge'
-                                | translate: { count: badge.count }
-                            }}
-                          }
-                        </text>
-                      </g>
-                    }
-
-                    <!--
-                      Drawn inside the group that turns the rectangle, so the handles turn with it: the one on a rack's
-                      end stays on its end whatever angle it stands at. Everything they do is also in the form.
-                    -->
-                    @if (shape.drawing.id === selectedId()) {
-                      @for (grip of handles(); track grip.key) {
+                      @for (grip of structureHandles(); track grip.key) {
                         <circle
                           [attr.cx]="grip.x"
                           [attr.cy]="grip.y"
                           [attr.r]="handleRadius()"
                           [attr.stroke-width]="handleRadius() / 3"
                           class="cursor-nwse-resize touch-none fill-surface stroke-primary"
-                          (pointerdown)="grab($event, shape.drawing, grip.handle)"
+                          (pointerdown)="grabStructure($event, selectedStructure()!, grip.handle)"
+                          [attr.data-testid]="'stock-structure-handle-' + grip.key"
                         />
                       }
-                    }
-                  </g>
-                }
-                <!-- The scale bar, in metres on the floor, so it says the truth at every zoom. -->
-                @if (scaleBar(); as bar) {
-                  <g class="pointer-events-none" data-testid="stock-map-scale-bar">
-                    <path
-                      [attr.d]="
-                        'M' +
-                        bar.x +
-                        ' ' +
-                        (bar.y - bar.tick) +
-                        'V' +
-                        bar.y +
-                        'H' +
-                        (bar.x + bar.length) +
-                        'V' +
-                        (bar.y - bar.tick)
+                    </g>
+                  }
+                  @for (shape of shapes(); track shape.drawing.id) {
+                    <g
+                      [attr.data-testid]="'stock-drawing-group-' + shape.drawing.locationCode"
+                      [class.opacity-30]="
+                        search() !== null && !hits().has(shape.drawing.locationId)
                       "
-                      [attr.stroke-width]="bar.stroke"
-                      fill="none"
-                      class="stroke-on-surface"
-                    />
-                    <text
-                      [attr.x]="bar.x"
-                      [attr.y]="bar.y - bar.tick * 1.6"
-                      [attr.font-size]="bar.font"
-                      class="fill-on-surface"
-                      data-testid="stock-map-scale"
+                      [class.hidden]="
+                        !shown(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')
+                      "
+                      [class.pointer-events-none]="
+                        isLocked(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')
+                      "
+                      [attr.transform]="
+                        'rotate(' +
+                        shape.rect.rotation +
+                        ' ' +
+                        shape.centreX +
+                        ' ' +
+                        shape.centreY +
+                        ')'
+                      "
                     >
-                      {{ bar.label }}
-                    </text>
-                  </g>
-                }
-              </svg>
+                      <rect
+                        [attr.x]="shape.rect.x"
+                        [attr.y]="shape.rect.y"
+                        [attr.width]="shape.rect.width"
+                        [attr.height]="shape.rect.depth"
+                        [attr.rx]="0.1"
+                        [attr.stroke-width]="0.04"
+                        [class]="arranging() ? 'cursor-move touch-none' : 'cursor-pointer'"
+                        [class.fill-primary-container]="shape.drawing.locationKind === 'rack'"
+                        [class.stroke-primary]="shape.drawing.locationKind === 'rack'"
+                        [class.fill-surface-container-high]="shape.drawing.locationKind !== 'rack'"
+                        [class.stroke-outline]="shape.drawing.locationKind !== 'rack'"
+                        [class.twes-map-chosen]="shape.drawing.id === selectedId()"
+                        [class.twes-map-hit]="hits().has(shape.drawing.locationId)"
+                        [attr.data-hit]="
+                          search() === null ? null : hits().has(shape.drawing.locationId)
+                        "
+                        (pointerdown)="grab($event, shape.drawing, null)"
+                        (click)="select(shape.drawing)"
+                        [attr.data-testid]="'stock-drawing-rect-' + shape.drawing.locationCode"
+                      >
+                        <!--
+                        The WHOLE label, on the rectangle and not on the text: a label cut to fit hides nothing this
+                        way, and the text itself takes no pointer, so a title there would never be shown to anyone.
+                      -->
+                        <title>{{ shape.labelTitle }}</title>
+                      </rect>
+                      <text
+                        [attr.x]="shape.labelX"
+                        [attr.y]="shape.labelY"
+                        [attr.font-size]="shape.font"
+                        [attr.transform]="shape.labelTurn"
+                        class="pointer-events-none"
+                        [class.fill-on-primary-container]="shape.drawing.locationKind === 'rack'"
+                        [class.fill-on-surface]="shape.drawing.locationKind !== 'rack'"
+                        [class.twes-map-hit-label]="hits().has(shape.drawing.locationId)"
+                        [attr.data-testid]="'stock-drawing-label-' + shape.drawing.id"
+                      >
+                        {{ shape.label }}
+                      </text>
+                      <!-- What the search found here, in a pill at the far corner, so the light is never colour alone. -->
+                      @if (hitBadges().get(shape.drawing.id); as badge) {
+                        <g
+                          class="pointer-events-none"
+                          [attr.data-testid]="'stock-map-hit-' + shape.drawing.locationCode"
+                        >
+                          <rect
+                            [attr.x]="badge.x"
+                            [attr.y]="badge.y"
+                            [attr.width]="badge.width"
+                            [attr.height]="badge.height"
+                            [attr.rx]="badge.height / 2"
+                            class="twes-map-hit-badge"
+                          />
+                          <text
+                            [attr.x]="badge.x + badge.width / 2"
+                            [attr.y]="badge.y + badge.height / 2"
+                            [attr.font-size]="badge.font"
+                            text-anchor="middle"
+                            dominant-baseline="central"
+                            class="twes-map-hit-badge-text"
+                          >
+                            @if (badge.quantity !== null) {
+                              {{ badge.quantity | amount: badge.decimals }}
+                            } @else {
+                              {{
+                                'inventory.plan.search.lines_badge'
+                                  | translate: { count: badge.count }
+                              }}
+                            }
+                          </text>
+                        </g>
+                      }
 
-              <!--
+                      <!--
+                      Drawn inside the group that turns the rectangle, so the handles turn with it: the one on a rack's
+                      end stays on its end whatever angle it stands at. Everything they do is also in the form.
+                    -->
+                      @if (shape.drawing.id === selectedId()) {
+                        @for (grip of handles(); track grip.key) {
+                          <circle
+                            [attr.cx]="grip.x"
+                            [attr.cy]="grip.y"
+                            [attr.r]="handleRadius()"
+                            [attr.stroke-width]="handleRadius() / 3"
+                            class="cursor-nwse-resize touch-none fill-surface stroke-primary"
+                            (pointerdown)="grab($event, shape.drawing, grip.handle)"
+                          />
+                        }
+                      }
+                    </g>
+                  }
+                </svg>
+
+                <!--
                 A floor with nothing on it says how it gets its racks, ticked as far as it has gone; it steps aside
                 the moment a rectangle is being placed, and sits in a corner so the bare floor stays there to trace on.
               -->
-              @if (
-                floorDrawings().length === 0 &&
-                editing() === null &&
-                editingStructure() === null &&
-                !tracing()
-              ) {
-                <div
-                  class="pointer-events-none absolute start-3 top-3 flex max-w-sm flex-col gap-3 rounded-xl border border-outline-variant bg-surface p-4"
-                  data-testid="stock-map-first-floor"
-                >
-                  <app-stock-map-first-steps
-                    [measured]="floorSize() !== null"
-                    [built]="floorStructures().length > 0"
-                    [drawn]="false"
-                  />
-                  @if (!arranging() && mayDraw()) {
-                    <div>
-                      <button
-                        type="button"
-                        class="pointer-events-auto min-h-9 rounded-md border border-outline-variant px-3 text-sm font-medium"
-                        (click)="chooseMode('arrange')"
-                        data-testid="stock-map-first-arrange"
-                      >
-                        {{ 'inventory.plan.first.arrange' | translate }}
-                      </button>
-                    </div>
-                  }
-                </div>
-              }
+                @if (
+                  floorDrawings().length === 0 &&
+                  editing() === null &&
+                  editingStructure() === null &&
+                  !tracing()
+                ) {
+                  <div
+                    class="pointer-events-none absolute start-3 top-3 flex max-w-sm flex-col gap-3 rounded-xl border border-outline-variant bg-surface p-4"
+                    data-testid="stock-map-first-floor"
+                  >
+                    <app-stock-map-first-steps
+                      [measured]="floorSize() !== null"
+                      [built]="floorStructures().length > 0"
+                      [drawn]="false"
+                    />
+                    @if (!arranging() && mayDraw()) {
+                      <div>
+                        <button
+                          type="button"
+                          class="pointer-events-auto min-h-9 rounded-md border border-outline-variant px-3 text-sm font-medium"
+                          (click)="chooseMode('arrange')"
+                          data-testid="stock-map-first-arrange"
+                        >
+                          {{ 'inventory.plan.first.arrange' | translate }}
+                        </button>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
 
               <!--
                 Coming nearer, going back and moving what is shown, each by a single press: WCAG 2.5.7 asks a map for
-                exactly these, so that nothing on the board needs a drag.
+                exactly these, so that nothing on the board needs a drag. They stand in a strip under the drawing with
+                the scale bar: laid over it, they covered whatever was drawn in its lower corner.
               -->
               <div
-                class="absolute bottom-3 end-3 flex items-end gap-2"
+                class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-outline-variant px-3 py-2"
                 role="group"
                 [attr.aria-label]="'inventory.plan.view' | translate"
+                data-testid="stock-map-view-bar"
               >
-                <!-- Left to right whatever the language: the plan itself is never mirrored, so its arrows are not. -->
-                <div class="grid grid-cols-3 gap-1" dir="ltr">
-                  <span></span>
+                @let bar = scaleBar();
+                <div class="flex items-end gap-2 text-xs" data-testid="stock-map-scale-bar">
+                  @if (bar.pixels !== null) {
+                    <span
+                      class="h-2 border-x-2 border-b-2 border-on-surface"
+                      [style.width.px]="bar.pixels"
+                      aria-hidden="true"
+                      data-testid="stock-map-scale-line"
+                    ></span>
+                  }
+                  <span data-testid="stock-map-scale">{{ bar.label }}</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  @if (panArrows()) {
+                    <!-- Left to right whatever the language: the plan itself is never mirrored, so its arrows are not. -->
+                    <div class="flex items-center gap-1" dir="ltr">
+                      <button
+                        type="button"
+                        class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
+                        [disabled]="zoom() <= 1"
+                        (click)="step(-1, 0)"
+                        [appLabel]="'inventory.plan.pan.left' | translate"
+                        data-testid="stock-map-pan-left"
+                      >
+                        ◀
+                      </button>
+                      <button
+                        type="button"
+                        class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
+                        [disabled]="zoom() <= 1"
+                        (click)="step(0, -1)"
+                        [appLabel]="'inventory.plan.pan.up' | translate"
+                        data-testid="stock-map-pan-up"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
+                        [disabled]="zoom() <= 1"
+                        (click)="step(0, 1)"
+                        [appLabel]="'inventory.plan.pan.down' | translate"
+                        data-testid="stock-map-pan-down"
+                      >
+                        ▼
+                      </button>
+                      <button
+                        type="button"
+                        class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
+                        [disabled]="zoom() <= 1"
+                        (click)="step(1, 0)"
+                        [appLabel]="'inventory.plan.pan.right' | translate"
+                        data-testid="stock-map-pan-right"
+                      >
+                        ▶
+                      </button>
+                    </div>
+                  }
+                  <!-- Farther, how near, nearer: the order a person reads a zoom in, one control and not two. -->
+                  <div class="flex items-center gap-1">
+                    <button
+                      type="button"
+                      class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
+                      (click)="zoomBy(1 / 1.4)"
+                      [disabled]="zoom() <= 1"
+                      [appLabel]="'inventory.plan.zoom_out' | translate"
+                      data-testid="stock-map-zoom-out"
+                    >
+                      −
+                    </button>
+                    <span
+                      class="min-w-12 text-center text-xs tabular-nums text-on-surface-variant"
+                      data-testid="stock-map-zoom"
+                      >{{ zoomLabel() }}</span
+                    >
+                    <button
+                      type="button"
+                      class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
+                      (click)="zoomBy(1.4)"
+                      [appLabel]="'inventory.plan.zoom_in' | translate"
+                      data-testid="stock-map-zoom-in"
+                    >
+                      +
+                    </button>
+                  </div>
                   <button
                     type="button"
-                    class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
+                    class="h-9 rounded-md border border-outline-variant bg-surface px-3 text-sm disabled:opacity-40"
+                    (click)="fitAll()"
                     [disabled]="zoom() <= 1"
-                    (click)="step(0, -1)"
-                    [appLabel]="'inventory.plan.pan.up' | translate"
-                    data-testid="stock-map-pan-up"
+                    data-testid="stock-map-fit"
                   >
-                    ▲
-                  </button>
-                  <span></span>
-                  <button
-                    type="button"
-                    class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
-                    [disabled]="zoom() <= 1"
-                    (click)="step(-1, 0)"
-                    [appLabel]="'inventory.plan.pan.left' | translate"
-                    data-testid="stock-map-pan-left"
-                  >
-                    ◀
-                  </button>
-                  <button
-                    type="button"
-                    class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
-                    [disabled]="zoom() <= 1"
-                    (click)="step(0, 1)"
-                    [appLabel]="'inventory.plan.pan.down' | translate"
-                    data-testid="stock-map-pan-down"
-                  >
-                    ▼
-                  </button>
-                  <button
-                    type="button"
-                    class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
-                    [disabled]="zoom() <= 1"
-                    (click)="step(1, 0)"
-                    [appLabel]="'inventory.plan.pan.right' | translate"
-                    data-testid="stock-map-pan-right"
-                  >
-                    ▶
+                    {{ 'inventory.plan.fit' | translate }}
                   </button>
                 </div>
-                <div class="flex flex-col items-center gap-1">
-                  <button
-                    type="button"
-                    class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
-                    (click)="zoomBy(1.4)"
-                    [appLabel]="'inventory.plan.zoom_in' | translate"
-                    data-testid="stock-map-zoom-in"
-                  >
-                    +
-                  </button>
-                  <span
-                    class="rounded bg-surface px-1 text-xs tabular-nums text-on-surface-variant"
-                    data-testid="stock-map-zoom"
-                    >{{ zoomLabel() }}</span
-                  >
-                  <button
-                    type="button"
-                    class="h-9 w-9 rounded-md border border-outline-variant bg-surface text-sm disabled:opacity-40"
-                    (click)="zoomBy(1 / 1.4)"
-                    [disabled]="zoom() <= 1"
-                    [appLabel]="'inventory.plan.zoom_out' | translate"
-                    data-testid="stock-map-zoom-out"
-                  >
-                    −
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  class="h-9 rounded-md border border-outline-variant bg-surface px-3 text-sm disabled:opacity-40"
-                  (click)="fitAll()"
-                  [disabled]="zoom() <= 1"
-                  data-testid="stock-map-fit"
-                >
-                  {{ 'inventory.plan.fit' | translate }}
-                </button>
               </div>
             </div>
           </div>
@@ -1339,7 +1349,7 @@
                   @if (selectedShape(); as shape) {
                     ·
                     <span class="tabular-nums"
-                      >{{ shape.rect.width }} × {{ shape.rect.depth }} m</span
+                      >{{ shape.rect.width | measure }} × {{ shape.rect.depth | measure }} m</span
                     >
                   }
                 </p>
@@ -1355,24 +1365,32 @@
                   </h3>
                   @if (here(); as now) {
                     @for (line of now.lines; track line.id) {
+                      <!--
+                        The name on a line of its own, the quantity under it at the end: side by side in a narrow
+                        panel, a long unit squeezed the name onto three lines. The place is named only when it is a
+                        bin under the one chosen, which is where a person has to go.
+                      -->
                       <div
-                        class="flex items-start justify-between gap-3 rounded-lg border border-outline-variant p-2"
+                        class="flex flex-col gap-0.5 rounded-lg border border-outline-variant p-2"
                         [attr.data-testid]="'stock-contents-line-' + line.id"
                       >
-                        <span class="flex min-w-0 flex-col">
-                          <span class="font-medium">{{ line.productName }}</span>
-                          <span class="text-sm text-on-surface-variant">
-                            {{ line.productReference }} · {{ line.locationCode }}
+                        <span class="font-medium">{{ line.productName }}</span>
+                        <span class="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+                          <span class="text-on-surface-variant">
+                            {{ line.productReference }}
+                            @if (line.locationId !== now.locationId) {
+                              · {{ line.locationCode }}
+                            }
                             @if (line.lotCode) {
                               · {{ 'inventory.plan.here.lot' | translate: { lot: line.lotCode } }}
                             }
                           </span>
-                        </span>
-                        <span
-                          class="whitespace-nowrap font-medium tabular-nums"
-                          [class.text-error]="line.negative"
-                        >
-                          {{ line.quantity | amount: line.unitDecimals }} {{ line.unitName }}
+                          <span
+                            class="ms-auto whitespace-nowrap font-medium tabular-nums"
+                            [class.text-error]="line.negative"
+                          >
+                            {{ line.quantity | amount: line.unitDecimals }} {{ line.unitName }}
+                          </span>
                         </span>
                       </div>
                     } @empty {

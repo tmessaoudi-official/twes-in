@@ -47,6 +47,7 @@ class StaticLoader implements TranslateLoader {
       inventory: {
         plan: {
           plan_of: 'Plan de {{floor}} : {{count}} rectangle(s)',
+          legend_items: { door: 'Porte', dock: 'Quai' },
           nothing_drawn: 'Rien n’est encore dessiné sur cet étage.',
           no_floor: 'Aucun étage n’est encore dessiné.',
           first: {
@@ -931,8 +932,8 @@ describe('StockMapPage', () => {
 
   /** A size is the COMPANY's, never the code's: the palette shows what it will pose, in metres. */
   it('shows each shape at the size it will be posed at', async () => {
-    expect(q('stock-shape-rack')?.textContent).toContain('2.4');
-    expect(q('stock-shape-rack')?.textContent).toContain('0.6');
+    // As a French screen writes a decimal: « 2,4 × 0,6 m ».
+    expect(q('stock-shape-rack')?.textContent).toContain('2,4 × 0,6 m');
     expect(q('stock-shape-zone')?.textContent).toContain('6');
     // The four of the canvas, minus what this company has no size for: nothing is invented here. The dock is the
     // one this fixture leaves out — the aisle joined it when the repeat panel began reading its width.
@@ -1537,6 +1538,33 @@ describe('StockMapPage', () => {
     expect(q('stock-map-trace')).toBeNull();
   });
 
+  /** Greyed out at 100 %, the four arrows took a row of a phone's screen and pushed the rest under its bottom bar. */
+  it('offers the arrows on a phone only once there is somewhere to move', async () => {
+    windowClass.set('compact');
+    fixture = TestBed.createComponent(StockMapPage);
+    await settle();
+
+    expect(q('stock-map-pan-left')).toBeNull();
+    expect(q('stock-map-zoom-in')).not.toBeNull();
+
+    press('stock-map-zoom-in');
+    await settle();
+
+    expect(q('stock-map-pan-left')).not.toBeNull();
+  });
+
+  /** A wide floor in a tall phone board filled its top and left the rest of the board blank. */
+  it('shapes the board on a phone as the floor is shaped', async () => {
+    floors.set([{ ...ground, widthMetres: '24.000', depthMetres: '14.000' }]);
+    windowClass.set('compact');
+    fixture = TestBed.createComponent(StockMapPage);
+    await settle();
+    const [, , width, height] = viewBox().split(' ').map(Number);
+    const surface = q('stock-map-svg')!.parentElement!;
+
+    expect(Number(surface.style.getPropertyValue('--plan-aspect'))).toBeCloseTo(width / height, 3);
+  });
+
   it('reads on a phone even from an Aménager link', async () => {
     windowClass.set('compact');
     fixture = TestBed.createComponent(StockMapPage);
@@ -1594,6 +1622,137 @@ describe('StockMapPage', () => {
     await settle();
 
     expect(q('stock-map-scale')?.textContent?.trim()).toBe('5 m');
+  });
+
+  /** Chosen, a rack turned the palest thing on the board, and read as the one place that was not there. */
+  it('marks the chosen place by a heavy outline, keeping its own colour', async () => {
+    await consult();
+    const rect = q('stock-drawing-rect-R1')!;
+    rect.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await settle();
+
+    expect(rect.classList.contains('twes-map-chosen')).toBe(true);
+    expect(rect.classList.contains('fill-primary-container')).toBe(true);
+    expect(rect.classList.contains('fill-secondary-container')).toBe(false);
+  });
+
+  /** « 24.5 × 14 m » on a French screen: a size is written as the screen writes its numbers, never as code does. */
+  it('writes sizes as the screen writes a decimal', async () => {
+    floors.set([{ ...ground, widthMetres: '24.500', depthMetres: '14.000' }]);
+    await settle();
+
+    expect(q('stock-floor-size')?.textContent?.trim()).toBe('24,5 × 14 m');
+  });
+
+  /** A zone, a door and a dock were three greys a shade apart, and the legend named the last two as one. */
+  it('draws a dock apart from a door, and the legend names each', async () => {
+    structures.set([
+      wall,
+      { ...wall, id: 's2', kind: 'door', name: 'Porte', width: '0.900', depth: '0.150' },
+      { ...wall, id: 's3', kind: 'dock', name: 'Quai', width: '2.600', depth: '0.150' },
+    ]);
+    await settle();
+    await consult();
+    const door = q('stock-structure-door')!;
+    const dock = q('stock-structure-dock')!;
+
+    expect(door.getAttribute('stroke-dasharray')).toBeNull();
+    expect(dock.getAttribute('stroke-dasharray')).not.toBeNull();
+    expect(q('stock-map-legend-door')?.textContent?.trim()).toBe('Porte');
+    expect(q('stock-map-legend-dock')?.textContent?.trim()).toBe('Quai');
+  });
+
+  /** Laid over the drawing, the buttons covered a dock and a zone and the scale bar a wall's name. */
+  it('keeps the view controls and the scale bar under the drawing, never on it', async () => {
+    floors.set([{ ...ground, widthMetres: '24.000', depthMetres: '14.000' }]);
+    await settle();
+    const svg = q('stock-map-svg')!;
+    const bar = q('stock-map-view-bar')!;
+
+    for (const id of [
+      'stock-map-zoom-in',
+      'stock-map-zoom-out',
+      'stock-map-zoom',
+      'stock-map-fit',
+      'stock-map-pan-up',
+      'stock-map-pan-left',
+      'stock-map-scale-bar',
+    ]) {
+      expect(q(id), id).not.toBeNull();
+      expect(svg.contains(q(id)), id).toBe(false);
+      expect(bar.contains(q(id)), id).toBe(true);
+    }
+  });
+
+  describe('once the board is measured', () => {
+    const before = globalThis.ResizeObserver;
+    // A phone's board: 24 m shown in 360 pixels, where labels drawn at a fixed size in metres came out 5 pixels tall.
+    const measured = { width: 360, height: 300 };
+
+    beforeEach(async () => {
+      globalThis.ResizeObserver = class {
+        private readonly told: ResizeObserverCallback;
+        constructor(told: ResizeObserverCallback) {
+          this.told = told;
+        }
+        observe(): void {
+          this.told(
+            [{ contentRect: measured } as unknown as ResizeObserverEntry],
+            this as unknown as ResizeObserver,
+          );
+        }
+        unobserve(): void {
+          // The board is measured once, as observed; nothing is held to let go of.
+        }
+        disconnect(): void {
+          // Likewise: the size was told at once, so there is no watch to end.
+        }
+      } as unknown as typeof ResizeObserver;
+      floors.set([{ ...ground, widthMetres: '24.000', depthMetres: '14.000' }]);
+      fixture.destroy();
+      fixture = TestBed.createComponent(StockMapPage);
+      await settle();
+    });
+
+    afterEach(() => {
+      globalThis.ResizeObserver = before;
+    });
+
+    /** How many pixels a metre takes on the measured board, the plan fitted by its tighter side. */
+    function pixelsPerMetre(): number {
+      const [, , width, height] = viewBox().split(' ').map(Number);
+      return Math.min(measured.width / width, measured.height / height);
+    }
+
+    it('draws the scale bar as long on screen as the metres it names', () => {
+      const line = q('stock-map-scale-line') as HTMLElement;
+
+      expect(q('stock-map-scale')?.textContent?.trim()).toBe('5 m');
+      expect(parseFloat(line.style.width)).toBeCloseTo(5 * pixelsPerMetre(), 1);
+    });
+
+    const written = (said: string): SVGTextElement =>
+      Array.from(q('stock-map-svg')!.querySelectorAll('text')).find(
+        (text) => text.textContent?.trim() === said,
+      )!;
+
+    it('writes the labels at a size a person reads, however small the board draws a metre', async () => {
+      // A rack as the demo depot draws them, 1,20 m across: room for a label a person reads.
+      drawings.set([{ ...drawn, width: '6.000', depth: '1.200' }]);
+      await settle();
+
+      expect(
+        Number(written('R1').getAttribute('font-size')) * pixelsPerMetre(),
+      ).toBeGreaterThanOrEqual(12);
+      expect(
+        Number(written('Mur nord').getAttribute('font-size')) * pixelsPerMetre(),
+      ).toBeGreaterThanOrEqual(11);
+    });
+
+    /** Spilled onto the floor, a label reads as naming whatever it lands on. */
+    it('never writes a label taller than the rectangle it names', () => {
+      expect(Number(written('R1').getAttribute('font-size'))).toBeLessThanOrEqual(0.6);
+    });
   });
 
   /** WCAG 2.5.7: what a drag does on the board, a single press does too. */
@@ -1771,6 +1930,40 @@ describe('StockMapPage', () => {
     await settle();
     expect(q('stock-contents-more')?.getAttribute('href')).toBe('/stock?location=l1');
     expect(q('stock-contents-empty-home-p2')).toBeNull();
+  });
+
+  /** « R1 » on every line of R1's own panel says nothing; a bin under it is where a person must go. */
+  it('names the place on a line only where it is not the chosen place itself', async () => {
+    await consult();
+    facade.loadContents.mockImplementation(async (_company: string, locationId: string | null) => {
+      contents.set(
+        locationId === null
+          ? null
+          : {
+              locationId,
+              levels: [
+                level,
+                {
+                  ...level,
+                  id: 'p2:l1',
+                  productId: 'p2',
+                  productReference: 'RON-M6',
+                  locationId: 'l1',
+                  locationCode: 'R1',
+                },
+              ],
+              total: 2,
+              homes: [],
+            },
+      );
+    });
+
+    press('stock-drawing-R1');
+    await settle();
+
+    expect(q('stock-contents-line-p1:b1')?.textContent).toContain('R1-B2');
+    expect(q('stock-contents-line-p2:l1')?.textContent).toContain('RON-M6');
+    expect(q('stock-contents-line-p2:l1')?.textContent).not.toMatch(/·\s*R1\b/);
   });
 
   it('says plainly when a place holds nothing, and reads nothing for the building', async () => {

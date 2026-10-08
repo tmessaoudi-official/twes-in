@@ -6,13 +6,22 @@
  * global sheet the first page loads, and outside Tailwind's layer, they win over the rack's and the selection's fill
  * utilities, so a lit place stays lit when it is chosen, and says so by its outline.
  */
+/*
+ * The chosen place keeps its own colour and takes a heavy outline: filled in a pale tone, it turned the least visible
+ * thing on the board. Declared before the search's light, which keeps its own outline colour when it is chosen too.
+ */
+.twes-map-chosen {
+  stroke: var(--mat-sys-on-surface);
+  stroke-width: 0.2;
+}
 .twes-map-hit {
   fill: var(--twes-status-warning-bg);
   stroke: var(--twes-status-warning-fg);
   stroke-width: 0.08;
 }
-.twes-map-hit.fill-secondary-container {
-  stroke-width: 0.16;
+.twes-map-hit.twes-map-chosen {
+  stroke: var(--twes-status-warning-fg);
+  stroke-width: 0.2;
 }
 .twes-map-hit-label {
   fill: var(--twes-status-warning-fg);

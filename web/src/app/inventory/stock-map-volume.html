@@ -1,5 +1,9 @@
+<!--
+  On a wide screen the card as a whole is as tall as the plan's, and the canvas takes what its two rows of notes and
+  switches leave: sized alone, the canvas ran below the window and the floor was drawn low and cut.
+-->
 <div
-  class="flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest"
+  class="flex min-w-0 flex-col overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest lg:h-[max(24rem,calc(100dvh-21.5rem))]"
 >
   <div
     class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-outline-variant px-3 py-2 text-sm"
@@ -42,7 +46,7 @@
     </span>
   </div>
   <div
-    class="relative h-[55dvh] min-h-[20rem] lg:h-[max(26rem,calc(100dvh-22rem))]"
+    class="relative h-[55dvh] min-h-[20rem] lg:h-auto lg:min-h-0 lg:flex-1"
     data-testid="stock-volume"
   >
     @if (webgl() === 'missing') {
