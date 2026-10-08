@@ -25,6 +25,7 @@ import { moduleGuard } from './shell/module-guard';
 export const routes: Routes = [
   {
     path: 'login',
+    title: 'titles.sign_in',
     canActivate: [anonymousGuard],
     loadComponent: () => import('./auth/login-page').then((m) => m.LoginPage),
   },
@@ -32,12 +33,14 @@ export const routes: Routes = [
     // Setting up a second factor. Outside the shell: an account a company requires to enrol is refused by every
     // other endpoint until it has, so the shell could not load.
     path: 'two-factor',
+    title: 'titles.two_factor',
     canActivate: [twoFactorGuard],
     loadComponent: () => import('./auth/two-factor-page').then((m) => m.TwoFactorPage),
   },
   {
     // Opened from a mail client, with no session: deliberately outside both guards and outside the shell.
     path: 'invitations/:token',
+    title: 'titles.invitation',
     loadComponent: () =>
       import('./invitation/accept-invitation-page').then((m) => m.AcceptInvitationPage),
   },
@@ -45,12 +48,14 @@ export const routes: Routes = [
     // A phone lent to a computer as a scanner (docs/SPEC.md § 7, 2026-09-23 09:45, slice 4): no sign-in by design,
     // the link it claims is its only right. Outside both guards and outside the shell, like an invitation.
     path: 'pair',
+    title: 'titles.phone_scanner',
     loadComponent: () => import('./pairing/phone-scanner-page').then((m) => m.PhoneScannerPage),
   },
   {
     // The customer display (docs/SPEC.md § 7, 2026-09-23 slice 6): a second window of a signed-in browser, turned
     // towards the customer. Outside the shell, so it shows no menu and no scan card opens on it.
     path: 'customer-display',
+    title: 'customer_display.title',
     canActivate: [authGuard, customerScreenLock],
     loadComponent: () =>
       import('./customer-display/customer-display-page').then((m) => m.CustomerDisplayPage),
@@ -63,12 +68,14 @@ export const routes: Routes = [
     children: [
       {
         path: 'location-labels',
+        title: 'titles.location_labels',
         canActivate: [moduleGuard(INVENTORY_MODULE)],
         loadComponent: () =>
           import('./inventory/location-labels-page').then((m) => m.LocationLabelsPage),
       },
       {
         path: 'product-labels/:productId',
+        title: 'titles.product_labels',
         canActivate: [moduleGuard(PRODUCTS_MODULE)],
         loadComponent: () =>
           import('./products/product-labels-page').then((m) => m.ProductLabelsPage),
@@ -78,17 +85,20 @@ export const routes: Routes = [
   {
     // Asking for a signup link is for somebody not signed in.
     path: 'signup',
+    title: 'titles.signup',
     canActivate: [anonymousGuard],
     loadComponent: () => import('./signup/signup-page').then((m) => m.SignupPage),
   },
   {
     // The far end of a signup link, opened from a mail client with no session: outside both guards, like an invitation.
     path: 'signup/:token',
+    title: 'titles.finish_signup',
     loadComponent: () => import('./signup/finish-signup-page').then((m) => m.FinishSignupPage),
   },
   {
     // Asking for a reset link is for somebody not signed in.
     path: 'forgot-password',
+    title: 'titles.forgot_password',
     canActivate: [anonymousGuard],
     loadComponent: () =>
       import('./password-reset/forgot-password-page').then((m) => m.ForgotPasswordPage),
@@ -96,6 +106,7 @@ export const routes: Routes = [
   {
     // The far end of a reset link, opened from a mail client with no session: outside both guards, like a signup link.
     path: 'reset-password/:token',
+    title: 'titles.reset_password',
     loadComponent: () =>
       import('./password-reset/reset-password-page').then((m) => m.ResetPasswordPage),
   },
@@ -103,6 +114,7 @@ export const routes: Routes = [
     // A company its subscription locked: outside the shell like the page below, because the API refuses its members
     // everything but reading the subscription and declaring a payment — which is what this page is for.
     path: 'subscription',
+    title: 'licensing.title',
     canActivate: [lockedSubscriptionGuard],
     loadComponent: () =>
       import('./licensing/locked-subscription-page').then((m) => m.LockedSubscriptionPage),
@@ -110,6 +122,7 @@ export const routes: Routes = [
   {
     // A member of a company that is not active, pending approval or suspended: outside the shell, which could not load.
     path: 'awaiting-approval',
+    title: 'titles.awaiting_approval',
     canActivate: [awaitingApprovalGuard],
     loadComponent: () =>
       import('./auth/awaiting-approval-page').then((m) => m.AwaitingApprovalPage),
@@ -119,6 +132,7 @@ export const routes: Routes = [
     // Outside the shell, so it carries no menu, no palette and no scan card; `customerScreenLock` on every other
     // signed-in route sends the tab back here while it is open.
     path: 'customer-screen',
+    title: 'customer_screen.title',
     canActivate: [authGuard],
     loadComponent: () =>
       import('./customer-screen/customer-screen-page').then((m) => m.CustomerScreenPage),
@@ -133,115 +147,137 @@ export const routes: Routes = [
     children: guardUnsaved([
       {
         path: '',
+        title: 'nav.home',
         pathMatch: 'full',
         loadComponent: () => import('./hello/hello-page').then((m) => m.HelloPage),
       },
       {
         path: 'watch',
+        title: 'watch.title',
         loadComponent: () => import('./watch/watch-page').then((m) => m.WatchPage),
       },
       {
         path: 'watch/:kind',
+        title: 'watch.title',
         loadComponent: () => import('./watch/watch-subject-page').then((m) => m.WatchSubjectPage),
       },
       {
         // « Mon compte »: the person's own account, apart from any company (docs/SPEC.md § 7, 2026-09-25 17:22).
         path: 'account',
+        title: 'account.title',
         loadComponent: () => import('./account/account-page').then((m) => m.AccountPage),
       },
       {
         // What the vision holds and is not built yet (docs/SPEC.md § 7, 2026-09-25 17:22).
         path: 'coming/:key',
+        title: 'titles.coming',
         loadComponent: () => import('./shell/coming-page').then((m) => m.ComingPage),
       },
       {
         path: 'customers',
+        title: 'nav.customers',
         canActivate: [moduleGuard(CUSTOMERS_MODULE)],
         loadComponent: () => import('./customers/customers-page').then((m) => m.CustomersPage),
       },
       {
         // Before ':customerId', which would otherwise take "new" and "groups" for identifiers.
         path: 'customers/new',
+        title: 'titles.new_customer',
         canActivate: [moduleGuard(CUSTOMERS_MODULE)],
         loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
       },
       {
         path: 'customers/groups',
+        title: 'nav.customer_groups',
         canActivate: [moduleGuard(CUSTOMERS_MODULE)],
         loadComponent: () =>
           import('./customers/customer-groups-page').then((m) => m.CustomerGroupsPage),
       },
       {
         path: 'customers/:customerId',
+        title: 'titles.customer',
         canActivate: [moduleGuard(CUSTOMERS_MODULE)],
         loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
       },
       {
         path: 'price-lists',
+        title: 'nav.price_lists',
         canActivate: [moduleGuard(PRICE_LISTS_MODULE)],
         loadComponent: () => import('./price-lists/price-lists-page').then((m) => m.PriceListsPage),
       },
       {
         path: 'products',
+        title: 'nav.products',
         canActivate: [moduleGuard(PRODUCTS_MODULE)],
         loadComponent: () => import('./products/products-page').then((m) => m.ProductsPage),
       },
       {
         // Before ':productId', which would otherwise take "new" and "categories" for identifiers.
         path: 'products/new',
+        title: 'titles.new_product',
         canActivate: [moduleGuard(PRODUCTS_MODULE)],
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
       },
       {
         path: 'products/categories',
+        title: 'nav.product_categories',
         canActivate: [moduleGuard(PRODUCTS_MODULE)],
         loadComponent: () =>
           import('./products/product-categories-page').then((m) => m.ProductCategoriesPage),
       },
       {
         path: 'products/:productId',
+        title: 'titles.product',
         canActivate: [moduleGuard(PRODUCTS_MODULE)],
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
       },
       {
         path: 'invoices',
+        title: 'nav.invoices',
         canActivate: [moduleGuard(INVOICES_MODULE)],
         loadComponent: () => import('./invoices/invoices-page').then((m) => m.InvoicesPage),
       },
       {
         // Before ':invoiceId', which would otherwise take "new" for an identifier.
         path: 'invoices/new',
+        title: 'titles.new_invoice',
         canActivate: [moduleGuard(INVOICES_MODULE)],
         loadComponent: () => import('./invoices/invoice-page').then((m) => m.InvoicePage),
       },
       {
         path: 'invoices/:invoiceId',
+        title: 'titles.invoice',
         canActivate: [moduleGuard(INVOICES_MODULE)],
         loadComponent: () => import('./invoices/invoice-page').then((m) => m.InvoicePage),
       },
       {
         path: 'instruments',
+        title: 'nav.instruments',
         canActivate: [moduleGuard(INVOICES_MODULE)],
         loadComponent: () => import('./invoices/portfolio-page').then((m) => m.PortfolioPage),
       },
       {
         path: 'quotes',
+        title: 'nav.quotes',
         canActivate: [moduleGuard(QUOTES_MODULE)],
         loadComponent: () => import('./quotes/quotes-page').then((m) => m.QuotesPage),
       },
       {
         // Before ':quoteId', which would otherwise take "new" for an identifier.
         path: 'quotes/new',
+        title: 'titles.new_quote',
         canActivate: [moduleGuard(QUOTES_MODULE)],
         loadComponent: () => import('./quotes/quote-page').then((m) => m.QuotePage),
       },
       {
         path: 'quotes/:quoteId',
+        title: 'titles.quote',
         canActivate: [moduleGuard(QUOTES_MODULE)],
         loadComponent: () => import('./quotes/quote-page').then((m) => m.QuotePage),
       },
       {
         path: 'delivery-notes',
+        title: 'nav.delivery_notes',
         canActivate: [moduleGuard(DELIVERY_NOTES_MODULE)],
         loadComponent: () =>
           import('./delivery-notes/delivery-notes-page').then((m) => m.DeliveryNotesPage),
@@ -249,53 +285,62 @@ export const routes: Routes = [
       {
         // Before ':deliveryNoteId', which would otherwise take "new" for an identifier.
         path: 'delivery-notes/new',
+        title: 'titles.new_delivery_note',
         canActivate: [moduleGuard(DELIVERY_NOTES_MODULE)],
         loadComponent: () =>
           import('./delivery-notes/delivery-note-page').then((m) => m.DeliveryNotePage),
       },
       {
         path: 'delivery-notes/:deliveryNoteId',
+        title: 'titles.delivery_note',
         canActivate: [moduleGuard(DELIVERY_NOTES_MODULE)],
         loadComponent: () =>
           import('./delivery-notes/delivery-note-page').then((m) => m.DeliveryNotePage),
       },
       {
         path: 'stock',
+        title: 'nav.stock',
         canActivate: [moduleGuard(INVENTORY_MODULE)],
         loadComponent: () => import('./inventory/stock-page').then((m) => m.StockPage),
       },
       {
         // Count mode (docs/SPEC.md § 7, 2026-09-23 slice 8): a scanner walking the shelves.
         path: 'stock/count',
+        title: 'nav.stock_count',
         canActivate: [moduleGuard(INVENTORY_MODULE)],
         loadComponent: () => import('./inventory/stock-count-page').then((m) => m.StockCountPage),
       },
       {
         // A location label's QR code (slice 8): count mode, at that location.
         path: 'stock/locations/:location',
+        title: 'nav.stock_count',
         canActivate: [moduleGuard(INVENTORY_MODULE)],
         loadComponent: () => import('./inventory/stock-count-page').then((m) => m.StockCountPage),
       },
       {
         path: 'stock/movements',
+        title: 'nav.stock_movements',
         canActivate: [moduleGuard(INVENTORY_MODULE)],
         loadComponent: () =>
           import('./inventory/stock-movements-page').then((m) => m.StockMovementsPage),
       },
       {
         path: 'stock/locations',
+        title: 'nav.stock_locations',
         canActivate: [moduleGuard(INVENTORY_MODULE)],
         loadComponent: () =>
           import('./inventory/stock-locations-page').then((m) => m.StockLocationsPage),
       },
       {
         path: 'stock/valuation',
+        title: 'nav.stock_valuation',
         canActivate: [moduleGuard(INVENTORY_MODULE)],
         loadComponent: () =>
           import('./inventory/stock-valuation-page').then((m) => m.StockValuationPage),
       },
       {
         path: 'stock/plan',
+        title: 'titles.stock_plan',
         canActivate: [moduleGuard(INVENTORY_MODULE)],
         loadComponent: () => import('./inventory/stock-map-page').then((m) => m.StockMapPage),
       },
@@ -303,53 +348,63 @@ export const routes: Routes = [
         // One screen for every subject a module declares as importable: the API already answers 404 for a subject
         // this company cannot import, or may not write, so no static module guard could say it here.
         path: 'imports/:subject',
+        title: 'titles.import',
         loadComponent: () => import('./import/import-page').then((m) => m.ImportPage),
       },
       {
         path: 'vendors',
+        title: 'nav.vendors',
         canActivate: [moduleGuard(VENDORS_MODULE)],
         loadComponent: () => import('./vendors/vendors-page').then((m) => m.VendorsPage),
       },
       {
         path: 'vendors/new',
+        title: 'titles.new_vendor',
         canActivate: [moduleGuard(VENDORS_MODULE)],
         loadComponent: () => import('./vendors/vendor-page').then((m) => m.VendorPage),
       },
       {
         path: 'vendors/:vendorId',
+        title: 'titles.vendor',
         canActivate: [moduleGuard(VENDORS_MODULE)],
         loadComponent: () => import('./vendors/vendor-page').then((m) => m.VendorPage),
       },
       {
         path: 'expenses',
+        title: 'nav.expenses',
         canActivate: [moduleGuard(EXPENSES_MODULE)],
         loadComponent: () => import('./expenses/expenses-page').then((m) => m.ExpensesPage),
       },
       {
         path: 'expenses/categories',
+        title: 'nav.expense_categories',
         canActivate: [moduleGuard(EXPENSES_MODULE)],
         loadComponent: () =>
           import('./expenses/expense-categories-page').then((m) => m.ExpenseCategoriesPage),
       },
       {
         path: 'expenses/new',
+        title: 'titles.new_expense',
         canActivate: [moduleGuard(EXPENSES_MODULE)],
         loadComponent: () => import('./expenses/expense-page').then((m) => m.ExpensePage),
       },
       {
         path: 'expenses/:expenseId',
+        title: 'titles.expense',
         canActivate: [moduleGuard(EXPENSES_MODULE)],
         loadComponent: () => import('./expenses/expense-page').then((m) => m.ExpensePage),
       },
       {
         // The platform's operators run signup and decide on the companies waiting for approval here.
         path: 'platform',
+        title: 'platform.title',
         canActivate: [operatorGuard],
         loadComponent: () => import('./platform/platform-page').then((m) => m.PlatformPage),
       },
       {
         // The legal pages as the operators write them, per language (docs/SPEC.md § 8 row 148).
         path: 'platform/legal',
+        title: 'titles.legal_texts',
         canActivate: [operatorGuard],
         loadComponent: () =>
           import('./platform/platform-legal-page').then((m) => m.PlatformLegalPage),
@@ -363,77 +418,93 @@ export const routes: Routes = [
           {
             // The list of settings on its own, which the gear opens on a phone.
             path: 'company',
+            title: 'shell.settings',
             pathMatch: 'full',
             loadComponent: () => import('./shell/settings-index').then((m) => m.SettingsIndex),
           },
           {
             path: 'members',
+            title: 'nav.members',
             loadComponent: () => import('./company/members-page').then((m) => m.MembersPage),
           },
           {
             // A settings entry not built yet opens beside the settings list (docs/SPEC.md § 7, 2026-09-25 17:22).
             path: 'company/coming/:key',
+            title: 'titles.coming',
             loadComponent: () => import('./shell/coming-page').then((m) => m.ComingPage),
           },
           {
             path: 'company/roles',
+            title: 'nav.roles',
             loadComponent: () => import('./company/roles-page').then((m) => m.RolesPage),
           },
           {
             path: 'company/activity',
+            title: 'nav.activity',
             loadComponent: () => import('./activity/activity-page').then((m) => m.ActivityPage),
           },
           {
             path: 'fiscal/taxes',
+            title: 'nav.taxes',
             loadComponent: () =>
               import('./fiscal/fiscal-taxes-page').then((m) => m.FiscalTaxesPage),
           },
           {
             path: 'fiscal/units',
+            title: 'nav.units',
             loadComponent: () =>
               import('./fiscal/fiscal-units-page').then((m) => m.FiscalUnitsPage),
           },
           {
             path: 'settings',
+            title: 'nav.settings',
             loadComponent: () => import('./settings/settings-page').then((m) => m.SettingsPage),
           },
           {
             path: 'company/profile',
+            title: 'nav.company_profile',
             loadComponent: () =>
               import('./company/company-profile-page').then((m) => m.CompanyProfilePage),
           },
           {
             path: 'company/security',
+            title: 'nav.company_security',
             loadComponent: () =>
               import('./company/company-security-page').then((m) => m.CompanySecurityPage),
           },
           {
             path: 'company/establishments',
+            title: 'nav.establishments',
             loadComponent: () =>
               import('./company/establishments-page').then((m) => m.EstablishmentsPage),
           },
           {
             path: 'company/numbering',
+            title: 'nav.numbering',
             loadComponent: () => import('./company/numbering-page').then((m) => m.NumberingPage),
           },
           {
             path: 'company/documents',
+            title: 'nav.document_templates',
             loadComponent: () =>
               import('./company/document-design-page').then((m) => m.DocumentDesignPage),
           },
           {
             path: 'company/custom-fields',
+            title: 'nav.custom_fields',
             loadComponent: () =>
               import('./company/custom-fields-page').then((m) => m.CustomFieldsPage),
           },
           {
             path: 'company/modules',
+            title: 'nav.modules',
             loadComponent: () => import('./company/modules-page').then((m) => m.ModulesPage),
           },
           {
             // Reachable whatever the subscription says: a locked company reaches nothing else, and this is the
             // way out of it (docs/SPEC.md § 7, 2026-09-17).
             path: 'company/subscription',
+            title: 'nav.subscription',
             loadComponent: () =>
               import('./licensing/subscription-page').then((m) => m.SubscriptionPage),
           },
@@ -444,6 +515,7 @@ export const routes: Routes = [
   {
     // Open to anyone, signed in or not, outside the shell (docs/SPEC.md § 7, row 147).
     path: 'legal/:slug',
+    title: 'titles.legal',
     loadComponent: () => import('./legal/legal-page').then((m) => m.LegalPage),
   },
   { path: '**', redirectTo: '' },

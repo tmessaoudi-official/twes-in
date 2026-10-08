@@ -4612,6 +4612,20 @@ functional tests run in the `tools` container, on the host's network, against th
   are not checked: no invoice text binds them. The seed keeps a new company's profile empty, as signup does; the e2e
   setup names Demo before any scenario issues. Alternatives not taken: warn instead of refusing; require the postal
   code; check when the draft is saved rather than at issue.
+- [2026-10-08 04:11] ASSUMED (review): the one writer of the 23:52 ruling (W3: late fees, the invoice's reminder stages, 92, 86/90, 96) runs as a
+  background subagent of the main session in its worktree, on the session's model, its branch first moved to master (every
+  earlier W3 slice is on master; the old head kept as `backup/w3-<epoch>`) — because no W3 session was alive and the ruling
+  wanted one writer, not none. Alternatives: wait for the developer to start a W3 session; run nothing in parallel.
+- [2026-10-08 04:11] ASSUMED (review): a tab reads « <page> · <installation name> » (the brand port's name, so row 36 renames it too),
+  from a translation key on each route; a record's page carries its kind (« Facture »), not its number, for now; after a
+  move to another PATH focus goes to the page's first `h1` (or the main region), while a change of query only (a list's next
+  page, a filter) leaves focus where it is (row 230) — because RGAA 8.6 and 12.7 ask for both, and moving focus on paging
+  would throw it away from the control just used. Alternatives: the record's number in its tab title (needs each page to
+  set it); focus on the main region always.
+- [2026-10-08 04:11] ASSUMED (review): row 226's test lists today's 15 use cases that write without the transaction port and 8 commands
+  that record no audit entry of their own, each with its reason, rather than splitting them now — because the 23:43 ruling
+  splits a class only when its file is next edited. The two print use cases (review T-D03: a PDF stored on first download
+  with no lock) are listed, and their split into a query and a locked store command stays a P1 of the review.
 
 ## 8. Status
 
@@ -4857,10 +4871,15 @@ functional tests run in the `tools` container, on the host's network, against th
 | 223 | A deposit draft edited after it was drawn is checked again at issue against what its quote leaves, so no deposit charges beyond its quote (goal-end check of row 208) | S | todo | - | api/src/Module/Invoices/** |
 | 224 | A delivery note's lines show their figures as typed, as an invoice's do (row 219's summary and totals), where the note carries prices, and each line's stock on hand and what the note leaves of it (row 220) | M | todo | - | api/src/Module/DeliveryNotes/** web/src/app/delivery-notes/** |
 | 225 | A final invoice's Factur-X names the deposit invoices it gives back as preceding invoices (BG-3: BT-25 number, BT-26 issue day), not only in the line text | S | todo | - | api/src/Module/Invoices/** |
-| 226 | Light CQRS held by a test (§ 7 2026-10-07 23:43): every `Application/` class is a command or a query; an architecture test reds when a query writes (persists, flushes, records audit) or a command changes state without recording its audit entry | M | doing | - | api/src/** api/tests/Architecture/** |
+| 226 | Light CQRS held by a test (§ 7 2026-10-07 23:43): every `Application/` class is a command or a query; an architecture test reds when a query writes (persists, flushes, records audit) or a command changes state without recording its audit entry | M | done | 4fb9cfe2 | api/src/** api/tests/Architecture/** |
 | 227 | The guide's foundation (§ 7 2026-10-08 00:39): the typed tour definition, the CDK overlay engine (RGAA focus, keyboard, RTL), the help drawer and glossary frames, the automated playback that reds CI, one reference tour (the first invoice); content per module as screens settle (row 140) | L | todo | - | web/src/app/shared/tour/** web/e2e/** |
 | 228 | The pitch and feature videos (§ 7 2026-10-08 00:39): a storyboarded 60–90 s pitch per sector and feature videos generated from the tours by Playwright, captions fr / en / ar, a synthetic voice once its service is chosen | M | todo | - | web/e2e/** |
 | 229 | An invoice names both its parties as the law asks before it takes a number (review LEG-1 / F3, § 7 2026-10-08 01:52) | M | done | 56ca4edf | api/src/Module/Invoices/** api/src/Tenancy/** web/src/app/invoices/** web/e2e/** |
+| 230 | Every page names itself in its tab (route `title` keys, `PageTitles`), and a move to another page puts focus on its heading (`RouteFocus`) (review T-E09, RGAA 8.6 / 12.7; § 7 2026-10-07 23:52 main lane 4) | M | doing | - | web/src/app/** web/e2e/** |
+| 231 | A list says it is loading, or that it could not load, never « vide » before its answer (review T-E02; main lane 4) | M | todo | - | web/src/app/** |
+| 232 | A new or draft document can be saved from a phone, not only from the overflow menu (review T-E01; main lane 4) | S | todo | - | web/src/app/** |
+| 233 | The line discount's percent / amount switch keeps focus and the typed value, and names its unit (review T-E08; main lane 4) | S | todo | - | web/src/app/** |
+| 234 | The line editors space their fields so labels never sit on the field above (review T-E07; main lane 4) | S | todo | - | web/src/app/** |
 <!-- /progress-block -->
 
 ### Delivered

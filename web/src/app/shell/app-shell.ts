@@ -35,6 +35,7 @@ import { SubscriptionNoticeBar } from '../licensing/subscription-notice';
 import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
 import { Label } from '../shared/a11y/label';
+import { RouteFocus } from '../shared/a11y/route-focus';
 import { runAction } from '../shared/actions/run-action';
 import type { ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
@@ -140,6 +141,7 @@ const TOP_BAR_HEIGHT = '--twes-top-bar-height';
     CompanySwitcher,
     NotificationBell,
     Label,
+    RouteFocus,
     ActivityBar,
     SubscriptionNoticeBar,
     NavScroller,

@@ -14,10 +14,11 @@ import {
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { MatIconRegistry } from '@angular/material/icon';
 import { MatPaginatorIntl } from '@angular/material/paginator';
-import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideRouter, TitleStrategy, withComponentInputBinding } from '@angular/router';
 import { provideTranslateCompiler, provideTranslateService } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { routes } from './app.routes';
+import { PageTitles } from './shared/a11y/page-titles';
 import { AuthFacade } from './auth/auth-facade';
 import { Session } from './shared/session/session';
 import { StepUpProof } from './shared/step-up/step-up-proof';
@@ -43,6 +44,8 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     // Route parameters arrive as component inputs; the invitation token is bound this way.
     provideRouter(routes, withComponentInputBinding()),
+    // Each route's `title` is a translation key: the tab names the page in the interface language.
+    { provide: TitleStrategy, useClass: PageTitles },
     // The API uses Symfony stateless CSRF (header only), not the cookie Angular built-in XSRF support echoes.
     provideHttpClient(
       withInterceptors([

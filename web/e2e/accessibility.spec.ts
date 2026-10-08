@@ -340,3 +340,19 @@ test('the sign-in page speaks the language chosen on it, after a reload too', as
     /Language: English/,
   );
 });
+
+test('every page names itself in its tab, and moving to another page puts focus on its heading', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  await expect(page).toHaveTitle('Accueil · twes-in');
+
+  await page.getByTestId('nav-customers').click();
+  await expect(page).toHaveTitle('Clients · twes-in');
+  await expect(page.locator('#main-content h1').first()).toBeFocused();
+
+  await page.getByTestId('nav-invoices').click();
+  await expect(page).toHaveTitle('Factures · twes-in');
+  await expect(page.locator('#main-content h1').first()).toBeFocused();
+});
