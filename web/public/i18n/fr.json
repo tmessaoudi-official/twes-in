@@ -1342,7 +1342,6 @@
       "returned": "Les marchandises sont revenues en stock",
       "unitPriceNet": "Prix unitaire HT",
       "price_hint": "En {{currency}}, avec au plus quatre décimales.",
-      "discountRate": "Remise",
       "discount_by_amount": "Remise en % : la donner en {{unit}}",
       "discount_by_rate": "Remise en {{unit}} : la donner en %",
       "taxes": "Taxes de la ligne",
@@ -1365,7 +1364,9 @@
       "no_product_found": "Aucun produit trouvé.",
       "price_unchecked": "Prix non vérifié : le tarif du client n’a pas pu être lu.",
       "price_list": "Tarif : {{name}}",
-      "gives_back": "Acompte déduit"
+      "gives_back": "Acompte déduit",
+      "discount_in_rate": "Remise en %",
+      "discount_in_amount": "Remise en {{unit}}"
     },
     "document_taxes": {
       "title": "Droits et retenues du document",

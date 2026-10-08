@@ -723,11 +723,21 @@ describe('InvoicePage', () => {
     await pick('invoice-customer', 'CLI-1 · Carthage');
     await pick('line-0-product', 'ART-1 · Conception');
     expect(q('line-0-discount-kind')?.textContent?.trim()).toBe('%');
+    const label = (): string | undefined =>
+      q('line-0-discount')
+        ?.closest('mat-form-field')
+        ?.querySelector('mat-label')
+        ?.textContent?.trim();
+    expect(label()).toBe('invoices.lines.discount_in_rate');
 
+    q('line-0-discount-kind')!.focus();
     q('line-0-discount-kind')!.click();
     await settle();
     expect(q('line-0-discount-kind')?.textContent?.trim()).toBe('TND');
     expect((q('line-0-discount') as HTMLInputElement).value).toBe('');
+    // The pressed button is replaced, so the field takes the focus back, named by its new unit.
+    expect(document.activeElement).toBe(q('line-0-discount'));
+    expect(label()).toBe('invoices.lines.discount_in_amount');
     type('line-0-discount', '1800,001');
     (q('line-0-discount') as HTMLInputElement).dispatchEvent(new Event('blur'));
     await settle();

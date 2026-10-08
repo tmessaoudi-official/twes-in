@@ -230,7 +230,9 @@
               <!-- One field per way of discounting: a suffix inside an @if beside its input is not projected. -->
               @if (byAmount(line)) {
                 <mat-form-field>
-                  <mat-label>{{ 'invoices.lines.discountRate' | translate }}</mat-label>
+                  <mat-label>{{
+                    'invoices.lines.discount_in_amount' | translate: { unit: options().currency }
+                  }}</mat-label>
                   <input
                     matInput
                     formControlName="discountAmount"
@@ -246,14 +248,14 @@
                       'invoices.lines.discount_by_rate' | translate: { unit: options().currency }
                     "
                     [attr.data-testid]="'line-' + i + '-discount-kind'"
-                    (click)="switchDiscount(line)"
+                    (click)="switchDiscount(line, i)"
                   >
                     {{ options().currency }}
                   </button>
                 </mat-form-field>
               } @else {
                 <mat-form-field>
-                  <mat-label>{{ 'invoices.lines.discountRate' | translate }}</mat-label>
+                  <mat-label>{{ 'invoices.lines.discount_in_rate' | translate }}</mat-label>
                   <input
                     matInput
                     formControlName="discountRate"
@@ -269,7 +271,7 @@
                       'invoices.lines.discount_by_amount' | translate: { unit: options().currency }
                     "
                     [attr.data-testid]="'line-' + i + '-discount-kind'"
-                    (click)="switchDiscount(line)"
+                    (click)="switchDiscount(line, i)"
                   >
                     %
                   </button>

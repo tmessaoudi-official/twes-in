@@ -133,6 +133,9 @@ test('a line is discounted by an amount, worked out as it is typed and kept as a
     await choose(page, 'line-0-taxes', /19/);
     await page.getByTestId('line-0-discount-kind').click();
     await expect(page.getByTestId('line-0-discount-kind')).toHaveText('TND');
+    // The button pressed belongs to the field it replaced: the new field takes the focus, named by its unit.
+    await expect(page.getByTestId('line-0-discount')).toBeFocused();
+    await expect(page.getByTestId('line-0-discount')).toHaveAccessibleName('Remise en TND');
     await page.getByTestId('line-0-discount').fill('150');
     await expect(page.getByTestId('line-0-net')).toHaveText('850,000');
     await expect(page.getByTestId('line-0-total')).toHaveText('1 011,500');

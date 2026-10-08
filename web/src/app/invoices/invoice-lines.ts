@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
   effect,
+  ElementRef,
   inject,
+  Injector,
   input,
   signal,
   untracked,
@@ -94,6 +97,8 @@ type CheckedField = keyof Omit<
 })
 export class InvoiceLines {
   private readonly facade = inject(LineCatalogue);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private readonly injector = inject(Injector);
   private readonly scans = inject(ProductScans);
   private readonly inventory = inject(InventoryFacade);
 
@@ -370,11 +375,21 @@ export class InvoiceLines {
     return line.controls.discountKind.value === 'amount';
   }
 
-  /** Discounts the line the other way, by a rate or by an amount; what was typed the first way goes. */
-  protected switchDiscount(line: LineGroup): void {
+  /**
+   * Discounts the line the other way, by a rate or by an amount; what was typed the first way goes, since 10 % is not
+   * 10 dinars. The pressed button belongs to the field it replaces, so the new field takes the focus, named by its unit.
+   */
+  protected switchDiscount(line: LineGroup, index: number): void {
     const kind = line.controls.discountKind;
     kind.setValue(kind.value === 'rate' ? 'amount' : 'rate');
     kind.markAsDirty();
+    afterNextRender(
+      () =>
+        this.host
+          .querySelector<HTMLInputElement>(`[data-testid="line-${index}-discount"]`)
+          ?.focus(),
+      { injector: this.injector },
+    );
   }
 
   protected add(): void {

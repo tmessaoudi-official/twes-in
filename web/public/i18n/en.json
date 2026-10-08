@@ -1342,7 +1342,6 @@
       "returned": "The goods came back to stock",
       "unitPriceNet": "Unit price before tax",
       "price_hint": "In {{currency}}, with at most four decimals.",
-      "discountRate": "Discount",
       "discount_by_amount": "Discount in %: give it in {{unit}}",
       "discount_by_rate": "Discount in {{unit}}: give it in %",
       "taxes": "Line taxes",
@@ -1365,7 +1364,9 @@
       "no_product_found": "No product found.",
       "price_unchecked": "Price not checked: the customer's price list could not be read.",
       "price_list": "Price list: {{name}}",
-      "gives_back": "Deposit given back"
+      "gives_back": "Deposit given back",
+      "discount_in_rate": "Discount in %",
+      "discount_in_amount": "Discount in {{unit}}"
     },
     "document_taxes": {
       "title": "Document charges and withholdings",

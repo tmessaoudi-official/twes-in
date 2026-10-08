@@ -4626,6 +4626,11 @@ functional tests run in the `tools` container, on the host's network, against th
   that record no audit entry of their own, each with its reason, rather than splitting them now — because the 23:43 ruling
   splits a class only when its file is next edited. The two print use cases (review T-D03: a PDF stored on first download
   with no lock) are listed, and their split into a query and a locked store command stays a P1 of the review.
+- [2026-10-08 05:36] ASSUMED (review): switching a line's discount between a rate and an amount still drops what was typed, as row
+  220 built it, rather than converting it — because 10 % is not 10 dinars, and converting needs the line's net, which
+  the browser would have to work out in money it never computes; the field now takes the focus back and is named by its
+  unit (« Remise en % », « Remise en TND »), which says the change (row 233, review T-E08). Alternatives: convert through
+  the preview's figures; keep the number and let the person correct it.
 
 ## 8. Status
 
@@ -4876,9 +4881,9 @@ functional tests run in the `tools` container, on the host's network, against th
 | 228 | The pitch and feature videos (§ 7 2026-10-08 00:39): a storyboarded 60–90 s pitch per sector and feature videos generated from the tours by Playwright, captions fr / en / ar, a synthetic voice once its service is chosen | M | todo | - | web/e2e/** |
 | 229 | An invoice names both its parties as the law asks before it takes a number (review LEG-1 / F3, § 7 2026-10-08 01:52) | M | done | 56ca4edf | api/src/Module/Invoices/** api/src/Tenancy/** web/src/app/invoices/** web/e2e/** |
 | 230 | Every page names itself in its tab (route `title` keys, `PageTitles`), and a move to another page puts focus on its heading (`RouteFocus`) (review T-E09, RGAA 8.6 / 12.7; § 7 2026-10-07 23:52 main lane 4) | M | done | bb320509 | web/src/app/** web/e2e/** |
-| 231 | A list says it is loading, or that it could not load, never « vide » before its answer (review T-E02; main lane 4) | M | doing | - | web/src/app/** |
+| 231 | A list says it is loading, or that it could not load, never « vide » before its answer (review T-E02; main lane 4) | M | done | 853429f1 | web/src/app/** |
 | 232 | A new or draft document can be saved from a phone, not only from the overflow menu (review T-E01; main lane 4) | S | doing | - | web/src/app/** |
-| 233 | The line discount's percent / amount switch keeps focus and the typed value, and names its unit (review T-E08; main lane 4) | S | todo | - | web/src/app/** |
+| 233 | The line discount's percent / amount switch keeps focus and names its unit (review T-E08; main lane 4) | S | doing | - | web/src/app/** |
 | 234 | The line editors space their fields so labels never sit on the field above (review T-E07; main lane 4) | S | todo | - | web/src/app/** |
 <!-- /progress-block -->
 
