@@ -761,6 +761,9 @@
                   data-testid="stock-map-read-note"
                   >{{ 'inventory.plan.read_note' | translate }}</span
                 >
+                <span data-testid="stock-map-press-hint">{{
+                  'inventory.plan.press_hint' | translate
+                }}</span>
                 <!-- A wheel and keys a phone has neither of: there the board is read by touch. -->
                 <span class="hidden text-on-surface-variant md:inline">{{
                   'inventory.plan.keys_hint' | translate
@@ -1005,7 +1008,18 @@
                         The WHOLE label, on the rectangle and not on the text: a label cut to fit hides nothing this
                         way, and the text itself takes no pointer, so a title there would never be shown to anyone.
                       -->
-                        <title>{{ shape.labelTitle }}</title>
+                        <!-- Raw text to the template parser, so the count is said through one interpolation, not a block. -->
+                        <title>
+                          {{ shape.labelTitle
+                          }}{{
+                            countBadges().has(shape.drawing.id)
+                              ? ' · ' +
+                                ('inventory.plan.holds'
+                                  | translate
+                                    : { count: countBadges().get(shape.drawing.id)?.total ?? 0 })
+                              : ''
+                          }}
+                        </title>
                       </rect>
                       <text
                         [attr.x]="shape.labelX"
@@ -1020,6 +1034,31 @@
                       >
                         {{ shape.label }}
                       </text>
+                      @if (countBadges().get(shape.drawing.id); as held) {
+                        <g
+                          class="pointer-events-none"
+                          aria-hidden="true"
+                          [attr.data-testid]="'stock-map-count-' + shape.drawing.locationCode"
+                        >
+                          <circle
+                            [attr.cx]="held.x"
+                            [attr.cy]="held.y"
+                            [attr.r]="held.r"
+                            [attr.stroke-width]="held.r / 8"
+                            class="fill-surface stroke-on-surface"
+                          />
+                          <text
+                            [attr.x]="held.x"
+                            [attr.y]="held.y"
+                            [attr.font-size]="held.font"
+                            text-anchor="middle"
+                            dominant-baseline="central"
+                            class="fill-on-surface font-semibold"
+                          >
+                            {{ held.count }}
+                          </text>
+                        </g>
+                      }
                       <!-- What the search found here, in a pill at the far corner, so the light is never colour alone. -->
                       @if (hitBadges().get(shape.drawing.id); as badge) {
                         <g

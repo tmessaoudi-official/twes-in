@@ -55,20 +55,27 @@ export const STRUCTURE_LABEL_PIXELS = 11;
 const CROSS_SHARE = 0.8;
 
 /**
- * The size a label is drawn at, in metres: at least its own size, as large as a person reads on this board, and never
+ * The size a label is drawn at, in metres: at least its own size, as large as a person reads on this board, never
  * taller than the rectangle it names allows, since a label spilling onto the floor reads as naming whatever it lands
- * on. `pixelsPerMetre` is null until the board is measured, and `cross` is null for a name written beside its piece.
+ * on, and never so large that the whole of it no longer fits along it: grown, a code was cut to its first letters,
+ * which names nothing. `pixelsPerMetre` is null until the board is measured, `cross` is null for a name written beside
+ * its piece, and `whole` is the label with the length it runs along.
  */
 export function labelFont(
   base: number,
   pixels: number,
   pixelsPerMetre: number | null,
   cross: number | null,
+  whole?: { label: string; length: number },
 ): number {
-  const readable = pixelsPerMetre === null ? base : Math.max(base, pixels / pixelsPerMetre);
-  if (cross === null) return readable;
+  let font = pixelsPerMetre === null ? base : Math.max(base, pixels / pixelsPerMetre);
+  if (cross !== null) font = Math.min(font, Math.max(base, cross * CROSS_SHARE));
+  if (whole !== undefined && whole.label.length > 0) {
+    const fits = (whole.length - INSET * 2) / (whole.label.length * PER_CHARACTER);
+    font = Math.min(font, Math.max(base, fits));
+  }
 
-  return Math.min(readable, Math.max(base, cross * CROSS_SHARE));
+  return font;
 }
 
 /**

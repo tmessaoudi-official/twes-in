@@ -2430,6 +2430,8 @@
       "arranging": "Arranging: {{floor}}",
       "arrange_hint": "Drag a shape to move it, its handles to resize it; nothing is saved until Save.",
       "read_note": "Reading: touching the plan moves nothing",
+      "press_hint": "Press a place to see what it holds.",
+      "holds": "{{count}} {count, plural, one {product} other {products}}",
       "keys_hint": "Wheel or + / − to come nearer, arrows to move around",
       "board": "Floor plan. + and − to come nearer, arrows to move around.",
       "pan": {

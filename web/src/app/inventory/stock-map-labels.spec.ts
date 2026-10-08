@@ -97,6 +97,20 @@ describe('labelFont', () => {
     expect(labelFont(LABEL_FONT, 12, 14, 0.2)).toBe(LABEL_FONT);
   });
 
+  /** Grown to the readable size, « LBL97556342 » was cut to « LBL9755… »: a cut code says nothing a person can use. */
+  it('grows only as far as the whole label still fits along its rectangle', () => {
+    const font = labelFont(LABEL_FONT, 12, 14, 1.2, { label: 'LBL97556342', length: 2.4 });
+
+    expect(fitLabel('LBL97556342', 2.4, font)).toBe('LBL97556342');
+    expect(font).toBeGreaterThan(LABEL_FONT);
+  });
+
+  it('never shrinks below its own size to fit, leaving the cut to fitLabel', () => {
+    const long = 'Rayonnage des quincailleries du fond';
+
+    expect(labelFont(LABEL_FONT, 12, 14, 1.2, { label: long, length: 2.4 })).toBe(LABEL_FONT);
+  });
+
   it('grows freely for a name written beside its piece', () => {
     expect(labelFont(LABEL_FONT, 12, 14, null) * 14).toBeCloseTo(12);
   });

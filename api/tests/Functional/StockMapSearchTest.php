@@ -96,6 +96,53 @@ final class StockMapSearchTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    /**
+     * What each drawn place on a floor holds, counted in products, so the board can say it on every shelf: a bin's goods
+     * count for its rack, a product held in both counts once, and goods gone to nothing count for nothing.
+     */
+    public function testEachDrawnPlaceOfAFloorSaysHowManyProductsItHolds(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
+        $this->place('R1', 'rack', null);
+        $this->place('R1-A1', 'bin', 'R1');
+        $this->place('R2', 'rack', null);
+        $this->place('R3', 'rack', null);
+        $this->place('R4', 'rack', null);
+        $this->productId = $this->product();
+        $washers = $this->product('RON-M6', 'Rondelle M6');
+        $hinges = $this->product('CHA-35', 'Charnière 35');
+        $ground = $this->floor('Rez-de-chaussée', 0);
+        $upstairs = $this->floor('Étage 1', 1);
+        $this->draw($ground, 'R1');
+        $this->draw($ground, 'R3');
+        $this->draw($ground, 'R4');
+        $this->draw($upstairs, 'R2');
+
+        $this->receive('R1', '3');
+        $this->receive('R1-A1', '5');
+        $this->receive('R1-A1', '2', $washers);
+        $this->receive('R2', '4');
+        $this->receive('R4', '6', $hinges);
+        $this->postJson($this->path('stock-movements'), ['operation' => 'loss', 'productId' => $hinges, 'locationId' => $this->locationIds['R4'], 'quantity' => '6', 'reason' => 'broken', 'note' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->getJson($this->path('stock-floors', $ground).'/holdings');
+        self::assertResponseIsSuccessful();
+        // R3 holds nothing and R4 nothing any more: neither is listed. R2 is upstairs.
+        self::assertSame(
+            [[$this->locationIds['R1'], 2]],
+            array_map(static fn (array $row): array => [$row['locationId'] ?? null, $row['products'] ?? null], $this->jsonList()),
+        );
+
+        $this->getJson($this->path('stock-floors', Uuid::v7()->toRfc4122()).'/holdings');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        // Read with the stock, as the map is.
+        $this->signedIn(['product.read'], 'catalogue@twes.local', 'catalogue');
+        $this->getJson($this->path('stock-floors', $ground).'/holdings');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     /** A delivery note's lines are found together, each row naming its product, in the order they were asked. */
     public function testSeveralProductsAreFoundInOneAnswerInTheOrderAsked(): void
     {

@@ -56,6 +56,8 @@ export class InventoryFacade {
   private readonly floorsSignal = signal<readonly StockFloorRow[]>([]);
   private readonly drawingsSignal = signal<readonly StockDrawingRow[]>([]);
   private drawingsRequest = 0;
+  private readonly holdingsSignal = signal<ReadonlyMap<string, number>>(new Map());
+  private holdingsRequest = 0;
   /** Which floor's rectangles are in hand, so a live change reads that same floor again. */
   private drawingsFloorId: string | null = null;
   private readonly structuresSignal = signal<readonly StockStructureRow[]>([]);
@@ -87,6 +89,8 @@ export class InventoryFacade {
   readonly structures = this.structuresSignal.asReadonly();
   /** What the place chosen on the map holds and what has its home there; null while nothing is chosen. */
   readonly contents = this.contentsSignal.asReadonly();
+  /** How many products each drawn place of the floor in hand holds, by its location's id. */
+  readonly holdings = this.holdingsSignal.asReadonly();
   /** Where the goods searched on the map are; null while nothing is searched. */
   readonly whereabouts = this.whereaboutsSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
@@ -322,11 +326,27 @@ export class InventoryFacade {
   /** What is drawn on one floor. Only the latest floor asked for is shown, as the lists do it. */
   async loadDrawings(companyId: string, floorId: string): Promise<void> {
     const request = ++this.drawingsRequest;
+    const counted = ++this.holdingsRequest;
     this.drawingsFloorId = floorId;
     await this.read(async () => {
-      const drawings = await this.api.drawings(companyId, floorId);
+      const [drawings, holdings] = await Promise.all([
+        this.api.drawings(companyId, floorId),
+        this.api.holdings(companyId, floorId),
+      ]);
       if (request !== this.drawingsRequest) return;
       this.drawingsSignal.set(drawings);
+      if (counted === this.holdingsRequest) this.holdingsSignal.set(holdings);
+    });
+  }
+
+  /** What each shelf of the floor in hand holds, read again after a movement: the drawings themselves did not move. */
+  async reloadHoldings(companyId: string): Promise<void> {
+    const floorId = this.drawingsFloorId;
+    if (floorId === null) return;
+    const counted = ++this.holdingsRequest;
+    await this.read(async () => {
+      const holdings = await this.api.holdings(companyId, floorId);
+      if (counted === this.holdingsRequest) this.holdingsSignal.set(holdings);
     });
   }
 

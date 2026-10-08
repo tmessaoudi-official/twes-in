@@ -199,7 +199,8 @@ test.describe('the drawn stock map', () => {
       // Read back off the plan: 2,6 m was typed and the grid is a quarter of a metre, so it sits at 2,5.
       const drawn = page.getByTestId(`stock-drawing-${code}`);
       await expect(drawn).toBeVisible();
-      await expect(drawn).toContainText('3.9 × 0.6 m');
+      // As a French screen writes a size.
+      await expect(drawn).toContainText('3,9 × 0,6 m');
       await expect(page.locator('[data-testid^="stock-drawing-rect-"]')).toHaveAttribute(
         'x',
         '2.5',

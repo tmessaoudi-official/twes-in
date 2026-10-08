@@ -123,6 +123,14 @@ interface StockMovementRepository
     /** @return list<StockLevel> every product, location and lot of the company something moved in */
     public function levels(Uuid $companyId): array;
 
+    /**
+     * The products each location of the company holds some of, its lots together: what a shelf says it holds. A
+     * product whose movements there come to nothing, or to less, is not held.
+     *
+     * @return array<string, list<string>> product ids by the location's id
+     */
+    public function productsHeld(Uuid $companyId): array;
+
     /** @return list<StockLevel> every location and lot one product of the company moved in, by location then lot */
     public function levelsOf(Uuid $companyId, Uuid $productId): array;
 

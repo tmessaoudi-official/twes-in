@@ -54,6 +54,44 @@ final readonly class FindOnMap
     }
 
     /**
+     * How many products each of the drawn places holds, what the places under it hold included and a product held in
+     * both counted once: what a shelf says on the board before anyone presses it. A place holding nothing is left out.
+     *
+     * @param list<StockLocation> $places drawn places, those of one floor
+     *
+     * @return array<string, int> by the place's id, in the order the places came
+     */
+    public function countsAt(Company $company, array $places): array
+    {
+        $wanted = [];
+        foreach ($places as $place) {
+            $wanted[$place->getId()->toRfc4122()] = [];
+        }
+        if ([] === $wanted) {
+            return [];
+        }
+
+        $byId = [];
+        foreach ($this->locations->ofCompany($company->getId()) as $location) {
+            $byId[$location->getId()->toRfc4122()] = $location;
+        }
+
+        foreach ($this->movements->productsHeld($company->getId()) as $locationId => $products) {
+            $location = $byId[$locationId] ?? null;
+            $place = null === $location ? null : self::drawnAbove($location);
+            $key = $place?->getId()->toRfc4122();
+            if (null === $key || !\array_key_exists($key, $wanted)) {
+                continue;
+            }
+            foreach ($products as $product) {
+                $wanted[$key][$product] = true;
+            }
+        }
+
+        return array_filter(array_map(\count(...), $wanted), static fn (int $count): bool => $count > 0);
+    }
+
+    /**
      * @param array<string, StockLocation> $byId
      *
      * @return list<MapHolding>

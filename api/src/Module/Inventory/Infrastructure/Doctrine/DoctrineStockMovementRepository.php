@@ -393,6 +393,28 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return $totals;
     }
 
+    public function productsHeld(Uuid $companyId): array
+    {
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('IDENTITY(m.location) AS location', 'IDENTITY(m.product) AS product')
+            ->from(StockMovement::class, 'm')
+            ->where('m.company = :company')
+            ->groupBy('m.location', 'm.product')
+            ->having('SUM(m.quantity) > 0')
+            ->setParameter('company', $companyId, 'uuid')
+            ->getQuery()
+            ->getArrayResult();
+
+        $held = [];
+        foreach ($rows as $row) {
+            if (\is_array($row) && \is_string($row['location'] ?? null) && \is_string($row['product'] ?? null)) {
+                $held[$row['location']][] = $row['product'];
+            }
+        }
+
+        return $held;
+    }
+
     public function levels(Uuid $companyId): array
     {
         $rows = $this->entityManager->createQueryBuilder()

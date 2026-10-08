@@ -249,6 +249,28 @@ final class InMemoryStockMovements implements StockMovementRepository
         return array_map(static fn (Number $total): string => $total->value, $totals);
     }
 
+    public function productsHeld(Uuid $companyId): array
+    {
+        $held = [];
+        foreach ($this->levels($companyId) as $level) {
+            $location = $level->locationId->toRfc4122();
+            $product = $level->productId->toRfc4122();
+            $quantity = is_numeric($level->quantity) ? $level->quantity : throw new \LogicException('A stock level is a number.');
+            $held[$location][$product] = ($held[$location][$product] ?? new Number('0'))->add($quantity);
+        }
+
+        $products = [];
+        foreach ($held as $location => $quantities) {
+            foreach ($quantities as $product => $quantity) {
+                if (1 === $quantity->compare(0)) {
+                    $products[$location][] = $product;
+                }
+            }
+        }
+
+        return $products;
+    }
+
     public function levels(Uuid $companyId): array
     {
         $sums = [];

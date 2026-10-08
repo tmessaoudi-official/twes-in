@@ -47,6 +47,7 @@ class StaticLoader implements TranslateLoader {
       inventory: {
         plan: {
           plan_of: 'Plan de {{floor}} : {{count}} rectangle(s)',
+          press_hint: 'Appuyez sur un emplacement pour voir ce qu’il contient.',
           legend_items: { door: 'Porte', dock: 'Quai' },
           nothing_drawn: 'Rien n’est encore dessiné sur cet étage.',
           no_floor: 'Aucun étage n’est encore dessiné.',
@@ -161,8 +162,11 @@ describe('StockMapPage', () => {
   const structures = signal<readonly StockStructureRow[]>([wall]);
   const contents = signal<LocationContents | null>(null);
   const whereabouts = signal<MapSearch | null>(null);
+  const holdings = signal<ReadonlyMap<string, number>>(new Map());
   const facade = {
     contents: contents.asReadonly(),
+    holdings: holdings.asReadonly(),
+    reloadHoldings: vi.fn(),
     whereabouts: whereabouts.asReadonly(),
     loadWhereabouts: vi.fn(),
     reloadWhereabouts: vi.fn(),
@@ -227,6 +231,8 @@ describe('StockMapPage', () => {
     drawings.set([drawn]);
     structures.set([wall]);
     contents.set(null);
+    holdings.set(new Map());
+    facade.reloadHoldings.mockReset().mockResolvedValue(undefined);
     facade.loadContents.mockReset().mockResolvedValue(undefined);
     whereabouts.set(null);
     facade.loadWhereabouts.mockReset().mockResolvedValue(undefined);
@@ -1622,6 +1628,22 @@ describe('StockMapPage', () => {
     await settle();
 
     expect(q('stock-map-scale')?.textContent?.trim()).toBe('5 m');
+  });
+
+  /** What a shelf holds was found only by pressing it: each place now says how many products it holds. */
+  it('writes on each drawn place how many products it holds, and nothing on an empty one', async () => {
+    drawings.set([drawn, { ...drawn, id: 'd2', locationId: 'l2', locationCode: 'Z1', x: '8.000' }]);
+    holdings.set(new Map([['l1', 3]]));
+    await consult();
+
+    expect(q('stock-map-count-R1')?.textContent?.trim()).toBe('3');
+    expect(q('stock-map-count-Z1')).toBeNull();
+    expect(q('stock-map-press-hint')?.textContent).toContain('Appuyez sur un emplacement');
+
+    // Arranging is moving shapes: there the figures would only sit under a hand.
+    press('stock-map-mode-arrange');
+    await settle();
+    expect(q('stock-map-count-R1')).toBeNull();
   });
 
   /** Chosen, a rack turned the palest thing on the board, and read as the one place that was not there. */

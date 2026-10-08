@@ -2430,6 +2430,8 @@
       "arranging": "Aménagement : {{floor}}",
       "arrange_hint": "Glissez une forme pour la déplacer, ses poignées pour la redimensionner ; rien n’est enregistré avant Enregistrer.",
       "read_note": "Lecture : rien ne bouge en touchant le plan",
+      "press_hint": "Appuyez sur un emplacement pour voir ce qu’il contient.",
+      "holds": "{{count}} {count, plural, one {article} other {articles}}",
       "keys_hint": "Molette ou + / − pour approcher, flèches pour se déplacer",
       "board": "Plan de l’étage. + et − pour approcher, flèches pour se déplacer.",
       "pan": {

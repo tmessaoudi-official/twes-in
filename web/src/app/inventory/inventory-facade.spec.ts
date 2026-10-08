@@ -91,6 +91,7 @@ describe('InventoryFacade', () => {
     receiveSplit: vi.fn(),
     repeatDrawing: vi.fn(),
     drawings: vi.fn(),
+    holdings: vi.fn(),
     floors: vi.fn(),
     locationHomes: vi.fn(),
     whereabouts: vi.fn(),
@@ -110,6 +111,7 @@ describe('InventoryFacade', () => {
     api.receiveSplit.mockReset().mockResolvedValue(['m1', 'm2']);
     api.repeatDrawing.mockReset().mockResolvedValue([]);
     api.drawings.mockReset().mockResolvedValue([]);
+    api.holdings.mockReset().mockResolvedValue(new Map());
     api.floors.mockReset().mockResolvedValue([]);
     api.locationHomes.mockReset().mockResolvedValue([]);
     api.whereabouts.mockReset();
@@ -327,5 +329,21 @@ describe('InventoryFacade', () => {
     });
     expect(api.locations).toHaveBeenCalledWith('c1');
     expect(api.drawings).toHaveBeenCalledWith('c1', 'f1');
+  });
+
+  /** What each shelf holds is read with the floor, and again after a movement without reading the floor again. */
+  it('reads what each drawn place holds with its floor, and again on its own', async () => {
+    api.holdings.mockResolvedValueOnce(new Map([['l1', 3]]));
+    await facade.loadDrawings('c1', 'f1');
+
+    expect(api.holdings).toHaveBeenCalledWith('c1', 'f1');
+    expect(facade.holdings().get('l1')).toBe(3);
+
+    api.drawings.mockClear();
+    api.holdings.mockResolvedValueOnce(new Map([['l1', 4]]));
+    await facade.reloadHoldings('c1');
+
+    expect(api.drawings).not.toHaveBeenCalled();
+    expect(facade.holdings().get('l1')).toBe(4);
   });
 });

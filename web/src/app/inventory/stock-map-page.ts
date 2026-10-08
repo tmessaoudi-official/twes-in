@@ -639,6 +639,37 @@ export class StockMapPage implements OnInit {
     () => this.noteGroups().filter((group) => group.product.rows.length === 0).length,
   );
   /**
+   * How many products each drawn place holds, in a disc at its lower corner sized like its label, so a person sees
+   * where goods are before pressing anything. Only in Consulter and outside a search: arranging, the figures would sit
+   * under a hand moving the shapes, and a search's own figures say what matters then.
+   */
+  protected readonly countBadges = computed(() => {
+    const badges = new Map<
+      string,
+      { x: number; y: number; r: number; font: number; count: string; total: number }
+    >();
+    if (this.arranging() || this.search() !== null) return badges;
+    const holdings = this.facade.holdings();
+    for (const shape of this.shapes()) {
+      const total = holdings.get(shape.drawing.locationId) ?? 0;
+      if (total <= 0) continue;
+      const { rect } = shape;
+      const r = Math.min(shape.font * 0.85, Math.min(rect.width, rect.depth) / 2);
+      const inset = Math.min(0.1, r / 3);
+      const count = total > 99 ? '99+' : String(total);
+      badges.set(shape.drawing.id, {
+        x: rect.width > 2 * (r + inset) ? rect.x + rect.width - r - inset : rect.x + rect.width / 2,
+        y: rect.depth > 2 * (r + inset) ? rect.y + rect.depth - r - inset : rect.y + rect.depth / 2,
+        r,
+        font: r * [1.15, 1.15, 0.95, 0.75][count.length],
+        count,
+        total,
+      });
+    }
+    return badges;
+  });
+
+  /**
    * Each lit place's figure, in a pill over its far corner sized to what it will say: one product's quantity — its
    * digits, the decimals the unit counts and a space every three digits — or how many of a note's lines are there.
    * Its type follows the view, so a whole floor seen at once still reads its figures, and never goes below the labels'
@@ -973,6 +1004,7 @@ export class StockMapPage implements OnInit {
     this.live.reloadOn(
       ['stock', 'product', 'product_home_location', 'delivery_note', 'invoice'],
       async () => {
+        await this.facade.reloadHoldings(companyId);
         await this.facade.reloadContents(companyId);
         await this.facade.reloadWhereabouts(companyId);
       },
@@ -1863,11 +1895,13 @@ function builtOf(
 ): StructureShape {
   // A wall is a thin rectangle, so its name sits above the line rather than inside a 0,20 m band nothing fits in.
   const beside = rect.depth < 0.6;
+  const name = planLabel('', piece.name, mode);
   const font = labelFont(
     STRUCTURE_LABEL_FONT,
     STRUCTURE_LABEL_PIXELS,
     pixelsPerMetre,
     beside ? null : rect.depth,
+    { label: name, length: rect.width },
   );
 
   return {
@@ -1900,7 +1934,16 @@ function shapeOf(
   // A rack seen from above is long and narrow, and across it only a code's first letters fit: there the label runs
   // down its length, turned a quarter, its letters standing on the rack's middle line.
   const along = rect.depth > rect.width * ALONG_RATIO;
-  const font = labelFont(LABEL_FONT, LABEL_PIXELS, pixelsPerMetre, along ? rect.width : rect.depth);
+  const font = labelFont(
+    LABEL_FONT,
+    LABEL_PIXELS,
+    pixelsPerMetre,
+    along ? rect.width : rect.depth,
+    {
+      label: whole,
+      length: along ? rect.depth : rect.width,
+    },
+  );
   const labelX = along ? rect.x + rect.width / 2 - font * 0.35 : rect.x + 0.15;
   const labelY = along ? rect.y + 0.15 : rect.y + baseline(font, rect.depth);
 

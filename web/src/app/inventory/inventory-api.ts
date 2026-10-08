@@ -10,6 +10,7 @@ import type {
   RepeatStockDrawingRepeatStockDrawingReadStockDrawingReadValidationRepeatStockDrawingWrite as RepeatStockDrawingRepeatStockDrawingReadStockDrawingRead,
   RepeatStockDrawingRepeatStockDrawingWriteValidationRepeatStockDrawingWrite as RepeatStockDrawingRepeatStockDrawingWrite,
   StockDrawingStockDrawingRead,
+  StockHoldingStockHoldingRead,
   StockDrawingStockDrawingWriteValidationStockDrawingWrite as StockDrawingStockDrawingWrite,
   StockFloorStockFloorRead,
   StockFloorStockFloorWriteValidationStockFloorWrite as StockFloorStockFloorWrite,
@@ -464,6 +465,22 @@ export class InventoryApi {
           ),
         )
       ).map(toDrawing),
+    );
+  }
+
+  /** How many products each drawn place of a floor holds, places holding nothing left out. */
+  async holdings(companyId: string, floorId: string): Promise<ReadonlyMap<string, number>> {
+    return this.guard(
+      async () =>
+        new Map(
+          (
+            await firstValueFrom(
+              this.http.get<StockHoldingStockHoldingRead[]>(
+                `${path(companyId, 'stock-floors', floorId)}/holdings`,
+              ),
+            )
+          ).map((raw) => [raw.locationId ?? '', raw.products ?? 0] as const),
+        ),
     );
   }
 
