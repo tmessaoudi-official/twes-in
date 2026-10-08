@@ -1393,97 +1393,20 @@
                   }
                 </p>
               </div>
-              @if (!arranging()) {
-                <!--
-                  « Ce qu'il y a ici »: the place's stock and that of every bin under it, each line naming the bin it
-                  is in, since « R1 » alone sends a person along a six-metre rack.
-                -->
-                <div class="flex flex-col gap-2" data-testid="stock-contents">
-                  <h3 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
-                    {{ 'inventory.plan.here.title' | translate }}
-                  </h3>
-                  @if (here(); as now) {
-                    @for (line of now.lines; track line.id) {
-                      <!--
-                        The name on a line of its own, the quantity under it at the end: side by side in a narrow
-                        panel, a long unit squeezed the name onto three lines. The place is named only when it is a
-                        bin under the one chosen, which is where a person has to go.
-                      -->
-                      <div
-                        class="flex flex-col gap-0.5 rounded-lg border border-outline-variant p-2"
-                        [attr.data-testid]="'stock-contents-line-' + line.id"
-                      >
-                        <span class="font-medium">{{ line.productName }}</span>
-                        <span class="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
-                          <span class="text-on-surface-variant">
-                            {{ line.productReference }}
-                            @if (line.locationId !== now.locationId) {
-                              · {{ line.locationCode }}
-                            }
-                            @if (line.lotCode) {
-                              · {{ 'inventory.plan.here.lot' | translate: { lot: line.lotCode } }}
-                            }
-                          </span>
-                          <span
-                            class="ms-auto whitespace-nowrap font-medium tabular-nums"
-                            [class.text-error]="line.negative"
-                          >
-                            {{ line.quantity | amount: line.unitDecimals }} {{ line.unitName }}
-                          </span>
-                        </span>
-                      </div>
-                    } @empty {
-                      <p class="text-sm" data-testid="stock-contents-nothing">
-                        {{ 'inventory.plan.here.nothing' | translate }}
-                      </p>
-                    }
-                    @if (now.more > 0) {
-                      <a
-                        class="text-sm text-primary underline"
-                        routerLink="/stock"
-                        [queryParams]="{ location: now.locationId }"
-                        data-testid="stock-contents-more"
-                      >
-                        {{ 'inventory.plan.here.more' | translate: { count: now.more } }}
-                      </a>
-                    }
-                    <!-- A home holding nothing is the shelf to refill: said in words, not by a colour alone. -->
-                    @for (home of now.emptyHomes; track home.productId) {
-                      <p
-                        class="rounded-lg bg-surface-container-high p-2 text-sm"
-                        [attr.data-testid]="'stock-contents-empty-home-' + home.productId"
-                      >
-                        {{
-                          'inventory.plan.here.empty_home'
-                            | translate: { product: home.productName, place: home.locationCode }
-                        }}
-                      </p>
-                    }
-                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                      <a
-                        class="text-primary underline"
-                        routerLink="/stock/movements"
-                        [queryParams]="{ location: now.locationId }"
-                        data-testid="stock-contents-movements"
-                        >{{ 'inventory.plan.here.movements' | translate }}</a
-                      >
-                      <a
-                        class="text-primary underline"
-                        routerLink="/stock"
-                        [queryParams]="{ location: now.locationId }"
-                        data-testid="stock-contents-stock"
-                        >{{ 'inventory.plan.here.open_stock' | translate }}</a
-                      >
-                    </div>
-                    <p class="text-xs text-on-surface-variant">
-                      {{ 'inventory.plan.here.truth' | translate }}
-                    </p>
-                  } @else {
-                    <p class="text-sm text-on-surface-variant">
-                      {{ 'inventory.plan.here.reading' | translate }}
-                    </p>
-                  }
-                </div>
+              @if (contentsLocationId(); as locationId) {
+                @if (company(); as company) {
+                  <!--
+                    « Ce qu'il y a ici »: the place's stock and that of every bin under it, each line naming the bin it
+                    is in, since « R1 » alone sends a person along a six-metre rack.
+                  -->
+                  <app-place-contents [companyId]="company.id" [locationId]="locationId">
+                    <h3
+                      class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant"
+                    >
+                      {{ 'inventory.plan.here.title' | translate }}
+                    </h3>
+                  </app-place-contents>
+                }
               }
               @if (arranging()) {
                 <div class="flex flex-wrap gap-2">

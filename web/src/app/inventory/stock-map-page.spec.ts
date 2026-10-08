@@ -1907,6 +1907,7 @@ describe('StockMapPage', () => {
           ? null
           : {
               locationId,
+              q: '',
               levels: [level],
               total: 1,
               homes: [
@@ -1934,7 +1935,7 @@ describe('StockMapPage', () => {
     press('stock-drawing-R1');
     await settle();
 
-    expect(facade.loadContents).toHaveBeenLastCalledWith('c1', 'l1');
+    expect(facade.loadContents).toHaveBeenLastCalledWith('c1', 'l1', '');
     const line = q('stock-contents-line-p1:b1') as HTMLElement;
     expect(line.textContent).toContain('Vis 6x40 zinguée');
     // The bin it is in, because « R1 » alone sends a person along a six-metre rack.
@@ -1963,6 +1964,7 @@ describe('StockMapPage', () => {
           ? null
           : {
               locationId,
+              q: '',
               levels: [
                 level,
                 {
@@ -1991,17 +1993,19 @@ describe('StockMapPage', () => {
   it('says plainly when a place holds nothing, and reads nothing for the building', async () => {
     await consult();
     facade.loadContents.mockImplementation(async (_company: string, locationId: string | null) => {
-      contents.set(locationId === null ? null : { locationId, levels: [], total: 0, homes: [] });
+      contents.set(
+        locationId === null ? null : { locationId, q: '', levels: [], total: 0, homes: [] },
+      );
     });
 
     press('stock-drawing-R1');
     await settle();
     expect(q('stock-contents-nothing')).not.toBeNull();
 
+    // The building holds no goods: there is no place to read, so the panel says nothing of contents at all.
     press('stock-structure-row-s1');
     await settle();
-    expect(facade.loadContents).toHaveBeenLastCalledWith('c1', null);
-    expect(q('stock-contents-nothing')).toBeNull();
+    expect(q('stock-contents')).toBeNull();
   });
 
   /** Aménager's panel is the shape's form and its actions; reading the shelf there would only slow a gesture down. */

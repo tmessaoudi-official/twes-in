@@ -100,6 +100,7 @@ import {
 } from '../shared/settings/settings-registry';
 import { StockMapVolume } from './stock-map-volume';
 import { StockMapFirstSteps } from './stock-map-first-steps';
+import { PlaceContents } from './place-contents';
 import {
   LABEL_FONT,
   LABEL_PIXELS,
@@ -250,6 +251,7 @@ const PENDING_PIECE: StockStructureRow = {
     PickField,
     StockMapVolume,
     StockMapFirstSteps,
+    PlaceContents,
   ],
   templateUrl: './stock-map-page.html',
   styleUrl: './stock-map-page.css',
@@ -469,36 +471,9 @@ export class StockMapPage implements OnInit {
    * The place whose contents the panel shows: the chosen rectangle's location, in Consulter only — Aménager's panel is
    * the shape's form and its actions, and a read there would only slow a gesture down.
    */
-  private readonly contentsLocationId = computed(() =>
+  protected readonly contentsLocationId = computed(() =>
     this.arranging() ? null : (this.selected()?.locationId ?? null),
   );
-
-  /**
-   * « Ce qu'il y a ici »: what the place holds, and the homes holding nothing, which are the shelves to refill. A home
-   * is called empty only when the whole of the place's stock was read: past one page, a good on the next one would
-   * read as missing, which is worse than saying nothing.
-   */
-  protected readonly here = computed(() => {
-    const contents = this.facade.contents();
-    if (contents === null || contents.locationId !== this.contentsLocationId()) return null;
-    const held = new Set(
-      contents.levels.filter((line) => Number(line.quantity) > 0).map((line) => line.productId),
-    );
-    const complete = contents.total <= contents.levels.length;
-
-    return {
-      locationId: contents.locationId,
-      lines: contents.levels.map((line) => ({ ...line, negative: Number(line.quantity) < 0 })),
-      more: Math.max(0, contents.total - contents.levels.length),
-      emptyHomes: complete
-        ? contents.homes.filter(
-            (home, index, homes) =>
-              !held.has(home.productId) &&
-              homes.findIndex((other) => other.productId === home.productId) === index,
-          )
-        : [],
-    };
-  });
 
   // ——— the search: where goods are, lit on the plan ———
 
@@ -840,14 +815,6 @@ export class StockMapPage implements OnInit {
       onCleanup(() => watching.unsubscribe());
     });
 
-    // What the chosen place holds is read once per place, never once per reload of the plan: the place is a string, so
-    // a plan read again with the same rack chosen does not ask again.
-    effect(() => {
-      const companyId = this.company()?.id;
-      const locationId = this.contentsLocationId();
-      if (companyId) untracked(() => void this.facade.loadContents(companyId, locationId));
-    });
-
     effect(() => {
       const companyId = this.company()?.id;
       const productIds = this.searchedIds();
@@ -1000,12 +967,12 @@ export class StockMapPage implements OnInit {
       },
       this.destroyRef,
     );
-    // What a place holds changes with every movement anywhere, and with the homes a product file sets.
+    // What a place holds changes with every movement anywhere, and with the homes a product file sets; the chosen place's
+    // own lines are read again by « Ce qu'il y a ici » itself.
     this.live.reloadOn(
       ['stock', 'product', 'product_home_location', 'delivery_note', 'invoice'],
       async () => {
         await this.facade.reloadHoldings(companyId);
-        await this.facade.reloadContents(companyId);
         await this.facade.reloadWhereabouts(companyId);
       },
       this.destroyRef,

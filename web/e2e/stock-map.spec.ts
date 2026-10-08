@@ -686,4 +686,61 @@ test.describe('the drawn stock map', () => {
       }
     }
   });
+
+  /**
+   * What a place holds, read on the plan and from « Emplacements ». The run's rack holds nothing, so no count is
+   * written on it: a place that received goods could not be taken away afterwards, and would leak one per run into the
+   * shared company. The counts themselves are certified by the API's functional test and the board's unit spec.
+   */
+  test('says what a place holds, on the plan and from the locations list', async ({ page }) => {
+    const stamp = Date.now().toString().slice(-8);
+    const code = `HLD${stamp}`;
+    const floorName = `Contenu ${stamp}`;
+
+    await signIn(page);
+    await inACompany(page, CSRF);
+    const fixture = await prepare(page, code);
+
+    try {
+      await page.goto('/stock/plan?mode=arrange');
+      await page.getByTestId('stock-floor-add').click();
+      await page.getByTestId('field-name').fill(floorName);
+      await page.getByTestId('field-level').fill(String(fixture.level));
+      await page.getByTestId('field-widthMetres').fill('20');
+      await page.getByTestId('field-depthMetres').fill('10');
+      await page.getByTestId('stock-floor-save').click();
+      await expect(toast(page)).toContainText('Étage enregistré');
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
+
+      await page.getByTestId('stock-drawing-add').click();
+      await page.getByTestId('field-locationId').click();
+      await page.getByRole('option', { name: new RegExp(code) }).click();
+      await page.getByTestId('field-x').fill('2');
+      await page.getByTestId('field-y').fill('2');
+      await page.getByTestId('field-width').fill('6');
+      await page.getByTestId('field-depth').fill('1');
+      await page.getByTestId('stock-drawing-save').click();
+      await expect(toast(page)).toContainText('Rectangle enregistré');
+
+      await page.getByTestId('stock-map-mode-read').click();
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
+      // Reading, the plan says a place is pressed to be read, and writes no count on one holding nothing.
+      await expect(page.getByTestId('stock-map-press-hint')).toBeVisible();
+      await expect(page.getByTestId(`stock-map-count-${code}`)).toHaveCount(0);
+      await page.getByTestId(`stock-drawing-${code}`).click();
+      await expect(page.getByTestId('stock-contents-nothing')).toBeVisible();
+
+      // The same answer from the list, for a place a person reaches without the plan.
+      await page.goto('/stock/locations');
+      // Filtered first: the shared company outgrows a page, and the run's rack would sort onto the next one.
+      await page.getByTestId('list-filter').fill(code);
+      await page.getByTestId(`row-action-contents-${fixture.locationId}`).click();
+      await expect(page.getByTestId('place-contents-title')).toContainText(code);
+      await expect(page.getByTestId('stock-contents-nothing')).toBeVisible();
+      await page.getByTestId('place-contents-close').click();
+      await expect(page.getByTestId('place-contents-title')).toHaveCount(0);
+    } finally {
+      if (!page.isClosed()) await clean(page, fixture, floorName);
+    }
+  });
 });

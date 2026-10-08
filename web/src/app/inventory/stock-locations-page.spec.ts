@@ -78,6 +78,9 @@ describe('StockLocationsPage', () => {
     reviseLocation: vi.fn(),
     deleteLocation: vi.fn(),
     clearError: vi.fn(),
+    contents: signal(null).asReadonly(),
+    loadContents: vi.fn(),
+    reloadContents: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -113,6 +116,7 @@ describe('StockLocationsPage', () => {
     facade.createLocation.mockReset().mockResolvedValue(true);
     facade.reviseLocation.mockReset().mockResolvedValue(true);
     facade.deleteLocation.mockReset().mockResolvedValue(true);
+    facade.loadContents.mockReset().mockResolvedValue(undefined);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [StockLocationsPage],
@@ -227,5 +231,17 @@ describe('StockLocationsPage', () => {
     expect(q('stock-location-add')).toBeNull();
     expect(q('row-action-edit-l2')).toBeNull();
     expect(q('row-more-l2')).toBeNull();
+    // Reading what a place holds is reading: a reader has it.
+    expect(q('row-action-contents-l2')).not.toBeNull();
+  });
+
+  /** A place the map has no drawing of is read from its row, in the same words the map uses. */
+  it('opens what a place holds from its row', async () => {
+    q('row-action-contents-l2')!.click();
+    await settle();
+
+    const title = document.body.querySelector('[data-testid="place-contents-title"]');
+    expect(title?.textContent).toContain('Z1');
+    expect(facade.loadContents).toHaveBeenLastCalledWith('c1', 'l2', '');
   });
 });

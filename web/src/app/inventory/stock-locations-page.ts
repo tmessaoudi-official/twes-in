@@ -14,6 +14,7 @@ import {
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
@@ -36,6 +37,7 @@ import {
 import { INVENTORY_TABS } from './inventory-nav';
 import type { StockLocationRow } from './inventory-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { PlaceContentsDialog, type PlaceContentsDialogData } from './place-contents-dialog';
 
 /** Where stock is kept: each establishment's tree under its default location; a location goes only once empty. */
 @Component({
@@ -61,14 +63,23 @@ export class StockLocationsPage implements OnInit {
   private readonly facade = inject(InventoryFacade);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
+  private readonly dialog = inject(MatDialog);
 
   /**
-   * Editing is what a person came for; deleting is destructive and sits behind "⋮", and the default location has
-   * nothing to delete — the stock has to live somewhere — so the action is absent on it rather than refused.
+   * Reading what a place holds is open to anyone who reads stock, the map or not; editing is what a writer came for;
+   * deleting is destructive and sits behind "⋮", and the default location has nothing to delete — the stock has to
+   * live somewhere — so the action is absent on it rather than refused.
    */
   protected readonly list = computed<ListDescriptor<StockLocationListRow>>(() => ({
     ...locationsList(this.facade.options()?.establishments ?? []),
     actions: [
+      {
+        id: 'contents',
+        label: 'inventory.locations.contents',
+        labelParams: (row) => ({ name: row.path }),
+        icon: 'inventory_2',
+        run: (row) => this.showContents(row),
+      },
       {
         id: 'edit',
         label: 'inventory.edit',
@@ -155,6 +166,16 @@ export class StockLocationsPage implements OnInit {
       );
       await this.facade.loadLocations(companyId);
     }
+  }
+
+  protected showContents(row: StockLocationListRow): void {
+    const companyId = this.company()?.id;
+    if (!companyId) return;
+    this.dialog.open<PlaceContentsDialog, PlaceContentsDialogData>(PlaceContentsDialog, {
+      data: { companyId, locationId: row.id, path: row.path },
+      width: '32rem',
+      maxWidth: '100vw',
+    });
   }
 
   protected open(target: StockLocationRow | 'new'): void {

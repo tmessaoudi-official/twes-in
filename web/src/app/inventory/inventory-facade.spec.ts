@@ -197,10 +197,35 @@ describe('InventoryFacade', () => {
       expect.objectContaining({ locationIds: ['r2'], itemsPerPage: 100 }),
     );
     expect(api.locationHomes).toHaveBeenCalledWith('c1', 'r2');
-    expect(facade.contents()).toEqual({ locationId: 'r2', levels: [level], total: 1, homes: [] });
+    expect(facade.contents()).toEqual({
+      locationId: 'r2',
+      q: '',
+      levels: [level],
+      total: 1,
+      homes: [],
+    });
 
     await facade.loadContents('c1', null);
     expect(facade.contents()).toBeNull();
+  });
+
+  /** A place searched is read again with its words: a movement elsewhere must not widen what the person narrowed. */
+  it('searches a place with words, and reads it again with the same words', async () => {
+    api.levels.mockResolvedValue({ rows: [level], total: 1 });
+
+    await facade.loadContents('c1', 'r1', 'vis');
+    expect(api.levels).toHaveBeenLastCalledWith(
+      'c1',
+      expect.objectContaining({ locationIds: ['r1'], q: 'vis' }),
+    );
+    expect(facade.contents()?.q).toBe('vis');
+
+    api.levels.mockClear();
+    await facade.reloadContents('c1');
+    expect(api.levels).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ locationIds: ['r1'], q: 'vis' }),
+    );
   });
 
   it('reads one page of stock with what it names: the options and the locations', async () => {

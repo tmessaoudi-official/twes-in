@@ -354,9 +354,9 @@ export class InventoryFacade {
    * What a place holds, with every place under it, and what has its home there — for the stock map's « Ce qu'il y a
    * ici ». Only the latest choice's answer is shown: a person going from rack to rack sends one read per press, and
    * they need not come back in order. One page of the stock, the largest the API serves; the panel says when there is
-   * more.
+   * more. Words narrow it on the API, through every place under it, as the stock list's search does.
    */
-  async loadContents(companyId: string, locationId: string | null): Promise<void> {
+  async loadContents(companyId: string, locationId: string | null, q = ''): Promise<void> {
     const request = ++this.contentsRequest;
     if (locationId === null) {
       this.contentsSignal.set(null);
@@ -367,7 +367,7 @@ export class InventoryFacade {
         this.api.levels(companyId, {
           page: 1,
           itemsPerPage: CONTENTS_PAGE,
-          q: '',
+          q,
           locationIds: [locationId],
           establishmentIds: [],
           productIds: [],
@@ -379,7 +379,7 @@ export class InventoryFacade {
         this.api.locationHomes(companyId, locationId),
       ]);
       if (request !== this.contentsRequest) return;
-      this.contentsSignal.set({ locationId, levels: page.rows, total: page.total, homes });
+      this.contentsSignal.set({ locationId, q, levels: page.rows, total: page.total, homes });
     });
   }
 
@@ -432,8 +432,8 @@ export class InventoryFacade {
   }
 
   async reloadContents(companyId: string): Promise<void> {
-    const locationId = this.contentsSignal()?.locationId ?? null;
-    if (locationId !== null) await this.loadContents(companyId, locationId);
+    const contents = this.contentsSignal();
+    if (contents !== null) await this.loadContents(companyId, contents.locationId, contents.q);
   }
 
   /** The floor in hand, read again: what a live change brought belongs on it or does not. */

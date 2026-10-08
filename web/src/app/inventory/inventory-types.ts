@@ -157,6 +157,8 @@ export interface LocationHomeRow {
  */
 export interface LocationContents {
   locationId: string;
+  /** The words the place was searched with, empty for all of it: what is shown is only what they matched. */
+  q: string;
   levels: readonly StockLevelRow[];
   /** How many rows the stock has in all; more than `levels` when it outgrew one page. */
   total: number;

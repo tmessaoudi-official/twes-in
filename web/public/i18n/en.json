@@ -2265,6 +2265,7 @@
       "title": "Locations",
       "intro": "Each establishment has a default location at the top of its tree. A location can be deleted only once it holds no locations and no movements.",
       "add": "Add a location",
+      "contents": "What {{name}} holds",
       "saved": "The location was saved.",
       "none": "No locations yet.",
       "section": "Location",
@@ -2450,8 +2451,11 @@
         "empty_home": "{{product}} has its place here ({{place}}) and none is left: empty, to be refilled.",
         "movements": "Movements",
         "open_stock": "Open in Stock",
-        "truth": "The plan says what the movements recorded: goods received into a bin of the rack count here.",
-        "reading": "Reading what it holds…"
+        "truth": "What this says comes from the recorded movements: goods received into a place under this one count here.",
+        "reading": "Reading what it holds…",
+        "search": "Search here",
+        "no_match": "Nothing here matches “{{words}}”.",
+        "close": "Close"
       },
       "search": {
         "label": "Find a product",
