@@ -33,6 +33,11 @@ export interface ScreenAction {
    * When several are offered at once, the first one declared is the one E runs.
    */
   next?: boolean;
+  /**
+   * Stays in the bar on a phone, drawn as its named icon, where every other frequent action but the next step folds into
+   * « ⋮ »: a record page's save, without which a new document could only be left by its back link.
+   */
+  keep?: boolean;
   /** Folded into "⋮" rather than shown. Destructive actions are always folded, whatever this says. */
   rare?: boolean;
   /** Drawn as destructive, never a visible button, and asks before it runs when `confirm` is given. */

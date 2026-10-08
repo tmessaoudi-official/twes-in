@@ -26,6 +26,17 @@
         }
         {{ action.label | translate: action.labelParams }}
       </a>
+    } @else if (compact() && action.keep && action.icon) {
+      <button
+        mat-icon-button
+        type="button"
+        [disabled]="action.disabled ?? false"
+        (click)="run(action)"
+        [appLabel]="action.label | translate: action.labelParams"
+        [attr.data-testid]="'document-action-' + action.id"
+      >
+        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+      </button>
     } @else if (action.primary) {
       <button
         mat-flat-button

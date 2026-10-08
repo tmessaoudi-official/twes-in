@@ -4877,7 +4877,7 @@ functional tests run in the `tools` container, on the host's network, against th
 | 229 | An invoice names both its parties as the law asks before it takes a number (review LEG-1 / F3, § 7 2026-10-08 01:52) | M | done | 56ca4edf | api/src/Module/Invoices/** api/src/Tenancy/** web/src/app/invoices/** web/e2e/** |
 | 230 | Every page names itself in its tab (route `title` keys, `PageTitles`), and a move to another page puts focus on its heading (`RouteFocus`) (review T-E09, RGAA 8.6 / 12.7; § 7 2026-10-07 23:52 main lane 4) | M | done | bb320509 | web/src/app/** web/e2e/** |
 | 231 | A list says it is loading, or that it could not load, never « vide » before its answer (review T-E02; main lane 4) | M | doing | - | web/src/app/** |
-| 232 | A new or draft document can be saved from a phone, not only from the overflow menu (review T-E01; main lane 4) | S | todo | - | web/src/app/** |
+| 232 | A new or draft document can be saved from a phone, not only from the overflow menu (review T-E01; main lane 4) | S | doing | - | web/src/app/** |
 | 233 | The line discount's percent / amount switch keeps focus and the typed value, and names its unit (review T-E08; main lane 4) | S | todo | - | web/src/app/** |
 | 234 | The line editors space their fields so labels never sit on the field above (review T-E07; main lane 4) | S | todo | - | web/src/app/** |
 <!-- /progress-block -->

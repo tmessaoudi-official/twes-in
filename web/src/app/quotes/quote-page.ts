@@ -326,6 +326,8 @@ export class QuotePage {
         label: 'quotes.actions.save',
         shortcut: 's',
         icon: 'save',
+        // Kept in a phone's bar, or a new document there offers no way to save it.
+        keep: true,
         disabled: busy,
         run: () => void this.save(),
         shown: this.editable() && this.form() !== null,

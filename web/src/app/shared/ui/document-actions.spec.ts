@@ -25,6 +25,7 @@ class StaticLoader implements TranslateLoader {
       shell: { soon: 'Soon' },
       p: { email: 'Send by e-mail', repeat: 'Make recurring' },
       d: {
+        save: 'Save draft',
         issue: 'Issue',
         pdf: 'PDF',
         duplicate: 'Duplicate',
@@ -284,6 +285,39 @@ describe('DocumentActions', () => {
       'document-menu-final',
       'document-menu-cancel',
     ]);
+  });
+
+  it('keeps a save in the bar on a phone, drawn as its named icon beside the next step', async () => {
+    const save: ScreenAction = {
+      id: 'save',
+      label: 'd.save',
+      icon: 'save',
+      keep: true,
+      run: () => ran.push('save'),
+    };
+    fixture.componentInstance.actions.set([save, issue, pdf, duplicate, cancel]);
+    width.set('compact');
+    await settle();
+    const bar = [...document.body.querySelectorAll('[data-testid^="document-action-"]')].map(
+      (each) => each.getAttribute('data-testid'),
+    );
+
+    expect(bar).toEqual(['document-action-save', 'document-action-issue']);
+    expect(q('document-action-save')!.getAttribute('aria-label')).toBe('Save draft');
+    expect(q('document-action-save')!.textContent?.trim()).toBe('save');
+
+    q('document-action-save')!.click();
+    expect(ran).toEqual(['save']);
+  });
+
+  it('keeps a save in the bar on a phone when there is no next step yet, as on a new document', async () => {
+    fixture.componentInstance.actions.set([
+      { id: 'save', label: 'd.save', icon: 'save', keep: true, run: () => ran.push('save') },
+    ]);
+    width.set('compact');
+    await settle();
+
+    expect(q('document-action-save')).not.toBeNull();
   });
 
   it('names the "⋮" it draws', () => {

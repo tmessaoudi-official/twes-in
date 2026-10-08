@@ -508,3 +508,14 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await retire(page, customerNumber);
   }
 });
+
+test('on a phone a new invoice is saved from its bar, not only from « ⋮ »', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/invoices/new');
+
+  const save = page.getByTestId('document-action-save');
+  await expect(save).toBeVisible();
+  await expect(save).toHaveAccessibleName('Enregistrer le brouillon');
+});

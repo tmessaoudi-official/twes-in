@@ -59,17 +59,17 @@ export class DocumentActions {
   private readonly frequent = computed(() =>
     this.offered().filter((action) => action.rare !== true && action.destructive !== true),
   );
-  private readonly compact = computed(() => this.windowClass() === 'compact');
+  protected readonly compact = computed(() => this.windowClass() === 'compact');
   /**
    * Drawn in the bar: the frequent ones, never anything destructive; on a phone the next step alone, since the bar
-   * wrapped into three rows there with its « ⋮ » alone on one (audit V-3).
+   * wrapped into three rows there with its « ⋮ » alone on one (audit V-3), and what is kept beside it as an icon.
    */
   protected readonly visible = computed(() =>
-    this.compact() ? this.frequent().filter((action) => action.primary === true) : this.frequent(),
+    this.compact() ? this.frequent().filter((action) => onPhoneBar(action)) : this.frequent(),
   );
   /** The frequent ones a phone has no room for, first in the menu. */
   private readonly folded = computed(() =>
-    this.compact() ? this.frequent().filter((action) => action.primary !== true) : [],
+    this.compact() ? this.frequent().filter((action) => !onPhoneBar(action)) : [],
   );
   /** Folded into "⋮": the rare and everything destructive, whatever its frequency. */
   protected readonly rare = computed(() =>
@@ -113,4 +113,8 @@ export class DocumentActions {
       this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
     );
   }
+}
+
+function onPhoneBar(action: ScreenAction): boolean {
+  return action.primary === true || (action.keep === true && action.icon !== undefined);
 }
