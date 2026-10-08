@@ -672,7 +672,9 @@
       "stock_low": "{{product}} ({{reference}}) est tombé à {{on_hand}} à {{establishment}}, au niveau ou sous son seuil de réapprovisionnement de {{point}}.",
       "invoice_credit_limit_passed": "{{customer}} dépasse sa limite de crédit : {{owed}} {{currency}} dus pour {{limit}} après la facture {{number}}.",
       "invoice_late_fee_drafted": "Relance {{stage}} à faire : la facture {{number}} de {{customer}}, {{amount_due}} {{currency}}, a {{days_late}} jours de retard. Frais de retard de {{late_fee}} {{currency}} préparés en brouillon.",
-      "invoice_reminder_due": "Relance {{stage}} à faire : la facture {{number}} de {{customer}}, {{amount_due}} {{currency}}, a {{days_late}} jours de retard."
+      "invoice_reminder_due": "Relance {{stage}} à faire : la facture {{number}} de {{customer}}, {{amount_due}} {{currency}}, a {{days_late}} jours de retard.",
+      "invoice_recurring_drafted": "Facture récurrente de {{customer}} : un brouillon copié de la facture {{number}} attend d’être émis.",
+      "invoice_recurring_stopped": "Facture récurrente de {{customer}} mise en pause : la facture {{number}} qu’elle copie ne peut plus l’être."
     }
   },
   "invitation": {
@@ -3496,11 +3498,6 @@
       "heading": "Les textes sont en construction",
       "does": "Remplacer les mots de l’application par les vôtres (« Client » en « Patient », par exemple), dans chaque langue."
     },
-    "accounting_export": {
-      "heading": "L’export comptable est en construction",
-      "does": "Les écritures des ventes, des achats et des encaissements de la période, prêtes à reprendre dans le logiciel de votre comptable, avec un rôle comptable et les périodes clôturées.",
-      "settings": "Le plan de comptes, les codes journaux et le format du fichier exporté."
-    },
     "composites": {
       "heading": "Les produits composés sont en construction",
       "does": "Un article fait d’autres articles : un kit, une recette ou un menu, avec ses quantités, son coût de revient et le stock de chaque composant."
@@ -3542,12 +3539,6 @@
     "ratings": {
       "heading": "Les avis sont en construction",
       "does": "Recueillir l’avis des clients après leur passage et suivre la note de l’établissement."
-    },
-    "recurring": {
-      "heading": "Les factures récurrentes sont en construction",
-      "does": "Un abonnement ou un contrat facturé chaque mois ou chaque année : les brouillons se préparent d’eux-mêmes à la date prévue.",
-      "create": "Nouvelle facture récurrente",
-      "settings": "La fréquence proposée par défaut, le jour d’émission et si chaque facture part seule par e-mail."
     },
     "service": {
       "heading": "Le service en salle est en construction",
@@ -3693,7 +3684,6 @@
   "planned_actions": {
     "send_email": "Envoyer par e-mail",
     "send_whatsapp": "Envoyer par WhatsApp",
-    "make_recurring": "Rendre récurrente",
     "credit_limit": "Plafond de crédit",
     "new_purchase": "Nouvelle commande fournisseur"
   },
@@ -4334,6 +4324,69 @@
         "name": "Récapitulatif de TVA",
         "does": "Les bases et les taxes des ventes et des achats, par taxe et par taux. Il ne dit pas ce qui est dû."
       }
+    }
+  },
+  "recurring": {
+    "tab": "Récurrentes",
+    "title": "Factures récurrentes",
+    "intro": "Une facture qui revient chaque semaine, chaque mois, chaque trimestre ou chaque année. À chaque échéance, une copie est préparée en brouillon pour qu’une personne la vérifie et l’émette : rien ne part seul. On en crée une depuis une facture, avec « Rendre récurrente ».",
+    "no_company": "Choisissez une entreprise pour voir ses factures récurrentes.",
+    "none": "Aucune facture récurrente. Ouvrez une facture et choisissez « Rendre récurrente » dans « ⋮ ».",
+    "columns": {
+      "customer": "Client",
+      "model": "Facture copiée",
+      "frequency": "Fréquence",
+      "next_on": "Prochain brouillon",
+      "drafted": "Brouillons faits",
+      "state": "État"
+    },
+    "frequencies": {
+      "weekly": "Chaque semaine",
+      "monthly": "Chaque mois",
+      "quarterly": "Chaque trimestre",
+      "yearly": "Chaque année"
+    },
+    "states": {
+      "active": "Active",
+      "paused": "En pause",
+      "ended": "Terminée"
+    },
+    "fields": {
+      "frequency": "Fréquence",
+      "starts_on": "Premier brouillon le",
+      "starts_on_hint": "Aujourd’hui ou plus tard ; les suivants gardent le même jour du mois.",
+      "ends_on": "Dernier jour",
+      "ends_on_hint": "Laissez vide pour qu’elle continue."
+    },
+    "make": {
+      "action": "Rendre récurrente",
+      "title": "Quand préparer la copie",
+      "intro": "Chaque échéance prépare un brouillon copié de cette facture, daté du jour. Rien n’est émis sans vous.",
+      "confirm": "Rendre récurrente"
+    },
+    "cancel": "Annuler",
+    "keep": "Garder",
+    "made": "La facture est récurrente : son premier brouillon sera préparé le jour choisi.",
+    "open": "Voir les récurrentes",
+    "pause": "Mettre en pause celle de {{customer}}",
+    "resume": "Reprendre celle de {{customer}}",
+    "paused": "Facture récurrente de {{customer}} en pause.",
+    "resumed": "Facture récurrente de {{customer}} reprise : les échéances passées pendant la pause sont sautées.",
+    "delete": "Supprimer celle de {{customer}}",
+    "delete_title": "Supprimer cette facture récurrente",
+    "delete_message": "Plus aucun brouillon ne sera préparé pour {{customer}}. Les factures déjà préparées restent.",
+    "delete_confirm": "Supprimer",
+    "deleted": "Facture récurrente de {{customer}} supprimée.",
+    "last_draft": "Ouvrir le dernier brouillon",
+    "model_draft": "Brouillon",
+    "errors": {
+      "invalid": "La facture récurrente n’a pas pu être enregistrée.",
+      "not_found": "Cette facture récurrente n’existe plus.",
+      "network": "Le serveur ne répond pas. Réessayez dans un instant.",
+      "model_invoice_id": "Un avoir ou une facture d’acompte ne se rend pas récurrent.",
+      "frequency": "Choisissez une fréquence.",
+      "starts_on": "Le premier brouillon se fait aujourd’hui ou plus tard, jamais un jour passé.",
+      "ends_on": "Le dernier jour vient le jour du premier brouillon ou après."
     }
   }
 }

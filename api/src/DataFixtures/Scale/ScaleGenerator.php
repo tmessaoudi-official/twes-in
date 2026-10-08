@@ -72,6 +72,7 @@ final class ScaleGenerator
         'quote' => 'quotes: a follow-up slice',
         'quote_line' => 'quotes: a follow-up slice',
         'quote_line_tax' => 'quotes: a follow-up slice',
+        'recurring_invoice' => 'a schedule copying a model invoice: a clone drafts nothing by itself',
         'stock_movement' => 'stock movements: a follow-up slice',
     ];
 

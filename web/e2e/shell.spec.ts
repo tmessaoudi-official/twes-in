@@ -219,8 +219,8 @@ test('an entry not built yet says what it will do, and hiding what is coming tak
       '/invoices/new',
     );
     // Row 150: every planned module of the API's catalogue is in the menu, in the section where it will live.
-    await page.getByTestId('nav-recurring').click();
-    await expect(page).toHaveURL(/\/coming\/recurring$/);
+    await page.getByTestId('nav-statements').click();
+    await expect(page).toHaveURL(/\/coming\/statements$/);
     await expect(page.getByTestId('coming-version')).toBeVisible();
 
     await page.getByTestId('coming-hide').click();
@@ -229,7 +229,7 @@ test('an entry not built yet says what it will do, and hiding what is coming tak
     await page.reload();
     await expect(page.getByTestId('nav-home')).toBeVisible();
     await expect(page.getByTestId('nav-register')).toHaveCount(0);
-    await expect(page.getByTestId('nav-recurring')).toHaveCount(0);
+    await expect(page.getByTestId('nav-statements')).toHaveCount(0);
   } finally {
     await forget(page, SHOW_COMING);
   }

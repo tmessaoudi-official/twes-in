@@ -192,6 +192,28 @@ final readonly class ManageInvoices
     }
 
     /**
+     * A copy of a document as a new draft made by the worker for a recurring invoice, audited as created with where it
+     * came from and by no one.
+     *
+     * @param array<string, mixed> $origin
+     *
+     * @throws InvoiceNotFound
+     * @throws InvoiceTransitionRefused
+     * @throws InvalidInvoice
+     */
+    public function draftFromModel(Company $company, Uuid $modelInvoiceId, array $origin): Invoice
+    {
+        return $this->transactions->run(function () use ($company, $modelInvoiceId, $origin): Invoice {
+            $copy = Invoice::duplicateOf($this->get($company, $modelInvoiceId), $this->clock->now());
+            $this->totals->checked($copy);
+            $this->invoices->save($copy);
+            $this->record($company, $copy->getId(), self::CREATED, $origin, null);
+
+            return $copy;
+        });
+    }
+
+    /**
      * A credit note drafted from an issued invoice (docs/SPEC.md § 7, 2026-09-14), stating why (2026-09-24 22:51), audited
      * as created with the invoice it corrects.
      *

@@ -40,16 +40,16 @@ describe('the planned modules in the menu', () => {
   it('shows exactly what the API lists as planned, at the version it gives, never from a list of its own', () => {
     const shown = plannedNav([
       { key: 'zakat', planned: 'later' },
-      { key: 'recurring', planned: 'v1' },
+      { key: 'whatsapp', planned: 'v1' },
       // A key the web has no place for yet is left out rather than drawn without an icon or a section.
       { key: 'teleportation', planned: 'v1' },
     ]);
 
     expect(shown.map((entry) => [entry.key, entry.coming.version, entry.route])).toEqual([
-      ['recurring', 'v1', '/coming/recurring'],
+      ['whatsapp', 'v1', '/coming/whatsapp'],
       ['zakat', 'later', '/coming/zakat'],
     ]);
-    expect(shown[0].labelKey).toBe('modules.recurring');
+    expect(shown[0].labelKey).toBe('modules.whatsapp');
     expect(plannedNav([])).toEqual([]);
     expect(plannedNav(undefined)).toEqual([]);
   });
@@ -71,7 +71,6 @@ describe('the planned modules in the menu', () => {
           'customers',
           'products',
           'price_lists',
-          'recurring',
           'statements',
           'mailing',
           'whatsapp',
@@ -118,7 +117,7 @@ describe('the planned modules in the menu', () => {
   });
 
   it('names each, says what it will do, and what to use meanwhile where it has that, in both languages', () => {
-    expect(PLANNED_NAV.length).toBe(19);
+    expect(PLANNED_NAV.length).toBe(18);
     for (const entry of plannedNav(catalogue)) {
       for (const json of [fr, en]) {
         for (const key of [
@@ -141,13 +140,13 @@ describe('the planned modules in the menu', () => {
   // The same entries reach « Créer » and the Ctrl K palette, marked, and never create anything (row 150, slice 4).
   it('offers each in the palette, and the documents they will create in « Créer », all opening their page', () => {
     const commands = plannedCommands([
-      { key: 'recurring', planned: 'v1' },
+      { key: 'register', planned: 'v1' },
       { key: 'zakat', planned: 'later' },
     ]);
 
     expect(commands.map((c) => [c.key, c.group, c.route, c.labelKey, c.coming])).toEqual([
-      ['new-recurring', 'create', '/coming/recurring', 'coming.recurring.create', true],
-      ['goto-recurring', 'goto', '/coming/recurring', 'modules.recurring', true],
+      ['new-register', 'create', '/coming/register', 'coming.register.create', true],
+      ['goto-register', 'goto', '/coming/register', 'modules.register', true],
       ['goto-zakat', 'goto', '/coming/zakat', 'modules.zakat', true],
     ]);
     expect(plannedCommands(undefined)).toEqual([]);
@@ -155,12 +154,7 @@ describe('the planned modules in the menu', () => {
 
   it('names what each creation will make, in both languages', () => {
     const creations = plannedCommands(catalogue).filter((c) => c.group === 'create');
-    expect(creations.map((c) => c.key)).toEqual([
-      'new-recurring',
-      'new-register',
-      'new-works',
-      'new-purchases',
-    ]);
+    expect(creations.map((c) => c.key)).toEqual(['new-register', 'new-works', 'new-purchases']);
     for (const command of creations) {
       for (const json of [fr, en]) {
         expect(hasKey(json, command.labelKey), command.labelKey).toBe(true);

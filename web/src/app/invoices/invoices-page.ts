@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { NgTemplateOutlet } from '@angular/common';
 import { withdrawn } from '../shared/theme/lifecycle-tones';
 import {
   ChangeDetectionStrategy,
@@ -35,6 +36,8 @@ import { SettingsFacade } from '../shared/settings/settings-facade';
 import { PRESENTATION } from '../shared/settings/settings-registry';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { StatusBadge } from '../shared/ui/status-badge';
+import { PageTabs } from '../shared/ui/page-tabs';
+import { RECURRING_MODULE, RECURRING_TABS } from '../recurring/recurring-nav';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
 import {
   INVOICES_LIST,
@@ -65,6 +68,8 @@ import {
     StatusBadge,
     InvoiceSheet,
     ListExport,
+    NgTemplateOutlet,
+    PageTabs,
   ],
   templateUrl: './invoices-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -114,6 +119,10 @@ export class InvoicesPage implements OnInit {
   protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
   protected readonly mayWrite = computed(() => this.auth.hasPermission('invoice.write'));
+  /** Factures and its recurring invoices as tabs, while the company has them; alone, no tab is drawn. */
+  protected readonly tabs = computed(() =>
+    this.auth.hasModule(RECURRING_MODULE) ? RECURRING_TABS : RECURRING_TABS.slice(0, 1),
+  );
   protected readonly rowTestId = (row: InvoiceListRow): string => `invoice-${row.id}`;
   /** What each status chip would list, as the API counted it (docs/SPEC.md § 7, 2026-09-26). */
   protected readonly facetCounts = computed((): ListFacetCounts | null => {

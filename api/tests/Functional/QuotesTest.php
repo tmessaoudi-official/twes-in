@@ -198,6 +198,7 @@ final class QuotesTest extends ApiTestCase
         $id = $this->sent();
         $this->postJson($this->path($id).'/accept', ['answeredOn' => null]);
         $this->sendJson('PUT', $this->companyPath().'/modules/accounting_export', ['enabled' => false]);
+        $this->sendJson('PUT', $this->companyPath().'/modules/recurring', ['enabled' => false]);
         $this->sendJson('PUT', $this->companyPath().'/modules/invoices', ['enabled' => false]);
         self::assertResponseIsSuccessful('quotes do not hold invoices on');
 
@@ -226,6 +227,7 @@ final class QuotesTest extends ApiTestCase
         self::assertSame([$this->productId], array_column($this->jsonList(), 'id'));
 
         $this->sendJson('PUT', $this->companyPath().'/modules/accounting_export', ['enabled' => false]);
+        $this->sendJson('PUT', $this->companyPath().'/modules/recurring', ['enabled' => false]);
         $this->sendJson('PUT', $this->companyPath().'/modules/invoices', ['enabled' => false]);
         $this->sendJson('PUT', $this->companyPath().'/modules/inventory', ['enabled' => false]);
         $this->sendJson('PUT', $this->companyPath().'/modules/delivery_notes', ['enabled' => false]);

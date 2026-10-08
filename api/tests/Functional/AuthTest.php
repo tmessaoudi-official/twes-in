@@ -268,11 +268,12 @@ final class AuthTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $planned = $this->arrayAt($this->json(), 'plannedModules');
         self::assertSame($atLogin, $planned);
-        self::assertCount(19, $planned);
+        self::assertCount(18, $planned);
         self::assertSame(['key' => 'composites', 'planned' => 'later'], $planned[0]);
-        self::assertSame(['key' => 'zakat', 'planned' => 'later'], $planned[18]);
+        self::assertSame(['key' => 'zakat', 'planned' => 'later'], $planned[17]);
         self::assertNotContains('customers', array_column($planned, 'key'), 'a module that ships is never planned');
         self::assertNotContains('accounting_export', array_column($planned, 'key'), 'nor one that has since shipped');
+        self::assertNotContains('recurring', array_column($planned, 'key'));
     }
 
     public function testAnAnonymousRequestStartsNoSession(): void

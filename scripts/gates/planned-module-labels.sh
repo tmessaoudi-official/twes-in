@@ -84,7 +84,7 @@ fi
 # the API lists that module as planned. A key that is not one — a typo, or a module that has since shipped and needs
 # its real actions instead — draws nothing, silently. Declarations are discovered in the web's sources (specs are
 # fixtures, not declarations), above a floor of their own.
-declarations_floor=${PLANNED_MODULE_DECLARATIONS_FLOOR:-20}
+declarations_floor=${PLANNED_MODULE_DECLARATIONS_FLOOR:-17}
 mapfile -t declarations < <(
   grep -rhoE --include='*.ts' --exclude='*.spec.ts' \
     "module: '[a-z][a-z0-9_]*', label: '[a-z][a-z0-9_.]*'" "$root/web/src/app" 2>/dev/null |

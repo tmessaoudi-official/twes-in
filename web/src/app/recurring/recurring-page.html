@@ -1,0 +1,47 @@
+<app-page-tabs [tabs]="tabs" label="nav.invoices">
+  <section class="flex flex-col gap-6">
+    <h1 class="text-3xl font-semibold" data-testid="recurring-title">
+      {{ 'recurring.title' | translate }}
+    </h1>
+    <p class="max-w-prose">{{ 'recurring.intro' | translate }}</p>
+
+    @if (!company()) {
+      <p data-testid="recurring-no-company">{{ 'recurring.no_company' | translate }}</p>
+    }
+    @if (error(); as code) {
+      <p role="alert" data-testid="recurring-error" class="text-error">
+        {{ 'recurring.errors.' + code | translate }}
+      </p>
+    }
+
+    <app-data-list
+      [descriptor]="list()"
+      [rows]="rows()"
+      [loading]="loading()"
+      [failed]="error() !== null"
+      testId="recurring-table"
+      [rowTestId]="rowTestId"
+      emptyKey="recurring.none"
+      emptyTestId="recurring-empty"
+    >
+      <ng-template appDataListCell="model" let-row>
+        {{ row.modelNumber ?? ('recurring.model_draft' | translate) }}
+      </ng-template>
+      <ng-template appDataListCell="frequency" let-row>
+        {{ 'recurring.frequencies.' + row.frequency | translate }}
+      </ng-template>
+      <ng-template appDataListCell="nextOn" let-row>
+        @if (row.nextOn; as day) {
+          {{ day | day }}
+        } @else {
+          —
+        }
+      </ng-template>
+      <ng-template appDataListCell="state" let-row>
+        <app-status-badge [tone]="tone(row)">
+          {{ 'recurring.states.' + state(row) | translate }}
+        </app-status-badge>
+      </ng-template>
+    </app-data-list>
+  </section>
+</app-page-tabs>

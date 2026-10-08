@@ -672,7 +672,9 @@
       "stock_low": "{{product}} ({{reference}}) is down to {{on_hand}} at {{establishment}}, at or under its reorder point of {{point}}.",
       "invoice_credit_limit_passed": "{{customer}} is over their credit limit: {{owed}} {{currency}} owed against {{limit}} after invoice {{number}}.",
       "invoice_late_fee_drafted": "Reminder {{stage}} to send: invoice {{number}} of {{customer}}, {{amount_due}} {{currency}}, is {{days_late}} days late. A late fee of {{late_fee}} {{currency}} is prepared as a draft.",
-      "invoice_reminder_due": "Reminder {{stage}} to send: invoice {{number}} of {{customer}}, {{amount_due}} {{currency}}, is {{days_late}} days late."
+      "invoice_reminder_due": "Reminder {{stage}} to send: invoice {{number}} of {{customer}}, {{amount_due}} {{currency}}, is {{days_late}} days late.",
+      "invoice_recurring_drafted": "Recurring invoice for {{customer}}: a draft copied from invoice {{number}} is waiting to be issued.",
+      "invoice_recurring_stopped": "Recurring invoice for {{customer}} paused: invoice {{number}}, which it copies, can no longer be copied."
     }
   },
   "invitation": {
@@ -3496,11 +3498,6 @@
       "heading": "Texts are being built",
       "does": "Replace the application's words with yours (“Customer” as “Patient”, for example), in each language."
     },
-    "accounting_export": {
-      "heading": "The accounting export is under construction",
-      "does": "The period's sales, purchase and payment entries, ready for your accountant's software, with an accountant role and closed periods.",
-      "settings": "The chart of accounts, the journal codes and the exported file's format."
-    },
     "composites": {
       "heading": "Composite products are under construction",
       "does": "An item made of other items: a kit, a recipe or a set menu, with its quantities, its cost and the stock of each component."
@@ -3542,12 +3539,6 @@
     "ratings": {
       "heading": "Ratings are under construction",
       "does": "Collect customers' feedback after their visit and follow the venue's rating."
-    },
-    "recurring": {
-      "heading": "Recurring invoices are under construction",
-      "does": "A subscription or contract invoiced monthly or yearly: the drafts prepare themselves on the planned date.",
-      "create": "New recurring invoice",
-      "settings": "The default frequency, the day each invoice is issued, and whether each one is emailed on its own."
     },
     "service": {
       "heading": "Table service is under construction",
@@ -3693,7 +3684,6 @@
   "planned_actions": {
     "send_email": "Send by email",
     "send_whatsapp": "Send by WhatsApp",
-    "make_recurring": "Make recurring",
     "credit_limit": "Credit limit",
     "new_purchase": "New supplier order"
   },
@@ -4334,6 +4324,69 @@
         "name": "VAT summary",
         "does": "The bases and taxes of sales and purchases, by tax and rate. It does not say what is due."
       }
+    }
+  },
+  "recurring": {
+    "tab": "Recurring",
+    "title": "Recurring invoices",
+    "intro": "An invoice that comes back every week, month, quarter or year. On each due day a copy is prepared as a draft for a person to check and issue: nothing goes out by itself. Make one from an invoice, with « Make recurring ».",
+    "no_company": "Choose a company to see its recurring invoices.",
+    "none": "No recurring invoice. Open an invoice and choose « Make recurring » in « ⋮ ».",
+    "columns": {
+      "customer": "Customer",
+      "model": "Invoice copied",
+      "frequency": "Frequency",
+      "next_on": "Next draft",
+      "drafted": "Drafts made",
+      "state": "State"
+    },
+    "frequencies": {
+      "weekly": "Every week",
+      "monthly": "Every month",
+      "quarterly": "Every quarter",
+      "yearly": "Every year"
+    },
+    "states": {
+      "active": "Active",
+      "paused": "Paused",
+      "ended": "Ended"
+    },
+    "fields": {
+      "frequency": "Frequency",
+      "starts_on": "First draft on",
+      "starts_on_hint": "Today or later; the next ones keep the same day of the month.",
+      "ends_on": "Last day",
+      "ends_on_hint": "Leave empty for it to go on."
+    },
+    "make": {
+      "action": "Make recurring",
+      "title": "When to prepare the copy",
+      "intro": "Each due day prepares a draft copied from this invoice, dated that day. Nothing is issued without you.",
+      "confirm": "Make recurring"
+    },
+    "cancel": "Cancel",
+    "keep": "Keep",
+    "made": "The invoice is recurring: its first draft will be prepared on the day chosen.",
+    "open": "See the recurring ones",
+    "pause": "Pause the one for {{customer}}",
+    "resume": "Resume the one for {{customer}}",
+    "paused": "Recurring invoice for {{customer}} paused.",
+    "resumed": "Recurring invoice for {{customer}} resumed: the due days passed during the pause are skipped.",
+    "delete": "Delete the one for {{customer}}",
+    "delete_title": "Delete this recurring invoice",
+    "delete_message": "No more drafts will be prepared for {{customer}}. The invoices already prepared stay.",
+    "delete_confirm": "Delete",
+    "deleted": "Recurring invoice for {{customer}} deleted.",
+    "last_draft": "Open the last draft",
+    "model_draft": "Draft",
+    "errors": {
+      "invalid": "The recurring invoice could not be saved.",
+      "not_found": "This recurring invoice no longer exists.",
+      "network": "The server is not answering. Try again in a moment.",
+      "model_invoice_id": "A credit note or a deposit invoice is not made recurring.",
+      "frequency": "Choose a frequency.",
+      "starts_on": "The first draft is made today or later, never on a day already past.",
+      "ends_on": "The last day comes on the day of the first draft or after it."
     }
   }
 }

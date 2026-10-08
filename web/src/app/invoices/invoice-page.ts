@@ -71,6 +71,14 @@ import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
 import type { PlannedAction } from '../shared/actions/planned-actions';
+import {
+  MakeRecurringDialog,
+  makeRecurringForm,
+  recurringDraft,
+  type MakeRecurringData,
+} from '../recurring/make-recurring';
+import { RecurringApi, RecurringRefused } from '../recurring/recurring-api';
+import { RECURRING_MODULE } from '../recurring/recurring-nav';
 import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { CreditExcessDialog } from './credit-excess-dialog';
@@ -97,12 +105,11 @@ import { QuantityTotalsView } from '../shared/documents/quantity-totals';
  */
 /**
  * What an invoice will offer once its planned modules ship (docs/SPEC.md § 7, 2026-09-26 18:17, row 150), shown
- * « Bientôt » beside what it offers today. A credit note is never made recurring.
+ * « Bientôt » beside what it offers today.
  */
 export const INVOICE_PLANNED: readonly PlannedAction[] = [
   { module: 'mailing', label: 'planned_actions.send_email', icon: 'forward_to_inbox' },
   { module: 'whatsapp', label: 'planned_actions.send_whatsapp', icon: 'chat' },
-  { module: 'recurring', label: 'planned_actions.make_recurring', icon: 'event_repeat' },
 ];
 
 @Component({
@@ -137,6 +144,7 @@ export class InvoicePage {
   private readonly unsaved = inject(UnsavedChanges);
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
+  private readonly recurring = inject(RecurringApi);
   protected readonly auth = inject(AuthFacade);
   private readonly format = inject(FormatFacade);
   private readonly router = inject(Router);
@@ -461,11 +469,7 @@ export class InvoicePage {
   });
 
   /** What the document will offer once its planned modules ship, from the moment it exists. */
-  protected readonly planned = computed(() =>
-    !this.current()
-      ? []
-      : INVOICE_PLANNED.filter((action) => !this.isCreditNote() || action.module !== 'recurring'),
-  );
+  protected readonly planned = computed(() => (!this.current() ? [] : INVOICE_PLANNED));
   /**
    * What the document offers, declared once for the bar beside its title (design review finding 3). The state's
    * next step is the primary: issuing a draft, recording a payment on an open invoice. Cancelling is destructive,
@@ -577,6 +581,15 @@ export class InvoicePage {
         shown: this.canDuplicate(),
       },
       {
+        id: 'make-recurring',
+        label: 'recurring.make.action',
+        icon: 'event_repeat',
+        rare: true,
+        disabled: busy,
+        run: () => void this.makeRecurring(),
+        shown: this.canMakeRecurring(),
+      },
+      {
         id: 'customer-display',
         label: 'customer_display.open',
         icon: 'connected_tv',
@@ -670,6 +683,18 @@ export class InvoicePage {
   );
   protected readonly showsPayments = computed(() => !this.isCreditNote() && this.isOpen());
   /** A saved document can be copied into a new draft; a document that does not exist yet cannot. */
+  /** An invoice of the company is made recurring, never a credit note nor a deposit, while the module is on. */
+  protected readonly canMakeRecurring = computed(() => {
+    const current = this.current();
+    return (
+      this.mayWrite() &&
+      this.auth.hasModule(RECURRING_MODULE) &&
+      current !== null &&
+      current !== undefined &&
+      current.type === 'invoice' &&
+      !current.deposit
+    );
+  });
   protected readonly canDuplicate = computed(
     () => this.mayWrite() && this.current() !== null && this.current() !== undefined,
   );
@@ -1013,6 +1038,35 @@ export class InvoicePage {
     const credit = await this.facade.creditNote(companyId, id, reason);
     if (credit !== null) {
       await this.router.navigate(['/invoices', credit.id]);
+    }
+  }
+
+  /** Asks how often and from when, makes it, and offers the recurring invoices in the toast that says so. */
+  protected async makeRecurring(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    if (!companyId || id === null || this.busy()) return;
+    const descriptor = makeRecurringForm(this.today());
+    const data: MakeRecurringData = { descriptor, group: buildFormGroup(descriptor, {}) };
+    const values = await firstValueFrom(
+      this.dialog.open(MakeRecurringDialog, { data, autoFocus: 'first-tabbable' }).afterClosed(),
+    );
+    if (!values) return;
+    try {
+      await this.recurring.create(companyId, recurringDraft(id, values));
+      this.feedback.success(
+        'recurring.made',
+        {},
+        {
+          key: 'recurring.open',
+          run: () => void this.router.navigate(['/invoices/recurring']),
+        },
+      );
+    } catch (error) {
+      const field = error instanceof RecurringRefused ? error.field : null;
+      this.feedback.failure(
+        field === null ? 'recurring.errors.invalid' : `recurring.errors.${field}`,
+      );
     }
   }
 

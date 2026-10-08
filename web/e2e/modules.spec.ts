@@ -42,6 +42,7 @@ test('a module switched off leaves the navigation, its pages and its API until i
   await signIn(page);
   try {
     await switchModule(page, 'accounting_export', false);
+    await switchModule(page, 'recurring', false);
     await switchModule(page, 'invoices', false);
     await switchModule(page, 'delivery_notes', false);
     await switchModule(page, 'price_lists', false);
@@ -67,6 +68,7 @@ test('a module switched off leaves the navigation, its pages and its API until i
     // Invoices, delivery notes and quotes were switched off first, and need customers back before they come back on.
     await switchModule(page, 'invoices', true);
     await switchModule(page, 'accounting_export', true);
+    await switchModule(page, 'recurring', true);
     await switchModule(page, 'quotes', true);
   }
 });

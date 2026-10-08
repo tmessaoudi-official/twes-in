@@ -73,6 +73,18 @@ describe('reminder notifications', () => {
     );
     expect(notificationRecord('invoice.late_fee_drafted')?.route).toBe('/invoices');
   });
+
+  it('say when a recurring invoice drafted its copy, or paused itself, and lead to where each is', () => {
+    expect(notificationKey('invoice.recurring_drafted')).toBe(
+      'notifications.types.invoice_recurring_drafted',
+    );
+    expect(notificationRecord('invoice.recurring_drafted')).toEqual({
+      icon: 'event_repeat',
+      route: '/invoices',
+      permission: 'invoice.read',
+    });
+    expect(notificationRecord('invoice.recurring_stopped')?.route).toBe('/invoices/recurring');
+  });
 });
 
 describe('module notifications', () => {

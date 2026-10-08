@@ -29,6 +29,7 @@ import { ProductScans } from '../products/product-scans';
 import { ScanBus } from '../shared/scan/scan-bus';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { CustomerDisplay } from '../shared/customer-display/customer-display';
+import { RecurringApi } from '../recurring/recurring-api';
 import type {
   CustomerOption,
   InvoiceOptions,
@@ -264,6 +265,7 @@ describe('InvoicePage', () => {
   const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
   const inventory = { onHand: vi.fn() };
   const display = { show: vi.fn(), total: vi.fn(), clear: vi.fn(), openWindow: vi.fn() };
+  const recurring = { create: vi.fn() };
   const granted = new Set<string>();
   const modulesOn = new Set<string>();
   const auth = {
@@ -273,7 +275,6 @@ describe('InvoicePage', () => {
       plannedModules: [
         { key: 'mailing', planned: 'v1' },
         { key: 'whatsapp', planned: 'v1' },
-        { key: 'recurring', planned: 'v1' },
       ],
     }),
     hasPermission: (permission: string) => granted.has(permission),
@@ -371,6 +372,7 @@ describe('InvoicePage', () => {
     inventory.onHand.mockReset().mockResolvedValue([]);
     scans.named.mockReset().mockResolvedValue(null);
     Object.values(display).forEach((each) => each.mockReset());
+    recurring.create.mockReset().mockResolvedValue({ id: 'r1' });
     facade.create.mockReset().mockResolvedValue({ ...draft, id: 'i9' });
     facade.revise.mockReset().mockResolvedValue(draft);
     facade.reviseAndIssue.mockReset().mockResolvedValue(issued);
@@ -400,6 +402,7 @@ describe('InvoicePage', () => {
         { provide: ProductScans, useValue: scans },
         { provide: InventoryFacade, useValue: inventory },
         { provide: CustomerDisplay, useValue: display },
+        { provide: RecurringApi, useValue: recurring },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -1465,6 +1468,45 @@ describe('InvoicePage', () => {
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'cn1']));
   });
 
+  // Row 86: « Rendre récurrente » asks how often and from when, and the toast offers the recurring invoices.
+  it('makes an invoice recurring from « ⋮ » while the module is on, and never a credit note', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    invoice.set(issued);
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-make-recurring')).toBeNull();
+    (document.activeElement as HTMLElement | null)?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }),
+    );
+    await settle();
+
+    modulesOn.add('recurring');
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    over('document-menu-make-recurring')!.click();
+    await vi.waitFor(() => expect(over('make-recurring-title')).not.toBeNull());
+    over('make-recurring-confirm')!.click();
+    await settle();
+
+    await vi.waitFor(() =>
+      expect(recurring.create).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({ modelInvoiceId: 'i1', frequency: 'monthly', endsOn: null }),
+      ),
+    );
+    await vi.waitFor(() => expect(successToasts()).toContain('recurring.made'));
+    offeredNext()!.run();
+    expect(navigate).toHaveBeenCalledWith(['/invoices/recurring']);
+
+    invoice.set({ ...issued, type: 'credit_note', correctsInvoiceId: 'i0' });
+    await open('i1');
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-make-recurring')).toBeNull();
+  });
+
   it('copies a document into a new draft, and goes to the copy', async () => {
     facade.duplicate.mockResolvedValue({ ...draft, id: 'i2' });
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
@@ -1591,10 +1633,9 @@ describe('InvoicePage', () => {
     expect(await plannedInMenu()).toEqual([
       'document-planned-mailing',
       'document-planned-whatsapp',
-      'document-planned-recurring',
     ]);
 
-    // A credit note is never made recurring.
+    // A credit note will be sent the same ways.
     invoice.set({ ...issued, type: 'credit_note', correctsInvoiceId: 'i0' });
     await settle();
     expect(await plannedInMenu()).toEqual([

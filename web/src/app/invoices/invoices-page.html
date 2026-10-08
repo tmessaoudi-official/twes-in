@@ -1,99 +1,108 @@
-<section class="flex flex-col gap-6">
-  <div class="flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-3xl font-semibold" data-testid="invoices-title">
-      {{ 'invoices.title' | translate }}
-    </h1>
-    <div class="flex flex-wrap gap-2">
-      <a mat-stroked-button routerLink="/instruments" data-testid="invoices-portfolio">
-        {{ 'invoices.portfolio.open' | translate }}
-      </a>
-      <app-list-export [address]="exporter()" testId="invoices-export" />
-      @if (mayWrite() && company()) {
-        <a
-          mat-flat-button
-          routerLink="/invoices/new"
-          data-testid="invoice-add"
-          [attr.aria-keyshortcuts]="newKey()"
-        >
-          {{ 'invoices.add' | translate }}
-          <kbd class="twes-button-key" aria-hidden="true">{{ keyName(newKey()) }}</kbd>
+@if (tabs().length > 1) {
+  <app-page-tabs [tabs]="tabs()" label="nav.invoices">
+    <ng-container [ngTemplateOutlet]="invoicesPanel" />
+  </app-page-tabs>
+} @else {
+  <ng-container [ngTemplateOutlet]="invoicesPanel" />
+}
+<ng-template #invoicesPanel>
+  <section class="flex flex-col gap-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="text-3xl font-semibold" data-testid="invoices-title">
+        {{ 'invoices.title' | translate }}
+      </h1>
+      <div class="flex flex-wrap gap-2">
+        <a mat-stroked-button routerLink="/instruments" data-testid="invoices-portfolio">
+          {{ 'invoices.portfolio.open' | translate }}
         </a>
+        <app-list-export [address]="exporter()" testId="invoices-export" />
+        @if (mayWrite() && company()) {
+          <a
+            mat-flat-button
+            routerLink="/invoices/new"
+            data-testid="invoice-add"
+            [attr.aria-keyshortcuts]="newKey()"
+          >
+            {{ 'invoices.add' | translate }}
+            <kbd class="twes-button-key" aria-hidden="true">{{ keyName(newKey()) }}</kbd>
+          </a>
+        }
+      </div>
+    </div>
+
+    @if (!company()) {
+      <p data-testid="invoices-no-company">{{ 'invoices.no_company' | translate }}</p>
+    }
+    @if (error(); as code) {
+      <p role="alert" data-testid="invoices-error" class="text-error">
+        {{ 'invoices.errors.' + code | translate }}
+      </p>
+    }
+
+    <div class="flex items-start gap-6">
+      <app-data-list
+        class="min-w-0 flex-1"
+        [descriptor]="list()"
+        [rows]="rows()"
+        [loading]="facade.busy()"
+        [failed]="facade.error() !== null"
+        [total]="total()"
+        [facetCounts]="facetCounts()"
+        [pickSources]="pickSources"
+        [activeRowId]="sheetId()"
+        (queryChange)="onQuery($event)"
+        testId="invoices-table"
+        [rowTestId]="rowTestId"
+        emptyKey="invoices.none"
+        emptyTestId="invoices-empty"
+      >
+        <ng-template appDataListCell="number" let-row>
+          <span class="flex flex-col">
+            <span class="tabular-nums">{{ row.number ?? ('invoices.draft' | translate) }}</span>
+            @if (row.kind !== 'invoice') {
+              <span
+                class="text-xs text-on-surface-variant"
+                [attr.data-testid]="'invoice-kind-' + row.id"
+                >{{ 'invoices.types.' + row.kind | translate }}</span
+              >
+            }
+          </span>
+        </ng-template>
+        <ng-template appDataListCell="status" let-row>
+          <app-status-badge [tone]="toneOf(row.shown)" [struck]="struckOf(row.shown)">
+            {{ 'invoices.statuses.' + row.shown | translate }}
+          </app-status-badge>
+        </ng-template>
+        <ng-template appDataListCell="issueDate" let-row>
+          {{ row.issueDate | day }}
+        </ng-template>
+        <ng-template appDataListCell="dueDate" let-row>
+          @if (row.type === 'invoice') {
+            {{ row.dueDate | day }}
+          }
+        </ng-template>
+        <ng-template appDataListCell="total" let-row>
+          <span class="tabular-nums">{{ row.total | amount: scale() }}</span>
+        </ng-template>
+        <ng-template appDataListCell="amountDue" let-row>
+          @if (row.type === 'invoice' && row.status !== 'draft' && row.status !== 'cancelled') {
+            <span class="tabular-nums">{{ row.amountDue | amount: scale() }}</span>
+          }
+        </ng-template>
+      </app-data-list>
+      @if (sheetId(); as sheetId) {
+        <!-- Beside the list on a wide window, over it on a tablet (docs/SPEC.md § 7, 2026-09-26). -->
+        <app-invoice-sheet
+          [class]="
+            wide()
+              ? 'sticky top-0 max-h-[calc(100dvh-6rem)] w-96 shrink-0 overflow-hidden rounded-3xl border border-outline-variant'
+              : 'fixed inset-y-0 right-0 z-30 w-[min(24rem,100vw)] shadow-2xl'
+          "
+          [invoiceId]="sheetId"
+          [today]="today()"
+          (closed)="closeSheet()"
+        />
       }
     </div>
-  </div>
-
-  @if (!company()) {
-    <p data-testid="invoices-no-company">{{ 'invoices.no_company' | translate }}</p>
-  }
-  @if (error(); as code) {
-    <p role="alert" data-testid="invoices-error" class="text-error">
-      {{ 'invoices.errors.' + code | translate }}
-    </p>
-  }
-
-  <div class="flex items-start gap-6">
-    <app-data-list
-      class="min-w-0 flex-1"
-      [descriptor]="list()"
-      [rows]="rows()"
-      [loading]="facade.busy()"
-      [failed]="facade.error() !== null"
-      [total]="total()"
-      [facetCounts]="facetCounts()"
-      [pickSources]="pickSources"
-      [activeRowId]="sheetId()"
-      (queryChange)="onQuery($event)"
-      testId="invoices-table"
-      [rowTestId]="rowTestId"
-      emptyKey="invoices.none"
-      emptyTestId="invoices-empty"
-    >
-      <ng-template appDataListCell="number" let-row>
-        <span class="flex flex-col">
-          <span class="tabular-nums">{{ row.number ?? ('invoices.draft' | translate) }}</span>
-          @if (row.kind !== 'invoice') {
-            <span
-              class="text-xs text-on-surface-variant"
-              [attr.data-testid]="'invoice-kind-' + row.id"
-              >{{ 'invoices.types.' + row.kind | translate }}</span
-            >
-          }
-        </span>
-      </ng-template>
-      <ng-template appDataListCell="status" let-row>
-        <app-status-badge [tone]="toneOf(row.shown)" [struck]="struckOf(row.shown)">
-          {{ 'invoices.statuses.' + row.shown | translate }}
-        </app-status-badge>
-      </ng-template>
-      <ng-template appDataListCell="issueDate" let-row>
-        {{ row.issueDate | day }}
-      </ng-template>
-      <ng-template appDataListCell="dueDate" let-row>
-        @if (row.type === 'invoice') {
-          {{ row.dueDate | day }}
-        }
-      </ng-template>
-      <ng-template appDataListCell="total" let-row>
-        <span class="tabular-nums">{{ row.total | amount: scale() }}</span>
-      </ng-template>
-      <ng-template appDataListCell="amountDue" let-row>
-        @if (row.type === 'invoice' && row.status !== 'draft' && row.status !== 'cancelled') {
-          <span class="tabular-nums">{{ row.amountDue | amount: scale() }}</span>
-        }
-      </ng-template>
-    </app-data-list>
-    @if (sheetId(); as sheetId) {
-      <!-- Beside the list on a wide window, over it on a tablet (docs/SPEC.md § 7, 2026-09-26). -->
-      <app-invoice-sheet
-        [class]="
-          wide()
-            ? 'sticky top-0 max-h-[calc(100dvh-6rem)] w-96 shrink-0 overflow-hidden rounded-3xl border border-outline-variant'
-            : 'fixed inset-y-0 right-0 z-30 w-[min(24rem,100vw)] shadow-2xl'
-        "
-        [invoiceId]="sheetId"
-        [today]="today()"
-        (closed)="closeSheet()"
-      />
-    }
-  </div>
-</section>
+  </section>
+</ng-template>

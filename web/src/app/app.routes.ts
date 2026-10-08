@@ -15,6 +15,7 @@ import { QUOTES_MODULE } from './quotes/quotes-nav';
 import { INVOICES_MODULE } from './invoices/invoices-nav';
 import { EXPENSES_MODULE } from './expenses/expenses-nav';
 import { ACCOUNTING_EXPORT_MODULE } from './accounting-export/accounting-export-nav';
+import { RECURRING_MODULE } from './recurring/recurring-nav';
 import { INVENTORY_MODULE } from './inventory/inventory-nav';
 import { PRICE_LISTS_MODULE } from './price-lists/price-lists-nav';
 import { PRODUCTS_MODULE } from './products/products-nav';
@@ -244,6 +245,12 @@ export const routes: Routes = [
         title: 'titles.new_invoice',
         canActivate: [moduleGuard(INVOICES_MODULE)],
         loadComponent: () => import('./invoices/invoice-page').then((m) => m.InvoicePage),
+      },
+      {
+        path: 'invoices/recurring',
+        title: 'recurring.title',
+        canActivate: [moduleGuard(RECURRING_MODULE)],
+        loadComponent: () => import('./recurring/recurring-page').then((m) => m.RecurringPage),
       },
       {
         path: 'invoices/:invoiceId',

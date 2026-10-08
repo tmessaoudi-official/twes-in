@@ -1147,8 +1147,9 @@ final class InvoicesTest extends ApiTestCase
         $this->getJson($this->companyPath().'/invoice-summary');
         self::assertResponseIsSuccessful();
 
-        // The accountant's files read the invoices, so they go first.
+        // The accountant's files and the recurring invoices need the invoices, so they go first.
         $this->sendJson('PUT', $this->companyPath().'/modules/accounting_export', ['enabled' => false]);
+        $this->sendJson('PUT', $this->companyPath().'/modules/recurring', ['enabled' => false]);
         $this->sendJson('PUT', $this->companyPath().'/modules/invoices', ['enabled' => false]);
         self::assertResponseIsSuccessful();
         $this->getJson($this->path());
