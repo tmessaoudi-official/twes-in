@@ -277,6 +277,7 @@ abstract class ApiTestCase extends WebTestCase
         $em->persist(new Role(Role::ADMIN, ['user.read', 'user.write', 'company.read']));
         $em->persist(new Role(Role::MEMBER, ['company.read']));
         $em->persist(new Role(Role::CLERK, ['company.read']));
+        $em->persist(new Role(Role::ACCOUNTANT, ['company.read']));
         $em->flush();
     }
 

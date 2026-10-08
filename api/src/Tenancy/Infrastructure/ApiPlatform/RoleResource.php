@@ -20,7 +20,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * A role a company may give its members (docs/SPEC.md § 7, 2026-09-20 11:30, row 104). The four built-in roles are
+ * A role a company may give its members (docs/SPEC.md § 7, 2026-09-20 11:30, row 104). The five built-in roles are
  * the release's and answer `builtIn: true`, read-only; everything else the company made for itself.
  *
  * Behind company.settings, as the permission catalogue is: changing what a role may do is a settings act, and a

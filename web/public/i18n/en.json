@@ -129,7 +129,8 @@
     "owner": "owner",
     "admin": "administrator",
     "member": "member",
-    "clerk": "cashier / seller"
+    "clerk": "cashier / seller",
+    "accountant": "accountant (read-only)"
   },
   "permissions": {
     "company": {

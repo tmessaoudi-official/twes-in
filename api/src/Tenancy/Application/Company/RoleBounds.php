@@ -87,7 +87,7 @@ final readonly class RoleBounds
         return match ($roleName) {
             Role::OWNER => self::OWNER_RANK,
             Role::ADMIN => self::ADMIN_RANK,
-            Role::MEMBER, Role::CLERK => 1,
+            Role::MEMBER, Role::CLERK, Role::ACCOUNTANT => 1,
             default => 0,
         };
     }

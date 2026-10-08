@@ -129,7 +129,8 @@
     "owner": "propriétaire",
     "admin": "administrateur",
     "member": "membre",
-    "clerk": "caissier / vendeur"
+    "clerk": "caissier / vendeur",
+    "accountant": "comptable (lecture seule)"
   },
   "permissions": {
     "company": {

@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Application\Role;
 
-/** Two roles a company may use may not share a name, the built-in four included. */
+/** Two roles a company may use may not share a name, the built-in five included. */
 final class RoleNameTaken extends \DomainException
 {
 }

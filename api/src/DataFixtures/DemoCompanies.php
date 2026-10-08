@@ -104,6 +104,7 @@ final class DemoCompanies extends Fixture
         'admin' => 'admin@twes.local',
         'member' => 'member@twes.local',
         'clerk' => 'clerk@twes.local',
+        'accountant' => 'accountant@twes.local',
     ];
     /** Long enough for the password policy, and not a word any breach list carries. */
     public const string TESTER_PASSWORD = 'twes-role-test-2026';
@@ -208,7 +209,7 @@ final class DemoCompanies extends Fixture
      *
      * Nothing is written directly: the address is invited and the invitation is then accepted, so each member gets
      * the membership, the audit rows and the password checks any real member gets. The second company invites the
-     * same three addresses again, and accepting with an account that already exists simply adds the membership —
+     * same addresses again, and accepting with an account that already exists simply adds the membership —
      * which is why the name and password are only offered the first time.
      */
     private function addTesters(Uuid $companyId, Uuid $actor): void

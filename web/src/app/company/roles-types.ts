@@ -3,7 +3,7 @@
 /**
  * A role a company may give its members, as the roles screen holds it (docs/SPEC.md § 7, 2026-09-20 11:30, row 104).
  *
- * `builtIn` and `wildcard` are separate because they answer different questions. The four built-in roles are the
+ * `builtIn` and `wildcard` are separate because they answer different questions. The five built-in roles are the
  * release's and cannot be edited here; the owner additionally holds everything there is, now and in later releases,
  * which the screen draws as "everything" rather than as every box ticked — ticking them all would be a different
  * and smaller promise.

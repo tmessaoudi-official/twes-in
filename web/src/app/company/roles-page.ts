@@ -27,7 +27,7 @@ import type { RoleRow } from './roles-types';
 /**
  * The company's roles, and a matrix of what each may do (docs/SPEC.md § 7, 2026-09-20 11:30, row 104).
  *
- * The four built-in roles are the release's: they are listed and their matrix is readable, but every box is
+ * The five built-in roles are the release's: they are listed and their matrix is readable, but every box is
  * disabled and neither the name nor the delete button is offered. The owner holds everything there is — now and in
  * whatever later releases add — so its matrix is replaced by one sentence saying so rather than by every box
  * ticked, which would be a smaller and untrue promise.
