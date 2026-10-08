@@ -80,5 +80,8 @@ test('the fields of one row line up, whatever the length of their labels', async
   expect(await top('field-document__how_to_pay', '.mdc-checkbox__background')).toBe(
     await top('field-document__amount_in_words', '.mdc-checkbox__background'),
   );
+  expect(await top('field-document__paid_stamp', '.mdc-checkbox__background')).toBe(
+    await top('field-document__savings_line', '.mdc-checkbox__background'),
+  );
   await expect(page.getByTestId('settings-title')).toHaveText('Valeurs par défaut');
 });

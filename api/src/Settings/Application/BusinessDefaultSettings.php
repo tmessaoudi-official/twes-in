@@ -41,10 +41,6 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
         // close (« Arrêtée la présente facture à la somme de … »), so it is on unless a company turns it off.
         yield new SettingDefinition('document.amount_in_words', SettingType::Bool, true, SettingChain::Parties, $parties, 'settings.document.amount_in_words', self::MODULE);
 
-        // What the discounts took off, printed under the totals as « Vous économisez … ». Always on screen; on paper only when
-        // the company asks, as a line that sells is the seller's choice to make.
-        yield new SettingDefinition('document.savings_line', SettingType::Bool, false, SettingChain::Parties, $parties, 'settings.document.savings_line', self::MODULE);
-
         // What a printed legal mention states and the law leaves to the seller (docs/SPEC.md § 7, 2026-09-21 18:30): the rate
         // of late payment penalties a French invoice must state, and the provision an exempt customer is exempt under.
         // Empty is not given, and issuing a document whose mention needs it is refused; a customer may differ from the rest.
@@ -61,6 +57,11 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
         // Whether an up-to-date copy stamps what became of the invoice: « Acquittée », « Soldée » or « Réglée partiellement ».
         // Off unless the company asks, because a stamp on a document reads as a statement the seller makes.
         yield new SettingDefinition('document.paid_stamp', SettingType::Bool, false, SettingChain::Parties, [SettingLevel::Company], 'settings.document.paid_stamp', self::MODULE);
+
+        // What the discounts took off, printed under the totals as « Vous économisez … ». Always on screen; on paper only when
+        // the company asks, as a line that sells is the seller's choice to make. Declared beside the other switch, so the
+        // settings page pairs it with one rather than shifting every field after it by a cell.
+        yield new SettingDefinition('document.savings_line', SettingType::Bool, false, SettingChain::Parties, $parties, 'settings.document.savings_line', self::MODULE);
 
         // What a customer may owe before a new delivery warns, in the company's currency; zero is no limit, so a customer
         // can be released from a group's limit by setting zero on it. A document has none: it is about the account.
