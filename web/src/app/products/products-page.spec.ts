@@ -65,6 +65,7 @@ const laptop: ProductRow = {
 describe('ProductsPage', () => {
   const error = signal<ProductsError | null>(null);
   const facade = {
+    busy: signal(false).asReadonly(),
     products: signal<readonly ProductRow[]>([laptop]).asReadonly(),
     categories: signal<readonly ProductCategoryRow[]>([
       { id: 'k1', name: 'Matériel', parentId: null, productCount: 1, childCount: 0 },

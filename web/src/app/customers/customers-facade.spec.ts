@@ -124,6 +124,37 @@ describe('CustomersFacade', () => {
     expect(facade.error()).toBeNull();
   });
 
+  it('keeps a failed page read on record when the list context it was read with answers after it', async () => {
+    let answerGroups: (groups: CustomerGroupRow[]) => void = () => undefined;
+    api.groups.mockReturnValue(new Promise((resolve) => (answerGroups = resolve)));
+    api.options.mockResolvedValue(options);
+    api.customers.mockRejectedValue(new CustomersRefused('network'));
+
+    const context = facade.loadListContext('c1');
+    await facade.loadPage('c1', everyCustomer);
+    answerGroups([wholesalers]);
+    await context;
+
+    expect(facade.error()).toBe('network');
+  });
+
+  it('stays busy until the last of several reads answers, so the list never says empty while its page is on its way', async () => {
+    let answerPage: (page: { rows: CustomerRow[]; total: number }) => void = () => undefined;
+    api.customers.mockReturnValue(new Promise((resolve) => (answerPage = resolve)));
+    api.groups.mockResolvedValue([wholesalers]);
+    api.options.mockResolvedValue(options);
+
+    const page = facade.loadPage('c1', everyCustomer);
+    await facade.loadListContext('c1');
+
+    expect(facade.busy()).toBe(true);
+
+    answerPage({ rows: [amel], total: 1 });
+    await page;
+
+    expect(facade.busy()).toBe(false);
+  });
+
   it('reads one page of customers with the total the paginator counts', async () => {
     api.customers.mockResolvedValue({ rows: [amel], total: 31 });
 

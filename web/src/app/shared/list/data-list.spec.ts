@@ -85,6 +85,8 @@ const descriptor: ListDescriptor<Customer> = {
     <app-data-list
       [descriptor]="descriptor"
       [rows]="rows()"
+      [loading]="loading()"
+      [failed]="failed()"
       testId="customers-table"
       [rowTestId]="rowTestId"
       emptyKey="c.none"
@@ -99,6 +101,8 @@ const descriptor: ListDescriptor<Customer> = {
 class Host {
   readonly descriptor = descriptor;
   readonly rows = signal<Customer[]>(all);
+  readonly loading = signal(false);
+  readonly failed = signal(false);
   readonly rowTestId = (row: Customer) => `customer-${row.id}`;
 }
 
@@ -112,6 +116,8 @@ class Host {
       [rows]="rows()"
       [total]="total()"
       [facetCounts]="facetCounts()"
+      [loading]="false"
+      [failed]="false"
       (queryChange)="queries.push($event)"
       testId="customers-table"
       [rowTestId]="rowTestId"
@@ -188,6 +194,8 @@ const declared: ListDescriptor<Customer> = {
       testId="customers-table"
       [rowTestId]="rowTestId"
       [activeRowId]="active()"
+      [loading]="false"
+      [failed]="false"
       emptyKey="c.none"
       emptyTestId="customers-empty"
     >
@@ -244,6 +252,8 @@ class StaticLoader implements TranslateLoader {
         more_actions: 'More actions',
         new_row: '{{count}} new row',
         new_rows: '{{count}} new rows',
+        loading: 'Loading…',
+        failed: 'The list could not be loaded.',
       },
     });
   }
@@ -401,6 +411,38 @@ describe('DataList', () => {
 
     expect(q('customers-empty')?.textContent?.trim()).toBe('No customers.');
     expect(q('list-no-match')).toBeNull();
+  });
+
+  it('says the list is loading, never that it is empty, until its first answer', async () => {
+    fixture.componentInstance.rows.set([]);
+    fixture.componentInstance.loading.set(true);
+    await settle();
+
+    expect(q('list-loading')?.textContent?.trim()).toBe('Loading…');
+    expect(q('customers-empty')).toBeNull();
+
+    fixture.componentInstance.loading.set(false);
+    await settle();
+
+    expect(q('list-loading')).toBeNull();
+    expect(q('customers-empty')?.textContent?.trim()).toBe('No customers.');
+  });
+
+  it('says the list could not be loaded, never that it is empty, when the read failed', async () => {
+    fixture.componentInstance.rows.set([]);
+    fixture.componentInstance.failed.set(true);
+    await settle();
+
+    expect(q('list-failed')?.textContent?.trim()).toBe('The list could not be loaded.');
+    expect(q('customers-empty')).toBeNull();
+  });
+
+  it('keeps the rows it shows while it reads them again', async () => {
+    fixture.componentInstance.loading.set(true);
+    await settle();
+
+    expect(rowIds()).toHaveLength(10);
+    expect(q('list-loading')).toBeNull();
   });
 
   it('sorts on a header click and remembers the sort', async () => {

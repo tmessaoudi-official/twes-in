@@ -92,6 +92,7 @@ describe('InvoicesPage', () => {
   const error = signal<InvoicesError | null>(null);
   const statusCounts = signal<InvoiceStatusCounts | null>(null);
   const facade = {
+    busy: signal(false).asReadonly(),
     invoices: signal<readonly InvoiceRow[]>([
       issued,
       { ...issued, id: 'i2', number: 'FAC-2026-00043', status: 'issued', dueDate: '2000-01-01' },

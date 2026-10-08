@@ -17,6 +17,8 @@
   <app-data-list
     [descriptor]="list()"
     [rows]="rows()"
+    [loading]="members.busy()"
+    [failed]="members.error() !== null"
     testId="members-table"
     [rowTestId]="rowTestId"
     emptyKey="members.none"

@@ -75,6 +75,8 @@
     <app-data-list
       [descriptor]="list()"
       [rows]="rows()"
+      [loading]="facade.busy()"
+      [failed]="facade.error() !== null"
       testId="stock-locations-table"
       [rowTestId]="rowTestId"
       emptyKey="inventory.locations.none"

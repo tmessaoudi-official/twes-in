@@ -33,6 +33,7 @@ export class DeliveryNotesFacade {
   private pageRequest = 0;
   private countsRequest = 0;
   private readonly busySignal = signal(false);
+  private reads = 0;
   private readonly errorSignal = signal<DeliveryNotesError | null>(null);
 
   readonly notes = this.notesSignal.asReadonly();
@@ -232,14 +233,17 @@ export class DeliveryNotesFacade {
   }
 
   private async read(load: () => Promise<void>): Promise<void> {
+    this.reads++;
     this.busySignal.set(true);
+    // Cleared when a read starts, never when one ends, so a read answering after another failed does not hide it.
+    this.errorSignal.set(null);
     try {
       await load();
-      this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
     } finally {
-      this.busySignal.set(false);
+      // Several reads run at once (a list and what its filters name): busy until the last one answers.
+      if (--this.reads === 0) this.busySignal.set(false);
     }
   }
 

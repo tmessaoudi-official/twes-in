@@ -31,6 +31,8 @@
   <app-data-list
     [descriptor]="list"
     [rows]="rows()"
+    [loading]="facade.busy()"
+    [failed]="facade.error() !== null"
     [total]="total()"
     [facetCounts]="facetCounts()"
     [pickSources]="pickSources"

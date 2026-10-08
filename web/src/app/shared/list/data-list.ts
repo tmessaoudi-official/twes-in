@@ -159,6 +159,13 @@ export class DataList<Row> implements OnInit {
 
   readonly descriptor = input.required<ListDescriptor<Row>>();
   readonly rows = input.required<readonly Row[]>();
+  /**
+   * Whether the screen is reading its rows. Required, so no list can say « vide » before its first answer: a shop owner
+   * reads an empty list as lost data.
+   */
+  readonly loading = input.required<boolean>();
+  /** Whether the last read failed, which the list says instead of calling itself empty. */
+  readonly failed = input.required<boolean>();
   readonly testId = input('data-list');
   readonly rowTestId = input<((row: Row) => string) | null>(null);
   readonly emptyKey = input.required<string>();
@@ -386,6 +393,12 @@ export class DataList<Row> implements OnInit {
       this.rows().length === 0 &&
       (!this.byApi() || (this.searched() === '' && Object.keys(this.chosenFilters()).length === 0)),
   );
+  /** What the list says in place of rows when it shows none. */
+  protected readonly blank = computed<'loading' | 'failed' | 'empty' | 'no-match'>(() => {
+    if (this.loading()) return 'loading';
+    if (this.failed()) return 'failed';
+    return this.empty() ? 'empty' : 'no-match';
+  });
   protected readonly actionsColumn = ACTIONS_COLUMN;
   protected readonly actionsWidth = ACTIONS_WIDTH;
   protected readonly minWidth = MIN_WIDTH;

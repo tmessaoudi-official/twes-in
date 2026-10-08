@@ -714,7 +714,9 @@
       "min": "At least",
       "max": "At most",
       "inverted": "The end comes before the start: this interval is not applied."
-    }
+    },
+    "loading": "Loading…",
+    "failed": "The list could not be loaded. Reload the page in a moment."
   },
   "form": {
     "save": "Save",

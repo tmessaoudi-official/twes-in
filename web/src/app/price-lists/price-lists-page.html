@@ -194,6 +194,8 @@
   <app-data-list
     [descriptor]="list()"
     [rows]="lists()"
+    [loading]="facade.busy()"
+    [failed]="facade.error() !== null"
     testId="price-lists-table"
     [rowTestId]="rowTestId"
     emptyKey="price_lists.none"

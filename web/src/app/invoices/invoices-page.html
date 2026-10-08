@@ -36,6 +36,8 @@
       class="min-w-0 flex-1"
       [descriptor]="list()"
       [rows]="rows()"
+      [loading]="facade.busy()"
+      [failed]="facade.error() !== null"
       [total]="total()"
       [facetCounts]="facetCounts()"
       [pickSources]="pickSources"

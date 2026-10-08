@@ -71,6 +71,8 @@
     <app-data-list
       [descriptor]="list()"
       [rows]="groups()"
+      [loading]="facade.busy()"
+      [failed]="facade.error() !== null"
       testId="customer-groups-table"
       [rowTestId]="rowTestId"
       emptyKey="customers.groups.none"

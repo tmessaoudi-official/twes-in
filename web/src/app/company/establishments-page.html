@@ -60,6 +60,8 @@
   <app-data-list
     [descriptor]="list()"
     [rows]="establishments()"
+    [loading]="facade.busy()"
+    [failed]="facade.error() !== null"
     testId="establishments-table"
     [rowTestId]="rowTestId"
     emptyKey="company.establishments.none"

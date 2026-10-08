@@ -56,6 +56,7 @@ describe('PortfolioPage', () => {
   const rows = signal<readonly PortfolioRow[]>([cheque]);
   const error = signal<InvoicesError | null>(null);
   const facade = {
+    busy: signal(false).asReadonly(),
     rows: rows.asReadonly(),
     total: signal(1).asReadonly(),
     error: error.asReadonly(),

@@ -349,7 +349,11 @@
         </li>
       } @empty {
         <li class="px-4 py-8 text-center text-on-surface-variant">
-          @if (empty()) {
+          @if (blank() === 'loading') {
+            <span role="status" data-testid="list-loading">{{ 'list.loading' | translate }}</span>
+          } @else if (blank() === 'failed') {
+            <span role="alert" data-testid="list-failed">{{ 'list.failed' | translate }}</span>
+          } @else if (blank() === 'empty') {
             <span [attr.data-testid]="emptyTestId()">{{ emptyKey() | translate }}</span>
           } @else {
             <span data-testid="list-no-match">{{
@@ -469,7 +473,11 @@
             [attr.colspan]="columnIds().length"
             class="px-4 py-8 text-center text-on-surface-variant"
           >
-            @if (empty()) {
+            @if (blank() === 'loading') {
+              <span role="status" data-testid="list-loading">{{ 'list.loading' | translate }}</span>
+            } @else if (blank() === 'failed') {
+              <span role="alert" data-testid="list-failed">{{ 'list.failed' | translate }}</span>
+            } @else if (blank() === 'empty') {
               <span [attr.data-testid]="emptyTestId()">{{ emptyKey() | translate }}</span>
             } @else {
               <span data-testid="list-no-match">{{

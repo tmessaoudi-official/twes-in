@@ -496,6 +496,8 @@
           <app-data-list
             [descriptor]="companiesList"
             [rows]="companies()"
+            [loading]="platform.busy()"
+            [failed]="platform.error() !== null"
             [total]="companiesTotal()"
             (queryChange)="onCompaniesQuery($event)"
             testId="platform-companies-table"
@@ -526,6 +528,8 @@
           <app-data-list
             [descriptor]="accountsList"
             [rows]="accounts()"
+            [loading]="platform.busy()"
+            [failed]="platform.error() !== null"
             [total]="accountsTotal()"
             (queryChange)="onAccountsQuery($event)"
             testId="platform-accounts-table"

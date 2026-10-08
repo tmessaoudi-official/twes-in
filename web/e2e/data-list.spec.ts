@@ -290,3 +290,33 @@ test('a list wider than its page keeps each header over its own column', async (
     );
   }
 });
+
+test('a list says it is loading while its answer is on its way, and that it could not load when the read fails', async ({
+  page,
+}) => {
+  await logIn(page);
+  await inACompany(page, '0123456789abcdef0123456789abcdef');
+  const customers = /\/api\/companies\/[^/]+\/customers(\?|$)/;
+
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(customers, async (route) => {
+    await held;
+    await route.continue();
+  });
+  // What the list's filters name answers while its page is held: the list still says it is loading.
+  const context = page.waitForResponse((response) => response.url().includes('/customer-options'));
+  await page.goto('/customers');
+  await expect(page.getByTestId('list-loading').first()).toHaveText('Chargement…');
+  await context;
+  await expect(page.getByTestId('list-loading').first()).toHaveText('Chargement…');
+  await expect(page.getByTestId('customers-empty')).toHaveCount(0);
+  release();
+  await expect(page.getByTestId('list-loading')).toHaveCount(0);
+
+  await page.unroute(customers);
+  await page.route(customers, (route) => route.fulfill({ status: 503, body: '' }));
+  await page.reload();
+  await expect(page.getByTestId('list-failed').first()).toBeVisible();
+  await expect(page.getByTestId('customers-empty')).toHaveCount(0);
+});

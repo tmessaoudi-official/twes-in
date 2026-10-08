@@ -47,6 +47,8 @@
   <app-data-list
     [descriptor]="list()"
     [rows]="units()"
+    [loading]="fiscal.busy()"
+    [failed]="fiscal.error() !== null"
     testId="units-table"
     [rowTestId]="rowTestId"
     emptyKey="fiscal.units.none"

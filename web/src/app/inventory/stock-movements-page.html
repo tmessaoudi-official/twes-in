@@ -47,6 +47,8 @@
     <app-data-list
       [descriptor]="list"
       [rows]="rows()"
+      [loading]="facade.busy()"
+      [failed]="facade.error() !== null"
       [total]="total()"
       [pickSources]="pickSources"
       (queryChange)="onQuery($event)"

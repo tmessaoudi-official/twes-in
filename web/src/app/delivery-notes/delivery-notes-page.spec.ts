@@ -67,6 +67,7 @@ describe('DeliveryNotesPage', () => {
   const error = signal<DeliveryNotesError | null>(null);
   const statusCounts = signal<DeliveryNoteStatusCounts | null>(null);
   const facade = {
+    busy: signal(false).asReadonly(),
     notes: signal<readonly DeliveryNoteRow[]>([
       numbered,
       { ...numbered, id: 'n2', number: null, status: 'draft', recordedCustomerName: null },

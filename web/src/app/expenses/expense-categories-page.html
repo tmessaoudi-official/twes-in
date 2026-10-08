@@ -61,6 +61,8 @@
     <app-data-list
       [descriptor]="list()"
       [rows]="rows()"
+      [loading]="facade.busy()"
+      [failed]="facade.error() !== null"
       testId="expense-categories-table"
       [rowTestId]="rowTestId"
       emptyKey="expenses.categories.none"

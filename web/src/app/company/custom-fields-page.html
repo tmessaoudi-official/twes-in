@@ -82,6 +82,8 @@
   <app-data-list
     [descriptor]="list()"
     [rows]="fields()"
+    [loading]="facade.busy()"
+    [failed]="facade.error() !== null"
     testId="custom-fields-table"
     [rowTestId]="rowTestId"
     emptyKey="company.custom_fields.none"

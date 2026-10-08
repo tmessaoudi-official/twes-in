@@ -71,6 +71,7 @@ describe('ExpensesPage', () => {
   const options = signal<ExpenseOptions | null>(null);
   const statusCounts = signal<ExpenseStatusCounts | null>(null);
   const facade = {
+    busy: signal(false).asReadonly(),
     expenses: expenses.asReadonly(),
     total: signal(1).asReadonly(),
     error: signal<ExpensesError | null>(null).asReadonly(),

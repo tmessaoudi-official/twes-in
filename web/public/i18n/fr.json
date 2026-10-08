@@ -714,7 +714,9 @@
       "min": "Au moins",
       "max": "Au plus",
       "inverted": "La fin précède le début : cet intervalle n’est pas appliqué."
-    }
+    },
+    "loading": "Chargement…",
+    "failed": "La liste n’a pas pu être chargée. Rechargez la page dans un instant."
   },
   "form": {
     "save": "Enregistrer",

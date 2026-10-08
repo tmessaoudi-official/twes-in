@@ -47,6 +47,8 @@
   <app-data-list
     [descriptor]="list()"
     [rows]="taxes()"
+    [loading]="fiscal.busy()"
+    [failed]="fiscal.error() !== null"
     testId="taxes-table"
     [rowTestId]="rowTestId"
     emptyKey="fiscal.taxes.none"
@@ -82,6 +84,8 @@
   <app-data-list
     [descriptor]="regimeList"
     [rows]="regimes()"
+    [loading]="fiscal.busy()"
+    [failed]="fiscal.error() !== null"
     testId="regimes-table"
     [rowTestId]="regimeTestId"
     emptyKey="fiscal.regimes.none"

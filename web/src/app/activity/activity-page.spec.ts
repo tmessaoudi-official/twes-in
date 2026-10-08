@@ -65,6 +65,7 @@ const unknown: ActivityRow = {
 
 describe('ActivityPage', () => {
   const facade = {
+    busy: signal(false).asReadonly(),
     rows: signal<readonly ActivityRow[]>([issued, unknown]).asReadonly(),
     total: signal(2).asReadonly(),
     error: signal(null).asReadonly(),

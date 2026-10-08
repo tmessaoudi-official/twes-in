@@ -75,6 +75,8 @@ const descriptor: ListDescriptor<Doc> = {
     <app-data-list
       [descriptor]="descriptor"
       [rows]="rows()"
+      [loading]="false"
+      [failed]="false"
       [total]="total()"
       [pickSources]="sources"
       (queryChange)="queries.push($event)"

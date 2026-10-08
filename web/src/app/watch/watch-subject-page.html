@@ -73,6 +73,8 @@
         <app-data-list
           [descriptor]="current.list"
           [rows]="rows()"
+          [loading]="state().status === 'loading'"
+          [failed]="state().status === 'unavailable'"
           [total]="total()"
           (queryChange)="onQuery($event)"
           testId="watch-table"

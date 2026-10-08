@@ -137,6 +137,8 @@
               <app-data-list
                 [descriptor]="contactList()"
                 [rows]="contacts()"
+                [loading]="facade.busy()"
+                [failed]="facade.error() !== null"
                 testId="contacts-table"
                 [rowTestId]="contactTestId"
                 emptyKey="customers.contacts.none"
