@@ -4884,7 +4884,7 @@ functional tests run in the `tools` container, on the host's network, against th
 | 231 | A list says it is loading, or that it could not load, never « vide » before its answer (review T-E02; main lane 4) | M | done | 853429f1 | web/src/app/** |
 | 232 | A new or draft document can be saved from a phone, not only from the overflow menu (review T-E01; main lane 4) | S | doing | - | web/src/app/** |
 | 233 | The line discount's percent / amount switch keeps focus and names its unit (review T-E08; main lane 4) | S | doing | - | web/src/app/** |
-| 234 | The line editors space their fields so labels never sit on the field above (review T-E07; main lane 4) | S | todo | - | web/src/app/** |
+| 234 | The line editors space their fields so labels never sit on the field above (review T-E07; main lane 4) | S | doing | - | web/src/app/** |
 <!-- /progress-block -->
 
 ### Delivered

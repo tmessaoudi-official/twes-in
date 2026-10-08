@@ -522,3 +522,26 @@ test('on a phone a new invoice is saved from its bar, not only from « ⋮ »', 
   await expect(save).toBeVisible();
   await expect(save).toHaveAccessibleName('Enregistrer le brouillon');
 });
+
+test('on a phone the fields of a line stand apart, so no label is drawn on the field above', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/invoices/new');
+  await expect(page.getByTestId('line-0')).toBeVisible();
+
+  const gaps = await page
+    .getByTestId('line-0')
+    .locator('.mat-mdc-text-field-wrapper')
+    .evaluateAll((boxes) =>
+      boxes
+        .map((box) => box.getBoundingClientRect())
+        .filter((box) => box.height > 0)
+        .sort((a, b) => a.top - b.top)
+        .flatMap((box, index, all) => (index === 0 ? [] : [box.top - all[index - 1].bottom])),
+    );
+  expect(gaps.length).toBeGreaterThan(3);
+  expect(Math.min(...gaps)).toBeGreaterThanOrEqual(12);
+});

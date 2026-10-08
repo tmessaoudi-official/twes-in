@@ -12,14 +12,14 @@
   } @else {
     @for (line of groups(); track line; let i = $index) {
       <fieldset
-        class="flex min-w-0 flex-col gap-2 rounded-xl border border-outline-variant p-4"
+        class="flex min-w-0 flex-col gap-4 rounded-xl border border-outline-variant p-4"
         [formGroup]="line"
         [attr.data-testid]="'line-' + i"
       >
         <legend class="px-1 text-base font-semibold">
           {{ 'delivery_notes.lines.position' | translate: { position: i + 1 } }}
         </legend>
-        <div class="grid gap-x-4 sm:grid-cols-4">
+        <div class="grid items-start gap-x-4 gap-y-4 sm:grid-cols-4">
           <div class="sm:col-span-2">
             <app-pick-field
               [label]="'delivery_notes.lines.product' | translate"
