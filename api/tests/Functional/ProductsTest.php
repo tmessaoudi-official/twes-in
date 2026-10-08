@@ -243,8 +243,9 @@ final class ProductsTest extends ApiTestCase
 
         self::assertSame($statements[1], $statements[6], 'six rows cost what one does (audit PF-07)');
         // Measured 12 on 2026-09-25 (17 for six rows before), the session and the company's checks included, plus one:
-        // the read of whether the person ended this session (the connected devices screen), made on every signed-in request.
-        self::assertLessThanOrEqual(13, $statements[6]);
+        // the read of whether the person ended this session (the connected devices screen), made on every signed-in request;
+        // plus one: the page's main photos, read for all its rows at once.
+        self::assertLessThanOrEqual(14, $statements[6]);
     }
 
     public function testARevisionIsAuditedWithTheNamesOfTheFieldsItChanged(): void

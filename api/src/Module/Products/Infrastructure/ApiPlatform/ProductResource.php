@@ -180,7 +180,12 @@ final class ProductResource
     #[Groups([self::READ, self::WRITE])]
     public bool $isActive = true;
 
-    public static function of(Product $product, bool $withCosts): self
+    /** The photo shown wherever the product is picked or seen (…/photos/{id}/content), or null when it has none. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $mainPhotoId = null;
+
+    public static function of(Product $product, bool $withCosts, ?string $mainPhotoId = null): self
     {
         $details = $product->getDetails();
         $resource = new self();
@@ -199,6 +204,7 @@ final class ProductResource
         $resource->defaultTaxComponentIds = $product->getDefaultTaxComponentIds();
         $resource->customFields = $product->getCustomFields();
         $resource->isActive = $product->isActive();
+        $resource->mainPhotoId = $mainPhotoId;
 
         return $resource;
     }

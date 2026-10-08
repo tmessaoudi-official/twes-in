@@ -69,6 +69,7 @@ final class ScaleGenerator
         'payment_declaration' => 'a customer\'s declared payments: a follow-up slice',
         'payment_instrument' => 'cheques and traites received: a clone starts with none, as with a customer\'s credit',
         'product_cost_change' => 'the cost history of a product: a clone starts with none',
+        'product_photo' => 'the photos of a product, stored files: a clone has none, as with every file',
         'quote' => 'quotes: a follow-up slice',
         'quote_line' => 'quotes: a follow-up slice',
         'quote_line_tax' => 'quotes: a follow-up slice',

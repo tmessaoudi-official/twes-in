@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductNotFound;
+use App\Module\Products\Application\ProductPhotos;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -20,7 +21,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 /** @implements ProviderInterface<ProductResource> */
 final readonly class ProductItemProvider implements ProviderInterface
 {
-    public function __construct(private ManageProducts $manage, private CompanyGuard $guard)
+    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private ProductPhotos $photos)
     {
     }
 
@@ -29,7 +30,9 @@ final readonly class ProductItemProvider implements ProviderInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), ProductPermission::READ);
 
         try {
-            return ProductResource::of($this->manage->get($company, CompanyPath::identifier($uriVariables, 'productId')), $this->guard->may($company, ProductPermission::COST_READ));
+            $product = $this->manage->get($company, CompanyPath::identifier($uriVariables, 'productId'));
+
+            return ProductResource::of($product, $this->guard->may($company, ProductPermission::COST_READ), $this->photos->mainPhotoIdsOf($company, [$product->getId()])[$product->getId()->toRfc4122()] ?? null);
         } catch (ProductNotFound $absent) {
             throw new NotFoundHttpException('No such product.', $absent);
         }

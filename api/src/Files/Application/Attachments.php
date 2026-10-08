@@ -55,7 +55,7 @@ final readonly class Attachments
             throw new AttachmentRefused(\sprintf('At most %d files are attached to one record.', $this->perSubject));
         }
 
-        $attachment = new Attachment($this->files->store($company, self::name($originalName), $type, $contents, $uploadedBy), $entityType, $entityId, $this->clock->now());
+        $attachment = new Attachment($this->files->store($company, StoredFile::nameFrom($originalName, 'attachment'), $type, $contents, $uploadedBy), $entityType, $entityId, $this->clock->now());
         $this->attachments->save($attachment);
 
         return $attachment;
@@ -119,14 +119,5 @@ final readonly class Attachments
         foreach ($this->of($company, $entityType, $entityId) as $attachment) {
             $this->attachments->remove($attachment);
         }
-    }
-
-    /** The last segment of what the browser sent, whichever separator its system uses: never a path. */
-    private static function name(string $given): string
-    {
-        $name = (string) preg_replace('/[\x00-\x1F\x7F]/u', '', str_replace('\\', '/', $given));
-        $name = trim(substr($name, (int) strrpos('/'.$name, '/')));
-
-        return '' === $name ? 'attachment' : mb_substr($name, 0, StoredFile::NAME_MAX);
     }
 }

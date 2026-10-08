@@ -17,6 +17,7 @@ use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\TaxKind;
 use App\Fiscal\Domain\Unit;
 use App\Fiscal\Domain\UnitRepository;
+use App\Module\Products\Application\ProductPhotos;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 
@@ -28,6 +29,7 @@ final readonly class ProductOptionsProvider implements ProviderInterface
         private UnitRepository $units,
         private TaxComponentRepository $taxes,
         private CurrencyScales $scales,
+        private ProductPhotos $photos,
     ) {
     }
 
@@ -42,6 +44,8 @@ final readonly class ProductOptionsProvider implements ProviderInterface
         $options->units = array_values(array_map(static fn (Unit $unit) => new ProductUnitOption($unit->getId()->toRfc4122(), $unit->getCode(), $unit->getName(), $unit->getDecimals()), $units));
         $taxes = array_filter($this->taxes->ofCompany($company->getId()), static fn (TaxComponent $tax) => $tax->isActive() && TaxKind::PercentageLine === $tax->getKind());
         $options->taxes = array_values(array_map(static fn (TaxComponent $tax) => new ProductTaxOption($tax->getId()->toRfc4122(), $tax->getCode(), $tax->getName(), $tax->getFamily()->value), $taxes));
+        $options->photosPerProduct = $this->photos->perProduct();
+        $options->photoMaxBytes = $this->photos->maxBytes();
 
         return $options;
     }

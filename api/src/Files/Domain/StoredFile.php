@@ -78,6 +78,15 @@ class StoredFile implements CompanyOwned
         $this->createdAt = $now;
     }
 
+    /** The last segment of the name a browser sent, whichever separator its system uses: never a path. */
+    public static function nameFrom(string $given, string $fallback): string
+    {
+        $name = (string) preg_replace('/[\x00-\x1F\x7F]/u', '', str_replace('\\', '/', $given));
+        $name = trim(substr($name, (int) strrpos('/'.$name, '/')));
+
+        return '' === $name ? $fallback : mb_substr($name, 0, self::NAME_MAX);
+    }
+
     /** Whether these bytes are the ones this record was made for. */
     public function matches(string $contents): bool
     {

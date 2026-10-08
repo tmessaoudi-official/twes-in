@@ -66,4 +66,12 @@ final class ProductOptionsResource
     ])]
     #[Groups([self::READ])]
     public array $taxes = [];
+
+    /** How many photos a product may have. */
+    #[Groups([self::READ])]
+    public int $photosPerProduct = 0;
+
+    /** How large one photo may be, in bytes. */
+    #[Groups([self::READ])]
+    public int $photoMaxBytes = 0;
 }

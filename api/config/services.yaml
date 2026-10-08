@@ -67,6 +67,14 @@ parameters:
     app.files.upload_max_bytes: 10485760
     app.files.attachment_types: ['application/pdf', 'image/png', 'image/jpeg', 'image/webp']
     app.files.attachments_per_subject: 10
+    # A product's photos: how many, how large one may be, and the longest side of the two copies the server cuts, small
+    # for a line and large for a page. The megapixels bound what one decode costs: a 16 MP picture takes 64 MB of
+    # memory, which the API's workers can afford.
+    app.products.photos_per_product: 6
+    app.products.photo_max_bytes: 5242880
+    app.products.photo_max_megapixels: 16
+    app.products.photo_small_side: 160
+    app.products.photo_large_side: 960
 
 services:
     # default configuration for services in *this* file

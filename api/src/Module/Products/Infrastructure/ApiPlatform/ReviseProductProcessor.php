@@ -14,6 +14,7 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductNotFound;
+use App\Module\Products\Application\ProductPhotos;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Domain\InvalidProduct;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -25,7 +26,7 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 /** @implements ProcessorInterface<ProductResource, ProductResource> */
 final readonly class ReviseProductProcessor implements ProcessorInterface
 {
-    public function __construct(private ManageProducts $manage, private CompanyGuard $guard)
+    public function __construct(private ManageProducts $manage, private CompanyGuard $guard, private ProductPhotos $photos)
     {
     }
 
@@ -44,6 +45,6 @@ final readonly class ReviseProductProcessor implements ProcessorInterface
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }
 
-        return ProductResource::of($product, $seesCosts);
+        return ProductResource::of($product, $seesCosts, $this->photos->mainPhotoIdsOf($company, [$product->getId()])[$product->getId()->toRfc4122()] ?? null);
     }
 }

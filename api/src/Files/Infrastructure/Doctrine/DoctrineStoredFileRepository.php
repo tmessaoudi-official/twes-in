@@ -12,6 +12,7 @@ namespace App\Files\Infrastructure\Doctrine;
 use App\Files\Domain\StoredFile;
 use App\Files\Domain\StoredFileRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrineStoredFileRepository implements StoredFileRepository
 {
@@ -23,5 +24,12 @@ final readonly class DoctrineStoredFileRepository implements StoredFileRepositor
     {
         $this->entityManager->persist($file);
         $this->entityManager->flush();
+    }
+
+    public function bytesOfCompany(Uuid $companyId): int
+    {
+        $bytes = $this->entityManager->getConnection()->fetchOne('SELECT COALESCE(SUM(size), 0) FROM file WHERE company_id = ?', [$companyId->toRfc4122()]);
+
+        return is_numeric($bytes) ? (int) $bytes : 0;
     }
 }

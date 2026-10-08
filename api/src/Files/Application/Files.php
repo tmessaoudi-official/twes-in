@@ -32,6 +32,12 @@ final readonly class Files
         return $file;
     }
 
+    /** How many bytes the company keeps in files: what its storage holds for it, whatever kept them. */
+    public function bytesUsed(Company $company): int
+    {
+        return $this->records->bytesOfCompany($company->getId());
+    }
+
     /**
      * @throws StoredFileMissing
      * @throws StoredFileCorrupted

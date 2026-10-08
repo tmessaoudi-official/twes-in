@@ -12,8 +12,9 @@ ENV SERVER_NAME=:80 \
 
 WORKDIR /app
 
-# bcmath: the money calculator works on BcMath\Number (api/src/Fiscal/Domain/Calculation).
-RUN install-php-extensions pdo_pgsql intl zip opcache bcmath
+# bcmath: the money calculator works on BcMath\Number (api/src/Fiscal/Domain/Calculation). gd and exif: a product's
+# photos are cut into thumbnails on the server, turned upright first as the phone that took them says.
+RUN install-php-extensions pdo_pgsql intl zip opcache bcmath gd exif
 COPY infra/api/conf.d/10-app.ini "$PHP_INI_DIR/conf.d/"
 
 COPY --from=composer:2.10.3 /usr/bin/composer /usr/bin/composer
