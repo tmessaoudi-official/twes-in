@@ -85,6 +85,8 @@ describe('ProductPage', () => {
     defaultUnitCode: signal<string | null>('C62').asReadonly(),
     defaultTracking: signal<'none' | 'lot' | 'serial'>('none').asReadonly(),
     loadProduct: vi.fn(),
+    substitutionGroups: signal<readonly string[]>(['Vis 6 mm', 'Chevilles']).asReadonly(),
+    loadSubstitutionGroups: vi.fn(),
     createProduct: vi.fn(),
     reviseProduct: vi.fn(),
     clearError: vi.fn(),
@@ -144,6 +146,7 @@ describe('ProductPage', () => {
     product.set(null);
     optionsSignal.set(options);
     facade.loadProduct.mockReset().mockResolvedValue(undefined);
+    facade.loadSubstitutionGroups.mockReset().mockResolvedValue(undefined);
     facade.createProduct.mockReset().mockResolvedValue({ ...laptop, id: 'p9' });
     facade.reviseProduct.mockReset().mockResolvedValue(laptop);
     facade.pricePreview.mockReset().mockResolvedValue(null);
@@ -173,6 +176,10 @@ describe('ProductPage', () => {
         // Customer view is remembered per tab: on the real session storage it outlives this spec and hides columns in others.
       ],
     });
+  });
+
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
   });
 
   // docs/SPEC.md § 7, 2026-09-23 slice 8: a saved product's labels open in a tab of their own, to print.
@@ -293,6 +300,31 @@ describe('ProductPage', () => {
       'c1',
       expect.objectContaining({ unitPriceNet: '25.5' }),
     );
+  });
+
+  /** Joining a group is typing its name as it is already written, so the form offers the names in use. */
+  it('offers the substitution groups in use as the group is typed', async () => {
+    product.set(laptop);
+    await open('p1');
+    expect(facade.loadSubstitutionGroups).toHaveBeenCalledWith('c1');
+
+    const field = q('field-substitutionGroup') as HTMLInputElement;
+    field.dispatchEvent(new Event('focusin'));
+    type('field-substitutionGroup', 'vis');
+    await settle();
+    expect(
+      Array.from(document.body.querySelectorAll('mat-option')).map((each) =>
+        each.textContent?.trim(),
+      ),
+    ).toEqual(['Vis 6 mm']);
+  });
+
+  it('asks for no groups for somebody who may only read the product', async () => {
+    auth.hasPermission.mockReturnValue(false);
+    product.set(laptop);
+    await open('p1');
+
+    expect(facade.loadSubstitutionGroups).not.toHaveBeenCalled();
   });
 
   it('revises a product shown at the currency scale and says it was saved', async () => {

@@ -23,6 +23,7 @@ import type {
   ProductScanProductScanRead,
   ProductCostChangeProductCostChangeRead,
   ProductSubstituteProductSubstituteRead,
+  ProductSubstitutionGroupProductSubstitutionGroupRead,
   StockTotalStockTotalRead,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
@@ -376,6 +377,19 @@ export class ProductsApi {
         source: raw.source ?? 'edited',
         at: raw.at ?? '',
       })),
+    );
+  }
+
+  /** The names of the substitution groups the company's products carry, by name. */
+  async substitutionGroups(companyId: string): Promise<string[]> {
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<ProductSubstitutionGroupProductSubstitutionGroupRead[]>(
+            path(companyId, 'product-substitution-groups'),
+          ),
+        )
+      ).map((raw) => raw.name ?? ''),
     );
   }
 

@@ -74,6 +74,7 @@ describe('ProductsFacade', () => {
     createCategory: vi.fn(),
     reviseCategory: vi.fn(),
     deleteCategory: vi.fn(),
+    substitutionGroups: vi.fn(),
   };
   const fieldsApi = { list: vi.fn() };
   const settingsApi = { chain: vi.fn() };
@@ -160,6 +161,16 @@ describe('ProductsFacade', () => {
     settingsApi.chain.mockClear();
     await facade.loadProduct('c1', 'p1');
     expect(settingsApi.chain).not.toHaveBeenCalled();
+  });
+
+  /** The groups the company's products carry, by name, for the form to offer as the group is typed. */
+  it('reads the names of the substitution groups in use', async () => {
+    api.substitutionGroups.mockResolvedValue(['Chevilles', 'Vis 6 mm']);
+
+    await facade.loadSubstitutionGroups('c1');
+
+    expect(api.substitutionGroups).toHaveBeenCalledWith('c1');
+    expect(facade.substitutionGroups()).toEqual(['Chevilles', 'Vis 6 mm']);
   });
 
   it('keeps the product the API answered, or says why it refused', async () => {

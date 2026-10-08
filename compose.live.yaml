@@ -26,9 +26,16 @@ services:
       - ./infra/api/conf.d/30-app.live.ini:/usr/local/etc/php/conf.d/30-app.live.ini:ro
 
   # The worker reads the same mounted source. A consumer keeps the code it started with, so it leaves after a minute
-  # and is started again on what is there then; the api container has installed the dependencies by the time it starts.
+  # and is started again on what is there then, inside the container: restarting the container instead ran the start
+  # steps every minute (migrations, convergence, a cache clear the api shares), about one and a half cores for nothing.
+  # The api has migrated and installed the dependencies by the time this starts, and a stop reaches the consumer.
   worker:
-    command: ["php", "bin/console", "messenger:consume", "async", "scheduler_default", "--time-limit=60", "--memory-limit=96M"]
+    command:
+      - sh
+      - -c
+      - >-
+        trap 'kill -TERM $$consumer; wait $$consumer; exit 0' TERM INT;
+        while :; do php bin/console messenger:consume async scheduler_default --time-limit=60 --memory-limit=96M & consumer=$$!; wait $$consumer; done
     volumes:
       - ./api:/app
       - api-vendor:/app/vendor

@@ -330,7 +330,7 @@ final class DemoCompanies extends Fixture
             $tracking = ProductTracking::from($row['tracking'] ?? 'none');
             $product = $this->products->create($company(), new ProductInput(
                 $row['ref'],
-                new ProductDetails($row['name'], null, $service ? ProductKind::Service : ProductKind::Goods, $row['price'], $service ? null : bcmul($row['price'], '0.6', $demo->scale)),
+                new ProductDetails($row['name'], null, $service ? ProductKind::Service : ProductKind::Goods, $row['price'], $service ? null : bcmul($row['price'], '0.6', $demo->scale), $row['group'] ?? null),
                 $unit($row['unit']),
                 $categoryIds[$row['category']],
                 array_map($tax, $row['taxes']),

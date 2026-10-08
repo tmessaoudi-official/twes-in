@@ -93,6 +93,10 @@ export class ProductPage {
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('product.write'));
+  /** What the form offers as a field is typed: the substitution groups the company's products already carry. */
+  protected readonly suggestions = computed(() => ({
+    substitutionGroup: this.facade.substitutionGroups(),
+  }));
 
   /** Null while a new product is filled in; undefined until the product asked for has been read. */
   protected readonly current = computed(() => {
@@ -254,6 +258,8 @@ export class ProductPage {
       untracked(() => {
         if (companyId) {
           void this.facade.loadProduct(companyId, id);
+          // The names already in use, offered as the group is typed; only a person who may change it types one.
+          if (this.mayWrite()) void this.facade.loadSubstitutionGroups(companyId);
         }
       });
     });

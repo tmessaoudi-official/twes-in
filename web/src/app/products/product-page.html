@@ -56,6 +56,7 @@
                   [form]="form"
                   [updated]="sync.updated()"
                   [conflicts]="sync.conflicts()"
+                  [suggestions]="suggestions()"
                   (resolved)="sync.resolve(form, $event)"
                   testId="product-form"
                   [readOnly]="!mayWrite()"

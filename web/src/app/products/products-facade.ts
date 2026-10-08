@@ -34,6 +34,7 @@ export class ProductsFacade {
   private readonly optionsSignal = signal<ProductOptions | null>(null);
   private readonly customFieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
   private readonly productSignal = signal<ProductRow | null>(null);
+  private readonly substitutionGroupsSignal = signal<readonly string[]>([]);
   private readonly defaultUnitCodeSignal = signal<string | null>(null);
   private readonly defaultTrackingSignal = signal<ProductTracking>('none');
   private readonly busySignal = signal(false);
@@ -48,6 +49,8 @@ export class ProductsFacade {
   /** Every custom field declared for products, retired ones included; screens show the active ones. */
   readonly customFields = this.customFieldsSignal.asReadonly();
   readonly product = this.productSignal.asReadonly();
+  /** The names of the substitution groups the company's products carry, which the product form offers. */
+  readonly substitutionGroups = this.substitutionGroupsSignal.asReadonly();
   /** The unit code `article.default_unit` resolves to for the company, read with a new product's form. */
   readonly defaultUnitCode = this.defaultUnitCodeSignal.asReadonly();
   /** How `article.traceability` says a new product is followed, read with a new product's form. */
@@ -92,6 +95,12 @@ export class ProductsFacade {
   }
 
   /** What the product form needs: its options, the categories, the fields, and the product unless it is new. */
+  async loadSubstitutionGroups(companyId: string): Promise<void> {
+    await this.read(async () =>
+      this.substitutionGroupsSignal.set(await this.api.substitutionGroups(companyId)),
+    );
+  }
+
   async loadProduct(companyId: string, id: string | null): Promise<void> {
     await this.read(async () => {
       const [options, categories, customFields, product, articles] = await Promise.all([

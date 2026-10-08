@@ -15,6 +15,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FormatFacade } from '../i18n/format-facade';
@@ -50,6 +51,7 @@ export interface PickSource {
     MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
+    MatAutocompleteModule,
     TranslatePipe,
     DecimalInput,
     DayInput,
@@ -87,6 +89,11 @@ export class DescriptorForm {
    * function. The screen owns the asking; this only shows what comes back and writes the chosen id into the control.
    */
   readonly pickers = input<Record<string, PickSource>>({});
+  /**
+   * Values already in use that a text field offers as it is typed in, per field id; anything else may still be typed.
+   * An input, like `pickers`, and not part of the descriptor, so suggestions that arrive later never rebuild the form.
+   */
+  readonly suggestions = input<Readonly<Record<string, readonly string[]>>>({});
 
   /** Bumped on every value, status or touched change, so an OnPush template re-reads the messages. */
   private readonly revision = signal(0);
@@ -124,6 +131,23 @@ export class DescriptorForm {
     this.revision();
     const control = this.form().controls[field.id];
     return control?.touched ? fieldError(control, field) : null;
+  }
+
+  /** What the field's suggestions hold of what is typed, whatever its case; none once it is typed in full. */
+  protected suggested(field: FormField): readonly string[] {
+    this.revision();
+    const values = this.suggestions()[field.id] ?? [];
+    const typed = String(this.form().controls[field.id]?.value ?? '')
+      .trim()
+      .toLocaleLowerCase();
+    return values.filter((value) => {
+      const known = value.toLocaleLowerCase();
+      return known !== typed && known.includes(typed);
+    });
+  }
+
+  protected hasSuggestions(field: FormField): boolean {
+    return (this.suggestions()[field.id]?.length ?? 0) > 0;
   }
 
   protected conflictFor(field: FormField): FieldConflict | null {

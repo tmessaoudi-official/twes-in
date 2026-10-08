@@ -126,6 +126,12 @@ final class DemoFixturesTest extends ApiTestCase
         self::assertGreaterThan(0, $this->numberOf("SELECT COUNT(*) FROM stock_movement WHERE source_type = 'delivery_note' AND lot_id IS NOT NULL", []), 'a delivery note took goods from their lots');
         self::assertInstanceOf(NativeClock::class, Clock::get(), 'the clock the load moved is given back');
 
+        // Products that replace each other, so a product's page lists its substitutes and the form offers the groups in use.
+        self::assertSame(
+            ['Finitions du bois', 'Planches massives'],
+            $this->column("SELECT DISTINCT p.substitution_group FROM product p JOIN company c ON c.id = p.company_id WHERE c.name = 'Atelier Mercier' AND p.substitution_group IS NOT NULL ORDER BY 1", []),
+        );
+
         // Every document the French company issued is written as Factur-X, so the invoice screen's « Factur-X » has a
         // file to hand over rather than a list of what the demo forgot (a customer's postal code, its country). Two
         // are refused, and the screen shows why: a sale to the customer whose regime is plain « exempt », which names

@@ -30,7 +30,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e gallery notices tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery notices tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -118,7 +118,11 @@ in-versions:
 logs:
 	docker compose logs -f --tail=100
 
-gate: gate-licences gate-api gate-web   ## everything CI checks except e2e
+gate:          ## everything CI checks except e2e: the api and web halves side by side, then the licences
+	@# The OpenAPI document first and once: gate-web would export it again, its composer install racing gate-api's.
+	$(MAKE) --no-print-directory api-openapi
+	$(MAKE) --no-print-directory -j2 --output-sync=target gate-api gate-web-checks
+	$(MAKE) --no-print-directory gate-licences
 
 gate-licences: tools-image
 	$(TOOLS) make --no-print-directory in-gate-licences
@@ -184,6 +188,8 @@ in-gate-api:
 	cd api && composer gate
 
 gate-web: api-openapi web-tools-image   ## npm run gate starts with api:types, which reads api/var/openapi.json
+	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run gate'
+gate-web-checks: web-tools-image   # gate-web on the OpenAPI document already exported, for `make gate`
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm run gate'
 
 test-api: tools-image
