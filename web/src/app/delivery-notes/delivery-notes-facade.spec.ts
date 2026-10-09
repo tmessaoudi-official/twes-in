@@ -62,6 +62,7 @@ describe('DeliveryNotesFacade', () => {
     statusCounts: vi.fn(),
     credit: vi.fn(),
     left: vi.fn(),
+    preview: vi.fn(),
   };
   let facade: DeliveryNotesFacade;
 
@@ -205,6 +206,16 @@ describe('DeliveryNotesFacade', () => {
 
     api.credit.mockRejectedValue(new DeliveryNotesRefused('network'));
     expect(await facade.credit('c1', 'n1')).toBeNull();
+    expect(facade.error()).toBeNull();
+  });
+
+  it('answers what is typed would come to, and null without raising the screen’s error when the API refuses it', async () => {
+    api.preview.mockResolvedValue({ total: '1.000' });
+    expect(await facade.preview('c1', null, input)).toEqual({ total: '1.000' });
+
+    // A draft being typed is often not one yet: its refusal is no error to report.
+    api.preview.mockRejectedValue(new DeliveryNotesRefused('invalid'));
+    expect(await facade.preview('c1', 'n1', input)).toBeNull();
     expect(facade.error()).toBeNull();
   });
 

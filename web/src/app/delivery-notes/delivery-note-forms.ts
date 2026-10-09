@@ -381,6 +381,18 @@ export function lineGroup(line: DeliveryNoteLine | null, options: DeliveryNoteOp
   );
 }
 
+/**
+ * Whether a line's figures can be worked out as it stands: its quantity, unit and price as the API would take them.
+ * Its words and its lot are not figures, so a line not described yet is worked out all the same.
+ */
+export function figuresReady(line: LineGroup): boolean {
+  const { quantity, unitId, unitPriceNet } = line.controls;
+  return (
+    [quantity, unitId, unitPriceNet].every((control) => !control.invalid) &&
+    !line.hasError('quantityDecimals')
+  );
+}
+
 /** The note's lines as controls; a note without lines starts with one to fill in. */
 export function linesArray(
   lines: readonly DeliveryNoteLine[],

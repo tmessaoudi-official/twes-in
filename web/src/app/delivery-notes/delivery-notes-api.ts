@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIddeliveryNotesGetCollectionResponse,
   DeliveryNoteDeliveryNoteDeliverValidationDeliveryNoteDeliver as DeliveryNoteDeliveryNoteDeliver,
   DeliveryNoteDeliveryNoteRead,
+  DeliveryNoteDocumentPreviewDocumentPreviewValidationDeliveryNoteWrite as DeliveryNoteDocumentPreview,
   DeliveryNoteDeliveryNoteWriteValidationDeliveryNoteWrite as DeliveryNoteDeliveryNoteWrite,
   DeliveryNoteJsonldDeliveryNoteRead,
   DeliveryNoteCustomerPickDeliveryNoteCustomerPickRead,
@@ -18,6 +19,8 @@ import type {
   InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWriteValidationInvoiceFromDeliveryNotesWrite as InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite,
   InvoiceFromDeliveryNotesInvoiceResourceInvoiceReadValidationInvoiceFromDeliveryNotesWrite as InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead,
 } from '../api/types.gen';
+import type { PreviewBody } from '../shared/documents/document-figures';
+import { SILENT } from '../shared/feedback/activity-interceptor';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import { apiRangeKey } from '../shared/list/list-filters';
 import type { ListPage } from '../shared/list/list-types';
@@ -208,6 +211,26 @@ export class DeliveryNotesApi {
         await firstValueFrom(
           this.http.put<DeliveryNoteDeliveryNoteRead>(notePath(companyId, id), toBody(input)),
         ),
+      ),
+    );
+  }
+
+  /**
+   * What the body would come to if it were saved, a new note's or the draft's, kept nowhere: asked as typing rests, so
+   * quietly, without the activity bar.
+   */
+  async preview(
+    companyId: string,
+    id: string | null,
+    input: DeliveryNoteInput,
+  ): Promise<PreviewBody> {
+    const path =
+      id === null ? `${notePath(companyId)}/preview` : `${notePath(companyId, id)}/preview`;
+    return this.guard(async () =>
+      firstValueFrom(
+        this.http.post<DeliveryNoteDocumentPreview>(path, toBody(input), {
+          context: new HttpContext().set(SILENT, true),
+        }),
       ),
     );
   }

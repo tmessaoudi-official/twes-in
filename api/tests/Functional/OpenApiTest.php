@@ -133,7 +133,7 @@ final class OpenApiTest extends KernelTestCase
         self::bootKernel();
         $paths = static::getContainer()->get(OpenApiFactoryInterface::class)()->getPaths();
 
-        foreach (['/invoices/preview', '/invoices/{invoiceId}/preview', '/quotes/preview', '/quotes/{quoteId}/preview'] as $path) {
+        foreach (['/invoices/preview', '/invoices/{invoiceId}/preview', '/quotes/preview', '/quotes/{quoteId}/preview', '/delivery-notes/preview', '/delivery-notes/{deliveryNoteId}/preview'] as $path) {
             $operation = $paths->getPath('/api/companies/{companyId}'.$path)?->getPost();
             self::assertNotNull($operation, $path);
             self::assertStringContainsString('kept nowhere', (string) $operation->getSummary(), $path);

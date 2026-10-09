@@ -42,6 +42,7 @@ import {
 } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
+import { PREVIEW_DELAY } from '../shared/documents/document-figures';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -157,6 +158,7 @@ describe('DeliveryNotePage', () => {
     clearError: vi.fn(),
     credit: vi.fn(async () => null as unknown),
     left: vi.fn(),
+    preview: vi.fn(),
     pdfUrl: (companyId: string, id: string) =>
       `/api/companies/${companyId}/delivery-notes/${id}/pdf`,
   };
@@ -264,6 +266,7 @@ describe('DeliveryNotePage', () => {
     ].forEach((each) => granted.add(each));
     modules.clear();
     ['delivery_notes', 'invoices'].forEach((each) => modules.add(each));
+    facade.preview.mockReset().mockResolvedValue(null);
     facade.invoice.mockReset().mockResolvedValue('i7');
     facade.draftsOf.mockReset().mockResolvedValue([]);
     facade.loadNote.mockReset().mockResolvedValue(undefined);
@@ -292,8 +295,125 @@ describe('DeliveryNotePage', () => {
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+        { provide: PREVIEW_DELAY, useValue: 0 },
       ],
     });
+  });
+
+  /** The preview's answer, asked once typing rests: the zero delay, the API's promise, then what it sets. */
+  async function figuresAnswered(): Promise<void> {
+    await settle();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    await settle();
+  }
+
+  const text = (testId: string): string => (q(testId)?.textContent ?? '').replace(/\s+/g, ' ');
+
+  const typedFigures = {
+    lines: [
+      {
+        amount: '3750.000',
+        discount: '0.000',
+        net: '3750.000',
+        documentDiscount: '0.000',
+        taxes: [{ code: 'TVA19', base: '3750.000', amount: '712.500' }],
+        total: '4462.500',
+      },
+    ],
+    subtotalNet: '3750.000',
+    documentDiscount: '0.000',
+    savings: '0.000',
+    totalNet: '3750.000',
+    taxes: [{ code: 'TVA19', rate: '19.000', base: '3750.000', amount: '712.500' }],
+    totalTax: '712.500',
+    fixedTaxes: [],
+    total: '4462.500',
+    withholdings: [],
+    netToPay: '4462.500',
+  };
+
+  // docs/SPEC.md § 7, the live line figures (row 224): a delivery note is worked out as it is typed, as an invoice is.
+  it('works the note out as it is typed, and shows each line and the totals as they would be saved', async () => {
+    note.set(draft);
+    await open('n1');
+    facade.preview.mockResolvedValue(typedFigures);
+
+    type('line-0-quantity', '3');
+    await figuresAnswered();
+
+    expect(facade.preview).toHaveBeenLastCalledWith(
+      'c1',
+      'n1',
+      expect.objectContaining({
+        lines: [expect.objectContaining({ quantity: '3', lotCode: null })],
+      }),
+    );
+    expect(text('line-0-net')).toContain('3 750,000');
+    expect(text('line-0-total')).toContain('4 462,500');
+    expect(text('delivery-note-total')).toContain('4 462,500');
+    expect(text('delivery-note-totals-note')).toContain('document_figures.as_typed');
+  });
+
+  it('shows the saved figures while what is typed cannot be worked out', async () => {
+    note.set(draft);
+    await open('n1');
+
+    type('line-0-price', '12a');
+    await figuresAnswered();
+
+    expect(facade.preview).not.toHaveBeenCalledWith(
+      'c1',
+      'n1',
+      expect.objectContaining({ lines: [expect.objectContaining({ unitPriceNet: '12a' })] }),
+    );
+    expect(q('line-0-net')).toBeNull();
+    expect(text('delivery-note-total')).toContain('2 975,000');
+    expect(text('delivery-note-totals-note')).toContain('delivery_notes.totals.as_saved');
+  });
+
+  it('goes back to the saved figures, never the last typed ones, once the API refuses what is typed', async () => {
+    note.set(draft);
+    await open('n1');
+    facade.preview.mockResolvedValue(typedFigures);
+    type('line-0-quantity', '3');
+    await figuresAnswered();
+    expect(text('delivery-note-total')).toContain('4 462,500');
+
+    facade.preview.mockResolvedValue(null);
+    type('line-0-quantity', '4');
+    await figuresAnswered();
+
+    expect(q('line-0-net')).toBeNull();
+    expect(text('delivery-note-total')).toContain('2 975,000');
+    expect(text('delivery-note-totals-note')).toContain('delivery_notes.totals.as_saved');
+  });
+
+  it('asks nothing for whoever may only read the draft, who sees what it was saved with', async () => {
+    granted.delete('delivery_note.write');
+    note.set(draft);
+    await open('n1');
+    await figuresAnswered();
+
+    expect(facade.preview).not.toHaveBeenCalled();
+    expect(text('delivery-note-total')).toContain('2 975,000');
+    expect(text('delivery-note-totals-note')).toContain('delivery_notes.totals.as_saved');
+  });
+
+  it('asks nothing of a validated note, nor of a new one before it names its customer', async () => {
+    note.set(validated);
+    await open('n1');
+    await figuresAnswered();
+    expect(facade.preview).not.toHaveBeenCalled();
+    expect(text('delivery-note-total')).toContain('2 975,000');
+
+    fixture.destroy();
+    note.set(null);
+    await open(undefined);
+    type('line-0-price', '10');
+    await figuresAnswered();
+    expect(facade.preview).not.toHaveBeenCalled();
+    expect(q('delivery-note-totals')).toBeNull();
   });
 
   afterEach(() => {

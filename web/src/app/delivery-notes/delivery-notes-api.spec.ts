@@ -3,6 +3,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { SILENT } from '../shared/feedback/activity-interceptor';
 import { InvoicesApi } from '../invoices/invoices-api';
 import { DeliveryNotesApi, DeliveryNotesRefused } from './delivery-notes-api';
 import type { DeliveryNoteInput } from './delivery-notes-types';
@@ -489,5 +490,19 @@ describe('DeliveryNotesApi', () => {
       .expectOne('/api/companies/c1/invoices/from-delivery-notes')
       .flush({}, { status: 409, statusText: 'Conflict' });
     await expect(pending).rejects.toEqual(new DeliveryNotesRefused('conflict'));
+  });
+
+  it("asks what is typed would come to, quietly, on the draft's own path once it exists", async () => {
+    const fresh = api.preview('c1', null, input);
+    const asked = http.expectOne('/api/companies/c1/delivery-notes/preview');
+    expect(asked.request.method).toBe('POST');
+    expect(asked.request.context.get(SILENT)).toBe(true);
+    expect(asked.request.body).toMatchObject({ customerId: input.customerId });
+    asked.flush({ total: '1.000' });
+    expect(await fresh).toEqual({ total: '1.000' });
+
+    const draft = api.preview('c1', 'n1', input);
+    http.expectOne('/api/companies/c1/delivery-notes/n1/preview').flush({ total: '2.000' });
+    expect(await draft).toEqual({ total: '2.000' });
   });
 });

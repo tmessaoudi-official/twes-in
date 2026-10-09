@@ -7,6 +7,7 @@ import {
   deliveryNoteInput,
   deliveryNoteListRows,
   deliveryNoteValues,
+  figuresReady,
   lineGroup,
   linesArray,
   offeredTaxes,
@@ -236,6 +237,24 @@ describe('delivery note forms', () => {
 
     line.patchValue({ unitPriceNet: '10,5' });
     expect(line.controls.unitPriceNet.hasError('pattern')).toBe(true);
+  });
+
+  it('works a line’s figures out once its quantity, unit and price can be, described or not', () => {
+    const line = lineGroup(null, options);
+    expect(figuresReady(line)).toBe(false);
+
+    line.patchValue({ unitPriceNet: '10.5' });
+    expect(line.controls.description.invalid).toBe(true);
+    expect(figuresReady(line)).toBe(true);
+
+    line.patchValue({ quantity: '0' });
+    expect(figuresReady(line)).toBe(false);
+    line.patchValue({ quantity: '1.5' });
+    expect(figuresReady(line)).toBe(false);
+    line.patchValue({ unitId: 'u2' });
+    expect(figuresReady(line)).toBe(true);
+    line.patchValue({ unitPriceNet: '10,5' });
+    expect(figuresReady(line)).toBe(false);
   });
 
   it('reads an existing note’s lines as their unit counts them, and a new note starts with one line', () => {

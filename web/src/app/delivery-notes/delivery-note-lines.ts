@@ -41,6 +41,8 @@ import { LineSubstitutes } from './delivery-note-line-substitutes';
 import { ProductScans } from '../products/product-scans';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 import { productPhotoUrl } from '../products/product-photo-url';
+import type { LineFigures } from '../shared/documents/document-figures';
+import { LineFiguresView } from '../shared/documents/line-figures';
 
 type CheckedField = keyof Omit<
   LineControls,
@@ -50,7 +52,7 @@ type CheckedField = keyof Omit<
 /**
  * A note's lines, edited in place: a product fills a line's description, unit, price and default taxes, and every
  * value stays editable. Each tax the customer may be charged is a box; a tax already on a line stays offered, so it
- * can be taken off. The API computes the figures when the note is saved.
+ * can be taken off. Each line's figures are the API's, worked out as the note is typed (row 224), and shown folded.
  */
 @Component({
   selector: 'app-delivery-note-lines',
@@ -65,6 +67,7 @@ type CheckedField = keyof Omit<
     PickField,
     LineSubstitutes,
     IssuedLines,
+    LineFiguresView,
   ],
   templateUrl: './delivery-note-lines.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -86,6 +89,10 @@ export class DeliveryNoteLines {
   /** Whose note it is: their price lists decide what a line starts at. */
   readonly customer = input<CustomerOption | null>(null);
   readonly priceLists = input(false);
+  /** Each line's figures as the note stands typed, by position, or null where none could be worked out yet. */
+  readonly figures = input<readonly (LineFigures | null)[] | null>(null);
+  /** A tax's name by its code, for the taxes a line charges, kept while they stay the same so a fold stays open. */
+  private readonly taxNamers = new Map<string, (code: string) => string | null>();
 
   /** Bumped on every value, status or touched change, so an OnPush template re-reads the lines. */
   private readonly revision = signal(0);
@@ -301,5 +308,26 @@ export class DeliveryNoteLines {
     if (product === undefined) return;
     this.known.set(product.id, product);
     this.chooseProduct(line, { id: product.id, code: product.reference, name: product.name });
+  }
+
+  protected figuresOf(index: number): LineFigures | null {
+    return this.figures()?.[index] ?? null;
+  }
+
+  /** How a line's figures name its taxes: by the names of the taxes the line charges. */
+  protected taxNamesFor(line: LineGroup): (code: string) => string | null {
+    this.revision();
+    const charged = new Set(line.controls.taxComponentIds.value);
+    const pairs = this.options()
+      .taxes.filter((tax) => charged.has(tax.id))
+      .map((tax): [string, string] => [tax.code, tax.name]);
+    const key = JSON.stringify(pairs);
+    let named = this.taxNamers.get(key);
+    if (named === undefined) {
+      const names = new Map(pairs);
+      named = (code: string) => names.get(code) ?? null;
+      this.taxNamers.set(key, named);
+    }
+    return named;
   }
 }

@@ -12,6 +12,7 @@ namespace App\Module\DeliveryNotes\Application;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
+use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
@@ -127,6 +128,25 @@ final readonly class ManageDeliveryNotes
 
             return $note;
         });
+    }
+
+    /**
+     * The figures a new note, or the draft `$id` revised, would have, from what a save would send: checked as the save
+     * checks it, worked out by the calculator that saves them, and kept nowhere. Nothing is locked, written or audited.
+     *
+     * @throws DeliveryNoteNotFound
+     * @throws DeliveryNoteNotDraft
+     * @throws InvalidDeliveryNote
+     */
+    public function preview(Company $company, DeliveryNoteInput $input, ?Uuid $id): DocumentTotals
+    {
+        $current = null === $id ? null : $this->get($company, $id);
+        $current?->assertDraft('changes');
+        [$establishment, $customer, $lines] = $this->checked($company, $input, $current);
+
+        // What a revision would make of the draft is a new note of the same parts, saved nowhere: a note's figures
+        // depend on its lines alone.
+        return $this->totals->checked(DeliveryNote::create($company, $establishment, $customer, $input->header, $lines, $this->clock->now()));
     }
 
     /**

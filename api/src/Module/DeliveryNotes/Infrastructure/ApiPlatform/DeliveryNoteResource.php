@@ -16,10 +16,12 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\QueryParameter;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\LineTotals;
 use App\Fiscal\Domain\Calculation\TaxTotal;
+use App\Fiscal\Infrastructure\ApiPlatform\DocumentPreview;
 use App\Module\DeliveryNotes\Application\DeliveryNoteInput;
 use App\Module\DeliveryNotes\Application\DeliveryNoteLineInput;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
@@ -85,6 +87,29 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             read: false,
             normalizationContext: self::NORMALIZATION,
+            denormalizationContext: ['groups' => [self::WRITE]],
+            validationContext: ['groups' => [self::WRITE]],
+        ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/delivery-notes/preview',
+            openapi: new OpenApiOperation(summary: 'What a new delivery note with this body would come to, kept nowhere.', description: 'Takes the body a save takes and answers what saving it would come to, through the calculator every document shares: each line, then the totals. Nothing is written. Asks delivery_note.write, as saving does; refused as saving is, with the field named (422).'),
+            status: 200,
+            processor: PreviewDeliveryNoteProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            output: DocumentPreview::class,
+            normalizationContext: ['groups' => [DocumentPreview::READ]],
+            denormalizationContext: ['groups' => [self::WRITE]],
+            validationContext: ['groups' => [self::WRITE]],
+        ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/delivery-notes/{deliveryNoteId}/preview',
+            openapi: new OpenApiOperation(summary: 'What this draft delivery note would come to with this body, kept nowhere.', description: 'Takes the body a save takes and answers what saving it would come to, through the calculator every document shares: each line, then the totals. Nothing is written. Asks delivery_note.write, as saving does; refused as saving is, with the field named (422), and 409 once the note is no longer a draft.'),
+            status: 200,
+            processor: PreviewDeliveryNoteProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            output: DocumentPreview::class,
+            normalizationContext: ['groups' => [DocumentPreview::READ]],
             denormalizationContext: ['groups' => [self::WRITE]],
             validationContext: ['groups' => [self::WRITE]],
         ),
