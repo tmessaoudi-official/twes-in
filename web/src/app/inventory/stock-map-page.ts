@@ -1542,20 +1542,36 @@ export class StockMapPage implements OnInit {
     const editing = this.editing();
     if (!companyId || !floorId || editing === null || this.busy()) return;
 
+    const input = drawingInput(values);
+    // What « Annuler » puts back: the rectangle as it stood, or nothing at all for one just drawn.
+    const before = editing === 'new' ? null : drawingInput(drawingValues(editing));
     const accepted = await this.facade.draw(
       companyId,
       floorId,
-      drawingInput(values),
+      input,
       editing === 'new' ? null : editing.id,
     );
     if (accepted) {
       this.editing.set(null);
       this.drag = null;
-      this.feedback.success('inventory.plan.drawing_saved');
+      this.feedback.success(
+        'inventory.plan.drawing_saved',
+        {},
+        {
+          key: 'inventory.plan.undo',
+          run: () =>
+            editing === 'new'
+              ? void this.undrawNew(companyId, floorId, input.locationId)
+              : void this.undo(() => this.facade.draw(companyId, floorId, before!, editing.id)),
+        },
+      );
     }
   }
 
-  /** The rectangle goes; the location it was drawn for keeps its code, its tree and its stock. */
+  /**
+   * The rectangle goes; the location it was drawn for keeps its code, its tree and its stock — which is what makes
+   * « Annuler » always possible: the same location is drawn again at the same place.
+   */
   protected async erase(drawing: StockDrawingRow): Promise<void> {
     const companyId = this.company()?.id;
     const floorId = this.floor()?.id;
@@ -1565,8 +1581,32 @@ export class StockMapPage implements OnInit {
     if (erased) {
       if (this.selectedId() === drawing.id) this.selectedId.set(null);
       this.editing.set(null);
-      this.feedback.success('inventory.plan.drawing_erased');
+      const again = drawingInput(drawingValues(drawing));
+      this.feedback.success(
+        'inventory.plan.drawing_erased',
+        {},
+        {
+          key: 'inventory.plan.undo',
+          run: () => void this.undo(() => this.facade.draw(companyId, floorId, again, null)),
+        },
+      );
     }
+  }
+
+  /** A rectangle just drawn, found again by its location (one location, one rectangle) and undrawn. */
+  private async undrawNew(
+    companyId: string,
+    floorId: string,
+    locationId: string | null,
+  ): Promise<void> {
+    const made = this.facade.drawings().find((drawing) => drawing.locationId === locationId);
+    if (made === undefined) return;
+    await this.undo(() => this.facade.eraseDrawing(companyId, floorId, made.id));
+  }
+
+  /** « Annuler » on a drawing toast: the change taken back, and said. */
+  private async undo(takeBack: () => Promise<boolean>): Promise<void> {
+    if (await takeBack()) this.feedback.success('inventory.plan.undone');
   }
 
   // ——— the structure layer: the building, which is none of the stock ———
@@ -1783,6 +1823,9 @@ export class StockMapPage implements OnInit {
     const editing = this.editingStructure();
     if (!companyId || !floorId || editing === null || this.busy()) return;
 
+    const before =
+      editing === 'new' ? null : structureInput(structureValues(editing, this.structureTools()));
+    const standing = new Set(this.facade.structures().map((piece) => piece.id));
     const accepted = await this.facade.buildStructure(
       companyId,
       floorId,
@@ -1791,7 +1834,23 @@ export class StockMapPage implements OnInit {
     );
     if (accepted) {
       this.editingStructure.set(null);
-      this.feedback.success('inventory.plan.structure_saved');
+      // A piece just built has no id of its own here: it is the one that was not standing before the save.
+      const made = this.facade.structures().find((piece) => !standing.has(piece.id));
+      this.feedback.success(
+        'inventory.plan.structure_saved',
+        {},
+        {
+          key: 'inventory.plan.undo',
+          run: () =>
+            void this.undo(() =>
+              editing === 'new'
+                ? made === undefined
+                  ? Promise.resolve(false)
+                  : this.facade.eraseStructure(companyId, floorId, made.id)
+                : this.facade.buildStructure(companyId, floorId, before!, editing.id),
+            ),
+        },
+      );
     }
   }
 
@@ -1804,7 +1863,16 @@ export class StockMapPage implements OnInit {
     if (erased) {
       if (this.selectedStructureId() === piece.id) this.selectedStructureId.set(null);
       this.editingStructure.set(null);
-      this.feedback.success('inventory.plan.structure_erased');
+      const again = structureInput(structureValues(piece, this.structureTools()));
+      this.feedback.success(
+        'inventory.plan.structure_erased',
+        {},
+        {
+          key: 'inventory.plan.undo',
+          run: () =>
+            void this.undo(() => this.facade.buildStructure(companyId, floorId, again, null)),
+        },
+      );
     }
   }
 

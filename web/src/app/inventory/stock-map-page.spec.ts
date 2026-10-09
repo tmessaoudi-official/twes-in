@@ -24,7 +24,8 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { PRESENTATION } from '../shared/settings/settings-registry';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { provideQuietFeedback, RecordedFeedback, successToasts } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
 import { InventoryFacade } from './inventory-facade';
 import type {
   InventoryError,
@@ -161,6 +162,7 @@ describe('StockMapPage', () => {
   const busy = signal(false);
   const floors = signal<readonly StockFloorRow[]>([upstairs, ground]);
   const drawings = signal<readonly StockDrawingRow[]>([drawn]);
+  const locations = signal<readonly StockLocationRow[]>([rack, zone, bin]);
   const structures = signal<readonly StockStructureRow[]>([wall]);
   const contents = signal<LocationContents | null>(null);
   const whereabouts = signal<MapSearch | null>(null);
@@ -176,7 +178,7 @@ describe('StockMapPage', () => {
     loadContents: vi.fn(),
     reloadContents: vi.fn(),
     options: signal<StockOptions | null>(options).asReadonly(),
-    locations: signal<readonly StockLocationRow[]>([rack, zone, bin]).asReadonly(),
+    locations: locations.asReadonly(),
     floors: floors.asReadonly(),
     drawings: drawings.asReadonly(),
     structures: structures.asReadonly(),
@@ -231,6 +233,7 @@ describe('StockMapPage', () => {
     busy.set(false);
     floors.set([upstairs, ground]);
     drawings.set([drawn]);
+    locations.set([rack, zone, bin]);
     structures.set([wall]);
     contents.set(null);
     holdings.set(new Map());
@@ -488,6 +491,88 @@ describe('StockMapPage', () => {
 
     expect(facade.eraseDrawing).toHaveBeenCalledWith('c1', 'f1', 'd1');
     expect(successToasts()).toContain('inventory.plan.drawing_erased');
+  });
+
+  /** The toast's « Annuler » after a drawing change: what it runs, read back from what was recorded. */
+  function undoOf(key: string): () => void {
+    const said = [...(TestBed.inject(Feedback) as RecordedFeedback).said]
+      .reverse()
+      .find((one) => one.key === key);
+    expect(said?.action?.key).toBe('inventory.plan.undo');
+    return said!.action!.run;
+  }
+
+  // ——— undo, not « are you sure » (the stock map brief, § 5.3): undrawing never touches the location ———
+
+  it('draws an undrawn rectangle back where it was when « Annuler » is pressed', async () => {
+    facade.eraseDrawing.mockResolvedValue(true);
+    q('stock-drawing-R1')!.click();
+    await settle();
+    q('stock-drawing-erase')!.click();
+    await settle();
+
+    undoOf('inventory.plan.drawing_erased')();
+    await settle();
+    expect(facade.draw).toHaveBeenLastCalledWith(
+      'c1',
+      'f1',
+      expect.objectContaining({
+        locationId: 'l1',
+        x: '2.500',
+        y: '4.000',
+        width: '3.900',
+        depth: '0.600',
+        height: '2.100',
+      }),
+      null,
+    );
+    expect(successToasts()).toContain('inventory.plan.undone');
+  });
+
+  it('puts a moved rectangle back where it stood when « Annuler » is pressed', async () => {
+    q('stock-drawing-R1')!.click();
+    await settle();
+    q('stock-drawing-edit')!.click();
+    await settle();
+    type('field-x', '7');
+    q('stock-drawing-save')!.click();
+    await settle();
+    expect(facade.draw).toHaveBeenLastCalledWith(
+      'c1',
+      'f1',
+      expect.objectContaining({ x: '7.000' }),
+      'd1',
+    );
+
+    undoOf('inventory.plan.drawing_saved')();
+    await settle();
+    expect(facade.draw).toHaveBeenLastCalledWith(
+      'c1',
+      'f1',
+      expect.objectContaining({ x: '2.500', y: '4.000' }),
+      'd1',
+    );
+  });
+
+  it('undraws a rectangle just drawn when « Annuler » is pressed, leaving its location as it was', async () => {
+    // A place still undrawn after this one: drawing the LAST one while its form is open is slice 7b's (« nouveau »).
+    locations.set([rack, zone, bin, { ...zone, id: 'l4', code: 'Z2', name: 'Quai' }]);
+    facade.eraseDrawing.mockResolvedValue(true);
+    facade.draw.mockImplementation(async () => {
+      drawings.set([drawn, { ...drawn, id: 'd9', locationId: 'l2', locationCode: 'R2' }]);
+      return true;
+    });
+    q('stock-map-trace')!.click();
+    await settle();
+    q('stock-map-trace-type')!.click();
+    await settle();
+    drawingGroup().get('locationId')!.setValue('l2');
+    q('stock-drawing-save')!.click();
+    await settle();
+
+    undoOf('inventory.plan.drawing_saved')();
+    await settle();
+    expect(facade.eraseDrawing).toHaveBeenLastCalledWith('c1', 'f1', 'd9');
   });
 
   it('offers to remove only a floor that carries nothing', async () => {
@@ -1233,6 +1318,42 @@ describe('StockMapPage', () => {
     );
     expect(successToasts()).toContain('inventory.plan.structure_saved');
     expect(q('field-width')).toBeNull();
+  });
+
+  it('takes back a piece of the building just posed, moved or undrawn when « Annuler » is pressed', async () => {
+    facade.buildStructure.mockImplementation(async () => {
+      structures.set([wall, { ...wall, id: 's9', kind: 'door', name: 'Porte' }]);
+      return true;
+    });
+    (q('stock-structure-tool-door') as HTMLElement).click();
+    await settle();
+    (q('stock-structure-save') as HTMLElement).click();
+    await settle();
+    undoOf('inventory.plan.structure_saved')();
+    await settle();
+    expect(facade.eraseStructure).toHaveBeenLastCalledWith('c1', 'f1', 's9');
+
+    structures.set([wall]);
+    facade.buildStructure.mockReset().mockResolvedValue(true);
+    q('stock-structure-wall')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await settle();
+    (q('stock-structure-erase') as HTMLElement).click();
+    await settle();
+    undoOf('inventory.plan.structure_erased')();
+    await settle();
+    expect(facade.buildStructure).toHaveBeenLastCalledWith(
+      'c1',
+      'f1',
+      expect.objectContaining({
+        kind: 'wall',
+        name: 'Mur nord',
+        x: '0.000',
+        width: '6.900',
+        depth: '0.200',
+      }),
+      null,
+    );
+    expect(successToasts()).toContain('inventory.plan.undone');
   });
 
   /**

@@ -2373,6 +2373,8 @@
       "floor_removed": "Étage supprimé",
       "drawing_saved": "Rectangle enregistré",
       "drawing_erased": "Rectangle effacé",
+      "undo": "Annuler",
+      "undone": "Modification du plan annulée.",
       "floor_section": "L’étage",
       "level_hint": "Le rez-de-chaussée est 0 ; un étage plus haut est un nombre plus grand, jusqu’à 200.",
       "drawing_section": "L’emplacement dessiné",

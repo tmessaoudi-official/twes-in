@@ -255,10 +255,17 @@ test.describe('the drawn stock map', () => {
       await page.getByRole('button', { name: floorButton(floorName) }).click();
       await expect(rect).toHaveAttribute('x', String(dragged));
 
-      // Erased: the rectangle goes, the rack stays a rack.
+      // Erased: the rectangle goes, the rack stays a rack — so « Annuler » draws it again where it stood.
       await page.getByTestId(`stock-drawing-${code}`).click();
       await page.getByTestId('stock-drawing-erase').click();
       await expect(toast(page)).toContainText('Rectangle effacé');
+      await expect(page.getByTestId('stock-map-empty')).toBeVisible();
+      await toast(page).getByRole('button', { name: 'Annuler' }).click();
+      await expect(toast(page)).toContainText('Modification du plan annulée');
+      await expect(rect).toHaveAttribute('x', String(dragged));
+
+      await page.getByTestId(`stock-drawing-${code}`).click();
+      await page.getByTestId('stock-drawing-erase').click();
       await expect(page.getByTestId('stock-map-empty')).toBeVisible();
 
       // Traced, not typed: the floor is bare now, so any part of the sheet is floor to draw on. It is armed first —
