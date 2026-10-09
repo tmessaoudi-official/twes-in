@@ -18,6 +18,7 @@ use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationRepository;
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductPhotoRepository;
 use App\Module\Products\Domain\ProductRepository;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -27,7 +28,7 @@ use Symfony\Component\Uid\Uuid;
 /**
  * One page of the stock a company holds, grouped, searched, narrowed and sorted in the database (docs/SPEC.md § 7,
  * lists at scale). The products and locations a row names are read for that page alone, so the list no longer loads
- * every product and every location of the company to show twenty-five rows.
+ * every product and every location of the company to show twenty-five rows; the main photos too, in one read.
  *
  * @implements ProviderInterface<StockLevelResource>
  */
@@ -36,6 +37,7 @@ final readonly class StockLevelCollectionProvider implements ProviderInterface
     public function __construct(
         private KeepStock $stock,
         private ProductRepository $products,
+        private ProductPhotoRepository $photos,
         private StockLocationRepository $locations,
         private CompanyGuard $guard,
         private Paging $paging,
@@ -49,10 +51,12 @@ final readonly class StockLevelCollectionProvider implements ProviderInterface
         $search = StockLevelSearchReader::read(Paging::parameters($context), Paging::text($operation), Paging::order($operation, StockLevelSearch::SORTS), $company);
         $page = $this->stock->searchLevels($company, $search, $this->paging->request($operation, $context));
 
+        $productIds = array_map(static fn (StockLevel $level): Uuid => $level->productId, $page->items);
         $products = [];
-        foreach ($this->products->ofIdsInCompany(array_map(static fn (StockLevel $level): Uuid => $level->productId, $page->items), $company->getId()) as $product) {
+        foreach ($this->products->ofIdsInCompany($productIds, $company->getId()) as $product) {
             $products[$product->getId()->toRfc4122()] = $product;
         }
+        $photos = $this->photos->mainPhotoIdsOf($company->getId(), $productIds);
         $locations = [];
         foreach ($this->locations->ofIdsInCompany(array_map(static fn (StockLevel $level): Uuid => $level->locationId, $page->items), $company->getId()) as $location) {
             $locations[$location->getId()->toRfc4122()] = $location;
@@ -64,6 +68,7 @@ final readonly class StockLevelCollectionProvider implements ProviderInterface
                 $level,
                 $products[$level->productId->toRfc4122()] ?? null,
                 $locations[$level->locationId->toRfc4122()] ?? null,
+                $photos[$level->productId->toRfc4122()] ?? null,
             ),
         );
     }
@@ -72,7 +77,7 @@ final readonly class StockLevelCollectionProvider implements ProviderInterface
      * A row names what it holds even when the product or the location has since gone: the grouping found movements of
      * them, so leaving the row out would make a stock disappear rather than say whose it is.
      */
-    private static function row(StockLevel $level, ?Product $product, ?StockLocation $location): StockLevelResource
+    private static function row(StockLevel $level, ?Product $product, ?StockLocation $location, ?string $mainPhotoId): StockLevelResource
     {
         $row = new StockLevelResource();
         $row->productId = $level->productId->toRfc4122();
@@ -90,6 +95,7 @@ final readonly class StockLevelCollectionProvider implements ProviderInterface
         $row->lotCode = $level->lotCode;
         $row->lotExpiresOn = $level->lotExpiresOn;
         $row->lotReleased = $level->lotReleased;
+        $row->mainPhotoId = $mainPhotoId;
         $row->id = $row->productId.':'.$row->locationId.(null === $row->lotId ? '' : ':'.$row->lotId);
 
         return $row;

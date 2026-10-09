@@ -84,6 +84,7 @@ function level(productId: string, locationId: string, quantity: string): StockLe
     lotCode: null,
     lotExpiresOn: null,
     lotReleased: false,
+    mainPhotoId: null,
   };
 }
 

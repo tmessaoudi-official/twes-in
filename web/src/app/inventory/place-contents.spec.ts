@@ -60,6 +60,7 @@ const level: StockLevelRow = {
   lotCode: null,
   lotExpiresOn: null,
   lotReleased: false,
+  mainPhotoId: null,
 };
 
 /** A place holding `count` products, one line each, as one read answers it. */
@@ -164,6 +165,28 @@ describe('PlaceContents', () => {
 
     expect(facade.loadContents).toHaveBeenLastCalledWith('c1', 'l1', '');
     expect(q('stock-contents-nothing')).not.toBeNull();
+  });
+
+  /** A place is recognised by what it holds, and a picture is read faster than a reference. */
+  it("draws each line's product photo, and a plain mark where the product has none", async () => {
+    answering((locationId) => {
+      const place = holding(locationId, 2);
+      return {
+        ...place,
+        levels: place.levels.map((line, at) => (at === 0 ? { ...line, mainPhotoId: 'ph0' } : line)),
+      };
+    });
+    await open();
+
+    const pictured = q('stock-contents-line-p0:b1')?.querySelector(
+      '[data-testid="product-thumbnail"]',
+    );
+    expect(pictured?.getAttribute('src')).toBe(
+      '/api/companies/c1/products/p0/photos/ph0/content?size=small',
+    );
+    const plain = q('stock-contents-line-p1:b1');
+    expect(plain?.querySelector('[data-testid="product-thumbnail"]')).toBeNull();
+    expect(plain?.querySelector('[data-testid="product-thumbnail-none"]')).not.toBeNull();
   });
 
   /** A shelf of a few products is read at a glance; a field there would be one more thing to look past. */

@@ -793,6 +793,7 @@ function toLevel(raw: StockLevelJsonldStockLevelRead): StockLevelRow {
     lotCode: raw.lotCode ?? null,
     lotExpiresOn: raw.lotExpiresOn ?? null,
     lotReleased: raw.lotReleased ?? false,
+    mainPhotoId: raw.mainPhotoId ?? null,
   };
 }
 

@@ -15,6 +15,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { ProductThumbnail } from '../products/product-thumbnail';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { InventoryFacade } from './inventory-facade';
@@ -31,7 +32,14 @@ export const CONTENTS_SEARCH_PAUSE_MS = 300;
  */
 @Component({
   selector: 'app-place-contents',
-  imports: [MatFormFieldModule, MatInputModule, RouterLink, TranslatePipe, AmountPipe],
+  imports: [
+    MatFormFieldModule,
+    MatInputModule,
+    RouterLink,
+    TranslatePipe,
+    AmountPipe,
+    ProductThumbnail,
+  ],
   templateUrl: './place-contents.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

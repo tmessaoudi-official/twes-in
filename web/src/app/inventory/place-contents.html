@@ -18,30 +18,33 @@
       <!--
         The name on a line of its own, the quantity under it at the end: side by side in a narrow panel, a long unit
         squeezed the name onto three lines. The place is named only when it is one under the one chosen, which is where
-        a person has to go.
+        a person has to go. The photo leads the line: on a shelf, a picture is found before a reference is read.
       -->
       <div
-        class="flex flex-col gap-0.5 rounded-lg border border-outline-variant p-2"
+        class="flex items-start gap-2 rounded-lg border border-outline-variant p-2"
         [attr.data-testid]="'stock-contents-line-' + line.id"
       >
-        <span class="font-medium">{{ line.productName }}</span>
-        <span class="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
-          <span class="text-on-surface-variant">
-            {{ line.productReference }}
-            @if (line.locationId !== now.locationId) {
-              · {{ line.locationCode }}
-            }
-            @if (line.lotCode) {
-              · {{ 'inventory.plan.here.lot' | translate: { lot: line.lotCode } }}
-            }
+        <app-product-thumbnail [productId]="line.productId" [photoId]="line.mainPhotoId" />
+        <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span class="font-medium">{{ line.productName }}</span>
+          <span class="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+            <span class="text-on-surface-variant">
+              {{ line.productReference }}
+              @if (line.locationId !== now.locationId) {
+                · {{ line.locationCode }}
+              }
+              @if (line.lotCode) {
+                · {{ 'inventory.plan.here.lot' | translate: { lot: line.lotCode } }}
+              }
+            </span>
+            <span
+              class="ms-auto whitespace-nowrap font-medium tabular-nums"
+              [class.text-error]="line.negative"
+            >
+              {{ line.quantity | amount: line.unitDecimals }} {{ line.unitName }}
+            </span>
           </span>
-          <span
-            class="ms-auto whitespace-nowrap font-medium tabular-nums"
-            [class.text-error]="line.negative"
-          >
-            {{ line.quantity | amount: line.unitDecimals }} {{ line.unitName }}
-          </span>
-        </span>
+        </div>
       </div>
     } @empty {
       @if (now.q === '') {

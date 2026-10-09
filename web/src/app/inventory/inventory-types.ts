@@ -229,6 +229,8 @@ export interface StockLevelRow {
   lotExpiresOn: string | null;
   /** Whether a person let the lot leave although it is past its date. */
   lotReleased: boolean;
+  /** The product's main photo, null while it has none. */
+  mainPhotoId: string | null;
 }
 
 export interface StockMovementRow {

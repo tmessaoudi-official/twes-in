@@ -1897,6 +1897,7 @@ describe('StockMapPage', () => {
     lotCode: null,
     lotExpiresOn: null,
     lotReleased: false,
+    mainPhotoId: null,
   };
 
   it('reads what a chosen rack holds, bins included, and says which home is empty', async () => {

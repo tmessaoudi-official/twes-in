@@ -98,6 +98,7 @@ const shortage: StockLevelRow = {
   lotCode: null,
   lotExpiresOn: null,
   lotReleased: false,
+  mainPhotoId: null,
 };
 /** What the picker answers: the page holds no catalogue, so a product only exists here once it is picked. */
 const products: StockProductOption[] = [

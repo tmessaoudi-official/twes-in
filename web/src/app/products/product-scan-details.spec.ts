@@ -47,6 +47,7 @@ const level = (extra: Partial<StockLevelRow>): StockLevelRow => ({
   lotCode: null,
   lotExpiresOn: null,
   lotReleased: false,
+  mainPhotoId: null,
   ...extra,
 });
 

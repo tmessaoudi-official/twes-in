@@ -28,6 +28,7 @@ use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
+use App\Tests\Support\MakesPictures;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -36,6 +37,8 @@ use Symfony\Component\Uid\Uuid;
 
 final class InventoryTest extends ApiTestCase
 {
+    use MakesPictures;
+
     private Company $company;
     private string $establishmentId;
     private string $laptopId;
@@ -398,6 +401,41 @@ final class InventoryTest extends ApiTestCase
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
         }
+    }
+
+    /**
+     * What a place holds is recognised at a glance by the product's picture, so each stock row names its product's
+     * main photo, read for the whole page at once rather than asked for row by row.
+     */
+    public function testEachStockRowNamesItsProductsMainPhoto(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
+        $siteId = $this->defaultLocationId();
+        $this->uploadFile($this->path('products', $this->laptopId).'/photos', 'photo.jpg', self::jpeg(400, 300));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $photoId = $this->stringAt($this->json(), 'id');
+        // Re-found: the test client rebooted the kernel, so the company held since setUp is another manager's.
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($company);
+        self::assertNotNull($piece);
+        $boxed = Product::create($company, 'ART-002', new ProductDetails('Carton', null, ProductKind::Goods, '2'), $piece, null, [], new \DateTimeImmutable());
+        $this->em()->persist($boxed);
+        $this->em()->flush();
+        foreach ([$this->laptopId, $boxed->getId()->toRfc4122()] as $product) {
+            $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $product, 'locationId' => $siteId, 'quantity' => '2']);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        }
+
+        $this->getJson($this->path('stock-levels'));
+        self::assertResponseIsSuccessful();
+        // A null is left out of the answer, as every null the API writes, so each row is read by its reference.
+        $photos = [];
+        foreach ($this->jsonList() as $row) {
+            $photos[$this->stringAt($row, 'productReference')] = $row['mainPhotoId'] ?? null;
+        }
+        ksort($photos);
+        self::assertSame(['ART-001' => $photoId, 'ART-002' => null], $photos);
     }
 
     /**

@@ -193,14 +193,23 @@ describe('InventoryApi', () => {
             lotCode: 'L-07',
             lotExpiresOn: '2027-05-31',
             lotReleased: true,
+            mainPhotoId: 'ph1',
           },
         ],
         totalItems: 7,
       });
-    // An untracked product's level carries no lot; a tracked one's names its lot and the day it is used by.
+    // An untracked product's level carries no lot; a tracked one's names its lot and the day it is used by. A row
+    // names its product's main photo when there is one, and says null when the API sent none.
     expect(await levels).toEqual({
       rows: [
-        { ...level, lotId: null, lotCode: null, lotExpiresOn: null, lotReleased: false },
+        {
+          ...level,
+          lotId: null,
+          lotCode: null,
+          lotExpiresOn: null,
+          lotReleased: false,
+          mainPhotoId: null,
+        },
         {
           ...level,
           id: 'p1:l1:k1',
@@ -208,6 +217,7 @@ describe('InventoryApi', () => {
           lotCode: 'L-07',
           lotExpiresOn: '2027-05-31',
           lotReleased: true,
+          mainPhotoId: 'ph1',
         },
       ],
       total: 7,

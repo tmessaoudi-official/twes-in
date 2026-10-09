@@ -122,4 +122,9 @@ final class StockLevelResource
     /** Whether a person let the lot leave although it is past its date. */
     #[Groups([self::READ])]
     public bool $lotReleased = false;
+
+    /** The product's main photo, so a place's contents are recognised by sight; null while it has none. */
+    #[ApiProperty(identifier: false)]
+    #[Groups([self::READ])]
+    public ?string $mainPhotoId = null;
 }
