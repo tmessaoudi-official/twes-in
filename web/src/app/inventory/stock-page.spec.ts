@@ -645,6 +645,7 @@ describe('StockPage', () => {
       unitPriceNet: '1.0000',
       unitPriceGross: '1.190',
       priceGross: '14.280',
+      mainPhotoId: null,
     };
     const scanned = (code: string) => TestBed.inject(ScanBus).receive(code, 'wedge');
     const values = () => form().getRawValue() as Record<string, unknown>;

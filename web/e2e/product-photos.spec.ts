@@ -70,3 +70,27 @@ test('a product shows its gallery, its main photo and its order, each changed wi
     page.getByTestId(`product-${reference}`).locator('[data-column="photo"] img'),
   ).toHaveAttribute('src', new RegExp(`/photos/${second}/content\\?size=small$`));
 });
+
+test('the main photo stands beside a product in an invoice line’s picker', async ({ page }) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const reference = `PHL-${Date.now()}`;
+  const id = await aProduct(page, reference);
+  await page.goto(`/products/${id}`);
+  await page.getByRole('tab', { name: 'Photos' }).click();
+  await page
+    .getByTestId('product-photo-add')
+    .setInputFiles({ name: 'face.png', mimeType: 'image/png', buffer: PNG });
+  await expect(page.getByTestId('product-photos-list').locator('li')).toHaveCount(1);
+
+  await page.goto('/invoices/new');
+  await page.getByTestId('line-0-product').fill(reference);
+  const option = page.getByTestId(`line-0-product-option-${id}`);
+  await expect(option.locator('img')).toHaveAttribute(
+    'src',
+    new RegExp(`/products/${id}/photos/[^/]+/content\\?size=small$`),
+  );
+  // The picture says nothing the words do not: the option still reads as its reference and name.
+  await expect(option).toHaveAccessibleName(new RegExp(`^${reference} · `));
+  expect(await wcagViolations(page)).toEqual([]);
+});

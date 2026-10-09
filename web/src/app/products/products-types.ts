@@ -158,6 +158,8 @@ export interface ProductScan {
   unitPriceGross: string;
   /** What a customer pays for what this code enters (`quantity` units), taxes included. */
   priceGross: string;
+  /** The product's main photo, shown on the scan card; null when it has none. */
+  mainPhotoId: string | null;
 }
 
 export interface ProductCategoryRow {

@@ -28,7 +28,8 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * A product's photo sent as a multipart part named `file` (product.write), its pictures given back as bytes
- * (product.read), and a removed one put back (product.write). Plain controllers rather than resources: bytes, and a
+ * (product.read), the main one's copies to the customer screen (product.read), and a removed one put back
+ * (product.write). Plain controllers rather than resources: bytes, and a
  * refusal whose code the screen translates. The module guard still applies, through this class's namespace.
  * Documented in ProductPhotosOpenApi.
  */
@@ -97,6 +98,33 @@ final readonly class ProductPhotosController
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         }
 
+        return self::picture($mime, $contents);
+    }
+
+    /**
+     * The customer screen's way to the main photo: under its own prefix, the one the screen's hold lets through, and
+     * only the main photo's copies, so a screen turned to a customer never reaches the original nor the rest of the
+     * gallery.
+     */
+    #[Route('/api/companies/{companyId}/customer-screen/products/{productId}/photos/{photoId}', name: 'api_customer_screen_product_photo', methods: ['GET'])]
+    public function screenPhoto(Request $request, string $companyId, string $productId, string $photoId): Response
+    {
+        $ids = ['companyId' => $companyId, 'productId' => $productId, 'photoId' => $photoId];
+        $company = $this->guard->companyForActing(CompanyPath::identifier($ids, 'companyId'), ProductPermission::READ);
+        $size = PhotoSize::tryFrom($request->query->getString('size', PhotoSize::Large->value))
+            ?? throw new NotFoundHttpException('The screen shows a photo small or large.');
+
+        try {
+            [$mime, $contents] = $this->photos->mainCopy($company, CompanyPath::identifier($ids, 'productId'), CompanyPath::identifier($ids, 'photoId'), $size);
+        } catch (ProductNotFound|ProductPhotoNotFound $absent) {
+            throw new NotFoundHttpException($absent->getMessage(), $absent);
+        }
+
+        return self::picture($mime, $contents);
+    }
+
+    private static function picture(string $mime, string $contents): Response
+    {
         return new Response($contents, Response::HTTP_OK, [
             'Content-Type' => $mime,
             'X-Content-Type-Options' => 'nosniff',

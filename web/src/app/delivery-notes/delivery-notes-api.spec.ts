@@ -110,9 +110,11 @@ describe('DeliveryNotesApi', () => {
         unitId: 'u1',
         unitPriceNet: '1250.0000',
         defaultTaxComponentIds: ['t1'],
+        mainPhotoId: null,
       },
     ]);
     expect((await searched)[0]?.defaultTaxComponentIds).toEqual(['t1']);
+    expect((await searched)[0]?.mainPhotoId).toBeNull();
 
     const named = api.pickCustomers('c1', { ids: ['k1'] });
     const resolve = http.expectOne(

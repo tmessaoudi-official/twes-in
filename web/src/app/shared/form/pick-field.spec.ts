@@ -159,6 +159,28 @@ describe('PickField', () => {
     expect(input.value).toBe('BOU-001 · Boulon inox');
   });
 
+  it('draws the picture a row brings beside its words, a plain mark where it has none, and nothing where the page sends none', async () => {
+    host.answer = [
+      { ...SCREW, picture: '/photos/screw?size=small' },
+      { ...BOLT, picture: null },
+      { id: 'p3', code: 'SRV-01', name: 'Pose' },
+    ];
+    await type('o');
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+    input.dispatchEvent(new Event('focusin'));
+    await settle();
+
+    const option = (id: string): HTMLElement =>
+      document.querySelector(`[data-testid="pick-option-${id}"]`) as HTMLElement;
+    const picture = option('p1').querySelector('img');
+    expect(picture?.getAttribute('src')).toBe('/photos/screw?size=small');
+    expect(picture?.getAttribute('alt')).toBe('');
+    expect(option('p1').textContent?.trim()).toBe('VIS-6X40 · Vis 6x40');
+    expect(option('p2').querySelector('img')).toBeNull();
+    expect(option('p2').querySelector('[data-testid="pick-picture-none"]')).not.toBeNull();
+    expect(option('p3').querySelector('img, [data-testid="pick-picture-none"]')).toBeNull();
+  });
+
   it('offers "none of them" only where nothing is an answer, and emits null for it', async () => {
     const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
     input.dispatchEvent(new Event('focusin'));

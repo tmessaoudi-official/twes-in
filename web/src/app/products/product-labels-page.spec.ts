@@ -47,6 +47,7 @@ const scanOf = (code: string, role: 'unit' | 'pack', quantity: number): ProductS
   unitPriceNet: '1.0000',
   unitPriceGross: '1.190',
   priceGross: role === 'pack' ? '14.280' : '1.190',
+  mainPhotoId: null,
 });
 
 describe('ProductLabelsPage', () => {

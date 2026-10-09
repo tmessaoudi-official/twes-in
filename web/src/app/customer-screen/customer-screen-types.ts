@@ -27,6 +27,8 @@ export interface ScreenProduct {
   readonly barcode: string | null;
   /** Final, tax-included. */
   readonly finalPrice: string;
+  /** Where the screen reads the product's main photo; null when it has none. */
+  readonly photo: string | null;
   /** In stock or not; null when the company does not say, or does not keep stock of it. */
   readonly inStock: boolean | null;
   readonly promotions: readonly ScreenPromotion[];

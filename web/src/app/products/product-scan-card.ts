@@ -24,6 +24,7 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { ScanOffers } from '../shared/scan/scan-offers';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type { ProductScan, ProductsError } from './products-types';
+import { ProductThumbnail } from './product-thumbnail';
 import type { ProductOnViewRef } from './product-on-view';
 import type { IconName } from '../shared/icons/icons';
 
@@ -61,7 +62,7 @@ interface ScanAction {
  */
 @Component({
   selector: 'app-product-scan-card',
-  imports: [MatButtonModule, MatIconModule, TranslatePipe, PickField],
+  imports: [MatButtonModule, MatIconModule, TranslatePipe, PickField, ProductThumbnail],
   templateUrl: './product-scan-card.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(keydown)': 'onKeydown($event)' },

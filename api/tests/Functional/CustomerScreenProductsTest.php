@@ -47,7 +47,7 @@ final class CustomerScreenProductsTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame(['items'], array_keys($this->json()));
         self::assertSame(
-            [['id' => $id, 'name' => 'Portable', 'reference' => 'ART-001', 'barcode' => '3017620422003', 'finalPrice' => '120.190']],
+            [['id' => $id, 'name' => 'Portable', 'reference' => 'ART-001', 'barcode' => '3017620422003', 'finalPrice' => '120.190', 'photoId' => null]],
             $this->json()['items'],
             'a person who may read costs still sees none here: the screen is for a customer',
         );

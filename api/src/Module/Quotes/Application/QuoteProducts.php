@@ -18,13 +18,13 @@ use Symfony\Component\Uid\Uuid;
  */
 interface QuoteProducts
 {
-    /** @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string}> */
+    /** @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string, mainPhotoId: string|null}> */
     public function matching(Company $company, string $words): array;
 
     /**
      * @param list<Uuid> $ids
      *
-     * @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string}>
+     * @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string, mainPhotoId: string|null}>
      */
     public function byIds(Company $company, array $ids): array;
 }

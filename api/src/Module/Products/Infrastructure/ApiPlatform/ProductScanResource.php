@@ -19,8 +19,7 @@ use App\Module\Products\Domain\ProductBarcode;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
- * What one scan names, read with product.read (docs/SPEC.md § 7, 2026-09-20 04:15, 2026-09-22 11:05, 11:10 and
- * 11:25): the one product holding the code, the code's role, how many pieces one scan of it enters, and for a GS1 scan
+ * What one scan names, read with product.read: the one product holding the code, the code's role, how many pieces one scan of it enters, and for a GS1 scan
  * the lot, use-by date and serial it carried. 404 when no product of the company answers to it — a scan names one
  * product or none, never a choice.
  */
@@ -92,8 +91,8 @@ final class ProductScanResource
     public string $unitPriceNet = '0';
 
     /**
-     * What a customer pays for one unit, taxes included, as the company's documents count them (docs/SPEC.md § 7,
-     * 2026-09-23 slice 6): the price check shows it.
+     * What a customer pays for one unit, taxes included, as the company's documents count them: the price check
+     * shows it.
      */
     #[ApiProperty(required: true)]
     #[Groups([self::READ])]
@@ -108,7 +107,12 @@ final class ProductScanResource
     #[Groups([self::READ])]
     public ?string $serial = null;
 
-    public static function of(ProductBarcode $held, Gs1Scan $scan, int $thisYear, CustomerPrice $prices): self
+    /** The product's main photo, which the scan card shows beside its name; null when it has none. */
+    #[ApiProperty(required: true, schema: ['type' => ['string', 'null']])]
+    #[Groups([self::READ])]
+    public ?string $mainPhotoId = null;
+
+    public static function of(ProductBarcode $held, Gs1Scan $scan, int $thisYear, CustomerPrice $prices, ?string $mainPhotoId): self
     {
         $product = $held->getProduct();
         $resource = new self();
@@ -125,6 +129,7 @@ final class ProductScanResource
         $resource->lot = $scan->lot;
         $resource->useBy = $scan->expiry($thisYear);
         $resource->serial = $scan->serial;
+        $resource->mainPhotoId = $mainPhotoId;
 
         return $resource;
     }

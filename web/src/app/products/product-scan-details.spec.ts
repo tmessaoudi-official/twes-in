@@ -26,6 +26,7 @@ const scan = (extra: Partial<ProductScan> = {}): ProductScan => ({
   unitPriceNet: '10.000',
   unitPriceGross: '11.900',
   priceGross: '11.900',
+  mainPhotoId: null,
   ...extra,
 });
 

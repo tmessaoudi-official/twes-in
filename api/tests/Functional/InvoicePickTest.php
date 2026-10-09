@@ -90,8 +90,9 @@ final class InvoicePickTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         $pick = $this->jsonList()[0] ?? null;
         self::assertIsArray($pick);
-        self::assertSame(['id', 'reference', 'name', 'unitId', 'unitPriceNet', 'defaultTaxComponentIds', 'tracking'], array_keys($pick));
+        self::assertSame(['id', 'reference', 'name', 'unitId', 'unitPriceNet', 'defaultTaxComponentIds', 'tracking', 'mainPhotoId'], array_keys($pick));
         self::assertSame('none', $pick['tracking'], 'whether a line names the lot or serial handed over');
+        self::assertNull($pick['mainPhotoId'], 'the picture the picker shows beside the words, none here');
         self::assertNotSame('', $pick['unitId']);
 
         $bolt = $this->em()->getRepository(Product::class)->findOneBy(['reference' => 'BOU-001']);

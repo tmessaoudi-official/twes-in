@@ -16,7 +16,7 @@ use ApiPlatform\Metadata\QueryParameter;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
- * The products the delivery note form offers while a person types a line (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+ * The products the delivery note form offers while a person types a line.
  * The same shape `DeliveryNoteOptionsResource::$products` carried, asked for a few at a time: a catalogue of twenty
  * thousand is a payload nobody waits for and a dropdown nobody scrolls.
  *
@@ -82,7 +82,12 @@ final class DeliveryNoteProductPickResource
     #[Groups([self::READ])]
     public string $tracking = 'none';
 
-    /** @param array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string} $pick */
+    /** The product's main photo, which the picker shows beside its words; null when it has none. */
+    #[ApiProperty(required: true, schema: ['type' => ['string', 'null']])]
+    #[Groups([self::READ])]
+    public ?string $mainPhotoId = null;
+
+    /** @param array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string, mainPhotoId: string|null} $pick */
     public static function of(array $pick): self
     {
         $resource = new self();
@@ -93,6 +98,7 @@ final class DeliveryNoteProductPickResource
         $resource->unitPriceNet = $pick['unitPriceNet'];
         $resource->defaultTaxComponentIds = $pick['defaultTaxComponentIds'];
         $resource->tracking = $pick['tracking'];
+        $resource->mainPhotoId = $pick['mainPhotoId'];
 
         return $resource;
     }

@@ -21,15 +21,25 @@
       role="status"
       data-testid="product-scan-found"
     >
-      <p class="m-0 flex flex-wrap items-baseline gap-2">
-        <span class="font-mono">{{ found.reference }}</span>
-        <span class="text-lg font-medium">{{ found.name }}</span>
-        @if (!found.isActive) {
-          <span class="text-sm text-error" data-testid="product-scan-retired">{{
-            'products.scan.retired' | translate
-          }}</span>
+      <div class="flex items-center gap-3">
+        @if (found.mainPhotoId; as photo) {
+          <app-product-thumbnail
+            data-testid="product-scan-photo"
+            [productId]="found.productId"
+            [photoId]="photo"
+            [side]="64"
+          />
         }
-      </p>
+        <p class="m-0 flex flex-wrap items-baseline gap-2">
+          <span class="font-mono">{{ found.reference }}</span>
+          <span class="text-lg font-medium">{{ found.name }}</span>
+          @if (!found.isActive) {
+            <span class="text-sm text-error" data-testid="product-scan-retired">{{
+              'products.scan.retired' | translate
+            }}</span>
+          }
+        </p>
+      </div>
       <p class="m-0 text-sm" data-testid="product-scan-enters">
         {{
           'products.scan.enters'

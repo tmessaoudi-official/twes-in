@@ -85,6 +85,7 @@ const products: ProductOption[] = [
     unitPriceNet: '1250.0000',
     defaultTaxComponentIds: ['t1'],
     tracking: 'none',
+    mainPhotoId: 'ph1',
   },
 ];
 
@@ -402,6 +403,18 @@ describe('DeliveryNotePage', () => {
 
   // docs/SPEC.md § 7, 2026-09-19 21:55: a line's figures show the French decimal comma and take a comma or a point.
   // docs/SPEC.md § 7, 2026-09-23: a carton scanned into a line delivers the pieces it holds.
+  it('shows each product’s main photo beside its words in a line’s picker', async () => {
+    await open(undefined);
+    (q('line-0-product') as HTMLInputElement).dispatchEvent(new Event('focusin'));
+    await settle();
+
+    const option = document.body.querySelector('[data-testid="line-0-product-option-p1"]');
+    expect(option?.querySelector('img')?.getAttribute('src')).toBe(
+      '/api/companies/c1/products/p1/photos/ph1/content?size=small',
+    );
+    expect(option?.textContent?.trim()).toBe('ART-1 · Portable 14"');
+  });
+
   it('puts on a line the pieces a scanned pack holds', async () => {
     await open(undefined);
     scans.piecesPerScan.mockResolvedValue(12);
@@ -946,6 +959,7 @@ describe('DeliveryNotePage', () => {
       unitPriceNet: '1000.0000',
       unitPriceGross: '1190.000',
       priceGross: '1190.000',
+      mainPhotoId: null,
     };
     const scanned = (code: string) => TestBed.inject(ScanBus).receive(code, 'wedge');
     const quantityOf = (line: number) =>
@@ -1001,6 +1015,7 @@ describe('DeliveryNotePage', () => {
           unitPriceNet: '30.0000',
           defaultTaxComponentIds: [],
           tracking: 'none',
+          mainPhotoId: null,
         },
       ]);
       expect(await scanned('5449000000996')).toMatchObject({ kind: 'done', key: 'scan.added' });
@@ -1021,6 +1036,7 @@ describe('DeliveryNotePage', () => {
         unitPriceNet: '1.2000',
         defaultTaxComponentIds: [],
         tracking: 'lot',
+        mainPhotoId: null,
       };
       facade.pickProducts.mockResolvedValue([yoghurt]);
       scans.named.mockResolvedValue({ ...laptop, productId: 'p3', name: 'Yaourt', lot: 'L-12' });

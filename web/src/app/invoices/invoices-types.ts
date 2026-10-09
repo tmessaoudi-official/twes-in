@@ -319,6 +319,8 @@ export interface ProductOption {
   defaultTaxComponentIds: string[];
   /** Whether a line of it names the lot or serial sold. */
   tracking: ProductTracking;
+  /** The product's main photo, which the line's picker shows beside its words; null when it has none. */
+  mainPhotoId: string | null;
 }
 
 export interface UnitOption {

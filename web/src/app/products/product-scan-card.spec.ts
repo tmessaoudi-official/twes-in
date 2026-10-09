@@ -37,6 +37,7 @@ const pack: ProductScan = {
   unitPriceNet: '12.500',
   unitPriceGross: '14.875',
   priceGross: '14.875',
+  mainPhotoId: null,
 };
 
 describe('ProductScanCard', () => {
@@ -109,6 +110,21 @@ describe('ProductScanCard', () => {
     expect(q('product-scan-use-by')?.textContent).toContain('2027-05-31');
     expect(q('product-scan-serial')).toBeNull();
     expect(q('product-scan-retired')).toBeNull();
+  });
+
+  it('shows no picture for a product without a photo', async () => {
+    await open();
+
+    expect(q('product-scan-photo')).toBeNull();
+  });
+
+  it('shows the product’s main photo beside its name', async () => {
+    scan.mockResolvedValue({ ...pack, mainPhotoId: 'ph1' });
+    await open();
+
+    expect(q('product-scan-photo')?.querySelector('img')?.getAttribute('src')).toBe(
+      '/api/companies/c1/products/p1/photos/ph1/content?size=small',
+    );
   });
 
   it('opens the product with Enter, its codes with C and its movements with M', async () => {

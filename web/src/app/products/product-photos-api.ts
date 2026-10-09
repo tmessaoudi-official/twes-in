@@ -10,6 +10,7 @@ import {
   type ProductPhotoRefusal,
   type ProductPhotoRow,
 } from './product-photos-types';
+import { productPhotoUrl } from './product-photo-url';
 
 /** Thrown when the API refuses a photo or a change to the gallery; carries what the screen says. */
 export class ProductPhotosRefused extends Error {
@@ -73,9 +74,9 @@ export class ProductPhotosApi {
     );
   }
 
-  /** Where an `<img>` reads a photo's picture: a same-origin address the session cookie reaches. */
+  /** Where an `<img>` reads a photo's picture. */
   url(companyId: string, productId: string, photoId: string, size: PhotoSize): string {
-    return `${photoPath(companyId, productId, photoId)}/content?size=${size}`;
+    return productPhotoUrl(companyId, productId, photoId, size);
   }
 
   private async guard<T>(call: () => Promise<T>): Promise<T> {

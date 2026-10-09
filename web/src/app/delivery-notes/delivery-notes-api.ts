@@ -105,6 +105,7 @@ export class DeliveryNotesApi {
         unitPriceNet: product.unitPriceNet,
         defaultTaxComponentIds: [...product.defaultTaxComponentIds],
         tracking: trackingOf(product.tracking),
+        mainPhotoId: product.mainPhotoId ?? null,
       }));
     });
   }

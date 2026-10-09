@@ -113,8 +113,19 @@ describe('QuotesApi', () => {
           request.url === '/api/companies/c1/quote-options/products' &&
           request.params.get('q') === 'tour',
       )
-      .flush([]);
-    expect(await byWords).toEqual([]);
+      .flush([
+        {
+          id: 'p1',
+          reference: 'TOUR-1',
+          name: 'Tour CNC',
+          unitId: 'u1',
+          unitPriceNet: '9000.0000',
+          defaultTaxComponentIds: [],
+          tracking: 'none',
+          mainPhotoId: 'ph1',
+        },
+      ]);
+    expect((await byWords).map((product) => product.mainPhotoId)).toEqual(['ph1']);
     const byIds = api.pickCustomers('c1', { ids: ['k1'] });
     http
       .expectOne(

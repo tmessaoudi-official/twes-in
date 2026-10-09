@@ -71,6 +71,7 @@ const design: ProductOption = {
   unitPriceNet: '1800.0000',
   defaultTaxComponentIds: ['t1', 'f1'],
   tracking: 'none',
+  mainPhotoId: null,
 };
 
 function tax(

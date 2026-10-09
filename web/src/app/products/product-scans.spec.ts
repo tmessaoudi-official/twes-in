@@ -20,6 +20,7 @@ const pack: ProductScan = {
   unitPriceNet: '10',
   unitPriceGross: '10.000',
   priceGross: '10.000',
+  mainPhotoId: null,
 };
 
 describe('ProductScans', () => {

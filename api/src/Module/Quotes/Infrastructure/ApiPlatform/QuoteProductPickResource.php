@@ -82,7 +82,12 @@ final class QuoteProductPickResource
     #[Groups([self::READ])]
     public string $tracking = 'none';
 
-    /** @param array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string} $pick */
+    /** The product's main photo, which the picker shows beside its words; null when it has none. */
+    #[ApiProperty(required: true, schema: ['type' => ['string', 'null']])]
+    #[Groups([self::READ])]
+    public ?string $mainPhotoId = null;
+
+    /** @param array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string, mainPhotoId: string|null} $pick */
     public static function of(array $pick): self
     {
         $resource = new self();
@@ -93,6 +98,7 @@ final class QuoteProductPickResource
         $resource->unitPriceNet = $pick['unitPriceNet'];
         $resource->defaultTaxComponentIds = $pick['defaultTaxComponentIds'];
         $resource->tracking = $pick['tracking'];
+        $resource->mainPhotoId = $pick['mainPhotoId'];
 
         return $resource;
     }

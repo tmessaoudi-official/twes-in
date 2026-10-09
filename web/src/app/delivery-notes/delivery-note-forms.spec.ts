@@ -52,6 +52,7 @@ const laptop: ProductOption = {
   unitPriceNet: '1250.5000',
   defaultTaxComponentIds: ['t1', 't2'],
   tracking: 'none',
+  mainPhotoId: null,
 };
 
 const validated: DeliveryNoteRow = {

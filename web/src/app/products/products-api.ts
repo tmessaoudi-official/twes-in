@@ -207,6 +207,7 @@ export class ProductsApi {
         unitPriceNet: raw.unitPriceNet,
         unitPriceGross: raw.unitPriceGross,
         priceGross: raw.priceGross,
+        mainPhotoId: raw.mainPhotoId ?? null,
       };
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status === 404) return null;

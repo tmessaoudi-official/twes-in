@@ -259,6 +259,26 @@ final readonly class ProductPhotos
         return [$file->getMime(), $this->files->contents($file)];
     }
 
+    /**
+     * What the customer screen may show: the main photo's copies, never the original as sent nor another photo of the
+     * gallery, which are the company's own working material.
+     *
+     * @return array{string, string} the type and the bytes of the copy asked for
+     *
+     * @throws ProductNotFound
+     * @throws ProductPhotoNotFound
+     */
+    public function mainCopy(Company $company, Uuid $productId, Uuid $photoId, PhotoSize $size): array
+    {
+        $photo = self::find($this->of($company, $productId), $photoId);
+        if (PhotoSize::Original === $size || !$photo->isMain()) {
+            throw new ProductPhotoNotFound();
+        }
+        $file = $photo->file($size);
+
+        return [$file->getMime(), $this->files->contents($file)];
+    }
+
     /** @throws ProductNotFound */
     private function product(Company $company, Uuid $productId): Product
     {

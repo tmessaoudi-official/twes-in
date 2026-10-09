@@ -99,6 +99,24 @@ final readonly class ProductPhotosOpenApi implements OpenApiFactoryInterface
             ],
         )));
 
+        $paths->addPath('/api/companies/{companyId}/customer-screen/products/{productId}/photos/{photoId}', new PathItem(get: new Operation(
+            operationId: 'customerScreenProductPhoto',
+            tags: ['CustomerScreenProducts'],
+            responses: [
+                '200' => new Response('The main photo\'s small or large WebP copy', new \ArrayObject([
+                    'image/webp' => new MediaType(new \ArrayObject(['type' => 'string', 'format' => 'binary'])),
+                ])),
+                '401' => new Response('Not signed in'),
+                '404' => new Response('Not the product\'s main photo, no product.read, a size other than small or large, or the module is switched off'),
+            ],
+            summary: 'The main photo of a product, as the customer screen shows it',
+            description: 'Reached while the customer screen holds the sign-in. Only the main photo, and only its copies: never the photo as it was sent, nor another photo of the gallery.',
+            parameters: [
+                $uuid('companyId', 'The company'), $uuid('productId', 'The product'), $uuid('photoId', 'The product\'s main photo, as the screen\'s products name it'),
+                new Parameter('size', 'query', 'small or large; large when left out', false, schema: ['type' => 'string', 'enum' => ['small', 'large']]),
+            ],
+        )));
+
         return $openApi;
     }
 }

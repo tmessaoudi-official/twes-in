@@ -256,9 +256,14 @@ describe('InvoicesApi', () => {
         unitPriceNet: '1800.0000',
         defaultTaxComponentIds: [],
         tracking: 'serial',
+        mainPhotoId: 'ph1',
       },
     ]);
-    expect((await named)[0]).toMatchObject({ reference: 'ART-1', tracking: 'serial' });
+    expect((await named)[0]).toMatchObject({
+      reference: 'ART-1',
+      tracking: 'serial',
+      mainPhotoId: 'ph1',
+    });
   });
 
   it('asks for nothing at all when a picker opens on no words, so the API answers its first few', async () => {

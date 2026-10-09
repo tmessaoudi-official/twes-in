@@ -12,6 +12,7 @@ namespace App\Module\Products\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Module\Products\Application\CustomerPrice;
+use App\Module\Products\Application\ProductPhotos;
 use App\Module\Products\Application\ScanProducts;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -27,6 +28,7 @@ final readonly class ProductScanProvider implements ProviderInterface
         private CompanyGuard $guard,
         private ClockInterface $clock,
         private CustomerPrice $prices,
+        private ProductPhotos $photos,
     ) {
     }
 
@@ -39,6 +41,9 @@ final readonly class ProductScanProvider implements ProviderInterface
             throw new NotFoundHttpException('No product of this company answers to this code.');
         }
 
-        return ProductScanResource::of($found[0], $found[1], (int) $this->clock->now()->format('Y'), $this->prices);
+        $product = $found[0]->getProduct()->getId();
+        $photo = $this->photos->mainPhotoIdsOf($company, [$product])[$product->toRfc4122()] ?? null;
+
+        return ProductScanResource::of($found[0], $found[1], (int) $this->clock->now()->format('Y'), $this->prices, $photo);
     }
 }

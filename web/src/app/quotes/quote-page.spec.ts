@@ -84,6 +84,7 @@ const products: ProductOption[] = [
     unitPriceNet: '250.0000',
     defaultTaxComponentIds: ['t1'],
     tracking: 'lot',
+    mainPhotoId: null,
   },
 ];
 

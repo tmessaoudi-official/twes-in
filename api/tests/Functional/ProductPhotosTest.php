@@ -302,6 +302,71 @@ final class ProductPhotosTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testTheMainPhotoShowsWhereverTheProductIsPickedOrScanned(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'invoice.read', 'delivery_note.read', 'quote.read']);
+        $product = $this->aProduct();
+        $this->sendJson('PUT', $this->products()."/$product/barcodes", ['barcodes' => [['role' => 'unit', 'code' => '3017620422003', 'quantity' => 1]]]);
+        self::assertResponseIsSuccessful();
+        $company = '/api/companies/'.$this->company->getId()->toRfc4122();
+        $pickers = ["$company/invoice-options/products", "$company/delivery-note-options/products", "$company/quote-options/products"];
+
+        foreach ($pickers as $picker) {
+            $this->getJson("$picker?ids[]=$product");
+            self::assertResponseIsSuccessful($picker);
+            self::assertArrayHasKey('mainPhotoId', $this->jsonList()[0], $picker);
+            self::assertNull($this->jsonList()[0]['mainPhotoId'], "$picker: no photo yet");
+        }
+
+        $first = $this->added($product, self::jpeg(40, 40));
+        $second = $this->added($product, self::jpeg(40, 40));
+        $this->postJson($this->photos($product)."/$second/main", null);
+
+        foreach ($pickers as $picker) {
+            $this->getJson("$picker?q=Perceuse");
+            self::assertSame($second, $this->stringAt($this->jsonList()[0], 'mainPhotoId'), "$picker, by words");
+            $this->getJson("$picker?ids[]=$product");
+            self::assertSame($second, $this->stringAt($this->jsonList()[0], 'mainPhotoId'), "$picker, by id");
+        }
+        $this->getJson("$company/product-scan?code=3017620422003");
+        self::assertResponseIsSuccessful();
+        self::assertSame($second, $this->stringAt($this->json(), 'mainPhotoId'), 'the scan card');
+        self::assertNotSame($first, $second);
+    }
+
+    public function testTheLockedCustomerScreenReadsTheMainPhotoAndNothingElseOfTheGallery(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $product = $this->aProduct();
+        $main = $this->added($product, self::jpeg(1200, 800));
+        $other = $this->added($product, self::jpeg(40, 40));
+        $screen = '/api/companies/'.$this->company->getId()->toRfc4122().'/customer-screen';
+
+        $this->getJson("$screen/products?q=Perceuse");
+        self::assertResponseIsSuccessful();
+        $items = $this->arrayAt($this->json(), 'items');
+        self::assertIsArray($items[0]);
+        self::assertSame($main, $items[0]['photoId'] ?? null, 'the screen is told which photo to show');
+
+        $this->postJson("$screen/lock", null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+
+        $this->getJson("$screen/products/$product/photos/$main?size=small");
+        self::assertResponseIsSuccessful('the locked screen reads the main photo');
+        self::assertSame('image/webp', $this->client->getResponse()->headers->get('Content-Type'));
+        self::assertSame([160, 107], self::sizeOf((string) $this->client->getResponse()->getContent()));
+        self::assertSame('nosniff', $this->client->getResponse()->headers->get('X-Content-Type-Options'));
+        $this->getJson("$screen/products/$product/photos/$main");
+        self::assertSame([960, 640], self::sizeOf((string) $this->client->getResponse()->getContent()), 'the large copy by default');
+
+        $this->getJson("$screen/products/$product/photos/$main?size=original");
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'never the original as sent');
+        $this->getJson("$screen/products/$product/photos/$other?size=small");
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'never another photo of the gallery');
+        $this->getJson($this->photos($product)."/$main/content?size=small");
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, 'the gallery itself stays the clerk\'s');
+    }
+
     public function testASignedOutCallerGetsNothing(): void
     {
         $this->getJson('/api/companies/'.$this->company->getId()->toRfc4122().'/products/0192f3b4-1c2d-7e8f-9a0b-1c2d3e4f5a6b/photos');

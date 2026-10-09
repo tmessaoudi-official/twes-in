@@ -7,8 +7,22 @@ import { CustomerScreenApi } from './customer-screen-api';
 
 const found = {
   items: [
-    { id: 'p1', name: 'Vis', reference: 'ART-001', barcode: '3017620422003', finalPrice: '21.420' },
-    { id: 'p2', name: 'Écrou', reference: 'ART-002', barcode: null, finalPrice: '5.000' },
+    {
+      id: 'p1',
+      name: 'Vis',
+      reference: 'ART-001',
+      barcode: '3017620422003',
+      finalPrice: '21.420',
+      photoId: 'ph1',
+    },
+    {
+      id: 'p2',
+      name: 'Écrou',
+      reference: 'ART-002',
+      barcode: null,
+      finalPrice: '5.000',
+      photoId: null,
+    },
   ],
 };
 
@@ -77,6 +91,8 @@ describe('CustomerScreenApi', () => {
         reference: 'ART-001',
         barcode: '3017620422003',
         finalPrice: '21.420',
+        // The screen's own way to the photo: the clerk's gallery is out of reach while it holds the sign-in.
+        photo: '/api/companies/c1/customer-screen/products/p1/photos/ph1?size=large',
         inStock: true,
         promotions: [
           { price: '17.850', minQuantity: '10.000', startsOn: null, endsOn: '2026-10-09' },
@@ -88,6 +104,7 @@ describe('CustomerScreenApi', () => {
         reference: 'ART-002',
         barcode: null,
         finalPrice: '5.000',
+        photo: null,
         inStock: false,
         promotions: [],
       },

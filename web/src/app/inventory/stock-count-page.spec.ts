@@ -90,6 +90,7 @@ const scanOf = (productId: string, extra: Record<string, unknown> = {}) => ({
   unitPriceNet: '1.0000',
   unitPriceGross: '1.190',
   priceGross: '1.190',
+  mainPhotoId: null,
   ...extra,
 });
 

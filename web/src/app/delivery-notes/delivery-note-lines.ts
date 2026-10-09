@@ -40,6 +40,7 @@ import { type IssuedLine, IssuedLines } from '../shared/ui/issued-lines';
 import { LineSubstitutes } from './delivery-note-line-substitutes';
 import { ProductScans } from '../products/product-scans';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
+import { productPhotoUrl } from '../products/product-photo-url';
 
 type CheckedField = keyof Omit<
   LineControls,
@@ -212,6 +213,10 @@ export class DeliveryNoteLines {
       id: product.id,
       code: product.reference,
       name: product.name,
+      picture:
+        product.mainPhotoId === null
+          ? null
+          : productPhotoUrl(this.companyId(), product.id, product.mainPhotoId, 'small'),
     }));
   };
 

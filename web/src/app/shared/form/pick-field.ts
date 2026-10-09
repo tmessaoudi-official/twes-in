@@ -31,6 +31,11 @@ export interface PickOption {
   /** A customer's number, a product's reference — the short thing people actually type. */
   code: string;
   name: string;
+  /**
+   * A picture to recognise it by, drawn beside its words: an address, or null for a row that could have one and has
+   * none. Left out where the rows never carry one, so nothing is drawn.
+   */
+  picture?: string | null;
 }
 
 /** How long a person stops typing before the API is asked (docs/SPEC.md § 7, 2026-09-17, ruling 3). */
@@ -90,6 +95,25 @@ export const PICK_PAUSE_MS = 300;
       >
         @for (option of offered(); track option.id) {
           <mat-option [value]="option" [attr.data-testid]="testId() + '-option-' + option.id">
+            @if (option.picture !== undefined) {
+              <!-- The words name the row; the picture only helps tell rows apart, so it says nothing more. -->
+              <span
+                class="mr-2 inline-flex size-8 shrink-0 overflow-hidden rounded bg-surface-container align-middle"
+              >
+                @if (option.picture) {
+                  <img
+                    class="size-full object-cover"
+                    [src]="option.picture"
+                    alt=""
+                    width="32"
+                    height="32"
+                    loading="lazy"
+                  />
+                } @else {
+                  <span [attr.data-testid]="testId() + '-picture-none'"></span>
+                }
+              </span>
+            }
             {{ option.code }} · {{ option.name }}
           </mat-option>
         }

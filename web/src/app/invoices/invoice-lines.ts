@@ -53,6 +53,7 @@ import { InventoryFacade } from '../inventory/inventory-facade';
 import { LineCatalogue } from './line-catalogue';
 import type { LineFigures } from '../shared/documents/document-figures';
 import { LineFiguresView } from '../shared/documents/line-figures';
+import { productPhotoUrl } from '../products/product-photo-url';
 
 type CheckedField = keyof Omit<
   LineControls,
@@ -413,6 +414,10 @@ export class InvoiceLines {
       id: product.id,
       code: product.reference,
       name: product.name,
+      picture:
+        product.mainPhotoId === null
+          ? null
+          : productPhotoUrl(this.companyId(), product.id, product.mainPhotoId, 'small'),
     }));
   };
 

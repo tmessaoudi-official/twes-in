@@ -85,77 +85,90 @@
                   [attr.data-testid]="'customer-screen-' + product.id"
                 >
                   <mat-card-content>
-                    <div class="flex flex-col gap-3 py-2">
-                      <h2 class="m-0 text-2xl font-medium" data-testid="customer-screen-name">
-                        {{ product.name }}
-                      </h2>
-                      <p class="m-0 text-5xl font-semibold" data-testid="customer-screen-price">
-                        {{ product.finalPrice | amount: null }} {{ currency() }}
-                      </p>
-                      <p class="m-0 text-sm opacity-80">
-                        {{ 'customer_screen.taxes_included' | translate }}
-                      </p>
-                      <p class="m-0 opacity-80" data-testid="customer-screen-codes">
-                        {{ 'customer_screen.reference' | translate }} {{ product.reference }}
-                        @if (product.barcode; as barcode) {
-                          · {{ 'customer_screen.barcode' | translate }} {{ barcode }}
+                    <div class="flex flex-col gap-4 py-2 sm:flex-row sm:items-start">
+                      @if (product.photo; as photo) {
+                        <img
+                          class="size-40 shrink-0 rounded-lg object-cover"
+                          [src]="photo"
+                          alt=""
+                          width="160"
+                          height="160"
+                          data-testid="customer-screen-photo"
+                        />
+                      }
+                      <div class="flex flex-col gap-3">
+                        <h2 class="m-0 text-2xl font-medium" data-testid="customer-screen-name">
+                          {{ product.name }}
+                        </h2>
+                        <p class="m-0 text-5xl font-semibold" data-testid="customer-screen-price">
+                          {{ product.finalPrice | amount: null }} {{ currency() }}
+                        </p>
+                        <p class="m-0 text-sm opacity-80">
+                          {{ 'customer_screen.taxes_included' | translate }}
+                        </p>
+                        <p class="m-0 opacity-80" data-testid="customer-screen-codes">
+                          {{ 'customer_screen.reference' | translate }} {{ product.reference }}
+                          @if (product.barcode; as barcode) {
+                            · {{ 'customer_screen.barcode' | translate }} {{ barcode }}
+                          }
+                        </p>
+                        @if (product.inStock !== null) {
+                          <p
+                            class="m-0 flex items-center gap-2 text-lg"
+                            data-testid="customer-screen-stock"
+                          >
+                            <mat-icon aria-hidden="true">{{
+                              product.inStock ? 'check_circle' : 'cancel'
+                            }}</mat-icon>
+                            {{
+                              (product.inStock
+                                ? 'customer_screen.in_stock'
+                                : 'customer_screen.out_of_stock'
+                              ) | translate
+                            }}
+                          </p>
                         }
-                      </p>
-                      @if (product.inStock !== null) {
-                        <p
-                          class="m-0 flex items-center gap-2 text-lg"
-                          data-testid="customer-screen-stock"
-                        >
-                          <mat-icon aria-hidden="true">{{
-                            product.inStock ? 'check_circle' : 'cancel'
-                          }}</mat-icon>
-                          {{
-                            (product.inStock
-                              ? 'customer_screen.in_stock'
-                              : 'customer_screen.out_of_stock'
-                            ) | translate
-                          }}
-                        </p>
-                      }
-                      @for (offer of product.promotions; track $index) {
-                        <p
-                          class="m-0 flex flex-wrap items-baseline gap-x-3 text-xl"
-                          data-testid="customer-screen-promotion"
-                        >
-                          <span class="font-semibold text-primary">
-                            {{ offer.price | amount: null }} {{ currency() }}
-                          </span>
-                          <span class="text-base opacity-80">
-                            {{ 'customer_screen.offer' | translate }}
-                            @if (offer.minQuantity !== '1.000') {
-                              ·
-                              {{
-                                'customer_screen.from_quantity'
-                                  | translate: { quantity: quantity(offer.minQuantity) }
-                              }}
-                            }
-                            @if (offer.startsOn && offer.endsOn) {
-                              ·
-                              {{
-                                'customer_screen.between'
-                                  | translate
-                                    : { from: (offer.startsOn | day), to: (offer.endsOn | day) }
-                              }}
-                            } @else if (offer.endsOn) {
-                              ·
-                              {{
-                                'customer_screen.until' | translate: { date: (offer.endsOn | day) }
-                              }}
-                            } @else if (offer.startsOn) {
-                              ·
-                              {{
-                                'customer_screen.since'
-                                  | translate: { date: (offer.startsOn | day) }
-                              }}
-                            }
-                          </span>
-                        </p>
-                      }
+                        @for (offer of product.promotions; track $index) {
+                          <p
+                            class="m-0 flex flex-wrap items-baseline gap-x-3 text-xl"
+                            data-testid="customer-screen-promotion"
+                          >
+                            <span class="font-semibold text-primary">
+                              {{ offer.price | amount: null }} {{ currency() }}
+                            </span>
+                            <span class="text-base opacity-80">
+                              {{ 'customer_screen.offer' | translate }}
+                              @if (offer.minQuantity !== '1.000') {
+                                ·
+                                {{
+                                  'customer_screen.from_quantity'
+                                    | translate: { quantity: quantity(offer.minQuantity) }
+                                }}
+                              }
+                              @if (offer.startsOn && offer.endsOn) {
+                                ·
+                                {{
+                                  'customer_screen.between'
+                                    | translate
+                                      : { from: (offer.startsOn | day), to: (offer.endsOn | day) }
+                                }}
+                              } @else if (offer.endsOn) {
+                                ·
+                                {{
+                                  'customer_screen.until'
+                                    | translate: { date: (offer.endsOn | day) }
+                                }}
+                              } @else if (offer.startsOn) {
+                                ·
+                                {{
+                                  'customer_screen.since'
+                                    | translate: { date: (offer.startsOn | day) }
+                                }}
+                              }
+                            </span>
+                          </p>
+                        }
+                      </div>
                     </div>
                   </mat-card-content>
                 </mat-card>

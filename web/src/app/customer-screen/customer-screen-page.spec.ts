@@ -33,6 +33,7 @@ const screw: ScreenProduct = {
   reference: 'VIS-6X40',
   barcode: '3017620422003',
   finalPrice: '21.420',
+  photo: '/api/companies/c1/customer-screen/products/p1/photos/ph1?size=large',
   inStock: true,
   promotions: [
     { price: '17.850', minQuantity: '10.000', startsOn: '2026-10-01', endsOn: '2026-10-09' },
@@ -46,6 +47,7 @@ const nut: ScreenProduct = {
   reference: 'ECR-6',
   barcode: null,
   finalPrice: '5.000',
+  photo: null,
   inStock: null,
   promotions: [],
 };
@@ -143,6 +145,19 @@ describe('CustomerScreenPage', () => {
     // One product's stock is said, the other's is not: a company that keeps its shelves to itself shows no chip.
     expect(all('customer-screen-stock').length).toBe(1);
     expect(all('customer-screen-stock')[0].textContent).toContain('customer_screen.in_stock');
+  });
+
+  it('shows a product’s main photo the screen may read, and leaves the place empty where it has none', async () => {
+    api.find.mockResolvedValue([screw, nut]);
+
+    await look('vis');
+
+    const photos = all('customer-screen-photo');
+    expect(photos.length).toBe(1);
+    expect(photos[0].getAttribute('src')).toBe(
+      '/api/companies/c1/customer-screen/products/p1/photos/ph1?size=large',
+    );
+    expect(photos[0].getAttribute('alt')).toBe('');
   });
 
   it('says out of stock as plainly as in stock', async () => {

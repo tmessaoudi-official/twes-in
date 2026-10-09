@@ -17,7 +17,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
  * The products the customer screen may show for a scan or some words, read with product.read: the name, the final
- * tax-included price, our own reference and barcode of each, and nothing else (docs/SPEC.md § 7, 2026-10-03 08:20).
+ * tax-included price, our own reference and barcode of each, its main photo, and nothing else.
  */
 #[ApiResource(
     shortName: 'CustomerScreenProducts',
@@ -41,18 +41,19 @@ final class CustomerScreenProductsResource
 {
     public const string READ = 'customer_screen_products:read';
 
-    /** @var list<array{id: string, name: string, reference: string, barcode: string|null, finalPrice: string}> */
+    /** @var list<array{id: string, name: string, reference: string, barcode: string|null, finalPrice: string, photoId: string|null}> */
     #[ApiProperty(identifier: false, required: true, schema: [
         'type' => 'array',
         'items' => [
             'type' => 'object',
-            'required' => ['id', 'name', 'reference', 'barcode', 'finalPrice'],
+            'required' => ['id', 'name', 'reference', 'barcode', 'finalPrice', 'photoId'],
             'properties' => [
                 'id' => ['type' => 'string'],
                 'name' => ['type' => 'string'],
                 'reference' => ['type' => 'string'],
                 'barcode' => ['type' => ['string', 'null']],
                 'finalPrice' => ['type' => 'string'],
+                'photoId' => ['type' => ['string', 'null']],
             ],
         ],
     ])]

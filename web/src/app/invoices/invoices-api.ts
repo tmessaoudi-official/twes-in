@@ -134,6 +134,7 @@ export class InvoicesApi {
         unitPriceNet: product.unitPriceNet,
         defaultTaxComponentIds: [...product.defaultTaxComponentIds],
         tracking: trackingOf(product.tracking),
+        mainPhotoId: product.mainPhotoId ?? null,
       }));
     });
   }

@@ -10,33 +10,35 @@ declare(strict_types=1);
 namespace App\Module\Products\Application;
 
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductPhotoRepository;
 use App\Module\Products\Domain\ProductRepository;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The few products a person means while typing in a form (docs/SPEC.md § 7, 2026-09-17, ruling 3). A document form
+ * The few products a person means while typing in a form. A document form
  * used to be handed every active product before it drew a single line; a catalogue of twenty thousand makes that a
  * payload nobody can wait for and a list nobody can scroll, so what a form gets now is what the words find.
  *
  * It answers the same shape the options endpoints did, so a line starts from the same three facts: the unit it is
- * sold in, its price, and the taxes it carries.
+ * sold in, its price, and the taxes it carries; and each row names its main photo, which the picker shows beside the
+ * words, read once for the whole answer.
  */
 final readonly class PickProducts
 {
-    /** What a picker shows at once: enough to recognise the right one, few enough to read (§ 7, 2026-09-17). */
+    /** What a picker shows at once: enough to recognise the right one, few enough to read. */
     public const int SHOWN = 20;
 
-    public function __construct(private ProductRepository $products)
+    public function __construct(private ProductRepository $products, private ProductPhotoRepository $photos)
     {
     }
 
     /**
-     * @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string}>
+     * @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string, mainPhotoId: string|null}>
      */
     public function matching(Company $company, string $words, int $limit = self::SHOWN): array
     {
-        return array_map(self::row(...), $this->products->pick($company->getId(), $words, max(1, min($limit, self::SHOWN))));
+        return $this->rows($company, $this->products->pick($company->getId(), $words, max(1, min($limit, self::SHOWN))));
     }
 
     /**
@@ -46,15 +48,30 @@ final readonly class PickProducts
      *
      * @param list<Uuid> $ids
      *
-     * @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string}>
+     * @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string, mainPhotoId: string|null}>
      */
     public function byIds(Company $company, array $ids): array
     {
-        return array_map(self::row(...), $this->products->ofIdsInCompany(\array_slice($ids, 0, self::SHOWN), $company->getId()));
+        return $this->rows($company, $this->products->ofIdsInCompany(\array_slice($ids, 0, self::SHOWN), $company->getId()));
     }
 
-    /** @return array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string} */
-    private static function row(Product $product): array
+    /**
+     * @param list<Product> $products
+     *
+     * @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string, mainPhotoId: string|null}>
+     */
+    private function rows(Company $company, array $products): array
+    {
+        $photos = [] === $products ? [] : $this->photos->mainPhotoIdsOf(
+            $company->getId(),
+            array_map(static fn (Product $product): Uuid => $product->getId(), $products),
+        );
+
+        return array_map(static fn (Product $product): array => self::row($product, $photos[$product->getId()->toRfc4122()] ?? null), $products);
+    }
+
+    /** @return array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>, tracking: string, mainPhotoId: string|null} */
+    private static function row(Product $product, ?string $mainPhotoId): array
     {
         return [
             'id' => $product->getId()->toRfc4122(),
@@ -63,8 +80,9 @@ final readonly class PickProducts
             'unitId' => $product->getUnit()->getId()->toRfc4122(),
             'unitPriceNet' => $product->getDetails()->unitPriceNet,
             'defaultTaxComponentIds' => $product->getDefaultTaxComponentIds(),
-            // none, lot or serial: whether a line names the lot or serial handed over (docs/SPEC.md § 7, 2026-09-24 12:40 row 5).
+            // none, lot or serial: whether a line names the lot or serial handed over.
             'tracking' => $product->getTracking()->value,
+            'mainPhotoId' => $mainPhotoId,
         ];
     }
 }

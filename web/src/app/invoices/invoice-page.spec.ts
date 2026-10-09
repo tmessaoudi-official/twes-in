@@ -147,6 +147,7 @@ const products: ProductOption[] = [
     unitPriceNet: '1800.0000',
     defaultTaxComponentIds: ['t1'],
     tracking: 'none',
+    mainPhotoId: 'ph1',
   },
 ];
 
@@ -516,6 +517,18 @@ describe('InvoicePage', () => {
     q('document-action-save')!.click();
     await settle();
     expect(facade.create).toHaveBeenCalledWith('c1', expect.objectContaining({ customerId: 'k2' }));
+  });
+
+  it('shows each product’s main photo beside its words in a line’s picker', async () => {
+    await open(undefined);
+    (q('line-0-product') as HTMLInputElement).dispatchEvent(new Event('focusin'));
+    await settle();
+
+    const option = document.body.querySelector('[data-testid="line-0-product-option-p1"]');
+    expect(option?.querySelector('img')?.getAttribute('src')).toBe(
+      '/api/companies/c1/products/p1/photos/ph1/content?size=small',
+    );
+    expect(option?.textContent?.trim()).toBe('ART-1 · Conception');
   });
 
   it('puts on a line the pieces a scanned pack holds, and leaves a unit scan to the quantity typed', async () => {
@@ -1775,6 +1788,7 @@ describe('InvoicePage', () => {
       unitPriceNet: '1.0000',
       unitPriceGross: '1.190',
       priceGross: '1.190',
+      mainPhotoId: null,
     };
 
     const scanned = (code: string) => TestBed.inject(ScanBus).receive(code, 'wedge');
@@ -1846,6 +1860,7 @@ describe('InvoicePage', () => {
           unitPriceNet: '4.5000',
           defaultTaxComponentIds: ['t1'],
           tracking: 'none',
+          mainPhotoId: null,
         },
       ]);
 

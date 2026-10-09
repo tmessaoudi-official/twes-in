@@ -3,7 +3,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthFacade } from '../auth/auth-facade';
-import { ProductPhotosApi } from './product-photos-api';
+import { productPhotoUrl } from './product-photo-url';
 import type { PhotoSize } from './product-photos-types';
 
 /**
@@ -43,7 +43,6 @@ import type { PhotoSize } from './product-photos-types';
   `,
 })
 export class ProductThumbnail {
-  private readonly api = inject(ProductPhotosApi);
   private readonly auth = inject(AuthFacade);
 
   readonly productId = input.required<string>();
@@ -56,7 +55,7 @@ export class ProductThumbnail {
     const companyId = this.auth.me()?.company?.id;
     const photoId = this.photoId();
     return companyId && photoId
-      ? this.api.url(companyId, this.productId(), photoId, this.size())
+      ? productPhotoUrl(companyId, this.productId(), photoId, this.size())
       : null;
   });
 }

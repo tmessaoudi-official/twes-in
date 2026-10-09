@@ -15,6 +15,16 @@ const path = (companyId: string, resource: string): string =>
   `/api/companies/${companyId}/customer-screen/${resource}`;
 
 /**
+ * The screen's own way to a product's main photo, under the one prefix the screen's hold lets through: the clerk's
+ * gallery is out of its reach. The large copy, read across a counter.
+ */
+const photoPath = (companyId: string, productId: string, photoId: string): string =>
+  path(
+    companyId,
+    `products/${encodeURIComponent(productId)}/photos/${encodeURIComponent(photoId)}?size=large`,
+  );
+
+/**
  * The customer screen's three answers, one from each module that knows a piece of it (the only importer of the
  * generated types here): the products found, then the promotions and the stock of those products. A module switched
  * off answers 404, which reads as "nothing to say"; any other failure is let through, because an answer left out by an
@@ -77,6 +87,7 @@ export class CustomerScreenApi {
         reference: item.reference,
         barcode: item.barcode,
         finalPrice: item.finalPrice,
+        photo: item.photoId === null ? null : photoPath(companyId, item.id, item.photoId),
         inStock: stock?.inStock ?? null,
         promotions: (promotions?.items ?? [])
           .filter((row) => row.productId === item.id)
