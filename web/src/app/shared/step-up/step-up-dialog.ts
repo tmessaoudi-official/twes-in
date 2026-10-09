@@ -10,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { type StepUpOutcome, StepUpProof } from './step-up-proof';
+import { PasswordToggle } from '../form/password-toggle';
 
 /** What the dialog is opened with: the translation key of the sentence saying why it asks. */
 export interface StepUpReason {
@@ -24,6 +25,7 @@ export interface StepUpReason {
 @Component({
   selector: 'app-step-up-dialog',
   imports: [
+    PasswordToggle,
     MatButtonModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -36,23 +38,29 @@ export interface StepUpReason {
   template: `
     <h2 mat-dialog-title data-testid="step-up-title">{{ 'step_up.title' | translate }}</h2>
     <form (submit)="$event.preventDefault(); confirmPassword()" novalidate>
-      <mat-dialog-content class="flex flex-col gap-3">
-        <p data-testid="step-up-intro">{{ intro | translate }}</p>
-        <mat-form-field>
-          <mat-label>{{ 'step_up.password' | translate }}</mat-label>
-          <input
-            matInput
-            type="password"
-            autocomplete="current-password"
-            [formControl]="password"
-            data-testid="step-up-password"
-          />
-        </mat-form-field>
-        @if (problem(); as key) {
-          <p role="alert" class="text-error" data-testid="step-up-error">
-            {{ 'step_up.errors.' + key | translate }}
-          </p>
-        }
+      <mat-dialog-content>
+        <!-- Material styles mat-dialog-content after Tailwind and sets it back to a block: the layout goes inside.
+             Its foot leaves room for the eye's 48 px touch target, which hangs 4 px below the 40 px field. -->
+        <div class="flex flex-col gap-3 pb-1">
+          <p data-testid="step-up-intro">{{ intro | translate }}</p>
+          <mat-form-field>
+            <mat-label>{{ 'step_up.password' | translate }}</mat-label>
+            <input
+              matInput
+              #stepUpPassword
+              type="password"
+              autocomplete="current-password"
+              [formControl]="password"
+              data-testid="step-up-password"
+            />
+            <app-password-toggle matSuffix [field]="stepUpPassword" />
+          </mat-form-field>
+          @if (problem(); as key) {
+            <p role="alert" class="text-error" data-testid="step-up-error">
+              {{ 'step_up.errors.' + key | translate }}
+            </p>
+          }
+        </div>
       </mat-dialog-content>
       <mat-dialog-actions align="end">
         <button mat-button type="button" (click)="ref.close(false)" data-testid="step-up-cancel">

@@ -61,12 +61,14 @@
           <mat-form-field>
             <input
               matInput
+              #invitationPassword
               id="invitation-password-input"
               type="password"
               formControlName="password"
               autocomplete="new-password"
               data-testid="invitation-password"
             />
+            <app-password-toggle matSuffix [field]="invitationPassword" />
             <mat-hint>{{ 'invitation.password_hint' | translate }}</mat-hint>
             @if (form.controls.password.touched && form.controls.password.invalid) {
               <mat-error data-testid="invitation-password-error">

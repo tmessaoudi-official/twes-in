@@ -136,6 +136,7 @@ export const ICONS = [
   'upload_file',
   'view_column',
   'visibility',
+  'visibility_off',
   'volunteer_activism',
   'warehouse',
   'web',

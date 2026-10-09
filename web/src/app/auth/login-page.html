@@ -36,12 +36,14 @@
         <mat-form-field>
           <input
             matInput
+            #loginPassword
             id="login-password"
             type="password"
             formControlName="password"
             autocomplete="current-password"
             data-testid="password"
           />
+          <app-password-toggle matSuffix [field]="loginPassword" />
           @if (form.controls.password.hasError('required')) {
             <mat-error>{{ 'auth.login.password_required' | translate }}</mat-error>
           }

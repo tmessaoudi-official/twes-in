@@ -14,10 +14,12 @@ import { AuthFacade } from './auth-facade';
 import type { LoginError } from './auth-types';
 import { PasskeyClient } from './passkey-client';
 import { SignedOutLayout } from './signed-out-layout';
+import { PasswordToggle } from '../shared/form/password-toggle';
 
 @Component({
   selector: 'app-login-page',
   imports: [
+    PasswordToggle,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatIconModule,

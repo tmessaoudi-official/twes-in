@@ -11,6 +11,7 @@ import { Select } from '../shared/form/select';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { SignupFacade } from './signup-facade';
 import { SignedOutLayout } from '../auth/signed-out-layout';
+import { PasswordToggle } from '../shared/form/password-toggle';
 
 /**
  * The page a signup link opens, logged out: the account, and the company it will own. Finishing starts no session,
@@ -19,6 +20,7 @@ import { SignedOutLayout } from '../auth/signed-out-layout';
 @Component({
   selector: 'app-finish-signup-page',
   imports: [
+    PasswordToggle,
     SignedOutLayout,
     ReactiveFormsModule,
     RouterLink,

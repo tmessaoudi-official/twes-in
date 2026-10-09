@@ -10,6 +10,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { LegalLink } from '../shared/legal/legal-link';
 import { InvitationFacade } from './invitation-facade';
 import { SignedOutLayout } from '../auth/signed-out-layout';
+import { PasswordToggle } from '../shared/form/password-toggle';
 
 /**
  * The page an invitation link opens. It is reached logged out: the link comes from a mail client and, under
@@ -18,6 +19,7 @@ import { SignedOutLayout } from '../auth/signed-out-layout';
 @Component({
   selector: 'app-accept-invitation-page',
   imports: [
+    PasswordToggle,
     SignedOutLayout,
     ReactiveFormsModule,
     MatFormFieldModule,

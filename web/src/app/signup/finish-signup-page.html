@@ -55,12 +55,14 @@
         <mat-form-field>
           <input
             matInput
+            #signupPassword
             id="signup-password-input"
             type="password"
             formControlName="password"
             autocomplete="new-password"
             data-testid="signup-password"
           />
+          <app-password-toggle matSuffix [field]="signupPassword" />
           <mat-hint>{{ 'signup.finish.password_hint' | translate }}</mat-hint>
           @if (form.controls.password.touched && form.controls.password.invalid) {
             <mat-error>{{ 'signup.finish.password_too_short' | translate }}</mat-error>

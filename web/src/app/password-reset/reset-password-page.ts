@@ -9,6 +9,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SignedOutLayout } from '../auth/signed-out-layout';
 import { PasswordResetFacade } from './password-reset-facade';
+import { PasswordToggle } from '../shared/form/password-toggle';
 
 /**
  * The page a reset link opens, logged out: the new password, twice. Two entries that differ never reach the API, since a
@@ -17,6 +18,7 @@ import { PasswordResetFacade } from './password-reset-facade';
 @Component({
   selector: 'app-reset-password-page',
   imports: [
+    PasswordToggle,
     SignedOutLayout,
     ReactiveFormsModule,
     RouterLink,

@@ -842,6 +842,10 @@
       "too_large": "Ce fichier dépasse {{size}}.",
       "mb": "{{count}} Mo",
       "kb": "{{count}} Ko"
+    },
+    "password": {
+      "show": "Afficher le mot de passe",
+      "hide": "Masquer le mot de passe"
     }
   },
   "fiscal": {
