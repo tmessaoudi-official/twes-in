@@ -14,7 +14,7 @@
     </p>
   }
 
-  @if (descriptor().sections.length > 0) {
+  @if (ready() && descriptor().sections.length > 0) {
     @if (sync.changedBy(); as changedBy) {
       <app-record-changed
         [changedBy]="changedBy"

@@ -78,6 +78,11 @@ export class ArticleDefaults {
   /** Bumped when this tab saved or reset, so the form shows the chain as the API now holds it. */
   private readonly revision = signal(0);
   /**
+   * Whether the chain and the units are both read. The form waits for them: drawn before the units, the default unit is
+   * a code field that turns into a choice under the person's hand, and the form is built again over what they typed.
+   */
+  protected readonly ready = signal(false);
+  /**
    * What the form is of: the fields shown. Reading the chain again yields new rows with the same content, and must
    * not rebuild the form over what is being typed; another person's save is merged into it instead.
    */
@@ -111,12 +116,16 @@ export class ArticleDefaults {
       const subject = this.subject();
       untracked(() => {
         if (companyId) {
+          this.ready.set(false);
           // The units name the default unit's choices; without them the field stays the code it is held as.
-          if (this.auth.hasPermission('fiscal.read')) void this.fiscal.loadUnits(companyId);
+          const units = this.auth.hasPermission('fiscal.read')
+            ? this.fiscal.loadUnits(companyId)
+            : Promise.resolve();
           // Another subject's rows can describe the same fields: build the form again once they are read.
-          void this.settings
-            .load(companyId, subject)
-            .then(() => this.revision.update((revision) => revision + 1));
+          void Promise.all([this.settings.load(companyId, subject), units]).then(() => {
+            this.ready.set(true);
+            this.revision.update((revision) => revision + 1);
+          });
         }
       });
     });

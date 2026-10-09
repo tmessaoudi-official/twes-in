@@ -75,7 +75,13 @@ describe('ArticleDefaults', () => {
     fixture = TestBed.createComponent(ArticleDefaults);
     fixture.componentRef.setInput('subject', subject);
     fixture.detectChanges();
+    await settle();
+  }
+
+  /** The form waits for two reads together, which settle a few promise turns after the fakes answer. */
+  async function settle(): Promise<void> {
     await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve));
     fixture.detectChanges();
   }
 
@@ -163,8 +169,7 @@ describe('ArticleDefaults', () => {
 
     fixture.componentRef.setInput('subject', { productId: 'p2' });
     fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
+    await settle();
 
     expect(facade.load).toHaveBeenLastCalledWith('c1', { productId: 'p2' });
     expect((q('field-article__default_unit') as HTMLInputElement).value).toBe('MTR');
@@ -214,5 +219,28 @@ describe('ArticleDefaults', () => {
     expect(fiscal.loadUnits).toHaveBeenCalledWith('c1');
     expect(q('field-article__default_unit')?.textContent).toContain('Heure');
     expect(q('field-article__default_unit')?.textContent).not.toContain('HUR');
+  });
+
+  /** A click on the code while the units are still on their way would land in a field about to become a choice. */
+  it('draws the form only once the units are read, so the default unit is a choice from the start', async () => {
+    let unitsRead: () => void = () => undefined;
+    fiscal.loadUnits.mockReturnValue(
+      new Promise<void>((resolve) => {
+        unitsRead = () => {
+          units.set([
+            { id: 'u1', code: 'C62', name: 'Unité', decimals: 0, isActive: true, sortOrder: 0 },
+            { id: 'u2', code: 'HUR', name: 'Heure', decimals: 2, isActive: true, sortOrder: 1 },
+          ]);
+          resolve();
+        };
+      }),
+    );
+    await open({ productCategoryId: 'k1' });
+    expect(q('field-article__default_unit')).toBeNull();
+
+    unitsRead();
+    await settle();
+    expect(q('field-article__default_unit')?.textContent).toContain('Heure');
+    expect(q('field-article__default_unit')?.querySelector('input')).toBeNull();
   });
 });
