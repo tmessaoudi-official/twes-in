@@ -264,10 +264,10 @@ test('on a laptop the stock list shows each row’s quantity clear of the row ac
 });
 
 // A list with no row actions pinned its LAST header to the table's right edge while that column's cells scrolled on,
-// so « Statut » covered « Reste à payer » on « Factures » (2026-09-26). At 900 px the invoice columns' own widths
-// exceed the page, so the table is wider than its container with or without rows.
+// so « Statut » covered « Reste à payer » on « Factures » (2026-09-26). The columns narrow to fit their card down to
+// 70 % of their widths; at 640 px that is still wider than the card, so the table scrolls with or without rows.
 test('a list wider than its page keeps each header over its own column', async ({ page }) => {
-  await page.setViewportSize({ width: 900, height: 700 });
+  await page.setViewportSize({ width: 640, height: 700 });
   await logIn(page);
   await inACompany(page, '0123456789abcdef0123456789abcdef');
   await page.goto('/invoices');
