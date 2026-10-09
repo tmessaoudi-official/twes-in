@@ -22,6 +22,7 @@ use App\ImportExport\Application\ImportHeading;
 use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
+use App\ImportExport\Application\ImportSwitch;
 use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
@@ -29,10 +30,12 @@ use App\ImportExport\Application\RowRejected;
 use App\Module\Products\Application\BarcodeInput;
 use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductBarcodeTaken;
+use App\Module\Products\Application\ProductFileStock;
 use App\Module\Products\Application\ProductHomes;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Application\ProductReorderPoints;
+use App\Module\Products\Application\ProductStockRefused;
 use App\Module\Products\Application\ReorderPointRefused;
 use App\Module\Products\Domain\Barcode;
 use App\Module\Products\Domain\BarcodeRole;
@@ -68,6 +71,10 @@ final readonly class ProductImport implements DeclaresImport
 
     /** A custom field's key is the company's own, so it is prefixed to keep it out of the fixed columns' namespace. */
     public const string CUSTOM_PREFIX = 'custom.';
+    /** Reuses a catalogue file for its prices alone: its quantities are not read. */
+    public const string IGNORE_QUANTITIES = 'ignore_quantities';
+    /** Counts again a place where goods came in or went out since its last count. */
+    public const string RECOUNT = 'recount';
 
     /** The column each field a refusal names is read from, and the code that refusal carries when it says none. */
     private const array REFUSAL_OF = [
@@ -98,6 +105,7 @@ final readonly class ProductImport implements DeclaresImport
         private ProductReorderPoints $reorderPoints,
         private EstablishmentRepository $establishments,
         private CompanyGuard $guard,
+        private ProductFileStock $stock,
     ) {
     }
 
@@ -135,11 +143,35 @@ final readonly class ProductImport implements DeclaresImport
 
     public function finished(Company $company, ImportContext $context, ?Uuid $actorUserId): void
     {
+        $this->stock->finished($company, $context->runId, $actorUserId);
     }
 
+    /**
+     * The quantities, `location` and the two switches exist only for someone who may write stock while the company
+     * keeps it: a file from anyone else naming them is refused for the column, as `cost_price` is.
+     */
     public function subjectFor(Company $company): ImportSubject
     {
-        return new ImportSubject(self::KEY, [...$this->fixed($company), ...$this->custom($company)]);
+        $stock = $this->stock->offered($company);
+
+        return new ImportSubject(
+            self::KEY,
+            [
+                ...$this->fixed($company),
+                ...$stock
+                    ? [
+                        new ImportColumn('stock_add', 'import.stock.stock_add', false, '24', 'import.stock.stock_add_note'),
+                        new ImportColumn('stock_count', 'import.stock.stock_count', false, '120', 'import.stock.stock_count_note'),
+                        new ImportColumn('location', 'import.products.location', false, 'A-12', 'import.products.location_note'),
+                    ]
+                    : [],
+                ...$this->custom($company),
+            ],
+            $stock ? [
+                new ImportSwitch(self::IGNORE_QUANTITIES, 'import.stock.ignore_quantities', 'import.stock.ignore_quantities_note'),
+                new ImportSwitch(self::RECOUNT, 'import.stock.recount', 'import.stock.recount_note'),
+            ] : [],
+        );
     }
 
     public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported
@@ -151,11 +183,12 @@ final readonly class ProductImport implements DeclaresImport
         if (null !== $existing && ImportMode::Create === $mode) {
             throw null === $reference ? new RowRejected('barcode', 'A product already answers to this code. Import in "create and update" mode to update it.', 'already_exists', ['reference' => $existing->getReference()]) : new RowRejected('reference', 'A product already has this reference. Import in "create and update" mode to update it.', 'already_exists');
         }
-        if (null === $existing && null === $reference && null === $record->value('barcode')) {
-            // Nothing in the row can find it again, so a second import of the file would make it twice.
+        if (null === $existing) {
+            // A new product whose name another already holds is pointed out, as it may be that product under another
+            // reference; the more so when nothing in the row can find it again, and a second import would make it twice.
             $namesake = $this->products->ofNameInCompany($record->value('name') ?? '', $company->getId());
             if (null !== $namesake) {
-                $notes->note('name', 'name_shared', ['reference' => $namesake->getReference()]);
+                $notes->note('name', null === $reference && null === $record->value('barcode') ? 'name_shared' : 'name_held', ['reference' => $namesake->getReference()]);
             }
         }
 
@@ -164,6 +197,7 @@ final readonly class ProductImport implements DeclaresImport
         // the rest, and only the whole import being rolled back keeps that from showing.
         $home = $this->homeOf($company, $record);
         $reorderPoint = $this->reorderPointOf($company, $record, $home);
+        $quantity = $this->quantityOf($record, $context);
 
         $written = null;
         try {
@@ -174,12 +208,14 @@ final readonly class ProductImport implements DeclaresImport
                 if (null === $reference) {
                     $notes->note('reference', 'reference_given', ['reference' => $written->getReference()]);
                 }
+                $this->settleStock($company, $written, $record, $quantity, $home, $actorUserId, $context, $notes);
 
                 return RowImported::Created;
             }
             $written = $this->manage->revise($company, $existing->getId(), $this->input($company, $record, $existing), $actorUserId);
             $this->settleHome($company, $written, $home, $actorUserId);
             $this->settleReorderPoint($company, $written, $reorderPoint, $actorUserId);
+            $this->settleStock($company, $written, $record, $quantity, $home, $actorUserId, $context, $notes);
 
             return RowImported::Updated;
         } catch (InvalidProduct $refused) {
@@ -190,6 +226,10 @@ final readonly class ProductImport implements DeclaresImport
                 : self::REFUSAL_OF[$field] ?? [null, 'invalid_value'];
 
             throw new RowRejected($column, $refused->getMessage(), $refused->reason ?? $code, $refused->params);
+        } catch (ProductStockRefused $refused) {
+            throw new RowRejected(match ($refused->about) {
+                ProductStockRefused::PLACE => null === $record->value('location') && null !== $home ? 'home_location' : 'location', ProductStockRefused::COST => 'cost_price', default => $quantity[2] ?? 'stock_count',
+            }, $refused->getMessage(), $refused->reason, $refused->params);
         } catch (ReorderPointRefused $refused) {
             throw new RowRejected('reorder_point', $refused->getMessage(), 'invalid_value');
         } catch (ProductReferenceTaken) {
@@ -246,6 +286,53 @@ final readonly class ProductImport implements DeclaresImport
         }
 
         return $found[0];
+    }
+
+    /**
+     * What the row asks of the stock, checked before anything is written: an addition or a count, never both, and
+     * nothing when the cells are empty or the person ticked « Ignorer les quantités de ce fichier ».
+     *
+     * @return array{bool, string, string}|null whether it adds, the quantity, and the column it is written in
+     *
+     * @throws RowRejected
+     */
+    private function quantityOf(ImportRecord $record, ImportContext $context): ?array
+    {
+        if ($context->ticked(self::IGNORE_QUANTITIES)) {
+            return null;
+        }
+        $add = self::decimal($record->value('stock_add'));
+        $count = self::decimal($record->value('stock_count'));
+        if (null !== $add && null !== $count) {
+            throw new RowRejected('stock_count', 'A row adds goods or counts them, not both: keep one of stock_add and stock_count.', 'stock_add_and_count');
+        }
+
+        return match (true) {
+            null !== $add => [true, $add, 'stock_add'],
+            null !== $count => [false, $count, 'stock_count'],
+            default => null,
+        };
+    }
+
+    /**
+     * Adds or counts the written product's stock, at its cost as it stands after the row, so a row giving a cost
+     * enters its goods at that cost.
+     *
+     * @param array{bool, string, string}|null $quantity
+     *
+     * @throws ProductStockRefused
+     */
+    private function settleStock(Company $company, Product $product, ImportRecord $record, ?array $quantity, ?Uuid $home, ?Uuid $actorUserId, ImportContext $context, RowNotes $notes): void
+    {
+        if (null === $quantity) {
+            return;
+        }
+        [$adds, $value, $column] = $quantity;
+        $location = $record->value('location');
+        $change = $adds
+            ? $this->stock->add($company, $product->getId(), $location, $home, $value, $product->getDetails()->costPrice, $actorUserId, $context->runId)
+            : $this->stock->count($company, $product->getId(), $location, $home, $value, $context->ticked(self::RECOUNT), $actorUserId, $context->runId);
+        $notes->note($column, 'stock_change', ['location' => $change->place, 'before' => $change->before, 'after' => $change->after]);
     }
 
     /** Gives the written product the home the row named, once there is a product to give it to. */

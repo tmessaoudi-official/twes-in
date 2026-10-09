@@ -27,6 +27,9 @@ use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductBarcode;
 use App\Module\Products\Domain\ProductCategory;
+use App\ModuleRegistry\Domain\ModuleState;
+use App\Settings\Domain\Setting;
+use App\Settings\Domain\SettingAddress;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tenancy\Domain\EstablishmentRepository;
@@ -178,6 +181,90 @@ final class ProductImportTest extends ApiTestCase
         self::assertSame(1, $this->products(), 'found again, not made twice');
     }
 
+    /** Quantities only for someone who writes stock, while the company keeps it. */
+    public function testTheQuantitiesAreOfferedOnlyToWhoeverWritesStockWhileItIsKept(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'stock.write']);
+        self::assertSame(['stock_add', 'stock_count', 'location', 'ignore_quantities', 'recount'], array_values(array_intersect($this->guide(), ['stock_add', 'stock_count', 'location', 'ignore_quantities', 'recount'])));
+
+        $this->em()->persist(ModuleState::of($this->em()->find(Company::class, $this->company->getId()) ?? self::fail('The company is gone.'), 'inventory', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+        self::assertSame([], array_values(array_intersect($this->guide(), ['stock_add', 'stock_count', 'location', 'ignore_quantities', 'recount'])), 'the stock switched off');
+    }
+
+    public function testSomebodyWhoCannotWriteStockIsRefusedTheQuantityColumns(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->import("reference,name,unit_code,unit_price_net,stock_count\nVIS-6X40,Vis,H87,1,5\n", dryRun: true);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['stock_count'], $this->json()['columns'] ?? null);
+    }
+
+    public function testANewProductIsCountedWhereItCanOnlyBeAndAKnownOneGetsGoodsAtItsCost(): void
+    {
+        $this->stockKept();
+        $this->aZoneCoded('Z1');
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read', 'stock.write']);
+
+        $this->import("reference,name,unit_code,unit_price_net,cost_price,stock_add,stock_count,location\nVIS-6X40,Vis,H87,1,0.2,,120,\nVIS-8X60,Vis 8,H87,2,0.3,,7,Z1\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            ['line' => 2, 'column' => 'stock_count', 'code' => 'stock_change', 'params' => ['location' => '000', 'before' => '0', 'after' => '120']],
+            ['line' => 3, 'column' => 'stock_count', 'code' => 'stock_change', 'params' => ['location' => 'Z1', 'before' => '0', 'after' => '7']],
+        ], $this->json()['notes'] ?? null);
+        self::assertSame(['120.000', '7.000'], [$this->onHand('VIS-6X40', '000'), $this->onHand('VIS-8X60', 'Z1')]);
+
+        $this->import("reference,name,cost_price,stock_add\nVIS-6X40,Vis,0.25,24\n", mode: 'upsert');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame('144.000', $this->onHand('VIS-6X40', '000'));
+        self::assertSame('0.2500', $this->em()->getConnection()->fetchOne("SELECT unit_cost FROM stock_movement WHERE source_type = 'receipt'"), 'at the cost the row gives');
+        self::assertSame(3, $this->numberOf('SELECT COUNT(*) FROM stock_movement WHERE import_run_id IS NOT NULL'), 'two counts and a receipt, each the import’s');
+    }
+
+    public function testARowAddsOrCountsAndAFileMayBeReadForItsPricesAlone(): void
+    {
+        $this->stockKept();
+        $this->signedIn(['product.read', 'product.write', 'stock.write']);
+        $file = "reference,name,unit_code,unit_price_net,stock_add,stock_count\nVIS-6X40,Vis,H87,1,5,5\nSRV-1,Pose,H87,1,,1\n";
+        $this->import($file, dryRun: true);
+        self::assertSame([[2, 'stock_count', 'stock_add_and_count', []]], $this->rejections());
+
+        $this->import($file, dryRun: true, switches: ['ignore_quantities']);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([[2, 3], [], []], [$this->json()['created'] ?? null, $this->json()['rejected'] ?? null, $this->json()['notes'] ?? null], 'no quantity read, so none refused and none noted');
+    }
+
+    public function testAServiceTakesNoQuantity(): void
+    {
+        $this->stockKept();
+        $this->signedIn(['product.read', 'product.write', 'stock.write']);
+
+        $this->import("reference,name,kind,unit_code,unit_price_net,stock_count\nSRV-1,Pose,service,H87,1,1\n", dryRun: true);
+
+        self::assertSame([[2, 'stock_count', 'not_stocked', ['reference' => 'SRV-1']]], $this->rejections());
+    }
+
+    public function testACountAfterGoodsMovedWaitsForRecompter(): void
+    {
+        $this->stockKept();
+        $this->signedIn(['product.read', 'product.write', 'stock.write']);
+        $this->import("reference,name,unit_code,unit_price_net,stock_count\nVIS-6X40,Vis,H87,1,10\n");
+        $this->import("reference,name,stock_add\nVIS-6X40,Vis,5\n", mode: 'upsert');
+        self::assertSame('15.000', $this->onHand('VIS-6X40', '000'));
+
+        $this->import("reference,name,stock_count\nVIS-6X40,Vis,12\n", mode: 'upsert', dryRun: true);
+        self::assertSame([[2, 'stock_count', 'moved_since_count', ['location' => '000']]], $this->rejections());
+
+        $this->import("reference,name,stock_count\nVIS-6X40,Vis,12\n", mode: 'upsert', switches: ['recount']);
+        self::assertResponseIsSuccessful();
+        self::assertSame('12.000', $this->onHand('VIS-6X40', '000'));
+    }
+
     /**
      * Rows found by their codes, several in one file: the code a row is found by is read for its product alone, and left
      * in the unit of work it would point at the product the row detaches, so the second row's flush would die.
@@ -198,6 +285,18 @@ Cheville 10 mm,6191234567897
 
         self::assertResponseIsSuccessful();
         self::assertSame([[], [2, 3]], [$this->json()['created'] ?? null, $this->json()['updated'] ?? null]);
+    }
+
+    /** A new product whose name another already holds is pointed out, whatever it is named by. */
+    public function testANewProductWithItsOwnReferenceButAHeldNameIsPointedOut(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $this->import($this->twoProducts());
+        self::assertResponseIsSuccessful();
+
+        $this->import("reference,name,unit_code,unit_price_net\nVIS-NEUVE,Vis 6x40 zinguée,H87,0.5\n", dryRun: true);
+
+        self::assertSame([['line' => 2, 'column' => 'name', 'code' => 'name_held', 'params' => ['reference' => 'VIS-6X40']]], $this->json()['notes'] ?? null);
     }
 
     /** A row with neither a reference nor a code cannot be found again, so a name already held is pointed out. */
@@ -523,9 +622,43 @@ Cheville 10 mm,6191234567897
             ."\nMO-TOUR,Tournage à l'heure,service,HUR,,45.000,,,,,\n";
     }
 
-    private function import(string $contents, string $mode = 'create', bool $dryRun = false, string $name = 'products.csv'): void
+    /** @param list<string> $switches */
+    private function import(string $contents, string $mode = 'create', bool $dryRun = false, string $name = 'products.csv', array $switches = []): void
     {
-        $this->uploadFile($this->companyPath().'/imports/products', $name, $contents, 'file', ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0']);
+        $this->uploadFile($this->companyPath().'/imports/products', $name, $contents, 'file', ['mode' => $mode, 'dryRun' => $dryRun ? '1' : '0', 'switches' => $switches]);
+    }
+
+    /** The company keeps stock of its goods. */
+    private function stockKept(): void
+    {
+        $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, new \DateTimeImmutable()));
+        $this->em()->flush();
+    }
+
+    /** @return list<string> the column keys the guide lists, and its switches */
+    private function guide(): array
+    {
+        $this->client->request('GET', $this->companyPath().'/imports/products', server: ['HTTP_ACCEPT' => 'application/json']);
+        self::assertResponseIsSuccessful();
+        $keys = [];
+        foreach ([...$this->arrayAt($this->json(), 'columns'), ...$this->arrayAt($this->json(), 'switches')] as $entry) {
+            self::assertIsArray($entry);
+            self::assertIsString($entry['key'] ?? null);
+            $keys[] = $entry['key'];
+        }
+
+        return $keys;
+    }
+
+    private function onHand(string $reference, string $locationCode): string
+    {
+        $sum = $this->em()->getConnection()->fetchOne(
+            'SELECT COALESCE(SUM(m.quantity), 0) FROM stock_movement m JOIN product p ON p.id = m.product_id JOIN stock_location l ON l.id = m.location_id WHERE p.reference = ? AND l.code = ?',
+            [$reference, $locationCode],
+        );
+        self::assertIsNumeric($sum);
+
+        return number_format((float) $sum, 3, '.', '');
     }
 
     /** @param list<string> $permissions */
