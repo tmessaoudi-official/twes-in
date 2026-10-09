@@ -365,7 +365,8 @@ test.describe('the drawn stock map', () => {
     } finally {
       // A timed-out case closes its page, and cleaning a closed page throws over the failure that caused it —
       // which reads as a cleanup bug and hides the real one. Measured: it cost a whole CI round to see through.
-      if (!page.isClosed()) await clean(page, fixture, floorName);
+      // The rack posed from the palette, should « Annuler » have failed before it took the place back.
+      if (!page.isClosed()) await clean(page, fixture, floorName, `${code}N`);
     }
   });
 

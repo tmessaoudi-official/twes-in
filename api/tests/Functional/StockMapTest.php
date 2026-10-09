@@ -369,6 +369,36 @@ final class StockMapTest extends ApiTestCase
     }
 
     /**
+     * A zone turns clockwise, as the screen draws it. A quarter turn reads the same either way, so an eighth turn is
+     * what tells them apart: a 4 × 2 m zone turned 45° about (10, 10) reaches down and to the right along its length.
+     */
+    public function testAZoneTurnedAnEighthTurnHoldsWhatItCoversClockwise(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $ground = $this->floor();
+        $drawings = $this->path('stock-floors', $ground).'/drawings';
+
+        $this->postJson($drawings, $this->drawing(['x' => '8', 'y' => '9', 'width' => '4', 'depth' => '2', 'rotation' => 45, ...$this->newPlace('zone', 'ZT', 'Zone tournée')]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $turned = $this->stringAt($this->json(), 'locationId');
+
+        foreach ([
+            // Centre (11.06, 11.06): 1.5 m along the zone's length, clockwise. Counter-clockwise it would lie outside.
+            ['RT1', ['x' => '10.81', 'y' => '10.81'], $turned],
+            // Centre (8.94, 11.06): where a counter-clockwise turn would reach, and the zone does not.
+            ['RT2', ['x' => '8.69', 'y' => '10.81'], null],
+        ] as [$code, $at, $parent]) {
+            $this->postJson($drawings, $this->drawing([...$at, 'width' => '0.5', 'depth' => '0.5', ...$this->newPlace('rack', $code, 'Rayonnage')]));
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED, $code);
+            $made = $this->stringAt($this->json(), 'locationId');
+            $this->getJson($this->path('stock-locations'));
+            $site = $this->stringAt($this->jsonList()[0], 'id');
+            $created = array_values(array_filter($this->jsonList(), static fn (array $one): bool => $made === $one['id']));
+            self::assertSame($parent ?? $site, $created[0]['parentId'], $code);
+        }
+    }
+
+    /**
      * The place and its rectangle are one unit of work: a new place refused at its drawing leaves no location
      * behind. A bin is the refusal the drawing makes and the creation does not — a bin is placed in its rack.
      */
