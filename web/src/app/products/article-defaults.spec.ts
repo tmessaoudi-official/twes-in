@@ -12,6 +12,8 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import type { SettingRow, SettingsError } from '../shared/settings/settings-types';
+import { FiscalFacade } from '../fiscal/fiscal-facade';
+import type { UnitRow } from '../fiscal/fiscal-types';
 import { ArticleDefaults } from './article-defaults';
 import { ArticleSettings } from './article-settings-facade';
 import { provideQuietFeedback } from '../shared/testing/feedback';
@@ -56,7 +58,12 @@ describe('ArticleDefaults', () => {
     reset: vi.fn(),
     clearError: vi.fn(),
   };
-  const auth = { me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }) };
+  const auth = {
+    me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
+    hasPermission: () => true,
+  };
+  const units = signal<readonly UnitRow[]>([]);
+  const fiscal = { units: units.asReadonly(), loadUnits: vi.fn() };
   let fixture: ComponentFixture<ArticleDefaults>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -75,6 +82,8 @@ describe('ArticleDefaults', () => {
   beforeEach(() => {
     rows.set([unit]);
     error.set(null);
+    units.set([]);
+    fiscal.loadUnits.mockReset().mockResolvedValue(undefined);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.save.mockReset().mockResolvedValue(true);
     facade.reset.mockReset().mockResolvedValue(true);
@@ -89,6 +98,7 @@ describe('ArticleDefaults', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: ArticleSettings, useValue: facade },
+        { provide: FiscalFacade, useValue: fiscal },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
       ],
@@ -193,5 +203,16 @@ describe('ArticleDefaults', () => {
     expect((q('field-article__default_unit') as HTMLInputElement).disabled).toBe(true);
     expect(q('article-defaults-save')).toBeNull();
     expect(q('article-defaults-reset-article.default_unit')).toBeNull();
+  });
+  it("offers a category's default unit as the company's units by name, once they are read", async () => {
+    units.set([
+      { id: 'u1', code: 'C62', name: 'Unité', decimals: 0, isActive: true, sortOrder: 0 },
+      { id: 'u2', code: 'HUR', name: 'Heure', decimals: 2, isActive: true, sortOrder: 1 },
+    ]);
+    await open({ productCategoryId: 'k1' });
+
+    expect(fiscal.loadUnits).toHaveBeenCalledWith('c1');
+    expect(q('field-article__default_unit')?.textContent).toContain('Heure');
+    expect(q('field-article__default_unit')?.textContent).not.toContain('HUR');
   });
 });

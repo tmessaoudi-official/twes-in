@@ -21,6 +21,8 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { CompanySettings } from './company-settings-facade';
+import { FiscalFacade } from '../fiscal/fiscal-facade';
+import type { UnitRow } from '../fiscal/fiscal-types';
 import { SettingsPage } from './settings-page';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
@@ -97,6 +99,11 @@ describe('SettingsPage', () => {
     }),
     hasPermission: vi.fn(),
   };
+  const units = signal<readonly UnitRow[]>([]);
+  const fiscal = {
+    units: units.asReadonly(),
+    loadUnits: vi.fn(),
+  };
   let fixture: ComponentFixture<SettingsPage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -121,6 +128,7 @@ describe('SettingsPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: CompanySettings, useValue: settings },
+        { provide: FiscalFacade, useValue: fiscal },
         // A decimal field reads the screen's own number format, which reaches it through the presentation chain.
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -138,6 +146,36 @@ describe('SettingsPage', () => {
     settings.save.mockReset().mockResolvedValue(true);
     settings.reset.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    units.set([]);
+    fiscal.loadUnits.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("offers the default unit as the company's units by name, read with the settings", async () => {
+    rows.set([
+      {
+        ...terms,
+        key: 'article.default_unit',
+        chain: 'articles',
+        type: 'text',
+        labelKey: 'settings.article.default_unit',
+        defaultValue: 'C62',
+        value: 'C62',
+        levels: [],
+        source: null,
+        min: null,
+        pattern: '/^[A-Z0-9]{2,3}$/',
+      },
+    ]);
+    fiscal.loadUnits.mockImplementation(async () =>
+      units.set([
+        { id: 'u', code: 'C62', name: 'Pièce', decimals: 0, isActive: true, sortOrder: 0 },
+      ]),
+    );
+    await open();
+
+    expect(fiscal.loadUnits).toHaveBeenCalledWith('c1');
+    expect(q('field-article__default_unit')?.textContent).toContain('Pièce');
+    expect(q('field-article__default_unit')?.textContent).not.toContain('C62');
   });
 
   it("loads the company's settings and shows each at the company's value", async () => {

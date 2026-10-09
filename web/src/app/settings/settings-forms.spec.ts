@@ -6,7 +6,9 @@ import {
   companyOverrides,
   companySettingsForm,
   companySettingsValues,
+  withUnitChoice,
 } from './settings-forms';
+import type { UnitRow } from '../fiscal/fiscal-types';
 
 function row(
   partial: Partial<SettingRow> & Pick<SettingRow, 'key' | 'chain' | 'type'>,
@@ -200,5 +202,39 @@ describe('companyOverrides', () => {
     expect(companyOverrides(rows).map((setting) => setting.key)).toEqual([
       'document.payment_terms_days',
     ]);
+  });
+});
+
+describe('withUnitChoice', () => {
+  const unitRow = (code: string, name: string, isActive = true): UnitRow => ({
+    id: code,
+    code,
+    name,
+    decimals: 0,
+    isActive,
+    sortOrder: 0,
+  });
+
+  it("offers the default unit as the company's units by name, not as a code to type", () => {
+    // « C62 » in a text box was a code nobody could read (sweep 2026-10-09).
+    const form = withUnitChoice(companySettingsForm([unit]), [
+      unitRow('C62', 'Pièce'),
+      unitRow('KGM', 'Kilogramme'),
+      unitRow('MTR', 'Mètre', false),
+    ]);
+    const field = form.sections[0]?.fields.find((each) => each.id === 'article__default_unit');
+
+    expect(field?.kind).toBe('select');
+    expect(field?.pattern).toBeUndefined();
+    expect(field?.options).toEqual([
+      { value: 'C62', label: 'Pièce' },
+      { value: 'KGM', label: 'Kilogramme' },
+    ]);
+  });
+
+  it('leaves the field a code to type until the units are read, so it is never a choice of nothing', () => {
+    const form = companySettingsForm([unit]);
+
+    expect(withUnitChoice(form, [])).toEqual(form);
   });
 });

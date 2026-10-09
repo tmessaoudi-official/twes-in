@@ -49,7 +49,7 @@
   </section>
 
   <div class="overflow-x-auto">
-    <table class="twes-legal-table" data-testid="legal-overview">
+    <table class="twes-legal-table twes-stack-table" data-testid="legal-overview">
       <thead>
         <tr>
           <th scope="col">{{ 'platform.legal.page' | translate }}</th>
@@ -64,7 +64,7 @@
             <th scope="row">{{ 'legal.pages.' + page | translate }}</th>
             @for (language of languages; track language) {
               @let row = statusOf(page, language);
-              <td>
+              <td [attr.data-label]="names[language]">
                 <button
                   mat-button
                   type="button"

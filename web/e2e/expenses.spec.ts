@@ -66,7 +66,8 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
     await page.getByRole('option', { name: category }).click();
     await page.getByTestId('field-amountNet').fill('100');
     await page.getByTestId('field-taxComponentId').click();
-    await page.getByRole('option', { name: /\(19 %\)$/ }).click();
+    // The rate is said once: « TVA 19 % », or « (19 %) » after a name that does not carry it.
+    await page.getByRole('option', { name: /19\s%\)?$/ }).click();
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('record-save').click();
 

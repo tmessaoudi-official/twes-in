@@ -78,7 +78,9 @@ test('a product is filed in a category, priced at the currency scale and revised
 
     // The category says its products are sold by the hour; the product filed in it hears so.
     await rowAction(page, `product-category-${categoryName}`, 'edit').click();
-    await page.getByTestId('field-article__default_unit').fill('HUR');
+    // The unit is chosen by its name among the company's units (« Heure », held as HUR).
+    await page.getByTestId('field-article__default_unit').click();
+    await page.getByRole('option', { name: 'Heure', exact: true }).click();
     await page.getByTestId('article-defaults-save').click();
     await expect(toast(page)).toContainText('Les valeurs par défaut ont été enregistrées.');
     expect(await wcagViolations(page)).toEqual([]);
@@ -121,7 +123,7 @@ test('a product is filed in a category, priced at the currency scale and revised
 
     // The record splits into tabs (design review finding 4): what the category set is one click away.
     await page.getByRole('tab', { name: 'Valeurs par défaut' }).click();
-    await expect(page.getByTestId('field-article__default_unit')).toHaveValue('HUR');
+    await expect(page.getByTestId('field-article__default_unit')).toContainText('Heure');
 
     await page.goto('/products');
     // Filtered: the shared company holds more products than a page, and the API searches the words.

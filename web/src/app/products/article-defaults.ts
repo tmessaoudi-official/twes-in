@@ -27,6 +27,8 @@ import {
 import type { ArticleSubject, SettingChain } from '../shared/settings/settings-types';
 import { articleLevelOf, ArticleSettings } from './article-settings-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { FiscalFacade } from '../fiscal/fiscal-facade';
+import { withUnitChoice } from '../settings/settings-forms';
 
 const ARTICLE_CHAINS: readonly SettingChain[] = ['articles'];
 
@@ -44,6 +46,7 @@ export class ArticleDefaults {
   private readonly settings = inject(ArticleSettings);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
+  private readonly fiscal = inject(FiscalFacade);
 
   readonly subject = input.required<ArticleSubject>();
 
@@ -62,12 +65,15 @@ export class ArticleDefaults {
     this.settings.rows().some((row) => row.writableLevels.includes(this.level())),
   );
   protected readonly descriptor = computed(() =>
-    settingsForm(this.settings.rows(), {
-      id: 'article-defaults',
-      level: this.level(),
-      chains: ARTICLE_CHAINS,
-      readOnly: !this.writable(),
-    }),
+    withUnitChoice(
+      settingsForm(this.settings.rows(), {
+        id: 'article-defaults',
+        level: this.level(),
+        chains: ARTICLE_CHAINS,
+        readOnly: !this.writable(),
+      }),
+      this.fiscal.units(),
+    ),
   );
   /** Bumped when this tab saved or reset, so the form shows the chain as the API now holds it. */
   private readonly revision = signal(0);
@@ -105,6 +111,8 @@ export class ArticleDefaults {
       const subject = this.subject();
       untracked(() => {
         if (companyId) {
+          // The units name the default unit's choices; without them the field stays the code it is held as.
+          if (this.auth.hasPermission('fiscal.read')) void this.fiscal.loadUnits(companyId);
           // Another subject's rows can describe the same fields: build the form again once they are read.
           void this.settings
             .load(companyId, subject)

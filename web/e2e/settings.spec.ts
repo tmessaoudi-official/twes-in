@@ -34,7 +34,9 @@ test("the owner sets the company's payment terms, which survive a reload until r
     await page.goto('/settings');
     const terms = page.getByTestId('field-document__payment_terms_days');
     await expect(terms).toHaveValue('30');
-    await expect(page.getByTestId('field-article__default_unit')).toHaveValue('C62');
+    // The default unit is chosen by its name among the company's units, never typed as its code (« C62 »).
+    await expect(page.getByTestId('field-article__default_unit')).toContainText('Unité');
+    await expect(page.getByTestId('field-article__default_unit')).not.toContainText('C62');
 
     // The suite's accessibility bar is WCAG 2.1 AA, as in accessibility.spec.ts.
     const axe = await new AxeBuilder({ page })

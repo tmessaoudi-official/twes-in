@@ -336,7 +336,7 @@ function offeredExpenseForm(options: ExpenseOptions, vendors: boolean): FormDesc
               none('expenses.form.no_tax'),
               ...options.taxes.map((tax) => ({
                 value: tax.id,
-                label: `${tax.name} (${Number(tax.rate)} %)`,
+                label: taxLabel(tax.name, tax.rate),
               })),
             ],
           },
@@ -627,4 +627,12 @@ export function categoryInput(values: FormValues): ExpenseCategoryInput {
 function text(value: FieldValue | undefined): string | null {
   const trimmed = String(value ?? '').trim();
   return trimmed === '' ? null : trimmed;
+}
+
+/** A tax as the select names it: its name, then its rate where the name does not already say it (« TVA 19 % »). */
+function taxLabel(name: string, rate: string): string {
+  const shown = String(Number(rate));
+  const bare = name.replace(/\s/g, '');
+  const said = [shown, shown.replace('.', ',')].some((each) => bare.includes(`${each}%`));
+  return said ? name : `${name} (${shown}\u00a0%)`;
 }

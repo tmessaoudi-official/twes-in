@@ -17,6 +17,17 @@ interface ShownField {
   span: 1 | 2;
 }
 
+/** A value only the screen knows, read first inside one section: an issued invoice's customer, by name. */
+export interface RecordLead {
+  /** The id of the section it opens. */
+  section: string;
+  /** A translation key. */
+  label: string;
+  value: string;
+  /** Names the value; its label is `<testId>-label`. */
+  testId: string;
+}
+
 interface ShownSection {
   id: string;
   title: string;
@@ -36,9 +47,22 @@ interface ShownSection {
   template: `
     <div class="flex flex-col gap-6" [attr.data-testid]="testId()">
       @for (section of sections(); track section.id) {
-        <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-2" [attr.data-section]="section.id">
           <h2 class="text-lg font-semibold">{{ section.title | translate }}</h2>
           <dl class="grid gap-x-6 gap-y-2 @min-[30rem]:grid-cols-2">
+            @if (lead(); as lead) {
+              @if (lead.section === section.id) {
+                <div class="@min-[30rem]:col-span-2">
+                  <dt
+                    class="text-sm text-on-surface-variant"
+                    [attr.data-testid]="lead.testId + '-label'"
+                  >
+                    {{ lead.label | translate }}
+                  </dt>
+                  <dd class="break-words" [attr.data-testid]="lead.testId">{{ lead.value }}</dd>
+                </div>
+              }
+            }
             @for (field of section.fields; track field.id) {
               <div [class]="field.span === 2 ? '@min-[30rem]:col-span-2' : ''">
                 <dt
@@ -85,6 +109,8 @@ export class RecordView {
   readonly emptyKey = input('form.nothing_filled');
   /** How a `pick` field's chosen record reads, which only the screen knows: a customer's name, not its id. */
   readonly picked = input<Record<string, string>>({});
+  /** What the screen reads first inside one of the sections, kept even where that section says nothing else. */
+  readonly lead = input<RecordLead | null>(null);
 
   /** Only what the document says: a section whose every field is empty is left out with them. */
   protected readonly sections = computed<ShownSection[]>(() => {
@@ -105,7 +131,7 @@ export class RecordView {
           }))
           .filter((field) => field.value !== ''),
       }))
-      .filter((section) => section.fields.length > 0);
+      .filter((section) => section.fields.length > 0 || section.id === this.lead()?.section);
   });
 
   /** The chosen options of a multiselect, in the order the field offers them. */

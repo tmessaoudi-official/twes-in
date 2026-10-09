@@ -83,7 +83,11 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
           <div>
             <dt class="text-sm opacity-80">{{ 'products.calculator.margin' | translate }}</dt>
             <dd class="m-0 text-xl font-semibold" data-testid="price-calculator-margin">
-              {{ percentOf(margin()) === null ? '—' : (percentOf(margin()) | amount: 2) + ' %' }}
+              @if (percentOf(margin()) === null) {
+                —
+              } @else {
+                {{ percentOf(margin()) | amount: 2 }}&nbsp;%
+              }
             </dd>
             <dd class="m-0 text-sm opacity-80" data-testid="price-calculator-margin-how">
               {{
@@ -99,7 +103,11 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
           <div>
             <dt class="text-sm opacity-80">{{ 'products.calculator.markup' | translate }}</dt>
             <dd class="m-0 text-xl font-semibold" data-testid="price-calculator-markup">
-              {{ percentOf(markup()) === null ? '—' : (percentOf(markup()) | amount: 2) + ' %' }}
+              @if (percentOf(markup()) === null) {
+                —
+              } @else {
+                {{ percentOf(markup()) | amount: 2 }}&nbsp;%
+              }
             </dd>
             <dd class="m-0 text-sm opacity-80" data-testid="price-calculator-markup-how">
               {{
@@ -135,8 +143,9 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
 
       @if (cost() !== null) {
         <div class="flex flex-wrap items-start gap-3">
+          <!-- On a phone the two bases stand one under the other rather than each wrapping its words over its outline. -->
           <div
-            class="flex gap-1"
+            class="flex flex-wrap gap-1"
             role="group"
             [attr.aria-label]="'products.calculator.basis' | translate"
           >
@@ -148,6 +157,7 @@ const PRICE = /^\d{1,10}(\.\d{1,4})?$/;
                 [class.is-on]="basis() === option"
                 (click)="basis.set(option)"
                 [attr.data-testid]="'price-calculator-basis-' + option"
+                class="whitespace-nowrap"
               >
                 {{ 'products.calculator.' + option | translate }}
               </button>

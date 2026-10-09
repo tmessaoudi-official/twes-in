@@ -75,7 +75,11 @@ export const membersList = (roles: readonly RoleRow[]): ListDescriptor<MemberRow
   filters: [
     {
       ...MEMBERS_LIST.filters![0],
-      options: roles.map((role) => ({ value: role.name, label: roleLabel(role) })),
+      options: roles.map((role) => ({
+        value: role.name,
+        label: roleLabel(role),
+        capitalize: role.builtIn,
+      })),
     },
   ],
 });
@@ -116,7 +120,11 @@ export class MembersPage implements OnInit {
       ),
   );
   protected readonly roleOptions = computed(() =>
-    this.roles().map((role) => ({ value: role.name, label: roleLabel(role) })),
+    this.roles().map((role) => ({
+      value: role.name,
+      label: roleLabel(role),
+      capitalize: role.builtIn,
+    })),
   );
   /**
    * Removing somebody is destructive, so it sits behind "⋮" rather than under the pointer; an invitation is

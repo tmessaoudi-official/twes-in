@@ -67,11 +67,11 @@
             <dt class="text-sm text-on-surface-variant">
               {{ 'expenses.fields.taxAmount' | translate }}
               @if (expense.taxRate !== null) {
-                ({{ +expense.taxRate }} %)
+                ({{ +expense.taxRate }}&nbsp;%)
               }
             </dt>
             <dd class="tabular-nums" data-testid="expense-tax">
-              {{ expense.taxAmount | amount: options()?.currencyScale }}
+              {{ expense.taxAmount | amount: options()?.currencyScale }} {{ expense.currency }}
             </dd>
           </div>
           <div>
@@ -232,7 +232,7 @@
   @if (current(); as expense) {
     <mat-card>
       <mat-card-content class="flex flex-col gap-4">
-        <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
           <h2 class="text-xl font-semibold">{{ 'expenses.attachments.title' | translate }}</h2>
           @if (mayWrite()) {
             <app-file-drop

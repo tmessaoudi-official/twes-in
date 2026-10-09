@@ -62,7 +62,7 @@ import { ScreenActions } from '../shared/actions/screen-actions';
 import { DeliverDialog } from './deliver-dialog';
 import { InvoicePartDialog, type InvoicePartLine } from './invoice-part-dialog';
 import { InvoiceTargetDialog, type InvoiceTarget } from './invoice-target-dialog';
-import { RecordView } from '../shared/form/record-view';
+import { type RecordLead, RecordView } from '../shared/form/record-view';
 import { taxNames } from '../invoices/tax-names';
 import { QuantityTotalsView } from '../shared/documents/quantity-totals';
 
@@ -259,6 +259,13 @@ export class DeliveryNotePage {
   protected readonly customerOfRecord = computed(
     () => this.current()?.recordedCustomerName ?? this.customerShown()?.name ?? '',
   );
+  /** The customer, read first inside « Client et établissement » once the document no longer changes. */
+  protected readonly viewLead = computed<RecordLead>(() => ({
+    section: 'parties',
+    label: 'delivery_notes.fields.customerId',
+    value: this.customerOfRecord(),
+    testId: 'delivery-note-view-customer',
+  }));
   /** The note read rather than filled in, once it no longer changes (design review finding 3). */
   protected readonly asView = computed(() => !this.editable() && this.current() != null);
   protected readonly viewPicked = computed<Record<string, string>>(() => {

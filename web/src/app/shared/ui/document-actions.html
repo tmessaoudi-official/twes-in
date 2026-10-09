@@ -26,7 +26,7 @@
         }
         {{ action.label | translate: action.labelParams }}
       </a>
-    } @else if (compact() && action.keep && action.icon) {
+    } @else if (compact() && action.keep && action.icon && nextStepShown()) {
       <button
         mat-icon-button
         type="button"

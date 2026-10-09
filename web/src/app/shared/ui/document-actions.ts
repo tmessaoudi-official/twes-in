@@ -61,6 +61,13 @@ export class DocumentActions {
   );
   protected readonly compact = computed(() => this.windowClass() === 'compact');
   /**
+   * Whether the next step stands in the bar: a kept action shrinks to its named icon on a phone only beside it, so a
+   * new document's one action, its save, keeps its words.
+   */
+  protected readonly nextStepShown = computed(() =>
+    this.visible().some((action) => action.primary === true),
+  );
+  /**
    * Drawn in the bar: the frequent ones, never anything destructive; on a phone the next step alone, since the bar
    * wrapped into three rows there with its « ⋮ » alone on one (audit V-3), and what is kept beside it as an icon.
    */

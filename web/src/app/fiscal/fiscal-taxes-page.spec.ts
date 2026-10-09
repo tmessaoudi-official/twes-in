@@ -99,7 +99,7 @@ describe('FiscalTaxesPage', () => {
     clearError: vi.fn(),
   };
   const auth = {
-    me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
+    me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme', currency: 'TND' } }),
     hasPermission: vi.fn(),
   };
   let fixture: ComponentFixture<FiscalTaxesPage>;
@@ -156,6 +156,8 @@ describe('FiscalTaxesPage', () => {
     expect(q('tax-TVA19')?.textContent).not.toContain('19.000');
     expect(q('tax-TIMBRE')?.textContent).toContain('Droit de timbre');
     expect(q('tax-TIMBRE')?.textContent).toContain('1,000');
+    // A fixed amount says its currency, so it does not read as a rate beside the percentages.
+    expect(q('tax-TIMBRE')?.textContent).toContain('TND');
   });
 
   it('lists the customer regimes with the taxes they do not charge', () => {

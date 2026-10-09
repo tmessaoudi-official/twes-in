@@ -1,5 +1,5 @@
 <section class="flex flex-col gap-6">
-  <div class="flex flex-wrap items-center justify-between gap-4">
+  <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
     <h1 class="text-3xl font-semibold" data-testid="taxes-title">
       {{ 'fiscal.taxes.title' | translate }}
     </h1>
@@ -59,13 +59,15 @@
     </ng-template>
     <ng-template appDataListCell="value" let-row>
       @if (row.rate !== null) {
-        {{ row.rate | amount: 0 }} %
+        {{ row.rate | amount: 0 }}&nbsp;%
       } @else {
-        {{ row.amount | amount: null }}
+        {{ row.amount | amount: null }} {{ company()?.currency }}
       }
     </ng-template>
     <ng-template appDataListCell="threshold" let-row>
-      {{ row.threshold | amount: null }}
+      @if (row.threshold !== null) {
+        {{ row.threshold | amount: null }} {{ company()?.currency }}
+      }
     </ng-template>
     <ng-template appDataListCell="isDefault" let-row>
       {{ (row.isDefault ? 'fiscal.yes' : 'fiscal.no') | translate }}

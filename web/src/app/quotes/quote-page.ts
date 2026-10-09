@@ -41,7 +41,7 @@ import { liveRecord } from '../shared/form/live-record';
 import { PartConflict } from '../shared/form/part-conflict';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { RecordChanged } from '../shared/form/record-changed';
-import { RecordView } from '../shared/form/record-view';
+import { type RecordLead, RecordView } from '../shared/form/record-view';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { AmountPipe, DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { DocumentActions } from '../shared/ui/document-actions';
@@ -302,6 +302,13 @@ export class QuotePage {
   protected readonly customerOfRecord = computed(
     () => this.current()?.recordedCustomerName ?? this.customerShown()?.name ?? '',
   );
+  /** The customer, read first inside « Client et établissement » once the document no longer changes. */
+  protected readonly viewLead = computed<RecordLead>(() => ({
+    section: 'parties',
+    label: 'quotes.fields.customerId',
+    value: this.customerOfRecord(),
+    testId: 'quote-view-customer',
+  }));
   protected readonly viewPicked = computed<Record<string, string>>(() => {
     const customer = this.customerShown();
     const picked: Record<string, string> = {};

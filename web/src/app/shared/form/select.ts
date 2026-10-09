@@ -40,7 +40,12 @@ export interface SelectOption {
   triggerCount?: boolean;
   /** A status tone: a dot of that tone is drawn before the label, which still says the same in words. */
   tone?: StatusTone;
+  /** Raises the translated label's first letter: a word translated lowercase to sit inside sentences, standing alone. */
+  capitalize?: boolean;
 }
+
+const shown = (label: string, capitalize: boolean | undefined): string =>
+  capitalize === true ? label.charAt(0).toLocaleUpperCase() + label.slice(1) : label;
 
 /** How long typed letters count as one word before they are forgotten. */
 const TYPE_AHEAD_MS = 700;
@@ -291,7 +296,10 @@ export class Select implements ControlValueAccessor {
     return this.translateLabels()
       ? this.options().map((option) => ({
           ...option,
-          label: this.translate.instant(option.label, option.params) as string,
+          label: shown(
+            this.translate.instant(option.label, option.params) as string,
+            option.capitalize,
+          ),
         }))
       : this.options();
   });

@@ -12,7 +12,7 @@ import { Session } from '../session/session';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import type { FormDescriptor, FormValues } from './form-types';
-import { RecordView } from './record-view';
+import { type RecordLead, RecordView } from './record-view';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -95,12 +95,14 @@ const descriptor: FormDescriptor = {
     [descriptor]="descriptor"
     [values]="values()"
     [picked]="{ customerId: 'Carthage SARL' }"
+    [lead]="lead()"
     testId="invoice-view"
   />`,
 })
 class Host {
   readonly descriptor = descriptor;
   readonly values = signal<FormValues>({});
+  readonly lead = signal<RecordLead | null>(null);
 }
 
 describe('RecordView', () => {
@@ -154,6 +156,30 @@ describe('RecordView', () => {
 
     await show({ taxes: [] });
     expect(q('view-taxes')).toBeNull();
+  });
+
+  /** The sweep found the customer of an issued invoice above « Client et établissement », outside the section. */
+  it('shows what the screen leads with first inside its section, which it keeps even when nothing else is said', async () => {
+    fixture.componentInstance.lead.set({
+      section: 'parties',
+      label: 'd.customer',
+      value: 'Leïla Gharbi',
+      testId: 'invoice-view-customer',
+    });
+    await show({ supplyDate: '2026-09-14' });
+
+    const section = q('invoice-view-customer')?.closest('[data-section]');
+    expect(section?.getAttribute('data-section')).toBe('parties');
+    expect(section?.querySelector('h2')?.textContent?.trim()).toBe('Parties');
+    expect(text('invoice-view-customer-label')).toBe('Customer');
+    expect(text('invoice-view-customer')).toBe('Leïla Gharbi');
+    const pairs = Array.from(section!.querySelectorAll('dd')).map((dd) =>
+      dd.getAttribute('data-testid'),
+    );
+    expect(pairs).toEqual(['invoice-view-customer', 'view-supplyDate']);
+
+    await show({});
+    expect(text('invoice-view-customer')).toBe('Leïla Gharbi');
   });
 
   it('leaves out what the document does not say, and the section that then holds nothing', async () => {

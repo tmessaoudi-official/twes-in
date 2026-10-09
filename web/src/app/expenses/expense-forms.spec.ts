@@ -172,7 +172,18 @@ describe('expense forms', () => {
       'Véhicules',
       'Véhicules › Carburant',
     ]);
-    expect(byId.get('taxComponentId')?.options?.[1]).toEqual({ value: 't1', label: 'TVA (19 %)' });
+    expect(byId.get('taxComponentId')?.options?.[1]).toEqual({
+      value: 't1',
+      label: 'TVA (19\u00a0%)',
+    });
+    // A name that already says its rate is not told it twice: « TVA 19 % (19 %) » (sweep, row 244).
+    const named = expenseForm({
+      ...options,
+      taxes: [{ ...options.taxes[0]!, name: 'TVA 19\u00a0%' }],
+    })
+      .sections.flatMap((section) => section.fields)
+      .find((field) => field.id === 'taxComponentId');
+    expect(named?.options?.[1]?.label).toBe('TVA 19\u00a0%');
     expect(byId.get('amountNet')?.pattern).toBe(amountPattern(3));
   });
 

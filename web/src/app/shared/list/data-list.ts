@@ -743,6 +743,7 @@ export class DataList<Row> implements OnInit {
         value: entry.option.value,
         label: entry.option.label,
         tone: entry.option.tone,
+        capitalize: entry.option.capitalize,
         count: entry.count,
         testId: `list-facet-${id}-${entry.option.value}`,
       })),

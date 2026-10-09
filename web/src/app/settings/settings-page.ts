@@ -25,7 +25,9 @@ import {
   companyOverrides,
   companySettingsForm,
   companySettingsValues,
+  withUnitChoice,
 } from './settings-forms';
+import { FiscalFacade } from '../fiscal/fiscal-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 
@@ -73,12 +75,15 @@ export class SettingsPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly theme = inject(ThemeFacade);
+  private readonly fiscal = inject(FiscalFacade);
 
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
   protected readonly busy = this.settings.busy;
   protected readonly error = this.settings.error;
-  protected readonly descriptor = computed(() => companySettingsForm(this.settings.rows()));
+  protected readonly descriptor = computed(() =>
+    withUnitChoice(companySettingsForm(this.settings.rows()), this.fiscal.units()),
+  );
   /** Bumped when this tab saved or reset, so the form shows the chain as the API now holds it. */
   private readonly revision = signal(0);
   /**
@@ -116,7 +121,11 @@ export class SettingsPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId && this.mayManage()) {
-      await this.settings.load(companyId);
+      // The units name the default unit's choices; without them the field stays the code it is held as.
+      const units = this.auth.hasPermission('fiscal.read')
+        ? this.fiscal.loadUnits(companyId)
+        : Promise.resolve();
+      await Promise.all([this.settings.load(companyId), units]);
     }
   }
 

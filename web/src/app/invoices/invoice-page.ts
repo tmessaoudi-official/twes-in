@@ -92,7 +92,7 @@ import { InvoiceReminders } from './invoice-reminders';
 import { PaymentDialog } from './payment-dialog';
 import { OverpaymentDialog } from './overpayment-dialog';
 import { overpaymentForm, overpaymentInput, overpaymentValues } from './overpayment-form';
-import { RecordView } from '../shared/form/record-view';
+import { type RecordLead, RecordView } from '../shared/form/record-view';
 import { taxNames } from './tax-names';
 import {
   liveFigures,
@@ -429,6 +429,13 @@ export class InvoicePage {
   protected readonly customerOfRecord = computed(
     () => this.current()?.recordedCustomerName ?? this.customerShown()?.name ?? '',
   );
+  /** The customer, read first inside « Client et établissement » once the document no longer changes. */
+  protected readonly viewLead = computed<RecordLead>(() => ({
+    section: 'parties',
+    label: 'invoices.fields.customerId',
+    value: this.customerOfRecord(),
+    testId: 'invoice-view-customer',
+  }));
   /** What the read view shows for the customer, which is a name rather than the id the control holds. */
   protected readonly viewPicked = computed<Record<string, string>>(() => {
     const customer = this.customerShown();

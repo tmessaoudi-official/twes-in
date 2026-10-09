@@ -154,7 +154,7 @@ describe('MembersPage', () => {
     expect(text('member-owner@example.test')).toContain('Propriétaire');
   });
 
-  it('offers the roles the company made, beside the three the release ships', async () => {
+  it('offers the roles the company made, beside those the release ships', async () => {
     // Hardcoding owner/admin/member here meant a role the company had just made could be held by nobody.
     const select = fixture.nativeElement.querySelector(
       '[data-testid="member-role"]',
@@ -166,7 +166,8 @@ describe('MembersPage', () => {
     const offered = [...document.querySelectorAll('[role="option"] [data-option-label]')].map((o) =>
       o.textContent?.trim(),
     );
-    expect(offered).toEqual(['propriétaire', 'administrateur', 'membre', 'barista']);
+    // A shipped role is raised standing alone; a company's own name is left as it was typed.
+    expect(offered).toEqual(['Propriétaire', 'Administrateur', 'Membre', 'barista']);
   });
 
   it('names a custom role by its own name, having no translation to look up', () => {

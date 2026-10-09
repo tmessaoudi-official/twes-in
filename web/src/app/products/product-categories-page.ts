@@ -82,7 +82,8 @@ export class ProductCategoriesPage implements OnInit {
         destructive: true,
         run: (row) => void this.remove(row),
         disabled: () => this.busy(),
-        shown: () => this.mayWrite(),
+        // A category still holding products or sub-categories cannot go, as the page says: it is not offered.
+        shown: (row) => this.mayWrite() && row.productCount === 0 && row.childCount === 0,
         confirm: (row) => ({
           kind: 'definitif',
           title: 'products.categories.delete_title',

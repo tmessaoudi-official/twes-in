@@ -440,7 +440,7 @@
     },
     "roles": {
       "title": "Roles",
-      "intro": "What each role is allowed to do. The three roles shipped with the product can be read but not changed; create your own for how you work.",
+      "intro": "What each role is allowed to do. The roles shipped with the product can be read but not changed; create your own for how you work.",
       "no_company": "Choose a company to manage its roles.",
       "built_in": "shipped",
       "member_count": "{{count}} {count, plural, one {member} other {members}}",

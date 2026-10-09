@@ -86,18 +86,11 @@
       <mat-card>
         <mat-card-content class="flex flex-col">
           @if (asView()) {
-            <dl class="mb-6 flex flex-col">
-              <dt class="text-sm text-on-surface-variant">
-                {{ 'quotes.fields.customerId' | translate }}
-              </dt>
-              <dd class="break-words" data-testid="quote-view-customer">
-                {{ customerOfRecord() }}
-              </dd>
-            </dl>
             <app-record-view
               [descriptor]="descriptor"
               [values]="form.getRawValue()"
               [picked]="viewPicked()"
+              [lead]="viewLead()"
               testId="quote-view"
             />
           } @else {
@@ -273,7 +266,7 @@
 
     <mat-card data-testid="quote-attachments-card">
       <mat-card-content class="flex flex-col gap-4">
-        <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="twes-page-head flex flex-wrap items-center justify-between gap-4">
           <h2 class="text-xl font-semibold">{{ 'quotes.attachments.title' | translate }}</h2>
           @if (mayWrite()) {
             <app-file-drop

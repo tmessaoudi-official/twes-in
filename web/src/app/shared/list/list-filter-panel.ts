@@ -66,7 +66,8 @@ import type {
         }
       }
       @for (range of ranges(); track range.id) {
-        <fieldset class="flex flex-wrap items-start gap-2 border-0 p-0 m-0">
+        <!-- On a phone the two ends share the panel's width, as the fields above fill it; wider, each keeps its own. -->
+        <fieldset class="flex w-full flex-wrap items-start gap-2 border-0 p-0 m-0 sm:w-auto">
           <legend class="text-sm text-on-surface-variant pb-1">
             {{ range.label | translate }}
           </legend>
@@ -74,7 +75,7 @@ import type {
             <!-- One field per kind: a suffix inside an @if beside the input is not projected, and the calendar
                  button fell under the label instead of closing the field. -->
             @if (range.kind === 'day') {
-              <mat-form-field class="w-40" subscriptSizing="dynamic">
+              <mat-form-field class="min-w-0 flex-1 sm:w-40 sm:flex-none" subscriptSizing="dynamic">
                 <mat-label>{{ 'list.range.' + end | translate }}</mat-label>
                 <input
                   matInput
@@ -90,7 +91,7 @@ import type {
                 <app-day-calendar-button matSuffix [field]="dayField" />
               </mat-form-field>
             } @else {
-              <mat-form-field class="w-40" subscriptSizing="dynamic">
+              <mat-form-field class="min-w-0 flex-1 sm:w-40 sm:flex-none" subscriptSizing="dynamic">
                 <mat-label>{{ 'list.range.' + end | translate }}</mat-label>
                 <input
                   matInput

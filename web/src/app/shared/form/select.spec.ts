@@ -67,6 +67,7 @@ class StaticLoader implements TranslateLoader {
         clear_all: 'Clear all',
         more: '+{{count}}',
       },
+      roles: { member: 'membre' },
     });
   }
 }
@@ -221,6 +222,19 @@ describe('Select', () => {
     await open();
 
     expect(optionLabels()).toEqual(['+3']);
+  });
+
+  it('raises the first letter of a translated label standing alone, when its option asks', async () => {
+    // A role is translated lowercase to sit inside a sentence; alone in a picker it read « membre ».
+    fixture.componentInstance.translateLabels.set(true);
+    fixture.componentInstance.options.set([
+      { value: 'm', label: 'roles.member', capitalize: true },
+      { value: 'n', label: 'roles.member' },
+    ]);
+    await settle();
+    await open();
+
+    expect(optionLabels()).toEqual(['Membre', 'membre']);
   });
 
   it('shows how many rows an option stands for, at the end of its row and beside the chosen label', async () => {

@@ -440,7 +440,7 @@
     },
     "roles": {
       "title": "Rôles",
-      "intro": "Ce que chaque rôle a le droit de faire. Les trois rôles fournis avec le produit se consultent mais ne se modifient pas ; créez les vôtres pour votre organisation.",
+      "intro": "Ce que chaque rôle a le droit de faire. Les rôles fournis avec le produit se consultent mais ne se modifient pas ; créez les vôtres pour votre organisation.",
       "no_company": "Choisissez une société pour gérer ses rôles.",
       "built_in": "fourni",
       "member_count": "{{count}} {count, plural, one {membre} other {membres}}",

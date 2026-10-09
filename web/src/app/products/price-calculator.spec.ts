@@ -93,6 +93,8 @@ describe('PriceCalculator', () => {
 
     expect(text('price-calculator-profit')).toBe('~40.000 TND');
     expect(text('price-calculator-margin')).toBe('~40.00 %');
+    // The sign never wraps away from its figure (French typography).
+    expect(q('price-calculator-margin')?.textContent).toContain('40.00\u00a0%');
     expect(text('price-calculator-markup')).toBe('~66.67 %');
 
     form.get('unitPriceNet')!.setValue('120.000');

@@ -317,7 +317,11 @@ describe('DocumentActions', () => {
     width.set('compact');
     await settle();
 
+    // In words, the page's one action: as a bare icon it was the least visible thing in its row (sweep, row 244).
     expect(q('document-action-save')).not.toBeNull();
+    expect(q('document-action-save')!.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'save Save draft',
+    );
   });
 
   it('names the "⋮" it draws', () => {

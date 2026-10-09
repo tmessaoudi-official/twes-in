@@ -122,6 +122,8 @@ export interface ListFilterOption {
   label: string;
   /** The status tone an option's dot is drawn in, for a filter over a lifecycle. */
   tone?: StatusTone;
+  /** Raises the translated label's first letter, for a word translated lowercase to sit inside sentences. */
+  capitalize?: boolean;
 }
 
 /** One faceted filter of a list screen: the rows whose value equals the option a person picked. */

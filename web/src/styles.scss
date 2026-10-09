@@ -239,11 +239,13 @@ html {
 
 // A checkbox's box on its label's first line, not centred on the whole text: two checkboxes side by side, one label of
 // one line and one of two, otherwise sit at two heights (audit V-15). The label's padding keeps a one-line label
-// where Material centres it on the box's 40 px touch area.
-.twes-form-fields .mat-mdc-checkbox .mdc-form-field {
+// where Material centres it on the box's 40 px touch area. Material names the row `.mat-internal-form-field` and its
+// label a `span.mat-internal-form-field-label` now; written for `.mdc-form-field > label`, the rule had stopped
+// applying, and « Actif » stood 10 px above its box.
+.twes-form-fields .mat-mdc-checkbox .mat-internal-form-field {
   align-items: flex-start;
 
-  > label {
+  > .mat-internal-form-field-label {
     padding-block-start: 0.625rem;
   }
 }
@@ -1030,6 +1032,80 @@ app-cookie-notice {
   font-family: ui-monospace, monospace;
   font-size: 0.875rem;
   line-height: 1.5;
+}
+
+/*
+ * A screen's title and its actions. On a phone the actions wrap under the title, and the filled one, what the screen
+ * is for (« Nouvelle facture »), came last behind the exports: it is drawn first instead, the order a person reads.
+ */
+@media (max-width: 599.98px) {
+  .twes-page-head > .flex-wrap > .mat-mdc-unelevated-button {
+    order: -1;
+  }
+}
+
+/*
+ * A small table a phone reads one card per row: its header is kept for assistive technology but not drawn, and each
+ * value says its column before it. The stock valuation and the legal pages' overview scrolled sideways on a phone,
+ * with nothing saying three of their columns lay off screen.
+ */
+@media (max-width: 599.98px) {
+  // Qualified, so it outweighs a table's own cell rules written later in this file (`.twes-legal-table td`).
+  table.twes-stack-table {
+    min-width: 0;
+
+    thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    tbody,
+    tr {
+      display: block;
+    }
+
+    tr {
+      padding-block: 0.5rem;
+      border-block-end: 1px solid var(--mat-sys-outline-variant);
+    }
+
+    th,
+    td {
+      display: block;
+      padding: 0.25rem 0;
+      border: 0;
+      text-align: start;
+    }
+
+    td[data-label] {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+      text-align: end;
+
+      &::before {
+        flex-shrink: 0;
+        content: attr(data-label);
+        color: var(--mat-sys-on-surface-variant);
+        text-align: start;
+      }
+    }
+
+    th[scope='row'],
+    td:not([data-label]) {
+      font-weight: 600;
+    }
+
+    /* A value the row does not have (a cost known, nothing unvalued) leaves no labelled blank in the card. */
+    td:empty {
+      display: none;
+    }
+  }
 }
 
 .twes-legal-table {

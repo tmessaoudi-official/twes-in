@@ -55,10 +55,17 @@ const laptops: ProductCategoryRow = {
   productCount: 4,
   childCount: 0,
 };
+const archives: ProductCategoryRow = {
+  id: 'k3',
+  name: 'Archives',
+  parentId: null,
+  productCount: 0,
+  childCount: 0,
+};
 
 describe('ProductCategoriesPage', () => {
   const error = signal<ProductsError | null>(null);
-  const categories = signal<readonly ProductCategoryRow[]>([hardware, laptops]);
+  const categories = signal<readonly ProductCategoryRow[]>([hardware, laptops, archives]);
   const facade = {
     categories: categories.asReadonly(),
     busy: signal(false).asReadonly(),
@@ -108,7 +115,7 @@ describe('ProductCategoriesPage', () => {
 
   beforeEach(async () => {
     error.set(null);
-    categories.set([hardware, laptops]);
+    categories.set([hardware, laptops, archives]);
     facade.loadCategories.mockReset().mockResolvedValue(undefined);
     facade.createCategory.mockReset().mockResolvedValue(true);
     facade.reviseCategory.mockReset().mockResolvedValue(true);
@@ -192,19 +199,26 @@ describe('ProductCategoriesPage', () => {
     });
 
     // Deleting is destructive, so it sits behind "⋮" rather than under the pointer.
-    q('row-more-k2')!.click();
+    q('row-more-k3')!.click();
     await settle();
     // The menu names the row it deletes, as the customer groups' does.
-    expect(inMenu('row-menu-delete-k2')?.textContent).toContain('Supprimer Portables');
-    inMenu('row-menu-delete-k2')!.click();
+    expect(inMenu('row-menu-delete-k3')?.textContent).toContain('Supprimer Archives');
+    inMenu('row-menu-delete-k3')!.click();
     await settle();
     // Destructive, so it asks first, and the question names the row rather than asking about "it".
     expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
-      'Portables',
+      'Archives',
     );
     (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
     await settle();
-    expect(facade.deleteCategory).toHaveBeenCalledWith('c1', 'k2');
+    expect(facade.deleteCategory).toHaveBeenCalledWith('c1', 'k3');
+  });
+
+  it('offers no delete for a category that still holds products or sub-categories', () => {
+    // The page says such a category cannot go; offering it only to be refused contradicted that (sweep 2026-10-09).
+    expect(q('row-more-k2')).toBeNull();
+    expect(q('row-more-k1')).toBeNull();
+    expect(q('row-more-k3')).not.toBeNull();
   });
 
   it("shows a category's defaults while it is edited, and none for a new one", async () => {

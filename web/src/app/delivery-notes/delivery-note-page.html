@@ -90,21 +90,11 @@
         <mat-card-content class="flex flex-col">
           @if (asView()) {
             <!-- It no longer changes, so it is read rather than filled in (design review finding 3). -->
-            <dl class="mb-6 flex flex-col">
-              <dt
-                class="text-sm text-on-surface-variant"
-                data-testid="delivery-note-view-customer-label"
-              >
-                {{ 'delivery_notes.fields.customerId' | translate }}
-              </dt>
-              <dd class="break-words" data-testid="delivery-note-view-customer">
-                {{ customerOfRecord() }}
-              </dd>
-            </dl>
             <app-record-view
               [descriptor]="descriptor"
               [values]="form.getRawValue()"
               [picked]="viewPicked()"
+              [lead]="viewLead()"
               testId="delivery-note-view"
             />
           } @else {

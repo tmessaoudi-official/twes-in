@@ -13,7 +13,7 @@ use Symfony\Component\Uid\Uuid;
 
 interface RoleRepository
 {
-    /** One of the three roles every company shares (owner, admin, member); null before the seed ran. */
+    /** One of the roles every company shares (`Role::OWNER` and the others); null before the seed ran. */
     public function builtIn(string $name): ?Role;
 
     /** A role the company may use: a built-in one or its own; null for a role of another company. */
