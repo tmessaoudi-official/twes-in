@@ -35,7 +35,8 @@ export async function mailTo(
 /**
  * The raw token of the newest link of that kind mailed to that address. A token already used is passed as `unlike`
  * when a second mail is awaited: the worker sends mail asynchronously, so until the second one arrives the newest
- * mail is still the first.
+ * mail is still the first. Mails of other kinds are passed over: a member is also mailed what their companies are
+ * told, and one of those can arrive after the link.
  */
 async function tokenFor(
   request: APIRequestContext,
@@ -45,11 +46,23 @@ async function tokenFor(
 ): Promise<string> {
   const pattern = new RegExp(`/${path}/([0-9a-f]{64})`);
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    const found = pattern.exec(await mailTo(request, to, () => true));
-    if (!found) {
-      throw new Error(`the mail to ${to} carries no /${path}/ link`);
+    const listed = await request.get(`${MAILPIT}/api/v1/messages`);
+    const { messages } = (await listed.json()) as { messages: Listed[] };
+    // Mailpit lists the newest first.
+    for (const message of messages.filter((one) =>
+      one.To.some((address) => address.Address === to),
+    )) {
+      const body = (await (
+        await request.get(`${MAILPIT}/api/v1/message/${message.ID}`)
+      ).json()) as {
+        HTML?: string;
+      };
+      const found = pattern.exec(String(body.HTML ?? ''));
+      if (found) {
+        if (found[1] !== unlike) return found[1];
+        break;
+      }
     }
-    if (found[1] !== unlike) return found[1];
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
   throw new Error(`no new /${path}/ link to ${to} arrived at Mailpit`);

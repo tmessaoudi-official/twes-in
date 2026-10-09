@@ -68,9 +68,14 @@ final readonly class InboxNotifications implements Notifications
         } else {
             $company = $this->companies->ofId($id)
                 ?? throw new \LogicException(\sprintf('A notification was published to company %s, which does not exist.', $id->toRfc4122()));
+            // The member whose act this tells of already knows it: a bell and a mail about it would be noise to them.
+            $told = array_filter(
+                $this->memberships->ofCompany($id),
+                static fn (Membership $membership): bool => $membership->getUser()->getId()->toRfc4122() !== $notification->actorId,
+            );
             $items = array_map(
                 static fn (Membership $membership) => new InboxItem($membership->getUser(), $company, $notification->type, $notification->payload, $now),
-                $this->memberships->ofCompany($id),
+                array_values($told),
             );
         }
 

@@ -137,6 +137,37 @@ final class NotificationMailTest extends ApiTestCase
         self::assertEmailCount(0);
     }
 
+    public function testWhatACompanyIsToldOfSomebodysActIsNotToldToThatPersonNorMailedToThem(): void
+    {
+        $em = $this->em();
+        $owner = new User(Email::fromString('owner@twes.local'), 'Owner', 'fr');
+        $em->persist($owner);
+        $role = new Role('barista', ['company.read'], $this->acme);
+        $em->persist($role);
+        $em->persist(new Membership($owner, $this->acme, $role));
+        $em->flush();
+
+        $this->notifications()->publish(new Notification(
+            'company:'.$this->acme->getId()->toRfc4122(),
+            'invitation.accepted',
+            ['user_id' => $this->keeper->getId()->toRfc4122(), 'display_name' => 'Keeper', 'role' => 'member'],
+            actorId: $this->keeper->getId()->toRfc4122(),
+        ));
+
+        $told = $this->em()->getConnection()->fetchFirstColumn("SELECT recipient_id FROM inbox_item WHERE type = 'invitation.accepted'");
+        self::assertSame([$owner->getId()->toRfc4122()], array_map(static function (mixed $id): string {
+            self::assertIsString($id);
+
+            return Uuid::fromString($id)->toRfc4122();
+        }, $told));
+        $mailed = array_map(static function (object $message): string {
+            self::assertInstanceOf(NotificationToMail::class, $message);
+
+            return $message->userId;
+        }, $this->queued());
+        self::assertSame([$owner->getId()->toRfc4122()], $mailed);
+    }
+
     public function testALinkNotSignedHereStopsNothingAndAGetChangesNothing(): void
     {
         $this->tellStockLow();

@@ -24,6 +24,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\ReceivedStamp;
 use Symfony\Component\Messenger\Stamp\RedeliveryStamp;
 use Symfony\Component\Mime\Email as MimeEmail;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * The invitation, end to end through the API: an admin invites an address with no account, the mail carries a
@@ -141,6 +142,14 @@ final class InvitationTest extends ApiTestCase
         $user = $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('stranger@twes.local')]);
         self::assertNotNull($user);
         self::assertSame('New Person', $user->getDisplayName());
+        // The company is told somebody joined; the one who joined is not told of their own act.
+        $told = $this->em()->getConnection()->fetchFirstColumn("SELECT recipient_id FROM inbox_item WHERE type = 'invitation.accepted'");
+        self::assertNotSame([], $told, 'the members already there are told');
+        self::assertNotContains($user->getId()->toRfc4122(), array_map(static function (mixed $id): string {
+            self::assertIsString($id);
+
+            return Uuid::fromString($id)->toRfc4122();
+        }, $told));
     }
 
     public function testAnInvitationJoinsTheRoleItWasSentForEvenOnceAnotherRoleTakesItsName(): void

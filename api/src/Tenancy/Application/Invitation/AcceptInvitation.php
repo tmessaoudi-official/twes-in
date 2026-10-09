@@ -117,6 +117,7 @@ final readonly class AcceptInvitation
                     'company:'.$company->getId()->toRfc4122(),
                     self::ACCEPTED,
                     ['user_id' => $user->getId()->toRfc4122(), 'display_name' => $user->getDisplayName(), 'role' => $role->getName()],
+                    actorId: $user->getId()->toRfc4122(),
                 ),
             ];
         });
