@@ -239,6 +239,33 @@ test('the lines say what they carry in each unit as they are typed', async ({ pa
   }
 });
 
+// Row 224: the figures follow the hand, from the API's one calculator, before anything is saved.
+test('a new note is worked out as it is typed, line by line and in its totals', async ({
+  page,
+}) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const customerNumber = `E2E-DNF-${run}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await createCustomer(page, customerNumber);
+  try {
+    await page.goto('/delivery-notes/new');
+    await page.getByTestId('delivery-note-customer').fill(customerNumber);
+    await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
+    await page.getByTestId('line-0-quantity').fill('3');
+    await page.getByTestId('line-0-price').fill('12.5');
+    await expect(page.getByTestId('line-0-net')).toContainText('37,500');
+    await expect(page.getByTestId('delivery-note-total')).toContainText('37,500');
+    await expect(page.getByTestId('delivery-note-totals-note')).toContainText(
+      'calculés à l’instant',
+    );
+    await page.getByTestId('line-0-toggle').click();
+    await expect(page.getByTestId('line-0-details')).toBeVisible();
+  } finally {
+    await retire(page, customerNumber);
+  }
+});
+
 test('a second note is added to the draft invoice the first one started', async ({ page }) => {
   const run = Date.now().toString(36).toUpperCase();
   const customerNumber = `E2E-DA-${run}`;

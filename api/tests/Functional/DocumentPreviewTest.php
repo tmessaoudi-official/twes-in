@@ -16,6 +16,10 @@ use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductDetails;
+use App\Module\Products\Domain\ProductKind;
+use App\Module\Products\Domain\ProductTracking;
 use App\Tenancy\Domain\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,6 +30,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class DocumentPreviewTest extends ApiTestCase
 {
+    private const array NOTE_WRITER = ['delivery_note.read', 'delivery_note.write', 'customer.read'];
     private const array WRITER = ['quote.read', 'quote.write', 'invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'customer.read'];
 
     private Company $company;
@@ -184,6 +189,110 @@ final class DocumentPreviewTest extends ApiTestCase
         self::assertSame($this->json()['total'], $this->rows($this->json(), 'lines')[0]['total'], 'the only line adds what the quote comes to, its share of the discount taken off');
     }
 
+    /**
+     * A delivery note's lines as they are typed, by the calculator that saves them: no discount and no document tax, a
+     * VAT on the FODEC as on an invoice, and nothing kept. A saved draft is previewed with the body that would revise it.
+     */
+    public function testADeliveryNoteIsWorkedOutAsItWouldBeSavedAndNothingIsKept(): void
+    {
+        $this->signedIn(self::NOTE_WRITER);
+        $body = $this->noteBody([
+            ['productId' => null, 'description' => 'Écrou', 'quantity' => '3', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '12.5', 'taxComponentIds' => [$this->taxId('FODEC'), $this->taxId('TVA19')], 'lotCode' => null],
+            ['productId' => null, 'description' => 'Pose', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '20', 'taxComponentIds' => [$this->taxId('TVA19')], 'lotCode' => null],
+        ]);
+
+        $this->postJson($this->companyPath().'/delivery-notes/preview', $body);
+
+        self::assertResponseIsSuccessful();
+        $preview = $this->json();
+        $this->assertNothingPending();
+        self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM delivery_note'), 'a preview creates no note');
+        $lines = $this->rows($preview, 'lines');
+        self::assertSame(['37.500', '0.000', '37.500', '0.000'], [$lines[0]['amount'], $lines[0]['discount'], $lines[0]['net'], $lines[0]['documentDiscount']]);
+        self::assertSame(['37.500', '37.875'], array_column($this->rows($lines[0], 'taxes'), 'base'), 'VAT is charged on the FODEC too');
+        self::assertSame('20.000', $lines[1]['net']);
+
+        $this->postJson($this->companyPath().'/delivery-notes', $body);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $saved = $this->json();
+        foreach (['subtotalNet', 'totalTax', 'total'] as $key) {
+            self::assertSame($saved[$key], $preview[$key], "the preview's $key is what the save stored");
+        }
+        self::assertSame(array_column($this->rows($saved, 'taxes'), 'amount'), array_column($this->rows($preview, 'taxes'), 'amount'));
+        self::assertSame(array_column($this->rows($saved, 'lines'), 'net'), array_column($lines, 'net'));
+
+        $id = $this->stringAt($saved, 'id');
+        $this->postJson($this->companyPath().'/delivery-notes/'.$id.'/preview', [...$body, 'lines' => [[...$this->rows($body, 'lines')[1], 'quantity' => '2']]]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['40.000', '47.600'], [$this->json()['subtotalNet'], $this->json()['total']]);
+        $this->assertNothingPending();
+        $this->getJson($this->companyPath().'/delivery-notes/'.$id);
+        self::assertSame('57.500', $this->json()['subtotalNet'], 'the draft keeps what was saved');
+    }
+
+    /** The screen sends no lot while a note is typed: a product tracked by lot is worked out before its lot is named. */
+    public function testADeliveryNoteLineOfAProductTrackedByLotIsWorkedOutBeforeItsLotIsNamed(): void
+    {
+        $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($unit);
+        $now = new \DateTimeImmutable();
+        $drill = Product::create($this->company, 'ART-001', new ProductDetails('Perceuse', null, ProductKind::Goods, '120'), $unit, null, [], $now);
+        $drill->track(ProductTracking::Lot, $now);
+        $this->em()->persist($drill);
+        $this->em()->flush();
+        $this->signedIn([...self::NOTE_WRITER, 'product.read']);
+
+        $this->postJson($this->companyPath().'/delivery-notes/preview', $this->noteBody([
+            ['productId' => $drill->getId()->toRfc4122(), 'description' => 'Perceuse', 'quantity' => '2', 'unitId' => $unit->getId()->toRfc4122(), 'unitPriceNet' => '120', 'taxComponentIds' => [], 'lotCode' => null],
+        ]));
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['240.000', '240.000'], [$this->rows($this->json(), 'lines')[0]['net'], $this->json()['total']]);
+    }
+
+    public function testADeliveryNoteRefusedOrNoLongerADraftIsNotPreviewed(): void
+    {
+        $this->signedIn([...self::NOTE_WRITER, 'delivery_note.validate']);
+        $line = ['productId' => null, 'description' => 'Pose', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '20', 'taxComponentIds' => [$this->taxId('TVA19')], 'lotCode' => null];
+
+        $this->postJson($this->companyPath().'/delivery-notes/preview', $this->noteBody([[...$line, 'taxComponentIds' => ['0190a3c5-0000-7000-8000-000000000000']]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringStartsWith('lines[0].taxComponentIds', $this->stringAt($this->json(), 'detail'));
+
+        $this->postJson($this->companyPath().'/delivery-notes', $this->noteBody([$line]));
+        $id = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->companyPath().'/delivery-notes/'.$id.'/validate', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->companyPath().'/delivery-notes/'.$id.'/preview', $this->noteBody([$line]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a validated note shows the figures it was validated with');
+
+        $this->postJson($this->companyPath().'/delivery-notes/0190a3c5-0000-7000-8000-000000000000/preview', $this->noteBody([$line]));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testADeliveryNoteIsPreviewedOnlyByWhoeverMayWriteItInItsOwnCompany(): void
+    {
+        $this->signedIn(self::NOTE_WRITER);
+        $this->postJson($this->companyPath().'/delivery-notes', $this->noteBody([]));
+        $id = $this->stringAt($this->json(), 'id');
+
+        $globex = $this->createCompany('Globex');
+        static::getContainer()->get(ProvisionCompany::class)->handle($globex);
+        $this->createUser('other@twes.local', 'password-1234', $globex, self::NOTE_WRITER, 'member');
+        $this->login('other@twes.local', 'password-1234');
+        $this->postJson('/api/companies/'.$globex->getId()->toRfc4122().'/delivery-notes/'.$id.'/preview', $this->noteBody([]));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company\'s note');
+        $this->postJson($this->companyPath().'/delivery-notes/'.$id.'/preview', $this->noteBody([]));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a company one is not a member of');
+
+        // The test client's requests reboot the kernel: the company is the one its entity manager holds now.
+        $this->createUser('reader@twes.local', 'password-1234', $this->em()->find(Company::class, $this->company->getId()), ['delivery_note.read', 'customer.read'], 'reader');
+        $this->login('reader@twes.local', 'password-1234');
+        $this->postJson($this->companyPath().'/delivery-notes/preview', $this->noteBody([]));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame('No such company.', $this->json()['detail']);
+    }
+
     /** What the request's own unit of work holds: a preview leaves nothing to write, not even a changed field. */
     private function assertNothingPending(): void
     {
@@ -234,6 +343,16 @@ final class DocumentPreviewTest extends ApiTestCase
     private function quoteBody(array $lines): array
     {
         return ['customerId' => $this->customer->getId()->toRfc4122(), 'establishmentId' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'lines' => $lines];
+    }
+
+    /**
+     * @param list<array<string, mixed>> $lines
+     *
+     * @return array<string, mixed>
+     */
+    private function noteBody(array $lines): array
+    {
+        return ['customerId' => $this->customer->getId()->toRfc4122(), 'establishmentId' => null, 'deliveryDate' => null, 'deliveryAddressLine1' => null, 'deliveryAddressLine2' => null, 'deliveryPostalCode' => null, 'deliveryCity' => null, 'deliveryCountryCode' => null, 'customerReference' => null, 'remarksPrinted' => null, 'notesInternal' => null, 'lines' => $lines];
     }
 
     /**

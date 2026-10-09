@@ -3,6 +3,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { DeliveryNotesApi, DeliveryNotesRefused } from './delivery-notes-api';
 import type { PickAsked } from '../shared/form/pick-api';
+import type { PreviewBody } from '../shared/documents/document-figures';
 import type { ExportFormat } from '../shared/list/export-address';
 import { PriceListsApi } from '../price-lists/price-lists-api';
 import type { ResolvedPrice } from '../price-lists/price-lists-types';
@@ -137,6 +138,22 @@ export class DeliveryNotesFacade {
     input: DeliveryNoteInput,
   ): Promise<DeliveryNoteRow | null> {
     return this.step(() => this.api.revise(companyId, id, input));
+  }
+
+  /**
+   * What is typed would come to, or null when the API refuses it as it stands: a draft being typed is often not one
+   * yet, so a refusal here is no error to report, and the screen's error is left alone.
+   */
+  async preview(
+    companyId: string,
+    id: string | null,
+    input: DeliveryNoteInput,
+  ): Promise<PreviewBody | null> {
+    try {
+      return await this.api.preview(companyId, id, input);
+    } catch {
+      return null;
+    }
   }
 
   /** Saves what is on screen, then numbers it: a note is never validated with content other than the one shown. */

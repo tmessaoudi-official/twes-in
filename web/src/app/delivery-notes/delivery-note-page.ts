@@ -29,6 +29,7 @@ import {
   deliveryNoteForm,
   deliveryNoteInput,
   deliveryNoteValues,
+  figuresReady,
   linesArray,
   type LineGroup,
   lineGroup,
@@ -65,6 +66,7 @@ import { InvoiceTargetDialog, type InvoiceTarget } from './invoice-target-dialog
 import { type RecordLead, RecordView } from '../shared/form/record-view';
 import { taxNames } from '../invoices/tax-names';
 import { QuantityTotalsView } from '../shared/documents/quantity-totals';
+import { liveFigures, toDocumentFigures } from '../shared/documents/document-figures';
 
 /**
  * One delivery note: a new draft to fill in, a draft to revise and validate, or a numbered note to deliver, cancel
@@ -252,6 +254,55 @@ export class DeliveryNotePage {
     return picked !== (current?.customerId ?? null) ? 1 : 0;
   });
   protected readonly customerShown = computed(() => pickedCustomer(this.customer()));
+
+  /** Bumped by every value the form or the lines take, so the figures read what is typed now. */
+  private readonly typed = signal(0);
+  /**
+   * What the figures are asked for: the note as it would be saved, with the lines that can be worked out yet. A note
+   * that no longer changes, or that is not for anyone yet, asks nothing.
+   */
+  private readonly previewDraft = computed(() => {
+    this.typed();
+    const companyId = this.company()?.id;
+    const id = this.id();
+    const form = this.form();
+    const lines = this.lines();
+    const customerId = this.customer()?.id ?? '';
+    if (!this.editable() || !companyId || form === null || lines === null || customerId === '')
+      return null;
+    return untracked(() => {
+      const input = deliveryNoteInput(form.getRawValue(), lines, customerId);
+      const positions = lines.controls.flatMap((line, index) =>
+        figuresReady(line) ? [index] : [],
+      );
+      const sent = positions.map((index) => {
+        const line = input.lines[index]!;
+        // Its words and its lot are no figures: one not described yet is worked out, and a lot is checked on save.
+        return {
+          ...line,
+          description: line.description === '' ? '…' : line.description,
+          lotCode: null,
+        };
+      });
+      return { companyId, id, input: { ...input, lines: sent }, positions, count: lines.length };
+    });
+  });
+  /** The figures as the note stands typed, from the API's one calculator, or null until it has answered. */
+  protected readonly figures = liveFigures(
+    () => this.previewDraft(),
+    async ({ companyId, id, input, positions, count }) => {
+      const body = await this.facade.preview(companyId, id, input);
+      return body === null ? null : toDocumentFigures(body, positions, count);
+    },
+  );
+  protected readonly lineFigures = computed(() => this.figures()?.lines ?? null);
+  /** What the totals card shows: the figures as typed while the draft is edited, otherwise the note as saved. */
+  protected readonly shownTotals = computed(() => {
+    const live = this.editable() ? this.figures() : null;
+    if (live !== null) return { ...live, live: true };
+    const current = this.current();
+    return current ? { ...current, live: false } : null;
+  });
   /**
    * Whom a locked note is for, as it recorded them: the customer is a picker beside the form, not a field of its
    * descriptor, so the read view would otherwise never name them.
@@ -548,6 +599,16 @@ export class DeliveryNotePage {
           void this.facade.loadNote(companyId, id);
         }
       });
+    });
+    effect((onCleanup) => {
+      const form = this.form();
+      const lines = this.lines();
+      const bump = (): void => this.typed.update((typed) => typed + 1);
+      const subscriptions = [
+        form?.valueChanges.subscribe(bump),
+        lines?.valueChanges.subscribe(bump),
+      ];
+      onCleanup(() => subscriptions.forEach((subscription) => subscription?.unsubscribe()));
     });
     effect(() => {
       const lines = this.lines();

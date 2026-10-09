@@ -162,6 +162,7 @@
             [excludedFamilies]="excludedFamilies()"
             [customer]="customer()"
             [priceLists]="auth.hasModule('price_lists')"
+            [figures]="lineFigures()"
             [readOnly]="!editable()"
           />
           <app-quantity-totals
@@ -174,7 +175,7 @@
     }
   }
 
-  @if (current(); as note) {
+  @if (shownTotals(); as note) {
     <mat-card data-testid="delivery-note-totals">
       <mat-card-content class="flex flex-col gap-2">
         <h2 class="text-xl font-semibold">{{ 'delivery_notes.totals.title' | translate }}</h2>
@@ -190,10 +191,15 @@
           <dt>{{ 'delivery_notes.totals.total_tax' | translate }}</dt>
           <dd class="text-end">{{ note.totalTax | amount: scale() }}</dd>
           <dt class="font-semibold">{{ 'delivery_notes.totals.total' | translate }}</dt>
-          <dd class="text-end font-semibold">{{ note.total | amount: scale() }}</dd>
+          <dd class="text-end font-semibold" data-testid="delivery-note-total">
+            {{ note.total | amount: scale() }}
+          </dd>
         </dl>
-        <p class="text-xs opacity-70">
-          {{ 'delivery_notes.totals.as_saved' | translate: { currency: options()?.currency } }}
+        <p class="text-xs opacity-70" data-testid="delivery-note-totals-note">
+          {{
+            (note.live ? 'document_figures.as_typed' : 'delivery_notes.totals.as_saved')
+              | translate: { currency: options()?.currency }
+          }}
         </p>
       </mat-card-content>
     </mat-card>
