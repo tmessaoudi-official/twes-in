@@ -158,10 +158,15 @@ abstract class ApiTestCase extends WebTestCase
     {
         $tmp = (string) tempnam(sys_get_temp_dir(), 'upload');
         file_put_contents($tmp, $contents);
-        $this->client->request('POST', $path, $parameters, [$field => new UploadedFile($tmp, $name, null, null, true)], [
-            'HTTP_ACCEPT' => 'application/json',
-            'HTTP_'.strtoupper(str_replace('-', '_', CsrfRequestListener::HEADER)) => self::CSRF_TOKEN,
-        ] + $server);
+        try {
+            $this->client->request('POST', $path, $parameters, [$field => new UploadedFile($tmp, $name, null, null, true)], [
+                'HTTP_ACCEPT' => 'application/json',
+                'HTTP_'.strtoupper(str_replace('-', '_', CsrfRequestListener::HEADER)) => self::CSRF_TOKEN,
+            ] + $server);
+        } finally {
+            // The toolchain's TMPDIR outlives the run on the host's tmpfs: a file per upload adds up to its inodes.
+            unlink($tmp);
+        }
     }
 
     /** @param array<string, mixed>|null $body */

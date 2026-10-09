@@ -445,5 +445,6 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
 - A test's `mktemp -d` with no `trap … EXIT` stays in the toolchain's TMPDIR, which lives on the host's tmpfs across runs: 35,098
   per-case git fixtures (about 22 inodes each) used all of `/tmp`'s inodes and froze every session on the machine (2026-10-09).
   Every gate test now runs through `scripts/gates/tests/no-leftovers.sh`; a new one starts with the `TMPDIR=$(mktemp -d)` line.
+  A PHP test's `tempnam` is the same leak: `ApiTestCase::uploadFile` left one file per upload, 142 a suite run, until it removed it.
 - For the next expertise refresh: `.claude/rules/expertise-core.md` § 2 still says the locked customer screen is NOT built
   and `hides()` is the code; it was built (rows 205, 207), `hides()` is gone, and the lock is held by the API session (2026-10-06).
