@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { dirtyCount } from '../shared/form/dirty-count';
+import { buildFormGroup } from '../shared/form/form-builder';
 import { profileChanges, profileForm, profileValues } from './company-profile-form';
 import type { CompanyProfile } from './company-types';
 
@@ -50,6 +52,17 @@ describe('the débits option', () => {
     expect(identity.map((field) => field.id).indexOf('vatOnDebits')).toBe(
       identity.map((field) => field.id).indexOf('vatRegime') + 1,
     );
+  });
+
+  /**
+   * A saved value with no field to hold it reads as a change: the page opened with one unsaved change wherever the
+   * option is not offered, and asked before letting anybody leave it for another settings page.
+   */
+  it('opens with no unsaved change, whether the option is offered or not', () => {
+    for (const company of [profile, { ...french, vatOnDebits: true }]) {
+      const form = buildFormGroup(profileForm(company), profileValues(company));
+      expect(dirtyCount(form.getRawValue(), profileValues(company))).toBe(0);
+    }
   });
 
   it('shows what the company chose and sends it back, never true where it is not offered', () => {

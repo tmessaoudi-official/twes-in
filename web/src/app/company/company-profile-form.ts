@@ -176,7 +176,9 @@ export function profileForm(profile: CompanyProfile): FormDescriptor {
 
 /** Each field at the saved value; a value the company does not have is an empty field. */
 export function profileValues(profile: CompanyProfile): FormValues {
-  const values: FormValues = { vatRegime: profile.vatRegime, vatOnDebits: profile.vatOnDebits };
+  const values: FormValues = { vatRegime: profile.vatRegime };
+  // Only where the box is shown: a saved value with no field to hold it reads as an unsaved change.
+  if (profile.offersVatOnDebits) values['vatOnDebits'] = profile.vatOnDebits;
   for (const id of TEXT_FIELDS) {
     values[id] = profile[id] ?? '';
   }
