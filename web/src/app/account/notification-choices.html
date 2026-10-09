@@ -27,6 +27,9 @@
             <th scope="col" class="w-24 py-1 text-end font-normal">
               {{ 'account.notifications.bell' | translate }}
             </th>
+            <th scope="col" class="w-24 py-1 text-end font-normal">
+              {{ 'account.notifications.email' | translate }}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -40,8 +43,26 @@
                     'account.notifications.bell_of'
                       | translate: { kind: (kindKey(choice.type) | translate) }
                   "
-                  (change)="ring(choice, $event)"
+                  [attr.data-testid]="testId(choice) + '-bell'"
+                  (change)="choose(choice, 'bell', $event)"
                 />
+              </td>
+              <td class="py-2 text-end">
+                @if (choice.mailed) {
+                  <mat-slide-toggle
+                    [checked]="choice.email"
+                    [aria-label]="
+                      'account.notifications.email_of'
+                        | translate: { kind: (kindKey(choice.type) | translate) }
+                    "
+                    [attr.data-testid]="testId(choice) + '-email'"
+                    (change)="choose(choice, 'email', $event)"
+                  />
+                } @else {
+                  <span class="text-on-surface-variant">{{
+                    'account.notifications.mailed_apart' | translate
+                  }}</span>
+                }
               </td>
             </tr>
           }

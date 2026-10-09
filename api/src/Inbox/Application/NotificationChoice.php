@@ -18,6 +18,8 @@ final readonly class NotificationChoice
         public string $type,
         public bool $bell,
         public bool $email,
+        /** false for a kind mailed on its own by its context, whose e-mail switch then changes nothing */
+        public bool $mailed,
     ) {
     }
 }

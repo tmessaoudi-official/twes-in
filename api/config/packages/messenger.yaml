@@ -27,6 +27,7 @@ framework:
             App\Identity\Infrastructure\Password\PasswordResetAsked: async
             App\Tenancy\Infrastructure\Signup\SignupAsked: async
             App\Tenancy\Infrastructure\Invitation\InvitationToMail: async
+            App\Inbox\Infrastructure\Mail\NotificationToMail: async
 
 when@test:
     framework:

@@ -3857,12 +3857,15 @@
     "two_factor_off": "Off",
     "two_factor_manage": "Manage",
     "notifications": {
-      "title": "What the bell counts",
-      "intro": "For each company, and for what is about your account, choose what the bell counts. A muted notification stays in the list without being counted.",
+      "title": "Bell and e-mails",
+      "intro": "For each company, and for what is about your account, choose what the bell counts and what is also sent to you by e-mail. A muted notification stays in the list without being counted.",
       "account": "Your account",
       "kind": "Notification",
       "bell": "Bell",
       "bell_of": "Bell: {{kind}}",
+      "email": "E-mail",
+      "email_of": "E-mail: {{kind}}",
+      "mailed_apart": "Its own e-mail",
       "failed": "The choice could not be saved.",
       "unreachable": "The notifications could not be read."
     }
@@ -4501,7 +4504,8 @@
     "new_expense": "New expense",
     "expense": "Expense",
     "legal_texts": "Legal texts",
-    "legal": "Legal information"
+    "legal": "Legal information",
+    "notification_stop": "Stop receiving this e-mail"
   },
   "tour": {
     "next": "Next",
@@ -4639,6 +4643,18 @@
       "frequency": "Choose a frequency.",
       "starts_on": "The first draft is made today or later, never on a day already past.",
       "ends_on": "The last day comes on the day of the first draft or after it."
+    }
+  },
+  "notification_stop": {
+    "title": "Stop receiving this e-mail",
+    "intro": "This link stops one kind of notification from being e-mailed to you, in one company only. The app’s bell still counts it.",
+    "submit": "Stop receiving this e-mail",
+    "done": "Done: this kind of notification will no longer be e-mailed to you. You can turn it back on in My account › Notifications.",
+    "account": "Open My account › Notifications",
+    "errors": {
+      "link_not_usable": "This link can no longer be used: this kind of notification is no longer told to you there. Choose your e-mails in My account › Notifications.",
+      "too_many_attempts": "Too many attempts. Try again in a few minutes.",
+      "network": "The server is not answering. Try again."
     }
   }
 }

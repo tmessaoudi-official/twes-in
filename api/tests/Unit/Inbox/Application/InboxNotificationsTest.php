@@ -24,6 +24,7 @@ use App\Tests\Support\InMemoryCompanies;
 use App\Tests\Support\InMemoryInbox;
 use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\InMemoryUsers;
+use App\Tests\Support\RecordingNotificationMailQueue;
 use App\Tests\Support\RecordingRealtimePublisher;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -42,6 +43,7 @@ final class InboxNotificationsTest extends TestCase
     private InMemoryMemberships $memberships;
     private InMemoryInbox $inbox;
     private RecordingRealtimePublisher $realtime;
+    private RecordingNotificationMailQueue $mails;
 
     protected function setUp(): void
     {
@@ -50,6 +52,7 @@ final class InboxNotificationsTest extends TestCase
         $this->memberships = new InMemoryMemberships();
         $this->inbox = new InMemoryInbox();
         $this->realtime = new RecordingRealtimePublisher();
+        $this->mails = new RecordingNotificationMailQueue();
     }
 
     public function testAPersonalChannelKeepsOneRowForThatUser(): void
@@ -147,6 +150,33 @@ final class InboxNotificationsTest extends TestCase
         self::assertSame([], $this->realtime->pushed);
     }
 
+    public function testEveryoneAMailedKindIsToldIsQueuedItsMailAboutThatCompany(): void
+    {
+        $acme = $this->company('Acme');
+        $amel = $this->member('amel@twes.local', $acme);
+        $sami = $this->member('sami@twes.local', $acme);
+        $acmeId = $acme->getId()->toRfc4122();
+
+        $this->notifications()->publish(new Notification('company:'.$acmeId, 'invitation.accepted', ['display_name' => 'Nour']));
+        $this->notifications()->publish(new Notification('user:'.$amel->getId()->toRfc4122(), 'stock.low', ['product' => 'Vis'], $acmeId));
+
+        self::assertSame([
+            [$amel->getId()->toRfc4122(), $acmeId, 'invitation.accepted', ['display_name' => 'Nour']],
+            [$sami->getId()->toRfc4122(), $acmeId, 'invitation.accepted', ['display_name' => 'Nour']],
+            [$amel->getId()->toRfc4122(), $acmeId, 'stock.low', ['product' => 'Vis']],
+        ], $this->mails->queued);
+    }
+
+    public function testAKindMailedApartQueuesNoMail(): void
+    {
+        $user = $this->user('amel@twes.local');
+
+        $this->notifications()->publish(new Notification('user:'.$user->getId()->toRfc4122(), 'membership.added', ['company' => 'Acme']));
+
+        self::assertCount(1, $this->inbox->items, 'it is still told in the centre');
+        self::assertSame([], $this->mails->queued);
+    }
+
     public function testAnUnknownRecipientIsAContradictionNotASilentDrop(): void
     {
         $this->expectException(\LogicException::class);
@@ -167,14 +197,14 @@ final class InboxNotificationsTest extends TestCase
             public function notificationKinds(): array
             {
                 return [
-                    new NotificationKind('membership.added', NotificationAudience::Personal),
+                    new NotificationKind('membership.added', NotificationAudience::Personal, mailed: false),
                     new NotificationKind('invitation.accepted', NotificationAudience::Company),
                     new NotificationKind('stock.low', NotificationAudience::Company),
                 ];
             }
         }]);
 
-        return new InboxNotifications($this->users, $this->companies, $this->memberships, $this->inbox, $this->realtime, new MockClock('2026-09-13 10:00:00'), $kinds);
+        return new InboxNotifications($this->users, $this->companies, $this->memberships, $this->inbox, $this->realtime, new MockClock('2026-09-13 10:00:00'), $kinds, $this->mails);
     }
 
     private function user(string $email): User

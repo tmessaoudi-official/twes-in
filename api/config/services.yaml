@@ -26,6 +26,10 @@ parameters:
     # Forgot password: the page a reset link opens, and how long it works.
     app.password_reset.link_url: '%env(DEFAULT_URI)%/reset-password/{token}'
     app.password_reset.valid_for: 'PT1H'
+    # A notification's mail: where its button opens the app, and the page its stop link opens, which asks before
+    # turning that kind's mail off.
+    app.notification.open_url: '%env(DEFAULT_URI)%/'
+    app.notification.stop_url: '%env(DEFAULT_URI)%/notifications/stop/{token}'
     # Rows one import takes, header excluded: one file is one unit of work, run inside the request, so it must finish
     # well within PHP's 30 seconds; 2500 rows measured 10.4 s on release PHP (docs/SPEC.md § 7, 2026-09-19).
     app.import.max_rows: 2000

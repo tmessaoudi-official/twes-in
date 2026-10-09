@@ -17,7 +17,8 @@ use App\Tenancy\Application\Invitation\InviteToCompany;
 
 /**
  * Someone joined: told to every member of the company. An invitation received is about the account, since the
- * person is not yet a member of the company that invites them.
+ * person is not yet a member of the company that invites them. It is not mailed again: the invitation's own mail is
+ * the only way to accept it, and an invitee may have no account to choose with.
  */
 final readonly class MembershipNotificationKinds implements DeclaresNotificationKinds
 {
@@ -25,7 +26,7 @@ final readonly class MembershipNotificationKinds implements DeclaresNotification
     {
         return [
             new NotificationKind(AcceptInvitation::ACCEPTED, NotificationAudience::Company),
-            new NotificationKind(InviteToCompany::RECEIVED, NotificationAudience::Personal),
+            new NotificationKind(InviteToCompany::RECEIVED, NotificationAudience::Personal, mailed: false),
         ];
     }
 }

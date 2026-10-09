@@ -23,25 +23,41 @@ describe('NotificationChoicesApi', () => {
     const listed = api.list();
     http.expectOne({ method: 'GET', url: '/api/me/notification-preferences' }).flush({
       preferences: [
-        { companyId: 'c1', companyName: 'Acme', type: 'stock.low', bell: false, email: true },
+        {
+          companyId: 'c1',
+          companyName: 'Acme',
+          type: 'stock.low',
+          bell: false,
+          email: true,
+          mailed: true,
+        },
         {
           companyId: null,
           companyName: null,
           type: 'invitation.received',
           bell: true,
           email: true,
+          mailed: false,
         },
       ],
     });
 
     await expect(listed).resolves.toEqual([
-      { companyId: 'c1', companyName: 'Acme', type: 'stock.low', bell: false, email: true },
+      {
+        companyId: 'c1',
+        companyName: 'Acme',
+        type: 'stock.low',
+        bell: false,
+        email: true,
+        mailed: true,
+      },
       {
         companyId: null,
         companyName: null,
         type: 'invitation.received',
         bell: true,
         email: true,
+        mailed: false,
       },
     ]);
   });
@@ -53,6 +69,7 @@ describe('NotificationChoicesApi', () => {
       type: 'stock.low',
       bell: false,
       email: true,
+      mailed: true,
     });
     const request = http.expectOne({ method: 'PUT', url: '/api/me/notification-preferences' });
     expect(request.request.body).toEqual({

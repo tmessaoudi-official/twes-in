@@ -23,9 +23,10 @@ interface ChoiceGroup {
 }
 
 /**
- * « Mon compte › Notifications »: for each company, and for what is about the account, what the bell counts. A
- * muted kind is still listed in the centre, only no longer counted, so the switch is kept as soon as it moves, as the
- * other preferences of this page are, and put back when the API did not keep it.
+ * « Mon compte › Notifications »: for each company, and for what is about the account, what the bell counts and what
+ * is also sent by e-mail. A muted kind is still listed in the centre, only no longer counted. A switch is kept as soon
+ * as it moves, as the other preferences of this page are, and put back when the API did not keep it. A kind that has a
+ * mail of its own, such as an invitation, has no e-mail switch: it would change nothing.
  */
 @Component({
   selector: 'app-notification-choices',
@@ -68,15 +69,19 @@ export class NotificationChoices implements OnInit {
     return `notification-${choice.companyId ?? 'account'}-${choice.type}`;
   }
 
-  protected async ring(choice: NotificationChoice, event: MatSlideToggleChange): Promise<void> {
-    const changed = { ...choice, bell: event.checked };
+  protected async choose(
+    choice: NotificationChoice,
+    channel: 'bell' | 'email',
+    event: MatSlideToggleChange,
+  ): Promise<void> {
+    const changed = { ...choice, [channel]: event.checked };
     this.replace(choice, changed);
     try {
       await this.api.change(changed);
     } catch {
       this.replace(changed, choice);
       // The binding reads the same value it last drew, so it would not move the switch back by itself.
-      event.source.checked = choice.bell;
+      event.source.checked = choice[channel];
       this.feedback.failure('account.notifications.failed');
       return;
     }

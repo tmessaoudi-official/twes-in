@@ -1,0 +1,21 @@
+{# A notification told by mail: the sentence the bell says, a link to the app, and the link that stops this kind's mail. #}
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+  <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
+    <h1 style="font-size: 20px;">{{ kind }}</h1>
+    {% if companyName %}
+      <p style="color: #555;">{{ companyName }}</p>
+    {% endif %}
+    <p>{{ sentence }}</p>
+    <p>
+      <a href="{{ openUrl }}" style="display: inline-block; padding: 10px 16px; background: #1a56db; color: #fff; text-decoration: none; border-radius: 6px;">
+        {{ 'notification.open'|trans({'%product%': productName}, 'emails') }}
+      </a>
+    </p>
+    <p style="font-size: 12px; color: #888;">
+      {{ 'notification.why'|trans({'%kind%': kind}, 'emails') }}
+      <a href="{{ stopUrl }}" style="color: #888;">{{ 'notification.stop'|trans({'%kind%': kind}, 'emails') }}</a>
+    </p>
+    <p style="font-size: 12px; color: #888;">{{ productName }}</p>
+  </body>
+</html>

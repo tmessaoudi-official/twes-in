@@ -73,13 +73,14 @@ final readonly class InboxOpenApi implements OpenApiFactoryInterface
 
         $schemas['NotificationPreference'] = new \ArrayObject([
             'type' => 'object',
-            'required' => ['companyId', 'companyName', 'type', 'bell', 'email'],
+            'required' => ['companyId', 'companyName', 'type', 'bell', 'email', 'mailed'],
             'properties' => [
                 'companyId' => ['anyOf' => [['type' => 'string', 'format' => 'uuid'], ['type' => 'null']], 'description' => 'The company it is told in; null for what is about the account.'],
                 'companyName' => ['anyOf' => [['type' => 'string'], ['type' => 'null']]],
                 'type' => ['type' => 'string', 'description' => 'A dotted code such as "stock.low".'],
                 'bell' => ['type' => 'boolean', 'description' => 'Whether the bell counts it; muted, it is still listed.'],
                 'email' => ['type' => 'boolean', 'description' => 'Whether it is also sent by e-mail.'],
+                'mailed' => ['type' => 'boolean', 'description' => 'False for a kind that has a mail of its own, whose e-mail switch changes nothing.'],
             ],
         ]);
         $schemas['NotificationPreferences'] = new \ArrayObject([
@@ -97,6 +98,14 @@ final readonly class InboxOpenApi implements OpenApiFactoryInterface
                 'type' => ['type' => 'string'],
                 'bell' => ['type' => 'boolean'],
                 'email' => ['type' => 'boolean'],
+            ],
+        ]);
+
+        $schemas['NotificationMailStop'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['token'],
+            'properties' => [
+                'token' => ['type' => 'string', 'description' => 'The token a notification mail\'s stop link carries.'],
             ],
         ]);
 
@@ -152,6 +161,14 @@ final readonly class InboxOpenApi implements OpenApiFactoryInterface
                 requestBody: new RequestBody('The choice', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/NotificationPreferenceChange']))]), true),
             ),
         ));
+
+        $paths->addPath('/api/notification-preferences/stop', new PathItem(post: new Operation(
+            operationId: 'stopNotificationMail',
+            tags: ['Notifications'],
+            responses: ['204' => new Response('That kind is no longer mailed'), '403' => $csrf, '404' => new Response('The link was not signed here, or the kind is no longer told there'), '429' => new Response('Too many attempts')],
+            summary: 'Turn off one kind\'s mail from its stop link, with no session',
+            requestBody: new RequestBody('The link\'s token', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/NotificationMailStop']))]), true),
+        )));
 
         return $openApi->withComponents($openApi->getComponents()->withSchemas($schemas));
     }

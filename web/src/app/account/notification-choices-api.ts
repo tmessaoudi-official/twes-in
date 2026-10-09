@@ -19,6 +19,8 @@ export interface NotificationChoice {
   /** whether the bell counts it */
   readonly bell: boolean;
   readonly email: boolean;
+  /** false for a kind that has a mail of its own, so has no e-mail switch */
+  readonly mailed: boolean;
 }
 
 /** The HTTP edge of « Mon compte › Notifications »: the only code here that knows the endpoint and its types. */
@@ -52,5 +54,6 @@ function toChoice(preference: NotificationPreference): NotificationChoice {
     type: preference.type,
     bell: preference.bell,
     email: preference.email,
+    mailed: preference.mailed,
   };
 }

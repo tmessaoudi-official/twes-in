@@ -24,6 +24,9 @@ class StaticLoader implements TranslateLoader {
           kind: 'Notification',
           bell: 'Cloche',
           bell_of: 'Cloche : {{kind}}',
+          email: 'E-mail',
+          email_of: 'E-mail : {{kind}}',
+          mailed_apart: 'Son propre e-mail',
           failed: 'Le choix n’a pas pu être enregistré.',
           unreachable: 'Les notifications n’ont pas pu être lues.',
         },
@@ -41,11 +44,46 @@ class StaticLoader implements TranslateLoader {
 }
 
 const told: NotificationChoice[] = [
-  { companyId: 'c1', companyName: 'Acme', type: 'stock.low', bell: true, email: true },
-  { companyId: 'c1', companyName: 'Acme', type: 'invitation.accepted', bell: false, email: true },
-  { companyId: 'c2', companyName: 'Globex', type: 'stock.low', bell: true, email: false },
-  { companyId: null, companyName: null, type: 'invitation.received', bell: true, email: true },
-  { companyId: null, companyName: null, type: 'something.newer', bell: true, email: true },
+  {
+    companyId: 'c1',
+    companyName: 'Acme',
+    type: 'stock.low',
+    bell: true,
+    email: true,
+    mailed: true,
+  },
+  {
+    companyId: 'c1',
+    companyName: 'Acme',
+    type: 'invitation.accepted',
+    bell: false,
+    email: true,
+    mailed: true,
+  },
+  {
+    companyId: 'c2',
+    companyName: 'Globex',
+    type: 'stock.low',
+    bell: true,
+    email: false,
+    mailed: true,
+  },
+  {
+    companyId: null,
+    companyName: null,
+    type: 'invitation.received',
+    bell: true,
+    email: true,
+    mailed: false,
+  },
+  {
+    companyId: null,
+    companyName: null,
+    type: 'something.newer',
+    bell: true,
+    email: true,
+    mailed: true,
+  },
 ];
 
 // « Mon compte › Notifications »: each person chooses, kind by kind and company by company, what the bell counts.
@@ -99,11 +137,13 @@ describe('NotificationChoices', () => {
     expect(text(byTestId(root, 'notification-c1-stock.low'))).toContain(
       'Stock sous le seuil de réapprovisionnement',
     );
-    expect(switchOf(root, 'notification-c1-stock.low')?.getAttribute('aria-checked')).toBe('true');
+    expect(switchOf(root, 'notification-c1-stock.low-bell')?.getAttribute('aria-checked')).toBe(
+      'true',
+    );
     expect(
-      switchOf(root, 'notification-c1-invitation.accepted')?.getAttribute('aria-checked'),
+      switchOf(root, 'notification-c1-invitation.accepted-bell')?.getAttribute('aria-checked'),
     ).toBe('false');
-    expect(switchOf(root, 'notification-account-invitation.received')).not.toBeNull();
+    expect(switchOf(root, 'notification-account-invitation.received-bell')).not.toBeNull();
     expect(text(byTestId(root, 'notification-account-something.newer'))).toContain(
       'Autre notification',
     );
@@ -111,14 +151,14 @@ describe('NotificationChoices', () => {
 
   it('names each switch with the kind it rings for, since a row holds no other label for it', async () => {
     const root = await render();
-    expect(switchOf(root, 'notification-c2-stock.low')?.getAttribute('aria-label')).toBe(
+    expect(switchOf(root, 'notification-c2-stock.low-bell')?.getAttribute('aria-label')).toBe(
       'Cloche : Stock sous le seuil de réapprovisionnement',
     );
   });
 
   it('mutes a kind in one company only, keeps its e-mail as it was, and has the bell count again', async () => {
     const root = await render();
-    switchOf(root, 'notification-c2-stock.low')!.click();
+    switchOf(root, 'notification-c2-stock.low-bell')!.click();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -128,21 +168,64 @@ describe('NotificationChoices', () => {
       type: 'stock.low',
       bell: false,
       email: false,
+      mailed: true,
     });
     expect(bell.refresh).toHaveBeenCalled();
-    expect(switchOf(root, 'notification-c2-stock.low')?.getAttribute('aria-checked')).toBe('false');
-    expect(switchOf(root, 'notification-c1-stock.low')?.getAttribute('aria-checked')).toBe('true');
+    expect(switchOf(root, 'notification-c2-stock.low-bell')?.getAttribute('aria-checked')).toBe(
+      'false',
+    );
+    expect(switchOf(root, 'notification-c1-stock.low-bell')?.getAttribute('aria-checked')).toBe(
+      'true',
+    );
+  });
+
+  it('sends a kind by e-mail or not, in one company only, its bell left as it was', async () => {
+    const root = await render();
+    expect(switchOf(root, 'notification-c1-stock.low-email')?.getAttribute('aria-checked')).toBe(
+      'true',
+    );
+    expect(switchOf(root, 'notification-c1-stock.low-email')?.getAttribute('aria-label')).toBe(
+      'E-mail : Stock sous le seuil de réapprovisionnement',
+    );
+    switchOf(root, 'notification-c1-stock.low-email')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(api.change).toHaveBeenCalledWith({
+      companyId: 'c1',
+      companyName: 'Acme',
+      type: 'stock.low',
+      bell: true,
+      email: false,
+      mailed: true,
+    });
+    expect(switchOf(root, 'notification-c1-stock.low-email')?.getAttribute('aria-checked')).toBe(
+      'false',
+    );
+    expect(switchOf(root, 'notification-c1-stock.low-bell')?.getAttribute('aria-checked')).toBe(
+      'true',
+    );
+  });
+
+  it('offers no e-mail switch for a kind that has a mail of its own, and says so', async () => {
+    const root = await render();
+    const row = byTestId(root, 'notification-account-invitation.received');
+    expect(switchOf(root, 'notification-account-invitation.received-email')).toBeNull();
+    expect(switchOf(root, 'notification-account-invitation.received-bell')).not.toBeNull();
+    expect(text(row)).toContain('Son propre e-mail');
   });
 
   it('puts the switch back and says so when the choice was not kept', async () => {
     api.change.mockRejectedValue(new Error('offline'));
     const root = await render();
     const feedback = TestBed.inject(Feedback) as unknown as RecordedFeedback;
-    switchOf(root, 'notification-c1-stock.low')!.click();
+    switchOf(root, 'notification-c1-stock.low-bell')!.click();
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(switchOf(root, 'notification-c1-stock.low')?.getAttribute('aria-checked')).toBe('true');
+    expect(switchOf(root, 'notification-c1-stock.low-bell')?.getAttribute('aria-checked')).toBe(
+      'true',
+    );
     expect(feedback.said).toContainEqual({
       kind: 'failure',
       key: 'account.notifications.failed',

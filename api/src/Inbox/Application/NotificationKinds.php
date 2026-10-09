@@ -43,6 +43,12 @@ final readonly class NotificationKinds
         return $this->kinds[$type] ?? null;
     }
 
+    /** @return list<NotificationKind> every kind declared, by type */
+    public function all(): array
+    {
+        return array_values($this->kinds);
+    }
+
     /**
      * What a member of a company is told, so what they may choose about there: a kind of a module switched on, told to
      * a permission their role grants or to their role.

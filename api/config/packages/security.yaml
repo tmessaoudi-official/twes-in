@@ -69,6 +69,9 @@ security:
         - { path: '^/api/legal/[a-z]+/[a-z]{2}$', roles: PUBLIC_ACCESS, methods: [GET] }
         # security.txt (RFC 9116), mapped from /.well-known/ by the web server: whoever reports a flaw has no account.
         - { path: '^/api/legal/security\.txt$', roles: PUBLIC_ACCESS, methods: [GET] }
+        # A notification mail's stop link is followed from a mail client, with no session: its signed token is the
+        # authority, for that one kind's mail and nothing else. Confirmed by a POST from its page, rate limited.
+        - { path: '^/api/notification-preferences/stop$', roles: PUBLIC_ACCESS, methods: [POST] }
         - { path: ^/api, roles: ROLE_USER }
 
 when@test:

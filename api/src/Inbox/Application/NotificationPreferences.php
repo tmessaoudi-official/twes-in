@@ -48,7 +48,7 @@ final readonly class NotificationPreferences
         $choice = static function (?string $companyId, ?string $companyName, NotificationKind $kind) use ($chosen): NotificationChoice {
             $preference = $chosen[self::key($companyId, $kind->type)] ?? null;
 
-            return new NotificationChoice($companyId, $companyName, $kind->type, $preference?->rings() ?? true, $preference?->mails() ?? true);
+            return new NotificationChoice($companyId, $companyName, $kind->type, $preference?->rings() ?? true, $preference?->mails() ?? true, $kind->mailed);
         };
 
         $choices = [];
@@ -74,9 +74,7 @@ final readonly class NotificationPreferences
     /** Keeps a choice about a kind this person is told there; any other is refused the same way. */
     public function change(Uuid $userId, ?Uuid $companyId, string $type, bool $bell, bool $email): void
     {
-        $company = $companyId?->toRfc4122();
-        $offered = array_filter($this->of($userId), static fn (NotificationChoice $choice): bool => $choice->companyId === $company && $choice->type === $type);
-        if ([] === $offered) {
+        if (null === $this->choiceOf($userId, $companyId, $type)) {
             throw new NotificationKindNotOffered(\sprintf('The kind %s is not told to this person there.', $type));
         }
 
@@ -93,6 +91,26 @@ final readonly class NotificationPreferences
             $preference->change($bell, $email);
         }
         $this->preferences->save($preference);
+    }
+
+    /** Where a person is told a kind, and how they chose it; null when it is not told to them there (any more). */
+    public function choiceOf(Uuid $userId, ?Uuid $companyId, string $type): ?NotificationChoice
+    {
+        $company = $companyId?->toRfc4122();
+        foreach ($this->of($userId) as $choice) {
+            if ($choice->companyId === $company && $choice->type === $type) {
+                return $choice;
+            }
+        }
+
+        return null;
+    }
+
+    /** What a mail's stop link does: that kind's e-mail off there, the bell as it was. */
+    public function stopMail(Uuid $userId, ?Uuid $companyId, string $type): void
+    {
+        $choice = $this->choiceOf($userId, $companyId, $type) ?? throw new NotificationKindNotOffered(\sprintf('The kind %s is not told to this person there.', $type));
+        $this->change($userId, $companyId, $type, $choice->bell, false);
     }
 
     private function user(Uuid $userId): User

@@ -35,6 +35,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         '^/api/scan-pairings/[0-9a-f-]{36}/(scans|choices|photos|realtime-token)$',
         '^/api/legal/[a-z]+/[a-z]{2}$',
         '^/api/legal/security\.txt$',
+        '^/api/notification-preferences/stop$',
     ];
 
     /** A value each path placeholder accepts, so a request reaches the firewall rather than a 404 from the router. */

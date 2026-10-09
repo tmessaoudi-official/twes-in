@@ -39,6 +39,7 @@ final readonly class NotificationPreferencesController
             'type' => $choice->type,
             'bell' => $choice->bell,
             'email' => $choice->email,
+            'mailed' => $choice->mailed,
         ], $this->preferences->of($this->currentUserId()))]);
     }
 

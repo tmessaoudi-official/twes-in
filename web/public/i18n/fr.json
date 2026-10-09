@@ -3857,12 +3857,15 @@
     "two_factor_off": "Désactivée",
     "two_factor_manage": "Gérer",
     "notifications": {
-      "title": "Ce que la cloche compte",
-      "intro": "Pour chaque société, et pour ce qui concerne votre compte, choisissez ce que la cloche compte. Une notification coupée reste dans la liste, sans être comptée.",
+      "title": "Cloche et e-mails",
+      "intro": "Pour chaque société, et pour ce qui concerne votre compte, choisissez ce que la cloche compte et ce qui vous est aussi envoyé par e-mail. Une notification coupée reste dans la liste, sans être comptée.",
       "account": "Votre compte",
       "kind": "Notification",
       "bell": "Cloche",
       "bell_of": "Cloche : {{kind}}",
+      "email": "E-mail",
+      "email_of": "E-mail : {{kind}}",
+      "mailed_apart": "Son propre e-mail",
       "failed": "Le choix n’a pas pu être enregistré.",
       "unreachable": "Les notifications n’ont pas pu être lues."
     }
@@ -4501,7 +4504,8 @@
     "new_expense": "Nouvelle dépense",
     "expense": "Dépense",
     "legal_texts": "Textes légaux",
-    "legal": "Informations légales"
+    "legal": "Informations légales",
+    "notification_stop": "Ne plus recevoir cet e-mail"
   },
   "tour": {
     "next": "Suivant",
@@ -4639,6 +4643,18 @@
       "frequency": "Choisissez une fréquence.",
       "starts_on": "Le premier brouillon se fait aujourd’hui ou plus tard, jamais un jour passé.",
       "ends_on": "Le dernier jour vient le jour du premier brouillon ou après."
+    }
+  },
+  "notification_stop": {
+    "title": "Ne plus recevoir cet e-mail",
+    "intro": "Ce lien arrête l’envoi par e-mail d’un seul type de notification, dans une seule société. Il reste compté par la cloche de l’application.",
+    "submit": "Ne plus recevoir cet e-mail",
+    "done": "C’est fait : ce type de notification ne vous sera plus envoyé par e-mail. Vous pouvez le rétablir dans Mon compte › Notifications.",
+    "account": "Ouvrir Mon compte › Notifications",
+    "errors": {
+      "link_not_usable": "Ce lien ne peut plus servir : ce type de notification ne vous est plus envoyé là. Choisissez vos e-mails dans Mon compte › Notifications.",
+      "too_many_attempts": "Trop d’essais. Réessayez dans quelques minutes.",
+      "network": "Le serveur ne répond pas. Réessayez."
     }
   }
 }

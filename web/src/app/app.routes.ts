@@ -113,6 +113,12 @@ export const routes: Routes = [
       import('./password-reset/reset-password-page').then((m) => m.ResetPasswordPage),
   },
   {
+    // A notification mail's stop link, opened from a mail client with no session: outside both guards, like a reset link.
+    path: 'notifications/stop/:token',
+    title: 'titles.notification_stop',
+    loadComponent: () => import('./notifications/stop-mail-page').then((m) => m.StopMailPage),
+  },
+  {
     // A company its subscription locked: outside the shell like the page below, because the API refuses its members
     // everything but reading the subscription and declaring a payment — which is what this page is for.
     path: 'subscription',

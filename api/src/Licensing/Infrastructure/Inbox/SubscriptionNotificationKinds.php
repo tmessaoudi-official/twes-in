@@ -15,14 +15,17 @@ use App\Inbox\Application\NotificationKind;
 use App\Licensing\Application\ManagePayments;
 use App\Tenancy\Domain\Role;
 
-/** A payment declared tells the operators, who decide it; how it was decided tells the company's owners. */
+/**
+ * A payment declared tells the operators, who decide it; how it was decided tells the company's owners. Both have a
+ * mail of their own (SubscriptionMailer), so neither is mailed again as a notification.
+ */
 final readonly class SubscriptionNotificationKinds implements DeclaresNotificationKinds
 {
     public function notificationKinds(): array
     {
         return [
-            new NotificationKind(ManagePayments::NOTIFICATION_DECLARED, NotificationAudience::Platform),
-            new NotificationKind(ManagePayments::NOTIFICATION_DECIDED, NotificationAudience::Company, role: Role::OWNER),
+            new NotificationKind(ManagePayments::NOTIFICATION_DECLARED, NotificationAudience::Platform, mailed: false),
+            new NotificationKind(ManagePayments::NOTIFICATION_DECIDED, NotificationAudience::Company, role: Role::OWNER, mailed: false),
         ];
     }
 }

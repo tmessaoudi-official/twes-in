@@ -1,0 +1,33 @@
+<app-signed-out-layout>
+  <h1 data-testid="stop-mail-title">{{ 'notification_stop.title' | translate }}</h1>
+
+  @if (done()) {
+    <p role="status" data-testid="stop-mail-done">{{ 'notification_stop.done' | translate }}</p>
+    <p class="twes-auth-after">
+      <a
+        mat-flat-button
+        routerLink="/account"
+        [queryParams]="{ tab: 'notifications' }"
+        data-testid="stop-mail-account"
+        >{{ 'notification_stop.account' | translate }}</a
+      >
+    </p>
+  } @else {
+    <p class="twes-auth-intro">{{ 'notification_stop.intro' | translate }}</p>
+    @if (error(); as code) {
+      <p role="alert" class="twes-auth-error" data-testid="stop-mail-error">
+        {{ 'notification_stop.errors.' + code | translate }}
+      </p>
+    }
+    <button
+      mat-flat-button
+      type="button"
+      class="twes-auth-submit"
+      [disabled]="busy()"
+      data-testid="stop-mail-submit"
+      (click)="stop()"
+    >
+      {{ 'notification_stop.submit' | translate }}
+    </button>
+  }
+</app-signed-out-layout>

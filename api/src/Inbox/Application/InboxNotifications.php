@@ -27,6 +27,7 @@ use Symfony\Component\Uid\Uuid;
  * rows are written first and the push follows, so a page that was closed, or a push that never arrived, still
  * finds the notification in the centre. A `user:` notification about one of the user's companies keeps that company,
  * which is where its kind is counted and chosen; a type no context declared is refused before anything is written.
+ * Each row's reader is then queued its mail, unless the kind is mailed on its own by its context.
  */
 final readonly class InboxNotifications implements Notifications
 {
@@ -40,6 +41,7 @@ final readonly class InboxNotifications implements Notifications
         private RealtimePublisher $realtime,
         private ClockInterface $clock,
         private NotificationKinds $kinds,
+        private NotificationMailQueue $mails,
     ) {
     }
 
@@ -49,7 +51,8 @@ final readonly class InboxNotifications implements Notifications
             throw new \InvalidArgumentException(\sprintf('A notification channel is "user:<uuid>" or "company:<uuid>", "%s" given.', $notification->channel));
         }
 
-        if (!$this->kinds->has($notification->type)) {
+        $kind = $this->kinds->get($notification->type);
+        if (null === $kind) {
             throw new \LogicException(\sprintf('No context declares the notification kind %s: declare it with DeclaresNotificationKinds.', $notification->type));
         }
 
@@ -74,5 +77,11 @@ final readonly class InboxNotifications implements Notifications
         $this->inbox->add(...$items);
 
         $this->realtime->push($notification->channel, ['type' => $notification->type, 'payload' => $notification->payload]);
+
+        if ($kind->mailed) {
+            foreach ($items as $item) {
+                $this->mails->queue($item->getRecipient()->getId(), $item->getCompany()?->getId(), $notification->type, $notification->payload);
+            }
+        }
     }
 }
