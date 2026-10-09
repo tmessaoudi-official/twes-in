@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { DOCUMENT, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
@@ -52,6 +52,8 @@ const options: ProductOptions = {
   currencyScale: 3,
   units: [{ id: 'u1', code: 'C62', name: 'Unité', decimals: 0 }],
   taxes: [{ id: 't1', code: 'TVA19', name: 'TVA 19 %', family: 'vat' }],
+  photosPerProduct: 6,
+  photoMaxBytes: 5242880,
 };
 const laptop: ProductRow = {
   id: 'p1',
@@ -69,6 +71,7 @@ const laptop: ProductRow = {
   customFields: {},
   tracking: 'none',
   substitutionGroup: null,
+  mainPhotoId: null,
 };
 
 describe('ProductPage', () => {
@@ -408,6 +411,34 @@ describe('ProductPage', () => {
 
     await openTab('products.tabs.homes');
     expect(q('product-homes')).not.toBeNull();
+  });
+
+  // docs/SPEC.md § 7, 2026-10-08 23:02: the main photo stands beside the title, and follows the gallery once it is read.
+  it('shows the main photo beside the title, then the one the gallery makes main', async () => {
+    product.set({ ...laptop, mainPhotoId: 'ph1' });
+    await open('p1');
+    const title = () => q('product-main-photo')?.querySelector('img')?.getAttribute('src');
+    expect(title()).toBe('/api/companies/c1/products/p1/photos/ph1/content?size=small');
+
+    await openTab('products.tabs.photos');
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne('/api/companies/c1/products/p1/photos').flush([
+      { id: 'ph1', main: false },
+      { id: 'ph2', main: true },
+    ]);
+    // whenStable covers the pending request, not the microtasks after its answer.
+    await new Promise((resolve) => setTimeout(resolve));
+    await settle();
+
+    expect(q('product-photos')).not.toBeNull();
+    expect(title()).toBe('/api/companies/c1/products/p1/photos/ph2/content?size=small');
+  });
+
+  it('shows no photo beside the title of a product that has none', async () => {
+    product.set(laptop);
+    await open('p1');
+
+    expect(q('product-main-photo')).toBeNull();
   });
 
   it('opens on the codes when the address asks for them, as a scan does', async () => {

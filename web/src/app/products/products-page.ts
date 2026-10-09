@@ -28,6 +28,7 @@ import {
   productsList,
 } from './product-forms';
 import { ProductsFacade } from './products-facade';
+import { ProductThumbnail } from './product-thumbnail';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { PRODUCTS_TABS } from './products-nav';
 import type { ProductSearch } from './products-types';
@@ -44,6 +45,7 @@ import type { ProductSearch } from './products-types';
     DataList,
     DataListCell,
     ListExport,
+    ProductThumbnail,
     StatusBadge,
   ],
   templateUrl: './products-page.html',

@@ -1875,7 +1875,8 @@
       "defaults": "Defaults",
       "homes": "Where it lives",
       "costs": "Cost history",
-      "barcodes": "Barcodes"
+      "barcodes": "Barcodes",
+      "photos": "Photos"
     },
     "title": "Products",
     "add": "New product",
@@ -2118,6 +2119,37 @@
         "created": "Set when the product was created",
         "edited": "Edited on the product",
         "receipt": "Applied by a stock receipt"
+      }
+    },
+    "photos": {
+      "intro": "Up to {{max}} {max, plural, one {photo} other {photos}}; the main one is shown wherever the product is picked or seen, never on a printed document. Drag a photo, or use the arrows, to change the order.",
+      "none": "No photos yet.",
+      "column": "Photo",
+      "add": "Add a photo",
+      "main": "Main",
+      "make_main": "Make main",
+      "alt": "Photo {{name}}",
+      "alt_main": "Main photo {{name}}",
+      "open": "Open photo {{name}} as it was sent",
+      "earlier": "Move photo {{name}} earlier",
+      "later": "Move photo {{name}} later",
+      "remove": "Remove photo {{name}}",
+      "full": "This product already has {{max}} {max, plural, one {photo} other {photos}}: remove one to add another.",
+      "added": "Photo added.",
+      "main_set": "Main photo changed.",
+      "reordered": "Photos reordered.",
+      "removed": "Photo removed.",
+      "restored": "Photo put back.",
+      "undo": "Undo",
+      "errors": {
+        "empty": "The file is empty.",
+        "not_a_picture": "A photo is a JPEG, PNG or WebP picture.",
+        "too_large": "A photo is at most {{megabytes}} MB.",
+        "too_many_pixels": "A photo is at most {{maxMegapixels}} megapixels.",
+        "too_many_photos": "A product has at most {{max}} {max, plural, one {photo} other {photos}}.",
+        "changed": "The photos changed meanwhile; they are up to date now.",
+        "not_found": "This photo no longer exists.",
+        "network": "The server is not answering. Try again in a moment."
       }
     }
   },
@@ -4257,7 +4289,12 @@
       },
       "product": {
         "created": "created the product",
-        "revised": "changed the product"
+        "revised": "changed the product",
+        "photo_added": "added a photo to the product",
+        "photo_removed": "removed a photo of the product",
+        "photo_restored": "put back a photo of the product",
+        "photos_reordered": "reordered the photos of the product",
+        "main_photo_changed": "changed the main photo of the product"
       },
       "product_category": {
         "created": "created the product category",

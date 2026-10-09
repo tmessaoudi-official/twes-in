@@ -529,6 +529,7 @@ function toProduct(raw: ProductProductRead | ProductJsonldProductRead): ProductR
     customFields: { ...(raw.customFields ?? {}) },
     tracking: PRODUCT_TRACKINGS.find((tracking) => tracking === raw.tracking) ?? 'none',
     substitutionGroup: raw.substitutionGroup ?? null,
+    mainPhotoId: raw.mainPhotoId ?? null,
   };
 }
 
@@ -600,6 +601,8 @@ function toOptions(raw: ProductOptionsProductOptionsRead): ProductOptions {
       const family = LINE_TAX_FAMILIES.find((known) => known === tax.family);
       return family === undefined ? [] : [{ id: tax.id, code: tax.code, name: tax.name, family }];
     }),
+    photosPerProduct: raw.photosPerProduct ?? 0,
+    photoMaxBytes: raw.photoMaxBytes ?? 0,
   };
 }
 

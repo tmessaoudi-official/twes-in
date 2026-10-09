@@ -1,0 +1,138 @@
+<section class="flex flex-col gap-4" data-testid="product-photos">
+  <p class="text-sm text-on-surface-variant">
+    {{ 'products.photos.intro' | translate: { max: maxPhotos() } }}
+  </p>
+
+  @if (refusal(); as refused) {
+    <p role="alert" data-testid="product-photos-error" class="text-error">
+      {{ 'products.photos.errors.' + refused.code | translate: refusalParams() }}
+    </p>
+  }
+
+  @if (photos().length === 0) {
+    <p data-testid="product-photos-none">{{ 'products.photos.none' | translate }}</p>
+  } @else {
+    <ol
+      class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"
+      cdkDropList
+      cdkDropListOrientation="mixed"
+      [cdkDropListData]="photos()"
+      [cdkDropListDisabled]="readOnly() || busy()"
+      (cdkDropListDropped)="dropped($event)"
+      data-testid="product-photos-list"
+    >
+      @for (photo of photos(); track photo.id; let first = $first; let last = $last) {
+        <li
+          class="flex flex-col gap-2 rounded-card border border-outline-variant bg-surface p-2"
+          cdkDrag
+          [cdkDragData]="photo"
+          [attr.data-testid]="'product-photo-' + photo.id"
+        >
+          <img
+            class="aspect-square w-full rounded object-cover"
+            [src]="src(photo)"
+            [alt]="
+              (photo.main ? 'products.photos.alt_main' : 'products.photos.alt')
+                | translate: { name: photo.name }
+            "
+            loading="lazy"
+            width="240"
+            height="240"
+          />
+          <div class="flex flex-wrap items-center justify-between gap-1">
+            @if (photo.main) {
+              <app-status-badge
+                tone="success"
+                [attr.data-testid]="'product-photo-main-' + photo.id"
+                >{{ 'products.photos.main' | translate }}</app-status-badge
+              >
+            } @else if (!readOnly()) {
+              <button
+                mat-button
+                type="button"
+                [disabled]="busy()"
+                [attr.data-testid]="'product-photo-make-main-' + photo.id"
+                (click)="markMain(photo)"
+              >
+                <mat-icon aria-hidden="true">star</mat-icon>
+                {{ 'products.photos.make_main' | translate }}
+              </button>
+            }
+            <a
+              mat-icon-button
+              [href]="original(photo)"
+              target="_blank"
+              rel="noopener"
+              [appLabel]="'products.photos.open' | translate: { name: photo.name }"
+              [attr.data-testid]="'product-photo-open-' + photo.id"
+            >
+              <mat-icon aria-hidden="true">download</mat-icon>
+            </a>
+          </div>
+          @if (!readOnly()) {
+            <div class="flex items-center justify-between">
+              <span
+                class="cursor-grab text-on-surface-variant"
+                cdkDragHandle
+                aria-hidden="true"
+                data-testid="product-photo-drag"
+              >
+                <mat-icon>drag_indicator</mat-icon>
+              </span>
+              <span class="flex items-center">
+                <button
+                  mat-icon-button
+                  type="button"
+                  [disabled]="busy() || first"
+                  [appLabel]="'products.photos.earlier' | translate: { name: photo.name }"
+                  [attr.data-testid]="'product-photo-earlier-' + photo.id"
+                  (click)="move(photo, -1)"
+                >
+                  <mat-icon aria-hidden="true">arrow_back</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  [disabled]="busy() || last"
+                  [appLabel]="'products.photos.later' | translate: { name: photo.name }"
+                  [attr.data-testid]="'product-photo-later-' + photo.id"
+                  (click)="move(photo, 1)"
+                >
+                  <mat-icon aria-hidden="true">arrow_forward</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  [disabled]="busy()"
+                  [appLabel]="'products.photos.remove' | translate: { name: photo.name }"
+                  [attr.data-testid]="'product-photo-remove-' + photo.id"
+                  (click)="remove(photo)"
+                >
+                  <mat-icon aria-hidden="true">delete</mat-icon>
+                </button>
+              </span>
+            </div>
+          }
+        </li>
+      }
+    </ol>
+  }
+
+  @if (!readOnly()) {
+    @if (full()) {
+      <p class="text-sm" data-testid="product-photos-full">
+        {{ 'products.photos.full' | translate: { max: maxPhotos() } }}
+      </p>
+    } @else {
+      <app-file-drop
+        class="w-full max-w-sm"
+        [label]="'products.photos.add' | translate"
+        [accept]="accept"
+        [maxBytes]="maxBytes()"
+        [disabled]="busy()"
+        testId="product-photo-add"
+        (picked)="upload($event)"
+      />
+    }
+  }
+</section>

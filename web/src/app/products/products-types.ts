@@ -62,6 +62,8 @@ export interface ProductRow {
   tracking: ProductTracking;
   /** The name it shares with the products that can stand in for it; null when it has none. */
   substitutionGroup: string | null;
+  /** The photo shown wherever it is picked or seen (`ProductPhotosApi.url`); null when it has none. */
+  mainPhotoId: string | null;
 }
 
 /** What moved a product's cost price: its creation, a person's edit, or a stock receipt that applied one. */
@@ -104,7 +106,8 @@ export function trackingOf(value: string): ProductTracking {
 /** A lot or serial as a label carries it: printable characters without space or accent, 40 at most, as the API keeps it. */
 export const LOT_CODE_PATTERN = /^[\x21-\x7E]{1,40}$/;
 
-export type ProductInput = Omit<ProductRow, 'id' | 'barcodes'>;
+/** What a save sends: the main photo is the gallery's to say, never the form's. */
+export type ProductInput = Omit<ProductRow, 'id' | 'barcodes' | 'mainPhotoId'>;
 
 /**
  * What a code stands for (docs/SPEC.md § 7, 2026-09-22 11:05): the piece it is sold by, a pack entering several at
@@ -188,6 +191,9 @@ export interface ProductOptions {
   currencyScale: number;
   units: UnitOption[];
   taxes: LineTaxOption[];
+  /** How many photos a product may have, and how large one may be in bytes: the API's parameters. */
+  photosPerProduct: number;
+  photoMaxBytes: number;
 }
 
 /**

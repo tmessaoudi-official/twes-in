@@ -27,6 +27,8 @@ const options: ProductOptions = {
     { id: 't-fodec', code: 'FODEC', name: 'FODEC 1 %', family: 'levy' },
     { id: 't-vat', code: 'TVA19', name: 'TVA 19 %', family: 'vat' },
   ],
+  photosPerProduct: 6,
+  photoMaxBytes: 5242880,
 };
 const hardware: ProductCategoryRow = {
   id: 'k1',
@@ -65,6 +67,7 @@ const laptop: ProductRow = {
   customFields: { warranty: 24 },
   tracking: 'lot',
   substitutionGroup: null,
+  mainPhotoId: null,
 };
 const warranty: CustomFieldDefinition = {
   id: 'f1',
@@ -171,6 +174,7 @@ describe('product forms', () => {
     );
     const list = productsList([warranty]);
     expect(list.columns.map((column) => column.id)).toEqual([
+      'photo',
       'reference',
       'name',
       'kind',

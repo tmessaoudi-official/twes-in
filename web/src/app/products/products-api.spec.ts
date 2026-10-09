@@ -223,6 +223,8 @@ describe('ProductsApi', () => {
         { id: 't1', code: 'TVA19', name: 'TVA 19 %', family: 'vat' },
         { id: 't9', code: 'X', name: 'Inconnue', family: 'stamp' },
       ],
+      photosPerProduct: 6,
+      photoMaxBytes: 5242880,
     });
 
     expect(await pending).toEqual({
@@ -230,6 +232,8 @@ describe('ProductsApi', () => {
       currencyScale: 3,
       units: [{ id: 'u1', code: 'C62', name: 'Unité', decimals: 0 }],
       taxes: [{ id: 't1', code: 'TVA19', name: 'TVA 19 %', family: 'vat' }],
+      photosPerProduct: 6,
+      photoMaxBytes: 5242880,
     });
   });
 
@@ -261,6 +265,7 @@ describe('ProductsApi', () => {
       customFields: {},
       tracking: 'none',
       substitutionGroup: null,
+      mainPhotoId: null,
     });
   });
 

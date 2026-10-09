@@ -42,7 +42,13 @@ const input: ProductInput = {
   tracking: 'none',
   substitutionGroup: null,
 };
-const laptop: ProductRow = { ...input, id: 'p1', unitPriceNet: '1250.0000', barcodes: [] };
+const laptop: ProductRow = {
+  ...input,
+  id: 'p1',
+  unitPriceNet: '1250.0000',
+  barcodes: [],
+  mainPhotoId: null,
+};
 const hardware: ProductCategoryRow = {
   id: 'k1',
   name: 'Matériel',
@@ -50,7 +56,14 @@ const hardware: ProductCategoryRow = {
   productCount: 0,
   childCount: 0,
 };
-const options: ProductOptions = { currency: 'TND', currencyScale: 3, units: [], taxes: [] };
+const options: ProductOptions = {
+  currency: 'TND',
+  currencyScale: 3,
+  units: [],
+  taxes: [],
+  photosPerProduct: 6,
+  photoMaxBytes: 5242880,
+};
 const warranty: CustomFieldDefinition = {
   id: 'f1',
   entity: 'product',

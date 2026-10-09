@@ -33,6 +33,9 @@ import { ProductCostHistory } from './product-cost-history-facade';
 import { ProductCostHistorySection } from './product-cost-history';
 import { RecordHistory } from '../activity/record-history';
 import { ProductSubstitutes } from './product-substitutes-facade';
+import { ProductPhotos } from './product-photos-facade';
+import { ProductPhotosSection } from './product-photos';
+import { ProductThumbnail } from './product-thumbnail';
 import { ProductSubstitutesSection } from './product-substitutes';
 import { productForm, productInput, productValues } from './product-forms';
 import { ProductsFacade } from './products-facade';
@@ -64,12 +67,20 @@ import { MatTabsModule } from '@angular/material/tabs';
     ProductCostHistorySection,
     RecordHistory,
     ProductBarcodesSection,
+    ProductPhotosSection,
+    ProductThumbnail,
     PriceCalculator,
   ],
   templateUrl: './product-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   // Its own instance per product screen: what one product's homes are is not shared state.
-  providers: [ProductHomes, ProductReorderPoints, ProductSubstitutes, ProductCostHistory],
+  providers: [
+    ProductHomes,
+    ProductReorderPoints,
+    ProductSubstitutes,
+    ProductCostHistory,
+    ProductPhotos,
+  ],
 })
 export class ProductPage {
   private readonly facade = inject(ProductsFacade);
@@ -127,6 +138,22 @@ export class ProductPage {
   protected readonly showsCost = computed(() => this.auth.hasPermission('product.cost.read'));
   protected readonly currencyScale = computed(() => this.facade.options()?.currencyScale ?? 2);
   protected readonly currency = computed(() => this.facade.options()?.currency ?? '');
+  private readonly gallery = inject(ProductPhotos);
+  /**
+   * The main photo beside the title: the gallery's once it is read here, since a change made on this tab never comes
+   * back to it as a live change, else the one the product was read with.
+   */
+  protected readonly mainPhotoId = computed(() => {
+    const current = this.current();
+    if (!current) return null;
+    return this.gallery.loadedFor() === current.id
+      ? (this.gallery.main()?.id ?? null)
+      : current.mainPhotoId;
+  });
+  protected readonly photosPerProduct = computed(
+    () => this.facade.options()?.photosPerProduct ?? 6,
+  );
+  protected readonly photoMaxBytes = computed(() => this.facade.options()?.photoMaxBytes ?? null);
   protected readonly descriptor = computed(() => {
     const options = this.facade.options();
     return options === null

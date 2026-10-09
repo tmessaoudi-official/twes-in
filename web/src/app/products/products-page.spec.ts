@@ -60,6 +60,7 @@ const laptop: ProductRow = {
   customFields: {},
   tracking: 'none',
   substitutionGroup: null,
+  mainPhotoId: null,
 };
 
 describe('ProductsPage', () => {
@@ -75,6 +76,8 @@ describe('ProductsPage', () => {
       currencyScale: 3,
       units: [{ id: 'u1', code: 'C62', name: 'Unité', decimals: 0 }],
       taxes: [],
+      photosPerProduct: 6,
+      photoMaxBytes: 5242880,
     }).asReadonly(),
     customFields: signal<readonly CustomFieldDefinition[]>([]).asReadonly(),
     total: signal(1).asReadonly(),

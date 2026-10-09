@@ -88,6 +88,14 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
   defaultSort: { column: 'reference', direction: 'asc' },
   columns: [
     {
+      // The main photo (docs/SPEC.md § 7, 2026-10-08 23:02), drawn by the page's cell template.
+      id: 'photo',
+      label: 'products.photos.column',
+      value: (row) => row.mainPhotoId,
+      shown: (row) => row.mainPhotoId !== null,
+      width: 64,
+    },
+    {
       id: 'reference',
       label: `${FIELDS}.reference`,
       value: (row) => row.reference,

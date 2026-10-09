@@ -2,17 +2,29 @@
   <!-- The bar stays in view while the page scrolls: the save sat below the first screen
        (design review finding 4). -->
   <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
-    <h1
-      class="text-3xl font-semibold"
-      data-testid="product-title"
-      [attr.aria-hidden]="!current() && id() !== null ? true : null"
-    >
+    <div class="flex min-w-0 items-center gap-3">
       @if (current(); as product) {
-        {{ product.reference }} · {{ product.name }}
-      } @else if (id() === null) {
-        {{ 'products.new_title' | translate }}
+        @if (mainPhotoId(); as photoId) {
+          <app-product-thumbnail
+            [productId]="product.id"
+            [photoId]="photoId"
+            [side]="56"
+            data-testid="product-main-photo"
+          />
+        }
       }
-    </h1>
+      <h1
+        class="text-3xl font-semibold"
+        data-testid="product-title"
+        [attr.aria-hidden]="!current() && id() !== null ? true : null"
+      >
+        @if (current(); as product) {
+          {{ product.reference }} · {{ product.name }}
+        } @else if (id() === null) {
+          {{ 'products.new_title' | translate }}
+        }
+      </h1>
+    </div>
     <div class="flex flex-wrap items-center gap-2">
       <app-record-bar [changes]="changes()" [actions]="recordActions()" />
       <a mat-button routerLink="/products">{{ 'products.back' | translate }}</a>
@@ -103,6 +115,22 @@
                 [saved]="product.barcodes"
                 [readOnly]="!mayWrite()"
                 [adding]="add()"
+              />
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+    }
+    @if (current(); as product) {
+      <mat-tab [label]="'products.tabs.photos' | translate">
+        <div class="flex flex-col gap-6 pt-4" data-testid="product-tab-photos">
+          <mat-card>
+            <mat-card-content>
+              <app-product-photos
+                [productId]="product.id"
+                [readOnly]="!mayWrite()"
+                [maxPhotos]="photosPerProduct()"
+                [maxBytes]="photoMaxBytes()"
               />
             </mat-card-content>
           </mat-card>

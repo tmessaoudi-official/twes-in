@@ -39,6 +39,9 @@
       emptyKey="products.none"
       emptyTestId="products-empty"
     >
+      <ng-template appDataListCell="photo" let-row>
+        <app-product-thumbnail [productId]="row.id" [photoId]="row.mainPhotoId" [side]="40" />
+      </ng-template>
       <ng-template appDataListCell="kind" let-row>
         {{ 'products.kinds.' + row.kind | translate }}
       </ng-template>

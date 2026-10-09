@@ -1875,7 +1875,8 @@
       "defaults": "Valeurs par défaut",
       "homes": "Où il est rangé",
       "costs": "Historique des coûts",
-      "barcodes": "Codes-barres"
+      "barcodes": "Codes-barres",
+      "photos": "Photos"
     },
     "title": "Produits",
     "add": "Nouveau produit",
@@ -2118,6 +2119,37 @@
         "created": "Fixé à la création du produit",
         "edited": "Modifié sur le produit",
         "receipt": "Appliqué par une réception de stock"
+      }
+    },
+    "photos": {
+      "intro": "Jusqu’à {{max}} {max, plural, one {photo} other {photos}} ; la principale est celle qu’on voit partout où l’article est choisi ou montré, jamais sur un document imprimé. Glissez une photo, ou utilisez les flèches, pour changer l’ordre.",
+      "none": "Aucune photo pour l’instant.",
+      "column": "Photo",
+      "add": "Ajouter une photo",
+      "main": "Principale",
+      "make_main": "Mettre en principale",
+      "alt": "Photo {{name}}",
+      "alt_main": "Photo principale {{name}}",
+      "open": "Ouvrir la photo {{name}} telle qu’envoyée",
+      "earlier": "Avancer la photo {{name}}",
+      "later": "Reculer la photo {{name}}",
+      "remove": "Retirer la photo {{name}}",
+      "full": "Cet article a déjà {{max}} {max, plural, one {photo} other {photos}} : retirez-en une pour en ajouter une autre.",
+      "added": "Photo ajoutée.",
+      "main_set": "Photo principale changée.",
+      "reordered": "Photos réordonnées.",
+      "removed": "Photo retirée.",
+      "restored": "Photo remise.",
+      "undo": "Annuler",
+      "errors": {
+        "empty": "Le fichier est vide.",
+        "not_a_picture": "Une photo est une image JPEG, PNG ou WebP.",
+        "too_large": "Une photo pèse au plus {{megabytes}} Mo.",
+        "too_many_pixels": "Une photo compte au plus {{maxMegapixels}} mégapixels.",
+        "too_many_photos": "Un article a au plus {{max}} {max, plural, one {photo} other {photos}}.",
+        "changed": "Les photos ont changé entre-temps ; elles sont à jour maintenant.",
+        "not_found": "Cette photo n’existe plus.",
+        "network": "Le serveur ne répond pas. Réessayez dans un instant."
       }
     }
   },
@@ -4257,7 +4289,12 @@
       },
       "product": {
         "created": "a créé l’article",
-        "revised": "a modifié l’article"
+        "revised": "a modifié l’article",
+        "photo_added": "a ajouté une photo à l’article",
+        "photo_removed": "a retiré une photo de l’article",
+        "photo_restored": "a remis une photo de l’article",
+        "photos_reordered": "a réordonné les photos de l’article",
+        "main_photo_changed": "a changé la photo principale de l’article"
       },
       "product_category": {
         "created": "a créé la catégorie d’articles",
