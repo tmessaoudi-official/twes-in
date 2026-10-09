@@ -256,6 +256,11 @@ final class StockMovementResource
     #[Groups([self::READ])]
     public bool $costToComplete = false;
 
+    /** How many files a loss keeps — the photo of what broke, a complaint — and null on a movement that is not a loss. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?int $attachmentCount = null;
+
     /** The lot the write names, or none. */
     public function lot(): ?NamedLot
     {
@@ -290,6 +295,7 @@ final class StockMovementResource
         $resource->at = $movement->getAt()->format(\DATE_ATOM);
         $resource->costTyped = $movement->isCostTyped();
         $resource->costToComplete = $movement->isCostToComplete();
+        $resource->attachmentCount = StockMovement::SOURCE_LOSS === $movement->getSourceType() ? 0 : null;
 
         return $resource;
     }
