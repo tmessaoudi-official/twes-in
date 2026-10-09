@@ -136,7 +136,6 @@ describe('CustomerPage', () => {
         { key: 'mailing', planned: 'v1' },
         { key: 'whatsapp', planned: 'v1' },
         { key: 'quotes', planned: 'v1' },
-        { key: 'statements', planned: 'v1' },
         { key: 'purchases', planned: 'v1' },
       ],
     }),
@@ -322,10 +321,11 @@ describe('CustomerPage', () => {
     expect(await plannedInMenu()).toEqual([]);
   });
 
-  it('shows what a customer will offer once its planned modules ship', async () => {
+  // The credit limit is built, so the « Plafond de crédit » once planned here is gone for good.
+  it('offers nothing planned once a customer is open', async () => {
     customer.set(carthage);
     await open('k1');
-    expect(await plannedInMenu()).toEqual(['record-planned-statements']);
+    expect(await plannedInMenu()).toEqual([]);
   });
 
   it('creates a customer, then opens it by its identifier', async () => {

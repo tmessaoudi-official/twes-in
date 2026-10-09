@@ -90,7 +90,6 @@ final class ModulesTest extends ApiTestCase
             ['register', 'v1', ['invoices', 'products']],
             ['reports', 'v1', []],
             ['service', 'later', ['menu', 'register', 'venue']],
-            ['statements', 'v1', ['customers', 'invoices']],
             ['venue', 'later', ['register']],
             ['whatsapp', 'v1', ['invoices']],
             ['works', 'v1', ['invoices', 'quotes']],

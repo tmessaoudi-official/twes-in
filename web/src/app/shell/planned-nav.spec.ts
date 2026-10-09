@@ -71,7 +71,6 @@ describe('the planned modules in the menu', () => {
           'customers',
           'products',
           'price_lists',
-          'statements',
           'mailing',
           'whatsapp',
           'portal',
@@ -117,7 +116,7 @@ describe('the planned modules in the menu', () => {
   });
 
   it('names each, says what it will do, and what to use meanwhile where it has that, in both languages', () => {
-    expect(PLANNED_NAV.length).toBe(18);
+    expect(PLANNED_NAV.length).toBe(17);
     for (const entry of plannedNav(catalogue)) {
       for (const json of [fr, en]) {
         for (const key of [

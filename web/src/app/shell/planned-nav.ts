@@ -28,13 +28,7 @@ export interface PlannedPlace {
  */
 export const PLANNED_NAV: readonly PlannedPlace[] = [
   // Selling.
-  {
-    key: 'statements',
-    icon: 'account_balance_wallet',
-    section: 'sell',
-    after: 'customers',
-  },
-  { key: 'mailing', icon: 'forward_to_inbox', section: 'sell', after: 'statements' },
+  { key: 'mailing', icon: 'forward_to_inbox', section: 'sell', after: 'customers' },
   { key: 'whatsapp', icon: 'chat', section: 'sell', after: 'mailing' },
   { key: 'portal', icon: 'web', section: 'sell', after: 'whatsapp' },
   { key: 'composites', icon: 'widgets', section: 'sell', after: 'price_lists' },

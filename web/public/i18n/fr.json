@@ -528,7 +528,6 @@
     "register": "Caisse",
     "reports": "Rapports",
     "service": "Service en salle",
-    "statements": "Plafonds de crédit",
     "venue": "Salle et plan",
     "whatsapp": "Envoi par WhatsApp",
     "works": "Travaux",
@@ -3697,11 +3696,6 @@
       "heading": "Le service en salle est en construction",
       "does": "Prendre la commande à table, l’envoyer en cuisine et au bar, suivre chaque table jusqu’à l’addition."
     },
-    "statements": {
-      "heading": "Les plafonds de crédit sont en construction",
-      "does": "Un plafond de crédit par client ou par groupe, qui prévient avant qu’une livraison dépasse ce qui est déjà dû.",
-      "settings": "Le plafond de crédit proposé à un nouveau client."
-    },
     "venue": {
       "heading": "La salle est en construction",
       "does": "Le plan de la salle et de la terrasse avec ses tables, leur état en direct et leur capacité."
@@ -3840,7 +3834,6 @@
   "planned_actions": {
     "send_email": "Envoyer par e-mail",
     "send_whatsapp": "Envoyer par WhatsApp",
-    "credit_limit": "Plafond de crédit",
     "new_purchase": "Nouvelle commande fournisseur"
   },
   "legal": {

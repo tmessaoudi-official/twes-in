@@ -171,7 +171,6 @@ describe('DeliveryNotePage', () => {
         { key: 'mailing', planned: 'v1' },
         { key: 'whatsapp', planned: 'v1' },
         { key: 'quotes', planned: 'v1' },
-        { key: 'statements', planned: 'v1' },
         { key: 'purchases', planned: 'v1' },
       ],
     }),

@@ -528,7 +528,6 @@
     "register": "Till",
     "reports": "Reports",
     "service": "Table service",
-    "statements": "Credit limits",
     "venue": "Venue and floor plan",
     "whatsapp": "WhatsApp sending",
     "works": "Works",
@@ -3697,11 +3696,6 @@
       "heading": "Table service is under construction",
       "does": "Take the order at the table, send it to the kitchen and the bar, and follow each table to the bill."
     },
-    "statements": {
-      "heading": "Credit limits are under construction",
-      "does": "A credit limit per customer or group, warning before a delivery would pass what is already owed.",
-      "settings": "The credit limit a new customer starts with."
-    },
     "venue": {
       "heading": "The venue is under construction",
       "does": "The floor plan of the room and the terrace with its tables, their live state and their capacity."
@@ -3840,7 +3834,6 @@
   "planned_actions": {
     "send_email": "Send by email",
     "send_whatsapp": "Send by WhatsApp",
-    "credit_limit": "Credit limit",
     "new_purchase": "New supplier order"
   },
   "legal": {

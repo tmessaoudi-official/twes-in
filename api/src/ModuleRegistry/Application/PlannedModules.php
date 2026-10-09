@@ -26,7 +26,6 @@ final readonly class PlannedModules
             // Selling.
             new ModuleManifest('works', 'modules.works', ['invoices', 'quotes'], planned: 'v1'),
             new ModuleManifest('register', 'modules.register', ['invoices', 'products'], planned: 'v1'),
-            new ModuleManifest('statements', 'modules.statements', ['customers', 'invoices'], planned: 'v1'),
             new ModuleManifest('mailing', 'modules.mailing', ['invoices'], planned: 'later'),
             new ModuleManifest('whatsapp', 'modules.whatsapp', ['invoices'], planned: 'v1'),
             new ModuleManifest('portal', 'modules.portal', ['customers', 'invoices'], planned: 'later'),

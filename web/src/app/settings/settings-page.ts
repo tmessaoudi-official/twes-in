@@ -43,7 +43,6 @@ export interface PlannedSetting {
  * that ships takes its card away and brings its real section with it.
  */
 export const PLANNED_SETTINGS: readonly PlannedSetting[] = [
-  { module: 'statements', label: 'coming.statements.settings' },
   { module: 'mailing', label: 'coming.mailing.settings' },
   { module: 'whatsapp', label: 'coming.whatsapp.settings' },
   { module: 'portal', label: 'coming.portal.settings' },
