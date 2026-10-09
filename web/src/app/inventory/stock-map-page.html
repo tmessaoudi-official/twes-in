@@ -958,7 +958,14 @@
                           [attr.cy]="grip.y"
                           [attr.r]="handleRadius()"
                           [attr.stroke-width]="handleRadius() / 3"
-                          class="cursor-nwse-resize touch-none fill-surface stroke-primary"
+                          class="pointer-events-none fill-surface stroke-primary"
+                        />
+                        <circle
+                          [attr.cx]="grip.x"
+                          [attr.cy]="grip.y"
+                          [attr.r]="gripRadius()"
+                          pointer-events="all"
+                          class="cursor-nwse-resize touch-none fill-none"
                           (pointerdown)="grabStructure($event, selectedStructure()!, grip.handle)"
                           [attr.data-testid]="'stock-structure-handle-' + grip.key"
                         />
@@ -1099,7 +1106,8 @@
 
                       <!--
                       Drawn inside the group that turns the rectangle, so the handles turn with it: the one on a rack's
-                      end stays on its end whatever angle it stands at. Everything they do is also in the form.
+                      end stays on its end whatever angle it stands at. Everything they do is also in the form. Each is
+                      a small dot to see and, over it, a grip sized for the pointer to take hold of.
                     -->
                       @if (shape.drawing.id === selectedId()) {
                         @for (grip of handles(); track grip.key) {
@@ -1108,8 +1116,16 @@
                             [attr.cy]="grip.y"
                             [attr.r]="handleRadius()"
                             [attr.stroke-width]="handleRadius() / 3"
-                            class="cursor-nwse-resize touch-none fill-surface stroke-primary"
+                            class="pointer-events-none fill-surface stroke-primary"
+                          />
+                          <circle
+                            [attr.cx]="grip.x"
+                            [attr.cy]="grip.y"
+                            [attr.r]="gripRadius()"
+                            pointer-events="all"
+                            class="cursor-nwse-resize touch-none fill-none"
                             (pointerdown)="grab($event, shape.drawing, grip.handle)"
+                            [attr.data-testid]="'stock-drawing-grip-' + grip.key"
                           />
                         }
                       }

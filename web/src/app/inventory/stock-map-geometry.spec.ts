@@ -6,6 +6,7 @@ import {
   handleAt,
   movedTo,
   PLAN_HANDLES,
+  gripRadius,
   handlesThatFit,
   planBounds,
   planFrame,
@@ -272,6 +273,18 @@ describe('handlesThatFit', () => {
 
   it('keeps only the corners on a rectangle short both ways', () => {
     expect(handlesThatFit(rect({ width: 0.4, depth: 0.4 }), 0.29)).toHaveLength(4);
+  });
+});
+
+describe('gripRadius', () => {
+  it('is half of 24 px with a fine pointer and half of 44 px with a coarse one, in metres at the scale shown', () => {
+    expect(gripRadius(40, false, 0.3)).toBeCloseTo(0.3, 9);
+    expect(gripRadius(40, true, 0.3)).toBeCloseTo(0.55, 9);
+    expect(gripRadius(20, true, 0.3)).toBeCloseTo(1.1, 9);
+  });
+
+  it('falls back to the size given while the plan is not measured', () => {
+    expect(gripRadius(null, true, 0.3)).toBe(0.3);
   });
 });
 

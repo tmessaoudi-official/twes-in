@@ -80,6 +80,23 @@ export const PLAN_HANDLES: readonly PlanHandle[] = ([0, 0.5, 1] as const).flatMa
 );
 
 /**
+ * How wide a handle's grip is on the screen, in pixels: WCAG 2.5.8's minimum target under a mouse, 2.5.5's under a
+ * finger, which cannot see what it covers. The dot drawn stays small; the grip around it is what takes hold.
+ */
+export const GRIP_PIXELS = { fine: 24, coarse: 44 } as const;
+
+/** A grip's radius in METRES at the scale shown, or `fallback` while the plan has not been measured. */
+export function gripRadius(
+  pixelsPerMetre: number | null,
+  coarse: boolean,
+  fallback: number,
+): number {
+  if (pixelsPerMetre === null || pixelsPerMetre <= 0) return fallback;
+
+  return (coarse ? GRIP_PIXELS.coarse : GRIP_PIXELS.fine) / 2 / pixelsPerMetre;
+}
+
+/**
  * The handles a rectangle can carry without its middle being covered by them. A handle keeps one size on the screen,
  * so a side of four radii or less loses its middle handle: a 0,6 m rack on a 30 m floor could otherwise not be taken
  * hold of at all. The corners always stay, and the form keeps every measurement reachable (docs/SPEC.md § 7,

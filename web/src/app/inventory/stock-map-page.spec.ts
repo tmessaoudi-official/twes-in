@@ -39,6 +39,7 @@ import type {
   Whereabouts,
 } from './inventory-types';
 import { StockMapPage } from './stock-map-page';
+import { COARSE_POINTER } from '../shared/ui/pointer';
 import { WINDOW_CLASS, type WindowClass } from '../shared/ui/window-class';
 import { ScanBus } from '../shared/scan/scan-bus';
 
@@ -204,6 +205,7 @@ describe('StockMapPage', () => {
     hasPermission: vi.fn(),
   };
   const windowClass = signal<WindowClass>('expanded');
+  const coarse = signal(false);
   const showComing = signal(true);
   let fixture: ComponentFixture<StockMapPage>;
 
@@ -259,6 +261,7 @@ describe('StockMapPage', () => {
     facade.repeatDrawing.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
     windowClass.set('expanded');
+    coarse.set(false);
     showComing.set(true);
     TestBed.configureTestingModule({
       imports: [StockMapPage],
@@ -279,6 +282,7 @@ describe('StockMapPage', () => {
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: WINDOW_CLASS, useValue: windowClass.asReadonly() },
+        { provide: COARSE_POINTER, useValue: coarse.asReadonly() },
         {
           provide: ThemeFacade,
           useValue: { showComing, scheme: signal('light'), accent: signal('#1f6feb') },
@@ -928,6 +932,57 @@ describe('StockMapPage', () => {
     expect(q('stock-drawing-unsaved')).toBeNull();
   });
 
+  /**
+   * A handle is a target to take hold of, not only a dot to see: 24 px across under a mouse, 44 px under a finger
+   * (WCAG 2.5.8 and 2.5.5), measured on the screen whatever the floor's size or the zoom.
+   */
+  it('gives each handle a grip 24 px across under a mouse and 44 px under a finger', async () => {
+    // The board measured at 1000 × 600 px, as a window would lay it out: jsdom lays nothing out.
+    const watching = new Set<ResizeObserverCallback>();
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(private readonly told: ResizeObserverCallback) {}
+        observe(): void {
+          watching.add(this.told);
+          this.told(
+            [{ contentRect: { width: 1000, height: 600 } } as ResizeObserverEntry],
+            this as unknown as ResizeObserver,
+          );
+        }
+        disconnect(): void {
+          watching.delete(this.told);
+        }
+      },
+    );
+    try {
+      const across = async (finger: boolean): Promise<number[]> => {
+        coarse.set(finger);
+        fixture = TestBed.createComponent(StockMapPage);
+        await settle();
+        (fixture.componentInstance as unknown as { select: (one: StockDrawingRow) => void }).select(
+          drawn,
+        );
+        await settle();
+        const [, , width, height] = (surface().getAttribute('viewBox') ?? '')
+          .split(' ')
+          .map(Number);
+        const perMetre = Math.min(1000 / width!, 600 / height!);
+        const grips = [
+          ...fixture.nativeElement.querySelectorAll('[data-testid^="stock-drawing-grip-"]'),
+        ] as Element[];
+        expect(grips.length).toBeGreaterThan(0);
+
+        return grips.map((grip) => Math.round(2 * Number(grip.getAttribute('r')) * perMetre));
+      };
+
+      expect(new Set(await across(false))).toEqual(new Set([24]));
+      expect(new Set(await across(true))).toEqual(new Set([44]));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   /** Decision 8: the phone READS the map. A handle smaller than a fingertip is worse than no handle. */
   it('offers no handle and no drag on a phone', async () => {
     windowClass.set('compact');
@@ -1511,7 +1566,7 @@ describe('StockMapPage', () => {
   /** Finding G (§ 7, 2026-09-22): a wall kept its handles while a rack was worked on, two selections at once. */
   it('holds one selection across both layers', async () => {
     const stockHandles = () =>
-      fixture.nativeElement.querySelectorAll('[data-testid^="stock-drawing-group-"] circle').length;
+      fixture.nativeElement.querySelectorAll('[data-testid^="stock-drawing-grip-"]').length;
     const structureHandles = () =>
       fixture.nativeElement.querySelectorAll('[data-testid^="stock-structure-handle-"]').length;
 

@@ -68,6 +68,7 @@ import {
   centredIn,
   fitView,
   handleAt,
+  gripRadius,
   handlesThatFit,
   movedTo,
   pannedBy,
@@ -112,6 +113,7 @@ import {
   labelFont,
   planLabel,
 } from './stock-map-labels';
+import { COARSE_POINTER } from '../shared/ui/pointer';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
 
 /** Above this many metres a floor's grid is drawn every five metres rather than every one. */
@@ -1078,6 +1080,13 @@ export class StockMapPage implements OnInit {
 
   /** The radius a handle is drawn at, in METRES, so it stays the same size on the screen whatever the floor's size. */
   protected readonly handleRadius = computed(() => this.viewed().width / 110);
+
+  private readonly coarsePointer = inject(COARSE_POINTER);
+
+  /** The radius of the grip around each handle, in metres: what a mouse or a finger takes hold of. */
+  protected readonly gripRadius = computed(() =>
+    gripRadius(this.pixelsPerMetre(), this.coarsePointer(), this.handleRadius()),
+  );
 
   /**
    * How many fields hold something other than what was last saved. Without it a drag is illegible: the rectangle

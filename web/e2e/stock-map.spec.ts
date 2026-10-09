@@ -258,6 +258,27 @@ test.describe('the drawn stock map', () => {
       // Moved by the keyboard, as a drag would: chosen, then an arrow writes a quarter metre into its form, unsaved
       // until Enregistrer, and abandoned here so the rectangle stays where the drag left it.
       await page.getByTestId(`stock-drawing-${code}`).click();
+
+      // What a pointer lands on at a handle is its grip, at least 24 px across, not the small dot drawn under it.
+      const grip = page.locator('[data-testid^="stock-drawing-grip-"]').first();
+      await grip.scrollIntoViewIfNeeded();
+      const held = await grip.boundingBox();
+      if (held === null) throw new Error('the handle has no grip laid out');
+      expect(Math.round(held.width)).toBeGreaterThanOrEqual(24);
+      // Named in full when it misses, so a failure says WHAT took the pointer instead of the grip.
+      const landed = await page.evaluate(
+        ({ x, y }) => {
+          const hit = document.elementFromPoint(x, y);
+          if (hit === null) return `nothing at ${x},${y} in ${innerWidth}x${innerHeight}`;
+
+          return (
+            hit.getAttribute('data-testid') ?? `${hit.tagName}.${hit.getAttribute('class') ?? ''}`
+          );
+        },
+        { x: held.x + held.width / 2, y: held.y + held.height / 2 },
+      );
+      expect(landed).toMatch(/^stock-drawing-grip-/);
+
       await page.getByTestId('stock-map-board').focus();
       await page.keyboard.press('ArrowRight');
       await expect(page.getByTestId('stock-drawing-unsaved')).toBeVisible();
