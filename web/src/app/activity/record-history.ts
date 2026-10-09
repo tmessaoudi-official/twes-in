@@ -18,6 +18,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { MomentPipe } from '../shared/i18n/format-pipes';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { ActivityApi } from './activity-api';
+import { ActivityFieldsPipe } from './activity-fields-pipe';
 import { actionKey } from './activity-list';
 import type { ActivityRow, ActivitySearch } from './activity-types';
 
@@ -30,7 +31,7 @@ export const HISTORY_SIZE = 20;
  */
 @Component({
   selector: 'app-record-history',
-  imports: [RouterLink, TranslatePipe, MomentPipe],
+  imports: [ActivityFieldsPipe, RouterLink, TranslatePipe, MomentPipe],
   template: `
     @if (error()) {
       <p role="alert" class="text-error" data-testid="record-history-error">
@@ -52,7 +53,9 @@ export const HISTORY_SIZE = 20;
               <code>{{ row.action }}</code>
             }
             @if (row.fields.length > 0) {
-              <span class="text-on-surface-variant">({{ row.fields.join(', ') }})</span>
+              <span class="text-on-surface-variant"
+                >({{ row.fields | activityFields: kind() }})</span
+              >
             }
           </li>
         }

@@ -7,6 +7,7 @@ import {
   ACTIVITY_KINDS,
   actionKey,
   activitySearch,
+  fieldKey,
   recordLink,
 } from './activity-list';
 
@@ -75,5 +76,23 @@ describe('the activity journal list', () => {
       intervals: { 'at.from': '2026-03-01' },
       direction: 'asc',
     });
+  });
+
+  /** The sweep read « number », « paymentId », « deliveryDate » on a French screen: the names as the API records them. */
+  it('names what changed in the words of the record’s own form, then of the journal, else as recorded', () => {
+    const has = (key: string) => typeof at(fr, key) === 'string';
+    expect(fieldKey('customer', 'isActive', has)).toBe('customers.fields.isActive');
+    expect(fieldKey('delivery_note', 'deliveryDate', has)).toBe(
+      'delivery_notes.fields.deliveryDate',
+    );
+    expect(fieldKey('invoice', 'paymentId', has)).toBe('activity.field_names.paymentId');
+    expect(fieldKey('quote', 'answeredOn', has)).toBe('quotes.fields.answeredOn');
+    expect(fieldKey('teleport', 'flux', has)).toBe('flux');
+  });
+
+  it('says every field name of its own in both languages', () => {
+    const names = Object.keys((at(fr, 'activity.field_names') ?? {}) as object);
+    expect(names.length).toBeGreaterThan(10);
+    expect(Object.keys((at(en, 'activity.field_names') ?? {}) as object)).toEqual(names);
   });
 });

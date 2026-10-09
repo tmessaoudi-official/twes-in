@@ -21,6 +21,7 @@ import { ListExport } from '../shared/list/list-export';
 import type { ListPickSource, ListQuery } from '../shared/list/list-types';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { ActivityFacade } from './activity-facade';
+import { ActivityFieldsPipe } from './activity-fields-pipe';
 import {
   ACTIVITY_KINDS,
   ACTIVITY_LIST,
@@ -38,6 +39,7 @@ import type { ActivitySearch } from './activity-types';
 @Component({
   selector: 'app-activity-page',
   imports: [
+    ActivityFieldsPipe,
     MatButtonModule,
     RouterLink,
     TranslatePipe,

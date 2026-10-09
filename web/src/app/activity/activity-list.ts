@@ -144,6 +144,42 @@ export function kindKey(kind: string): string | null {
   return (ACTIVITY_KINDS as readonly string[]).includes(kind) ? `activity.kinds.${kind}` : null;
 }
 
+/** Where each kind of record names its fields: the labels of its own form, which the journal reuses. */
+const FIELD_LABELS: Readonly<Record<string, string>> = {
+  customer: 'customers.fields',
+  contact: 'customers.contacts.fields',
+  customer_group: 'customers.groups.fields',
+  product: 'products.fields',
+  product_category: 'products.categories.fields',
+  price_list: 'price_lists.fields',
+  vendor: 'vendors.fields',
+  quote: 'quotes.fields',
+  invoice: 'invoices.fields',
+  delivery_note: 'delivery_notes.fields',
+  expense: 'expenses.fields',
+  expense_category: 'expenses.categories.fields',
+  stock_location: 'inventory.locations.fields',
+  company: 'company.profile.fields',
+  establishment: 'company.establishments.fields',
+  numbering_series: 'company.numbering.fields',
+  custom_field: 'company.custom_fields.fields',
+};
+
+/**
+ * The translation key that names a field an entry changed: the record's own form label, else the journal's own word
+ * for it, else the name as the API recorded it, shown as it is. `has` says whether a key is translated.
+ */
+export function fieldKey(kind: string, field: string, has: (key: string) => boolean): string {
+  const own = FIELD_LABELS[kind];
+  for (const key of [
+    ...(own === undefined ? [] : [`${own}.${field}`]),
+    `activity.field_names.${field}`,
+  ]) {
+    if (has(key)) return key;
+  }
+  return field;
+}
+
 /** Where a record of the journal opens, for the kinds that have a page of their own. */
 const RECORD_ROUTES: Readonly<Record<string, string>> = {
   customer: '/customers',
@@ -185,7 +221,13 @@ export const ACTIVITY_LIST: ListDescriptor<ActivityRow> = {
     },
     { id: 'action', label: 'activity.fields.action', value: (row) => row.action, hideable: false },
     { id: 'record', label: 'activity.fields.record', value: (row) => row.entityType },
-    { id: 'fields', label: 'activity.fields.fields', value: (row) => row.fields.join(', ') },
+    {
+      id: 'fields',
+      label: 'activity.fields.fields',
+      value: (row) => row.fields.join(', '),
+      // Drawn through its template, which alone would keep an empty line on a card that changed no field.
+      shown: (row) => row.fields.length > 0,
+    },
     {
       id: 'ip',
       label: 'activity.fields.ip',
