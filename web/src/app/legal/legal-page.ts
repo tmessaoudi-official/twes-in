@@ -21,7 +21,8 @@ import { LegalText } from '../shared/legal/legal-text';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-signed-out-layout plain>
-      <article class="twes-legal-page flex flex-col gap-4">
+      <!-- A reading column centred under the brand: the text wrapped at its own width on the left of a wider box. -->
+      <article class="twes-legal-page mx-auto flex w-full max-w-[44rem] flex-col gap-4">
         <p>
           <a
             href="/"

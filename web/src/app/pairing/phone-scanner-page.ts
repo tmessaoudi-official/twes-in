@@ -29,6 +29,7 @@ import {
 } from '../shared/scan/pairing-api';
 import { PageMemoryStorage, type SettingsStorage } from '../shared/settings/settings-facade';
 import { PhotoShrinker } from '../shared/scan/photo-shrinker';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** Where this phone keeps its pairing for a reload of this tab: the tab's own session storage, never shared. */
 export const PAIRING_STORAGE = new InjectionToken<SettingsStorage>('PAIRING_STORAGE', {
@@ -101,6 +102,7 @@ export class PhoneScannerPage implements OnInit {
   private readonly storage = inject(PAIRING_STORAGE);
   private readonly address = inject(PairingAddress);
   private readonly shrinker = inject(PhotoShrinker);
+  private readonly feedback = inject(Feedback);
   protected readonly cameraAvailable = inject(Camera).available();
   private held: Held | null = null;
   private connection: RealtimeConnection | null = null;
@@ -112,8 +114,8 @@ export class PhoneScannerPage implements OnInit {
   });
   protected readonly echoes = signal<readonly PairingEcho[]>([]);
   protected readonly sent = signal<string | null>(null);
-  /** Where the last photo the camera took stands: sent on, or why not. */
-  protected readonly photo = signal<'idle' | 'sending' | 'sent' | 'unreadable' | 'refused'>('idle');
+  /** Where the last photo the camera took stands: on its way, or why it was not sent; that it went is a toast. */
+  protected readonly photo = signal<'idle' | 'sending' | 'unreadable' | 'refused'>('idle');
   protected code = '';
 
   constructor() {
@@ -173,7 +175,8 @@ export class PhoneScannerPage implements OnInit {
     }
     try {
       await this.api.photo(held.id, held.key, crypto.randomUUID(), shrunk);
-      this.photo.set('sent');
+      this.photo.set('idle');
+      this.feedback.success('scan.phone.page.photo_sent');
     } catch (error) {
       this.photo.set('refused');
       if (error instanceof PairingRefused && error.reason !== 'invalid') this.refused(error);

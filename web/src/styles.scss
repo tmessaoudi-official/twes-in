@@ -138,6 +138,14 @@ html {
       row-item-outline-color: var(--mat-sys-outline-variant),
     )
   );
+  // The accent's container role is the accent as picked, so its « on » colour is near white: Material draws the switch's
+  // check in it on a white handle, and in the light scheme an « on » switch lost its check. The primary reads on the
+  // handle in both schemes.
+  @include mat.slide-toggle-overrides(
+    (
+      selected-icon-color: var(--mat-sys-primary),
+    )
+  );
 
   // Presentation setting `ui.density`: tables and forms tighten, touch targets stay usable.
   &.density-compact {
@@ -283,6 +291,13 @@ html {
   gap: 0.625rem 1rem;
 }
 
+// A feature's tabs scroll sideways by themselves (a swipe, a wheel, the keyboard's focus), with no scrollbar drawn:
+// `PageTabs` keeps the open one in view. Qualified with Material's class, whose own sheet loads after this one.
+.mat-mdc-tab-nav-bar.twes-page-tabs .mat-mdc-tab-link-container {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
 .twes-chips {
   display: flex;
   flex-wrap: wrap;
@@ -322,7 +337,10 @@ html {
     outline-offset: 2px;
   }
 
-  &[aria-pressed='true'] {
+  // A chip that is a link to the page it names is chosen as a pressed one looks: the watch's lists said nothing of
+  // which was open.
+  &[aria-pressed='true'],
+  &[aria-current='page'] {
     border-color: var(--mat-sys-on-surface);
     background-color: var(--mat-sys-on-surface);
     color: var(--mat-sys-surface);
@@ -413,6 +431,10 @@ html {
   --twes-ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --twes-ease-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
   --twes-ease-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+
+  // The oldest unpaid invoices: the danger red darkened, so the ramp gets darker with age in both schemes. The danger
+  // label colour it used is light in the dark scheme, and there the worst bucket read as the palest.
+  --twes-aging-worst: color-mix(in oklab, var(--twes-status-danger-dot) 70%, black);
 
   --twes-shadow-1: 0 0 0 1px oklch(0.2 0.03 262 / 0.07), 0 1px 2px oklch(0.2 0.03 262 / 0.06);
   --twes-shadow-2:

@@ -32,6 +32,7 @@ class StaticLoader implements TranslateLoader {
       roles: { owner: 'propriétaire', admin: 'administrateur', member: 'membre' },
       members: {
         title: 'Membres',
+        invite_title: 'Inviter un membre',
         of: 'Entreprise {{company}}',
         back: 'Retour',
         name: 'Nom',
@@ -168,6 +169,12 @@ describe('MembersPage', () => {
     );
     // A shipped role is raised standing alone; a company's own name is left as it was typed.
     expect(offered).toEqual(['Propriétaire', 'Administrateur', 'Membre', 'barista']);
+  });
+
+  it('names the invitation form, so it does not read as part of the list above it', () => {
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="member-invite-title"]')?.textContent,
+    ).toContain('Inviter un membre');
   });
 
   it('names a custom role by its own name, having no translation to look up', () => {

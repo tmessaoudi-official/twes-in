@@ -23,23 +23,27 @@
               [attr.data-testid]="'watch-subject-' + card.kind"
             >
               <mat-card appearance="outlined" class="h-full">
-                <mat-card-content class="flex flex-col gap-2">
-                  <span class="flex items-center justify-between gap-3">
-                    <span class="flex items-center gap-2 text-lg font-medium">
-                      <mat-icon aria-hidden="true">{{ card.icon }}</mat-icon>
-                      {{ 'watch.subjects.' + card.kind + '.title' | translate }}
+                <!-- The layout sits on a div inside: Material's card content overrides layout classes put on it. Its
+                     « Ouvrir » stands at the card's foot, so the row's links line up when a title takes two lines. -->
+                <mat-card-content class="flex-1">
+                  <div class="flex h-full flex-col gap-2">
+                    <span class="flex items-center justify-between gap-3">
+                      <span class="flex items-center gap-2 text-lg font-medium">
+                        <mat-icon aria-hidden="true">{{ card.icon }}</mat-icon>
+                        {{ 'watch.subjects.' + card.kind + '.title' | translate }}
+                      </span>
+                      <span class="text-2xl font-semibold" data-testid="watch-subject-count">{{
+                        card.count
+                      }}</span>
                     </span>
-                    <span class="text-2xl font-semibold" data-testid="watch-subject-count">{{
-                      card.count
+                    <span class="text-sm text-on-surface-variant">{{
+                      'watch.subjects.' + card.kind + '.hint' | translate
                     }}</span>
-                  </span>
-                  <span class="text-sm text-on-surface-variant">{{
-                    'watch.subjects.' + card.kind + '.hint' | translate
-                  }}</span>
-                  <span class="flex items-center gap-1 font-medium text-primary"
-                    >{{ 'watch.open' | translate
-                    }}<mat-icon aria-hidden="true">chevron_right</mat-icon></span
-                  >
+                    <span class="mt-auto flex items-center gap-1 font-medium text-primary"
+                      >{{ 'watch.open' | translate
+                      }}<mat-icon aria-hidden="true">chevron_right</mat-icon></span
+                    >
+                  </div>
                 </mat-card-content>
               </mat-card>
             </a>

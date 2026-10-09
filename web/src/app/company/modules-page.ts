@@ -9,6 +9,7 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatButtonModule } from '@angular/material/button';
@@ -38,12 +39,19 @@ export class ModulesPage implements OnInit {
   private readonly translate = inject(TranslateService);
 
   protected readonly modules = this.facade.modules;
-  /** What the company can switch, and what is only planned (docs/SPEC.md § 7, 2026-09-26 10:08). */
+  /** Re-reads the names when the translations arrive or the language changes. */
+  private readonly language = toSignal(this.translate.onLangChange, { initialValue: null });
+  /**
+   * What the company can switch, and what is only planned (docs/SPEC.md § 7, 2026-09-26 10:08), each in the order of
+   * the names a person reads, the catalogue's own order following none; the planned ones for version 1 first.
+   */
   protected readonly available = computed(() =>
-    this.modules().filter((row) => row.planned === undefined),
+    this.byName(this.modules().filter((row) => row.planned === undefined)),
   );
   protected readonly planned = computed(() =>
-    this.modules().filter((row) => row.planned !== undefined),
+    this.byName(this.modules().filter((row) => row.planned !== undefined)).sort(
+      (one, other) => Number(one.planned === 'later') - Number(other.planned === 'later'),
+    ),
   );
   protected readonly showComing = inject(ThemeFacade).showComing;
   protected readonly busy = this.facade.busy;
@@ -105,5 +113,12 @@ export class ModulesPage implements OnInit {
     if (!(await this.facade.switch(companyId, row.key, change.checked))) {
       change.source.checked = row.enabled;
     }
+  }
+
+  private byName(rows: readonly ModuleRow[]): ModuleRow[] {
+    this.language();
+    const name = (row: ModuleRow): string => this.translate.instant(row.labelKey) as string;
+    const language = this.translate.getCurrentLang() ?? undefined;
+    return [...rows].sort((one, other) => name(one).localeCompare(name(other), language));
   }
 }

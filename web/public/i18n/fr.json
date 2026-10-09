@@ -225,7 +225,8 @@
     "remove_message": "{{name}} n’aura plus accès à cette entreprise. Vous pourrez l’inviter à nouveau.",
     "remove_confirm": "Retirer",
     "keep": "Garder",
-    "activity": "Activité de {{name}}"
+    "activity": "Activité de {{name}}",
+    "invite_title": "Inviter un membre"
   },
   "company": {
     "choose": "Choisir une entreprise",
@@ -716,7 +717,8 @@
       "invalid": "Demande invalide.",
       "network": "Impossible de joindre le serveur."
     },
-    "journal": "Ce que vous ferez chez {{company}} sera inscrit dans son journal d’activité, conservé douze mois par défaut et lu par ceux que leur rôle autorise. Voir"
+    "journal": "Ce que vous ferez chez {{company}} sera inscrit dans son journal d’activité, conservé douze mois par défaut et lu par ceux que leur rôle autorise. Voir",
+    "back_to_login": "Retour à la connexion"
   },
   "document": {
     "actions": "Actions du document",

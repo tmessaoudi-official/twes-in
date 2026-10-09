@@ -225,7 +225,8 @@
     "remove_message": "{{name}} will lose access to this company. You can invite them again.",
     "remove_confirm": "Remove",
     "keep": "Keep",
-    "activity": "{{name}}’s activity"
+    "activity": "{{name}}’s activity",
+    "invite_title": "Invite a member"
   },
   "company": {
     "choose": "Choose a company",
@@ -716,7 +717,8 @@
       "invalid": "Invalid request.",
       "network": "The server could not be reached."
     },
-    "journal": "What you do at {{company}} is written in its activity journal, kept twelve months by default and read by those whose role allows it. See"
+    "journal": "What you do at {{company}} is written in its activity journal, kept twelve months by default and read by those whose role allows it. See",
+    "back_to_login": "Back to sign in"
   },
   "document": {
     "actions": "Document actions",

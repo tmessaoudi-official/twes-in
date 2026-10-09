@@ -58,9 +58,11 @@ const HEX = /^#[0-9a-f]{6}$/;
       }
     </div>
     <div class="flex items-center gap-2">
+      <!-- A strong ring with a gap of the page's colour: a colour close to the page's own (near black in the dark
+           scheme) still shows as a sample, where a thin outline left only the outline. -->
       <span
         aria-hidden="true"
-        class="size-8 shrink-0 rounded-control border border-outline"
+        class="size-8 shrink-0 rounded-control border-2 border-on-surface-variant ring-2 ring-surface ring-inset"
         [style.background-color]="valid() ? text() : null"
       ></span>
       <input

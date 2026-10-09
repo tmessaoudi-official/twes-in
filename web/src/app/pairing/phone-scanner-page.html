@@ -65,11 +65,6 @@
             {{ 'scan.phone.page.photo_sending' | translate }}
           </p>
         }
-        @case ('sent') {
-          <p class="m-0 text-sm" role="status" data-testid="phone-photo-sent">
-            {{ 'scan.phone.page.photo_sent' | translate }}
-          </p>
-        }
         @case ('unreadable') {
           <p class="m-0 text-sm text-error" role="alert" data-testid="phone-photo-unreadable">
             {{ 'scan.phone.page.photo_unreadable' | translate }}

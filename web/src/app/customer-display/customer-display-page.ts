@@ -41,6 +41,12 @@ export class CustomerDisplayPage {
       .catch(() => undefined);
   }
 
+  /** A quantity as the customer counts: the screen's decimal sign, without the zeros the unit's scale pads it with. */
+  protected count(value: string): string {
+    const trimmed = value.includes('.') ? value.replace(/\.?0+$/, '') : value;
+    return this.format.amount(trimmed, null);
+  }
+
   protected price(value: string, currency: string): string {
     return `${this.format.amount(value, null)} ${currency}`.trim();
   }

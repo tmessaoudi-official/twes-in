@@ -9,7 +9,7 @@
       <section class="flex flex-col items-center gap-4" aria-live="polite">
         <p class="m-0 text-5xl font-medium" data-testid="customer-display-name">{{ item.name }}</p>
         <p class="m-0 text-4xl" data-testid="customer-display-line">
-          {{ item.quantity }} × {{ price(item.unitPrice, state.currency) }}
+          {{ count(item.quantity) }} × {{ price(item.unitPrice, state.currency) }}
         </p>
         <p class="m-0 text-lg opacity-80" data-testid="customer-display-shelf">
           {{ 'customer_display.shelf_price' | translate }}

@@ -26,7 +26,7 @@ const AGING_COLOURS: Readonly<Record<AgingBucket, string>> = {
   days_1_15: 'var(--twes-status-warning-dot)',
   days_16_30: 'var(--twes-status-purple-dot)',
   days_31_45: 'var(--twes-status-danger-dot)',
-  days_over_45: 'var(--twes-status-danger-fg)',
+  days_over_45: 'var(--twes-aging-worst)',
 };
 
 /**

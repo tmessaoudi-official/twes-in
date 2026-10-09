@@ -43,48 +43,51 @@
   </app-data-list>
 
   @if (mayManage()) {
-    <mat-card>
-      <mat-card-content>
-        <form [formGroup]="form" (ngSubmit)="add()" class="flex flex-wrap items-start gap-4">
-          <div class="flex min-w-64 flex-col gap-1.5">
-            <label id="member-email-label" class="twes-field-label" for="member-email-input">{{
-              'members.email' | translate
-            }}</label>
-            <mat-form-field>
-              <input
-                matInput
-                id="member-email-input"
-                type="email"
-                formControlName="email"
-                data-testid="member-email"
-              />
-              @if (form.controls.email.touched && form.controls.email.invalid) {
-                <mat-error data-testid="member-email-error">
-                  {{ 'members.email_invalid' | translate }}
-                </mat-error>
-              }
-            </mat-form-field>
-          </div>
-          <div class="flex min-w-48 flex-col gap-1.5">
-            <label id="member-role-label" class="twes-field-label" for="member-role-input">{{
-              'members.role' | translate
-            }}</label>
-            <app-select
-              inputId="member-role-input"
-              labelledBy="member-role-label"
-              testId="member-role"
-              formControlName="role"
-              [options]="roleOptions()"
-              [translateLabels]="true"
+    <!-- Named, and on the page's own left edge: in a card it stood indented under the list with nothing saying what
+         it does. -->
+    <section class="flex flex-col gap-3" aria-labelledby="member-invite-title">
+      <h2 id="member-invite-title" class="text-lg font-semibold" data-testid="member-invite-title">
+        {{ 'members.invite_title' | translate }}
+      </h2>
+      <form [formGroup]="form" (ngSubmit)="add()" class="flex flex-wrap items-start gap-4">
+        <div class="flex w-full flex-col gap-1.5 sm:w-auto sm:min-w-64">
+          <label id="member-email-label" class="twes-field-label" for="member-email-input">{{
+            'members.email' | translate
+          }}</label>
+          <mat-form-field class="w-full">
+            <input
+              matInput
+              id="member-email-input"
+              type="email"
+              formControlName="email"
+              data-testid="member-email"
             />
-          </div>
-          <div class="pt-7">
-            <button mat-flat-button type="submit" [disabled]="busy()" data-testid="member-add">
-              {{ 'members.add' | translate }}
-            </button>
-          </div>
-        </form>
-      </mat-card-content>
-    </mat-card>
+            @if (form.controls.email.touched && form.controls.email.invalid) {
+              <mat-error data-testid="member-email-error">
+                {{ 'members.email_invalid' | translate }}
+              </mat-error>
+            }
+          </mat-form-field>
+        </div>
+        <div class="flex min-w-48 flex-1 flex-col gap-1.5 sm:flex-none">
+          <label id="member-role-label" class="twes-field-label" for="member-role-input">{{
+            'members.role' | translate
+          }}</label>
+          <app-select
+            inputId="member-role-input"
+            labelledBy="member-role-label"
+            testId="member-role"
+            formControlName="role"
+            [options]="roleOptions()"
+            [translateLabels]="true"
+          />
+        </div>
+        <div class="pt-7">
+          <button mat-flat-button type="submit" [disabled]="busy()" data-testid="member-add">
+            {{ 'members.add' | translate }}
+          </button>
+        </div>
+      </form>
+    </section>
   }
 </section>

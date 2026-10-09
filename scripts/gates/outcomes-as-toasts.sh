@@ -36,9 +36,12 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # `stock-map-found` (and `stock-map-note`, a delivery note's lines looked for together) is what the map's search found — where the product is, on which floors, what lies undrawn — and
 # what the board IS while the search stands, read again when stock moves; choosing the product was the person's act,
 # and its outcome is the plan lit, not a moment to toast.
+# `phone-photo-sending` is a photo on its way from the phone, what the phone IS until the answer; that it went is a toast.
+# `stop-mail-done` is what the public stop page shows in place of its form once the link has stopped the mail, as
+# `reset-done` does for a password chosen: there is no form left to say it under.
 # `list-loading` is what a list IS until its first answer arrives, said in place of « vide », which a shop owner reads as
 # lost data; it is never the outcome of something the person did there.
-page_states=' list-loading new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed '
+page_states=' list-loading phone-photo-sending stop-mail-done new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {

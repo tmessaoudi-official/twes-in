@@ -60,7 +60,7 @@ describe('AcceptInvitationPage', () => {
   const byTestId = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
 
-  async function render(shown: InvitationOffer): Promise<void> {
+  async function render(shown: InvitationOffer | null): Promise<void> {
     current.set(shown);
     TestBed.configureTestingModule({
       imports: [AcceptInvitationPage],
@@ -117,5 +117,13 @@ describe('AcceptInvitationPage', () => {
       'Ce que vous ferez chez Acme sera inscrit dans son journal d’activité',
     );
     expect(byTestId('invitation-privacy')?.getAttribute('href')).toBe('/legal/privacy');
+  });
+  it('leads back to the sign-in from a link that is no longer valid, as the other signed-out screens do', async () => {
+    // It said the link was not valid and offered nothing (sweep 2026-10-09).
+    invitation.load.mockResolvedValue(null);
+    await render(null);
+
+    expect(byTestId('invitation-error')).not.toBeNull();
+    expect(byTestId('invitation-back')?.getAttribute('href')).toBe('/login');
   });
 });

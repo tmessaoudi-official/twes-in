@@ -11,7 +11,6 @@ import {
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -89,7 +88,6 @@ export const membersList = (roles: readonly RoleRow[]): ListDescriptor<MemberRow
   selector: 'app-members-page',
   imports: [
     ReactiveFormsModule,
-    MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     Select,

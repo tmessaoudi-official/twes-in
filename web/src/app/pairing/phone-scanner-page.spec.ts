@@ -21,6 +21,7 @@ import {
   PairingAddress,
   PhoneScannerPage,
 } from './phone-scanner-page';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -107,6 +108,7 @@ describe('PhoneScannerPage', () => {
         { provide: PAIRING_STORAGE, useValue: storage },
         { provide: PairingAddress, useValue: address },
         { provide: PhotoShrinker, useValue: shrinker },
+        ...provideQuietFeedback(),
       ],
     });
   });
@@ -143,7 +145,9 @@ describe('PhoneScannerPage', () => {
 
     expect(shrinker.shrink).toHaveBeenCalledWith(taken);
     expect(api.photo).toHaveBeenCalledWith('p-1', 'k'.repeat(64), expect.any(String), shrunk);
-    expect(q('phone-photo-sent')).not.toBeNull();
+    // What was just done is a toast, as everywhere; no line lingers on the phone after it.
+    expect(successToasts()).toContain('scan.phone.page.photo_sent');
+    expect(q('phone-photo-sent')).toBeNull();
   });
 
   it('says a picture it cannot read, and sends nothing', async () => {

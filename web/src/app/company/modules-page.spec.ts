@@ -162,6 +162,21 @@ describe('ModulesPage', () => {
     expect(auth.hasPermission).toHaveBeenCalledWith('company.settings');
   });
 
+  it('lists the modules in the order of their names, as a reader looks one up', async () => {
+    // The catalogue's order (« Export comptable, Clients, Bons de livraison… ») followed no order a reader could use.
+    modules.set([
+      invoices,
+      { ...customers, key: 'products', labelKey: 'modules.products' },
+      customers,
+    ]);
+    await open();
+
+    const shown = [...(q('modules-list')?.querySelectorAll('[data-testid^="module-"]') ?? [])]
+      .map((each) => each.getAttribute('data-testid'))
+      .filter((id) => /^module-[a-z_]+$/.test(id ?? ''));
+    expect(shown).toEqual(['module-customers', 'module-invoices', 'module-products']);
+  });
+
   it('switches a module off', async () => {
     await open();
 

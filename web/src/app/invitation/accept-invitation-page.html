@@ -98,4 +98,12 @@
       {{ 'invitation.errors.' + error() | translate }}
     </p>
   }
+  <!-- Its own block, so it is projected under the card as the other signed-out screens' way back is. -->
+  @if (!offer() && !busy()) {
+    <p twesAuthAfter class="twes-auth-after">
+      <a routerLink="/login" data-testid="invitation-back">{{
+        'invitation.back_to_login' | translate
+      }}</a>
+    </p>
+  }
 </app-signed-out-layout>

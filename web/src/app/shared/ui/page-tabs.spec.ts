@@ -113,4 +113,26 @@ describe('PageTabs', () => {
     expect(selected('customer-groups-link')).toBe('true');
     expect(selected('customers-tab')).toBe('false');
   });
+
+  it("brings the open tab into view, which a phone otherwise left under the bar's edge", async () => {
+    // At 390 px « Comptage » rested at 292–410, behind the chevron (sweep 2026-10-09).
+    const revealed: string[] = [];
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) {
+      revealed.push(this.getAttribute('data-testid') ?? '');
+    };
+    try {
+      const fixture = TestBed.createComponent(Host);
+      await TestBed.inject(Router).navigateByUrl('/customers/groups');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(revealed).toContain('customer-groups-link');
+      expect(revealed).not.toContain('customers-tab');
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+    }
+  });
 });

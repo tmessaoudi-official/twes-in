@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector } from '@angular/core';
 import { AuthFacade } from '../auth/auth-facade';
-import { ProductsApi, ProductsRefused } from './products-api';
+import type { ProductsApi } from './products-api';
 import type { ProductScan } from './products-types';
 
 /**
@@ -12,8 +12,21 @@ import type { ProductScan } from './products-types';
  */
 @Injectable({ providedIn: 'root' })
 export class ProductScans {
-  private readonly api = inject(ProductsApi);
+  private readonly injector = inject(Injector);
   private readonly auth = inject(AuthFacade);
+
+  /**
+   * The products' whole API class, loaded at the first scan: the shell holds this service, and importing the class
+   * statically put all of it on the first page, past its budget.
+   */
+  private async products(): Promise<typeof import('./products-api')> {
+    return import('./products-api');
+  }
+
+  private async api(): Promise<ProductsApi> {
+    const { ProductsApi } = await this.products();
+    return this.injector.get(ProductsApi);
+  }
 
   /**
    * What a scan names, for a screen that acts on it (docs/SPEC.md § 7, 2026-09-23 09:30); null when no product of the
@@ -22,7 +35,7 @@ export class ProductScans {
   async named(code: string): Promise<ProductScan | null> {
     const companyId = this.auth.me()?.company?.id;
     if (companyId === undefined) return null;
-    return this.api.scan(companyId, code);
+    return (await this.api()).scan(companyId, code);
   }
 
   /**
@@ -32,9 +45,10 @@ export class ProductScans {
   async piecesPerScan(code: string, productId: string): Promise<number | null> {
     const companyId = this.auth.me()?.company?.id;
     if (companyId === undefined) return null;
+    const { ProductsRefused } = await this.products();
     let scan;
     try {
-      scan = await this.api.scan(companyId, code);
+      scan = await (await this.api()).scan(companyId, code);
     } catch (error) {
       // The product is on the line already; a count the API could not give is left to the person, not guessed.
       if (error instanceof ProductsRefused) return null;

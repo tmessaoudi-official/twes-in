@@ -72,6 +72,15 @@ describe('CustomerDisplayPage', () => {
     expect(q('customer-display-total')).toBeNull();
   });
 
+  it("says the quantity in the screen's figures, without the zeros its scale pads it with", () => {
+    // « 2.000 × » read as the API's decimal string, not as the customer reads a count (sweep 2026-10-09).
+    fixture = TestBed.createComponent(CustomerDisplayPage);
+    TestBed.inject(CustomerDisplay).show({ name: 'Câble', quantity: '2.500', unitPrice: '1.190' });
+    fixture.detectChanges();
+
+    expect(q('customer-display-line')?.textContent?.trim()).toMatch(/^~2\.5 ×/);
+  });
+
   it('labels a price as the shelf price shown, and adds the price without tax only when the company asks', async () => {
     fixture = TestBed.createComponent(CustomerDisplayPage);
     await fixture.whenStable();
