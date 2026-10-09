@@ -580,7 +580,8 @@
     "support_access": "Support access",
     "texts": "Texts",
     "short": {
-      "delivery_notes": "Deliveries"
+      "delivery_notes": "Deliveries",
+      "mailing": "Email and reminders"
     },
     "stock_valuation": "Stock valuation",
     "price_lists": "Price lists",
@@ -720,6 +721,7 @@
     },
     "no_match_filters": "Nothing matches these filters.",
     "filter_any": "All",
+    "filter_any_feminine": "All",
     "views": "Views",
     "views_none": "No saved views yet. Arrange the list, then name the view to keep it.",
     "view_name": "View name",

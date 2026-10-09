@@ -11,7 +11,9 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: 'list',
-  timeout: 600_000,
+  // About seventy screens at three widths, the lists open as well, each measured: ten minutes covered three quarters of
+  // two widths at rest on a busy machine.
+  timeout: 7_200_000,
   expect: { timeout: 15_000 },
   use: {
     baseURL: process.env['BASE_URL'] ?? 'http://127.0.0.1:8090',

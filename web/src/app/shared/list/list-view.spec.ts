@@ -6,6 +6,7 @@ import {
   applyFilters,
   DuplicateListColumn,
   filterRows,
+  fitScale,
   InvalidViewName,
   paginate,
   removeView,
@@ -302,5 +303,26 @@ describe('saved views', () => {
   it('removes one view by its id', () => {
     const other: ListView = { ...tunisia, id: 'v2', name: 'Autre' };
     expect(removeView([tunisia, other], 'v1')).toEqual([other]);
+  });
+});
+
+/** The sweep found lists whose last columns, the quantity among them, sat past their card even at 1440 px. */
+describe('fitScale', () => {
+  it('keeps the declared widths where they fit', () => {
+    expect(fitScale(800, 96, 1000)).toBe(1);
+    expect(fitScale(904, 96, 1000)).toBe(1);
+  });
+
+  it('narrows every data column alike to fit the card, the actions keeping theirs', () => {
+    expect(fitScale(1100, 96, 976)).toBeCloseTo(0.8, 5);
+  });
+
+  it('narrows no further than a readable floor, past which the card scrolls', () => {
+    expect(fitScale(2000, 96, 600)).toBe(0.7);
+  });
+
+  it('keeps the declared widths until the card has been measured', () => {
+    expect(fitScale(2000, 96, null)).toBe(1);
+    expect(fitScale(2000, 96, 0)).toBe(1);
   });
 });

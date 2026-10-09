@@ -130,9 +130,9 @@
                 } @else {
                   <span matListItemTitle class="twes-rail-title"
                     ><span
-                      [appCutTooltip]="entry.labelKey | translate"
+                      [appCutTooltip]="menuLabel(entry) | translate"
                       matTooltipPosition="right"
-                      >{{ entry.labelKey | translate }}</span
+                      >{{ menuLabel(entry) | translate }}</span
                     >
                     @if (count > 0) {
                       <app-count-badge

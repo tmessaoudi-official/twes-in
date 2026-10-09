@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { type Page, test } from '@playwright/test';
 import { forgetPresentationChoices } from '../e2e/presentation';
 import { signInWithCode } from '../e2e/session';
+import { auditScreen, type Finding } from './audit';
 
 // Every screen as it is, for a design review (see playwright.gallery.config.ts): each route at desktop and phone
 // width, in the light and the dark scheme. The scheme follows the device, as it does for anyone who never chose
@@ -57,6 +58,15 @@ const SIGNED_IN: Screen[] = [
     firstRowOf: '/invoices',
   },
   { key: 'invoice-new', group: 'Factures', path: '/invoices/new' },
+  { key: 'invoices-recurring', group: 'Factures', path: '/invoices/recurring' },
+  { key: 'quotes', group: 'Devis', path: '/quotes' },
+  {
+    key: 'quote',
+    group: 'Devis',
+    path: '',
+    firstRowOf: '/quotes',
+  },
+  { key: 'quote-new', group: 'Devis', path: '/quotes/new' },
   { key: 'delivery-notes', group: 'Bons de livraison', path: '/delivery-notes' },
   {
     key: 'delivery-note',
@@ -71,13 +81,13 @@ const SIGNED_IN: Screen[] = [
   { key: 'stock-count', group: 'Stock', path: '/stock/count' },
   { key: 'stock-valuation', group: 'Stock', path: '/stock/valuation' },
   { key: 'stock-plan', group: 'Stock', path: '/stock/plan' },
-  { key: 'location-labels', group: 'Stock', path: '/location-labels' },
+  { key: 'location-labels', group: 'Stock', path: '/print/location-labels' },
   { key: 'instruments', group: 'Factures', path: '/instruments' },
   { key: 'price-lists', group: 'Produits', path: '/price-lists' },
   { key: 'watch', group: 'À surveiller', path: '/watch' },
   { key: 'watch-late', group: 'À surveiller', path: '/watch/invoices.late_customer' },
   { key: 'account', group: 'Mon compte', path: '/account' },
-  { key: 'coming', group: 'Bientôt', path: '/coming/quotes' },
+  { key: 'coming', group: 'Bientôt', path: '/coming/works' },
   { key: 'vendors', group: 'Fournisseurs', path: '/vendors' },
   {
     key: 'vendor',
@@ -95,6 +105,7 @@ const SIGNED_IN: Screen[] = [
   },
   { key: 'expense-new', group: 'Dépenses', path: '/expenses/new' },
   { key: 'expense-categories', group: 'Dépenses', path: '/expenses/categories' },
+  { key: 'accounting-export', group: 'Dépenses', path: '/accounting-export' },
   { key: 'platform', group: 'Plateforme', path: '/platform' },
   { key: 'platform-legal', group: 'Plateforme', path: '/platform/legal' },
   { key: 'settings', group: 'Paramètres', path: '/settings' },
@@ -108,15 +119,20 @@ const SIGNED_IN: Screen[] = [
   { key: 'company-subscription', group: 'Paramètres', path: '/company/subscription' },
   { key: 'members', group: 'Paramètres', path: '/members' },
   { key: 'company-roles', group: 'Paramètres', path: '/company/roles' },
+  { key: 'company-activity', group: 'Paramètres', path: '/company/activity' },
+  { key: 'company-closing', group: 'Paramètres', path: '/company/closing' },
+  { key: 'company-documents', group: 'Paramètres', path: '/company/documents' },
   { key: 'fiscal-taxes', group: 'Paramètres', path: '/fiscal/taxes' },
   { key: 'fiscal-units', group: 'Paramètres', path: '/fiscal/units' },
 ];
 
+// One width per window class of the shell: labelled menu, rail, bottom bar. The dark scheme is a matter of colour, not
+// of width, so the rail's width is pictured light only.
 const VIEWPORTS = [
-  { name: 'desktop', width: 1440, height: 900 },
-  { name: 'phone', width: 390, height: 844 },
+  { name: 'desktop', width: 1440, height: 900, schemes: ['light', 'dark'] },
+  { name: 'tablet', width: 1024, height: 768, schemes: ['light'] },
+  { name: 'phone', width: 390, height: 844, schemes: ['light', 'dark'] },
 ] as const;
-const SCHEMES = ['light', 'dark'] as const;
 // `GALLERY_ONLY=invoice,home` pictures those screens alone, to check one change without the whole run.
 const ONLY = (process.env['GALLERY_ONLY'] ?? '').split(',').filter((key) => key !== '');
 // The tallest picture: a long list is pictured to this height, its foot left out.
@@ -129,7 +145,11 @@ interface Shot {
   landed: string;
   viewport: string;
   scheme: string;
+  /** What was open when it was pictured: nothing (`rest`), a list's filters, or a row's « ⋮ » menu. */
+  state: 'rest' | 'filters' | 'menu';
   file: string;
+  /** What a measurement calls wrong on the screen, for the sweep; empty when nothing was. */
+  findings: Finding[];
 }
 const shots: Shot[] = [];
 const missed: string[] = [];
@@ -171,7 +191,7 @@ async function open(page: Page, screen: Screen): Promise<boolean> {
 async function captureAll(page: Page, screens: Screen[]): Promise<void> {
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    for (const scheme of SCHEMES) {
+    for (const scheme of viewport.schemes) {
       await page.emulateMedia({ colorScheme: scheme });
       for (const screen of screens.filter((each) => ONLY.length === 0 || ONLY.includes(each.key))) {
         try {
@@ -185,19 +205,78 @@ async function captureAll(page: Page, screens: Screen[]): Promise<void> {
           continue;
         }
         const file = `${screen.key}--${viewport.name}--${scheme}.jpg`;
+        // Measured at the window's own size: the picture below stretches the window to the page's height.
+        const findings = await auditScreen(page);
         await pictureWhole(page, viewport, `${OUT}/${file}`);
-        shots.push({
+        const shot = {
           key: screen.key,
           group: screen.group,
           path: screen.path || `${screen.firstRowOf}/…`,
           landed: new URL(page.url()).pathname,
           viewport: viewport.name,
           scheme,
-          file,
-        });
+        };
+        shots.push({ ...shot, state: 'rest', file, findings });
+        // A list is also used open: its filters, and a row's « ⋮ ». Pictured light, where the layout is the question.
+        if (scheme === 'light') {
+          for (const state of await openStates(page, screen, viewport, shot)) shots.push(state);
+        }
+        // Written after every picture, so a run cut short still says what it measured.
+        writeFileSync(`${OUT}/manifest.json`, JSON.stringify({ shots, missed }, null, 2));
       }
     }
   }
+}
+
+/**
+ * A list's two states besides its resting one: the filter panel open, and the first row's « ⋮ » menu open. Each is
+ * measured and pictured in the window as it is (a menu sits over the window, not the page), then closed again.
+ */
+async function openStates(
+  page: Page,
+  screen: Screen,
+  viewport: (typeof VIEWPORTS)[number],
+  shot: Omit<Shot, 'state' | 'file' | 'findings'>,
+): Promise<Shot[]> {
+  const pictured: Shot[] = [];
+  const filters = page.getByTestId('list-filters').first();
+  if (await filters.isVisible().catch(() => false)) {
+    try {
+      await filters.click();
+      await page.waitForTimeout(400);
+      const findings = await auditScreen(page);
+      const file = `${screen.key}--${viewport.name}--light--filters.jpg`;
+      await pictureWhole(page, viewport, `${OUT}/${file}`);
+      pictured.push({ ...shot, state: 'filters', file, findings });
+      await filters.click();
+    } catch (error) {
+      missed.push(`${screen.key} ${viewport.name} filters: ${String(error).split('\n')[0]}`);
+    }
+  }
+  const more = page.locator('[data-testid^="row-more-"]').first();
+  if (await more.isVisible().catch(() => false)) {
+    try {
+      await more.click();
+      await page
+        .locator('.mat-mdc-menu-panel')
+        .first()
+        .waitFor({ state: 'visible', timeout: 5_000 });
+      await page.waitForTimeout(300);
+      const findings = await auditScreen(page);
+      const file = `${screen.key}--${viewport.name}--light--menu.jpg`;
+      await page.screenshot({
+        path: `${OUT}/${file}`,
+        type: 'jpeg',
+        quality: 78,
+        animations: 'disabled',
+      });
+      pictured.push({ ...shot, state: 'menu', file, findings });
+      await page.keyboard.press('Escape');
+    } catch (error) {
+      missed.push(`${screen.key} ${viewport.name} menu: ${String(error).split('\n')[0]}`);
+    }
+  }
+  return pictured;
 }
 
 /**

@@ -18,6 +18,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { runAction } from '../shared/actions/run-action';
 import { Feedback } from '../shared/feedback/feedback';
+import { DayCalendarButton } from '../shared/form/day-calendar-button';
+import { DayInput } from '../shared/form/day-input';
 import { todayIn } from '../shared/i18n/format';
 import { DayPipe } from '../shared/i18n/format-pipes';
 import { FormatFacade } from '../shared/i18n/format-facade';
@@ -33,6 +35,8 @@ import { ClosingApi, type ClosingError, ClosingRefused, type CompanyClosing } fr
 @Component({
   selector: 'app-closing-page',
   imports: [
+    DayCalendarButton,
+    DayInput,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,

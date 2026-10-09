@@ -226,6 +226,13 @@ describe('the list rows', () => {
     expect(unit?.value(flour!)).toBe('Kilogramme');
   });
 
+  it('leaves the use-by row out of a card whose stock has no date', () => {
+    const useBy = STOCK_LIST.columns.find((column) => column.id === 'useBy')!;
+    const [row] = stockListRows([level('p1', 'l1', '3')], [site], '2026-10-09');
+    expect(useBy.shown?.({ ...row, lotExpiresOn: null })).toBe(false);
+    expect(useBy.shown?.({ ...row, lotExpiresOn: '2027-05-31' })).toBe(true);
+  });
+
   it('shows the columns people read in each list', () => {
     expect(STOCK_LIST.columns.map((column) => column.id)).toEqual([
       'reference',

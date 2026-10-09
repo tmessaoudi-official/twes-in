@@ -86,6 +86,12 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
   { key: 'zakat', icon: 'volunteer_activism', section: 'manage', after: 'currencies' },
 ];
 
+/**
+ * The planned modules the folded rail names by `nav.short.<key>`: their whole name runs past the two lines its 80 px
+ * leave, where every other one fits.
+ */
+const SHORT_IN_RAIL: ReadonlySet<string> = new Set(['mailing']);
+
 /** The menu entries of the modules the API lists as planned, in the order they are placed; a key without a place is left out. */
 export function plannedNav(
   planned: readonly PlannedModule[] | undefined,
@@ -98,6 +104,7 @@ export function plannedNav(
       {
         key: place.key,
         labelKey: `modules.${place.key}`,
+        ...(SHORT_IN_RAIL.has(place.key) ? { shortLabelKey: `nav.short.${place.key}` } : {}),
         icon: place.icon,
         route: `${COMING_ROUTE}/${place.key}`,
         section: place.section,

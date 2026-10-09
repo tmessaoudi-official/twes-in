@@ -76,13 +76,27 @@ describe('BuildLine', () => {
     clipboard.copy.mockClear();
   });
 
+  /** The line's own parts, as drawn (the dots, not the commas) or as said (the commas, not the dots). */
+  function read(how: 'shown' | 'said'): string {
+    const parts = [...(q('build-line')?.children ?? [])].filter(
+      (part) =>
+        part.tagName === 'SPAN' &&
+        (how === 'shown'
+          ? !part.classList.contains('sr-only')
+          : part.getAttribute('aria-hidden') !== 'true'),
+    );
+    return parts
+      .map((part) => part.textContent ?? '')
+      .join('')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   it('shows each part’s version, and nothing of production', () => {
     open();
 
     expect(info.start).toHaveBeenCalled();
-    expect(q('build-line')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      'Web 2026.10.07.3 · API 2026.10.07.5',
-    );
+    expect(read('shown')).toBe('Web 2026.10.07.3 · API 2026.10.07.5');
     expect(q('build-deployment')).toBeNull();
   });
 
@@ -94,6 +108,16 @@ describe('BuildLine', () => {
     expect(q('build-web')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Web 2026.10.07.3 dev');
     expect(q('build-api')?.textContent?.replace(/\s+/g, ' ').trim()).toBe('API 2026.10.07.5 dev');
     expect(q('build-deployment')?.textContent?.trim()).toBe('[staging]');
+  });
+
+  /** The line's name is its text: without a said separator a screen reader ran « devAPI » and « dev[staging] ». */
+  it('keeps each part apart in what a screen reader is given', () => {
+    info.webMode = 'dev';
+    api.set({ version: '2026.10.07.5', commit: 'bbbb2222', mode: 'dev', deployment: 'staging' });
+    open();
+
+    expect(read('said')).toBe('Web 2026.10.07.3 dev, API 2026.10.07.5 dev, [staging]');
+    expect(read('shown')).toBe('Web 2026.10.07.3 dev · API 2026.10.07.5 dev · [staging]');
   });
 
   it('says a part built without a version is unversioned, and waits for an API that has not answered', () => {

@@ -17,6 +17,7 @@ import {
   Directive,
   DOCUMENT,
   effect,
+  ElementRef,
   inject,
   input,
   linkedSignal,
@@ -25,6 +26,7 @@ import {
   signal,
   TemplateRef,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -57,6 +59,7 @@ import type {
 import {
   applyFilters,
   filterRows,
+  fitScale,
   isColumnVisible,
   orderColumns,
   paginate,
@@ -206,6 +209,11 @@ export class DataList<Row> implements OnInit {
   protected readonly pageSize = linkedSignal(() => this.descriptor().pageSizes[0] ?? 25);
   protected readonly chooserOpen = signal(false);
   private readonly liveWidth = signal<{ id: string; width: number } | null>(null);
+  private readonly tableBox = viewChild<ElementRef<HTMLElement>>('tableBox');
+  /** How wide the table's card is, once measured; null before, and where there is no layout. */
+  private readonly boxWidth = signal<number | null>(null);
+  /** Whether columns sit past the card's right edge, under the pinned actions: a shadow then says so. */
+  protected readonly scrollsRight = signal(false);
 
   protected readonly columns = computed(() =>
     resolveColumns(this.descriptor(), this.preferences()),
@@ -403,6 +411,14 @@ export class DataList<Row> implements OnInit {
   protected readonly actionsWidth = ACTIONS_WIDTH;
   protected readonly minWidth = MIN_WIDTH;
   protected readonly maxWidth = MAX_WIDTH;
+  /** What the data columns are narrowed by to fit the card (`fitScale`); a drag reads against it, never moves it. */
+  private readonly fit = computed(() =>
+    fitScale(
+      this.columns().reduce((sum, column) => sum + this.declaredWidth(column), 0),
+      this.hasRowControls() ? ACTIONS_WIDTH : 0,
+      this.boxWidth(),
+    ),
+  );
   /** At least the sum of the columns, so a narrow screen scrolls the list's own container and never the page. */
   protected readonly tableWidth = computed(
     () =>
@@ -428,6 +444,24 @@ export class DataList<Row> implements OnInit {
     this.destroyRef.onDestroy(() => {
       this.stopResize?.();
       if (this.searchTimer !== null) clearTimeout(this.searchTimer);
+    });
+    // The card's width moves with the window, the menu folding and the panel beside the list; the table's with the
+    // columns shown. jsdom has no ResizeObserver, and no layout to fit either.
+    effect((onCleanup) => {
+      const box = this.tableBox()?.nativeElement;
+      if (box === undefined || typeof ResizeObserver === 'undefined') return;
+      const measure = (): void => {
+        this.boxWidth.set(box.clientWidth);
+        this.scrollsRight.set(box.scrollLeft + box.clientWidth < box.scrollWidth - 1);
+      };
+      const observer = new ResizeObserver(measure);
+      observer.observe(box);
+      if (box.firstElementChild !== null) observer.observe(box.firstElementChild);
+      box.addEventListener('scroll', measure, { passive: true });
+      onCleanup(() => {
+        observer.disconnect();
+        box.removeEventListener('scroll', measure);
+      });
     });
     effect(() => {
       if (!this.byApi()) return;
@@ -649,10 +683,28 @@ export class DataList<Row> implements OnInit {
 
   protected trackRow = (_index: number, row: Row): string => this.descriptor().rowId(row);
 
-  /** The width a column occupies: a live drag, then the chosen or declared width, then the fallback. */
+  /** The width a column occupies: a live drag, then the chosen or declared width, narrowed to fit the card. */
   protected widthOf(column: ListColumn<Row>): number {
     const live = this.liveWidth();
-    return live?.id === column.id ? live.width : (column.width ?? FALLBACK_WIDTH);
+    return live?.id === column.id
+      ? live.width
+      : Math.floor(this.declaredWidth(column) * this.fit());
+  }
+
+  /**
+   * A cell its column cuts gets its whole text as a title on hover or focus, so the five serials an ellipsis made alike can
+   * be told apart. One listener for the table, not a tooltip per cell: a page holds hundreds of cells.
+   */
+  protected titleIfCut(event: Event): void {
+    const cell = (event.target as Element | null)?.closest<HTMLElement>('td.mat-mdc-cell');
+    if (!cell || cell.classList.contains('twes-row-actions')) return;
+    if (cell.scrollWidth > cell.clientWidth) cell.title = cell.textContent?.trim() ?? '';
+    else cell.removeAttribute('title');
+  }
+
+  /** The chosen or declared width, then the fallback: what is saved, before any fitting. */
+  private declaredWidth(column: ListColumn<Row>): number {
+    return column.width ?? FALLBACK_WIDTH;
   }
 
   protected onFilter(event: Event): void {
@@ -680,8 +732,10 @@ export class DataList<Row> implements OnInit {
         : [
             {
               value: ANY_FACET,
-              label: 'list.filter_any',
+              label: facet.filter.anyLabel ?? 'list.filter_any',
               count: facet.total,
+              // Chosen, its count is the list's own total, and « Tous 0 » beside the value read as a contradiction.
+              triggerCount: false,
               testId: `list-facet-${id}-all`,
             },
           ]),
@@ -837,7 +891,7 @@ export class DataList<Row> implements OnInit {
     if (delta === 0) return;
     event.preventDefault();
     event.stopPropagation();
-    this.saveWidth(column.id, this.widthOf(column) + delta);
+    this.saveWidth(column.id, this.declaredWidth(column) + delta);
   }
 
   protected startResize(event: PointerEvent, column: ListColumn<Row>): void {
@@ -857,7 +911,8 @@ export class DataList<Row> implements OnInit {
     const up = () => {
       const live = this.liveWidth();
       this.stopResize?.();
-      if (live) this.saveWidth(live.id, live.width);
+      // What was drawn is saved as declared, so the column stays where it was let go once fitted again.
+      if (live) this.saveWidth(live.id, Math.round(live.width / this.fit()));
     };
     view.addEventListener('pointermove', move);
     view.addEventListener('pointerup', up);

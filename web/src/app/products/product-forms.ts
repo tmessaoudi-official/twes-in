@@ -134,6 +134,7 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
     {
       id: 'kind',
       label: `${FIELDS}.kind`,
+      anyLabel: 'list.filter_any_feminine',
       multiple: true,
       value: (row) => row.kind,
       options: PRODUCT_KINDS.map((kind) => ({ value: kind, label: `products.kinds.${kind}` })),
@@ -141,6 +142,7 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
     {
       id: 'tracking',
       label: `${FIELDS}.tracking`,
+      anyLabel: 'list.filter_any_feminine',
       multiple: true,
       value: (row) => row.tracking,
       options: PRODUCT_TRACKINGS.map((tracking) => ({

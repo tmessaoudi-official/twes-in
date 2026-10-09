@@ -580,7 +580,8 @@
     "support_access": "Accès du support",
     "texts": "Textes",
     "short": {
-      "delivery_notes": "Livraisons"
+      "delivery_notes": "Livraisons",
+      "mailing": "E-mail et relances"
     },
     "stock_valuation": "Valorisation du stock",
     "price_lists": "Tarifs",
@@ -720,6 +721,7 @@
     },
     "no_match_filters": "Aucun résultat pour ces filtres.",
     "filter_any": "Tous",
+    "filter_any_feminine": "Toutes",
     "views": "Vues",
     "views_none": "Aucune vue enregistrée. Disposez la liste, puis nommez la vue pour la garder.",
     "view_name": "Nom de la vue",

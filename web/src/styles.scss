@@ -379,6 +379,12 @@ html {
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 0.875rem;
 
+  /* Material's own `table-layout: auto` loads after Tailwind's `table-fixed` and won: every list sized its columns by
+     their content, past the card, and no cell was ever cut with an ellipsis. Fixed, the declared widths hold. */
+  .mat-mdc-table {
+    table-layout: fixed;
+  }
+
   .mat-mdc-header-row {
     background-color: var(--mat-sys-surface-container-low);
   }
@@ -631,16 +637,19 @@ body {
 }
 
 .twes-rail .twes-rail-short {
-  display: block;
+  // Two lines at most: one cut « Export com… », « Facturation… » and every planned module's name.
+  display: -webkit-box;
   overflow: hidden;
   font-size: 0.625rem;
   font-weight: 600;
   line-height: 0.875rem;
   letter-spacing: 0;
-  text-overflow: ellipsis;
   // Material's list title sets its own line height, which made each row 62 px tall.
   height: auto;
-  white-space: nowrap;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .twes-rail-overline {
@@ -773,6 +782,13 @@ body {
   font-size: 0.75rem;
 }
 
+// The country and currency with, after them, what waits in the other companies.
+.twes-rail-company-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
 // The role reads as a label here, « Propriétaire », where the same word sits lower case inside sentences elsewhere.
 .twes-rail-member-role::first-letter {
   text-transform: uppercase;
@@ -901,7 +917,8 @@ body {
   border-radius: 9999px;
 }
 
-// A menu row's title with its « Bientôt » beside it: the label gives way first, the chip never does.
+// A menu row's title with its « Bientôt » beside it: the label gives way first, onto a second line rather than cut, and
+// the chip never does.
 .twes-rail-title {
   display: flex !important;
   align-items: center;
@@ -909,8 +926,13 @@ body {
   min-width: 0;
 
   > :first-child {
+    display: -webkit-box;
     overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.125rem;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 }
 
@@ -1058,10 +1080,9 @@ app-cookie-notice {
 
 .twes-legal-line {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: center;
-  gap: 0.25rem 0.5rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
   padding-block: 1.5rem 0.5rem;
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.75rem;
@@ -1078,6 +1099,25 @@ app-cookie-notice {
       text-decoration-color: currentColor;
     }
   }
+}
+
+.twes-legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.25rem 0.5rem;
+  padding-inline: 1rem;
+}
+
+.twes-legal-item {
+  display: inline-flex;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.twes-legal-item-first > [aria-hidden='true'] {
+  visibility: hidden;
 }
 
 // A menu's edge with more behind it (docs/SPEC.md § 7, 2026-09-26 12:05, row 152), marked by `NavScroller`: the
@@ -1769,12 +1809,13 @@ app-signed-out-layout {
   background-color: var(--twes-status-danger-dot, currentColor);
 }
 
-// The scene behind the card: a few documents a business keeps here, tilted and quiet. Wide screens only.
+// The scene behind the card: a few documents a business keeps here, tilted and quiet. Wide screens only: at 1024 px the
+// cards ran under the sign-in card, a total cut to « 1 428 » and a chart half hidden.
 .twes-auth-scene {
   display: none;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1280px) {
   .twes-auth-scene {
     position: absolute;
     inset: 0;
@@ -2101,7 +2142,23 @@ th.mat-mdc-header-cell.twes-row-actions {
   position: sticky;
   right: 0;
   z-index: 2;
-  background: var(--mat-sys-surface);
+  /* The header row's own tint, which stopped short of the pinned cell. */
+  background: var(--mat-sys-surface-container-low);
+}
+
+/* The pinned cell paints its ground, so the row's tints are laid on it too, opaque: what scrolls under it stays hidden. */
+tr.mat-mdc-row:hover > td.twes-row-actions {
+  background: color-mix(in oklch, var(--mat-sys-primary) 5%, var(--mat-sys-surface));
+}
+
+tr.mat-mdc-row.twes-row-active > td.twes-row-actions {
+  background: color-mix(in oklch, var(--mat-sys-primary) 12%, var(--mat-sys-surface));
+}
+
+/* Columns sit under the pinned actions: a shadow on its edge says the table goes on, which a cut cell alone did not. */
+.twes-list-scrolls td.twes-row-actions,
+.twes-list-scrolls th.mat-mdc-header-cell.twes-row-actions {
+  box-shadow: -10px 0 8px -8px color-mix(in oklch, var(--mat-sys-shadow) 35%, transparent);
 }
 
 /*
@@ -2117,14 +2174,50 @@ th.mat-mdc-header-cell.twes-row-actions {
   background: var(--mat-sys-surface);
 }
 
+/* From 1024 px the settings page scrolls on its own, under the top bar already: stuck a top bar lower, the header hid
+   the first lines it was meant to sit above (the company profile showed only « imprimées. » of its intro). */
+@media (min-width: 1024px) {
+  .twes-settings-page .twes-document-header {
+    top: 0;
+  }
+}
+
 /*
  * A row as a card, below 600 px. A table that wide is read by scrolling sideways, which is how the columns that
  * matter end up off screen; the card shows the same row down the page instead.
  */
+/* Every card of a list shares one label column, as wide as the longest label shown: sized card by card, the values
+   started at a different place on each and read ragged down the list. Each card and its pairs are subgrids of it. */
+.twes-list-cards {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  column-gap: 0.75rem;
+  row-gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  > li {
+    grid-column: 1 / -1;
+  }
+}
+
+.twes-list-card-head,
+.twes-list-card-pairs {
+  grid-column: 1 / -1;
+}
+
+.twes-list-card-pairs {
+  display: grid;
+  grid-template-columns: subgrid;
+  row-gap: 0.25rem;
+  margin: 0;
+}
+
 .twes-list-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: subgrid;
+  row-gap: 0.5rem;
   padding: 0.75rem;
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: var(--mat-sys-corner-medium);

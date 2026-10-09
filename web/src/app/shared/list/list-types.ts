@@ -135,6 +135,11 @@ export interface ListFilter<Row> {
    * listed, and different filters narrow together. The chosen options are a comma list in the one string a query keeps.
    */
   multiple?: boolean;
+  /**
+   * The words for « all » where the label's gender asks for others than `list.filter_any` (« Tous »): « Famille » and
+   * « Active » read « Toutes ». A translation key.
+   */
+  anyLabel?: string;
 }
 
 /**

@@ -83,7 +83,7 @@ const descriptor: ListDescriptor<Customer> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-data-list
-      [descriptor]="descriptor"
+      [descriptor]="descriptor()"
       [rows]="rows()"
       [loading]="loading()"
       [failed]="failed()"
@@ -99,7 +99,7 @@ const descriptor: ListDescriptor<Customer> = {
   `,
 })
 class Host {
-  readonly descriptor = descriptor;
+  readonly descriptor = signal<ListDescriptor<Customer>>(descriptor);
   readonly rows = signal<Customer[]>(all);
   readonly loading = signal(false);
   readonly failed = signal(false);
@@ -227,6 +227,7 @@ class StaticLoader implements TranslateLoader {
         none: 'No customers.',
         active: 'Active',
         archived: 'Archived',
+        any_status: 'Every status',
         archive_title: 'Archive?',
         archive_message: 'Archive {{name}}?',
         archive_confirm: 'Archive',
@@ -541,11 +542,28 @@ describe('DataList', () => {
     expect(q('customers-table')!.style.minWidth).toBe('600px');
   });
 
+  it('gives a cell cut by its column its whole text on hover, and a cell shown whole none', () => {
+    const cell = q('customer-1')!.querySelector<HTMLElement>('td[data-column="name"]')!;
+    const room = (scroll: number) => {
+      Object.defineProperty(cell, 'scrollWidth', { configurable: true, value: scroll });
+      Object.defineProperty(cell, 'clientWidth', { configurable: true, value: 100 });
+    };
+
+    room(180);
+    cell.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    expect(cell.getAttribute('title')).toBe(cell.textContent?.trim());
+
+    room(100);
+    cell.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    expect(cell.hasAttribute('title')).toBe(false);
+  });
+
   it('offers each filter as a Select of choices, each saying how many rows it would show', async () => {
     expect(q('list-facet-status')?.getAttribute('role')).toBe('combobox');
     expect(document.body.textContent).toContain('Status');
+    // « All » chosen gives no count beside it: the list's own total, which « Tous 0 » read as a contradiction.
     expect(await facetReads()).toEqual({
-      trigger: 'All 30',
+      trigger: 'All',
       options: ['All 30', 'Active 15', 'Archived 15'],
     });
 
@@ -558,7 +576,20 @@ describe('DataList', () => {
 
     await chooseFacet('all');
     expect(rowIds()).toHaveLength(10);
-    expect((await facetReads()).trigger).toBe('All 10');
+    expect((await facetReads()).trigger).toBe('All');
+  });
+
+  /** French agrees « tous » with its noun: « Active : Tous » read wrong, « Famille : Toutes » reads right. */
+  it('says « all » in the words a filter gives for it', async () => {
+    fixture.componentInstance.descriptor.set({
+      ...descriptor,
+      filters: descriptor.filters!.map((filter) => ({ ...filter, anyLabel: 'c.any_status' })),
+    });
+    await settle();
+    expect(await facetReads()).toEqual({
+      trigger: 'Every status',
+      options: ['Every status 30', 'Active 15', 'Archived 15'],
+    });
   });
 
   it('narrows the rows to the option picked in a filter, and says when the filters match nothing', async () => {

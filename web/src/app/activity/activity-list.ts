@@ -193,6 +193,7 @@ export const ACTIVITY_LIST: ListDescriptor<ActivityRow> = {
     {
       id: 'kind',
       label: 'activity.fields.record',
+      anyLabel: 'list.filter_any_feminine',
       multiple: true,
       value: (row) => row.entityType,
       options: ACTIVITY_KINDS.map((kind) => ({ value: kind, label: `activity.kinds.${kind}` })),

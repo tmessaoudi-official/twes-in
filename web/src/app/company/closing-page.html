@@ -29,12 +29,17 @@
             <mat-label>{{ 'company.closing.day' | translate }}</mat-label>
             <input
               matInput
-              type="date"
+              appDay
+              #closingDay="appDay"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
               formControlName="day"
               [max]="latest()"
               [min]="current.closedThrough ?? ''"
               data-testid="closing-day"
             />
+            <app-day-calendar-button matSuffix [field]="closingDay" />
             <mat-hint>{{ 'company.closing.day_hint' | translate }}</mat-hint>
           </mat-form-field>
           <button

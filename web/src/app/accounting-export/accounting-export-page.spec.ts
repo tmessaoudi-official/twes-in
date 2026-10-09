@@ -12,6 +12,13 @@ import { AuthFacade } from '../auth/auth-facade';
 import { FileSaver } from '../shared/files/save-file';
 import { todayIn } from '../shared/i18n/format';
 import { ExportApi } from '../shared/list/export-api';
+import { Session } from '../shared/session/session';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
 import { StepUp } from '../shared/step-up/step-up';
 import { provideQuietFeedback } from '../shared/testing/feedback';
 import { AccountingExportPage } from './accounting-export-page';
@@ -56,6 +63,9 @@ describe('AccountingExportPage', () => {
             me: () => ({ user: { id: 'u1' }, company: { id: 'c1', timezone: 'Africa/Tunis' } }),
           },
         },
+        { provide: Session, useExisting: AuthFacade },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
       ],
     });
     fixture = TestBed.createComponent(AccountingExportPage);
@@ -65,8 +75,10 @@ describe('AccountingExportPage', () => {
   it('offers the four files of last month, each as CSV and Excel', () => {
     const { from, to } = lastMonth(todayIn('Africa/Tunis'));
 
-    expect((q('accounting-export-from') as HTMLInputElement).value).toBe(from);
-    expect((q('accounting-export-to') as HTMLInputElement).value).toBe(to);
+    // Shown as the company writes a day, day first, while the addresses keep the API's ISO day.
+    const shown = (day: string) => day.split('-').reverse().join('/');
+    expect((q('accounting-export-from') as HTMLInputElement).value).toBe(shown(from));
+    expect((q('accounting-export-to') as HTMLInputElement).value).toBe(shown(to));
     for (const file of ['sales-journal', 'purchases-journal', 'payments-journal', 'vat-summary']) {
       expect(q(`accounting-file-${file}`)).not.toBeNull();
       expect(q(`accounting-export-${file}-csv`)?.dataset['address']).toBe(

@@ -26,5 +26,7 @@ test('closing the books asks first and says it cannot be taken back', async ({ p
   await page.getByTestId('confirm-keep').click();
 
   await expect(page.getByTestId('confirm-kind')).toHaveCount(0);
-  await expect(page.getByTestId('closing-day')).toHaveValue(latest ?? '');
+  // The field shows the day as the company writes it, day first, and keeps it after « keep ».
+  const [year, month, dayOfMonth] = (latest ?? '').split('-');
+  await expect(page.getByTestId('closing-day')).toHaveValue(`${dayOfMonth}/${month}/${year}`);
 });

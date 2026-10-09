@@ -7,6 +7,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { DayCalendarButton } from '../shared/form/day-calendar-button';
+import { DayInput } from '../shared/form/day-input';
 import { todayIn } from '../shared/i18n/format';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
@@ -24,7 +26,15 @@ import {
  */
 @Component({
   selector: 'app-accounting-export-page',
-  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, TranslatePipe, ListExport],
+  imports: [
+    DayCalendarButton,
+    DayInput,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    TranslatePipe,
+    ListExport,
+  ],
   templateUrl: './accounting-export-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

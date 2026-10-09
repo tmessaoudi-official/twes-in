@@ -20,15 +20,27 @@
             {{ initial() }}
           }
         </span>
+        <!-- What waits in the other companies goes on the line under the name, or on the mark's corner when folded:
+             beside the name it left the name a hundred pixels and cut « Carthage Conseil ». -->
         <span class="twes-rail-company-text" [class.sr-only]="folded()">
           <span class="twes-rail-company-name truncate" data-testid="company-name">{{
             current.name
           }}</span>
-          <span class="twes-rail-company-sub">{{ where() }}</span>
+          <span class="twes-rail-company-sub"
+            >{{ where() }}
+            @if (elsewhere() > 0 && !folded()) {
+              <app-count-badge
+                [count]="elsewhere()"
+                [max]="9"
+                [label]="'company.unread_elsewhere' | translate: { count: elsewhere() }"
+                data-testid="company-unread-elsewhere"
+              />
+            }
+          </span>
         </span>
-        @if (elsewhere() > 0) {
+        @if (elsewhere() > 0 && folded()) {
           <app-count-badge
-            [class]="folded() ? 'twes-rail-company-badge-folded' : ''"
+            class="twes-rail-company-badge-folded"
             [count]="elsewhere()"
             [max]="9"
             [label]="'company.unread_elsewhere' | translate: { count: elsewhere() }"

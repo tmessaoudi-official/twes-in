@@ -206,3 +206,16 @@ export function saveView(
 export function removeView(views: readonly ListView[], id: string): ListView[] {
   return views.filter((view) => view.id !== id);
 }
+
+/** How far a list's columns may narrow to fit their card before the card scrolls instead: past it, text is unreadable. */
+export const MIN_FIT = 0.7;
+
+/**
+ * What a list's data columns are scaled by so the table fits the card it is drawn in: 1 where the declared widths fit,
+ * else alike for every data column (the actions keep theirs), never below `MIN_FIT`. Null or 0 is a card not measured
+ * yet, as in a test without layout.
+ */
+export function fitScale(columns: number, actions: number, card: number | null): number {
+  if (card === null || card <= 0 || columns <= 0 || columns + actions <= card) return 1;
+  return Math.max(MIN_FIT, (card - actions) / columns);
+}

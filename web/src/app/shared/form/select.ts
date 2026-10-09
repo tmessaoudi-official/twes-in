@@ -36,6 +36,8 @@ export interface SelectOption {
   params?: Record<string, unknown>;
   /** How many rows the option stands for, drawn at the end of its row and beside the chosen label. */
   count?: number | null;
+  /** False keeps the count to the option's row, never beside the chosen label: « all » counts what the list shows. */
+  triggerCount?: boolean;
   /** A status tone: a dot of that tone is drawn before the label, which still says the same in words. */
   tone?: StatusTone;
 }
@@ -119,7 +121,7 @@ function fold(text: string): string {
             ></span>
           }
           <span class="truncate">{{ chosen()[0].label }}</span>
-          @if (hasCount(chosen()[0].count)) {
+          @if (chosen()[0].triggerCount !== false && hasCount(chosen()[0].count)) {
             <app-count-badge
               data-trigger-count
               kind="total"

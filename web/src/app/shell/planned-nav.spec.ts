@@ -133,8 +133,20 @@ describe('the planned modules in the menu', () => {
           expect(hasKey(json, `coming.${entry.key}.meanwhile`), entry.key).toBe(true);
           expect(hasKey(json, `coming.${entry.key}.meanwhile_link`), entry.key).toBe(true);
         }
+        if (entry.shortLabelKey !== undefined) {
+          expect(hasKey(json, entry.shortLabelKey), entry.shortLabelKey).toBe(true);
+        }
       }
     }
+  });
+
+  /** The 80 px rail gives a name two lines; a longer one goes by its short name there and beside its chip. */
+  it('names a planned module too long for two lines by its short name', () => {
+    const mailing = plannedNav(catalogue).find((entry) => entry.key === 'mailing');
+    expect(mailing?.shortLabelKey).toBe('nav.short.mailing');
+    expect(plannedNav(catalogue).find((entry) => entry.key === 'whatsapp')?.shortLabelKey).toBe(
+      undefined,
+    );
   });
 
   // The same entries reach « Créer » and the Ctrl K palette, marked, and never create anything (row 150, slice 4).

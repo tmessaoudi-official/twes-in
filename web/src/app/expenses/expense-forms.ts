@@ -138,6 +138,7 @@ export const EXPENSES_LIST: ListDescriptor<ExpenseRow> = {
       // One answer: asking both is asking nothing.
       id: 'withheld',
       label: 'expenses.filters.withheld',
+      anyLabel: 'list.filter_any_feminine',
       value: (row) => (row.withholdingAmount === null ? 'no' : 'yes'),
       options: WITHHELD.map((answer) => ({
         value: answer,
@@ -547,6 +548,7 @@ export const EXPENSE_CATEGORIES_LIST: ListDescriptor<ExpenseCategoryListRow> = {
     {
       id: 'status',
       label: `${CATEGORY_FIELDS}.isActive`,
+      anyLabel: 'list.filter_any_feminine',
       value: (row) => (row.isActive ? 'active' : 'inactive'),
       options: ['active', 'inactive'].map((status) => ({
         value: status,

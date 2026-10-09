@@ -9,7 +9,7 @@
           [multiple]="true"
           [options]="facetOptions(facet)"
           [translateLabels]="true"
-          emptyLabel="list.filter_any"
+          [emptyLabel]="facet.filter.anyLabel ?? 'list.filter_any'"
           [ngModel]="facet.chosenList"
           (ngModelChange)="onFacetMany(facet.filter.id, $event ?? [])"
           [testId]="'list-facet-' + facet.filter.id"
@@ -299,7 +299,7 @@
     <!-- A 696 px table in a 390 px window is read by scrolling sideways, which is how the columns that matter end
          up off screen. Below 600 px each row is a card instead: the same rows, the same test ids, the same
          controls, one under the other. -->
-    <ul class="flex flex-col gap-2" data-testid="list-cards">
+    <ul class="twes-list-cards" data-testid="list-cards">
       @for (row of page().rows; track trackRow($index, row)) {
         <li
           class="twes-list-card"
@@ -308,7 +308,7 @@
           [attr.aria-current]="isActive(row) ? 'true' : null"
           [attr.data-testid]="testIdOf(row)"
         >
-          <div class="flex items-start gap-1">
+          <div class="twes-list-card-head flex items-start gap-1">
             <p
               class="min-w-0 flex-1 font-medium"
               [attr.data-testid]="'list-card-title-' + descriptor().rowId(row)"
@@ -323,7 +323,7 @@
               </div>
             }
           </div>
-          <dl class="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+          <dl class="twes-list-card-pairs text-sm">
             @for (column of cardColumns(); track column.id) {
               @if (inCard(column, row)) {
                 <dt
@@ -366,7 +366,13 @@
       }
     </ul>
   } @else {
-    <div class="twes-list-table overflow-x-auto">
+    <div
+      #tableBox
+      class="twes-list-table overflow-x-auto"
+      [class.twes-list-scrolls]="scrollsRight()"
+      (pointerover)="titleIfCut($event)"
+      (focusin)="titleIfCut($event)"
+    >
       <table
         mat-table
         [dataSource]="page().rows"

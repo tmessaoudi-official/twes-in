@@ -7,11 +7,31 @@
   <form class="flex flex-wrap gap-4" [formGroup]="period">
     <mat-form-field>
       <mat-label>{{ 'accounting_export.from' | translate }}</mat-label>
-      <input matInput type="date" formControlName="from" data-testid="accounting-export-from" />
+      <input
+        matInput
+        appDay
+        #fromDay="appDay"
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        formControlName="from"
+        data-testid="accounting-export-from"
+      />
+      <app-day-calendar-button matSuffix [field]="fromDay" />
     </mat-form-field>
     <mat-form-field>
       <mat-label>{{ 'accounting_export.to' | translate }}</mat-label>
-      <input matInput type="date" formControlName="to" data-testid="accounting-export-to" />
+      <input
+        matInput
+        appDay
+        #toDay="appDay"
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        formControlName="to"
+        data-testid="accounting-export-to"
+      />
+      <app-day-calendar-button matSuffix [field]="toDay" />
     </mat-form-field>
   </form>
 

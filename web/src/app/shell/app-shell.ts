@@ -93,6 +93,7 @@ import {
   type Gated,
   isSettingsUrl,
   MODULE_NAV,
+  type NavEntry,
   navSections,
   PHONE_BAR_FIRST,
   SETTINGS_NAV,
@@ -226,6 +227,14 @@ export class AppShell {
   /** The count as the bell writes it: past nine, 9+. */
   protected badge(count: number): string {
     return count > 9 ? '9+' : String(count);
+  }
+  /**
+   * What the labelled menu names an entry: a planned module by its short name where it has one, as its whole name is on
+   * the page it opens and beside the « Bientôt » chip « Envoi par e-mail et relances » broke at « e- ». A method, not an
+   * `@let`: the branch must keep the title as its one root, or Angular projects it into the default slot.
+   */
+  protected menuLabel(entry: NavEntry): string {
+    return (entry.coming ? entry.shortLabelKey : undefined) ?? entry.labelKey;
   }
   protected readonly sections = computed(() =>
     navSections(

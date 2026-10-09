@@ -248,6 +248,8 @@ export const STOCK_LIST: ListDescriptor<StockListRow> = {
       id: 'useBy',
       label: `${STOCK_FIELDS}.useBy`,
       value: (row) => row.lotExpiresOn ?? '',
+      // Its cell is drawn through the day pipe, which alone would keep an empty row on every undated card.
+      shown: (row) => row.lotExpiresOn != null,
       width: 130,
     },
   ],
@@ -277,6 +279,7 @@ export const STOCK_LIST: ListDescriptor<StockListRow> = {
     {
       id: 'expired',
       label: 'inventory.filters.expired',
+      anyLabel: 'list.filter_any_feminine',
       value: (row) => (row.expired ? 'yes' : 'no'),
       options: ANSWERS.map((answer) => ({
         value: answer,
@@ -325,6 +328,7 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
+      width: 260,
     },
     {
       id: 'location',
@@ -332,6 +336,7 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
       value: (row) => row.locationLabel,
       sortable: true,
       filterable: true,
+      width: 220,
     },
     {
       id: 'lot',
@@ -391,6 +396,7 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
     {
       id: 'kind',
       label: `${STOCK_FIELDS}.kind`,
+      anyLabel: 'list.filter_any_feminine',
       multiple: true,
       value: (row) => row.kind,
       options: STOCK_MOVEMENT_KINDS.map((kind) => ({
@@ -401,6 +407,7 @@ export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
     {
       id: 'source',
       label: `${STOCK_FIELDS}.source`,
+      anyLabel: 'list.filter_any_feminine',
       multiple: true,
       value: (row) => row.sourceType,
       options: STOCK_SOURCE_TYPES.map((type) => ({
@@ -474,6 +481,7 @@ export const LOCATIONS_LIST: ListDescriptor<StockLocationListRow> = {
     {
       id: 'kind',
       label: `${LOCATION_FIELDS}.kind`,
+      anyLabel: 'list.filter_any_feminine',
       multiple: true,
       value: (row) => row.kind,
       options: STOCK_LOCATION_KINDS.map((kind) => ({

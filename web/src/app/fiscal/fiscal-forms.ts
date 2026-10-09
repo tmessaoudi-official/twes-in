@@ -203,6 +203,8 @@ function activeFilter<Row extends { isActive: boolean }>(label: string): ListFil
   return {
     id: 'status',
     label,
+    // « Active », for a tax as for a unit.
+    anyLabel: 'list.filter_any_feminine',
     value: (row) => (row.isActive ? 'active' : 'inactive'),
     options: ['active', 'inactive'].map((status) => ({
       value: status,
@@ -273,6 +275,7 @@ export const TAX_LIST: ListDescriptor<TaxComponentRow> = {
     {
       id: 'family',
       label: 'fiscal.taxes.family',
+      anyLabel: 'list.filter_any_feminine',
       multiple: true,
       value: (row) => row.family,
       options: TAX_FAMILIES.map((family) => ({

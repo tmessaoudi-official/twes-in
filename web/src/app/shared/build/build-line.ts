@@ -11,7 +11,8 @@ import { BuildInfo } from './build-info';
  * The builds in the footer, to everyone (docs/SPEC.md § 7, the build line): « Web 2026.10.07.3 · API 2026.10.07.5 »,
  * each part's mode after its version when it is not production, and the deployment last when it is not prod. The
  * hashes come on hover or focus, and a click copies the whole line, which is what support asks for. Its accessible
- * name is what it shows; the tooltip describes it.
+ * name is what it shows, each part apart: the dots are drawn and a comma is said, or a screen reader ran « devAPI »
+ * together. The tooltip describes it.
  */
 @Component({
   selector: 'app-build-line',
@@ -30,13 +31,13 @@ import { BuildInfo } from './build-info';
         }}{{ info.webMode ? ' ' + info.webMode : '' }}</span
       >
       @if (api(); as api) {
-        <span aria-hidden="true"> · </span>
+        <span aria-hidden="true"> · </span><span class="sr-only">, </span>
         <span data-testid="build-api"
           >API {{ api.version ?? ('build.unversioned' | translate)
           }}{{ api.mode !== 'prod' ? ' ' + api.mode : '' }}</span
         >
         @if (api.deployment && api.deployment !== 'prod') {
-          <span aria-hidden="true"> · </span>
+          <span aria-hidden="true"> · </span><span class="sr-only">, </span>
           <span data-testid="build-deployment">[{{ api.deployment }}]</span>
         }
       }

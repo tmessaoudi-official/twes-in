@@ -49,8 +49,11 @@ import type {
       @for (pick of picks(); track pick.id) {
         @if (sources()[pick.id]; as source) {
           @for (round of [rounds()[pick.id] ?? 0]; track round) {
+            <!-- Beside an interval, whose legend stands above its fields, a picker keeps its label inside and so stood
+                 a legend's height higher: it steps down by that height to share the fields' top. -->
             <app-pick-field
               class="w-full sm:w-72"
+              [class.sm:pt-6]="ranges().length > 0"
               [label]="pick.label | translate"
               [testId]="testId() + '-' + pick.id"
               [search]="source.search"

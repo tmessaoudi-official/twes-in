@@ -12,7 +12,7 @@ import { of } from 'rxjs';
 import { Brand } from '../brand/brand';
 import { BuildInfo } from '../build/build-info';
 import { provideQuietFeedback } from '../testing/feedback';
-import { LegalFooter } from './legal-footer';
+import { LegalFooter, markLineStarts } from './legal-footer';
 import { LEGAL_PAGES } from './legal-pages';
 
 // shared/ reads no feature's files, the translations included: the few strings this line shows, inline.
@@ -83,5 +83,22 @@ describe('LegalFooter', () => {
       LEGAL_PAGES.map((slug) => `/legal/${slug}`),
     );
     expect(links[0].textContent?.trim()).toBe('Mentions légales');
+  });
+
+  /** A wrapped line opens on a link, never on a dot, and the builds stand on their own line under the links. */
+  it('draws no dot at the start of a line, and puts the builds under the links', () => {
+    const links = el().querySelector<HTMLElement>('.twes-legal-links')!;
+    const items = [...links.children] as HTMLElement[];
+    // Laid out as a narrow window breaks it: the copyright and two links, then the rest on a second line.
+    items.forEach((item, at) =>
+      Object.defineProperty(item, 'offsetTop', { configurable: true, value: at < 3 ? 0 : 20 }),
+    );
+
+    markLineStarts(links);
+
+    const first = items.map((item) => item.classList.contains('twes-legal-item-first'));
+    expect(first).toEqual(items.map((_, at) => at === 3));
+    expect(el().querySelector('nav > app-build-line')).not.toBeNull();
+    expect(links.querySelector('app-build-line')).toBeNull();
   });
 });
