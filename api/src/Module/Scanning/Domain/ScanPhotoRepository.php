@@ -13,10 +13,11 @@ use Symfony\Component\Uid\Uuid;
 
 interface ScanPhotoRepository
 {
-    public function save(ScanPhoto $photo): void;
-
-    /** How many photos of that pairing wait to be taken. */
-    public function countOfPairing(Uuid $pairingId): int;
+    /**
+     * Keeps the photo unless its pairing already holds that many still waiting, sent since `$since`; whether it was
+     * kept. Counting and keeping are one step for the pairing: two photos sent at once cannot both count under it.
+     */
+    public function saveWhileFewerThan(ScanPhoto $photo, int $held, \DateTimeImmutable $since): bool;
 
     public function ofPairing(Uuid $pairingId, Uuid $photoId): ?ScanPhoto;
 

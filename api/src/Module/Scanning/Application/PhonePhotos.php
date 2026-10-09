@@ -57,11 +57,12 @@ final readonly class PhonePhotos
             throw new \InvalidArgumentException(\sprintf('file: a picture of at most %d bytes.', $this->maxBytes));
         }
         $picture = $this->pictures->inspect($bytes) ?? throw new \InvalidArgumentException('file: a JPEG, PNG or WebP picture.');
-        if ($this->photos->countOfPairing($pairing->getId()) >= self::HELD_MAX) {
+        $now = $this->clock->now();
+        $photo = new ScanPhoto($pairing, $picture->mime, $bytes, $now);
+        // A photo whose wait has ended no longer counts, though the janitor has not cleared it yet.
+        if (!$this->photos->saveWhileFewerThan($photo, self::HELD_MAX, ScanPhoto::waitedSince($now))) {
             throw new \InvalidArgumentException(\sprintf('At most %d photos wait for the computer at once.', self::HELD_MAX));
         }
-        $photo = new ScanPhoto($pairing, $picture->mime, $bytes, $this->clock->now());
-        $this->photos->save($photo);
         $this->pairings->tellTheTab($pairing, ['event' => 'photo', 'scan' => $scanId, 'photo' => $photo->getId()->toRfc4122()]);
 
         return $photo->getId();

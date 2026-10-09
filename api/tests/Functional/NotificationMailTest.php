@@ -21,6 +21,7 @@ use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mime\Email as MimeEmail;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Each kind told to a person is also mailed to them, by the worker, in their own language, unless they turned that kind's
@@ -146,11 +147,20 @@ final class NotificationMailTest extends ApiTestCase
         [$payload, $signature] = explode('.', $token);
         $this->client->restart();
 
+        // What the token names is the whole of what it may stop: the same signature over a rewritten person, company or
+        // kind must stop nothing, or one link would turn off anyone's mail.
+        $named = json_decode((string) base64_decode(strtr($payload, '-_', '+/'), true), true);
+        self::assertIsArray($named);
+        $rewritten = static fn (array $change): string => rtrim(strtr(base64_encode(json_encode([...$named, ...$change], \JSON_THROW_ON_ERROR)), '+/', '-_'), '=').'.'.$signature;
+
         foreach ([
             'another signature' => $payload.'.'.strrev($signature),
             'no signature' => $payload,
             'nothing' => '',
             'not even text' => 42,
+            'another person, the same signature' => $rewritten(['u' => Uuid::v7()->toRfc4122()]),
+            'another company, the same signature' => $rewritten(['c' => Uuid::v7()->toRfc4122()]),
+            'another kind, the same signature' => $rewritten(['t' => 'invitation.accepted']),
         ] as $case => $forged) {
             $this->postJson(self::STOP, ['token' => $forged]);
             self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, $case);

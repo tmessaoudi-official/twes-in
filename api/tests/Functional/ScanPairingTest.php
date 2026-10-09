@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Identity\Domain\User;
 use App\Module\Scanning\Domain\ScanPairing;
 use App\Module\Scanning\Domain\ScanPhoto;
 use App\Module\Scanning\Infrastructure\Scheduler\ClearUntakenPhotos;
@@ -295,6 +296,32 @@ final class ScanPairingTest extends ApiTestCase
         }
     }
 
+    public function testPhotosNobodyTookInTimeNoLongerFillThePairing(): void
+    {
+        // Three untaken photos refused the phone until the janitor ran, up to ten minutes after their wait had ended.
+        [$id, $link] = $this->open();
+        $key = $this->claim($link);
+        for ($sent = 0; $sent < 3; ++$sent) {
+            $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => $key]);
+            self::assertResponseStatusCodeSame(Response::HTTP_ACCEPTED);
+        }
+
+        try {
+            // A quarter of an hour on, the tab having kept the pairing open meanwhile, as an open tab does.
+            $this->login('till@twes.local', 'password-1234');
+            for ($minute = 1; $minute <= 16; ++$minute) {
+                Clock::set(new MockClock(new \DateTimeImmutable("+$minute minutes")));
+                $this->postJson($this->pairingPath($id).'/heartbeat', null);
+                self::assertResponseIsSuccessful();
+            }
+            $this->phone();
+            $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => $key]);
+            self::assertResponseStatusCodeSame(Response::HTTP_ACCEPTED);
+        } finally {
+            Clock::set(new NativeClock());
+        }
+    }
+
     public function testAPhotoNobodyTookIsGoneAfterAQuarterOfAnHour(): void
     {
         [$id, $link] = $this->open();
@@ -329,6 +356,26 @@ final class ScanPairingTest extends ApiTestCase
 
         $this->login('other@twes.local', 'password-1234');
         $this->postJson($this->pairingPath($id)."/photos/$photo/take", null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame(1, $this->em()->getRepository(ScanPhoto::class)->count([]));
+    }
+
+    public function testAPhotoIsTakenOnlyUnderTheCompanyItsPairingBelongsTo(): void
+    {
+        // The person who lent the phone also works in another company; that company's path must not reach the photo.
+        $other = $this->createCompany('Globex');
+        $lender = $this->em()->getRepository(User::class)->find($this->userId);
+        self::assertInstanceOf(User::class, $lender);
+        $this->addMembership($lender, $other, 'member', ['product.read']);
+        [$id, $link] = $this->open();
+        $key = $this->claim($link);
+        $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => $key]);
+        $photo = $this->publisher->last()['data']['photo'] ?? null;
+        self::assertIsString($photo);
+
+        $this->login('till@twes.local', 'password-1234');
+        $this->postJson('/api/companies/'.$other->getId()->toRfc4122()."/scan-pairings/$id/photos/$photo/take", null);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         self::assertSame(1, $this->em()->getRepository(ScanPhoto::class)->count([]));
