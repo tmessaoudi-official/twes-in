@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  touchesBox,
   cornersOf,
   handleAt,
   movedTo,
@@ -126,6 +127,30 @@ describe('cornersOf', () => {
       expect(middleX).toBeCloseTo(4, 6);
       expect(middleY).toBeCloseTo(3.5, 6);
     }
+  });
+});
+
+/** The selection box (stock-map slice 7c): every rectangle it touches, a turned one by its body, not its box. */
+describe('touchesBox', () => {
+  const rack = { x: 2, y: 2, width: 4, depth: 1, rotation: 0, height: 2 };
+
+  it('takes a rectangle the box covers in part, and leaves one it misses', () => {
+    expect(touchesBox({ x: 5, y: 0 }, { x: 7, y: 2.5 }, rack)).toBe(true);
+    expect(touchesBox({ x: 0, y: 0 }, { x: 1.5, y: 1.5 }, rack)).toBe(false);
+  });
+
+  it('reads a box drawn in any direction', () => {
+    expect(touchesBox({ x: 7, y: 2.5 }, { x: 5, y: 0 }, rack)).toBe(true);
+  });
+
+  /**
+   * Turned 45° about (4, 2.5), the rack's own box reaches (2.23, 0.73) to (5.77, 4.27), but its body leaves that
+   * box's corners empty: a selection box in the empty corner must not take it.
+   */
+  it('takes a turned rectangle by its body, never by the box around it', () => {
+    const turned = { ...rack, rotation: 45 };
+    expect(touchesBox({ x: 2.2, y: 3.6 }, { x: 2.9, y: 4.3 }, turned)).toBe(false);
+    expect(touchesBox({ x: 3.6, y: 2.1 }, { x: 4.4, y: 2.9 }, turned)).toBe(true);
   });
 });
 

@@ -568,9 +568,9 @@
               <button
                 type="button"
                 class="flex items-baseline gap-2 rounded-lg border border-outline-variant p-2 text-start"
-                [class.bg-secondary-container]="shape.drawing.id === selectedId()"
-                (click)="select(shape.drawing)"
-                [attr.aria-pressed]="shape.drawing.id === selectedId()"
+                [class.bg-secondary-container]="chosen().has(shape.drawing.id)"
+                (click)="choose($event, shape.drawing)"
+                [attr.aria-pressed]="chosen().has(shape.drawing.id)"
                 [attr.data-testid]="'stock-drawing-' + shape.drawing.locationCode"
               >
                 <span class="font-medium">{{ shape.drawing.locationCode }}</span>
@@ -807,7 +807,7 @@
                   [attr.aria-label]="'inventory.plan.plan_of' | translate: planLabel()"
                   data-testid="stock-map-svg"
                   [class.cursor-crosshair]="tracing()"
-                  [class.cursor-grab]="!tracing() && zoom() > 1"
+                  [class.cursor-grab]="!tracing() && zoom() > 1 && spaceHeld()"
                   [class.touch-none]="tracing() || zoom() > 1"
                   (wheel)="wheel($event)"
                   (pointerdown)="press($event)"
@@ -815,6 +815,9 @@
                   (document:pointerup)="drops($event)"
                   (document:pointercancel)="drops($event)"
                   (document:keydown.escape)="abandon()"
+                  (document:keydown)="spaceDown($event)"
+                  (document:keyup)="spaceUp($event)"
+                  (window:blur)="spaceHeld.set(false)"
                 >
                   <!--
                   The floor itself, drawn first and under everything: its edge, and a grid a person can count metres on.
@@ -1006,13 +1009,13 @@
                         [class.stroke-primary]="shape.drawing.locationKind === 'rack'"
                         [class.fill-surface-container-high]="shape.drawing.locationKind !== 'rack'"
                         [class.stroke-outline]="shape.drawing.locationKind !== 'rack'"
-                        [class.twes-map-chosen]="shape.drawing.id === selectedId()"
+                        [class.twes-map-chosen]="chosen().has(shape.drawing.id)"
                         [class.twes-map-hit]="hits().has(shape.drawing.locationId)"
                         [attr.data-hit]="
                           search() === null ? null : hits().has(shape.drawing.locationId)
                         "
                         (pointerdown)="grab($event, shape.drawing, null)"
-                        (click)="select(shape.drawing)"
+                        (click)="choose($event, shape.drawing)"
                         [attr.data-testid]="'stock-drawing-rect-' + shape.drawing.locationCode"
                       >
                         <!--
@@ -1130,6 +1133,19 @@
                         }
                       }
                     </g>
+                  }
+                  <!-- The box choosing what it touches, drawn over everything and taking no pointer itself. -->
+                  @if (lassoRect(); as lasso) {
+                    <rect
+                      [attr.x]="lasso.x"
+                      [attr.y]="lasso.y"
+                      [attr.width]="lasso.width"
+                      [attr.height]="lasso.depth"
+                      [attr.stroke-width]="handleRadius() / 4"
+                      stroke-dasharray="0.3 0.2"
+                      class="pointer-events-none fill-none stroke-primary"
+                      data-testid="stock-map-selection-box"
+                    />
                   }
                 </svg>
 
@@ -1393,6 +1409,24 @@
                   </app-descriptor-form>
                 }
               }
+            </div>
+          } @else if (chosenDrawings().length > 1) {
+            <!-- A group: what it is, and how to let it go. What it can be told comes with it (§ 7, 2026-10-09 17:45). -->
+            <div
+              class="flex flex-col gap-3 rounded-xl border border-outline-variant bg-surface p-4"
+              data-testid="stock-map-chosen"
+            >
+              <h2 class="text-lg font-semibold" aria-live="polite">
+                {{ 'inventory.plan.chosen' | translate: { count: chosenDrawings().length } }}
+              </h2>
+              <p class="text-sm text-on-surface-variant">
+                {{ chosenCodes() }}
+              </p>
+              <div class="flex flex-wrap justify-end gap-2">
+                <button mat-button type="button" (click)="letGo()" data-testid="stock-map-let-go">
+                  {{ 'inventory.plan.let_go' | translate }}
+                </button>
+              </div>
             </div>
           } @else if (selected(); as drawing) {
             <div

@@ -2381,6 +2381,8 @@
       "floors": "Floors",
       "no_floor": "The plan shows where every item is kept, floor by floor. It is drawn in three steps:",
       "drawn": "Drawn on this floor",
+      "chosen": "{{count}} {count, plural, one {rectangle chosen} other {rectangles chosen}}",
+      "let_go": "Deselect all",
       "nothing_drawn": "No location is drawn on this floor yet.",
       "plan_of": "Plan of {{floor}}: {{count}} {count, plural, one {rectangle} other {rectangles}} drawn",
       "trace": "Trace a rectangle",

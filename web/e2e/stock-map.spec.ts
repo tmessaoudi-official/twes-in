@@ -476,6 +476,31 @@ test.describe('the drawn stock map', () => {
         ).toContainEqual(copy);
       }
 
+      // Several chosen at once (slice 7c): Shift-click adds one, a box on bare floor takes every one it touches, and
+      // Échap lets the whole group go. Through the real pointer events, which a spec only imitates.
+      const chosen = page.locator('[data-testid^="stock-drawing-rect-"].twes-map-chosen');
+      await expect(toast(page)).toBeHidden({ timeout: 15_000 });
+      await page.getByTestId(`stock-drawing-rect-${stem}2`).click();
+      await page.getByTestId(`stock-drawing-rect-${stem}3`).click({ modifiers: ['Shift'] });
+      await expect(chosen).toHaveCount(2);
+      await expect(page.getByTestId('stock-map-chosen')).toContainText('2 rectangles choisis');
+      await expect(page.locator('[data-testid^="stock-drawing-grip-"]')).toHaveCount(0);
+
+      const sheet = page.getByTestId('stock-map-svg');
+      await sheet.hover({ position: { x: 3, y: 3 } });
+      const area = await sheet.boundingBox();
+      if (area === null) throw new Error('the plan is not laid out');
+      await page.mouse.down();
+      await page.mouse.move(area.x + area.width - 3, area.y + area.height - 3, { steps: 12 });
+      await expect(page.getByTestId('stock-map-selection-box')).toBeVisible();
+      await page.mouse.up();
+      await expect(chosen).toHaveCount(4);
+      await expect(page.getByTestId('stock-map-chosen')).toContainText('4 rectangles choisis');
+
+      await page.keyboard.press('Escape');
+      await expect(chosen).toHaveCount(0);
+      await expect(page.getByTestId('stock-map-chosen')).toHaveCount(0);
+
       // And each copy is a stock location of its own, ready for goods rather than a picture of one.
       await page.goto('/stock/locations');
       for (const at of [2, 3, 4]) {

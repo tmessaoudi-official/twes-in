@@ -2381,6 +2381,8 @@
       "floors": "Étages",
       "no_floor": "Le plan montre où chaque article est rangé, étage par étage. Il se dessine en trois temps :",
       "drawn": "Dessiné sur cet étage",
+      "chosen": "{{count}} {count, plural, one {rectangle choisi} other {rectangles choisis}}",
+      "let_go": "Tout désélectionner",
       "nothing_drawn": "Aucun emplacement n’est encore dessiné sur cet étage.",
       "plan_of": "Plan de {{floor}} : {{count}} {count, plural, one {rectangle dessiné} other {rectangles dessinés}}",
       "trace": "Tracer un rectangle",

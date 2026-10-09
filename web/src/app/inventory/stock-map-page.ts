@@ -87,6 +87,7 @@ import {
   zoomedAt,
   repeatedFrom,
   resizedTo,
+  touchesBox,
   tracedTo,
   type PlanBox,
   type PlanFrame,
@@ -141,6 +142,16 @@ const EDIT_ROOM = 4;
 /** How far an arrow key moves a shape in Aménager: the plan's own grid, a quarter metre. */
 const ARROW_STEP_METRES = 0.25;
 const DRAG_THRESHOLD = 4;
+
+/** A box dragged on bare floor to choose every rectangle it touches; `extend` keeps what was chosen (Shift). */
+interface Lasso {
+  pointerId: number;
+  from: PlanPoint;
+  frame: PlanFrame;
+  box: PlanBox;
+  extend: boolean;
+  startedAt: PlanPoint;
+}
 
 /** The id a rectangle carries while it is being drawn and has no id of its own yet. */
 const PENDING_ID = 'pending';
@@ -474,7 +485,25 @@ export class StockMapPage implements OnInit {
     count: this.shapes().length,
   }));
 
-  protected readonly selectedId = signal<string | null>(null);
+  /**
+   * Every rectangle chosen. One is THE selection, with its handles, its form and its panel; several are a group, which
+   * has none of those, only what a group can be told (§ 7, 2026-10-09 17:45).
+   */
+  protected readonly chosen = signal<ReadonlySet<string>>(new Set());
+  protected readonly selectedId = computed(() => {
+    const chosen = this.chosen();
+
+    return chosen.size === 1 ? ([...chosen][0] ?? null) : null;
+  });
+  /** The group as it stands on this floor: a rectangle erased elsewhere drops out of it by itself. */
+  protected readonly chosenDrawings = computed(() =>
+    this.facade.drawings().filter((drawing) => this.chosen().has(drawing.id)),
+  );
+  protected readonly chosenCodes = computed(() =>
+    this.chosenDrawings()
+      .map((drawing) => drawing.locationCode)
+      .join(', '),
+  );
   protected readonly selected = computed(
     () => this.facade.drawings().find((drawing) => drawing.id === this.selectedId()) ?? null,
   );
@@ -999,7 +1028,7 @@ export class StockMapPage implements OnInit {
   protected async showFloor(floorId: string | null): Promise<void> {
     const companyId = this.company()?.id;
     this.chosenFloorId.set(floorId);
-    this.selectedId.set(null);
+    this.chooseOnly(null);
     this.editing.set(null);
     this.drag = null;
     this.editingStructure.set(null);
@@ -1012,15 +1041,51 @@ export class StockMapPage implements OnInit {
 
   /** One selection across both layers: choosing a rack lets go of the wall that was chosen (finding G). */
   protected select(drawing: StockDrawingRow): void {
-    this.selectedId.set(drawing.id);
+    this.chooseOnly(drawing.id);
     this.selectedStructureId.set(null);
     this.editingStructure.set(null);
+  }
+
+  private chooseOnly(id: string | null): void {
+    this.chosen.set(new Set(id === null ? [] : [id]));
+  }
+
+  /** A click on a rectangle chooses it alone; with Shift it joins the group, or leaves it if it was in it. */
+  protected choose(event: MouseEvent, drawing: StockDrawingRow): void {
+    if (!event.shiftKey) {
+      this.select(drawing);
+
+      return;
+    }
+    const chosen = new Set(this.chosen());
+    if (chosen.has(drawing.id)) chosen.delete(drawing.id);
+    else chosen.add(drawing.id);
+    this.chooseGroup(chosen);
+  }
+
+  /**
+   * Several chosen: the one rectangle's form closes, as a group has no one form to write into, and the wall that
+   * was chosen is let go, as for one.
+   */
+  private chooseGroup(ids: ReadonlySet<string>): void {
+    this.chosen.set(ids);
+    this.selectedStructureId.set(null);
+    this.editingStructure.set(null);
+    if (ids.size > 1) {
+      this.editing.set(null);
+      this.drag = null;
+    }
+  }
+
+  /** « Tout désélectionner », a press of bare floor that does not travel, and Échap with nothing under way. */
+  protected letGo(): void {
+    this.chosen.set(new Set());
   }
 
   /** Choosing a piece of the building to read about it, which is all a press on one does in Consulter. */
   protected selectStructure(piece: StockStructureRow): void {
     this.selectedStructureId.set(piece.id);
-    this.selectedId.set(null);
+    this.chooseOnly(null);
     this.editingStructure.set(null);
   }
 
@@ -1035,7 +1100,7 @@ export class StockMapPage implements OnInit {
     this.editingFloor.set(null);
     this.editingStructure.set(null);
     this.selectedStructureId.set(null);
-    if (target === 'new') this.selectedId.set(null);
+    if (target === 'new') this.chooseOnly(null);
     else this.select(target);
     this.editing.set(target);
   }
@@ -1278,7 +1343,8 @@ export class StockMapPage implements OnInit {
   private drag: Drag | null = null;
 
   protected grab(event: PointerEvent, drawing: StockDrawingRow, handle: PlanHandle | null): void {
-    if (!this.arranging() || event.button !== 0) return;
+    // A Shift press is a choice, which its click makes: it moves nothing.
+    if (!this.arranging() || event.button !== 0 || event.shiftKey) return;
 
     // Choosing it first is what the handles are drawn around, and what the gesture below then works on.
     this.select(drawing);
@@ -1331,13 +1397,35 @@ export class StockMapPage implements OnInit {
     box: PlanBox;
   } | null = null;
 
+  /** Space held down, which turns a drag of the plan into moving the view, as in a drawing tool. */
+  protected readonly spaceHeld = signal(false);
+  private lasso: Lasso | null = null;
+  /** The box being dragged, in metres, while it is; `null` before it has travelled. */
+  protected readonly lassoRect = signal<{
+    x: number;
+    y: number;
+    width: number;
+    depth: number;
+  } | null>(null);
+
+  protected spaceDown(event: KeyboardEvent): void {
+    if (event.key !== ' ' || typed(event.target)) return;
+    this.spaceHeld.set(true);
+  }
+
+  protected spaceUp(event: KeyboardEvent): void {
+    if (event.key === ' ') this.spaceHeld.set(false);
+  }
+
   /**
-   * A press on bare floor. Armed to trace it draws a box, as it always did; otherwise it takes hold of the floor
-   * and moves it — but only once someone has come nearer, since showing the whole of it leaves nowhere to move to.
+   * A press on bare floor. Armed to trace it draws a rectangle, as it always did. Otherwise a mouse or a pen drags a
+   * box that chooses every rectangle it touches, and moves the view only with Space held or the middle button — the
+   * convention of drawing tools (§ 7, 2026-10-09 17:47). A finger keeps moving the view: a box is a mouse's gesture,
+   * and the finger has no Shift to keep what it chose.
    *
-   * A finger cannot do this: without `touch-action: none` the browser claims the drag for its own scrolling, and
-   * laying that across a full-width plan traps a finger trying to scroll past it. The tablet's pinch is its own
-   * piece of work.
+   * Moving the view waits until someone has come nearer, since showing the whole floor leaves nowhere to move to. A
+   * finger only moves it then too: without `touch-action: none` the browser claims the drag for its own scrolling,
+   * and laying that across a full-width plan traps a finger trying to scroll past it.
    */
   protected press(event: PointerEvent): void {
     if (this.tracing()) {
@@ -1345,11 +1433,18 @@ export class StockMapPage implements OnInit {
 
       return;
     }
+    const onFloor = (event.target as Element).tagName.toLowerCase() === 'svg';
+    const moving =
+      event.button === 1 ||
+      (event.button === 0 && (this.spaceHeld() || event.pointerType === 'touch'));
+    if (!moving) {
+      // A press on a rectangle is that rectangle's, in either mode: it is chosen by its click, moved in Aménager.
+      if (event.button === 0 && onFloor) this.startLasso(event);
+
+      return;
+    }
     const view = this.view();
-    if (view === null || event.button !== 0) return;
-    // In Aménager a press on a shape is that shape's; in Consulter nothing moves but the view, so it is the view's
-    // wherever it lands, and a press that does not travel is still the click that chooses a rack.
-    if (this.arranging() && (event.target as Element).tagName.toLowerCase() !== 'svg') return;
+    if (view === null || (!onFloor && event.pointerType === 'touch')) return;
 
     const surface = event.currentTarget as SVGSVGElement;
     const box = surface.getBoundingClientRect();
@@ -1580,7 +1675,42 @@ export class StockMapPage implements OnInit {
     event.preventDefault();
   }
 
+  private startLasso(event: PointerEvent): void {
+    const surface = event.currentTarget as SVGSVGElement;
+    const box = surface.getBoundingClientRect();
+    const frame = this.viewed();
+    this.lasso = {
+      pointerId: event.pointerId,
+      from: pointerMetres({ x: event.clientX, y: event.clientY }, frame, box),
+      frame,
+      box,
+      extend: event.shiftKey,
+      startedAt: { x: event.clientX, y: event.clientY },
+    };
+    event.preventDefault();
+  }
+
+  private lassoTo(lasso: Lasso, event: PointerEvent): PlanPoint {
+    return pointerMetres({ x: event.clientX, y: event.clientY }, lasso.frame, lasso.box);
+  }
+
   protected drags(event: PointerEvent): void {
+    const lasso = this.lasso;
+    if (lasso !== null && lasso.pointerId === event.pointerId) {
+      const far =
+        Math.abs(event.clientX - lasso.startedAt.x) + Math.abs(event.clientY - lasso.startedAt.y);
+      if (this.lassoRect() === null && far < DRAG_THRESHOLD) return;
+      const to = this.lassoTo(lasso, event);
+      this.lassoRect.set({
+        x: Math.min(lasso.from.x, to.x),
+        y: Math.min(lasso.from.y, to.y),
+        width: Math.abs(to.x - lasso.from.x),
+        depth: Math.abs(to.y - lasso.from.y),
+      });
+
+      return;
+    }
+
     const pan = this.pan;
     if (pan !== null && pan.pointerId === event.pointerId) {
       const to = pointerMetres({ x: event.clientX, y: event.clientY }, pan.frame, pan.box);
@@ -1633,6 +1763,13 @@ export class StockMapPage implements OnInit {
   }
 
   protected drops(event: PointerEvent): void {
+    const lasso = this.lasso;
+    if (lasso !== null && lasso.pointerId === event.pointerId) {
+      this.lasso = null;
+      this.dropLasso(lasso, event);
+
+      return;
+    }
     if (this.pan?.pointerId === event.pointerId) this.pan = null;
     if (this.drag?.pointerId !== event.pointerId) return;
 
@@ -1641,13 +1778,47 @@ export class StockMapPage implements OnInit {
     this.drag = null;
   }
 
-  /** Échap gives the rectangle back exactly what the form held before the gesture — never a guess at it. */
+  /**
+   * A box that travelled chooses what it touches, even in part; a press that did not lets the choice go — unless a
+   * form is open, which a stray click beside it must not leave without its rectangle.
+   */
+  private dropLasso(lasso: Lasso, event: PointerEvent): void {
+    const travelled = this.lassoRect() !== null;
+    this.lassoRect.set(null);
+    if (!travelled) {
+      if (!lasso.extend && this.editing() === null) this.letGo();
+
+      return;
+    }
+    const to = this.lassoTo(lasso, event);
+    const touched = this.shapes()
+      .filter((shape) => touchesBox(lasso.from, to, shape.rect))
+      .map((shape) => shape.drawing.id);
+    if (touched.length === 0 && lasso.extend) return;
+    const ids = new Set(lasso.extend ? [...this.chosen(), ...touched] : touched);
+    if (ids.size === 1) {
+      const one = this.facade.drawings().find((drawing) => ids.has(drawing.id));
+      if (one !== undefined) this.select(one);
+
+      return;
+    }
+    this.chooseGroup(ids);
+  }
+
+  /**
+   * Échap gives the rectangle back exactly what the form held before the gesture — never a guess at it. With nothing
+   * under way and no form open, it lets the choice go.
+   */
   protected abandon(): void {
     const drag = this.drag;
+    const underway = drag !== null || this.pan !== null || this.lasso !== null || this.tracing();
     this.drag = null;
     this.pan = null;
+    this.lasso = null;
+    this.lassoRect.set(null);
     this.tracing.set(false);
     if (drag?.past) this.editedGroup(drag)?.patchValue(drag.before);
+    if (!underway && this.editing() === null) this.letGo();
   }
 
   protected async saveDrawing(values: FormValues): Promise<void> {
@@ -1693,7 +1864,7 @@ export class StockMapPage implements OnInit {
 
     const erased = await this.facade.eraseDrawing(companyId, floorId, drawing.id);
     if (erased) {
-      if (this.selectedId() === drawing.id) this.selectedId.set(null);
+      if (this.selectedId() === drawing.id) this.chooseOnly(null);
       this.editing.set(null);
       const again = drawingInput(drawingValues(drawing));
       this.feedback.success(
@@ -1936,7 +2107,7 @@ export class StockMapPage implements OnInit {
     this.editing.set(null);
     this.editingFloor.set(null);
     this.repeating.set(false);
-    this.selectedId.set(null);
+    this.chooseOnly(null);
     this.editingStructure.set(target);
     this.selectedStructureId.set(target === 'new' ? null : target.id);
   }
@@ -2047,6 +2218,14 @@ export class StockMapPage implements OnInit {
 }
 
 /** A measurement out of a form control, as a number: what was typed, empty or half-typed reading as nothing yet. */
+/** A key meant for a field or a button, whose Space types or presses rather than taking hold of the plan. */
+function typed(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest('input, textarea, select, button, [contenteditable]') !== null
+  );
+}
+
 function metres(value: unknown): number {
   return Number(value ?? 0) || 0;
 }

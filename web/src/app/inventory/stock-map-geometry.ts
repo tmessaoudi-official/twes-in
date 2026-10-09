@@ -154,6 +154,40 @@ export function cornersOf(rect: PlanRectangle): PlanPoint[] {
   });
 }
 
+/**
+ * Whether the selection box between two corners touches a rectangle as it stands. A turned rack is judged by its
+ * body, not by the box around it, which would take a rack the selection only passed near: the two shapes are apart
+ * exactly when, along one of their four edge directions, their shadows do not overlap.
+ */
+export function touchesBox(from: PlanPoint, to: PlanPoint, rect: PlanRectangle): boolean {
+  const box = [
+    { x: Math.min(from.x, to.x), y: Math.min(from.y, to.y) },
+    { x: Math.max(from.x, to.x), y: Math.min(from.y, to.y) },
+    { x: Math.max(from.x, to.x), y: Math.max(from.y, to.y) },
+    { x: Math.min(from.x, to.x), y: Math.max(from.y, to.y) },
+  ];
+  const body = cornersOf(rect);
+  const radians = (rect.rotation * Math.PI) / 180;
+  const axes = [
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: Math.cos(radians), y: Math.sin(radians) },
+    { x: -Math.sin(radians), y: Math.cos(radians) },
+  ];
+  const shadow = (points: PlanPoint[], axis: PlanPoint): [number, number] => {
+    const along = points.map((point) => point.x * axis.x + point.y * axis.y);
+
+    return [Math.min(...along), Math.max(...along)];
+  };
+
+  return axes.every((axis) => {
+    const [boxLow, boxHigh] = shadow(box, axis);
+    const [bodyLow, bodyHigh] = shadow(body, axis);
+
+    return boxLow <= bodyHigh && bodyLow <= boxHigh;
+  });
+}
+
 /** What every rectangle on a floor reaches between, turns included. */
 export function planBounds(rects: readonly PlanRectangle[]): PlanBounds {
   const corners = rects.flatMap(cornersOf);

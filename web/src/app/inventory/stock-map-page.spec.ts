@@ -805,13 +805,20 @@ describe('StockMapPage', () => {
    * `grab` by hand proves the arithmetic while leaving `(pointerdown)` and `(document:pointermove)` unexercised.
    * jsdom has no PointerEvent, so a MouseEvent carries the one field the handlers read.
    */
-  function fire(target: EventTarget, type: string, x: number, y: number): void {
+  function fire(
+    target: EventTarget,
+    type: string,
+    x: number,
+    y: number,
+    init: MouseEventInit = {},
+  ): void {
     const event = new MouseEvent(type, {
       clientX: x,
       clientY: y,
       button: 0,
       bubbles: true,
       cancelable: true,
+      ...init,
     });
     Object.defineProperty(event, 'pointerId', { value: 1 });
     target.dispatchEvent(event);
@@ -867,8 +874,30 @@ describe('StockMapPage', () => {
     expect(q('stock-map-zoom')?.textContent?.trim()).toBe('100 %');
   });
 
-  /** The floor follows the hand: dragging it right brings what is on the left into view. */
-  it('moves the floor under the hand once one is near enough', async () => {
+  /**
+   * The floor follows the hand while Space is held, as in a drawing tool: a plain drag on bare floor draws the
+   * selection box instead (slice 7c, § 7 2026-10-09 17:47).
+   */
+  it('moves the floor under the hand with Space held, once one is near enough', async () => {
+    const svg = surface();
+    press('stock-map-zoom-in');
+    press('stock-map-zoom-in');
+    await settle();
+    const before = viewBox();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    fire(svg, 'pointerdown', 200, 200);
+    fire(document, 'pointermove', 260, 200);
+    fire(document, 'pointerup', 260, 200);
+    document.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true }));
+    await settle();
+
+    expect(partOf(viewBox(), 0)).toBeLessThan(partOf(before, 0));
+    // Coming nearer is not resizing: the window keeps its size while it travels.
+    expect(partOf(viewBox(), 2)).toBe(partOf(before, 2));
+  });
+
+  it('moves the floor with the middle button too, and never on a plain drag', async () => {
     const svg = surface();
     press('stock-map-zoom-in');
     press('stock-map-zoom-in');
@@ -879,10 +908,131 @@ describe('StockMapPage', () => {
     fire(document, 'pointermove', 260, 200);
     fire(document, 'pointerup', 260, 200);
     await settle();
+    expect(viewBox()).toBe(before);
 
+    fire(svg, 'pointerdown', 200, 200, { button: 1 });
+    fire(document, 'pointermove', 260, 200, { button: 1 });
+    fire(document, 'pointerup', 260, 200, { button: 1 });
+    await settle();
     expect(partOf(viewBox(), 0)).toBeLessThan(partOf(before, 0));
-    // Coming nearer is not resizing: the window keeps its size while it travels.
-    expect(partOf(viewBox(), 2)).toBe(partOf(before, 2));
+  });
+
+  // ——— choosing several (slice 7c, § 7 2026-10-09 17:45) ———
+
+  const second: StockDrawingRow = {
+    ...drawn,
+    id: 'd2',
+    locationId: 'l2',
+    locationCode: 'Z1',
+    locationKind: 'zone',
+    x: '8.000',
+  };
+  const chosenCodes = (): string[] =>
+    [...fixture.nativeElement.querySelectorAll('.twes-map-chosen')].map((rect: Element) =>
+      (rect.getAttribute('data-testid') ?? '').replace('stock-drawing-rect-', ''),
+    );
+  const click = (target: Element, init: MouseEventInit = {}): void => {
+    target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ...init }));
+  };
+
+  it('adds a rectangle with Shift-click and takes it away again, with no handles on a group', async () => {
+    structures.set([]);
+    drawings.set([drawn, second]);
+    await settle();
+    click(q('stock-drawing-rect-R1') as unknown as Element);
+    await settle();
+    click(q('stock-drawing-rect-Z1') as unknown as Element, { shiftKey: true });
+    await settle();
+
+    expect(chosenCodes().sort()).toEqual(['R1', 'Z1']);
+    // The specs load no screen texts: the panel names the group's codes, its count is the plural key's.
+    expect(q('stock-map-chosen')?.textContent).toContain('R1, Z1');
+    // A group has no one rectangle to resize, and no one form to write into.
+    expect(
+      fixture.nativeElement.querySelectorAll('[data-testid^="stock-drawing-grip-"]'),
+    ).toHaveLength(0);
+    expect(q('stock-drawing-form')).toBeNull();
+
+    click(q('stock-drawing-rect-Z1') as unknown as Element, { shiftKey: true });
+    await settle();
+    expect(chosenCodes()).toEqual(['R1']);
+    expect(q('stock-map-chosen')).toBeNull();
+  });
+
+  /** A Shift press is a choice, never the start of a move: the rectangle stays where it was. */
+  it('moves nothing on a Shift press', async () => {
+    structures.set([]);
+    drawings.set([drawn, second]);
+    await settle();
+    surface();
+    fire(q('stock-drawing-rect-Z1') as unknown as Element, 'pointerdown', 100, 100, {
+      shiftKey: true,
+    });
+    fire(document, 'pointermove', 200, 100, { shiftKey: true });
+    fire(document, 'pointerup', 200, 100, { shiftKey: true });
+    await settle();
+
+    expect(q('stock-drawing-form')).toBeNull();
+  });
+
+  it('chooses every rectangle a box dragged on bare floor touches', async () => {
+    structures.set([]);
+    drawings.set([drawn, second]);
+    await settle();
+    const svg = surface();
+    fire(svg, 'pointerdown', 1, 1);
+    fire(document, 'pointermove', 200, 200);
+    await settle();
+    expect(q('stock-map-selection-box')).not.toBeNull();
+    fire(document, 'pointermove', 399, 399);
+    fire(document, 'pointerup', 399, 399);
+    await settle();
+
+    expect(chosenCodes().sort()).toEqual(['R1', 'Z1']);
+    expect(q('stock-map-selection-box')).toBeNull();
+  });
+
+  it('lets the whole choice go on a press of bare floor that does not travel, and on Échap', async () => {
+    structures.set([]);
+    drawings.set([drawn, second]);
+    await settle();
+    click(q('stock-drawing-rect-R1') as unknown as Element);
+    click(q('stock-drawing-rect-Z1') as unknown as Element, { shiftKey: true });
+    await settle();
+    const svg = surface();
+    fire(svg, 'pointerdown', 1, 1);
+    fire(document, 'pointerup', 1, 1);
+    await settle();
+    expect(chosenCodes()).toEqual([]);
+
+    click(q('stock-drawing-rect-R1') as unknown as Element);
+    click(q('stock-drawing-rect-Z1') as unknown as Element, { shiftKey: true });
+    await settle();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle();
+    expect(chosenCodes()).toEqual([]);
+  });
+
+  /** The choice is the same in Consulter, where row 248's action bar will act on it. */
+  it('chooses several in Consulter too, and a press on a rectangle never moves the view there', async () => {
+    await TestBed.inject(Router).navigateByUrl('/');
+    structures.set([]);
+    drawings.set([drawn, second]);
+    await settle();
+    press('stock-map-zoom-in');
+    await settle();
+    const before = viewBox();
+    surface();
+    const rack = q('stock-drawing-rect-R1') as unknown as Element;
+    fire(rack, 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 200, 100);
+    fire(document, 'pointerup', 200, 100);
+    click(rack);
+    click(q('stock-drawing-rect-Z1') as unknown as Element, { shiftKey: true });
+    await settle();
+
+    expect(viewBox()).toBe(before);
+    expect(chosenCodes().sort()).toEqual(['R1', 'Z1']);
   });
 
   /** Showing the whole floor leaves nowhere to move it to, so the same press must do nothing at all. */
