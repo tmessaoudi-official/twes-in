@@ -34,7 +34,8 @@ const section = (id: string, fields: FormField[]): FormSection => ({
 /**
  * The profile form, grouped the way an invoice header reads: who the company is, its registration numbers, where it
  * is, how to reach it, where to pay it and what its invoices print. The identifiers and VAT regimes are the fiscal
- * preset's, as the API listed them, so a company in another country gets its own without a change here.
+ * preset's, as the API listed them, so a company in another country gets its own without a change here; so is the
+ * débits option, asked only where the preset offers it.
  */
 export function profileForm(profile: CompanyProfile): FormDescriptor {
   const identifiers: FormField[] = profile.identifierFields.map((field) => ({
@@ -68,6 +69,16 @@ export function profileForm(profile: CompanyProfile): FormDescriptor {
             label: regime.label,
           })),
         },
+        ...(profile.offersVatOnDebits
+          ? [
+              {
+                id: 'vatOnDebits',
+                label: label('vatOnDebits'),
+                kind: 'checkbox',
+                hint: 'company.profile.hints.vatOnDebits',
+              } satisfies FormField,
+            ]
+          : []),
       ]),
       ...(identifiers.length > 0 ? [section('identifiers', identifiers)] : []),
       section('address', [
@@ -165,7 +176,7 @@ export function profileForm(profile: CompanyProfile): FormDescriptor {
 
 /** Each field at the saved value; a value the company does not have is an empty field. */
 export function profileValues(profile: CompanyProfile): FormValues {
-  const values: FormValues = { vatRegime: profile.vatRegime };
+  const values: FormValues = { vatRegime: profile.vatRegime, vatOnDebits: profile.vatOnDebits };
   for (const id of TEXT_FIELDS) {
     values[id] = profile[id] ?? '';
   }
@@ -200,6 +211,7 @@ export function profileChanges(profile: CompanyProfile, values: FormValues): Com
     iban: text('iban'),
     bic: text('bic'),
     vatRegime: text('vatRegime') ?? profile.vatRegime,
+    vatOnDebits: profile.offersVatOnDebits && values['vatOnDebits'] === true,
     invoiceFooterText: text('invoiceFooterText'),
     latePenaltyText: text('latePenaltyText'),
   };

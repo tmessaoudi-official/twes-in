@@ -80,7 +80,23 @@ in another [4][5]. The preset keeps the art. 293 B wording; changing it later is
 - The e-invoicing reform adds the customer's SIREN, the delivery address when it differs, the category of the
   operation (goods, services or both) and whether the seller opted to pay VAT on debits. They apply from
   1 September 2026 for large and mid-sized companies and from 1 September 2027 for SMEs and micro-businesses [6][7].
-  The invoice data model already has `operation_category` and `vat_on_debits` (docs/SPEC.md § 4).
+
+### 4a. The category of the operations and the débits option (row 44, 2026-10-09)
+
+Art. 242 nonies A, version in force since 1 January 2025 (décret n° 2024-1195), read on Légifrance [6]:
+
+| Rule | What the software does | Source | Status |
+|---|---|---|---|
+| I 8° bis: « L'information selon laquelle les opérations donnant lieu à facture sont constituées exclusivement de livraisons de biens ou exclusivement de prestations de services ou sont constituées de ces deux catégories d'opérations » | built: an invoice's `operation_category` (`goods`, `services`, `both`) is chosen on the draft or worked out at issue from its lines' products, fixed at issue and printed « Nature des opérations : … »; a line naming no product, with no choice, refuses the issue; a credit note takes its invoice's | CGI ann. II art. 242 nonies A I 8° bis [6] | unvalidated |
+| I 11° bis: « Lorsque le prestataire a opté pour le paiement de la taxe d'après les débits, la mention : « Option pour le paiement de la taxe d'après les débits » » | built: the company's option `vat_on_debits` (profile); fixed on the invoice at issue; the mention printed word for word when the company opted and the operations include services | CGI ann. II art. 242 nonies A I 11° bis [6]; the option itself CGI art. 269-2-c [11] | unvalidated |
+| III: these items apply from 1 September 2026, and from 1 September 2027 for micro, small and medium-sized businesses | printed on every French invoice from now on: the software does not know a company's size, and printing early states only true facts | CGI ann. II art. 242 nonies A III [6] | unvalidated |
+
+The 11° bis mention is fixed text and is printed as the article writes it. The 8° bis line is « l'information »,
+with no wording given: « Nature des opérations : Livraisons de biens / Prestations de services / Livraisons de biens
+et prestations de services » is the software's own wording, unsourced beyond the article. Printing the débits mention
+only when the operations include services follows from the option concerning services (VAT on goods is due at
+delivery, CGI art. 269-1-a [10]); the article itself says only « lorsque le prestataire a opté ». Neither item is
+written into the Factur-X yet (Known gaps).
 - Code de commerce art. L441-9 [8]: the payment date, the conditions of any early-payment discount, the rate of late
   payment penalties, and the fixed recovery indemnity. Art. D441-5 [8] sets that indemnity at 40 €.
 
@@ -190,7 +206,10 @@ E-invoicing comes after the POC (docs/SPEC.md § 2).
 
 - The CIBS article numbers replace the CGI references from 1 January 2027 (§ 2, § 3), not yet reflected.
 - La Poste's SIRET exception (§ 5) is taken from secondary sources; no primary INSEE text was found for it.
-- The encaissements basis for services (§ 2a): the VAT on what was received in a period, not computed; the débits option is not recorded on the company.
+- The encaissements basis for services (§ 2a): the VAT on what was received in a period, not computed; the débits
+  option is recorded on the company and printed (§ 4a), but nothing computes the VAT due from it.
+- The category of the operations and the débits option (§ 4a) are printed but not written into the Factur-X: where the
+  French extension carries them was not researched.
 - The CA3/CA12 themselves and the CIBS article numbers for § 2a, not researched.
 - A VAT key of letters (numbers issued without a SIREN) is accepted unchecked (§ 5).
 - Another member state's VAT number (§ 5a) is checked for its shape only, never for that state's check digits, and its

@@ -229,6 +229,8 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.getByTestId('invoice-customer').fill(customerNumber);
     await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
     await page.getByTestId('field-customerReference').fill(`PO-${run}`);
+    // France's law asks what the operations are; Tunisia's does not, so a hand-written line issues here unasked.
+    await expect(page.getByTestId('field-operationCategory')).toHaveCount(0);
     await page.getByTestId('line-0-description').fill('Conseil, deux jours');
     await page.getByTestId('line-0-quantity').fill('2');
     await page.getByTestId('line-0-price').fill('500');

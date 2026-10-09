@@ -284,6 +284,8 @@ function toProfile(raw: CompanyProfileCompanyProfileRead): CompanyProfile {
     iban: raw.iban ?? null,
     bic: raw.bic ?? null,
     vatRegime: raw.vatRegime ?? 'standard',
+    vatOnDebits: raw.vatOnDebits ?? false,
+    offersVatOnDebits: raw.offersVatOnDebits ?? false,
     invoiceFooterText: raw.invoiceFooterText ?? null,
     latePenaltyText: raw.latePenaltyText ?? null,
     identifierFields: (raw.identifierFields ?? []).map((field) => ({

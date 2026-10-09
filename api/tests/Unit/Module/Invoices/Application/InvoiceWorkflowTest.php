@@ -34,6 +34,7 @@ use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceTax;
 use App\Module\Invoices\Domain\InvoiceType;
+use App\Module\Invoices\Domain\OperationCategory;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\PresentationSettings;
@@ -117,6 +118,7 @@ final class InvoiceWorkflowTest extends TestCase
             new InMemoryCustomerCredits(),
             ShippedDepositDeductions::of($this->invoices, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())),
             new PartyIdentity(ShippedFiscalPresets::presets()),
+            ShippedFiscalPresets::presets(),
         );
         foreach ([$this->company, $this->globex] as $company) {
             $company->reviseProfile(new CompanyProfile(legalName: $company->getName().' SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'));
@@ -340,7 +342,7 @@ final class InvoiceWorkflowTest extends TestCase
         $vat = $this->taxes->ofCodeInCompany('TVA20', $atelier->getId());
         self::assertNotNull($unit);
         self::assertNotNull($vat);
-        $draft = Invoice::create($atelier, $this->establishments->ofCompany($atelier->getId())[0], $customer, new InvoiceHeader(), [new InvoiceLineDetails(null, 'Réglage', '1', $unit, '100', null, [$vat])], [], $now);
+        $draft = Invoice::create($atelier, $this->establishments->ofCompany($atelier->getId())[0], $customer, new InvoiceHeader(operationCategory: OperationCategory::Services), [new InvoiceLineDetails(null, 'Réglage', '1', $unit, '100', null, [$vat])], [], $now);
         $this->invoices->save($draft);
 
         try {

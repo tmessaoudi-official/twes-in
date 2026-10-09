@@ -53,6 +53,8 @@ final readonly class CompanyProfileRepresentation
         $resource->vatRegime = $profile->vatRegime;
         $resource->invoiceFooterText = $profile->invoiceFooterText;
         $resource->latePenaltyText = $profile->latePenaltyText;
+        $resource->vatOnDebits = $profile->vatOnDebits;
+        $resource->offersVatOnDebits = $preset->invoiceFields->offersVatOnDebits();
         foreach ($preset->identifiers as $identifier) {
             $resource->identifierFields[] = new CompanyIdentifierField(
                 $identifier->key,

@@ -71,6 +71,8 @@ const issued: InvoiceRow = {
   notesPrinted: null,
   notesInternal: null,
   discountAmount: null,
+  operationCategory: null,
+  vatOnDebits: null,
   documentTaxComponentIds: [],
   lines: [],
   subtotalNet: '10000.000',
@@ -110,6 +112,7 @@ describe('InvoicesPage', () => {
     options: signal<InvoiceOptions | null>({
       currency: 'TND',
       currencyScale: 3,
+      operationCategory: false,
       establishments: [],
       units: [],
       taxes: [],

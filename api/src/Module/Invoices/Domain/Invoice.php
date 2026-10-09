@@ -16,6 +16,7 @@ use App\Fiscal\Domain\TaxKind;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Products\Domain\LotCode;
+use App\Module\Products\Domain\Product;
 use App\Shared\Domain\CompanyOwned;
 use App\Shared\Domain\DomainEvent;
 use App\Shared\Domain\PrintSettings;
@@ -141,6 +142,17 @@ class Invoice implements CompanyOwned
     /** @var array<string, mixed>|null {keys: list<string>, latePenaltyText: string|null, parameters?: array<string, array<string, string>>}, written by issuing */
     #[ORM\Column(name: 'mentions_snapshot', type: Types::JSON, nullable: true, options: ['jsonb' => true])]
     private ?array $mentions = null;
+
+    /**
+     * What its operations are, where its country's law asks: on a draft the category chosen (null: its lines' at issue),
+     * on an issued document the one it states. Null where the law asks for none.
+     */
+    #[ORM\Column(length: 16, nullable: true, enumType: OperationCategory::class)]
+    private ?OperationCategory $operationCategory = null;
+
+    /** Whether the company had opted to pay VAT on the débits when it was issued; null on a draft and where the law asks nothing. */
+    #[ORM\Column(nullable: true)]
+    private ?bool $vatOnDebits = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $issuedAt = null;
@@ -285,6 +297,7 @@ class Invoice implements CompanyOwned
             $header->notesPrinted,
             $header->notesInternal,
             $header->discountAmount,
+            $header->operationCategory,
         ));
         // A copy is a new sale: what the original gave back of a deposit is not given back a second time.
         $copy->writeLines(array_map(static fn (InvoiceLine $line): InvoiceLineDetails => new InvoiceLineDetails(
@@ -596,6 +609,8 @@ class Invoice implements CompanyOwned
         $this->dueDate = $this->issueDate->modify(\sprintf('+%d days', $issue->paymentTermsDays));
         $this->language = $issue->language;
         $this->mentions = ['keys' => $issue->mentionKeys, 'latePenaltyText' => $issue->latePenaltyText, 'parameters' => $issue->mentionParameters];
+        $this->operationCategory = $issue->operationCategory;
+        $this->vatOnDebits = $issue->vatOnDebits;
         $this->footer = $issue->footer;
         $this->issuedAt = $now;
         $this->issuedBy = $issue->issuedBy;
@@ -792,7 +807,38 @@ class Invoice implements CompanyOwned
 
     public function getHeader(): InvoiceHeader
     {
-        return new InvoiceHeader($this->supplyDate, $this->paymentTermsDays, $this->customerReference, $this->notesPrinted, $this->notesInternal, $this->discountAmount);
+        return new InvoiceHeader($this->supplyDate, $this->paymentTermsDays, $this->customerReference, $this->notesPrinted, $this->notesInternal, $this->discountAmount, $this->isIssued() ? null : $this->operationCategory);
+    }
+
+    /**
+     * What its operations are: the category it states once issued; on a draft, its corrected invoice's for a credit note,
+     * else the one chosen, else what its lines' products say, a line giving a deposit back counting for nothing; null when nothing can be said.
+     */
+    public function operations(): ?OperationCategory
+    {
+        // A correction concerns the operations of the invoice it corrects, whatever its own lines still name.
+        $corrected = $this->isIssued() ? null : $this->correctsInvoice?->getOperationCategory();
+        if (null !== $corrected) {
+            return $corrected;
+        }
+        if (null !== $this->operationCategory) {
+            return $this->operationCategory;
+        }
+        $sold = array_filter($this->getLines(), static fn (InvoiceLine $line): bool => null === $line->getDeduction());
+
+        return OperationCategory::ofProducts(array_map(static fn (InvoiceLine $line): ?Product => $line->getProduct(), $sold));
+    }
+
+    /** The category an issued document states; null on a draft and where the law asks for none. */
+    public function getOperationCategory(): ?OperationCategory
+    {
+        return $this->isIssued() ? $this->operationCategory : null;
+    }
+
+    /** Whether the company had opted to pay VAT on the débits when it was issued; null on a draft and where the law asks nothing. */
+    public function getVatOnDebits(): ?bool
+    {
+        return $this->vatOnDebits;
     }
 
     /** @return list<InvoiceLine> in order */
@@ -1018,6 +1064,7 @@ class Invoice implements CompanyOwned
         $this->notesPrinted = $header->notesPrinted;
         $this->notesInternal = $header->notesInternal;
         $this->discountAmount = $header->discountAmount;
+        $this->operationCategory = $header->operationCategory;
     }
 
     /** @param list<InvoiceLineDetails> $lines */

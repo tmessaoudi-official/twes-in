@@ -92,6 +92,13 @@ final class YamlFiscalPresetsTest extends TestCase
         );
         self::assertSame([], $tn->identifiers[0]->foreignPatterns);
         self::assertSame(['fiscal.mention.fr.late_payment', 'fiscal.mention.fr.recovery_indemnity', 'fiscal.mention.fr.no_early_discount'], $fr->invoiceMentions);
+        // The fields France's law adds to an invoice (docs/fiscal/FR.md § 4a), which Tunisia's does not ask for.
+        self::assertTrue($fr->invoiceFields->operationCategory);
+        self::assertSame('fiscal.mention.fr.vat_on_debits', $fr->invoiceFields->vatOnDebitsMentionKey);
+        self::assertTrue($fr->invoiceFields->offersVatOnDebits());
+        self::assertFalse($tn->invoiceFields->operationCategory);
+        self::assertNull($tn->invoiceFields->vatOnDebitsMentionKey);
+        self::assertFalse($tn->invoiceFields->offersVatOnDebits());
 
         // What a regime removing VAT means in an EN 16931 invoice (BT-118, BT-121): declared where the article is known,
         // left undeclared where it is not ("exempt" names no article), and absent from a preset that has no e-invoicing yet.
@@ -185,6 +192,8 @@ final class YamlFiscalPresetsTest extends TestCase
         yield 'an establishment without its default code' => ['establishment.default_code', self::REMOVE, 'default_code'];
         yield 'a default establishment code outside its own pattern' => ['establishment.default_code', '12', 'default_code'];
         yield 'an establishment code pattern that does not compile' => ['establishment.code_pattern', '([0-9]', 'code_pattern'];
+        yield 'a débits mention outside the fiscal domain' => ['invoice_fields', ['vat_on_debits' => ['mention_key' => 'mention.debits']], 'mention_key'];
+        yield 'an invoice field the product does not know' => ['invoice_fields', ['delivery_address' => true], 'delivery_address'];
         yield 'an unknown key' => ['vat_rates', ['19'], 'vat_rates'];
     }
 

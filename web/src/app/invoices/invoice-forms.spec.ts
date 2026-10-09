@@ -25,6 +25,7 @@ import {
   lineStock,
 } from './invoice-forms';
 import { FormArray } from '@angular/forms';
+import type { LineGroup } from './invoice-forms';
 import type { CustomerOption, InvoiceOptions, InvoiceRow, ProductOption } from './invoices-types';
 
 const options: InvoiceOptions = {
@@ -44,6 +45,7 @@ const options: InvoiceOptions = {
     tax('s1', 'TIMBRE', 'fixed_document', 'stamp', true),
     tax('w1', 'RS1', 'withholding_total', 'withholding', false),
   ],
+  operationCategory: false,
 };
 
 /** What the picker answers, which is all the form ever knows about a customer or a product. */
@@ -116,6 +118,8 @@ function invoice(overrides: Partial<InvoiceRow> = {}): InvoiceRow {
     notesPrinted: null,
     notesInternal: null,
     discountAmount: null,
+    operationCategory: null,
+    vatOnDebits: null,
     documentTaxComponentIds: ['s1'],
     lines: [],
     subtotalNet: '1200.000',
@@ -362,6 +366,42 @@ describe('invoice forms', () => {
     expect(values['establishmentId']).toBe('e1');
     expect(values['paymentTermsDays']).toBe('');
     expect(invoiceValues(invoice({ paymentTermsDays: 0 }), options)['paymentTermsDays']).toBe('0');
+  });
+
+  it('asks what the operations are only where the law does, « from the lines » first, and sends the choice', () => {
+    const ids = (form: ReturnType<typeof invoiceForm>): string[] =>
+      form.sections.flatMap((section) => section.fields.map((field) => field.id));
+    expect(ids(invoiceForm(options, invoice()))).not.toContain('operationCategory');
+
+    const french = { ...options, operationCategory: true };
+    const field = invoiceForm(french, invoice())
+      .sections.flatMap((section) => section.fields)
+      .find((each) => each.id === 'operationCategory');
+    expect(field?.kind).toBe('select');
+    expect(field?.options?.map((option) => option.value)).toEqual([
+      '',
+      'goods',
+      'services',
+      'both',
+    ]);
+    expect(field?.hint).toBe('invoices.form.operations_hint');
+    const credit = invoiceForm(french, invoice({ type: 'credit_note' }))
+      .sections.flatMap((section) => section.fields)
+      .find((each) => each.id === 'operationCategory');
+    expect([credit?.readOnly, credit?.hint]).toEqual([
+      true,
+      'invoices.form.operations_credit_note_hint',
+    ]);
+
+    expect(invoiceValues(null, french)['operationCategory']).toBe('');
+    const chosen = invoiceValues(invoice({ operationCategory: 'services' }), french);
+    expect(chosen['operationCategory']).toBe('services');
+    const lines = new FormArray<LineGroup>([]);
+    expect(invoiceInput(chosen, lines, [], 'k1').operationCategory).toBe('services');
+    expect(invoiceInput(invoiceValues(null, french), lines, [], 'k1').operationCategory).toBeNull();
+    expect(
+      invoiceInput(invoiceValues(null, options), lines, [], 'k1').operationCategory,
+    ).toBeNull();
   });
 
   it('prefills the document taxes: the company’s defaults and the customer’s, less what its regime refuses', () => {

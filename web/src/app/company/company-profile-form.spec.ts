@@ -21,6 +21,8 @@ const profile: CompanyProfile = {
   iban: null,
   bic: null,
   vatRegime: 'standard',
+  vatOnDebits: false,
+  offersVatOnDebits: false,
   invoiceFooterText: null,
   latePenaltyText: null,
   identifierFields: [
@@ -33,6 +35,37 @@ const profile: CompanyProfile = {
   ],
   vatRegimes: [{ code: 'standard', label: 'Régime normal' }],
 };
+
+describe('the débits option', () => {
+  const french: CompanyProfile = { ...profile, countryCode: 'FR', offersVatOnDebits: true };
+  const ids = (form: ReturnType<typeof profileForm>): string[] =>
+    form.sections.flatMap((section) => section.fields.map((field) => field.id));
+
+  it('is asked, as a box beside the VAT regime, only where the preset offers it', () => {
+    expect(ids(profileForm(profile))).not.toContain('vatOnDebits');
+    const identity = profileForm(french).sections[0]?.fields ?? [];
+    const box = identity.find((field) => field.id === 'vatOnDebits');
+    expect(box?.kind).toBe('checkbox');
+    expect(box?.hint).toBe('company.profile.hints.vatOnDebits');
+    expect(identity.map((field) => field.id).indexOf('vatOnDebits')).toBe(
+      identity.map((field) => field.id).indexOf('vatRegime') + 1,
+    );
+  });
+
+  it('shows what the company chose and sends it back, never true where it is not offered', () => {
+    const opted = { ...french, vatOnDebits: true };
+    expect(profileValues(opted)['vatOnDebits']).toBe(true);
+    expect(profileChanges(opted, { ...profileValues(opted), vatOnDebits: false }).vatOnDebits).toBe(
+      false,
+    );
+    expect(
+      profileChanges(french, { ...profileValues(french), vatOnDebits: true }).vatOnDebits,
+    ).toBe(true);
+    expect(
+      profileChanges(profile, { ...profileValues(profile), vatOnDebits: true }).vatOnDebits,
+    ).toBe(false);
+  });
+});
 
 describe('profileForm', () => {
   it('groups the profile the way an invoice header reads it', () => {
@@ -119,6 +152,7 @@ describe('profileValues and profileChanges', () => {
       iban: 'TN59 1000 6035 1835 9847 8831',
       bic: null,
       vatRegime: 'standard',
+      vatOnDebits: false,
       invoiceFooterText: null,
       latePenaltyText: null,
     });

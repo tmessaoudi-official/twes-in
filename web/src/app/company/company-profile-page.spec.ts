@@ -42,6 +42,8 @@ const profile: CompanyProfile = {
   iban: null,
   bic: null,
   vatRegime: 'standard',
+  vatOnDebits: false,
+  offersVatOnDebits: false,
   invoiceFooterText: null,
   latePenaltyText: null,
   identifierFields: [

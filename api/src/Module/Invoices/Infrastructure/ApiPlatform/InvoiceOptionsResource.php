@@ -100,4 +100,8 @@ final class InvoiceOptionsResource
     ])]
     #[Groups([self::READ])]
     public array $taxes = [];
+
+    /** Whether the company's law asks an invoice what its operations are (goods, services or both), so a form asks it too. */
+    #[Groups([self::READ])]
+    public bool $operationCategory = false;
 }

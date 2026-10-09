@@ -16,6 +16,7 @@ const input: InvoiceInput = {
   notesPrinted: 'Virement',
   notesInternal: null,
   discountAmount: null,
+  operationCategory: null,
   documentTaxComponentIds: null,
   lines: [
     {

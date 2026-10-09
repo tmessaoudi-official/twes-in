@@ -67,6 +67,8 @@ export interface CompanyProfileChanges {
   readonly iban: string | null;
   readonly bic: string | null;
   readonly vatRegime: string;
+  /** Whether the company opted to pay VAT on the débits; only where its preset offers the option. */
+  readonly vatOnDebits: boolean;
   readonly invoiceFooterText: string | null;
   readonly latePenaltyText: string | null;
 }
@@ -80,6 +82,8 @@ export interface CompanyProfile extends CompanyProfileChanges {
   readonly logoVersion: string | null;
   readonly identifierFields: readonly IdentifierField[];
   readonly vatRegimes: readonly VatRegimeOption[];
+  /** Whether the company's fiscal preset offers the débits option (France). */
+  readonly offersVatOnDebits: boolean;
 }
 
 export type CompanyError =

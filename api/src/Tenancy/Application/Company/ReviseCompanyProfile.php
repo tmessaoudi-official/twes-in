@@ -23,7 +23,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * A company revises what its documents say about it. Its fiscal preset decides what that may be: a registration number
  * the preset does not know is refused, one it knows must have its shape, one it requires of a company must be there,
- * and the VAT regime must be one the preset offers companies. A revision is audited with the names of the fields it
+ * the VAT regime must be one the preset offers companies, and only a preset offering the débits option lets a company
+ * opt for it. A revision is audited with the names of the fields it
  * changed, not their values, so banking details never reach the audit trail.
  */
 final readonly class ReviseCompanyProfile
@@ -46,6 +47,10 @@ final readonly class ReviseCompanyProfile
 
         if (!\in_array($profile->vatRegime, array_map(static fn ($regime): string => $regime->code, $preset->companyVatRegimes), true)) {
             throw new InvalidCompanyProfile('vatRegime', \sprintf('The %s preset offers companies no VAT regime "%s".', $preset->country, $profile->vatRegime));
+        }
+
+        if ($profile->vatOnDebits && !$preset->invoiceFields->offersVatOnDebits()) {
+            throw new InvalidCompanyProfile('vatOnDebits', \sprintf('The %s preset offers companies no option to pay VAT on the débits.', $preset->country));
         }
 
         $refusal = IdentifierRules::refusal($preset, $profile->identifiers, IdentifierRules::COMPANY);

@@ -120,6 +120,10 @@ class Company
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $latePenaltyText = null;
 
+    /** Whether the company opted to pay VAT on the débits, where its preset offers the option. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $vatOnDebits = false;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -245,6 +249,7 @@ class Company
             $this->vatRegime,
             $this->invoiceFooterText,
             $this->latePenaltyText,
+            $this->vatOnDebits,
         );
     }
 
@@ -270,6 +275,7 @@ class Company
         $this->vatRegime = $profile->vatRegime;
         $this->invoiceFooterText = $profile->invoiceFooterText;
         $this->latePenaltyText = $profile->latePenaltyText;
+        $this->vatOnDebits = $profile->vatOnDebits;
         $this->updatedAt = $now ?? new \DateTimeImmutable();
 
         return true;

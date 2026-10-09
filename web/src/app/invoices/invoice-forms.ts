@@ -14,6 +14,7 @@ import {
   type InvoiceLine,
   type InvoiceOptions,
   type InvoiceRow,
+  OPERATION_CATEGORIES,
   type InvoiceSearch,
   type InvoiceShownStatus,
   type InvoiceSortKey,
@@ -313,6 +314,27 @@ export function invoiceForm(
           pattern: AMOUNT_PATTERN,
           hint: 'invoices.form.discount_hint',
         },
+        // What the operations are, where the law asks (France): « from the lines » leaves it to the products sold.
+        ...(options.operationCategory
+          ? [
+              {
+                id: 'operationCategory',
+                label: `${FIELDS}.operationCategory`,
+                kind: 'select',
+                options: [
+                  { value: '', label: 'invoices.operations.from_lines' },
+                  ...OPERATION_CATEGORIES.map((category) => ({
+                    value: category,
+                    label: `invoices.operations.${category}`,
+                  })),
+                ],
+                // A credit note states the operations of the invoice it corrects, which its own lines cannot change.
+                ...(current?.type === 'credit_note'
+                  ? { readOnly: true, hint: 'invoices.form.operations_credit_note_hint' }
+                  : { hint: 'invoices.form.operations_hint' }),
+              } satisfies FormField,
+            ]
+          : []),
       ]),
       section('notes', [
         {
@@ -349,6 +371,7 @@ export function invoiceValues(row: InvoiceRow | null, options: InvoiceOptions): 
     discountAmount: row?.discountAmount ?? '',
     notesPrinted: row?.notesPrinted ?? '',
     notesInternal: row?.notesInternal ?? '',
+    operationCategory: row?.operationCategory ?? '',
   };
 }
 
@@ -808,6 +831,8 @@ export function invoiceInput(
     notesPrinted: text(values['notesPrinted']),
     notesInternal: text(values['notesInternal']),
     discountAmount: text(values['discountAmount']),
+    operationCategory:
+      OPERATION_CATEGORIES.find((category) => category === values['operationCategory']) ?? null,
     documentTaxComponentIds: [...documentTaxComponentIds],
     lines: lines.getRawValue().map((line) => ({
       productId: line.productId === '' ? null : line.productId,

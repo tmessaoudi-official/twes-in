@@ -28,3 +28,4 @@ fiscal:
             late_payment: 'Late payment penalties are due at a rate of %rate%.'
             recovery_indemnity: 'Fixed recovery fee in case of late payment: €40.'
             no_early_discount: 'No discount for early payment.'
+            vat_on_debits: 'Option to pay VAT on debits (option pour le paiement de la taxe d’après les débits).'

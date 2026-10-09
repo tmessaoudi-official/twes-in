@@ -121,6 +121,14 @@ mentions:
         - fiscal.mention.fr.recovery_indemnity
         - fiscal.mention.fr.no_early_discount
 
+# What the law adds to an invoice from 1 September 2026 (CGI ann. II art. 242 nonies A I 8° bis and 11° bis,
+# docs/fiscal/FR.md § 4a): whether its operations are goods, services or both, and the mention a company that opted
+# to pay VAT on the débits prints.
+invoice_fields:
+    operation_category: true
+    vat_on_debits:
+        mention_key: fiscal.mention.fr.vat_on_debits
+
 # The establishment part of a registration number: the five-digit NIC closing a SIRET (docs/fiscal/FR.md § 5).
 # The defaults this country gives settings where custom differs by country (docs/fiscal/FR.md § 4).
 settings:

@@ -56,7 +56,12 @@ class StaticLoader implements TranslateLoader {
         statuses: { draft: 'Brouillon', issued: 'Émise', overdue: 'En retard', paid: 'Soldée' },
         types: { credit_note: 'Avoir' },
         credit_note_draft_title: 'Avoir en brouillon',
-        actions: { issue_message_numbered: 'N° {{number}} · {{total}} · {{customer}}' },
+        actions: {
+          issue_message_numbered: 'N° {{number}} · {{total}} · {{customer}}',
+          issue_message_numbered_both: 'N° {{number}} · biens et services',
+          issue_message_numbered_services: 'N° {{number}} · services',
+          issue_message_numbered_unsaid: 'N° {{number}} · nature à choisir',
+        },
         credit_note: { reason_shown: 'Motif : {{reason}}' },
         fixed: { issued: 'Émis, il se corrige par un avoir.' },
         due: { left: 'Reste à encaisser', paid_of: '{{paid}} payés sur {{total}}' },
@@ -73,6 +78,7 @@ class StaticLoader implements TranslateLoader {
 const options: InvoiceOptions = {
   currency: 'TND',
   currencyScale: 3,
+  operationCategory: false,
   establishments: [{ id: 'e1', code: 'SIEGE', name: 'Siège', isDefault: true }],
   units: [{ id: 'u1', code: 'C62', name: 'Unité', decimals: 0 }],
   taxes: [
@@ -172,6 +178,8 @@ const draft: InvoiceRow = {
   notesPrinted: null,
   notesInternal: null,
   discountAmount: null,
+  operationCategory: null,
+  vatOnDebits: null,
   documentTaxComponentIds: ['s1'],
   lines: [
     {
@@ -233,8 +241,9 @@ const issued: InvoiceRow = {
 describe('InvoicePage', () => {
   const error = signal<InvoicesError | null>(null);
   const invoice = signal<InvoiceRow | null>(null);
+  const optionsShown = signal<InvoiceOptions | null>(options);
   const facade = {
-    options: signal<InvoiceOptions | null>(options).asReadonly(),
+    options: optionsShown.asReadonly(),
     invoice: invoice.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
@@ -375,6 +384,7 @@ describe('InvoicePage', () => {
     );
     facade.loadInvoice.mockReset().mockResolvedValue(undefined);
     facade.nextNumber.mockReset().mockResolvedValue(null);
+    optionsShown.set(options);
     facade.pickCustomers.mockClear();
     facade.pickProducts.mockClear();
     scans.piecesPerScan.mockReset().mockResolvedValue(null);
@@ -929,7 +939,7 @@ describe('InvoicePage', () => {
   });
 
   it('says before issuing the number the draft will carry, its total and who it is for', async () => {
-    facade.nextNumber.mockResolvedValue('FAC-2026-00143');
+    facade.nextNumber.mockResolvedValue({ number: 'FAC-2026-00143', operationCategory: null });
     invoice.set(draft);
     await open('i1');
 
@@ -941,6 +951,36 @@ describe('InvoicePage', () => {
     expect(message).toContain('N° FAC-2026-00143');
     expect(message).toContain('Carthage');
     expect(message).toMatch(/2\s?143/);
+  });
+
+  it('says before issuing a French invoice what its operations will be, the choice typed first, or that one is needed', async () => {
+    optionsShown.set({ ...options, operationCategory: true });
+    facade.nextNumber.mockResolvedValue({ number: 'FAC-2026-00143', operationCategory: 'both' });
+    invoice.set(draft);
+    await open('i1');
+    q('document-action-issue')!.click();
+    await settle();
+    expect(over('confirm-message')?.textContent).toContain('N° FAC-2026-00143 · biens et services');
+    over('confirm-keep')!.click();
+    await settle();
+
+    // A choice made in the form and not yet saved is what issuing will send, so it is what the question says.
+    fixture.destroy();
+    invoice.set({ ...draft, id: 'i2', operationCategory: 'services' });
+    await open('i2');
+    q('document-action-issue')!.click();
+    await settle();
+    expect(over('confirm-message')?.textContent).toContain('N° FAC-2026-00143 · services');
+    over('confirm-keep')!.click();
+    await settle();
+
+    facade.nextNumber.mockResolvedValue({ number: 'FAC-2026-00143', operationCategory: null });
+    fixture.destroy();
+    invoice.set({ ...draft, id: 'i3' });
+    await open('i3');
+    q('document-action-issue')!.click();
+    await settle();
+    expect(over('confirm-message')?.textContent).toContain('nature à choisir');
   });
 
   it('asks where the money already paid goes when a credit note is refused for it, and issues with the answer', async () => {

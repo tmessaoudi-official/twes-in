@@ -12,6 +12,7 @@ namespace App\Fiscal\Infrastructure\Preset;
 use App\Fiscal\Application\Preset\FiscalPreset;
 use App\Fiscal\Application\Preset\PresetEstablishment;
 use App\Fiscal\Application\Preset\PresetIdentifier;
+use App\Fiscal\Application\Preset\PresetInvoiceFields;
 use App\Fiscal\Application\Preset\PresetNumbering;
 use App\Fiscal\Application\Preset\PresetRegime;
 use App\Fiscal\Application\Preset\PresetTaxComponent;
@@ -88,6 +89,7 @@ final readonly class PresetReader
             $this->units($this->node($config, 'units', 'units')),
             $this->establishment($this->node($config, 'establishment', 'establishment')),
             $this->settings($config),
+            $this->invoiceFields($config),
         );
     }
 
@@ -287,6 +289,19 @@ final readonly class PresetReader
         }
 
         return [$category, $code];
+    }
+
+    /** @param array<mixed> $config */
+    private function invoiceFields(array $config): PresetInvoiceFields
+    {
+        $fields = \is_array($config['invoice_fields'] ?? null) ? $config['invoice_fields'] : [];
+        $debits = \is_array($fields['vat_on_debits'] ?? null) ? $fields['vat_on_debits'] : null;
+        $mentionKey = null === $debits ? null : $this->string($debits, 'mention_key', 'invoice_fields.vat_on_debits.mention_key');
+        if (null !== $mentionKey && 1 !== preg_match(self::TRANSLATION_KEY, $mentionKey)) {
+            $this->refuse('invoice_fields.vat_on_debits.mention_key', "\"$mentionKey\" is not a key under fiscal.");
+        }
+
+        return new PresetInvoiceFields(true === ($fields['operation_category'] ?? false), $mentionKey);
     }
 
     /**

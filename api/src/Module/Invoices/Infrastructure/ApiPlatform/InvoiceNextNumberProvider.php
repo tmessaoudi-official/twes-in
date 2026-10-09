@@ -33,14 +33,15 @@ final readonly class InvoiceNextNumberProvider implements ProviderInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::READ);
 
         try {
-            $number = $this->next->of($company, CompanyPath::identifier($uriVariables, 'invoiceId'));
+            $preview = $this->next->of($company, CompanyPath::identifier($uriVariables, 'invoiceId'));
         } catch (InvoiceNotFound $absent) {
             throw new NotFoundHttpException('No such invoice.', $absent);
         } catch (InvoiceNotDraft|NoNumberingSeries|InvalidNumbering $conflict) {
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         }
         $resource = new InvoiceNextNumberResource();
-        $resource->number = $number;
+        $resource->number = $preview->number;
+        $resource->operationCategory = $preview->operations?->value;
 
         return $resource;
     }

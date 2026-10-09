@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Invoices\Domain\CustomerCreditEntry;
 use App\Module\Invoices\Domain\CustomerCreditRepository;
@@ -57,6 +58,7 @@ final readonly class InvoiceWorkflow
         private CustomerCreditRepository $credits,
         private DepositDeductions $deductions,
         private PartyIdentity $parties,
+        private FiscalPresets $presets,
     ) {
     }
 
@@ -68,6 +70,7 @@ final readonly class InvoiceWorkflow
      * @throws InvalidNumbering     when the company's day comes before the month of the series' last number
      * @throws InvoiceNumberTaken   when another establishment of the company already gave the number
      * @throws PartyIdentityMissing when the seller or the customer cannot be named as the law asks
+     * @throws InvalidInvoice       on `operationCategory` when the law asks what its operations are and neither a choice nor its lines say
      * @throws InvalidInvoice       on `amountDue` when a credit note comes to more than its invoice invoiced less its earlier credit notes;
      *                              on `excessTo` when part of it was already paid and it does not say where that goes
      */
@@ -88,8 +91,12 @@ final readonly class InvoiceWorkflow
             $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
             $language = $this->settings->value($context, 'document.language');
             $language = \is_string($language) ? $language : 'fr';
+            // Before the series and the mentions, which depend on it: a document that cannot say what its operations are takes no number.
+            $fields = $this->presets->get($company->getFiscalPreset())->invoiceFields;
+            $operations = $fields->operationCategory ? ($invoice->operations() ?? throw new InvalidInvoice('operationCategory', 'Say what this invoice\'s operations are: deliveries of goods, services or both. A line naming no product says nothing of it.')) : null;
+            $vatOnDebits = $fields->offersVatOnDebits() ? $company->getProfile()->vatOnDebits : null;
             // Before the series: a document refused for a mention it cannot print takes no number.
-            $mentions = $this->mentions->forIssue($company, $customer, $type, $language);
+            $mentions = $this->mentions->forIssue($company, $customer, $type, $language, $operations);
             $allocated = $this->numbers->allocate($company, $invoice->getEstablishment(), $type->value);
             if ($this->invoices->numberTaken($company->getId(), $type, $allocated->number)) {
                 throw new InvoiceNumberTaken(\sprintf('The number %s is already on another document of this company: give the %s series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $type->value, $invoice->getEstablishment()->getCode()));
@@ -116,6 +123,8 @@ final readonly class InvoiceWorkflow
                     $actorUserId,
                     DocumentFormats::print($this->settings, $context, $company),
                     $mentions->parameters,
+                    $operations,
+                    $vatOnDebits,
                 ),
                 fn (Invoice $issuing): InvoiceFigures => null === $corrected ? $this->totals->issued($issuing) : $corrected->fitsCredit($this->totals->issued($issuing)),
                 $now = $this->clock->now(),

@@ -12,6 +12,7 @@ namespace App\Module\Invoices\Application;
 use App\Files\Application\Files;
 use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
+use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Fiscal\Domain\Calculation\QuantityTotals;
@@ -50,6 +51,7 @@ final readonly class PrintInvoice
         private Files $files,
         private ReadSetting $settings,
         private ClockInterface $clock,
+        private FiscalPresets $presets,
     ) {
     }
 
@@ -151,11 +153,13 @@ final readonly class PrintInvoice
         $context = new SettingContext($company, customerGroupId: $customer->getGroup()?->getId(), customerId: $customer->getId());
         $print = $invoice->getPrintSettings() ?? DocumentFormats::print($this->settings, $context, $company);
         $issuedLanguage = $invoice->getLanguage();
+        $operations = $invoice->getOperationCategory();
         if (null === $issuedLanguage) {
             $language = $this->settings->value($context, 'document.language');
             $profile = $company->getProfile();
             $language = \is_string($language) ? $language : 'fr';
-            [$mentions, $latePenaltyText, $footer] = [$this->mentions->asTheyStand($company, $customer, $invoice->getType(), $language), $profile->latePenaltyText, $profile->invoiceFooterText];
+            $operations = $this->presets->get($company->getFiscalPreset())->invoiceFields->operationCategory ? $invoice->operations() : null;
+            [$mentions, $latePenaltyText, $footer] = [$this->mentions->asTheyStand($company, $customer, $invoice->getType(), $language, $operations), $profile->latePenaltyText, $profile->invoiceFooterText];
         } else {
             [$language, $mentions, $latePenaltyText, $footer] = [$issuedLanguage, new PrintedMentions($invoice->getMentionKeys(), $invoice->getMentionParameters()), $invoice->getLatePenaltyText(), $invoice->getFooter()];
         }
@@ -184,6 +188,7 @@ final readonly class PrintInvoice
             $design ?? $print->design,
             InvoiceType::CreditNote === $invoice->getType() ? null : $print->savingsPrinted($figures->savings),
             self::quantities($invoice),
+            $operations,
         ));
     }
 

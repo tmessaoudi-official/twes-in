@@ -348,7 +348,7 @@ final class FacturXTest extends ApiTestCase
      */
     private function invoice(array $changes): array
     {
-        return [...['customerId' => $this->customerId, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => 30, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => [], 'lines' => []], ...$changes];
+        return [...['customerId' => $this->customerId, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => 30, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'operationCategory' => 'services', 'documentTaxComponentIds' => [], 'lines' => []], ...$changes];
     }
 
     /** @return array<string, mixed> */

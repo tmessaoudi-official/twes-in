@@ -13,6 +13,8 @@ export type InvoicesError =
   | 'excess_to'
   | 'customer_unavailable'
   | 'period_closed'
+  /** Issuing asked what the operations are, which neither a choice nor the lines' products said. */
+  | 'missing_operation_category'
   | MentionDatumError
   | PartyIdentityError;
 
@@ -255,6 +257,13 @@ export interface InvoiceRow {
   notesInternal: string | null;
   /** The document discount as it was typed; null for none. */
   discountAmount: string | null;
+  /**
+   * What its operations are, where the law asks: on a draft the category chosen (null: its lines' at issue), on an
+   * issued document the one it states; null where the law asks none.
+   */
+  operationCategory: OperationCategory | null;
+  /** Whether the company had opted to pay VAT on the débits when it was issued; null on a draft and where the law asks nothing. */
+  vatOnDebits: boolean | null;
   /** The fixed charges and withholdings chosen; null takes the company's and the customer's defaults. */
   documentTaxComponentIds: string[] | null;
   lines: InvoiceLine[];
@@ -285,6 +294,8 @@ export interface InvoiceInput {
   notesPrinted: string | null;
   notesInternal: string | null;
   discountAmount: string | null;
+  /** The category chosen; null to have it worked out at issue from the lines' products. */
+  operationCategory: OperationCategory | null;
   documentTaxComponentIds: string[] | null;
   lines: InvoiceLineInput[];
 }
@@ -355,6 +366,19 @@ export interface InvoiceOptions {
   establishments: EstablishmentOption[];
   units: UnitOption[];
   taxes: TaxOption[];
+  /** Whether the company's law asks an invoice what its operations are (France), so the form asks it too. */
+  operationCategory: boolean;
+}
+
+/** What an invoice's operations are (CGI ann. II art. 242 nonies A I 8° bis): goods, services or both. */
+export type OperationCategory = 'goods' | 'services' | 'both';
+export const OPERATION_CATEGORIES: readonly OperationCategory[] = ['goods', 'services', 'both'];
+
+/** What issuing a draft now would give it, said before it is done: its number and, where the law asks, its operations. */
+export interface IssuePreview {
+  number: string;
+  /** Null where the law asks none, or when nothing says what they are yet. */
+  operationCategory: OperationCategory | null;
 }
 
 /** Where an amount still due stands against its due day: not yet due, then by how many days late. */

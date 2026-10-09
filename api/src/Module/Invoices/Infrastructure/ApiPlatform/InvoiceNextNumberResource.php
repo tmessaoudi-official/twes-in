@@ -37,4 +37,12 @@ final class InvoiceNextNumberResource
     #[ApiProperty(identifier: false, required: true)]
     #[Groups([self::READ])]
     public string $number = '';
+
+    /**
+     * What issuing would state the operations are (goods, services or both), where the law asks; null where it asks
+     * none, or when nothing says yet and issuing will ask.
+     */
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'enum' => ['goods', 'services', 'both', null]])]
+    #[Groups([self::READ])]
+    public ?string $operationCategory = null;
 }

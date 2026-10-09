@@ -8,6 +8,7 @@ import type { InvoiceInput, InvoiceOptions, InvoiceRow } from './invoices-types'
 const options: InvoiceOptions = {
   currency: 'TND',
   currencyScale: 3,
+  operationCategory: false,
   establishments: [],
   units: [],
   taxes: [],
@@ -33,6 +34,8 @@ const draft: InvoiceRow = {
   notesPrinted: null,
   notesInternal: null,
   discountAmount: null,
+  operationCategory: null,
+  vatOnDebits: null,
   documentTaxComponentIds: [],
   lines: [],
   subtotalNet: '0.000',
@@ -60,6 +63,7 @@ const input: InvoiceInput = {
   notesPrinted: null,
   notesInternal: null,
   discountAmount: null,
+  operationCategory: null,
   documentTaxComponentIds: [],
   lines: [],
 };

@@ -75,6 +75,18 @@ final class FiscalPresetConfiguration implements ConfigurationInterface
                     ->arrayNode('invoice')->scalarPrototype()->end()->end()
                 ->end()
             ->end()
+            // What the country's law adds to an invoice (docs/fiscal/FR.md § 4a): the category of its operations, and the
+            // mention printed when the company opted to pay VAT on the débits, which is what offers it that option.
+            ->arrayNode('invoice_fields')
+                ->children()
+                    ->booleanNode('operation_category')->defaultFalse()->end()
+                    ->arrayNode('vat_on_debits')
+                        ->children()
+                            ->scalarNode('mention_key')->isRequired()->cannotBeEmpty()->end()
+                        ->end()
+                    ->end()
+                ->end()
+            ->end()
             // The defaults the country gives settings where custom differs by country, by setting key; the keys hold dots,
             // so they are kept as written. Which keys exist and which values they take is checked by the Settings side.
             ->arrayNode('settings')

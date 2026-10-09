@@ -68,6 +68,8 @@ const invoice: InvoiceRow = {
   notesPrinted: null,
   notesInternal: null,
   discountAmount: null,
+  operationCategory: null,
+  vatOnDebits: null,
   documentTaxComponentIds: [],
   lines: [],
   subtotalNet: '10000.000',
@@ -98,6 +100,7 @@ const invoice: InvoiceRow = {
 const options: InvoiceOptions = {
   currency: 'TND',
   currencyScale: 3,
+  operationCategory: false,
   establishments: [{ id: 'e1', code: 'S', name: 'Siège — Tunis', isDefault: true }],
   units: [],
   taxes: [],

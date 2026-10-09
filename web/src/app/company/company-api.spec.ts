@@ -20,6 +20,7 @@ const changes: CompanyProfileChanges = {
   iban: null,
   bic: null,
   vatRegime: 'standard',
+  vatOnDebits: false,
   invoiceFooterText: null,
   latePenaltyText: null,
 };
@@ -58,6 +59,7 @@ describe('CompanyApi, the profile', () => {
     expect(profile.identifiers).toEqual({});
     expect(profile.identifierFields[0]?.required).toBe(true);
     expect(profile.vatRegimes).toEqual([{ code: 'standard', label: 'Régime normal' }]);
+    expect([profile.vatOnDebits, profile.offersVatOnDebits]).toEqual([false, false]);
   });
 
   it('names a value the preset refused as invalid, not as a member error', async () => {

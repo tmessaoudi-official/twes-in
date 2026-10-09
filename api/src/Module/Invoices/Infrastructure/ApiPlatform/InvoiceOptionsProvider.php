@@ -12,6 +12,7 @@ namespace App\Module\Invoices\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use App\Fiscal\Application\CurrencyScales;
+use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxComponentRepository;
@@ -31,6 +32,7 @@ final readonly class InvoiceOptionsProvider implements ProviderInterface
         private UnitRepository $units,
         private TaxComponentRepository $taxes,
         private CurrencyScales $scales,
+        private FiscalPresets $presets,
     ) {
     }
 
@@ -67,6 +69,8 @@ final readonly class InvoiceOptionsProvider implements ProviderInterface
             'entersVatBase' => $tax->entersVatBase(),
             'isDefault' => $tax->isDefault(),
         ], array_filter($this->taxes->ofCompany($companyId), static fn (TaxComponent $tax): bool => $tax->isActive())));
+
+        $options->operationCategory = $this->presets->get($company->getFiscalPreset())->invoiceFields->operationCategory;
 
         return $options;
     }

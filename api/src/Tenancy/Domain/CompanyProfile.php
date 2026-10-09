@@ -10,8 +10,9 @@ declare(strict_types=1);
 namespace App\Tenancy\Domain;
 
 /**
- * What a company's documents say about it: legal identity, registration numbers, address, contact, banking, VAT regime
- * and the texts printed at the foot of an invoice (docs/SPEC.md § 4 company). Values are kept without stray spaces and
+ * What a company's documents say about it: legal identity, registration numbers, address, contact, banking, VAT regime,
+ * whether it opted to pay VAT on the débits (where its preset offers that option) and the texts printed at the foot of
+ * an invoice (docs/SPEC.md § 4 company). Values are kept without stray spaces and
  * an empty value is no value, so the same profile typed twice compares equal. Which identifiers and regimes a company
  * may carry is its fiscal preset's to say, and is checked by the use case that revises the profile.
  */
@@ -36,6 +37,7 @@ final readonly class CompanyProfile
     public string $vatRegime;
     public ?string $invoiceFooterText;
     public ?string $latePenaltyText;
+    public bool $vatOnDebits;
 
     /** @param array<string, string|null> $identifiers */
     public function __construct(
@@ -54,6 +56,7 @@ final readonly class CompanyProfile
         string $vatRegime = self::STANDARD_REGIME,
         ?string $invoiceFooterText = null,
         ?string $latePenaltyText = null,
+        bool $vatOnDebits = false,
     ) {
         $this->legalName = self::text($legalName);
         $this->legalForm = self::text($legalForm);
@@ -78,6 +81,7 @@ final readonly class CompanyProfile
         $this->vatRegime = trim($vatRegime);
         $this->invoiceFooterText = self::text($invoiceFooterText);
         $this->latePenaltyText = self::text($latePenaltyText);
+        $this->vatOnDebits = $vatOnDebits;
     }
 
     public function equals(self $other): bool

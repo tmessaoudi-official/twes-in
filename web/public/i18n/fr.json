@@ -280,7 +280,8 @@
         "iban": "IBAN",
         "bic": "BIC",
         "invoiceFooterText": "Pied de facture",
-        "latePenaltyText": "Pénalités de retard"
+        "latePenaltyText": "Pénalités de retard",
+        "vatOnDebits": "Option pour le paiement de la TVA d’après les débits"
       },
       "errors": {
         "invalid": "Le profil a été refusé. Vérifiez les identifiants, l’IBAN et le BIC.",
@@ -288,6 +289,9 @@
         "network": "Le serveur est injoignable.",
         "forbidden": "Votre rôle dans cette entreprise ne le permet pas.",
         "logo_refused": "L’image est refusée. Envoyez un fichier PNG, JPEG ou WebP de 2 Mo et 4000 pixels de côté au plus."
+      },
+      "hints": {
+        "vatOnDebits": "Cochez si la société a opté pour payer la TVA de ses prestations de services à la facturation plutôt qu’à l’encaissement. Ses factures de services porteront alors la mention « Option pour le paiement de la taxe d’après les débits »."
       }
     },
     "establishments": {
@@ -1384,7 +1388,8 @@
       "total": "Total TTC",
       "amountDue": "Reste à payer",
       "notesPrinted": "Notes imprimées sur la facture",
-      "notesInternal": "Notes internes"
+      "notesInternal": "Notes internes",
+      "operationCategory": "Nature des opérations"
     },
     "form": {
       "reference_hint": "Le numéro de commande du client, imprimé sur la facture.",
@@ -1397,7 +1402,9 @@
       "customer_required": "Nommez le client de cette facture.",
       "no_customer_found": "Aucun client trouvé.",
       "customer_locked_credit_note": "Un avoir va au client de la facture qu’il corrige.",
-      "customer_locked_delivery_notes": "Les lignes reprises d’un bon de livraison gardent son client : retirez-les et enregistrez pour en choisir un autre."
+      "customer_locked_delivery_notes": "Les lignes reprises d’un bon de livraison gardent son client : retirez-les et enregistrez pour en choisir un autre.",
+      "operations_hint": "Ce que la loi demande à une facture française : livraisons de biens, prestations de services ou les deux. « Selon les lignes » la déduit des produits vendus à l’émission ; une ligne sans produit demande de la choisir.",
+      "operations_credit_note_hint": "Un avoir reprend celle de la facture qu’il corrige."
     },
     "lines": {
       "title": "Lignes",
@@ -1616,7 +1623,11 @@
       "record_overpayment": "Enregistrer un trop-perçu",
       "issue_message_numbered": "Elle recevra le numéro {{number}}, pour {{total}} à {{customer}}, et ne se modifiera plus : une erreur se corrigera par un avoir.",
       "factur_x_pdf": "Factur-X (PDF/A-3)",
-      "factur_x_xml": "Factur-X (XML seul)"
+      "factur_x_xml": "Factur-X (XML seul)",
+      "issue_message_numbered_goods": "Elle recevra le numéro {{number}}, pour {{total}} à {{customer}}, et ne se modifiera plus : une erreur se corrigera par un avoir. Nature des opérations : livraisons de biens.",
+      "issue_message_numbered_services": "Elle recevra le numéro {{number}}, pour {{total}} à {{customer}}, et ne se modifiera plus : une erreur se corrigera par un avoir. Nature des opérations : prestations de services.",
+      "issue_message_numbered_both": "Elle recevra le numéro {{number}}, pour {{total}} à {{customer}}, et ne se modifiera plus : une erreur se corrigera par un avoir. Nature des opérations : livraisons de biens et prestations de services.",
+      "issue_message_numbered_unsaid": "Elle recevra le numéro {{number}}, pour {{total}} à {{customer}}. Choisissez d’abord la nature des opérations : une ligne sans produit ne la dit pas, et la facture ne s’émet pas sans elle."
     },
     "overpayment": {
       "title": "Enregistrer un trop-perçu",
@@ -1643,7 +1654,8 @@
       "missing_mention": "Une mention légale de ce document ne peut pas être complétée : le document n’est pas émis.",
       "missing_seller_identity": "Une facture doit nommer votre société comme la loi le demande : sa raison sociale, son adresse et ses numéros fiscaux (matricule fiscal, SIREN…). Complétez le Profil de la société ; la facture reste un brouillon et ne prend aucun numéro.",
       "missing_customer_identity": "Une facture doit nommer le client comme la loi le demande : son adresse de facturation et, pour une entreprise de votre pays, ses numéros fiscaux. Complétez sa fiche ; la facture reste un brouillon et ne prend aucun numéro.",
-      "period_closed": "Les comptes sont clos à cette date : choisissez un jour après la clôture."
+      "period_closed": "Les comptes sont clos à cette date : choisissez un jour après la clôture.",
+      "missing_operation_category": "Une facture française dit la nature de ses opérations : choisissez-la dans « Nature des opérations », car une ligne sans produit ne la dit pas."
     },
     "home": {
       "outstanding": "À encaisser",
@@ -1749,6 +1761,12 @@
         "city": "la ville",
         "countryCode": "le pays"
       }
+    },
+    "operations": {
+      "from_lines": "Selon les lignes",
+      "goods": "Livraisons de biens",
+      "services": "Prestations de services",
+      "both": "Livraisons de biens et prestations de services"
     }
   },
   "delivery_notes": {

@@ -443,6 +443,8 @@ function toOptions(raw: QuoteOptionsQuoteOptionsRead): InvoiceOptions {
       threshold: tax.threshold,
       isDefault: tax.isDefault,
     })),
+    // A quote states no category of operations: the invoice it becomes does, when it is issued.
+    operationCategory: false,
   };
 }
 

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Quotes;
 
 use App\Fiscal\Application\CurrencyScales;
+use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\InvalidDocument;
@@ -25,6 +26,8 @@ use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\InvoiceStatus;
+use App\Module\Invoices\Domain\OperationCategory;
+use App\Module\Products\Domain\Product;
 use App\Module\Quotes\Application\QuoteDeposit;
 use App\Module\Quotes\Application\QuoteInvoices;
 use App\Module\Quotes\Application\QuoteInvoicingRefused;
@@ -56,6 +59,7 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
         private DepositWording $wording,
         private UnitRepository $units,
         private ClockInterface $clock,
+        private FiscalPresets $presets,
     ) {
     }
 
@@ -151,7 +155,8 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
                 $company,
                 $quote->getEstablishment(),
                 $quote->getCustomer(),
-                new InvoiceHeader(customerReference: $quote->getHeader()->customerReference),
+                // An advance is on the operations of its quote, which its own lines, naming no product, cannot say.
+                new InvoiceHeader(customerReference: $quote->getHeader()->customerReference, operationCategory: $this->operationsOf($quote)),
                 $lines,
                 ['quoteId' => $quote->getId()->toRfc4122(), 'deposit' => true],
                 $actorUserId,
@@ -181,6 +186,16 @@ final readonly class ManagedQuoteInvoices implements QuoteInvoices
         $invoice = $this->invoices->ofIdInCompany($invoiceId, $company->getId());
 
         return null !== $invoice && InvoiceStatus::Cancelled !== $invoice->getStatus();
+    }
+
+    /** What the quote's operations are, where the company's law asks; null when a line names no product, for the person to say. */
+    private function operationsOf(Quote $quote): ?OperationCategory
+    {
+        if (!$this->presets->get($quote->getCompany()->getFiscalPreset())->invoiceFields->operationCategory) {
+            return null;
+        }
+
+        return OperationCategory::ofProducts(array_map(static fn (QuoteLine $line): ?Product => $line->getProduct(), $quote->getLines()));
     }
 
     /**

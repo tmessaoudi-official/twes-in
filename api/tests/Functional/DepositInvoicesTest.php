@@ -251,8 +251,15 @@ final class DepositInvoicesTest extends ApiTestCase
         $this->signedIn(self::WRITER);
         $quoteId = $this->accepted();
         $depositId = $this->deposit($quoteId, ['depositPercentage' => '30', 'depositAmount' => null]);
+        $drawn = $this->invoice($depositId);
+        self::assertNull($drawn['operationCategory'] ?? null, 'the quote\'s hand-written line says nothing of what its operations are');
+        $this->postJson($this->companyPath().'/invoices/'.$depositId.'/issue', []);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'France asks what they are');
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$depositId, [...$this->editable($drawn), 'operationCategory' => 'both', 'lines' => array_map(static fn (array $line): array => array_intersect_key($line, array_flip(['description', 'quantity', 'unitId', 'unitPriceNet', 'taxComponentIds'])), $this->rows($drawn, 'lines'))]);
+        self::assertResponseIsSuccessful();
         $this->issue($depositId);
         $deposit = $this->invoice($depositId);
+        self::assertSame('both', $deposit['operationCategory']);
 
         $this->postJson($this->quotePath($quoteId).'/invoice', null);
 

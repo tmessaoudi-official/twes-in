@@ -104,6 +104,7 @@ final class PrintInvoiceTest extends TestCase
             new Files($this->storage, $this->records, $this->clock),
             new ReadSetting($resolve),
             $this->clock,
+            ShippedFiscalPresets::presets(),
         );
     }
 

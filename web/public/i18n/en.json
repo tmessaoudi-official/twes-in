@@ -280,7 +280,8 @@
         "iban": "IBAN",
         "bic": "BIC",
         "invoiceFooterText": "Invoice footer",
-        "latePenaltyText": "Late payment penalties"
+        "latePenaltyText": "Late payment penalties",
+        "vatOnDebits": "Option to pay VAT on debits"
       },
       "errors": {
         "invalid": "The profile was refused. Check the registration numbers, the IBAN and the BIC.",
@@ -288,6 +289,9 @@
         "network": "The server could not be reached.",
         "forbidden": "Your role in this company does not allow that.",
         "logo_refused": "The picture was refused. Send a PNG, JPEG or WebP file of at most 2 MB and 4000 pixels on a side."
+      },
+      "hints": {
+        "vatOnDebits": "Tick if the company opted to pay the VAT on its services when it invoices them rather than when it is paid. Its invoices for services will then carry the mention « Option pour le paiement de la taxe d’après les débits »."
       }
     },
     "establishments": {
@@ -1384,7 +1388,8 @@
       "total": "Total incl. tax",
       "amountDue": "Amount due",
       "notesPrinted": "Notes printed on the invoice",
-      "notesInternal": "Internal notes"
+      "notesInternal": "Internal notes",
+      "operationCategory": "Operations"
     },
     "form": {
       "reference_hint": "The customer's order number, printed on the invoice.",
@@ -1397,7 +1402,9 @@
       "customer_required": "Name the customer this invoice is for.",
       "no_customer_found": "No customer found.",
       "customer_locked_credit_note": "A credit note goes to the customer of the invoice it corrects.",
-      "customer_locked_delivery_notes": "Lines taken from a delivery note keep its customer: take them off and save to choose another."
+      "customer_locked_delivery_notes": "Lines taken from a delivery note keep its customer: take them off and save to choose another.",
+      "operations_hint": "What the law asks of a French invoice: deliveries of goods, services, or both. « From the lines » works it out from the products sold when it is issued; a line with no product asks you to choose.",
+      "operations_credit_note_hint": "A credit note takes the one of the invoice it corrects."
     },
     "lines": {
       "title": "Lines",
@@ -1616,7 +1623,11 @@
       "record_overpayment": "Record an overpayment",
       "issue_message_numbered": "It will be numbered {{number}}, for {{total}} to {{customer}}, and will no longer change: a mistake is then corrected with a credit note.",
       "factur_x_pdf": "Factur-X (PDF/A-3)",
-      "factur_x_xml": "Factur-X (XML only)"
+      "factur_x_xml": "Factur-X (XML only)",
+      "issue_message_numbered_goods": "It will be numbered {{number}}, for {{total}} to {{customer}}, and will no longer change: a mistake is then corrected with a credit note. Operations: deliveries of goods.",
+      "issue_message_numbered_services": "It will be numbered {{number}}, for {{total}} to {{customer}}, and will no longer change: a mistake is then corrected with a credit note. Operations: services.",
+      "issue_message_numbered_both": "It will be numbered {{number}}, for {{total}} to {{customer}}, and will no longer change: a mistake is then corrected with a credit note. Operations: deliveries of goods and services.",
+      "issue_message_numbered_unsaid": "It will be numbered {{number}}, for {{total}} to {{customer}}. Choose its operations first: a line with no product does not say them, and the invoice is not issued without them."
     },
     "overpayment": {
       "title": "Record an overpayment",
@@ -1643,7 +1654,8 @@
       "missing_mention": "A legal mention of this document cannot be completed: the document is not issued.",
       "missing_seller_identity": "An invoice must name your company as the law asks: its legal name, its address and its tax numbers (matricule fiscal, SIREN…). Complete the Company profile; the invoice stays a draft and takes no number.",
       "missing_customer_identity": "An invoice must name the customer as the law asks: its billing address and, for a business in your country, its tax numbers. Complete the customer’s record; the invoice stays a draft and takes no number.",
-      "period_closed": "The books are closed on that day: choose a day after the closing."
+      "period_closed": "The books are closed on that day: choose a day after the closing.",
+      "missing_operation_category": "A French invoice states what its operations are: choose them under « Operations », since a line with no product does not say them."
     },
     "home": {
       "outstanding": "To collect",
@@ -1749,6 +1761,12 @@
         "city": "the city",
         "countryCode": "the country"
       }
+    },
+    "operations": {
+      "from_lines": "From the lines",
+      "goods": "Deliveries of goods",
+      "services": "Services",
+      "both": "Deliveries of goods and services"
     }
   },
   "delivery_notes": {

@@ -91,7 +91,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $this->audit = new InMemoryAuditTrail($this->transactions);
         // The notes are held while they are read, as the database holds their rows.
         $this->notes->transactions = $this->transactions;
-        $manage = new ManageInvoices($this->invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $this->units, $this->taxes, $this->establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new InMemorySourceDeliveryNoteLines(), ShippedDepositDeductions::of($this->invoices, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())));
+        $manage = new ManageInvoices($this->invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $this->units, $this->taxes, $this->establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $this->audit, $this->clock, new ShelfLinePrices(), new ExcludedTaxFamilies(ShippedFiscalPresets::presets()), new InMemorySourceDeliveryNoteLines(), ShippedDepositDeductions::of($this->invoices, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())), ShippedFiscalPresets::presets());
         $this->invoicing = new InvoiceDeliveryNotes($this->notes, $this->invoices, new ManagedInvoiceDrafts($manage), $this->transactions, $this->audit, $this->clock);
         $this->customer = $this->customer($this->company);
     }

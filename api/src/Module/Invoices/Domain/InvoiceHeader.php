@@ -12,7 +12,8 @@ namespace App\Module\Invoices\Domain;
 /**
  * What an invoice says besides its customer, its lines and its document taxes: the day the goods or services were
  * supplied, its payment terms in days (none: the customer's at issue), the customer's own reference, notes printed
- * and notes kept inside the company, and a discount on the whole document as an amount. Empty texts are absent.
+ * and notes kept inside the company, a discount on the whole document as an amount, and the category of its operations
+ * where its country's law asks for one (none: worked out at issue from its lines). Empty texts are absent.
  */
 final readonly class InvoiceHeader
 {
@@ -36,6 +37,7 @@ final readonly class InvoiceHeader
         ?string $notesPrinted = null,
         ?string $notesInternal = null,
         ?string $discountAmount = null,
+        public ?OperationCategory $operationCategory = null,
     ) {
         if (null !== $paymentTermsDays && ($paymentTermsDays < 0 || $paymentTermsDays > self::TERMS_MAX)) {
             throw new InvalidInvoice('paymentTermsDays', \sprintf('Payment terms run from 0 to %d days.', self::TERMS_MAX));
@@ -54,7 +56,7 @@ final readonly class InvoiceHeader
         if ($this->supplyDate?->format('Y-m-d') !== $other->supplyDate?->format('Y-m-d')) {
             $changed[] = 'supplyDate';
         }
-        foreach (['paymentTermsDays', 'customerReference', 'notesPrinted', 'notesInternal', 'discountAmount'] as $field) {
+        foreach (['paymentTermsDays', 'customerReference', 'notesPrinted', 'notesInternal', 'discountAmount', 'operationCategory'] as $field) {
             if ($this->{$field} !== $other->{$field}) {
                 $changed[] = $field;
             }

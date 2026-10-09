@@ -64,6 +64,9 @@ import {
   type FacturXFormat,
   type InvoiceInput,
   type InvoiceRow,
+  type IssuePreview,
+  OPERATION_CATEGORIES,
+  type OperationCategory,
   type Payment,
 } from './invoices-types';
 import { Feedback } from '../shared/feedback/feedback';
@@ -666,22 +669,37 @@ export class InvoicePage {
     return companyId && current ? this.facade.pdfCopyUrl(companyId, current.id, kind) : null;
   }
 
-  /** The number the draft would carry if issued now, said on the question before issuing; null until known. */
-  private readonly nextNumber = signal<string | null>(null);
+  /**
+   * The number the draft would carry if issued now, with what it would state its operations are where the law asks,
+   * said on the question before issuing; null until known.
+   */
+  private readonly nextNumber = signal<IssuePreview | null>(null);
+  /** The category of operations chosen in the form, saved or not; null for « from the lines » or no such field. */
+  private readonly chosenOperations = computed<OperationCategory | null>(() => {
+    this.typed();
+    const value = this.form()?.getRawValue()['operationCategory'];
+    return OPERATION_CATEGORIES.find((category) => category === value) ?? null;
+  });
   /**
    * What issuing will do, said precisely before it is done (docs/SPEC.md § 7, 2026-09-26 23:04): the number, the
-   * total and who it is for. Until the number is known the question says what issuing does in general.
+   * total and who it is for, and where the law asks, what its operations will be stated to be (the choice in the form,
+   * else what the saved lines' products say), or that it must be said first. Until the number is known the question
+   * says what issuing does in general.
    */
   private issuePreview(): { message: string; messageParams?: Record<string, string> } {
     const current = this.current();
-    const number = this.nextNumber();
+    const preview = this.nextNumber();
     const scale = this.scale();
-    if (!current || number === null || scale === null)
+    if (!current || preview === null || scale === null)
       return { message: 'invoices.actions.issue_message' };
+    const operations = this.chosenOperations() ?? preview.operationCategory;
+    const asked = this.options()?.operationCategory === true;
     return {
-      message: 'invoices.actions.issue_message_numbered',
+      message: !asked
+        ? 'invoices.actions.issue_message_numbered'
+        : `invoices.actions.issue_message_numbered_${operations ?? 'unsaid'}`,
       messageParams: {
-        number,
+        number: preview.number,
         total:
           `${this.format.amount(current.total, scale)} ${this.options()?.currency ?? ''}`.trim(),
         customer: current.customerName,
@@ -827,8 +845,8 @@ export class InvoicePage {
       untracked(() => {
         this.nextNumber.set(null);
         if (asked === null || !companyId) return;
-        void this.facade.nextNumber(companyId, asked.id).then((number) => {
-          if (this.current() === asked) this.nextNumber.set(number);
+        void this.facade.nextNumber(companyId, asked.id).then((preview) => {
+          if (this.current() === asked) this.nextNumber.set(preview);
         });
       });
     });

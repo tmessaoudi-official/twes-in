@@ -94,6 +94,7 @@ final class FrenchMentionsTest extends ApiTestCase
         $this->postJson($this->path(), [
             'customerId' => $this->customer->getId()->toRfc4122(),
             'establishmentId' => null,
+            'operationCategory' => 'services',
             'lines' => [['description' => 'Formation', 'quantity' => '1', 'unitId' => $unit->getId()->toRfc4122(), 'unitPriceNet' => '100', 'discountRate' => null, 'taxComponentIds' => []]],
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);

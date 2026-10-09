@@ -33,6 +33,9 @@ import {
   AGING_BUCKETS,
   type AgingAmount,
   INVOICE_STATUSES,
+  type IssuePreview,
+  OPERATION_CATEGORIES,
+  type OperationCategory,
   type InvoiceInput,
   type InvoiceOptions,
   type InvoiceRow,
@@ -66,17 +69,18 @@ export class InvoicesApi {
 
   /** What the invoice form offers: the currency, and the establishments, customers, products, units and taxes. */
   /**
-   * The number a draft would carry if it were issued now, said on the question before issuing; null when it cannot be
-   * said (the document is no longer a draft, or its establishment cannot number it today), which issuing then says.
+   * The number a draft would carry if it were issued now, and where the law asks, what it would state its operations
+   * are, said on the question before issuing; null when it cannot be said (the document is no longer a draft, or its
+   * establishment cannot number it today), which issuing then says.
    */
-  async nextNumber(companyId: string, id: string): Promise<string | null> {
+  async nextNumber(companyId: string, id: string): Promise<IssuePreview | null> {
     try {
       const answer = await firstValueFrom(
         this.http.get<InvoiceNextNumberInvoiceNextNumberRead>(
           `${companyPath(companyId)}/invoices/${encodeURIComponent(id)}/next-number`,
         ),
       );
-      return answer.number;
+      return { number: answer.number, operationCategory: operationsOf(answer.operationCategory) };
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status === 409) return null;
       throw new InvoicesRefused(codeOf(error));
@@ -438,6 +442,7 @@ function toFacturXRefusal(raw: RawFacturXRefusal): FacturXAnswer {
 
 function fieldCode(field: string | null): InvoicesError {
   if (field === 'customerId') return 'customer_unavailable';
+  if (field === 'operationCategory') return 'missing_operation_category';
   if (field !== null && field in PARTY_IDENTITY) return PARTY_IDENTITY[field];
   if (field === null) return 'invalid';
   return MENTION_DATA[field] ?? (field.startsWith('mention.') ? 'missing_mention' : 'invalid');
@@ -518,6 +523,8 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
     notesPrinted: raw.notesPrinted ?? null,
     notesInternal: raw.notesInternal ?? null,
     discountAmount: raw.discountAmount ?? null,
+    operationCategory: operationsOf(raw.operationCategory),
+    vatOnDebits: raw.vatOnDebits ?? null,
     documentTaxComponentIds:
       raw.documentTaxComponentIds === null || raw.documentTaxComponentIds === undefined
         ? null
@@ -648,5 +655,10 @@ function toOptions(raw: InvoiceOptionsInvoiceOptionsRead): InvoiceOptions {
       threshold: tax.threshold,
       isDefault: tax.isDefault,
     })),
+    operationCategory: raw.operationCategory ?? false,
   };
+}
+
+function operationsOf(raw: string | null | undefined): OperationCategory | null {
+  return OPERATION_CATEGORIES.find((category) => category === raw) ?? null;
 }

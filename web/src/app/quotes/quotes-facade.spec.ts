@@ -9,6 +9,7 @@ import type { QuoteInput, QuoteRow } from './quotes-types';
 const options: InvoiceOptions = {
   currency: 'TND',
   currencyScale: 3,
+  operationCategory: false,
   establishments: [],
   units: [],
   taxes: [],

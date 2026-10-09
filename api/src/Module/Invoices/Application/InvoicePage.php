@@ -13,6 +13,7 @@ use App\Fiscal\Domain\Calculation\QuantityTotal;
 use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceFigures;
+use App\Module\Invoices\Domain\OperationCategory;
 use App\Shared\Domain\DocumentDesign;
 use App\Tenancy\Domain\SellerSnapshot;
 
@@ -71,6 +72,8 @@ final readonly class InvoicePage
         public ?string $savings = null,
         /** What the lines come to in each unit, empty for a single line. */
         public array $quantities = [],
+        /** What its operations are, printed where its country's law asks: as issued, or as its draft says today; null when not said. */
+        public ?OperationCategory $operations = null,
     ) {
     }
 

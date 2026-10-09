@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
@@ -71,6 +72,7 @@ final readonly class ManageInvoices
         private ExcludedTaxFamilies $excluded,
         private SourceDeliveryNoteLines $sourceLines,
         private DepositDeductions $deductions,
+        private FiscalPresets $presets,
     ) {
     }
 
@@ -298,6 +300,9 @@ final readonly class ManageInvoices
      */
     private function checked(Company $company, InvoiceInput $input, ?Invoice $current): array
     {
+        if (null !== $input->header->operationCategory && !$this->presets->get($company->getFiscalPreset())->invoiceFields->operationCategory) {
+            throw new InvalidInvoice('operationCategory', 'This company\'s invoices state no category of operations: its country\'s law asks for none.');
+        }
         $customer = $this->customers->ofIdInCompany($input->customerId, $company->getId())
             ?? throw new InvalidInvoice('customerId', 'No customer of this company has this id.');
         if (!$customer->isActive() && !(null !== $current && $current->getCustomer()->getId()->equals($customer->getId()))) {

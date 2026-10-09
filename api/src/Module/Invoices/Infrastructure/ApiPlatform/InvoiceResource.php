@@ -28,6 +28,7 @@ use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceLineTax;
 use App\Module\Invoices\Domain\InvoiceTax;
+use App\Module\Invoices\Domain\OperationCategory;
 use App\Module\Invoices\Domain\Payment;
 use App\Module\Products\Domain\LotCode;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -277,6 +278,21 @@ final class InvoiceResource
     public ?string $discountAmount = null;
 
     /**
+     * What its operations are, where its country's law asks (docs/fiscal/FR.md § 4a): `goods`, `services` or `both`. On a
+     * draft the category chosen, null to have it worked out at issue from its lines' products; on an issued document the
+     * one it states. A company whose law asks none refuses it.
+     */
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'enum' => ['goods', 'services', 'both', null]])]
+    #[Assert\Choice(choices: ['goods', 'services', 'both'], groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $operationCategory = null;
+
+    /** Whether the company had opted to pay VAT on the débits when it was issued; null on a draft and where the law asks nothing. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?bool $vatOnDebits = null;
+
+    /**
      * The fixed charges and withholdings on the whole document, in order; left out (null), the company's defaults and
      * the customer's own that its regime charges; an empty list for none.
      *
@@ -515,6 +531,8 @@ final class InvoiceResource
         $resource->notesPrinted = $header->notesPrinted;
         $resource->notesInternal = $header->notesInternal;
         $resource->discountAmount = $header->discountAmount;
+        $resource->operationCategory = ($invoice->getOperationCategory() ?? $header->operationCategory)?->value;
+        $resource->vatOnDebits = $invoice->getVatOnDebits();
         $resource->documentTaxComponentIds = array_map(static fn (InvoiceTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $invoice->getDocumentTaxes());
         $resource->lines = array_map(static fn (InvoiceLine $line, array $fixed): array => [
             'productId' => $line->getProduct()?->getId()->toRfc4122(),
@@ -597,6 +615,7 @@ final class InvoiceResource
                 $this->notesPrinted,
                 $this->notesInternal,
                 $this->discountAmount,
+                null === $this->operationCategory ? null : OperationCategory::from($this->operationCategory),
             ),
             $lines,
             null === $this->documentTaxComponentIds ? null : self::uuids($this->documentTaxComponentIds),

@@ -24,6 +24,7 @@ const WRITABLE = [
   'iban',
   'bic',
   'vatRegime',
+  'vatOnDebits',
   'invoiceFooterText',
   'latePenaltyText',
 ];
@@ -70,6 +71,9 @@ test("the owner fills the company's profile with the identifier its preset requi
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
     expect(axe.violations.map((violation) => violation.id)).toEqual([]);
+
+    // The débits option is France's (CGI ann. II art. 242 nonies A I 11° bis): a Tunisian profile does not offer it.
+    await expect(page.getByTestId('field-vatOnDebits')).toHaveCount(0);
 
     const name = `Demo SARL ${Date.now()}`;
     await legalName.fill(name);

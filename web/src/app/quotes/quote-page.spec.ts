@@ -49,6 +49,7 @@ class StaticLoader implements TranslateLoader {
 const options: InvoiceOptions = {
   currency: 'TND',
   currencyScale: 3,
+  operationCategory: false,
   establishments: [{ id: 'e1', code: '000', name: 'Siège', isDefault: true }],
   units: [{ id: 'u1', code: 'C62', name: 'Unité', decimals: 0 }],
   taxes: [

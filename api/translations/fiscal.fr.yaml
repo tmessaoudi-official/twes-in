@@ -28,3 +28,4 @@ fiscal:
             late_payment: 'En cas de retard de paiement, des pénalités sont exigibles au taux de %rate%.'
             recovery_indemnity: 'Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 €.'
             no_early_discount: "Pas d’escompte pour paiement anticipé."
+            vat_on_debits: 'Option pour le paiement de la taxe d’après les débits'

@@ -16,6 +16,7 @@ import type {
   InvoicesError,
   InvoiceStatusCounts,
   InvoiceSummary,
+  IssuePreview,
   OverpaymentInput,
   PaymentInput,
   ProductOption,
@@ -85,7 +86,7 @@ export class InvoicesFacade {
   }
 
   /** The number a draft would carry if issued now, or null when it cannot be said; never an error on screen. */
-  async nextNumber(companyId: string, id: string): Promise<string | null> {
+  async nextNumber(companyId: string, id: string): Promise<IssuePreview | null> {
     try {
       return await this.api.nextNumber(companyId, id);
     } catch {

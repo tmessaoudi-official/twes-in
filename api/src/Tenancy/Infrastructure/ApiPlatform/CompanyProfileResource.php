@@ -143,6 +143,15 @@ final class CompanyProfileResource
     #[Groups([self::READ, self::WRITE])]
     public ?string $latePenaltyText = null;
 
+    /** Whether the company opted to pay VAT on the débits (docs/fiscal/FR.md § 4a); only where offersVatOnDebits says so. */
+    #[Groups([self::READ, self::WRITE])]
+    public bool $vatOnDebits = false;
+
+    /** Whether the company's fiscal preset offers the débits option, so a form shows it. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public bool $offersVatOnDebits = false;
+
     /** @var list<CompanyIdentifierField> */
     #[ApiProperty(writable: false, schema: [
         'type' => 'array',
@@ -200,6 +209,7 @@ final class CompanyProfileResource
             $this->vatRegime,
             $this->invoiceFooterText,
             $this->latePenaltyText,
+            $this->vatOnDebits,
         );
     }
 }

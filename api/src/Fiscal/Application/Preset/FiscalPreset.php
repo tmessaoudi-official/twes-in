@@ -30,6 +30,7 @@ final readonly class FiscalPreset
      * @param list<PresetUnit>               $units
      * @param PresetEstablishment            $establishment      how the country codes a company's establishments
      * @param array<string, mixed>           $settings           the defaults the country gives settings, by key
+     * @param PresetInvoiceFields            $invoiceFields      what the country's law adds to an invoice
      */
     public function __construct(
         public string $country,
@@ -47,6 +48,7 @@ final readonly class FiscalPreset
         public array $units,
         public PresetEstablishment $establishment,
         public array $settings = [],
+        public PresetInvoiceFields $invoiceFields = new PresetInvoiceFields(),
     ) {
     }
 

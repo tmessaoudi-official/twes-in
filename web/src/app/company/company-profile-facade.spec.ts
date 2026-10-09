@@ -19,11 +19,13 @@ const changes: CompanyProfileChanges = {
   iban: null,
   bic: null,
   vatRegime: 'standard',
+  vatOnDebits: false,
   invoiceFooterText: null,
   latePenaltyText: null,
 };
 const saved: CompanyProfile = {
   ...changes,
+  offersVatOnDebits: false,
   name: 'Demo',
   countryCode: 'TN',
   writable: true,
