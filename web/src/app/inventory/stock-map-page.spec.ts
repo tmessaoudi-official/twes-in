@@ -575,6 +575,74 @@ describe('StockMapPage', () => {
     expect(facade.eraseDrawing).toHaveBeenLastCalledWith('c1', 'f1', 'd9');
   });
 
+  // ——— the keyboard in Aménager (the stock map brief, § 5.3): what a gesture does, without a pointer ———
+
+  function boardKey(key: string, shiftKey = false): void {
+    (q('stock-map-board') as HTMLElement).dispatchEvent(
+      new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true }),
+    );
+  }
+
+  it('moves the chosen rectangle by a quarter metre with the arrows, a metre with Shift, writing into its form', async () => {
+    q('stock-drawing-R1')!.click();
+    await settle();
+
+    boardKey('ArrowRight');
+    await settle();
+    expect(drawingGroup().get('x')!.value).toBe('2.750');
+    boardKey('ArrowRight', true);
+    boardKey('ArrowDown');
+    await settle();
+    expect(drawingGroup().get('x')!.value).toBe('3.750');
+    expect(drawingGroup().get('y')!.value).toBe('4.250');
+    expect(facade.draw).not.toHaveBeenCalled();
+  });
+
+  it('turns the chosen rectangle by fifteen degrees with R, back with Shift R, and undraws it with Suppr', async () => {
+    q('stock-drawing-R1')!.click();
+    await settle();
+
+    boardKey('r');
+    await settle();
+    expect(drawingGroup().get('rotation')!.value).toBe(15);
+    boardKey('R', true);
+    boardKey('R', true);
+    await settle();
+    expect(drawingGroup().get('rotation')!.value).toBe(345);
+
+    boardKey('Delete');
+    await settle();
+    expect(facade.eraseDrawing).toHaveBeenCalledWith('c1', 'f1', 'd1');
+  });
+
+  it('goes to the next rectangle with Tab, and lets the focus leave the board after the last', async () => {
+    drawings.set([drawn, { ...drawn, id: 'd2', locationId: 'l2', locationCode: 'Z1', x: '8.000' }]);
+    await settle();
+    q('stock-drawing-R1')!.click();
+    await settle();
+
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    (q('stock-map-board') as HTMLElement).dispatchEvent(tab);
+    await settle();
+    expect(tab.defaultPrevented).toBe(true);
+    expect(q('stock-drawing-Z1')?.getAttribute('aria-pressed')).toBe('true');
+
+    const out = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    (q('stock-map-board') as HTMLElement).dispatchEvent(out);
+    expect(out.defaultPrevented).toBe(false);
+  });
+
+  it('never moves a rack from the keyboard in Consulter: the arrows move the view', async () => {
+    await consult();
+    q('stock-drawing-R1')!.click();
+    await settle();
+    boardKey('ArrowRight');
+    boardKey('Delete');
+    await settle();
+    expect(drawingGroup()).toBeNull();
+    expect(facade.eraseDrawing).not.toHaveBeenCalled();
+  });
+
   it('offers to remove only a floor that carries nothing', async () => {
     q('stock-floor-f2')!.click();
     await settle();

@@ -255,6 +255,16 @@ test.describe('the drawn stock map', () => {
       await page.getByRole('button', { name: floorButton(floorName) }).click();
       await expect(rect).toHaveAttribute('x', String(dragged));
 
+      // Moved by the keyboard, as a drag would: chosen, then an arrow writes a quarter metre into its form, unsaved
+      // until Enregistrer, and abandoned here so the rectangle stays where the drag left it.
+      await page.getByTestId(`stock-drawing-${code}`).click();
+      await page.getByTestId('stock-map-board').focus();
+      await page.keyboard.press('ArrowRight');
+      await expect(page.getByTestId('stock-drawing-unsaved')).toBeVisible();
+      expect(comma(await page.getByTestId('field-x').inputValue())).toBeCloseTo(dragged + 0.25, 6);
+      await page.getByTestId('stock-drawing-cancel').click();
+      await expect(rect).toHaveAttribute('x', String(dragged));
+
       // Erased: the rectangle goes, the rack stays a rack — so « Annuler » draws it again where it stood.
       await page.getByTestId(`stock-drawing-${code}`).click();
       await page.getByTestId('stock-drawing-erase').click();

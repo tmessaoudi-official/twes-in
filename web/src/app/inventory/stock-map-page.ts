@@ -90,6 +90,8 @@ import {
   type PlanView,
   type PlanWay,
   PLAN_WAYS,
+  SNAP_DEGREES,
+  snapAngle,
 } from './stock-map-geometry';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import {
@@ -129,6 +131,8 @@ const EDIT_ROOM = 4;
  * How far a pointer travels before it is a drag and not a click, in pixels. Without it, pressing a rectangle to
  * LOOK at it would open its editor and report a change, which is the opposite of what a glance should cost.
  */
+/** How far an arrow key moves a shape in Aménager: the plan's own grid, a quarter metre. */
+const ARROW_STEP_METRES = 0.25;
 const DRAG_THRESHOLD = 4;
 
 /** The id a rectangle carries while it is being drawn and has no id of its own yet. */
@@ -1400,6 +1404,11 @@ export class StockMapPage implements OnInit {
    */
   protected boardKey(event: KeyboardEvent): void {
     if (event.target !== event.currentTarget) return;
+    if (this.arranging() && this.arrangeKey(event)) {
+      event.preventDefault();
+
+      return;
+    }
     const moves: Record<string, () => void> = {
       '+': () => this.zoomBy(PLAN_ZOOM_STEP),
       '=': () => this.zoomBy(PLAN_ZOOM_STEP),
@@ -1415,6 +1424,80 @@ export class StockMapPage implements OnInit {
     // The arrows would otherwise scroll the page as well as the plan.
     event.preventDefault();
     move();
+  }
+
+  /**
+   * What a gesture does, from the keyboard (the stock map brief, § 5.3), on the shape chosen in Aménager: the arrows
+   * move it a quarter metre (a metre with Shift), R turns it a step (back with Shift), Suppr undraws it, Tab goes to
+   * the next rectangle. Each writes into the shape's form as a drag does, so nothing is saved before Enregistrer.
+   * True when the key was the shape's; a key it does not take is left to the board, and the last Tab to the page.
+   */
+  private arrangeKey(event: KeyboardEvent): boolean {
+    if (event.key === 'Tab') return this.nextShape(event.shiftKey ? -1 : 1);
+
+    const piece = this.selectedStructure();
+    const drawing = this.facade.drawings().find((one) => one.id === this.selectedId()) ?? null;
+    const onStructure =
+      this.editingStructure() !== null || (piece !== null && this.editing() === null);
+    if (!onStructure && this.editing() === null && drawing === null) return false;
+
+    const step = event.shiftKey ? 1 : ARROW_STEP_METRES;
+    const moves: Record<string, [number, number]> = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step],
+    };
+    const move = moves[event.key];
+    const turn =
+      event.key.toLowerCase() === 'r' ? (event.shiftKey ? -SNAP_DEGREES : SNAP_DEGREES) : null;
+    if (event.key === 'Delete') {
+      if (onStructure) {
+        const editing = this.editingStructure();
+        if (editing !== null && editing !== 'new') void this.eraseStructure(editing);
+        else if (editing === null && piece !== null) void this.eraseStructure(piece);
+      } else {
+        const editing = this.editing();
+        if (editing === 'new') this.cancelDrawing();
+        else if (editing !== null) void this.erase(editing);
+        else if (drawing !== null) void this.erase(drawing);
+      }
+
+      return true;
+    }
+    if (move === undefined && turn === null) return false;
+
+    if (onStructure) {
+      if (this.editingStructure() === null && piece !== null) this.openStructure(piece);
+    } else if (this.editing() === null && drawing !== null) {
+      this.draw(drawing);
+    }
+    const group = onStructure ? this.structureFormGroup() : this.drawingFormGroup();
+    if (group === null) return false;
+    const values = group.getRawValue() as FormValues;
+    if (move !== undefined) {
+      group.patchValue({
+        x: (Number(values['x'] ?? 0) + move[0]).toFixed(3),
+        y: (Number(values['y'] ?? 0) + move[1]).toFixed(3),
+      });
+    } else if (turn !== null) {
+      group.patchValue({ rotation: snapAngle(Number(values['rotation'] ?? 0) + turn) });
+    }
+
+    return true;
+  }
+
+  /** The next or previous rectangle in the order the list shows them; false past either end, so Tab leaves. */
+  private nextShape(direction: 1 | -1): boolean {
+    if (this.editing() !== null || this.editingStructure() !== null) return false;
+    const shapes = this.shapes();
+    const at = shapes.findIndex((one) => one.drawing.id === this.selectedId());
+    if (at === -1) return false;
+    const next = shapes[at + direction];
+    if (next === undefined) return false;
+    this.select(next.drawing);
+
+    return true;
   }
 
   /**
