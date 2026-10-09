@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Application;
 
 use App\Module\Customers\Domain\CustomerSnapshot;
+use App\Shared\Domain\DocumentDesign;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\SellerSnapshot;
 
@@ -32,6 +33,8 @@ final readonly class StatementPage
         public string $language,
         public string $dateFormat = 'auto',
         public string $numberFormat = 'auto',
+        /** The company's design, of which a statement takes the logo's size. */
+        public DocumentDesign $design = new DocumentDesign(),
     ) {
     }
 }

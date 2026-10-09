@@ -27,7 +27,7 @@ final readonly class PrintSettings
         public bool $amountInWords = false,
         /** Whether the seller's bank details are printed as the way to pay; a document issued before the setting existed has none. */
         public bool $howToPay = false,
-        /** Its layout and accent; a document issued before designs existed printed the classic way. */
+        /** Its layout, accent and logo size; a document issued before designs existed printed the classic way. */
         public DocumentDesign $design = new DocumentDesign(),
         /** Whether what the discounts took off is printed under the totals; a document issued before the setting existed has none. */
         public bool $savingsLine = false,

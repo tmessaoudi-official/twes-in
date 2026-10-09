@@ -148,6 +148,18 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
      * A layout restyles the one content every document prints; it may not take any of it away. Its rules never hide,
      * fade or move anything, and never touch the watermark or a mention.
      */
+    public function testTheLogoPrintsAtTheDesignsSizeInEveryLayoutKeptInProportionUnlessFreed(): void
+    {
+        foreach (DocumentLayout::cases() as $layout) {
+            $html = $this->html(new DocumentDesign($layout, DocumentDesign::DEFAULT_ACCENT, 60, 25), [], []);
+            self::assertStringContainsString('.logo { display: block; width: 60mm; height: 25mm; object-fit: contain;', $html, $layout->value);
+            $freed = $this->html(new DocumentDesign($layout, DocumentDesign::DEFAULT_ACCENT, 60, 25, false), [], []);
+            self::assertStringContainsString('.logo { display: block; width: 60mm; height: 25mm; object-fit: fill;', $freed, $layout->value);
+            // No layout shrinks it on its own: the size is the company's.
+            self::assertDoesNotMatchRegularExpression('/\.layout-[a-z]+ \.logo/', $html, $layout->value);
+        }
+    }
+
     public function testNoLayoutRuleCanTakeAnythingOffThePage(): void
     {
         $rules = array_filter(

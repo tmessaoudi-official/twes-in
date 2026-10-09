@@ -63,6 +63,7 @@ final readonly class PrintStatement
                 \is_string($language) ? $language : 'fr',
                 $print->dateFormat,
                 $print->numberFormat,
+                $print->design,
             ))),
         );
     }

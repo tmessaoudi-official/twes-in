@@ -15,7 +15,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * A printed document's design: its layout and its accent, from which the readable colours are derived, so that no
- * accent a company picks prints text that cannot be read (WCAG's 4.5:1 for text, which RGAA takes up).
+ * accent a company picks prints text that cannot be read (WCAG's 4.5:1 for text, which RGAA takes up), and the room its
+ * logo may take.
  */
 final class DocumentDesignTest extends TestCase
 {
@@ -53,5 +54,30 @@ final class DocumentDesignTest extends TestCase
     {
         self::assertEquals(new DocumentDesign(DocumentLayout::Compact, '#2da44e'), DocumentDesign::fromArray(new DocumentDesign(DocumentLayout::Compact, '#2DA44E')->toArray()));
         self::assertEquals(new DocumentDesign(), DocumentDesign::fromArray([]));
+    }
+
+    public function testTheLogoPrintsAtTheSizeTheCompanySetInMillimetresItsProportionsLockedByDefault(): void
+    {
+        $default = new DocumentDesign();
+        self::assertSame([DocumentDesign::DEFAULT_LOGO_WIDTH_MM, DocumentDesign::DEFAULT_LOGO_HEIGHT_MM, true], [$default->logoWidthMm, $default->logoHeightMm, $default->logoKeepsProportions]);
+        self::assertSame([48, 17], [$default->logoWidthMm, $default->logoHeightMm], 'the room documents gave a logo before it was a setting');
+
+        $chosen = new DocumentDesign(DocumentLayout::Compact, '#2da44e', 60, 25, false);
+        self::assertEquals($chosen, DocumentDesign::fromArray($chosen->toArray()), 'kept with an issued document');
+        // A document issued before the size was a setting printed its logo in the room every document then gave it.
+        self::assertEquals(new DocumentDesign(DocumentLayout::Compact, '#2da44e'), DocumentDesign::fromArray(['layout' => 'compact', 'accent' => '#2da44e']));
+    }
+
+    public function testALogoSizeNoPageCanHoldIsRefused(): void
+    {
+        foreach ([[DocumentDesign::LOGO_WIDTH_MM_MIN - 1, 17], [DocumentDesign::LOGO_WIDTH_MM_MAX + 1, 17], [48, DocumentDesign::LOGO_HEIGHT_MM_MIN - 1], [48, DocumentDesign::LOGO_HEIGHT_MM_MAX + 1]] as [$width, $height]) {
+            try {
+                new DocumentDesign(DocumentLayout::Classic, DocumentDesign::DEFAULT_ACCENT, $width, $height);
+                self::fail("{$width} × {$height} mm is refused");
+            } catch (\InvalidArgumentException) {
+            }
+        }
+        $widest = new DocumentDesign(DocumentLayout::Classic, DocumentDesign::DEFAULT_ACCENT, DocumentDesign::LOGO_WIDTH_MM_MAX, DocumentDesign::LOGO_HEIGHT_MM_MAX);
+        self::assertSame([DocumentDesign::LOGO_WIDTH_MM_MAX, DocumentDesign::LOGO_HEIGHT_MM_MAX], [$widest->logoWidthMm, $widest->logoHeightMm]);
     }
 }

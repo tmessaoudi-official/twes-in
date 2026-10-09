@@ -31,8 +31,9 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * The company's latest invoice in a design, its first page as a PNG picture (docs/SPEC.md § 7, 2026-10-06 10:19), for
- * the screen where the design is chosen: `layout` and `accent` in the query try a design before it is saved, and the
- * company's own design stands for what is left out. It is the settings page's, so it asks company.settings, and it
+ * the screen where the design is chosen: `layout`, `accent`, `logoWidth` and `logoHeight` (millimetres) and
+ * `logoProportions` (keep or free) in the query try a design before it is saved, and the company's own design stands for
+ * what is left out. It is the settings page's, so it asks company.settings, and it
  * shows an invoice, so it asks invoice.read as well. Documented in InvoicesOpenApi.
  */
 #[AsController]
@@ -58,6 +59,14 @@ final readonly class InvoiceDesignPreviewController
         $design = new DocumentDesign(
             null === $layout ? $saved->layout : (DocumentLayout::tryFrom($layout) ?? throw new UnprocessableEntityHttpException('layout: One of '.implode(', ', array_map(static fn (DocumentLayout $each): string => $each->value, DocumentLayout::cases())).'.')),
             null === $accent ? $saved->accent : (1 === preg_match('/^#[0-9a-fA-F]{6}$/', $accent) ? $accent : throw new UnprocessableEntityHttpException('accent: A colour written #rrggbb.')),
+            self::millimetres($request, 'logoWidth', $saved->logoWidthMm, DocumentDesign::LOGO_WIDTH_MM_MIN, DocumentDesign::LOGO_WIDTH_MM_MAX),
+            self::millimetres($request, 'logoHeight', $saved->logoHeightMm, DocumentDesign::LOGO_HEIGHT_MM_MIN, DocumentDesign::LOGO_HEIGHT_MM_MAX),
+            match ($request->query->get('logoProportions')) {
+                null => $saved->logoKeepsProportions,
+                'keep' => true,
+                'free' => false,
+                default => throw new UnprocessableEntityHttpException('logoProportions: keep or free.'),
+            },
         );
 
         try {
@@ -69,5 +78,19 @@ final readonly class InvoiceDesignPreviewController
         }
 
         return new Response($picture, Response::HTTP_OK, ['Content-Type' => 'image/png', 'Cache-Control' => 'private, no-store']);
+    }
+
+    /** A whole number of millimetres within what a page holds, or the company's own when the query leaves it out. */
+    private static function millimetres(Request $request, string $name, int $saved, int $min, int $max): int
+    {
+        $given = $request->query->get($name);
+        if (null === $given) {
+            return $saved;
+        }
+        if (1 !== preg_match('/^\d{1,3}$/', $given) || (int) $given < $min || (int) $given > $max) {
+            throw new UnprocessableEntityHttpException(\sprintf('%s: A whole number of millimetres from %d to %d.', $name, $min, $max));
+        }
+
+        return (int) $given;
     }
 }

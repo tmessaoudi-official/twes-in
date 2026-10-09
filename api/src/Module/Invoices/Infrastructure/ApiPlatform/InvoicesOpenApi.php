@@ -17,6 +17,7 @@ use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
 use App\Module\Invoices\Application\FacturX\FacturXRefused;
+use App\Shared\Domain\DocumentDesign;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 
 /** Documents the PDF and Factur-X downloads, plain controllers API Platform does not describe (InvoicePdfController, FacturXController). */
@@ -51,6 +52,9 @@ final readonly class InvoicesOpenApi implements OpenApiFactoryInterface
                 $uuid('companyId', 'The company'),
                 new Parameter('layout', 'query', 'classic, modern or compact; the company\'s own when left out', false, schema: ['type' => 'string', 'enum' => ['classic', 'modern', 'compact']]),
                 new Parameter('accent', 'query', 'A colour written #rrggbb; the company\'s own when left out', false, schema: ['type' => 'string', 'pattern' => '^#[0-9a-fA-F]{6}$']),
+                new Parameter('logoWidth', 'query', 'The logo\'s printed width, in millimetres; the company\'s own when left out', false, schema: ['type' => 'integer', 'minimum' => DocumentDesign::LOGO_WIDTH_MM_MIN, 'maximum' => DocumentDesign::LOGO_WIDTH_MM_MAX]),
+                new Parameter('logoHeight', 'query', 'The logo\'s printed height, in millimetres; the company\'s own when left out', false, schema: ['type' => 'integer', 'minimum' => DocumentDesign::LOGO_HEIGHT_MM_MIN, 'maximum' => DocumentDesign::LOGO_HEIGHT_MM_MAX]),
+                new Parameter('logoProportions', 'query', 'keep: the logo fits that size in its own proportions; free: it is stretched to it; the company\'s own when left out', false, schema: ['type' => 'string', 'enum' => ['keep', 'free']]),
             ],
         )));
 

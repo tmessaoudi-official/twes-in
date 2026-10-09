@@ -25,13 +25,40 @@ export class DocumentDesignApi {
     try {
       const picture = await firstValueFrom(
         this.http.get(`/api/companies/${encodeURIComponent(companyId)}/invoice-design-preview`, {
-          params: { layout: design.layout, accent: design.accent },
+          params: {
+            layout: design.layout,
+            accent: design.accent,
+            ...(design.logoWidth === null ? {} : { logoWidth: design.logoWidth }),
+            ...(design.logoHeight === null ? {} : { logoHeight: design.logoHeight }),
+            logoProportions: design.logoKeepsProportions ? 'keep' : 'free',
+          },
           responseType: 'blob',
         }),
       );
       return await dataAddressOf(picture);
     } catch (error) {
       throw new PreviewRefused(stateOf(error));
+    }
+  }
+
+  /**
+   * The company logo's own proportions, its width over its height, which a locked size keeps; null when the company has
+   * no logo yet, or the picture cannot be read here.
+   */
+  async logoRatio(companyId: string): Promise<number | null> {
+    try {
+      const picture = await firstValueFrom(
+        this.http.get(`/api/companies/${encodeURIComponent(companyId)}/logo`, {
+          responseType: 'blob',
+        }),
+      );
+      if (typeof createImageBitmap !== 'function') return null;
+      const bitmap = await createImageBitmap(picture);
+      const ratio = bitmap.height > 0 ? bitmap.width / bitmap.height : null;
+      bitmap.close();
+      return ratio;
+    } catch {
+      return null;
     }
   }
 }

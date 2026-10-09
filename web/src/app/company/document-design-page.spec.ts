@@ -26,17 +26,35 @@ class StaticLoader implements TranslateLoader {
         title: 'Modèles de documents',
         saved: 'Enregistré',
         preview_states: { nothing: 'Aucune facture pour l’instant' },
+        logo_room:
+          'Largeur de {{widthMin}} à {{widthMax}} mm, hauteur de {{heightMin}} à {{heightMax}} mm.',
+        logo_stretched: 'Le logo sera étiré à cette taille.',
       },
       settings: { forbidden: 'Réservé' },
     });
   }
 }
 
-function row(key: string, defaultValue: string, company?: string): SettingRow {
+function row(
+  key: string,
+  defaultValue: string | number | boolean,
+  company?: string | number | boolean,
+): SettingRow {
+  const bounds: Record<string, [number, number]> = {
+    'document.logo_width': [10, 105],
+    'document.logo_height': [5, 70],
+  };
   return {
     key,
     chain: 'parties',
-    type: key === 'document.accent' ? 'colour' : 'enum',
+    type:
+      key === 'document.accent'
+        ? 'colour'
+        : typeof defaultValue === 'number'
+          ? 'int'
+          : typeof defaultValue === 'boolean'
+            ? 'bool'
+            : 'enum',
     labelKey: `settings.${key}`,
     module: 'core',
     defaultValue,
@@ -46,8 +64,8 @@ function row(key: string, defaultValue: string, company?: string): SettingRow {
     overridableLevels: ['company'],
     writableLevels: ['company'],
     choices: key === 'document.layout' ? ['classic', 'modern', 'compact'] : [],
-    min: null,
-    max: null,
+    min: bounds[key]?.[0] ?? null,
+    max: bounds[key]?.[1] ?? null,
     maxLength: null,
     pattern: null,
   };
@@ -69,6 +87,8 @@ describe('DocumentDesignPage', () => {
     state: state.asReadonly(),
     preview: vi.fn(),
     without: vi.fn((why: PreviewState) => state.set(why)),
+    logoRatio: signal<number | null>(3).asReadonly(),
+    loadLogoRatio: vi.fn(),
   };
   const permissions = new Set<string>();
   const auth = {
@@ -105,12 +125,18 @@ describe('DocumentDesignPage', () => {
       rows.set([
         row('document.layout', 'classic', 'modern'),
         row('document.accent', '#1f2328', '#1f6feb'),
+        row('document.logo_width', 48),
+        row('document.logo_height', 17),
+        row('document.logo_keep_proportions', true),
       ]);
     });
     settings.save.mockReset().mockImplementation(async () => {
       rows.set([
         row('document.layout', 'classic', 'compact'),
         row('document.accent', '#1f2328', '#1f6feb'),
+        row('document.logo_width', 48),
+        row('document.logo_height', 17),
+        row('document.logo_keep_proportions', true),
       ]);
       return true;
     });
@@ -150,6 +176,9 @@ describe('DocumentDesignPage', () => {
     expect(design.preview).toHaveBeenCalledExactlyOnceWith('c1', {
       layout: 'modern',
       accent: '#1f6feb',
+      logoWidth: 48,
+      logoHeight: 17,
+      logoKeepsProportions: true,
     });
     expect(q('documents-preview-image')?.getAttribute('src')).toBe('data:image/png;base64,UE5H');
     expect(q('documents-logo-link')?.getAttribute('href')).toBe('/company/profile');
@@ -171,6 +200,9 @@ describe('DocumentDesignPage', () => {
     expect(design.preview).toHaveBeenCalledExactlyOnceWith('c1', {
       layout: 'compact',
       accent: '#1f6feb',
+      logoWidth: 48,
+      logoHeight: 17,
+      logoKeepsProportions: true,
     });
     expect(button('documents-save').disabled).toBe(false);
 
@@ -198,8 +230,80 @@ describe('DocumentDesignPage', () => {
     expect(design.preview).toHaveBeenCalledExactlyOnceWith('c1', {
       layout: 'modern',
       accent: '#1f6feb',
+      logoWidth: 48,
+      logoHeight: 17,
+      logoKeepsProportions: true,
     });
     expect(settings.save).not.toHaveBeenCalled();
+  });
+
+  it("sets the height from the logo's proportions while locked, refuses a size no page holds, and saves both", async () => {
+    await open();
+    design.preview.mockClear();
+    const width = q('documents-logo-width') as HTMLInputElement;
+    const height = q('documents-logo-height') as HTMLInputElement;
+    expect(width.value).toBe('48');
+    expect(q('documents-logo-lock')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('documents-logo-room')?.textContent).toContain('10 à 105 mm');
+    expect(q('documents-logo-stretched')).toBeNull();
+
+    // Past the bounds, or between two millimetres, nothing is tried or saved.
+    for (const refused of ['200', '60.5']) {
+      width.value = refused;
+      width.dispatchEvent(new Event('input'));
+      await settle(PREVIEW_DELAY_MS + 50);
+      expect(design.preview).not.toHaveBeenCalled();
+      expect(button('documents-save').disabled).toBe(true);
+    }
+
+    width.value = '60';
+    width.dispatchEvent(new Event('input'));
+    await settle(PREVIEW_DELAY_MS + 50);
+    expect(height.value).toBe('20');
+    expect(design.preview).toHaveBeenCalledExactlyOnceWith('c1', {
+      layout: 'modern',
+      accent: '#1f6feb',
+      logoWidth: 60,
+      logoHeight: 20,
+      logoKeepsProportions: true,
+    });
+
+    button('documents-save').click();
+    await settle();
+    expect(settings.save).toHaveBeenCalledWith('c1', [
+      { key: 'document.logo_width', value: 60 },
+      { key: 'document.logo_height', value: 20 },
+    ]);
+  });
+
+  it('frees the two sizes once unlocked, says the logo will be stretched, and saves the choice', async () => {
+    await open();
+    design.preview.mockClear();
+
+    (q('documents-logo-lock') as HTMLButtonElement).click();
+    await settle();
+    expect(q('documents-logo-lock')?.getAttribute('aria-pressed')).toBe('false');
+    expect(q('documents-logo-stretched')?.textContent).toContain('étiré');
+
+    const height = q('documents-logo-height') as HTMLInputElement;
+    height.value = '30';
+    height.dispatchEvent(new Event('input'));
+    await settle(PREVIEW_DELAY_MS + 50);
+    expect((q('documents-logo-width') as HTMLInputElement).value).toBe('48');
+    expect(design.preview).toHaveBeenLastCalledWith('c1', {
+      layout: 'modern',
+      accent: '#1f6feb',
+      logoWidth: 48,
+      logoHeight: 30,
+      logoKeepsProportions: false,
+    });
+
+    button('documents-save').click();
+    await settle();
+    expect(settings.save).toHaveBeenCalledWith('c1', [
+      { key: 'document.logo_height', value: 30 },
+      { key: 'document.logo_keep_proportions', value: false },
+    ]);
   });
 
   it('says why there is no picture', async () => {

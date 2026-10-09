@@ -5,11 +5,17 @@ import { inACompany, signIn } from './session';
 import { toast } from './toast';
 
 // Invoice design slice 1 through the real stack (docs/SPEC.md § 8 row 217): the owner opens « Modèles de documents »,
-// sees the company's latest invoice as Gotenberg renders it, tries another layout, which the picture follows, and
-// saves it. One database is shared by the whole suite: the design found at the start is put back at the end, and the
-// draft and customer made for the run are cancelled and retired.
+// sees the company's latest invoice as Gotenberg renders it, tries another layout and another room for the logo, which
+// the picture follows, and saves them. One database is shared by the whole suite: the design found at the start is put
+// back at the end, and the draft and customer made for the run are cancelled and retired.
 const CSRF = '0123456789abcdef0123456789abcdef';
-const DESIGN = ['document.layout', 'document.accent'] as const;
+const DESIGN = [
+  'document.layout',
+  'document.accent',
+  'document.logo_width',
+  'document.logo_height',
+  'document.logo_keep_proportions',
+] as const;
 
 interface Held {
   key: string;
@@ -175,12 +181,35 @@ test('the owner tries a layout on the latest invoice and saves it', async ({ pag
     await expect(picture).not.toHaveAttribute('aria-busy', 'true');
     expect(await wcagViolations(page)).toEqual([]);
 
+    // The logo's room, freed from its proportions: each size is typed on its own, and the preview is asked with both.
+    // The shared company may have no logo, so the picture itself may not change.
+    await page.getByTestId('documents-logo-lock').click();
+    await expect(page.getByTestId('documents-logo-lock')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByTestId('documents-logo-stretched')).toBeVisible();
+    const tried = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname.endsWith('/invoice-design-preview') &&
+        url.searchParams.get('logoWidth') === '60' &&
+        url.searchParams.get('logoHeight') === '25' &&
+        url.searchParams.get('logoProportions') === 'free'
+      );
+    });
+    await page.getByTestId('documents-logo-width').fill('60');
+    await page.getByTestId('documents-logo-height').fill('25');
+    await expect(page.getByTestId('documents-logo-width')).toHaveValue('60');
+    expect((await tried).status()).toBe(200);
+    await expect(picture).not.toHaveAttribute('aria-busy', 'true');
+
     await page.getByTestId('documents-save').click();
     await expect(toast(page)).toContainText('Présentation des documents enregistrée.');
     await expect(page.getByTestId('documents-save')).toBeDisabled();
 
     await page.reload();
     await expect(page.getByTestId('documents-layout-modern').locator('input')).toBeChecked();
+    await expect(page.getByTestId('documents-logo-width')).toHaveValue('60');
+    await expect(page.getByTestId('documents-logo-height')).toHaveValue('25');
+    await expect(page.getByTestId('documents-logo-lock')).toHaveAttribute('aria-pressed', 'false');
   } finally {
     await restoreDesign(page, held);
     await tidy(page, made);

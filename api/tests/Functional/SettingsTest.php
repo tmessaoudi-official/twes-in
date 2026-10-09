@@ -158,7 +158,7 @@ final class SettingsTest extends ApiTestCase
 
         $this->getJson($this->path().'?chain=parties');
         self::assertResponseIsSuccessful();
-        self::assertSame(['activity.retention_months', 'delivery_note.show_prices', 'delivery_note.reception_block', 'watch.late_after_days', 'late_fees.enabled', 'late_fees.tiers', 'reminders.enabled', 'reminders.stages', 'reminders.hour', 'quote.validity_days', 'quote.signature_block', 'document.payment_terms_days', 'document.language', 'document.printed_notes', 'document.how_to_pay', 'document.amount_in_words', 'document.late_payment_rate', 'document.exemption_reference', 'document.layout', 'document.accent', 'document.paid_stamp', 'document.savings_line', 'credit.limit'], array_column($this->jsonList(), 'key'));
+        self::assertSame(['activity.retention_months', 'delivery_note.show_prices', 'delivery_note.reception_block', 'watch.late_after_days', 'late_fees.enabled', 'late_fees.tiers', 'reminders.enabled', 'reminders.stages', 'reminders.hour', 'quote.validity_days', 'quote.signature_block', 'document.payment_terms_days', 'document.language', 'document.printed_notes', 'document.how_to_pay', 'document.amount_in_words', 'document.late_payment_rate', 'document.exemption_reference', 'document.layout', 'document.accent', 'document.logo_width', 'document.logo_height', 'document.logo_keep_proportions', 'document.paid_stamp', 'document.savings_line', 'credit.limit'], array_column($this->jsonList(), 'key'));
         $terms = $this->row('document.payment_terms_days');
         self::assertSame(30, $terms['value']);
         self::assertSame(['company'], $terms['writableLevels']);

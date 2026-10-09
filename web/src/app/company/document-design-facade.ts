@@ -13,11 +13,18 @@ export class DocumentDesignFacade {
   private readonly api = inject(DocumentDesignApi);
   private readonly pictureSignal = signal<string | null>(null);
   private readonly stateSignal = signal<PreviewState>('loading');
+  private readonly logoRatioSignal = signal<number | null>(null);
   private asked = 0;
 
   /** The last picture shown, kept while the next one is on its way. */
   readonly picture = this.pictureSignal.asReadonly();
   readonly state = this.stateSignal.asReadonly();
+  /** The logo's width over its height, which a locked size follows; null without a logo. */
+  readonly logoRatio = this.logoRatioSignal.asReadonly();
+
+  async loadLogoRatio(companyId: string): Promise<void> {
+    this.logoRatioSignal.set(await this.api.logoRatio(companyId));
+  }
 
   /** No picture, and why: what the page says when it has no design to ask for. Drops any answer still on its way. */
   without(why: Exclude<PreviewState, 'loading' | 'ready'>): void {

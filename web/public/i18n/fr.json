@@ -932,7 +932,10 @@
       "late_payment_rate": "Taux des pénalités de retard (imprimé là où la loi le demande, ex. « trois fois le taux d’intérêt légal »)",
       "exemption_reference": "Texte d’exonération de TVA (imprimé pour un client exonéré, ex. « article 261-4-4° du CGI »)",
       "layout": "Mise en page des documents",
-      "accent": "Couleur d’accent des documents"
+      "accent": "Couleur d’accent des documents",
+      "logo_width": "Largeur du logo (mm)",
+      "logo_height": "Hauteur du logo (mm)",
+      "logo_keep_proportions": "Le logo garde ses proportions"
     },
     "credit": {
       "limit": "Plafond de crédit du client",
@@ -4080,6 +4083,13 @@
     "accent_hint": "Le texte reste lisible quelle que soit la couleur : il passe en blanc ou en noir sur les bandes, et la couleur est assombrie là où elle sert de texte.",
     "logo": "Logo",
     "logo_link": "Le logo se change dans Profil de la société",
+    "logo_width": "Largeur",
+    "logo_height": "Hauteur",
+    "millimetres": "mm",
+    "logo_room": "Largeur de {{widthMin}} à {{widthMax}} mm, hauteur de {{heightMin}} à {{heightMax}} mm.",
+    "logo_lock": "Verrouiller les proportions du logo",
+    "logo_unlock": "Libérer les proportions du logo",
+    "logo_stretched": "Proportions libérées : le logo sera étiré à exactement cette taille.",
     "save": "Enregistrer",
     "cancel": "Annuler les modifications",
     "saved": "Présentation des documents enregistrée.",

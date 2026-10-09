@@ -932,7 +932,10 @@
       "late_payment_rate": "Late payment penalty rate (printed where the law asks for it, e.g. « three times the legal interest rate »)",
       "exemption_reference": "VAT exemption provision (printed for an exempt customer, e.g. « article 261-4-4° du CGI »)",
       "layout": "Document layout",
-      "accent": "Document accent colour"
+      "accent": "Document accent colour",
+      "logo_width": "Logo width (mm)",
+      "logo_height": "Logo height (mm)",
+      "logo_keep_proportions": "The logo keeps its proportions"
     },
     "credit": {
       "limit": "Customer credit limit",
@@ -4080,6 +4083,13 @@
     "accent_hint": "Text stays readable whatever the colour: it turns white or black on the bands, and the colour is darkened where it is used as text.",
     "logo": "Logo",
     "logo_link": "The logo is changed in Company profile",
+    "logo_width": "Width",
+    "logo_height": "Height",
+    "millimetres": "mm",
+    "logo_room": "Width from {{widthMin}} to {{widthMax}} mm, height from {{heightMin}} to {{heightMax}} mm.",
+    "logo_lock": "Lock the logo’s proportions",
+    "logo_unlock": "Free the logo’s proportions",
+    "logo_stretched": "Proportions freed: the logo will be stretched to exactly this size.",
     "save": "Save",
     "cancel": "Discard changes",
     "saved": "Document design saved.",

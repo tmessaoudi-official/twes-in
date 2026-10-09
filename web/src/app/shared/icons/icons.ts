@@ -75,6 +75,8 @@ export const ICONS = [
   'left_panel_close',
   'left_panel_open',
   'light_mode',
+  'link',
+  'link_off',
   'local_shipping',
   'lock',
   'lock_open',

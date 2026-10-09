@@ -10,15 +10,25 @@ declare(strict_types=1);
 namespace App\Shared\Domain;
 
 /**
- * How a printed document looks (docs/SPEC.md § 7, 2026-09-21 19:20 and 2026-10-06 10:19): one of the built-in layouts
- * and the company's accent colour. The colours printed beside the accent are derived from it here, so that no accent a
- * company picks prints text that cannot be read: text on a band of the accent, and the accent as text on paper, keep
- * WCAG's 4.5:1. The font, the paper and the watermark are not part of a design.
+ * How a printed document looks: one of the built-in layouts, the company's accent colour and its logo's printed size.
+ * The colours printed beside the accent are derived from it here, so that no accent a company picks prints text that
+ * cannot be read: text on a band of the accent, and the accent as text on paper, keep WCAG's 4.5:1. The font, the paper
+ * and the watermark are not part of a design.
  */
 final readonly class DocumentDesign
 {
     /** The ink documents printed in before they had an accent, which the classic layout keeps by default. */
     public const string DEFAULT_ACCENT = '#1f2328';
+
+    /** The room a logo took before its size was a setting, 180 × 64 CSS pixels, which an older document keeps. */
+    public const int DEFAULT_LOGO_WIDTH_MM = 48;
+    public const int DEFAULT_LOGO_HEIGHT_MM = 17;
+
+    /** From a mark still legible to half an A4 page across, and to a quarter of its height. */
+    public const int LOGO_WIDTH_MM_MIN = 10;
+    public const int LOGO_WIDTH_MM_MAX = 105;
+    public const int LOGO_HEIGHT_MM_MIN = 5;
+    public const int LOGO_HEIGHT_MM_MAX = 70;
 
     private const string PAPER = '#ffffff';
     private const float READABLE = 4.5;
@@ -26,13 +36,29 @@ final readonly class DocumentDesign
     /** The accent, lower case. */
     public string $accent;
 
-    public function __construct(public DocumentLayout $layout = DocumentLayout::Classic, string $accent = self::DEFAULT_ACCENT)
-    {
+    /**
+     * @param int  $logoWidthMm          the logo's printed width, in millimetres
+     * @param int  $logoHeightMm         its printed height
+     * @param bool $logoKeepsProportions whether the logo fits that size in its own proportions, or is stretched to it
+     */
+    public function __construct(
+        public DocumentLayout $layout = DocumentLayout::Classic,
+        string $accent = self::DEFAULT_ACCENT,
+        public int $logoWidthMm = self::DEFAULT_LOGO_WIDTH_MM,
+        public int $logoHeightMm = self::DEFAULT_LOGO_HEIGHT_MM,
+        public bool $logoKeepsProportions = true,
+    ) {
         // Written into the document's stylesheet: anything but a colour is refused, never escaped.
         if (1 !== preg_match('/^#[0-9a-fA-F]{6}$/', $accent)) {
             throw new \InvalidArgumentException(\sprintf('A document accent is a colour written #rrggbb, not "%s".', $accent));
         }
         $this->accent = strtolower($accent);
+        if ($logoWidthMm < self::LOGO_WIDTH_MM_MIN || $logoWidthMm > self::LOGO_WIDTH_MM_MAX) {
+            throw new \InvalidArgumentException(\sprintf('A logo is %d to %d mm wide, not %d.', self::LOGO_WIDTH_MM_MIN, self::LOGO_WIDTH_MM_MAX, $logoWidthMm));
+        }
+        if ($logoHeightMm < self::LOGO_HEIGHT_MM_MIN || $logoHeightMm > self::LOGO_HEIGHT_MM_MAX) {
+            throw new \InvalidArgumentException(\sprintf('A logo is %d to %d mm high, not %d.', self::LOGO_HEIGHT_MM_MIN, self::LOGO_HEIGHT_MM_MAX, $logoHeightMm));
+        }
     }
 
     /** White or black, whichever reads better on a band of the accent: one of the two always reaches 4.5:1. */
@@ -66,10 +92,10 @@ final readonly class DocumentDesign
         return (max($light, $dark) + 0.05) / (min($light, $dark) + 0.05);
     }
 
-    /** @return array{layout: string, accent: string} */
+    /** @return array{layout: string, accent: string, logoWidthMm: int, logoHeightMm: int, logoKeepsProportions: bool} */
     public function toArray(): array
     {
-        return ['layout' => $this->layout->value, 'accent' => $this->accent];
+        return ['layout' => $this->layout->value, 'accent' => $this->accent, 'logoWidthMm' => $this->logoWidthMm, 'logoHeightMm' => $this->logoHeightMm, 'logoKeepsProportions' => $this->logoKeepsProportions];
     }
 
     /**
@@ -81,10 +107,16 @@ final readonly class DocumentDesign
     {
         $layout = $data['layout'] ?? null;
         $accent = $data['accent'] ?? null;
+        $width = $data['logoWidthMm'] ?? null;
+        $height = $data['logoHeightMm'] ?? null;
+        $keeps = $data['logoKeepsProportions'] ?? null;
 
         return new self(
             DocumentLayout::tryFrom(\is_string($layout) ? $layout : '') ?? DocumentLayout::Classic,
             \is_string($accent) ? $accent : self::DEFAULT_ACCENT,
+            \is_int($width) ? $width : self::DEFAULT_LOGO_WIDTH_MM,
+            \is_int($height) ? $height : self::DEFAULT_LOGO_HEIGHT_MM,
+            !\is_bool($keeps) || $keeps,
         );
     }
 

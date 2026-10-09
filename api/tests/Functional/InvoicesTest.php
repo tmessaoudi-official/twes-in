@@ -534,7 +534,17 @@ final class InvoicesTest extends ApiTestCase
         $this->client->request('GET', $preview);
         self::assertStringContainsString('<body class="layout-compact">', (string) $this->client->getResponse()->getContent());
 
-        foreach (['?layout=fancy', '?accent=red', '?accent=%231f6feb;}body{display:none'] as $refused) {
+        // The logo's room is tried the same way, and the company's own stands for what is left out.
+        $this->client->request('GET', $preview.'?logoWidth=60&logoHeight=25');
+        self::assertStringContainsString('width: 60mm; height: 25mm; object-fit: contain;', (string) $this->client->getResponse()->getContent());
+        $this->client->request('GET', $preview.'?logoWidth=60&logoHeight=25&logoProportions=free');
+        self::assertStringContainsString('width: 60mm; height: 25mm; object-fit: fill;', (string) $this->client->getResponse()->getContent());
+        $this->sendJson('PUT', $this->companyPath().'/settings/document.logo_width', ['level' => 'company', 'value' => 70]);
+        self::assertResponseIsSuccessful();
+        $this->client->request('GET', $preview.'?logoHeight=25');
+        self::assertStringContainsString('width: 70mm; height: 25mm; object-fit: contain;', (string) $this->client->getResponse()->getContent());
+
+        foreach (['?layout=fancy', '?accent=red', '?accent=%231f6feb;}body{display:none', '?logoWidth=9', '?logoWidth=106', '?logoHeight=71', '?logoWidth=4.5', '?logoHeight=big', '?logoProportions=maybe'] as $refused) {
             $this->client->request('GET', $preview.$refused);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
         }

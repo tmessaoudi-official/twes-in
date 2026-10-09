@@ -1,5 +1,6 @@
-{#- What every printed document shares, and its design (docs/SPEC.md § 7, 2026-10-06 10:19): the base rules, the accent's
-    colours as DocumentDesign derives them, and each built-in layout as rules over the one content every document prints.
+{#- What every printed document shares, and its design: the base rules, the accent's colours as DocumentDesign derives
+    them, the logo's size, and each built-in layout as rules over the one content every document prints. No layout sizes
+    the logo: its size is the company's, kept in proportion unless the company freed it.
     A layout restyles; it never hides, moves out of the page or recolours the watermark, and it names no mention, so no
     design can leave out what the law asks a document to say. Included inside each document's <style>, which then adds
     its own rules. `design` is a DocumentDesign. -#}
@@ -18,7 +19,7 @@
     .parties { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
     .party { width: 48%; }
     .party h2 { margin: 0 0 4px; font-size: 9pt; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #57606a; }
-    .logo { display: block; max-width: 180px; max-height: 64px; object-fit: contain; margin-bottom: 8px; }
+    .logo { display: block; width: {{ design.logoWidthMm }}mm; height: {{ design.logoHeightMm }}mm; object-fit: {{ design.logoKeepsProportions ? 'contain' : 'fill' }}; object-position: left center; margin-bottom: 8px; }
     .company-name { font-size: 14pt; font-weight: 700; }
     .title { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--accent-text); padding-bottom: 6px; margin-bottom: 12px; }
     .title h1 { margin: 0; font-size: 18pt; color: var(--accent-text); }
@@ -47,7 +48,6 @@
     .layout-compact { font-size: 8.5pt; line-height: 1.3; }
     .layout-compact .parties { margin-bottom: 12px; }
     .layout-compact .company-name { font-size: 12pt; }
-    .layout-compact .logo { max-height: 48px; }
     .layout-compact .title { margin-bottom: 8px; padding-bottom: 4px; }
     .layout-compact .title h1 { font-size: 14pt; }
     .layout-compact .facts { margin-bottom: 8px; gap: 2px 12px; }

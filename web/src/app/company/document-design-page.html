@@ -61,15 +61,77 @@
           }}</span>
         </div>
 
-        <div class="flex flex-col gap-1">
-          <span class="font-medium">{{ 'documents.logo' | translate }}</span>
+        <fieldset class="flex flex-col gap-2" aria-describedby="documents-logo-room">
+          <legend class="mb-2 font-medium">{{ 'documents.logo' | translate }}</legend>
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
+            <mat-form-field class="w-40" subscriptSizing="dynamic">
+              <mat-label>{{ 'documents.logo_width' | translate }}</mat-label>
+              <input
+                matInput
+                type="number"
+                inputmode="numeric"
+                step="1"
+                formControlName="logoWidth"
+                [min]="room()?.width?.min ?? null"
+                [max]="room()?.width?.max ?? null"
+                data-testid="documents-logo-width"
+              />
+              <span matTextSuffix>{{ 'documents.millimetres' | translate }}</span>
+            </mat-form-field>
+            <button
+              mat-icon-button
+              type="button"
+              [appLabel]="(locked() ? 'documents.logo_unlock' : 'documents.logo_lock') | translate"
+              [attr.aria-pressed]="locked()"
+              (click)="toggleLock()"
+              data-testid="documents-logo-lock"
+            >
+              <mat-icon>{{ locked() ? 'link' : 'link_off' }}</mat-icon>
+            </button>
+            <mat-form-field class="w-40" subscriptSizing="dynamic">
+              <mat-label>{{ 'documents.logo_height' | translate }}</mat-label>
+              <input
+                matInput
+                type="number"
+                inputmode="numeric"
+                step="1"
+                formControlName="logoHeight"
+                [min]="room()?.height?.min ?? null"
+                [max]="room()?.height?.max ?? null"
+                data-testid="documents-logo-height"
+              />
+              <span matTextSuffix>{{ 'documents.millimetres' | translate }}</span>
+            </mat-form-field>
+          </div>
+          @if (!locked()) {
+            <span class="text-sm" data-testid="documents-logo-stretched">{{
+              'documents.logo_stretched' | translate
+            }}</span>
+          }
+          @if (room(); as bounds) {
+            <span
+              class="text-sm text-on-surface-variant"
+              id="documents-logo-room"
+              data-testid="documents-logo-room"
+              >{{
+                'documents.logo_room'
+                  | translate
+                    : {
+                        widthMin: bounds.width.min,
+                        widthMax: bounds.width.max,
+                        heightMin: bounds.height.min,
+                        heightMax: bounds.height.max,
+                      }
+              }}</span
+            >
+          }
           <a
             routerLink="/company/profile"
             class="text-primary underline"
             data-testid="documents-logo-link"
             >{{ 'documents.logo_link' | translate }}</a
           >
-        </div>
+        </fieldset>
 
         <div class="flex flex-wrap gap-2">
           <button

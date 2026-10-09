@@ -30,7 +30,7 @@ final class BusinessDefaultSettingsTest extends TestCase
     public function testThePartiesChainCarriesTheDocumentDefaults(): void
     {
         self::assertSame(
-            ['document.payment_terms_days', 'document.language', 'document.printed_notes', 'document.how_to_pay', 'document.amount_in_words', 'document.late_payment_rate', 'document.exemption_reference', 'document.layout', 'document.accent', 'document.paid_stamp', 'document.savings_line', 'credit.limit'],
+            ['document.payment_terms_days', 'document.language', 'document.printed_notes', 'document.how_to_pay', 'document.amount_in_words', 'document.late_payment_rate', 'document.exemption_reference', 'document.layout', 'document.accent', 'document.logo_width', 'document.logo_height', 'document.logo_keep_proportions', 'document.paid_stamp', 'document.savings_line', 'credit.limit'],
             array_map(static fn (SettingDefinition $definition) => $definition->key, $this->catalog->ofChain(SettingChain::Parties)),
         );
         $terms = $this->definition('document.payment_terms_days');
@@ -50,6 +50,21 @@ final class BusinessDefaultSettingsTest extends TestCase
         self::assertSame([DocumentLayout::Classic->value, DocumentDesign::DEFAULT_ACCENT], [$layout->default, $accent->default]);
         self::assertSame([[SettingLevel::Company], [SettingLevel::Company]], [$layout->overridableAt, $accent->overridableAt]);
         self::assertNotNull($accent->refusal('red;}body{display:none'));
+    }
+
+    public function testTheLogosRoomIsTheCompanysInMillimetresWithinWhatAPageHolds(): void
+    {
+        $width = $this->definition('document.logo_width');
+        $height = $this->definition('document.logo_height');
+
+        self::assertSame([DocumentDesign::DEFAULT_LOGO_WIDTH_MM, DocumentDesign::DEFAULT_LOGO_HEIGHT_MM], [$width->default, $height->default]);
+        self::assertSame([[SettingLevel::Company], [SettingLevel::Company]], [$width->overridableAt, $height->overridableAt]);
+        self::assertSame([DocumentDesign::LOGO_WIDTH_MM_MIN, DocumentDesign::LOGO_WIDTH_MM_MAX], [$width->min, $width->max]);
+        self::assertSame([DocumentDesign::LOGO_HEIGHT_MM_MIN, DocumentDesign::LOGO_HEIGHT_MM_MAX], [$height->min, $height->max]);
+        self::assertNotNull($width->refusal(DocumentDesign::LOGO_WIDTH_MM_MAX + 1));
+        self::assertNull($height->refusal(DocumentDesign::LOGO_HEIGHT_MM_MIN));
+        $locked = $this->definition('document.logo_keep_proportions');
+        self::assertSame([true, [SettingLevel::Company]], [$locked->default, $locked->overridableAt]);
     }
 
     public function testACreditLimitIsAMoneyAmountWhereZeroMeansNoLimitAndOnlyAPartyHasOne(): void

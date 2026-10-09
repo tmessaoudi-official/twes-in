@@ -17,6 +17,8 @@ use App\Fiscal\Domain\UnitRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Settings\Application\ChangeSettings;
 use App\Settings\Application\SettingContext;
+use App\Settings\Domain\Setting;
+use App\Settings\Domain\SettingAddress;
 use App\Settings\Domain\SettingLevel;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Company;
@@ -193,6 +195,14 @@ final class CustomerStatementTest extends ApiTestCase
             self::assertStringContainsString($expected, $page);
         }
         self::assertSame($stored, $this->storedPdfs(), 'a statement is rendered on request, never stored (issuing an invoice stores that invoice\'s own PDF)');
+
+        // The logo takes the room the company gave it on every document, the statement included.
+        self::assertStringContainsString('width: 48mm; height: 17mm; object-fit: contain;', $page);
+        $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
+        $this->em()->persist(new Setting(SettingAddress::company($company), 'document.logo_height', 30, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->client->request('GET', $this->path().'/pdf');
+        self::assertStringContainsString('width: 48mm; height: 30mm; object-fit: contain;', (string) $this->client->getResponse()->getContent());
     }
 
     public function testThePdfTakesTheSamePeriodAndTheSameRights(): void

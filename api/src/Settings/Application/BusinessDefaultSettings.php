@@ -48,11 +48,16 @@ final readonly class BusinessDefaultSettings implements DeclaresSettings
         yield new SettingDefinition('document.late_payment_rate', SettingType::Text, '', SettingChain::Parties, $partiesNotDocument, 'settings.document.late_payment_rate', self::MODULE, maxLength: 200);
         yield new SettingDefinition('document.exemption_reference', SettingType::Text, '', SettingChain::Parties, $partiesNotDocument, 'settings.document.exemption_reference', self::MODULE, maxLength: 200);
 
-        // How every document the company prints looks (docs/SPEC.md § 7, 2026-10-06 10:19): a built-in layout and an accent,
-        // kept with a document when it is issued. The company's alone: a document is the company's, whoever it goes to.
+        // How every document the company prints looks: a built-in layout, an accent and the logo's size, kept with a
+        // document when it is issued. The company's alone: a document is the company's, whoever it goes to.
         // Written out, so the labels gate can read them; a test keeps them DocumentLayout's cases.
         yield new SettingDefinition('document.layout', SettingType::Enum, 'classic', SettingChain::Parties, [SettingLevel::Company], 'settings.document.layout', self::MODULE, choices: ['classic', 'modern', 'compact']);
         yield new SettingDefinition('document.accent', SettingType::Colour, DocumentDesign::DEFAULT_ACCENT, SettingChain::Parties, [SettingLevel::Company], 'settings.document.accent', self::MODULE);
+        // The logo's printed size, in millimetres since it is printed, and whether it keeps its own proportions in it or
+        // is stretched to it.
+        yield new SettingDefinition('document.logo_width', SettingType::Int, DocumentDesign::DEFAULT_LOGO_WIDTH_MM, SettingChain::Parties, [SettingLevel::Company], 'settings.document.logo_width', self::MODULE, min: DocumentDesign::LOGO_WIDTH_MM_MIN, max: DocumentDesign::LOGO_WIDTH_MM_MAX);
+        yield new SettingDefinition('document.logo_height', SettingType::Int, DocumentDesign::DEFAULT_LOGO_HEIGHT_MM, SettingChain::Parties, [SettingLevel::Company], 'settings.document.logo_height', self::MODULE, min: DocumentDesign::LOGO_HEIGHT_MM_MIN, max: DocumentDesign::LOGO_HEIGHT_MM_MAX);
+        yield new SettingDefinition('document.logo_keep_proportions', SettingType::Bool, true, SettingChain::Parties, [SettingLevel::Company], 'settings.document.logo_keep_proportions', self::MODULE);
 
         // Whether an up-to-date copy stamps what became of the invoice: « Acquittée », « Soldée » or « Réglée partiellement ».
         // Off unless the company asks, because a stamp on a document reads as a statement the seller makes.

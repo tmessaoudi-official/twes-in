@@ -43,16 +43,22 @@ final readonly class DocumentFormats
         return new PrintSettings(\is_string($notes) ? $notes : '', $formats['dateFormat'], $formats['numberFormat'], true === $settings->value($atCustomer, 'document.amount_in_words'), true === $settings->value($atCustomer, 'document.how_to_pay'), self::design($settings, $company), true === $settings->value($atCustomer, 'document.savings_line'));
     }
 
-    /** The company's layout and accent, which every document it prints takes. */
+    /** The company's layout, accent and logo size, which every document it prints takes. */
     public static function design(ReadSetting $settings, Company $company): DocumentDesign
     {
         $context = new SettingContext($company);
         $layout = $settings->value($context, 'document.layout');
         $accent = $settings->value($context, 'document.accent');
+        $width = $settings->value($context, 'document.logo_width');
+        $height = $settings->value($context, 'document.logo_height');
+        $keeps = $settings->value($context, 'document.logo_keep_proportions');
 
         return new DocumentDesign(
             DocumentLayout::tryFrom(\is_string($layout) ? $layout : '') ?? DocumentLayout::Classic,
             \is_string($accent) ? $accent : DocumentDesign::DEFAULT_ACCENT,
+            \is_int($width) ? $width : DocumentDesign::DEFAULT_LOGO_WIDTH_MM,
+            \is_int($height) ? $height : DocumentDesign::DEFAULT_LOGO_HEIGHT_MM,
+            false !== $keeps,
         );
     }
 }
