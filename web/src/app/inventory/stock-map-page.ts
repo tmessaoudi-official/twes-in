@@ -41,6 +41,8 @@ import {
   STRUCTURE_KINDS,
   type StockDrawingRow,
   type StockFloorRow,
+  type StockDrawingInput,
+  type StockLocationKind,
   type StockPlanShape,
   type StockStructureRow,
   type StockStructureShape,
@@ -56,8 +58,11 @@ import {
   floorInput,
   floorValues,
   footprintValues,
+  kindOfShape,
+  type NewPlaceProposal,
   nextCodes,
   planRectangles,
+  proposedCode,
   rectValues,
   structureForm,
   structureInput,
@@ -715,6 +720,7 @@ export class StockMapPage implements OnInit {
       this.facade.locations(),
       this.facade.drawings(),
       editing === 'new' ? null : editing,
+      this.floor()?.establishmentId ?? null,
     );
   });
   protected readonly drawingFormGroup = linkedSignal<
@@ -731,7 +737,10 @@ export class StockMapPage implements OnInit {
 
       return buildFormGroup(
         descriptor,
-        typed ?? untracked(() => drawingValues(editing === 'new' ? null : editing)),
+        typed ??
+          untracked(() =>
+            editing === 'new' ? drawingValues(null, this.proposal('rack')) : drawingValues(editing),
+          ),
       );
     },
   });
@@ -1117,9 +1126,22 @@ export class StockMapPage implements OnInit {
    */
   protected pose(shape: StockPlanShape): void {
     this.draw('new');
-    this.drawingFormGroup()?.patchValue(
-      footprintValues(centredIn(this.viewed(), shape.width, shape.depth)),
-    );
+    const kind = kindOfShape(shape.shape);
+    this.drawingFormGroup()?.patchValue({
+      ...footprintValues(centredIn(this.viewed(), shape.width, shape.depth)),
+      newLocationKind: kind,
+      newLocationCode: this.proposal(kind).code,
+    });
+  }
+
+  /** The new place a new rectangle proposes: of this kind, with the code after the floor establishment's last one. */
+  private proposal(kind: StockLocationKind): NewPlaceProposal {
+    const establishmentId = this.floor()?.establishmentId;
+
+    return {
+      kind,
+      code: establishmentId ? proposedCode(this.facade.locations(), establishmentId, kind) : '',
+    };
   }
 
   /** Whether the next gesture on bare floor traces a box. Armed by the tool beside the plan, for one box. */
@@ -1653,7 +1675,7 @@ export class StockMapPage implements OnInit {
           key: 'inventory.plan.undo',
           run: () =>
             editing === 'new'
-              ? void this.undrawNew(companyId, floorId, input.locationId)
+              ? void this.undrawNew(companyId, floorId, input)
               : void this.undo(() => this.facade.draw(companyId, floorId, before!, editing.id)),
         },
       );
@@ -1685,15 +1707,30 @@ export class StockMapPage implements OnInit {
     }
   }
 
-  /** A rectangle just drawn, found again by its location (one location, one rectangle) and undrawn. */
+  /**
+   * A rectangle just drawn, found again by its location (one location, one rectangle) and undrawn. A place created
+   * with it is found by its code, which is unique on the floor's establishment, and deleted too: it was made a
+   * moment ago, so nothing is stored in it, and « Annuler » leaves nothing behind.
+   */
   private async undrawNew(
     companyId: string,
     floorId: string,
-    locationId: string | null,
+    input: StockDrawingInput,
   ): Promise<void> {
-    const made = this.facade.drawings().find((drawing) => drawing.locationId === locationId);
+    const created = input.newLocationCode !== undefined;
+    const made = this.facade
+      .drawings()
+      .find((drawing) =>
+        created
+          ? drawing.locationCode === input.newLocationCode
+          : drawing.locationId === input.locationId,
+      );
     if (made === undefined) return;
-    await this.undo(() => this.facade.eraseDrawing(companyId, floorId, made.id));
+    await this.undo(async () => {
+      const erased = await this.facade.eraseDrawing(companyId, floorId, made.id);
+
+      return erased && (!created || (await this.facade.deleteLocation(companyId, made.locationId)));
+    });
   }
 
   /** « Annuler » on a drawing toast: the change taken back, and said. */

@@ -7,7 +7,9 @@ import {
   floorForm,
   floorInput,
   floorValues,
+  kindOfShape,
   nextCodes,
+  proposedCode,
   planRectangles,
   rectValues,
   structureForm,
@@ -229,6 +231,117 @@ describe('drawingForm', () => {
       // How it is turned: in fifteens, because a rack stands square to a wall or at an angle off it.
       rotation: 90,
     });
+  });
+
+  /**
+   * A rack or a zone posed from the palette creates its place with its rectangle (the stock map brief § 5.3, finding D):
+   * « Emplacement : ◉ nouveau — code [R9] nom [ ] ○ existant [picker] », « nouveau » first.
+   */
+  it('draws a new rectangle for a new place by default, and an existing one when asked', () => {
+    const form = drawingForm([location()], [], null, 'e1');
+    const origin = fieldOf(form, 'origin');
+    expect(origin.options?.map((option) => option.value)).toEqual(['new', 'existing']);
+    for (const id of ['newLocationKind', 'newLocationCode', 'newLocationName']) {
+      expect(fieldOf(form, id).visibleWhen).toEqual({ field: 'origin', oneOf: ['new'] });
+      expect(fieldOf(form, id).required).toBe(true);
+    }
+    expect(fieldOf(form, 'locationId').visibleWhen).toEqual({
+      field: 'origin',
+      oneOf: ['existing'],
+    });
+    // A bin is placed in its rack, so it is no kind a rectangle creates.
+    expect(fieldOf(form, 'newLocationKind').options?.map((option) => option.value)).not.toContain(
+      'bin',
+    );
+
+    expect(drawingValues(null, { kind: 'zone', code: 'Z4' })).toEqual(
+      expect.objectContaining({
+        origin: 'new',
+        newLocationKind: 'zone',
+        newLocationCode: 'Z4',
+        newLocationName: '',
+      }),
+    );
+  });
+
+  /** With nothing left to draw for, the form still opens, offering the new place alone, rather than an empty picker. */
+  it('offers the new place alone when every place is drawn already', () => {
+    const drawn = drawing({ locationId: 'l1' });
+    const origin = fieldOf(drawingForm([location()], [drawn], null, 'e1'), 'origin');
+    expect(origin.options?.map((option) => option.value)).toEqual(['new']);
+  });
+
+  /** Moving a rectangle never creates a place: giving it another place is choosing among those that exist. */
+  it('asks nothing of a new place when a rectangle is edited', () => {
+    const drawn = drawing();
+    const ids = drawingForm([location()], [drawn], drawn, 'e1').sections.flatMap((section) =>
+      section.fields.map((field) => field.id),
+    );
+    expect(ids).not.toContain('origin');
+    expect(ids).not.toContain('newLocationCode');
+    expect(
+      fieldOf(drawingForm([location()], [drawn], drawn, 'e1'), 'locationId').visibleWhen,
+    ).toBeUndefined();
+  });
+
+  /** The picker offers only the places of the floor's own establishment (the brief § 3.2-12). */
+  it('offers only the places of the floor’s establishment', () => {
+    const locations = [
+      location({ id: 'l1' }),
+      location({ id: 'l2', code: 'R2', establishmentId: 'e2' }),
+    ];
+    const offered = fieldOf(drawingForm(locations, [], null, 'e1'), 'locationId').options;
+    expect(offered?.map((option) => option.value)).toEqual(['l1']);
+  });
+
+  it('sends a new place in full and an existing one by its id, never both', () => {
+    const rect = { x: '1', y: '2', width: '1', depth: '1', rotation: 0, height: '2' };
+    expect(
+      drawingInput({
+        ...rect,
+        origin: 'new',
+        locationId: 'l1',
+        newLocationKind: 'rack',
+        newLocationCode: ' R9 ',
+        newLocationName: ' Rayonnage 9 ',
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        locationId: '',
+        newLocationKind: 'rack',
+        newLocationCode: 'R9',
+        newLocationName: 'Rayonnage 9',
+      }),
+    );
+    const existing = drawingInput({
+      ...rect,
+      origin: 'existing',
+      locationId: 'l1',
+      newLocationCode: 'R9',
+    });
+    expect(existing.locationId).toBe('l1');
+    expect(existing).not.toHaveProperty('newLocationCode');
+  });
+
+  /** The code proposed is the one after the highest of that kind in the establishment, as a repeat counts on. */
+  it('proposes the code after the establishment’s highest of the same kind', () => {
+    const locations = [
+      location({ id: 'l1', code: 'R1' }),
+      location({ id: 'l2', code: 'R08' }),
+      location({ id: 'l3', code: 'R12', establishmentId: 'e2' }),
+      location({ id: 'l4', code: 'Z1', kind: 'zone' }),
+    ];
+    expect(proposedCode(locations, 'e1', 'rack')).toBe('R09');
+    expect(proposedCode(locations, 'e1', 'zone')).toBe('Z2');
+    // No place of that kind yet: nothing to count on from, so the code is the person's to type.
+    expect(proposedCode(locations, 'e1', 'quarantine')).toBe('');
+    // The palette's rack is a rack; every other ready-made shape is an area of the floor, so a zone.
+    expect(['rack', 'zone', 'aisle', 'dock'].map(kindOfShape)).toEqual([
+      'rack',
+      'zone',
+      'zone',
+      'zone',
+    ]);
   });
 
   it('keeps a size that is already on the grid, so the rule costs a round rack nothing', () => {

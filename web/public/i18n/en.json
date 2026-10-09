@@ -2421,7 +2421,11 @@
         "width": "Width (m)",
         "depth": "Depth (m)",
         "height": "Height (m)",
-        "rotation": "Rotation (°)"
+        "rotation": "Rotation (°)",
+        "origin": "Location",
+        "newLocationKind": "Kind",
+        "newLocationCode": "Code",
+        "newLocationName": "Name"
       },
       "shapes": "Ready-made shapes",
       "shape_names": {
@@ -2611,7 +2615,12 @@
           "build": "Put up the walls, doors and posts (optional)",
           "place": "Place your racks and zones, each on its stock location"
         }
-      }
+      },
+      "origin": {
+        "new": "New, created with this rectangle",
+        "existing": "An existing location"
+      },
+      "new_location_hint": "Proposed after the last of this kind; it is placed in the zone it is drawn in."
     },
     "scan": {
       "filled": "{{name}}: article, lot and quantity filled in",

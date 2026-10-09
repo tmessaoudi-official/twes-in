@@ -78,10 +78,23 @@ final class StockDrawingResource
     #[Groups([self::READ])]
     public ?string $floorId = null;
 
-    #[Assert\NotBlank(groups: [self::WRITE])]
+    /** The place a rectangle is drawn for; left empty when the three `newLocation…` fields name a place to create. */
     #[Assert\Uuid(groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public string $locationId = '';
+
+    /** A place created with its rectangle, posed from the palette: its kind, its code and its name, all three or none. */
+    #[ApiProperty(readable: false)]
+    #[Groups([self::WRITE])]
+    public ?string $newLocationKind = null;
+
+    #[ApiProperty(readable: false)]
+    #[Groups([self::WRITE])]
+    public ?string $newLocationCode = null;
+
+    #[ApiProperty(readable: false)]
+    #[Groups([self::WRITE])]
+    public ?string $newLocationName = null;
 
     /** What the screen writes on the rectangle; the venue's own rectangle knows none of it. */
     #[ApiProperty(writable: false)]

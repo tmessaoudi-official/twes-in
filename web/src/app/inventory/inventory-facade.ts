@@ -490,7 +490,13 @@ export class InventoryFacade {
         drawingId === null
           ? this.api.draw(companyId, floorId, input)
           : this.api.moveDrawing(companyId, drawingId, input),
-      () => this.afterDrawing(companyId, floorId),
+      // A place created with its rectangle is read again with the floor, or every picker would miss it.
+      async () => {
+        await Promise.all([
+          this.afterDrawing(companyId, floorId),
+          ...(input.newLocationCode === undefined ? [] : [this.reloadLocations(companyId)]),
+        ]);
+      },
     );
   }
 

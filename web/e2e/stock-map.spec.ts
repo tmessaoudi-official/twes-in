@@ -136,6 +136,12 @@ async function clean(
   );
 }
 
+/** A rectangle drawn for a place that exists: « Existant » first, since a new rectangle draws a new place by default. */
+async function chooseExisting(page: Page): Promise<void> {
+  await page.getByTestId('field-origin').click();
+  await page.getByRole('option', { name: 'Un emplacement existant' }).click();
+}
+
 test.describe('the drawn stock map', () => {
   test('adds a floor, draws a rack on it in metres, moves it and erases it', async ({ page }) => {
     const stamp = Date.now().toString().slice(-8);
@@ -182,11 +188,28 @@ test.describe('the drawn stock map', () => {
         ],
         'the form is posed at the size the palette offered',
       ).toEqual([comma(offered[1] ?? ''), comma(offered[2] ?? '')]);
-      await page.getByTestId('stock-drawing-cancel').click();
+
+      // A rack posed from the palette is a NEW rack, created with its rectangle; « Annuler » takes both back, so
+      // nothing of it is left behind.
+      const posed = `${code}N`;
+      await page.getByTestId('field-newLocationCode').fill(posed);
+      await page.getByTestId('field-newLocationName').fill('Rayonnage posé');
+      await page.getByTestId('stock-drawing-save').click();
+      await expect(toast(page)).toContainText('Rectangle enregistré');
+      await expect(page.getByTestId(`stock-drawing-${posed}`)).toBeVisible();
+      await toast(page).getByRole('button', { name: 'Annuler' }).click();
+      await expect(page.getByTestId(`stock-drawing-${posed}`)).toHaveCount(0);
+      const codesLeft = await page.evaluate(async (companyId) => {
+        const answer = await fetch(`/api/companies/${companyId}/stock-locations`);
+        if (!answer.ok) throw new Error(`the locations answered ${answer.status}`);
+        return ((await answer.json()) as { code: string }[]).map((location) => location.code);
+      }, fixture.companyId);
+      expect(codesLeft, 'the place made with the rectangle is gone with it').not.toContain(posed);
 
       // The rack, drawn by the form rather than by dragging: the form is the way in, on every window.
       await page.getByTestId('stock-map-trace').click();
       await page.getByTestId('stock-map-trace-type').click();
+      await chooseExisting(page);
       await page.getByTestId('field-locationId').click();
       await page.getByRole('option', { name: new RegExp(code) }).click();
       await page.getByTestId('field-x').fill('2,6');
@@ -382,6 +405,7 @@ test.describe('the drawn stock map', () => {
 
       await page.getByTestId('stock-map-trace').click();
       await page.getByTestId('stock-map-trace-type').click();
+      await chooseExisting(page);
       await page.getByTestId('field-locationId').click();
       await page.getByRole('option', { name: new RegExp(code) }).click();
       await page.getByTestId('field-x').fill('2,5');
@@ -570,6 +594,7 @@ test.describe('the drawn stock map', () => {
       // One rack, and one wall to prove the building keeps its name under every choice.
       await page.getByTestId('stock-map-trace').click();
       await page.getByTestId('stock-map-trace-type').click();
+      await chooseExisting(page);
       await page.getByTestId('field-locationId').click();
       await page.getByRole('option', { name: new RegExp(code) }).click();
       await page.getByTestId('field-x').fill('1');
@@ -657,6 +682,7 @@ test.describe('the drawn stock map', () => {
 
       await page.getByTestId('stock-map-trace').click();
       await page.getByTestId('stock-map-trace-type').click();
+      await chooseExisting(page);
       await page.getByTestId('field-locationId').click();
       await page.getByRole('option', { name: new RegExp(code) }).click();
       await page.getByTestId('field-x').fill('2');
@@ -753,6 +779,7 @@ test.describe('the drawn stock map', () => {
 
       await page.getByTestId('stock-map-trace').click();
       await page.getByTestId('stock-map-trace-type').click();
+      await chooseExisting(page);
       await page.getByTestId('field-locationId').click();
       await page.getByRole('option', { name: new RegExp(code) }).click();
       await page.getByTestId('field-x').fill('2');

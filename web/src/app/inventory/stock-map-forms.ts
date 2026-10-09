@@ -9,6 +9,7 @@ import {
   type StockFloorInput,
   type StockFloorRow,
   type StockLocationRow,
+  type StockLocationKind,
   type StockOptions,
   STRUCTURE_KINDS,
   type StockStructureInput,
@@ -119,23 +120,95 @@ export function floorInput(values: FormValues, editing: StockFloorRow | null): S
   };
 }
 
+/** Which place a new rectangle is drawn for: one created with it, or one that exists. */
+const NEW_PLACE = 'new';
+const EXISTING_PLACE = 'existing';
+
 /**
  * One rectangle: which location it is drawn for, and where it sits. A location is drawn in one place, so the ones
  * already drawn are not offered again — except the one being edited, which must stay offered or its own form could
- * not be saved back. A bin is never offered: it is placed in its rack's front view (decision 2).
+ * not be saved back. A bin is never offered: it is placed in its rack's front view (decision 2). Only the places of
+ * the floor's own establishment are offered, since a floor belongs to one.
+ *
+ * A NEW rectangle draws a new place by default, created with it (the stock map brief § 5.3): a rack posed from the
+ * palette is a rack that does not exist yet far more often than one waiting to be drawn. Moving a rectangle never
+ * creates a place, so an edited one only offers the picker.
  */
 export function drawingForm(
   locations: readonly StockLocationRow[],
   drawings: readonly StockDrawingRow[],
   editing: StockDrawingRow | null,
+  establishmentId: string | null = null,
 ): FormDescriptor {
   const drawnElsewhere = new Set(
     drawings.filter((drawn) => drawn.id !== editing?.id).map((drawn) => drawn.locationId),
   );
   const offered = locations.filter(
     (location) =>
-      DRAWABLE_STOCK_LOCATION_KINDS.includes(location.kind) && !drawnElsewhere.has(location.id),
+      DRAWABLE_STOCK_LOCATION_KINDS.includes(location.kind) &&
+      !drawnElsewhere.has(location.id) &&
+      (establishmentId === null || location.establishmentId === establishmentId),
   );
+  const picker = {
+    id: 'locationId',
+    label: `${DRAWING_FIELDS}.locationId`,
+    kind: 'select' as const,
+    required: true,
+    span: 2 as const,
+    hint: 'inventory.plan.location_hint',
+    options: offered.map((location) => ({
+      value: location.id,
+      label: `${location.code} — ${location.name}`,
+    })),
+  };
+  const isNew = { field: 'origin', oneOf: [NEW_PLACE] };
+  const drawnFor =
+    editing !== null
+      ? [picker]
+      : [
+          {
+            id: 'origin',
+            label: `${DRAWING_FIELDS}.origin`,
+            kind: 'select' as const,
+            required: true,
+            span: 2 as const,
+            // With every place drawn already, the picker would offer nothing: the new place alone is offered.
+            options: [
+              { value: NEW_PLACE, label: 'inventory.plan.origin.new' },
+              ...(offered.length > 0
+                ? [{ value: EXISTING_PLACE, label: 'inventory.plan.origin.existing' }]
+                : []),
+            ],
+          },
+          {
+            id: 'newLocationKind',
+            label: `${DRAWING_FIELDS}.newLocationKind`,
+            kind: 'select' as const,
+            required: true,
+            visibleWhen: isNew,
+            options: DRAWABLE_STOCK_LOCATION_KINDS.map((kind) => ({
+              value: kind,
+              label: `inventory.kinds.${kind}`,
+            })),
+          },
+          {
+            id: 'newLocationCode',
+            label: `${DRAWING_FIELDS}.newLocationCode`,
+            kind: 'text' as const,
+            required: true,
+            visibleWhen: isNew,
+            hint: 'inventory.plan.new_location_hint',
+          },
+          {
+            id: 'newLocationName',
+            label: `${DRAWING_FIELDS}.newLocationName`,
+            kind: 'text' as const,
+            required: true,
+            span: 2 as const,
+            visibleWhen: isNew,
+          },
+          { ...picker, visibleWhen: { field: 'origin', oneOf: [EXISTING_PLACE] } },
+        ];
 
   return {
     id: 'stock-drawing',
@@ -143,20 +216,7 @@ export function drawingForm(
       {
         id: 'drawn-for',
         title: 'inventory.plan.drawing_section',
-        fields: [
-          {
-            id: 'locationId',
-            label: `${DRAWING_FIELDS}.locationId`,
-            kind: 'select',
-            required: true,
-            span: 2,
-            hint: 'inventory.plan.location_hint',
-            options: offered.map((location) => ({
-              value: location.id,
-              label: `${location.code} — ${location.name}`,
-            })),
-          },
-        ],
+        fields: drawnFor,
       },
       {
         id: 'footprint',
@@ -183,8 +243,28 @@ export function drawingForm(
   };
 }
 
-export function drawingValues(row: StockDrawingRow | null): FormValues {
+/** The new place a new rectangle proposes: its kind, and the code after the last of that kind. */
+export interface NewPlaceProposal {
+  kind: StockLocationKind;
+  code: string;
+}
+
+export function drawingValues(
+  row: StockDrawingRow | null,
+  proposal: NewPlaceProposal | null = null,
+): FormValues {
+  const place: FormValues =
+    row === null
+      ? {
+          origin: NEW_PLACE,
+          newLocationKind: proposal?.kind ?? 'rack',
+          newLocationCode: proposal?.code ?? '',
+          newLocationName: '',
+        }
+      : {};
+
   return {
+    ...place,
     locationId: row?.locationId ?? '',
     x: row?.x ?? metres(0),
     y: row?.y ?? metres(0),
@@ -206,8 +286,19 @@ export function drawingValues(row: StockDrawingRow | null): FormValues {
  * rack stands square to a wall or at an angle off it, and decision 3 draws those in fifteens.
  */
 export function drawingInput(values: FormValues): StockDrawingInput {
+  // A new place travels in full and an existing one by its id, never both: the API refuses a rectangle naming two.
+  const place =
+    values['origin'] === NEW_PLACE
+      ? {
+          locationId: '',
+          newLocationKind: text(values['newLocationKind']) as StockLocationKind,
+          newLocationCode: text(values['newLocationCode']),
+          newLocationName: text(values['newLocationName']),
+        }
+      : { locationId: text(values['locationId']) };
+
   return {
-    locationId: text(values['locationId']),
+    ...place,
     x: onGrid(values['x']),
     y: onGrid(values['y']),
     width: metres(Number(values['width'] ?? 0) || 0),
@@ -285,6 +376,36 @@ export function nextCodes(firstCode: string, count: number): string[] {
       // Padded back to the width it was typed with, and never truncated: R99 is followed by R100.
       `${stem}${String(Number(number) + made).padStart(number.length, '0')}`,
   );
+}
+
+/**
+ * The code proposed for a new place: the one after the highest-numbered code of the same kind in the establishment,
+ * counted on as a repeat counts (`R08` → `R09`). With no place of that kind yet there is nothing to count on from,
+ * and the code is the person's to type.
+ */
+export function proposedCode(
+  locations: readonly StockLocationRow[],
+  establishmentId: string,
+  kind: StockLocationKind,
+): string {
+  let highest: { code: string; number: number } | null = null;
+  for (const location of locations) {
+    if (location.establishmentId !== establishmentId || location.kind !== kind) continue;
+    const found = /(\d+)$/.exec(location.code);
+    if (found === null) continue;
+    const number = Number(found[1]);
+    if (highest === null || number > highest.number) highest = { code: location.code, number };
+  }
+
+  return highest === null ? '' : (nextCodes(highest.code, 2)[1] ?? '');
+}
+
+/**
+ * The kind of place a ready-made shape of the palette creates: its rack is a rack, and every other shape (a zone,
+ * an aisle, a dock) is an area of the floor, which is what a zone is.
+ */
+export function kindOfShape(shape: string): StockLocationKind {
+  return shape === 'rack' ? 'rack' : 'zone';
 }
 
 /**

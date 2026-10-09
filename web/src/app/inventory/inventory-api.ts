@@ -486,22 +486,25 @@ export class InventoryApi {
 
   /**
    * Draws a location on a floor. Drawing one that is already drawn moves it — a rack is in one place — and a
-   * location the plan does not carry, a bin, answers 422 naming `locationId`.
+   * location the plan does not carry, a bin, answers 422 naming `locationId`. A new place created with its rectangle
+   * whose code another place of the establishment has answers 409.
    */
   async draw(
     companyId: string,
     floorId: string,
     input: StockDrawingInput,
   ): Promise<StockDrawingRow> {
-    return this.guard(async () =>
-      toDrawing(
-        await firstValueFrom(
-          this.http.post<StockDrawingStockDrawingRead>(
-            `${path(companyId, 'stock-floors', floorId)}/drawings`,
-            drawingBody(input),
+    return this.guard(
+      async () =>
+        toDrawing(
+          await firstValueFrom(
+            this.http.post<StockDrawingStockDrawingRead>(
+              `${path(companyId, 'stock-floors', floorId)}/drawings`,
+              drawingBody(input),
+            ),
           ),
         ),
-      ),
+      'code_taken',
     );
   }
 

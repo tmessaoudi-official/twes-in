@@ -11,6 +11,7 @@ namespace App\Module\Inventory\Application;
 
 use App\Module\Inventory\Domain\InvalidStockLocation;
 use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockLocationKind;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use App\Venue\Application\ArrangeVenue;
@@ -154,6 +155,88 @@ final readonly class DrawStockMap
 
             return $drawn;
         });
+    }
+
+    /**
+     * Draws a place that does not exist yet: a rack or a zone posed from the palette is created with its rectangle, as
+     * one unit of work, so a box nobody could save is never drawn and a refused rectangle leaves no location behind.
+     *
+     * The new place is put in the zone it is drawn in — the innermost drawn zone of this floor holding its centre, as
+     * that zone stands, turned or not — and otherwise under its establishment's default place, as a place created
+     * from the locations list is. A rack drawn in « Zone A » is then a place of zone A without anybody saying so twice.
+     *
+     * @throws VenueAreaNotFound
+     * @throws StockLocationCodeTaken
+     * @throws InvalidVenue
+     * @throws InvalidStockLocation   naming the `newLocation…` field it refuses
+     */
+    public function drawNew(Company $company, Uuid $floorId, StockLocationKind $kind, string $code, string $name, PlanRect $rect, ?Uuid $actorUserId): StockLocation
+    {
+        if (!$kind->isDrawable()) {
+            throw new InvalidStockLocation('newLocationKind', 'A bin is placed in its rack rather than on the floor plan.');
+        }
+        $floor = $this->venue->area($company, $floorId);
+        $zone = $this->zoneHolding($company, $floorId, $rect);
+
+        return $this->transactions->run(function () use ($company, $floor, $zone, $kind, $code, $name, $rect, $actorUserId): StockLocation {
+            try {
+                $made = $this->locations->create($company, $floor->getEstablishment()->getId(), $zone?->getId(), $kind, $code, $name, $actorUserId);
+            } catch (InvalidStockLocation $refused) {
+                // The form sent `newLocationCode`, not `code`: the refusal names the field that was typed.
+                $field = match ($refused->field) {
+                    'code' => 'newLocationCode',
+                    'name' => 'newLocationName',
+                    'kind' => 'newLocationKind',
+                    default => $refused->field,
+                };
+                throw new InvalidStockLocation($field, $refused->getMessage());
+            }
+
+            return $this->draw($company, $floor->getId(), $made->getId(), $rect, $actorUserId);
+        });
+    }
+
+    /**
+     * The innermost drawn zone of a floor holding a rectangle's centre: of the zones that hold it, the smallest, since
+     * a zone drawn inside another is the narrower answer to « where is it ».
+     */
+    private function zoneHolding(Company $company, Uuid $floorId, PlanRect $rect): ?StockLocation
+    {
+        $x = (float) $rect->x + (float) $rect->width / 2; // float: a point on the plan, compared and never stored
+        $y = (float) $rect->y + (float) $rect->depth / 2; // float: a point on the plan, compared and never stored
+
+        $holding = null;
+        $smallest = null;
+        foreach ($this->drawingsOf($company, $floorId) as $location) {
+            $spot = $location->getSpot();
+            if (StockLocationKind::Zone !== $location->getKind() || null === $spot || !self::holds($spot->getRect(), $x, $y)) {
+                continue;
+            }
+            $size = (float) $spot->getRect()->width * (float) $spot->getRect()->depth; // float: compared, never stored
+            if (null === $smallest || $size < $smallest) {
+                [$holding, $smallest] = [$location, $size];
+            }
+        }
+
+        return $holding;
+    }
+
+    /**
+     * Whether a point lies in a rectangle as it stands, turned clockwise about its own centre as the screen draws it:
+     * the point is turned back by the rectangle's rotation, into the frame where the rectangle is a plain box.
+     */
+    private static function holds(PlanRect $box, float $x, float $y): bool
+    {
+        $halfWidth = (float) $box->width / 2; // float: a distance on the plan, compared and never stored
+        $halfDepth = (float) $box->depth / 2; // float: a distance on the plan, compared and never stored
+        $dx = $x - ((float) $box->x + $halfWidth); // float: a distance on the plan, compared and never stored
+        $dy = $y - ((float) $box->y + $halfDepth); // float: a distance on the plan, compared and never stored
+        $angle = deg2rad($box->rotation);
+        // Half a millimetre's tolerance: the plan's scale is three decimals, and a centre on the edge is inside.
+        $edge = 0.0005;
+
+        return abs($dx * cos($angle) + $dy * sin($angle)) <= $halfWidth + $edge
+            && abs($dy * cos($angle) - $dx * sin($angle)) <= $halfDepth + $edge;
     }
 
     /**

@@ -197,6 +197,7 @@ describe('StockMapPage', () => {
     deleteFloor: vi.fn(),
     draw: vi.fn(),
     eraseDrawing: vi.fn(),
+    deleteLocation: vi.fn(),
     repeatDrawing: vi.fn(),
     clearError: vi.fn(),
   };
@@ -257,6 +258,7 @@ describe('StockMapPage', () => {
     facade.reviseFloor.mockReset().mockResolvedValue(true);
     facade.deleteFloor.mockReset().mockResolvedValue(true);
     facade.draw.mockReset().mockResolvedValue(true);
+    facade.deleteLocation.mockReset().mockResolvedValue(true);
     facade.eraseDrawing.mockReset().mockResolvedValue(true);
     facade.repeatDrawing.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -459,6 +461,7 @@ describe('StockMapPage', () => {
     await settle();
     q('stock-map-trace-type')!.click();
     await settle();
+    drawingGroup().get('origin')!.setValue('existing');
     drawingGroup().get('locationId')!.setValue('l2');
     type('field-x', '2.6');
     type('field-y', '4.1');
@@ -558,6 +561,60 @@ describe('StockMapPage', () => {
     );
   });
 
+  /** Slice 7b: a rack posed from the palette is a new rack, with the code after the establishment's last one. */
+  it('poses a new place from the palette, proposing its kind and the next code', async () => {
+    q('stock-shape-rack')!.click();
+    await settle();
+    expect(drawingGroup().getRawValue()).toEqual(
+      expect.objectContaining({ origin: 'new', newLocationKind: 'rack', newLocationCode: 'R2' }),
+    );
+    q('stock-shape-zone')!.click();
+    await settle();
+    expect(drawingGroup().getRawValue()).toEqual(
+      expect.objectContaining({ newLocationKind: 'zone', newLocationCode: 'Z2' }),
+    );
+  });
+
+  it('saves a new place with its rectangle, by its kind, code and name and no location id', async () => {
+    q('stock-shape-rack')!.click();
+    await settle();
+    type('field-newLocationName', 'Rayonnage 2');
+    q('stock-drawing-save')!.click();
+    await settle();
+
+    expect(facade.draw).toHaveBeenCalledWith(
+      'c1',
+      'f1',
+      expect.objectContaining({
+        locationId: '',
+        newLocationKind: 'rack',
+        newLocationCode: 'R2',
+        newLocationName: 'Rayonnage 2',
+      }),
+      null,
+    );
+  });
+
+  /** « Annuler » leaves nothing behind: the rectangle is undrawn and the place made a moment ago deleted. */
+  it('takes back a new place and its rectangle together when « Annuler » is pressed', async () => {
+    facade.eraseDrawing.mockResolvedValue(true);
+    facade.deleteLocation.mockResolvedValue(true);
+    facade.draw.mockImplementation(async () => {
+      drawings.set([drawn, { ...drawn, id: 'd9', locationId: 'l9', locationCode: 'R2' }]);
+      return true;
+    });
+    q('stock-shape-rack')!.click();
+    await settle();
+    type('field-newLocationName', 'Rayonnage 2');
+    q('stock-drawing-save')!.click();
+    await settle();
+
+    undoOf('inventory.plan.drawing_saved')();
+    await settle();
+    expect(facade.eraseDrawing).toHaveBeenLastCalledWith('c1', 'f1', 'd9');
+    expect(facade.deleteLocation).toHaveBeenLastCalledWith('c1', 'l9');
+  });
+
   it('undraws a rectangle just drawn when « Annuler » is pressed, leaving its location as it was', async () => {
     // A place still undrawn after this one: drawing the LAST one while its form is open is slice 7b's (« nouveau »).
     locations.set([rack, zone, bin, { ...zone, id: 'l4', code: 'Z2', name: 'Quai' }]);
@@ -570,6 +627,7 @@ describe('StockMapPage', () => {
     await settle();
     q('stock-map-trace-type')!.click();
     await settle();
+    drawingGroup().get('origin')!.setValue('existing');
     drawingGroup().get('locationId')!.setValue('l2');
     q('stock-drawing-save')!.click();
     await settle();

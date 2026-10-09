@@ -2421,7 +2421,11 @@
         "width": "Largeur (m)",
         "depth": "Profondeur (m)",
         "height": "Hauteur (m)",
-        "rotation": "Rotation (°)"
+        "rotation": "Rotation (°)",
+        "origin": "Emplacement",
+        "newLocationKind": "Nature",
+        "newLocationCode": "Code",
+        "newLocationName": "Nom"
       },
       "shapes": "Formes prêtes à poser",
       "shape_names": {
@@ -2611,7 +2615,12 @@
           "build": "Posez les murs, les portes et les poteaux (facultatif)",
           "place": "Posez vos rayonnages et vos zones, chacun sur son emplacement de stock"
         }
-      }
+      },
+      "origin": {
+        "new": "Nouveau, créé avec ce rectangle",
+        "existing": "Un emplacement existant"
+      },
+      "new_location_hint": "Proposé après le dernier de cette nature ; il est placé dans la zone où il est dessiné."
     },
     "scan": {
       "filled": "{{name}} : article, lot et quantité remplis",

@@ -454,7 +454,12 @@ export interface StockDrawingRow {
 export type StockDrawingInput = Pick<
   StockDrawingRow,
   'locationId' | 'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height'
->;
+> & {
+  /** A place created with the rectangle, all three or none, and then no `locationId`: the API refuses one naming both. */
+  newLocationKind?: StockLocationKind;
+  newLocationCode?: string;
+  newLocationName?: string;
+};
 
 /**
  * The structure layer's four tools, which are the four things the building is drawn out of. The order is the

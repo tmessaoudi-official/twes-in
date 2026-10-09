@@ -285,6 +285,106 @@ final class StockMapTest extends ApiTestCase
         $this->rackId = $this->stringAt($this->json(), 'id');
     }
 
+    /**
+     * A rack or a zone posed from the palette creates its location along with its rectangle (docs/SPEC.md § 7, the
+     * stock map brief § 5.3, parked finding D): drawing a rack that does not exist yet was a box nobody could save.
+     */
+    public function testAPlacePosedFromThePaletteIsCreatedWithItsRectangle(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $ground = $this->floor();
+        $drawings = $this->path('stock-floors', $ground).'/drawings';
+
+        $this->postJson($drawings, $this->drawing($this->newPlace('rack', 'R9', 'Rayonnage 9')));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame(['R9', 'Rayonnage 9', 'rack'], [$this->json()['locationCode'], $this->json()['locationName'], $this->json()['locationKind']]);
+        $made = $this->stringAt($this->json(), 'locationId');
+
+        // A location of the floor's establishment like any other, under its default place when it stands in no zone.
+        $this->getJson($this->path('stock-locations'));
+        $site = $this->jsonList()[0];
+        $created = array_values(array_filter($this->jsonList(), static fn (array $one): bool => $made === $one['id']));
+        self::assertCount(1, $created);
+        self::assertSame([$this->establishmentId, $site['id']], [$created[0]['establishmentId'], $created[0]['parentId']]);
+
+        // A code already taken is a conflict, and nothing is drawn for it.
+        $this->postJson($drawings, $this->drawing($this->newPlace('rack', 'R9', 'Doublon')));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        $this->getJson($drawings);
+        self::assertCount(1, $this->jsonList());
+
+        // A rectangle names a place one way: an existing one or a new one, never both and never neither.
+        foreach ([
+            'locationId' => $this->drawing([]),
+            'newLocationCode' => $this->drawing(['locationId' => $made, ...$this->newPlace('rack', 'R10', 'Rayonnage 10')]),
+        ] as $field => $sent) {
+            $this->postJson($drawings, $sent);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent(), $field);
+        }
+
+        // Moving a rectangle never creates a place: that is drawing a new one.
+        $this->getJson($drawings);
+        $drawing = $this->stringAt($this->jsonList()[0], 'id');
+        $this->sendJson('PUT', $this->path('stock-drawings', $drawing), $this->drawing(['locationId' => $made, ...$this->newPlace('rack', 'R11', 'Rayonnage 11')]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('newLocationCode', (string) $this->client->getResponse()->getContent());
+    }
+
+    /**
+     * The new place is put in the zone it is drawn in: the innermost drawn zone holding its centre, as the zone
+     * stands, turned or not. A rack drawn in « Zone A » is a place of zone A without anybody saying so twice.
+     */
+    public function testANewPlaceIsPutInTheZoneItIsDrawnIn(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $ground = $this->floor();
+        $drawings = $this->path('stock-floors', $ground).'/drawings';
+
+        // A 10 × 2 m zone turned a quarter turn about its centre (7, 7): it covers x 6 to 8 and y 2 to 12.
+        $this->postJson($drawings, $this->drawing(['x' => '2', 'y' => '6', 'width' => '10', 'depth' => '2', 'rotation' => 90, ...$this->newPlace('zone', 'ZA', 'Zone A')]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $zoneA = $this->stringAt($this->json(), 'locationId');
+        // And a smaller one inside it, around (7, 4).
+        $this->postJson($drawings, $this->drawing(['x' => '6.5', 'y' => '3', 'width' => '1', 'depth' => '2', ...$this->newPlace('zone', 'ZB', 'Zone B')]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $zoneB = $this->stringAt($this->json(), 'locationId');
+
+        foreach ([
+            // Centre (7, 4): inside both, so the inner zone.
+            ['R1', ['x' => '6.75', 'y' => '3.75', 'width' => '0.5', 'depth' => '0.5'], $zoneB],
+            // Centre (7, 10): inside the turned zone only, where the unturned one would not reach.
+            ['R2', ['x' => '6.75', 'y' => '9.75', 'width' => '0.5', 'depth' => '0.5'], $zoneA],
+            // Centre (3, 7): inside the unturned zone's box, outside the turned one, so no zone at all.
+            ['R3', ['x' => '2.75', 'y' => '6.75', 'width' => '0.5', 'depth' => '0.5'], null],
+        ] as [$code, $at, $parent]) {
+            $this->postJson($drawings, $this->drawing([...$at, ...$this->newPlace('rack', $code, 'Rayonnage')]));
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED, $code);
+            $made = $this->stringAt($this->json(), 'locationId');
+            $this->getJson($this->path('stock-locations'));
+            $site = $this->stringAt($this->jsonList()[0], 'id');
+            $created = array_values(array_filter($this->jsonList(), static fn (array $one): bool => $made === $one['id']));
+            self::assertSame($parent ?? $site, $created[0]['parentId'], $code);
+        }
+    }
+
+    /**
+     * The place and its rectangle are one unit of work: a new place refused at its drawing leaves no location
+     * behind. A bin is the refusal the drawing makes and the creation does not — a bin is placed in its rack.
+     */
+    public function testANewPlaceRefusedAtItsDrawingLeavesNoLocationBehind(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $ground = $this->floor();
+
+        $this->postJson($this->path('stock-floors', $ground).'/drawings', $this->drawing($this->newPlace('bin', 'B9', 'Casier 9')));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('newLocationKind', (string) $this->client->getResponse()->getContent());
+
+        $this->getJson($this->path('stock-locations'));
+        self::assertNotContains('B9', array_column($this->jsonList(), 'code'));
+    }
+
     public function testTheBuildingIsDrawnBesideTheStockAndIsNoneOfIt(): void
     {
         $this->signedIn(['stock.read', 'stock.write']);
@@ -390,6 +490,12 @@ final class StockMapTest extends ApiTestCase
     private function drawing(array $changes): array
     {
         return [...['x' => '2.5', 'y' => '4', 'width' => '3.9', 'depth' => '0.6', 'rotation' => 0, 'height' => '2.1'], ...$changes];
+    }
+
+    /** @return array<string, string> */
+    private function newPlace(string $kind, string $code, string $name): array
+    {
+        return ['newLocationKind' => $kind, 'newLocationCode' => $code, 'newLocationName' => $name];
     }
 
     private function path(string $resource, ?string $id = null): string
