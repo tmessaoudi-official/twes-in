@@ -297,7 +297,8 @@ class Invoice implements CompanyOwned
             $header->notesPrinted,
             $header->notesInternal,
             $header->discountAmount,
-            $header->operationCategory,
+            // The same sale, so what its operations were said to be, stated or still chosen, is the copy's choice.
+            $invoice->operationCategory,
         ));
         // A copy is a new sale: what the original gave back of a deposit is not given back a second time.
         $copy->writeLines(array_map(static fn (InvoiceLine $line): InvoiceLineDetails => new InvoiceLineDetails(

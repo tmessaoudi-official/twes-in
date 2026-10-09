@@ -211,6 +211,21 @@ final class FrenchInvoiceFieldsTest extends ApiTestCase
         self::assertSame('both', $this->invoice($creditId)['operationCategory'], 'a correction concerns the same operations');
     }
 
+    public function testACopyOfAnIssuedInvoiceKeepsWhatItsOperationsWereSaidToBe(): void
+    {
+        $id = $this->draft([$this->freeLine()], 'services');
+        $this->postJson($this->invoicePath($id).'/issue', null);
+        self::assertResponseIsSuccessful();
+
+        $this->postJson($this->invoicePath($id).'/duplicate', null);
+
+        self::assertResponseIsSuccessful();
+        $copy = $this->stringAt($this->json(), 'id');
+        self::assertSame('services', $this->invoice($copy)['operationCategory'], 'the same sale, the same answer, so it issues as the original did');
+        $this->postJson($this->invoicePath($copy).'/issue', null);
+        self::assertResponseIsSuccessful();
+    }
+
     public function testADepositStatesTheOperationsOfItsQuote(): void
     {
         $this->postJson($this->companyPath().'/quotes', ['customerId' => $this->customer->getId()->toRfc4122(), 'establishmentId' => null, 'lines' => [$this->line($this->chair), $this->line($this->fitting)]]);
