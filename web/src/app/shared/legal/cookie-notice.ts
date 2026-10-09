@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  type ElementRef,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SETTINGS_STORAGE } from '../settings/settings-facade';
@@ -8,6 +17,12 @@ import { LegalLink } from './legal-link';
 
 /** Where this browser remembers that the notice was closed. */
 export const COOKIE_NOTICE_KEY = 'twes.cookie-notice';
+
+/**
+ * The notice's height while it is open, on the document's root: a screen sized to the window (the stock plan) takes it
+ * off its own height, or the notice, held at the foot, lies over the screen's last row.
+ */
+export const COOKIE_NOTICE_HEIGHT = '--twes-cookie-notice-height';
 
 /**
  * The cookie notice: informational, since only the session cookie, the person's own display choices and the device's
@@ -22,6 +37,7 @@ export const COOKIE_NOTICE_KEY = 'twes.cookie-notice';
   template: `
     @if (open()) {
       <section
+        #notice
         class="twes-cookie-notice border-t border-outline-variant bg-surface-container-high text-on-surface"
         [attr.aria-label]="'legal.notice.title' | translate"
         data-testid="cookie-notice"
@@ -49,6 +65,24 @@ export const COOKIE_NOTICE_KEY = 'twes.cookie-notice';
 export class CookieNotice {
   private readonly storage = inject(SETTINGS_STORAGE);
   protected readonly open = signal(this.firstVisit());
+  private readonly notice = viewChild<ElementRef<HTMLElement>>('notice');
+
+  constructor() {
+    const root = inject(DOCUMENT).documentElement;
+    effect((onCleanup) => {
+      const notice = this.notice()?.nativeElement;
+      // jsdom, where the component specs run, has no ResizeObserver; a browser always has one.
+      if (notice === undefined || typeof ResizeObserver === 'undefined') return;
+      const observer = new ResizeObserver(() =>
+        root.style.setProperty(COOKIE_NOTICE_HEIGHT, `${notice.offsetHeight}px`),
+      );
+      observer.observe(notice);
+      onCleanup(() => {
+        observer.disconnect();
+        root.style.removeProperty(COOKIE_NOTICE_HEIGHT);
+      });
+    });
+  }
 
   protected close(): void {
     this.open.set(false);

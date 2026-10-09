@@ -9,7 +9,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { PageMemoryStorage, SETTINGS_STORAGE } from '../settings/settings-facade';
-import { COOKIE_NOTICE_KEY, CookieNotice } from './cookie-notice';
+import { COOKIE_NOTICE_HEIGHT, COOKIE_NOTICE_KEY, CookieNotice } from './cookie-notice';
 
 // shared/ reads no feature's files, the translations included: the strings this notice shows, inline.
 const fr = {
@@ -77,6 +77,46 @@ describe('CookieNotice', () => {
     TestBed.resetTestingModule();
     await render();
     expect(q('cookie-notice')).toBeNull();
+  });
+
+  /** A screen sized to the window leaves the notice's height out, or the notice lies over its foot. */
+  it('tells the page how tall it stands while open, and nothing once closed or gone', async () => {
+    const observed: (() => void)[] = [];
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(private readonly told: () => void) {}
+        observe(): void {
+          observed.push(this.told);
+        }
+        disconnect(): void {
+          observed.splice(observed.indexOf(this.told), 1);
+        }
+      },
+    );
+    const root = document.documentElement.style;
+    try {
+      await render();
+      Object.defineProperty(q('cookie-notice'), 'offsetHeight', { value: 53 });
+      for (const told of observed) told();
+      expect(root.getPropertyValue(COOKIE_NOTICE_HEIGHT)).toBe('53px');
+
+      q('cookie-notice-close')?.click();
+      fixture.detectChanges();
+      expect(root.getPropertyValue(COOKIE_NOTICE_HEIGHT)).toBe('');
+      expect(observed).toEqual([]);
+
+      TestBed.resetTestingModule();
+      storage = new PageMemoryStorage();
+      await render();
+      for (const told of observed) told();
+      expect(root.getPropertyValue(COOKIE_NOTICE_HEIGHT)).not.toBe('');
+      fixture.destroy();
+      expect(root.getPropertyValue(COOKIE_NOTICE_HEIGHT)).toBe('');
+    } finally {
+      root.removeProperty(COOKIE_NOTICE_HEIGHT);
+      vi.unstubAllGlobals();
+    }
   });
 
   it('still closes where the browser refuses to store anything, for this page', async () => {

@@ -95,7 +95,7 @@
         <app-invoice-sheet
           [class]="
             wide()
-              ? 'sticky top-0 max-h-[calc(100dvh-6rem)] w-96 shrink-0 overflow-hidden rounded-3xl border border-outline-variant'
+              ? 'sticky top-0 max-h-[calc(100dvh-6rem-var(--twes-cookie-notice-height,0px))] w-96 shrink-0 overflow-hidden rounded-3xl border border-outline-variant'
               : 'fixed inset-y-0 right-0 z-30 w-[min(24rem,100vw)] shadow-2xl'
           "
           [invoiceId]="sheetId"

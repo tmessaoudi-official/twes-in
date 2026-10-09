@@ -775,7 +775,7 @@
               arrows move what is shown. Its buttons keep their own Enter and Space.
             -->
             <div
-              class="flex flex-col focus-visible:outline-2 focus-visible:outline-primary lg:h-[max(20rem,calc(100dvh-24rem))]"
+              class="flex flex-col focus-visible:outline-2 focus-visible:outline-primary lg:h-[max(20rem,calc(100dvh-24rem-var(--twes-cookie-notice-height,0px)))]"
               tabindex="0"
               role="group"
               [attr.aria-label]="'inventory.plan.board' | translate"
@@ -1261,7 +1261,7 @@
 
         <!-- ——— the panel: whatever is chosen, read in Consulter, edited in Aménager ——— -->
         <div
-          class="flex min-w-0 flex-col [grid-area:panel] lg:max-h-[max(26rem,calc(100dvh-18rem))]"
+          class="flex min-w-0 flex-col [grid-area:panel] lg:max-h-[max(26rem,calc(100dvh-18rem-var(--twes-cookie-notice-height,0px)))]"
         >
           @if (floorFormGroup()) {
             <div
