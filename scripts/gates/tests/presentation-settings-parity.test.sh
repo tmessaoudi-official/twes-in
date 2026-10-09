@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
 set -uo pipefail
+TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 GATE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/presentation-settings-parity.sh
 pass=0
 fail=0

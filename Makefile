@@ -129,35 +129,38 @@ gate-licences: tools-image
 gate-stamps: tools-image   ## the Decisions Log stamps alone: what a push touching only docs/SPEC.md is checked by
 	$(TOOLS) make --no-print-directory in-gate-stamps
 in-gate-stamps:
-	bash scripts/gates/tests/decision-stamps.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/decision-stamps.test.sh
 	bash scripts/gates/decision-stamps.sh
 in-gate-licences:
-	bash scripts/gates/tests/dependency-licences.test.sh
-	bash scripts/gates/tests/spdx-headers.test.sh
-	bash scripts/gates/tests/executable-bits.test.sh
-	bash scripts/gates/tests/icon-buttons-named.test.sh
-	bash scripts/gates/tests/outcomes-as-toasts.test.sh
-	bash scripts/gates/tests/compose-log-rotation.test.sh
-	bash scripts/gates/tests/version-pins.test.sh
-	bash scripts/gates/tests/host-tools.test.sh
-	bash scripts/gates/tests/design-tokens.test.sh
-	bash scripts/gates/tests/permission-labels.test.sh
-	bash scripts/gates/tests/planned-module-labels.test.sh
-	bash scripts/gates/tests/coming-texts.test.sh
-	bash scripts/gates/tests/setting-labels.test.sh
-	bash scripts/gates/tests/presentation-settings-parity.test.sh
-	bash scripts/gates/tests/tour-anchors.test.sh
-	bash scripts/gates/tests/coming-gated.test.sh
-	bash scripts/gates/tests/live-reload.test.sh
-	bash scripts/gates/tests/stored-items.test.sh
-	bash scripts/gates/tests/production-image.test.sh
-	bash scripts/gates/tests/icons-declared.test.sh
-	bash scripts/gates/tests/float-casts.test.sh
-	bash scripts/gates/tests/decision-stamps.test.sh
-	bash scripts/tests/build-version.test.sh
-	bash infra/self-hosted/tests/logrotate.test.sh
-	bash infra/web/tests/forwarded-proto.test.sh
-	bash infra/web/tests/live-proxy.test.sh
+	@# Each gate test runs through no-leftovers.sh: TMPDIR outlives every run on the host's tmpfs, and a test leaving
+	@# a directory per case used its inodes up until no shell on the machine could start.
+	bash scripts/gates/tests/no-leftovers.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/dependency-licences.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/spdx-headers.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/executable-bits.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icon-buttons-named.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/outcomes-as-toasts.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/compose-log-rotation.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/version-pins.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/host-tools.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/design-tokens.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/permission-labels.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/planned-module-labels.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/coming-texts.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/setting-labels.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/presentation-settings-parity.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/tour-anchors.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/coming-gated.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/live-reload.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/stored-items.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/production-image.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icons-declared.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/float-casts.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/decision-stamps.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/tests/build-version.test.sh
+	bash scripts/gates/tests/no-leftovers.sh infra/self-hosted/tests/logrotate.test.sh
+	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/forwarded-proto.test.sh
+	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/live-proxy.test.sh
 	php scripts/gates/dependency-licences.php
 	bash scripts/gates/spdx-headers.sh
 	bash scripts/gates/executable-bits.sh

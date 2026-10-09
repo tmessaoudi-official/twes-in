@@ -3,6 +3,7 @@
 # Tests for scripts/gates/dependency-licences.php and scripts/notices/generate-third-party-notices.php.
 # Every case asserts on the MESSAGE, never only on the exit code: a crash and a detection must not look alike.
 set -uo pipefail
+TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 GATE="$ROOT/scripts/gates/dependency-licences.php"
 GEN="$ROOT/scripts/notices/generate-third-party-notices.php"

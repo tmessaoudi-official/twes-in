@@ -4,6 +4,7 @@
 # rotates every channel's file, and a writer that kept its file open (as the API's PHP workers do) still writes to
 # the live file afterwards, not to the rotated one.
 set -uo pipefail
+TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 CONF=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/logrotate.conf
 pass=0; fail=0
 check() { if [[ "$2" == "$3" ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (got '$2', wanted '$3')"; fi; }

@@ -3,6 +3,7 @@
 # The production image check, run with this machine's PHP against a fixture application and the ini values given
 # on the command line: green on what the production stage sets, red naming each departure.
 set -uo pipefail
+TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
 GATE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/production-image.php
 pass=0; fail=0
 check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
