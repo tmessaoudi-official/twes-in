@@ -28,6 +28,7 @@ import {
   PairingRefused,
 } from '../shared/scan/pairing-api';
 import { PageMemoryStorage, type SettingsStorage } from '../shared/settings/settings-facade';
+import { PhotoShrinker } from '../shared/scan/photo-shrinker';
 
 /** Where this phone keeps its pairing for a reload of this tab: the tab's own session storage, never shared. */
 export const PAIRING_STORAGE = new InjectionToken<SettingsStorage>('PAIRING_STORAGE', {
@@ -75,9 +76,9 @@ interface Held {
 type Stage = 'loading' | 'scanning' | 'ended' | { refused: PairingRefusal };
 
 /**
- * A phone lent to a computer as a scanner (docs/SPEC.md § 7, 2026-09-23 09:45, slice 4), with no sign-in: it claims the
- * link the computer showed, then scans — with its camera or by hand — and each code acts once on the computer, under
- * the computer's session. What it shows back is only what the computer echoes: the outcome, the product's name and
+ * A phone lent to a computer as a scanner, with no sign-in: it claims the link the computer showed, then scans — with
+ * its camera or by hand — and each code acts once on the computer, under the computer's session; a photo it takes
+ * goes to the computer the same way. What it shows back is only what the computer echoes: the outcome, the product's name and
  * customer price, and the same choices as the computer's card, a tap on which sends the choice there.
  */
 @Component({
@@ -99,6 +100,7 @@ export class PhoneScannerPage implements OnInit {
   private readonly connector = inject(REALTIME_CONNECTOR);
   private readonly storage = inject(PAIRING_STORAGE);
   private readonly address = inject(PairingAddress);
+  private readonly shrinker = inject(PhotoShrinker);
   protected readonly cameraAvailable = inject(Camera).available();
   private held: Held | null = null;
   private connection: RealtimeConnection | null = null;
@@ -110,6 +112,8 @@ export class PhoneScannerPage implements OnInit {
   });
   protected readonly echoes = signal<readonly PairingEcho[]>([]);
   protected readonly sent = signal<string | null>(null);
+  /** Where the last photo the camera took stands: sent on, or why not. */
+  protected readonly photo = signal<'idle' | 'sending' | 'sent' | 'unreadable' | 'refused'>('idle');
   protected code = '';
 
   constructor() {
@@ -147,6 +151,32 @@ export class PhoneScannerPage implements OnInit {
       await this.api.scan(held.id, held.key, code, crypto.randomUUID());
     } catch (error) {
       this.refused(error);
+    }
+  }
+
+  /**
+   * A photo the camera took, made smaller and sent to the computer, which says on the next echo what became of it. A
+   * refused photo leaves the pairing as it was; a refused key or an ended pairing ends it, as a scan's would.
+   */
+  protected async photographed(input: HTMLInputElement): Promise<void> {
+    const taken = input.files?.[0];
+    input.value = '';
+    const held = this.held;
+    if (taken === undefined || held === null || this.stage() !== 'scanning') return;
+    this.photo.set('sending');
+    let shrunk: Blob;
+    try {
+      shrunk = await this.shrinker.shrink(taken);
+    } catch {
+      this.photo.set('unreadable');
+      return;
+    }
+    try {
+      await this.api.photo(held.id, held.key, crypto.randomUUID(), shrunk);
+      this.photo.set('sent');
+    } catch (error) {
+      this.photo.set('refused');
+      if (error instanceof PairingRefused && error.reason !== 'invalid') this.refused(error);
     }
   }
 

@@ -152,15 +152,16 @@ abstract class ApiTestCase extends WebTestCase
      * A file sent the way the SPA's FormData does: one multipart part under `$field`.
      *
      * @param array<string, string> $parameters form fields sent beside the file
+     * @param array<string, string> $server     more headers, as server parameters (a paired phone's key)
      */
-    protected function uploadFile(string $path, string $name, string $contents, string $field = 'file', array $parameters = []): void
+    protected function uploadFile(string $path, string $name, string $contents, string $field = 'file', array $parameters = [], array $server = []): void
     {
         $tmp = (string) tempnam(sys_get_temp_dir(), 'upload');
         file_put_contents($tmp, $contents);
         $this->client->request('POST', $path, $parameters, [$field => new UploadedFile($tmp, $name, null, null, true)], [
             'HTTP_ACCEPT' => 'application/json',
             'HTTP_'.strtoupper(str_replace('-', '_', CsrfRequestListener::HEADER)) => self::CSRF_TOKEN,
-        ]);
+        ] + $server);
     }
 
     /** @param array<string, mixed>|null $body */

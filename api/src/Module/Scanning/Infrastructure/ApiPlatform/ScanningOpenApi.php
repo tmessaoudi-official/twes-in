@@ -148,6 +148,38 @@ final readonly class ScanningOpenApi implements OpenApiFactoryInterface
             parameters: [$pairing, $key],
             requestBody: $body('ScanPairingScan'),
         )));
+        $paths->addPath('/api/scan-pairings/{id}/photos', new PathItem(post: new Operation(
+            operationId: 'photoOnPairing',
+            tags: $tags,
+            responses: ['202' => new Response('Held for the tab, which is told'), '403' => $refused, '404' => $refused, '410' => $refused, '422' => $refused, '429' => new Response('Too many photos at once')],
+            summary: 'The phone hands a photo it took to its tab',
+            description: 'A JPEG, PNG or WebP picture, read from its bytes, no larger than a product photo may be (5 MB by default); at most 3 wait for the tab at once, each for a quarter of an hour.',
+            parameters: [$pairing, $key],
+            requestBody: new RequestBody(
+                'The picture as a multipart part named file, and the phone\'s own id for it, which the echo answers',
+                new \ArrayObject(['multipart/form-data' => new MediaType(new \ArrayObject([
+                    'type' => 'object',
+                    'required' => ['file', 'scan'],
+                    'properties' => ['file' => ['type' => 'string', 'format' => 'binary'], 'scan' => $uuid],
+                ]))]),
+                true,
+            ),
+        )));
+        $paths->addPath('/api/companies/{companyId}/scan-pairings/{id}/photos/{photoId}/take', new PathItem(post: new Operation(
+            operationId: 'takeScanPairingPhoto',
+            tags: $tags,
+            responses: [
+                '200' => new Response('The photo as the phone sent it; it no longer waits', new \ArrayObject([
+                    'image/jpeg' => new MediaType(new \ArrayObject(['type' => 'string', 'format' => 'binary'])),
+                    'image/png' => new MediaType(new \ArrayObject(['type' => 'string', 'format' => 'binary'])),
+                    'image/webp' => new MediaType(new \ArrayObject(['type' => 'string', 'format' => 'binary'])),
+                ])),
+                '404' => $refused,
+            ],
+            summary: 'The tab takes a photo its phone took, once',
+            description: 'Only the person who lent the phone, and only within a quarter of an hour of the photo.',
+            parameters: [$company, $pairing, new Parameter('photoId', 'path', 'The photo, as the tab was told', true, schema: $uuid)],
+        )));
         $paths->addPath('/api/scan-pairings/{id}/choices', new PathItem(post: new Operation(
             operationId: 'chooseOnPairing',
             tags: $tags,

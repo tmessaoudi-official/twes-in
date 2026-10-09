@@ -43,3 +43,8 @@ framework:
             policy: 'sliding_window'
             limit: 240
             interval: '1 minute'
+        # A paired phone's photos, per pairing: each is up to a product photo's size, so far fewer than its scans.
+        scan_pairing_photo:
+            policy: 'sliding_window'
+            limit: 20
+            interval: '5 minutes'

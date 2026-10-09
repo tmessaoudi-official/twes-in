@@ -14,6 +14,7 @@ use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Module\Products\Infrastructure\ApiPlatform\ProductPermission;
 use App\Module\Scanning\Application\PairingEcho;
 use App\Module\Scanning\Application\PhonePairings;
+use App\Module\Scanning\Application\PhonePhotos;
 use App\Module\Scanning\Domain\ScanPairingRefused;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
@@ -28,8 +29,8 @@ use Symfony\Component\Routing\Requirement\Requirement;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The computer tab's side of a phone pairing (docs/SPEC.md § 7, 2026-09-23 09:45, slice 4), signed in and acting for
- * a company with product.read, the right every scan handler needs anyway. Documented in ScanningOpenApi.
+ * The computer tab's side of a phone pairing, signed in and acting for a company with product.read, the right every
+ * scan handler needs anyway. Documented in ScanningOpenApi.
  */
 #[AsController]
 final readonly class ScanPairingController
@@ -38,6 +39,7 @@ final readonly class ScanPairingController
 
     public function __construct(
         private PhonePairings $pairings,
+        private PhonePhotos $photos,
         private CompanyGuard $guard,
         private Security $security,
         private UserRepository $users,
@@ -83,6 +85,26 @@ final readonly class ScanPairingController
         }
 
         return $this->guarded($companyId, fn () => $this->pairings->echo($this->userId(), Uuid::fromString($id), $echo), Response::HTTP_ACCEPTED);
+    }
+
+    /** The photo the phone took, once: the bytes as it sent them, which the tab then sends on as its own. */
+    #[Route(self::PATH.'/{id}/photos/{photoId}/take', name: 'api_scan_pairing_photo_take', requirements: ['companyId' => Requirement::UUID, 'id' => Requirement::UUID, 'photoId' => Requirement::UUID], methods: ['POST'])]
+    public function takePhoto(string $companyId, string $id, string $photoId): Response
+    {
+        $this->guard->companyForActing(CompanyPath::identifier(['companyId' => $companyId], 'companyId'), ProductPermission::READ);
+        try {
+            [$mime, $bytes] = $this->photos->take($this->userId(), Uuid::fromString($id), Uuid::fromString($photoId));
+        } catch (ScanPairingRefused $refused) {
+            return PairingErrors::refused($refused);
+        }
+
+        return new Response($bytes, Response::HTTP_OK, [
+            'Content-Type' => $mime,
+            'X-Content-Type-Options' => 'nosniff',
+            // A picture somebody's phone sent: shown, never run.
+            'Content-Security-Policy' => "default-src 'none'; sandbox",
+            'Cache-Control' => 'no-store',
+        ]);
     }
 
     private function guarded(string $companyId, \Closure $act, int $status = Response::HTTP_NO_CONTENT): Response

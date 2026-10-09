@@ -70,6 +70,7 @@ final class ScaleGenerator
         'payment_instrument' => 'cheques and traites received: a clone starts with none, as with a customer\'s credit',
         'product_cost_change' => 'the cost history of a product: a clone starts with none',
         'product_photo' => 'the photos of a product, stored files: a clone has none, as with every file',
+        'scan_photo' => 'a photo a paired phone took, waiting a quarter of an hour for its tab: nothing a clone carries',
         'quote' => 'quotes: a follow-up slice',
         'quote_line' => 'quotes: a follow-up slice',
         'quote_line_tax' => 'quotes: a follow-up slice',

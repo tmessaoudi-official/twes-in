@@ -95,3 +95,46 @@ test('a link is claimed by one phone only', async ({ page, browser }) => {
     await second.close();
   }
 });
+
+test('a photo the phone takes lands in the gallery of the product open on the computer', async ({
+  page,
+  browser,
+}) => {
+  const reference = `PHP-${Date.now().toString(36).toUpperCase()}`;
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const phone = await browser.newContext({ ignoreHTTPSErrors: true });
+  const ids: string[] = [];
+  try {
+    ids.push(await aProduct(page, reference));
+    await page.goto(`/products/${ids[0]}`);
+    await page.getByRole('tab', { name: 'Photos' }).click();
+    await expect(page.getByTestId('product-photos-none')).toBeVisible();
+    await page.getByTestId('phone-pair').click();
+    const url = (await page.getByTestId('phone-pair-url').textContent())?.trim() ?? '';
+    const screen = await phone.newPage();
+    await screen.goto(url);
+    await expect(page.getByTestId('phone-pair-status')).toContainText('Téléphone relié');
+    await page.getByTestId('phone-pair-close').click();
+    await expect(page.getByTestId('product-photos-phone')).toBeVisible();
+
+    // A 2x1 PNG stands for what the camera took: the phone draws it again as a JPEG before sending it.
+    await screen.getByTestId('phone-photo-input').setInputFiles({
+      name: 'IMG_0001.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAADUlEQVR4nGP4zwAE/wEHAAH/4iOeWQAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+    });
+
+    await expect(page.getByTestId('product-photos-list').locator('li')).toHaveCount(1);
+    await expect(screen.getByTestId('phone-echo')).toContainText(
+      `Photo ajoutée à Vis ${reference}`,
+    );
+    expect(await wcagViolations(screen)).toEqual([]);
+  } finally {
+    await phone.close();
+    await forget(page, ids);
+  }
+});

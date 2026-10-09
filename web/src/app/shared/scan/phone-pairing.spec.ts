@@ -23,6 +23,7 @@ describe('PhonePairing', () => {
     end: ReturnType<typeof vi.fn>;
     endOnLeave: ReturnType<typeof vi.fn>;
     echo: ReturnType<typeof vi.fn>;
+    takePhoto: ReturnType<typeof vi.fn>;
   };
   let pairing: PhonePairing;
   let bus: ScanBus;
@@ -53,6 +54,7 @@ describe('PhonePairing', () => {
       end: vi.fn(async () => undefined),
       endOnLeave: vi.fn(),
       echo: vi.fn(async () => undefined),
+      takePhoto: vi.fn(async () => new Blob(['jpeg'], { type: 'image/jpeg' })),
     };
     TestBed.configureTestingModule({
       providers: [
@@ -205,6 +207,67 @@ describe('PhonePairing', () => {
     pairing.receive(publication('choice', { echo: echo.id, choice: 'create' }));
 
     expect(choose.mock.calls).toEqual([['create']]);
+  });
+
+  it('puts a photo the phone took where the screen on view takes photos, and tells the phone what became of it', async () => {
+    const took: File[] = [];
+    TestBed.runInInjectionContext(() =>
+      pairing.takePhotos(async (file) => {
+        took.push(file);
+        return {
+          outcome: 'done',
+          message: 'products.photos.from_phone',
+          params: { name: 'Perceuse' },
+        };
+      }),
+    );
+
+    pairing.receive(publication('photo', { scan: SCAN, photo: 'ph-1' }));
+    pairing.receive(publication('photo', { scan: SCAN, photo: 'ph-1' }));
+    await vi.waitFor(() => expect(api.echo).toHaveBeenCalled());
+
+    expect(api.takePhoto).toHaveBeenCalledExactlyOnceWith('c-1', 'p-1', 'ph-1');
+    expect(took.map((file) => file.type)).toEqual(['image/jpeg']);
+    const [, , echo] = api.echo.mock.calls[0];
+    expect(echo).toMatchObject({
+      scan: SCAN,
+      outcome: 'done',
+      message: 'products.photos.from_phone',
+      params: { name: 'Perceuse' },
+      product: null,
+      choices: [],
+    });
+  });
+
+  it('tells the phone where a photo goes when no screen on view takes one, and leaves none waiting', async () => {
+    pairing.receive(publication('photo', { scan: SCAN, photo: 'ph-1' }));
+    await vi.waitFor(() => expect(api.echo).toHaveBeenCalled());
+
+    expect(api.takePhoto).toHaveBeenCalledWith('c-1', 'p-1', 'ph-1');
+    expect(api.echo.mock.calls[0][2]).toMatchObject({
+      outcome: 'refused',
+      message: 'scan.phone.photo.nowhere',
+    });
+  });
+
+  it('says a photo was lost when it can no longer be taken', async () => {
+    const took: File[] = [];
+    TestBed.runInInjectionContext(() =>
+      pairing.takePhotos(async (file) => {
+        took.push(file);
+        return { outcome: 'done', message: 'products.photos.from_phone', params: {} };
+      }),
+    );
+    api.takePhoto.mockRejectedValue(new PairingRefused('unknown'));
+
+    pairing.receive(publication('photo', { scan: SCAN, photo: 'ph-1' }));
+    await vi.waitFor(() => expect(api.echo).toHaveBeenCalled());
+
+    expect(took).toEqual([]);
+    expect(api.echo.mock.calls[0][2]).toMatchObject({
+      outcome: 'refused',
+      message: 'scan.phone.photo.lost',
+    });
   });
 
   it('lets the phone go when the API says the pairing is over', async () => {

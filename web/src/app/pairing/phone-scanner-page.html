@@ -38,6 +38,51 @@
       </button>
     </form>
 
+    <div class="flex flex-col gap-2">
+      <!-- The device's own camera, at full quality, rather than a frame of the scanning view. -->
+      <input
+        #photoInput
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        (change)="photographed(photoInput)"
+        data-testid="phone-photo-input"
+      />
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="photoInput.click()"
+        [disabled]="photo() === 'sending'"
+        data-testid="phone-photo"
+      >
+        <mat-icon aria-hidden="true">photo_camera</mat-icon>
+        {{ 'scan.phone.page.photo' | translate }}
+      </button>
+      @switch (photo()) {
+        @case ('sending') {
+          <p class="m-0 text-sm" role="status" data-testid="phone-photo-sending">
+            {{ 'scan.phone.page.photo_sending' | translate }}
+          </p>
+        }
+        @case ('sent') {
+          <p class="m-0 text-sm" role="status" data-testid="phone-photo-sent">
+            {{ 'scan.phone.page.photo_sent' | translate }}
+          </p>
+        }
+        @case ('unreadable') {
+          <p class="m-0 text-sm text-error" role="alert" data-testid="phone-photo-unreadable">
+            {{ 'scan.phone.page.photo_unreadable' | translate }}
+          </p>
+        }
+        @case ('refused') {
+          <p class="m-0 text-sm text-error" role="alert" data-testid="phone-photo-refused">
+            {{ 'scan.phone.page.photo_refused' | translate }}
+          </p>
+        }
+      }
+    </div>
+
     @if (sent(); as code) {
       <p class="m-0 text-sm" data-testid="phone-sent">
         {{ 'scan.phone.page.sent' | translate }} <span class="font-mono">{{ code }}</span>

@@ -2150,7 +2150,9 @@
         "changed": "Les photos ont changé entre-temps ; elles sont à jour maintenant.",
         "not_found": "Cette photo n’existe plus.",
         "network": "Le serveur ne répond pas. Réessayez dans un instant."
-      }
+      },
+      "from_phone": "Photo ajoutée à {{name}}.",
+      "phone_hint": "Le téléphone prêté peut aussi prendre la photo : elle arrive ici."
     }
   },
   "inventory": {
@@ -3477,7 +3479,12 @@
         "ended": "Ce téléphone n’est plus relié. Pour scanner à nouveau, scannez un nouveau code sur l’ordinateur.",
         "code": "Code",
         "send": "Envoyer",
-        "sent": "Envoyé :"
+        "sent": "Envoyé :",
+        "photo": "Prendre une photo",
+        "photo_sending": "Envoi de la photo…",
+        "photo_sent": "Photo envoyée à l’ordinateur.",
+        "photo_unreadable": "Cette image n’a pas pu être lue. Reprenez la photo.",
+        "photo_refused": "L’ordinateur n’a pas pris cette photo. Reprenez-la."
       },
       "refused": {
         "unknown": "Ce lien n’existe pas. Scannez à nouveau le code affiché sur l’ordinateur.",
@@ -3487,6 +3494,10 @@
         "ended": "L’ordinateur n’utilise plus ce lien. Demandez-en un nouveau sur l’ordinateur.",
         "invalid": "Ce lien n’est pas valide.",
         "network": "L’ordinateur ne répond pas. Vérifiez la connexion du téléphone."
+      },
+      "photo": {
+        "nowhere": "Ouvrez l’onglet Photos d’un article sur l’ordinateur, puis reprenez la photo.",
+        "lost": "La photo n’est pas arrivée sur l’ordinateur. Reprenez-la."
       }
     }
   },

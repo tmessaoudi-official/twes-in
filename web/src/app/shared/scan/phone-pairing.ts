@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { DOCUMENT } from '@angular/common';
-import { inject, Injectable, signal } from '@angular/core';
+import { DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { Feedback } from '../feedback/feedback';
 import { FormatFacade } from '../i18n/format-facade';
 import { tabId } from '../realtime/tab-interceptor';
@@ -19,6 +19,17 @@ const OFFER_WAIT_MS = 4_000;
 
 /** How many phone scan ids are remembered, so a publication heard twice acts once. */
 const SEEN_MAX = 200;
+
+/** What a screen made of a photo the phone took: said back to the phone, as a scan's outcome is. */
+export interface PhotoOutcome {
+  readonly outcome: 'done' | 'refused';
+  /** A translation key the phone says. */
+  readonly message: string;
+  readonly params: Readonly<Record<string, string | number>>;
+}
+
+/** A screen that takes the phone's photos while it is on view, such as a product's photos. */
+export type PhotoTaker = (photo: File) => Promise<PhotoOutcome>;
 
 export interface PairingState {
   readonly id: string;
@@ -47,6 +58,7 @@ export class PhonePairing {
   private companyId: string | null = null;
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private readonly seen: string[] = [];
+  private readonly takers: PhotoTaker[] = [];
   /** The last echo that offered choices, which is the only one a tap can answer. */
   private offered: { readonly echo: string; readonly offer: ScanOffer } | null = null;
 
@@ -71,6 +83,18 @@ export class PhonePairing {
       phone: 'waiting',
     });
     this.heartbeat = setInterval(() => void this.renew(), HEARTBEAT_MS);
+  }
+
+  /**
+   * The screen's own taking of the phone's photos, for as long as the screen lives; the screen declared last is the
+   * one on view. Without a DestroyRef it must be called from an injection context.
+   */
+  takePhotos(taker: PhotoTaker, destroyRef: DestroyRef = inject(DestroyRef)): void {
+    this.takers.push(taker);
+    destroyRef.onDestroy(() => {
+      const at = this.takers.indexOf(taker);
+      if (at !== -1) this.takers.splice(at, 1);
+    });
   }
 
   /** Lets the phone go at once; it hears so and stops. */
@@ -109,6 +133,12 @@ export class PhonePairing {
     ) {
       void this.scanned(data['scan'], data['code']);
     } else if (
+      event === 'photo' &&
+      typeof data['scan'] === 'string' &&
+      typeof data['photo'] === 'string'
+    ) {
+      void this.photographed(data['scan'], data['photo']);
+    } else if (
       event === 'choice' &&
       typeof data['echo'] === 'string' &&
       typeof data['choice'] === 'string'
@@ -129,6 +159,39 @@ export class PhonePairing {
     const echo = { ...this.echoOf(scanId, outcome, offer), details: lines };
     this.offered = offer !== null && echo.choices.length > 0 ? { echo: echo.id, offer } : null;
     await this.send(echo);
+  }
+
+  /**
+   * A photo the phone took: taken at once, so none is left waiting, and handed to the screen on view that takes
+   * photos; the phone hears what it made of it, or where to go when no screen on view takes one.
+   */
+  private async photographed(scanId: string, photoId: string): Promise<void> {
+    const state = this.current();
+    const companyId = this.companyId;
+    if (state === null || companyId === null || this.seen.includes(scanId)) return;
+    this.seen.push(scanId);
+    if (this.seen.length > SEEN_MAX) this.seen.shift();
+    let outcome: PhotoOutcome;
+    try {
+      const bytes = await this.api.takePhoto(companyId, state.id, photoId);
+      const taker = this.takers.at(-1);
+      outcome =
+        taker === undefined
+          ? { outcome: 'refused', message: 'scan.phone.photo.nowhere', params: {} }
+          : await taker(new File([bytes], 'photo.jpg', { type: bytes.type || 'image/jpeg' }));
+    } catch {
+      // Too late to take, or the network: either way the photo did not arrive, and the phone may take it again.
+      outcome = { outcome: 'refused', message: 'scan.phone.photo.lost', params: {} };
+    }
+    await this.send({
+      id: crypto.randomUUID(),
+      scan: scanId,
+      outcome: outcome.outcome,
+      message: outcome.message,
+      params: flat(outcome.params),
+      product: null,
+      choices: [],
+    });
   }
 
   /** What the phone is told of a product the scan named; nothing for a refusal or a code nobody holds. */

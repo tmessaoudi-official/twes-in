@@ -27,6 +27,7 @@ use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
 use App\Module\Invoices\Application\PrintInvoice;
 use App\Module\Invoices\Application\RemindLateInvoices;
 use App\Module\Scanning\Application\PhonePairings;
+use App\Module\Scanning\Application\PhonePhotos;
 use App\Settings\Application\ForgetSettings;
 use App\Shared\Application\DomainEvents;
 use App\Shared\Application\Transactions;
@@ -68,6 +69,7 @@ final class CommandsAndQueriesTest extends TestCase
         PinCompanyAtSignIn::class => "a person's own choice of the company a sign-in opens",
         SwitchWorkingCompany::class => "the company a person's own session works in",
         RequestSignup::class => 'an anonymous request held until its link is followed; the account it leads to is audited',
+        PhonePhotos::class => 'a photo a paired phone took, waiting a quarter of an hour for its tab, nothing the company keeps',
     ];
 
     /** Commands whose change is on record otherwise than by an audit entry of their own, and how. */

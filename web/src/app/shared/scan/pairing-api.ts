@@ -92,6 +92,28 @@ export class PairingApi {
     );
   }
 
+  /** A photo the phone took, beside the id of its own the tab's echo will answer. */
+  photo(id: string, key: string, scan: string, photo: Blob): Promise<void> {
+    const body = new FormData();
+    body.append('file', photo, 'photo.jpg');
+    body.append('scan', scan);
+    return this.call(this.http.post<void>(`/api/scan-pairings/${id}/photos`, body, phone(key)));
+  }
+
+  /** The photo the phone took, once: it no longer waits after this. */
+  takePhoto(companyId: string, id: string, photoId: string): Promise<Blob> {
+    return this.call(
+      this.http.post(
+        `${pairings(companyId)}/${id}/photos/${encodeURIComponent(photoId)}/take`,
+        null,
+        {
+          responseType: 'blob',
+          context: BACKGROUND(),
+        },
+      ),
+    );
+  }
+
   async realtimeToken(id: string, key: string): Promise<string> {
     const token = await this.call(
       this.http.post<RealtimeToken>(`/api/scan-pairings/${id}/realtime-token`, null, phone(key)),

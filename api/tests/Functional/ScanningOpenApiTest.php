@@ -45,6 +45,6 @@ final class ScanningOpenApiTest extends KernelTestCase
             ++$checked;
         }
 
-        self::assertSame(8, $checked, 'the eight pairing routes are read from the router');
+        self::assertSame(10, $checked, 'the ten pairing routes are read from the router');
     }
 }

@@ -32,7 +32,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
         '^/api/signup',
         '^/api/auth/password/(forgot|reset)$',
         '^/api/scan-pairings/claim$',
-        '^/api/scan-pairings/[0-9a-f-]{36}/(scans|choices|realtime-token)$',
+        '^/api/scan-pairings/[0-9a-f-]{36}/(scans|choices|photos|realtime-token)$',
         '^/api/legal/[a-z]+/[a-z]{2}$',
         '^/api/legal/security\.txt$',
     ];

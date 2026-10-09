@@ -10,8 +10,10 @@ declare(strict_types=1);
 namespace App\Module\Scanning\Infrastructure\Http;
 
 use App\Module\Scanning\Application\PhonePairings;
+use App\Module\Scanning\Application\PhonePhotos;
 use App\Module\Scanning\Domain\ScanPairingRefused;
 use Symfony\Component\DependencyInjection\Attribute\Target;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,9 +25,9 @@ use Symfony\Component\Routing\Requirement\Requirement;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The phone's side of a pairing (docs/SPEC.md § 7, 2026-09-23 09:45, slice 4), with no session by design: it claims
- * the link once, then presents the key the claim gave it in `X-Pairing-Key`. It reads nothing of the company; all it
- * can do is hand a code or a tapped choice to the tab that lent it, and hear that tab's echoes. Public in
+ * The phone's side of a pairing, with no session by design: it claims the link once, then presents the key the claim
+ * gave it in `X-Pairing-Key`. It reads nothing of the company; all it can do is hand a code, a tapped choice or a
+ * photo to the tab that lent it, and hear that tab's echoes. Public in
  * config/packages/security.yaml, budgeted in rate_limiter.yaml, documented in ScanningOpenApi.
  */
 #[AsController]
@@ -35,10 +37,13 @@ final readonly class PairedPhoneController
 
     public function __construct(
         private PhonePairings $pairings,
+        private PhonePhotos $photos,
         #[Target('scan_pairing_claim')]
         private RateLimiterFactoryInterface $claimLimiter,
         #[Target('scan_pairing_phone')]
         private RateLimiterFactoryInterface $phoneLimiter,
+        #[Target('scan_pairing_photo')]
+        private RateLimiterFactoryInterface $photoLimiter,
     ) {
     }
 
@@ -85,6 +90,23 @@ final readonly class PairedPhoneController
             $echo = $body['echo'] ?? null;
             $choice = $body['choice'] ?? null;
             $this->pairings->choose($pairing, $key, \is_string($echo) ? $echo : '', \is_string($choice) ? $choice : '');
+
+            return new Response(null, Response::HTTP_ACCEPTED);
+        });
+    }
+
+    /** A photo the phone took, as a multipart part named `file` beside its `scan` id, held for the tab to take. */
+    #[Route('/api/scan-pairings/{id}/photos', name: 'api_scan_pairing_photo', requirements: ['id' => Requirement::UUID], methods: ['POST'])]
+    public function photo(string $id, Request $request): Response
+    {
+        if (!$this->photoLimiter->create($id)->consume()->isAccepted()) {
+            throw new TooManyRequestsHttpException(null, 'Too many photos at once; slow down.');
+        }
+
+        return $this->asThePhone($id, $request, function (Uuid $pairing, string $key) use ($request): Response {
+            $file = $request->files->get('file');
+            $bytes = $file instanceof UploadedFile && $file->isValid() ? (string) file_get_contents($file->getPathname()) : '';
+            $this->photos->hold($pairing, $key, $request->request->getString('scan'), $bytes);
 
             return new Response(null, Response::HTTP_ACCEPTED);
         });

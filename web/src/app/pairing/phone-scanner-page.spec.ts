@@ -13,6 +13,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { REALTIME_CONNECTOR, type RealtimeConnector } from '../shared/realtime/realtime-connector';
 import { Camera } from '../shared/scan/camera';
 import { PairingApi, PairingRefused } from '../shared/scan/pairing-api';
+import { PhotoShrinker } from '../shared/scan/photo-shrinker';
 import { PageMemoryStorage } from '../shared/settings/settings-facade';
 import {
   PAIRING_STORAGE,
@@ -36,7 +37,10 @@ describe('PhoneScannerPage', () => {
     scan: vi.fn(async () => undefined),
     choose: vi.fn(async () => undefined),
     realtimeToken: vi.fn(async () => 'token'),
+    photo: vi.fn(async () => undefined),
   };
+  const shrunk = new Blob(['small'], { type: 'image/jpeg' });
+  const shrinker = { shrink: vi.fn<(photo: Blob) => Promise<Blob>>(async () => shrunk) };
   const opened: { getToken: () => Promise<string>; onPublication: (data: unknown) => void }[] = [];
   const disconnect = vi.fn();
   const connector: RealtimeConnector = (_url, getToken, onPublication) => {
@@ -84,6 +88,8 @@ describe('PhoneScannerPage', () => {
     api.scan.mockClear();
     api.choose.mockClear();
     api.realtimeToken.mockClear();
+    api.photo.mockReset().mockResolvedValue(undefined);
+    shrinker.shrink.mockReset().mockResolvedValue(shrunk);
     disconnect.mockClear();
     opened.length = 0;
     storage = new PageMemoryStorage();
@@ -100,6 +106,7 @@ describe('PhoneScannerPage', () => {
         { provide: Camera, useValue: { available: () => false } },
         { provide: PAIRING_STORAGE, useValue: storage },
         { provide: PairingAddress, useValue: address },
+        { provide: PhotoShrinker, useValue: shrinker },
       ],
     });
   });
@@ -115,6 +122,47 @@ describe('PhoneScannerPage', () => {
     });
     await expect(opened[0].getToken()).resolves.toBe('token');
     expect(api.realtimeToken).toHaveBeenCalledWith('p-1', 'k'.repeat(64));
+    expect(q('phone-code')).not.toBeNull();
+  });
+
+  async function takePhoto(photo: File): Promise<void> {
+    const input = q('phone-photo-input') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [photo], configurable: true });
+    input.dispatchEvent(new Event('change'));
+    await vi.waitFor(() => expect(shrinker.shrink).toHaveBeenCalled());
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  it('sends a photo the camera took, made smaller first, and says it went to the computer', async () => {
+    await open();
+    const taken = new File(['big'], 'IMG_0001.jpg', { type: 'image/jpeg' });
+
+    expect(q('phone-photo-input')?.getAttribute('capture')).toBe('environment');
+    await takePhoto(taken);
+
+    expect(shrinker.shrink).toHaveBeenCalledWith(taken);
+    expect(api.photo).toHaveBeenCalledWith('p-1', 'k'.repeat(64), expect.any(String), shrunk);
+    expect(q('phone-photo-sent')).not.toBeNull();
+  });
+
+  it('says a picture it cannot read, and sends nothing', async () => {
+    await open();
+    shrinker.shrink.mockRejectedValue(new Error('not an image'));
+
+    await takePhoto(new File(['?'], 'note.txt', { type: 'text/plain' }));
+
+    expect(api.photo).not.toHaveBeenCalled();
+    expect(q('phone-photo-unreadable')).not.toBeNull();
+  });
+
+  it('says a photo the computer turned away, and keeps scanning', async () => {
+    await open();
+    api.photo.mockRejectedValue(new PairingRefused('invalid'));
+
+    await takePhoto(new File(['big'], 'IMG_0001.jpg', { type: 'image/jpeg' }));
+    await vi.waitFor(() => expect(q('phone-photo-refused')).not.toBeNull());
+
     expect(q('phone-code')).not.toBeNull();
   });
 

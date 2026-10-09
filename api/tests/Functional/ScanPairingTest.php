@@ -10,11 +10,17 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Module\Scanning\Domain\ScanPairing;
+use App\Module\Scanning\Domain\ScanPhoto;
+use App\Module\Scanning\Infrastructure\Scheduler\ClearUntakenPhotos;
 use App\ModuleRegistry\Domain\ModuleState;
 use App\Shared\Application\RealtimePublisher;
 use App\Shared\Infrastructure\Realtime\HmacJwt;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\MakesPictures;
 use App\Tests\Support\RecordingRealtimePublisher;
+use Symfony\Component\Clock\Clock;
+use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -23,6 +29,10 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class ScanPairingTest extends ApiTestCase
 {
+    use MakesPictures;
+
+    private const string SCAN = '0199aaaa-0000-4000-8000-0000000000f1';
+
     private RecordingRealtimePublisher $publisher;
     private Company $company;
     private string $userId;
@@ -223,6 +233,105 @@ final class ScanPairingTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->postJson($this->pairingPath($id).'/heartbeat', null);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testAPhotoTakenWithThePhoneWaitsForTheTabWhichTakesItOnce(): void
+    {
+        [$id, $link] = $this->open();
+        $key = $this->claim($link);
+        $sent = self::jpeg(64, 48);
+
+        $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', $sent, parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => $key]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_ACCEPTED);
+        $heard = $this->publisher->last();
+        $photo = $heard['data']['photo'] ?? null;
+        self::assertIsString($photo);
+        self::assertSame(
+            ['channel' => 'user:'.$this->userId, 'data' => ['type' => 'pairing', 'event' => 'photo', 'pairing' => $id, 'tab' => 'tab-1', 'scan' => self::SCAN, 'photo' => $photo]],
+            $heard,
+        );
+
+        $this->login('till@twes.local', 'password-1234');
+        $this->postJson($this->pairingPath($id)."/photos/$photo/take", null);
+        self::assertResponseIsSuccessful();
+        self::assertSame('image/jpeg', $this->client->getResponse()->headers->get('Content-Type'));
+        self::assertSame('nosniff', $this->client->getResponse()->headers->get('X-Content-Type-Options'));
+        self::assertSame($sent, $this->client->getResponse()->getContent(), 'the photo as the phone sent it');
+        self::assertSame(0, $this->em()->getRepository(ScanPhoto::class)->count([]), 'taking it is the end of its wait');
+
+        $this->postJson($this->pairingPath($id)."/photos/$photo/take", null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'taken once');
+    }
+
+    public function testThePhoneSendsOnlyAPictureNoLargerThanAPhotoMayBe(): void
+    {
+        [$id, $link] = $this->open();
+        $key = $this->claim($link);
+        $before = \count($this->publisher->pushed);
+
+        $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.gif', self::gif(), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => $key]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('invalid', $this->json()['error'] ?? null);
+        $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20).str_repeat("\0", 5 * 1024 * 1024), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => $key]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => 'not-a-uuid'], server: ['HTTP_X_PAIRING_KEY' => $key]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => str_repeat('0', 64)]);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, 'the key first');
+
+        self::assertCount($before, $this->publisher->pushed, 'nothing reached the tab');
+        self::assertSame(0, $this->em()->getRepository(ScanPhoto::class)->count([]));
+    }
+
+    public function testAPairingHoldsAFewPhotosAtOnce(): void
+    {
+        [$id, $link] = $this->open();
+        $key = $this->claim($link);
+
+        foreach ([Response::HTTP_ACCEPTED, Response::HTTP_ACCEPTED, Response::HTTP_ACCEPTED, Response::HTTP_UNPROCESSABLE_ENTITY] as $answer) {
+            $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => $key]);
+            self::assertResponseStatusCodeSame($answer);
+        }
+    }
+
+    public function testAPhotoNobodyTookIsGoneAfterAQuarterOfAnHour(): void
+    {
+        [$id, $link] = $this->open();
+        $key = $this->claim($link);
+        $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => $key]);
+        self::assertResponseStatusCodeSame(Response::HTTP_ACCEPTED);
+        $photo = $this->publisher->last()['data']['photo'] ?? null;
+        self::assertIsString($photo);
+
+        Clock::set(new MockClock(new \DateTimeImmutable('+16 minutes')));
+        try {
+            $this->login('till@twes.local', 'password-1234');
+            $this->postJson($this->pairingPath($id)."/photos/$photo/take", null);
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'too late to take');
+
+            static::getContainer()->get(ClearUntakenPhotos::class)();
+            self::assertSame(0, $this->em()->getRepository(ScanPhoto::class)->count([]), 'and cleared');
+        } finally {
+            Clock::set(new NativeClock());
+        }
+    }
+
+    public function testOnlyWhoLentThePhoneTakesItsPhotos(): void
+    {
+        // Before any request: an account made afterwards meets the company as an entity the test's manager never saw.
+        $this->createUser('other@twes.local', 'password-1234', $this->company, ['product.read'], 'clerk');
+        [$id, $link] = $this->open();
+        $key = $this->claim($link);
+        $this->uploadFile("/api/scan-pairings/$id/photos", 'photo.jpg', self::jpeg(20, 20), parameters: ['scan' => self::SCAN], server: ['HTTP_X_PAIRING_KEY' => $key]);
+        $photo = $this->publisher->last()['data']['photo'] ?? null;
+        self::assertIsString($photo);
+
+        $this->login('other@twes.local', 'password-1234');
+        $this->postJson($this->pairingPath($id)."/photos/$photo/take", null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame(1, $this->em()->getRepository(ScanPhoto::class)->count([]));
     }
 
     /** @return array{string, string} the pairing's id and its link */

@@ -73,7 +73,7 @@ final readonly class PhonePairings
 
             return $pairing;
         });
-        $this->toTheTab($pairing, ['event' => 'claimed']);
+        $this->tellTheTab($pairing, ['event' => 'claimed']);
 
         return new ClaimedPairing($pairing->getId(), $key);
     }
@@ -110,22 +110,22 @@ final readonly class PhonePairings
     /** The key first: a caller without it learns nothing, not even what a well-formed scan looks like. */
     public function scan(Uuid $id, string $key, string $code, string $scanId): void
     {
-        $pairing = $this->authorised($id, $key);
+        $pairing = $this->phone($id, $key);
         if ('' === $code || \strlen($code) > self::CODE_MAX || 1 === preg_match('/[\x00-\x1c\x1e\x1f\x7f]/', $code)) {
             throw new \InvalidArgumentException(\sprintf('code: 1 to %d printable characters; the GS1 separator is the one control character a scanner types.', self::CODE_MAX));
         }
         self::uuid($scanId, 'scan');
-        $this->toTheTab($pairing, ['event' => 'scan', 'scan' => $scanId, 'code' => $code]);
+        $this->tellTheTab($pairing, ['event' => 'scan', 'scan' => $scanId, 'code' => $code]);
     }
 
     public function choose(Uuid $id, string $key, string $echoId, string $choice): void
     {
-        $pairing = $this->authorised($id, $key);
+        $pairing = $this->phone($id, $key);
         self::uuid($echoId, 'echo');
         if (!PairingEcho::isChoice($choice)) {
             throw new \InvalidArgumentException('choice: one of the ids the echo offered.');
         }
-        $this->toTheTab($pairing, ['event' => 'choice', 'echo' => $echoId, 'choice' => $choice]);
+        $this->tellTheTab($pairing, ['event' => 'choice', 'echo' => $echoId, 'choice' => $choice]);
     }
 
     public function echo(Uuid $userId, Uuid $id, PairingEcho $echo): void
@@ -140,12 +140,13 @@ final readonly class PhonePairings
     /** The phone's connection token: its own channel and nothing else. */
     public function token(Uuid $id, string $key): RealtimeToken
     {
-        $channel = self::phoneChannel($this->authorised($id, $key));
+        $channel = self::phoneChannel($this->phone($id, $key));
 
         return $this->tokens->issueFor($channel, [$channel]);
     }
 
-    private function authorised(Uuid $id, string $key): ScanPairing
+    /** The pairing a phone acts in, once its key is checked and its company still has the scanner on. */
+    public function phone(Uuid $id, string $key): ScanPairing
     {
         $pairing = $this->pairings->get($id) ?? throw new ScanPairingRefused('unknown');
         $this->switchedOn($pairing);
@@ -167,8 +168,12 @@ final readonly class PhonePairings
         return $this->pairings->ofUser($userId, $id) ?? throw new ScanPairingRefused('unknown');
     }
 
-    /** @param array<string, string> $data */
-    private function toTheTab(ScanPairing $pairing, array $data): void
+    /**
+     * What the phone hands the tab that lent it, on that person's channel with the tab named, for that tab alone.
+     *
+     * @param array<string, string> $data
+     */
+    public function tellTheTab(ScanPairing $pairing, array $data): void
     {
         $this->realtime->push(
             'user:'.$pairing->getUser()->getId()->toRfc4122(),

@@ -133,6 +133,11 @@
         testId="product-photo-add"
         (picked)="upload($event)"
       />
+      @if (phoneLent()) {
+        <p class="m-0 text-sm" data-testid="product-photos-phone">
+          {{ 'products.photos.phone_hint' | translate }}
+        </p>
+      }
     }
   }
 </section>

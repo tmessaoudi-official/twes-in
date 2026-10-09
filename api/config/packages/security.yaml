@@ -63,7 +63,7 @@ security:
         # A phone lent to a computer tab as a scanner has no session by design: the single-use link it claims, then the
         # key the claim gave it, is what authorises it, for these four operations alone (docs/SPEC.md § 7, 2026-09-23).
         - { path: ^/api/scan-pairings/claim$, roles: PUBLIC_ACCESS }
-        - { path: '^/api/scan-pairings/[0-9a-f-]{36}/(scans|choices|realtime-token)$', roles: PUBLIC_ACCESS }
+        - { path: '^/api/scan-pairings/[0-9a-f-]{36}/(scans|choices|photos|realtime-token)$', roles: PUBLIC_ACCESS }
         # The legal pages are read by anyone, signed in or not: a visitor must be able to read them before signing in
         # (docs/SPEC.md § 8 row 148). Reading only; the operator edits them under /api/platform.
         - { path: '^/api/legal/[a-z]+/[a-z]{2}$', roles: PUBLIC_ACCESS, methods: [GET] }

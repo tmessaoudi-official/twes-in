@@ -12,6 +12,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { LiveChanges } from '../shared/realtime/live-changes';
+import { PhonePairing, type PhotoTaker } from '../shared/scan/phone-pairing';
 import { Session } from '../shared/session/session';
 import { provideQuietFeedback, RecordedFeedback, successToasts } from '../shared/testing/feedback';
 import { ProductPhotos } from './product-photos-facade';
@@ -61,6 +62,8 @@ describe('ProductPhotosSection', () => {
       `/api/companies/${companyId}/products/${productId}/photos/${photoId}/content?size=${size}`,
   };
   const live = { reloadOn: vi.fn() };
+  const lent = signal<{ phone: 'waiting' | 'connected' } | null>(null);
+  const phone = { takePhotos: vi.fn(), state: lent.asReadonly() };
   const auth = { me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }) };
   let fixture: ComponentFixture<ProductPhotosSection>;
 
@@ -73,6 +76,7 @@ describe('ProductPhotosSection', () => {
     fixture.componentRef.setInput('readOnly', inputs.readOnly ?? false);
     fixture.componentRef.setInput('maxPhotos', inputs.maxPhotos ?? 6);
     fixture.componentRef.setInput('maxBytes', 5242880);
+    fixture.componentRef.setInput('productName', 'Perceuse');
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -87,6 +91,8 @@ describe('ProductPhotosSection', () => {
     facade.remove.mockReset().mockResolvedValue(true);
     facade.restore.mockReset().mockResolvedValue(true);
     live.reloadOn.mockReset();
+    phone.takePhotos.mockReset();
+    lent.set(null);
     TestBed.configureTestingModule({
       imports: [ProductPhotosSection],
       providers: [
@@ -99,6 +105,7 @@ describe('ProductPhotosSection', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: ProductPhotos, useValue: facade },
         { provide: LiveChanges, useValue: live },
+        { provide: PhonePairing, useValue: phone },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
       ],
@@ -183,6 +190,51 @@ describe('ProductPhotosSection', () => {
 
     expect(facade.add).toHaveBeenCalledWith('c1', 'p1', file);
     expect(successToasts()).toEqual(['products.photos.added']);
+  });
+
+  it('takes a photo from the lent phone into the gallery, and tells the phone it is there', async () => {
+    await open();
+    const taker = phone.takePhotos.mock.calls[0]?.[0] as PhotoTaker;
+    const taken = new File(['x'], 'phone.jpg', { type: 'image/jpeg' });
+
+    expect(await taker(taken)).toEqual({
+      outcome: 'done',
+      message: 'products.photos.from_phone',
+      params: { name: 'Perceuse' },
+    });
+    expect(facade.add).toHaveBeenCalledWith('c1', 'p1', taken);
+    expect(successToasts()).toEqual(['products.photos.added']);
+  });
+
+  it('tells the phone why the gallery turned its photo away, in the screen’s own numbers', async () => {
+    await open();
+    const taker = phone.takePhotos.mock.calls[0]?.[0] as PhotoTaker;
+    facade.add.mockImplementation(async () => {
+      refusal.set({ code: 'too_large', params: {} });
+      return false;
+    });
+
+    expect(await taker(new File(['x'], 'phone.jpg', { type: 'image/jpeg' }))).toEqual({
+      outcome: 'refused',
+      message: 'products.photos.errors.too_large',
+      params: { max: 6, megabytes: 5 },
+    });
+  });
+
+  it('says the lent phone can take the photo, only while one is lent', async () => {
+    await open();
+    expect(q('product-photos-phone')).toBeNull();
+
+    lent.set({ phone: 'connected' });
+    fixture.detectChanges();
+
+    expect(q('product-photos-phone')).not.toBeNull();
+  });
+
+  it('takes no photo from the phone for a reader', async () => {
+    await open({ readOnly: true });
+
+    expect(phone.takePhotos).not.toHaveBeenCalled();
   });
 
   it('offers no more room once the gallery is full', async () => {
