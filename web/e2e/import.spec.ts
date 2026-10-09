@@ -133,3 +133,30 @@ test('an opening-stock file is previewed with the stock each row leaves', async 
     await forget(page, [id]);
   }
 });
+
+// Row 246: a product file may bring quantities, and « Ignorer les quantités » reads it for its prices alone.
+test('a product file adds stock, or is read for its prices alone', async ({ page }) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/');
+  const id = await aProduct(page, `QTE-${RUN}`);
+  await stockKept(page, id, true);
+  try {
+    await page.goto('/imports/products');
+    await expect(page.getByTestId('import-columns')).toContainText('stock_add');
+    await page.getByTestId('import-mode').getByText('mettre à jour').click();
+
+    await choose(page, 'produits.csv', `reference,name,stock_add\nQTE-${RUN},Vis QTE,3\n`);
+    await page.getByTestId('import-preview').click();
+    await expect(page.getByTestId('import-updated')).toContainText('1');
+    await expect(page.getByTestId('import-notes')).toContainText('0 → 3');
+
+    await page.getByTestId('import-switch-ignore_quantities').click();
+    await expect(page.getByTestId('import-store')).toBeDisabled();
+    await page.getByTestId('import-preview').click();
+    await expect(page.getByTestId('import-updated')).toContainText('1');
+    await expect(page.getByTestId('import-notes')).toHaveCount(0);
+  } finally {
+    await forget(page, [id]);
+  }
+});

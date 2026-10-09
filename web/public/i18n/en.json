@@ -3408,7 +3408,9 @@
       "home_location_note": "The code of a stock location: it is what a receipt will propose.",
       "reorder_point": "Reorder point",
       "reorder_point_note": "The quantity at or under which the product is to be reordered, in its home location's establishment (or the only one).",
-      "reference_optional_note": "Optional. Left empty, the product is given the next one of the company’s format, and a second import finds it again by its barcode."
+      "reference_optional_note": "Optional. Left empty, the product is given the next one of the company’s format, and a second import finds it again by its barcode.",
+      "location": "Stock location",
+      "location_note": "The code of the location the quantity goes to. Left blank: the row’s or the product’s home location, else the establishment’s default location when there is only one."
     },
     "vendors": {
       "number": "Vendor number",
@@ -3556,7 +3558,8 @@
     "notes": {
       "reference_given": "Reference given: {{reference}}.",
       "name_shared": "A product already has this name ({{reference}}): with neither a reference nor a barcode, this row makes another one.",
-      "stock_change": "Stock at {{location}}: {{before}} → {{after}}."
+      "stock_change": "Stock at {{location}}: {{before}} → {{after}}.",
+      "name_held": "Another product already has this name ({{reference}})."
     },
     "stock": {
       "stock_add": "Quantity to add",
@@ -3564,7 +3567,9 @@
       "stock_count": "Counted quantity",
       "stock_count_note": "What is there, replacing what the stock says: the same file imported twice leaves the same stock. One of the two quantities per row.",
       "recount": "Count again",
-      "recount_note": "Counts again a location where goods came in or went out since its last count: the file’s counted quantity then replaces that stock."
+      "recount_note": "Counts again a location where goods came in or went out since its last count: the file’s counted quantity then replaces that stock.",
+      "ignore_quantities": "Ignore this file’s quantities",
+      "ignore_quantities_note": "To reuse a catalogue for its prices alone: no stock is touched."
     },
     "switches": "Options for this file",
     "already_imported": "This file was already imported on {{date}}. Importing it again does what it does again: check the quantities to add before you confirm."

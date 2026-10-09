@@ -3408,7 +3408,9 @@
       "home_location_note": "Le code d’un emplacement de stock : c’est celui que la réception proposera.",
       "reorder_point": "Seuil de réapprovisionnement",
       "reorder_point_note": "La quantité à partir de laquelle l’article est à racheter, dans l’établissement de son emplacement habituel (ou le seul établissement).",
-      "reference_optional_note": "Facultative. Laissée vide, le produit reçoit la suivante du format de l’entreprise, et une seconde importation le retrouve par son code-barres."
+      "reference_optional_note": "Facultative. Laissée vide, le produit reçoit la suivante du format de l’entreprise, et une seconde importation le retrouve par son code-barres.",
+      "location": "Emplacement du stock",
+      "location_note": "Le code de l’emplacement où va la quantité. Laissé vide : l’emplacement habituel de la ligne ou du produit, sinon l’emplacement par défaut de l’établissement s’il n’y en a qu’un."
     },
     "vendors": {
       "number": "Numéro fournisseur",
@@ -3556,7 +3558,8 @@
     "notes": {
       "reference_given": "Référence donnée : {{reference}}.",
       "name_shared": "Un produit porte déjà ce nom ({{reference}}) : sans référence ni code-barres, cette ligne en crée un autre.",
-      "stock_change": "Stock à {{location}} : {{before}} → {{after}}."
+      "stock_change": "Stock à {{location}} : {{before}} → {{after}}.",
+      "name_held": "Un autre produit porte déjà ce nom ({{reference}})."
     },
     "stock": {
       "stock_add": "Quantité à ajouter",
@@ -3564,7 +3567,9 @@
       "stock_count": "Quantité comptée",
       "stock_count_note": "Ce qui est là, à la place de ce que dit le stock : le même fichier importé deux fois laisse le même stock. Une seule des deux quantités par ligne.",
       "recount": "Recompter",
-      "recount_note": "Compte à nouveau un emplacement où des articles sont entrés ou sortis depuis son dernier comptage : la quantité comptée du fichier remplace alors ce stock."
+      "recount_note": "Compte à nouveau un emplacement où des articles sont entrés ou sortis depuis son dernier comptage : la quantité comptée du fichier remplace alors ce stock.",
+      "ignore_quantities": "Ignorer les quantités de ce fichier",
+      "ignore_quantities_note": "Pour reprendre un catalogue pour ses prix seuls : aucun stock n’est touché."
     },
     "switches": "Options de ce fichier",
     "already_imported": "Ce fichier a déjà été importé le {{date}}. L’importer à nouveau refait ce qu’il fait : vérifiez les quantités à ajouter avant de confirmer."
