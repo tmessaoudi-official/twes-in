@@ -17,10 +17,12 @@ use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
 use App\ImportExport\Application\DeclaresImport;
 use App\ImportExport\Application\ImportColumn;
+use App\ImportExport\Application\ImportContext;
 use App\ImportExport\Application\ImportHeading;
 use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
+use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
@@ -119,12 +121,28 @@ final readonly class ProductImport implements DeclaresImport
         return ['reference'];
     }
 
+    /**
+     * Its reference, else its unit code as the scanner reads it: a row that leaves the reference out is found again by
+     * the code, so two such rows naming one code are one product twice.
+     */
+    public function identityOf(Company $company, ImportRecord $record): ?RowIdentity
+    {
+        $code = $record->value('barcode');
+
+        return RowIdentity::ofColumns($record, ['reference'])
+            ?? (null === $code ? null : new RowIdentity('barcode', "barcode\x1f".Barcode::keyOf($code), 'barcode'));
+    }
+
+    public function finished(Company $company, ImportContext $context, ?Uuid $actorUserId): void
+    {
+    }
+
     public function subjectFor(Company $company): ImportSubject
     {
         return new ImportSubject(self::KEY, [...$this->fixed($company), ...$this->custom($company)]);
     }
 
-    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes): RowImported
+    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported
     {
         // Found again by the reference written in the row, else by the unit code written in it, never by its name
         // (docs/SPEC.md § 7, 2026-09-17 (3)).

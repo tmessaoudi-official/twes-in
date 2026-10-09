@@ -21,6 +21,14 @@ interface ProductHomeLocationRepository
     public function ofProduct(Uuid $productId, Uuid $companyId): array;
 
     /**
+     * The locations of this product's MAIN homes, one per establishment that gives it one, read as ids alone: a file's
+     * rows ask it, and a home left in the unit of work would point at the product the import detaches after its row.
+     *
+     * @return list<Uuid>
+     */
+    public function mainLocationIdsOf(Uuid $productId, Uuid $companyId): array;
+
+    /**
      * The homes this product has in that establishment, the main one first.
      *
      * @return list<ProductHomeLocation>

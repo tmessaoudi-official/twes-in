@@ -679,7 +679,8 @@
       "invoice_late_fee_drafted": "Reminder {{stage}} to send: invoice {{number}} of {{customer}}, {{amount_due}} {{currency}}, is {{days_late}} days late. A late fee of {{late_fee}} {{currency}} is prepared as a draft.",
       "invoice_reminder_due": "Reminder {{stage}} to send: invoice {{number}} of {{customer}}, {{amount_due}} {{currency}}, is {{days_late}} days late.",
       "invoice_recurring_drafted": "Recurring invoice for {{customer}}: a draft copied from invoice {{number}} is waiting to be issued.",
-      "invoice_recurring_stopped": "Recurring invoice for {{customer}} paused: invoice {{number}}, which it copies, can no longer be copied."
+      "invoice_recurring_stopped": "Recurring invoice for {{customer}} paused: invoice {{number}}, which it copies, can no longer be copied.",
+      "stock_imported": "A stock import found {{differences}} {differences, plural, one {difference} other {differences}} in {{counted}} {counted, plural, one {counted row} other {counted rows}}."
     },
     "kinds": {
       "membership_added": "Added to a company",
@@ -701,7 +702,8 @@
       "subscription_payment_declared": "Payment declared by a company",
       "subscription_payment_decided": "Answer to your payment",
       "module_arrived": "Module arrived",
-      "unknown": "Other notification"
+      "unknown": "Other notification",
+      "stock_imported": "Stock import differences"
     }
   },
   "invitation": {
@@ -3387,7 +3389,13 @@
       "location_code": "Location code",
       "location_code_note": "The code of the location the goods were counted in, as it reads under Stock.",
       "quantity": "Counted quantity",
-      "quantity_note": "What is there, not what arrives: the same file imported twice leaves the same stock. With a comma or a point, within the unit's decimals."
+      "quantity_note": "What is there, not what arrives: the same file imported twice leaves the same stock. With a comma or a point, within the unit's decimals.",
+      "reference_or_barcode_note": "The product’s reference, or its unit barcode instead: import the products first.",
+      "barcode": "Unit barcode",
+      "barcode_note": "The code the scanner reads on the item, for a row without a reference. Given both, they name the same product.",
+      "location_optional_note": "The location’s code, as it appears under Stock. Left blank: the product’s home location, else the establishment’s default location when there is only one.",
+      "unit_cost": "Unit cost",
+      "unit_cost_note": "What one unit added cost. Left blank: the product’s cost. Never with a counted quantity."
     },
     "title": "Import {{subject}}",
     "subjects": {
@@ -3484,14 +3492,33 @@
       "invalid_text": "Text refused: {{max}} characters at most.",
       "not_a_date": "Expected: a date written YYYY-MM-DD.",
       "not_a_boolean": "Expected: yes or no.",
-      "unknown_custom_field": "No custom field “{{key}}” is declared."
+      "unknown_custom_field": "No custom field “{{key}}” is declared.",
+      "quantity_required": "Every row adds or counts: fill in stock_add or stock_count.",
+      "stock_add_and_count": "A row adds or counts, not both: keep stock_add or stock_count.",
+      "cost_without_addition": "A cost goes with a quantity added: a count buys nothing.",
+      "already_stocked": "This product already has stock at {{location}}. Import in “create and update” to add to it.",
+      "moved_since_count": "Goods came in or went out at {{location}} since the last count: tick “Count again” to count it again.",
+      "unknown_barcode": "No product of the company has the unit barcode “{{code}}”.",
+      "barcode_not_the_reference": "The barcode “{{code}}” is not the one of “{{reference}}”.",
+      "location_needed": "The company has several establishments: give the code of the location this quantity goes to."
     },
     "action": "Import",
     "notes_title": "Good to know",
     "notes": {
       "reference_given": "Reference given: {{reference}}.",
-      "name_shared": "A product already has this name ({{reference}}): with neither a reference nor a barcode, this row makes another one."
-    }
+      "name_shared": "A product already has this name ({{reference}}): with neither a reference nor a barcode, this row makes another one.",
+      "stock_change": "Stock at {{location}}: {{before}} → {{after}}."
+    },
+    "stock": {
+      "stock_add": "Quantity to add",
+      "stock_add_note": "What arrives on top of what is there: a receipt, at the product’s cost. With a comma or a point, within the unit’s decimals.",
+      "stock_count": "Counted quantity",
+      "stock_count_note": "What is there, replacing what the stock says: the same file imported twice leaves the same stock. One of the two quantities per row.",
+      "recount": "Count again",
+      "recount_note": "Counts again a location where goods came in or went out since its last count: the file’s counted quantity then replaces that stock."
+    },
+    "switches": "Options for this file",
+    "already_imported": "This file was already imported on {{date}}. Importing it again does what it does again: check the quantities to add before you confirm."
   },
   "scan": {
     "count": "Next scan ×{{count}}",

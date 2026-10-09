@@ -19,10 +19,14 @@ namespace App\ImportExport\Application;
  */
 final readonly class ImportSubject
 {
-    /** @param list<ImportColumn> $columns in the order the template writes them */
+    /**
+     * @param list<ImportColumn> $columns  in the order the template writes them
+     * @param list<ImportSwitch> $switches the choices this company's person may tick for one run of the file
+     */
     public function __construct(
         public string $key,
         public array $columns,
+        public array $switches = [],
     ) {
     }
 
@@ -30,6 +34,20 @@ final readonly class ImportSubject
     public function keys(): array
     {
         return array_map(static fn (ImportColumn $column): string => $column->key, $this->columns);
+    }
+
+    /**
+     * The switches the request ticks that this subject offers; anything else it names is no switch of this file.
+     *
+     * @param list<string> $named
+     *
+     * @return list<string>
+     */
+    public function ticked(array $named): array
+    {
+        $offered = array_map(static fn (ImportSwitch $switch): string => $switch->key, $this->switches);
+
+        return array_values(array_intersect($offered, $named));
     }
 
     public function column(string $key): ?ImportColumn

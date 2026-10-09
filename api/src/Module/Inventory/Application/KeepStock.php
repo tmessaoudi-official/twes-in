@@ -84,13 +84,13 @@ final readonly class KeepStock
      * Goods arriving at a location. A product tracked by lot or serial number names the lot they came in: its code
      * opens the lot the first time it is seen, and its date fills a lot that had none. A receipt that comes with a cost
      * may move the product's own cost to the weighted average or to that cost, as the company's setting says; `$apply` is
-     * the person's choice, honoured only where the setting offers one.
+     * the person's choice, honoured only where the setting offers one. `$importRunId` marks the receipt as a file's.
      *
      * @throws InvalidStockMovement
      */
-    public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null, ?ReceiptDocument $document = null, bool $costToComplete = false): StockMovement
+    public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named = null, ?string $unitCost = null, ?CostBasis $apply = null, ?ReceiptDocument $document = null, bool $costToComplete = false, ?Uuid $importRunId = null): StockMovement
     {
-        return $this->transactions->run(fn (): StockMovement => $this->receiptsAt($company, $productId, [['locationId' => $locationId, 'quantity' => $quantity]], $actorUserId, $named, $unitCost, $apply, $document, $costToComplete)[0]);
+        return $this->transactions->run(fn (): StockMovement => $this->receiptsAt($company, $productId, [['locationId' => $locationId, 'quantity' => $quantity]], $actorUserId, $named, $unitCost, $apply, $document, $costToComplete, $importRunId)[0]);
     }
 
     /**
@@ -148,12 +148,12 @@ final readonly class KeepStock
      *
      * @throws InvalidStockMovement
      */
-    private function receiptsAt(Company $company, Uuid $productId, array $parts, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?CostBasis $apply, ?ReceiptDocument $document, bool $costToComplete): array
+    private function receiptsAt(Company $company, Uuid $productId, array $parts, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?CostBasis $apply, ?ReceiptDocument $document, bool $costToComplete, ?Uuid $importRunId = null): array
     {
         $written = [];
         $typed = null;
         foreach ($parts as $part) {
-            [$written[], $typed] = $this->receiptAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named, $unitCost, $document, $costToComplete);
+            [$written[], $typed] = $this->receiptAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named, $unitCost, $document, $costToComplete, $importRunId);
         }
         $last = $written[\count($written) - 1];
         $this->moveCost($company, $last->getProduct(), $last, $typed, $apply, $actorUserId);
@@ -166,11 +166,14 @@ final readonly class KeepStock
      *
      * @throws InvalidStockMovement
      */
-    private function receiptAt(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?ReceiptDocument $document, bool $costToComplete): array
+    private function receiptAt(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId, ?NamedLot $named, ?string $unitCost, ?ReceiptDocument $document, bool $costToComplete, ?Uuid $importRunId): array
     {
         [$product, $location] = $this->trackedAt($company, $productId, $locationId);
         $lot = $this->lotFor($product, $named, true);
         $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now(), $lot, $unitCost, $document, $costToComplete);
+        if (null !== $importRunId) {
+            $movement->importedBy($importRunId);
+        }
         // Read before saving: a receipt typed with no cost is valued at the average when it is saved, and that
         // figure is not a price anybody typed.
         $typed = $movement->getUnitCost();
@@ -263,11 +266,14 @@ final readonly class KeepStock
     /**
      * What a person found at a location; of one lot, for a tracked product, which a count may be the first to see.
      *
+     * A file's count (`$importRunId`) is marked as the file's and raises no alert of its own: the file raises them once,
+     * over all it counted, when it is committed (docs/SPEC.md § 7, 2026-10-09 10:40 (10)).
+     *
      * @throws InvalidStockMovement
      */
-    public function count(Company $company, Uuid $productId, Uuid $locationId, string $counted, ?Uuid $actorUserId, ?NamedLot $named = null): StockMovement
+    public function count(Company $company, Uuid $productId, Uuid $locationId, string $counted, ?Uuid $actorUserId, ?NamedLot $named = null, ?Uuid $importRunId = null): StockMovement
     {
-        return $this->transactions->run(fn (): StockMovement => $this->countsAt($company, $productId, [['locationId' => $locationId, 'quantity' => $counted]], $actorUserId, $named)[0]);
+        return $this->transactions->run(fn (): StockMovement => $this->countsAt($company, $productId, [['locationId' => $locationId, 'quantity' => $counted]], $actorUserId, $named, $importRunId)[0]);
     }
 
     /**
@@ -299,24 +305,29 @@ final readonly class KeepStock
      *
      * @throws InvalidStockMovement
      */
-    private function countsAt(Company $company, Uuid $productId, array $parts, ?Uuid $actorUserId, ?NamedLot $named): array
+    private function countsAt(Company $company, Uuid $productId, array $parts, ?Uuid $actorUserId, ?NamedLot $named, ?Uuid $importRunId = null): array
     {
         $written = [];
         foreach ($parts as $part) {
-            $written[] = $this->countAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named);
+            $written[] = $this->countAt($company, $productId, $part['locationId'], $part['quantity'], $actorUserId, $named, $importRunId);
         }
-        $this->alerts?->raise($written);
+        if (null === $importRunId) {
+            $this->alerts?->raise($written);
+        }
 
         return $written;
     }
 
     /** @throws InvalidStockMovement */
-    private function countAt(Company $company, Uuid $productId, Uuid $locationId, string $counted, ?Uuid $actorUserId, ?NamedLot $named): StockMovement
+    private function countAt(Company $company, Uuid $productId, Uuid $locationId, string $counted, ?Uuid $actorUserId, ?NamedLot $named, ?Uuid $importRunId): StockMovement
     {
         [$product, $location] = $this->trackedAt($company, $productId, $locationId);
         $lot = $this->lotFor($product, $named, true);
         $this->movements->lockStockOf($product->getId(), $location->getId());
         $movement = StockMovement::count($product, $location, $counted, $this->movements->onHand($productId, $locationId, $lot?->getId()), $actorUserId, $this->clock->now(), $lot);
+        if (null !== $importRunId) {
+            $movement->importedBy($importRunId);
+        }
         $this->inStockOnce($movement);
         $this->save($movement);
         $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.counted', $actorUserId, $company->getId()));

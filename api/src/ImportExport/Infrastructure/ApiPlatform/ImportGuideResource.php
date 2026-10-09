@@ -75,4 +75,21 @@ final class ImportGuideResource
     ])]
     #[Groups([self::READ])]
     public array $columns = [];
+
+    /** @var list<ImportGuideSwitch> */
+    #[ApiProperty(required: true, schema: [
+        'type' => 'array',
+        'description' => 'The choices this file offers for one run, each off unless sent ticked in `switches[]`.',
+        'items' => [
+            'type' => 'object',
+            'required' => ['key', 'labelKey', 'noteKey'],
+            'properties' => [
+                'key' => ['type' => 'string', 'description' => 'What the import request names it by.'],
+                'labelKey' => ['type' => 'string', 'description' => 'A key of the screen’s catalogue.'],
+                'noteKey' => ['type' => ['string', 'null'], 'description' => 'A key of the screen’s catalogue saying when to tick it.'],
+            ],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $switches = [];
 }

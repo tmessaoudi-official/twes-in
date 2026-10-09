@@ -213,6 +213,25 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return $this->entityManager->getRepository(StockMovement::class)->findBy(['sourceType' => $sourceType, 'sourceId' => $sourceId, 'company' => $companyId], ['at' => 'ASC', 'id' => 'ASC']);
     }
 
+    public function ofImportRun(Uuid $runId, Uuid $companyId): array
+    {
+        return $this->entityManager->getRepository(StockMovement::class)->findBy(['importRunId' => $runId, 'company' => $companyId], ['at' => 'ASC', 'id' => 'ASC']);
+    }
+
+    public function movedSinceLastCount(Uuid $productId, Uuid $locationId): bool
+    {
+        // `at` keeps the second only, so a movement in the very second of the count is taken as after it: asking again is
+        // the safe side of a tie. A cost correction moves no goods.
+        $moved = $this->entityManager->getConnection()->fetchOne(
+            'SELECT EXISTS (SELECT 1 FROM stock_movement m WHERE m.product_id = :product AND m.location_id = :location'
+            .' AND m.source_type NOT IN (:count, :correction) AND m.quantity <> 0'
+            .' AND m.at >= COALESCE((SELECT MAX(c.at) FROM stock_movement c WHERE c.product_id = :product AND c.location_id = :location AND c.source_type = :count), \'-infinity\'))',
+            ['product' => $productId->toRfc4122(), 'location' => $locationId->toRfc4122(), 'count' => StockMovement::SOURCE_COUNT, 'correction' => StockMovement::SOURCE_COST_CORRECTION],
+        );
+
+        return true === $moved;
+    }
+
     public function ofReversing(Uuid $invoiceId, Uuid $companyId): array
     {
         return $this->entityManager->getRepository(StockMovement::class)->findBy(['reversesSourceId' => $invoiceId, 'company' => $companyId], ['at' => 'ASC', 'id' => 'ASC']);

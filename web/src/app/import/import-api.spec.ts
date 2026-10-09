@@ -35,9 +35,13 @@ describe('ImportApi', () => {
           noteKey: null,
         },
       ],
+      switches: [{ key: 'recount', labelKey: 'import.stock.recount', noteKey: null }],
     });
 
     const guide = await pending;
+    expect(guide.switches).toEqual([
+      { key: 'recount', labelKey: 'import.stock.recount', noteKey: null },
+    ]);
     expect(guide.identity).toEqual(['reference', 'location_code']);
     expect(guide.maxRows).toBe(2000);
     expect(guide.columns[0].key).toBe('reference');
@@ -60,7 +64,14 @@ describe('ImportApi', () => {
       code: 'reference_given',
       params: { reference: 'ART-1' },
     };
-    request.flush({ committed: false, created: [2], updated: [], rejected: [], notes: [note] });
+    request.flush({
+      committed: false,
+      created: [2],
+      updated: [],
+      rejected: [],
+      notes: [note],
+      alreadyImportedAt: null,
+    });
     const report = await pending;
     expect(report).toEqual({
       committed: false,
@@ -68,7 +79,26 @@ describe('ImportApi', () => {
       updated: [],
       rejected: [],
       notes: [note],
+      alreadyImportedAt: null,
     });
+  });
+
+  it('sends each switch ticked as switches[], and reads when the same file was imported', async () => {
+    const file = new File(['reference,stock_count\n'], 'stocks.csv', { type: 'text/csv' });
+    const pending = api.run('c1', 'opening-stock', file, 'upsert', true, ['recount']);
+
+    const request = http.expectOne('/api/companies/c1/imports/opening-stock');
+    expect((request.request.body as FormData).getAll('switches[]')).toEqual(['recount']);
+    request.flush({
+      committed: false,
+      created: [2],
+      updated: [],
+      rejected: [],
+      notes: [],
+      alreadyImportedAt: '2026-10-08T15:00:00+00:00',
+    });
+
+    expect((await pending).alreadyImportedAt).toBe('2026-10-08T15:00:00+00:00');
   });
 
   it('reads a 422 carrying a report as the answer, not as an error', async () => {

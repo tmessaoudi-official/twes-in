@@ -15,6 +15,7 @@ use App\Identity\Domain\UserRepository;
 use App\ImportExport\Application\ImportCatalogue;
 use App\ImportExport\Application\ImportColumn;
 use App\ImportExport\Application\ImportHeading;
+use App\ImportExport\Application\ImportSwitch;
 use App\ImportExport\Application\UnknownImportSubject;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
@@ -69,6 +70,7 @@ final readonly class ImportGuideProvider implements ProviderInterface
             $column->example,
             $column->note,
         ), $subject->columns);
+        $guide->switches = array_map(static fn (ImportSwitch $switch): ImportGuideSwitch => new ImportGuideSwitch($switch->key, $switch->label, $switch->note), $subject->switches);
 
         return $guide;
     }

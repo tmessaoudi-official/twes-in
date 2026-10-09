@@ -41,6 +41,8 @@ final readonly class TellStockKeepers
     public const string COUNT_DIFFERENCE = 'stock.count_difference';
     /** A product's stock fell to its reorder point in an establishment. */
     public const string LOW = 'stock.low';
+    /** A file's counts found differences: told once for the file, the person who imported it knowing. */
+    public const string IMPORTED = 'stock.imported';
 
     public function __construct(private MembershipRepository $memberships, private Notifications $notifications)
     {
@@ -50,6 +52,12 @@ final readonly class TellStockKeepers
     public function countDifference(Uuid $companyId, ?Uuid $counter, array $payload): void
     {
         $this->tellAll($companyId, self::COUNT_DIFFERENCE, $payload, $counter);
+    }
+
+    /** @param array<string, scalar|null> $payload what the notification says, without the company */
+    public function imported(Uuid $companyId, ?Uuid $importer, array $payload): void
+    {
+        $this->tellAll($companyId, self::IMPORTED, $payload, $importer);
     }
 
     /** @param array<string, scalar|null> $payload what the notification says, without the company */

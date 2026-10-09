@@ -35,6 +35,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_stock_movement_lot', columns: ['lot_id'])]
 #[ORM\Index(name: 'idx_stock_movement_reverses', columns: ['reverses_source_id'], options: ['where' => '(reverses_source_id IS NOT NULL)'])]
 #[ORM\Index(name: 'idx_stock_movement_vendor', columns: ['vendor_id'])]
+#[ORM\Index(name: 'idx_stock_movement_import_run', columns: ['import_run_id'], options: ['where' => '(import_run_id IS NOT NULL)'])]
 #[ORM\UniqueConstraint(name: 'uniq_stock_movement_source', columns: ['source_type', 'source_id', 'product_id', 'location_id', 'kind', 'lot_id'], options: ['where' => '(source_id IS NOT NULL)'])]
 class StockMovement implements CompanyOwned
 {
@@ -146,6 +147,13 @@ class StockMovement implements CompanyOwned
     /** The invoice whose sale this movement takes back, for the goods a credit note returned; none otherwise. */
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $reversesSourceId = null;
+
+    /**
+     * The import whose file wrote this receipt or count, when one did: the movement stays what it is, and reads as the
+     * file's. An id rather than a relation, as `recordedBy` is: the import engine is not this module's to map.
+     */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $importRunId = null;
 
     /**
      * @param numeric-string $quantity signed, with three decimals
@@ -491,6 +499,20 @@ class StockMovement implements CompanyOwned
     }
 
     /** The invoice whose sale this movement takes back; none for any other movement. */
+    /** Marks a receipt or a count as written by the import kept under that id; anything else no file writes. */
+    public function importedBy(Uuid $runId): void
+    {
+        if (!\in_array($this->sourceType, [self::SOURCE_RECEIPT, self::SOURCE_COUNT], true)) {
+            throw new \LogicException('Only a receipt or a count is written by an import.');
+        }
+        $this->importRunId = $runId;
+    }
+
+    public function getImportRunId(): ?Uuid
+    {
+        return $this->importRunId;
+    }
+
     public function getReversesSourceId(): ?Uuid
     {
         return $this->reversesSourceId;

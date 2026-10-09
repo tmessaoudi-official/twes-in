@@ -17,10 +17,12 @@ use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\ImportExport\Application\DeclaresImport;
 use App\ImportExport\Application\ImportColumn;
+use App\ImportExport\Application\ImportContext;
 use App\ImportExport\Application\ImportHeading;
 use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
+use App\ImportExport\Application\RowIdentity;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
@@ -106,12 +108,21 @@ final readonly class CustomerImport implements DeclaresImport
         return ['number'];
     }
 
+    public function identityOf(Company $company, ImportRecord $record): ?RowIdentity
+    {
+        return RowIdentity::ofColumns($record, $this->identityColumns());
+    }
+
+    public function finished(Company $company, ImportContext $context, ?Uuid $actorUserId): void
+    {
+    }
+
     public function subjectFor(Company $company): ImportSubject
     {
         return new ImportSubject(self::KEY, [...$this->fixed(), ...$this->identifiers($company), ...$this->custom($company)]);
     }
 
-    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes): RowImported
+    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported
     {
         $number = $record->value('number') ?? throw new RowRejected('number', 'A customer is found again by its number, so every row needs one.', 'value_required');
         $existing = $this->customers->ofNumberInCompany($number, $company->getId());

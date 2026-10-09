@@ -41,7 +41,7 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
         $lines = ['type' => 'array', 'items' => ['type' => 'integer']];
         $report = [
             'type' => 'object',
-            'required' => ['committed', 'created', 'updated', 'rejected', 'notes'],
+            'required' => ['committed', 'created', 'updated', 'rejected', 'notes', 'alreadyImportedAt'],
             'properties' => [
                 'committed' => ['type' => 'boolean', 'description' => 'Whether the file was stored: never for a preview, nor while a row is rejected.'],
                 'created' => $lines + ['description' => 'The file’s own line numbers, empty lines counted.'],
@@ -67,6 +67,7 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
                         'params' => ['type' => 'object', 'additionalProperties' => ['type' => ['string', 'integer']]],
                     ],
                 ]],
+                'alreadyImportedAt' => ['type' => ['string', 'null'], 'format' => 'date-time', 'description' => 'When this very file (the same bytes) was last imported into this subject, committed; null when it never was.'],
             ],
         ];
         $refused = [
@@ -98,6 +99,7 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
                     'file' => ['type' => 'string', 'format' => 'binary', 'description' => 'A .csv or .xlsx file, its first non-empty row the column keys.'],
                     'mode' => ['type' => 'string', 'enum' => ['create', 'upsert'], 'default' => 'create'],
                     'dryRun' => ['type' => 'boolean', 'default' => false, 'description' => 'A preview: the same run, rolled back.'],
+                    'switches' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'The keys of the subject’s switches ticked, as its guide lists them; any other is ignored.'],
                 ],
             ]))]), true),
         )));

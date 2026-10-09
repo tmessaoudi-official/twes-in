@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
+import { aProduct, forget, stockKept } from './catalogue';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
 
@@ -108,4 +109,27 @@ test('a product file without references is previewed with the references it woul
   await expect(page.getByTestId('import-created')).toContainText('1');
   await expect(page.getByTestId('import-notes')).toContainText('Référence donnée');
   await expect(page.getByTestId('import-store')).toBeEnabled();
+});
+
+// Row 246: an opening-stock file counts or adds, and the preview says each row's stock before and after.
+test('an opening-stock file is previewed with the stock each row leaves', async ({ page }) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/');
+  const id = await aProduct(page, `OUV-${RUN}`);
+  await stockKept(page, id, true);
+  try {
+    await page.goto('/imports/opening-stock');
+    await expect(page.getByTestId('import-columns')).toContainText('stock_count');
+    await expect(page.getByTestId('import-switch-recount')).toBeVisible();
+
+    await choose(page, 'stock.csv', `reference,stock_count\nOUV-${RUN},12\n`);
+    await page.getByTestId('import-preview').click();
+    await expect(page.getByTestId('import-created')).toContainText('1');
+    await expect(page.getByTestId('import-notes')).toContainText('0 → 12');
+    await expect(page.getByTestId('import-already-imported')).toHaveCount(0);
+    await expect(page.getByTestId('import-store')).toBeEnabled();
+  } finally {
+    await forget(page, [id]);
+  }
 });

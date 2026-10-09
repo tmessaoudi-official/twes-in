@@ -33,9 +33,22 @@ final readonly class RaiseStockAlerts
     /** @param list<StockMovement> $saved movements already stored, so the stock read back includes them */
     public function raise(array $saved): void
     {
-        $falls = [];
         foreach ($saved as $movement) {
             $this->countedDifference($movement);
+        }
+        $this->raiseFalls($saved);
+    }
+
+    /**
+     * The falls to a reorder point alone, each product and establishment judged once over all the movements: what a
+     * file counted is told as one summary, not count by count.
+     *
+     * @param list<StockMovement> $saved movements already stored
+     */
+    public function raiseFalls(array $saved): void
+    {
+        $falls = [];
+        foreach ($saved as $movement) {
             // Goods in quarantine cannot be sold, so what falls is what can be: a move between two places that sell nets to
             // nothing inside its establishment, and one into quarantine takes what it puts aside.
             if (StockLocationKind::Quarantine === $movement->getLocation()->getKind()) {

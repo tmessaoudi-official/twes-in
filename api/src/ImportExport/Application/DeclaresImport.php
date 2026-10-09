@@ -46,12 +46,27 @@ interface DeclaresImport
     public function identityColumns(): array;
 
     /**
+     * What this row names, for finding the same thing twice in one file: usually its identity columns as written
+     * (`RowIdentity::ofColumns`), but a subject that finds a row by one column OR another (a reference, else a unit
+     * code) says so here, so a row naming its product by code alone is still caught the second time. Null when the row
+     * names nothing, which the subject then refuses for itself.
+     */
+    public function identityOf(Company $company, ImportRecord $record): ?RowIdentity;
+
+    /**
      * Creates or, in upsert mode, updates what one row describes, through the same use case a person's form uses.
      * Runs inside the import's unit of work, which RunImport rolls back for a preview or a file with a rejected row.
      *
-     * What the person should know about a row it imports, it notes in $notes.
+     * What the person should know about a row it imports, it notes in $notes; the switches ticked and the run's id are
+     * in $context.
      *
      * @throws RowRejected naming the column at fault, for anything the row asks that the subject's rules refuse
      */
-    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes): RowImported;
+    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes, ImportContext $context): RowImported;
+
+    /**
+     * Once every row is written and the file is about to be committed — never for a preview or a refused file: what is
+     * said once for the whole file rather than once per row, such as one notification for the stock it moved.
+     */
+    public function finished(Company $company, ImportContext $context, ?Uuid $actorUserId): void;
 }

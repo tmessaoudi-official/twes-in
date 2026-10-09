@@ -11,7 +11,7 @@ namespace App\ImportExport\Application;
 
 /**
  * What an import did, or would do: the lines created, updated and rejected, by the file's own line numbers, and what
- * the rows imported were noted for.
+ * the rows imported were noted for, and whether this very file was imported before.
  */
 final readonly class ImportReport
 {
@@ -27,6 +27,8 @@ final readonly class ImportReport
         public array $updated,
         public array $rejected,
         public array $notes = [],
+        /** When this very file was last imported into the subject, committed; null when it never was. */
+        public ?\DateTimeImmutable $alreadyImportedAt = null,
     ) {
     }
 }

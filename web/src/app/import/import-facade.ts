@@ -55,11 +55,12 @@ export class ImportFacade {
     file: File,
     mode: ImportMode,
     dryRun: boolean,
+    switches: readonly string[] = [],
   ): Promise<void> {
     this.forget();
     this.busySignal.set(true);
     try {
-      const report = await this.api.run(companyId, subject, file, mode, dryRun);
+      const report = await this.api.run(companyId, subject, file, mode, dryRun, switches);
       this.reportSignal.set(report);
       this.errorSignal.set(null);
       if (report.committed) {

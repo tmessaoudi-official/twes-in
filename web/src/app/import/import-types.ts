@@ -34,6 +34,15 @@ export interface ImportColumn {
   noteKey: string | null;
 }
 
+/** A choice the file offers for one run, off unless ticked: « Recompter ». */
+export interface ImportSwitch {
+  key: string;
+  /** A key of this screen's catalogue. */
+  labelKey: string;
+  /** A key of this screen's catalogue saying when to tick it. */
+  noteKey: string | null;
+}
+
 /** What one subject's file holds, for one company: its columns, what a row is found again by, and the row cap. */
 export interface ImportGuide {
   subject: string;
@@ -41,6 +50,7 @@ export interface ImportGuide {
   identity: readonly string[];
   maxRows: number;
   columns: readonly ImportColumn[];
+  switches: readonly ImportSwitch[];
 }
 
 /** One row the file asked for and the rules refused. */
@@ -70,4 +80,6 @@ export interface ImportReport {
   updated: readonly number[];
   rejected: readonly ImportRejection[];
   notes: readonly ImportNote[];
+  /** When this very file was last imported into the subject; null when it never was. */
+  alreadyImportedAt: string | null;
 }

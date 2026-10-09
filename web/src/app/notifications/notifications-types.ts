@@ -37,6 +37,7 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'stock.credit_lines_not_returned',
   'stock.credit_moved_no_stock',
   'stock.count_difference',
+  'stock.imported',
   'stock.low',
   'invoice.credit_limit_passed',
   'invoice.reminder_due',
@@ -108,6 +109,8 @@ const RECORDS = new Map<string, NotificationRecord>([
     'stock.count_difference',
     { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
   ],
+  // A file whose counts found differences leads to the movements too, where each count it wrote reads as the import's.
+  ['stock.imported', { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' }],
   ['stock.low', { icon: 'inventory_2', route: '/stock', permission: 'stock.read' }],
   // An invoice that took a customer past their credit limit leads to the invoices, where the account is read.
   [

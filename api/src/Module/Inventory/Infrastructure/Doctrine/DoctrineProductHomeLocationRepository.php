@@ -40,6 +40,16 @@ final readonly class DoctrineProductHomeLocationRepository implements ProductHom
         return $homes;
     }
 
+    public function mainLocationIdsOf(Uuid $productId, Uuid $companyId): array
+    {
+        $ids = $this->entityManager->getConnection()->fetchFirstColumn(
+            'SELECT location_id FROM product_home_location WHERE product_id = ? AND company_id = ? AND position = 0 ORDER BY location_id',
+            [$productId->toRfc4122(), $companyId->toRfc4122()],
+        );
+
+        return array_map(static fn (mixed $id): Uuid => Uuid::fromString(\is_string($id) ? $id : throw new \UnexpectedValueException('A location id is a string.')), $ids);
+    }
+
     public function ofProductInEstablishment(Uuid $productId, Uuid $establishmentId): array
     {
         return $this->entityManager->getRepository(ProductHomeLocation::class)

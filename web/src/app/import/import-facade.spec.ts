@@ -17,6 +17,7 @@ describe('ImportFacade', () => {
     updated: [],
     rejected,
     notes: [],
+    alreadyImportedAt: null,
   });
 
   beforeEach(() => {
@@ -61,6 +62,7 @@ describe('ImportFacade', () => {
       updated: [],
       rejected: [],
       notes: [],
+      alreadyImportedAt: null,
     });
     await facade.run('c1', 'customers', new File(['x'], 'f.csv'), 'create', true);
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([]);
@@ -71,12 +73,22 @@ describe('ImportFacade', () => {
       updated: [3],
       rejected: [],
       notes: [],
+      alreadyImportedAt: null,
     });
     await facade.run('c1', 'customers', new File(['x'], 'f.csv'), 'create', false);
 
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
       { kind: 'success', key: 'import.stored', params: { created: 1, updated: 1 } },
     ]);
+  });
+
+  it('hands the switches ticked to the API with the run', async () => {
+    api.run.mockResolvedValueOnce(report([]));
+    const file = new File(['x'], 'f.csv');
+
+    await facade.run('c1', 'opening-stock', file, 'upsert', true, ['recount']);
+
+    expect(api.run).toHaveBeenCalledWith('c1', 'opening-stock', file, 'upsert', true, ['recount']);
   });
 
   it('keeps a request that never ran as an error, and drops the answer before it', async () => {

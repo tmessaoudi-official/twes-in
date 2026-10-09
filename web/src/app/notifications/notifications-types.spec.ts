@@ -45,6 +45,7 @@ describe('stock notifications', () => {
       'stock.credit_lines_not_returned',
       'stock.credit_moved_no_stock',
       'stock.count_difference',
+      'stock.imported',
     ]) {
       expect(notificationKey(type)).toBe(`notifications.types.${type.replace('.', '_')}`);
       expect(notificationRecord(type)).toEqual({

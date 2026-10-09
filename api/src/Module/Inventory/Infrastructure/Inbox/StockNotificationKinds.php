@@ -28,6 +28,7 @@ final readonly class StockNotificationKinds implements DeclaresNotificationKinds
             TellStockKeepers::CREDIT_LINES_NOT_RETURNED,
             TellStockKeepers::CREDIT_MOVED_NO_STOCK,
             TellStockKeepers::COUNT_DIFFERENCE,
+            TellStockKeepers::IMPORTED,
             TellStockKeepers::LOW,
         ]);
     }

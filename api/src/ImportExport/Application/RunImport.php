@@ -9,8 +9,11 @@ declare(strict_types=1);
 
 namespace App\ImportExport\Application;
 
+use App\ImportExport\Domain\ImportRun;
+use App\ImportExport\Domain\ImportRunRepository;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Uid\Uuid;
 
@@ -22,6 +25,9 @@ use Symfony\Component\Uid\Uuid;
  * field. Every row then goes through the subject, which uses the same use case a person's form does, inside ONE unit
  * of work. A preview and a file with any rejected row both roll that unit back, so the preview is exactly what the
  * import would do, rejections included, and an import is never half applied.
+ *
+ * A committed import is kept as an ImportRun under the SHA-256 of its file, so the next run of the very same file is
+ * told when it was already imported, before anything is confirmed.
  */
 final readonly class RunImport
 {
@@ -29,26 +35,34 @@ final readonly class RunImport
         private Transactions $transactions,
         #[Autowire(param: 'app.import.max_rows')]
         private int $maxRows,
+        private ImportRunRepository $runs,
+        private ClockInterface $clock,
     ) {
     }
 
     /**
-     * @param iterable<int, list<string>> $rows the file's rows by their own line numbers
+     * @param iterable<int, list<string>> $rows        the file's rows by their own line numbers
+     * @param string                      $contentHash the SHA-256 of the file's bytes, lowercase hexadecimal
+     * @param list<string>                $ticked      the switches the request ticks; those the subject does not offer are ignored
      *
      * @throws UnreadableImport
      */
-    public function run(DeclaresImport $declaration, ImportSubject $subject, Company $company, iterable $rows, ImportMode $mode, bool $dryRun, ?Uuid $actorUserId): ImportReport
+    public function run(DeclaresImport $declaration, ImportSubject $subject, Company $company, iterable $rows, ImportMode $mode, bool $dryRun, ?Uuid $actorUserId, string $contentHash, array $ticked = []): ImportReport
     {
         $records = $this->records($subject, $rows);
+        $already = $this->runs->lastOf($company->getId(), $declaration->key(), $contentHash)?->getAt();
+        $context = new ImportContext(Uuid::v7(), $subject->ticked($ticked));
 
         try {
-            return $this->transactions->run(function () use ($declaration, $company, $records, $mode, $dryRun, $actorUserId): ImportReport {
-                $report = $this->apply($declaration, $company, $records, $mode, $actorUserId);
+            return $this->transactions->run(function () use ($declaration, $company, $records, $mode, $dryRun, $actorUserId, $context, $contentHash, $already): ImportReport {
+                $report = $this->apply($declaration, $company, $records, $mode, $actorUserId, $context);
                 if ($dryRun || [] !== $report->rejected) {
-                    throw new ImportRolledBack($report);
+                    throw new ImportRolledBack(new ImportReport(false, $report->created, $report->updated, $report->rejected, $report->notes, $already));
                 }
+                $declaration->finished($company, $context, $actorUserId);
+                $this->runs->save(new ImportRun($context->runId, $company, $declaration->key(), $contentHash, $mode->value, $actorUserId, \count($report->created), \count($report->updated), $this->clock->now()));
 
-                return new ImportReport(true, $report->created, $report->updated, [], $report->notes);
+                return new ImportReport(true, $report->created, $report->updated, [], $report->notes, $already);
             });
         } catch (ImportRolledBack $rolledBack) {
             return $rolledBack->report;
@@ -58,25 +72,24 @@ final readonly class RunImport
     /**
      * @param list<ImportRecord> $records
      */
-    private function apply(DeclaresImport $declaration, Company $company, array $records, ImportMode $mode, ?Uuid $actorUserId): ImportReport
+    private function apply(DeclaresImport $declaration, Company $company, array $records, ImportMode $mode, ?Uuid $actorUserId, ImportContext $context): ImportReport
     {
-        $identity = $declaration->identityColumns();
         $created = $updated = $rejected = $noted = [];
         /** @var array<string, int> $firstLineOf the first line naming each identity */
         $firstLineOf = [];
         foreach ($records as $record) {
-            $key = self::identityOf($record, $identity);
-            if (null !== $key && isset($firstLineOf[$key])) {
-                $rejected[] = ['line' => $record->line, 'column' => $identity[0], 'code' => 'duplicate_in_file', 'params' => ['line' => $firstLineOf[$key]], 'message' => \sprintf('Line %d of the file already has this %s.', $firstLineOf[$key], implode(' and ', $identity))];
+            $identity = $declaration->identityOf($company, $record);
+            if (null !== $identity && isset($firstLineOf[$identity->key])) {
+                $rejected[] = ['line' => $record->line, 'column' => $identity->column, 'code' => 'duplicate_in_file', 'params' => ['line' => $firstLineOf[$identity->key]], 'message' => \sprintf('Line %d of the file already has this %s.', $firstLineOf[$identity->key], $identity->named)];
                 continue;
             }
-            if (null !== $key) {
-                $firstLineOf[$key] = $record->line;
+            if (null !== $identity) {
+                $firstLineOf[$identity->key] = $record->line;
             }
 
             $notes = new RowNotes();
             try {
-                match ($declaration->import($company, $record, $mode, $actorUserId, $notes)) {
+                match ($declaration->import($company, $record, $mode, $actorUserId, $notes, $context)) {
                     RowImported::Created => $created[] = $record->line,
                     RowImported::Updated => $updated[] = $record->line,
                 };
@@ -89,30 +102,6 @@ final readonly class RunImport
         }
 
         return new ImportReport(false, $created, $updated, $rejected, $noted);
-    }
-
-    /**
-     * What this row names itself by, for finding the SAME thing twice in one file. A row that leaves any of the
-     * identity's columns empty has no identity at all — it is rejected by the subject for the missing value, which
-     * says more than "a duplicate of the other row that is also empty" would.
-     *
-     * The parts are joined on a separator no cell can hold, so a pair like ("VIS-6", "A-12") can never collide with
-     * ("VIS", "6A-12").
-     *
-     * @param non-empty-list<string> $identity
-     */
-    private static function identityOf(ImportRecord $record, array $identity): ?string
-    {
-        $parts = [];
-        foreach ($identity as $column) {
-            $value = $record->value($column);
-            if (null === $value) {
-                return null;
-            }
-            $parts[] = $value;
-        }
-
-        return implode("\x1f", $parts);
     }
 
     /**

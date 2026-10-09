@@ -20,6 +20,7 @@ import { ImportFacade } from './import-facade';
 import { ImportPage } from './import-page';
 import type { ImportGuide, ImportRefusal, ImportReport } from './import-types';
 import { WINDOW_CLASS, type WindowClass } from '../shared/ui/window-class';
+import { FormatFacade } from '../shared/i18n/format-facade';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -32,7 +33,12 @@ class StaticLoader implements TranslateLoader {
         preview: 'Prévisualiser',
         store: 'Importer',
         rejections: { duplicate_in_file: 'Déjà présent à la ligne {{line}} du fichier.' },
-        notes: { reference_given: 'Référence donnée : {{reference}}.' },
+        notes: {
+          reference_given: 'Référence donnée : {{reference}}.',
+          stock_change: 'Stock à {{location}} : {{before}} → {{after}}.',
+        },
+        stock: { recount: 'Recompter', recount_note: 'Compte à nouveau.' },
+        already_imported: 'Ce fichier a déjà été importé le {{date}}.',
         refusals: { unknown_columns: 'Colonnes inconnues : {{columns}}.' },
       },
     });
@@ -61,6 +67,9 @@ const GUIDE: ImportGuide = {
       noteKey: null,
     },
   ],
+  switches: [
+    { key: 'recount', labelKey: 'import.stock.recount', noteKey: 'import.stock.recount_note' },
+  ],
 };
 
 const CLEAN: ImportReport = {
@@ -69,6 +78,7 @@ const CLEAN: ImportReport = {
   updated: [],
   rejected: [],
   notes: [],
+  alreadyImportedAt: null,
 };
 const REJECTED: ImportReport = {
   committed: false,
@@ -78,6 +88,7 @@ const REJECTED: ImportReport = {
     { line: 3, column: 'reference', code: 'duplicate_in_file', params: { line: 2 }, message: 'x' },
   ],
   notes: [],
+  alreadyImportedAt: null,
 };
 
 describe('ImportPage', () => {
@@ -157,6 +168,14 @@ describe('ImportPage', () => {
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: WINDOW_CLASS, useValue: width },
+        // The screen's decimal separator and a moment as words, as the working locale would write them.
+        {
+          provide: FormatFacade,
+          useValue: {
+            decimal: (value: string) => value.replace('.', ','),
+            moment: (value: string) => `9 oct. 2026 (${value})`,
+          },
+        },
       ],
     });
     fixture = TestBed.createComponent(ImportPage);
@@ -227,8 +246,68 @@ describe('ImportPage', () => {
       expect.anything(),
       'create',
       true,
+      [],
     );
     expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  // docs/SPEC.md § 7, 2026-10-09 10:40 (6): « Recompter » is the file's own choice, sent with the run it was ticked for.
+  it('sends the switches ticked, and a tick asks for a new preview', async () => {
+    chooseFile();
+    await settle();
+    facade.run.mockImplementation(async () => report.set(CLEAN));
+    await click('import-preview');
+    expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
+    expect(q('import-switches')?.textContent).toContain('Compte à nouveau.');
+
+    (q('import-switch-recount')!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+
+    expect((q('import-store') as HTMLButtonElement).disabled).toBe(true);
+    await click('import-preview');
+    expect(facade.run).toHaveBeenLastCalledWith(
+      'c1',
+      'opening-stock',
+      expect.anything(),
+      'create',
+      true,
+      ['recount'],
+    );
+  });
+
+  it('says before confirming that this very file was already imported', async () => {
+    chooseFile();
+    await settle();
+    facade.run.mockImplementation(async () =>
+      report.set({ ...CLEAN, alreadyImportedAt: '2026-10-08T15:00:00+00:00' }),
+    );
+    await click('import-preview');
+
+    expect(q('import-already-imported')?.textContent).toContain(
+      'Ce fichier a déjà été importé le 9 oct. 2026 (2026-10-08T15:00:00+00:00).',
+    );
+  });
+
+  it('writes the stock before and after a row with the screen’s decimal separator', async () => {
+    chooseFile();
+    await settle();
+    facade.run.mockImplementation(async () =>
+      report.set({
+        ...CLEAN,
+        notes: [
+          {
+            line: 2,
+            column: 'stock_count',
+            code: 'stock_change',
+            params: { location: 'Z1', before: '0.000', after: '7.500' },
+          },
+        ],
+      }),
+    );
+    await click('import-preview');
+
+    expect(q('import-notes')?.textContent).toContain('Stock à Z1 : 0,000 → 7,500.');
+    expect(q('import-already-imported')).toBeNull();
   });
 
   // docs/SPEC.md § 7, 2026-09-17 (3): what a row was noted for, in the person's words, without stopping the file.
@@ -290,6 +369,7 @@ describe('ImportPage', () => {
           },
         ],
         notes: [],
+        alreadyImportedAt: null,
       }),
     );
     await click('import-preview');
@@ -305,7 +385,14 @@ describe('ImportPage', () => {
     await click('import-preview');
 
     facade.run.mockImplementation(async () => {
-      report.set({ committed: true, created: [2, 3], updated: [], rejected: [], notes: [] });
+      report.set({
+        committed: true,
+        created: [2, 3],
+        updated: [],
+        rejected: [],
+        notes: [],
+        alreadyImportedAt: null,
+      });
       TestBed.inject(Feedback).success('import.stored', { created: 2, updated: 0 });
     });
     await click('import-store');
@@ -316,6 +403,7 @@ describe('ImportPage', () => {
       expect.anything(),
       'create',
       false,
+      [],
     );
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
       expect.objectContaining({ key: 'import.stored' }),

@@ -78,6 +78,16 @@ interface StockMovementRepository
     /** @return list<StockMovement> what one document moved in a company, in the order it was written */
     public function ofSource(string $sourceType, Uuid $sourceId, Uuid $companyId): array;
 
+    /** @return list<StockMovement> what one import's file moved in a company, in the order it was written */
+    public function ofImportRun(Uuid $runId, Uuid $companyId): array;
+
+    /**
+     * Whether goods came in or went out of that place by anything but a count — a receipt, a sale, a delivery, a move —
+     * at or after the latest count there, or at all when it was never counted. A count taken before them, imported
+     * now, would erase them.
+     */
+    public function movedSinceLastCount(Uuid $productId, Uuid $locationId): bool;
+
     /**
      * Holds the stock of a product at a location until the current transaction ends, so a count that reads it and a
      * delivery that takes from it run one after the other; a count would otherwise record its difference from a stock

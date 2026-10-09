@@ -31,7 +31,8 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * Previews or imports one file (docs/SPEC.md § 7, 2026-09-17 and 2026-09-19): `file` a .csv or .xlsx, `mode` create or
- * upsert, `dryRun` 1 for the preview. A plain controller rather than a resource, because the body is a file.
+ * upsert, `dryRun` 1 for the preview, `switches[]` each switch of the subject ticked. A plain controller rather than a
+ * resource, because the body is a file.
  *
  * Stateless on purpose: the preview keeps nothing, and the import is the same file sent again without `dryRun`, so it is
  * checked against the data as it is when it runs, never against a preview another member's changes have overtaken.
@@ -73,6 +74,18 @@ final readonly class ImportController
         }
 
         $dryRun = $request->request->getBoolean('dryRun');
+        $switches = [];
+        foreach ($request->request->all('switches') as $switch) {
+            if (!\is_string($switch)) {
+                return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            $switches[] = $switch;
+        }
+        // The file's bytes, so the same file sent again is known whatever it is named.
+        $contentHash = hash_file('sha256', $file->getPathname());
+        if (false === $contentHash) {
+            return new JsonResponse(['error' => 'invalid_request'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
         try {
             $report = $this->import->run(
                 $declaration,
@@ -82,6 +95,8 @@ final readonly class ImportController
                 $mode,
                 $dryRun,
                 $this->guard->account()->getId(),
+                $contentHash,
+                $switches,
             );
         } catch (UnreadableSpreadsheet) {
             return new JsonResponse(['error' => UnreadableImport::UNREADABLE, 'columns' => []], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -90,7 +105,7 @@ final readonly class ImportController
         }
 
         return new JsonResponse(
-            ['committed' => $report->committed, 'created' => $report->created, 'updated' => $report->updated, 'rejected' => $report->rejected, 'notes' => $report->notes],
+            ['committed' => $report->committed, 'created' => $report->created, 'updated' => $report->updated, 'rejected' => $report->rejected, 'notes' => $report->notes, 'alreadyImportedAt' => $report->alreadyImportedAt?->format(\DATE_ATOM)],
             // A preview that finds rejected rows has done its job; an import that stopped on them has not.
             $dryRun || $report->committed ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY,
         );

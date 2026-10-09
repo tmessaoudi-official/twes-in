@@ -45,6 +45,31 @@
         <mat-radio-button value="upsert">{{ 'import.mode_upsert' | translate }}</mat-radio-button>
       </mat-radio-group>
 
+      @if (guide.switches.length > 0) {
+        <div
+          class="flex flex-col gap-2"
+          role="group"
+          [attr.aria-label]="'import.switches' | translate"
+          data-testid="import-switches"
+        >
+          @for (choice of guide.switches; track choice.key) {
+            <div class="flex flex-col">
+              <mat-checkbox
+                [checked]="ticked().includes(choice.key)"
+                (change)="tick(choice.key, $event.checked)"
+                [attr.data-testid]="'import-switch-' + choice.key"
+                >{{ choice.labelKey | translate }}</mat-checkbox
+              >
+              @if (choice.noteKey) {
+                <span class="ms-10 text-sm text-on-surface-variant">{{
+                  choice.noteKey | translate
+                }}</span>
+              }
+            </div>
+          }
+        </div>
+      }
+
       <div class="flex flex-wrap items-center gap-3">
         <button
           mat-stroked-button
@@ -87,6 +112,12 @@
       <h2 class="text-xl font-semibold">
         {{ (report.committed ? 'import.stored_title' : 'import.preview_title') | translate }}
       </h2>
+      @if (report.alreadyImportedAt; as at) {
+        <p class="flex items-center gap-2" data-testid="import-already-imported">
+          <mat-icon aria-hidden="true">history</mat-icon>
+          {{ 'import.already_imported' | translate: { date: at | moment } }}
+        </p>
+      }
       <div class="flex flex-wrap items-center gap-3">
         <app-status-badge tone="success" data-testid="import-created">
           {{ 'import.created' | translate: { count: report.created.length } }}

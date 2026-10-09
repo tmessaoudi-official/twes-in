@@ -61,11 +61,13 @@ export class ImportApi {
     file: File,
     mode: ImportMode,
     dryRun: boolean,
+    switches: readonly string[] = [],
   ): Promise<ImportReport> {
     const body = new FormData();
     body.append('file', file, file.name);
     body.append('mode', mode);
     body.append('dryRun', dryRun ? '1' : '0');
+    for (const key of switches) body.append('switches[]', key);
 
     return this.guard(async () =>
       toReport(
@@ -135,6 +137,11 @@ function toGuide(answer: ImportGuideImportGuideRead): ImportGuide {
       example: column.example,
       noteKey: column.noteKey,
     })),
+    switches: answer.switches.map((choice) => ({
+      key: choice.key,
+      labelKey: choice.labelKey,
+      noteKey: choice.noteKey,
+    })),
   };
 }
 
@@ -164,6 +171,8 @@ function toReport(answer: unknown): ImportReport {
           params: (row['params'] ?? {}) as Record<string, string | number>,
         }))
       : [],
+    alreadyImportedAt:
+      typeof body['alreadyImportedAt'] === 'string' ? body['alreadyImportedAt'] : null,
   };
 }
 

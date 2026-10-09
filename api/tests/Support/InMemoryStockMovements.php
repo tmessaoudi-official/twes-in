@@ -136,6 +136,32 @@ final class InMemoryStockMovements implements StockMovementRepository
         ));
     }
 
+    public function ofImportRun(Uuid $runId, Uuid $companyId): array
+    {
+        return array_values(array_filter(
+            $this->movements,
+            static fn (StockMovement $m) => true === $m->getImportRunId()?->equals($runId) && $m->getCompany()->getId()->equals($companyId),
+        ));
+    }
+
+    public function movedSinceLastCount(Uuid $productId, Uuid $locationId): bool
+    {
+        $here = array_filter($this->movements, static fn (StockMovement $m) => $m->getProduct()->getId()->equals($productId) && $m->getLocation()->getId()->equals($locationId));
+        $counted = null;
+        foreach ($here as $m) {
+            if (StockMovement::SOURCE_COUNT === $m->getSourceType() && (null === $counted || $m->getAt() > $counted)) {
+                $counted = $m->getAt();
+            }
+        }
+        foreach ($here as $m) {
+            if (!\in_array($m->getSourceType(), [StockMovement::SOURCE_COUNT, StockMovement::SOURCE_COST_CORRECTION], true) && 0 !== bccomp($m->getQuantity(), '0', 3) && (null === $counted || $m->getAt() >= $counted)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /** What another run does while this one waits for its first lock, once. */
     public ?\Closure $whileWaitingForALock = null;
 

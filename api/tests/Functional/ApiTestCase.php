@@ -151,8 +151,8 @@ abstract class ApiTestCase extends WebTestCase
     /**
      * A file sent the way the SPA's FormData does: one multipart part under `$field`.
      *
-     * @param array<string, string> $parameters form fields sent beside the file
-     * @param array<string, string> $server     more headers, as server parameters (a paired phone's key)
+     * @param array<string, string|list<string>> $parameters form fields sent beside the file, a list as `name[]`
+     * @param array<string, string>              $server     more headers, as server parameters (a paired phone's key)
      */
     protected function uploadFile(string $path, string $name, string $contents, string $field = 'file', array $parameters = [], array $server = []): void
     {

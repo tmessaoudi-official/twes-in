@@ -30,6 +30,18 @@ final class InMemoryProductHomeLocations implements ProductHomeLocationRepositor
         return $mine;
     }
 
+    public function mainLocationIdsOf(Uuid $productId, Uuid $companyId): array
+    {
+        $ids = [];
+        foreach ($this->ofProduct($productId, $companyId) as $home) {
+            if ($home->isMain()) {
+                $ids[] = $home->getLocation()->getId();
+            }
+        }
+
+        return $ids;
+    }
+
     public function ofProductInEstablishment(Uuid $productId, Uuid $establishmentId): array
     {
         $found = array_values(array_filter(
