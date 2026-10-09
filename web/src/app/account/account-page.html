@@ -9,12 +9,7 @@
     @for (tab of tabs(); track tab) {
       <mat-tab>
         <ng-template mat-tab-label>
-          <span class="flex items-center gap-2">
-            {{ 'account.tabs.' + tab | translate }}
-            @if (comingTabs.includes(tab)) {
-              <span class="twes-soon">{{ 'shell.soon' | translate }}</span>
-            }
-          </span>
+          {{ 'account.tabs.' + tab | translate }}
         </ng-template>
         <div class="flex flex-col gap-6 py-4">
           @switch (tab) {
@@ -318,8 +313,8 @@
                 </div>
               </div>
             }
-            @default {
-              <p class="text-on-surface-variant">{{ 'account.later' | translate }}</p>
+            @case ('notifications') {
+              <app-notification-choices />
             }
           }
         </div>

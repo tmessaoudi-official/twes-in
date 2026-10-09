@@ -67,3 +67,102 @@ test('a member joining reaches the open page live, and stays in the centre after
   await page.getByTestId('notifications-read-all').click();
   await expect(page.getByTestId('notification-bell')).toHaveAttribute('data-unread', '0');
 });
+
+// « Mon compte › Notifications »: a kind muted in one company is still told and listed, but the bell no longer counts
+// it; switched back on, the bell counts it again. The operator's own choice is put back whatever happens, since the
+// whole suite shares one database.
+test('a kind muted in « Mon compte » is still listed, and the bell no longer counts it', async ({
+  page,
+  browser,
+  request,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const companyId = await page.evaluate(
+    async () =>
+      ((await (await fetch('/api/auth/me')).json()) as { company: { id: string } }).company.id,
+  );
+  const unread = () =>
+    page.evaluate(
+      async () =>
+        ((await (await fetch('/api/me/notifications')).json()) as { unread: number }).unread,
+    );
+
+  await page.goto('/account?tab=notifications');
+  const row = page.getByTestId(`notification-${companyId}-invitation.accepted`);
+  const ring = row.getByRole('switch');
+  await expect(ring).toHaveAttribute('aria-checked', 'true');
+  try {
+    await ring.click();
+    await expect(ring).toHaveAttribute('aria-checked', 'false');
+    await page.reload();
+    await expect(
+      page.getByTestId(`notification-${companyId}-invitation.accepted`).getByRole('switch'),
+    ).toHaveAttribute('aria-checked', 'false');
+    const before = await unread();
+
+    const invited = `muted-${Date.now()}@twes.local`;
+    const name = `Muted ${Date.now()}`;
+    const invitedStatus = await page.evaluate(
+      async ([csrf, company, email]) =>
+        (
+          await fetch(`/api/companies/${company}/members`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+            body: JSON.stringify({ email, role: 'member' }),
+          })
+        ).status,
+      [CSRF, companyId, invited] as const,
+    );
+    expect(invitedStatus).toBeLessThan(300);
+    const token = await invitationTokenFor(request, invited);
+    const stranger = await browser.newContext();
+    const theirPage = await stranger.newPage();
+    await theirPage.goto(`/invitations/${token}`);
+    await theirPage.getByTestId('invitation-name').fill(name);
+    await theirPage.getByTestId('invitation-password').fill('a-long-enough-password');
+    await theirPage.getByTestId('invitation-submit').click();
+    await expect(theirPage).toHaveURL(/\/login$/);
+    await stranger.close();
+
+    // Told and listed, not counted.
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async (joiner) =>
+            (
+              (await (await fetch('/api/me/notifications')).json()) as {
+                items: { payload: Record<string, unknown> }[];
+              }
+            ).items.some((item) => item.payload['display_name'] === joiner),
+          name,
+        ),
+      )
+      .toBe(true);
+    expect(await unread()).toBe(before);
+
+    await page
+      .getByTestId(`notification-${companyId}-invitation.accepted`)
+      .getByRole('switch')
+      .click();
+    await expect.poll(unread).toBe(before + 1);
+  } finally {
+    const status = await page.evaluate(
+      async ([csrf, company]) =>
+        (
+          await fetch('/api/me/notification-preferences', {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+            body: JSON.stringify({
+              companyId: company,
+              type: 'invitation.accepted',
+              bell: true,
+              email: true,
+            }),
+          })
+        ).status,
+      [CSRF, companyId] as const,
+    );
+    expect(status).toBe(204);
+  }
+});

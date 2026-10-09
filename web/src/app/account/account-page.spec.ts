@@ -27,7 +27,9 @@ import { PRESENTATION } from '../shared/settings/settings-registry';
 import { ScanGap } from '../shared/scan/scan-gap';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
+import { NotificationsFacade } from '../notifications/notifications-facade';
 import { AccountPage } from './account-page';
+import { NotificationChoicesApi } from './notification-choices-api';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -77,7 +79,12 @@ class StaticLoader implements TranslateLoader {
         two_factor_on: 'Activée',
         two_factor_off: 'Désactivée',
         two_factor_manage: 'Gérer',
-        later: 'Arrive dans une prochaine version.',
+        notifications: {
+          title: 'Ce que la cloche compte',
+          account: 'Votre compte',
+          kind: 'Notification',
+          bell: 'Cloche',
+        },
       },
       settings: {
         choices: {
@@ -142,6 +149,7 @@ describe('AccountPage', () => {
     changePassword: vi.fn(),
     hasModule: (module: string) => modules().includes(module),
   };
+  const notificationChoices = { list: vi.fn(), change: vi.fn() };
   let fixture: ComponentFixture<AccountPage>;
 
   async function render(tab?: string): Promise<HTMLElement> {
@@ -161,6 +169,8 @@ describe('AccountPage', () => {
         { provide: Session, useValue: { me: signal(null) } },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+        { provide: NotificationChoicesApi, useValue: notificationChoices },
+        { provide: NotificationsFacade, useValue: { refresh: vi.fn() } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(AccountPage);
@@ -228,14 +238,25 @@ describe('AccountPage', () => {
       fn.mockReset();
     }
     company.pinAtSignIn.mockResolvedValue(true);
+    modules.set(['scanning']);
+    notificationChoices.list.mockResolvedValue([
+      { companyId: 'c1', companyName: 'Acme', type: 'stock.low', bell: true, email: true },
+    ]);
   });
 
-  it('names its four tabs, the one not built yet marked « Bientôt »', async () => {
+  it('names its four tabs, none of them « Bientôt » any longer', async () => {
     const root = await render();
     const labels = [...root.querySelectorAll('[role="tab"]')].map((tab) =>
       tab.textContent?.replace(/\s+/g, ' ').trim(),
     );
-    expect(labels).toEqual(['Sécurité', 'Préférences', 'Cet appareil', 'Notifications Bientôt']);
+    expect(labels).toEqual(['Sécurité', 'Préférences', 'Cet appareil', 'Notifications']);
+    expect(root.querySelector('.twes-soon')).toBeNull();
+  });
+
+  it('opens « Notifications » on what the bell counts, company by company', async () => {
+    const root = await render('notifications');
+    expect(byTestId(root, 'notification-choices')).not.toBeNull();
+    expect(byTestId(root, 'notification-group-c1')?.textContent).toContain('Acme');
   });
 
   it('says whether the two-step check is on, and leads to where it is managed', async () => {
@@ -248,19 +269,18 @@ describe('AccountPage', () => {
     expect(byTestId(root, 'account-two-factor')?.textContent).toContain('Désactivée');
   });
 
-  it('leaves out the tab not built yet once what is coming is hidden, and keeps the toggle that brings it back', async () => {
+  it('keeps all four tabs with what is coming hidden, since none of them is still to come', async () => {
     showComing.set(false);
     const root = await render();
     const labels = [...root.querySelectorAll('[role="tab"]')].map((tab) =>
       tab.textContent?.replace(/\s+/g, ' ').trim(),
     );
-    expect(labels).toEqual(['Sécurité', 'Préférences', 'Cet appareil']);
-    expect(root.querySelector('.twes-soon')).toBeNull();
+    expect(labels).toEqual(['Sécurité', 'Préférences', 'Cet appareil', 'Notifications']);
   });
 
   it('opens the first tab when the address names one that is hidden', async () => {
-    showComing.set(false);
-    const root = await render('notifications');
+    modules.set([]);
+    const root = await render('device');
     const selected = root.querySelector('[role="tab"][aria-selected="true"]');
     expect(selected?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Sécurité');
   });
@@ -401,9 +421,8 @@ describe('AccountPage', () => {
       tab.textContent?.replace(/\s+/g, ' ').trim(),
     );
 
-    expect(labels).toEqual(['Sécurité', 'Préférences', 'Notifications Bientôt']);
+    expect(labels).toEqual(['Sécurité', 'Préférences', 'Notifications']);
     expect(byTestId(root, 'account-scanner')).toBeNull();
-    modules.set(['scanning']);
   });
 
   it('turns the beep and the buzz of a camera scan off and on, for the person', async () => {

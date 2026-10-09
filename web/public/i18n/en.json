@@ -675,6 +675,28 @@
       "invoice_reminder_due": "Reminder {{stage}} to send: invoice {{number}} of {{customer}}, {{amount_due}} {{currency}}, is {{days_late}} days late.",
       "invoice_recurring_drafted": "Recurring invoice for {{customer}}: a draft copied from invoice {{number}} is waiting to be issued.",
       "invoice_recurring_stopped": "Recurring invoice for {{customer}} paused: invoice {{number}}, which it copies, can no longer be copied."
+    },
+    "kinds": {
+      "membership_added": "Added to a company",
+      "invitation_received": "Invitation received",
+      "invitation_accepted": "New member",
+      "stock_delivery_note_lines_left_out": "Delivery note: lines that moved no stock",
+      "stock_delivery_note_moved_no_stock": "Delivery note: stock not updated",
+      "stock_invoice_lines_left_out": "Invoice: lines that moved no stock",
+      "stock_invoice_moved_no_stock": "Invoice: stock not updated",
+      "stock_credit_lines_not_returned": "Credit note: goods not back in stock",
+      "stock_credit_moved_no_stock": "Credit note: stock not updated",
+      "stock_count_difference": "Count difference",
+      "stock_low": "Stock under its reorder point",
+      "invoice_credit_limit_passed": "Credit limit passed",
+      "invoice_reminder_due": "Reminder to send",
+      "invoice_late_fee_drafted": "Late fee drafted",
+      "invoice_recurring_drafted": "Recurring invoice ready to issue",
+      "invoice_recurring_stopped": "Recurring invoice paused",
+      "subscription_payment_declared": "Payment declared by a company",
+      "subscription_payment_decided": "Answer to your payment",
+      "module_arrived": "Module arrived",
+      "unknown": "Other notification"
     }
   },
   "invitation": {
@@ -3834,7 +3856,16 @@
     "two_factor_on": "On",
     "two_factor_off": "Off",
     "two_factor_manage": "Manage",
-    "later": "Arrives in a coming version."
+    "notifications": {
+      "title": "What the bell counts",
+      "intro": "For each company, and for what is about your account, choose what the bell counts. A muted notification stays in the list without being counted.",
+      "account": "Your account",
+      "kind": "Notification",
+      "bell": "Bell",
+      "bell_of": "Bell: {{kind}}",
+      "failed": "The choice could not be saved.",
+      "unreachable": "The notifications could not be read."
+    }
   },
   "actions": {
     "kind": {

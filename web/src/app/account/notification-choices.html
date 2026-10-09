@@ -1,0 +1,52 @@
+<section class="flex max-w-xl flex-col gap-4" data-testid="notification-choices">
+  <h2 class="text-lg font-semibold">{{ 'account.notifications.title' | translate }}</h2>
+  <p class="m-0 text-sm text-on-surface-variant">
+    {{ 'account.notifications.intro' | translate }}
+  </p>
+
+  @if (unreachable()) {
+    <p role="alert" class="m-0 text-sm text-error" data-testid="notification-choices-unreachable">
+      {{ 'account.notifications.unreachable' | translate }}
+    </p>
+  }
+
+  @for (group of groups(); track group.companyId) {
+    <section
+      class="flex flex-col gap-2"
+      [attr.data-testid]="'notification-group-' + (group.companyId ?? 'account')"
+    >
+      <h3 class="text-base font-medium">
+        {{ group.companyName ?? ('account.notifications.account' | translate) }}
+      </h3>
+      <table class="w-full border-collapse text-sm">
+        <thead>
+          <tr class="text-on-surface-variant">
+            <th scope="col" class="py-1 text-start font-normal">
+              {{ 'account.notifications.kind' | translate }}
+            </th>
+            <th scope="col" class="w-24 py-1 text-end font-normal">
+              {{ 'account.notifications.bell' | translate }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (choice of group.choices; track choice.type) {
+            <tr class="border-t border-outline-variant" [attr.data-testid]="testId(choice)">
+              <td class="py-2">{{ kindKey(choice.type) | translate }}</td>
+              <td class="py-2 text-end">
+                <mat-slide-toggle
+                  [checked]="choice.bell"
+                  [aria-label]="
+                    'account.notifications.bell_of'
+                      | translate: { kind: (kindKey(choice.type) | translate) }
+                  "
+                  (change)="ring(choice, $event)"
+                />
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+</section>

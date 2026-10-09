@@ -55,6 +55,13 @@ export function notificationKey(type: string): string {
     : 'notifications.types.unknown';
 }
 
+/** The kind's name where a person chooses how it is told: "stock.low" → "notifications.kinds.stock_low". */
+export function notificationKindKey(type: string): string {
+  return (KNOWN_NOTIFICATION_TYPES as readonly string[]).includes(type)
+    ? `notifications.kinds.${type.replaceAll('.', '_')}`
+    : 'notifications.kinds.unknown';
+}
+
 /** Where a notification leads: its icon, and the screen of its record in this company with the permission it takes. */
 export interface NotificationRecord {
   readonly icon: IconName;

@@ -675,6 +675,28 @@
       "invoice_reminder_due": "Relance {{stage}} à faire : la facture {{number}} de {{customer}}, {{amount_due}} {{currency}}, a {{days_late}} jours de retard.",
       "invoice_recurring_drafted": "Facture récurrente de {{customer}} : un brouillon copié de la facture {{number}} attend d’être émis.",
       "invoice_recurring_stopped": "Facture récurrente de {{customer}} mise en pause : la facture {{number}} qu’elle copie ne peut plus l’être."
+    },
+    "kinds": {
+      "membership_added": "Ajout à une société",
+      "invitation_received": "Invitation reçue",
+      "invitation_accepted": "Nouveau membre",
+      "stock_delivery_note_lines_left_out": "Bon de livraison : lignes sans sortie de stock",
+      "stock_delivery_note_moved_no_stock": "Bon de livraison : stock non mis à jour",
+      "stock_invoice_lines_left_out": "Facture : lignes sans sortie de stock",
+      "stock_invoice_moved_no_stock": "Facture : stock non mis à jour",
+      "stock_credit_lines_not_returned": "Avoir : marchandises non revenues en stock",
+      "stock_credit_moved_no_stock": "Avoir : stock non mis à jour",
+      "stock_count_difference": "Écart de comptage",
+      "stock_low": "Stock sous le seuil de réapprovisionnement",
+      "invoice_credit_limit_passed": "Limite de crédit dépassée",
+      "invoice_reminder_due": "Relance à faire",
+      "invoice_late_fee_drafted": "Frais de retard préparés",
+      "invoice_recurring_drafted": "Facture récurrente prête à émettre",
+      "invoice_recurring_stopped": "Facture récurrente mise en pause",
+      "subscription_payment_declared": "Règlement déclaré par une société",
+      "subscription_payment_decided": "Réponse à votre règlement",
+      "module_arrived": "Module arrivé",
+      "unknown": "Autre notification"
     }
   },
   "invitation": {
@@ -3834,7 +3856,16 @@
     "two_factor_on": "Activée",
     "two_factor_off": "Désactivée",
     "two_factor_manage": "Gérer",
-    "later": "Arrive dans une prochaine version."
+    "notifications": {
+      "title": "Ce que la cloche compte",
+      "intro": "Pour chaque société, et pour ce qui concerne votre compte, choisissez ce que la cloche compte. Une notification coupée reste dans la liste, sans être comptée.",
+      "account": "Votre compte",
+      "kind": "Notification",
+      "bell": "Cloche",
+      "bell_of": "Cloche : {{kind}}",
+      "failed": "Le choix n’a pas pu être enregistré.",
+      "unreachable": "Les notifications n’ont pas pu être lues."
+    }
   },
   "actions": {
     "kind": {

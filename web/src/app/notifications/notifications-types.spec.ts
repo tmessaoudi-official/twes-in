@@ -1,12 +1,37 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { notificationKey, notificationRecord } from './notifications-types';
+import en from '../../../public/i18n/en.json';
+import fr from '../../../public/i18n/fr.json';
+import {
+  KNOWN_NOTIFICATION_TYPES,
+  notificationKey,
+  notificationKindKey,
+  notificationRecord,
+} from './notifications-types';
 
 describe('notificationKey', () => {
   it('translates a known type under its own key and anything newer under the generic one', () => {
     expect(notificationKey('membership.added')).toBe('notifications.types.membership_added');
     expect(notificationKey('invitation.received')).toBe('notifications.types.invitation_received');
     expect(notificationKey('invoice.paid')).toBe('notifications.types.unknown');
+  });
+});
+
+describe('notificationKindKey', () => {
+  it('names each known kind in a few words, apart from the sentence that tells one, and anything newer generically', () => {
+    for (const type of KNOWN_NOTIFICATION_TYPES) {
+      expect(notificationKindKey(type)).toBe(`notifications.kinds.${type.replaceAll('.', '_')}`);
+    }
+    expect(notificationKindKey('invoice.paid')).toBe('notifications.kinds.unknown');
+  });
+
+  it('has a name for every known kind, and the generic one, in both languages', () => {
+    for (const words of [fr, en]) {
+      const kinds: Record<string, string> = words.notifications.kinds;
+      for (const type of [...KNOWN_NOTIFICATION_TYPES, 'unknown']) {
+        expect(kinds[type.replaceAll('.', '_')], type).toEqual(expect.any(String));
+      }
+    }
   });
 });
 
