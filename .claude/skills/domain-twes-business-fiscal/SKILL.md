@@ -2,7 +2,7 @@
 name: domain-twes-business-fiscal
 description: Use when a task touches invoices, credit notes, delivery notes, VAT/FODEC/timbre/retenue, TN or FR fiscal presets, numbering, stock valuation, subscriptions/licensing, tills/cash registers, TEJ/Factur-X/TEIF e-invoicing in twes-in. How an expert in small-business invoicing and POS compliance for Tunisia and France works: rules, sources, evidence, failure modes, reviewer lenses.
 ---
-Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/expertise-core.md
+Review date: 2026-10-09 10:40   Validation mode: advisory   Core: .claude/rules/expertise-core.md
 
 <!-- Tags: [TN]=docs/fiscal/TN.md, [FR]=FR.md, [TC]=docs/research/till-certification.md, [SPEC]=docs/SPEC.md §7 date, [R]=research doc. Every fiscal rule is UNVALIDATED by an accountant: use as hypothesis, cite, never assert. Ratified vs ASSUMED/PROVISIONAL SPEC entries: only ratified ones are rulings. -->
 
@@ -20,7 +20,7 @@ Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/
 |---|---|---|---|
 | TVA TN 19/13/7 %; base includes FODEC; Ministry overview page is STALE (18/12/6) | TN taxable lines | TN §2; Code TVA art. 6-I, 7 | 2026-09-13 |
 | FODEC 1 % ex-tax, listed products only, per product, never default, enters VAT base | TN listed goods | TN §3 | 2026-09-13 |
-| Timbre 1.000 TND per invoice (CDET art. 117, LF 2023 art. 69), fixed per document, outside bases and discounts; large-retail 1.5/2 TND (LF 2026 art. 20) NOT modelled, amount editable per company | every TN invoice | TN §4 (verified in file); SPEC 2026-09-13 | 2026-10-02 |
+| Timbre 1.000 TND per invoice (CDET art. 117, LF 2023 art. 69), fixed per document, outside bases and discounts; large-retail 1.5/2 TND (LF 2026 art. 20) NOT modelled, amount editable per company; the 0.100 TND till-receipt duty is a separate opt-in (REFERENCE §6) | every TN invoice | TN §4 (verified in file); SPEC 2026-09-13 | 2026-10-02 |
 | Retenue a la source 1 % at >= 1000 TND VAT incl. (CIRPP/IS art. 52-I, LF 2021 art. 14; was 1.5 %); not a default; stamp not in base; threshold inclusive on absolute value, excluding fixed charges; reduces only amount due | customer is a withholding payer | TN §5 (verified); SPEC 2026-09-13 | 2026-10-02 |
 | Credit notes of a withheld invoice sum exactly to it: the completing one absorbs the rounding remainder (`withholdingCompleting`) | TN credit notes | SPEC 2026-09-16 | 2026-09-16 |
 | Company as PAYER: supplier payment >= 1000 TND VAT incl. withholds, rate 1/1.5/0.5 % by supplier, payment states its own rate, "0" = none; proposal only if exactly one whole-amount component | expenses TN | TN §5a; SPEC 2026-09-25 | 2026-09-25 |
@@ -43,14 +43,14 @@ Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/
 | TN till: on-site food/drink only; Ministry-HOMOLOGATED register from accredited supplier, permanent MF connection, QR, numbered copies; CDPF art. 94 16 days-3 yrs + 1,000-50,000 TND; twes-in path BLOCKED (homologation spec unreachable) | cafes/restaurants TN | TC; decret 2019-1126; arrete MF 2025-10-14 | 2026-09-25 |
 | Training mode (FR/TN/DE alike): journalled, chained, `training` flag, watermark, no payment, excluded from totals/Z; separate sandbox company OK for demos | tills, practice company | TC; SPEC 2026-09-24 | 2026-09-25 |
 | Dual licence AGPL-3.0-or-later + commercial; deps must be PERMISSIVE (MIT/Apache/BSD/ISC/0BSD/MIT-0/CC0/BlueOak/Unicode-3.0); CLA before first external patch; gate `scripts/gates/dependency-licences.php`; Invoice Ninja (ELv2) unusable as a base | any dependency/asset | LICENSING.md; R | 2026-09-23 |
-| Stock valuation: weighted average (UNCERTIFIED, TN stock standard allowance unsourced); unknown cost reads UNKNOWN never zero; PENDING SPEC 2026-10-03 C-02: current cost + estimated flag, not built | stock, margin | SPEC 2026-09-25 | 2026-09-25 |
+| Stock valuation: weighted average (UNCERTIFIED, TN stock standard allowance unsourced); unknown cost reads UNKNOWN never zero; C-02 built (`74e8454b`): what has no recorded cost is valued at today's cost price, marked « estimé »; the average restarts at a receipt crossing zero (REFERENCE §6) | stock, margin | SPEC 2026-09-25; SPEC §8 row 87 | 2026-10-09 |
 
 ## Tools of the trade
 - `docs/spec/pricing-vectors.json` + calculator on `BcMath\Number` (24-decimal intermediates): proves arithmetic and rounding incl. TND; a rule change = vector change.  [SPEC 2026-09-13]
 - Presets `api/config/fiscal/<CC>.yaml` (Symfony Config tree) + country-pack conformance test loading every pack: proves "new country = data".  [SPEC 2026-09-20]
 - Official XSDs: `TEJRSCodesOperations_v1.0.xsd` / DeclarationRS (TEJ), TEIF 1.8.8, EN 16931 CII (Factur-X); validate generated XML against them; PA sandboxes (Iopole; SUPER PDP) for FR e-invoicing.  [R tax-data-*]
 - Primary portals: Legifrance, BOFiP, JORT, finances.gov.tn, teledecgo.finances.gov.tn (monthly TN form, no API), impots.gouv.fr.  [TN, FR]
-- Till hardware via browser only: Epson ePOS-Print XML over HTTP to the printer, ESC/POS drawer pulse `1B 70 m t1 t2`, ZXing-wasm camera scan, `/customer-display` on screen 2; no QZ Tray (LGPL), no Star/Sunmi SDKs; card: FR via provider cloud API (SumUp/Stripe/Adyen), TN manual "carte" tender. Printer voltage and hardware behaviour NOT tested [Unverified].  [R till-hardware]
+- Till hardware works from the browser only (no local agent, no vendor SDK): printer, drawer and scanner facts are REFERENCE §15.
 - `make tools CMD='cd api && bin/console app:stock:replay-delivery-note <company> <dn>'`; `make notices`; `--dump-rules` of the licence gate.  [SPEC §8, LICENSING.md]
 
 ## What "good" looks like (acceptance criteria)
@@ -97,6 +97,7 @@ Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/
 | avoir | credit note; states reason + corrected invoice |
 | bon de livraison | delivery note; invoiced when an invoice consumes it |
 | acompte | deposit invoice with own number and VAT, subtracted from final |
+| trop-perçu / crédit client | money paid beyond invoices (not « acompte ») |
 | timbre | fixed per-invoice stamp duty (TND) |
 | retenue a la source (RS) | withholding at payment; TEJ = its e-certificate platform |
 | FODEC | 1 % levy on listed TN industrial goods, enters VAT base |
@@ -112,4 +113,4 @@ Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/
 | preset / pack | per-country data: taxes, ids, mentions, rounding, formats |
 
 ## Canonical sources
-- docs/fiscal/TN.md, FR.md (source lists: Code TVA, CGI, CIRPP/IS, Legifrance, BOFiP, finances.gov.tn, EN 16931-1:2017); docs/research/till-certification.md, till-hardware.md, tax-data-tunisia.md, tax-data-france.md; LICENSING.md; docs/SPEC.md §7-8. Read 2026-10-02 (digests of 2026-09-25 research). Unsourced entries stay [Unverified].
+- docs/fiscal/TN.md, FR.md (source lists: Code TVA, CGI, CIRPP/IS, Legifrance, BOFiP, finances.gov.tn, EN 16931-1:2017); docs/research/till-certification.md, till-hardware.md, tax-data-tunisia.md, tax-data-france.md; LICENSING.md; docs/SPEC.md §7-8. Read 2026-10-02 (2026-09-25 research). Unsourced entries stay [Unverified].

@@ -2,7 +2,7 @@
 name: domain-quality-gates-ci
 description: Use when a task involves running, changing or reading gates or CI, certifying work (unit/integration/architecture/e2e/a11y, sabotage checks), licence or SPDX checks, make targets, Docker bring-up or load on this machine in twes-in. What each gate proves, what counts as evidence, how to read CI honestly, when a gate lies.
 ---
-Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/expertise-core.md
+Review date: 2026-10-09 10:40   Validation mode: advisory   Core: .claude/rules/expertise-core.md
 
 ## Roles and mental models
 - **Release engineer**: done = CI green on the commit itself (SPEC §5; CLAUDE.md Process). Local runs find defects fast; CI arbitrates. [CLAUDE.md]
@@ -79,7 +79,7 @@ Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/
 ## Machine: what NOT to run in full
 - The box runs at load 20-31 on 8 cores with swap near full: full PHPStan/unit/e2e locally cannot certify; run targeted specs, let CI arbitrate. [SPEC §7 2026-09-25/26]
 - `make gate-licences` cannot finish in one 600 s call (`setting-labels.sh` ~179 s): run tail gates one by one. [memories §3]
-- `run_in_background` tests get OOM-killed; the same command passes in foreground under `timeout 580`. rtk condenses piped phpunit output (`grep '^OK'` matched nothing; read a log file). [memories §3]
+- Long suites: CLAUDE.md Lessons (2026-10-08) govern: never `timeout` around `make tools`/`make web-tools`; the old foreground `timeout 580` habit is superseded; `free -h` first. rtk condenses piped phpunit output (`grep '^OK'` matched nothing; read a log file). [memories §3]
 - Full-tree runs get SIGKILLed under load and can corrupt incremental caches (global machine note). [~/.claude CLAUDE.md]
 - Parallel agents: max two builders on disjoint files in git worktrees, running only the specs they touch; Claude integrates and runs the whole suite and gates. [SPEC §7 2026-09-25]
 - Reviewer lenses froze the parent twice: lens writes to `var/claude/raw/<round>-<lens>.md` incrementally and returns ONE LINE; `/compact` before a panel; a lost lens is completed inline and disclosed; such a round is a floor. [memories §3]

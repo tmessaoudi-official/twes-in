@@ -450,5 +450,3 @@ Still on the host, by design: `make`, `bash`, `git`, `docker`, and what the Make
   field is absent: `dirtyCount` reads it as one unsaved change, the page holds every navigation away, and thirteen e2e that
   pass through Paramètres stayed on `/company/profile` (2026-10-09, `vatOnDebits`). The form's own spec builds the group
   and asks for zero changes on open.
-- For the next expertise refresh: `.claude/rules/expertise-core.md` § 2 still says the locked customer screen is NOT built
-  and `hides()` is the code; it was built (rows 205, 207), `hides()` is gone, and the lock is held by the API session (2026-10-06).

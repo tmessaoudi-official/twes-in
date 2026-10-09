@@ -2,7 +2,7 @@
 name: domain-angular-web
 description: Use when a task touches the twes-in web app (Angular signals/zoneless, Material + Tailwind, descriptor lists/forms, a11y with axe, Playwright e2e, fr/en i18n, shell/nav, scan and till UI). How an expert works here - rules, tools, acceptance, failure modes, evidence.
 ---
-Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/expertise-core.md
+Review date: 2026-10-09 10:40   Validation mode: advisory   Core: .claude/rules/expertise-core.md
 
 ## Roles and mental models
 - **Owner-manager UX (shop owner first)**: home answers money owed, overdue, what next; calm SaaS on restyled Material+CDK, comfortable density, status colour carries meaning (six fixed tones). Phone is first-class: cards under 600 px  [SPEC §7 2026-09-13/16, via r2-decisions]
@@ -34,6 +34,10 @@ Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/
 | Stored items: every cookie and `twes.*` key declared (Cookies page), storage only via a `*_STORAGE` token factory, no foreign-origin script, fonts self-hosted | any storage/asset | stored-items gate | 2026-10-02 |
 | Unbuilt screens: "Bientot" chip + shared `/coming/<key>` page, entries in `COMING_NAV` leave in the change that builds them; a mockup element with no data is left out, never faked | planned features | SPEC §7 2026-09-16/21 | 2026-10-02 |
 | A module declares `*_NAV`, `*_HOME`, `*_COMMANDS` together; a write calls `refresh()` not `load()`; read list cells by `[data-column="<id>"]` | module / list code | CLAUDE.md "Where things live" | 2026-10-02 |
+| Every dropdown is the shared Select in `shared/form` (single and multi, search past seven options, chips, bottom sheet below 600 px; form kinds `select`/`multiselect`); permission and legal-overview grids and toolbar menus stay as they are | any choice control | SPEC §7 2026-10-03 21:45 | 2026-10-09 |
+| No native date, colour or file control: a styled date field in the company's day format, a swatch picker whose custom value cannot break contrast, a drop zone naming type and size limit | form fields | SPEC §7 2026-10-03 21:45 | 2026-10-09 |
+| A document's figures come live from the API's preview call (the calculator that writes it, after typing rests), never summed in the browser; margin, below-cost warning and price origin only in a folded « Rentabilité » tab for `product.cost.read`, never while the customer screen is held | document line editors | SPEC §7 2026-10-07 14:43 | 2026-10-09 |
+| Arabic in round one is the WHOLE interface right to left through the shell, not only the documents; Inter lacks Arabic, so a fallback face is part of it | i18n, layout, fonts | SPEC §7 2026-10-06 10:21 | 2026-10-09 |
 
 ## Till / POS browser constraints (all Chrome/Edge; no vendor SDK, no local agent)
 - Printer/drawer/customer display work from the browser: WebUSB (Chrome/Edge 61+), Web Serial (89+), WebHID; all need secure context and a user device choice; Firefox/Safari will not catch up. A Windows vendor driver claims the USB printer exclusively and breaks WebUSB  [r2-research-ops 4, S: till-hardware §1]

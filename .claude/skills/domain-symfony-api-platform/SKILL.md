@@ -2,7 +2,7 @@
 name: domain-symfony-api-platform
 description: Use when a task touches the twes-in PHP API - Symfony 8.1, API Platform 5 resources/paging/JSON-LD, Doctrine on PostgreSQL 18, hexagonal contexts, CompanyGuard/voter tenancy, audit, FrankenPHP worker mode, PHPUnit/PHPStan max. How an expert works here - rules, tools, evidence, failure modes.
 ---
-Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/expertise-core.md
+Review date: 2026-10-09 10:40   Validation mode: advisory   Core: .claude/rules/expertise-core.md
 
 ## Roles and mental models
 - **Hexagonal architect**: Domain/Application know no framework; Infrastructure adapts; ports in Shared/Application (Transactions, DomainEvents, PdfRenderer, RealtimePublisher, Notifications, CurrentCompany). Only carve-outs: Doctrine Mapping/Types/Collections in Domain; `Psr\Clock` and Symfony DI attributes in Application.  [T 2,8.1; D 2026-09-09, DI carve-out]
@@ -32,6 +32,8 @@ Review date: 2026-10-03 12:16   Validation mode: advisory   Core: .claude/rules/
 | Migration: `Version<ts>`, real `down()`, raw `addSql`; mapping must equal migrated schema (`SchemaInSyncTest`) | entity change | D 2026-09-14 | 2026-10-02 |
 | Times UTC stored; company zone for display and "which day" logic; tests spell the edge (23:30 UTC is already the 21st in Tunis) | dates | T 8.17; D 2026-09-10 | 2026-10-02 |
 | Comments say WHY, no dates, no SPEC row numbers; official docs for every tool, departure recorded in SPEC section 7 | any edit | D 2026-09 process | 2026-10-02 |
+| DDD + hexagonal + light CQRS: each `Application/` class is a COMMAND (one transaction, records its audit entry) or a QUERY (read-only, may use optimised SQL); no command or query bus, Messenger only for async work; one strongly consistent PostgreSQL, no event sourcing or read store; split a large `Manage*` only when its file is next edited | any use case | SPEC §7 2026-10-07 23:43 | 2026-10-09 |
+| A mail that names an account (link, signup, invitation) queues only email + language; the WORKER looks the account up and makes the token: no raw token in the queue, known and unknown addresses cost the same | account mails | SPEC §7 2026-10-06 02:11, 02:42 | 2026-10-09 |
 
 ## Tools of the trade (as configured)
 - `composer gate` (run it as `make gate-api`, in the `tools` container) = `lint` (php-cs-fixer `@Symfony`+`@Symfony:risky`, strict_types, forced two-line SPDX header) -> `stan` (`cache:warmup --env=test`, phpstan `level: max` on src/ AND tests/, phpstan-symfony reading the test container XML, no baseline, 0 ignores) -> `test` (migrate test DB, phpunit).  [T 7]

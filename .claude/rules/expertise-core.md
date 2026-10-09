@@ -1,6 +1,6 @@
 # EXPERTISE - twes-in   (L4 core; loaded every session in this project)
-Review date: 2026-10-03 12:16   Validation mode: advisory   Packs (project skills in .claude/skills/): domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci
-Scope: the DELTA over CLAUDE.md (its Process, Licensing invariants, Git rules and ~70 "Lessons" are loaded every session and are NOT repeated). This core keeps only what prevents the worst mistakes. The full 18-section file (~236 tagged entries, ~76 KB) is EXPERTISE-REFERENCE.md: read the section named in the pointer table below WHEN the task touches that topic; do not load it whole. Tags: [Ruled: user <date>] = AGREED in SPEC §7; [Source: ...] = a document; [Observed: ...]; [Unverified]. `SPEC §7 <date>` = the Decisions Log entry of that date.
+Review date: 2026-10-09 10:40   Validation mode: advisory   Packs (project skills in .claude/skills/): domain-twes-business-fiscal, domain-symfony-api-platform, domain-angular-web, domain-quality-gates-ci
+Scope: the DELTA over CLAUDE.md (its Process, Licensing invariants, Git rules and ~70 "Lessons" are loaded every session and are NOT repeated). This core keeps only what prevents the worst mistakes. The full 18-section file is EXPERTISE-REFERENCE.md: read the section named in the pointer table below WHEN the task touches that topic; do not load it whole. Tags: [Ruled: user <date>] = AGREED in SPEC §7; [Source: ...] = a document; [Observed: ...]; [Unverified]. `SPEC §7 <date>` = the Decisions Log entry of that date.
 
 ## Domains this project touches
 | Domain | Pack | Detail in REFERENCE |
@@ -44,11 +44,11 @@ Tenancy and security:
 - Tenancy: Doctrine `CompanyFilter` is turned on by `CompanyGuard::companyForActing` with the company in the URL PATH; the browser never chooses a realtime channel; plain SQL escapes the filter, so any raw read must name its company.  [Ruled: user 2026-09-16, 2026-09-27]
 - A non-active company answers members and `PermissionVoter` with the SAME 404 as a stranger; operators hold ONLY platform endpoints, keep NO standing access; support access is owner-granted, time-boxed, read-only, audited.  [Ruled: user 2026-09-15, 2026-09-17]
 - Audit records field NAMES only, never values; auth events are rows of the single `audit_log`.  [Ruled: user 2026-09-09, 2026-09-13]
-- `product.cost.read` is the ONLY way to cost: without it `costPrice` is null, supplier codes left out, margin withheld; "Customer view" hides fields on screen only (PENDING, SPEC 2026-10-03 08:20: to be replaced by a locked allow-list screen; NOT built, `hides()` is still the code).  [Ruled: user 2026-09-23]
+- `product.cost.read` is the ONLY way to cost: without it `costPrice` is null, supplier codes left out, margin withheld; "Customer view" is the locked customer screen (an allow-list, built; the field-hiding toggle is gone), held by the API SESSION: while locked only the screen's reads, the way out and `/api/auth/me` answer (`CustomerScreenLockListener`, 403 `customer_screen_locked`); leaving spends a step-up proof.  [Ruled: user 2026-09-23, SPEC §7 2026-10-03 08:20, 2026-10-06 19:44]
 - Signup and invitation answers never reveal whether an address is registered; MFA operator reset REFUSED; passkey PIN REFUSED; the breach-password check fails OPEN (audited).  [Ruled: user 2026-09-15, 2026-09-22]
 - `UnauthenticatedSweepTest` walks the ROUTER: a new public route must be added to its listed set deliberately.  [Ruled: user 2026-09-16]
 Architecture:
-- `Domain/` and `Application/` import no Symfony/Doctrine/API Platform (ruled carve-outs only); domain events are plain objects published by the use case AFTER commit; modules NEVER call each other; no outbox.  [Ruled: user 2026-09-14/16, REFERENCE §4]
+- `Domain/` and `Application/` import no Symfony/Doctrine/API Platform (ruled carve-outs only); domain events are plain objects published by the use case AFTER commit; modules NEVER call each other; async side effects go through Messenger on the Doctrine/PostgreSQL transport, which commits with the change (that IS the outbox).  [Ruled: user 2026-09-14/16, SPEC §7 2026-10-06 02:11, 02:44; REFERENCE §4]
 - A module context must live at `api/src/Module/<Name>/` or it escapes the module switch (ModuleOwnership maps by prefix).  [Ruled: user 2026-09-20]
 - Rewrite-in-another-stack is REJECTED unless new measurements contradict (slowness was configuration/design, not the stack); FrankenPHP WORKER mode in EVERY target incl. dev and CI e2e.  [Ruled: user 2026-09-27, 2026-09-30]
 - Import refusals carry a stable `reason` code; never match on an English message.  [Ruled: user 2026-09-18, 2026-09-22]
@@ -63,11 +63,11 @@ UI and product:
 ## 3. Developer working style and recorded corrections (REFERENCE §11)
 - Always audit architecture while working (DDD/hexagonal, SPEC §3); each goal's completion note states the §3 layering check.  [Ruled: user 2026-09-16]
 - Ideas thrown mid-work are integrated, refined or REJECTED with reasons and re-asked via AskUserQuestion; each gets a roadmap placement, not immediate code.  [Ruled: user 2026-09-16]
-- The developer judges by what people can SEE and USE and prefers to test when implemented. Feature priority order: clients, invoices, delivery notes, products, settings, translations, invoice design, then the rest.  [Ruled: user 2026-09-22, 2026-10-01]
+- The developer judges by what people can SEE and USE and prefers to test when implemented. The ONE build order is the numbered list at the top of SPEC §8 (pitch-first: demo-visible defects, then the security slice, correctness, the pitch features, the rest); it supersedes every earlier order: read it there, never restate it.  [Ruled: user 2026-09-22, SPEC §7 2026-10-06 02:47, 02:49]
 - Economize ruling: one advisor() per gate; the full 3-lens panel only at a wave boundary on a frozen commit; panels on the developer's word.  [Ruled: user 2026-08-19]
 - Sabotage the INVARIANT, not the diff: derive invariants from CLAUDE.md Lessons + scripts/gates/ and re-run the mutants the diff touches.  [Ruled: user 2026-08-19]
 - Reviewer subagents froze the parent twice on 2026-08-28: lens prompts write the full report incrementally to disk and RETURN ONE LINE; suggest /compact BEFORE a panel; a lost lens is completed INLINE (disclosed self-graded); a round with a lost lens is a FLOOR.  [Observed: 2026-08-28]
-- Heavy runs: foreground, one at a time, `timeout 580`, each gate half separately, `free -h` first; background tests were OOM-killed with swap near full.  [Observed: 2026-09-14]
+- Gates: `make gate-api` and `make gate-web` run side by side, the licence gate after; several small items share one gate run and one push; `free -h` first (background tests were once OOM-killed with swap near full).  [Ruled: SPEC §7 2026-10-08 22:34; Observed: 2026-09-14]
 - CORRECTION 2026-09-19: never pass a Makefile to bash; re-read compound commands for leftover fragments; no `2>/dev/null` on unpredicted commands. CORRECTION 2026-09-22/23: a CI monitor on an invented SHA stays empty with exit 0: `SHA=$(git rev-parse HEAD)` in the same command, FULL 40-char SHA, read every job's conclusion. CORRECTION: read the body, not the signature; prove session-buffer claims against `git reflog`/`git stash list`.  [Observed: 2026-09-01/19/22]
 
 ## 4. Machine facts that mislead (REFERENCE §12)
@@ -79,7 +79,7 @@ UI and product:
 - Not user rulings, never cite as AGREED: entries tagged ASSUMED (review) / DECIDED (revisit) / PROVISIONAL / TAKEN OVERNIGHT.  [Source: r2-decisions]
 - Resume state in memories is likely stale (uncommitted rework, a wiped scale stack, ideas pending rulings): verify with `git log`, the plan file and SPEC §8 before acting.  [Source: r2-memories §4; Unverified now]
 - START.md and SPEC §7 disagree about the dev operator password; `make versions` is the truth for version numbers; fiscal article numbers move on 2027-01-01 (FR CIBS recodification).  [Source: r2-research-ops §5, docs/fiscal/FR.md]
-- Ruling counts reflect SPEC §7 as read 2026-10-02 (456 entries); a later ruling is not here.  [Observed: r2-decisions header]
+- Rulings here reflect SPEC §7 up to its 2026-10-09 10:40 entry (refreshed 2026-10-09); a later ruling is not here: read SPEC §7 after that stamp.  [Observed: refresh-20261009 INVENTORY]
 
 ## 6. Pointer table: what to read in EXPERTISE-REFERENCE.md, and when
 | Task touches | Read REFERENCE section |
