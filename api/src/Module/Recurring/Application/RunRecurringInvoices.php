@@ -35,7 +35,7 @@ final readonly class RunRecurringInvoices
     /** What one pass drafts for one schedule at most: the rest waits for the next pass. */
     public const int MOST_PER_PASS = 24;
     /** Who is told: whoever writes invoices. */
-    private const string PERMISSION = 'invoice.write';
+    public const string PERMISSION = 'invoice.write';
     private const string AUDIT_DRAFTED = 'recurring_invoice.drafted';
     private const string AUDIT_PAUSED = 'recurring_invoice.paused';
 
@@ -108,7 +108,7 @@ final readonly class RunRecurringInvoices
     {
         foreach ($this->memberships->ofCompany($company->getId()) as $membership) {
             if ($membership->getRole()->grants(self::PERMISSION)) {
-                $this->notifications->publish(new Notification('user:'.$membership->getUser()->getId()->toRfc4122(), $type, $payload));
+                $this->notifications->publish(new Notification('user:'.$membership->getUser()->getId()->toRfc4122(), $type, $payload, $company->getId()->toRfc4122()));
             }
         }
     }

@@ -14,6 +14,7 @@ use ApiPlatform\OpenApi\Model\MediaType;
 use ApiPlatform\OpenApi\Model\Operation;
 use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\PathItem;
+use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
@@ -70,6 +71,35 @@ final readonly class InboxOpenApi implements OpenApiFactoryInterface
             ],
         ]);
 
+        $schemas['NotificationPreference'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['companyId', 'companyName', 'type', 'bell', 'email'],
+            'properties' => [
+                'companyId' => ['anyOf' => [['type' => 'string', 'format' => 'uuid'], ['type' => 'null']], 'description' => 'The company it is told in; null for what is about the account.'],
+                'companyName' => ['anyOf' => [['type' => 'string'], ['type' => 'null']]],
+                'type' => ['type' => 'string', 'description' => 'A dotted code such as "stock.low".'],
+                'bell' => ['type' => 'boolean', 'description' => 'Whether the bell counts it; muted, it is still listed.'],
+                'email' => ['type' => 'boolean', 'description' => 'Whether it is also sent by e-mail.'],
+            ],
+        ]);
+        $schemas['NotificationPreferences'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['preferences'],
+            'properties' => [
+                'preferences' => ['type' => 'array', 'items' => ['$ref' => '#/components/schemas/NotificationPreference'], 'description' => 'Company by company in the switcher\'s order, then what is about the account.'],
+            ],
+        ]);
+        $schemas['NotificationPreferenceChange'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['companyId', 'type', 'bell', 'email'],
+            'properties' => [
+                'companyId' => ['anyOf' => [['type' => 'string', 'format' => 'uuid'], ['type' => 'null']]],
+                'type' => ['type' => 'string'],
+                'bell' => ['type' => 'boolean'],
+                'email' => ['type' => 'boolean'],
+            ],
+        ]);
+
         $json = static fn (string $schema, string $description): Response => new Response($description, new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/'.$schema]))]));
         $signedOut = new Response('Not signed in');
         $csrf = new Response('CSRF check failed');
@@ -106,6 +136,22 @@ final readonly class InboxOpenApi implements OpenApiFactoryInterface
             responses: ['200' => $json('RealtimeToken', 'A connection token for /connection/websocket'), '401' => $signedOut],
             summary: 'A token for the realtime connection',
         )));
+
+        $paths->addPath('/api/me/notification-preferences', new PathItem(
+            get: new Operation(
+                operationId: 'listNotificationPreferences',
+                tags: ['Notifications'],
+                responses: ['200' => $json('NotificationPreferences', 'Every kind told to the user, with how'), '401' => $signedOut],
+                summary: 'How the signed-in user is told each kind, in each company',
+            ),
+            put: new Operation(
+                operationId: 'changeNotificationPreference',
+                tags: ['Notifications'],
+                responses: ['204' => new Response('Kept'), '401' => $signedOut, '403' => $csrf, '404' => new Response('No such kind is told to the user there'), '422' => new Response('Not a choice')],
+                summary: 'Choose how one kind is told in one company',
+                requestBody: new RequestBody('The choice', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/NotificationPreferenceChange']))]), true),
+            ),
+        ));
 
         return $openApi->withComponents($openApi->getComponents()->withSchemas($schemas));
     }

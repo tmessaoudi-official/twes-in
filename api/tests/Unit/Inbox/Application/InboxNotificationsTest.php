@@ -11,7 +11,11 @@ namespace App\Tests\Unit\Inbox\Application;
 
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
+use App\Inbox\Application\DeclaresNotificationKinds;
 use App\Inbox\Application\InboxNotifications;
+use App\Inbox\Application\NotificationAudience;
+use App\Inbox\Application\NotificationKind;
+use App\Inbox\Application\NotificationKinds;
 use App\Shared\Application\Notification;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
@@ -118,6 +122,31 @@ final class InboxNotificationsTest extends TestCase
         self::assertSame([], $this->realtime->pushed);
     }
 
+    public function testAPersonalChannelNamingItsCompanyKeepsItOnTheRow(): void
+    {
+        $acme = $this->company('Acme');
+        $amel = $this->member('amel@twes.local', $acme);
+
+        $this->notifications()->publish(new Notification('user:'.$amel->getId()->toRfc4122(), 'stock.low', ['product' => 'Vis'], $acme->getId()->toRfc4122()));
+
+        self::assertSame($acme, $this->inbox->items[0]->getCompany(), 'the news is about that company, so it is counted and chosen there');
+    }
+
+    public function testATypeNoContextDeclaredIsAProgrammingErrorAndNothingIsWritten(): void
+    {
+        $user = $this->user('amel@twes.local');
+
+        try {
+            $this->notifications()->publish(new Notification('user:'.$user->getId()->toRfc4122(), 'membership.removed'));
+            self::fail('an undeclared type is refused');
+        } catch (\LogicException $refused) {
+            self::assertStringContainsString('membership.removed', $refused->getMessage());
+        }
+
+        self::assertSame([], $this->inbox->items);
+        self::assertSame([], $this->realtime->pushed);
+    }
+
     public function testAnUnknownRecipientIsAContradictionNotASilentDrop(): void
     {
         $this->expectException(\LogicException::class);
@@ -134,7 +163,18 @@ final class InboxNotificationsTest extends TestCase
 
     private function notifications(): InboxNotifications
     {
-        return new InboxNotifications($this->users, $this->companies, $this->memberships, $this->inbox, $this->realtime, new MockClock('2026-09-13 10:00:00'));
+        $kinds = new NotificationKinds([new readonly class implements DeclaresNotificationKinds {
+            public function notificationKinds(): array
+            {
+                return [
+                    new NotificationKind('membership.added', NotificationAudience::Personal),
+                    new NotificationKind('invitation.accepted', NotificationAudience::Company),
+                    new NotificationKind('stock.low', NotificationAudience::Company),
+                ];
+            }
+        }]);
+
+        return new InboxNotifications($this->users, $this->companies, $this->memberships, $this->inbox, $this->realtime, new MockClock('2026-09-13 10:00:00'), $kinds);
     }
 
     private function user(string $email): User

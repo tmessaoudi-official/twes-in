@@ -131,6 +131,7 @@ final readonly class ModuleInterests
                             'user:'.$membership->getUser()->getId()->toRfc4122(),
                             self::ARRIVED,
                             ['module' => $manifest->key, 'label_key' => $manifest->labelKey, 'company' => $company->getName()],
+                            $company->getId()->toRfc4122(),
                         ));
                     }
                 }

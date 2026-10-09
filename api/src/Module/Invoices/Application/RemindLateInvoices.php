@@ -147,7 +147,7 @@ final readonly class RemindLateInvoices
     {
         foreach ($this->memberships->ofCompany($company->getId()) as $membership) {
             if ($membership->getRole()->grants(self::PERMISSION)) {
-                $this->notifications->publish(new Notification('user:'.$membership->getUser()->getId()->toRfc4122(), $type, $payload));
+                $this->notifications->publish(new Notification('user:'.$membership->getUser()->getId()->toRfc4122(), $type, $payload, $company->getId()->toRfc4122()));
             }
         }
     }

@@ -17,6 +17,7 @@ use App\Identity\Domain\RecoveryCodeEntry;
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserSession;
 use App\Inbox\Domain\InboxItem;
+use App\Inbox\Domain\NotificationPreference;
 use App\Legal\Domain\LegalText;
 use App\Settings\Domain\Setting;
 use App\Shared\Domain\CompanyOwned;
@@ -55,6 +56,7 @@ final class CompanyColumnTest extends KernelTestCase
         Setting::class => 'company_id is null for platform settings',
         AuditLog::class => "company_id is null for platform events and an account's own",
         InboxItem::class => 'company_id is null for notifications that concern no company',
+        NotificationPreference::class => "a person's own choice, read across their companies; company_id is null for a kind about the account",
     ];
 
     public function testEveryEntityCarriesACompanyIdUnlessItHasNoCompanyByDesign(): void

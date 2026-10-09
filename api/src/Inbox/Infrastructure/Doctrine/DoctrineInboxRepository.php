@@ -11,12 +11,21 @@ namespace App\Inbox\Infrastructure\Doctrine;
 
 use App\Inbox\Domain\InboxItem;
 use App\Inbox\Domain\InboxRepository;
+use App\Inbox\Domain\NotificationPreference;
 use App\Tenancy\Domain\Membership;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrineInboxRepository implements InboxRepository
 {
+    /**
+     * A kind its recipient muted in that company, or muted as a personal kind, is still listed but never counted: the
+     * choice holds for what was told before it as much as after.
+     */
+    private const string NOT_MUTED = 'NOT EXISTS (SELECT 1 FROM '.NotificationPreference::class.' p
+        WHERE p.user = i.recipient AND p.type = i.type AND p.bell = false
+          AND (p.company = i.company OR (p.company IS NULL AND i.company IS NULL)))';
+
     public function __construct(private EntityManagerInterface $entityManager)
     {
     }
@@ -42,7 +51,7 @@ final readonly class DoctrineInboxRepository implements InboxRepository
     public function unreadCountFor(Uuid $recipientId): int
     {
         return (int) $this->entityManager->createQuery(
-            'SELECT COUNT(i.id) FROM '.InboxItem::class.' i WHERE i.recipient = :recipient AND i.readAt IS NULL',
+            'SELECT COUNT(i.id) FROM '.InboxItem::class.' i WHERE i.recipient = :recipient AND i.readAt IS NULL AND '.self::NOT_MUTED,
         )->setParameter('recipient', $recipientId, 'uuid')->getSingleScalarResult();
     }
 
@@ -50,7 +59,7 @@ final readonly class DoctrineInboxRepository implements InboxRepository
     {
         $rows = $this->entityManager->createQuery(
             'SELECT IDENTITY(i.company) AS company, COUNT(i.id) AS unread FROM '.InboxItem::class.' i
-             WHERE i.recipient = :recipient AND i.readAt IS NULL AND i.company IS NOT NULL
+             WHERE i.recipient = :recipient AND i.readAt IS NULL AND i.company IS NOT NULL AND '.self::NOT_MUTED.'
                AND EXISTS (SELECT 1 FROM '.Membership::class.' m WHERE m.user = i.recipient AND m.company = i.company)
              GROUP BY i.company',
         )->setParameter('recipient', $recipientId, 'uuid')->getArrayResult();

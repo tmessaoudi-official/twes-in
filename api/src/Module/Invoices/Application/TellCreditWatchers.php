@@ -57,7 +57,7 @@ final readonly class TellCreditWatchers
                     'limit' => $limit->add('0.000')->value,
                     'currency' => $company->getCurrency(),
                     'company' => $company->getName(),
-                ]));
+                ], $company->getId()->toRfc4122()));
             }
         }
     }

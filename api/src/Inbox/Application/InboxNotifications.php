@@ -25,7 +25,8 @@ use Symfony\Component\Uid\Uuid;
  * The notification centre behind the `Notifications` port (docs/SPEC.md § 7, 2026-09-13). A `user:` channel keeps
  * one row for that user; a `company:` channel keeps one row for each member of that company at this moment. The
  * rows are written first and the push follows, so a page that was closed, or a push that never arrived, still
- * finds the notification in the centre.
+ * finds the notification in the centre. A `user:` notification about one of the user's companies keeps that company,
+ * which is where its kind is counted and chosen; a type no context declared is refused before anything is written.
  */
 final readonly class InboxNotifications implements Notifications
 {
@@ -38,6 +39,7 @@ final readonly class InboxNotifications implements Notifications
         private InboxRepository $inbox,
         private RealtimePublisher $realtime,
         private ClockInterface $clock,
+        private NotificationKinds $kinds,
     ) {
     }
 
@@ -47,13 +49,19 @@ final readonly class InboxNotifications implements Notifications
             throw new \InvalidArgumentException(\sprintf('A notification channel is "user:<uuid>" or "company:<uuid>", "%s" given.', $notification->channel));
         }
 
+        if (!$this->kinds->has($notification->type)) {
+            throw new \LogicException(\sprintf('No context declares the notification kind %s: declare it with DeclaresNotificationKinds.', $notification->type));
+        }
+
         $id = Uuid::fromString($match[2]);
         $now = $this->clock->now();
 
         if ('user' === $match[1]) {
             $user = $this->users->ofId($id)
                 ?? throw new \LogicException(\sprintf('A notification was published to user %s, who does not exist.', $id->toRfc4122()));
-            $items = [new InboxItem($user, null, $notification->type, $notification->payload, $now)];
+            $about = null === $notification->companyId ? null : ($this->companies->ofId(Uuid::fromString($notification->companyId))
+                ?? throw new \LogicException(\sprintf('A notification was about company %s, which does not exist.', $notification->companyId)));
+            $items = [new InboxItem($user, $about, $notification->type, $notification->payload, $now)];
         } else {
             $company = $this->companies->ofId($id)
                 ?? throw new \LogicException(\sprintf('A notification was published to company %s, which does not exist.', $id->toRfc4122()));

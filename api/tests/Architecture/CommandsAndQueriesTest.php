@@ -19,6 +19,7 @@ use App\Identity\Application\Mfa\BeginTotpEnrolment;
 use App\Identity\Application\Mfa\PasskeyAssertions;
 use App\ImportExport\Application\RunImport;
 use App\Inbox\Application\NotificationCentre;
+use App\Inbox\Application\NotificationPreferences;
 use App\Module\DeliveryNotes\Application\PrintDeliveryNote;
 use App\Module\Inventory\Application\DrawStockMap;
 use App\Module\Inventory\Application\KeepStock;
@@ -58,6 +59,7 @@ final class CommandsAndQueriesTest extends TestCase
         BeginTotpEnrolment::class => 'a pending secret that changes nothing about the account; confirming it is audited',
         PasskeyAssertions::class => "a passkey's signature counter, kept by the sign-in or step-up that audits it",
         NotificationCentre::class => 'whether a person has read their own notifications',
+        NotificationPreferences::class => 'how a person chooses to be told their own notifications, as reading them is',
         PrintDeliveryNote::class => 'the PDF of a note already issued, stored once when issuing could not render it',
         PrintInvoice::class => 'the PDF of a document already issued, stored once when issuing could not render it',
         RemindLateInvoices::class => 'a scheduled run with no actor; the stage it records stops it telling twice, its notification is the signal, and a late fee it drafts goes through ManageInvoices, which audits it',

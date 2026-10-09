@@ -174,6 +174,7 @@ final readonly class ManagePayments
                     'amount' => $declaration->getAmount(),
                     'currency' => $declaration->getCurrency(),
                 ],
+                $company->getId()->toRfc4122(),
             ));
             $this->mailer->paymentDecided(new PaymentDecidedMail(
                 $owner->getEmail()->value,

@@ -99,7 +99,7 @@ final readonly class TellStockKeepers
         foreach ($this->memberships->ofCompany($companyId) as $membership) {
             $user = $membership->getUser()->getId();
             if ($membership->getRole()->grants(self::PERMISSION) && !$user->equals($except)) {
-                $this->notifications->publish(new Notification('user:'.$user->toRfc4122(), $type, [...$payload, 'company' => self::company($membership)]));
+                $this->notifications->publish(new Notification('user:'.$user->toRfc4122(), $type, [...$payload, 'company' => self::company($membership)], $companyId->toRfc4122()));
             }
         }
     }
