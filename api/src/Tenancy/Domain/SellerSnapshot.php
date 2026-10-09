@@ -55,6 +55,20 @@ final readonly class SellerSnapshot
         );
     }
 
+    /**
+     * The name a document prints, followed by the legal form unless the legal name already ends with it: many write
+     * their raison sociale with its form, and « Carthage Conseil SARL SARL » is no company's name.
+     */
+    public function printedName(): string
+    {
+        $form = trim($this->legalForm ?? '');
+        if ('' === $form || 1 === preg_match('/(^|\s)'.preg_quote($form, '/').'$/iu', $this->name)) {
+            return $this->name;
+        }
+
+        return $this->name.' '.$form;
+    }
+
     /** @return array<string, mixed> as stored */
     public function toArray(): array
     {

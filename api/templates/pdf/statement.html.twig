@@ -34,7 +34,7 @@
   <div class="parties">
     <div class="party">
       {%- if logo %}<img class="logo" src="{{ logo }}" alt="">{% endif %}
-      <div class="company-name">{{ seller.name }}{% if seller.legalForm %} {{ seller.legalForm }}{% endif %}</div>
+      <div class="company-name">{{ seller.printedName }}</div>
       {%- for key, value in seller.identifiers %}
         <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : {{ value }}</div>
       {%- endfor %}

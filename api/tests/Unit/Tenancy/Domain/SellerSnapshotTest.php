@@ -61,6 +61,21 @@ final class SellerSnapshotTest extends TestCase
         self::assertEquals($seller, SellerSnapshot::fromArray($stored));
     }
 
+    /** A legal name that already ends with its form prints it once: « Carthage Conseil SARL », never « … SARL SARL ». */
+    public function testThePrintedNameCarriesTheLegalFormOnce(): void
+    {
+        $seller = SellerSnapshot::of($this->company(), Establishment::create($this->company(), 'TUN', 'Tunis', true, $this->now));
+        $named = static fn (string $name, ?string $form): string => SellerSnapshot::fromArray(['name' => $name, 'legalForm' => $form] + $seller->toArray())->printedName();
+
+        self::assertSame('Carthage Conseil SARL', $seller->printedName());
+        self::assertSame('Carthage Conseil SARL', $named('Carthage Conseil', 'SARL'));
+        self::assertSame('Atelier Mercier sas', $named('Atelier Mercier sas', 'SAS'));
+        self::assertSame('Atelier Mercier', $named('Atelier Mercier', null));
+        // The form is a word of its own: a name that merely ends with its letters still takes it.
+        self::assertSame('Le Vasas SAS', $named('Le Vasas', 'SAS'));
+        self::assertSame('Mercier SAS', $named('Mercier', ' SAS '));
+    }
+
     private function company(): Company
     {
         $company = new Company('Carthage Conseil', 'TN', 'TND', 'fr', 'Africa/Tunis');

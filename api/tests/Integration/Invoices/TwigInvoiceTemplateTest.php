@@ -27,6 +27,7 @@ use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Shared\Domain\DocumentDesign;
 use App\Shared\Domain\DocumentLayout;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\CompanyProfile;
 use App\Tenancy\Domain\SellerSnapshot;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
@@ -191,6 +192,20 @@ final class TwigInvoiceTemplateTest extends KernelTestCase
         self::assertSame(array_keys(InvoiceMentions::DATA), array_keys($values), 'every datum a mention may wait for is filled here');
 
         return [$keys, ['fiscal.mention.fr.late_payment' => ['rate' => $values['rate']], 'fiscal.mention.fr.exempt' => ['reference' => $values['reference']]]];
+    }
+
+    /** Every printed document names the seller through one place, which prints a legal form the name already ends with once. */
+    public function testTheSellerIsNamedWithItsLegalFormOnceOnEveryDocument(): void
+    {
+        self::bootKernel();
+        $this->invoice->getCompany()->reviseProfile(new CompanyProfile(legalName: 'Atelier Durand SAS', legalForm: 'SAS'));
+
+        self::assertStringContainsString('<div class="company-name">Atelier Durand SAS</div>', $this->html(new DocumentDesign(), [], []));
+        foreach (['invoice', 'quote', 'delivery_note', 'statement'] as $document) {
+            $source = (string) file_get_contents(self::TEMPLATES.'/'.$document.'.html.twig');
+            self::assertStringContainsString('{{ seller.printedName }}', $source, $document);
+            self::assertStringNotContainsString('seller.legalForm', $source, $document);
+        }
     }
 
     /**
