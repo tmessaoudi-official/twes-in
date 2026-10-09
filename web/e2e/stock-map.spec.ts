@@ -556,7 +556,6 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('stock-map-label-code').click();
       await expect(label).toHaveText(code);
       await expect(wall).toHaveText('Mur nord');
-      await page.screenshot({ path: 'var/claude/plan-labels-code.png' });
 
       // Both halves are longer than a 4 m rack can carry at this type size, so the label is CUT — found by looking
       // at the rendered plan, where it ran 6,1 m across a 3,9 m rack and onto the empty floor beside it.
@@ -569,11 +568,9 @@ test.describe('the drawn stock map', () => {
         `${code} · Rayonnage ${code}`,
       );
       await expect(wall).toHaveText('Mur nord', { timeout: 5_000 });
-      await page.screenshot({ path: 'var/claude/plan-labels-both.png' });
 
       await page.getByTestId('stock-map-label-name').click();
       await expect(label).toHaveText(`Rayonnage ${code}`);
-      await page.screenshot({ path: 'var/claude/plan-labels-name.png' });
 
       // A preference, not a moment: the next visit opens on the numbering this store actually reads.
       await page.reload();
