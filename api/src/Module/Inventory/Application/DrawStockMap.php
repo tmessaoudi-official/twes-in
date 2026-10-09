@@ -406,6 +406,79 @@ final readonly class DrawStockMap
     }
 
     /**
+     * A group chosen on the plan, changed as one step: rectangles drawn for places, rectangles moved or turned, and
+     * rectangles undrawn, all of it or none of it. The inverse of a step is a step of the same shape, which is how one
+     * « Annuler » takes back a whole group's move or undrawing.
+     *
+     * Everything named is resolved before the first write, so a refusal leaves the floor exactly as it was and names
+     * the entry it refuses by its place in what was sent (`moves[2].drawingId`): a bare "drawingId" in a group of
+     * twelve leaves a person guessing. A move carries a rectangle only; which place a rectangle is drawn for is changed
+     * one rectangle at a time, through its own form.
+     *
+     * @param list<array{Uuid, PlanRect}> $draws    a place, and the rectangle to draw it at
+     * @param list<array{Uuid, PlanRect}> $moves    a rectangle of this floor, and where it now stands
+     * @param list<Uuid>                  $erasures rectangles of this floor to undraw
+     *
+     * @return list<StockLocation> what is drawn on the floor once the step is done
+     *
+     * @throws VenueAreaNotFound
+     * @throws InvalidStockLocation naming the entry it refuses
+     */
+    public function change(Company $company, Uuid $floorId, array $draws, array $moves, array $erasures, ?Uuid $actorUserId): array
+    {
+        $floor = $this->venue->area($company, $floorId);
+        $touched = [];
+        $onThisFloor = function (Uuid $drawingId, string $field) use ($company, $floor, &$touched): void {
+            try {
+                $spot = $this->venue->spot($company, $drawingId);
+            } catch (VenueSpotNotFound) {
+                throw new InvalidStockLocation($field, 'No such rectangle is drawn.');
+            }
+            if (!$spot->getArea()->getId()->equals($floor->getId())) {
+                throw new InvalidStockLocation($field, 'This rectangle is drawn on another floor.');
+            }
+            if (isset($touched[$drawingId->toRfc4122()])) {
+                throw new InvalidStockLocation($field, 'A rectangle is named once in a step.');
+            }
+            $touched[$drawingId->toRfc4122()] = true;
+        };
+        foreach ($moves as $at => [$drawingId]) {
+            $onThisFloor($drawingId, "moves[$at].drawingId");
+        }
+        foreach ($erasures as $at => $drawingId) {
+            $onThisFloor($drawingId, "erasures[$at]");
+        }
+        $placed = [];
+        foreach ($draws as $at => [$locationId]) {
+            $field = "draws[$at].locationId";
+            try {
+                $location = $this->drawable($company, $locationId);
+            } catch (StockLocationNotFound|InvalidStockLocation $refused) {
+                throw new InvalidStockLocation($field, $refused->getMessage());
+            }
+            $drawnOn = $location->getSpot()?->getId()->toRfc4122();
+            if (isset($placed[$locationId->toRfc4122()]) || (null !== $drawnOn && isset($touched[$drawnOn]))) {
+                throw new InvalidStockLocation($field, 'A place is drawn once in a step, and not over a rectangle the step moves or undraws.');
+            }
+            $placed[$locationId->toRfc4122()] = true;
+        }
+
+        return $this->transactions->run(function () use ($company, $floor, $draws, $moves, $erasures, $actorUserId): array {
+            foreach ($erasures as $drawingId) {
+                $this->eraseDrawing($company, $drawingId, $actorUserId);
+            }
+            foreach ($moves as [$drawingId, $rect]) {
+                $this->venue->moveSpot($company, $drawingId, $rect, $actorUserId);
+            }
+            foreach ($draws as [$locationId, $rect]) {
+                $this->draw($company, $floor->getId(), $locationId, $rect, $actorUserId);
+            }
+
+            return $this->drawingsOf($company, $floor->getId());
+        });
+    }
+
+    /**
      * The rectangle is erased; what it was drawn for is untouched.
      *
      * @throws VenueSpotNotFound

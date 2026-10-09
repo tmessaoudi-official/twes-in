@@ -41,7 +41,9 @@ import {
   STRUCTURE_KINDS,
   type StockDrawingRow,
   type StockFloorRow,
+  type StockDrawingChanges,
   type StockDrawingInput,
+  type StockDrawingRect,
   type StockLocationKind,
   type StockPlanShape,
   type StockStructureRow,
@@ -87,8 +89,11 @@ import {
   zoomedAt,
   repeatedFrom,
   resizedTo,
+  shiftedGroup,
+  snapMetres,
   touchesBox,
   tracedTo,
+  turnedGroup,
   type PlanBox,
   type PlanFrame,
   type PlanHandle,
@@ -373,12 +378,14 @@ export class StockMapPage implements OnInit {
     const editing = this.editing();
     const pixels = this.pixelsPerMetre();
     const preview = this.previewRect();
+    const draft = this.groupDraft();
     const shapes = this.facade.drawings().map((drawing) => {
       const [saved] = planRectangles([drawing]);
       const shown =
-        preview !== null && editing !== null && editing !== 'new' && editing.id === drawing.id
+        draft?.get(drawing.id) ??
+        (preview !== null && editing !== null && editing !== 'new' && editing.id === drawing.id
           ? preview
-          : (saved ?? { x: 0, y: 0, width: 0, depth: 0, rotation: 0, height: 0 });
+          : (saved ?? { x: 0, y: 0, width: 0, depth: 0, rotation: 0, height: 0 }));
 
       return shapeOf(drawing, shown, this.labelMode(), pixels);
     });
@@ -912,6 +919,7 @@ export class StockMapPage implements OnInit {
     return (
       (this.editing() === 'new' ? 1 : 0) +
       (piece === 'new' ? 1 : 0) +
+      (this.groupDraft() === null ? 0 : 1) +
       this.unsaved() +
       structureChanges
     );
@@ -1048,10 +1056,17 @@ export class StockMapPage implements OnInit {
 
   private chooseOnly(id: string | null): void {
     this.chosen.set(new Set(id === null ? [] : [id]));
+    this.groupDraft.set(null);
   }
 
   /** A click on a rectangle chooses it alone; with Shift it joins the group, or leaves it if it was in it. */
   protected choose(event: MouseEvent, drawing: StockDrawingRow): void {
+    // The click a browser sends at the end of a group's drag is the drag's, not a choice of that one rectangle.
+    if (this.draggedGroup) {
+      this.draggedGroup = false;
+
+      return;
+    }
     if (!event.shiftKey) {
       this.select(drawing);
 
@@ -1069,6 +1084,7 @@ export class StockMapPage implements OnInit {
    */
   private chooseGroup(ids: ReadonlySet<string>): void {
     this.chosen.set(ids);
+    this.groupDraft.set(null);
     this.selectedStructureId.set(null);
     this.editingStructure.set(null);
     if (ids.size > 1) {
@@ -1080,6 +1096,160 @@ export class StockMapPage implements OnInit {
   /** « Tout désélectionner », a press of bare floor that does not travel, and Échap with nothing under way. */
   protected letGo(): void {
     this.chosen.set(new Set());
+    this.groupDraft.set(null);
+  }
+
+  // ——— a group, moved, turned and undrawn together (§ 7, 2026-10-09 17:45) ———
+
+  /**
+   * Where the group stands while it is moved or turned and not saved yet, by drawing; `null` while it stands where it
+   * was saved. One request saves all of it, and one « Annuler » puts all of it back.
+   */
+  protected readonly SNAP_DEGREES = SNAP_DEGREES;
+  protected readonly groupDraft = signal<ReadonlyMap<string, PlanRectangle> | null>(null);
+  /** Whether a group can be acted on here: in Aménager, by whoever may draw, with several chosen. */
+  protected readonly actsOnGroup = computed(
+    () => this.arranging() && this.mayDraw() && this.chosenDrawings().length > 1,
+  );
+  private groupDrag: {
+    pointerId: number;
+    from: PlanPoint;
+    frame: PlanFrame;
+    box: PlanBox;
+    origins: ReadonlyMap<string, PlanRectangle>;
+    before: ReadonlyMap<string, PlanRectangle> | null;
+    past: boolean;
+    startedAt: PlanPoint;
+  } | null = null;
+  private draggedGroup = false;
+
+  /** The group as it stands now: the draft where there is one, else where it was saved. */
+  private groupRects(): ReadonlyMap<string, PlanRectangle> {
+    return (
+      this.groupDraft() ??
+      new Map(
+        this.chosenDrawings().flatMap((drawing) => {
+          const [rect] = planRectangles([drawing]);
+
+          return rect === undefined ? [] : [[drawing.id, rect] as const];
+        }),
+      )
+    );
+  }
+
+  /** A press on a rectangle of the group takes hold of all of it: they move by one step, snapped once. */
+  private holdGroup(event: PointerEvent): void {
+    const surface = (event.target as Element).closest('svg');
+    if (surface === null) return;
+    const box = surface.getBoundingClientRect();
+    const frame = this.viewed();
+    this.groupDrag = {
+      pointerId: event.pointerId,
+      from: pointerMetres({ x: event.clientX, y: event.clientY }, frame, box),
+      frame,
+      box,
+      origins: this.groupRects(),
+      before: this.groupDraft(),
+      past: false,
+      startedAt: { x: event.clientX, y: event.clientY },
+    };
+    event.preventDefault();
+  }
+
+  protected turnGroup(degrees: number): void {
+    if (this.actsOnGroup()) this.groupDraft.set(turnedGroup(this.groupRects(), degrees));
+  }
+
+  private moveGroup(dx: number, dy: number): void {
+    if (this.actsOnGroup()) this.groupDraft.set(shiftedGroup(this.groupRects(), dx, dy));
+  }
+
+  protected cancelGroup(): void {
+    this.groupDraft.set(null);
+  }
+
+  /** The keys of a group: the arrows move it, R turns it, Suppr undraws it — what they do to one rectangle. */
+  private groupKey(event: KeyboardEvent): boolean {
+    const step = event.shiftKey ? 1 : ARROW_STEP_METRES;
+    const moves: Record<string, [number, number]> = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step],
+    };
+    const move = moves[event.key];
+    if (move !== undefined) this.moveGroup(...move);
+    else if (event.key.toLowerCase() === 'r')
+      this.turnGroup(event.shiftKey ? -SNAP_DEGREES : SNAP_DEGREES);
+    else if (event.key === 'Delete') void this.eraseGroup();
+    else return false;
+
+    return true;
+  }
+
+  protected async saveGroup(): Promise<void> {
+    const companyId = this.company()?.id;
+    const floorId = this.floor()?.id;
+    const draft = this.groupDraft();
+    if (!companyId || !floorId || draft === null || this.busy()) return;
+
+    const saved = new Map(this.chosenDrawings().map((drawing) => [drawing.id, drawing]));
+    const moves = [...draft].map(([drawingId, rect]) => ({ drawingId, ...rectInput(rect) }));
+    const back = moves.flatMap(({ drawingId }) => {
+      const drawing = saved.get(drawingId);
+
+      return drawing === undefined ? [] : [{ drawingId, ...savedRect(drawing) }];
+    });
+    if (await this.facade.changeDrawings(companyId, floorId, { draws: [], moves, erasures: [] })) {
+      this.groupDraft.set(null);
+      this.feedback.success(
+        'inventory.plan.group_saved',
+        { count: moves.length },
+        {
+          key: 'inventory.plan.undo',
+          run: () =>
+            void this.undoGroup(companyId, floorId, { draws: [], moves: back, erasures: [] }),
+        },
+      );
+    }
+  }
+
+  /** Undrawn together, and drawn back together for the same places by one « Annuler ». */
+  protected async eraseGroup(): Promise<void> {
+    const companyId = this.company()?.id;
+    const floorId = this.floor()?.id;
+    const group = this.chosenDrawings();
+    if (!companyId || !floorId || !this.actsOnGroup() || this.busy()) return;
+
+    const erased = await this.facade.changeDrawings(companyId, floorId, {
+      draws: [],
+      moves: [],
+      erasures: group.map((drawing) => drawing.id),
+    });
+    if (erased) {
+      this.letGo();
+      const again = group.map((drawing) => ({
+        locationId: drawing.locationId,
+        ...savedRect(drawing),
+      }));
+      this.feedback.success(
+        'inventory.plan.group_erased',
+        { count: group.length },
+        {
+          key: 'inventory.plan.undo',
+          run: () =>
+            void this.undoGroup(companyId, floorId, { draws: again, moves: [], erasures: [] }),
+        },
+      );
+    }
+  }
+
+  private async undoGroup(
+    companyId: string,
+    floorId: string,
+    inverse: StockDrawingChanges,
+  ): Promise<void> {
+    await this.undo(() => this.facade.changeDrawings(companyId, floorId, inverse));
   }
 
   /** Choosing a piece of the building to read about it, which is all a press on one does in Consulter. */
@@ -1345,6 +1515,11 @@ export class StockMapPage implements OnInit {
   protected grab(event: PointerEvent, drawing: StockDrawingRow, handle: PlanHandle | null): void {
     // A Shift press is a choice, which its click makes: it moves nothing.
     if (!this.arranging() || event.button !== 0 || event.shiftKey) return;
+    if (handle === null && this.chosenDrawings().length > 1 && this.chosen().has(drawing.id)) {
+      if (this.actsOnGroup()) this.holdGroup(event);
+
+      return;
+    }
 
     // Choosing it first is what the handles are drawn around, and what the gesture below then works on.
     this.select(drawing);
@@ -1428,6 +1603,8 @@ export class StockMapPage implements OnInit {
    * and laying that across a full-width plan traps a finger trying to scroll past it.
    */
   protected press(event: PointerEvent): void {
+    // A new press: whatever click ended the last group drag has come, or never will.
+    this.draggedGroup = false;
     if (this.tracing()) {
       this.trace(event);
 
@@ -1560,6 +1737,7 @@ export class StockMapPage implements OnInit {
    */
   private arrangeKey(event: KeyboardEvent): boolean {
     if (event.key === 'Tab') return this.nextShape(event.shiftKey ? -1 : 1);
+    if (this.actsOnGroup()) return this.groupKey(event);
 
     const piece = this.selectedStructure();
     const drawing = this.facade.drawings().find((one) => one.id === this.selectedId()) ?? null;
@@ -1695,6 +1873,23 @@ export class StockMapPage implements OnInit {
   }
 
   protected drags(event: PointerEvent): void {
+    const held = this.groupDrag;
+    if (held !== null && held.pointerId === event.pointerId) {
+      if (!held.past) {
+        const far =
+          Math.abs(event.clientX - held.startedAt.x) + Math.abs(event.clientY - held.startedAt.y);
+        if (far < DRAG_THRESHOLD) return;
+        held.past = true;
+      }
+      const to = pointerMetres({ x: event.clientX, y: event.clientY }, held.frame, held.box);
+      // The step is snapped once, for the group, so the rectangles keep the spacing they had between them.
+      this.groupDraft.set(
+        shiftedGroup(held.origins, snapMetres(to.x - held.from.x), snapMetres(to.y - held.from.y)),
+      );
+
+      return;
+    }
+
     const lasso = this.lasso;
     if (lasso !== null && lasso.pointerId === event.pointerId) {
       const far =
@@ -1763,6 +1958,13 @@ export class StockMapPage implements OnInit {
   }
 
   protected drops(event: PointerEvent): void {
+    const held = this.groupDrag;
+    if (held !== null && held.pointerId === event.pointerId) {
+      this.groupDrag = null;
+      this.draggedGroup = held.past;
+
+      return;
+    }
     const lasso = this.lasso;
     if (lasso !== null && lasso.pointerId === event.pointerId) {
       this.lasso = null;
@@ -1811,14 +2013,21 @@ export class StockMapPage implements OnInit {
    */
   protected abandon(): void {
     const drag = this.drag;
-    const underway = drag !== null || this.pan !== null || this.lasso !== null || this.tracing();
+    const held = this.groupDrag;
+    const underway =
+      drag !== null || held !== null || this.pan !== null || this.lasso !== null || this.tracing();
     this.drag = null;
+    this.groupDrag = null;
+    if (held?.past) this.groupDraft.set(held.before);
     this.pan = null;
     this.lasso = null;
     this.lassoRect.set(null);
     this.tracing.set(false);
     if (drag?.past) this.editedGroup(drag)?.patchValue(drag.before);
-    if (!underway && this.editing() === null) this.letGo();
+    // With nothing under way, Échap puts a moved group back first, and only then lets the choice go.
+    if (underway || this.editing() !== null) return;
+    if (this.groupDraft() !== null) this.cancelGroup();
+    else this.letGo();
   }
 
   protected async saveDrawing(values: FormValues): Promise<void> {
@@ -2016,7 +2225,7 @@ export class StockMapPage implements OnInit {
    */
   protected readonly owesSave = computed(() => {
     if (this.editing() === 'new' || this.editingStructure() === 'new') return true;
-    if (this.unsaved() > 0) return true;
+    if (this.unsaved() > 0 || this.groupDraft() !== null) return true;
     const piece = this.editingStructure();
     const values = this.structureValuesNow();
     if (piece === null || piece === 'new' || values === null) return false;
@@ -2218,6 +2427,25 @@ export class StockMapPage implements OnInit {
 }
 
 /** A measurement out of a form control, as a number: what was typed, empty or half-typed reading as nothing yet. */
+/** A rectangle as the API takes it, at the three decimals it keeps. */
+function rectInput(rect: PlanRectangle): StockDrawingRect {
+  return {
+    x: rect.x.toFixed(3),
+    y: rect.y.toFixed(3),
+    width: rect.width.toFixed(3),
+    depth: rect.depth.toFixed(3),
+    rotation: rect.rotation,
+    height: rect.height.toFixed(3),
+  };
+}
+
+/** Where a rectangle stood when it was read, exactly as the API answered it. */
+function savedRect(drawing: StockDrawingRow): StockDrawingRect {
+  const { x, y, width, depth, rotation, height } = drawing;
+
+  return { x, y, width, depth, rotation, height };
+}
+
 /** A key meant for a field or a button, whose Space types or presses rather than taking hold of the plan. */
 function typed(target: EventTarget | null): boolean {
   return (

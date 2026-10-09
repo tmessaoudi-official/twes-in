@@ -188,6 +188,69 @@ export function touchesBox(from: PlanPoint, to: PlanPoint, rect: PlanRectangle):
   });
 }
 
+/** A position as the API keeps it: three decimals, so what the screen holds is what a save will answer. */
+const millimetre = (value: number): number => Math.round(value * 1000) / 1000 || 0;
+
+/**
+ * A group moved together: the same step for every rectangle. A rectangle past the floor's near corner is one the API
+ * refuses, so the step is held back there for the whole group, which keeps its shape rather than squashing at the edge.
+ */
+export function shiftedGroup<K>(
+  rects: ReadonlyMap<K, PlanRectangle>,
+  dx: number,
+  dy: number,
+): Map<K, PlanRectangle> {
+  const all = [...rects.values()];
+  const across = Math.max(dx, -Math.min(...all.map((rect) => rect.x)));
+  const down = Math.max(dy, -Math.min(...all.map((rect) => rect.y)));
+
+  return new Map(
+    [...rects].map(([key, rect]) => [
+      key,
+      { ...rect, x: millimetre(rect.x + across), y: millimetre(rect.y + down) },
+    ]),
+  );
+}
+
+/**
+ * A group turned clockwise about its own centre, as one rectangle turns about its own: every centre goes round and
+ * every rectangle turns by the same step. The centre is the mean of the rectangles' centres, which a turn leaves
+ * where it was — the middle of what they reach would wander as they turn, and R then Shift+R would not come back.
+ */
+export function turnedGroup<K>(
+  rects: ReadonlyMap<K, PlanRectangle>,
+  degrees: number,
+): Map<K, PlanRectangle> {
+  const all = [...rects.values()];
+  if (all.length === 0) return new Map();
+  const centres = all.map((rect) => ({ x: rect.x + rect.width / 2, y: rect.y + rect.depth / 2 }));
+  const pivot = {
+    x: centres.reduce((sum, centre) => sum + centre.x, 0) / centres.length,
+    y: centres.reduce((sum, centre) => sum + centre.y, 0) / centres.length,
+  };
+  const radians = (degrees * Math.PI) / 180;
+  const [cos, sin] = [Math.cos(radians), Math.sin(radians)];
+
+  const turned = new Map(
+    [...rects].map(([key, rect]) => {
+      const dx = rect.x + rect.width / 2 - pivot.x;
+      const dy = rect.y + rect.depth / 2 - pivot.y;
+
+      return [
+        key,
+        {
+          ...rect,
+          x: millimetre(pivot.x + dx * cos - dy * sin - rect.width / 2),
+          y: millimetre(pivot.y + dx * sin + dy * cos - rect.depth / 2),
+          rotation: (((rect.rotation + degrees) % 360) + 360) % 360,
+        },
+      ];
+    }),
+  );
+
+  return shiftedGroup(turned, 0, 0);
+}
+
 /** What every rectangle on a floor reaches between, turns included. */
 export function planBounds(rects: readonly PlanRectangle[]): PlanBounds {
   const corners = rects.flatMap(cornersOf);

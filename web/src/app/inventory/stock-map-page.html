@@ -1422,10 +1422,61 @@
               <p class="text-sm text-on-surface-variant">
                 {{ chosenCodes() }}
               </p>
+              @if (actsOnGroup()) {
+                <p class="text-sm text-on-surface-variant">
+                  {{ 'inventory.plan.group_hint' | translate }}
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="turnGroup(-SNAP_DEGREES)"
+                    data-testid="stock-map-group-turn-left"
+                  >
+                    {{ 'inventory.plan.group_turn_left' | translate: { degrees: SNAP_DEGREES } }}
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="turnGroup(SNAP_DEGREES)"
+                    data-testid="stock-map-group-turn-right"
+                  >
+                    {{ 'inventory.plan.group_turn_right' | translate: { degrees: SNAP_DEGREES } }}
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="busy()"
+                    (click)="eraseGroup()"
+                    data-testid="stock-map-group-erase"
+                  >
+                    {{ 'inventory.plan.erase' | translate }}
+                  </button>
+                </div>
+              }
               <div class="flex flex-wrap justify-end gap-2">
                 <button mat-button type="button" (click)="letGo()" data-testid="stock-map-let-go">
                   {{ 'inventory.plan.let_go' | translate }}
                 </button>
+                @if (groupDraft() !== null) {
+                  <button
+                    mat-button
+                    type="button"
+                    (click)="cancelGroup()"
+                    data-testid="stock-map-group-cancel"
+                  >
+                    {{ 'inventory.cancel' | translate }}
+                  </button>
+                  <button
+                    mat-flat-button
+                    type="button"
+                    [disabled]="busy()"
+                    (click)="saveGroup()"
+                    data-testid="stock-map-group-save"
+                  >
+                    {{ 'inventory.save' | translate }}
+                  </button>
+                }
               </div>
             </div>
           } @else if (selected(); as drawing) {

@@ -2,7 +2,9 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  shiftedGroup,
   touchesBox,
+  turnedGroup,
   cornersOf,
   handleAt,
   movedTo,
@@ -131,6 +133,71 @@ describe('cornersOf', () => {
 });
 
 /** The selection box (stock-map slice 7c): every rectangle it touches, a turned one by its body, not its box. */
+describe('a group moved and turned together', () => {
+  const rack: PlanRectangle = { x: 2, y: 2, width: 4, depth: 1, rotation: 0, height: 2 };
+  const zone: PlanRectangle = { x: 8, y: 2, width: 2, depth: 2, rotation: 0, height: 0 };
+  const group = new Map([
+    ['rack', rack],
+    ['zone', zone],
+  ]);
+
+  it('moves every rectangle by the same step', () => {
+    const moved = shiftedGroup(group, 1.25, -0.5);
+
+    expect(moved.get('rack')).toEqual({ ...rack, x: 3.25, y: 1.5 });
+    expect(moved.get('zone')).toEqual({ ...zone, x: 9.25, y: 1.5 });
+  });
+
+  /** A rectangle past the floor's corner is one the API refuses, so the whole group stops at the edge together. */
+  it('stops the whole group at the floor’s near edges, keeping its shape', () => {
+    const moved = shiftedGroup(group, -5, -3);
+
+    expect(moved.get('rack')).toEqual({ ...rack, x: 0, y: 0 });
+    expect(moved.get('zone')).toEqual({ ...zone, x: 6, y: 0 });
+  });
+
+  /**
+   * Clockwise about the group's own centre — the mean of its rectangles' centres, which a turn leaves where it was,
+   * so R and Shift+R undo each other and four quarter turns come back to the start.
+   */
+  it('turns the group about its centre, each rectangle turning with it', () => {
+    const low = new Map([
+      ['rack', { ...rack, y: 4 }],
+      ['zone', { ...zone, y: 4 }],
+    ]);
+    // The centres are (4, 4.5) and (9, 5): the group turns about (6.5, 4.75).
+    const turned = turnedGroup(low, 90);
+
+    // The rack's centre goes a quarter turn clockwise to (6.75, 2.25), the zone's to (6.25, 7.25).
+    expect(turned.get('rack')).toEqual({ ...rack, x: 4.75, y: 1.75, rotation: 90 });
+    expect(turned.get('zone')).toEqual({ ...zone, x: 5.25, y: 6.25, rotation: 90 });
+    const round = turnedGroup(turnedGroup(turnedGroup(turned, 90), 90), 90);
+    expect(round).toEqual(low);
+  });
+
+  it('turns back the way it came within the plan’s millimetre', () => {
+    const back = turnedGroup(turnedGroup(group, 15), -15);
+    for (const [id, rect] of group) {
+      const now = back.get(id);
+      expect(now?.rotation).toBe(rect.rotation);
+      expect(now?.x).toBeCloseTo(rect.x, 2);
+      expect(now?.y).toBeCloseTo(rect.y, 2);
+    }
+  });
+
+  it('moves a turned group onto the floor when the turn takes it past an edge', () => {
+    const tall = new Map([
+      ['a', { x: 0, y: 0, width: 1, depth: 1, rotation: 0, height: 0 }],
+      ['b', { x: 0, y: 5, width: 1, depth: 1, rotation: 0, height: 0 }],
+    ]);
+    // About (0.5, 3), b would land at x = -2.5: the whole group steps right by 2.5 and keeps its shape.
+    const turned = turnedGroup(tall, 90);
+
+    expect(turned.get('a')).toMatchObject({ x: 5, y: 2.5, rotation: 90 });
+    expect(turned.get('b')).toMatchObject({ x: 0, y: 2.5, rotation: 90 });
+  });
+});
+
 describe('touchesBox', () => {
   const rack = { x: 2, y: 2, width: 4, depth: 1, rotation: 0, height: 2 };
 

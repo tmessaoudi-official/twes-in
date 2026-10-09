@@ -24,6 +24,7 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { PRESENTATION } from '../shared/settings/settings-registry';
+import { shiftedGroup, turnedGroup, type PlanRectangle } from './stock-map-geometry';
 import { provideQuietFeedback, RecordedFeedback, successToasts } from '../shared/testing/feedback';
 import { Feedback } from '../shared/feedback/feedback';
 import { InventoryFacade } from './inventory-facade';
@@ -199,6 +200,7 @@ describe('StockMapPage', () => {
     eraseDrawing: vi.fn(),
     deleteLocation: vi.fn(),
     repeatDrawing: vi.fn(),
+    changeDrawings: vi.fn(),
     clearError: vi.fn(),
   };
   const auth = {
@@ -261,6 +263,7 @@ describe('StockMapPage', () => {
     facade.deleteLocation.mockReset().mockResolvedValue(true);
     facade.eraseDrawing.mockReset().mockResolvedValue(true);
     facade.repeatDrawing.mockReset().mockResolvedValue(true);
+    facade.changeDrawings.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
     windowClass.set('expanded');
     coarse.set(false);
@@ -1011,6 +1014,181 @@ describe('StockMapPage', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await settle();
     expect(chosenCodes()).toEqual([]);
+  });
+
+  // ——— acting on a group in Aménager (slice 7c, § 7 2026-10-09 17:45) ———
+
+  async function chooseBoth(): Promise<void> {
+    structures.set([]);
+    drawings.set([drawn, second]);
+    await settle();
+    q('stock-drawing-R1')!.click();
+    click(q('stock-drawing-Z1') as unknown as Element, { shiftKey: true });
+    await settle();
+  }
+  const placedX = (code: string): number =>
+    Number(q(`stock-drawing-rect-${code}`)?.getAttribute('x') ?? Number.NaN);
+  const asSaved = (rect: PlanRectangle): Record<string, unknown> => ({
+    x: rect.x.toFixed(3),
+    y: rect.y.toFixed(3),
+    rotation: rect.rotation,
+  });
+
+  it('moves the whole group by dragging one of its rectangles, one snapped step for all, saved in one request', async () => {
+    await chooseBoth();
+    surface();
+    const rack = q('stock-drawing-rect-R1') as unknown as Element;
+    fire(rack, 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 160, 100);
+    fire(document, 'pointerup', 160, 100);
+    // The click a browser sends after the drag is not a choice: the group stays chosen.
+    click(rack);
+    await settle();
+
+    const step = placedX('R1') - 2.5;
+    expect(step).toBeGreaterThan(0);
+    expect(Math.abs(step / 0.25 - Math.round(step / 0.25))).toBeLessThan(1e-9);
+    expect(placedX('Z1') - 8).toBeCloseTo(step, 9);
+    expect(chosenCodes().sort()).toEqual(['R1', 'Z1']);
+    expect(q('stock-drawing-form')).toBeNull();
+
+    q('stock-map-group-save')!.click();
+    await settle();
+    expect(facade.changeDrawings).toHaveBeenCalledWith('c1', 'f1', {
+      draws: [],
+      moves: [
+        expect.objectContaining({ drawingId: 'd1', x: (2.5 + step).toFixed(3), y: '4.000' }),
+        expect.objectContaining({ drawingId: 'd2', x: (8 + step).toFixed(3), y: '4.000' }),
+      ],
+      erasures: [],
+    });
+    expect(q('stock-map-group-save')).toBeNull();
+
+    undoOf('inventory.plan.group_saved')();
+    await settle();
+    expect(facade.changeDrawings).toHaveBeenLastCalledWith('c1', 'f1', {
+      draws: [],
+      moves: [
+        expect.objectContaining({ drawingId: 'd1', x: '2.500', y: '4.000', width: '3.900' }),
+        expect.objectContaining({ drawingId: 'd2', x: '8.000', y: '4.000', width: '3.900' }),
+      ],
+      erasures: [],
+    });
+    expect(successToasts()).toContain('inventory.plan.undone');
+  });
+
+  it('turns the group about its centre with R and moves it with the arrows', async () => {
+    await chooseBoth();
+    boardKey('r');
+    boardKey('ArrowRight');
+    await settle();
+    q('stock-map-group-save')!.click();
+    await settle();
+
+    const saved = new Map([
+      ['d1', { x: 2.5, y: 4, width: 3.9, depth: 0.6, rotation: 0, height: 2.1 }],
+      ['d2', { x: 8, y: 4, width: 3.9, depth: 0.6, rotation: 0, height: 2.1 }],
+    ]);
+    const expected = shiftedGroup(turnedGroup(saved, 15), 0.25, 0);
+    expect(facade.changeDrawings).toHaveBeenCalledWith('c1', 'f1', {
+      draws: [],
+      moves: [
+        expect.objectContaining({ drawingId: 'd1', ...asSaved(expected.get('d1')!) }),
+        expect.objectContaining({ drawingId: 'd2', ...asSaved(expected.get('d2')!) }),
+      ],
+      erasures: [],
+    });
+  });
+
+  it('turns the group from its panel too, never only from the keyboard', async () => {
+    await chooseBoth();
+    q('stock-map-group-turn-left')!.click();
+    await settle();
+    q('stock-map-group-save')!.click();
+    await settle();
+
+    expect(facade.changeDrawings).toHaveBeenCalledWith('c1', 'f1', {
+      draws: [],
+      moves: [
+        expect.objectContaining({ drawingId: 'd1', rotation: 345 }),
+        expect.objectContaining({ drawingId: 'd2', rotation: 345 }),
+      ],
+      erasures: [],
+    });
+  });
+
+  it('puts a moved group back with Échap, then lets it go with a second', async () => {
+    await chooseBoth();
+    boardKey('ArrowDown');
+    await settle();
+    expect(q('stock-map-group-save')).not.toBeNull();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle();
+    expect(q('stock-map-group-save')).toBeNull();
+    expect(q('stock-drawing-rect-R1')?.getAttribute('y')).toBe('4');
+    expect(chosenCodes().sort()).toEqual(['R1', 'Z1']);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settle();
+    expect(chosenCodes()).toEqual([]);
+    expect(facade.changeDrawings).not.toHaveBeenCalled();
+  });
+
+  it('undraws the whole group with Suppr, and draws all of it back with one « Annuler »', async () => {
+    await chooseBoth();
+    boardKey('Delete');
+    await settle();
+
+    expect(facade.changeDrawings).toHaveBeenCalledWith('c1', 'f1', {
+      draws: [],
+      moves: [],
+      erasures: ['d1', 'd2'],
+    });
+    expect(chosenCodes()).toEqual([]);
+
+    undoOf('inventory.plan.group_erased')();
+    await settle();
+    expect(facade.changeDrawings).toHaveBeenLastCalledWith('c1', 'f1', {
+      draws: [
+        {
+          locationId: 'l1',
+          x: '2.500',
+          y: '4.000',
+          width: '3.900',
+          depth: '0.600',
+          rotation: 0,
+          height: '2.100',
+        },
+        expect.objectContaining({ locationId: 'l2', x: '8.000' }),
+      ],
+      moves: [],
+      erasures: [],
+    });
+    expect(successToasts()).toContain('inventory.plan.undone');
+  });
+
+  it('undraws the group from its panel too, never only from the keyboard', async () => {
+    await chooseBoth();
+    q('stock-map-group-erase')!.click();
+    await settle();
+
+    expect(facade.changeDrawings).toHaveBeenCalledWith('c1', 'f1', {
+      draws: [],
+      moves: [],
+      erasures: ['d1', 'd2'],
+    });
+  });
+
+  it('acts on a group only in Aménager: Consulter chooses, and nothing moves', async () => {
+    await consult();
+    await chooseBoth();
+    boardKey('Delete');
+    await settle();
+
+    expect(q('stock-map-group-erase')).toBeNull();
+    expect(q('stock-map-group-turn-right')).toBeNull();
+    expect(facade.changeDrawings).not.toHaveBeenCalled();
   });
 
   /** The choice is the same in Consulter, where row 248's action bar will act on it. */

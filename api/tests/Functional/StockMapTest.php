@@ -491,6 +491,118 @@ final class StockMapTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    /**
+     * A group chosen on the plan is moved, turned and undrawn as one step: one request, all of it or none of it, and
+     * the inverse of that step is a request of the same shape, which is what one « Annuler » sends.
+     */
+    public function testAGroupIsMovedAndUndrawnInOneRequestAndPutBackByAnother(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $ground = $this->floor();
+        $drawings = $this->path('stock-floors', $ground).'/drawings';
+        $this->postJson($drawings, $this->drawing($this->newPlace('rack', 'R1', 'Rayonnage 1')));
+        $rack = $this->stringAt($this->json(), 'id');
+        $this->postJson($drawings, $this->drawing([...$this->newPlace('zone', 'Z1', 'Visserie'), 'x' => '10', 'y' => '8', 'width' => '4', 'depth' => '2']));
+        $zone = $this->stringAt($this->json(), 'id');
+        $zoneLocation = $this->stringAt($this->json(), 'locationId');
+        $changes = $this->path('stock-floors', $ground).'/drawing-changes';
+
+        $this->postJson($changes, [
+            'moves' => [['drawingId' => $rack, ...$this->drawing(['x' => '5', 'y' => '6', 'rotation' => 90])]],
+            'erasures' => [$zone],
+        ]);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        // The answer is the floor as the step left it, so the screen needs no second read to show it.
+        $after = $this->arrayAt($this->json(), 'drawings');
+        self::assertSame(
+            [['R1'], ['5.000'], ['6.000'], [90]],
+            [array_column($after, 'locationCode'), array_column($after, 'x'), array_column($after, 'y'), array_column($after, 'rotation')],
+        );
+        self::assertSame([$rack], array_column($after, 'id'), 'moved, not drawn again');
+        // Undrawn, the zone is still a place.
+        $this->getJson($this->path('stock-locations'));
+        self::assertContains('Z1', array_column($this->jsonList(), 'code'));
+
+        // « Annuler »: the rack back where it stood, the zone drawn again for the same place.
+        $this->postJson($changes, [
+            'draws' => [['locationId' => $zoneLocation, ...$this->drawing(['x' => '10', 'y' => '8', 'width' => '4', 'depth' => '2'])]],
+            'moves' => [['drawingId' => $rack, ...$this->drawing([])]],
+        ]);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $this->getJson($drawings);
+        $now = array_map(
+            static fn (array $one): array => [$one['locationCode'], $one['x'], $one['y'], $one['width'], $one['rotation']],
+            $this->jsonList(),
+        );
+        sort($now);
+        self::assertSame([['R1', '2.500', '4.000', '3.900', 0], ['Z1', '10.000', '8.000', '4.000', 0]], $now);
+    }
+
+    /**
+     * Everything a group step names is resolved before anything is written, so a refusal anywhere leaves the floor as
+     * it was, and says WHICH entry it refuses: a group of twelve answered with a bare "x" leaves a person guessing.
+     */
+    public function testAGroupStepIsRefusedWholeNamingTheEntryItRefuses(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $ground = $this->floor();
+        $drawings = $this->path('stock-floors', $ground).'/drawings';
+        $this->postJson($drawings, $this->drawing($this->newPlace('rack', 'R1', 'Rayonnage 1')));
+        $rack = $this->stringAt($this->json(), 'id');
+        $rackLocation = $this->stringAt($this->json(), 'locationId');
+        $this->postJson($drawings, $this->drawing([...$this->newPlace('rack', 'R2', 'Rayonnage 2'), 'y' => '6']));
+        $other = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Étage 1', 'level' => 1, 'widthMetres' => '24', 'depthMetres' => '15']);
+        $upstairs = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('stock-floors', $upstairs).'/drawings', $this->drawing($this->newPlace('rack', 'R3', 'Rayonnage 3')));
+        $elsewhere = $this->stringAt($this->json(), 'id');
+        $changes = $this->path('stock-floors', $ground).'/drawing-changes';
+
+        foreach ([
+            'moves[1].x' => ['moves' => [$this->moved($rack), $this->moved($other, ['x' => '-1'])]],
+            'moves[1].drawingId' => ['moves' => [$this->moved($rack), $this->moved(Uuid::v7()->toRfc4122())]],
+            'moves[0].drawingId' => ['moves' => [$this->moved($elsewhere)]],
+            'erasures[0]' => ['moves' => [$this->moved($rack)], 'erasures' => [$rack]],
+            'erasures[1]' => ['erasures' => [$other, $elsewhere]],
+            'draws[0].locationId' => ['moves' => [$this->moved($rack)], 'draws' => [['locationId' => Uuid::v7()->toRfc4122(), ...$this->drawing([])]]],
+            'draws[1].locationId' => ['draws' => [['locationId' => $rackLocation, ...$this->drawing([])], ['locationId' => $rackLocation, ...$this->drawing([])]]],
+            'moves' => ['moves' => ['first' => $this->moved($rack)]],
+            'moves[0].y' => ['moves' => [['drawingId' => $rack, 'x' => '7']]],
+        ] as $field => $body) {
+            $this->postJson($changes, $body);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertStringContainsString($field.':', (string) $this->client->getResponse()->getContent(), $field);
+        }
+
+        // Nothing of any of them reached the floor.
+        $this->getJson($drawings);
+        $now = array_map(static fn (array $one): array => [$one['locationCode'], $one['x'], $one['y']], $this->jsonList());
+        sort($now);
+        self::assertSame([['R1', '2.500', '4.000'], ['R2', '2.500', '6.000']], $now);
+
+        // And it is written by whoever may arrange stock, and only on a floor of this company.
+        $this->postJson('/api/companies/'.$this->company->getId()->toRfc4122().'/stock-floors/'.Uuid::v7()->toRfc4122().'/drawing-changes', ['moves' => [$this->moved($rack)]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $mineNow = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($mineNow);
+        $this->createUser('reader@twes.local', 'password-1234', $mineNow, ['stock.read'], 'lecteur');
+        $this->login('reader@twes.local', 'password-1234');
+        $this->postJson($changes, ['moves' => [$this->moved($rack)]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * A rectangle of a group moved to x = 7, with whatever else the case changes.
+     *
+     * @param array<string, mixed> $at
+     *
+     * @return array<string, mixed>
+     */
+    private function moved(string $id, array $at = []): array
+    {
+        return ['drawingId' => $id, ...$this->drawing(['x' => '7', ...$at])];
+    }
+
     /** A floor to build on, which every structure case needs and none of them is about. */
     private function floor(): string
     {

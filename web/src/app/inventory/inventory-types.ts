@@ -461,6 +461,22 @@ export type StockDrawingInput = Pick<
   newLocationName?: string;
 };
 
+/** Where a rectangle stands, without what it is drawn for. */
+export type StockDrawingRect = Pick<
+  StockDrawingRow,
+  'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height'
+>;
+
+/**
+ * A group's step on the plan, all of it or none of it: places drawn at rectangles, rectangles moved or turned, and
+ * rectangles undrawn. Its inverse has the same shape, which is what one « Annuler » sends.
+ */
+export interface StockDrawingChanges {
+  draws: readonly (StockDrawingRect & { locationId: string })[];
+  moves: readonly (StockDrawingRect & { drawingId: string })[];
+  erasures: readonly string[];
+}
+
 /**
  * The structure layer's four tools, which are the four things the building is drawn out of. The order is the
  * approved canvas's own: mur, porte, poteau, quai.

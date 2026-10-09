@@ -8,6 +8,7 @@ import type {
   CostBasis,
   InventoryError,
   LocationContents,
+  StockDrawingChanges,
   StockDrawingInput,
   StockDrawingRow,
   StockFloorInput,
@@ -503,6 +504,18 @@ export class InventoryFacade {
   async eraseDrawing(companyId: string, floorId: string, drawingId: string): Promise<boolean> {
     return this.write(
       () => this.api.eraseDrawing(companyId, drawingId),
+      () => this.afterDrawing(companyId, floorId),
+    );
+  }
+
+  /** A group's step: moved, turned or undrawn together, all or nothing, then the floor read again. */
+  async changeDrawings(
+    companyId: string,
+    floorId: string,
+    changes: StockDrawingChanges,
+  ): Promise<boolean> {
+    return this.write(
+      () => this.api.changeDrawings(companyId, floorId, changes),
       () => this.afterDrawing(companyId, floorId),
     );
   }

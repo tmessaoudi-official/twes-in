@@ -497,6 +497,31 @@ test.describe('the drawn stock map', () => {
       await expect(chosen).toHaveCount(4);
       await expect(page.getByTestId('stock-map-chosen')).toContainText('4 rectangles choisis');
 
+      // Acted on together (slice 7c): undrawn in one request, drawn back for the same places by one « Annuler ».
+      const rects = page.locator('[data-testid^="stock-drawing-rect-"]');
+      await page.getByTestId('stock-map-group-erase').click();
+      await expect(toast(page)).toContainText('4 rectangles effacés');
+      await expect(rects).toHaveCount(0);
+      await toast(page).getByRole('button', { name: 'Annuler' }).click();
+      await expect(rects).toHaveCount(4);
+      const backAgain = await rects.evaluateAll((nodes) =>
+        nodes.map((node) => ({ x: node.getAttribute('x'), y: node.getAttribute('y') })),
+      );
+      for (const copy of previewed) expect(backAgain).toContainEqual(copy);
+      await expect(toast(page)).toBeHidden({ timeout: 15_000 });
+
+      // And moved together, by one step for all, saved in one request.
+      await sheet.hover({ position: { x: 3, y: 3 } });
+      await page.mouse.down();
+      await page.mouse.move(area.x + area.width - 3, area.y + area.height - 3, { steps: 12 });
+      await page.mouse.up();
+      await expect(chosen).toHaveCount(4);
+      await page.getByTestId('stock-map-board').focus();
+      await page.keyboard.press('ArrowRight');
+      await page.getByTestId('stock-map-group-save').click();
+      await expect(toast(page)).toContainText('4 rectangles déplacés');
+      await expect(page.getByTestId(`stock-drawing-rect-${stem}2`)).toHaveAttribute('x', '2.75');
+
       await page.keyboard.press('Escape');
       await expect(chosen).toHaveCount(0);
       await expect(page.getByTestId('stock-map-chosen')).toHaveCount(0);

@@ -9,6 +9,8 @@ import type {
   ApiCompaniesCompanyIdstockMovementsGetCollectionResponse,
   RepeatStockDrawingRepeatStockDrawingReadStockDrawingReadValidationRepeatStockDrawingWrite as RepeatStockDrawingRepeatStockDrawingReadStockDrawingRead,
   RepeatStockDrawingRepeatStockDrawingWriteValidationRepeatStockDrawingWrite as RepeatStockDrawingRepeatStockDrawingWrite,
+  StockDrawingChangesStockDrawingChangesReadStockDrawingReadValidationStockDrawingChangesWrite as StockDrawingChangesStockDrawingChangesReadStockDrawingRead,
+  StockDrawingChangesStockDrawingChangesWriteValidationStockDrawingChangesWrite as StockDrawingChangesStockDrawingChangesWrite,
   StockDrawingStockDrawingRead,
   StockHoldingStockHoldingRead,
   StockDrawingStockDrawingWriteValidationStockDrawingWrite as StockDrawingStockDrawingWrite,
@@ -44,6 +46,7 @@ import {
   type InventoryError,
   type LocationHomeRow,
   type Whereabouts,
+  type StockDrawingChanges,
   type StockDrawingInput,
   type StockDrawingRow,
   type StructureKind,
@@ -549,6 +552,34 @@ export class InventoryApi {
           await firstValueFrom(
             this.http.post<RepeatStockDrawingRepeatStockDrawingReadStockDrawingRead>(
               `${path(companyId, 'stock-drawings', drawingId)}/repeat`,
+              body,
+            ),
+          )
+        ).drawings?.map(toDrawing) ?? [],
+    );
+  }
+
+  /**
+   * A group's step on one floor, in one request: all of it or none of it. It answers the floor as the step left it; a
+   * refusal answers 422 naming the entry, `moves[2].x`.
+   */
+  async changeDrawings(
+    companyId: string,
+    floorId: string,
+    changes: StockDrawingChanges,
+  ): Promise<StockDrawingRow[]> {
+    const body: StockDrawingChangesStockDrawingChangesWrite = {
+      draws: [...changes.draws],
+      moves: [...changes.moves],
+      erasures: [...changes.erasures],
+    };
+
+    return this.guard(
+      async () =>
+        (
+          await firstValueFrom(
+            this.http.post<StockDrawingChangesStockDrawingChangesReadStockDrawingRead>(
+              `${path(companyId, 'stock-floors', floorId)}/drawing-changes`,
               body,
             ),
           )
