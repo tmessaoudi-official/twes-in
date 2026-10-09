@@ -48,6 +48,8 @@ class StaticLoader implements TranslateLoader {
         plan: {
           plan_of: 'Plan de {{floor}} : {{count}} rectangle(s)',
           press_hint: 'Appuyez sur un emplacement pour voir ce qu’il contient.',
+          pose_rule:
+            'Choisissez une forme : elle se pose au centre du plan, sélectionnée. Glissez-la ou tapez ses mesures, puis Enregistrer.',
           legend_items: { door: 'Porte', dock: 'Quai' },
           nothing_drawn: 'Rien n’est encore dessiné sur cet étage.',
           no_floor: 'Aucun étage n’est encore dessiné.',
@@ -425,8 +427,30 @@ describe('StockMapPage', () => {
     expect(q('stock-map-first-floor')).toBeNull();
   });
 
+  /**
+   * One way in (the stock map brief, § 5.3): the company's shapes, a free rectangle, then the building's tools, with
+   * the rule said once above them. The form opens whichever is picked, so typing the measures stays one press away.
+   */
+  it('offers one palette to pose from, the free rectangle among the shapes, and no separate draw button', async () => {
+    expect(q('stock-drawing-add')).toBeNull();
+    expect(q('stock-map-pose-rule')?.textContent).toContain('Choisissez une forme');
+    const palette = q('stock-map-palette')!;
+    expect(palette.querySelector('[data-testid="stock-shape-rack"]')).not.toBeNull();
+    expect(palette.querySelector('[data-testid="stock-map-trace"]')).not.toBeNull();
+
+    q('stock-map-trace')!.click();
+    await settle();
+    expect(q('stock-map-trace')?.getAttribute('aria-pressed')).toBe('true');
+    q('stock-map-trace-type')!.click();
+    await settle();
+    expect(q('stock-drawing-form')).not.toBeNull();
+    expect(facade.draw).not.toHaveBeenCalled();
+  });
+
   it('draws a location on the floor being looked at, snapped to the grid', async () => {
-    q('stock-drawing-add')!.click();
+    q('stock-map-trace')!.click();
+    await settle();
+    q('stock-map-trace-type')!.click();
     await settle();
     drawingGroup().get('locationId')!.setValue('l2');
     type('field-x', '2.6');
@@ -518,7 +542,7 @@ describe('StockMapPage', () => {
     fixture = TestBed.createComponent(StockMapPage);
     await settle();
 
-    expect(q('stock-drawing-add')).toBeNull();
+    expect(q('stock-map-trace')).toBeNull();
     expect(q('stock-floor-add')).toBeNull();
     expect(q('stock-map-svg')).not.toBeNull();
   });
@@ -1346,7 +1370,9 @@ describe('StockMapPage', () => {
   });
 
   it('opens a rectangle of stock in the same place, and says so on the board', async () => {
-    (q('stock-drawing-add') as HTMLElement).click();
+    (q('stock-map-trace') as HTMLElement).click();
+    await settle();
+    (q('stock-map-trace-type') as HTMLElement).click();
     await settle();
 
     expect(

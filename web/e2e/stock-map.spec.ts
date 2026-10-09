@@ -185,7 +185,8 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('stock-drawing-cancel').click();
 
       // The rack, drawn by the form rather than by dragging: the form is the way in, on every window.
-      await page.getByTestId('stock-drawing-add').click();
+      await page.getByTestId('stock-map-trace').click();
+      await page.getByTestId('stock-map-trace-type').click();
       await page.getByTestId('field-locationId').click();
       await page.getByRole('option', { name: new RegExp(code) }).click();
       await page.getByTestId('field-x').fill('2,6');
@@ -341,7 +342,8 @@ test.describe('the drawn stock map', () => {
       await expect(toast(page)).toContainText('Étage enregistré');
       await page.getByRole('button', { name: floorButton(floorName) }).click();
 
-      await page.getByTestId('stock-drawing-add').click();
+      await page.getByTestId('stock-map-trace').click();
+      await page.getByTestId('stock-map-trace-type').click();
       await page.getByTestId('field-locationId').click();
       await page.getByRole('option', { name: new RegExp(code) }).click();
       await page.getByTestId('field-x').fill('2,5');
@@ -528,7 +530,8 @@ test.describe('the drawn stock map', () => {
       await page.getByRole('button', { name: floorButton(floorName) }).click();
 
       // One rack, and one wall to prove the building keeps its name under every choice.
-      await page.getByTestId('stock-drawing-add').click();
+      await page.getByTestId('stock-map-trace').click();
+      await page.getByTestId('stock-map-trace-type').click();
       await page.getByTestId('field-locationId').click();
       await page.getByRole('option', { name: new RegExp(code) }).click();
       await page.getByTestId('field-x').fill('1');
@@ -614,7 +617,8 @@ test.describe('the drawn stock map', () => {
       await expect(toast(page)).toContainText('Étage enregistré');
       await page.getByRole('button', { name: floorButton(floorName) }).click();
 
-      await page.getByTestId('stock-drawing-add').click();
+      await page.getByTestId('stock-map-trace').click();
+      await page.getByTestId('stock-map-trace-type').click();
       await page.getByTestId('field-locationId').click();
       await page.getByRole('option', { name: new RegExp(code) }).click();
       await page.getByTestId('field-x').fill('2');
@@ -709,7 +713,8 @@ test.describe('the drawn stock map', () => {
       await expect(toast(page)).toContainText('Étage enregistré');
       await page.getByRole('button', { name: floorButton(floorName) }).click();
 
-      await page.getByTestId('stock-drawing-add').click();
+      await page.getByTestId('stock-map-trace').click();
+      await page.getByTestId('stock-map-trace-type').click();
       await page.getByTestId('field-locationId').click();
       await page.getByRole('option', { name: new RegExp(code) }).click();
       await page.getByTestId('field-x').fill('2');

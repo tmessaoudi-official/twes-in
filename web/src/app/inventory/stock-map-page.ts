@@ -1116,6 +1116,12 @@ export class StockMapPage implements OnInit {
     this.tracing.update((armed) => !armed);
   }
 
+  /** The free rectangle by its measures rather than traced: the form, empty, with no gesture needed. */
+  protected typeMeasures(): void {
+    this.tracing.set(false);
+    this.draw('new');
+  }
+
   // ——— repeating a rectangle down an aisle ———
 
   /**

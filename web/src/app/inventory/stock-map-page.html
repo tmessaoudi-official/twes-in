@@ -463,58 +463,62 @@
           @if (arranging()) {
             <div class="flex flex-col gap-2">
               <!--
-                Ready-made shapes, at the sizes this company set for them. Each is a BUTTON and not something only a
-                pointer can take hold of: activating one poses the rectangle at the middle of the plan, so the palette
-                is as usable from a keyboard as from a hand.
+                One way in: the company's ready-made shapes, a free rectangle, then the building's tools, under one rule
+                said once. Each is a BUTTON and not something only a pointer can take hold of: a shape is posed at the
+                middle of the plan with its form open, so the palette is as usable from a keyboard as from a hand.
               -->
-              @if (palette().length > 0) {
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
-                  {{ 'inventory.plan.shapes' | translate }}
-                </h2>
-                <div class="flex flex-wrap gap-2">
-                  @for (shape of palette(); track shape.shape) {
-                    <button
-                      type="button"
-                      class="flex flex-col items-start rounded-lg border border-outline-variant px-3 py-2 text-start"
-                      (click)="pose(shape)"
-                      [attr.data-testid]="'stock-shape-' + shape.shape"
-                    >
-                      <span class="font-medium">
-                        {{ 'inventory.plan.shape_names.' + shape.shape | translate }}
-                      </span>
-                      <span class="tabular-nums text-sm text-on-surface-variant">
-                        {{ shape.width | measure }} × {{ shape.depth | measure }} m
-                      </span>
-                    </button>
-                  }
-                </div>
-              }
-              <button
-                mat-stroked-button
-                type="button"
-                (click)="draw('new')"
-                data-testid="stock-drawing-add"
-              >
-                {{ 'inventory.plan.draw' | translate }}
-              </button>
-              <!--
-                The tool is armed before the floor becomes a drawing surface, and gives itself back after one box: an
-                armed sheet holds `touch-action: none` across the board, which would otherwise trap a finger trying to
-                scroll past the plan.
-              -->
-              <button
-                mat-stroked-button
-                type="button"
-                [class.bg-secondary-container]="tracing()"
-                [attr.aria-pressed]="tracing()"
-                (click)="armTrace()"
-                data-testid="stock-map-trace"
-              >
-                {{ 'inventory.plan.trace' | translate }}
-              </button>
+              <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+                {{ 'inventory.plan.pose' | translate }}
+              </h2>
+              <p class="text-sm text-on-surface-variant" data-testid="stock-map-pose-rule">
+                {{ 'inventory.plan.pose_rule' | translate }}
+              </p>
+              <div class="flex flex-wrap gap-2" data-testid="stock-map-palette">
+                @for (shape of palette(); track shape.shape) {
+                  <button
+                    type="button"
+                    class="flex flex-col items-start rounded-lg border border-outline-variant px-3 py-2 text-start"
+                    (click)="pose(shape)"
+                    [attr.data-testid]="'stock-shape-' + shape.shape"
+                  >
+                    <span class="font-medium">
+                      {{ 'inventory.plan.shape_names.' + shape.shape | translate }}
+                    </span>
+                    <span class="tabular-nums text-sm text-on-surface-variant">
+                      {{ shape.width | measure }} × {{ shape.depth | measure }} m
+                    </span>
+                  </button>
+                }
+                <!--
+                  The free rectangle arms the trace before the floor becomes a drawing surface, and gives it back after
+                  one box: an armed sheet holds `touch-action: none` across the board, which would otherwise trap a
+                  finger trying to scroll past the plan.
+                -->
+                <button
+                  type="button"
+                  class="flex flex-col items-start rounded-lg border border-outline-variant px-3 py-2 text-start"
+                  [class.bg-secondary-container]="tracing()"
+                  [attr.aria-pressed]="tracing()"
+                  (click)="armTrace()"
+                  data-testid="stock-map-trace"
+                >
+                  <span class="font-medium">{{ 'inventory.plan.free_rect' | translate }}</span>
+                  <span class="text-sm text-on-surface-variant">{{
+                    'inventory.plan.free_rect_note' | translate
+                  }}</span>
+                </button>
+              </div>
               @if (tracing()) {
                 <p class="text-sm text-on-surface-variant" data-testid="stock-map-trace-hint">
                   {{ 'inventory.plan.trace_hint' | translate }}
+                  <button
+                    type="button"
+                    class="text-primary underline"
+                    (click)="typeMeasures()"
+                    data-testid="stock-map-trace-type"
+                  >
+                    {{ 'inventory.plan.trace_type' | translate }}
+                  </button>
                 </p>
               }
 
