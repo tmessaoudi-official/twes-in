@@ -54,9 +54,21 @@ describe('ImportApi', () => {
     expect(body.get('mode')).toBe('upsert');
     expect(body.get('dryRun')).toBe('1');
 
-    request.flush({ committed: false, created: [2], updated: [], rejected: [] });
+    const note = {
+      line: 2,
+      column: 'reference',
+      code: 'reference_given',
+      params: { reference: 'ART-1' },
+    };
+    request.flush({ committed: false, created: [2], updated: [], rejected: [], notes: [note] });
     const report = await pending;
-    expect(report).toEqual({ committed: false, created: [2], updated: [], rejected: [] });
+    expect(report).toEqual({
+      committed: false,
+      created: [2],
+      updated: [],
+      rejected: [],
+      notes: [note],
+    });
   });
 
   it('reads a 422 carrying a report as the answer, not as an error', async () => {

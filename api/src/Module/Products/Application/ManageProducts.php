@@ -318,10 +318,10 @@ final readonly class ManageProducts
             return;
         }
         if ($unitChanges) {
-            throw new InvalidProduct('unitId', \sprintf('Stock of %s was moved in %s, so it keeps that unit.', $product->getReference(), $product->getUnit()->getCode()));
+            throw new InvalidProduct('unitId', \sprintf('Stock of %s was moved in %s, so it keeps that unit.', $product->getReference(), $product->getUnit()->getCode()), 'unit_kept_by_stock', ['unit' => $product->getUnit()->getCode()]);
         }
 
-        throw new InvalidProduct('kind', \sprintf('Stock of %s was moved, so it stays goods.', $product->getReference()));
+        throw new InvalidProduct('kind', \sprintf('Stock of %s was moved, so it stays goods.', $product->getReference()), 'kind_kept_by_stock');
     }
 
     /** What the company, else the category the product is filed in, says a product not saying is followed by. */
@@ -395,7 +395,7 @@ final readonly class ManageProducts
         try {
             return CustomFieldValues::checked($rules, $input->customFields, $current?->getCustomFields() ?? []);
         } catch (InvalidCustomFieldValue $refused) {
-            throw new InvalidProduct($refused->field, $refused->getMessage());
+            throw new InvalidProduct($refused->field, $refused->getMessage(), $refused->reason, $refused->params);
         }
     }
 

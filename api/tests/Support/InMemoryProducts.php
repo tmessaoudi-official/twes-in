@@ -106,6 +106,17 @@ final class InMemoryProducts implements ProductRepository
         return null;
     }
 
+    public function ofNameInCompany(string $name, Uuid $companyId): ?Product
+    {
+        foreach ($this->ofCompany($companyId) as $product) {
+            if (mb_strtolower($product->getDetails()->name) === mb_strtolower($name)) {
+                return $product;
+            }
+        }
+
+        return null;
+    }
+
     public function ofReferenceInCompany(string $reference, Uuid $companyId): ?Product
     {
         foreach ($this->ofCompany($companyId) as $product) {

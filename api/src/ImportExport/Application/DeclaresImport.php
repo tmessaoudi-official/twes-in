@@ -49,7 +49,9 @@ interface DeclaresImport
      * Creates or, in upsert mode, updates what one row describes, through the same use case a person's form uses.
      * Runs inside the import's unit of work, which RunImport rolls back for a preview or a file with a rejected row.
      *
+     * What the person should know about a row it imports, it notes in $notes.
+     *
      * @throws RowRejected naming the column at fault, for anything the row asks that the subject's rules refuse
      */
-    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId): RowImported;
+    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes): RowImported;
 }

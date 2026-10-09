@@ -73,7 +73,7 @@ final class OpeningStockImportTest extends ApiTestCase
         $this->import($this->twoLines(), dryRun: true);
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'rejected' => []], $this->json());
+        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => []], $this->json());
         self::assertSame(0, $this->movements());
     }
 
@@ -84,7 +84,7 @@ final class OpeningStockImportTest extends ApiTestCase
         $this->import($this->twoLines());
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'rejected' => []], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => []], $this->json());
         self::assertSame('120.000', $this->onHand('VIS-6X40', '000'));
         self::assertSame('7.500', $this->onHand('FIL-2', 'Z1'), 'a decimal comma is read as a point, and a kilo counts with decimals');
         self::assertSame(2, $this->movements());
@@ -162,7 +162,7 @@ final class OpeningStockImportTest extends ApiTestCase
         $this->import($this->twoLines(), mode: 'upsert');
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2, 3], 'rejected' => []], $this->json());
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2, 3], 'rejected' => [], 'notes' => []], $this->json());
         self::assertSame(['120.000', '7.500'], [$this->onHand('VIS-6X40', '000'), $this->onHand('FIL-2', 'Z1')], 'a count says what is there, so the same file twice leaves the same stock');
     }
 

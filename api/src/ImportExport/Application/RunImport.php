@@ -48,7 +48,7 @@ final readonly class RunImport
                     throw new ImportRolledBack($report);
                 }
 
-                return new ImportReport(true, $report->created, $report->updated, []);
+                return new ImportReport(true, $report->created, $report->updated, [], $report->notes);
             });
         } catch (ImportRolledBack $rolledBack) {
             return $rolledBack->report;
@@ -61,7 +61,7 @@ final readonly class RunImport
     private function apply(DeclaresImport $declaration, Company $company, array $records, ImportMode $mode, ?Uuid $actorUserId): ImportReport
     {
         $identity = $declaration->identityColumns();
-        $created = $updated = $rejected = [];
+        $created = $updated = $rejected = $noted = [];
         /** @var array<string, int> $firstLineOf the first line naming each identity */
         $firstLineOf = [];
         foreach ($records as $record) {
@@ -74,17 +74,21 @@ final readonly class RunImport
                 $firstLineOf[$key] = $record->line;
             }
 
+            $notes = new RowNotes();
             try {
-                match ($declaration->import($company, $record, $mode, $actorUserId)) {
+                match ($declaration->import($company, $record, $mode, $actorUserId, $notes)) {
                     RowImported::Created => $created[] = $record->line,
                     RowImported::Updated => $updated[] = $record->line,
                 };
+                foreach ($notes->all() as $note) {
+                    $noted[] = ['line' => $record->line, ...$note];
+                }
             } catch (RowRejected $refused) {
                 $rejected[] = ['line' => $record->line, 'column' => $refused->column, 'code' => $refused->reason, 'params' => $refused->params, 'message' => $refused->getMessage()];
             }
         }
 
-        return new ImportReport(false, $created, $updated, $rejected);
+        return new ImportReport(false, $created, $updated, $rejected, $noted);
     }
 
     /**

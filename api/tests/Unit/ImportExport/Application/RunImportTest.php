@@ -16,6 +16,7 @@ use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportReport;
 use App\ImportExport\Application\ImportSubject;
 use App\ImportExport\Application\RowImported;
+use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
 use App\ImportExport\Application\RunImport;
 use App\ImportExport\Application\UnreadableImport;
@@ -181,7 +182,7 @@ final class RecordingSubject implements DeclaresImport
         return new ImportSubject('things', [new ImportColumn('number', 'n', true), new ImportColumn('name', 'n', true), new ImportColumn('email', 'e')]);
     }
 
-    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId): RowImported
+    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes): RowImported
     {
         $this->seen[$record->line] = $record->values;
         $this->records[$record->line] = $record;

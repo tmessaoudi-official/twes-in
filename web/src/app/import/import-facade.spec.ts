@@ -16,6 +16,7 @@ describe('ImportFacade', () => {
     created: [],
     updated: [],
     rejected,
+    notes: [],
   });
 
   beforeEach(() => {
@@ -54,11 +55,23 @@ describe('ImportFacade', () => {
   });
 
   it('says what was stored, and only when something was', async () => {
-    api.run.mockResolvedValueOnce({ committed: false, created: [2], updated: [], rejected: [] });
+    api.run.mockResolvedValueOnce({
+      committed: false,
+      created: [2],
+      updated: [],
+      rejected: [],
+      notes: [],
+    });
     await facade.run('c1', 'customers', new File(['x'], 'f.csv'), 'create', true);
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([]);
 
-    api.run.mockResolvedValueOnce({ committed: true, created: [2], updated: [3], rejected: [] });
+    api.run.mockResolvedValueOnce({
+      committed: true,
+      created: [2],
+      updated: [3],
+      rejected: [],
+      notes: [],
+    });
     await facade.run('c1', 'customers', new File(['x'], 'f.csv'), 'create', false);
 
     expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([

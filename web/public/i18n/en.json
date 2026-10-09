@@ -3356,7 +3356,8 @@
       "home_location": "Home location",
       "home_location_note": "The code of a stock location: it is what a receipt will propose.",
       "reorder_point": "Reorder point",
-      "reorder_point_note": "The quantity at or under which the product is to be reordered, in its home location's establishment (or the only one)."
+      "reorder_point_note": "The quantity at or under which the product is to be reordered, in its home location's establishment (or the only one).",
+      "reference_optional_note": "Optional. Left empty, the product is given the next one of the company’s format, and a second import finds it again by its barcode."
     },
     "vendors": {
       "number": "Vendor number",
@@ -3476,9 +3477,21 @@
       "invalid_payment_terms": "Payment terms refused: a whole number of days.",
       "identifier_required": "This registration number is required under this regime.",
       "identifier_shape": "This registration number is not of the expected shape.",
-      "identifier_checksum": "This registration number is misshapen: its check digit does not come out."
+      "identifier_checksum": "This registration number is misshapen: its check digit does not come out.",
+      "barcode_taken": "This barcode is already “{{reference}}”’s: a code names one product only.",
+      "unit_kept_by_stock": "Stock of this product already moved in “{{unit}}”: it keeps that unit.",
+      "kind_kept_by_stock": "Stock of this product already moved: it stays goods.",
+      "invalid_text": "Text refused: {{max}} characters at most.",
+      "not_a_date": "Expected: a date written YYYY-MM-DD.",
+      "not_a_boolean": "Expected: yes or no.",
+      "unknown_custom_field": "No custom field “{{key}}” is declared."
     },
-    "action": "Import"
+    "action": "Import",
+    "notes_title": "Good to know",
+    "notes": {
+      "reference_given": "Reference given: {{reference}}.",
+      "name_shared": "A product already has this name ({{reference}}): with neither a reference nor a barcode, this row makes another one."
+    }
   },
   "scan": {
     "count": "Next scan ×{{count}}",

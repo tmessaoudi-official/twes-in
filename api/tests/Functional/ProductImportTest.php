@@ -61,7 +61,7 @@ final class ProductImportTest extends ApiTestCase
         $this->import($this->twoProducts(), dryRun: true);
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'rejected' => []], $this->json());
+        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => []], $this->json());
         self::assertSame(0, $this->products());
     }
 
@@ -72,7 +72,7 @@ final class ProductImportTest extends ApiTestCase
         $this->import($this->twoProducts());
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'rejected' => []], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => []], $this->json());
         $screw = $this->product('VIS-6X40');
         self::assertSame('Vis 6x40 zinguée', $screw->getDetails()->name);
         self::assertSame('goods', $screw->getDetails()->kind->value);
@@ -128,7 +128,6 @@ final class ProductImportTest extends ApiTestCase
             $this->arrayAt($this->json(), 'rejected'),
         );
         self::assertSame([
-            [2, 'reference', 'value_required', []],
             [3, 'kind', 'not_one_of', ['choices' => 'goods, service']],
             [4, 'unit_code', 'unknown_unit', ['code' => 'XXX']],
             [5, 'category', 'unknown_category', ['name' => 'Inconnue']],
@@ -136,6 +135,91 @@ final class ProductImportTest extends ApiTestCase
             [7, 'active', 'not_yes_or_no', []],
             [8, 'reference', 'duplicate_in_file', ['line' => 3]],
         ], $rejected);
+    }
+
+    /** A row without a reference is given the next of the company's format, and told so (docs/SPEC.md § 7, 2026-09-17 (3)). */
+    public function testARowWithoutAReferenceIsGivenTheNextOneAndToldWhich(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $file = "name,unit_code,unit_price_net,barcode\nCheville 8,H87,0.1,6191234567880\nCheville 10,H87,0.12,\n";
+
+        $this->import($file, dryRun: true);
+        self::assertResponseIsSuccessful();
+        $given = [
+            ['line' => 2, 'column' => 'reference', 'code' => 'reference_given', 'params' => ['reference' => 'ART-00001']],
+            ['line' => 3, 'column' => 'reference', 'code' => 'reference_given', 'params' => ['reference' => 'ART-00002']],
+        ];
+        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => $given], $this->json());
+        self::assertSame(0, $this->products());
+
+        $this->import($file);
+        self::assertSame(['committed' => true, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => $given], $this->json());
+        self::assertSame('Cheville 8', $this->product('ART-00001')->getDetails()->name);
+        self::assertSame([['unit', '6191234567880', 1]], self::codes($this->product('ART-00001')));
+        self::assertSame('Cheville 10', $this->product('ART-00002')->getDetails()->name);
+    }
+
+    /** Without a reference, a row is found again by the unit code written in it, and only by that. */
+    public function testARowWithoutAReferenceIsFoundAgainByItsUnitCode(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->import("name,unit_code,unit_price_net,barcode\nCheville 8,H87,0.1,6191234567880\n");
+        self::assertResponseIsSuccessful();
+        $again = "name,unit_price_net,barcode\nCheville 8 mm,0.15,6191234567880\n";
+
+        $this->import($again, dryRun: true);
+        self::assertSame([[2, 'barcode', 'already_exists', ['reference' => 'ART-00001']]], $this->rejections());
+
+        $this->import($again, mode: 'upsert');
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => [], 'notes' => []], $this->json());
+        $this->em()->clear();
+        $updated = $this->product('ART-00001');
+        self::assertSame(['Cheville 8 mm', '0.1500'], [$updated->getDetails()->name, $updated->getDetails()->unitPriceNet]);
+        self::assertSame(1, $this->products(), 'found again, not made twice');
+    }
+
+    /** A row with neither a reference nor a code cannot be found again, so a name already held is pointed out. */
+    public function testARowWithNeitherReferenceNorCodeWhoseNameIsHeldIsPointedOut(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $this->import($this->twoProducts());
+        self::assertResponseIsSuccessful();
+
+        $this->import("name,unit_code,unit_price_net\nvis 6X40 zinguée,H87,0.5\nÉcrou M6,H87,0.2\n", mode: 'upsert', dryRun: true);
+
+        self::assertSame(['committed' => false, 'created' => [2, 3], 'updated' => [], 'rejected' => [], 'notes' => [
+            ['line' => 2, 'column' => 'name', 'code' => 'name_shared', 'params' => ['reference' => 'VIS-6X40']],
+            ['line' => 2, 'column' => 'reference', 'code' => 'reference_given', 'params' => ['reference' => 'ART-00001']],
+            ['line' => 3, 'column' => 'reference', 'code' => 'reference_given', 'params' => ['reference' => 'ART-00002']],
+        ]], $this->json());
+    }
+
+    /**
+     * A refusal says its own reason and names the cell at fault, rather than a reason guessed from the field it was
+     * about: a code another product holds is that product's, not a row to re-run in the other mode.
+     */
+    public function testARefusalCarriesItsOwnReasonAndNamesTheCellAtFault(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'product.cost.read']);
+        $this->import($this->twoProducts());
+        self::assertResponseIsSuccessful();
+        $long = str_repeat('a', 2001);
+
+        $this->import("reference,name,unit_code,unit_price_net,barcode,custom.shelf\nART-7,Clou,H87,0.1,6191234567897,\nART-8,Clou 2,H87,0.1,,$long\n", dryRun: true);
+
+        self::assertSame([
+            [2, 'barcode', 'barcode_taken', ['reference' => 'VIS-6X40']],
+            [3, 'custom.shelf', 'invalid_text', ['max' => 2000]],
+        ], $this->rejections());
+    }
+
+    /** @return list<array{mixed, mixed, mixed, mixed}> */
+    private function rejections(): array
+    {
+        return array_values(array_map(
+            static fn (mixed $row): array => \is_array($row) ? [$row['line'] ?? null, $row['column'] ?? null, $row['code'] ?? null, $row['params'] ?? null] : [null, null, null, null],
+            $this->arrayAt($this->json(), 'rejected'),
+        ));
     }
 
     public function testARowWithoutAUnitIsRejectedBecauseAProductIsSoldInOne(): void
@@ -165,7 +249,7 @@ final class ProductImportTest extends ApiTestCase
         $this->import($second, mode: 'upsert');
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => []], $this->json());
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => [], 'notes' => []], $this->json());
         $this->em()->clear();
         $updated = $this->product('VIS-6X40');
         self::assertSame('Vis 6x40 inox', $updated->getDetails()->name);
@@ -208,7 +292,7 @@ final class ProductImportTest extends ApiTestCase
         $this->import(self::HEADER.",home_location\nVIS-6X40,Vis 6x40 zinguée,goods,H87,,1.000,,,,,,Z1\n");
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'rejected' => []], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'rejected' => [], 'notes' => []], $this->json());
         self::assertSame(1, $this->numberOf(
             'SELECT COUNT(*) FROM product_home_location h JOIN product p ON p.id = h.product_id'
             .' JOIN stock_location l ON l.id = h.location_id WHERE p.reference = ? AND l.code = ?',
@@ -235,7 +319,7 @@ final class ProductImportTest extends ApiTestCase
         );
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2, 3, 4], 'updated' => [], 'rejected' => []], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2, 3, 4], 'updated' => [], 'rejected' => [], 'notes' => []], $this->json());
         self::assertSame(3, $this->numberOf(
             'SELECT COUNT(*) FROM product_home_location h JOIN stock_location l ON l.id = h.location_id'
             .' WHERE l.code = ?',
@@ -254,7 +338,7 @@ final class ProductImportTest extends ApiTestCase
         $this->import(self::HEADER.",reorder_point\nVIS-6X40,Vis 6x40 zinguée,goods,H87,,1.000,,,,,,12\n");
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'rejected' => []], $this->json());
+        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'rejected' => [], 'notes' => []], $this->json());
         self::assertSame(['12.000'], $this->pointsOf('VIS-6X40'), 'the company has one establishment, so the row needs no home to say which');
 
         $company = $this->em()->find(Company::class, $this->company->getId());
@@ -269,7 +353,7 @@ final class ProductImportTest extends ApiTestCase
 
         $this->import("reference,name,home_location,reorder_point\nVIS-6X40,Vis 6x40 zinguée,Z1,5\n", mode: 'upsert');
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => []], $this->json());
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => [], 'notes' => []], $this->json());
         self::assertSame(['5.000'], $this->pointsOf('VIS-6X40'), 'the home names the establishment');
 
         $this->import("reference,name,home_location,reorder_point\nVIS-6X40,Vis 6x40 zinguée,Z1,-1\n", mode: 'upsert');
@@ -305,7 +389,7 @@ final class ProductImportTest extends ApiTestCase
         $this->import("reference,name,home_location\nVIS-6X40,Vis 6x40 inox,\n", mode: 'upsert');
 
         self::assertResponseIsSuccessful();
-        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => []], $this->json());
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => [], 'notes' => []], $this->json());
         self::assertSame(1, $this->numberOf(
             'SELECT COUNT(*) FROM product_home_location h JOIN stock_location l ON l.id = h.location_id'
             .' JOIN product p ON p.id = h.product_id WHERE p.reference = ? AND l.code = ?',

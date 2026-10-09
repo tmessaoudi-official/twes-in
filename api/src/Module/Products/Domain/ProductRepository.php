@@ -58,6 +58,9 @@ interface ProductRepository
 
     public function ofReferenceInCompany(string $reference, Uuid $companyId): ?Product;
 
+    /** The first product of the company, by reference, whose name is this one whatever its case; null when none. */
+    public function ofNameInCompany(string $name, Uuid $companyId): ?Product;
+
     /**
      * The one code of the company under this match key (`Barcode::key`, `Barcode::keyOf` for a scanned string), with
      * its product, or null. Matched EXACTLY, unlike words: a scan is a code, never part of one.

@@ -3356,7 +3356,8 @@
       "home_location": "Emplacement habituel",
       "home_location_note": "Le code d’un emplacement de stock : c’est celui que la réception proposera.",
       "reorder_point": "Seuil de réapprovisionnement",
-      "reorder_point_note": "La quantité à partir de laquelle l’article est à racheter, dans l’établissement de son emplacement habituel (ou le seul établissement)."
+      "reorder_point_note": "La quantité à partir de laquelle l’article est à racheter, dans l’établissement de son emplacement habituel (ou le seul établissement).",
+      "reference_optional_note": "Facultative. Laissée vide, le produit reçoit la suivante du format de l’entreprise, et une seconde importation le retrouve par son code-barres."
     },
     "vendors": {
       "number": "Numéro fournisseur",
@@ -3476,9 +3477,21 @@
       "invalid_payment_terms": "Délai de paiement refusé : un nombre entier de jours.",
       "identifier_required": "Ce numéro d’immatriculation est obligatoire pour ce régime.",
       "identifier_shape": "Ce numéro d’immatriculation n’a pas la forme attendue.",
-      "identifier_checksum": "Ce numéro d’immatriculation est mal formé : la clé de contrôle ne tombe pas juste."
+      "identifier_checksum": "Ce numéro d’immatriculation est mal formé : la clé de contrôle ne tombe pas juste.",
+      "barcode_taken": "Ce code-barres est déjà celui de « {{reference}} » : un code ne désigne qu’un produit.",
+      "unit_kept_by_stock": "Du stock de ce produit a déjà bougé en « {{unit}} » : il garde cette unité.",
+      "kind_kept_by_stock": "Du stock de ce produit a déjà bougé : il reste une marchandise.",
+      "invalid_text": "Texte refusé : {{max}} caractères au plus.",
+      "not_a_date": "Attendu : une date écrite AAAA-MM-JJ.",
+      "not_a_boolean": "Attendu : oui ou non.",
+      "unknown_custom_field": "Aucun champ personnalisé « {{key}} » n’est déclaré."
     },
-    "action": "Importer"
+    "action": "Importer",
+    "notes_title": "À savoir",
+    "notes": {
+      "reference_given": "Référence donnée : {{reference}}.",
+      "name_shared": "Un produit porte déjà ce nom ({{reference}}) : sans référence ni code-barres, cette ligne en crée un autre."
+    }
   },
   "scan": {
     "count": "Prochain scan ×{{count}}",

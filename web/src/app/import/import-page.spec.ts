@@ -32,6 +32,7 @@ class StaticLoader implements TranslateLoader {
         preview: 'Prévisualiser',
         store: 'Importer',
         rejections: { duplicate_in_file: 'Déjà présent à la ligne {{line}} du fichier.' },
+        notes: { reference_given: 'Référence donnée : {{reference}}.' },
         refusals: { unknown_columns: 'Colonnes inconnues : {{columns}}.' },
       },
     });
@@ -62,7 +63,13 @@ const GUIDE: ImportGuide = {
   ],
 };
 
-const CLEAN: ImportReport = { committed: false, created: [2, 3], updated: [], rejected: [] };
+const CLEAN: ImportReport = {
+  committed: false,
+  created: [2, 3],
+  updated: [],
+  rejected: [],
+  notes: [],
+};
 const REJECTED: ImportReport = {
   committed: false,
   created: [2],
@@ -70,6 +77,7 @@ const REJECTED: ImportReport = {
   rejected: [
     { line: 3, column: 'reference', code: 'duplicate_in_file', params: { line: 2 }, message: 'x' },
   ],
+  notes: [],
 };
 
 describe('ImportPage', () => {
@@ -223,6 +231,35 @@ describe('ImportPage', () => {
     expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
   });
 
+  // docs/SPEC.md § 7, 2026-09-17 (3): what a row was noted for, in the person's words, without stopping the file.
+  it('lists what the rows imported were noted for, in the person’s words', async () => {
+    chooseFile();
+    await settle();
+    facade.run.mockImplementation(async () =>
+      report.set({
+        ...CLEAN,
+        notes: [
+          {
+            line: 2,
+            column: 'reference',
+            code: 'reference_given',
+            params: { reference: 'ART-00042' },
+          },
+          { line: 3, column: 'name', code: 'from_tomorrow', params: {} },
+        ],
+      }),
+    );
+    await click('import-preview');
+
+    const rows = Array.from(q('import-notes')!.querySelectorAll('tbody tr')).map((row) =>
+      Array.from(row.children)
+        .map((cell) => cell.textContent?.trim())
+        .join(' '),
+    );
+    expect(rows).toEqual(['2 reference Référence donnée : ART-00042.', '3 name from_tomorrow']);
+    expect((q('import-store') as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('keeps the import shut when the preview rejected a row, and says why in the person’s words', async () => {
     chooseFile();
     await settle();
@@ -252,6 +289,7 @@ describe('ImportPage', () => {
             message: 'A quantity is a decimal number.',
           },
         ],
+        notes: [],
       }),
     );
     await click('import-preview');
@@ -267,7 +305,7 @@ describe('ImportPage', () => {
     await click('import-preview');
 
     facade.run.mockImplementation(async () => {
-      report.set({ committed: true, created: [2, 3], updated: [], rejected: [] });
+      report.set({ committed: true, created: [2, 3], updated: [], rejected: [], notes: [] });
       TestBed.inject(Feedback).success('import.stored', { created: 2, updated: 0 });
     });
     await click('import-store');

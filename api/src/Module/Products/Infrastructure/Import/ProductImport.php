@@ -22,6 +22,7 @@ use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
 use App\ImportExport\Application\RowImported;
+use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
 use App\Module\Products\Application\BarcodeInput;
 use App\Module\Products\Application\ManageProducts;
@@ -31,6 +32,7 @@ use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Application\ProductReorderPoints;
 use App\Module\Products\Application\ReorderPointRefused;
+use App\Module\Products\Domain\Barcode;
 use App\Module\Products\Domain\BarcodeRole;
 use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\Product;
@@ -65,9 +67,10 @@ final readonly class ProductImport implements DeclaresImport
     /** A custom field's key is the company's own, so it is prefixed to keep it out of the fixed columns' namespace. */
     public const string CUSTOM_PREFIX = 'custom.';
 
-    /** The column each field a refusal names is read from, and the code that refusal carries. */
+    /** The column each field a refusal names is read from, and the code that refusal carries when it says none. */
     private const array REFUSAL_OF = [
         'reference' => ['reference', 'invalid_reference'],
+        'kind' => ['kind', 'invalid_value'],
         'name' => ['name', 'invalid_name'],
         'description' => ['description', 'invalid_description'],
         'unitPriceNet' => ['unit_price_net', 'invalid_price'],
@@ -121,12 +124,21 @@ final readonly class ProductImport implements DeclaresImport
         return new ImportSubject(self::KEY, [...$this->fixed($company), ...$this->custom($company)]);
     }
 
-    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId): RowImported
+    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes): RowImported
     {
-        $reference = $record->value('reference') ?? throw new RowRejected('reference', 'A product is found again by its reference, so every row needs one.', 'value_required');
-        $existing = $this->products->ofReferenceInCompany($reference, $company->getId());
+        // Found again by the reference written in the row, else by the unit code written in it, never by its name
+        // (docs/SPEC.md § 7, 2026-09-17 (3)).
+        $reference = $record->value('reference');
+        $existing = null === $reference ? $this->ofUnitCode($company, $record->value('barcode')) : $this->products->ofReferenceInCompany($reference, $company->getId());
         if (null !== $existing && ImportMode::Create === $mode) {
-            throw new RowRejected('reference', 'A product already has this reference. Import in "create and update" mode to update it.', 'already_exists');
+            throw null === $reference ? new RowRejected('barcode', 'A product already answers to this code. Import in "create and update" mode to update it.', 'already_exists', ['reference' => $existing->getReference()]) : new RowRejected('reference', 'A product already has this reference. Import in "create and update" mode to update it.', 'already_exists');
+        }
+        if (null === $existing && null === $reference && null === $record->value('barcode')) {
+            // Nothing in the row can find it again, so a second import of the file would make it twice.
+            $namesake = $this->products->ofNameInCompany($record->value('name') ?? '', $company->getId());
+            if (null !== $namesake) {
+                $notes->note('name', 'name_shared', ['reference' => $namesake->getReference()]);
+            }
         }
 
         // Resolved BEFORE anything is written, where every other cell this row could be refused for is resolved: a
@@ -141,6 +153,9 @@ final readonly class ProductImport implements DeclaresImport
                 $written = $this->manage->create($company, $this->input($company, $record, null), $actorUserId);
                 $this->settleHome($company, $written, $home, $actorUserId);
                 $this->settleReorderPoint($company, $written, $reorderPoint, $actorUserId);
+                if (null === $reference) {
+                    $notes->note('reference', 'reference_given', ['reference' => $written->getReference()]);
+                }
 
                 return RowImported::Created;
             }
@@ -152,17 +167,19 @@ final readonly class ProductImport implements DeclaresImport
         } catch (InvalidProduct $refused) {
             // The one code a file writes is the unit code, first in the list: every refusal of a row of it is that cell's.
             $field = str_starts_with($refused->field, 'barcodes.') ? 'barcode' : $refused->field;
-            [$column, $code] = self::REFUSAL_OF[$field] ?? [null, 'invalid_value'];
+            [$column, $code] = str_starts_with($field, 'customFields.')
+                ? [self::CUSTOM_PREFIX.substr($field, \strlen('customFields.')), 'invalid_value']
+                : self::REFUSAL_OF[$field] ?? [null, 'invalid_value'];
 
-            throw new RowRejected($column, $refused->getMessage(), $code);
+            throw new RowRejected($column, $refused->getMessage(), $refused->reason ?? $code, $refused->params);
         } catch (ReorderPointRefused $refused) {
             throw new RowRejected('reorder_point', $refused->getMessage(), 'invalid_value');
         } catch (ProductReferenceTaken) {
             throw new RowRejected('reference', 'A product already has this reference.', 'already_exists');
         } catch (ProductBarcodeTaken $taken) {
             // Named, not merely refused: the file's author needs to know which of their products already carries
-            // the code, and the row they are looking at does not say it.
-            throw new RowRejected('barcode', $taken->getMessage(), 'already_exists', ['reference' => $taken->heldBy]);
+            // the code, and the row they are looking at does not say it. Another mode would not help: it is that product's.
+            throw new RowRejected('barcode', $taken->getMessage(), 'barcode_taken', ['reference' => $taken->heldBy]);
         } finally {
             // Doctrine's batch processing: every flush walks every managed entity, so a row's product stays out of the
             // unit of work once written, or a file costs the square of its length. Nothing reads it back here.
@@ -172,6 +189,17 @@ final readonly class ProductImport implements DeclaresImport
                 }
             }
         }
+    }
+
+    /** The product whose UNIT code the cell writes, the one code a file carries; a pack's or a supplier's is not it. */
+    private function ofUnitCode(Company $company, ?string $code): ?Product
+    {
+        if (null === $code) {
+            return null;
+        }
+        $held = $this->products->barcodeOfKeyInCompany(Barcode::keyOf($code), $company->getId());
+
+        return null !== $held && BarcodeRole::Unit === $held->getRole() ? $held->getProduct() : null;
     }
 
     /**
@@ -271,7 +299,8 @@ final readonly class ProductImport implements DeclaresImport
         $price = self::decimal($record->value('unit_price_net')) ?? $held?->unitPriceNet;
 
         return new ProductInput(
-            $record->value('reference') ?? '',
+            // Left out, a new product is given the next of the company's format and a product found by its code keeps its own.
+            $record->value('reference') ?? $current?->getReference() ?? '',
             new ProductDetails(
                 $record->value('name') ?? $held->name ?? '',
                 $record->value('description') ?? $held?->description,
@@ -378,8 +407,8 @@ final readonly class ProductImport implements DeclaresImport
     }
 
     /**
-     * The columns every company has. `reference` is required because a product is found again by it on a second
-     * import. A unit and a price are what a product cannot be CREATED without, which is a rule on the row and not on
+     * The columns every company has. `reference` may be left out: such a row is found again by its unit code, and a new
+     * product is given the next reference of the company's format. A unit and a price are what a product cannot be CREATED without, which is a rule on the row and not on
      * the file: a file updating nothing but a name carries neither column, and requiring them here would refuse it.
      *
      * `home_location` is offered only to a company that holds stock, since a company without it has nowhere to put a
@@ -393,7 +422,7 @@ final readonly class ProductImport implements DeclaresImport
     private function fixed(Company $company): array
     {
         return [
-            new ImportColumn('reference', 'import.products.reference', true, 'VIS-6X40', 'import.products.reference_note'),
+            new ImportColumn('reference', 'import.products.reference', false, 'VIS-6X40', 'import.products.reference_optional_note'),
             new ImportColumn('name', 'import.products.name', true, 'Vis 6x40 zinguée'),
             new ImportColumn('kind', 'import.products.kind', false, 'goods', 'import.products.kind_note'),
             new ImportColumn('description', 'import.products.description'),

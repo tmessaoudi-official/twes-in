@@ -101,6 +101,30 @@
         }
       </div>
 
+      @if (report.notes.length > 0) {
+        <h3 class="text-lg font-semibold">{{ 'import.notes_title' | translate }}</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm" data-testid="import-notes">
+            <thead class="text-left text-on-surface-variant">
+              <tr>
+                <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.line' | translate }}</th>
+                <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.column' | translate }}</th>
+                <th scope="col" class="py-2 font-medium">{{ 'import.note' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (note of report.notes; track $index) {
+                <tr class="border-t border-outline-variant align-top">
+                  <th scope="row" class="py-2 pr-4 text-left font-normal">{{ note.line }}</th>
+                  <td class="py-2 pr-4 font-mono">{{ note.column }}</td>
+                  <td class="py-2">{{ noteOf(note) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
       @if (report.rejected.length > 0) {
         <p role="alert" class="text-error" data-testid="import-nothing-stored">
           {{ 'import.nothing_stored' | translate }}

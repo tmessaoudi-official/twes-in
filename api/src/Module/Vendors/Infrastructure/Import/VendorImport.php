@@ -17,6 +17,7 @@ use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
 use App\ImportExport\Application\RowImported;
+use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
 use App\Module\Vendors\Application\ExpenseCategoryDirectory;
 use App\Module\Vendors\Application\ManageVendors;
@@ -100,7 +101,7 @@ final readonly class VendorImport implements DeclaresImport
         return new ImportSubject(self::KEY, [...$this->fixed(), ...$this->identifiers($company)]);
     }
 
-    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId): RowImported
+    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes): RowImported
     {
         $number = $record->value('number') ?? throw new RowRejected('number', 'A vendor is found again by its number, so every row needs one.', 'value_required');
         $existing = $this->vendors->ofNumberInCompany($number, $company->getId());

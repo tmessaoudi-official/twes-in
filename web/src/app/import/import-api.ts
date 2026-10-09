@@ -156,6 +156,14 @@ function toReport(answer: unknown): ImportReport {
           message: typeof row['message'] === 'string' ? row['message'] : '',
         }))
       : [],
+    notes: Array.isArray(body['notes'])
+      ? body['notes'].map((row: Record<string, unknown>) => ({
+          line: typeof row['line'] === 'number' ? row['line'] : 0,
+          column: typeof row['column'] === 'string' ? row['column'] : null,
+          code: typeof row['code'] === 'string' ? row['code'] : '',
+          params: (row['params'] ?? {}) as Record<string, string | number>,
+        }))
+      : [],
   };
 }
 

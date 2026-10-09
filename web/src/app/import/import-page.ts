@@ -17,7 +17,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { ImportApi } from './import-api';
 import { ImportFacade } from './import-facade';
-import type { ImportMode, ImportRejection } from './import-types';
+import type { ImportMode, ImportNote, ImportRejection } from './import-types';
 import { FileDrop } from '../shared/form/file-drop';
 import { IMPORT_MAX_BYTES } from '../shared/form/file-limits';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
@@ -104,6 +104,14 @@ export class ImportPage {
    * Why a row was refused, in the person's words. A code this screen does not know yet falls back to the API's own
    * English sentence, which is a poor reading but never a blank cell — and better than showing the raw code.
    */
+  /** A note in the person's words; one whose code this screen does not know yet reads as nothing more than its code. */
+  protected noteOf(note: ImportNote): string {
+    const key = `import.notes.${note.code}`;
+    const said = this.translate.instant(key, note.params) as string;
+
+    return said === key ? note.code : said;
+  }
+
   protected reasonOf(rejection: ImportRejection): string {
     const key = `import.rejections.${rejection.code}`;
     const said = this.translate.instant(key, rejection.params) as string;

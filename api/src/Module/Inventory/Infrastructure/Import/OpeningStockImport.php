@@ -15,6 +15,7 @@ use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
 use App\ImportExport\Application\RowImported;
+use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Domain\InvalidStockMovement;
@@ -90,7 +91,7 @@ final readonly class OpeningStockImport implements DeclaresImport
         ]);
     }
 
-    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId): RowImported
+    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes): RowImported
     {
         $reference = $record->value('reference') ?? throw new RowRejected('reference', 'Stock is counted for a product, so every row names one by its reference.', 'value_required');
         $code = $record->value('location_code') ?? throw new RowRejected('location_code', 'Stock sits somewhere, so every row names the location it was counted in.', 'value_required');

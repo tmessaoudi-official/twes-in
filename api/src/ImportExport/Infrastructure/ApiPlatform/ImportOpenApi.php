@@ -41,7 +41,7 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
         $lines = ['type' => 'array', 'items' => ['type' => 'integer']];
         $report = [
             'type' => 'object',
-            'required' => ['committed', 'created', 'updated', 'rejected'],
+            'required' => ['committed', 'created', 'updated', 'rejected', 'notes'],
             'properties' => [
                 'committed' => ['type' => 'boolean', 'description' => 'Whether the file was stored: never for a preview, nor while a row is rejected.'],
                 'created' => $lines + ['description' => 'The file’s own line numbers, empty lines counted.'],
@@ -55,6 +55,16 @@ final readonly class ImportOpenApi implements OpenApiFactoryInterface
                         'code' => ['type' => 'string', 'description' => 'A stable reason, translated by the screen as `import.rejections.<code>`.'],
                         'params' => ['type' => 'object', 'additionalProperties' => ['type' => ['string', 'integer']], 'description' => 'What the translation names, such as the group the file gave.'],
                         'message' => ['type' => 'string', 'description' => 'The reason in English, for a code the screen does not know yet.'],
+                    ],
+                ]],
+                'notes' => ['type' => 'array', 'description' => 'What a row imported was noted for, such as the reference its new product was given; a note never stops the file.', 'items' => [
+                    'type' => 'object',
+                    'required' => ['line', 'column', 'code', 'params'],
+                    'properties' => [
+                        'line' => ['type' => 'integer'],
+                        'column' => ['type' => ['string', 'null']],
+                        'code' => ['type' => 'string', 'description' => 'A stable code, translated by the screen as `import.notes.<code>`.'],
+                        'params' => ['type' => 'object', 'additionalProperties' => ['type' => ['string', 'integer']]],
                     ],
                 ]],
             ],

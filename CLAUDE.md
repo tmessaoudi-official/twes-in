@@ -118,7 +118,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `FILES_STORAGE` names: `local`, a volume under `FILES_DIRECTORY`, which `api/.env` ships, or `s3`, any
   S3-compatible bucket, which refuses to start without its own variables), `ImportExport` (a module declares an
   import with `DeclaresImport`; `RunImport` reads the file, the guide at `GET .../imports/{subject}` describes its
-  columns, and every rejected row carries a `code` and `params` the screen translates, from a refusal's `reason`),
+  columns, and every rejected row carries a `code` and `params` the screen translates, from a refusal's `reason`; a row
+  imported may carry notes, `RowNotes`, such as the reference its new product was given),
   `Watch` (« À surveiller »: a module declares its live conditions with `DeclaresWatch` in its own
   `Infrastructure/Watch/`, one statement per kind, gated by its module and permission; a core context's subject has no module and is always on, as `Tenancy`'s unsent invitations, marked by `InvitationMailFailed` when the worker gives up),
   `Legal` (the legal pages' versions, read by anyone at `GET /api/legal/{page}/{language}`; the shipped drafts are

@@ -92,3 +92,20 @@ test('a file is previewed before it is imported, and a refused row says why', as
 
   await retire(page, NUMBER);
 });
+
+// docs/SPEC.md § 7, 2026-09-17 (3): a product file may leave the reference out; the preview says which one each new
+// product would be given. Previewed only, so nothing is stored in the shared company.
+test('a product file without references is previewed with the references it would give', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/imports/products');
+  await expect(page.getByTestId('import-columns')).toBeVisible();
+
+  await choose(page, 'produits.csv', `name,unit_code,unit_price_net\nCheville ${RUN},H87,0.1\n`);
+  await page.getByTestId('import-preview').click();
+  await expect(page.getByTestId('import-created')).toContainText('1');
+  await expect(page.getByTestId('import-notes')).toContainText('Référence donnée');
+  await expect(page.getByTestId('import-store')).toBeEnabled();
+});

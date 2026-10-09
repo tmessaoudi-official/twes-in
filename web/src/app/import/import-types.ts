@@ -53,6 +53,15 @@ export interface ImportRejection {
   message: string;
 }
 
+/** What a row imported was noted for, such as the reference its new product was given; it never stops the file. */
+export interface ImportNote {
+  line: number;
+  column: string | null;
+  /** A stable code, translated as `import.notes.<code>`. */
+  code: string;
+  params: Record<string, string | number>;
+}
+
 /** What a run did, or would do: a preview is the same run rolled back. */
 export interface ImportReport {
   committed: boolean;
@@ -60,4 +69,5 @@ export interface ImportReport {
   created: readonly number[];
   updated: readonly number[];
   rejected: readonly ImportRejection[];
+  notes: readonly ImportNote[];
 }

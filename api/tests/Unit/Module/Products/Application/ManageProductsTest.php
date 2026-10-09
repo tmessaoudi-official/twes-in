@@ -286,13 +286,13 @@ final class ManageProductsTest extends TestCase
             $this->manage->revise($this->company, $product->getId(), $this->input(unit: 'C62'), null);
             self::fail('The unit of a product with stock movements was changed.');
         } catch (InvalidProduct $refused) {
-            self::assertSame('unitId', $refused->field);
+            self::assertSame(['unitId', 'unit_kept_by_stock', ['unit' => 'KGM']], [$refused->field, $refused->reason, $refused->params]);
         }
         try {
             $this->manage->revise($this->company, $product->getId(), $this->input(unit: 'KGM', kind: ProductKind::Service), null);
             self::fail('A product with stock movements became a service.');
         } catch (InvalidProduct $refused) {
-            self::assertSame('kind', $refused->field);
+            self::assertSame(['kind', 'kind_kept_by_stock'], [$refused->field, $refused->reason]);
         }
         self::assertSame(['KGM', ProductKind::Goods], [$product->getUnit()->getCode(), $product->getDetails()->kind]);
 

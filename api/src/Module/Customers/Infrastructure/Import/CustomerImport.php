@@ -22,6 +22,7 @@ use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
 use App\ImportExport\Application\RowImported;
+use App\ImportExport\Application\RowNotes;
 use App\ImportExport\Application\RowRejected;
 use App\Module\Customers\Application\CustomerInput;
 use App\Module\Customers\Application\CustomerNumberTaken;
@@ -110,7 +111,7 @@ final readonly class CustomerImport implements DeclaresImport
         return new ImportSubject(self::KEY, [...$this->fixed(), ...$this->identifiers($company), ...$this->custom($company)]);
     }
 
-    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId): RowImported
+    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId, RowNotes $notes): RowImported
     {
         $number = $record->value('number') ?? throw new RowRejected('number', 'A customer is found again by its number, so every row needs one.', 'value_required');
         $existing = $this->customers->ofNumberInCompany($number, $company->getId());

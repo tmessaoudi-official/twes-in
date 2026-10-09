@@ -166,6 +166,21 @@ final readonly class DoctrineProductRepository implements ProductRepository
         return $this->entityManager->getRepository(Product::class)->findOneBy(['company' => $companyId, 'reference' => $reference]);
     }
 
+    public function ofNameInCompany(string $name, Uuid $companyId): ?Product
+    {
+        /** @var Product|null $product */
+        $product = $this->entityManager->createQueryBuilder()
+            ->select('p')->from(Product::class, 'p')
+            ->where('p.company = :company')->setParameter('company', $companyId, 'uuid')
+            ->andWhere('LOWER(p.name) = LOWER(:name)')->setParameter('name', $name)
+            ->orderBy('p.reference', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return $product;
+    }
+
     public function barcodeOfKeyInCompany(string $key, Uuid $companyId): ?ProductBarcode
     {
         return $this->entityManager->getRepository(ProductBarcode::class)->findOneBy(['company' => $companyId, 'matchKey' => $key]);
