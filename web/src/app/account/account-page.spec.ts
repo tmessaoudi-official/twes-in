@@ -230,17 +230,12 @@ describe('AccountPage', () => {
     company.pinAtSignIn.mockResolvedValue(true);
   });
 
-  it('names its four tabs, the two not built yet marked « Bientôt »', async () => {
+  it('names its four tabs, the one not built yet marked « Bientôt »', async () => {
     const root = await render();
     const labels = [...root.querySelectorAll('[role="tab"]')].map((tab) =>
       tab.textContent?.replace(/\s+/g, ' ').trim(),
     );
-    expect(labels).toEqual([
-      'Sécurité',
-      'Préférences',
-      'Cet appareil Bientôt',
-      'Notifications Bientôt',
-    ]);
+    expect(labels).toEqual(['Sécurité', 'Préférences', 'Cet appareil', 'Notifications Bientôt']);
   });
 
   it('says whether the two-step check is on, and leads to where it is managed', async () => {
@@ -253,19 +248,19 @@ describe('AccountPage', () => {
     expect(byTestId(root, 'account-two-factor')?.textContent).toContain('Désactivée');
   });
 
-  it('leaves out the two tabs not built yet once what is coming is hidden, and keeps the toggle that brings them back', async () => {
+  it('leaves out the tab not built yet once what is coming is hidden, and keeps the toggle that brings it back', async () => {
     showComing.set(false);
     const root = await render();
     const labels = [...root.querySelectorAll('[role="tab"]')].map((tab) =>
       tab.textContent?.replace(/\s+/g, ' ').trim(),
     );
-    expect(labels).toEqual(['Sécurité', 'Préférences']);
+    expect(labels).toEqual(['Sécurité', 'Préférences', 'Cet appareil']);
     expect(root.querySelector('.twes-soon')).toBeNull();
   });
 
   it('opens the first tab when the address names one that is hidden', async () => {
     showComing.set(false);
-    const root = await render('device');
+    const root = await render('notifications');
     const selected = root.querySelector('[role="tab"][aria-selected="true"]');
     expect(selected?.textContent?.replace(/\s+/g, ' ').trim()).toBe('Sécurité');
   });
@@ -392,17 +387,27 @@ describe('AccountPage', () => {
     expect(theme.setShowComing).toHaveBeenCalledWith(false);
   });
 
-  it('says nothing of scanning with the scanner switched off for the company', async () => {
-    modules.set([]);
+  it('keeps the scanner on « Cet appareil », never in Préférences', async () => {
     const root = await render('preferences');
 
     expect(byTestId(root, 'account-scan-feedback')).toBeNull();
+    expect(byTestId(root, 'account-scanner')).toBeNull();
+  });
+
+  it('has no « Cet appareil » with the scanner switched off for the company: nothing on it to set', async () => {
+    modules.set([]);
+    const root = await render('device');
+    const labels = [...root.querySelectorAll('[role="tab"]')].map((tab) =>
+      tab.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+
+    expect(labels).toEqual(['Sécurité', 'Préférences', 'Notifications Bientôt']);
     expect(byTestId(root, 'account-scanner')).toBeNull();
     modules.set(['scanning']);
   });
 
   it('turns the beep and the buzz of a camera scan off and on, for the person', async () => {
-    const root = await render('preferences');
+    const root = await render('device');
     const toggle = byTestId(root, 'account-scan-feedback')?.querySelector('button');
     expect(toggle?.getAttribute('aria-checked')).toBe('true');
 
@@ -419,7 +424,7 @@ describe('AccountPage', () => {
   }
 
   it('measures the scanner typing into the test field, suggests a gap and keeps the one the person applies', async () => {
-    const root = await render('preferences');
+    const root = await render('device');
     const field = byTestId(root, 'account-scanner-test') as HTMLInputElement;
     expect(TestBed.inject(ScanGap).gap()).toBe(30);
 
@@ -437,7 +442,7 @@ describe('AccountPage', () => {
   });
 
   it('says it read nothing from a hand, and offers nothing to apply', async () => {
-    const root = await render('preferences');
+    const root = await render('device');
     const field = byTestId(root, 'account-scanner-test') as HTMLInputElement;
 
     [...'ABCDEF'].forEach((key, index) => keyAt(field, key, 1000 + index * 180));

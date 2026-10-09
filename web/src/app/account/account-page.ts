@@ -55,15 +55,16 @@ import { ThemeFacade } from '../shared/theme/theme-facade';
 /** Why a key typed in Préférences was not kept: the shell's own reasons, or another action has it already. */
 type KeyRefusal = ShellKeyRefusal | 'taken';
 
-/** The page's tabs, in the order the round-6 account board draws them; the last two are not built yet. */
+/** The page's tabs, in the order the round-6 account board draws them; the last is not built yet. */
 export const ACCOUNT_TABS = ['security', 'preferences', 'device', 'notifications'] as const;
 export type AccountTab = (typeof ACCOUNT_TABS)[number];
-const COMING_TABS: readonly AccountTab[] = ['device', 'notifications'];
+const COMING_TABS: readonly AccountTab[] = ['notifications'];
 
 /**
  * « Mon compte » (docs/SPEC.md § 7, 2026-09-25 17:22; the round-6 account boards): the person's own account, apart
  * from any company. Sécurité leads to the two-step check; Préférences holds the display choices, « Montrer ce qui
- * arrive », « Société à l'ouverture » and the keyboard shortcuts. The tab is in the address (`?tab=`), so a link can open the right one.
+ * arrive », « Société à l'ouverture » and the keyboard shortcuts; « Cet appareil » what belongs to the device in hand,
+ * the scan's beep and the scanner gap test. The tab is in the address (`?tab=`), so a link can open the right one.
  */
 @Component({
   selector: 'app-account-page',
@@ -104,11 +105,16 @@ export class AccountPage implements OnInit {
   /** The tab from the address; an unknown one opens the first. */
   readonly tab = input<string | undefined>(undefined);
 
-  /** The tabs shown: the two not built yet go with « Montrer ce qui arrive », as every other « Bientôt » does. */
+  /**
+   * The tabs shown: the one not built yet goes with « Montrer ce qui arrive », as every other « Bientôt » does, and
+   * « Cet appareil » with the scanner, which is all it holds.
+   */
   protected readonly tabs = computed(() =>
-    this.theme.showComing()
-      ? ACCOUNT_TABS
-      : ACCOUNT_TABS.filter((tab) => !COMING_TABS.includes(tab)),
+    ACCOUNT_TABS.filter(
+      (tab) =>
+        (this.theme.showComing() || !COMING_TABS.includes(tab)) &&
+        (tab !== 'device' || this.scanning()),
+    ),
   );
   protected readonly comingTabs = COMING_TABS;
   protected readonly languages = SUPPORTED_LANGUAGES;

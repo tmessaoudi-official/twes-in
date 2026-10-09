@@ -444,6 +444,24 @@ test('a person chooses how days and figures read in Préférences, which outlive
   }
 });
 
+// What belongs to the device in hand, the scanner’s beep and its gap test, is on « Cet appareil », not in Préférences.
+test('« Cet appareil » holds the scan’s beep and the scanner test, and Préférences no longer does', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  await inACompany(page, CSRF);
+  await page.goto('/account?tab=preferences');
+  await expect(page.getByTestId('account-show-coming')).toBeVisible();
+  await expect(page.getByTestId('account-scanner')).toHaveCount(0);
+
+  await page.getByRole('tab', { name: 'Cet appareil' }).click();
+  await expect(page).toHaveURL(/\/account\?tab=device$/);
+  await expect(page.getByTestId('account-scan-feedback')).toBeVisible();
+  await expect(page.getByTestId('account-scanner-test')).toBeVisible();
+  expect(await wcagViolations(page)).toEqual([]);
+});
+
 test.describe('a document scrolled under the top bar', () => {
   test.use({ viewport: { width: 1280, height: 560 } });
 
