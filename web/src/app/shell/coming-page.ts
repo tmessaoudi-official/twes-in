@@ -10,10 +10,10 @@ import { ThemeFacade } from '../shared/theme/theme-facade';
 import { comingEntries } from './planned-nav';
 
 /**
- * « En construction » (docs/SPEC.md § 7, 2026-09-25 17:22): the one page every entry of the vision not built yet opens,
- * saying what it will do, for which version, the § 8 row that builds it and what to use meanwhile. Its texts live
- * under `coming.<key>`; the entry itself, in `COMING_NAV` or, for a planned module, in the API's catalogue placed by
- * `PLANNED_NAV`.
+ * « En construction »: the one page every entry of the vision not built yet opens, saying what it will do, for which
+ * version, whether the roadmap schedules it yet (never which row: a customer reads it) and what to use meanwhile. Its
+ * texts live under `coming.<key>`; the entry itself, in `COMING_NAV` or, for a planned module, in the API's catalogue
+ * placed by `PLANNED_NAV`.
  */
 @Component({
   selector: 'app-coming-page',

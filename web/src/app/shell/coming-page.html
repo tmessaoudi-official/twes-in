@@ -20,6 +20,12 @@
       <dd data-testid="coming-version">
         {{ 'coming.version.' + entry.coming.version | translate }}
       </dd>
+      <dt class="text-on-surface-variant">{{ 'coming.roadmap' | translate }}</dt>
+      <dd data-testid="coming-roadmap">
+        {{
+          (entry.coming.row === undefined ? 'coming.not_scheduled' : 'coming.scheduled') | translate
+        }}
+      </dd>
     </dl>
     @if (entry.coming.meanwhile; as meanwhile) {
       <p

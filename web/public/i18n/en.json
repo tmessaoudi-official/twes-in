@@ -3668,6 +3668,9 @@
       "later": "Later"
     },
     "planned": "Planned for",
+    "roadmap": "Roadmap",
+    "scheduled": "Scheduled",
+    "not_scheduled": "Not scheduled yet",
     "home": "Back to home",
     "hide": "Hide what is coming",
     "unknown": "Nothing is planned at this address.",

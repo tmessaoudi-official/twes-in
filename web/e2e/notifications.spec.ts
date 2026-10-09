@@ -219,8 +219,11 @@ test('a notification mail’s stop link turns that kind’s mail off from its pa
     await expect(theirPage).toHaveURL(/\/login$/);
     await stranger.close();
 
-    const mail = await mailTo(request, 'operator@twes.local', (subject) =>
-      subject.startsWith('Nouveau membre'),
+    // Whichever language an earlier scenario left the operator in.
+    const mail = await mailTo(
+      request,
+      'operator@twes.local',
+      (subject) => subject.startsWith('Nouveau membre') || subject.startsWith('New member'),
     );
     const link = /href="[^"]*(\/notifications\/stop\/[^"]+)"/.exec(mail);
     expect(link, 'the mail carries its stop link').not.toBeNull();

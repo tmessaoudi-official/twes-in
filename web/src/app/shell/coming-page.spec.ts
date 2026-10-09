@@ -18,7 +18,7 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       nav: { sections: { sell: 'Vendre' } },
-      modules: { register: 'Caisse', works: 'Travaux', venue: 'Salle' },
+      modules: { register: 'Caisse', works: 'Travaux', venue: 'Salle', portal: 'Portail' },
       shell: { soon: 'Bientôt' },
       coming: {
         version: { v1: 'Version 1', later: 'Plus tard' },
@@ -26,6 +26,13 @@ class StaticLoader implements TranslateLoader {
         home: 'Retour à l’accueil',
         hide: 'Masquer ce qui arrive',
         unknown: 'Rien n’est prévu à cette adresse.',
+        roadmap: 'Feuille de route',
+        scheduled: 'Planifié',
+        not_scheduled: 'Pas encore planifié',
+        portal: {
+          heading: 'Le portail est en construction',
+          does: 'Le portail client.',
+        },
         register: {
           heading: 'La caisse est en construction',
           does: 'La vente au comptoir sur un seul écran.',
@@ -54,6 +61,7 @@ describe('ComingPage', () => {
     { key: 'register', planned: 'v1' },
     { key: 'works', planned: 'v1' },
     { key: 'venue', planned: 'later' },
+    { key: 'portal', planned: 'later' },
   ]);
   const auth = { me: () => ({ plannedModules: planned() }) };
   let fixture: ComponentFixture<ComingPage>;
@@ -89,6 +97,7 @@ describe('ComingPage', () => {
       { key: 'register', planned: 'v1' },
       { key: 'works', planned: 'v1' },
       { key: 'venue', planned: 'later' },
+      { key: 'portal', planned: 'later' },
     ]);
   });
 
@@ -130,6 +139,18 @@ describe('ComingPage', () => {
     expect(byTestId(root, 'coming-version')?.textContent).toContain('Plus tard');
     expect(byTestId(root, 'coming-plan')).toBeNull();
     expect(root.textContent).not.toContain('Ligne du plan');
+  });
+
+  it('says whether the roadmap schedules it, never with a row of our plan, which means nothing to a customer', async () => {
+    const scheduled = await render('register');
+    expect(byTestId(scheduled, 'coming-roadmap')?.textContent?.trim()).toBe('Planifié');
+    expect(scheduled.textContent).not.toMatch(/\b82\b/);
+    fixture.destroy();
+    TestBed.resetTestingModule();
+
+    const notYet = await render('portal');
+    expect(byTestId(notYet, 'coming-roadmap')?.textContent?.trim()).toBe('Pas encore planifié');
+    expect(byTestId(notYet, 'coming-version')?.textContent).toContain('Plus tard');
   });
 
   it('says nothing is planned once the API no longer lists the module as planned', async () => {

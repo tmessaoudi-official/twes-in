@@ -218,10 +218,15 @@ test('an entry not built yet says what it will do, and hiding what is coming tak
       'href',
       '/invoices/new',
     );
+    // Whether the roadmap schedules it, never which row: a customer reads this page.
+    await expect(page.getByTestId('coming-roadmap')).toHaveText('Planifié');
     // Row 150: every planned module of the API's catalogue is in the menu, in the section where it will live.
     await page.getByTestId('nav-works').click();
     await expect(page).toHaveURL(/\/coming\/works$/);
     await expect(page.getByTestId('coming-version')).toBeVisible();
+    await page.goto('/coming/portal');
+    await expect(page.getByTestId('coming-roadmap')).toHaveText('Pas encore planifié');
+    await page.goto('/coming/works');
 
     await page.getByTestId('coming-hide').click();
     await expect(page).toHaveURL(/\/$/);

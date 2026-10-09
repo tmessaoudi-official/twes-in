@@ -14,6 +14,8 @@ export interface PlannedPlace {
   readonly section: 'sell' | 'manage';
   /** The entry it will follow once its module ships; until then it sits after its section's working entries. */
   readonly after: string;
+  /** The docs/SPEC.md § 8 row that builds it, when one does (see `Coming.row`). */
+  readonly row?: number;
   /** What to use until it exists, when something does the job today. */
   readonly meanwhile?: string;
   /** Whether « Créer » will make something with it, a document or a record, named under `coming.<key>.create`. */
@@ -21,15 +23,16 @@ export interface PlannedPlace {
 }
 
 /**
- * The modules of the complete product not built yet (docs/SPEC.md § 7, 2026-09-26 10:08 and 12:05, row 150), each in
- * the section where it will live. Which of them exist, and for which version, is the API's catalogue's to say
- * (`plannedModules` in the signed-in state); this list only places and draws them. An entry leaves it in the change
- * that ships its module. `scripts/gates/planned-module-labels.sh` keeps a place here for every planned key.
+ * The modules of the complete product not built yet, each in the section where it will live. Which of them exist, and
+ * for which version, is the API's catalogue's to say (`plannedModules` in the signed-in state); this list only places
+ * and draws them. An entry leaves it in the change that ships its module, its « coming » texts with it.
+ * `scripts/gates/planned-module-labels.sh` keeps a place here for every planned key, and `coming-texts.sh` no place or
+ * text for a module that shipped.
  */
 export const PLANNED_NAV: readonly PlannedPlace[] = [
   // Selling.
   { key: 'mailing', icon: 'forward_to_inbox', section: 'sell', after: 'customers' },
-  { key: 'whatsapp', icon: 'chat', section: 'sell', after: 'mailing' },
+  { key: 'whatsapp', icon: 'chat', section: 'sell', after: 'mailing', row: 95 },
   { key: 'portal', icon: 'web', section: 'sell', after: 'whatsapp' },
   { key: 'composites', icon: 'widgets', section: 'sell', after: 'price_lists' },
   {
@@ -37,6 +40,7 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
     icon: 'point_of_sale',
     section: 'sell',
     after: 'composites',
+    row: 82,
     meanwhile: '/invoices/new',
     create: true,
   },
@@ -45,6 +49,7 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
     icon: 'construction',
     section: 'sell',
     after: 'register',
+    row: 80,
     create: true,
   },
   // Café and restaurant.
@@ -59,6 +64,7 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
     icon: 'shopping_cart',
     section: 'manage',
     after: 'vendors',
+    row: 81,
     create: true,
   },
   // Money and compliance.
@@ -67,17 +73,19 @@ export const PLANNED_NAV: readonly PlannedPlace[] = [
     icon: 'bar_chart',
     section: 'manage',
     after: 'expenses',
+    row: 89,
     meanwhile: '/',
   },
-  { key: 'declarations', icon: 'event_note', section: 'manage', after: 'reports' },
+  { key: 'declarations', icon: 'event_note', section: 'manage', after: 'reports', row: 91 },
   {
     key: 'einvoicing',
     icon: 'receipt_long',
     section: 'manage',
     after: 'accounting_export',
+    row: 145,
   },
   { key: 'currencies', icon: 'currency_exchange', section: 'manage', after: 'einvoicing' },
-  { key: 'zakat', icon: 'volunteer_activism', section: 'manage', after: 'currencies' },
+  { key: 'zakat', icon: 'volunteer_activism', section: 'manage', after: 'currencies', row: 120 },
 ];
 
 /**
@@ -105,6 +113,7 @@ export function plannedNav(
         coming: {
           after: place.after,
           version: planned,
+          ...(place.row === undefined ? {} : { row: place.row }),
           ...(place.meanwhile === undefined ? {} : { meanwhile: place.meanwhile }),
         },
       },

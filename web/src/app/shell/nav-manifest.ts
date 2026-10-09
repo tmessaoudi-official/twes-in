@@ -44,14 +44,19 @@ export interface NavEntry extends Gated {
 }
 
 /**
- * What the « En construction » page says of an entry not built yet (docs/SPEC.md § 7, 2026-09-25 11:17): what it will
- * do, whether it is for version 1 or later, the § 8 row that builds it, and what to use meanwhile. Its texts live
- * under `coming.<key>` in the translations.
+ * What the « En construction » page says of an entry not built yet: what it will do, whether it is for version 1 or
+ * later, whether the roadmap schedules it yet, and what to use meanwhile. Its texts live under `coming.<key>` in the
+ * translations; `scripts/gates/coming-texts.sh` reds when they outlive the entry.
  */
 export interface Coming {
   /** The entry it will follow once built; until then `withComing` puts it after its section's working entries. */
   readonly after: string;
   readonly version: 'v1' | 'later';
+  /**
+   * The docs/SPEC.md § 8 row that builds it, when one does. The page says only whether one does, since a customer
+   * reads it; the gate checks the row is still open, so an entry that shipped cannot keep its page.
+   */
+  readonly row?: number;
   /** What to use until it exists, when something does the job today. */
   readonly meanwhile?: string;
 }
@@ -243,7 +248,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/fiscal-preset`,
     section: 'fiscal',
     permission: 'company.settings',
-    coming: { after: 'units', version: 'later', meanwhile: '/fiscal/taxes' },
+    coming: { after: 'units', version: 'later', row: 52, meanwhile: '/fiscal/taxes' },
   },
   {
     key: 'support-access',
@@ -252,7 +257,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/support-access`,
     section: 'team',
     permission: 'company.settings',
-    coming: { after: 'roles', version: 'later' },
+    coming: { after: 'roles', version: 'later', row: 67 },
   },
   {
     key: 'texts',
@@ -261,7 +266,7 @@ export const COMING_NAV: readonly (NavEntry & { readonly coming: Coming })[] = [
     route: `${COMING_SETTINGS_ROUTE}/texts`,
     section: 'customisation',
     permission: 'company.settings',
-    coming: { after: 'modules', version: 'later' },
+    coming: { after: 'modules', version: 'later', row: 47 },
   },
 ];
 

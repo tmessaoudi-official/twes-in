@@ -54,6 +54,18 @@ describe('the planned modules in the menu', () => {
     expect(plannedNav(undefined)).toEqual([]);
   });
 
+  it('carries the roadmap row that schedules a module, and none for one nothing schedules yet', () => {
+    const shown = plannedNav([
+      { key: 'register', planned: 'v1' },
+      { key: 'portal', planned: 'later' },
+    ]);
+
+    expect(shown.map((entry) => [entry.key, entry.coming.row])).toEqual([
+      ['portal', undefined],
+      ['register', 82],
+    ]);
+  });
+
   it('places each in the section where it will live, after the entries that work', () => {
     // Audit 2026-10-06 V-9: planned entries among the real ones pushed those below the fold.
     const shown = withComing(sidebar, comingEntries(catalogue), true);
