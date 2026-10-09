@@ -5,6 +5,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import type { FormGroup } from '@angular/forms';
 import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
@@ -23,6 +24,7 @@ import {
 import { DeliveryNotePage } from './delivery-note-page';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 import { ProductScans } from '../products/product-scans';
+import { InventoryFacade } from '../inventory/inventory-facade';
 import { ScanBus } from '../shared/scan/scan-bus';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { CustomerDisplay } from '../shared/customer-display/customer-display';
@@ -133,10 +135,11 @@ const validated: DeliveryNoteRow = {
 };
 
 describe('DeliveryNotePage', () => {
+  const shownOptions = signal<DeliveryNoteOptions | null>(options);
   const error = signal<DeliveryNotesError | null>(null);
   const note = signal<DeliveryNoteRow | null>(null);
   const facade = {
-    options: signal<DeliveryNoteOptions | null>(options).asReadonly(),
+    options: shownOptions.asReadonly(),
     note: note.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
@@ -163,6 +166,7 @@ describe('DeliveryNotePage', () => {
       `/api/companies/${companyId}/delivery-notes/${id}/pdf`,
   };
   const scans = { piecesPerScan: vi.fn(), named: vi.fn() };
+  const inventory = { onHand: vi.fn() };
   const display = { show: vi.fn(), total: vi.fn(), clear: vi.fn(), openWindow: vi.fn() };
   const granted = new Set<string>();
   const modules = new Set<string>(['delivery_notes', 'invoices']);
@@ -266,6 +270,8 @@ describe('DeliveryNotePage', () => {
     ].forEach((each) => granted.add(each));
     modules.clear();
     ['delivery_notes', 'invoices'].forEach((each) => modules.add(each));
+    shownOptions.set(options);
+    inventory.onHand.mockReset().mockResolvedValue([]);
     facade.preview.mockReset().mockResolvedValue(null);
     facade.invoice.mockReset().mockResolvedValue('i7');
     facade.draftsOf.mockReset().mockResolvedValue([]);
@@ -290,6 +296,7 @@ describe('DeliveryNotePage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: DeliveryNotesFacade, useValue: facade },
         { provide: ProductScans, useValue: scans },
+        { provide: InventoryFacade, useValue: inventory },
         { provide: CustomerDisplay, useValue: display },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
@@ -414,6 +421,109 @@ describe('DeliveryNotePage', () => {
     await figuresAnswered();
     expect(facade.preview).not.toHaveBeenCalled();
     expect(q('delivery-note-totals')).toBeNull();
+  });
+
+  // Row 224: a note's lines say what is on hand where the note is made, as an invoice's do.
+  describe('the stock under each line', () => {
+    const fivePieces = [{ productId: 'p1', unitId: 'u1', onHand: '5.000' }];
+    const stock = (): string => (q('line-0-stock')?.textContent ?? '').replace(/\s+/g, ' ');
+
+    beforeEach(() => {
+      modules.add('inventory');
+      granted.add('stock.read');
+      inventory.onHand.mockResolvedValue(fivePieces);
+    });
+
+    it('says what is on hand where the note is made, and in red when the note would leave too few', async () => {
+      note.set(draft);
+      await open('n1');
+      await settle();
+
+      expect(inventory.onHand).toHaveBeenLastCalledWith('c1', 'e1', ['p1']);
+      expect(stock()).toContain('delivery_notes.lines.stock_left');
+      expect(q('line-0-stock')?.classList).not.toContain('text-error');
+
+      type('line-0-quantity', '7');
+      await settle();
+      expect(q('line-0-stock')?.classList).toContain('text-error');
+      // Typing a quantity asks nothing more: what is on hand did not move.
+      expect(inventory.onHand).toHaveBeenCalledTimes(1);
+    });
+
+    it('reads the shelves again when the note is made at another establishment', async () => {
+      shownOptions.set({
+        ...options,
+        establishments: [
+          ...options.establishments,
+          { id: 'e2', code: 'DEPOT', name: 'Dépôt', isDefault: false },
+        ],
+      });
+      note.set(draft);
+      await open('n1');
+      await settle();
+      expect(inventory.onHand).toHaveBeenLastCalledWith('c1', 'e1', ['p1']);
+
+      const page = fixture.componentInstance as unknown as { form: () => FormGroup };
+      page.form().controls['establishmentId']!.setValue('e2');
+      await settle();
+
+      expect(inventory.onHand).toHaveBeenLastCalledWith('c1', 'e2', ['p1']);
+      expect(inventory.onHand).toHaveBeenCalledTimes(2);
+    });
+
+    it('tells a line counted in another unit only what is on hand, since it moves none', async () => {
+      shownOptions.set({
+        ...options,
+        units: [...options.units, { id: 'u2', code: 'KGM', name: 'Kilogramme', decimals: 3 }],
+      });
+      note.set({ ...draft, lines: [{ ...draft.lines[0]!, unitId: 'u2' }] });
+      await open('n1');
+      await settle();
+
+      expect(stock()).toContain('delivery_notes.lines.stock_on_hand');
+      expect(stock()).not.toContain('delivery_notes.lines.stock_left');
+    });
+
+    it('says nothing and asks nothing without stock.read, with the module off, to a reader, or on a validated note', async () => {
+      granted.delete('stock.read');
+      note.set(draft);
+      await open('n1');
+      await settle();
+      expect(q('line-0-stock')).toBeNull();
+
+      fixture.destroy();
+      granted.add('stock.read');
+      modules.delete('inventory');
+      await open('n1');
+      await settle();
+      expect(q('line-0-stock')).toBeNull();
+
+      fixture.destroy();
+      modules.add('inventory');
+      granted.delete('delivery_note.write');
+      await open('n1');
+      await settle();
+      expect(q('line-0-stock')).toBeNull();
+
+      fixture.destroy();
+      granted.add('delivery_note.write');
+      note.set(validated);
+      await open('n1');
+      await settle();
+      expect(q('line-0-stock')).toBeNull();
+
+      expect(inventory.onHand).not.toHaveBeenCalled();
+    });
+
+    it('is typed the same when what is on hand cannot be read', async () => {
+      inventory.onHand.mockResolvedValue([]);
+      note.set(draft);
+      await open('n1');
+      await settle();
+
+      expect(q('line-0-stock')).toBeNull();
+      expect((q('line-0-quantity') as HTMLInputElement).disabled).toBe(false);
+    });
   });
 
   afterEach(() => {

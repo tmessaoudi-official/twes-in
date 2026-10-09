@@ -10,6 +10,7 @@ import {
   figuresReady,
   lineGroup,
   linesArray,
+  lineStock,
   offeredTaxes,
   pickedProduct,
   deliveryNoteSearch,
@@ -370,5 +371,25 @@ describe('delivery note forms', () => {
     expect(
       deliveryNoteInput(deliveryNoteValues(null, options), lines, carthage.id).lines[0].lotCode,
     ).toBeNull();
+  });
+
+  it('tells each line what is on hand of its product and what the note leaves once validated', () => {
+    // A validated note takes stock for a line in its product's stock unit only (MoveStockForDeliveryNotes).
+    const lines = linesArray([], options);
+    lines.push(lineGroup(null, options));
+    lines.push(lineGroup(null, options));
+    lines.push(lineGroup(null, options));
+    lines.at(0).patchValue({ productId: 'p1', unitId: 'u1', quantity: '3' });
+    lines.at(1).patchValue({ productId: 'p1', unitId: 'u2', quantity: '0.5' });
+    lines.at(2).patchValue({ productId: 'p1', unitId: 'u1', quantity: '4' });
+    lines.at(3).patchValue({ productId: '', unitId: 'u1', quantity: '1' });
+    const onHand = new Map([['p1', { unitId: 'u1', onHand: '6.000' }]]);
+
+    expect(lineStock(lines, onHand)).toEqual([
+      { unitId: 'u1', onHand: '6.000', left: '-1.000' },
+      { unitId: 'u1', onHand: '6.000', left: null },
+      { unitId: 'u1', onHand: '6.000', left: '-1.000' },
+      null,
+    ]);
   });
 });

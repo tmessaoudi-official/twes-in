@@ -1881,6 +1881,8 @@
         "lotCode": "Up to 40 visible characters, no spaces."
       },
       "no_product_found": "No product found.",
+      "stock_on_hand": "In stock: {{onHand}} {{unit}}",
+      "stock_left": "In stock: {{onHand}} {{unit}} · {{left}} left after this note",
       "substitutes": {
         "short": "Only {{quantity}} on hand of this product. In stock instead:",
         "use": "{{reference}} ({{quantity}} on hand)"

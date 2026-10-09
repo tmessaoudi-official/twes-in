@@ -163,6 +163,8 @@
             [customer]="customer()"
             [priceLists]="auth.hasModule('price_lists')"
             [figures]="lineFigures()"
+            [stock]="showsStock()"
+            [establishmentId]="typedEstablishment()"
             [readOnly]="!editable()"
           />
           <app-quantity-totals

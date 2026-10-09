@@ -257,6 +257,16 @@ export class DeliveryNotePage {
 
   /** Bumped by every value the form or the lines take, so the figures read what is typed now. */
   private readonly typed = signal(0);
+  /** The establishment the note is typed at, whose shelves its lines read; null for the main one. */
+  protected readonly typedEstablishment = computed(() => {
+    this.typed();
+    const value = this.form()?.getRawValue()['establishmentId'];
+    return typeof value === 'string' && value !== '' ? value : null;
+  });
+  /** Whether the lines say what is on hand: for whoever may read stock, while the company keeps stock. */
+  protected readonly showsStock = computed(
+    () => this.auth.hasModule('inventory') && this.auth.hasPermission('stock.read'),
+  );
   /**
    * What the figures are asked for: the note as it would be saved, with the lines that can be worked out yet. A note
    * that no longer changes, or that is not for anyone yet, asks nothing.
