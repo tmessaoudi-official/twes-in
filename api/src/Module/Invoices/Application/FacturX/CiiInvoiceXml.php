@@ -184,11 +184,11 @@ final class CiiInvoiceXml
         $this->ram($summation, 'GrandTotalAmount', $totals->grandTotal);
         $this->ram($summation, 'DuePayableAmount', $totals->duePayable);
 
-        if (null !== $invoice->precedingInvoiceNumber) {
+        foreach ($invoice->precedingInvoices as $precedingInvoice) {
             $preceding = $this->ram($settlement, 'InvoiceReferencedDocument');
-            $this->ram($preceding, 'IssuerAssignedID', $invoice->precedingInvoiceNumber);
-            if (null !== $invoice->precedingInvoiceIssueDate) {
-                $this->element($this->ram($preceding, 'FormattedIssueDateTime'), self::QDT, 'qdt:DateTimeString', $invoice->precedingInvoiceIssueDate->format('Ymd'))->setAttribute('format', '102');
+            $this->ram($preceding, 'IssuerAssignedID', $precedingInvoice->number);
+            if (null !== $precedingInvoice->issueDate) {
+                $this->element($this->ram($preceding, 'FormattedIssueDateTime'), self::QDT, 'qdt:DateTimeString', $precedingInvoice->issueDate->format('Ymd'))->setAttribute('format', '102');
             }
         }
     }

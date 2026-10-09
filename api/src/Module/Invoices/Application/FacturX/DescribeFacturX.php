@@ -110,7 +110,6 @@ final readonly class DescribeFacturX
         }
 
         $header = $invoice->getHeader();
-        $corrected = $invoice->getCorrectedInvoice();
         $total = $amount($figures->total);
 
         return new CiiInvoice(
@@ -124,8 +123,7 @@ final readonly class DescribeFacturX
             $buyer[0],
             $header->customerReference,
             $header->supplyDate,
-            $corrected?->getNumber(),
-            $corrected?->getIssueDate(),
+            self::precedingInvoices($invoice),
             $seller->iban,
             $seller->bic,
             $invoice->getDueDate(),
@@ -134,6 +132,31 @@ final readonly class DescribeFacturX
             $breakdown,
             new CiiTotals($amount($figures->subtotalNet), $amount($figures->documentDiscount), $amount($figures->totalNet), $amount($figures->totalTax), $total, $total),
         );
+    }
+
+    /**
+     * EN 16931 BG-3, « one or more preceding invoices »: the invoice a credit note corrects; on any other invoice, the
+     * deposit invoices its lines give back, each once in the order the lines give them back, which is where XP Z12-014
+     * use case 21 names a final invoice's pre-payment invoices (docs/fiscal/FR.md § 2b).
+     *
+     * @return list<CiiPrecedingInvoice>
+     */
+    private static function precedingInvoices(Invoice $invoice): array
+    {
+        $corrected = $invoice->getCorrectedInvoice();
+        if (null !== $corrected) {
+            return null === $corrected->getNumber() ? [] : [new CiiPrecedingInvoice($corrected->getNumber(), $corrected->getIssueDate())];
+        }
+        $named = [];
+        foreach ($invoice->getLines() as $line) {
+            $deposit = $line->getDeduction()?->deposit;
+            $number = $deposit?->getNumber();
+            if (null !== $deposit && null !== $number && !isset($named[$number])) {
+                $named[$number] = new CiiPrecedingInvoice($number, $deposit->getIssueDate());
+            }
+        }
+
+        return array_values($named);
     }
 
     /**

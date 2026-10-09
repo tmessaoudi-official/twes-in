@@ -14,6 +14,7 @@ use App\Module\Invoices\Application\FacturX\CiiInvoice;
 use App\Module\Invoices\Application\FacturX\CiiInvoiceXml;
 use App\Module\Invoices\Application\FacturX\CiiLine;
 use App\Module\Invoices\Application\FacturX\CiiParty;
+use App\Module\Invoices\Application\FacturX\CiiPrecedingInvoice;
 use App\Module\Invoices\Application\FacturX\CiiTotals;
 use App\Module\Invoices\Application\FacturX\CiiVat;
 use App\Module\Invoices\Application\FacturX\CiiVatBreakdown;
@@ -217,8 +218,7 @@ final class CiiInvoiceXmlTest extends TestCase
             new CiiParty('Garage Martin SAS', '542065479', 'FR82542065479', '3 avenue Foch', 'Bâtiment B', '75016', 'Paris', 'FR'),
             'PO-77',
             new \DateTimeImmutable('2026-09-14'),
-            null,
-            null,
+            [],
             'FR7630006000011234567890189',
             'AGRIFRPP',
             new \DateTimeImmutable('2026-10-15'),
@@ -245,8 +245,7 @@ final class CiiInvoiceXmlTest extends TestCase
             new CiiParty('Werkstatt Müller GmbH', null, 'DE123456789', 'Hauptstraße 1', null, '10115', 'Berlin', 'DE'),
             null,
             null,
-            'FA-2026-00001',
-            new \DateTimeImmutable('2026-09-15'),
+            [new CiiPrecedingInvoice('FA-2026-00001', new \DateTimeImmutable('2026-09-15'))],
             null,
             null,
             new \DateTimeImmutable('2026-09-20'),

@@ -20,6 +20,7 @@ use App\Module\Invoices\Application\FacturX\CiiAllowance;
 use App\Module\Invoices\Application\FacturX\CiiInvoice;
 use App\Module\Invoices\Application\FacturX\CiiLine;
 use App\Module\Invoices\Application\FacturX\CiiParty;
+use App\Module\Invoices\Application\FacturX\CiiPrecedingInvoice;
 use App\Module\Invoices\Application\FacturX\CiiVatBreakdown;
 use App\Module\Invoices\Application\FacturX\DescribeFacturX;
 use App\Module\Invoices\Application\FacturX\FacturXRefused;
@@ -83,7 +84,7 @@ final class DescribeFacturXTest extends TestCase
         self::assertSame(['Garage Martin SAS', '542065479', 'FR82542065479', '3 avenue Foch', 'Bâtiment B', '75016', 'Paris', 'FR'], self::party($cii->buyer));
         self::assertSame(['PO-77', '2026-09-14', '2026-10-15'], [$cii->buyerReference, $cii->deliveryDate?->format('Y-m-d'), $cii->dueDate?->format('Y-m-d')]);
         self::assertSame(['FR7630006000011234567890189', 'AGRIFRPP'], [$cii->payeeIban, $cii->payeeBic]);
-        self::assertSame([null, null], [$cii->precedingInvoiceNumber, $cii->precedingInvoiceIssueDate]);
+        self::assertSame([], $cii->precedingInvoices);
         self::assertSame([['1', 'Réglage du tour', null, '150.0000', '2.000', 'C62', null, null, null, 'S', '20.00', null, '300.00']], array_map(self::lineRow(...), $cii->lines));
         self::assertSame([], $cii->allowances);
         self::assertSame([['S', '20.00', null, '300.00', '60.00']], array_map(self::breakdown(...), $cii->vatBreakdown));
@@ -142,7 +143,7 @@ final class DescribeFacturXTest extends TestCase
         $cii = $this->describe->describe($this->company, $credit->getId());
 
         self::assertSame(['381', 'AV-2026-00001', '2026-09-20'], [$cii->typeCode, $cii->number, $cii->issueDate->format('Y-m-d')]);
-        self::assertSame(['FA-2026-00001', '2026-09-15'], [$cii->precedingInvoiceNumber, $cii->precedingInvoiceIssueDate?->format('Y-m-d')]);
+        self::assertSame([['FA-2026-00001', '2026-09-15']], array_map(static fn (CiiPrecedingInvoice $preceding): array => [$preceding->number, $preceding->issueDate?->format('Y-m-d')], $cii->precedingInvoices));
         self::assertSame(['Pièce défectueuse'], $cii->notes, 'why it corrects its invoice');
         self::assertSame([['1', 'Réglage du tour', null, '150.0000', '2.000', 'C62', null, null, null, 'S', '20.00', null, '300.00']], array_map(self::lineRow(...), $cii->lines));
         self::assertSame([['S', '20.00', null, '300.00', '60.00']], array_map(self::breakdown(...), $cii->vatBreakdown));

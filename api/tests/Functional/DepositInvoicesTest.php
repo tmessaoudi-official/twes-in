@@ -273,6 +273,54 @@ final class DepositInvoicesTest extends ApiTestCase
         self::assertSame(0, Decimal::of($this->stringAt($final, 'subtotalNet'))->add(Decimal::of($this->stringAt($deposit, 'subtotalNet')))->compare(Decimal::of($whole)), 'the final invoice and its deposit charge the quote, no more');
     }
 
+    /**
+     * EN 16931 BG-3 names « one or more preceding invoices », the pre-payment invoices a final invoice gives back among
+     * them (AFNOR XP Z12-014 use case 21, docs/fiscal/FR.md § 2b): each by its number (BT-25) and issue day (BT-26),
+     * once however many lines give it back, in the order the lines give them back.
+     */
+    public function testAFinalInvoicesFacturXNamesTheDepositsItGivesBackAsPrecedingInvoices(): void
+    {
+        $this->inFrance();
+        $this->signedIn([...self::WRITER, 'invoice.read']);
+        $quoteId = $this->accepted();
+        $deposits = [];
+        foreach (['20', '10'] as $share) {
+            $depositId = $this->deposit($quoteId, ['depositPercentage' => $share, 'depositAmount' => null]);
+            $this->sendJson('PUT', $this->companyPath().'/invoices/'.$depositId, [...$this->editable($drawn = $this->invoice($depositId)), 'operationCategory' => 'both', 'lines' => array_map(static fn (array $line): array => array_intersect_key($line, array_flip(['description', 'quantity', 'unitId', 'unitPriceNet', 'taxComponentIds'])), $this->rows($drawn, 'lines'))]);
+            self::assertResponseIsSuccessful();
+            $this->issue($depositId);
+            $issued = $this->invoice($depositId);
+            $deposits[] = [$this->stringAt($issued, 'number'), str_replace('-', '', $this->stringAt($issued, 'issueDate'))];
+        }
+        $this->postJson($this->quotePath($quoteId).'/invoice', null);
+        self::assertResponseIsSuccessful();
+        $finalId = $this->stringAt($this->json(), 'invoiceId');
+        $final = $this->invoice($finalId);
+        self::assertGreaterThan(2, \count(array_filter($this->rows($final, 'lines'), static fn (array $line): bool => null !== ($line['deductsInvoiceId'] ?? null))), 'each deposit is given back rate group by rate group');
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$finalId, [...$this->editable($final), 'operationCategory' => 'both', 'lines' => array_map(static fn (array $line): array => array_intersect_key($line, array_flip(['productId', 'description', 'quantity', 'unitId', 'unitPriceNet', 'discountRate', 'taxComponentIds', 'deductsInvoiceId'])), $this->rows($final, 'lines'))]);
+        self::assertResponseIsSuccessful();
+        $this->issue($finalId);
+
+        $this->client->request('GET', $this->companyPath().'/invoices/'.$finalId.'/factur-x.xml');
+
+        self::assertResponseIsSuccessful();
+        $xml = (string) $this->client->getResponse()->getContent();
+        $document = new \DOMDocument();
+        self::assertTrue($document->loadXML($xml));
+        $read = new \DOMXPath($document);
+        $read->registerNamespace('rsm', 'urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100');
+        $read->registerNamespace('ram', 'urn:un:unece:uncefact:data:standard:ReusableAggregateBusinessInformationEntity:100');
+        $read->registerNamespace('qdt', 'urn:un:unece:uncefact:data:standard:QualifiedDataType:100');
+        $named = [];
+        foreach ($read->query('//ram:ApplicableHeaderTradeSettlement/ram:InvoiceReferencedDocument') ?: [] as $reference) {
+            self::assertInstanceOf(\DOMElement::class, $reference);
+            $named[] = [$read->evaluate('string(ram:IssuerAssignedID)', $reference), $read->evaluate('string(ram:FormattedIssueDateTime/qdt:DateTimeString)', $reference)];
+        }
+        self::assertSame('380', $read->evaluate('string(//rsm:ExchangedDocument/ram:TypeCode)'), 'the final invoice is a commercial invoice');
+        self::assertSame($deposits, $named);
+        FacturXTest::assertValidIfTheSchemaIsGiven($xml);
+    }
+
     public function testADepositAsksForWritingInvoices(): void
     {
         $this->signedIn(['quote.read', 'quote.write']);

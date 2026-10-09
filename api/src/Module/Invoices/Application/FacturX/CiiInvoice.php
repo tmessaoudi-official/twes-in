@@ -17,10 +17,11 @@ namespace App\Module\Invoices\Application\FacturX;
 final readonly class CiiInvoice
 {
     /**
-     * @param list<string>          $notes        BT-22, in order
-     * @param list<CiiLine>         $lines
-     * @param list<CiiAllowance>    $allowances   the document discount, one per VAT category and rate
-     * @param list<CiiVatBreakdown> $vatBreakdown
+     * @param list<string>              $notes             BT-22, in order
+     * @param list<CiiPrecedingInvoice> $precedingInvoices BG-3: the invoice a credit note corrects, the deposits a final invoice gives back
+     * @param list<CiiLine>             $lines
+     * @param list<CiiAllowance>        $allowances        the document discount, one per VAT category and rate
+     * @param list<CiiVatBreakdown>     $vatBreakdown
      */
     public function __construct(
         public string $typeCode,
@@ -32,8 +33,7 @@ final readonly class CiiInvoice
         public CiiParty $buyer,
         public ?string $buyerReference,
         public ?\DateTimeImmutable $deliveryDate,
-        public ?string $precedingInvoiceNumber,
-        public ?\DateTimeImmutable $precedingInvoiceIssueDate,
+        public array $precedingInvoices,
         public ?string $payeeIban,
         public ?string $payeeBic,
         public ?\DateTimeImmutable $dueDate,
