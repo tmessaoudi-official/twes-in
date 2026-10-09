@@ -21,6 +21,7 @@ import {
   DELIVERY_NOTE_STATUS_TONES,
 } from './delivery-notes-types';
 import { LOT_CODE_PATTERN, type ProductTracking } from '../products/products-types';
+import { type LineStock, type OnHand, stockOfLines } from '../shared/documents/line-stock';
 
 const FIELDS = 'delivery_notes.fields';
 /** The API's longest line description. */
@@ -390,6 +391,25 @@ export function figuresReady(line: LineGroup): boolean {
   return (
     [quantity, unitId, unitPriceNet].every((control) => !control.invalid) &&
     !line.hasError('quantityDecimals')
+  );
+}
+
+/**
+ * What each line says of stock, from what the establishment holds of the products whose stock is kept. A validated note
+ * takes out every line in its product's stock unit, so each such line is told what the note leaves.
+ */
+export function lineStock(
+  lines: LinesArray,
+  onHand: ReadonlyMap<string, OnHand>,
+): (LineStock | null)[] {
+  return stockOfLines(
+    lines.getRawValue().map(({ productId, unitId, quantity }) => ({
+      productId,
+      unitId,
+      quantity,
+      takes: true,
+    })),
+    onHand,
   );
 }
 

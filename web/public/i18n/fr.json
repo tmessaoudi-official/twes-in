@@ -1881,6 +1881,8 @@
         "lotCode": "Jusqu’à 40 caractères visibles, sans espace."
       },
       "no_product_found": "Aucun produit trouvé.",
+      "stock_on_hand": "En stock : {{onHand}} {{unit}}",
+      "stock_left": "En stock : {{onHand}} {{unit}} · reste {{left}} après ce bon",
       "substitutes": {
         "short": "Seulement {{quantity}} en stock de ce produit. En stock à la place :",
         "use": "{{reference}} ({{quantity}} en stock)"

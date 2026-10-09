@@ -21,11 +21,13 @@ import {
   type LineGroup,
   lineGroup,
   type LinesArray,
+  lineStock,
   namesALot,
   offeredTaxes,
   pickedProduct,
 } from './delivery-note-forms';
 import { atScale } from '../shared/i18n/format';
+import { AmountPipe } from '../shared/i18n/format-pipes';
 import type {
   CustomerOption,
   DeliveryNoteOptions,
@@ -41,6 +43,8 @@ import { LineSubstitutes } from './delivery-note-line-substitutes';
 import { ProductScans } from '../products/product-scans';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 import { productPhotoUrl } from '../products/product-photo-url';
+import { InventoryFacade } from '../inventory/inventory-facade';
+import type { OnHand } from '../shared/documents/line-stock';
 import type { LineFigures } from '../shared/documents/document-figures';
 import { LineFiguresView } from '../shared/documents/line-figures';
 
@@ -68,6 +72,7 @@ type CheckedField = keyof Omit<
     LineSubstitutes,
     IssuedLines,
     LineFiguresView,
+    AmountPipe,
   ],
   templateUrl: './delivery-note-lines.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -75,6 +80,7 @@ type CheckedField = keyof Omit<
 export class DeliveryNoteLines {
   private readonly facade = inject(DeliveryNotesFacade);
   private readonly scans = inject(ProductScans);
+  private readonly inventory = inject(InventoryFacade);
 
   readonly lines = input.required<LinesArray>();
   /** Whose company's catalogue the pickers ask; a line is never offered another company's products. */
@@ -89,6 +95,13 @@ export class DeliveryNoteLines {
   /** Whose note it is: their price lists decide what a line starts at. */
   readonly customer = input<CustomerOption | null>(null);
   readonly priceLists = input(false);
+  /**
+   * Whether each line says what is on hand of its product and what the note leaves: for whoever may read stock, while
+   * the company keeps stock.
+   */
+  readonly stock = input(false);
+  /** The establishment the note is made at, whose shelves the stock is read from; null for the main one. */
+  readonly establishmentId = input<string | null>(null);
   /** Each line's figures as the note stands typed, by position, or null where none could be worked out yet. */
   readonly figures = input<readonly (LineFigures | null)[] | null>(null);
   /** A tax's name by its code, for the taxes a line charges, kept while they stay the same so a fold stays open. */
@@ -108,6 +121,27 @@ export class DeliveryNoteLines {
   private readonly offered = computed(
     () => new Set(offeredTaxes(this.options(), this.excludedFamilies()).map((tax) => tax.id)),
   );
+  /** What the establishment holds of the lines' products whose stock is kept, by product. */
+  private readonly onHand = signal<ReadonlyMap<string, OnHand>>(new Map());
+  private stockRequest = 0;
+  /** What to ask of stock: the company, the establishment and the products named, each once, in a stable order. */
+  private readonly stockAsked = computed(
+    () => {
+      this.revision();
+      if (!this.stock() || this.readOnly() || this.companyId() === '') return null;
+      const products = [
+        ...new Set(this.lines().controls.map((line) => line.controls.productId.value)),
+      ]
+        .filter((id) => id !== '')
+        .sort();
+      return { companyId: this.companyId(), establishmentId: this.establishmentId(), products };
+    },
+    { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
+  );
+  protected readonly stocks = computed(() => {
+    this.revision();
+    return this.stockAsked() === null ? [] : lineStock(this.lines(), this.onHand());
+  });
   /** The lines as a validated note reads them: values, never fields drawn disabled. */
   protected readonly issued = computed<IssuedLine[]>(() => {
     this.revision();
@@ -145,6 +179,10 @@ export class DeliveryNoteLines {
       seen = id;
       if (changed)
         untracked(() => this.lines().controls.forEach((line) => void this.reprice(line)));
+    });
+    effect(() => {
+      const asked = this.stockAsked();
+      untracked(() => void this.readStock(asked));
     });
     effect((onCleanup) => {
       const subscription = this.lines().events.subscribe(() =>
@@ -308,6 +346,31 @@ export class DeliveryNoteLines {
     if (product === undefined) return;
     this.known.set(product.id, product);
     this.chooseProduct(line, { id: product.id, code: product.reference, name: product.name });
+  }
+
+  /** How a quantity of stock counted in `unitId` is shown: at its unit's decimals, with its name. */
+  protected stockUnit(unitId: string): { scale: number | null; name: string } {
+    const unit = this.options().units.find((each) => each.id === unitId);
+    return { scale: unit?.decimals ?? null, name: unit?.name ?? '' };
+  }
+
+  protected short(left: string | null): boolean {
+    return left !== null && left.startsWith('-');
+  }
+
+  /** Reads the stock again for what is asked; an answer to an earlier question is dropped. */
+  private async readStock(
+    asked: { companyId: string; establishmentId: string | null; products: string[] } | null,
+  ): Promise<void> {
+    const request = ++this.stockRequest;
+    const rows =
+      asked === null || asked.products.length === 0
+        ? []
+        : await this.inventory.onHand(asked.companyId, asked.establishmentId, asked.products);
+    if (request !== this.stockRequest) return;
+    this.onHand.set(
+      new Map(rows.map((row) => [row.productId, { unitId: row.unitId, onHand: row.onHand }])),
+    );
   }
 
   protected figuresOf(index: number): LineFigures | null {
