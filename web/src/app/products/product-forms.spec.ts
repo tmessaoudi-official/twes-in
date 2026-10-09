@@ -186,6 +186,20 @@ describe('product forms', () => {
     ]);
   });
 
+  // docs/SPEC.md § 7, 2026-09-17 (3): a new product left without a reference is given one; a product keeps its own.
+  it('asks a reference of an existing product only', () => {
+    const reference = (newProduct: boolean) =>
+      productForm(options, [], [], { cost: true, newProduct })
+        .sections.flatMap((section) => section.fields)
+        .find((field) => field.id === 'reference');
+    expect(reference(true)).toEqual(
+      expect.objectContaining({ required: false, hint: 'products.form.reference_hint_new' }),
+    );
+    expect(reference(false)).toEqual(
+      expect.objectContaining({ required: true, hint: 'products.form.reference_hint' }),
+    );
+  });
+
   // docs/SPEC.md § 7, 2026-09-19 21:55: prices show and take the locale's decimal separator.
   it('asks both prices as decimals', () => {
     const fields = productForm(options, [laptops, hardware], [warranty]).sections.flatMap(

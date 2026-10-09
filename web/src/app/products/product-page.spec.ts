@@ -78,9 +78,10 @@ describe('ProductPage', () => {
   const error = signal<ProductsError | null>(null);
   const product = signal<ProductRow | null>(null);
   const optionsSignal = signal<ProductOptions | null>(options);
+  const categories = signal<readonly ProductCategoryRow[]>([]);
   const facade = {
     options: optionsSignal.asReadonly(),
-    categories: signal<readonly ProductCategoryRow[]>([]).asReadonly(),
+    categories: categories.asReadonly(),
     customFields: signal<readonly CustomFieldDefinition[]>([]).asReadonly(),
     product: product.asReadonly(),
     busy: signal(false).asReadonly(),
@@ -94,6 +95,7 @@ describe('ProductPage', () => {
     reviseProduct: vi.fn(),
     clearError: vi.fn(),
     pricePreview: vi.fn(),
+    referencePreview: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -153,6 +155,8 @@ describe('ProductPage', () => {
     facade.createProduct.mockReset().mockResolvedValue({ ...laptop, id: 'p9' });
     facade.reviseProduct.mockReset().mockResolvedValue(laptop);
     facade.pricePreview.mockReset().mockResolvedValue(null);
+    facade.referencePreview.mockReset().mockResolvedValue(null);
+    categories.set([]);
     auth.hasPermission.mockReset().mockReturnValue(true);
     auth.hasModule.mockReset().mockReturnValue(true);
     articleSettings.load.mockReset().mockResolvedValue(undefined);
@@ -274,6 +278,102 @@ describe('ProductPage', () => {
       expect(navigate).toHaveBeenCalledWith(['/products', 'p9'], { replaceUrl: true }),
     );
     expect(successToasts()).toContain('products.saved');
+  });
+
+  // docs/SPEC.md § 7, 2026-09-17 (3): a reference left as proposed is given at save, the next free one.
+  describe('the reference a new product is given', () => {
+    async function fillAndSave(): Promise<void> {
+      type('field-name', 'Souris');
+      type('field-unitPriceNet', '25.5');
+      await settle();
+      q('record-save')!.click();
+      await settle();
+    }
+
+    /** A Select as a person uses it: opened, then the option taken. Its panel hangs off the body. */
+    async function choose(id: string, value: string): Promise<void> {
+      q(id)!.click();
+      await settle();
+      const option = Array.from(
+        document.body.querySelectorAll<HTMLElement>('[role="option"]'),
+      ).find((each) => each.textContent?.includes(value));
+      expect(option, `${id} offers ${value}`).toBeDefined();
+      option!.click();
+      await settle();
+    }
+
+    beforeEach(() => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      facade.referencePreview.mockResolvedValue('ART-00042');
+    });
+
+    it('shows the proposal, counts it as nothing unsaved, and sends it empty when kept', async () => {
+      facade.createProduct.mockResolvedValue({ ...laptop, id: 'p9', reference: 'ART-00042' });
+      await open(undefined);
+
+      expect(facade.referencePreview).toHaveBeenCalledWith('c1', null);
+      expect((q('field-reference') as HTMLInputElement).value).toBe('ART-00042');
+      expect(q('record-save')!.hasAttribute('disabled')).toBe(true);
+
+      await fillAndSave();
+      expect(facade.createProduct).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({ reference: '', name: 'Souris' }),
+      );
+      expect(successToasts()).toEqual(['products.saved']);
+    });
+
+    it('names the reference given when another save took the one shown', async () => {
+      facade.createProduct.mockResolvedValue({ ...laptop, id: 'p9', reference: 'ART-00043' });
+      await open(undefined);
+      await fillAndSave();
+
+      expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual(
+        expect.objectContaining({
+          kind: 'success',
+          key: 'products.saved_as',
+          params: { given: 'ART-00043', shown: 'ART-00042' },
+        }),
+      );
+    });
+
+    it('keeps a reference the person typed, through a change of category too', async () => {
+      categories.set([
+        { id: 'cat1', name: 'Boulonnerie', parentId: null, productCount: 0, childCount: 0 },
+      ]);
+      await open(undefined);
+      type('field-reference', 'VIS-6X40');
+      await settle();
+      facade.referencePreview.mockResolvedValue('BOI-0001');
+      await choose('field-categoryId', 'Boulonnerie');
+
+      expect(facade.referencePreview).toHaveBeenLastCalledWith('c1', 'cat1');
+      expect((q('field-reference') as HTMLInputElement).value).toBe('VIS-6X40');
+      await fillAndSave();
+      expect(facade.createProduct).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({ reference: 'VIS-6X40', categoryId: 'cat1' }),
+      );
+      expect(successToasts()).toEqual(['products.saved']);
+    });
+
+    it("replaces the proposal with the category's own while nobody changed it", async () => {
+      categories.set([
+        { id: 'cat1', name: 'Boulonnerie', parentId: null, productCount: 0, childCount: 0 },
+      ]);
+      await open(undefined);
+      facade.referencePreview.mockResolvedValue('BOI-0001');
+      await choose('field-categoryId', 'Boulonnerie');
+
+      expect((q('field-reference') as HTMLInputElement).value).toBe('BOI-0001');
+    });
+
+    it('asks nothing on a product that exists, nor for somebody who may only read', async () => {
+      product.set(laptop);
+      await open('p1');
+      expect((q('field-reference') as HTMLInputElement).value).toBe('ART-001');
+      expect(facade.referencePreview).not.toHaveBeenCalled();
+    });
   });
 
   it('does not send a price the API would refuse', async () => {

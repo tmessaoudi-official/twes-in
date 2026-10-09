@@ -229,7 +229,7 @@ export function productForm(
   options: ProductOptions,
   categories: readonly ProductCategoryRow[],
   fields: readonly CustomFieldDefinition[] = [],
-  shown: { readonly cost: boolean } = { cost: true },
+  shown: { readonly cost: boolean; readonly newProduct?: boolean } = { cost: true },
 ): FormDescriptor {
   const labels = categoryLabels(categories);
   const taxes: FormField[] = [
@@ -250,10 +250,14 @@ export function productForm(
           id: 'reference',
           label: `${FIELDS}.reference`,
           kind: 'text',
-          required: true,
+          // A new product left without one is given the next of the company's format; a product keeps one.
+          required: shown.newProduct !== true,
           maxLength: 32,
           pattern: '[A-Za-z0-9][A-Za-z0-9._/\\-]{0,31}',
-          hint: 'products.form.reference_hint',
+          hint:
+            shown.newProduct === true
+              ? 'products.form.reference_hint_new'
+              : 'products.form.reference_hint',
         },
         {
           id: 'kind',

@@ -96,8 +96,10 @@ final class ProductResource
     #[Groups([self::READ])]
     public ?string $id = null;
 
-    /** Letters, digits and . _ / -, up to 32 characters, unique in the company. */
-    #[Assert\NotBlank(groups: [self::WRITE])]
+    /**
+     * Letters, digits and . _ / -, up to 32 characters, unique in the company. Left empty on a new product, it is given
+     * the next free one of the company's format (GET .../product-reference-preview says which); a product keeps one.
+     */
     #[Groups([self::READ, self::WRITE])]
     public string $reference = '';
 

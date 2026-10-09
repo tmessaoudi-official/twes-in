@@ -10,6 +10,7 @@ import {
   inject,
   input,
   linkedSignal,
+  signal,
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,6 +23,7 @@ import { liveRecord } from '../shared/form/live-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
+import type { FormGroup } from '@angular/forms';
 import { ArticleDefaults } from './article-defaults';
 import { PriceCalculator } from './price-calculator';
 import { ProductBarcodesSection } from './product-barcodes';
@@ -160,8 +162,14 @@ export class ProductPage {
       ? null
       : productForm(options, this.facade.categories(), this.facade.customFields(), {
           cost: this.showsCost(),
+          newProduct: this.id() === null,
         });
   });
+  /**
+   * The reference a new product would be given if it were saved now, shown in its field so it can be kept or changed
+   * (docs/SPEC.md § 7, 2026-09-17 (3)); null until the API said it, and on an existing product.
+   */
+  private readonly proposal = signal<string | null>(null);
   /**
    * What the form is of: the product and the fields shown. Reading the product again yields new objects with the same
    * content, and must not rebuild the form over what is being typed; another product or other fields must.
@@ -221,6 +229,23 @@ export class ProductPage {
   protected readonly savedValues = computed(() => {
     const current = this.current();
     const options = this.facade.options();
+    if (current === null && options !== null) {
+      // A new product is measured against what it opened with, the reference proposed included: a form nobody touched
+      // has nothing unsaved, and leaving it asks nothing.
+      const proposal = this.proposal();
+      return proposal === null
+        ? null
+        : {
+            ...productValues(
+              null,
+              options,
+              this.facade.customFields(),
+              this.facade.defaultUnitCode(),
+              this.facade.defaultTracking(),
+            ),
+            reference: proposal,
+          };
+    }
     return current && options
       ? productValues(
           current,
@@ -279,6 +304,15 @@ export class ProductPage {
       const id = untracked(shownId);
       if (id !== null) onView.leave(id);
     });
+    effect((onCleanup) => {
+      const form = this.form();
+      const companyId = this.company()?.id;
+      if (form === null || !companyId || this.id() !== null || !this.mayWrite()) {
+        untracked(() => this.proposal.set(null));
+        return;
+      }
+      onCleanup(untracked(() => this.proposeReferences(form, companyId)));
+    });
     effect(() => {
       const companyId = this.company()?.id;
       const id = this.id();
@@ -290,6 +324,37 @@ export class ProductPage {
         }
       });
     });
+  }
+
+  /**
+   * Asks the API which reference the new product would be given, now and whenever its category changes, and puts it
+   * in the field while the field still holds the previous proposal or nothing: a reference the person typed stays.
+   * An answer overtaken by a later one is dropped. Returns what stops listening.
+   */
+  private proposeReferences(form: FormGroup, companyId: string): () => void {
+    const reference = form.get('reference');
+    const category = form.get('categoryId');
+    if (reference === null || category === null) return () => undefined;
+    let asked = 0;
+    const ask = async (): Promise<void> => {
+      const mine = ++asked;
+      const categoryId = String(category.value ?? '');
+      const shown = await this.facade.referencePreview(
+        companyId,
+        categoryId === '' ? null : categoryId,
+      );
+      if (mine !== asked || shown === null) return;
+      const typed = String(reference.value ?? '').trim();
+      const before = untracked(this.proposal);
+      this.proposal.set(shown);
+      if (typed === '' || typed === before) reference.setValue(shown);
+    };
+    void ask();
+    const subscription = category.valueChanges.subscribe(() => void ask());
+    return () => {
+      asked++;
+      subscription.unsubscribe();
+    };
   }
 
   /**
@@ -357,12 +422,25 @@ export class ProductPage {
     const companyId = this.company()?.id;
     const options = this.facade.options();
     if (!companyId || options === null || this.busy()) return;
-    const input = productInput(values, options, this.facade.customFields(), this.current() ?? null);
+    const typed = productInput(values, options, this.facade.customFields(), this.current() ?? null);
     const id = this.id();
     if (id === null) {
-      const created = await this.facade.createProduct(companyId, input);
+      // The proposal left as it was is sent empty, so the API gives the next free one even if another save took it.
+      const proposal = this.proposal();
+      const generated = typed.reference === '' || typed.reference === proposal;
+      const created = await this.facade.createProduct(
+        companyId,
+        generated ? { ...typed, reference: '' } : typed,
+      );
       if (created !== null) {
-        this.feedback.success('products.saved');
+        if (generated && proposal !== null && created.reference !== proposal) {
+          this.feedback.success('products.saved_as', {
+            given: created.reference,
+            shown: proposal,
+          });
+        } else {
+          this.feedback.success('products.saved');
+        }
         // It exists now: going to it is not leaving unsaved work, though the form still holds what was
         // typed and the record holds what the API answered (row 45's leave guard, 2026-09-20).
         this.unsaved.savedAndLeaving();
@@ -374,7 +452,7 @@ export class ProductPage {
             : { replaceUrl: true, queryParams: { tab: 'codes', add: barcode } },
         );
       }
-    } else if ((await this.facade.reviseProduct(companyId, id, input)) !== null) {
+    } else if ((await this.facade.reviseProduct(companyId, id, typed)) !== null) {
       const form = this.form();
       if (form !== null) this.sync.savedHere(form);
       this.feedback.success('products.saved');

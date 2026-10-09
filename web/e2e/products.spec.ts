@@ -145,6 +145,47 @@ test('a product is filed in a category, priced at the currency scale and revised
   }
 });
 
+// docs/SPEC.md § 7, 2026-09-17 (3): a product left at the reference its form proposes is given it, in its category's
+// own format; the number comes from the company's one counter, which other runs move, so it is read, not guessed.
+test('a new product keeps the reference its category proposes', async ({ page }) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const categoryName = `E2E ref ${run}`;
+  const prefix = `R${run}`;
+  let given = '';
+  await signIn(page);
+  await inACompany(page, CSRF);
+  try {
+    await page.goto('/products/categories');
+    await page.getByTestId('product-category-add').click();
+    await page.getByTestId('field-name').fill(categoryName);
+    await page.getByTestId('product-category-save').click();
+    await expect(page.getByTestId(`product-category-${categoryName}`)).toBeVisible();
+    await rowAction(page, `product-category-${categoryName}`, 'edit').click();
+    await page.getByTestId('field-article__reference_format').fill(`${prefix}-{SEQ:3}`);
+    await page.getByTestId('article-defaults-save').click();
+    await expect(toast(page)).toContainText('Les valeurs par défaut ont été enregistrées.');
+
+    await page.goto('/products/new');
+    await expect(page.getByTestId('field-reference')).toHaveValue(/^ART-\d{5,}$/);
+    await page.getByTestId('field-categoryId').click();
+    await page.getByRole('option', { name: categoryName }).click();
+    await expect(page.getByTestId('field-reference')).toHaveValue(
+      new RegExp(`^${prefix}-\\d{3,}$`),
+    );
+    given = await page.getByTestId('field-reference').inputValue();
+    await page.getByTestId('field-name').fill(`Vis ${run}`);
+    await page.getByTestId('field-unitPriceNet').fill('1,2');
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('record-save').click();
+
+    await expect(page).toHaveURL(/\/products\/[0-9a-f-]{36}$/);
+    await expect(toast(page)).toContainText('Le produit a été enregistré.');
+    await expect(page.getByTestId('product-title')).toContainText(given);
+  } finally {
+    await retire(page, given === '' ? `${prefix}-none` : given, categoryName);
+  }
+});
+
 // docs/SPEC.md § 7, 2026-09-22 11:05 and 22:26: a product answers to several codes, scanned in one after another;
 // a code is one product's only, and a code spelled whole finds its product.
 test('a product is given its codes by scanning them, and a code finds it', async ({ page }) => {

@@ -237,6 +237,18 @@ describe('ProductsApi', () => {
     });
   });
 
+  it('asks which reference a new product would be given, in its category when it has one', async () => {
+    const plain = api.referencePreview('c1', null);
+    http.expectOne('/api/companies/c1/product-reference-preview').flush({ reference: 'ART-00042' });
+    expect(await plain).toBe('ART-00042');
+
+    const filed = api.referencePreview('c1', 'k1');
+    http
+      .expectOne('/api/companies/c1/product-reference-preview?categoryId=k1')
+      .flush({ reference: 'BOI-0001' });
+    expect(await filed).toBe('BOI-0001');
+  });
+
   it('reads a product with nulls where the API sent none', async () => {
     const pending = api.product('c1', 'p 1');
     http.expectOne('/api/companies/c1/products/p%201').flush({

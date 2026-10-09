@@ -26,6 +26,7 @@ use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
 use App\Module\Invoices\Application\PrintInvoice;
 use App\Module\Invoices\Application\RemindLateInvoices;
+use App\Module\Products\Application\ProductReferences;
 use App\Module\Scanning\Application\PhonePairings;
 use App\Module\Scanning\Application\PhonePhotos;
 use App\Settings\Application\ForgetSettings;
@@ -82,6 +83,7 @@ final class CommandsAndQueriesTest extends TestCase
         PhonePairings::class => 'a phone lent to a tab for a while, nothing the company keeps',
         MailInvitation::class => 'the worker mailing an invitation whose creation was recorded',
         AllocateNumber::class => 'a part of issuing, inside the transaction of the document it numbers, which records it',
+        ProductReferences::class => 'a part of creating a product, inside the transaction of the product it names, which records it',
     ];
 
     /** @var array<class-string, list<string>>|null */

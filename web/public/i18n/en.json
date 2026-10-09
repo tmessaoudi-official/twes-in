@@ -949,7 +949,9 @@
       "default_unit": "Default unit",
       "stock_tracking": "Track stock",
       "traceability": "Traceability of a new product",
-      "show_price_excl_tax": "Also show the price without tax to what faces a customer"
+      "show_price_excl_tax": "Also show the price without tax to what faces a customer",
+      "reference_format": "Format of generated references",
+      "reference_format_hint": "Letters, digits and . _ / - around exactly one {SEQ} or {SEQ:n} (n digits): ART-{SEQ:5} gives ART-00042. A category may have its own; the number comes from one counter for the company."
     },
     "stock": {
       "cost_on_receive": "What a stock receipt does to a product's cost"
@@ -1974,7 +1976,8 @@
       "cost_hint": "What one unit costs you; never printed.",
       "description_hint": "Offered as the text of a new document line.",
       "tracking_hint": "Chosen before the first stock movement; a service is not tracked.",
-      "substitution_group_hint": "Products sharing this name can stand in for one another when one is out of stock. Case is not told apart."
+      "substitution_group_hint": "Products sharing this name can stand in for one another when one is out of stock. Case is not told apart.",
+      "reference_hint_new": "The reference shown is given when you save; type another to replace it."
     },
     "errors": {
       "network": "The server could not be reached.",
@@ -2199,7 +2202,8 @@
       },
       "from_phone": "Photo added to {{name}}.",
       "phone_hint": "The lent phone can take the photo too: it arrives here."
-    }
+    },
+    "saved_as": "The product was saved as {{given}}: {{shown}} was taken in the meantime."
   },
   "inventory": {
     "no_company": "Choose a company first.",

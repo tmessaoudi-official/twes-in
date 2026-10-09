@@ -51,7 +51,7 @@ final class ScaleGenerator
         'product_home_location', 'product_reorder_point', 'customer_group', 'customer_tax_regime', 'custom_field_definition',
         'setting', 'role', 'membership', 'stock_location', 'stock_lot', 'vendor', 'expense_category', 'subscription',
         'module_state', 'module_interest', 'invitation', 'inbox_item', 'notification_preference', 'scan_pairing', 'venue_area', 'venue_spot', 'venue_structure',
-        'price_list', 'price_list_item',
+        'price_list', 'price_list_item', 'product_reference_sequence',
     ];
 
     /** Company data this slice does not grow: table => why. */

@@ -19,6 +19,7 @@ import type {
   ProductBarcodesProductBarcodesReadValidationProductBarcodesWrite as ProductBarcodesProductBarcodesRead,
   ProductBarcodesProductBarcodesWriteValidationProductBarcodesWrite as ProductBarcodesProductBarcodesWrite,
   ProductProductRead,
+  ProductReferencePreviewProductReferencePreviewRead,
   ProductProductWriteValidationProductWrite as ProductProductWrite,
   ProductScanProductScanRead,
   ProductCostChangeProductCostChangeRead,
@@ -138,7 +139,28 @@ export class ProductsApi {
     );
   }
 
-  /** 409 when another product of the company has the reference; 422 naming the field the API refused. */
+  /**
+   * The reference a new product left without one would be given if it were saved now, filed in that category: what
+   * the form shows in the field. Nothing is taken; the save takes the next free one.
+   */
+  async referencePreview(companyId: string, categoryId: string | null): Promise<string> {
+    return this.guard(
+      async () =>
+        (
+          await firstValueFrom(
+            this.http.get<ProductReferencePreviewProductReferencePreviewRead>(
+              path(companyId, 'product-reference-preview'),
+              { params: categoryId === null ? {} : { categoryId } },
+            ),
+          )
+        ).reference,
+    );
+  }
+
+  /**
+   * 409 when another product of the company has the reference; 422 naming the field the API refused. A reference
+   * left empty is given the next free one of the company's format.
+   */
   async createProduct(companyId: string, input: ProductInput): Promise<ProductRow> {
     return this.guard(async () =>
       toProduct(

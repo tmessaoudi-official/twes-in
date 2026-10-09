@@ -72,6 +72,7 @@ final readonly class ManageProducts
         private VendorRepository $vendors,
         private ReadSetting $settings,
         private ProductCostChangeRepository $costChanges,
+        private ProductReferences $references,
     ) {
     }
 
@@ -145,7 +146,8 @@ final readonly class ManageProducts
     public function create(Company $company, ProductInput $input, ?Uuid $actorUserId): Product
     {
         return $this->transactions->run(function () use ($company, $input, $actorUserId): Product {
-            if (null !== $this->products->ofReferenceInCompany(trim($input->reference), $company->getId())) {
+            $reference = trim($input->reference);
+            if ('' !== $reference && null !== $this->products->ofReferenceInCompany($reference, $company->getId())) {
                 throw new ProductReferenceTaken();
             }
             $details = $input->seesCosts ? $input->details : $input->details->withCostPrice(null);
@@ -154,13 +156,17 @@ final readonly class ManageProducts
             [$unit, $category] = $this->checked($company, $input, null);
             $tracking = Product::trackingFor($input->tracking ?? $this->defaultTracking($company, $category, $input->details->kind), $input->details->kind);
             $values = $this->customFieldValues($company, $input, null);
+            // Left empty, it is given the next free one; a refusal from here on rolls the counter back with the product.
+            if ('' === $reference) {
+                $reference = $this->references->take($company, $category);
+            }
             $now = $this->clock->now();
-            $product = Product::create($company, $input->reference, $details, $unit, $category, $input->defaultTaxComponentIds, $now);
+            $product = Product::create($company, $reference, $details, $unit, $category, $input->defaultTaxComponentIds, $now);
             $product->track($tracking, $now);
             $product->reviseCustomFields($values, $now);
             $product->replaceBarcodes($lines, $now);
             if (!$input->isActive) {
-                $product->revise($input->reference, $details, $unit, $category, $input->defaultTaxComponentIds, false, $now);
+                $product->revise($reference, $details, $unit, $category, $input->defaultTaxComponentIds, false, $now);
             }
             $this->products->save($product);
             $this->record($company, $product->getId(), self::CREATED, [], $actorUserId);

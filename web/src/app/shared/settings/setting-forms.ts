@@ -125,6 +125,7 @@ export const SETTING_HINTS: Readonly<Record<string, string>> = {
   'watch.late_after_days': 'settings.watch.late_after_days_hint',
   'watch.unsold_after_days': 'settings.watch.unsold_after_days_hint',
   'credit.limit': 'settings.credit.limit_hint',
+  'article.reference_format': 'settings.article.reference_format_hint',
   'reminders.enabled': 'settings.reminders.enabled_hint',
   'reminders.stages': 'settings.reminders.stages_hint',
   'reminders.hour': 'settings.reminders.hour_hint',

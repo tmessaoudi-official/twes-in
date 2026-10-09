@@ -177,6 +177,18 @@ export class ProductsFacade {
     }
   }
 
+  /**
+   * The reference a new product would be given, filed in that category, or null when the API could not say. Quiet,
+   * like the price preview: the field then stays empty, and the save still gives one.
+   */
+  async referencePreview(companyId: string, categoryId: string | null): Promise<string | null> {
+    try {
+      return await this.api.referencePreview(companyId, categoryId);
+    } catch {
+      return null;
+    }
+  }
+
   clearError(): void {
     this.errorSignal.set(null);
   }

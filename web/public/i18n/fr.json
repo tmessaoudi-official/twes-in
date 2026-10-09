@@ -949,7 +949,9 @@
       "default_unit": "Unité par défaut",
       "stock_tracking": "Suivre le stock",
       "traceability": "Traçabilité d’un nouvel article",
-      "show_price_excl_tax": "Afficher aussi le prix HT à ce qui fait face au client"
+      "show_price_excl_tax": "Afficher aussi le prix HT à ce qui fait face au client",
+      "reference_format": "Format des références générées",
+      "reference_format_hint": "Lettres, chiffres et . _ / - autour d’un seul {SEQ} ou {SEQ:n} (n chiffres) : ART-{SEQ:5} donne ART-00042. Une catégorie peut avoir le sien ; le numéro vient d’un seul compteur de l’entreprise."
     },
     "stock": {
       "cost_on_receive": "Ce que fait une réception de stock au coût d’un produit"
@@ -1974,7 +1976,8 @@
       "cost_hint": "Ce qu’une unité vous coûte ; jamais imprimé.",
       "description_hint": "Proposée comme texte d’une nouvelle ligne de document.",
       "tracking_hint": "Choisi avant le premier mouvement de stock ; un service n’est pas suivi.",
-      "substitution_group_hint": "Les produits qui portent ce nom peuvent se remplacer quand l’un est en rupture. La casse ne les distingue pas."
+      "substitution_group_hint": "Les produits qui portent ce nom peuvent se remplacer quand l’un est en rupture. La casse ne les distingue pas.",
+      "reference_hint_new": "La référence proposée est donnée à l’enregistrement ; tapez-en une autre pour la remplacer."
     },
     "errors": {
       "network": "Le serveur est injoignable.",
@@ -2199,7 +2202,8 @@
       },
       "from_phone": "Photo ajoutée à {{name}}.",
       "phone_hint": "Le téléphone prêté peut aussi prendre la photo : elle arrive ici."
-    }
+    },
+    "saved_as": "Le produit a été enregistré sous la référence {{given}} : {{shown}} a été prise entre-temps."
   },
   "inventory": {
     "no_company": "Choisissez d’abord une entreprise.",

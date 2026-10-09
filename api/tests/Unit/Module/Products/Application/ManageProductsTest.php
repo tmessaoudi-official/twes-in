@@ -20,6 +20,8 @@ use App\Module\Products\Application\ManageProducts;
 use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Application\ProductNotFound;
+use App\Module\Products\Application\ProductReferences;
+use App\Module\Products\Application\ProductReferenceSettings;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Domain\CostChangeSource;
 use App\Module\Products\Domain\InvalidProduct;
@@ -44,6 +46,7 @@ use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryProductCategories;
 use App\Tests\Support\InMemoryProductCostChanges;
+use App\Tests\Support\InMemoryProductReferenceSequences;
 use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemoryProductStockHistory;
 use App\Tests\Support\InMemorySettings;
@@ -67,6 +70,7 @@ final class ManageProductsTest extends TestCase
     private ManageProducts $manage;
     private InMemoryProductCostChanges $costHistory;
     private ChangeSettings $changeSettings;
+    private ProductReferences $references;
     private Company $company;
     private Company $globex;
 
@@ -83,11 +87,13 @@ final class ManageProductsTest extends TestCase
         $this->stockHistory = new InMemoryProductStockHistory();
         $this->vendors = new InMemoryVendors();
         $settings = new InMemorySettings();
-        $catalog = new SettingCatalog([new BusinessDefaultSettings()]);
+        $catalog = new SettingCatalog([new BusinessDefaultSettings(), new ProductReferenceSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
         $this->changeSettings = new ChangeSettings($catalog, $settings, $resolve, $this->audit, $clock, $transactions);
         $this->costHistory = new InMemoryProductCostChanges();
-        $this->manage = new ManageProducts(new InMemoryProducts(), $this->categories, $this->units, $this->taxes, $this->audit, $clock, $this->fields, $this->stockHistory, $transactions, $this->vendors, new ReadSetting($resolve), $this->costHistory);
+        $products = new InMemoryProducts();
+        $this->references = new ProductReferences(new InMemoryProductReferenceSequences(), $products, $this->categories, new ReadSetting($resolve), $transactions);
+        $this->manage = new ManageProducts($products, $this->categories, $this->units, $this->taxes, $this->audit, $clock, $this->fields, $this->stockHistory, $transactions, $this->vendors, new ReadSetting($resolve), $this->costHistory, $this->references);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $provision->handle($this->company);
@@ -131,6 +137,72 @@ final class ManageProductsTest extends TestCase
         }
         $this->expectException(ProductReferenceTaken::class);
         $this->manage->create($this->company, $this->input(), null);
+    }
+
+    public function testAProductLeftWithoutAReferenceTakesTheNextOneOfItsCompanysFormat(): void
+    {
+        self::assertSame('ART-00001', $this->references->preview($this->company, null));
+        self::assertSame('ART-00001', $this->references->preview($this->company, null), 'a preview takes nothing');
+
+        self::assertSame('ART-00001', $this->manage->create($this->company, $this->input(reference: ''), null)->getReference());
+        self::assertSame('ART-00002', $this->manage->create($this->company, $this->input(reference: '  '), null)->getReference());
+        self::assertSame('ART-00001', $this->manage->create($this->globex, $this->input(reference: '', company: $this->globex), null)->getReference(), 'each company numbers its own');
+        self::assertSame('ART-00003', $this->references->preview($this->company, null));
+    }
+
+    public function testAReferenceAProductAlreadyHoldsIsSteppedOver(): void
+    {
+        $this->manage->create($this->company, $this->input(reference: 'ART-00001'), null);
+        $this->manage->create($this->company, $this->input(reference: 'ART-00002'), null);
+        $this->manage->create($this->company, $this->input(reference: 'ART-00004'), null);
+
+        self::assertSame('ART-00003', $this->references->preview($this->company, null));
+        self::assertSame('ART-00003', $this->manage->create($this->company, $this->input(reference: ''), null)->getReference());
+        self::assertSame('ART-00005', $this->manage->create($this->company, $this->input(reference: ''), null)->getReference());
+    }
+
+    public function testACategorysOwnFormatNumbersFromTheCompanysOneCounter(): void
+    {
+        $bolts = ProductCategory::create($this->company, 'Boulonnerie', null, new \DateTimeImmutable());
+        $this->categories->save($bolts);
+        $context = new SettingContext($this->company, productCategoryId: $bolts->getId());
+        $this->changeSettings->change($context, ProductReferenceSettings::FORMAT, SettingLevel::ProductCategory, 'BOI-{SEQ:4}', null);
+
+        self::assertSame('BOI-0001', $this->references->preview($this->company, $bolts->getId()));
+        self::assertSame('BOI-0001', $this->manage->create($this->company, $this->input(reference: '', categoryId: $bolts->getId()), null)->getReference());
+        self::assertSame('ART-00002', $this->manage->create($this->company, $this->input(reference: ''), null)->getReference());
+    }
+
+    public function testAPreviewForAnotherCompanysCategoryIsRefusedNamingIt(): void
+    {
+        $theirs = ProductCategory::create($this->globex, 'Matériel', null, new \DateTimeImmutable());
+        $this->categories->save($theirs);
+
+        try {
+            $this->references->preview($this->company, $theirs->getId());
+            self::fail('A preview read another company\'s category.');
+        } catch (InvalidProduct $refused) {
+            self::assertSame('categoryId', $refused->field);
+        }
+    }
+
+    public function testAReferenceIsTakenOnlyInsideTheTransactionThatStoresItsProduct(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->references->take($this->company, null);
+    }
+
+    public function testARevisionCannotEmptyAReference(): void
+    {
+        $product = $this->manage->create($this->company, $this->input(), null);
+
+        try {
+            $this->manage->revise($this->company, $product->getId(), $this->input(reference: ''), null);
+            self::fail('A revision emptied the reference.');
+        } catch (InvalidProduct $refused) {
+            self::assertSame('reference', $refused->field);
+        }
+        self::assertSame('ART-00001', $this->references->preview($this->company, null), 'a refused revision takes nothing');
     }
 
     public function testWhatTheCompanyDoesNotHaveIsRefusedNamingTheField(): void

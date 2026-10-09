@@ -20,6 +20,7 @@ use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductTracking;
+use App\ModuleRegistry\Domain\ModuleState;
 use App\Tenancy\Domain\Company;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
@@ -110,6 +111,89 @@ final class ProductsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the default taxes are a list, never a map');
         $this->getJson($this->path());
         self::assertSame([], $this->jsonList());
+    }
+
+    /** A product left without a reference is given the next free one of its company's format (docs/SPEC.md § 7, 2026-09-17 (3)). */
+    public function testANewProductLeftWithoutAReferenceIsGivenTheOneThePreviewSaid(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->getJson($this->companyPath().'/product-reference-preview');
+        self::assertResponseIsSuccessful();
+        self::assertSame('ART-00001', $this->json()['reference']);
+        $this->getJson($this->companyPath().'/product-reference-preview');
+        self::assertSame('ART-00001', $this->json()['reference'], 'reading it takes nothing');
+
+        $this->postJson($this->path(), $this->product(['reference' => '']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame('ART-00001', $this->json()['reference']);
+        $createdId = $this->stringAt($this->json(), 'id');
+
+        $this->postJson($this->path(), $this->product(['reference' => 'ART-00002', 'name' => 'Typed']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->getJson($this->companyPath().'/product-reference-preview');
+        self::assertSame('ART-00003', $this->json()['reference'], 'a reference a product holds is stepped over');
+        $this->postJson($this->path(), $this->product(['reference' => '', 'name' => 'Third']));
+        self::assertSame('ART-00003', $this->json()['reference']);
+
+        $this->sendJson('PUT', $this->path($createdId), $this->product(['reference' => '']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a product keeps a reference');
+        self::assertStringContainsString('reference', (string) $this->client->getResponse()->getContent());
+        $this->getJson($this->companyPath().'/product-reference-preview');
+        self::assertSame('ART-00004', $this->json()['reference']);
+    }
+
+    public function testTheCompanyAndEachCategoryWriteTheReferenceTheirOwnWay(): void
+    {
+        $this->signedIn(['company.read', 'product.read', 'product.write', 'company.settings']);
+        $this->postJson($this->companyPath().'/product-categories', ['name' => 'Boulonnerie']);
+        $categoryId = $this->stringAt($this->json(), 'id');
+        $settings = $this->companyPath().'/settings/article.reference_format';
+
+        $this->sendJson('PUT', $settings, ['level' => 'company', 'value' => 'REF/{SEQ:3}']);
+        self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $settings, ['level' => 'product_category', 'productCategoryId' => $categoryId, 'value' => 'BOI-{SEQ:4}']);
+        self::assertResponseIsSuccessful();
+        foreach (['REF {SEQ}', 'REF-', '{SEQ}-{SEQ}', '-{SEQ}', 'ABCDEFGHIJKLMNOP{SEQ}'] as $refused) {
+            $this->sendJson('PUT', $settings, ['level' => 'company', 'value' => $refused]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+        }
+
+        $this->getJson($this->companyPath().'/product-reference-preview');
+        self::assertSame('REF/001', $this->json()['reference']);
+        $this->getJson($this->companyPath().'/product-reference-preview?categoryId='.$categoryId);
+        self::assertSame('BOI-0001', $this->json()['reference']);
+
+        $this->postJson($this->path(), $this->product(['reference' => '', 'categoryId' => $categoryId]));
+        self::assertSame('BOI-0001', $this->json()['reference']);
+        $this->postJson($this->path(), $this->product(['reference' => '', 'name' => 'Sans catégorie']));
+        self::assertSame('REF/002', $this->json()['reference'], 'one counter for the company, whichever format writes it');
+    }
+
+    public function testThePreviewIsForAWriterOfThisCompanyWithProductsOn(): void
+    {
+        $other = $this->createCompany('Globex');
+        static::getContainer()->get(ProvisionCompany::class)->handle($other);
+        $theirs = ProductCategory::create($other, 'Matériel', null, new \DateTimeImmutable());
+        $this->em()->persist($theirs);
+        $this->em()->flush();
+        $this->createUser('writer@twes.local', 'password-1234', $this->company, ['product.read', 'product.write'], 'writer');
+        $this->signedIn(['product.read']);
+
+        $this->getJson($this->companyPath().'/product-reference-preview');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a reader adds no product, and is answered as a stranger');
+
+        $this->login('writer@twes.local', 'password-1234');
+        $this->getJson('/api/companies/'.$other->getId()->toRfc4122().'/product-reference-preview');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson($this->companyPath().'/product-reference-preview?categoryId='.$theirs->getId()->toRfc4122());
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('categoryId', (string) $this->client->getResponse()->getContent());
+
+        $this->em()->persist(ModuleState::of($this->em()->find(Company::class, $this->company->getId()) ?? self::fail('Acme is gone.'), 'products', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->getJson($this->companyPath().'/product-reference-preview');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'products switched off');
     }
 
     public function testAReferenceAnotherProductHasAnswersConflict(): void
