@@ -53,6 +53,7 @@ use App\Tenancy\Domain\CompanyProfile;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomerCredits;
+use App\Tests\Support\InMemoryDepositQuotes;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryInvoices;
 use App\Tests\Support\InMemoryNumberingSeries;
@@ -83,6 +84,7 @@ final class InvoiceWorkflowTest extends TestCase
     private RecordingDomainEvents $events;
     private ChangeSettings $change;
     private InvoiceWorkflow $workflow;
+    private InMemoryDepositQuotes $quotes;
     private Company $company;
     private Company $globex;
 
@@ -119,6 +121,8 @@ final class InvoiceWorkflowTest extends TestCase
             ShippedDepositDeductions::of($this->invoices, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())),
             new PartyIdentity(ShippedFiscalPresets::presets()),
             ShippedFiscalPresets::presets(),
+            $this->quotes = new InMemoryDepositQuotes(),
+            ShippedFiscalPresets::scales(),
         );
         foreach ([$this->company, $this->globex] as $company) {
             $company->reviseProfile(new CompanyProfile(legalName: $company->getName().' SARL', identifiers: self::MATRICULE, addressLine1: 'Rue de Marseille', city: 'Tunis'));
@@ -169,6 +173,40 @@ final class InvoiceWorkflowTest extends TestCase
         $this->change->change(new SettingContext($this->company), 'document.layout', SettingLevel::Company, 'compact', null);
 
         self::assertEquals(new PrintSettings('Virement à 30 jours.', 'ymd', 'auto', true, true, new DocumentDesign(DocumentLayout::Modern, '#1f6feb')), $invoice->getPrintSettings(), 'the words and how to pay are on by default, and the design is frozen with the rest');
+    }
+
+    /**
+     * A deposit draft is edited like any other: issued, it is held to what its quote nets less what the quote's issued
+     * deposits charged, and a refusal takes no number. Another deposit still a draft charges nothing yet.
+     */
+    public function testADepositIsIssuedOnlyWithinWhatItsQuoteLeaves(): void
+    {
+        $customer = $this->customer('standard', null);
+        $quoteId = Uuid::v7();
+        $this->quotes->quote($this->company, $quoteId, '100.000');
+        $first = $this->deposit($customer, $quoteId, '60');
+        $draft = $this->deposit($customer, $quoteId, '90');
+        $second = $this->deposit($customer, $quoteId, '40.001');
+
+        self::assertSame('FAC-2026-09-00001', $this->workflow->issue($this->company, $first->getId(), null)->getNumber(), 'the draft of 90 charges nothing yet');
+        try {
+            $this->workflow->issue($this->company, $second->getId(), null);
+            self::fail('a deposit beyond what its quote leaves was issued');
+        } catch (InvalidInvoice $refused) {
+            self::assertSame('deposit', $refused->field);
+            self::assertStringContainsString('40.000', $refused->getMessage());
+        }
+        self::assertSame([InvoiceStatus::Draft, null], [$second->getStatus(), $second->getNumber()]);
+
+        $fits = $this->deposit($customer, $quoteId, '40');
+        self::assertSame('FAC-2026-09-00002', $this->workflow->issue($this->company, $fits->getId(), null)->getNumber(), 'the refusal took no number, and filling the quote issues');
+        self::assertSame(InvoiceStatus::Draft, $draft->getStatus());
+
+        // A quote of another company is not this deposit's.
+        $foreign = Uuid::v7();
+        $this->quotes->quote($this->globex, $foreign, '1000.000');
+        $this->expectException(\LogicException::class);
+        $this->workflow->issue($this->company, $this->deposit($customer, $foreign, '1')->getId(), null);
     }
 
     public function testIssuingACreditNoteNumbersItInItsOwnSeriesAndTakesItOffItsInvoiceInTheSameTransaction(): void
@@ -375,6 +413,20 @@ final class InvoiceWorkflowTest extends TestCase
         $this->invoices->save($invoice);
 
         return $invoice;
+    }
+
+    /** A deposit draft drawn from the quote, one line at that net price with VAT 19 %, so its net is the price. */
+    private function deposit(Customer $customer, Uuid $quoteId, string $price): Invoice
+    {
+        $unit = $this->units->ofCodeInCompany('C62', $this->company->getId());
+        $vat = $this->taxes->ofCodeInCompany('TVA19', $this->company->getId());
+        self::assertNotNull($unit);
+        self::assertNotNull($vat);
+        $establishment = $this->establishments->ofCompany($this->company->getId())[0];
+        $deposit = Invoice::create($this->company, $establishment, $customer, new InvoiceHeader(), [new InvoiceLineDetails(null, 'Acompte', '1', $unit, $price, null, [$vat])], [], $this->clock->now(), $quoteId, true);
+        $this->invoices->save($deposit);
+
+        return $deposit;
     }
 
     /**

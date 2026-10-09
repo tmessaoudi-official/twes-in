@@ -15,6 +15,8 @@ export type InvoicesError =
   | 'period_closed'
   /** Issuing asked what the operations are, which neither a choice nor the lines' products said. */
   | 'missing_operation_category'
+  /** A deposit came to more than its quote leaves once the quote's issued deposits are charged. */
+  | 'deposit_beyond_quote'
   | MentionDatumError
   | PartyIdentityError;
 

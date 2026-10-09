@@ -1655,7 +1655,8 @@
       "missing_seller_identity": "Une facture doit nommer votre société comme la loi le demande : sa raison sociale, son adresse et ses numéros fiscaux (matricule fiscal, SIREN…). Complétez le Profil de la société ; la facture reste un brouillon et ne prend aucun numéro.",
       "missing_customer_identity": "Une facture doit nommer le client comme la loi le demande : son adresse de facturation et, pour une entreprise de votre pays, ses numéros fiscaux. Complétez sa fiche ; la facture reste un brouillon et ne prend aucun numéro.",
       "period_closed": "Les comptes sont clos à cette date : choisissez un jour après la clôture.",
-      "missing_operation_category": "Une facture française dit la nature de ses opérations : choisissez-la dans « Nature des opérations », car une ligne sans produit ne la dit pas."
+      "missing_operation_category": "Une facture française dit la nature de ses opérations : choisissez-la dans « Nature des opérations », car une ligne sans produit ne la dit pas.",
+      "deposit_beyond_quote": "Cet acompte dépasse ce que son devis laisse, une fois déduits les acomptes déjà émis : baissez son montant, ou annulez-le."
     },
     "home": {
       "outstanding": "À encaisser",

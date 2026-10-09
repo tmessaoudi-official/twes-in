@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Fiscal\Application\CurrencyScales;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Invoices\Domain\CustomerCreditEntry;
@@ -21,6 +22,7 @@ use App\Module\Invoices\Domain\InvoiceFigures;
 use App\Module\Invoices\Domain\InvoiceIssue;
 use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceRepository;
+use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceType;
 use App\Settings\Application\DocumentFormats;
 use App\Settings\Application\ReadSetting;
@@ -59,6 +61,8 @@ final readonly class InvoiceWorkflow
         private DepositDeductions $deductions,
         private PartyIdentity $parties,
         private FiscalPresets $presets,
+        private DepositQuotes $depositQuotes,
+        private CurrencyScales $scales,
     ) {
     }
 
@@ -70,6 +74,7 @@ final readonly class InvoiceWorkflow
      * @throws InvalidNumbering     when the company's day comes before the month of the series' last number
      * @throws InvoiceNumberTaken   when another establishment of the company already gave the number
      * @throws PartyIdentityMissing when the seller or the customer cannot be named as the law asks
+     * @throws InvalidInvoice       on `deposit` when a deposit invoice comes to more than its quote leaves once its other issued deposits are charged
      * @throws InvalidInvoice       on `operationCategory` when the law asks what its operations are and neither a choice nor its lines say
      * @throws InvalidInvoice       on `amountDue` when a credit note comes to more than its invoice invoiced less its earlier credit notes;
      *                              on `excessTo` when part of it was already paid and it does not say where that goes
@@ -84,6 +89,9 @@ final readonly class InvoiceWorkflow
             $type = $invoice->getType();
             if (InvoiceType::Invoice === $type) {
                 $this->stillGivenBack($company, $invoice);
+            }
+            if ($invoice->isDeposit()) {
+                $this->withinItsQuote($company, $invoice);
             }
             $customer = $invoice->getCustomer();
             // Before the series, as a mention is: an invoice that cannot name its parties takes no number.
@@ -178,6 +186,30 @@ final readonly class InvoiceWorkflow
             } catch (InvalidInvoice $refused) {
                 throw $refused->within("lines[$index]");
             }
+        }
+    }
+
+    /**
+     * A deposit draft is edited like any other, so what drawing it checked is checked again as it is charged: its net is
+     * at most what its quote comes to less what the quote's other issued deposits charged. A draft charges nothing yet
+     * and is held to the same when it is issued in turn; the quote is held first, so two deposits of it are issued one
+     * after the other and neither reads the other as it was before.
+     *
+     * @throws InvalidInvoice
+     */
+    private function withinItsQuote(Company $company, Invoice $deposit): void
+    {
+        $quoteId = $deposit->getQuoteId() ?? throw new \LogicException('A deposit is drawn from a quote.');
+        $quote = $this->depositQuotes->heldNet($company, $quoteId) ?? throw new \LogicException('A deposit is drawn from a quote of its own company.');
+        $charged = Decimal::zero();
+        foreach ($this->invoices->depositsOfQuotes($company->getId(), [$quoteId]) as $other) {
+            if (!$other->getId()->equals($deposit->getId()) && !\in_array($other->getStatus(), [InvoiceStatus::Draft, InvoiceStatus::Cancelled], true)) {
+                $charged = $charged->add(Decimal::of($this->totals->figures($other)->totalNet));
+            }
+        }
+        $left = Decimal::of($quote)->sub($charged);
+        if (Decimal::of($this->totals->figures($deposit)->totalNet)->compare($left) > 0) {
+            throw new InvalidInvoice('deposit', \sprintf('The deposits of a quote never go beyond it: %s net of tax is left of it once its issued deposits are charged.', Decimal::format($left, $this->scales->of($company->getCurrency()))));
         }
     }
 

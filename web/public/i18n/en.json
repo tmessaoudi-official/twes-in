@@ -1655,7 +1655,8 @@
       "missing_seller_identity": "An invoice must name your company as the law asks: its legal name, its address and its tax numbers (matricule fiscal, SIREN…). Complete the Company profile; the invoice stays a draft and takes no number.",
       "missing_customer_identity": "An invoice must name the customer as the law asks: its billing address and, for a business in your country, its tax numbers. Complete the customer’s record; the invoice stays a draft and takes no number.",
       "period_closed": "The books are closed on that day: choose a day after the closing.",
-      "missing_operation_category": "A French invoice states what its operations are: choose them under « Operations », since a line with no product does not say them."
+      "missing_operation_category": "A French invoice states what its operations are: choose them under « Operations », since a line with no product does not say them.",
+      "deposit_beyond_quote": "This deposit goes beyond what its quote leaves once the deposits already issued are taken off: lower its amount, or cancel it."
     },
     "home": {
       "outstanding": "To collect",

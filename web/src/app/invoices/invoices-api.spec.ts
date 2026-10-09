@@ -544,6 +544,17 @@ describe('InvoicesApi', () => {
     }
   });
 
+  it('tells a deposit refused for going beyond its quote, by the word the refusal leads with', async () => {
+    const refused = api.issue('c1', 'i1');
+    http.expectOne('/api/companies/c1/invoices/i1/issue').flush(
+      {
+        detail: 'deposit: The deposits of a quote never go beyond it: 462.000 net of tax is left.',
+      },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+    await expect(refused).rejects.toEqual(new InvoicesRefused('deposit_beyond_quote'));
+  });
+
   it('tells a credit note refused for the money already paid from any other refusal, and sends where it goes', async () => {
     const refused = api.issue('c1', 'i1');
     http

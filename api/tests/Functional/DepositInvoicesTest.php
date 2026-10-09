@@ -321,6 +321,78 @@ final class DepositInvoicesTest extends ApiTestCase
         FacturXTest::assertValidIfTheSchemaIsGiven($xml);
     }
 
+    /**
+     * A deposit draft is edited like any draft, so issuing it checks again what its quote leaves once the quote's other
+     * deposits are charged: the quote nets 2310.000 and its issued 80 % deposit 1848.000, which leaves 462.000.
+     */
+    public function testADepositEditedBeyondWhatItsQuoteLeavesIsRefusedAtIssueAndTakesNoNumber(): void
+    {
+        $this->signedIn(self::WRITER);
+        $quoteId = $this->accepted();
+        $fifth = $this->deposit($quoteId, ['depositPercentage' => '20', 'depositAmount' => null]);
+        $rest = $this->deposit($quoteId, ['depositPercentage' => '80', 'depositAmount' => null]);
+        $this->issue($rest);
+        $this->priced($fifth, ['450.001', '12']);
+        $next = $this->nextNumber($fifth);
+
+        $this->postJson($this->companyPath().'/invoices/'.$fifth.'/issue', []);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $detail = $this->stringAt($this->json(), 'detail');
+        self::assertStringStartsWith('deposit: ', $detail);
+        self::assertStringContainsString('462.000', $detail, 'the refusal says what is left');
+        self::assertSame(['draft', null], [$this->invoice($fifth)['status'], $this->invoice($fifth)['number']]);
+        self::assertSame($next, $this->nextNumber($fifth), 'a refused deposit takes no number');
+
+        $this->priced($fifth, ['450', '12']);
+        $this->issue($fifth);
+        self::assertSame($next, $this->invoice($fifth)['number'], 'a deposit filling what the quote leaves issues');
+    }
+
+    /**
+     * What a deposit is checked against is what the quote's issued deposits charged: a draft charges nothing yet, so the
+     * deposit issued first stands, and the one issued after it is held to what is left.
+     */
+    public function testADepositIsHeldToWhatTheIssuedDepositsLeaveNotTheDrafts(): void
+    {
+        $this->signedIn(self::WRITER);
+        $quoteId = $this->accepted();
+        $fifth = $this->deposit($quoteId, ['depositPercentage' => '20', 'depositAmount' => null]);
+        $rest = $this->deposit($quoteId, ['depositPercentage' => '80', 'depositAmount' => null]);
+        // 30 %: 675.000 and 18.000, 693.000 net, beside a draft of 1848.000.
+        $this->priced($fifth, ['675', '18']);
+
+        $this->issue($fifth);
+
+        $this->postJson($this->companyPath().'/invoices/'.$rest.'/issue', []);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('1617.000', $this->stringAt($this->json(), 'detail'));
+        self::assertSame('draft', $this->invoice($rest)['status']);
+
+        $this->priced($rest, ['1575', '42']);
+        $this->issue($rest);
+        self::assertSame('issued', $this->invoice($rest)['status']);
+    }
+
+    public function testAnotherCompanyOrARoleThatMayNotIssueCannotIssueADeposit(): void
+    {
+        $this->signedIn(self::WRITER);
+        $deposit = $this->deposit($this->accepted(), ['depositPercentage' => '20', 'depositAmount' => null]);
+
+        $globex = $this->createCompany('Globex');
+        $this->createUser('other@twes.local', 'password-1234', $globex, self::WRITER, 'member');
+        $this->login('other@twes.local', 'password-1234');
+        $this->postJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoices/'.$deposit.'/issue', []);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company\'s deposit');
+
+        // The test client's requests reboot the kernel: the company is the one its entity manager holds now.
+        $this->createUser('clerk@twes.local', 'password-1234', $this->em()->find(Company::class, $this->company->getId()), ['invoice.read', 'invoice.write'], 'clerk');
+        $this->login('clerk@twes.local', 'password-1234');
+        $this->postJson($this->companyPath().'/invoices/'.$deposit.'/issue', []);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a role without invoice.issue');
+        self::assertSame(['draft', null], [$this->invoice($deposit)['status'], $this->invoice($deposit)['number']]);
+    }
+
     public function testADepositAsksForWritingInvoices(): void
     {
         $this->signedIn(['quote.read', 'quote.write']);
@@ -375,6 +447,31 @@ final class DepositInvoicesTest extends ApiTestCase
     {
         $this->postJson($this->companyPath().'/invoices/'.$invoiceId.'/issue', []);
         self::assertResponseIsSuccessful();
+    }
+
+    /**
+     * A deposit draft revised with new prices on its lines, in order, as a person would type them.
+     *
+     * @param list<string> $prices
+     */
+    private function priced(string $depositId, array $prices): void
+    {
+        $deposit = $this->invoice($depositId);
+        $lines = $this->rows($deposit, 'lines');
+        foreach ($prices as $index => $price) {
+            $lines[$index]['unitPriceNet'] = $price;
+        }
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$depositId, [...$this->editable($deposit), 'lines' => array_map(static fn (array $line): array => array_intersect_key($line, array_flip(['productId', 'description', 'quantity', 'unitId', 'unitPriceNet', 'discountRate', 'taxComponentIds'])), $lines)]);
+        self::assertResponseIsSuccessful();
+    }
+
+    /** The number issuing the draft would give it now. */
+    private function nextNumber(string $invoiceId): string
+    {
+        $this->getJson($this->companyPath().'/invoices/'.$invoiceId.'/next-number');
+        self::assertResponseIsSuccessful();
+
+        return $this->stringAt($this->json(), 'number');
     }
 
     /** @return array<string, mixed> */

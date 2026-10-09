@@ -443,6 +443,7 @@ function toFacturXRefusal(raw: RawFacturXRefusal): FacturXAnswer {
 function fieldCode(field: string | null): InvoicesError {
   if (field === 'customerId') return 'customer_unavailable';
   if (field === 'operationCategory') return 'missing_operation_category';
+  if (field === 'deposit') return 'deposit_beyond_quote';
   if (field !== null && field in PARTY_IDENTITY) return PARTY_IDENTITY[field];
   if (field === null) return 'invalid';
   return MENTION_DATA[field] ?? (field.startsWith('mention.') ? 'missing_mention' : 'invalid');
