@@ -98,6 +98,21 @@ describe('LiveChanges', () => {
     expect(handler.mock.calls[0][0].map((change: LiveChange) => change.id)).toEqual(['c1', 'g1']);
   });
 
+  it('tells this tab’s own screens what this tab changed behind them, as an erasure does', () => {
+    const handler = vi.fn();
+    listen(['venue_area', 'quote'], handler);
+
+    live.changedHere(['venue_area', 'quote', 'invoice'], 'data.erased');
+    vi.advanceTimersByTime(LIVE_BATCH_MS);
+
+    expect(
+      handler.mock.calls[0][0].map((change: LiveChange) => [change.kind, change.action]),
+    ).toEqual([
+      ['venue_area', 'data.erased'],
+      ['quote', 'data.erased'],
+    ]);
+  });
+
   it('says nothing about this tab’s own changes', () => {
     const handler = vi.fn();
     listen(['customer'], handler);

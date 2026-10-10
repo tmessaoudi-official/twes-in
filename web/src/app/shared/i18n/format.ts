@@ -253,6 +253,18 @@ export function formatMoment(
   }).format(date);
 }
 
+/** A moment's 24-hour time of day in a time zone, the viewer's when none is given; what is not a moment shows as it came. */
+export function formatTime(value: string, locale: string, timeZone?: string): string {
+  const date = new Date(value);
+  if (!MOMENT.test(value) || Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    ...(timeZone === undefined ? {} : { timeZone }),
+  }).format(date);
+}
+
 const dayFormats = new Map<string, Intl.DateTimeFormat>();
 
 /** The calendar day ("2026-09-14") a moment falls on in a time zone; what is not a moment comes back as it came. */

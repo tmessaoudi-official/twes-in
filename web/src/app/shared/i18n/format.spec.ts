@@ -12,6 +12,7 @@ import {
   formatYearMonth,
   formatLocale,
   formatMoment,
+  formatTime,
   parseDay,
   todayIn,
 } from './format';
@@ -169,6 +170,13 @@ describe('parseDay', () => {
       expect(parseDay(formatDay('2026-12-31', 'fr', style), 'fr', style)).toBe('2026-12-31');
       expect(parseDay(formatDay('2026-03-04', 'en', style), 'en', style)).toBe('2026-03-04');
     }
+  });
+});
+
+describe('formatTime', () => {
+  it('writes a moment as its 24-hour time of day in the given time zone', () => {
+    expect(formatTime('2026-09-13T22:41:00+00:00', 'fr', 'Africa/Tunis')).toBe('23:41');
+    expect(formatTime('not a moment', 'fr')).toBe('not a moment');
   });
 });
 

@@ -4,7 +4,14 @@ import { computed, inject, Injectable } from '@angular/core';
 import { SettingsFacade } from '../settings/settings-facade';
 import { PRESENTATION } from '../settings/settings-registry';
 import { Session } from '../session/session';
-import { decimalShown, formatAmount, formatDay, formatLocale, formatMoment } from './format';
+import {
+  decimalShown,
+  formatAmount,
+  formatDay,
+  formatLocale,
+  formatMoment,
+  formatTime,
+} from './format';
 import { LanguageFacade } from './language-facade';
 
 /**
@@ -35,6 +42,10 @@ export class FormatFacade {
 
   moment(value: string, timeZone?: string): string {
     return formatMoment(value, this.locale(), timeZone, this.dateFormat());
+  }
+
+  time(value: string, timeZone?: string): string {
+    return formatTime(value, this.locale(), timeZone);
   }
 
   /** A decimal field's text: the chosen or the locale's decimal separator, never grouped. */
