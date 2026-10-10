@@ -17,4 +17,7 @@ interface FileStorage
 
     /** @throws StoredFileMissing */
     public function read(string $key): string;
+
+    /** Deletes the bytes under the key; bytes already gone are not an error, so a second pass changes nothing. */
+    public function delete(string $key): void;
 }

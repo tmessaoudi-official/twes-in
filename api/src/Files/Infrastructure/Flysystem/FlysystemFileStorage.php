@@ -37,4 +37,10 @@ final readonly class FlysystemFileStorage implements FileStorage
             throw new StoredFileMissing(\sprintf('No file is stored under %s.', $key), 0, $absent);
         }
     }
+
+    public function delete(string $key): void
+    {
+        // Flysystem's delete of an absent file succeeds on every adapter it ships.
+        $this->filesystem->delete($key);
+    }
 }
