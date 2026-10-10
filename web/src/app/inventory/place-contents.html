@@ -26,7 +26,7 @@
         [class.items-center]="actions()"
         [attr.data-testid]="'stock-contents-line-' + line.id"
       >
-        @if (actions() && mayMove()) {
+        @if (actions() && mayMove() && !finger()) {
           <!-- The grip is the pointer's way onto a place of the plan; « Déplacer vers… » is the same without one. -->
           <span
             class="inline-flex cursor-grab text-on-surface-variant"

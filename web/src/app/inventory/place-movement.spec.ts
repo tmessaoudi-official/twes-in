@@ -111,6 +111,8 @@ describe('PlaceMovement', () => {
     pickProducts: vi.fn(),
     record: vi.fn(),
     reloadContents: vi.fn(),
+    reloadHoldings: vi.fn(),
+    reloadWhereabouts: vi.fn(),
   };
   let fixture: ComponentFixture<Host>;
 
@@ -120,9 +122,11 @@ describe('PlaceMovement', () => {
     facade.record.mock.calls.map((call) => call[1] as StockMovementInput);
   const said = (): RecordedFeedback['said'] => (TestBed.inject(Feedback) as RecordedFeedback).said;
 
+  /** Saving reads three things again before it toasts: a macrotask lets every one of them answer. */
   async function settle(): Promise<void> {
     fixture.detectChanges();
     await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve));
     fixture.detectChanges();
   }
 
@@ -148,6 +152,8 @@ describe('PlaceMovement', () => {
     facade.pickProducts.mockReset().mockResolvedValue([product]);
     facade.record.mockReset().mockResolvedValue(true);
     facade.reloadContents.mockReset().mockResolvedValue(undefined);
+    facade.reloadHoldings.mockReset().mockResolvedValue(undefined);
+    facade.reloadWhereabouts.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       imports: [Host],
       providers: [
@@ -219,7 +225,10 @@ describe('PlaceMovement', () => {
     await settle();
     await submit();
 
+    // This tab's own change never comes back to it: the counts on the plan and the search's lights are read again.
     expect(facade.reloadContents).toHaveBeenCalledWith('c1');
+    expect(facade.reloadHoldings).toHaveBeenCalledWith('c1');
+    expect(facade.reloadWhereabouts).toHaveBeenCalledWith('c1');
     expect(fixture.componentInstance.closed).toBe(1);
     const toast = said().at(-1);
     expect(toast?.key).toBe('inventory.plan.move.moved');
@@ -316,6 +325,17 @@ describe('PlaceMovement', () => {
         quantity: '12',
       }),
     ]);
+  });
+
+  /** A delivery is a lot of its own: the lot already on the shelf is not proposed for it. */
+  it('leaves the lot to type on a receipt of a tracked line, and keeps it on a count', async () => {
+    facade.pickProducts.mockResolvedValue([{ ...product, tracking: 'lot' }]);
+    const tracked = { ...line, lotId: 'l1', lotCode: 'L-0925' };
+    await open({ operation: 'receive', line: tracked });
+    expect(input('lotCode').value).toBe('');
+
+    await open({ operation: 'count', line: tracked });
+    expect(input('lotCode').value).toBe('L-0925');
   });
 
   it('goes back to what the place holds without recording anything', async () => {

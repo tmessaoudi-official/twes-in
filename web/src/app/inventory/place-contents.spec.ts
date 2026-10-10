@@ -12,6 +12,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { COARSE_POINTER } from '../shared/ui/pointer';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -111,6 +112,7 @@ describe('PlaceContents', () => {
   };
   let fixture: ComponentFixture<Host>;
   let permitted = new Set<string>();
+  const finger = signal(false);
 
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
@@ -141,6 +143,7 @@ describe('PlaceContents', () => {
 
   beforeEach(async () => {
     permitted = new Set(['stock.write', 'product.read']);
+    finger.set(false);
     contents.set(null);
     facade.loadContents.mockReset().mockResolvedValue(undefined);
     facade.reloadContents.mockReset().mockResolvedValue(undefined);
@@ -157,6 +160,7 @@ describe('PlaceContents', () => {
           loader: provideTranslateLoader(() => new StaticLoader()),
         }),
         { provide: InventoryFacade, useValue: facade },
+        { provide: COARSE_POINTER, useValue: finger.asReadonly() },
         {
           provide: AuthFacade,
           useValue: {
@@ -349,6 +353,16 @@ describe('PlaceContents', () => {
       const button = row.querySelector('[data-testid="stock-contents-actions"]');
 
       expect(button?.getAttribute('aria-label')).toContain('Vis 6x40 zinguée');
+    });
+
+    /** A finger drags nothing a browser can drop: on a touch screen « Déplacer vers… » is the way, and no grip shows. */
+    it('shows no grip under a finger, and still offers the move', async () => {
+      finger.set(true);
+      const row = await withActions();
+
+      expect(row.querySelector('[data-testid="stock-contents-grip"]')).toBeNull();
+      const items = await menuOf(row);
+      expect(items.map((item) => item.dataset['testid'])).toContain('stock-contents-act-move');
     });
 
     /** The grip carries the line onto a place of the plan; letting go anywhere else carries nothing. */

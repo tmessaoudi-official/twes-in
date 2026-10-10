@@ -97,7 +97,8 @@ export class PlaceMovement {
           operation,
           this.facade.locations(),
           product.tracking,
-          operation === 'receive' && this.auth.hasPermission('product.cost.read'),
+          // Its cost is entered later, « à compléter », or on the Stock page, which shows what it would do to the cost.
+          false,
         );
   });
 
@@ -156,7 +157,8 @@ export class PlaceMovement {
       productId: line.productId,
       locationId: line.locationId,
       toLocationId: this.destination() ?? '',
-      lotCode: line.lotCode ?? '',
+      // The line is that lot when it is moved or counted; a delivery is a lot of its own, typed by the person.
+      lotCode: operation === 'receive' ? '' : (line.lotCode ?? ''),
       quantity: operation === 'move' ? quantityOf(line.quantity, line.unitDecimals) : '',
     };
   }
@@ -172,7 +174,7 @@ export class PlaceMovement {
     if (this.busy()) return;
     const movement = movementInput(operation, values);
     if (!(await this.facade.record(companyId, movement))) return;
-    await this.facade.reloadContents(companyId);
+    await this.readAgain(companyId);
     if (operation === 'move') {
       this.feedback.success(
         'inventory.plan.move.moved',
@@ -198,7 +200,7 @@ export class PlaceMovement {
       toLocationId: moved.locationId,
     };
     if (await this.facade.record(companyId, back)) {
-      await this.facade.reloadContents(companyId);
+      await this.readAgain(companyId);
       this.feedback.success('inventory.plan.move.undone', {
         product: this.asked().line.productName,
         from: this.codeOf(moved.locationId),
@@ -208,6 +210,18 @@ export class PlaceMovement {
         product: this.asked().line.productName,
       });
     }
+  }
+
+  /**
+   * What this tab just changed never comes back to it as a live change: the panel, each place's count and the
+   * search's lights are read again here.
+   */
+  private async readAgain(companyId: string): Promise<void> {
+    await Promise.all([
+      this.facade.reloadContents(companyId),
+      this.facade.reloadHoldings(companyId),
+      this.facade.reloadWhereabouts(companyId),
+    ]);
   }
 
   private codeOf(locationId: string): string {

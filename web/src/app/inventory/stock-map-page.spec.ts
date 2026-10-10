@@ -2661,6 +2661,20 @@ describe('StockMapPage', () => {
     expect(q('place-movement')).toBeNull();
   });
 
+  it('lets a count go when the person turns to arranging, and does not bring it back', async () => {
+    const here = await holdingOnR1();
+    here.act.emit({ operation: 'count', line: level });
+    await settle();
+    expect(q('place-movement')).not.toBeNull();
+
+    await TestBed.inject(Router).navigateByUrl('/?mode=arrange');
+    await settle();
+    await TestBed.inject(Router).navigateByUrl('/');
+    await settle();
+
+    expect(q('place-movement')).toBeNull();
+  });
+
   it('opens « Déplacer » to the place a line is dropped on, and to none where it already is', async () => {
     const here = await holdingOnR1();
     here.dragged.emit({ ...level, locationId: 'l1' });

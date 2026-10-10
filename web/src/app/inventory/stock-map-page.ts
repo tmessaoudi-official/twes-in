@@ -1083,6 +1083,11 @@ export class StockMapPage implements OnInit {
     return movement?.operation === 'move' && !this.arranging() ? movement : null;
   });
 
+  /** Arranging draws the places, it records no stock: a count or a receipt open in the panel is let go. */
+  private readonly movementLeftOnArranging = effect(() => {
+    if (this.arranging()) untracked(() => this.endMovement());
+  });
+
   protected startMovement(asked: MovementAsked): void {
     this.destination.set(null);
     this.movement.set(asked);

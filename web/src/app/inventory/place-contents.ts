@@ -22,6 +22,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { ProductThumbnail } from '../products/product-thumbnail';
 import { Label } from '../shared/a11y/label';
+import { COARSE_POINTER } from '../shared/ui/pointer';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { InventoryFacade } from './inventory-facade';
@@ -78,6 +79,8 @@ export class PlaceContents {
   readonly dragged = output<StockLevelRow | null>();
 
   protected readonly mayMove = computed(() => this.auth.hasPermission('stock.write'));
+  /** A finger drags nothing a browser can drop; there the line's ⋮ moves it. */
+  protected readonly finger = inject(COARSE_POINTER);
   protected readonly mayOpen = computed(() => this.auth.hasPermission('product.read'));
 
   /** What is typed, emptied when another place is chosen: words for one shelf are rarely those for the next. */
