@@ -23,7 +23,12 @@ import { provideQuietFeedback } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 import { InventoryFacade } from './inventory-facade';
 import type { LocationContents, StockLevelRow } from './inventory-types';
-import { CONTENTS_SEARCH_FROM, CONTENTS_SEARCH_PAUSE_MS, PlaceContents } from './place-contents';
+import {
+  CONTENTS_SEARCH_FROM,
+  CONTENTS_SEARCH_PAUSE_MS,
+  type PlaceAct,
+  PlaceContents,
+} from './place-contents';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -37,6 +42,7 @@ class StaticLoader implements TranslateLoader {
             empty_home: '{{product}} a sa place ici ({{place}}) et il n’y en a plus.',
             reading: 'Lecture…',
           },
+          line: { actions: 'Actions pour {{name}}' },
         },
       },
     });
@@ -81,10 +87,19 @@ function holding(locationId: string, count: number, q = ''): LocationContents {
 
 @Component({
   imports: [PlaceContents],
-  template: `<app-place-contents companyId="c1" [locationId]="place()" />`,
+  template: `<app-place-contents
+    companyId="c1"
+    [locationId]="place()"
+    [actions]="actions()"
+    (act)="acted.push($event)"
+    (dragged)="carried.push($event)"
+  />`,
 })
 class Host {
   readonly place = signal('l1');
+  readonly actions = signal(false);
+  readonly acted: PlaceAct[] = [];
+  readonly carried: (StockLevelRow | null)[] = [];
 }
 
 describe('PlaceContents', () => {
@@ -95,6 +110,7 @@ describe('PlaceContents', () => {
     reloadContents: vi.fn(),
   };
   let fixture: ComponentFixture<Host>;
+  let permitted = new Set<string>();
 
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
@@ -124,6 +140,7 @@ describe('PlaceContents', () => {
   }
 
   beforeEach(async () => {
+    permitted = new Set(['stock.write', 'product.read']);
     contents.set(null);
     facade.loadContents.mockReset().mockResolvedValue(undefined);
     facade.reloadContents.mockReset().mockResolvedValue(undefined);
@@ -144,7 +161,7 @@ describe('PlaceContents', () => {
           provide: AuthFacade,
           useValue: {
             me: () => ({ user: { id: 'u1' }, company: { id: 'c1' } }),
-            hasPermission: () => true,
+            hasPermission: (permission: string) => permitted.has(permission),
           },
         },
         { provide: Session, useExisting: AuthFacade },
@@ -269,5 +286,84 @@ describe('PlaceContents', () => {
     await announceSaved('stock', 'p1');
 
     expect(facade.reloadContents).toHaveBeenCalledWith('c1');
+  });
+
+  describe('what each line offers', () => {
+    async function withActions(): Promise<HTMLElement> {
+      answering((locationId) => holding(locationId, 1));
+      fixture = TestBed.createComponent(Host);
+      fixture.componentInstance.actions.set(true);
+      await settle();
+      return q('stock-contents-line-p0:b1') as HTMLElement;
+    }
+
+    /** Opened from the line's ⋮, the four things a person does with an article on a shelf. */
+    async function menuOf(row: HTMLElement): Promise<HTMLElement[]> {
+      (row.querySelector('[data-testid="stock-contents-actions"]') as HTMLButtonElement).click();
+      await settle();
+      return [...document.querySelectorAll<HTMLElement>('[data-testid^="stock-contents-act-"]')];
+    }
+
+    afterEach(() => document.querySelector('.cdk-overlay-container')?.replaceChildren());
+
+    it('offers nothing to act on where the panel is only read, as in « Emplacements »', async () => {
+      answering((locationId) => holding(locationId, 1));
+      await open();
+
+      const row = q('stock-contents-line-p0:b1');
+      expect(row?.querySelector('[data-testid="stock-contents-actions"]')).toBeNull();
+      expect(row?.querySelector('[data-testid="stock-contents-grip"]')).toBeNull();
+    });
+
+    it('opens the article, and asks the panel to move, count or receive the line', async () => {
+      const row = await withActions();
+      const items = await menuOf(row);
+
+      expect(items.map((item) => item.dataset['testid'])).toEqual([
+        'stock-contents-act-open',
+        'stock-contents-act-move',
+        'stock-contents-act-count',
+        'stock-contents-act-receive',
+      ]);
+      expect(items[0]?.getAttribute('href')).toBe('/products/p0');
+
+      items[1]?.click();
+      await settle();
+      expect(fixture.componentInstance.acted).toEqual([
+        { operation: 'move', line: expect.objectContaining({ id: 'p0:b1', productId: 'p0' }) },
+      ]);
+    });
+
+    /** Moving, counting and receiving are writes to the stock: a person who may only read it is offered the article. */
+    it('offers only the article to a person who may not write the stock, and no grip', async () => {
+      permitted = new Set(['product.read']);
+      const row = await withActions();
+
+      expect(row.querySelector('[data-testid="stock-contents-grip"]')).toBeNull();
+      const items = await menuOf(row);
+      expect(items.map((item) => item.dataset['testid'])).toEqual(['stock-contents-act-open']);
+    });
+
+    it('names the article it acts on, for a screen reader and a tooltip', async () => {
+      const row = await withActions();
+      const button = row.querySelector('[data-testid="stock-contents-actions"]');
+
+      expect(button?.getAttribute('aria-label')).toContain('Vis 6x40 zinguée');
+    });
+
+    /** The grip carries the line onto a place of the plan; letting go anywhere else carries nothing. */
+    it('tells the map which line is being carried, and when it is let go', async () => {
+      const row = await withActions();
+      const grip = row.querySelector('[data-testid="stock-contents-grip"]') as HTMLElement;
+
+      expect(grip.getAttribute('draggable')).toBe('true');
+      grip.dispatchEvent(new Event('dragstart'));
+      grip.dispatchEvent(new Event('dragend'));
+
+      expect(fixture.componentInstance.carried.map((line) => line?.id ?? null)).toEqual([
+        'p0:b1',
+        null,
+      ]);
+    });
   });
 });

@@ -765,7 +765,10 @@
                 <span
                   class="rounded-full bg-surface-container-high px-3 py-1 text-xs font-medium"
                   data-testid="stock-map-read-note"
-                  >{{ 'inventory.plan.read_note' | translate }}</span
+                  >{{
+                    (moving() ? 'inventory.plan.move.pick_hint' : 'inventory.plan.read_note')
+                      | translate
+                  }}</span
                 >
                 <span data-testid="stock-map-press-hint">{{
                   'inventory.plan.press_hint' | translate
@@ -1025,12 +1028,22 @@
                         [class.fill-surface-container-high]="shape.drawing.locationKind !== 'rack'"
                         [class.stroke-outline]="shape.drawing.locationKind !== 'rack'"
                         [class.twes-map-chosen]="chosen().has(shape.drawing.id)"
+                        [class.twes-map-target]="
+                          moving() !== null &&
+                          shape.drawing.locationId !== moving()?.line.locationId &&
+                          shape.drawing.locationId !== destination()
+                        "
+                        [class.twes-map-destination]="
+                          moving() !== null && shape.drawing.locationId === destination()
+                        "
                         [class.twes-map-hit]="hits().has(shape.drawing.locationId)"
                         [attr.data-hit]="
                           search() === null ? null : hits().has(shape.drawing.locationId)
                         "
                         (pointerdown)="grab($event, shape.drawing, null)"
                         (click)="choose($event, shape.drawing)"
+                        (dragover)="dragOver($event, shape.drawing)"
+                        (drop)="dropOn($event, shape.drawing)"
                         [attr.data-testid]="'stock-drawing-rect-' + shape.drawing.locationCode"
                       >
                         <!--
@@ -1519,13 +1532,30 @@
                     « Ce qu'il y a ici »: the place's stock and that of every bin under it, each line naming the bin it
                     is in, since « R1 » alone sends a person along a six-metre rack.
                   -->
-                  <app-place-contents [companyId]="company.id" [locationId]="locationId">
-                    <h3
-                      class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant"
+                  @if (movement(); as asked) {
+                    <!-- The Stock page's own form, filled in from the line; the plan names where to. -->
+                    <app-place-movement
+                      [companyId]="company.id"
+                      [asked]="asked"
+                      [destination]="destination()"
+                      (heading)="destination.set($event)"
+                      (closed)="endMovement()"
+                    />
+                  } @else {
+                    <app-place-contents
+                      [companyId]="company.id"
+                      [locationId]="locationId"
+                      [actions]="!arranging()"
+                      (act)="startMovement($event)"
+                      (dragged)="carried.set($event)"
                     >
-                      {{ 'inventory.plan.here.title' | translate }}
-                    </h3>
-                  </app-place-contents>
+                      <h3
+                        class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant"
+                      >
+                        {{ 'inventory.plan.here.title' | translate }}
+                      </h3>
+                    </app-place-contents>
+                  }
                 }
               }
               @if (arranging()) {

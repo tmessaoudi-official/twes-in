@@ -41,6 +41,8 @@ import type {
 } from './inventory-types';
 import { StockMapPage } from './stock-map-page';
 import { StockMapVolume } from './stock-map-volume';
+import { PlaceContents } from './place-contents';
+import { PlaceMovement } from './place-movement';
 import { By } from '@angular/platform-browser';
 import { COARSE_POINTER } from '../shared/ui/pointer';
 import { WINDOW_CLASS, type WindowClass } from '../shared/ui/window-class';
@@ -204,6 +206,7 @@ describe('StockMapPage', () => {
     repeatDrawing: vi.fn(),
     changeDrawings: vi.fn(),
     clearError: vi.fn(),
+    record: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -2593,6 +2596,89 @@ describe('StockMapPage', () => {
     lotReleased: false,
     mainPhotoId: null,
   };
+
+  // ——— What is done with a line from the panel (docs/SPEC.md § 7, 2026-10-09 10:31 and 23:19) ———
+
+  /** R1 chosen, holding one line in its bin; Z1 drawn beside it. */
+  async function holdingOnR1(): Promise<PlaceContents> {
+    drawings.set([drawn, { ...drawn, id: 'd2', locationId: 'l2', locationCode: 'Z1', x: '8.000' }]);
+    facade.loadContents.mockImplementation(async (_company: string, locationId: string | null) => {
+      contents.set(
+        locationId === null ? null : { locationId, q: '', levels: [level], total: 1, homes: [] },
+      );
+    });
+    await consult();
+    press('stock-drawing-R1');
+    await settle();
+    return fixture.debugElement.query(By.directive(PlaceContents))
+      .componentInstance as PlaceContents;
+  }
+
+  const movementPanel = (): PlaceMovement | undefined =>
+    fixture.debugElement.query(By.directive(PlaceMovement))?.componentInstance as
+      PlaceMovement | undefined;
+
+  it('opens a line’s move in the panel, and a place touched then is where the goods go', async () => {
+    const here = await holdingOnR1();
+    here.act.emit({ operation: 'move', line: level });
+    await settle();
+
+    expect(q('place-movement')).not.toBeNull();
+    expect(q('stock-contents')).toBeNull();
+    expect(q('stock-map-read-note')?.textContent?.trim()).toBe('inventory.plan.move.pick_hint');
+    expect(q('stock-drawing-rect-Z1')?.getAttribute('class')).toContain('twes-map-target');
+
+    // Touched on the plan or in the list: the destination, and the place chosen stays chosen.
+    q('stock-drawing-rect-Z1')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await settle();
+    expect(movementPanel()?.destination()).toBe('l2');
+    expect(q('stock-drawing-R1')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('stock-drawing-Z1')?.getAttribute('aria-pressed')).toBe('false');
+    expect(q('stock-drawing-rect-Z1')?.getAttribute('class')).toContain('twes-map-destination');
+    expect(q('stock-drawing-rect-Z1')?.getAttribute('class')).not.toContain('twes-map-target');
+
+    // Done or let go: what the place holds again, and a touch chooses again.
+    movementPanel()?.closed.emit();
+    await settle();
+    expect(q('stock-contents')).not.toBeNull();
+    expect(q('stock-drawing-rect-Z1')?.getAttribute('class')).not.toContain('twes-map-target');
+    press('stock-drawing-Z1');
+    await settle();
+    expect(q('stock-drawing-Z1')?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  /** A count or a receipt names no destination: a touch on the plan chooses, and lets the form go. */
+  it('chooses as ever while a count is open, letting the count go', async () => {
+    const here = await holdingOnR1();
+    here.act.emit({ operation: 'count', line: level });
+    await settle();
+    expect(q('stock-map-read-note')?.textContent?.trim()).toBe('inventory.plan.read_note');
+
+    press('stock-drawing-Z1');
+    await settle();
+
+    expect(q('stock-drawing-Z1')?.getAttribute('aria-pressed')).toBe('true');
+    expect(q('place-movement')).toBeNull();
+  });
+
+  it('opens « Déplacer » to the place a line is dropped on, and to none where it already is', async () => {
+    const here = await holdingOnR1();
+    here.dragged.emit({ ...level, locationId: 'l1' });
+    q('stock-drawing-rect-R1')?.dispatchEvent(
+      new Event('drop', { bubbles: true, cancelable: true }),
+    );
+    await settle();
+    expect(q('place-movement')).toBeNull();
+
+    here.dragged.emit(level);
+    const drop = new Event('drop', { bubbles: true, cancelable: true });
+    q('stock-drawing-rect-Z1')?.dispatchEvent(drop);
+    await settle();
+
+    expect(drop.defaultPrevented).toBe(true);
+    expect(movementPanel()?.asked()).toEqual({ operation: 'move', line: level });
+    expect(movementPanel()?.destination()).toBe('l2');
+  });
 
   it('reads what a chosen rack holds, bins included, and says which home is empty', async () => {
     await consult();

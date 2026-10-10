@@ -2631,7 +2631,21 @@
         "new": "Nouveau, créé avec ce rectangle",
         "existing": "Un emplacement existant"
       },
-      "new_location_hint": "Proposé après le dernier de cette nature ; il est placé dans la zone où il est dessiné."
+      "new_location_hint": "Proposé après le dernier de cette nature ; il est placé dans la zone où il est dessiné.",
+      "line": {
+        "actions": "Actions pour {{name}}",
+        "open": "Ouvrir l’article",
+        "move": "Déplacer vers…",
+        "count": "Compter ici…",
+        "receive": "Recevoir ici…"
+      },
+      "move": {
+        "pick_hint": "Touchez l’emplacement de destination sur le plan, ou choisissez-le dans « Emplacement de destination ».",
+        "moved": "Déplacé : {{quantity}} {{product}} de {{from}} vers {{to}}.",
+        "undo": "Annuler",
+        "undone": "Déplacement annulé : {{product}} est de retour en {{from}}.",
+        "undo_failed": "Le déplacement de {{product}} n’a pas pu être annulé : ce qui a été déplacé n’est plus là où il a été posé."
+      }
     },
     "scan": {
       "filled": "{{name}} : article, lot et quantité remplis",

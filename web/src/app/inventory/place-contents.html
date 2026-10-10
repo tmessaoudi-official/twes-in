@@ -21,9 +21,24 @@
         a person has to go. The photo leads the line: on a shelf, a picture is found before a reference is read.
       -->
       <div
-        class="flex items-start gap-2 rounded-lg border border-outline-variant p-2"
+        class="flex gap-2 rounded-lg border border-outline-variant p-2"
+        [class.items-start]="!actions()"
+        [class.items-center]="actions()"
         [attr.data-testid]="'stock-contents-line-' + line.id"
       >
+        @if (actions() && mayMove()) {
+          <!-- The grip is the pointer's way onto a place of the plan; « Déplacer vers… » is the same without one. -->
+          <span
+            class="inline-flex cursor-grab text-on-surface-variant"
+            draggable="true"
+            aria-hidden="true"
+            (dragstart)="carry($event, line)"
+            (dragend)="dragged.emit(null)"
+            data-testid="stock-contents-grip"
+          >
+            <mat-icon>drag_indicator</mat-icon>
+          </span>
+        }
         <app-product-thumbnail [productId]="line.productId" [photoId]="line.mainPhotoId" />
         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
           <span class="font-medium">{{ line.productName }}</span>
@@ -45,6 +60,58 @@
             </span>
           </span>
         </div>
+        @if (actions() && (mayMove() || mayOpen())) {
+          <button
+            mat-icon-button
+            type="button"
+            [matMenuTriggerFor]="lineMenu"
+            [appLabel]="'inventory.plan.line.actions' | translate: { name: line.productName }"
+            data-testid="stock-contents-actions"
+          >
+            <mat-icon aria-hidden="true">more_vert</mat-icon>
+          </button>
+          <mat-menu #lineMenu="matMenu" xPosition="before">
+            @if (mayOpen()) {
+              <a
+                mat-menu-item
+                [routerLink]="['/products', line.productId]"
+                data-testid="stock-contents-act-open"
+              >
+                <mat-icon aria-hidden="true">open_in_new</mat-icon>
+                <span>{{ 'inventory.plan.line.open' | translate }}</span>
+              </a>
+            }
+            @if (mayMove()) {
+              <button
+                mat-menu-item
+                type="button"
+                (click)="act.emit({ operation: 'move', line })"
+                data-testid="stock-contents-act-move"
+              >
+                <mat-icon aria-hidden="true">swap_horiz</mat-icon>
+                <span>{{ 'inventory.plan.line.move' | translate }}</span>
+              </button>
+              <button
+                mat-menu-item
+                type="button"
+                (click)="act.emit({ operation: 'count', line })"
+                data-testid="stock-contents-act-count"
+              >
+                <mat-icon aria-hidden="true">checklist</mat-icon>
+                <span>{{ 'inventory.plan.line.count' | translate }}</span>
+              </button>
+              <button
+                mat-menu-item
+                type="button"
+                (click)="act.emit({ operation: 'receive', line })"
+                data-testid="stock-contents-act-receive"
+              >
+                <mat-icon aria-hidden="true">move_to_inbox</mat-icon>
+                <span>{{ 'inventory.plan.line.receive' | translate }}</span>
+              </button>
+            }
+          </mat-menu>
+        }
       </div>
     } @empty {
       @if (now.q === '') {

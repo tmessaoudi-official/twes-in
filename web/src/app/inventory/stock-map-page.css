@@ -45,3 +45,15 @@
   background-color: var(--twes-status-warning-bg);
   color: var(--twes-status-warning-fg);
 }
+
+/* While a move is open, the places the goods may go are outlined dashed, and the one chosen whole. */
+.twes-map-target {
+  stroke: var(--mat-sys-tertiary);
+  stroke-width: 0.1;
+  stroke-dasharray: 0.3 0.18;
+}
+
+.twes-map-destination {
+  stroke: var(--mat-sys-tertiary);
+  stroke-width: 0.22;
+}

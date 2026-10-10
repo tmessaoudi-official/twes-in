@@ -9,16 +9,27 @@ import {
   inject,
   input,
   linkedSignal,
+  output,
   untracked,
 } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { AuthFacade } from '../auth/auth-facade';
 import { ProductThumbnail } from '../products/product-thumbnail';
+import { Label } from '../shared/a11y/label';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { InventoryFacade } from './inventory-facade';
+import type { StockLevelRow } from './inventory-types';
+import type { MovementAsked } from './place-movement';
+
+/** What a line was asked to do, for the map's panel to open its movement. */
+export type PlaceAct = MovementAsked;
 
 /** Past this many lines a place is searched rather than read down: a shelf of six is read at a glance. */
 export const CONTENTS_SEARCH_FROM = 6;
@@ -33,8 +44,12 @@ export const CONTENTS_SEARCH_PAUSE_MS = 300;
 @Component({
   selector: 'app-place-contents',
   imports: [
+    MatButtonModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
+    MatMenuModule,
+    Label,
     RouterLink,
     TranslatePipe,
     AmountPipe,
@@ -48,8 +63,22 @@ export class PlaceContents {
   private readonly live = inject(LiveChanges);
   private readonly destroyRef = inject(DestroyRef);
 
+  private readonly auth = inject(AuthFacade);
+
   readonly companyId = input.required<string>();
   readonly locationId = input.required<string>();
+  /**
+   * Each line offers what is done with an article on a shelf (docs/SPEC.md § 7, 2026-10-09 23:19): the map's panel
+   * records the movement; « Emplacements » only reads, so it offers none.
+   */
+  readonly actions = input(false);
+  /** A line's ⋮ asked to move, count or receive it. */
+  readonly act = output<PlaceAct>();
+  /** The line carried by its grip, onto a place of the plan; null once it is let go. */
+  readonly dragged = output<StockLevelRow | null>();
+
+  protected readonly mayMove = computed(() => this.auth.hasPermission('stock.write'));
+  protected readonly mayOpen = computed(() => this.auth.hasPermission('product.read'));
 
   /** What is typed, emptied when another place is chosen: words for one shelf are rarely those for the next. */
   protected readonly typed = linkedSignal({ source: this.locationId, computation: () => '' });
@@ -111,6 +140,13 @@ export class PlaceContents {
     this.destroyRef.onDestroy(() => {
       if (this.searchTimer !== null) clearTimeout(this.searchTimer);
     });
+  }
+
+  protected carry(event: DragEvent, line: StockLevelRow): void {
+    // A browser starts no drag without data; the line itself goes to the map through the output.
+    event.dataTransfer?.setData('text/plain', `${line.productReference} ${line.productName}`);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    this.dragged.emit(line);
   }
 
   protected search(words: string): void {

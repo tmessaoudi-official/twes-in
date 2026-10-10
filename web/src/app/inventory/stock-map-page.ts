@@ -43,6 +43,7 @@ import {
   STRUCTURE_KINDS,
   type StockDrawingRow,
   type StockFloorRow,
+  type StockLevelRow,
   type StockDrawingChanges,
   type StockDrawingInput,
   type StockDrawingRect,
@@ -117,6 +118,7 @@ import {
 import { StockMapVolume } from './stock-map-volume';
 import { StockMapFirstSteps } from './stock-map-first-steps';
 import { PlaceContents } from './place-contents';
+import { type MovementAsked, PlaceMovement } from './place-movement';
 import {
   LABEL_FONT,
   LABEL_PIXELS,
@@ -281,6 +283,7 @@ const PENDING_PIECE: StockStructureRow = {
     StockMapVolume,
     StockMapFirstSteps,
     PlaceContents,
+    PlaceMovement,
   ],
   templateUrl: './stock-map-page.html',
   styleUrl: './stock-map-page.css',
@@ -1053,6 +1056,7 @@ export class StockMapPage implements OnInit {
   protected async showFloor(floorId: string | null): Promise<void> {
     const companyId = this.company()?.id;
     this.chosenFloorId.set(floorId);
+    this.endMovement();
     this.chooseOnly(null);
     this.editing.set(null);
     this.drag = null;
@@ -1064,8 +1068,61 @@ export class StockMapPage implements OnInit {
     }
   }
 
+  /**
+   * A line's movement open in the panel (docs/SPEC.md § 7, 2026-10-09 10:31): while a move is, a place touched on the
+   * plan, in the list or in the 3D is where the goods go, and the chosen place stays chosen.
+   */
+  protected readonly movement = signal<MovementAsked | null>(null);
+  /** Where the open move sends the goods, by location: the plan outlines it. */
+  protected readonly destination = signal<string | null>(null);
+  /** The line carried by its grip, until it is let go. */
+  protected readonly carried = signal<StockLevelRow | null>(null);
+  /** The places the open move may send the goods to: every drawn one but where they are. */
+  protected readonly moving = computed(() => {
+    const movement = this.movement();
+    return movement?.operation === 'move' && !this.arranging() ? movement : null;
+  });
+
+  protected startMovement(asked: MovementAsked): void {
+    this.destination.set(null);
+    this.movement.set(asked);
+  }
+
+  protected endMovement(): void {
+    this.movement.set(null);
+    this.destination.set(null);
+  }
+
+  /** True when the touch named the open move's destination rather than a place to choose. */
+  private aimed(drawing: StockDrawingRow): boolean {
+    const moving = this.moving();
+    if (moving === null) return false;
+    if (drawing.locationId !== moving.line.locationId) this.destination.set(drawing.locationId);
+    return true;
+  }
+
+  /** A line dropped on a place opens « Déplacer » to it, filled in, to be confirmed once. */
+  protected dropOn(event: DragEvent, drawing: StockDrawingRow): void {
+    const line = this.carried();
+    this.carried.set(null);
+    if (line === null || this.arranging() || drawing.locationId === line.locationId) return;
+    event.preventDefault();
+    this.movement.set({ operation: 'move', line });
+    this.destination.set(drawing.locationId);
+  }
+
+  /** A place takes a carried line, so the browser shows it may be let go there. */
+  protected dragOver(event: DragEvent, drawing: StockDrawingRow): void {
+    const line = this.carried();
+    if (line !== null && !this.arranging() && drawing.locationId !== line.locationId) {
+      event.preventDefault();
+    }
+  }
+
   /** One selection across both layers: choosing a rack lets go of the wall that was chosen (finding G). */
   protected select(drawing: StockDrawingRow): void {
+    if (this.aimed(drawing)) return;
+    this.endMovement();
     this.chooseOnly(drawing.id);
     this.selectedStructureId.set(null);
     this.editingStructure.set(null);
@@ -1090,7 +1147,7 @@ export class StockMapPage implements OnInit {
 
       return;
     }
-    if (!event.shiftKey) {
+    if (!event.shiftKey || this.moving() !== null) {
       this.select(drawing);
 
       return;
@@ -1106,6 +1163,7 @@ export class StockMapPage implements OnInit {
    * was chosen is let go, as for one.
    */
   private chooseGroup(ids: ReadonlySet<string>): void {
+    this.endMovement();
     this.chosen.set(ids);
     this.groupDraft.set(null);
     this.selectedStructureId.set(null);

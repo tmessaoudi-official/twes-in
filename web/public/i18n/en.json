@@ -2631,7 +2631,21 @@
         "new": "New, created with this rectangle",
         "existing": "An existing location"
       },
-      "new_location_hint": "Proposed after the last of this kind; it is placed in the zone it is drawn in."
+      "new_location_hint": "Proposed after the last of this kind; it is placed in the zone it is drawn in.",
+      "line": {
+        "actions": "Actions for {{name}}",
+        "open": "Open the article",
+        "move": "Move to…",
+        "count": "Count here…",
+        "receive": "Receive here…"
+      },
+      "move": {
+        "pick_hint": "Touch the destination place on the plan, or choose it in « To location ».",
+        "moved": "Moved: {{quantity}} {{product}} from {{from}} to {{to}}.",
+        "undo": "Undo",
+        "undone": "Move undone: {{product}} is back in {{from}}.",
+        "undo_failed": "The move of {{product}} could not be undone: what was moved is no longer where it was put."
+      }
     },
     "scan": {
       "filled": "{{name}}: article, lot and quantity filled in",

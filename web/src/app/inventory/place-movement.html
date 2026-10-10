@@ -1,0 +1,44 @@
+<div class="@container flex flex-col gap-3" data-testid="place-movement">
+  <button
+    mat-button
+    type="button"
+    class="self-start"
+    (click)="back()"
+    data-testid="place-movement-back"
+  >
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    {{ 'inventory.plan.here.title' | translate }}
+  </button>
+  @if (error(); as code) {
+    <p role="alert" class="text-error" data-testid="place-movement-error">
+      {{ 'inventory.errors.' + code | translate }}
+    </p>
+  }
+  @if (form(); as form) {
+    @if (descriptor(); as descriptor) {
+      <app-descriptor-form
+        [descriptor]="descriptor"
+        [form]="form"
+        [pickers]="{ productId: { search: searchProducts, value: productShown() } }"
+        testId="place-movement-form"
+        (submitted)="save($event)"
+      >
+        <div class="flex flex-wrap justify-end gap-2">
+          <button mat-button type="button" (click)="back()" data-testid="place-movement-cancel">
+            {{ 'inventory.cancel' | translate }}
+          </button>
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="busy()"
+            data-testid="place-movement-save"
+          >
+            {{ 'inventory.save' | translate }}
+          </button>
+        </div>
+      </app-descriptor-form>
+    }
+  } @else {
+    <p class="text-sm text-on-surface-variant">{{ 'inventory.plan.here.reading' | translate }}</p>
+  }
+</div>
