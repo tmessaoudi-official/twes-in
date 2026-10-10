@@ -1,0 +1,90 @@
+<section class="flex max-w-3xl flex-col gap-6">
+  <h1 class="text-3xl font-semibold" data-testid="erasure-title">
+    {{ 'data_erasure.title' | translate }}
+  </h1>
+  @if (confirmedAt() === null) {
+    <p class="m-0 max-w-prose" data-testid="erasure-locked">
+      {{ 'data_erasure.locked' | translate: { company: company()?.name ?? '' } }}
+    </p>
+    <button
+      mat-flat-button
+      type="button"
+      class="self-start"
+      (click)="confirm()"
+      data-testid="erasure-confirm"
+    >
+      <mat-icon aria-hidden="true">lock</mat-icon>
+      {{ 'data_erasure.confirm' | translate }}
+    </button>
+  } @else {
+    <p class="m-0 text-sm text-on-surface-variant" data-testid="erasure-confirmed">
+      {{ 'data_erasure.confirmed' | translate: { time: confirmedTime() } }}
+    </p>
+    <section class="flex max-w-xl flex-col gap-3">
+      <h2 class="text-lg font-semibold">{{ 'data_erasure.some' | translate }}</h2>
+      <ul class="m-0 flex list-none flex-col gap-2 p-0">
+        @for (part of parts(); track part.part) {
+          <li
+            class="flex flex-col gap-1 rounded-lg border border-outline-variant p-3"
+            [attr.data-testid]="'erasure-part-' + part.part"
+          >
+            <mat-checkbox
+              [checked]="chosen().has(part.part)"
+              [disabled]="pending.erasure() !== null"
+              (change)="toggle(part.part, $event.checked)"
+              [attr.data-testid]="'erasure-choose-' + part.part"
+            >
+              <span class="font-medium">{{
+                'data_erasure.parts.' + part.part + '.title' | translate
+              }}</span>
+              <span class="text-sm text-on-surface-variant" data-testid="erasure-count">
+                · {{ summary(part) }}</span
+              >
+            </mat-checkbox>
+            <span class="ps-10 text-sm text-on-surface-variant">
+              {{ 'data_erasure.parts.' + part.part + '.effect' | translate }}
+            </span>
+          </li>
+        }
+        @if (showComing()) {
+          @for (part of comingParts; track part) {
+            <li
+              class="flex flex-col gap-1 rounded-lg border border-outline-variant p-3"
+              [attr.data-testid]="'erasure-coming-' + part"
+            >
+              <mat-checkbox [disabled]="true">
+                <span class="font-medium">{{
+                  'data_erasure.parts.' + part + '.title' | translate
+                }}</span>
+                <span class="twes-soon ms-2">{{ 'shell.soon' | translate }}</span>
+              </mat-checkbox>
+              <span class="ps-10 text-sm text-on-surface-variant">
+                {{ 'data_erasure.parts.' + part + '.effect' | translate }}
+              </span>
+            </li>
+          }
+        }
+      </ul>
+    </section>
+    <div class="flex max-w-xl flex-col gap-1">
+      <span class="font-medium">{{ 'data_erasure.kept_title' | translate }}</span>
+      <span class="text-sm text-on-surface-variant">{{ 'data_erasure.kept' | translate }}</span>
+    </div>
+    @if (pending.erasure()) {
+      <p class="m-0 max-w-prose" role="status" data-testid="erasure-waiting">
+        {{ 'data_erasure.waiting' | translate }}
+      </p>
+    }
+    <button
+      mat-flat-button
+      type="button"
+      class="self-start"
+      [disabled]="chosen().size === 0 || busy() || pending.erasure() !== null"
+      (click)="review()"
+      data-testid="erasure-review"
+    >
+      <mat-icon aria-hidden="true">visibility</mat-icon>
+      {{ 'data_erasure.review' | translate: { count: chosen().size } }}
+    </button>
+  }
+</section>
