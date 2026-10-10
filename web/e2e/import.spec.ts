@@ -151,7 +151,8 @@ test('a product file adds stock, or is read for its prices alone', async ({ page
     await expect(page.getByTestId('import-updated')).toContainText('1');
     await expect(page.getByTestId('import-notes')).toContainText('0 → 3');
 
-    await page.getByTestId('import-switch-ignore_quantities').click();
+    // The checkbox's host spans the row: a click at its centre lands beside the label and ticks nothing.
+    await page.getByTestId('import-switch-ignore_quantities').locator('input').check();
     await expect(page.getByTestId('import-store')).toBeDisabled();
     await page.getByTestId('import-preview').click();
     await expect(page.getByTestId('import-updated')).toContainText('1');
