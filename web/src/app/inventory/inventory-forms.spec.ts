@@ -122,6 +122,7 @@ function movement(
     at: '2026-09-15T09:00:00+00:00',
     costTyped: false,
     costToComplete: false,
+    attachmentCount: null,
   };
 }
 

@@ -2228,7 +2228,9 @@
       "in_use": "Cet emplacement ne peut pas être supprimé : c’est l’emplacement par défaut, ou il contient encore des emplacements ou des mouvements.",
       "invalid": "La saisie a été refusée. Vérifiez le produit, l’emplacement et la quantité.",
       "level_taken": "Un autre étage de cet établissement occupe déjà ce niveau.",
-      "cost_known": "Le coût de cette réception est déjà connu."
+      "cost_known": "Le coût de cette réception est déjà connu.",
+      "file_refused": "Ce fichier n’est pas gardé : PDF, PNG, JPEG ou WebP non vide, et 10 fichiers par perte au plus.",
+      "file_too_large": "Ce fichier dépasse 10 Mo."
     },
     "stock": {
       "title": "Stock",
@@ -2335,6 +2337,19 @@
         "stolen": "Volée",
         "internal_use": "Usage interne",
         "sample": "Échantillon"
+      },
+      "files": {
+        "title": "Fichiers de la perte",
+        "hint": "Une photo de ce qui est perdu ou cassé, la plainte déposée pour un vol, un certificat de destruction : PDF, PNG, JPEG ou WebP, 10 Mo au plus, 10 fichiers par perte.",
+        "none": "Aucun fichier pour cette perte.",
+        "add": "Joindre une photo ou un justificatif",
+        "remove": "Retirer {{name}} de la perte",
+        "remove_short": "Retirer",
+        "close": "Fermer",
+        "open_of": "Fichiers de la perte : {{name}}",
+        "count": "{{count}} {count, plural, one {fichier joint} other {fichiers joints}}",
+        "attached": "« {{name}} » est joint à la perte.",
+        "removed": "« {{name}} » est retiré de la perte."
       }
     },
     "sources": {

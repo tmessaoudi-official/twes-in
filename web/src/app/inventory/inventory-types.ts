@@ -2,7 +2,15 @@
 
 /** Why the API refused, as the stock screens translate it. */
 export type InventoryError =
-  'network' | 'not_found' | 'code_taken' | 'in_use' | 'invalid' | 'level_taken' | 'cost_known';
+  | 'network'
+  | 'not_found'
+  | 'code_taken'
+  | 'in_use'
+  | 'invalid'
+  | 'level_taken'
+  | 'cost_known'
+  | 'file_refused'
+  | 'file_too_large';
 
 /** Where stock is kept, from the whole site down to one bin (docs/SPEC.md § 7, 2026-09-14). */
 export type StockLocationKind =
@@ -269,6 +277,18 @@ export interface StockMovementRow {
    * § 7, audit 2026-10-06 C challenge 9).
    */
   costToComplete: boolean;
+  /** How many files a loss keeps — a photo of what broke, the complaint for a theft; null on any other movement. */
+  attachmentCount: number | null;
+}
+
+/** A file a loss keeps, as the API lists it: the name it was sent under and the type read from its bytes. */
+export interface StockLossFile {
+  id: string;
+  name: string;
+  mime: string;
+  /** Bytes. */
+  size: number;
+  createdAt: string;
 }
 
 /** What the stock of one product is worth, at the weighted average of what came in. */

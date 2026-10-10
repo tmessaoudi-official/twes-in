@@ -19,6 +19,7 @@ import type {
   StockMovementInput,
   StockMovementRow,
   StockMovementSearch,
+  StockLossFile,
   StockOptions,
   StockProductOption,
   StockVendorOption,
@@ -250,6 +251,37 @@ export class InventoryFacade {
       () => this.api.enterReceiptCost(companyId, movementId, unitCost, applyCost),
       () => this.reloadMovements(companyId),
     );
+  }
+
+  /** The files a loss keeps, or null when they could not be read (the reason is in `error`). */
+  async lossFiles(companyId: string, movementId: string): Promise<StockLossFile[] | null> {
+    this.errorSignal.set(null);
+    try {
+      return await this.api.lossFiles(companyId, movementId);
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return null;
+    }
+  }
+
+  /** A file kept with a loss; true once kept and the movements read again, so the loss says how many it keeps. */
+  async attachToLoss(companyId: string, movementId: string, file: File): Promise<boolean> {
+    return this.write(
+      () => this.api.attachToLoss(companyId, movementId, file),
+      () => this.reloadMovements(companyId),
+    );
+  }
+
+  /** A file attached to a loss by mistake, taken off it; true once done and the movements read again. */
+  async detachFromLoss(companyId: string, movementId: string, fileId: string): Promise<boolean> {
+    return this.write(
+      () => this.api.detachFromLoss(companyId, movementId, fileId),
+      () => this.reloadMovements(companyId),
+    );
+  }
+
+  lossFileUrl(companyId: string, movementId: string, fileId: string): string {
+    return this.api.lossFileUrl(companyId, movementId, fileId);
   }
 
   /** One delivery shared over several places, stored whole or not at all; true once recorded and the page read again. */

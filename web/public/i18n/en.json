@@ -2228,7 +2228,9 @@
       "in_use": "This location cannot be deleted: it is the default location, or it still holds locations or movements.",
       "invalid": "This was refused. Check the product, the location and the quantity.",
       "level_taken": "Another floor of this establishment is already at that level.",
-      "cost_known": "The cost of this receipt is already known."
+      "cost_known": "The cost of this receipt is already known.",
+      "file_refused": "This file is not kept: a non-empty PDF, PNG, JPEG or WebP, and at most 10 files per loss.",
+      "file_too_large": "This file is over 10 MB."
     },
     "stock": {
       "title": "Stock",
@@ -2335,6 +2337,19 @@
         "stolen": "Stolen",
         "internal_use": "Internal use",
         "sample": "Sample"
+      },
+      "files": {
+        "title": "Files of the loss",
+        "hint": "A photo of what was lost or broken, the complaint filed for a theft, a destruction certificate: PDF, PNG, JPEG or WebP, at most 10 MB, 10 files per loss.",
+        "none": "No file for this loss.",
+        "add": "Attach a photo or a proof",
+        "remove": "Remove {{name}} from the loss",
+        "remove_short": "Remove",
+        "close": "Close",
+        "open_of": "Files of the loss: {{name}}",
+        "count": "{{count}} {count, plural, one {file attached} other {files attached}}",
+        "attached": "“{{name}}” is attached to the loss.",
+        "removed": "“{{name}}” is removed from the loss."
       }
     },
     "sources": {

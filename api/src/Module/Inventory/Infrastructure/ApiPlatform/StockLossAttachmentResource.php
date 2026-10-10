@@ -18,7 +18,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
  * The files a loss keeps, listed with stock.read and taken off with stock.write. A file goes up and comes back through
- * StockLossAttachmentsController, since those are bytes; InventoryOpenApi documents both.
+ * StockLossAttachmentsController, since those are bytes; StockLossAttachmentsOpenApi documents both.
  */
 #[ApiResource(
     shortName: 'StockLossAttachment',

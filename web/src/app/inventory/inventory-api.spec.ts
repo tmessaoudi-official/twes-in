@@ -58,6 +58,7 @@ const received: StockMovementRow = {
   at: '2026-09-15T09:00:00+00:00',
   costTyped: false,
   costToComplete: false,
+  attachmentCount: null,
 };
 
 describe('InventoryApi', () => {
@@ -570,6 +571,51 @@ describe('InventoryApi', () => {
       .expectOne('/api/companies/c1/stock-counts')
       .flush({ detail: 'quantity' }, { status: 422, statusText: 'Unprocessable Entity' });
     await expect(refused).rejects.toMatchObject({ code: 'invalid' });
+  });
+
+  // Row 74 (b): a loss keeps its photos and the papers that prove it.
+  it("reads, attaches and takes off a loss's files, and says why a file is not kept", async () => {
+    const listed = api.lossFiles('c1', 'm3');
+    http.expectOne('/api/companies/c1/stock-movements/m3/attachments').flush([
+      {
+        id: 'f1',
+        name: 'carton.jpg',
+        mime: 'image/jpeg',
+        size: 2048,
+        createdAt: '2026-10-09T10:00:00+00:00',
+      },
+    ]);
+    expect(await listed).toEqual([
+      {
+        id: 'f1',
+        name: 'carton.jpg',
+        mime: 'image/jpeg',
+        size: 2048,
+        createdAt: '2026-10-09T10:00:00+00:00',
+      },
+    ]);
+
+    const file = new File(['GIF89a'], 'photo.gif', { type: 'image/gif' });
+    const refused = api.attachToLoss('c1', 'm3', file);
+    const post = http.expectOne('/api/companies/c1/stock-movements/m3/attachments');
+    expect(post.request.method).toBe('POST');
+    expect((post.request.body as FormData).get('file')).toBeInstanceOf(File);
+    post.flush({ detail: 'file: type' }, { status: 422, statusText: 'Unprocessable Entity' });
+    await expect(refused).rejects.toMatchObject({ code: 'file_refused' });
+    const large = api.attachToLoss('c1', 'm3', file);
+    http
+      .expectOne('/api/companies/c1/stock-movements/m3/attachments')
+      .flush('', { status: 413, statusText: 'Payload Too Large' });
+    await expect(large).rejects.toMatchObject({ code: 'file_too_large' });
+
+    const removed = api.detachFromLoss('c1', 'm3', 'f1');
+    const del = http.expectOne('/api/companies/c1/stock-movements/m3/attachments/f1');
+    expect(del.request.method).toBe('DELETE');
+    del.flush(null, { status: 404, statusText: 'Not Found' });
+    await expect(removed).rejects.toMatchObject({ code: 'not_found' });
+    expect(api.lossFileUrl('c1', 'm3', 'f1')).toBe(
+      '/api/companies/c1/stock-movements/m3/attachments/f1/content',
+    );
   });
 
   // docs/SPEC.md § 7, audit 2026-10-06 C challenge 9.

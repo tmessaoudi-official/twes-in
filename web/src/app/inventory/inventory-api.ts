@@ -36,6 +36,7 @@ import type {
   ReceiptCostReceiptCostRead,
   StockOnHandStockOnHandRead,
   ReceiptCostEntryReceiptCostEntryWriteValidationReceiptCostEntryWrite as ReceiptCostEntryWrite,
+  StockLossAttachmentStockLossAttachmentRead,
 } from '../api/types.gen';
 import { type ExportFormat, exportAddress } from '../shared/list/export-address';
 import { apiRangeKey } from '../shared/list/list-filters';
@@ -67,6 +68,7 @@ import {
   type StockCountInput,
   type StockReceiptInput,
   type StockMovementRow,
+  type StockLossFile,
   API_DECIMALS,
   type StockOptions,
   type StockProductOption,
@@ -723,11 +725,60 @@ export class InventoryApi {
     );
   }
 
-  private async guard<T>(call: () => Promise<T>, conflict: InventoryError = 'invalid'): Promise<T> {
+  /** The files a loss keeps; 404 for a movement that is not one of the company's losses. */
+  async lossFiles(companyId: string, movementId: string): Promise<StockLossFile[]> {
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<StockLossAttachmentStockLossAttachmentRead[]>(
+            lossFilesPath(companyId, movementId),
+          ),
+        )
+      ).map(toLossFile),
+    );
+  }
+
+  /** A multipart part named `file`; 422 for a file the API does not keep, 413 when the proxy finds it too large. */
+  async attachToLoss(companyId: string, movementId: string, file: File): Promise<StockLossFile> {
+    const body = new FormData();
+    body.append('file', file, file.name);
+    return this.guard(
+      async () =>
+        toLossFile(
+          await firstValueFrom(
+            this.http.post<StockLossAttachmentStockLossAttachmentRead>(
+              lossFilesPath(companyId, movementId),
+              body,
+            ),
+          ),
+        ),
+      'invalid',
+      true,
+    );
+  }
+
+  async detachFromLoss(companyId: string, movementId: string, fileId: string): Promise<void> {
+    await this.guard(async () =>
+      firstValueFrom(
+        this.http.delete(`${lossFilesPath(companyId, movementId)}/${encodeURIComponent(fileId)}`),
+      ),
+    );
+  }
+
+  /** Where the browser opens a loss's file: a same-origin address the session cookie reaches. */
+  lossFileUrl(companyId: string, movementId: string, fileId: string): string {
+    return `${lossFilesPath(companyId, movementId)}/${encodeURIComponent(fileId)}/content`;
+  }
+
+  private async guard<T>(
+    call: () => Promise<T>,
+    conflict: InventoryError = 'invalid',
+    file = false,
+  ): Promise<T> {
     try {
       return await call();
     } catch (error) {
-      throw new InventoryRefused(codeOf(error, conflict));
+      throw new InventoryRefused(file ? fileCodeOf(error) : codeOf(error, conflict));
     }
   }
 }
@@ -744,6 +795,26 @@ function codeOf(error: unknown, conflict: InventoryError): InventoryError {
     default:
       return 'invalid';
   }
+}
+
+/** A file sent up: refused for what it is (422), or found too large before the API saw it (413). */
+function fileCodeOf(error: unknown): InventoryError {
+  if (error instanceof HttpErrorResponse && error.status === 422) return 'file_refused';
+  if (error instanceof HttpErrorResponse && error.status === 413) return 'file_too_large';
+  return codeOf(error, 'invalid');
+}
+
+const lossFilesPath = (companyId: string, movementId: string): string =>
+  `${path(companyId, 'stock-movements', movementId)}/attachments`;
+
+function toLossFile(raw: StockLossAttachmentStockLossAttachmentRead): StockLossFile {
+  return {
+    id: raw.id ?? '',
+    name: raw.name ?? '',
+    mime: raw.mime ?? '',
+    size: raw.size ?? 0,
+    createdAt: raw.createdAt ?? '',
+  };
 }
 
 /** What a floor shows a plan image at when it says nothing else, matching the API's own default. */
@@ -937,5 +1008,6 @@ function toMovement(
     at: raw.at ?? '',
     costTyped: raw.costTyped ?? false,
     costToComplete: raw.costToComplete ?? false,
+    attachmentCount: raw.attachmentCount ?? null,
   };
 }
