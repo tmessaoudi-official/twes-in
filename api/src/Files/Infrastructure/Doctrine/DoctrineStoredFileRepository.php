@@ -26,6 +26,31 @@ final readonly class DoctrineStoredFileRepository implements StoredFileRepositor
         $this->entityManager->flush();
     }
 
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array
+    {
+        if ([] === $ids) {
+            return [];
+        }
+        /** @var list<StoredFile> $files */
+        $files = $this->entityManager->createQueryBuilder()
+            ->select('f')
+            ->from(StoredFile::class, 'f')
+            ->where('f.company = :company')
+            ->andWhere('f.id IN (:ids)')
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('ids', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $ids))
+            ->getQuery()
+            ->getResult();
+
+        return $files;
+    }
+
+    public function remove(StoredFile $file): void
+    {
+        $this->entityManager->remove($file);
+        $this->entityManager->flush();
+    }
+
     public function bytesOfCompany(Uuid $companyId): int
     {
         $bytes = $this->entityManager->getConnection()->fetchOne('SELECT COALESCE(SUM(size), 0) FROM file WHERE company_id = ?', [$companyId->toRfc4122()]);

@@ -29,4 +29,9 @@ final class InMemoryFileStorage implements FileStorage
     {
         return $this->contents[$key] ?? throw new StoredFileMissing(\sprintf('No file is stored under %s.', $key));
     }
+
+    public function delete(string $key): void
+    {
+        unset($this->contents[$key]);
+    }
 }

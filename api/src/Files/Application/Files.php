@@ -32,6 +32,33 @@ final readonly class Files
         return $file;
     }
 
+    /**
+     * Deletes the records of the company's files with these ids, and says where their bytes are, for deleteContents() to
+     * delete once the records are gone for good: bytes without a record are only unused.
+     *
+     * @param list<Uuid> $ids
+     *
+     * @return list<string> their storage keys
+     */
+    public function forget(Uuid $companyId, array $ids): array
+    {
+        $keys = [];
+        foreach ($this->records->ofIdsInCompany($ids, $companyId) as $file) {
+            $keys[] = $file->getStorageKey();
+            $this->records->remove($file);
+        }
+
+        return $keys;
+    }
+
+    /** @param list<string> $keys */
+    public function deleteContents(array $keys): void
+    {
+        foreach ($keys as $key) {
+            $this->storage->delete($key);
+        }
+    }
+
     /** How many bytes the company keeps in files: what its storage holds for it, whatever kept them. */
     public function bytesUsed(Company $company): int
     {
