@@ -47,46 +47,49 @@ export interface QuoteAnswered {
     <h2 mat-dialog-title data-testid="quote-answer-title">
       {{ 'quotes.answer.' + data.kind + '_title' | translate }}
     </h2>
-    <mat-dialog-content class="flex flex-col gap-4">
-      <mat-form-field subscriptSizing="dynamic" class="w-full">
-        <mat-label>{{ 'quotes.answer.answered_on' | translate }}</mat-label>
-        <input
-          matInput
-          appDay
-          #dayField="appDay"
-          type="text"
-          inputmode="numeric"
-          autocomplete="off"
-          [ngModel]="day()"
-          (ngModelChange)="day.set($event)"
-          data-testid="quote-answered-on"
-        />
-        <app-day-calendar-button matSuffix [field]="dayField" />
-        <mat-hint>{{ 'quotes.answer.answered_on_hint' | translate }}</mat-hint>
-      </mat-form-field>
-      @if (data.kind === 'accept') {
-        <app-file-drop
-          [label]="'quotes.answer.signed' | translate"
-          accept="application/pdf,image/png,image/jpeg,image/webp"
-          [maxBytes]="maxBytes"
-          [chosenName]="signed()?.name ?? null"
-          testId="quote-signed"
-          (picked)="signed.set($event)"
-        />
-      } @else {
+    <mat-dialog-content>
+      <!-- Material's own display beats a layout class on mat-dialog-content: the layout goes on a div inside it. -->
+      <div class="flex flex-col gap-4">
         <mat-form-field subscriptSizing="dynamic" class="w-full">
-          <mat-label>{{ 'quotes.answer.reason' | translate }}</mat-label>
-          <textarea
+          <mat-label>{{ 'quotes.answer.answered_on' | translate }}</mat-label>
+          <input
             matInput
-            rows="3"
-            [maxlength]="reasonMax"
-            [ngModel]="reason()"
-            (ngModelChange)="reason.set($event)"
-            data-testid="quote-refusal-reason"
-          ></textarea>
-          <mat-hint>{{ 'quotes.answer.reason_hint' | translate }}</mat-hint>
+            appDay
+            #dayField="appDay"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            [ngModel]="day()"
+            (ngModelChange)="day.set($event)"
+            data-testid="quote-answered-on"
+          />
+          <app-day-calendar-button matSuffix [field]="dayField" />
+          <mat-hint>{{ 'quotes.answer.answered_on_hint' | translate }}</mat-hint>
         </mat-form-field>
-      }
+        @if (data.kind === 'accept') {
+          <app-file-drop
+            [label]="'quotes.answer.signed' | translate"
+            accept="application/pdf,image/png,image/jpeg,image/webp"
+            [maxBytes]="maxBytes"
+            [chosenName]="signed()?.name ?? null"
+            testId="quote-signed"
+            (picked)="signed.set($event)"
+          />
+        } @else {
+          <mat-form-field subscriptSizing="dynamic" class="w-full">
+            <mat-label>{{ 'quotes.answer.reason' | translate }}</mat-label>
+            <textarea
+              matInput
+              rows="3"
+              [maxlength]="reasonMax"
+              [ngModel]="reason()"
+              (ngModelChange)="reason.set($event)"
+              data-testid="quote-refusal-reason"
+            ></textarea>
+            <mat-hint>{{ 'quotes.answer.reason_hint' | translate }}</mat-hint>
+          </mat-form-field>
+        }
+      </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" (click)="ref.close(null)" data-testid="quote-answer-keep">

@@ -42,44 +42,47 @@ export interface QuoteDepositDialogData {
     <h2 mat-dialog-title data-testid="quote-deposit-title">
       {{ 'quotes.deposit.title' | translate }}
     </h2>
-    <mat-dialog-content class="flex flex-col gap-4">
-      <p class="text-sm text-on-surface-variant">
-        {{ 'quotes.deposit.help' | translate: { total: (data.total | amount: data.scale) } }}
-      </p>
-      <mat-radio-group
-        [value]="by()"
-        [attr.aria-label]="'quotes.deposit.by' | translate"
-        class="flex flex-col"
-        data-testid="quote-deposit-by"
-      >
-        <mat-radio-button
-          value="percentage"
-          (change)="by.set('percentage')"
-          data-testid="quote-deposit-by-percentage"
+    <mat-dialog-content>
+      <!-- Material's own display beats a layout class on mat-dialog-content: the layout goes on a div inside it. -->
+      <div class="flex flex-col gap-4">
+        <p class="text-sm text-on-surface-variant">
+          {{ 'quotes.deposit.help' | translate: { total: (data.total | amount: data.scale) } }}
+        </p>
+        <mat-radio-group
+          [value]="by()"
+          [attr.aria-label]="'quotes.deposit.by' | translate"
+          class="flex flex-col"
+          data-testid="quote-deposit-by"
         >
-          {{ 'quotes.deposit.by_percentage' | translate }}
-        </mat-radio-button>
-        <mat-radio-button
-          value="amount"
-          (change)="by.set('amount')"
-          data-testid="quote-deposit-by-amount"
-        >
-          {{ 'quotes.deposit.by_amount' | translate }}
-        </mat-radio-button>
-      </mat-radio-group>
-      <mat-form-field subscriptSizing="dynamic" class="w-full">
-        <mat-label>{{ 'quotes.deposit.' + by() | translate }}</mat-label>
-        <input
-          matInput
-          appDecimal
-          autocomplete="off"
-          [ngModel]="value()"
-          (ngModelChange)="onValue($event)"
-          data-testid="quote-deposit-value"
-        />
-        <span matTextSuffix>{{ by() === 'percentage' ? '%' : '' }}</span>
-        <mat-hint>{{ 'quotes.deposit.' + by() + '_hint' | translate }}</mat-hint>
-      </mat-form-field>
+          <mat-radio-button
+            value="percentage"
+            (change)="by.set('percentage')"
+            data-testid="quote-deposit-by-percentage"
+          >
+            {{ 'quotes.deposit.by_percentage' | translate }}
+          </mat-radio-button>
+          <mat-radio-button
+            value="amount"
+            (change)="by.set('amount')"
+            data-testid="quote-deposit-by-amount"
+          >
+            {{ 'quotes.deposit.by_amount' | translate }}
+          </mat-radio-button>
+        </mat-radio-group>
+        <mat-form-field subscriptSizing="dynamic" class="w-full">
+          <mat-label>{{ 'quotes.deposit.' + by() | translate }}</mat-label>
+          <input
+            matInput
+            appDecimal
+            autocomplete="off"
+            [ngModel]="value()"
+            (ngModelChange)="onValue($event)"
+            data-testid="quote-deposit-value"
+          />
+          <span matTextSuffix>{{ by() === 'percentage' ? '%' : '' }}</span>
+          <mat-hint>{{ 'quotes.deposit.' + by() + '_hint' | translate }}</mat-hint>
+        </mat-form-field>
+      </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" (click)="ref.close(null)" data-testid="quote-deposit-keep">
