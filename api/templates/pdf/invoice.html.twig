@@ -103,6 +103,9 @@
     </thead>
     <tbody>
       {%- for line in invoice.lines %}
+        {%- if sectionStarts[loop.index0] is defined %}
+          <tr class="section"><td colspan="7"><strong>{{ sectionStarts[loop.index0].title }}</strong></td></tr>
+        {%- endif %}
         <tr>
           <td>{{ line.description|nl2br }}</td>
           <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale, page.numberFormat) }}</td>
@@ -112,6 +115,12 @@
           <td>{{ line.taxes|map(tax => tax.code)|join(', ') }}</td>
           <td class="number">{{ figures.lines[loop.index0].net|decimal(scale, locale, page.numberFormat) }}</td>
         </tr>
+        {%- if sectionEnds[loop.index0] is defined %}
+          <tr class="section-subtotal">
+            <td colspan="6"><strong>{{ 'line.section_subtotal'|trans({'%title%': sectionEnds[loop.index0].title}, t, locale) }}</strong></td>
+            <td class="number"><strong>{{ sectionEnds[loop.index0].subtotal|decimal(scale, locale, page.numberFormat) }}</strong></td>
+          </tr>
+        {%- endif %}
       {%- endfor %}
     </tbody>
   </table>

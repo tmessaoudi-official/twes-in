@@ -158,6 +158,7 @@ describe('QuotesApi', () => {
       lotCode: null,
       returned: false,
       deductsInvoiceId: null,
+      section: null,
       net: '2250.000',
     });
   });

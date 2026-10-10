@@ -32,6 +32,7 @@ const input: InvoiceInput = {
       lotCode: null,
       returned: false,
       deductsInvoiceId: null,
+      section: null,
     },
   ],
 };

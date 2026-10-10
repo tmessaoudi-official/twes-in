@@ -99,6 +99,10 @@ class InvoiceLine implements CompanyOwned
     #[ORM\Column(options: ['default' => false])]
     private bool $returned;
 
+    /** The title of the section of the document this line opens, which runs to the next titled line; null when it opens none. */
+    #[ORM\Column(length: InvoiceLineDetails::SECTION_MAX, nullable: true)]
+    private ?string $section;
+
     /** The deposit invoice this line gives back; null for any other line. */
     #[ORM\ManyToOne(targetEntity: Invoice::class)]
     #[ORM\JoinColumn(name: 'deducts_invoice_id', nullable: true)]
@@ -126,6 +130,7 @@ class InvoiceLine implements CompanyOwned
         $this->sourceDeliveryNoteLineId = $details->sourceDeliveryNoteLineId;
         $this->lotCode = $details->lotCode;
         $this->returned = $details->returned;
+        $this->section = $details->section;
         $this->deductsInvoice = $details->deduction?->deposit;
         $this->taxes = new ArrayCollection();
         foreach ($details->taxes as $index => $tax) {
@@ -163,7 +168,7 @@ class InvoiceLine implements CompanyOwned
         return ['net' => $this->lineNet, 'tax' => $this->lineTax, 'gross' => $this->lineGross];
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null, string|null} compared the way InvoiceLineDetails::values() is */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null, string|null, string|null} compared the way InvoiceLineDetails::values() is */
     public function values(): array
     {
         return [
@@ -179,7 +184,14 @@ class InvoiceLine implements CompanyOwned
             $this->returned,
             $this->getDeduction()?->values(),
             $this->discountAmount,
+            $this->section,
         ];
+    }
+
+    /** The title of the section this line opens; null when it opens none. */
+    public function getSection(): ?string
+    {
+        return $this->section;
     }
 
     /** What this line gives back of a deposit invoice; null for any other line. */

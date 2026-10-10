@@ -17,6 +17,7 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\QueryParameter;
 use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use App\Fiscal\Domain\Calculation\SectionSubtotals;
 use App\Fiscal\Infrastructure\ApiPlatform\DocumentPreview;
 use App\Module\Invoices\Application\InvoiceInput;
 use App\Module\Invoices\Application\InvoiceLineInput;
@@ -335,6 +336,7 @@ final class InvoiceResource
                 'productTracking' => ['type' => ['string', 'null'], 'enum' => ['none', 'lot', 'serial', null], 'description' => 'How the product\'s stock is told apart today, so a form knows whether the line names a lot. Read only.'],
                 'lotCode' => ['type' => ['string', 'null'], 'maxLength' => LotCode::MAX, 'description' => 'The lot or serial sold, for a product tracked by one.'],
                 'returned' => ['type' => 'boolean', 'description' => 'On a credit note\'s line: its goods came back to stock when the note is issued. A credit note says so line by line, since a price correction returns nothing; any other document refuses it.'],
+                'section' => ['type' => ['string', 'null'], 'maxLength' => InvoiceLineDetails::SECTION_MAX, 'description' => 'The title of the section this line opens, which runs to the next titled line; null for a line opening none. Trimmed; blank is none. Printed, never sent in Factur-X.'],
                 'deductsInvoiceId' => ['type' => ['string', 'null'], 'format' => 'uuid', 'description' => 'A deposit invoice of the customer this line gives back, net and taxes as the deposit charged them. Sent on one line, it is written as one line per line of the deposit, from the deposit; what else the line says is not read. Null on any other line.'],
                 'net' => ['type' => 'string', 'readOnly' => true],
                 'unitCost' => ['type' => ['string', 'null'], 'readOnly' => true, 'description' => 'What one unit of its product cost the company when the line was issued; null on a draft, when unknown, and for a caller without product.cost.read.'],
@@ -358,6 +360,7 @@ final class InvoiceResource
         'lotCode' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
         'returned' => new Assert\Optional([new Assert\Type('bool', groups: [self::WRITE])], groups: [self::WRITE]),
         'deductsInvoiceId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
+        'section' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE])], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public array $lines = [];
@@ -366,6 +369,11 @@ final class InvoiceResource
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
     public string $subtotalNet = '0';
+
+    /** @var list<array{title: string, firstLine: int, lineCount: int, subtotal: string}> each section with what its lines' nets add up to */
+    #[ApiProperty(writable: false, description: 'The sections the lines open: each starts at the line carrying its title (by position from 0) and runs to the next one, with what its lines\' nets add up to, excluding tax. Lines before the first title are in none.', schema: DocumentPreview::SECTIONS)]
+    #[Groups([self::READ])]
+    public array $sections = [];
 
     /** The document discount, as the currency counts it. */
     #[ApiProperty(writable: false)]
@@ -551,10 +559,12 @@ final class InvoiceResource
             'lotCode' => $line->getLotCode(),
             'returned' => $line->isReturned(),
             'deductsInvoiceId' => $line->getDeduction()?->deposit->getId()->toRfc4122(),
+            'section' => $line->getSection(),
             'net' => $fixed['net'],
             'unitCost' => $withCosts ? $line->getUnitCost() : null,
         ], $invoice->getLines(), $figures->lines);
         $resource->subtotalNet = $figures->subtotalNet;
+        $resource->sections = DocumentPreview::sections(SectionSubtotals::of(array_map(static fn (InvoiceLine $line, array $fixed): array => [$line->getSection(), $fixed['net']], $invoice->getLines(), $figures->lines)));
         $resource->documentDiscount = $figures->documentDiscount;
         $resource->savings = $figures->savings;
         $resource->totalNet = $figures->totalNet;
@@ -602,6 +612,7 @@ final class InvoiceResource
                 true === ($line['returned'] ?? false),
                 self::uuid(self::text($line, 'deductsInvoiceId')),
                 self::text($line, 'discountAmount'),
+                self::text($line, 'section'),
             );
         }
 

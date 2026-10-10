@@ -300,17 +300,30 @@ class Invoice implements CompanyOwned
             // The same sale, so what its operations were said to be, stated or still chosen, is the copy's choice.
             $invoice->operationCategory,
         ));
-        // A copy is a new sale: what the original gave back of a deposit is not given back a second time.
-        $copy->writeLines(array_map(static fn (InvoiceLine $line): InvoiceLineDetails => new InvoiceLineDetails(
-            $line->getProduct(),
-            $line->getDescription(),
-            $line->getQuantity(),
-            $line->getUnit(),
-            $line->getUnitPriceNet(),
-            $line->getDiscountRate(),
-            array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
-            discountAmount: $line->getDiscountAmount(),
-        ), array_values(array_filter($invoice->getLines(), static fn (InvoiceLine $line): bool => null === $line->getDeduction()))));
+        // A copy is a new sale: what the original gave back of a deposit is not given back a second time. A section such
+        // a line opened is kept, opened by the next line copied.
+        $lines = [];
+        $carried = null;
+        foreach ($invoice->getLines() as $line) {
+            if (null !== $line->getDeduction()) {
+                $carried = $line->getSection() ?? $carried;
+
+                continue;
+            }
+            $lines[] = new InvoiceLineDetails(
+                $line->getProduct(),
+                $line->getDescription(),
+                $line->getQuantity(),
+                $line->getUnit(),
+                $line->getUnitPriceNet(),
+                $line->getDiscountRate(),
+                array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
+                discountAmount: $line->getDiscountAmount(),
+                section: $line->getSection() ?? $carried,
+            );
+            $carried = null;
+        }
+        $copy->writeLines($lines);
         $copy->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
         $copy->retakeTaxes();
 
@@ -363,6 +376,7 @@ class Invoice implements CompanyOwned
             LotCode::carried($line->getProduct(), $line->getLotCode()),
             deduction: $line->getDeduction(),
             discountAmount: $line->getDiscountAmount(),
+            section: $line->getSection(),
         ), $invoice->getLines()));
         $credit->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
         $credit->retakeTaxes();
@@ -558,6 +572,7 @@ class Invoice implements CompanyOwned
             $line->isReturned(),
             $line->getDeduction(),
             $line->getDiscountAmount(),
+            $line->getSection(),
         );
     }
 

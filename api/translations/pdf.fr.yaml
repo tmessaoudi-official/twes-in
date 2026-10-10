@@ -65,6 +65,7 @@ line:
     unit_price: 'Prix unitaire HT'
     taxes: 'Taxes'
     net: 'Montant HT'
+    section_subtotal: 'Sous-total %title%'
 totals:
     document_discount: 'Remise'
     total_net: 'Total HT après remise'

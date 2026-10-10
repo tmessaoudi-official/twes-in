@@ -547,6 +547,7 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
       lotCode: line.lotCode ?? null,
       returned: line.returned ?? false,
       deductsInvoiceId: line.deductsInvoiceId ?? null,
+      section: line.section ?? null,
       net: line.net ?? '',
     })),
     subtotalNet: raw.subtotalNet ?? '0',

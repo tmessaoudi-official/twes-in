@@ -158,6 +158,8 @@ final class DataErasureTest extends ApiTestCase
         // Another company's plan and drafts are none of this erasure's business.
         $elsewhere = $this->otherCompanysRows();
         $before = $this->snapshot();
+        // A line's section is one of its columns: it must come back with the line, title included.
+        self::assertStringContainsString('"section": "Fournitures"', implode("\n", $before['invoice_line']));
 
         $this->getJson($this->path('data-erasure'));
         $this->postJson($this->path('data-erasures'), ['parts' => ['stock_map', 'drafts']]);
@@ -359,7 +361,7 @@ final class DataErasureTest extends ApiTestCase
 
     private function invoice(): string
     {
-        $this->postJson($this->path('invoices'), ['customerId' => $this->customerId, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null, 'lines' => [['productId' => $this->productId, 'quantity' => '2']]]);
+        $this->postJson($this->path('invoices'), ['customerId' => $this->customerId, 'establishmentId' => null, 'supplyDate' => null, 'paymentTermsDays' => null, 'customerReference' => null, 'notesPrinted' => null, 'notesInternal' => null, 'discountAmount' => null, 'documentTaxComponentIds' => null, 'lines' => [['productId' => $this->productId, 'quantity' => '2', 'section' => 'Fournitures']]]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
 
         return $this->stringAt($this->json(), 'id');

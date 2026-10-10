@@ -593,6 +593,9 @@ final class DemoCompanies extends Fixture
         }
     }
 
+    /** The sections a three-line demo invoice is laid out in, by the line that opens each. */
+    private const array INVOICE_SECTIONS = [0 => 'Fournitures', 2 => 'Compléments'];
+
     /**
      * An invoice every five days. Of those already due: paid in full (a few in two payments), half paid, left unpaid
      * (overdue), or corrected by a full credit note. The most recent are not due yet. Then two drafts and a draft
@@ -609,7 +612,7 @@ final class DemoCompanies extends Fixture
         $input = static function (int $i) use ($customerIds, $sellable): InvoiceInput {
             $lines = [];
             for ($k = 0; $k <= $i % 3; ++$k) {
-                $lines[] = new InvoiceLineInput($sellable[(7 * $i + 11 * $k) % \count($sellable)], null, (string) (1 + ($i + $k) % 4), discountRate: 0 === $i % 5 && 0 === $k ? '10' : null, discountAmount: 0 === $i % 5 && 1 === $k ? '0.1' : null);
+                $lines[] = new InvoiceLineInput($sellable[(7 * $i + 11 * $k) % \count($sellable)], null, (string) (1 + ($i + $k) % 4), discountRate: 0 === $i % 5 && 0 === $k ? '10' : null, discountAmount: 0 === $i % 5 && 1 === $k ? '0.1' : null, section: 2 === $i % 3 ? self::INVOICE_SECTIONS[$k] ?? null : null);
             }
 
             return new InvoiceInput(

@@ -127,6 +127,7 @@ const draft: QuoteRow = {
       lotCode: null,
       returned: false,
       deductsInvoiceId: null,
+      section: null,
       net: '500.000',
     },
   ],
