@@ -13,11 +13,14 @@ use Symfony\Component\Uid\Uuid;
 
 interface AttachmentRepository
 {
-    /** @return list<Attachment> one subject's attachments, oldest first */
+    /** @return list<Attachment> one subject's attachments, oldest first, those taken off left out */
     public function ofEntity(Uuid $companyId, string $entityType, Uuid $entityId): array;
 
+    /** @return list<Attachment> one subject's attachments, oldest first, those taken off included */
+    public function ofEntityWithRemoved(Uuid $companyId, string $entityType, Uuid $entityId): array;
+
     /**
-     * How many attachments each of several subjects holds, in one read: a list page counts its rows' at once.
+     * How many attachments each of several subjects holds, those taken off left out, in one read: a list page counts its rows' at once.
      *
      * @param list<Uuid> $entityIds
      *
@@ -26,7 +29,7 @@ interface AttachmentRepository
     public function countsOfEntities(Uuid $companyId, string $entityType, array $entityIds): array;
 
     /**
-     * The stored file of the oldest attachment of each of several subjects, in one read and across companies: a
+     * The stored file of the oldest attachment still attached to each of several subjects, in one read and across companies: a
      * switcher names the logo of every company a person belongs to at once.
      *
      * @param list<Uuid> $entityIds

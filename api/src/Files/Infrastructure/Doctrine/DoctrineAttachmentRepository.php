@@ -25,6 +25,17 @@ final readonly class DoctrineAttachmentRepository implements AttachmentRepositor
     {
         /** @var list<Attachment> $attachments */
         $attachments = $this->entityManager->getRepository(Attachment::class)->findBy(
+            ['company' => $companyId, 'entityType' => $entityType, 'entityId' => $entityId, 'removedAt' => null],
+            ['createdAt' => 'ASC', 'id' => 'ASC'],
+        );
+
+        return $attachments;
+    }
+
+    public function ofEntityWithRemoved(Uuid $companyId, string $entityType, Uuid $entityId): array
+    {
+        /** @var list<Attachment> $attachments */
+        $attachments = $this->entityManager->getRepository(Attachment::class)->findBy(
             ['company' => $companyId, 'entityType' => $entityType, 'entityId' => $entityId],
             ['createdAt' => 'ASC', 'id' => 'ASC'],
         );
@@ -42,6 +53,7 @@ final readonly class DoctrineAttachmentRepository implements AttachmentRepositor
         $rows = $this->entityManager->createQueryBuilder()
             ->select('a.entityId', 'COUNT(a.id) AS attached')->from(Attachment::class, 'a')
             ->where('a.company = :company')->andWhere('a.entityType = :type')->andWhere('a.entityId IN (:ids)')
+            ->andWhere('a.removedAt IS NULL')
             ->groupBy('a.entityId')
             ->setParameter('company', $companyId, 'uuid')->setParameter('type', $entityType)
             ->setParameter('ids', array_keys($counts), ArrayParameterType::STRING)
@@ -61,7 +73,7 @@ final readonly class DoctrineAttachmentRepository implements AttachmentRepositor
         /** @var list<array{entityId: Uuid, fileId: string|Uuid}> $rows */
         $rows = $this->entityManager->createQueryBuilder()
             ->select('a.entityId', 'IDENTITY(a.file) AS fileId')->from(Attachment::class, 'a')
-            ->where('a.entityType = :type')->andWhere('a.entityId IN (:ids)')
+            ->where('a.entityType = :type')->andWhere('a.entityId IN (:ids)')->andWhere('a.removedAt IS NULL')
             ->orderBy('a.createdAt', 'DESC')->addOrderBy('a.id', 'DESC')
             ->setParameter('type', $entityType)
             ->setParameter('ids', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $entityIds), ArrayParameterType::STRING)

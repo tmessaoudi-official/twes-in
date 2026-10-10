@@ -20,10 +20,18 @@ final class InMemoryAttachments implements AttachmentRepository
 
     public function ofEntity(Uuid $companyId, string $entityType, Uuid $entityId): array
     {
-        return array_values(array_filter(
+        return array_values(array_filter($this->ofEntityWithRemoved($companyId, $entityType, $entityId), static fn (Attachment $a) => !$a->isRemoved()));
+    }
+
+    public function ofEntityWithRemoved(Uuid $companyId, string $entityType, Uuid $entityId): array
+    {
+        $attachments = array_values(array_filter(
             $this->attachments,
             static fn (Attachment $a) => $a->getCompany()->getId()->equals($companyId) && $a->getEntityType() === $entityType && $a->getEntityId()->equals($entityId),
         ));
+        usort($attachments, static fn (Attachment $a, Attachment $b) => [$a->getCreatedAt(), $a->getId()->toRfc4122()] <=> [$b->getCreatedAt(), $b->getId()->toRfc4122()]);
+
+        return $attachments;
     }
 
     public function countsOfEntities(Uuid $companyId, string $entityType, array $entityIds): array
@@ -41,7 +49,7 @@ final class InMemoryAttachments implements AttachmentRepository
         $files = [];
         foreach ($entityIds as $entityId) {
             foreach ($this->attachments as $attachment) {
-                if ($attachment->getEntityType() === $entityType && $attachment->getEntityId()->equals($entityId)) {
+                if (!$attachment->isRemoved() && $attachment->getEntityType() === $entityType && $attachment->getEntityId()->equals($entityId)) {
                     $files[$entityId->toRfc4122()] ??= $attachment->getFile()->getId()->toRfc4122();
                 }
             }

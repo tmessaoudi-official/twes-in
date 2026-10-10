@@ -17,8 +17,9 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * A stored file attached to something a company keeps, such as the receipt of an expense (docs/SPEC.md § 4 attachment).
- * The record names its subject by type and id, so any context attaches files without the files knowing it. Detaching
- * removes the attachment, never the stored file.
+ * The record names its subject by type and id, so any context attaches files without the files knowing it. Taking a
+ * file off only marks the attachment removed, so « Annuler » puts it back where it was (docs/SPEC.md § 7, 2026-10-11
+ * 00:55); the stored file is never removed with it.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'attachment')]
@@ -46,6 +47,10 @@ class Attachment implements CompanyOwned
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
+
+    /** When it was taken off; null while it is attached. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $removedAt = null;
 
     public function __construct(StoredFile $file, string $entityType, Uuid $entityId, \DateTimeImmutable $now)
     {
@@ -85,5 +90,20 @@ class Attachment implements CompanyOwned
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function remove(\DateTimeImmutable $now): void
+    {
+        $this->removedAt ??= $now;
+    }
+
+    public function restore(): void
+    {
+        $this->removedAt = null;
+    }
+
+    public function isRemoved(): bool
+    {
+        return null !== $this->removedAt;
     }
 }

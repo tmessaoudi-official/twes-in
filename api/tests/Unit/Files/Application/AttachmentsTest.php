@@ -110,6 +110,60 @@ final class AttachmentsTest extends TestCase
         $this->attachments->attach($this->acme, 'expense', $this->expenseId, 'b.pdf', self::PDF, null);
         $this->attachments->attach($this->acme, 'expense', $this->expenseId, 'c.pdf', self::PDF, null);
         $this->attachments->detachAll($this->acme, 'expense', $this->expenseId);
-        self::assertSame([], $this->records->attachments);
+        self::assertSame([], $this->records->attachments, 'deleting a subject takes its files taken off with it');
+    }
+
+    public function testAFileTakenOffIsKeptOutOfWhatIsReadUntilItIsPutBackWhereItWas(): void
+    {
+        $first = $this->attachments->attach($this->acme, 'expense', $this->expenseId, 'a.pdf', self::PDF, null);
+        $second = $this->attachments->attach($this->acme, 'expense', $this->expenseId, 'b.pdf', self::PDF, null);
+
+        $this->attachments->detach($first);
+
+        self::assertTrue($first->isRemoved());
+        self::assertSame([$second], $this->attachments->of($this->acme, 'expense', $this->expenseId));
+        self::assertNull($this->attachments->find($this->acme, 'expense', $this->expenseId, $first->getId()), 'a file taken off cannot be taken off again');
+        self::assertSame([$this->expenseId->toRfc4122() => 1], $this->attachments->countsOf($this->acme, 'expense', [$this->expenseId]));
+        self::assertSame([$this->expenseId->toRfc4122() => $second->getFile()->getId()->toRfc4122()], $this->attachments->fileIdsOf('expense', [$this->expenseId]));
+        self::assertCount(2, $this->records->attachments, 'the record is kept, so it can be put back');
+
+        self::assertSame($first, $this->attachments->restore($this->acme, 'expense', $this->expenseId, $first->getId()));
+
+        self::assertFalse($first->isRemoved());
+        self::assertSame([$first, $second], $this->attachments->of($this->acme, 'expense', $this->expenseId));
+        self::assertSame([$this->expenseId->toRfc4122() => 2], $this->attachments->countsOf($this->acme, 'expense', [$this->expenseId]));
+    }
+
+    public function testAFileTakenOffFreesItsPlaceAndIsNotPutBackPastTheLimit(): void
+    {
+        $first = $this->attachments->attach($this->acme, 'expense', $this->expenseId, 'a.pdf', self::PDF, null);
+        $this->attachments->attach($this->acme, 'expense', $this->expenseId, 'b.pdf', self::PDF, null);
+        $this->attachments->detach($first);
+        $this->attachments->attach($this->acme, 'expense', $this->expenseId, 'c.pdf', self::PDF, null);
+
+        try {
+            $this->attachments->restore($this->acme, 'expense', $this->expenseId, $first->getId());
+            self::fail('a third file was put back where two is the most');
+        } catch (AttachmentRefused $refused) {
+            self::assertSame([AttachmentRefused::TOO_MANY_FILES, ['max' => 2]], [$refused->reason, $refused->params]);
+        }
+        self::assertTrue($first->isRemoved());
+    }
+
+    public function testOnlyItsOwnSubjectPutsAFileBackAndALiveOneIsLeftAsItIs(): void
+    {
+        $attachment = $this->attachments->attach($this->acme, 'expense', $this->expenseId, 'a.pdf', self::PDF, null);
+        $live = $this->attachments->attach($this->acme, 'expense', $this->expenseId, 'b.pdf', self::PDF, null);
+        $this->attachments->detach($attachment);
+        $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+
+        self::assertNull($this->attachments->restore($globex, 'expense', $this->expenseId, $attachment->getId()));
+        self::assertNull($this->attachments->restore($this->acme, 'expense', Uuid::v7(), $attachment->getId()));
+        self::assertNull($this->attachments->restore($this->acme, 'stock_movement', $this->expenseId, $attachment->getId()));
+        self::assertNull($this->attachments->restore($this->acme, 'expense', $this->expenseId, Uuid::v7()));
+        self::assertTrue($attachment->isRemoved());
+
+        self::assertSame($live, $this->attachments->restore($this->acme, 'expense', $this->expenseId, $live->getId()));
+        self::assertFalse($live->isRemoved());
     }
 }

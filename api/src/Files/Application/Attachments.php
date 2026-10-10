@@ -52,7 +52,7 @@ final readonly class Attachments
             throw new AttachmentRefused(\sprintf('A file of type %s is not attached; accepted: %s.', $type, implode(', ', $this->allowedTypes)));
         }
         if (\count($this->of($company, $entityType, $entityId)) >= $this->perSubject) {
-            throw new AttachmentRefused(\sprintf('At most %d files are attached to one record.', $this->perSubject));
+            throw $this->tooMany();
         }
 
         $attachment = new Attachment($this->files->store($company, StoredFile::nameFrom($originalName, 'attachment'), $type, $contents, $uploadedBy), $entityType, $entityId, $this->clock->now());
@@ -109,15 +109,49 @@ final readonly class Attachments
         return $this->files->contents($attachment->getFile());
     }
 
+    /** Takes a file off: it leaves every list and count, and is kept so that it can be put back. */
     public function detach(Attachment $attachment): void
     {
-        $this->attachments->remove($attachment);
+        $attachment->remove($this->clock->now());
+        $this->attachments->save($attachment);
     }
 
+    /**
+     * Puts a file taken off back on its subject, where it was among the others. Null when the subject never held it;
+     * a file still attached is left as it is.
+     *
+     * @throws AttachmentRefused when the subject holds as many files as it may
+     */
+    public function restore(Company $company, string $entityType, Uuid $entityId, Uuid $id): ?Attachment
+    {
+        foreach ($this->attachments->ofEntityWithRemoved($company->getId(), $entityType, $entityId) as $attachment) {
+            if (!$attachment->getId()->equals($id)) {
+                continue;
+            }
+            if ($attachment->isRemoved()) {
+                if (\count($this->of($company, $entityType, $entityId)) >= $this->perSubject) {
+                    throw $this->tooMany();
+                }
+                $attachment->restore();
+                $this->attachments->save($attachment);
+            }
+
+            return $attachment;
+        }
+
+        return null;
+    }
+
+    /** Deletes a subject's attachments for good, those taken off included: the subject itself is going. */
     public function detachAll(Company $company, string $entityType, Uuid $entityId): void
     {
-        foreach ($this->of($company, $entityType, $entityId) as $attachment) {
+        foreach ($this->attachments->ofEntityWithRemoved($company->getId(), $entityType, $entityId) as $attachment) {
             $this->attachments->remove($attachment);
         }
+    }
+
+    private function tooMany(): AttachmentRefused
+    {
+        return new AttachmentRefused(\sprintf('At most %d files are attached to one record.', $this->perSubject), AttachmentRefused::TOO_MANY_FILES, ['max' => $this->perSubject]);
     }
 }
