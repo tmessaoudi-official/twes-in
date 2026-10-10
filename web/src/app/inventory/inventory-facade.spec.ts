@@ -97,6 +97,8 @@ describe('InventoryFacade', () => {
     locationHomes: vi.fn(),
     whereabouts: vi.fn(),
     pickProducts: vi.fn(),
+    lossFiles: vi.fn(),
+    attachToLoss: vi.fn(),
   };
   let facade: InventoryFacade;
 
@@ -263,6 +265,21 @@ describe('InventoryFacade', () => {
     await facade.reloadMovements('c1');
     expect(api.movements).toHaveBeenCalledTimes(2);
     expect(api.movements).toHaveBeenLastCalledWith('c1', MOVEMENTS_SEARCH);
+  });
+
+  // Row 74 (b): the loss's row says how many files it keeps, so the page in hand is read again once one is kept.
+  it("keeps a file with a loss, then reads the movements again; a loss's files it cannot read say why", async () => {
+    await facade.loadMovements('c1', MOVEMENTS_SEARCH);
+    const file = new File(['%PDF-1.4'], 'plainte.pdf', { type: 'application/pdf' });
+    api.attachToLoss.mockResolvedValue({ id: 'f1' });
+
+    expect(await facade.attachToLoss('c1', 'm3', file)).toBe(true);
+    expect(api.attachToLoss).toHaveBeenCalledWith('c1', 'm3', file);
+    expect(api.movements).toHaveBeenCalledTimes(2);
+
+    api.lossFiles.mockRejectedValue(new InventoryRefused('not_found'));
+    expect(await facade.lossFiles('c1', 'm1')).toBeNull();
+    expect(facade.error()).toBe('not_found');
   });
 
   it('records a receipt, then reads the page it was recorded on again', async () => {

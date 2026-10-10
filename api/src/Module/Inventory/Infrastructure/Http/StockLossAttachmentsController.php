@@ -30,7 +30,7 @@ use Symfony\Component\Routing\Attribute\Route;
 /**
  * A file attached to a loss, sent as a multipart part named `file` (stock.write) and given back as its bytes
  * (stock.read). Plain controllers rather than resources: bytes, not JSON. The module guard still applies, through
- * this class's namespace. Documented in InventoryOpenApi.
+ * this class's namespace. Documented in StockLossAttachmentsOpenApi.
  */
 #[AsController]
 final readonly class StockLossAttachmentsController

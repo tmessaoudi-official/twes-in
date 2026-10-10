@@ -41,7 +41,10 @@ class StaticLoader implements TranslateLoader {
       inventory: {
         movement_kinds: { out: 'Sortie' },
         sources: { delivery_note: 'Bon de livraison', loss: 'Perte' },
-        loss: { reasons: { stolen: 'Volée' } },
+        loss: {
+          reasons: { stolen: 'Volée', broken: 'Cassée' },
+          files: { count: '{{count}} fichiers joints', open_of: 'Fichiers de la perte : {{name}}' },
+        },
         movements: { of_lot: 'Mouvements du lot {{code}}.' },
       },
     });
@@ -89,6 +92,7 @@ const delivered: StockMovementRow = {
   at: '2026-09-15T09:00:00+00:00',
   costTyped: false,
   costToComplete: false,
+  attachmentCount: null,
 };
 /** Recorded by someone who could not read costs: valued at the average until a cost reader enters its cost. */
 const uncosted: StockMovementRow = {
@@ -100,6 +104,24 @@ const uncosted: StockMovementRow = {
   sourceId: null,
   lotCode: null,
   costToComplete: true,
+};
+
+/** Three broken, written off with the photo of what broke and one more file. */
+const lost: StockMovementRow = {
+  ...delivered,
+  id: 'm3',
+  quantity: '-3.000',
+  sourceType: 'loss',
+  sourceId: null,
+  reason: 'broken',
+  attachmentCount: 2,
+};
+const photo = {
+  id: 'f1',
+  name: 'carton.jpg',
+  mime: 'image/jpeg',
+  size: 2048,
+  createdAt: '2026-10-09T10:00:00+00:00',
 };
 
 describe('StockMovementsPage', () => {
@@ -133,12 +155,26 @@ describe('StockMovementsPage', () => {
     loadLocations: vi.fn(),
     receiptCost: vi.fn(),
     enterReceiptCost: vi.fn(),
+    lossFiles: vi.fn(),
+    attachToLoss: vi.fn(),
+    detachFromLoss: vi.fn(),
+    clearError: vi.fn(),
+    lossFileUrl: vi.fn(
+      (companyId: string, movementId: string, fileId: string) =>
+        `/api/companies/${companyId}/stock-movements/${movementId}/attachments/${fileId}/content`,
+    ),
   };
   const productScans = { named: vi.fn() };
   const readsCosts = signal(true);
+  const writesStock = signal(true);
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
-    hasPermission: (permission: string) => permission !== 'product.cost.read' || readsCosts(),
+    hasPermission: (permission: string) =>
+      permission === 'product.cost.read'
+        ? readsCosts()
+        : permission === 'stock.write'
+          ? writesStock()
+          : true,
   };
   let fixture: ComponentFixture<StockMovementsPage>;
 
@@ -157,8 +193,12 @@ describe('StockMovementsPage', () => {
     }
     facade.receiptCost.mockReset().mockResolvedValue({ mode: 'average' });
     facade.enterReceiptCost.mockReset().mockResolvedValue(true);
+    facade.lossFiles.mockReset().mockResolvedValue([photo]);
+    facade.attachToLoss.mockReset().mockResolvedValue(true);
+    facade.detachFromLoss.mockReset().mockResolvedValue(true);
     shown.set([delivered]);
     readsCosts.set(true);
+    writesStock.set(true);
     TestBed.configureTestingModule({
       imports: [StockMovementsPage],
       providers: [
@@ -330,6 +370,58 @@ describe('StockMovementsPage', () => {
     shown.set([delivered]);
     await settle();
     expect(q('movement-reason')).toBeNull();
+  });
+
+  // Row 74 (b): a loss keeps the photo of what broke, or the complaint filed for a theft.
+  it('says how many files a loss keeps, and opens them from the loss alone', async () => {
+    shown.set([lost, delivered]);
+    await settle();
+
+    expect(q('movement-files')?.textContent).toContain('2 fichiers joints');
+    expect(q('row-action-loss-files-m1')).toBeNull();
+    q('row-action-loss-files-m3')!.click();
+    await settle();
+
+    expect(facade.lossFiles).toHaveBeenCalledWith('c1', 'm3');
+    const link = document.body.querySelector<HTMLAnchorElement>(
+      '[data-testid="loss-file-open-carton.jpg"]',
+    );
+    expect(link?.getAttribute('href')).toBe(
+      '/api/companies/c1/stock-movements/m3/attachments/f1/content',
+    );
+    expect(
+      document.body.querySelector('[data-testid="loss-files-product"]')?.textContent,
+    ).toContain('ART-1 — Portable');
+  });
+
+  it('lets a stock writer add a file to a loss and take one off, and a reader only open them', async () => {
+    shown.set([lost]);
+    await settle();
+    q('row-action-loss-files-m3')!.click();
+    await settle();
+
+    const file = new File(['%PDF-1.4'], 'plainte.pdf', { type: 'application/pdf' });
+    const drop = document.body.querySelector<HTMLInputElement>('[data-testid="loss-files-add"]')!;
+    Object.defineProperty(drop, 'files', { value: { item: () => file, length: 1 } });
+    drop.dispatchEvent(new Event('change'));
+    await settle();
+    expect(facade.attachToLoss).toHaveBeenCalledWith('c1', 'm3', file);
+    expect(facade.lossFiles).toHaveBeenCalledTimes(2);
+
+    document.body
+      .querySelector<HTMLElement>('[data-testid="loss-file-remove-carton.jpg"]')!
+      .click();
+    await settle();
+    expect(facade.detachFromLoss).toHaveBeenCalledWith('c1', 'm3', 'f1');
+    document.body.querySelector<HTMLElement>('[data-testid="loss-files-close"]')!.click();
+    await settle();
+
+    writesStock.set(false);
+    q('row-action-loss-files-m3')!.click();
+    await settle();
+    expect(document.body.querySelector('[data-testid="loss-file-open-carton.jpg"]')).not.toBeNull();
+    expect(document.body.querySelector('[data-testid="loss-files-add"]')).toBeNull();
+    expect(document.body.querySelector('[data-testid="loss-file-remove-carton.jpg"]')).toBeNull();
   });
 
   it('names the lot a row moved', async () => {

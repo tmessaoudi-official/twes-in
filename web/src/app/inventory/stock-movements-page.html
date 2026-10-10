@@ -76,6 +76,11 @@
         @if (row.note; as note) {
           <span class="block text-sm" data-testid="movement-note">{{ note }}</span>
         }
+        @if (row.attachmentCount) {
+          <span class="block text-sm" data-testid="movement-files">{{
+            'inventory.loss.files.count' | translate: { count: row.attachmentCount }
+          }}</span>
+        }
         @if (row.costToComplete) {
           <span
             class="block text-sm text-on-surface-variant"

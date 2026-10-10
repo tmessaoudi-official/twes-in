@@ -50,6 +50,7 @@ import {
 import { INVENTORY_TABS } from './inventory-nav';
 import type { StockMovementSearch } from './inventory-types';
 import { ReceiptCostDialog } from './receipt-cost-dialog';
+import { LossFilesDialog, type LossFilesDialogData } from './loss-files-dialog';
 
 /**
  * How stock moved: one product's movements when the address names it, one lot's or serial number's when it names that
@@ -104,9 +105,18 @@ export class StockMovementsPage {
     run: (row) => void this.enterCost(row.id, row.productId, row.productLabel),
     shown: (row) => row.costToComplete && this.auth.hasPermission('product.cost.read'),
   };
+  /** A loss's files — the photo of what broke, the complaint for a theft — opened by any reader of the movements. */
+  private readonly lossFilesAction: RowAction<StockMovementListRow> = {
+    id: 'loss-files',
+    label: 'inventory.loss.files.open_of',
+    labelParams: (row) => ({ name: row.productLabel }),
+    icon: 'photo_camera',
+    run: (row) => this.openLossFiles(row),
+    shown: (row) => row.sourceType === 'loss',
+  };
   protected readonly list: ListDescriptor<StockMovementListRow> = {
     ...MOVEMENTS_LIST,
-    actions: [...(MOVEMENTS_LIST.actions ?? []), this.enterCostAction],
+    actions: [...(MOVEMENTS_LIST.actions ?? []), this.enterCostAction, this.lossFilesAction],
   };
   protected readonly rows = computed(() =>
     movementListRows(this.facade.movements(), this.facade.locations()),
@@ -179,6 +189,18 @@ export class StockMovementsPage {
     if (await this.facade.enterReceiptCost(companyId, movementId, unitCost, applyCost)) {
       this.feedback.effect('inventory.receipt_cost.entered', {}, 'definitif');
     }
+  }
+
+  private openLossFiles(row: StockMovementListRow): void {
+    const companyId = this.company()?.id;
+    if (!companyId) return;
+    const data: LossFilesDialogData = {
+      companyId,
+      movementId: row.id,
+      product: row.productLabel,
+      mayWrite: this.auth.hasPermission('stock.write'),
+    };
+    this.dialog.open(LossFilesDialog, { data, autoFocus: 'dialog' });
   }
 
   /** Opens the movements of the lot or serial number typed into the search. */

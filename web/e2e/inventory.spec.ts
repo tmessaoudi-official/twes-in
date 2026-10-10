@@ -11,6 +11,9 @@ import { rowAction } from './rows';
 // them back. One database is shared by the whole suite and movements are never deleted, so the product, the customer
 // and the location are unique to the run and retired afterwards.
 const CSRF = '0123456789abcdef0123456789abcdef';
+/** The smallest PNG there is, one transparent pixel: what a photo of a loss is, as far as the API can tell. */
+const ONE_PIXEL_PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
 interface Fixture {
   productId: string;
@@ -383,6 +386,28 @@ test('stock received at a location leaves with a validated delivery note and ret
     await expect(page.getByTestId('movement-reason')).toContainText('Cassée');
     await expect(page.getByTestId('movement-note')).toContainText('Tombé du comptoir');
     expect(await wcagViolations(page)).toEqual([]);
+
+    // Row 74 (b): the loss keeps the photo of what broke, opened from its row, and a file attached by mistake comes off.
+    await page.locator('[data-testid^="row-action-loss-files-"]').click();
+    await expect(page.getByTestId('loss-files-none')).toBeVisible();
+    await page.getByTestId('loss-files-add').setInputFiles({
+      name: 'carton.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(ONE_PIXEL_PNG, 'base64'),
+    });
+    await expect(toast(page)).toContainText('« carton.png » est joint à la perte.');
+    await expect(page.getByTestId('loss-file-open-carton.png')).toHaveAttribute(
+      'href',
+      /\/stock-movements\/[0-9a-f-]+\/attachments\/[0-9a-f-]+\/content$/,
+    );
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('loss-files-close').click();
+    await expect(page.getByTestId('movement-files')).toContainText('1 fichier joint');
+    await page.locator('[data-testid^="row-action-loss-files-"]').click();
+    await page.getByTestId('loss-file-remove-carton.png').click();
+    await expect(page.getByTestId('loss-files-none')).toBeVisible();
+    await page.getByTestId('loss-files-close').click();
+    await expect(page.getByTestId('movement-files')).toHaveCount(0);
 
     // Row 197: the product the address names combines with the list's own filters, each answered by the API.
     await page.goto(`/stock/movements?productId=${fixture.productId}&reason=broken`);
