@@ -40,55 +40,58 @@ export interface TejFileDialogData {
     <h2 mat-dialog-title data-testid="tej-file-title">
       {{ 'expenses.tej_file.title' | translate }}
     </h2>
-    <mat-dialog-content class="flex flex-col gap-4">
-      <p class="text-sm text-on-surface-variant">{{ 'expenses.tej_file.intro' | translate }}</p>
-      <!-- One question, so one field: the month, the last one over first. -->
-      <div class="mt-2 flex w-full flex-col gap-1.5">
-        <label id="tej-month-label" class="twes-field-label" for="tej-month-input">{{
-          'expenses.tej_file.month' | translate
-        }}</label>
-        <app-select
-          inputId="tej-month-input"
-          labelledBy="tej-month-label"
-          testId="tej-month"
-          [options]="months"
-          [ngModel]="month()"
-          (ngModelChange)="month.set($event)"
-        />
-      </div>
-      @if (refusal(); as refused) {
-        <div role="alert" class="flex flex-col gap-2" data-testid="tej-refusal">
-          <p class="font-semibold text-error">
-            {{ 'expenses.tej_file.refused.' + refused.code | translate: refused.params }}
-          </p>
-          @if (refused.expenses.length > 0) {
-            <ul class="flex flex-col gap-2">
-              @for (expense of refused.expenses; track expense.id) {
-                <li class="text-sm" [attr.data-testid]="'tej-refused-' + expense.id">
-                  <a [routerLink]="['/expenses', expense.id]" (click)="ref.close(false)">
-                    {{ expense.description }}
-                  </a>
-                  · {{ expense.paidOn | day }}
-                  @if (expense.vendorName) {
-                    · {{ expense.vendorName }}
-                  }
-                  <span class="block text-on-surface-variant">
-                    @for (problem of expense.problems; track problem; let last = $last) {
-                      {{ 'expenses.tej_file.problems.' + problem | translate
-                      }}{{ last ? '' : ' · ' }}
-                    }
-                  </span>
-                </li>
-              }
-            </ul>
-          }
+    <mat-dialog-content>
+      <!-- Material's own display beats a layout class on mat-dialog-content: the layout goes on a div inside it. -->
+      <div class="flex flex-col gap-4">
+        <p class="text-sm text-on-surface-variant">{{ 'expenses.tej_file.intro' | translate }}</p>
+        <!-- One question, so one field: the month, the last one over first. -->
+        <div class="mt-2 flex w-full flex-col gap-1.5">
+          <label id="tej-month-label" class="twes-field-label" for="tej-month-input">{{
+            'expenses.tej_file.month' | translate
+          }}</label>
+          <app-select
+            inputId="tej-month-input"
+            labelledBy="tej-month-label"
+            testId="tej-month"
+            [options]="months"
+            [ngModel]="month()"
+            (ngModelChange)="month.set($event)"
+          />
         </div>
-      }
-      @if (failed()) {
-        <p role="alert" class="text-error" data-testid="tej-failed">
-          {{ 'expenses.tej_file.failed' | translate }}
-        </p>
-      }
+        @if (refusal(); as refused) {
+          <div role="alert" class="flex flex-col gap-2" data-testid="tej-refusal">
+            <p class="font-semibold text-error">
+              {{ 'expenses.tej_file.refused.' + refused.code | translate: refused.params }}
+            </p>
+            @if (refused.expenses.length > 0) {
+              <ul class="flex flex-col gap-2">
+                @for (expense of refused.expenses; track expense.id) {
+                  <li class="text-sm" [attr.data-testid]="'tej-refused-' + expense.id">
+                    <a [routerLink]="['/expenses', expense.id]" (click)="ref.close(false)">
+                      {{ expense.description }}
+                    </a>
+                    · {{ expense.paidOn | day }}
+                    @if (expense.vendorName) {
+                      · {{ expense.vendorName }}
+                    }
+                    <span class="block text-on-surface-variant">
+                      @for (problem of expense.problems; track problem; let last = $last) {
+                        {{ 'expenses.tej_file.problems.' + problem | translate
+                        }}{{ last ? '' : ' · ' }}
+                      }
+                    </span>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
+        @if (failed()) {
+          <p role="alert" class="text-error" data-testid="tej-failed">
+            {{ 'expenses.tej_file.failed' | translate }}
+          </p>
+        }
+      </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" (click)="ref.close(false)" data-testid="tej-close">

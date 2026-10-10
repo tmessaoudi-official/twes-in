@@ -27,47 +27,50 @@ export type HelpChoice = { readonly tour: Tour } | 'shortcuts' | undefined;
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title data-testid="help-title">{{ 'help.title' | translate }}</h2>
-    <mat-dialog-content class="flex flex-col gap-6">
-      <section class="flex flex-col gap-2" aria-labelledby="twes-help-guides">
-        <h3 id="twes-help-guides" class="text-base font-semibold">
-          {{ 'help.guides' | translate }}
-        </h3>
-        @if (data.tours.length === 0) {
-          <p class="text-sm text-on-surface-variant" data-testid="help-no-guide">
-            {{ 'help.no_guide' | translate }}
-          </p>
-        } @else {
-          <ul class="flex flex-col gap-1">
-            @for (tour of data.tours; track tour.key) {
-              <li>
-                <button
-                  mat-button
-                  type="button"
-                  (click)="ref.close({ tour })"
-                  [attr.data-testid]="'help-guide-' + tour.key"
-                >
-                  <mat-icon aria-hidden="true">help</mat-icon>
-                  {{ tour.titleKey | translate }}
-                </button>
-              </li>
-            }
-          </ul>
-        }
-      </section>
-
-      <section class="flex flex-col gap-2" aria-labelledby="twes-help-glossary">
-        <h3 id="twes-help-glossary" class="text-base font-semibold">
-          {{ 'help.glossary' | translate }}
-        </h3>
-        <dl class="flex flex-col gap-3" data-testid="help-glossary">
-          @for (entry of data.glossary; track entry.key) {
-            <div [attr.data-testid]="'glossary-' + entry.key">
-              <dt class="font-semibold">{{ entry.termKey | translate }}</dt>
-              <dd class="text-sm">{{ entry.definitionKey | translate }}</dd>
-            </div>
+    <mat-dialog-content>
+      <!-- Material's own display beats a layout class on mat-dialog-content: the layout goes on a div inside it. -->
+      <div class="flex flex-col gap-6">
+        <section class="flex flex-col gap-2" aria-labelledby="twes-help-guides">
+          <h3 id="twes-help-guides" class="text-base font-semibold">
+            {{ 'help.guides' | translate }}
+          </h3>
+          @if (data.tours.length === 0) {
+            <p class="text-sm text-on-surface-variant" data-testid="help-no-guide">
+              {{ 'help.no_guide' | translate }}
+            </p>
+          } @else {
+            <ul class="flex flex-col gap-1">
+              @for (tour of data.tours; track tour.key) {
+                <li>
+                  <button
+                    mat-button
+                    type="button"
+                    (click)="ref.close({ tour })"
+                    [attr.data-testid]="'help-guide-' + tour.key"
+                  >
+                    <mat-icon aria-hidden="true">help</mat-icon>
+                    {{ tour.titleKey | translate }}
+                  </button>
+                </li>
+              }
+            </ul>
           }
-        </dl>
-      </section>
+        </section>
+
+        <section class="flex flex-col gap-2" aria-labelledby="twes-help-glossary">
+          <h3 id="twes-help-glossary" class="text-base font-semibold">
+            {{ 'help.glossary' | translate }}
+          </h3>
+          <dl class="flex flex-col gap-3" data-testid="help-glossary">
+            @for (entry of data.glossary; track entry.key) {
+              <div [attr.data-testid]="'glossary-' + entry.key">
+                <dt class="font-semibold">{{ entry.termKey | translate }}</dt>
+                <dd class="text-sm">{{ entry.definitionKey | translate }}</dd>
+              </div>
+            }
+          </dl>
+        </section>
+      </div>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button
