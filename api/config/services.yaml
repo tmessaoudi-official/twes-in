@@ -46,6 +46,8 @@ parameters:
     app.mfa.pending_ttl: 'PT5M'
     # How long a confirmed step-up opens what the API checks it for (an export), within the same sign-in.
     app.step_up.valid_for: 'PT5M'
+    # How long « Effacer des données » keeps what it took, for its undo; then the copy and the files only it named go.
+    app.erasure.undoable_for: 'PT24H'
     # The issuer an authenticator app shows beside the account.
     app.mfa.issuer: '%app.product_name%'
     # Passkeys are bound to a relying party: the registrable domain the SPA is served under, and every exact origin
