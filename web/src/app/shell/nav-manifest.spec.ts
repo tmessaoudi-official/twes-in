@@ -95,6 +95,13 @@ describe('visibleEntries', () => {
     expect(keys(visibleEntries(entries, () => true, false, allOn))).not.toContain('design');
   });
 
+  it('keeps an entry for one role only for a person holding that role, whatever they are granted', () => {
+    const owned = [...entries, { ...entries[0], key: 'erase', role: 'owner' }];
+    expect(keys(visibleEntries(owned, () => true, false, allOn, 'owner'))).toContain('erase');
+    expect(keys(visibleEntries(owned, () => true, false, allOn, 'admin'))).not.toContain('erase');
+    expect(keys(visibleEntries(owned, () => true, false, allOn))).not.toContain('erase');
+  });
+
   it("keeps a module's entries only while the company has the module on", () => {
     const on = (module: string) => module !== 'customers';
     expect(keys(visibleEntries(entries, () => true, false, on))).toEqual(['home', 'members']);
@@ -171,6 +178,7 @@ describe('the navigation manifest', () => {
       ],
       ['fiscal', ['taxes', 'units', 'closing']],
       ['team', ['members', 'roles', 'activity']],
+      ['data', ['data-erasure']],
       ['customisation', ['custom-fields', 'modules']],
     ]);
     expect(SETTINGS_NAV.every((entry) => entry.permission !== undefined)).toBe(true);
@@ -212,6 +220,7 @@ describe('the navigation manifest', () => {
       ],
       ['fiscal', ['taxes', 'units', 'closing', 'fiscal-preset']],
       ['team', ['members', 'roles', 'activity', 'support-access']],
+      ['data', ['data-erasure']],
       ['customisation', ['custom-fields', 'modules', 'texts']],
     ]);
     // « Montrer ce qui arrive » off: only what works.

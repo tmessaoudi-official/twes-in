@@ -43,6 +43,7 @@ export const ICONS = [
   'currency_exchange',
   'dark_mode',
   'delete',
+  'delete_forever',
   'density_medium',
   'density_small',
   'description',

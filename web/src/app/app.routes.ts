@@ -494,6 +494,12 @@ export const routes: Routes = [
               import('./company/company-security-page').then((m) => m.CompanySecurityPage),
           },
           {
+            path: 'company/data-erasure',
+            title: 'nav.data_erasure',
+            loadComponent: () =>
+              import('./data-erasure/data-erasure-page').then((m) => m.DataErasurePage),
+          },
+          {
             path: 'company/closing',
             title: 'nav.closing',
             loadComponent: () => import('./company/closing-page').then((m) => m.ClosingPage),

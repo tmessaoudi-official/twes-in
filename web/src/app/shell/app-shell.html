@@ -522,6 +522,10 @@
       @for (companyId of [workingCompany()]; track companyId) {
         <router-outlet />
       }
+      <!-- An erasure that may still be undone, on every page of an owner; its own chunk, loaded for an owner only. -->
+      @defer (when owner()) {
+        <app-erasure-banner />
+      }
       <!-- The legal line closes the page and scrolls with it (row 147); in settings the area draws it beside its list. -->
       @if (!inSettings()) {
         <app-legal-footer [attr.inert]="immersive.on() ? '' : null" />

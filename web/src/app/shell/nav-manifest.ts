@@ -18,7 +18,8 @@ import type { IconName } from '../shared/icons/icons';
  * shown while the working company has the module on (docs/SPEC.md § 3 Modules). The company settings sit behind
  * « Paramètres » at the foot of the sidebar, grouped in their own area.
  */
-export type NavSection = 'sell' | 'manage' | 'company' | 'fiscal' | 'team' | 'customisation';
+export type NavSection =
+  'sell' | 'manage' | 'company' | 'fiscal' | 'team' | 'data' | 'customisation';
 
 /** What decides whether a user sees something the shell offers: a navigation entry or a command. */
 export interface Gated {
@@ -28,6 +29,8 @@ export interface Gated {
   readonly devOnly?: boolean;
   /** The module it belongs to: shown only while the working company has that module on. */
   readonly module?: string;
+  /** The role it is for, whatever another role is granted: « Effacer des données » is the owner's alone. */
+  readonly role?: string;
 }
 
 export interface NavEntry extends Gated {
@@ -71,6 +74,7 @@ export const SETTINGS_SECTIONS: readonly NavSection[] = [
   'company',
   'fiscal',
   'team',
+  'data',
   'customisation',
 ];
 
@@ -204,6 +208,16 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
     permission: 'audit.read',
   },
   {
+    // « Effacer des données »: the owner's alone, behind a fresh proof of who is at the screen (docs/SPEC.md § 7).
+    key: 'data-erasure',
+    labelKey: 'nav.data_erasure',
+    icon: 'delete_forever',
+    route: '/company/data-erasure',
+    section: 'data',
+    permission: 'company.settings',
+    role: 'owner',
+  },
+  {
     key: 'custom-fields',
     labelKey: 'nav.custom_fields',
     icon: 'dynamic_form',
@@ -324,12 +338,14 @@ export function visibleEntries<T extends Gated>(
   can: (permission: string) => boolean,
   developmentBuild: boolean,
   enabled: (module: string) => boolean,
+  role: string | null = null,
 ): readonly T[] {
   return entries.filter(
     (entry) =>
       (entry.devOnly !== true || developmentBuild) &&
       (entry.permission === undefined || can(entry.permission)) &&
-      (entry.module === undefined || enabled(entry.module)),
+      (entry.module === undefined || enabled(entry.module)) &&
+      (entry.role === undefined || entry.role === role),
   );
 }
 
