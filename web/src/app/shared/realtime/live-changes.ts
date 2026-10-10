@@ -85,6 +85,16 @@ export class LiveChanges {
     });
   }
 
+  /**
+   * What this tab changed itself, for its own screens: the API says a change to every tab but the one that made it,
+   * which is right for a save its screen shows already, not for an erasure the page on screen knows nothing of.
+   */
+  changedHere(kinds: readonly string[], action: string): void {
+    for (const kind of kinds) {
+      this.receive({ type: 'changed', origin: null, kind, id: null, action, actor: null });
+    }
+  }
+
   /** Reads a screen's data again when one of these kinds changes, quietly, since nobody on it asked for the reload. */
   reloadOn(kinds: readonly string[], reload: () => Promise<unknown>, destroyRef: DestroyRef): void {
     this.on(kinds, () => void this.injector.get(RequestActivity).quietly(reload), destroyRef);
