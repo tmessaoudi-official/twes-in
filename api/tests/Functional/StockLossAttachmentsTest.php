@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Files\Application\Attachments;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\UnitRepository;
 use App\Module\Products\Domain\Product;
@@ -146,6 +147,34 @@ final class StockLossAttachmentsTest extends ApiTestCase
         }
         $this->uploadFile($this->path($loss), 'photo-11.jpg', self::jpeg(4, 4));
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'ten files at most');
+
+        $this->getJson($this->path($loss));
+        $this->sendJson('DELETE', $this->path($loss).'/'.$this->stringAt($this->jsonList()[0], 'id'));
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->uploadFile($this->path($loss), 'photo-11.jpg', self::jpeg(4, 4));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'a file taken off no longer counts toward the ten');
+    }
+
+    public function testAFileTakenOffIsKeptForItsUndoButNamedNowhere(): void
+    {
+        $this->signedIn('writer@twes.local', ['stock.read', 'stock.write']);
+        [, $loss] = $this->receivedThenLost();
+        $this->uploadFile($this->path($loss), 'premier.jpg', self::jpeg(4, 4));
+        $first = $this->stringAt($this->json(), 'id');
+        $this->uploadFile($this->path($loss), 'second.jpg', self::jpeg(4, 4));
+        $second = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('DELETE', $this->path($loss).'/'.$first);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+
+        $attachments = self::getContainer()->get(Attachments::class);
+        $company = $this->em()->find(Company::class, $this->company->getId()) ?? self::fail('The company is gone.');
+        $kept = $attachments->of($company, 'stock_movement', Uuid::fromString($loss));
+        self::assertSame([$second], array_map(static fn ($attachment) => $attachment->getId()->toRfc4122(), $kept));
+        self::assertSame([$loss => $kept[0]->getFile()->getId()->toRfc4122()], $attachments->fileIdsOf('stock_movement', [Uuid::fromString($loss)]), 'the oldest file still attached, not the one taken off');
+        self::assertSame(2, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM attachment WHERE entity_id = ?', [$loss]), 'the one taken off is kept for its undo');
+        $this->client->request('GET', $this->path($loss).'/'.$first.'/content');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a file taken off is not served');
     }
 
     /**
