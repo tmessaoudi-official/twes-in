@@ -717,6 +717,8 @@
                 [drawings]="floorDrawings()"
                 [structures]="floorStructures()"
                 [lit]="litIds()"
+                [chosen]="chosen()"
+                (pick)="pickInVolume($event)"
               />
             } @placeholder {
               <p
@@ -997,6 +999,19 @@
                         ')'
                       "
                     >
+                      @if (chosen().has(shape.drawing.id)) {
+                        <!-- The ring the 3D draws too, so the place chosen in one view is found in the other. -->
+                        <rect
+                          class="twes-map-halo"
+                          [attr.x]="shape.rect.x"
+                          [attr.y]="shape.rect.y"
+                          [attr.width]="shape.rect.width"
+                          [attr.height]="shape.rect.depth"
+                          [attr.rx]="0.1"
+                          aria-hidden="true"
+                          [attr.data-testid]="'stock-drawing-halo-' + shape.drawing.locationCode"
+                        />
+                      }
                       <rect
                         [attr.x]="shape.rect.x"
                         [attr.y]="shape.rect.y"

@@ -39,6 +39,8 @@ export interface VolumeBox {
   turn: number;
   lit: boolean;
   dimmed: boolean;
+  /** Chosen on the plan, in the list or here: marked, never dimmed, the rest left as it is. */
+  chosen: boolean;
 }
 
 /** What the person chose to see: the building, the ground, and the racks at their height or flat. */
@@ -70,6 +72,8 @@ export interface VolumeInput {
   structures: readonly StockStructureRow[];
   /** The stock locations holding what is looked for; empty when nothing is. */
   lit: ReadonlySet<string>;
+  /** The drawings chosen; none when it is left out. */
+  chosen?: ReadonlySet<string>;
   toggles: VolumeToggles;
 }
 
@@ -79,6 +83,7 @@ const STANDING_STRUCTURES: ReadonlySet<StructureKind> = new Set(['wall', 'post']
 export function volumeBoxes(input: VolumeInput): VolumeBox[] {
   const boxes: VolumeBox[] = [];
   const searching = input.lit.size > 0;
+  const chosen = input.chosen ?? new Set<string>();
 
   if (input.toggles.ground) {
     const ground = input.size ?? null;
@@ -96,6 +101,7 @@ export function volumeBoxes(input: VolumeInput): VolumeBox[] {
         turn: 0,
         lit: false,
         dimmed: false,
+        chosen: false,
       });
     }
   }
@@ -105,6 +111,7 @@ export function volumeBoxes(input: VolumeInput): VolumeBox[] {
     const rect = rectangles[index];
     if (rect === undefined) return;
     const lit = input.lit.has(drawn.locationId);
+    const isChosen = chosen.has(drawn.id);
     boxes.push({
       ...footprint(rect),
       key: `drawing-${drawn.id}`,
@@ -113,7 +120,8 @@ export function volumeBoxes(input: VolumeInput): VolumeBox[] {
       height: input.toggles.heights && rect.height > FLAT_METRES ? rect.height : FLAT_METRES,
       base: 0,
       lit,
-      dimmed: searching && !lit,
+      dimmed: searching && !lit && !isChosen,
+      chosen: isChosen,
     });
   });
 
@@ -134,6 +142,7 @@ export function volumeBoxes(input: VolumeInput): VolumeBox[] {
         base: 0,
         lit: false,
         dimmed: false,
+        chosen: false,
       });
     });
   }
@@ -213,6 +222,26 @@ export function turned(view: CameraView, angle: number): CameraView {
   return { position: [tx + dx * cos + dz * sin, y, tz - dx * sin + dz * cos], target: view.target };
 }
 
+/** How far the camera comes in to a chosen place, in lengths of it: the place and what stands beside it, not a wall. */
+export const LOOK_LENGTHS = 3;
+
+/**
+ * The same view turned to a place: it looks at the middle of the box from the side it stood on, so the angle a person
+ * chose is kept and the chosen place comes to the centre, near enough to be seen. Nearer than that, it stays put.
+ */
+export function lookingAt(
+  view: CameraView,
+  box: Pick<VolumeBox, 'x' | 'y' | 'base' | 'width' | 'depth' | 'height'>,
+): CameraView {
+  const target: [number, number, number] = [box.x, box.base + box.height / 2, box.y];
+  const offset = view.position.map((value, axis) => value - (view.target[axis] ?? 0));
+  const far = Math.hypot(...offset) || 1;
+  const near = Math.min(far, LOOK_LENGTHS * Math.max(box.width, box.depth, box.height));
+  const [dx = 0, dy = 0, dz = 0] = offset.map((value) => (value / far) * near);
+
+  return { position: [target[0] + dx, target[1] + dy, target[2] + dz], target };
+}
+
 /** The same view brought nearer its target, or taken further, by a factor of the distance. */
 export function moved(view: CameraView, factor: number): CameraView {
   const [x, y, z] = view.position;
@@ -271,8 +300,35 @@ export const DIMMED_TONES: VolumeTones = {
   opacity: SEE_THROUGH,
 };
 
-export function tonesOf(box: Pick<VolumeBox, 'part' | 'lit' | 'dimmed'>): VolumeTones {
-  if (box.lit) return LIT_TONES;
+/**
+ * What is chosen, as the plan marks it: a lighter fill and a dark edge, the same in both schemes, so it reads against
+ * the racks beside it without a colour of its own (docs/SPEC.md § 7, 2026-10-09 23:19).
+ */
+export const CHOSEN_TONES: VolumeTones = {
+  fill: '--mat-sys-primary-fixed-dim',
+  edge: '--mat-sys-on-surface',
+  opacity: 1,
+};
+
+/** The see-through ring round what is chosen, a little wider and taller than it, in metres. */
+export const CHOSEN_HALO = { margin: 0.35, tone: '--mat-sys-primary', opacity: 0.3 } as const;
+
+export function haloOf(box: VolumeBox): VolumeBox {
+  return {
+    ...box,
+    key: `${box.key}-halo`,
+    width: box.width + 2 * CHOSEN_HALO.margin,
+    depth: box.depth + 2 * CHOSEN_HALO.margin,
+    height: box.height + CHOSEN_HALO.margin,
+  };
+}
+
+export function tonesOf(
+  box: Pick<VolumeBox, 'part' | 'lit' | 'dimmed'> & { chosen?: boolean },
+): VolumeTones {
+  // A chosen place a search lit keeps the search's light: only its edge says it is the one chosen.
+  if (box.lit) return box.chosen === true ? { ...LIT_TONES, edge: CHOSEN_TONES.edge } : LIT_TONES;
+  if (box.chosen === true) return CHOSEN_TONES;
   return box.dimmed ? DIMMED_TONES : PART_TONES[box.part];
 }
 

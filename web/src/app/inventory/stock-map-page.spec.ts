@@ -40,6 +40,8 @@ import type {
   Whereabouts,
 } from './inventory-types';
 import { StockMapPage } from './stock-map-page';
+import { StockMapVolume } from './stock-map-volume';
+import { By } from '@angular/platform-browser';
 import { COARSE_POINTER } from '../shared/ui/pointer';
 import { WINDOW_CLASS, type WindowClass } from '../shared/ui/window-class';
 import { ScanBus } from '../shared/scan/scan-bus';
@@ -2500,6 +2502,42 @@ describe('StockMapPage', () => {
 
     expect(TestBed.inject(SettingsFacade).value(PRESENTATION.stockMapView)()).toBe('plan');
     expect(q('stock-map-board')).not.toBeNull();
+  });
+
+  it('chooses a place clicked in the volume everywhere: the list, the panel and the plan’s ring', async () => {
+    await consult();
+    q('stock-map-view-volume')?.click();
+    await settle();
+    const volume = fixture.debugElement.query(By.directive(StockMapVolume))
+      .componentInstance as StockMapVolume;
+    expect(volume.chosen().size).toBe(0);
+
+    volume.pick.emit('d1');
+    await settle();
+
+    expect(volume.chosen()).toEqual(new Set(['d1']));
+    expect(q('stock-drawing-R1')?.getAttribute('aria-pressed')).toBe('true');
+    q('stock-map-view-plan')?.click();
+    await settle();
+    expect(q('stock-drawing-halo-R1')).not.toBeNull();
+    expect(q('stock-drawing-halo-R2')).toBeNull();
+  });
+
+  it('brings the line of a place chosen on the plan into view in « Dessiné sur cet étage »', async () => {
+    await consult();
+    const scrolled: Element[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this);
+    };
+    try {
+      q('stock-drawing-rect-R1')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await settle();
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+
+    expect(scrolled).toContain(q('stock-drawing-R1'));
   });
 
   it('arranges on the plan whatever view was chosen, and says the volume waits in Consulter', async () => {

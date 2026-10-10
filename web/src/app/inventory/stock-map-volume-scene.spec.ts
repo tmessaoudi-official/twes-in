@@ -4,10 +4,14 @@ import type { StockDrawingRow, StockStructureRow } from './inventory-types';
 import {
   FLAT_METRES,
   CAMERA_FOV,
+  CHOSEN_HALO,
+  CHOSEN_TONES,
   DIMMED_TONES,
   LIT_TONES,
   PART_TONES,
   cameraPreset,
+  haloOf,
+  lookingAt,
   moved,
   tonesOf,
   turned,
@@ -273,5 +277,89 @@ describe('the stock map in volume', () => {
 
     expect(nearer.target).toEqual(view.target);
     expect(nearer.position[1]).toBeCloseTo(view.position[1] / 2);
+  });
+
+  it('marks what is chosen without dimming the rest, and never dims a chosen place a search left out', () => {
+    const rows = [drawing(), drawing({ id: 'd2', locationId: 'l2', locationCode: 'R2' })];
+    const quiet = volumeBoxes({
+      size: null,
+      drawings: rows,
+      structures: [],
+      lit: new Set(),
+      chosen: new Set(['d2']),
+      toggles: ALL,
+    });
+    expect(quiet.map((box) => [box.key, box.chosen, box.dimmed])).toEqual([
+      ['drawing-d1', false, false],
+      ['drawing-d2', true, false],
+    ]);
+
+    const searched = volumeBoxes({
+      size: null,
+      drawings: rows,
+      structures: [],
+      lit: new Set(['l1']),
+      chosen: new Set(['d2']),
+      toggles: ALL,
+    });
+    expect(searched.map((box) => [box.key, box.lit, box.chosen, box.dimmed])).toEqual([
+      ['drawing-d1', true, false, false],
+      ['drawing-d2', false, true, false],
+    ]);
+  });
+
+  it('paints what is chosen lighter with a dark edge, and keeps a lit place lit when it is chosen too', () => {
+    expect(tonesOf({ part: 'rack', lit: false, dimmed: false, chosen: true })).toBe(CHOSEN_TONES);
+    expect(CHOSEN_TONES.fill).toBe('--mat-sys-primary-fixed-dim');
+    expect(CHOSEN_TONES.edge).toBe('--mat-sys-on-surface');
+    expect(tonesOf({ part: 'rack', lit: true, dimmed: false, chosen: true })).toEqual({
+      ...LIT_TONES,
+      edge: CHOSEN_TONES.edge,
+    });
+  });
+
+  it('rings what is chosen with a see-through halo a little wider and taller than it', () => {
+    const [box] = volumeBoxes({
+      size: null,
+      drawings: [drawing()],
+      structures: [],
+      lit: new Set(),
+      chosen: new Set(['d1']),
+      toggles: ALL,
+    });
+    const halo = haloOf(box!);
+
+    expect([halo.x, halo.y, halo.turn, halo.base]).toEqual([box!.x, box!.y, box!.turn, 0]);
+    expect(halo.width).toBeCloseTo(box!.width + 2 * CHOSEN_HALO.margin);
+    expect(halo.depth).toBeCloseTo(box!.depth + 2 * CHOSEN_HALO.margin);
+    expect(halo.height).toBeCloseTo(box!.height + CHOSEN_HALO.margin);
+    expect(CHOSEN_HALO.tone).toBe('--mat-sys-primary');
+    expect(CHOSEN_HALO.opacity).toBeLessThan(1);
+  });
+
+  it('turns the camera to what is chosen from the side it stood on, near enough to see it', () => {
+    const view = cameraPreset('overview', { x: 0, y: 0, width: 24, depth: 14 });
+    const [box] = volumeBoxes({
+      size: null,
+      drawings: [drawing()],
+      structures: [],
+      lit: new Set(),
+      chosen: new Set(['d1']),
+      toggles: ALL,
+    });
+    const looking = lookingAt(view, box!);
+    const direction = (one: { position: number[]; target: number[] }): number[] =>
+      one.position.map((value, axis) => (value - (one.target[axis] ?? 0)) / distance(one));
+
+    expect(looking.target).toEqual([box!.x, box!.base + box!.height / 2, box!.y]);
+    direction(looking).forEach((value, axis) =>
+      expect(value).toBeCloseTo(direction(view)[axis] ?? 0),
+    );
+    // The whole floor's view stood further: it comes in to three lengths of the 6 m rack.
+    expect(distance(view)).toBeGreaterThan(18);
+    expect(distance(looking)).toBeCloseTo(18);
+    // Already nearer than that, it stays where the person put it.
+    const near = moved(view, 0.25);
+    expect(distance(lookingAt(near, box!))).toBeCloseTo(distance(near));
   });
 });

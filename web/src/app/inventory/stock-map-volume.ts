@@ -10,6 +10,7 @@ import {
   type ElementRef,
   inject,
   input,
+  output,
   signal,
   untracked,
   viewChild,
@@ -27,7 +28,9 @@ import {
   Mesh,
   MeshLambertMaterial,
   PerspectiveCamera,
+  Raycaster,
   Scene,
+  Vector2,
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -37,9 +40,12 @@ import { ThemeFacade } from '../shared/theme/theme-facade';
 import type { StockDrawingRow, StockStructureRow } from './inventory-types';
 import {
   CAMERA_FOV,
+  CHOSEN_HALO,
   type CameraPresetName,
   type CameraView,
   cameraPreset,
+  haloOf,
+  lookingAt,
   moved,
   tonesOf,
   turned,
@@ -54,6 +60,8 @@ import {
 const TURN_STEP = Math.PI / 8;
 const NEARER = 0.8;
 const TOGGLES = ['building', 'ground', 'heights'] as const;
+/** A press that travels further than this, in pixels, turned the view: it chooses nothing. */
+const CLICK_SLOP = 5;
 
 /**
  * The floor in volume (docs/SPEC.md row 83): for looking only, never for arranging. It is its own component, reached
@@ -75,6 +83,10 @@ export class StockMapVolume {
   readonly structures = input.required<readonly StockStructureRow[]>();
   /** The stock locations holding what is looked for. */
   readonly lit = input.required<ReadonlySet<string>>();
+  /** The drawings chosen on the plan, in the list or here. */
+  readonly chosen = input<ReadonlySet<string>>(new Set());
+  /** A drawing clicked here, by its id: the page chooses it everywhere. */
+  readonly pick = output<string>();
 
   private readonly theme = inject(ThemeFacade);
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
@@ -94,10 +106,19 @@ export class StockMapVolume {
       drawings: this.drawings(),
       structures: this.structures(),
       lit: this.lit(),
+      chosen: this.chosen(),
       toggles: this.toggles(),
     }),
   );
   protected readonly counts = computed(() => volumeCounts(this.boxes()));
+  /** The one place chosen, which the camera turns to; compared by its key, so a repaint does not turn it again. */
+  private readonly focus = computed(
+    () => {
+      const chosen = this.boxes().filter((box) => box.chosen);
+      return chosen.length === 1 ? (chosen[0] ?? null) : null;
+    },
+    { equal: (one, other) => one?.key === other?.key },
+  );
   // Compared by value: a live reload of the same floor hands new rows, and must not take the person back to the corner.
   private readonly extent = computed(
     () => volumeExtent(this.size(), this.drawings(), this.structures()),
@@ -150,6 +171,13 @@ export class StockMapVolume {
       this.look(this.framed('overview', extent));
     });
 
+    // After the floor's own framing, so a place chosen on the plan is the one looked at on opening the 3D.
+    effect(() => {
+      const focus = this.focus();
+      if (focus === null || this.webgl() !== 'ready') return;
+      untracked(() => this.look(lookingAt(this.current(), focus)));
+    });
+
     inject(DestroyRef).onDestroy(() => this.stop());
   }
 
@@ -184,6 +212,7 @@ export class StockMapVolume {
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
     controls.listenToKeyEvents(canvas);
     controls.addEventListener('change', () => this.render());
+    this.listenForPicks(canvas);
     this.renderer = renderer;
     this.controls = controls;
 
@@ -240,6 +269,8 @@ export class StockMapVolume {
       });
       this.materials.push(fill, edge);
       const solid = new Mesh(this.unit, fill);
+      if (box.key.startsWith('drawing-'))
+        solid.userData['drawingId'] = box.key.slice('drawing-'.length);
       const lines = new LineSegments(this.unitEdges, edge);
       for (const part of [solid, lines]) {
         part.scale.set(Math.max(box.width, 0.01), box.height, Math.max(box.depth, 0.01));
@@ -247,8 +278,72 @@ export class StockMapVolume {
         part.rotation.y = box.turn;
         this.content.add(part);
       }
+      if (box.chosen) this.paintHalo(box, palette);
     }
     this.render();
+  }
+
+  private paintHalo(
+    box: ReturnType<typeof volumeBoxes>[number],
+    palette: Readonly<Record<VolumeToken, string>>,
+  ): void {
+    const halo = haloOf(box);
+    // Never written to depth: what stands behind the ring still shows through it.
+    const glow = new MeshLambertMaterial({
+      color: new Color(palette[CHOSEN_HALO.tone]),
+      transparent: true,
+      opacity: CHOSEN_HALO.opacity,
+      depthWrite: false,
+    });
+    this.materials.push(glow);
+    const ring = new Mesh(this.unit, glow);
+    ring.scale.set(halo.width, halo.height, halo.depth);
+    ring.position.set(halo.x, halo.base + halo.height / 2, halo.y);
+    ring.rotation.y = halo.turn;
+    this.content.add(ring);
+  }
+
+  /** A click on a rack or a zone chooses it; a press that moved turned the view instead. */
+  private listenForPicks(canvas: HTMLCanvasElement): void {
+    let down: { x: number; y: number } | null = null;
+    const press = (event: PointerEvent): void => {
+      down = { x: event.clientX, y: event.clientY };
+    };
+    const release = (event: PointerEvent): void => {
+      const from = down;
+      down = null;
+      if (
+        from === null ||
+        Math.hypot(event.clientX - from.x, event.clientY - from.y) > CLICK_SLOP
+      ) {
+        return;
+      }
+      const id = this.drawingAt(canvas, event.clientX, event.clientY);
+      if (id !== null) this.pick.emit(id);
+    };
+    canvas.addEventListener('pointerdown', press);
+    canvas.addEventListener('pointerup', release);
+    this.stops.push(() => {
+      canvas.removeEventListener('pointerdown', press);
+      canvas.removeEventListener('pointerup', release);
+    });
+  }
+
+  /** The nearest drawn place under a point of the canvas, past any halo or wall in front of it. */
+  private drawingAt(canvas: HTMLCanvasElement, clientX: number, clientY: number): string | null {
+    const bounds = canvas.getBoundingClientRect();
+    const pointer = new Vector2(
+      ((clientX - bounds.left) / bounds.width) * 2 - 1,
+      -((clientY - bounds.top) / bounds.height) * 2 + 1,
+    );
+    const ray = new Raycaster();
+    ray.setFromCamera(pointer, this.camera);
+    for (const hit of ray.intersectObjects(this.content.children, false)) {
+      const id: unknown = hit.object.userData['drawingId'];
+      if (typeof id === 'string') return id;
+    }
+
+    return null;
   }
 
   private clear(): void {
