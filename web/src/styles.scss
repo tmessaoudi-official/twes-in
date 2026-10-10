@@ -2156,6 +2156,12 @@ app-signed-out-layout {
   }
 }
 
+/* A notice holding the top of the window (« Effacement en attente ») publishes where it ends: a toast stands below it
+   instead of over its button. Qualified by Material's own class, whose CSS loads after this file; 8px is its margin. */
+.mat-mdc-snack-bar-container.twes-toast-panel {
+  margin-top: calc(var(--twes-top-notice-bottom, 0px) + 8px);
+}
+
 .twes-toast-panel .mat-mdc-snackbar-surface {
   min-width: min(22rem, calc(100vw - 2rem));
   padding: 0;

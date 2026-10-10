@@ -552,6 +552,7 @@
       "company": "Company",
       "fiscal": "Tax",
       "team": "Team",
+      "data": "Data",
       "customisation": "Customisation"
     },
     "taxes": "Taxes",
@@ -591,7 +592,8 @@
     "price_lists": "Price lists",
     "quotes": "Quotes",
     "activity": "Activity journal",
-    "accounting_export": "Accounting export"
+    "accounting_export": "Accounting export",
+    "data_erasure": "Erase data"
   },
   "shell": {
     "scan_tools": "Scanner",
@@ -3681,7 +3683,8 @@
       "too_many": "Too many attempts: try again in a few minutes.",
       "no_passkey": "No passkey could be used.",
       "network": "The server is not answering: try again."
-    }
+    },
+    "intro_erasure": "To open « Erase data », enter your password or use a passkey."
   },
   "customer_display": {
     "title": "Customer display",
@@ -4784,6 +4787,91 @@
       "link_not_usable": "This link can no longer be used: this kind of notification is no longer told to you there. Choose your e-mails in My account › Notifications.",
       "too_many_attempts": "Too many attempts. Try again in a few minutes.",
       "network": "The server is not answering. Try again."
+    }
+  },
+  "data_erasure": {
+    "title": "Erase data",
+    "locked": "This page erases data of {{company}} for all its members. Only an owner opens it, after confirming it is really them.",
+    "confirm": "Confirm it is me",
+    "confirmed": "Identity confirmed at {{time}}. The page closes after 10 minutes without action; confirming again reopens it.",
+    "some": "Erase a part",
+    "kept_title": "Always kept",
+    "kept": "Issued invoices, credit notes and delivery notes, their numbers and their PDFs · recorded payments and expenses · closings · the activity journal · members, their roles and the subscription. Keep a copy first: every list has « Export ».",
+    "waiting": "An erasure is still waiting for its end: undo it from the banner, or wait until it is final, before making another.",
+    "review": "See what will be erased ({{count}})",
+    "erased": "Erased: {{parts}}",
+    "undone": "Erasure undone: everything is back",
+    "parts": {
+      "stock_map": {
+        "title": "Stock map",
+        "inline": "stock map",
+        "count": "{{floors}} {floors, plural, one {floor} other {floors}}, {{places}} {places, plural, one {rectangle} other {rectangles}}, {{structures}} {structures, plural, one {building element} other {building elements}}",
+        "short": "{{floors}} {floors, plural, one {floor} other {floors}}, {{places}} {places, plural, one {rectangle} other {rectangles}}, {{structures}} {structures, plural, one {element} other {elements}}",
+        "effect": "The map is empty again; the stock locations themselves stay."
+      },
+      "drafts": {
+        "title": "Drafts and quotes",
+        "inline": "drafts and quotes",
+        "count": "{{drafts}} {drafts, plural, one {draft} other {drafts}}, {{quotes}} {quotes, plural, one {quote} other {quotes}}",
+        "short": "{{drafts}} {drafts, plural, one {draft} other {drafts}}, {{quotes}} {quotes, plural, one {quote} other {quotes}}",
+        "effect": "Nothing issued: erased entirely. A draft a recurring invoice copies, and a quote an issued invoice names, stay."
+      },
+      "products": {
+        "title": "Products and prices",
+        "effect": "Those on an issued document are archived, not erased: the document keeps its line."
+      },
+      "customers": {
+        "title": "Customers",
+        "effect": "Same rule: an invoiced customer is archived; the others are erased."
+      },
+      "vendors": {
+        "title": "Vendors",
+        "effect": "A vendor linked to a recorded expense is archived."
+      },
+      "stock_reset": {
+        "title": "Stock reset to zero",
+        "effect": "A count to zero per line: each quantity goes back to zero, the movement history stays whole."
+      },
+      "files": {
+        "title": "Files and photos",
+        "effect": "Product photos and imported files; the PDFs of issued documents stay."
+      },
+      "settings": {
+        "title": "Settings back to defaults",
+        "effect": "The profile, numbering and taxes do not move."
+      }
+    },
+    "preview": {
+      "title": "What will be erased",
+      "counted": "Counted just now, without touching anything. It disappears from every member’s screens on « Erase »; the erasure is written to the activity journal.",
+      "undoable": "for 24 hours, from the « Undo the erasure » banner; after that nothing comes back.",
+      "proof": "If your identity confirmation is more than 5 minutes old, it is asked again when erasing.",
+      "back": "Back",
+      "erase": "Erase"
+    },
+    "banner": {
+      "text": "Erasure pending: {{parts}}. Final on {{end}}.",
+      "undo": "Undo the erasure"
+    },
+    "tables": {
+      "venue_area": "a floor",
+      "venue_spot": "a rectangle of the map",
+      "venue_structure": "a building element",
+      "invoice": "an invoice",
+      "delivery_note": "a delivery note",
+      "quote": "a quote"
+    },
+    "errors": {
+      "network": "The server did not answer; try again.",
+      "not_found": "This erasure no longer exists.",
+      "owner_only": "Only an owner erases the company’s data.",
+      "step_up_required": "Confirm again that it is really you.",
+      "erasure_pending": "An erasure is still waiting for its end: undo it or wait until it is final.",
+      "erasure_final": "This erasure is final: nothing comes back.",
+      "erasure_conflict": "Nothing came back: {{table}} made since stands where what was erased would go. Clear it, then undo again.",
+      "erasure_conflict_any": "Nothing came back: something made since stands where what was erased would go.",
+      "no_part": "Choose at least one part to erase.",
+      "unknown_part": "This part does not exist."
     }
   }
 }
