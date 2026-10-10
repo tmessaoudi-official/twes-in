@@ -17,9 +17,11 @@ import {
   viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NgTemplateOutlet } from '@angular/common';
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom, map } from 'rxjs';
@@ -39,6 +41,10 @@ import { Label } from '../shared/a11y/label';
 import { InventoryFacade } from './inventory-facade';
 import { INVENTORY_TABS } from './inventory-nav';
 import { PageTabs } from '../shared/ui/page-tabs';
+import { Immersive } from '../shared/ui/immersive';
+import { ScreenActions } from '../shared/actions/screen-actions';
+import type { ScreenAction } from '../shared/actions/screen-action';
+import { isTypingTarget } from '../shared/actions/shortcuts';
 import {
   STRUCTURE_KINDS,
   type StockDrawingRow,
@@ -272,6 +278,8 @@ const PENDING_PIECE: StockStructureRow = {
     PageTabs,
     MatButtonModule,
     MatCardModule,
+    MatIconModule,
+    MatMenuModule,
     NgTemplateOutlet,
     RouterLink,
     AmountPipe,
@@ -288,6 +296,8 @@ const PENDING_PIECE: StockStructureRow = {
   templateUrl: './stock-map-page.html',
   styleUrl: './stock-map-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // Échap is the page's, not the plan's alone: it also leaves the full screen, whichever view is shown.
+  host: { '(document:keydown.escape)': 'escape($event)' },
 })
 export class StockMapPage implements OnInit {
   private readonly live = inject(LiveChanges);
@@ -826,6 +836,16 @@ export class StockMapPage implements OnInit {
   });
 
   constructor() {
+    inject(ScreenActions).declare(this.fullAction);
+    // The shell steps behind the map while it fills the window, and comes back whichever way it is left.
+    effect(() => this.immersive.set(this.full()));
+    const browserLeft = (): void => this.browserLeft();
+    this.document.addEventListener('fullscreenchange', browserLeft);
+    this.destroyRef.onDestroy(() => {
+      this.document.removeEventListener('fullscreenchange', browserLeft);
+      this.giveBrowserBack();
+      this.immersive.set(false);
+    });
     // A place chosen on the plan or in the 3D brings its line in « Dessiné sur cet étage » into view, as the list and
     // the plans show one selection (docs/SPEC.md § 7, 2026-10-09 23:19). scrollIntoView is optional: jsdom has none.
     const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -1374,7 +1394,7 @@ export class StockMapPage implements OnInit {
    * a five-inch screen cannot carry a handle a fingertip can hit, so the handles are not there at all rather than
    * there and unusable. Everything they do stays reachable through the form, on every window.
    */
-  private readonly windowClass = inject(WINDOW_CLASS);
+  protected readonly windowClass = inject(WINDOW_CLASS);
   protected readonly mayDraw = computed(() => this.mayWrite() && this.windowClass() !== 'compact');
   /**
    * The arrows that move a nearer view. A phone shows them only once there is somewhere to move: greyed out at
@@ -2095,9 +2115,24 @@ export class StockMapPage implements OnInit {
 
   /**
    * Échap gives the rectangle back exactly what the form held before the gesture — never a guess at it. With nothing
-   * under way and no form open, it lets the choice go.
+   * under way it leaves the full screen, as its button says, and keeps what is chosen; otherwise, with no form open,
+   * it lets the choice go. A gesture belongs to the plan, so the 3D has only the full screen to leave.
    */
-  protected abandon(): void {
+  protected escape(event: Event): void {
+    if (!this.volumeShown() && this.stopGesture()) return;
+    if (this.full()) {
+      // Échap in the search closes what it offers; the full screen is left from the plan.
+      if (!isTypingTarget(event.target)) this.leaveFull();
+      return;
+    }
+    if (this.volumeShown() || this.editing() !== null) return;
+    // Échap puts a moved group back first, and only then lets the choice go.
+    if (this.groupDraft() !== null) this.cancelGroup();
+    else this.letGo();
+  }
+
+  /** Ends a gesture under way, its rectangle put back as it stood; true when there was one. */
+  private stopGesture(): boolean {
     const drag = this.drag;
     const held = this.groupDrag;
     const underway =
@@ -2110,10 +2145,85 @@ export class StockMapPage implements OnInit {
     this.lassoRect.set(null);
     this.tracing.set(false);
     if (drag?.past) this.editedGroup(drag)?.patchValue(drag.before);
-    // With nothing under way, Échap puts a moved group back first, and only then lets the choice go.
-    if (underway || this.editing() !== null) return;
-    if (this.groupDraft() !== null) this.cancelGroup();
-    else this.letGo();
+
+    return underway;
+  }
+
+  // ——— the map over the whole window (docs/SPEC.md § 7, 2026-10-09 23:19 and 2026-10-10 00:27) ———
+
+  private readonly document = inject(DOCUMENT);
+  private readonly immersive = inject(Immersive);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private readonly injector = inject(Injector);
+  /** The map over the whole window: the board fills it, and the rest floats over it. */
+  protected readonly full = signal(false);
+  /** The floors and the lists, behind « Listes » while the map fills the window. */
+  protected readonly listsOpen = signal(false);
+  protected readonly compact = computed(() => this.windowClass() === 'compact');
+  /** There is a plan to fill the window with. */
+  protected readonly mayFill = computed(() => this.company() !== null && this.floors().length > 0);
+  /**
+   * Whether the browser's own full screen is this page's to give back. It is asked for on top of the page's own, where
+   * the browser has one: an iPhone has none, and a frame or a policy may refuse it, and the page's own then stands.
+   */
+  private holdsBrowser = false;
+
+  /** F, held one scan gap by the shell like every screen's key, so a code beginning with it opens nothing. */
+  private readonly fullAction = computed<ScreenAction[]>(() => {
+    const full = this.full();
+    return [
+      {
+        id: 'full-screen',
+        label: full ? 'inventory.plan.full.leave_short' : 'inventory.plan.full.enter',
+        icon: full ? 'fullscreen_exit' : 'fullscreen',
+        shortcut: 'f',
+        shown: this.mayFill(),
+        run: () => (this.full() ? this.leaveFull() : this.enterFull()),
+      },
+    ];
+  });
+
+  protected enterFull(): void {
+    if (this.full()) return;
+    this.full.set(true);
+    const root = this.document.documentElement;
+    if (!this.document.fullscreenEnabled || typeof root.requestFullscreen !== 'function') return;
+    root.requestFullscreen().then(
+      () => (this.holdsBrowser = true),
+      // Refused, by a frame or a policy: the ruled fallback is the page's own full screen, already shown.
+      () => (this.holdsBrowser = false),
+    );
+  }
+
+  protected leaveFull(): void {
+    if (!this.full()) return;
+    this.full.set(false);
+    this.listsOpen.set(false);
+    this.giveBrowserBack();
+    // The focus goes back to what opened it, rather than to the top of a page the person never left.
+    afterNextRender(
+      () => this.host.querySelector<HTMLElement>('[data-testid="stock-map-full"]')?.focus(),
+      { injector: this.injector },
+    );
+  }
+
+  /** Exits only a full screen this page holds: exiting one it does not hold is refused by the browser. */
+  private giveBrowserBack(): void {
+    const held = this.holdsBrowser && this.document.fullscreenElement != null;
+    this.holdsBrowser = false;
+    if (held) void this.document.exitFullscreen();
+  }
+
+  /** The browser's own Échap never reaches the page: its leaving the full screen is the map's leaving it. */
+  private browserLeft(): void {
+    if (!this.holdsBrowser || this.document.fullscreenElement != null) return;
+    this.holdsBrowser = false;
+    this.stopGesture();
+    this.leaveFull();
+  }
+
+  protected toggleLists(): void {
+    this.listsOpen.update((open) => !open);
   }
 
   protected async saveDrawing(values: FormValues): Promise<void> {

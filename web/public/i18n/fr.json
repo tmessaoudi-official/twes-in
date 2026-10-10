@@ -2645,6 +2645,17 @@
         "undo": "Annuler",
         "undone": "Déplacement annulé : {{product}} est de retour en {{from}}.",
         "undo_failed": "Le déplacement de {{product}} n’a pas pu être annulé : ce qui a été déplacé n’est plus là où il a été posé."
+      },
+      "full": {
+        "enter": "Plein écran",
+        "leave": "Quitter · Échap",
+        "leave_short": "Quitter le plein écran",
+        "lists": "Listes",
+        "lists_hide": "Masquer les listes",
+        "floor": "Changer d’étage",
+        "menu": "Listes, étages et vues",
+        "bar": "Commandes du plan",
+        "close_panel": "Fermer le panneau"
       }
     },
     "scan": {
@@ -3959,7 +3970,7 @@
       "length": "Une seule touche : une lettre ou un signe.",
       "browser": "Le navigateur utilise déjà cette touche.",
       "interface": "Cette touche sert déjà partout (« ? » et « [ »).",
-      "screen": "Une page utilise déjà cette touche (S, V, L ou P).",
+      "screen": "Une page utilise déjà cette touche (S, V, L, P ou F).",
       "count": "Réservée au nombre tapé avant un scan (chiffres et ×).",
       "taken": "Déjà donnée à une autre action."
     },

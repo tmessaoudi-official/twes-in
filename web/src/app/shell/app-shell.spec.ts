@@ -39,6 +39,7 @@ import { TourGuide } from '../shared/tour/tour-guide';
 import { HelpPanel } from './help-panel';
 import { TOURS } from './tours';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
+import { Immersive } from '../shared/ui/immersive';
 import { ProductScanCard, type ProductScanCardData } from '../products/product-scan-card';
 import { ProductOnView } from '../products/product-on-view';
 import { Camera } from '../shared/scan/camera';
@@ -330,6 +331,31 @@ describe('AppShell', () => {
 
     expect(byTestId('subscription-notice')).not.toBeNull();
     me.set(owner);
+  });
+
+  /** A page over the whole window: the shell lifts it above the rail and takes its own parts out of reach. */
+  it('steps behind a page that takes the whole window, and comes back when it lets go', async () => {
+    const { fixture, el } = await render();
+    const behind = (): Element[] =>
+      [
+        'mat-sidenav',
+        'header',
+        'app-cookie-notice',
+        'app-subscription-notice',
+        'app-legal-footer',
+      ].map((selector) => el.querySelector(selector) as Element);
+    expect(el.querySelector('mat-sidenav-container')?.classList).not.toContain('is-immersive');
+    for (const part of behind()) expect(part.hasAttribute('inert'), part.tagName).toBe(false);
+
+    TestBed.inject(Immersive).set(true);
+    await fixture.whenStable();
+
+    expect(el.querySelector('mat-sidenav-container')?.classList).toContain('is-immersive');
+    for (const part of behind()) expect(part.hasAttribute('inert'), part.tagName).toBe(true);
+
+    TestBed.inject(Immersive).set(false);
+    await fixture.whenStable();
+    for (const part of behind()) expect(part.hasAttribute('inert'), part.tagName).toBe(false);
   });
 
   it('leads the rail with the working company, where the product name was', async () => {

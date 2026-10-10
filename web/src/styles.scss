@@ -1344,6 +1344,12 @@ app-cookie-notice {
   height: calc(100% - 1rem);
 }
 
+// A page over the whole window (the stock map in full screen) lays itself out with `position: fixed`, but the content
+// is a layer of its own (Material's `z-index: 1`) beneath the rail: lifted above the rail, the page's layer covers it.
+.twes-shell.is-immersive > .mat-drawer-content {
+  z-index: 5;
+}
+
 // A page shorter than the panel still fills it, so the legal line and the cookie notice close the panel at its foot
 // instead of stopping mid-screen under the content (audit V-8). A column, declared here for the reason given below,
 // and qualified with Material's class, whose own `display: block` loads after this file.

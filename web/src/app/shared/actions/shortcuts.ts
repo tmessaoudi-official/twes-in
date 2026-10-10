@@ -28,7 +28,7 @@ export const DEFAULT_SHORTCUTS: ShellKeys = {
  * The only keys a screen may declare. Closed on purpose: a person may give the shell any key that is not the
  * browser's, the interface's or one of these, so a screen reaching for another would collide with somebody's choice.
  */
-export const SCREEN_KEYS: readonly string[] = ['s', 'v', 'l', 'p'];
+export const SCREEN_KEYS: readonly string[] = ['s', 'v', 'l', 'p', 'f'];
 
 /** The shell's actions in the order Préférences and the « ? » sheet list them. */
 export const SHELL_SHORTCUTS: readonly ShellShortcut[] = ['search', 'create', 'new', 'next'];

@@ -47,6 +47,8 @@ import { By } from '@angular/platform-browser';
 import { COARSE_POINTER } from '../shared/ui/pointer';
 import { WINDOW_CLASS, type WindowClass } from '../shared/ui/window-class';
 import { ScanBus } from '../shared/scan/scan-bus';
+import { ScreenActions } from '../shared/actions/screen-actions';
+import { Immersive } from '../shared/ui/immersive';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -803,7 +805,6 @@ describe('StockMapPage', () => {
     grab: (event: PointerEvent, drawing: StockDrawingRow, handle: unknown) => void;
     drags: (event: PointerEvent) => void;
     drops: (event: PointerEvent) => void;
-    abandon: () => void;
     handles: () => readonly { handle: { hx: number; hy: number } }[];
     mayDraw: () => boolean;
   } => fixture.componentInstance as never;
@@ -1316,7 +1317,7 @@ describe('StockMapPage', () => {
     plan().grab(at(100, 100, svg), drawn, null);
     plan().drags(at(200, 100, svg));
     await settle();
-    plan().abandon();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await settle();
 
     expect(drawingGroup().get('x')!.value).toBe('2.500');
@@ -1532,7 +1533,7 @@ describe('StockMapPage', () => {
     await settle();
     expect(drawingGroup().get('x')!.value).not.toBe(traced);
 
-    plan().abandon();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await settle();
     expect(drawingGroup().get('x')!.value).toBe(traced);
   });
@@ -3000,5 +3001,292 @@ describe('StockMapPage', () => {
     expect((await TestBed.inject(ScanBus).receive('6191234567890', 'wedge')).kind).toBe(
       'unclaimed',
     );
+  });
+
+  // ——— the map over the whole window (docs/SPEC.md § 7, 2026-10-09 23:19 and 2026-10-10 00:27) ———
+
+  describe('in full screen', () => {
+    const page = document as unknown as {
+      fullscreenEnabled?: boolean;
+      fullscreenElement?: Element | null;
+      exitFullscreen?: () => Promise<void>;
+    };
+    const root = document.documentElement as unknown as {
+      requestFullscreen?: () => Promise<void>;
+    };
+    let requestFullscreen: ReturnType<typeof vi.fn<() => Promise<void>>>;
+    let exitFullscreen: ReturnType<typeof vi.fn<() => Promise<void>>>;
+
+    /** The browser's own full screen, which jsdom has none of: granted, and the document then held by it. */
+    function browserOffers(granted = true): void {
+      Object.defineProperty(document, 'fullscreenEnabled', { value: true, configurable: true });
+      Object.defineProperty(document, 'fullscreenElement', {
+        value: null,
+        configurable: true,
+        writable: true,
+      });
+      requestFullscreen = vi.fn<() => Promise<void>>(() => {
+        if (!granted) return Promise.reject(new TypeError('refused'));
+        page.fullscreenElement = document.documentElement;
+        return Promise.resolve();
+      });
+      exitFullscreen = vi.fn<() => Promise<void>>(() => {
+        page.fullscreenElement = null;
+        return Promise.resolve();
+      });
+      root.requestFullscreen = requestFullscreen;
+      page.exitFullscreen = exitFullscreen;
+    }
+
+    afterEach(() => {
+      delete (document as unknown as Record<string, unknown>)['fullscreenEnabled'];
+      delete (document as unknown as Record<string, unknown>)['fullscreenElement'];
+      delete root.requestFullscreen;
+      delete page.exitFullscreen;
+    });
+
+    const layer = (): HTMLElement => q('stock-map-layer') as HTMLElement;
+    const full = (): boolean => layer().classList.contains('twes-map-full');
+
+    async function enter(): Promise<void> {
+      press('stock-map-full');
+      await settle();
+    }
+
+    async function choose(): Promise<void> {
+      firstRect().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await settle();
+    }
+
+    function key(name: string, target: EventTarget = document.body): void {
+      target.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true }));
+    }
+
+    it('lays the map over the whole window from « Plein écran », and puts the shell behind it', async () => {
+      await consult();
+      expect(full()).toBe(false);
+      expect(q('stock-map-full-leave')).toBeNull();
+
+      await enter();
+
+      expect(full()).toBe(true);
+      expect(TestBed.inject(Immersive).on()).toBe(true);
+      expect(q('stock-map-full')).toBeNull();
+      expect(q('stock-map-full-leave')?.textContent).toContain('inventory.plan.full.leave');
+    });
+
+    it('asks the browser for its own full screen where it has one, and gives it back on leaving', async () => {
+      browserOffers();
+      await consult();
+      await enter();
+      expect(requestFullscreen).toHaveBeenCalledTimes(1);
+
+      press('stock-map-full-leave');
+      await settle();
+
+      expect(exitFullscreen).toHaveBeenCalledTimes(1);
+      expect(full()).toBe(false);
+      expect(TestBed.inject(Immersive).on()).toBe(false);
+    });
+
+    /** The browser takes the first Échap itself and never hands it to the page: its leaving is the map's. */
+    it('leaves with the browser when the browser leaves its full screen', async () => {
+      browserOffers();
+      await consult();
+      await enter();
+
+      page.fullscreenElement = null;
+      document.dispatchEvent(new Event('fullscreenchange'));
+      await settle();
+
+      expect(full()).toBe(false);
+      expect(TestBed.inject(Immersive).on()).toBe(false);
+      expect(exitFullscreen).not.toHaveBeenCalled();
+    });
+
+    it('keeps its own full screen where the browser refuses, or has none (an iPhone)', async () => {
+      browserOffers(false);
+      await consult();
+      await enter();
+      expect(requestFullscreen).toHaveBeenCalledTimes(1);
+      expect(full()).toBe(true);
+
+      press('stock-map-full-leave');
+      await settle();
+      // Never held, never given back: exiting a full screen the page does not hold throws in a browser.
+      expect(exitFullscreen).not.toHaveBeenCalled();
+
+      delete (document as unknown as Record<string, unknown>)['fullscreenEnabled'];
+      await enter();
+      expect(requestFullscreen).toHaveBeenCalledTimes(1);
+      expect(full()).toBe(true);
+    });
+
+    it('leaves on Échap, and keeps what was chosen', async () => {
+      await consult();
+      await choose();
+      await enter();
+
+      key('Escape');
+      await settle();
+
+      expect(full()).toBe(false);
+      expect(q('stock-map-selection')?.textContent).toContain('R1');
+      expect(document.activeElement).toBe(q('stock-map-full'));
+    });
+
+    it('lets Échap go on letting the choice go outside full screen', async () => {
+      await consult();
+      await choose();
+
+      key('Escape');
+      await settle();
+
+      expect(q('stock-map-selection')).toBeNull();
+    });
+
+    /** F is a screen key, held one scan gap by the shell like the others, so a code beginning with it opens nothing. */
+    it('goes in and out with F, declared as the screen’s key', async () => {
+      await consult();
+      const screen = TestBed.inject(ScreenActions);
+
+      screen.forKey('f')?.run?.();
+      await settle();
+      expect(full()).toBe(true);
+      expect(screen.forKey('f')?.label).toBe('inventory.plan.full.leave_short');
+
+      screen.forKey('F')?.run?.();
+      await settle();
+      expect(full()).toBe(false);
+      expect(screen.forKey('f')?.label).toBe('inventory.plan.full.enter');
+    });
+
+    it('offers no F where there is no plan to fill the window with', async () => {
+      floors.set([]);
+      await consult();
+
+      expect(TestBed.inject(ScreenActions).forKey('f')).toBeUndefined();
+      expect(q('stock-map-full')).toBeNull();
+    });
+
+    it('holds the floor, the lists, the views, the search and the way out in one bar', async () => {
+      await consult();
+      await enter();
+
+      const bar = q('stock-map-bar') as HTMLElement;
+      for (const part of [
+        'stock-map-full-lists',
+        'stock-map-full-floor',
+        'stock-map-view-plan',
+        'stock-map-mode-read',
+        'stock-map-search',
+        'stock-map-full-leave',
+      ]) {
+        expect(bar.querySelector(`[data-testid="${part}"]`), part).not.toBeNull();
+      }
+      // One search, moved into the bar rather than drawn twice.
+      expect(
+        fixture.nativeElement.querySelectorAll('[data-testid="stock-map-search"]').length,
+      ).toBe(1);
+    });
+
+    it('opens the lists beside the board behind « Listes »', async () => {
+      await consult();
+      await enter();
+      expect(layer().classList.contains('twes-map-lists')).toBe(false);
+
+      press('stock-map-full-lists');
+      await settle();
+
+      expect(q('stock-map-full-lists')?.getAttribute('aria-pressed')).toBe('true');
+      expect(layer().classList.contains('twes-map-lists')).toBe(true);
+    });
+
+    it('changes floor from the bar', async () => {
+      await consult();
+      await enter();
+      expect(q('stock-map-full-floor')?.textContent).toContain('Rez-de-chaussée');
+
+      press('stock-map-full-floor');
+      await settle();
+      (document.querySelector('[data-testid="stock-map-full-floor-f2"]') as HTMLElement).click();
+      await settle();
+
+      expect(facade.loadDrawings).toHaveBeenLastCalledWith('c1', 'f2');
+    });
+
+    it('closes the chosen place’s panel, which lets the place go', async () => {
+      await consult();
+      await choose();
+      await enter();
+
+      press('stock-map-panel-close');
+      await settle();
+
+      expect(q('stock-map-selection')).toBeNull();
+      expect(full()).toBe(true);
+    });
+
+    it('offers no close outside full screen, where the panel has its own place', async () => {
+      await consult();
+      await choose();
+
+      expect(q('stock-map-panel-close')).toBeNull();
+    });
+
+    it('arranges in full screen too', async () => {
+      await consult();
+      await enter();
+
+      press('stock-map-mode-arrange');
+      await settle();
+
+      expect(full()).toBe(true);
+      expect(q('stock-map-palette')).not.toBeNull();
+    });
+
+    it('lets a phone’s panel go from the plan, not from a close of its own', async () => {
+      windowClass.set('compact');
+      await consult();
+      await choose();
+      await enter();
+
+      expect(q('stock-map-selection')).not.toBeNull();
+      expect(q('stock-map-panel-close')).toBeNull();
+    });
+
+    /** On a phone: Consulter only, as today; the lists, the floors and « Façade » wait in « ☰ » (00:27). */
+    it('keeps a phone’s bar to « ☰ », the views and the way out', async () => {
+      windowClass.set('compact');
+      await consult();
+      await enter();
+
+      expect(q('stock-map-full-lists')).toBeNull();
+      expect(q('stock-map-full-floor')).toBeNull();
+      expect(q('stock-map-search')).toBeNull();
+      expect(q('stock-map-view-facade')).toBeNull();
+      expect(q('stock-map-reading')).toBeNull();
+      expect(q('stock-map-full-leave')?.getAttribute('aria-label')).toBe(
+        'inventory.plan.full.leave_short',
+      );
+
+      press('stock-map-full-menu');
+      await settle();
+      const menu = document.querySelector('.cdk-overlay-container') as HTMLElement;
+      expect(menu.querySelector('[data-testid="stock-map-full-menu-lists"]')).not.toBeNull();
+      expect(menu.querySelector('[data-testid="stock-map-full-floor-f2"]')).not.toBeNull();
+      expect(menu.querySelector('[data-testid="stock-map-full-menu-facade"]')).not.toBeNull();
+    });
+
+    it('gives the browser its screen back, and the shell its place, when the page is left', async () => {
+      browserOffers();
+      await consult();
+      await enter();
+
+      fixture.destroy();
+
+      expect(exitFullscreen).toHaveBeenCalledTimes(1);
+      expect(TestBed.inject(Immersive).on()).toBe(false);
+    });
   });
 });

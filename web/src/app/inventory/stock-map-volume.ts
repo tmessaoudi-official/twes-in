@@ -85,6 +85,8 @@ export class StockMapVolume {
   readonly lit = input.required<ReadonlySet<string>>();
   /** The drawings chosen on the plan, in the list or here. */
   readonly chosen = input<ReadonlySet<string>>(new Set());
+  /** Fills the space it is given, as the map over the whole window gives it, rather than sizing itself to the window. */
+  readonly filling = input(false);
   /** A drawing clicked here, by its id: the page chooses it everywhere. */
   readonly pick = output<string>();
 

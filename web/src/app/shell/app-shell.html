@@ -11,12 +11,13 @@
      the window, never taller, as Material lays a sidenav out: the page scrolls inside the content, and the rail keeps
      its foot (the account menu, the fold toggle) on screen however long the page (a grown container put it 1000 px
      down a long home). -->
-<mat-sidenav-container class="twes-shell h-full" autosize>
+<mat-sidenav-container class="twes-shell h-full" [class.is-immersive]="immersive.on()" autosize>
   <mat-sidenav
     #drawer
     [mode]="handset() ? 'over' : 'side'"
     [opened]="!handset()"
     class="twes-shell-nav"
+    [attr.inert]="immersive.on() ? '' : null"
     [style.width.px]="rail() ? 80 : 248"
   >
     <!-- The rail of the approved design (docs/SPEC.md § 7, 2026-09-25 09:03; round-6 boards): the company at its head,
@@ -238,7 +239,7 @@
     <!-- On a phone the bar names the company and carries the search, the bell and the member. Wider, the rail has
          the rest and the bar keeps the search at its centre, always there (docs/SPEC.md § 7, 2026-09-26 08:52, row
          146), with the scanning controls at its end. -->
-    <header #topBar class="sticky top-0 z-10">
+    <header #topBar class="sticky top-0 z-10" [attr.inert]="immersive.on() ? '' : null">
       <mat-toolbar class="twes-shell-bar gap-2" [class.is-slim]="!handset()">
         @if (handset()) {
           <div class="flex min-w-0 shrink items-center gap-2" data-testid="top-bar-leading">
@@ -498,7 +499,7 @@
       }
     </mat-menu>
 
-    <app-subscription-notice />
+    <app-subscription-notice [attr.inert]="immersive.on() ? '' : null" />
 
     <!-- In settings the area docks its own list against the rail, so main gives it the whole width with no gutter
          and no cap; everywhere else the page keeps its reading measure (design review finding 7). -->
@@ -523,16 +524,17 @@
       }
       <!-- The legal line closes the page and scrolls with it (row 147); in settings the area draws it beside its list. -->
       @if (!inSettings()) {
-        <app-legal-footer />
+        <app-legal-footer [attr.inert]="immersive.on() ? '' : null" />
       }
     </main>
     <!-- What is stored, on a first visit: the last row of the page, held at its foot, over nothing. -->
-    <app-cookie-notice />
+    <app-cookie-notice [attr.inert]="immersive.on() ? '' : null" />
 
     @if (handset()) {
       <nav
         #bottomBarNav
         class="twes-bottom-bar"
+        [attr.inert]="immersive.on() ? '' : null"
         [attr.aria-label]="'shell.bottom_navigation' | translate"
         data-testid="bottom-bar"
       >

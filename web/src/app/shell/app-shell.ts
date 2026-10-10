@@ -102,6 +102,7 @@ import {
   withComing,
 } from './nav-manifest';
 import { comingEntries, plannedCommands } from './planned-nav';
+import { Immersive } from '../shared/ui/immersive';
 import { SETTINGS_BESIDE_WINDOW, WINDOW_CLASS } from '../shared/ui/window-class';
 
 /**
@@ -223,6 +224,8 @@ export class AppShell {
   protected readonly me = this.auth.me;
   protected readonly signingOut = signal(false);
   protected readonly windowClass = inject(WINDOW_CLASS);
+  /** A page over the whole window: the shell steps behind it and out of the keyboard's way. */
+  protected readonly immersive = inject(Immersive);
   protected readonly handset = computed(() => this.windowClass() === 'compact');
   /** The count as the bell writes it: past nine, 9+. */
   protected badge(count: number): string {

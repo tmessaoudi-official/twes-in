@@ -1,13 +1,113 @@
 <app-page-tabs [tabs]="tabs" label="nav.stock">
-  <section class="flex flex-col gap-4">
+  <!--
+    In full screen the page's own pieces are laid over the whole window rather than drawn again, so what is chosen, a
+    move under way and an unsaved arrangement are the same on both sides of the button (stock-map-page.css).
+  -->
+  <section
+    class="flex flex-col gap-4"
+    [class.twes-map-full]="full()"
+    [class.twes-map-lists]="listsOpen()"
+    [class.twes-map-arranging]="arranging()"
+    [class.twes-map-compact]="full() && compact()"
+    [class.twes-map-medium]="full() && windowClass() === 'medium'"
+    data-testid="stock-map-layer"
+  >
     <!--
       The mode is always on screen (the brief's § 5.1): the switch to whoever may arrange on a window wide enough to
       draw on, a quiet « Lecture » chip to everyone else, so nobody is ever in a mode they cannot see.
     -->
-    <div class="flex flex-wrap items-center gap-3">
-      <h1 class="me-auto text-3xl font-semibold" data-testid="stock-map-title">
+    <div
+      class="twes-map-bar flex flex-wrap items-center gap-3"
+      [attr.aria-label]="full() ? ('inventory.plan.full.bar' | translate) : null"
+      [attr.role]="full() ? 'group' : null"
+      data-testid="stock-map-bar"
+    >
+      <!-- In full screen the title stays the page's heading for whoever reads it, and gives its room to the bar. -->
+      <h1
+        class="twes-map-title me-auto text-3xl font-semibold"
+        [class.sr-only]="full()"
+        data-testid="stock-map-title"
+      >
         {{ 'inventory.plan.title' | translate }}
       </h1>
+      @if (full()) {
+        @if (compact()) {
+          <!-- A phone's bar has room for « ☰ », the views and the way out; the rest waits in the menu (00:27). -->
+          <button
+            mat-icon-button
+            type="button"
+            [matMenuTriggerFor]="phoneMenu"
+            [appLabel]="'inventory.plan.full.menu' | translate"
+            data-testid="stock-map-full-menu"
+          >
+            <mat-icon aria-hidden="true">menu</mat-icon>
+          </button>
+          <mat-menu #phoneMenu="matMenu">
+            <button
+              mat-menu-item
+              type="button"
+              (click)="toggleLists()"
+              data-testid="stock-map-full-menu-lists"
+            >
+              <mat-icon aria-hidden="true">menu</mat-icon>
+              {{
+                (listsOpen() ? 'inventory.plan.full.lists_hide' : 'inventory.plan.full.lists')
+                  | translate
+              }}
+            </button>
+            <ng-container [ngTemplateOutlet]="floorItems" />
+            @if (showComing()) {
+              <button
+                mat-menu-item
+                type="button"
+                aria-disabled="true"
+                data-testid="stock-map-full-menu-facade"
+              >
+                {{ 'inventory.plan.view_names.facade' | translate }}
+                <span class="twes-soon" data-testid="soon">{{ 'shell.soon' | translate }}</span>
+              </button>
+            }
+          </mat-menu>
+        } @else {
+          <button
+            [matButton]="listsOpen() ? 'filled' : 'outlined'"
+            type="button"
+            [attr.aria-pressed]="listsOpen()"
+            (click)="toggleLists()"
+            data-testid="stock-map-full-lists"
+          >
+            <mat-icon aria-hidden="true">menu</mat-icon>
+            {{ 'inventory.plan.full.lists' | translate }}
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            [matMenuTriggerFor]="floorMenu"
+            [appLabel]="'inventory.plan.full.floor' | translate"
+            data-testid="stock-map-full-floor"
+          >
+            <mat-icon aria-hidden="true">layers</mat-icon>
+            {{ floor()?.name }}
+          </button>
+          <mat-menu #floorMenu="matMenu">
+            <ng-container [ngTemplateOutlet]="floorItems" />
+          </mat-menu>
+        }
+        <ng-template #floorItems>
+          @for (one of floors(); track one.id) {
+            <button
+              mat-menu-item
+              type="button"
+              [attr.aria-current]="one.id === floor()?.id ? 'true' : null"
+              (click)="showFloor(one.id)"
+              [attr.data-testid]="'stock-map-full-floor-' + one.id"
+            >
+              <mat-icon aria-hidden="true">layers</mat-icon>
+              {{ one.name }}
+            </button>
+          }
+        </ng-template>
+      }
       @if (company() && floors().length > 0) {
         <div
           class="flex gap-1 rounded-lg border border-outline-variant p-1"
@@ -53,7 +153,7 @@
                   {{ 'inventory.plan.view_names.volume' | translate }}
                 </button>
               }
-            } @else if (showComing()) {
+            } @else if (showComing() && !(full() && compact())) {
               <!--
                 Reached and named, never a dead end: a view that is not built says so where it will be, rather than
                 leaving a person looking for a promised view and finding nothing.
@@ -99,35 +199,91 @@
             {{ 'inventory.plan.modes.arrange' | translate }}
           </button>
         </div>
-      } @else if (company()) {
+      } @else if (company() && !(full() && compact())) {
+        <!-- A phone's full-screen bar keeps to the views and the way out; the board's own note says « Lecture ». -->
         <span
           class="rounded-full bg-surface-container-high px-3 py-1 text-sm"
           data-testid="stock-map-reading"
           >{{ 'inventory.plan.reading' | translate }}</span
         >
       }
+      @if (mayFill()) {
+        <div class="ms-auto flex items-center gap-2">
+          @if (full()) {
+            @if (!compact() && !arranging()) {
+              <ng-container [ngTemplateOutlet]="searchField" />
+            }
+            @if (compact()) {
+              <button
+                mat-icon-button
+                type="button"
+                (click)="leaveFull()"
+                [appLabel]="'inventory.plan.full.leave_short' | translate"
+                data-testid="stock-map-full-leave"
+              >
+                <mat-icon aria-hidden="true">fullscreen_exit</mat-icon>
+              </button>
+            } @else {
+              <button
+                mat-flat-button
+                type="button"
+                (click)="leaveFull()"
+                data-testid="stock-map-full-leave"
+              >
+                <mat-icon aria-hidden="true">fullscreen_exit</mat-icon>
+                {{ 'inventory.plan.full.leave' | translate }}
+              </button>
+            }
+          } @else {
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="enterFull()"
+              data-testid="stock-map-full"
+            >
+              <mat-icon aria-hidden="true">fullscreen</mat-icon>
+              {{ 'inventory.plan.full.enter' | translate }}
+            </button>
+          }
+        </div>
+      }
     </div>
+
+    <ng-template #searchField>
+      <app-pick-field
+        class="twes-map-search w-full max-w-xl lg:max-w-sm lg:shrink-0"
+        [label]="'inventory.plan.search.label' | translate"
+        [hint]="full() ? '' : ('inventory.plan.search.hint' | translate)"
+        [noneFoundLabel]="'inventory.plan.search.none_found' | translate"
+        testId="stock-map-search"
+        [search]="searchProducts"
+        [value]="searchPick()"
+        (picked)="searchFor($event)"
+      />
+    </ng-template>
 
     <!--
       Reading the plan is mostly asking where something is: the search stands above the board, in Consulter only, so a
       highlight never hides a shape being moved. A scanner typing here, or anywhere on the page, does the same.
     -->
-    @if (company() && floors().length > 0 && !arranging()) {
+    <!--
+      In full screen the search is in the bar, and what it found stands below the bar, over the board's top: the
+      search's only answer, which the captures, taken with nothing searched, do not show.
+    -->
+    @if (
+      company() &&
+      floors().length > 0 &&
+      !arranging() &&
+      (!full() || found() !== null || note() !== null)
+    ) {
       <!--
         On a wide screen what was found stands beside the search rather than above the board: there, it pushed the
         board's own controls below the window.
       -->
       <div class="flex flex-col gap-3 lg:flex-row lg:items-start">
-        <app-pick-field
-          class="w-full max-w-xl lg:max-w-sm lg:shrink-0"
-          [label]="'inventory.plan.search.label' | translate"
-          [hint]="'inventory.plan.search.hint' | translate"
-          [noneFoundLabel]="'inventory.plan.search.none_found' | translate"
-          testId="stock-map-search"
-          [search]="searchProducts"
-          [value]="searchPick()"
-          (picked)="searchFor($event)"
-        />
+        @if (!full()) {
+          <ng-container [ngTemplateOutlet]="searchField" />
+        }
         @if (found(); as now) {
           <div
             class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-outline-variant bg-surface-container-low p-4 lg:flex-1 lg:px-4 lg:py-2"
@@ -348,10 +504,10 @@
         the fold while a shape is dragged. On a phone the board comes first.
       -->
       <div
-        class="grid gap-4 [grid-template-areas:'board'_'panel'_'rail'] lg:grid-cols-[18rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:[grid-template-areas:'panel_board'_'rail_board'] 2xl:grid-cols-[16rem_minmax(0,1fr)_22rem] 2xl:grid-rows-1 2xl:[grid-template-areas:'rail_board_panel']"
+        class="twes-map-grid grid gap-4 [grid-template-areas:'board'_'panel'_'rail'] lg:grid-cols-[18rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr] lg:[grid-template-areas:'panel_board'_'rail_board'] 2xl:grid-cols-[16rem_minmax(0,1fr)_22rem] 2xl:grid-rows-1 2xl:[grid-template-areas:'rail_board_panel']"
       >
         <!-- ——— the rail: floors, the lists that are the plan's keyboard path, and in Aménager the tools ——— -->
-        <div class="flex min-w-0 flex-col gap-4 [grid-area:rail]">
+        <div class="twes-map-rail flex min-w-0 flex-col gap-4 [grid-area:rail]">
           <nav class="flex flex-col gap-1" [appLabel]="'inventory.plan.floors' | translate">
             <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
               {{ 'inventory.plan.floors' | translate }}
@@ -461,7 +617,8 @@
           }
 
           @if (arranging()) {
-            <div class="flex flex-col gap-2">
+            <!-- In full screen, the tools alone stand beside the board while arranging, and the lists behind « Listes ». -->
+            <div class="twes-map-rail-tools flex flex-col gap-2">
               <!--
                 One way in: the company's ready-made shapes, a free rectangle, then the building's tools, under one rule
                 said once. Each is a BUTTON and not something only a pointer can take hold of: a shape is posed at the
@@ -709,7 +866,7 @@
             Fetched the first time someone opens the volume, three.js and all, and never with the first page: the
             placeholder holds the board's place meanwhile, so nothing below it jumps.
           -->
-          <div class="min-w-0 [grid-area:board]">
+          <div class="twes-map-board min-w-0 [grid-area:board]">
             @defer (on immediate) {
               <app-stock-map-volume
                 [floorName]="floor()?.name ?? ''"
@@ -718,6 +875,7 @@
                 [structures]="floorStructures()"
                 [lit]="litIds()"
                 [chosen]="chosen()"
+                [filling]="full()"
                 (pick)="pickInVolume($event)"
               />
             } @placeholder {
@@ -739,7 +897,7 @@
           </div>
         } @else {
           <div
-            class="flex min-w-0 flex-col self-start overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest [grid-area:board]"
+            class="twes-map-board flex min-w-0 flex-col self-start overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest [grid-area:board]"
           >
             <div
               class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-outline-variant px-3 py-2 text-sm"
@@ -784,7 +942,7 @@
               arrows move what is shown. Its buttons keep their own Enter and Space.
             -->
             <div
-              class="flex flex-col focus-visible:outline-2 focus-visible:outline-primary lg:h-[max(20rem,calc(100dvh-24rem-var(--twes-cookie-notice-height,0px)))]"
+              class="twes-map-board-area flex flex-col focus-visible:outline-2 focus-visible:outline-primary lg:h-[max(20rem,calc(100dvh-24rem-var(--twes-cookie-notice-height,0px)))]"
               tabindex="0"
               role="group"
               [attr.aria-label]="'inventory.plan.board' | translate"
@@ -819,7 +977,6 @@
                   (document:pointermove)="drags($event)"
                   (document:pointerup)="drops($event)"
                   (document:pointercancel)="drops($event)"
-                  (document:keydown.escape)="abandon()"
                   (document:keydown)="spaceDown($event)"
                   (document:keyup)="spaceUp($event)"
                   (window:blur)="spaceHeld.set(false)"
@@ -1325,8 +1482,31 @@
 
         <!-- ——— the panel: whatever is chosen, read in Consulter, edited in Aménager ——— -->
         <div
-          class="flex min-w-0 flex-col [grid-area:panel] lg:max-h-[max(26rem,calc(100dvh-18rem-var(--twes-cookie-notice-height,0px)))]"
+          class="twes-map-panel flex min-w-0 flex-col [grid-area:panel] lg:max-h-[max(26rem,calc(100dvh-18rem-var(--twes-cookie-notice-height,0px)))]"
         >
+          <!--
+            In full screen the panel floats over the window's side, so it closes itself: closing lets the place go. Never
+            over a form, whose own Annuler says what becomes of what was typed; on a phone the panel is the page below the
+            board, as the captures show it, and a press on bare floor lets the place go.
+          -->
+          @if (
+            full() &&
+            !compact() &&
+            !floorFormGroup() &&
+            !inspecting() &&
+            (selected() !== null || chosenDrawings().length > 1 || selectedStructure() !== null)
+          ) {
+            <button
+              mat-icon-button
+              type="button"
+              class="twes-map-panel-close"
+              (click)="letGo()"
+              [appLabel]="'inventory.plan.full.close_panel' | translate"
+              data-testid="stock-map-panel-close"
+            >
+              <mat-icon aria-hidden="true">close</mat-icon>
+            </button>
+          }
           @if (floorFormGroup()) {
             <div
               class="twes-form-stacked flex flex-col gap-4 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-4"

@@ -3,7 +3,13 @@
   switches leave: sized alone, the canvas ran below the window and the floor was drawn low and cut.
 -->
 <div
-  class="flex min-w-0 flex-col overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest lg:h-[max(24rem,calc(100dvh-21.5rem-var(--twes-cookie-notice-height,0px)))]"
+  class="flex min-w-0 flex-col overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest"
+  [class]="
+    filling()
+      ? 'h-full'
+      : 'lg:h-[max(24rem,calc(100dvh-21.5rem-var(--twes-cookie-notice-height,0px)))]'
+  "
+  data-testid="stock-volume-card"
 >
   <div
     class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-outline-variant px-3 py-2 text-sm"
@@ -46,7 +52,8 @@
     </span>
   </div>
   <div
-    class="relative h-[55dvh] min-h-[20rem] lg:h-auto lg:min-h-0 lg:flex-1"
+    class="relative min-h-[20rem] lg:h-auto lg:min-h-0 lg:flex-1"
+    [class]="filling() ? 'flex-1' : 'h-[55dvh]'"
     data-testid="stock-volume"
   >
     @if (webgl() === 'missing') {

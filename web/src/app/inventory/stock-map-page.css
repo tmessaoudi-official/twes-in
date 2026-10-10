@@ -31,9 +31,7 @@
   stroke: var(--twes-status-warning-fg);
   stroke-width: 0.2;
 }
-.twes-map-hit-label {
-  fill: var(--twes-status-warning-fg);
-}
+.twes-map-hit-label,
 .twes-map-hit-badge {
   fill: var(--twes-status-warning-fg);
 }
@@ -56,4 +54,190 @@
 .twes-map-destination {
   stroke: var(--mat-sys-tertiary);
   stroke-width: 0.22;
+}
+
+/*
+ * The map over the whole window (docs/SPEC.md § 7, 2026-10-09 23:19, as captured 2026-10-10 00:27): the page's own
+ * pieces laid over a layer the size of the window, so nothing is drawn twice. Outside Tailwind's layer, these win
+ * over the page's grid utilities while the map is full, and give them back the moment it is not. The shell lifts the
+ * page above its rail meanwhile (`Immersive`); 900 stays below the CDK's overlays, so menus, the search's list and
+ * the toasts still open over it.
+ */
+.twes-map-full {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem 1rem;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: var(--mat-sys-surface-container-low);
+}
+
+.twes-map-full .twes-map-bar {
+  flex-wrap: nowrap;
+  min-height: 3.75rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 1rem;
+  background: var(--mat-sys-surface-container-lowest);
+  box-shadow: var(--mat-sys-level2);
+}
+
+.twes-map-full .twes-map-search {
+  width: 16.25rem;
+}
+
+/* The board fills what the bar leaves; the panel stands on its right while it has something to say. */
+.twes-map-full .twes-map-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) 23.75rem;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: 'board panel';
+}
+
+.twes-map-full:is(.twes-map-lists, .twes-map-arranging) .twes-map-grid {
+  grid-template-columns: 18.75rem minmax(0, 1fr) 23.75rem;
+  grid-template-areas: 'rail board panel';
+}
+
+/*
+ * With nothing to say the panel leaves. `:where` keeps these at the plain layout's weight, so the medium and compact
+ * windows below override them by their order alone.
+ */
+.twes-map-full
+  .twes-map-grid:where(:has(> .twes-map-panel > [data-testid='stock-map-panel-hint'])) {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'board';
+}
+
+.twes-map-full:is(.twes-map-lists, .twes-map-arranging)
+  .twes-map-grid:where(:has(> .twes-map-panel > [data-testid='stock-map-panel-hint'])) {
+  grid-template-columns: 18.75rem minmax(0, 1fr);
+  grid-template-areas: 'rail board';
+}
+
+.twes-map-full .twes-map-panel:has(> [data-testid='stock-map-panel-hint']) {
+  display: none;
+}
+
+.twes-map-full .twes-map-board {
+  align-self: stretch;
+  min-height: 0;
+  height: 100%;
+}
+
+.twes-map-full .twes-map-board-area {
+  height: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* The rail and the panel float as drawers on the window's sides. */
+.twes-map-full .twes-map-rail,
+.twes-map-full .twes-map-panel {
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+  border-radius: 1rem;
+  background: var(--mat-sys-surface-container-lowest);
+  box-shadow: var(--mat-sys-level2);
+}
+
+.twes-map-full .twes-map-rail {
+  padding: 1rem;
+}
+
+.twes-map-full .twes-map-panel {
+  position: relative;
+  align-self: stretch;
+  animation: twes-map-slide 200ms var(--twes-ease-decelerate);
+}
+
+/* Moved only, never faded: a scan for contrast mid-way would read a colour that is on its way. */
+@keyframes twes-map-slide {
+  from {
+    transform: translateX(1.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twes-map-full .twes-map-panel {
+    animation: none;
+  }
+}
+
+.twes-map-panel-close {
+  position: absolute;
+  inset-block-start: 0.25rem;
+  inset-inline-end: 0.25rem;
+  z-index: 1;
+}
+
+.twes-map-full:not(.twes-map-lists):not(.twes-map-arranging) .twes-map-rail {
+  display: none;
+}
+
+/* Arranging, the tools alone stand beside the board, as short as they are; the lists wait behind « Listes ». */
+.twes-map-full.twes-map-arranging:not(.twes-map-lists) .twes-map-rail {
+  align-self: start;
+}
+
+.twes-map-full.twes-map-arranging:not(.twes-map-lists) .twes-map-rail > :not(.twes-map-rail-tools) {
+  display: none;
+}
+
+/* Between a phone and a wide screen the drawers float over the board rather than narrowing it to nothing. */
+.twes-map-full.twes-map-medium .twes-map-grid {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'board';
+}
+
+.twes-map-full.twes-map-medium .twes-map-rail,
+.twes-map-full.twes-map-medium .twes-map-panel {
+  position: absolute;
+  inset-block: 0;
+  z-index: 1;
+  grid-area: auto;
+}
+
+.twes-map-full.twes-map-medium .twes-map-rail {
+  inset-inline-start: 0;
+  width: min(18.75rem, 45%);
+}
+
+.twes-map-full.twes-map-medium .twes-map-panel {
+  inset-inline-end: 0;
+  width: min(23.75rem, 55%);
+}
+
+/* A phone: the bar, the board as tall as its floor, and the panel below it, the layer scrolling as a page does. */
+.twes-map-full.twes-map-compact {
+  overflow-y: auto;
+  padding: 0.5rem;
+  gap: 0.5rem;
+}
+
+.twes-map-full.twes-map-compact .twes-map-bar {
+  min-height: 3.5rem;
+}
+
+.twes-map-full.twes-map-compact .twes-map-grid {
+  flex: none;
+  gap: 0.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: none;
+  grid-template-areas: 'rail' 'board' 'panel';
+}
+
+.twes-map-full.twes-map-compact .twes-map-board {
+  height: auto;
+}
+
+.twes-map-full.twes-map-compact .twes-map-panel {
+  margin: 0 -0.5rem -0.5rem;
+  overflow: visible;
+  border-radius: 1.75rem 1.75rem 0 0;
+  animation: none;
 }

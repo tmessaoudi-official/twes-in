@@ -127,7 +127,7 @@ describe('refuseReservedShortcut', () => {
   it('accepts the keys screens share, and no other, so a person may give the shell any key but those', () => {
     // The keys a person may choose for the shell (row 125) are everything but the browser's, the interface's and
     // these: a screen claiming a key outside them could collide with a person's own choice.
-    expect(SCREEN_KEYS).toEqual(['s', 'v', 'l', 'p']);
+    expect(SCREEN_KEYS).toEqual(['s', 'v', 'l', 'p', 'f']);
     for (const key of SCREEN_KEYS) expect(() => refuseReservedShortcut(key), key).not.toThrow();
     for (const key of ['i', '7', 'é', 'x']) {
       expect(() => refuseReservedShortcut(key), key).toThrow(/screen/i);

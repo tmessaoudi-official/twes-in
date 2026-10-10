@@ -2645,6 +2645,17 @@
         "undo": "Undo",
         "undone": "Move undone: {{product}} is back in {{from}}.",
         "undo_failed": "The move of {{product}} could not be undone: what was moved is no longer where it was put."
+      },
+      "full": {
+        "enter": "Full screen",
+        "leave": "Leave · Esc",
+        "leave_short": "Leave full screen",
+        "lists": "Lists",
+        "lists_hide": "Hide the lists",
+        "floor": "Change floor",
+        "menu": "Lists, floors and views",
+        "bar": "Plan controls",
+        "close_panel": "Close the panel"
       }
     },
     "scan": {
@@ -3959,7 +3970,7 @@
       "length": "A single key: a letter or a sign.",
       "browser": "The browser already uses this key.",
       "interface": "This key already works everywhere (“?” and “[”).",
-      "screen": "A page already uses this key (S, V, L or P).",
+      "screen": "A page already uses this key (S, V, L, P or F).",
       "count": "Kept for the count typed before a scan (digits and ×).",
       "taken": "Already given to another action."
     },

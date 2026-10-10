@@ -84,6 +84,21 @@ describe('StockMapVolume', () => {
 
   afterEach(() => vi.restoreAllMocks());
 
+  /** Over the whole window the card fills its cell; on the page it sizes itself to the window, as it always did. */
+  it('fills the space it is given when asked to, rather than the window', async () => {
+    const card = (): HTMLElement =>
+      fixture.nativeElement.querySelector('[data-testid="stock-volume-card"]') as HTMLElement;
+    expect(card().classList).not.toContain('h-full');
+    expect(card().className).toContain('lg:h-[max(');
+
+    fixture.componentRef.setInput('filling', true);
+    fixture.detectChanges();
+
+    expect(card().classList).toContain('h-full');
+    expect(card().className).not.toContain('lg:h-[max(');
+    expect(card().classList).toContain('flex');
+  });
+
   it('says a browser without WebGL 2 cannot show it, and keeps saying what the floor holds', () => {
     expect(q('stock-volume-missing')?.textContent).toContain('Pas de WebGL 2.');
     expect(q('stock-volume-canvas')?.classList).toContain('hidden');

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 import { inACompany, signIn } from './session';
+import { wcagViolations } from './axe';
 import { toast } from './toast';
 
 // Row 83's drawn stock map through the real stack: the owner adds a floor of the default establishment, draws a
@@ -800,6 +801,87 @@ test.describe('the drawn stock map', () => {
         expect([204, 404]).toContain(status);
         await clean(page, fixture, floorName);
       }
+    }
+  });
+
+  /**
+   * The map over the whole window (docs/SPEC.md § 7, 2026-10-09 23:19): F lays it over the shell, the chosen place's
+   * panel beside it, and Échap gives the page back with the focus where it was. Nothing is moved, so nothing leaks.
+   */
+  test('fills the window with the map on F, and gives the page back on Échap', async ({ page }) => {
+    const stamp = Date.now().toString().slice(-8);
+    const code = `FUL${stamp}`;
+    const floorName = `Plein ${stamp}`;
+
+    await signIn(page);
+    await inACompany(page, CSRF);
+    const fixture = await prepare(page, code);
+
+    try {
+      await page.goto('/stock/plan?mode=arrange');
+      await page.getByTestId('stock-floor-add').click();
+      await page.getByTestId('field-name').fill(floorName);
+      await page.getByTestId('field-level').fill(String(fixture.level));
+      await page.getByTestId('field-widthMetres').fill('20');
+      await page.getByTestId('field-depthMetres').fill('10');
+      await page.getByTestId('stock-floor-save').click();
+      await expect(toast(page)).toContainText('Étage enregistré');
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
+
+      await page.getByTestId('stock-map-trace').click();
+      await page.getByTestId('stock-map-trace-type').click();
+      await chooseExisting(page);
+      await page.getByTestId('field-locationId').click();
+      await page.getByRole('option', { name: new RegExp(code) }).click();
+      await page.getByTestId('field-x').fill('2');
+      await page.getByTestId('field-y').fill('2');
+      await page.getByTestId('field-width').fill('6');
+      await page.getByTestId('field-depth').fill('1');
+      await page.getByTestId('stock-drawing-save').click();
+      await expect(toast(page)).toContainText('Rectangle enregistré');
+
+      await page.getByTestId('stock-map-mode-read').click();
+      await page.getByRole('button', { name: floorButton(floorName) }).click();
+      await page.getByTestId(`stock-drawing-${code}`).click();
+      await expect(page.getByTestId('stock-map-selection')).toContainText(code);
+
+      // A key of the screen's, held one scan gap by the shell before it runs.
+      await page.getByTestId('stock-map-board').focus();
+      await page.keyboard.press('f');
+      const layer = page.getByTestId('stock-map-layer');
+      await expect(layer).toHaveClass(/twes-map-full/);
+      await expect(page.getByTestId('stock-map-full-leave')).toBeVisible();
+
+      // Over the rail and the bar, not under them: what lies where the rail is drawn is the map's. The rail is inert
+      // meanwhile, and an inert element is passed over by `elementFromPoint` wherever it is painted, so it is asked
+      // with the rail made reachable for that one question: the answer is then about which of the two is on top.
+      const viewport = page.viewportSize()!;
+      await expect(page.locator('mat-sidenav')).toHaveAttribute('inert', '');
+      const covered = await page.evaluate(
+        ([x, y]) => {
+          const rail = document.querySelector('mat-sidenav')!;
+          rail.removeAttribute('inert');
+          const found = document.elementFromPoint(x, y);
+          rail.setAttribute('inert', '');
+          const map = document.querySelector('[data-testid="stock-map-layer"]');
+          return map !== null && found !== null && map.contains(found);
+        },
+        [40, Math.round(viewport.height / 2)] as const,
+      );
+      expect(covered).toBe(true);
+      const board = (await page.getByTestId('stock-map-board').boundingBox())!;
+      expect(board.width).toBeGreaterThan(viewport.width * 0.5);
+      expect(board.height).toBeGreaterThan(viewport.height * 0.6);
+      await expect(page.getByTestId('stock-map-selection')).toContainText(code);
+      await page.screenshot({ path: test.info().outputPath('full-screen.png') });
+      expect(await wcagViolations(page)).toEqual([]);
+
+      await page.keyboard.press('Escape');
+      await expect(layer).not.toHaveClass(/twes-map-full/);
+      await expect(page.getByTestId('stock-map-full')).toBeFocused();
+      await expect(page.getByTestId('stock-map-selection')).toContainText(code);
+    } finally {
+      if (!page.isClosed()) await clean(page, fixture, floorName);
     }
   });
 
