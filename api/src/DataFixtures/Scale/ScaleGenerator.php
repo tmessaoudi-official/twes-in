@@ -60,6 +60,8 @@ final class ScaleGenerator
         'audit_log' => 'the audit trail of a clone is not written; a follow-up slice grows it',
         'contact' => 'people of a customer: a follow-up slice',
         'customer_credit_entry' => 'what a customer has to their credit: a clone starts with none',
+        'data_erasure' => 'the erasures a company made: a clone made none',
+        'data_erasure_row' => 'what an erasure keeps for its undo: a clone made none',
         'delivery_note' => 'delivery notes: a follow-up slice',
         'delivery_note_line' => 'delivery notes: a follow-up slice',
         'delivery_note_line_tax' => 'delivery notes: a follow-up slice',
