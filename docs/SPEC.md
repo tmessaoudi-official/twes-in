@@ -4850,6 +4850,7 @@ functional tests run in the `tools` container, on the host's network, against th
 - [2026-10-10 13:39] AGREED: at the end of an erasure's 24 hours, the files that only what it erased named (a draft's or a quote's attachments, a floor's plan image) are deleted with their stored content; an undo before then brings them back with the rows (developer).
 - [2026-10-10 13:39] AGREED: only owners see the banner « Annuler l'effacement » and may undo; another member sees the data gone, as after any change (developer).
 - [2026-10-10 13:39] AGREED: while an erasure can still be undone, « Effacer » is refused, says that one is waiting and offers its undo: the banner always has exactly one thing to undo (developer).
+- [2026-10-10 18:01] AGREED: the stopped writers' branches `w2q` (8c915122, beca5dcd) and `w4q` (866fae77, 7af6db34) and their unfinished work (row 224 slice 2; the loss attachments' screens) are integrated after erasure slice 1 is committed: `w2q` first, then `w4q`, each rebased onto master with every gate and its e2e run; then their unfinished work is finished or dropped and the `twes-in-w2` and `twes-in-w4` folders are removed (developer, choosing the recommended option).
 
 ## 8. Status
 
