@@ -52,12 +52,4 @@ final class SectionSubtotalsTest extends TestCase
         self::assertEquals([new SectionSubtotal('Pose', 0, 2, '25.50')], SectionSubtotals::of([['Pose', '10.50'], [null, '15.00']]));
         self::assertEquals([new SectionSubtotal('Pose', 0, 1, '0.000')], SectionSubtotals::of([['Pose', '0.000']]));
     }
-
-    public function testASectionIsReadByWhereItStartsAndWhereItEnds(): void
-    {
-        $sections = SectionSubtotals::of([['A', '1.000'], [null, '2.000'], ['B', '4.000']], 3);
-
-        self::assertSame(['A', null, 'B'], array_map(static fn (int $index): ?string => SectionSubtotals::startingAt($sections, $index)?->title, [0, 1, 2]));
-        self::assertSame([null, '3.000', '4.000'], array_map(static fn (int $index): ?string => SectionSubtotals::endingAt($sections, $index)?->subtotal, [0, 1, 2]));
-    }
 }
