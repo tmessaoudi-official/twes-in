@@ -75,7 +75,6 @@
 }
 
 .twes-map-full .twes-map-bar {
-  flex-wrap: nowrap;
   min-height: 3.75rem;
   padding: 0.375rem 0.625rem;
   border-radius: 1rem;
@@ -83,7 +82,9 @@
   box-shadow: var(--mat-sys-level2);
 }
 
+/* It gives way first when the bar runs short. */
 .twes-map-full .twes-map-search {
+  flex-shrink: 1;
   width: 16.25rem;
 }
 

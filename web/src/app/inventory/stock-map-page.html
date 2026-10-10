@@ -16,8 +16,10 @@
       The mode is always on screen (the brief's § 5.1): the switch to whoever may arrange on a window wide enough to
       draw on, a quiet « Lecture » chip to everyone else, so nobody is ever in a mode they cannot see.
     -->
+    <!-- In full screen the bar keeps one row from a wide screen down, and takes two between a phone and it. -->
     <div
-      class="twes-map-bar flex flex-wrap items-center gap-3"
+      class="twes-map-bar flex items-center gap-3"
+      [class.flex-wrap]="!full() || windowClass() === 'medium'"
       [attr.aria-label]="full() ? ('inventory.plan.full.bar' | translate) : null"
       [attr.role]="full() ? 'group' : null"
       data-testid="stock-map-bar"
@@ -74,6 +76,7 @@
             type="button"
             [attr.aria-pressed]="listsOpen()"
             (click)="toggleLists()"
+            class="shrink-0 whitespace-nowrap"
             data-testid="stock-map-full-lists"
           >
             <mat-icon aria-hidden="true">menu</mat-icon>
@@ -84,10 +87,12 @@
             type="button"
             [matMenuTriggerFor]="floorMenu"
             [appLabel]="'inventory.plan.full.floor' | translate"
+            class="shrink-0"
             data-testid="stock-map-full-floor"
           >
             <mat-icon aria-hidden="true">layers</mat-icon>
-            {{ floor()?.name }}
+            <!-- A long name is cut rather than wrapped; the menu it opens gives it whole. -->
+            <span class="block max-w-40 truncate">{{ floor()?.name }}</span>
           </button>
           <mat-menu #floorMenu="matMenu">
             <ng-container [ngTemplateOutlet]="floorItems" />
@@ -208,7 +213,7 @@
         >
       }
       @if (mayFill()) {
-        <div class="ms-auto flex items-center gap-2">
+        <div class="ms-auto flex min-w-0 items-center gap-2">
           @if (full()) {
             @if (!compact() && !arranging()) {
               <ng-container [ngTemplateOutlet]="searchField" />
@@ -228,6 +233,7 @@
                 mat-flat-button
                 type="button"
                 (click)="leaveFull()"
+                class="shrink-0 whitespace-nowrap"
                 data-testid="stock-map-full-leave"
               >
                 <mat-icon aria-hidden="true">fullscreen_exit</mat-icon>
@@ -251,7 +257,7 @@
 
     <ng-template #searchField>
       <app-pick-field
-        class="twes-map-search w-full max-w-xl lg:max-w-sm lg:shrink-0"
+        class="twes-map-search w-full min-w-32 max-w-xl lg:max-w-sm lg:shrink-0"
         [label]="'inventory.plan.search.label' | translate"
         [hint]="full() ? '' : ('inventory.plan.search.hint' | translate)"
         [noneFoundLabel]="'inventory.plan.search.none_found' | translate"

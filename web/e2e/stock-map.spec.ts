@@ -30,6 +30,50 @@ const floorButton = (name: string): RegExp =>
   new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
 
 /** A rack under the default establishment's own location, through the API. */
+/**
+ * What does not fit in the full screen's bar: a control past the window's edge, over its neighbour, or whose label
+ * runs onto a second line. Each is named with what is wrong, so a failure says which control and how.
+ */
+async function barMisfits(page: Page): Promise<string[]> {
+  return page.getByTestId('stock-map-bar').evaluate((bar) => {
+    const width = document.documentElement.clientWidth;
+    const shown = [...bar.querySelectorAll<HTMLElement>('button, mat-form-field')].filter(
+      (el) => el.offsetParent !== null && !el.closest('mat-form-field button'),
+    );
+    const misfits: string[] = [];
+    const boxes = shown.map((el) => ({
+      name: el.textContent!.trim().replace(/\s+/g, ' '),
+      box: el.getBoundingClientRect(),
+      el,
+    }));
+    for (const { name, box, el } of boxes) {
+      if (box.left < 0 || box.right > width + 0.5) misfits.push(`${name}: outside the window`);
+      // The words alone, not the icon's glyph, which sits on a baseline of its own.
+      const tops: number[] = [];
+      const words = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let node = words.nextNode(); node !== null; node = words.nextNode()) {
+        if (node.parentElement?.closest('mat-icon') || node.textContent!.trim() === '') continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        for (const rect of range.getClientRects()) if (rect.width > 0) tops.push(rect.top);
+      }
+      const lines = tops.filter((top, i) =>
+        tops.slice(0, i).every((other) => Math.abs(other - top) > 8),
+      ).length;
+      if (el.tagName === 'BUTTON' && lines > 1) misfits.push(`${name}: on ${lines} lines`);
+    }
+    for (const [i, a] of boxes.entries()) {
+      for (const b of boxes.slice(i + 1)) {
+        const over = Math.min(a.box.right, b.box.right) - Math.max(a.box.left, b.box.left);
+        const under = Math.min(a.box.bottom, b.box.bottom) - Math.max(a.box.top, b.box.top);
+        if (over > 0.5 && under > 0.5 && !a.el.contains(b.el) && !b.el.contains(a.el))
+          misfits.push(`${a.name} over ${b.name}`);
+      }
+    }
+    return misfits;
+  });
+}
+
 async function prepare(page: Page, code: string): Promise<Fixture> {
   return page.evaluate(
     async ([csrf, locationCode]) => {
@@ -872,6 +916,9 @@ test.describe('the drawn stock map', () => {
       const board = (await page.getByTestId('stock-map-board').boundingBox())!;
       expect(board.width).toBeGreaterThan(viewport.width * 0.5);
       expect(board.height).toBeGreaterThan(viewport.height * 0.6);
+      // The bar holds on a laptop and on a window between a phone and a wide screen: every control inside the
+      // window, none over another, each label on one line. A long floor name is what pushed it out first.
+      expect(await barMisfits(page)).toEqual([]);
       await expect(page.getByTestId('stock-map-selection')).toContainText(code);
       await page.screenshot({ path: test.info().outputPath('full-screen.png') });
       expect(await wcagViolations(page)).toEqual([]);
@@ -880,6 +927,16 @@ test.describe('the drawn stock map', () => {
       await expect(layer).not.toHaveClass(/twes-map-full/);
       await expect(page.getByTestId('stock-map-full')).toBeFocused();
       await expect(page.getByTestId('stock-map-selection')).toContainText(code);
+
+      // Between a phone and a wide screen too; the browser refuses a resize while it holds its own full screen.
+      await page.setViewportSize({ width: 900, height: 800 });
+      await page.getByTestId('stock-map-board').focus();
+      await page.keyboard.press('f');
+      await expect(layer).toHaveClass(/twes-map-medium/);
+      expect(await barMisfits(page)).toEqual([]);
+      await page.keyboard.press('Escape');
+      await expect(layer).not.toHaveClass(/twes-map-full/);
+      await page.setViewportSize(viewport);
     } finally {
       if (!page.isClosed()) await clean(page, fixture, floorName);
     }
