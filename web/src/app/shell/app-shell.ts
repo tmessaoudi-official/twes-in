@@ -30,6 +30,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { TranslatePipe } from '@ngx-translate/core';
 import { filter, map } from 'rxjs';
 import { SETTINGS_INDEX } from './settings-area';
+import { ErasureBanner } from '../data-erasure/erasure-banner';
 import { AuthFacade } from '../auth/auth-facade';
 import { SubscriptionNoticeBar } from '../licensing/subscription-notice';
 import { CompanySwitcher } from '../company/company-switcher';
@@ -160,6 +161,7 @@ const TOP_BAR_HEIGHT = '--twes-top-bar-height';
     NavScroller,
     LegalFooter,
     CookieNotice,
+    ErasureBanner,
   ],
   templateUrl: './app-shell.html',
   host: { '(document:keydown)': 'onKeydown($event)' },
@@ -171,6 +173,8 @@ export class AppShell {
   private readonly dialog = inject(MatDialog);
   private readonly guide = inject(TourGuide);
   private readonly screen = inject(ScreenActions);
+  /** Whether the person owns the working company: the erasure banner is theirs alone. */
+  protected readonly owner = computed(() => this.auth.me()?.company?.role === 'owner');
   private paletteOpen = false;
   private shortcutsOpen = false;
   private cameraOpen = false;
@@ -711,6 +715,7 @@ export class AppShell {
       (permission) => this.auth.hasPermission(permission),
       isDevMode(),
       (module) => this.auth.hasModule(module),
+      this.auth.me()?.company?.role ?? null,
     );
   }
 

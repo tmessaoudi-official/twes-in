@@ -120,6 +120,7 @@ export class SettingsArea {
         (permission) => this.auth.hasPermission(permission),
         isDevMode(),
         (module) => this.auth.hasModule(module),
+        this.auth.me()?.company?.role ?? null,
       );
     const settingsComing = COMING_NAV.filter((entry) => SETTINGS_SECTIONS.includes(entry.section));
     const entries = withComing(
