@@ -171,11 +171,45 @@ final class DepositInvoicesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame(['Avances', 'Reste', null], array_column($this->rows($this->json(), 'lines'), 'section'), 'each line written from the deposit takes the title sent in its place');
 
+        // The screen may take one row of the deposit off: the API writes the whole deposit again, and a title the
+        // document already holds stays on its own line rather than sliding onto the line that took the row's place.
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$handId, $this->handInvoice([['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => 'Reste'], $solde]));
+        self::assertResponseIsSuccessful();
+        self::assertSame(['Avances', 'Reste', null], array_column($this->rows($this->json(), 'lines'), 'section'), 'a row taken off moves no title');
+
+        // A title refused names the line it was sent on.
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$handId, $this->handInvoice([['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => 'Avances'], ['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => str_repeat('é', 121)], $solde]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringStartsWith('lines[1].section', $this->stringAt($this->json(), 'detail'));
+
         $this->issue($handId);
         $this->postJson($this->companyPath().'/invoices/'.$handId.'/duplicate', null);
         self::assertResponseIsSuccessful();
         self::assertSame(['Solde'], array_column($this->rows($this->json(), 'lines'), 'description'));
         self::assertSame(['Reste'], array_column($this->rows($this->json(), 'lines'), 'section'), 'the section survives the deposit lines it began with');
+    }
+
+    /** Titles lay the lines out and nothing else: every figure, at the dinar's three decimals, is the same without them. */
+    public function testTitlesChangeNoFigureOfADocumentGivingADepositBackWithADiscount(): void
+    {
+        $this->signedIn(self::WRITER);
+        $depositId = $this->deposit($this->accepted(), ['depositPercentage' => '10', 'depositAmount' => null]);
+        $this->issue($depositId);
+        $figures = function (?string $deposits, ?string $work) use ($depositId): array {
+            $free = fn (string $description, string $quantity, string $price, ?string $section): array => ['description' => $description, 'quantity' => $quantity, 'unitId' => $this->unitId('C62'), 'unitPriceNet' => $price, 'taxComponentIds' => [$this->taxId('TVA19')], 'section' => $section];
+            $this->postJson($this->companyPath().'/invoices/preview', ['discountAmount' => '7.125'] + $this->handInvoice([
+                ['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => $deposits],
+                $free('Pose', '3', '333.3335', $work),
+                $free('Solde', '1', '2000', null),
+            ]));
+            self::assertResponseIsSuccessful();
+            $read = $this->json();
+            unset($read['sections']);
+
+            return $read;
+        };
+
+        self::assertSame($figures(null, null), $figures('Acomptes', 'Travaux'));
     }
 
     public function testADepositCreditedAfterTheFinalDraftIsNotGivenBackAtIssue(): void

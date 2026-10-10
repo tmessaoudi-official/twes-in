@@ -86,7 +86,7 @@ final class DocumentPreview
     public string $netToPay = '0';
 
     /** @var list<array{title: string, firstLine: int, lineCount: int, subtotal: string}> */
-    #[ApiProperty(description: 'The document\'s sections: each opened by the line carrying its title (by position from 0, in `lines`), running to the next one, with what its lines\' nets add up to, excluding tax. Lines before the first title are in none.', schema: self::SECTIONS)]
+    #[ApiProperty(description: 'The document\'s sections: each opened by the line carrying its title (by position from 0, in `lines`), running to the next one, with what its lines\' nets add up to, excluding tax. Lines before the first title are in none. Only an invoice\'s or a credit note\'s lines carry a title so far: any other document answers none.', schema: self::SECTIONS)]
     #[Groups([self::READ])]
     public array $sections = [];
 

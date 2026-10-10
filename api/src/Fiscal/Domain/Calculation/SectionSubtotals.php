@@ -45,18 +45,6 @@ final class SectionSubtotals
         return $sections;
     }
 
-    /** @param list<SectionSubtotal> $sections */
-    public static function startingAt(array $sections, int $line): ?SectionSubtotal
-    {
-        return array_find($sections, static fn (SectionSubtotal $section): bool => $section->firstLine === $line);
-    }
-
-    /** @param list<SectionSubtotal> $sections */
-    public static function endingAt(array $sections, int $line): ?SectionSubtotal
-    {
-        return array_find($sections, static fn (SectionSubtotal $section): bool => $section->lastLine() === $line);
-    }
-
     /** @param array{title: string, first: int, nets: list<\BcMath\Number>} $open */
     private static function closed(array $open, ?int $scale): SectionSubtotal
     {

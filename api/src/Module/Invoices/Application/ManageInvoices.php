@@ -325,11 +325,11 @@ final readonly class ManageInvoices
         $lines = [];
         $givenBack = [];
         $language = null;
-        // A deposit's lines are written again from it, each with the title its line was sent with, in order.
+        // A deposit's lines are written again from it; the title each was sent with, and where, is read first.
         $titles = [];
-        foreach ($input->lines as $line) {
+        foreach ($input->lines as $index => $line) {
             if (null !== $line->deductsInvoiceId) {
-                $titles[$line->deductsInvoiceId->toRfc4122()][] = $line->section;
+                $titles[$line->deductsInvoiceId->toRfc4122()][] = [$index, $line->section];
             }
         }
         foreach ($input->lines as $index => $line) {
@@ -349,16 +349,45 @@ final readonly class ManageInvoices
                     $language ??= $this->deductions->language($company, $customer);
                     $deposit = $this->deductions->linesGivingBack($company, $line->deductsInvoiceId, $current, $language);
                 }
-                $sent = $titles[$line->deductsInvoiceId->toRfc4122()];
-                foreach ($deposit as $position => $given) {
-                    $lines[] = $given->opening($sent[$position] ?? null);
-                }
             } catch (InvalidInvoice $refused) {
                 throw $refused->within("lines[$index]");
+            }
+            // Outside the line's own refusals: a title refused names the line it was sent on.
+            foreach (self::depositTitles($titles[$line->deductsInvoiceId->toRfc4122()], $deposit, $current?->linesGivingBack($line->deductsInvoiceId) ?? []) as $position => [$at, $title]) {
+                try {
+                    $lines[] = $deposit[$position]->opening($title);
+                } catch (InvalidInvoice $refused) {
+                    throw $refused->within("lines[$at]");
+                }
             }
         }
 
         return [$establishment, $customer, $lines, $this->documentTaxes($company, $customer, $input->documentTaxComponentIds, $kept['documentTaxes'])];
+    }
+
+    /**
+     * The title each line written again from a deposit opens, with the input line it came from. Sent one line for one,
+     * each takes the title sent in its place. Sent otherwise, a row having been taken off or the deposit just named,
+     * a title can no longer be tied to a line: the document keeps the titles it holds, and a deposit it did not give
+     * back yet opens the first title sent on its first line.
+     *
+     * @param non-empty-list<array{int, string|null}> $sent    each input line naming the deposit: its position and title
+     * @param list<InvoiceLineDetails>                $deposit the deposit's lines, written again
+     * @param list<InvoiceLineDetails>                $held    what the document held of the deposit before this change
+     *
+     * @return list<array{int, string|null}>
+     */
+    private static function depositTitles(array $sent, array $deposit, array $held): array
+    {
+        $first = $sent[0][0];
+        if (\count($sent) === \count($deposit)) {
+            return $sent;
+        }
+        if ([] !== $held) {
+            return array_map(static fn (int $position): array => [$first, $held[$position]->section ?? null], array_keys($deposit));
+        }
+
+        return array_map(static fn (int $position): array => [$first, 0 === $position ? $sent[0][1] : null], array_keys($deposit));
     }
 
     /**
