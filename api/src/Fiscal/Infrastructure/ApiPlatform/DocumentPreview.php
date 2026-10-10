@@ -15,6 +15,8 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\LineTax;
 use App\Fiscal\Domain\Calculation\LineTotals;
+use App\Fiscal\Domain\Calculation\SectionSubtotal;
+use App\Fiscal\Domain\Calculation\SectionSubtotals;
 use App\Fiscal\Domain\Calculation\TaxTotal;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -29,6 +31,7 @@ final class DocumentPreview
     public const string READ = 'document:preview';
 
     private const array AMOUNT = ['type' => 'string'];
+    public const array SECTIONS = ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['title', 'firstLine', 'lineCount', 'subtotal'], 'properties' => ['title' => ['type' => 'string'], 'firstLine' => ['type' => 'integer'], 'lineCount' => ['type' => 'integer'], 'subtotal' => ['type' => 'string']]]];
     private const array RATED = ['type' => 'array', 'items' => ['type' => 'object', 'required' => ['code', 'rate', 'base', 'amount'], 'properties' => ['code' => self::AMOUNT, 'rate' => self::AMOUNT, 'base' => self::AMOUNT, 'amount' => self::AMOUNT]]];
 
     /** @var list<array{amount: string, discount: string, net: string, documentDiscount: string, taxes: list<array{code: string, base: string, amount: string}>, total: string}> */
@@ -82,7 +85,13 @@ final class DocumentPreview
     #[Groups([self::READ])]
     public string $netToPay = '0';
 
-    public static function of(DocumentTotals $totals, int $scale): self
+    /** @var list<array{title: string, firstLine: int, lineCount: int, subtotal: string}> */
+    #[ApiProperty(description: 'The document\'s sections: each opened by the line carrying its title (by position from 0, in `lines`), running to the next one, with what its lines\' nets add up to, excluding tax. Lines before the first title are in none.', schema: self::SECTIONS)]
+    #[Groups([self::READ])]
+    public array $sections = [];
+
+    /** @param list<string|null> $titles the title of the section each line opens, in order; none for a document without sections */
+    public static function of(DocumentTotals $totals, int $scale, array $titles = []): self
     {
         $at = static fn (string $value): string => Decimal::format(Decimal::of($value), $scale);
         $rated = static fn (TaxTotal $each): array => ['code' => $each->code, 'rate' => Decimal::format(Decimal::of($each->rate->percentage()), 3), 'base' => $at($each->base), 'amount' => $at($each->amount)];
@@ -105,7 +114,18 @@ final class DocumentPreview
         $preview->withholdings = array_map($rated, $totals->withholdings);
         $withheld = Decimal::sum(array_map(static fn (TaxTotal $each) => Decimal::of($each->amount), $totals->withholdings));
         $preview->netToPay = Decimal::format(Decimal::of($totals->total)->sub($withheld), $scale);
+        $preview->sections = self::sections(SectionSubtotals::of(array_map(static fn (array $line, int $index): array => [$titles[$index] ?? null, $line['net']], $preview->lines, array_keys($preview->lines)), $scale));
 
         return $preview;
+    }
+
+    /**
+     * @param list<SectionSubtotal> $sections
+     *
+     * @return list<array{title: string, firstLine: int, lineCount: int, subtotal: string}>
+     */
+    public static function sections(array $sections): array
+    {
+        return array_map(static fn (SectionSubtotal $section): array => ['title' => $section->title, 'firstLine' => $section->firstLine, 'lineCount' => $section->lineCount, 'subtotal' => $section->subtotal], $sections);
     }
 }

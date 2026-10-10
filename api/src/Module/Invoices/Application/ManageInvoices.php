@@ -14,7 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Regime\ExcludedTaxFamilies;
 use App\Fiscal\Domain\Calculation\Decimal;
-use App\Fiscal\Domain\Calculation\DocumentTotals;
+use App\Fiscal\Domain\Calculation\SectionedTotals;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\TaxKind;
@@ -265,7 +265,7 @@ final readonly class ManageInvoices
      * @throws InvoiceNotDraft
      * @throws InvalidInvoice
      */
-    public function preview(Company $company, InvoiceInput $input, ?Uuid $id): DocumentTotals
+    public function preview(Company $company, InvoiceInput $input, ?Uuid $id): SectionedTotals
     {
         $current = null === $id ? null : $this->get($company, $id);
         $current?->assertDraft('changes');
@@ -274,7 +274,7 @@ final readonly class ManageInvoices
             ? Invoice::create($company, $establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now())
             : $current->previewOf($establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now());
 
-        return $this->totals->checked($draft);
+        return new SectionedTotals($this->totals->checked($draft), array_map(static fn (InvoiceLine $line): ?string => $line->getSection(), $draft->getLines()));
     }
 
     /**
@@ -325,6 +325,13 @@ final readonly class ManageInvoices
         $lines = [];
         $givenBack = [];
         $language = null;
+        // A deposit's lines are written again from it, each with the title its line was sent with, in order.
+        $titles = [];
+        foreach ($input->lines as $line) {
+            if (null !== $line->deductsInvoiceId) {
+                $titles[$line->deductsInvoiceId->toRfc4122()][] = $line->section;
+            }
+        }
         foreach ($input->lines as $index => $line) {
             try {
                 if (null === $line->deductsInvoiceId) {
@@ -337,11 +344,15 @@ final readonly class ManageInvoices
                 }
                 $givenBack[$line->deductsInvoiceId->toRfc4122()] = true;
                 if (null !== $current && InvoiceType::CreditNote === $current->getType()) {
-                    $lines = [...$lines, ...$this->keptOnACreditNote($current, $line->deductsInvoiceId)];
-                    continue;
+                    $deposit = $this->keptOnACreditNote($current, $line->deductsInvoiceId);
+                } else {
+                    $language ??= $this->deductions->language($company, $customer);
+                    $deposit = $this->deductions->linesGivingBack($company, $line->deductsInvoiceId, $current, $language);
                 }
-                $language ??= $this->deductions->language($company, $customer);
-                $lines = [...$lines, ...$this->deductions->linesGivingBack($company, $line->deductsInvoiceId, $current, $language)];
+                $sent = $titles[$line->deductsInvoiceId->toRfc4122()];
+                foreach ($deposit as $position => $given) {
+                    $lines[] = $given->opening($sent[$position] ?? null);
+                }
             } catch (InvalidInvoice $refused) {
                 throw $refused->within("lines[$index]");
             }
@@ -463,7 +474,7 @@ final readonly class ManageInvoices
             ?? throw new InvalidInvoice('unitPriceNet', 'A line without a product states its price.');
         $description = null === $line->description || '' === trim($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
 
-        return new InvoiceLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->sourceDeliveryNoteLineId, $line->lotCode, $line->returned, discountAmount: $line->discountAmount);
+        return new InvoiceLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->sourceDeliveryNoteLineId, $line->lotCode, $line->returned, discountAmount: $line->discountAmount, section: $line->section);
     }
 
     /**

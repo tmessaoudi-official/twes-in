@@ -149,6 +149,35 @@ final class DepositInvoicesTest extends ApiTestCase
         self::assertSame($this->negated($this->stringAt($this->invoice($handId), 'total')), $credit['total']);
     }
 
+    /**
+     * A deposit's lines are written again from the deposit on every save, each keeping the title it was sent with; a
+     * duplicate, which gives no deposit back, hands the title of a section such a line opened to the next line it copies.
+     */
+    public function testASectionADepositLineOpensIsKeptAndADuplicateHandsItOn(): void
+    {
+        $this->signedIn(self::WRITER);
+        $depositId = $this->deposit($this->accepted(), ['depositPercentage' => '10', 'depositAmount' => null]);
+        $this->issue($depositId);
+        $solde = ['description' => 'Solde', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '2000', 'taxComponentIds' => [$this->taxId('TVA19')]];
+
+        $this->postJson($this->companyPath().'/invoices', $this->handInvoice([['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => 'Acomptes'], $solde]));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $handId = $this->stringAt($this->json(), 'id');
+        self::assertSame(['Acomptes', null, null], array_column($this->rows($this->json(), 'lines'), 'section'), 'the first line written from the deposit keeps the title');
+        self::assertSame([['Acomptes', 0, 3]], array_map(static fn (array $section): array => [$section['title'], $section['firstLine'], $section['lineCount']], $this->rows($this->json(), 'sections')));
+
+        $this->sendJson('PUT', $this->companyPath().'/invoices/'.$handId, $this->handInvoice([['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => 'Avances'], ['deductsInvoiceId' => $depositId, 'quantity' => '1', 'section' => 'Reste'], $solde]));
+        self::assertResponseIsSuccessful();
+        self::assertSame(['Avances', 'Reste', null], array_column($this->rows($this->json(), 'lines'), 'section'), 'each line written from the deposit takes the title sent in its place');
+
+        $this->issue($handId);
+        $this->postJson($this->companyPath().'/invoices/'.$handId.'/duplicate', null);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['Solde'], array_column($this->rows($this->json(), 'lines'), 'description'));
+        self::assertSame(['Reste'], array_column($this->rows($this->json(), 'lines'), 'section'), 'the section survives the deposit lines it began with');
+    }
+
     public function testADepositCreditedAfterTheFinalDraftIsNotGivenBackAtIssue(): void
     {
         $this->signedIn(self::WRITER);

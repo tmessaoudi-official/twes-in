@@ -147,6 +147,8 @@ export interface InvoiceLine {
    * deposit charged, whatever else the screen sends; a screen shows it and may only take it off.
    */
   deductsInvoiceId: string | null;
+  /** The title of the section of the document this line opens, which runs to the next titled line; null for none. */
+  section: string | null;
   /** The line after its own discount, at the currency's scale, worked out by the API. */
   net: string;
 }

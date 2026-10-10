@@ -23,11 +23,13 @@ use Symfony\Component\Uid\Uuid;
  * is kept with three decimals, the price with four, the discount as a percentage with three. Only a line tax sits on a
  * line, each at most once. A line drafted from a delivery note names the delivery note line it invoices. On a credit
  * note, a line with a product may say its goods came back to stock. A line giving a deposit invoice back names no
- * product, counts one, takes no discount and states what the deposit charged of each of its taxes.
+ * product, counts one, takes no discount and states what the deposit charged of each of its taxes. A line may open a
+ * section of the document under a title, which runs to the next titled line.
  */
 final readonly class InvoiceLineDetails
 {
     public const int DESCRIPTION_MAX = 5000;
+    public const int SECTION_MAX = 120;
     public const int QUANTITY_DECIMALS = 3;
     public const int PRICE_DECIMALS = 4;
     private const string QUANTITY = '/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/';
@@ -49,6 +51,8 @@ final readonly class InvoiceLineDetails
     public array $taxes;
     /** The lot or serial sold, for a product tracked by one; null when the line names none. */
     public ?string $lotCode;
+    /** The title of the section this line opens; null for a line that opens none. */
+    public ?string $section;
 
     /**
      * @param list<TaxComponent> $taxes
@@ -57,10 +61,11 @@ final readonly class InvoiceLineDetails
      * @param bool               $returned                 the goods of a credit note's line came back to stock; only a credit note may say so, which its document checks
      * @param Deduction|null     $deduction                the deposit invoice this line gives back; its document checks whose it is
      * @param string|null        $discountAmount           the line's whole discount as an amount, in place of a rate; blank or null for none
+     * @param string|null        $section                  the title of the section the line opens; blank or null for none
      *
      * @throws InvalidInvoice
      */
-    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, public ?Uuid $sourceDeliveryNoteLineId = null, ?string $lotCode = null, public bool $returned = false, public ?Deduction $deduction = null, ?string $discountAmount = null)
+    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, public ?Uuid $sourceDeliveryNoteLineId = null, ?string $lotCode = null, public bool $returned = false, public ?Deduction $deduction = null, ?string $discountAmount = null, ?string $section = null)
     {
         if ($returned && null === $product) {
             throw new InvalidInvoice('returned', 'A line returns goods to stock only when it names a product.');
@@ -91,6 +96,7 @@ final readonly class InvoiceLineDetails
         }
         $this->taxes = $taxes;
         $this->lotCode = self::lotCode($product, $lotCode);
+        $this->section = self::section($section);
         if (null !== $deduction) {
             $this->assertGivesBack($deduction);
         }
@@ -111,7 +117,7 @@ final readonly class InvoiceLineDetails
         }
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null, string|null} what two lines are compared on */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null, string|null, bool, array{string, array<string, string>}|null, string|null, string|null} what two lines are compared on */
     public function values(): array
     {
         return [
@@ -127,7 +133,32 @@ final readonly class InvoiceLineDetails
             $this->returned,
             $this->deduction?->values(),
             $this->discountAmount,
+            $this->section,
         ];
+    }
+
+    /**
+     * The same line opening the section titled `$section`, or none.
+     *
+     * @throws InvalidInvoice
+     */
+    public function opening(?string $section): self
+    {
+        return new self($this->product, $this->description, $this->quantity, $this->unit, $this->unitPriceNet, $this->discountRate, $this->taxes, $this->sourceDeliveryNoteLineId, $this->lotCode, $this->returned, $this->deduction, $this->discountAmount, $section);
+    }
+
+    /** @throws InvalidInvoice */
+    private static function section(?string $title): ?string
+    {
+        $title = trim($title ?? '');
+        if ('' === $title) {
+            return null;
+        }
+        if (mb_strlen($title) > self::SECTION_MAX) {
+            throw new InvalidInvoice('section', \sprintf('A section\'s title is at most %d characters.', self::SECTION_MAX));
+        }
+
+        return $title;
     }
 
     private static function quantity(string $quantity, Unit $unit): string

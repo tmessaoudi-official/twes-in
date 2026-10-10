@@ -553,6 +553,7 @@ describe('invoice forms', () => {
             lotCode: null,
             returned: false,
             deductsInvoiceId: null,
+            section: null,
             net: '62.500',
           },
         ],
@@ -562,6 +563,37 @@ describe('invoice forms', () => {
       expect(lines.at(0).controls.discountKind.value).toBe('amount');
       expect(lines.at(0).controls.discountAmount.value).toBe('7.50');
       expect(lines.at(0).valid).toBe(true);
+    });
+
+    it('sends back the section a line opens, so saving from this screen never drops it', () => {
+      const read = {
+        productId: null,
+        description: 'Dépose du carter',
+        quantity: '1.000',
+        unitId: 'u1',
+        unitPriceNet: '10.5000',
+        discountRate: null,
+        discountAmount: null,
+        taxComponentIds: [],
+        sourceDeliveryNoteLineId: null,
+        sourceLeft: null,
+        productReference: null,
+        productName: null,
+        productTracking: null,
+        lotCode: null,
+        returned: false,
+        deductsInvoiceId: null,
+        section: 'Démontage',
+        net: '10.500',
+      };
+      const lines = linesArray([read, { ...read, section: null }], options, null);
+      lines.push(lineGroup(null, options, null));
+
+      expect(
+        invoiceInput(invoiceValues(null, options), lines, [], 'k1').lines.map(
+          (line) => line.section,
+        ),
+      ).toEqual(['Démontage', null, null]);
     });
 
     it('says what is on hand of a line’s product and what the document leaves of it, in exact decimals', () => {
@@ -658,6 +690,7 @@ describe('invoice forms', () => {
             lotCode: null,
             returned: false,
             deductsInvoiceId: null,
+            section: null,
             net: '70.000',
           },
         ],
@@ -694,6 +727,7 @@ describe('invoice forms', () => {
             lotCode: null,
             returned: false,
             deductsInvoiceId: null,
+            section: null,
             net: '210.000',
           },
         ],

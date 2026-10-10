@@ -65,6 +65,7 @@ line:
     unit_price: 'Unit price excl. tax'
     taxes: 'Taxes'
     net: 'Amount excl. tax'
+    section_subtotal: 'Subtotal %title%'
 totals:
     document_discount: 'Discount'
     total_net: 'Total excl. tax after discount'

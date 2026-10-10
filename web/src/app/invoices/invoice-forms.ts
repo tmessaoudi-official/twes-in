@@ -438,6 +438,8 @@ export interface LineControls {
   returned: FormControl<boolean>;
   /** The deposit invoice the line gives back, which the API writes from the deposit; '' for any other line. */
   deductsInvoiceId: FormControl<string>;
+  /** The title of the section the line opens, carried as read: this screen does not edit it yet. */
+  section: FormControl<string>;
   /** How the line's product is tracked, which decides whether the lot is asked; '' for a line naming no product. */
   productTracking: FormControl<ProductTracking | ''>;
 }
@@ -652,6 +654,7 @@ export function lineGroup(
       }),
       returned: new FormControl(line?.returned ?? false, { nonNullable: true }),
       deductsInvoiceId: new FormControl(line?.deductsInvoiceId ?? '', { nonNullable: true }),
+      section: new FormControl(line?.section ?? '', { nonNullable: true }),
       productTracking: new FormControl<ProductTracking | ''>(line?.productTracking ?? '', {
         nonNullable: true,
       }),
@@ -819,6 +822,7 @@ export function invoiceInput(
       // Only goods come back, so a line with no product never says so, whatever was ticked before the product went.
       returned: line.returned && line.productId !== '',
       deductsInvoiceId: line.deductsInvoiceId === '' ? null : line.deductsInvoiceId,
+      section: text(line.section),
     })),
   };
 }

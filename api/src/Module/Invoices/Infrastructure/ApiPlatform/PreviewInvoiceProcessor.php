@@ -44,7 +44,7 @@ final readonly class PreviewInvoiceProcessor implements ProcessorInterface
         }
 
         try {
-            $totals = $this->manage->preview($company, $data->input(), $id);
+            $previewed = $this->manage->preview($company, $data->input(), $id);
         } catch (InvoiceNotFound $absent) {
             throw new NotFoundHttpException('No such invoice.', $absent);
         } catch (InvoiceNotDraft $fixed) {
@@ -53,6 +53,6 @@ final readonly class PreviewInvoiceProcessor implements ProcessorInterface
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }
 
-        return DocumentPreview::of($totals, $this->scales->of($company->getCurrency()));
+        return DocumentPreview::of($previewed->totals, $this->scales->of($company->getCurrency()), $previewed->titles);
     }
 }
