@@ -40,6 +40,7 @@ const owner: Me = {
     { key: 'zakat', planned: 'later' },
   ],
   customerScreenCompanyId: null,
+  support: { phone: null, whatsapp: null, email: null },
 };
 
 describe('AuthApi', () => {
@@ -69,6 +70,20 @@ describe('AuthApi', () => {
       { key: 'quotes', planned: 'v1' },
       { key: 'zakat', planned: 'later' },
     ]);
+  });
+
+  it('carries how to reach the platform, each channel as the operators gave it', async () => {
+    const pending = api.me();
+    http.expectOne('/api/auth/me').flush({
+      ...owner,
+      support: { phone: '+216 71 000 000', whatsapp: null, email: 'help@twes.test' },
+    });
+
+    expect((await pending).support).toEqual({
+      phone: '+216 71 000 000',
+      whatsapp: null,
+      email: 'help@twes.test',
+    });
   });
 
   it('carries the company whose customer screen holds the sign-in', async () => {

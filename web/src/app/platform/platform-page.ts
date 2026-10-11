@@ -39,6 +39,8 @@ import {
   type PlatformCompanyRow,
   type PlatformTab,
   type SignupSwitch,
+  type SupportChannel,
+  type PlatformSupport,
   type SubscriptionTerms,
 } from './platform-types';
 
@@ -168,6 +170,23 @@ export class PlatformPage implements OnInit {
   protected readonly failedKind = (kind: string): string | null =>
     kind in FAILED_KINDS ? `platform.failed.kinds.${FAILED_KINDS[kind]}` : null;
   protected readonly signup = this.platform.signup;
+
+  protected readonly supportChannels: readonly SupportChannel[] = ['phone', 'whatsapp', 'email'];
+  /** The support channels as typed, until saved: what the platform holds again after every load or save. */
+  protected readonly supportDraft = linkedSignal<PlatformSupport | null>(() =>
+    this.platform.support(),
+  );
+  private readonly supportChanges = computed<Partial<PlatformSupport>>(() => {
+    const saved = this.platform.support();
+    const draft = this.supportDraft();
+    if (saved === null || draft === null) return {};
+    return Object.fromEntries(
+      this.supportChannels
+        .filter((channel) => draft[channel] !== saved[channel])
+        .map((channel) => [channel, draft[channel]]),
+    );
+  });
+  protected readonly supportChanged = computed(() => Object.keys(this.supportChanges()).length > 0);
   protected readonly busy = this.platform.busy;
   protected readonly error = this.platform.error;
   protected readonly accounts = this.platform.accounts;
@@ -346,6 +365,17 @@ export class PlatformPage implements OnInit {
           return { ...terms, [field]: '' === value.trim() ? null : value.trim() };
       }
     });
+  }
+
+  protected typedSupport(channel: SupportChannel, event: Event): void {
+    const value = (event.target as HTMLInputElement).value.trim();
+    this.supportDraft.update((draft) => (draft === null ? draft : { ...draft, [channel]: value }));
+  }
+
+  protected async saveSupport(): Promise<void> {
+    if (await this.platform.saveSupport(this.supportChanges())) {
+      this.feedback.success('platform.support.saved');
+    }
   }
 
   protected async saveSubscription(companyId: string): Promise<void> {

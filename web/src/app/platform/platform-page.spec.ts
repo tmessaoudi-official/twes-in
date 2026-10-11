@@ -24,6 +24,7 @@ import type {
   PlatformCompanyRow,
   PlatformError,
   PlatformSignup,
+  PlatformSupport,
   ModuleDemandRow,
   PlatformSubscriptionRow,
   FailedMessagesRead,
@@ -179,6 +180,7 @@ const row: PlatformCompanyRow = {
 describe('PlatformPage', () => {
   const waiting = signal<readonly PlatformCompanyRow[]>([row]);
   const signup = signal<PlatformSignup | null>({ enabled: false, approvalRequired: true });
+  const support = signal<PlatformSupport | null>({ phone: '', whatsapp: '', email: '' });
   const busy = signal(false);
   const error = signal<PlatformError | null>(null);
   const accounts = signal<readonly PlatformAccountRow[]>([account]);
@@ -207,6 +209,8 @@ describe('PlatformPage', () => {
     inviteOwner: vi.fn(),
     accounts,
     signup,
+    support: support.asReadonly(),
+    saveSupport: vi.fn(async () => true),
     busy,
     error,
     load: vi.fn(),
@@ -234,6 +238,7 @@ describe('PlatformPage', () => {
   beforeEach(async () => {
     waiting.set([row]);
     signup.set({ enabled: false, approvalRequired: true });
+    support.set({ phone: '', whatsapp: '', email: '' });
     error.set(null);
     accounts.set([account]);
     companies.set([row]);
@@ -376,6 +381,23 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
 
     expect(facade.setSignup).toHaveBeenCalledWith('signup.enabled', true);
+  });
+
+  it('saves only the support channels typed, and only once one differs from what the platform holds', async () => {
+    const { fixture, query } = await render();
+    const save = query<HTMLButtonElement>('platform-support-save')!;
+    expect(save.disabled).toBe(true);
+
+    const whatsapp = query<HTMLInputElement>('platform-support-whatsapp')!;
+    whatsapp.value = ' +216 20 123 456 ';
+    whatsapp.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(save.disabled).toBe(false);
+
+    save.click();
+    await fixture.whenStable();
+
+    expect(facade.saveSupport).toHaveBeenCalledWith({ whatsapp: '+216 20 123 456' });
   });
 
   it('reads the accounts again from the query the list asks for, and says how many there are', async () => {

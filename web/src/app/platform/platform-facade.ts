@@ -18,6 +18,8 @@ import {
   type PlatformSubscriptionRow,
   type SubscriptionTerms,
   type SignupSwitch,
+  type SupportChannel,
+  type PlatformSupport,
 } from './platform-types';
 
 /** What an operator runs the platform with: who may sign up, the companies (those waiting for a decision first), and accounts. */
@@ -27,6 +29,7 @@ export class PlatformFacade {
   private readonly auth = inject(AuthFacade);
   private readonly waitingSignal = signal<readonly PlatformCompanyRow[]>([]);
   private readonly signupSignal = signal<PlatformSignup | null>(null);
+  private readonly supportSignal = signal<PlatformSupport | null>(null);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<PlatformError | null>(null);
 
@@ -64,6 +67,8 @@ export class PlatformFacade {
   private accountRequest = 0;
   /** Null until read. */
   readonly signup = this.signupSignal.asReadonly();
+  /** How companies reach the operators, null until read. */
+  readonly support = this.supportSignal.asReadonly();
   private readonly subscriptionSignal = signal<PlatformSubscriptionRow | null>(null);
   private readonly openedSignal = signal<string | null>(null);
   /** The subscription of the company whose panel is open, null while it is being read or where there is none. */
@@ -80,9 +85,10 @@ export class PlatformFacade {
   async load(): Promise<void> {
     this.busySignal.set(true);
     try {
-      const [waiting, signup, every, accounts, demand, failed] = await Promise.all([
+      const [waiting, signup, support, every, accounts, demand, failed] = await Promise.all([
         this.api.companies(WAITING_SEARCH),
         this.api.signup(),
+        this.api.support(),
         this.api.companies(COUNT_SEARCH),
         this.api.accounts(ACCOUNT_COUNT_SEARCH),
         this.api.moduleDemand(),
@@ -95,6 +101,7 @@ export class PlatformFacade {
       this.everyCompanySignal.set(every.total);
       this.everyAccountSignal.set(accounts.total);
       this.signupSignal.set(signup);
+      this.supportSignal.set(support);
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
@@ -280,6 +287,23 @@ export class PlatformFacade {
     } catch (error) {
       this.errorSignal.set(codeOf(error));
     }
+  }
+
+  /**
+   * Saves the channels changed, one at a time, and shows what the platform then holds; the signed-in state is read
+   * again, since this tab's own help panel offers them and a live change never comes back to the tab that made it.
+   */
+  async saveSupport(changes: Partial<PlatformSupport>): Promise<boolean> {
+    return this.write(async () => {
+      for (const [channel, value] of Object.entries(changes) as [SupportChannel, string][]) {
+        await this.api.setSupport(channel, value);
+        const current = this.supportSignal();
+        if (current !== null) this.supportSignal.set({ ...current, [channel]: value });
+      }
+      await this.auth.refresh();
+
+      return true;
+    });
   }
 
   /** Reads again what the lists last showed and the overview's counts, since a company opened or decided moves them. */

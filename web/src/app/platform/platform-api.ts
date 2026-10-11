@@ -31,6 +31,8 @@ import type {
   PlatformError,
   PlatformSignup,
   SignupSwitch,
+  SupportChannel,
+  PlatformSupport,
 } from './platform-types';
 
 export class PlatformRefused extends Error {
@@ -106,6 +108,28 @@ export class PlatformApi {
     return this.guard(async () => {
       await firstValueFrom(
         this.http.put<SettingSettingRead>(`/api/platform/settings/${key}`, { value }),
+      );
+    });
+  }
+
+  /** How companies reach the operators: each channel as set, empty where it is not. */
+  support(): Promise<PlatformSupport> {
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<SettingSettingRead[]>('/api/platform/settings'),
+      );
+      const valueOf = (channel: SupportChannel) => {
+        const value = rows.find((row) => row.key === `support.${channel}`)?.value;
+        return typeof value === 'string' ? value : '';
+      };
+      return { phone: valueOf('phone'), whatsapp: valueOf('whatsapp'), email: valueOf('email') };
+    });
+  }
+
+  setSupport(channel: SupportChannel, value: string): Promise<void> {
+    return this.guard(async () => {
+      await firstValueFrom(
+        this.http.put<SettingSettingRead>(`/api/platform/settings/support.${channel}`, { value }),
       );
     });
   }

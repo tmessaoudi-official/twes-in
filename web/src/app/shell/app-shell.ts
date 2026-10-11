@@ -619,7 +619,11 @@ export class AppShell {
       .open<HelpPanel, HelpPanelData, HelpChoice>(HelpPanel, {
         width: 'min(36rem, calc(100vw - 2rem))',
         autoFocus: 'dialog',
-        data: { tours, glossary: glossaryFor(this.me()?.company?.countryCode) },
+        data: {
+          tours,
+          glossary: glossaryFor(this.me()?.company?.countryCode),
+          support: this.me()?.support,
+        },
       })
       .afterClosed()
       .subscribe((choice) => {

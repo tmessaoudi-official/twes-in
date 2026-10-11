@@ -53,6 +53,8 @@ describe('PlatformFacade', () => {
     reject: vi.fn(),
     signup: vi.fn(),
     setSignup: vi.fn(),
+    support: vi.fn(),
+    setSupport: vi.fn(),
     accounts: vi.fn(),
     actOnAccount: vi.fn(),
     companies: vi.fn(),
@@ -69,6 +71,7 @@ describe('PlatformFacade', () => {
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset());
     api.signup.mockResolvedValue({ enabled: false, approvalRequired: true });
+    api.support.mockResolvedValue({ phone: '+216 71 000 000', whatsapp: '', email: '' });
     api.accounts.mockResolvedValue({ rows: [account], total: 1 });
     api.companies.mockResolvedValue({ rows: [row], total: 1 });
     api.moduleDemand.mockResolvedValue([
@@ -235,6 +238,36 @@ describe('PlatformFacade', () => {
 
     expect(api.setSignup).toHaveBeenCalledWith('signup.enabled', true);
     expect(facade.signup()).toEqual({ enabled: true, approvalRequired: true });
+  });
+
+  it('saves the support channels changed, and only those, then shows what the platform holds', async () => {
+    await facade.load();
+    expect(facade.support()).toEqual({ phone: '+216 71 000 000', whatsapp: '', email: '' });
+    api.setSupport.mockResolvedValue(undefined);
+
+    expect(await facade.saveSupport({ whatsapp: '+216 20 123 456', email: 'help@twes.test' })).toBe(
+      true,
+    );
+
+    expect(api.setSupport.mock.calls).toEqual([
+      ['whatsapp', '+216 20 123 456'],
+      ['email', 'help@twes.test'],
+    ]);
+    expect(facade.support()).toEqual({
+      phone: '+216 71 000 000',
+      whatsapp: '+216 20 123 456',
+      email: 'help@twes.test',
+    });
+  });
+
+  it('keeps the support channels as they were when the platform refuses one', async () => {
+    await facade.load();
+    api.setSupport.mockRejectedValue(new PlatformRefused('refused'));
+
+    expect(await facade.saveSupport({ whatsapp: '20 123 456' })).toBe(false);
+
+    expect(facade.support()).toEqual({ phone: '+216 71 000 000', whatsapp: '', email: '' });
+    expect(facade.error()).toBe('refused');
   });
 
   it('leaves a switch as it was when the platform refuses it', async () => {

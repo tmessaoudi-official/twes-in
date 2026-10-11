@@ -17,6 +17,9 @@ use App\Licensing\Application\CompanyStandings;
 use App\ModuleRegistry\Application\ModuleCatalog;
 use App\ModuleRegistry\Application\ModuleManifest;
 use App\ModuleRegistry\Application\ModuleStates;
+use App\Settings\Application\ReadSetting;
+use App\Settings\Application\SettingContext;
+use App\Settings\Application\SupportSettings;
 use App\Tenancy\Application\Mfa\MfaRequirement;
 use App\Tenancy\Application\Session\DescribeWorkingContext;
 use Symfony\Component\Uid\Uuid;
@@ -33,6 +36,7 @@ final readonly class MeFactory
         private CompanyStandings $standings,
         private ModuleCatalog $catalog,
         private CustomerScreenLock $customerScreen,
+        private ReadSetting $settings,
     ) {
     }
 
@@ -49,6 +53,17 @@ final readonly class MeFactory
             array_filter($this->catalog->all(), static fn (ModuleManifest $manifest) => null !== $manifest->planned),
         ));
 
-        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122());
+        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing, $planned, $this->customerScreen->lockedFor($user->getId())?->toRfc4122(), $this->support());
+    }
+
+    private function support(): MeSupport
+    {
+        $channel = function (string $key): ?string {
+            $value = $this->settings->value(new SettingContext(), $key);
+
+            return \is_string($value) && '' !== trim($value) ? trim($value) : null;
+        };
+
+        return new MeSupport($channel(SupportSettings::PHONE), $channel(SupportSettings::WHATSAPP), $channel(SupportSettings::EMAIL));
     }
 }

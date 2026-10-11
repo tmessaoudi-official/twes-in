@@ -298,6 +298,29 @@ describe('PlatformApi', () => {
     await done;
   });
 
+  it('reads the support channels from the platform settings, an unset one empty', async () => {
+    const support = api.support();
+
+    http.expectOne('/api/platform/settings').flush([
+      { key: 'signup.enabled', value: true },
+      { key: 'support.phone', value: '+216 71 000 000' },
+      { key: 'support.email', value: '' },
+    ]);
+
+    expect(await support).toEqual({ phone: '+216 71 000 000', whatsapp: '', email: '' });
+  });
+
+  it('sets one support channel at the platform level', async () => {
+    const done = api.setSupport('whatsapp', '+216 20 123 456');
+
+    const request = http.expectOne('/api/platform/settings/support.whatsapp');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ value: '+216 20 123 456' });
+    request.flush({ key: 'support.whatsapp', value: '+216 20 123 456' });
+
+    await done;
+  });
+
   it('names a refusal: gone, forbidden or unreachable', async () => {
     const gone = api.approve('c1');
     http

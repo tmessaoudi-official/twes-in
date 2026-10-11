@@ -3305,6 +3305,18 @@
         "password_reset": "Mots de passe oubliés",
         "signup": "Inscriptions"
       }
+    },
+    "support": {
+      "title": "Contact du support",
+      "intro": "Ce que l’aide de chaque écran propose sous « Nous contacter » à toutes les personnes connectées. Un moyen laissé vide n’y figure pas.",
+      "phone": "Téléphone",
+      "phone_hint": "Par exemple +216 71 000 000",
+      "whatsapp": "WhatsApp",
+      "whatsapp_hint": "Le numéro au format international, indicatif du pays en tête : +216 20 123 456",
+      "email": "Adresse e-mail",
+      "email_hint": "Par exemple support@exemple.tn",
+      "save": "Enregistrer",
+      "saved": "Contact du support enregistré."
     }
   },
   "appearance": {
@@ -4728,7 +4740,13 @@
     "no_guide": "Aucune visite guidée n’est encore proposée ici.",
     "glossary": "Les mots des écrans",
     "shortcuts": "Raccourcis clavier",
-    "close": "Fermer"
+    "close": "Fermer",
+    "contact": {
+      "title": "Nous contacter",
+      "phone": "Téléphone :",
+      "whatsapp": "WhatsApp :",
+      "email": "E-mail :"
+    }
   },
   "glossary": {
     "invoice": {
