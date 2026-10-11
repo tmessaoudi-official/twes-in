@@ -51,6 +51,19 @@ class Host {
   readonly planned = signal<PlannedAction[]>([]);
 }
 
+/** The bar where a page draws it: beside a title, in the document header it measures. */
+@Component({
+  imports: [DocumentActions],
+  template: `<div class="twes-document-header">
+    <h1>FAC-2026-00042</h1>
+    <div><app-document-actions [actions]="actions()" [planned]="planned()" /></div>
+  </div>`,
+})
+class HeaderHost {
+  readonly actions = signal<ScreenAction[]>([]);
+  readonly planned = signal<PlannedAction[]>([]);
+}
+
 describe('DocumentActions', () => {
   let fixture: ComponentFixture<Host>;
   const ran: string[] = [];
@@ -326,5 +339,107 @@ describe('DocumentActions', () => {
 
   it('names the "⋮" it draws', () => {
     expect(q('document-more')!.getAttribute('aria-label')).toBe('More actions');
+  });
+
+  describe('in a header it can measure', () => {
+    const realObserver = globalThis.ResizeObserver;
+    const realWidth = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth')!;
+    const realRect = Element.prototype.getBoundingClientRect;
+    let header = 0;
+    let measured: ComponentFixture<HeaderHost>;
+
+    beforeEach(() => {
+      // jsdom lays nothing out: the header is as wide as each case says, its title 300 px, its bar's row 500 px and
+      // each « Bientôt » button 150 px.
+      globalThis.ResizeObserver = class {
+        observe(): void {
+          // Measured once by the bar itself; nothing here resizes.
+        }
+        disconnect(): void {
+          // Nothing to let go of.
+        }
+        unobserve(): void {
+          // Nothing to let go of.
+        }
+      } as unknown as typeof ResizeObserver;
+      Object.defineProperty(Element.prototype, 'clientWidth', {
+        configurable: true,
+        get(this: Element) {
+          return this.classList.contains('twes-document-header') ? header : 0;
+        },
+      });
+      Element.prototype.getBoundingClientRect = function (this: Element) {
+        const width = this.tagName === 'H1' ? 300 : this.hasAttribute('data-planned') ? 150 : 500;
+        return { width } as DOMRect;
+      };
+    });
+
+    afterEach(() => {
+      globalThis.ResizeObserver = realObserver;
+      Object.defineProperty(Element.prototype, 'clientWidth', realWidth);
+      Element.prototype.getBoundingClientRect = realRect;
+    });
+
+    async function bar(width: number): Promise<void> {
+      header = width;
+      measured = TestBed.createComponent(HeaderHost);
+      measured.componentInstance.actions.set([issue, pdf, duplicate, cancel]);
+      measured.componentInstance.planned.set([email]);
+      measured.detectChanges();
+      await measured.whenStable();
+      measured.detectChanges();
+    }
+
+    it('draws what is coming dashed in the bar where the header keeps its one row, the next step still last', async () => {
+      await bar(1200);
+      const planned = q('planned-action-mailing')!;
+      expect(planned.classList).toContain('twes-planned-action');
+      expect(planned.classList).not.toContain('twes-planned-measure');
+      expect(planned.getAttribute('aria-hidden')).toBeNull();
+      expect(planned.textContent).toContain('Send by e-mail');
+      expect(planned.textContent).toContain('Soon');
+
+      const order = [
+        ...(measured.nativeElement as HTMLElement).querySelectorAll(
+          '[data-testid="document-actions"] > [data-testid]',
+        ),
+      ].map((each) => each.getAttribute('data-testid'));
+      expect(order).toEqual([
+        'document-action-pdf',
+        'document-action-duplicate',
+        'planned-action-mailing',
+        'document-more',
+        'document-action-issue',
+      ]);
+
+      // Shown in the bar, it is not listed again in « ⋮ ».
+      (measured.nativeElement as HTMLElement)
+        .querySelector<HTMLElement>('[data-testid="document-more"]')!
+        .click();
+      measured.detectChanges();
+      expect(q('document-planned-mailing')).toBeNull();
+      expect(q('document-menu-cancel')).not.toBeNull();
+    });
+
+    it('keeps it in « ⋮ » where it would push the bar under the title', async () => {
+      // 300 + 16 + 500 fits in 900; with 158 more it does not.
+      await bar(900);
+      const planned = q('planned-action-mailing')!;
+      expect(planned.classList).toContain('twes-planned-measure');
+      expect(planned.getAttribute('aria-hidden')).toBe('true');
+      expect(planned.getAttribute('tabindex')).toBe('-1');
+
+      (measured.nativeElement as HTMLElement)
+        .querySelector<HTMLElement>('[data-testid="document-more"]')!
+        .click();
+      measured.detectChanges();
+      expect(q('document-planned-mailing')).not.toBeNull();
+    });
+
+    it('keeps it in « ⋮ » on a phone, whatever the room', async () => {
+      width.set('compact');
+      await bar(4000);
+      expect(q('planned-action-mailing')).toBeNull();
+    });
   });
 });

@@ -72,10 +72,9 @@ test('a vendor is added with its bank account and terms, then revised', async ({
     await expect(toast(page)).toContainText('Le fournisseur a été enregistré.');
     expect(await wcagViolations(page)).toEqual([]);
 
-    // docs/SPEC.md § 7, 2026-09-26 18:17 (row 150): what a vendor will offer once supplier orders ship, marked and
-    // opening the module's page; listed last in the bar's « ⋮ » under its own heading (audit 2026-10-06 V-3).
-    await page.getByTestId('record-more').click();
-    const planned = page.getByTestId('record-planned-purchases');
+    // What a vendor will offer once supplier orders ship, marked and opening the module's page: on Playwright's
+    // 1280 px window the vendor's short bar has room for it, dashed (planned-in-bar.spec.ts covers « ⋮ » too).
+    const planned = page.getByTestId('planned-action-purchases');
     await expect(planned.getByTestId('soon')).toBeVisible();
     expect(await wcagViolations(page)).toEqual([]);
     await planned.click();

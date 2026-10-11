@@ -6,10 +6,11 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../a11y/label';
 import type { PlannedAction } from '../actions/planned-actions';
+import { plannedRoom } from '../actions/planned-room';
 import { runAction } from '../actions/run-action';
 import type { ScreenAction } from '../actions/screen-action';
 import { Session } from '../session/session';
@@ -30,7 +31,15 @@ import { WINDOW_CLASS } from '../ui/window-class';
  */
 @Component({
   selector: 'app-record-bar',
-  imports: [MatButtonModule, MatDividerModule, MatIconModule, MatMenuModule, TranslatePipe, Label],
+  imports: [
+    MatButtonModule,
+    MatDividerModule,
+    MatIconModule,
+    MatMenuModule,
+    RouterLink,
+    TranslatePipe,
+    Label,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-wrap items-center gap-2" data-testid="record-bar" data-tour="record-bar">
@@ -62,27 +71,31 @@ import { WINDOW_CLASS } from '../ui/window-class';
           {{ action.label | translate: action.labelParams }}
         </button>
       }
-      @for (action of primary(); track action.id) {
-        <button
-          mat-flat-button
-          type="button"
-          [disabled]="action.disabled === true"
-          (click)="run(action)"
-          [attr.data-testid]="'record-' + action.id"
+      @for (action of barComing(); track action.module) {
+        <!-- Kept out of the flow until the header has room for it, so its width is known before it is shown. -->
+        <a
+          mat-stroked-button
+          class="twes-planned-action"
+          [class.twes-planned-measure]="!plannedFit()"
+          [attr.aria-hidden]="plannedFit() ? null : 'true'"
+          [tabIndex]="plannedFit() ? 0 : -1"
+          [routerLink]="['/coming', action.module]"
+          data-planned
+          [attr.data-testid]="'planned-action-' + action.module"
         >
-          @if (action.icon) {
-            <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-          }
-          {{ action.label | translate: action.labelParams }}
-        </button>
+          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+          {{ action.label | translate }}
+          <span class="twes-soon" data-testid="soon">{{ 'shell.soon' | translate }}</span>
+        </a>
       }
-      @if (folded().length > 0 || coming().length > 0) {
+      @if (folded().length > 0 || menuComing().length > 0) {
         <button
           mat-icon-button
           type="button"
           [matMenuTriggerFor]="moreMenu"
           [appLabel]="'document.more_actions' | translate"
           data-testid="record-more"
+          data-bar-more
         >
           <mat-icon aria-hidden="true">more_vert</mat-icon>
         </button>
@@ -101,7 +114,7 @@ import { WINDOW_CLASS } from '../ui/window-class';
               <span>{{ action.label | translate: action.labelParams }}</span>
             </button>
           }
-          @if (coming().length > 0) {
+          @if (menuComing().length > 0) {
             @if (folded().length > 0) {
               <mat-divider />
             }
@@ -111,7 +124,7 @@ import { WINDOW_CLASS } from '../ui/window-class';
             >
               {{ 'actions.coming' | translate }}
             </div>
-            @for (action of coming(); track action.module) {
+            @for (action of menuComing(); track action.module) {
               <button
                 mat-menu-item
                 type="button"
@@ -128,6 +141,20 @@ import { WINDOW_CLASS } from '../ui/window-class';
           }
         </mat-menu>
       }
+      @for (action of primary(); track action.id) {
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="action.disabled === true"
+          (click)="run(action)"
+          [attr.data-testid]="'record-' + action.id"
+        >
+          @if (action.icon) {
+            <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+          }
+          {{ action.label | translate: action.labelParams }}
+        </button>
+      }
     </div>
   `,
 })
@@ -143,8 +170,8 @@ export class RecordBar {
   /** What the page offers, declared once — the same list the keyboard, the palette and the "?" sheet read. */
   readonly actions = input.required<readonly ScreenAction[]>();
   /**
-   * What the screen will offer once a planned module ships (row 150): listed last in the « ⋮ », under its own heading,
-   * as on a document's bar (audit V-3, V-12).
+   * What the screen will offer once a planned module ships, as on a document's bar: dashed in the bar where the header
+   * has room for them, else last in the « ⋮ » under their own heading.
    */
   readonly planned = input<readonly PlannedAction[]>([]);
 
@@ -164,7 +191,17 @@ export class RecordBar {
     const planned = new Set((this.session.me()?.plannedModules ?? []).map((each) => each.key));
     return this.planned().filter((action) => planned.has(action.module));
   });
-  /** Drawn filled and last: the state's next step, where a person's hand ends up. */
+  /** Drawn in the bar on a wide window: shown where they fit, else kept out of the flow and measured. */
+  protected readonly barComing = computed(() => (this.compact() ? [] : this.coming()));
+  protected readonly plannedFit = plannedRoom(
+    () => this.barComing(),
+    () => this.folded().length > 0,
+  );
+  /** Listed in « ⋮ » where the bar does not show them. */
+  protected readonly menuComing = computed(() =>
+    this.barComing().length > 0 && this.plannedFit() ? [] : this.coming(),
+  );
+  /** Drawn filled and last, after « ⋮ »: the state's next step, where a person's hand ends up. */
   protected readonly primary = computed(() =>
     this.offered().filter((action) => action.primary === true),
   );
