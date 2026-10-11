@@ -182,7 +182,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   after a resource property change; docs/START.md § 2), web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094, `lan` :8443 a phone's HTTPS door on this machine's network address, `infra/lan/Caddyfile`; the api image migrates at
   start, then `seed`: operator `operator@twes.local` / `twes-operator-dev`, authenticator secret
   `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`, `make operator-code` prints its current code; Playwright signs the operator in once, `web/e2e/session.ts`; `web/e2e/axe.ts` is the one WCAG scan, waiting for a fresh toast, and `web/e2e/toast.ts` the announced toast), `make gate` (licences + `composer gate`
-  + `npm run gate`, each in its toolchain container, below; `npm run gate` starts by regenerating the types and `composer test` migrates the test database first),
+  + `npm run gate`, each in its toolchain container, below; `npm run gate` starts by regenerating the types, and type-checks `e2e*/` and the Playwright configs through `tsconfig.e2e.json`, which Playwright itself never does; `composer test` migrates the test database first),
   `make e2e` (Playwright against the running stack), `make fixtures` (the demo companies, appended after `seed`).
   These are exactly CI's jobs; run the gate chain AFTER `git add -A`, because the SPDX gate and
   `git ls-files` see staged files and a cached-only enumeration misses a brand-new one.

@@ -17,10 +17,11 @@
     "pretest": "npm run icons",
     "test": "ng test",
     "lint": "ng lint",
+    "typecheck:e2e": "tsc -p tsconfig.e2e.json --noEmit",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "e2e": "playwright test",
-    "gate": "npm run api:types && npm run lint && npm run format:check && npm test && npm run build",
+    "gate": "npm run api:types && npm run lint && npm run typecheck:e2e && npm run format:check && npm test && npm run build",
     "api:types": "openapi-ts"
   },
   "dependencies": {
