@@ -5163,6 +5163,7 @@ functional tests run in the `tools` container, on the host's network, against th
 | 260 | Menus and actions, one way for the whole product (§ 7 2026-10-11 01:24): research and design every menu and action, an artifact of each before and after confirmed first; then every action of a record reachable from its row, selection and bulk with a dry-run | L | todo | - | web/src/app/** docs/research/** |
 | 261 | Escape keeps the desktop sidebar open (§ 7 2026-10-11 08:26): after closing « Créer » a second Escape hid the whole navigation with nothing to bring it back; `disableClose` on the desktop `mat-sidenav`, an e2e pressing Escape twice | S | done | 8cfafcfe | web/src/app/shell/** web/e2e/** |
 | 262 | The phone bar's icons over their words (§ 7 2026-10-11 09:01): each glyph centred in a 56 by 32 px pill, 4 px above its word, links and buttons alike; `shell.spec.ts` measures every tab | S | done | 452c8047 | web/src/styles.scss web/e2e/** |
+| 263 | A passkey as the first factor (§ 7 2026-09-22 14:05, brought forward 2026-10-11 09:01): in the ruled order, a discoverable-credential ceremony that reveals no address, the listener taking it as the whole login, the lock moved onto the password factor, the company › role › user setting off by default, the button and its e2e | L | todo | - | api/src/Identity/** web/src/app/auth/** web/e2e/** |
 <!-- /progress-block -->
 
 ### Delivered
