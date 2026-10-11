@@ -7,6 +7,7 @@ import {
   DuplicateListColumn,
   filterRows,
   fitScale,
+  fitShares,
   InvalidViewName,
   paginate,
   removeView,
@@ -307,6 +308,32 @@ describe('saved views', () => {
 });
 
 /** The sweep found lists whose last columns, the quantity among them, sat past their card even at 1440 px. */
+describe('fitShares', () => {
+  it('keeps every width where they fit', () => {
+    expect(fitShares(600, 300, 100, 1000)).toEqual({ declared: 1, free: 1 });
+  });
+
+  it('narrows the columns that declare no width first, those that declared one keeping it', () => {
+    // 1000 - 100 reserved leaves 900: the declared 600 whole, the free 400 down to 300.
+    expect(fitShares(600, 400, 100, 1000)).toEqual({ declared: 1, free: 0.75 });
+  });
+
+  it('narrows the declared ones only once the free ones reach the readable floor', () => {
+    // The free 400 at 0.7 take 280, which leaves 520 of 900 for the declared 650.
+    const shares = fitShares(650, 400, 100, 900);
+    expect(shares.free).toBe(0.7);
+    expect(shares.declared).toBeCloseTo(0.8, 5);
+  });
+
+  it('narrows the declared ones alike where none is free, as fitScale does', () => {
+    expect(fitShares(1100, 0, 96, 976)).toEqual({ declared: fitScale(1100, 96, 976), free: 1 });
+  });
+
+  it('keeps every width until the card has been measured', () => {
+    expect(fitShares(2000, 400, 96, null)).toEqual({ declared: 1, free: 1 });
+  });
+});
+
 describe('fitScale', () => {
   it('keeps the declared widths where they fit', () => {
     expect(fitScale(800, 96, 1000)).toBe(1);

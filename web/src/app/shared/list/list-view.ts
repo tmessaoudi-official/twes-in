@@ -219,3 +219,23 @@ export function fitScale(columns: number, actions: number, card: number | null):
   if (card === null || card <= 0 || columns <= 0 || columns + actions <= card) return 1;
   return Math.max(MIN_FIT, (card - actions) / columns);
 }
+
+/**
+ * The same in two shares: a column that declared its width declared what its content needs, one that did not holds
+ * free text an ellipsis can end. The free ones narrow first, down to `MIN_FIT`; only then the declared ones, alike.
+ * `reserved` is what never narrows: the actions, and the column a row opens on.
+ */
+export function fitShares(
+  declared: number,
+  free: number,
+  reserved: number,
+  card: number | null,
+): { declared: number; free: number } {
+  if (free <= 0) return { declared: fitScale(declared, reserved, card), free: 1 };
+  if (card === null || card <= 0 || declared + free + reserved <= card) {
+    return { declared: 1, free: 1 };
+  }
+  const room = card - reserved;
+  if (declared + free * MIN_FIT <= room) return { declared: 1, free: (room - declared) / free };
+  return { declared: fitScale(declared, reserved + free * MIN_FIT, card), free: MIN_FIT };
+}

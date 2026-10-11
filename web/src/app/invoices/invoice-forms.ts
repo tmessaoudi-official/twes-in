@@ -168,7 +168,7 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
       sortable: true,
       filterable: true,
       hideable: false,
-      width: 170,
+      width: 190,
     },
     {
       id: 'customer',
@@ -183,7 +183,7 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
       label: `${FIELDS}.issueDate`,
       value: (row) => row.issueDate ?? '',
       sortable: true,
-      width: 130,
+      width: 126,
     },
     {
       id: 'dueDate',
@@ -192,14 +192,14 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
       // A credit note is the company's to pay back, never due by a day.
       shown: (row) => row.type === 'invoice' && row.dueDate !== null,
       sortable: true,
-      width: 130,
+      width: 126,
     },
     {
       id: 'total',
       label: `${FIELDS}.total`,
       value: (row) => row.total,
       align: 'end',
-      width: 150,
+      width: 130,
     },
     {
       id: 'amountDue',
@@ -208,7 +208,7 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
       shown: (row) =>
         row.type === 'invoice' && row.status !== 'draft' && row.status !== 'cancelled',
       align: 'end',
-      width: 150,
+      width: 120,
     },
     {
       id: 'status',
