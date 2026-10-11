@@ -1415,7 +1415,7 @@ app-cookie-notice {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.125rem;
+    gap: 0.25rem;
     min-height: 3.5rem;
     padding-top: 0.25rem;
     border: 0;
@@ -1425,8 +1425,14 @@ app-cookie-notice {
     text-decoration: none;
     cursor: pointer;
 
+    // The pill is Material 3's indicator, 56 by 32 around the 24 px glyph. The glyph is text, so it is centred here: a
+    // button centres its text by itself, a link does not, and the tabs are links.
     .mat-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       width: 3.5rem;
+      height: 2rem;
       border-radius: 9999px;
       transition: background-color var(--twes-motion-standard) var(--twes-ease-standard);
     }
