@@ -294,10 +294,8 @@ export class InventoryFacade {
     } catch (error) {
       return codeOf(error);
     }
-    await this.write(
-      async () => undefined,
-      () => this.reloadMovements(companyId),
-    );
+    // Read again as the movements list reads itself, which says its own failure.
+    await this.reloadMovements(companyId);
     return null;
   }
 
