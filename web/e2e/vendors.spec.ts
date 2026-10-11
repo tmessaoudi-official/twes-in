@@ -45,7 +45,9 @@ async function retire(page: Page, number: string): Promise<void> {
 test('a vendor is added with its bank account and terms, then revised', async ({ page }) => {
   const run = Date.now().toString(36).toUpperCase();
   const number = `E2E-${run}`;
-  const name = `Sotumag ${run}`;
+  // Long enough that the title never shares a row with the bar: beside it, the « Bientôt » button would add one and
+  // folds into « ⋮ », so a short name made the check below depend on how wide the run's letters happened to be.
+  const name = `Sotumag, Société tunisienne de matériel ${run}`;
   await signIn(page);
   await inACompany(page, CSRF);
   try {
@@ -73,7 +75,8 @@ test('a vendor is added with its bank account and terms, then revised', async ({
     expect(await wcagViolations(page)).toEqual([]);
 
     // What a vendor will offer once supplier orders ship, marked and opening the module's page: on Playwright's
-    // 1280 px window the vendor's short bar has room for it, dashed (planned-in-bar.spec.ts covers « ⋮ » too).
+    // 1280 px window the vendor's bar, on its own row under the long title, has room for it, dashed
+    // (planned-in-bar.spec.ts covers « ⋮ » too).
     const planned = page.getByTestId('planned-action-purchases');
     await expect(planned.getByTestId('soon')).toBeVisible();
     expect(await wcagViolations(page)).toEqual([]);

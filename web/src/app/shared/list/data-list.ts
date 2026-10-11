@@ -340,6 +340,19 @@ export class DataList<Row> implements OnInit {
   private readonly selectWidth = computed(() =>
     this.selectable() && !this.asCards() ? SELECT_WIDTH : 0,
   );
+  /**
+   * What the rows shown are, as one string: a computed of it notifies only when it changes, so settings read again
+   * with the same values never let a selection go.
+   */
+  private readonly shownRows = computed(() =>
+    JSON.stringify([
+      this.query(),
+      this.chosenFilters(),
+      this.sort(),
+      this.pageIndex(),
+      this.pageSize(),
+    ]),
+  );
   private pressTimer: ReturnType<typeof setTimeout> | null = null;
   private pressAt: { x: number; y: number } | null = null;
   /** A long press selected: the click its release makes must not open the record. */
@@ -600,9 +613,14 @@ export class DataList<Row> implements OnInit {
       cards.addEventListener('click', this.swallowPressClick, true);
       onCleanup(() => cards.removeEventListener('click', this.swallowPressClick, true));
     });
-    // A selection is of the page shown: a row that left it, to another page, under other words or filters, leaves the
-    // selection, so nothing selected is out of sight when an action runs on it. Only once the page has been read: while
-    // it is read the rows may be the last answer's, and a selection must survive a live reload of the same rows.
+    // A selection is of the page as it was chosen on: another page, order, words or filters let it go whole, even where
+    // a selected row is still shown, so an action never runs on a selection made under other conditions.
+    effect(() => {
+      this.shownRows();
+      untracked(() => this.dropSelection());
+    });
+    // A row that left the page leaves the selection, once the page has been read: while it is read the rows may be the
+    // last answer's, and a selection must survive a live reload that answers the same rows.
     effect(() => {
       const ids = new Set(this.pageIds());
       if (this.loading()) return;
