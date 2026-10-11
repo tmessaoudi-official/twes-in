@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { ActionGroup } from '../actions/record-action';
 import type { ActionConfirm } from '../actions/screen-action';
 import type { IconName } from '../icons/icons';
 import type { StatusTone } from '../theme/accent-theme';
@@ -45,6 +46,8 @@ export interface RowAction<Row> {
   id: string;
   /** A translation key; the label names the action, and is the accessible name of its icon button. */
   label: string;
+  /** The key a row chooses for itself, where the declaration's label depends on the record: a draft's PDF is a preview. */
+  labelOf?: (row: Row) => string;
   /**
    * What the label interpolates, for a label that names its row. A screen reader reads a list of icon buttons one
    * after another, so "Delete Zone 1" tells somebody which row they are on where eleven identical "Delete" do not.
@@ -57,8 +60,14 @@ export interface RowAction<Row> {
   linkQuery?: (row: Row) => Record<string, string>;
   /** What it does, for an action that is not. Exactly one of `link` and `run` is given. */
   run?: (row: Row) => void;
-  /** Folded into the "⋮" menu rather than shown as a button. Destructive actions are always rare. */
-  rare?: boolean;
+  /** Folded into the "⋮" menu rather than shown as a button, for every row or as the row says. Destructive actions are always rare. */
+  rare?: boolean | ((row: Row) => boolean);
+  /** The row's next step: drawn with its word where the row is wide enough, and first of the row's buttons. */
+  next?: (row: Row) => boolean;
+  /** Where « ⋮ » lists it; the groups follow `ACTION_GROUPS`. */
+  group?: ActionGroup;
+  /** A file the browser opens in its own tab, the row's PDF. Exactly one of `link`, `href` and `run` is given. */
+  href?: (row: Row) => string;
   /** Drawn as destructive, and never a visible button. */
   destructive?: boolean;
   /** Hidden for a row it cannot apply to — a paid invoice has nothing to pay. */
@@ -231,4 +240,17 @@ export interface ListQuery {
 export interface ListPage<Row> {
   rows: Row[];
   total: number;
+}
+
+/** Whether a row's action waits in « ⋮ » for this row. */
+export function rareOn<Row>(action: RowAction<Row>, row: Row): boolean {
+  return (
+    action.destructive === true ||
+    (typeof action.rare === 'function' ? action.rare(row) : action.rare === true)
+  );
+}
+
+/** The translation key a row's action is named by, for this row. */
+export function labelOn<Row>(action: RowAction<Row>, row: Row): string {
+  return action.labelOf?.(row) ?? action.label;
 }

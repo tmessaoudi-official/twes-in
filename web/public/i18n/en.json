@@ -786,7 +786,7 @@
   },
   "form": {
     "save": "Save",
-    "revert": "Discard changes",
+    "revert": "Revert",
     "unsaved": "{{count}} unsaved changes",
     "one_unsaved": "1 unsaved change",
     "nothing_filled": "This document fills none of these fields in.",
@@ -1362,7 +1362,7 @@
     },
     "fixed": {
       "issued": "This document is issued and no longer changes: it is corrected with a credit note, and can still be printed.",
-      "cancelled": "This draft is cancelled and no longer changes."
+      "cancelled": "This draft is abandoned and no longer changes."
     },
     "types": {
       "invoice": "Invoice",
@@ -1375,7 +1375,7 @@
       "overdue": "Overdue",
       "partially_paid": "Partly paid",
       "paid": "Settled",
-      "cancelled": "Cancelled"
+      "cancelled": "Abandoned"
     },
     "sections": {
       "parties": "Customer and establishment",
@@ -1614,14 +1614,14 @@
       "issue": "Issue the invoice",
       "issue_credit_note": "Issue the credit note",
       "credit_note": "Create a credit note",
-      "cancel": "Cancel the draft",
+      "cancel": "Abandon the draft…",
       "duplicate": "Duplicate",
-      "cancel_title": "Cancel this document?",
-      "cancel_message": "A cancelled document cannot be issued again, and its number is not reused.",
-      "confirm_cancel": "Confirm cancellation",
+      "cancel_title": "Abandon this draft?",
+      "cancel_message": "An abandoned draft can no longer be issued or changed; it stays in the list.",
+      "confirm_cancel": "Abandon the draft",
       "keep": "Keep the draft",
       "pdf": "Download the PDF",
-      "pdf_draft": "Preview the PDF",
+      "pdf_draft": "PDF preview",
       "print_duplicate": "Print a duplicate",
       "print_current": "Print an up-to-date copy",
       "issue_title": "Issue this invoice?",
@@ -1708,7 +1708,7 @@
     },
     "issued": "The invoice was issued.",
     "credit_note_issued": "The credit note was issued.",
-    "cancelled": "The document was cancelled.",
+    "cancelled": "The draft was abandoned.",
     "suggest": {
       "record_payment": "Record a payment"
     },

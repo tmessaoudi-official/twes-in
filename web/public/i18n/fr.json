@@ -786,7 +786,7 @@
   },
   "form": {
     "save": "Enregistrer",
-    "revert": "Annuler les modifications",
+    "revert": "Rétablir",
     "unsaved": "{{count}} modifications non enregistrées",
     "one_unsaved": "1 modification non enregistrée",
     "nothing_filled": "Ce document ne renseigne aucun de ces champs.",
@@ -1362,7 +1362,7 @@
     },
     "fixed": {
       "issued": "Ce document est émis et ne change plus : il se corrige par un avoir, et peut encore être imprimé.",
-      "cancelled": "Ce brouillon est annulé et ne change plus."
+      "cancelled": "Ce brouillon est abandonné et ne change plus."
     },
     "types": {
       "invoice": "Facture",
@@ -1375,7 +1375,7 @@
       "overdue": "En retard",
       "partially_paid": "Partiellement payée",
       "paid": "Soldée",
-      "cancelled": "Annulée"
+      "cancelled": "Abandonnée"
     },
     "sections": {
       "parties": "Client et établissement",
@@ -1614,14 +1614,14 @@
       "issue": "Émettre la facture",
       "issue_credit_note": "Émettre l’avoir",
       "credit_note": "Créer un avoir",
-      "cancel": "Annuler le brouillon",
+      "cancel": "Abandonner le brouillon…",
       "duplicate": "Dupliquer",
-      "cancel_title": "Annuler ce document ?",
-      "cancel_message": "Un document annulé ne peut plus être émis, et son numéro n’est pas réutilisé.",
-      "confirm_cancel": "Confirmer l’annulation",
+      "cancel_title": "Abandonner ce brouillon ?",
+      "cancel_message": "Un brouillon abandonné ne peut plus être émis ni modifié ; il reste dans la liste.",
+      "confirm_cancel": "Abandonner le brouillon",
       "keep": "Garder le brouillon",
       "pdf": "Télécharger le PDF",
-      "pdf_draft": "Aperçu du PDF",
+      "pdf_draft": "Aperçu PDF",
       "print_duplicate": "Imprimer un duplicata",
       "print_current": "Imprimer une copie à jour",
       "issue_title": "Émettre cette facture ?",
@@ -1708,7 +1708,7 @@
     },
     "issued": "La facture a été émise.",
     "credit_note_issued": "L’avoir a été émis.",
-    "cancelled": "Le document a été annulé.",
+    "cancelled": "Le brouillon a été abandonné.",
     "suggest": {
       "record_payment": "Enregistrer un paiement"
     },

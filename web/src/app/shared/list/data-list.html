@@ -296,7 +296,7 @@
   }
 
   @if (asCards()) {
-    <!-- A 696 px table in a 390 px window is read by scrolling sideways, which is how the columns that matter end
+    <!-- A 752 px table in a 390 px window is read by scrolling sideways, which is how the columns that matter end
          up off screen. Below 600 px each row is a card instead: the same rows, the same test ids, the same
          controls, one under the other. -->
     <ul class="twes-list-cards" data-testid="list-cards">
@@ -454,7 +454,7 @@
               mat-header-cell
               *matHeaderCellDef
               class="twes-row-actions"
-              [style.width.px]="actionsWidth"
+              [style.width.px]="actionsWidth()"
             >
               <span class="sr-only">{{ 'list.actions' | translate }}</span>
             </th>
@@ -514,14 +514,55 @@
 <!-- One declaration of a row's own controls, rendered in the table's trailing cell and again on a phone's
      card, so the two can never offer different things. -->
 <ng-template #rowControls let-row>
-  @for (action of shownActions(buttonActions(), row); track action.id) {
-    @if (action.link; as link) {
+  @for (action of rowButtons(row); track action.id) {
+    @let label = labelOn(action, row) | translate: action.labelParams?.(row);
+    @let testId = 'row-action-' + action.id + '-' + descriptor().rowId(row);
+    @if (rowWords() && isNext(action, row)) {
+      @if (action.href; as href) {
+        <a mat-button [href]="href(row)" target="_blank" rel="noopener" [attr.data-testid]="testId">
+          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+          {{ label }}
+        </a>
+      } @else if (action.link; as link) {
+        <a
+          mat-button
+          [routerLink]="link(row)"
+          [queryParams]="action.linkQuery?.(row) ?? null"
+          [attr.data-testid]="testId"
+        >
+          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+          {{ label }}
+        </a>
+      } @else {
+        <button
+          mat-button
+          type="button"
+          (click)="runAction(action, row)"
+          [disabled]="action.disabled?.(row) ?? false"
+          [attr.data-testid]="testId"
+        >
+          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+          {{ label }}
+        </button>
+      }
+    } @else if (action.href; as href) {
+      <a
+        mat-icon-button
+        [href]="href(row)"
+        target="_blank"
+        rel="noopener"
+        [appLabel]="label"
+        [attr.data-testid]="testId"
+      >
+        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+      </a>
+    } @else if (action.link; as link) {
       <a
         mat-icon-button
         [routerLink]="link(row)"
         [queryParams]="action.linkQuery?.(row) ?? null"
-        [appLabel]="action.label | translate: action.labelParams?.(row)"
-        [attr.data-testid]="'row-action-' + action.id + '-' + descriptor().rowId(row)"
+        [appLabel]="label"
+        [attr.data-testid]="testId"
       >
         <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
       </a>
@@ -531,14 +572,14 @@
         type="button"
         (click)="runAction(action, row)"
         [disabled]="action.disabled?.(row) ?? false"
-        [appLabel]="action.label | translate: action.labelParams?.(row)"
-        [attr.data-testid]="'row-action-' + action.id + '-' + descriptor().rowId(row)"
+        [appLabel]="label"
+        [attr.data-testid]="testId"
       >
         <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
       </button>
     }
   }
-  @if (shownActions(menuActions(), row); as rare) {
+  @if (rowMenu(row); as rare) {
     @if (rare.length > 0) {
       <button
         mat-icon-button
@@ -551,15 +592,32 @@
       </button>
       <mat-menu #rowMenu="matMenu" xPosition="before">
         @for (action of rare; track action.id) {
-          @if (action.link; as link) {
+          @let testId = 'row-menu-' + action.id + '-' + descriptor().rowId(row);
+          @if (action.destructive && !$first && !rare[$index - 1].destructive) {
+            <mat-divider />
+          } @else if (!$first && action.group !== rare[$index - 1].group) {
+            <mat-divider />
+          }
+          @if (action.href; as href) {
+            <a
+              mat-menu-item
+              [href]="href(row)"
+              target="_blank"
+              rel="noopener"
+              [attr.data-testid]="testId"
+            >
+              <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+              <span>{{ labelOn(action, row) | translate: action.labelParams?.(row) }}</span>
+            </a>
+          } @else if (action.link; as link) {
             <a
               mat-menu-item
               [routerLink]="link(row)"
               [queryParams]="action.linkQuery?.(row) ?? null"
-              [attr.data-testid]="'row-menu-' + action.id + '-' + descriptor().rowId(row)"
+              [attr.data-testid]="testId"
             >
               <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-              <span>{{ action.label | translate: action.labelParams?.(row) }}</span>
+              <span>{{ labelOn(action, row) | translate: action.labelParams?.(row) }}</span>
             </a>
           } @else {
             <button
@@ -568,12 +626,12 @@
               (click)="runAction(action, row)"
               [disabled]="action.disabled?.(row) ?? false"
               [class.text-error]="action.destructive"
-              [attr.data-testid]="'row-menu-' + action.id + '-' + descriptor().rowId(row)"
+              [attr.data-testid]="testId"
             >
               <mat-icon aria-hidden="true" [class.text-error]="action.destructive">{{
                 action.icon
               }}</mat-icon>
-              <span>{{ action.label | translate: action.labelParams?.(row) }}</span>
+              <span>{{ labelOn(action, row) | translate: action.labelParams?.(row) }}</span>
             </button>
           }
         }

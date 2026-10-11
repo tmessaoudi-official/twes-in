@@ -127,6 +127,8 @@ describe('InvoicesPage', () => {
     exportUrl: (companyId: string, _search: unknown, format: string) =>
       `/api/companies/${companyId}/exports/invoices.${format}`,
     pdfUrl: (companyId: string, id: string) => `/api/companies/${companyId}/invoices/${id}/pdf`,
+    pdfCopyUrl: (companyId: string, id: string, kind: string) =>
+      `/api/companies/${companyId}/invoices/${id}/pdf/${kind}`,
   };
   const windowClass = signal<WindowClass>('expanded');
   const auth = {

@@ -22,7 +22,11 @@ import { Label } from '../shared/a11y/label';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { withdrawn } from '../shared/theme/lifecycle-tones';
+import { onRecord } from '../shared/actions/record-action';
+import { ScreenActions } from '../shared/actions/screen-actions';
+import { DocumentActions } from '../shared/ui/document-actions';
 import { StatusBadge } from '../shared/ui/status-badge';
+import { InvoiceActions } from './invoice-actions';
 import { daysLate, paidShare, shownStatus, stillOwed } from './invoice-forms';
 import { chaseDue } from './invoice-summary-view';
 import { InvoicesFacade } from './invoices-facade';
@@ -47,6 +51,7 @@ const CUSTOMERS_MODULE = 'customers';
     DayPipe,
     Label,
     StatusBadge,
+    DocumentActions,
   ],
   templateUrl: './invoice-sheet.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -56,11 +61,14 @@ const CUSTOMERS_MODULE = 'customers';
 export class InvoiceSheet {
   private readonly facade = inject(InvoicesFacade);
   private readonly auth = inject(AuthFacade);
+  private readonly invoiceActions = inject(InvoiceActions);
 
   readonly invoiceId = input.required<string>();
   /** The company's day (YYYY-MM-DD), which says whether the document is late and by how much. */
   readonly today = input.required<string>();
   readonly closed = output<void>();
+  /** Said once an action changed the document, so the list reads its rows again: its own change never comes back to it. */
+  readonly touched = output<void>();
 
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
   /** undefined while it is read, null when it cannot be. */
@@ -81,9 +89,6 @@ export class InvoiceSheet {
     return shown !== null && withdrawn(INVOICE_STATUS_STAGES[shown]);
   });
   protected readonly owed = computed(() => stillOwed(this.invoice()));
-  protected readonly mayPay = computed(
-    () => this.owed() && this.auth.hasPermission('payment.write'),
-  );
   protected readonly customerLinked = computed(() => this.auth.hasModule(CUSTOMERS_MODULE));
   protected readonly share = computed(() => {
     const invoice = this.invoice();
@@ -97,12 +102,20 @@ export class InvoiceSheet {
     const id = this.invoice()?.establishmentId;
     return this.options()?.establishments.find((one) => one.id === id)?.name ?? null;
   });
-  protected readonly pdfUrl = computed(() => {
-    const companyId = this.company()?.id;
-    return companyId ? this.facade.pdfUrl(companyId, this.invoiceId()) : null;
-  });
+  /**
+   * What can be done to the document, the same declaration its page and its row read: its next step runs here, over the
+   * list, rather than sending the person to the record to do it (docs/SPEC.md § 7, 2026-10-11 08:26).
+   */
+  private readonly declared = computed(() =>
+    this.invoiceActions.declare({ changed: () => this.changed() }),
+  );
+  protected readonly actions = computed(() =>
+    onRecord(this.declared(), this.invoice(), this.facade.busy()),
+  );
 
   constructor() {
+    // Its keys and the palette act on the document the sheet shows.
+    inject(ScreenActions).declare(this.actions);
     let request = 0;
     effect(() => {
       const companyId = this.company()?.id;
@@ -119,6 +132,14 @@ export class InvoiceSheet {
         queueMicrotask(() => this.heading()?.nativeElement.focus());
       });
     });
+  }
+
+  /** The document read again after an action of its bar, and the list told. */
+  private async changed(): Promise<void> {
+    const companyId = this.company()?.id;
+    if (!companyId) return;
+    this.invoice.set(await this.facade.peek(companyId, this.invoiceId()));
+    this.touched.emit();
   }
 
   protected close(): void {

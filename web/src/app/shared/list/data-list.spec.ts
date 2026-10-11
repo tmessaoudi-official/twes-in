@@ -538,7 +538,7 @@ describe('DataList', () => {
 
   it('keeps the table as wide as its columns, so a narrow screen scrolls the list and not the page', () => {
     // name, city and status declare no width (160 each), balance declares 120; a list that declares no action
-    // has no trailing column and does not pay the 96 px it would cost.
+    // has no trailing column and does not pay for one.
     expect(q('customers-table')!.style.minWidth).toBe('600px');
   });
 
@@ -919,13 +919,13 @@ describe('DataList', () => {
       host.detectChanges();
     });
 
-    it('pays for the trailing column only where actions are declared', () => {
+    it('pays for the trailing column only where actions are declared, as wide as what a row holds', () => {
       // The width has to include the actions column, or a table at its minimum width clips the controls it just
-      // pinned to its right edge.
+      // pinned to its right edge: here two buttons and « ⋮ », 40 px each, and the cell's own 16 px either side.
       expect(
         (host.nativeElement.querySelector('[data-testid="customers-table"]') as HTMLElement).style
           .minWidth,
-      ).toBe('696px');
+      ).toBe('752px');
     });
 
     it('opens the record through a real link on the row, not a click handler', async () => {
@@ -1107,7 +1107,7 @@ describe('DataList', () => {
       host.nativeElement.querySelector(`[data-testid="customer-${id}"]`);
 
     it('lays each row out as a card instead of a table row', () => {
-      // A table 696 px wide in a 390 px window is read by scrolling sideways, which is how the columns that matter
+      // A table 752 px wide in a 390 px window is read by scrolling sideways, which is how the columns that matter
       // end up off screen. Below 600 px the same rows are cards, one under the other, and nothing scrolls sideways.
       expect(host.nativeElement.querySelector('table')).toBeNull();
       expect(host.nativeElement.querySelector('[data-testid="list-cards"]')).not.toBeNull();

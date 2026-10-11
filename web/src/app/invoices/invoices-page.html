@@ -101,6 +101,7 @@
           [invoiceId]="sheetId"
           [today]="today()"
           (closed)="closeSheet()"
+          (touched)="reloadNow()"
         />
       }
     </div>

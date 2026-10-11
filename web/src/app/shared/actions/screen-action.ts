@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { IconName } from '../icons/icons';
+import type { ActionGroup } from './record-action';
 
 /**
  * What a screen offers, declared once (docs/SPEC.md § 7, 2026-09-16 point 7 and 2026-09-19 23:17, row 45). The
@@ -38,6 +39,8 @@ export interface ScreenAction {
    * « ⋮ »: a record page's save, without which a new document could only be left by its back link.
    */
   keep?: boolean;
+  /** Where « ⋮ » lists it; the groups follow `ACTION_GROUPS`, and an action of none comes after them. */
+  group?: ActionGroup;
   /** Folded into "⋮" rather than shown. Destructive actions are always folded, whatever this says. */
   rare?: boolean;
   /** Drawn as destructive, never a visible button, and asks before it runs when `confirm` is given. */

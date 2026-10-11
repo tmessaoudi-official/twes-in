@@ -11,6 +11,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../a11y/label';
 import { runAction } from '../actions/run-action';
 import type { PlannedAction } from '../actions/planned-actions';
+import { menuOrder } from '../actions/record-action';
 import { kindOf, type ScreenAction } from '../actions/screen-action';
 import { Session } from '../session/session';
 import { ThemeFacade } from '../theme/theme-facade';
@@ -71,9 +72,16 @@ export class DocumentActions {
    * Drawn in the bar: the frequent ones, never anything destructive; on a phone the next step alone, since the bar
    * wrapped into three rows there with its « ⋮ » alone on one (audit V-3), and what is kept beside it as an icon.
    */
-  protected readonly visible = computed(() =>
-    this.compact() ? this.frequent().filter((action) => onPhoneBar(action)) : this.frequent(),
-  );
+  protected readonly visible = computed(() => {
+    const drawn = this.compact()
+      ? this.frequent().filter((action) => onPhoneBar(action))
+      : this.frequent();
+    // The next step is the one filled button, last, where the hand ends up (docs/SPEC.md § 7, 2026-10-11 08:26).
+    return [
+      ...drawn.filter((action) => action.primary !== true),
+      ...drawn.filter((action) => action.primary === true),
+    ];
+  });
   /** The frequent ones a phone has no room for, first in the menu. */
   private readonly folded = computed(() =>
     this.compact() ? this.frequent().filter((action) => !onPhoneBar(action)) : [],
@@ -87,10 +95,19 @@ export class DocumentActions {
    * never the entry beside the pointer (docs/SPEC.md § 7, 2026-09-25 22:17 and NAV-38).
    */
   protected readonly menu = computed(() => [
-    ...this.folded(),
-    ...this.rare().filter((action) => kindOf(action) !== 'definitif'),
+    ...menuOrder([
+      ...this.folded(),
+      ...this.rare().filter((action) => kindOf(action) !== 'definitif'),
+    ]),
     ...this.rare().filter((action) => kindOf(action) === 'definitif'),
   ]);
+
+  /** A divider before an entry of another group than the one above it, so « ⋮ » reads as its groups. */
+  protected startsGroup(index: number): boolean {
+    const menu = this.menu();
+    const action = menu[index];
+    return index > 0 && action !== this.firstFinal() && action?.group !== menu[index - 1]?.group;
+  }
   /** The planned actions shown: those the catalogue still plans, and none once « Montrer ce qui arrive » is off. */
   protected readonly coming = computed(() => {
     if (!this.theme.showComing()) return [];
