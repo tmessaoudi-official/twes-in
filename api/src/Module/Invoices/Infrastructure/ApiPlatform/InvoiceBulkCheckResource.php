@@ -50,12 +50,12 @@ final class InvoiceBulkCheckResource
                 'number' => ['type' => ['string', 'null']],
                 'customerName' => ['type' => ['string', 'null']],
                 'outcome' => ['type' => 'string', 'enum' => ['included', 'skipped']],
-                'reason' => ['type' => ['string', 'null'], 'enum' => ['not_found', null]],
+                'reason' => ['type' => ['string', 'null'], 'enum' => ['not_found', 'draft', 'cancelled', null]],
             ],
         ],
     ];
 
-    #[ApiProperty(schema: ['type' => 'string', 'enum' => ['export']])]
+    #[ApiProperty(schema: ['type' => 'string', 'enum' => ['export', 'pdf']])]
     #[Assert\NotBlank(groups: [self::WRITE])]
     #[Assert\Choice(callback: [self::class, 'actions'], groups: [self::WRITE])]
     #[Groups([self::WRITE])]

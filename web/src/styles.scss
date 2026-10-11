@@ -371,6 +371,8 @@ html {
 /* The selection's bar, in the toolbar's place while rows are selected: the same height, a tinted ground. */
 .twes-list-selection {
   display: flex;
+  /* A phone's bar cannot hold the count and a screen's actions on one row: the actions go under it. */
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
   min-height: 3.5rem;

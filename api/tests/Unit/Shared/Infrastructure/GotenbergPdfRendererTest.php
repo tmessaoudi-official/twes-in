@@ -58,6 +58,39 @@ final class GotenbergPdfRendererTest extends TestCase
         new GotenbergPdfRenderer(new MockHttpClient(new MockResponse('%PDF-1.7', ['http_code' => 200])), self::URL)->firstPage('<p>x</p>');
     }
 
+    public function testSeveralPdfsAreMergedInTheOrderGivenWhichGotenbergReadsFromTheirNames(): void
+    {
+        $response = new MockResponse('%PDF-1.4 merged', ['http_code' => 200, 'response_headers' => ['content-type' => 'application/pdf']]);
+        $pdfs = array_map(static fn (int $page): string => "%PDF-1.7 page $page", range(1, 11));
+
+        $merged = new GotenbergPdfRenderer(new MockHttpClient($response), self::URL)->merge($pdfs);
+
+        self::assertSame('%PDF-1.4 merged', $merged);
+        self::assertSame(['POST', self::URL.'/forms/pdfengines/merge'], [$response->getRequestMethod(), $response->getRequestUrl()]);
+        $options = $response->getRequestOptions();
+        self::assertIsString($options['body']);
+        preg_match_all('/name="files"; filename="([^"]+)".*?\r\n\r\n(%PDF-1\.7 page \d+)\r\n/s', $options['body'], $parts);
+        // Gotenberg merges by file name, whatever order the parts arrive in: the eleventh is not put between the first two.
+        self::assertSame(['001.pdf', '002.pdf', '003.pdf', '004.pdf', '005.pdf', '006.pdf', '007.pdf', '008.pdf', '009.pdf', '010.pdf', '011.pdf'], $parts[1]);
+        self::assertSame($pdfs, $parts[2]);
+    }
+
+    public function testOnePdfIsItsOwnMergeAndNoneIsNoPdf(): void
+    {
+        $unused = new MockHttpClient(static fn (): never => throw new \LogicException('Gotenberg was asked.'));
+
+        self::assertSame('%PDF-1.7 alone', new GotenbergPdfRenderer($unused, self::URL)->merge(['%PDF-1.7 alone']));
+
+        $this->expectException(\InvalidArgumentException::class);
+        new GotenbergPdfRenderer($unused, self::URL)->merge([]);
+    }
+
+    public function testAMergeThatComesBackAsAnythingButAPdfFails(): void
+    {
+        $this->expectException(PdfRenderingFailed::class);
+        new GotenbergPdfRenderer(new MockHttpClient(new MockResponse('{"error":"x"}', ['http_code' => 200])), self::URL)->merge(['%PDF-1', '%PDF-2']);
+    }
+
     public function testARefusalAnUnreachableServerOrAnythingButAPdfFailsTheRendering(): void
     {
         $failed = [];

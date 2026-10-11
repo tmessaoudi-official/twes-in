@@ -19,9 +19,12 @@
           <mat-icon aria-hidden="true">close</mat-icon>
         </button>
       }
-      <span role="status" class="min-w-0 flex-1 font-medium" data-testid="list-selection-count">{{
-        descriptor().selection!.countKey | translate: { count: selected().length }
-      }}</span>
+      <span
+        role="status"
+        class="flex-auto whitespace-nowrap font-medium"
+        data-testid="list-selection-count"
+        >{{ descriptor().selection!.countKey | translate: { count: selected().length } }}</span
+      >
       @if (selectionActions(); as actions) {
         <ng-container [ngTemplateOutlet]="actions.template" />
       }

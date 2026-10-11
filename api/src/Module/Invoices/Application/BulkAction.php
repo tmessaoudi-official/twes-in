@@ -13,4 +13,5 @@ namespace App\Module\Invoices\Application;
 enum BulkAction: string
 {
     case Export = 'export';
+    case Pdf = 'pdf';
 }

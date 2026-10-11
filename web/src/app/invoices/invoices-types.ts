@@ -233,10 +233,13 @@ export interface InvoiceSearch {
 }
 
 /** What a person does at once to the invoices they selected on a list page. */
-export type BulkAction = 'export';
+export type BulkAction = 'export' | 'pdf';
+
+/** A selection printed as one PDF, or as a zip of one PDF each. */
+export type BulkPdfFormat = 'pdf' | 'zip';
 
 /** Why a selected invoice stays out of a bulk action; the screen says it in words. */
-export type BulkSkipReason = 'not_found';
+export type BulkSkipReason = 'not_found' | 'draft' | 'cancelled';
 
 /** One selected invoice and what a bulk action would do with it, as the API checked it before it runs. */
 export interface BulkCheckRow {

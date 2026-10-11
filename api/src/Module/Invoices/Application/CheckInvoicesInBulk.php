@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Application;
 
 use App\Module\Invoices\Domain\InvoiceRepository;
+use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\Uid\Uuid;
 
@@ -29,10 +30,12 @@ final readonly class CheckInvoicesInBulk
 
     /**
      * @param list<Uuid> $ids
+     * @param bool       $drafts    whether a PDF takes the drafts, which it otherwise leaves out
+     * @param bool       $cancelled whether a PDF takes the cancelled ones, which it otherwise leaves out
      *
      * @return list<BulkCheckRow>
      */
-    public function check(Company $company, BulkAction $action, array $ids): array
+    public function check(Company $company, BulkAction $action, array $ids, bool $drafts = false, bool $cancelled = false): array
     {
         $unique = [];
         foreach ($ids as $id) {
@@ -53,6 +56,11 @@ final readonly class CheckInvoicesInBulk
                 ? new BulkCheckRow($id, null, BulkCheckRow::NOT_FOUND)
                 : new BulkCheckRow($id, $invoice, match ($action) {
                     BulkAction::Export => null,
+                    BulkAction::Pdf => match ($invoice->getStatus()) {
+                        InvoiceStatus::Draft => $drafts ? null : BulkCheckRow::DRAFT,
+                        InvoiceStatus::Cancelled => $cancelled ? null : BulkCheckRow::CANCELLED,
+                        default => null,
+                    },
                 });
         }
 

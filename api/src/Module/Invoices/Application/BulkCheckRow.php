@@ -19,6 +19,10 @@ use Symfony\Component\Uid\Uuid;
 final readonly class BulkCheckRow
 {
     public const string NOT_FOUND = 'not_found';
+    /** Not numbered yet: printed only when asked for, under its watermark. */
+    public const string DRAFT = 'draft';
+    /** A draft that will never be numbered. */
+    public const string CANCELLED = 'cancelled';
 
     public function __construct(public Uuid $id, public ?Invoice $invoice, public ?string $skipped = null)
     {

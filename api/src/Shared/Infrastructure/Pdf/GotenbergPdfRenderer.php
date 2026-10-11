@@ -71,14 +71,45 @@ final readonly class GotenbergPdfRenderer implements PdfRenderer
     }
 
     /**
+     * Gotenberg's PDF engines merge the files in the order of their names, whatever order they arrive in, so each is
+     * named by its place, padded so that the tenth does not sort before the second.
+     */
+    public function merge(array $pdfs): string
+    {
+        if ([] === $pdfs) {
+            throw new \InvalidArgumentException('Nothing to merge.');
+        }
+        if (1 === \count($pdfs)) {
+            return $pdfs[0];
+        }
+        $width = \strlen((string) \count($pdfs));
+        $parts = [];
+        foreach ($pdfs as $index => $pdf) {
+            $parts[] = ['files' => new DataPart($pdf, str_pad((string) ($index + 1), max(3, $width), '0', \STR_PAD_LEFT).'.pdf', 'application/pdf', '8bit')];
+        }
+        $merged = $this->send('pdfengines/merge', $parts);
+        if (!str_starts_with($merged, '%PDF-')) {
+            throw new PdfRenderingFailed('Gotenberg answered something other than a PDF.');
+        }
+
+        return $merged;
+    }
+
+    /**
      * @param 'convert'|'screenshot'         $route
      * @param array<string, string|DataPart> $fields
      */
     private function post(string $route, array $fields): string
     {
+        return $this->send('chromium/'.$route.'/html', $fields);
+    }
+
+    /** @param array<int|string, string|DataPart|array<string, DataPart>> $fields */
+    private function send(string $route, array $fields): string
+    {
         $form = new FormDataPart($fields);
         try {
-            return $this->httpClient->request('POST', rtrim($this->url, '/').'/forms/chromium/'.$route.'/html', [
+            return $this->httpClient->request('POST', rtrim($this->url, '/').'/forms/'.$route, [
                 'headers' => $form->getPreparedHeaders()->toArray(),
                 'body' => $form->bodyToString(),
                 'timeout' => $this->timeoutSeconds,

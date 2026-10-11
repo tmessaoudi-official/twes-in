@@ -1349,14 +1349,25 @@
     "bulk": {
       "exported": "{count, plural, one {{{count}} facture exportée} other {{{count}} factures exportées}}",
       "check_failed": "La sélection n’a pas pu être vérifiée. Réessayez.",
-      "skipped_title": "{count, plural, one {Une facture sélectionnée est laissée de côté} other {{{count}} factures sélectionnées sont laissées de côté}}",
+      "skipped_title": "{count, plural, =0 {Aucune facture laissée de côté} one {Une facture sélectionnée est laissée de côté} other {{{count}} factures sélectionnées sont laissées de côté}}",
       "unknown": "Facture inconnue",
       "reasons": {
-        "not_found": "Introuvable : supprimée entre-temps, ou plus accessible"
+        "not_found": "Introuvable : supprimée entre-temps, ou plus accessible",
+        "draft": "Brouillon : pas encore numérotée",
+        "cancelled": "Annulée : jamais numérotée"
       },
       "cancel": "Annuler",
       "close": "Fermer",
-      "export_rest": "{count, plural, one {Exporter l’autre} other {Exporter les {{count}} autres}}"
+      "export_rest": "{count, plural, one {Exporter l’autre} other {Exporter les {{count}} autres}}",
+      "pdf": "PDF",
+      "pdf_as": {
+        "pdf": "Un seul PDF",
+        "zip": "Un PDF par facture (zip)"
+      },
+      "pdf_rest": "{count, plural, one {Télécharger la facture} other {Télécharger les {{count}} factures}}",
+      "printed": "{count, plural, one {{{count}} facture en PDF} other {{{count}} factures en PDF}}",
+      "include_drafts": "Inclure les brouillons (filigrane BROUILLON)",
+      "include_cancelled": "Inclure les annulées (filigrane ANNULÉ)"
     },
     "title": "Factures",
     "add": "Nouvelle facture",

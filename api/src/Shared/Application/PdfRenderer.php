@@ -31,4 +31,15 @@ interface PdfRenderer
      * @throws PdfRenderingFailed
      */
     public function firstPage(string $html): string;
+
+    /**
+     * Several PDFs as one, their pages in the order given.
+     *
+     * @param list<string> $pdfs each PDF's bytes, at least one
+     *
+     * @return string the merged PDF's bytes
+     *
+     * @throws PdfRenderingFailed
+     */
+    public function merge(array $pdfs): string;
 }

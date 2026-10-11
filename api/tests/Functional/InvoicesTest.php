@@ -28,6 +28,7 @@ use App\Settings\Domain\SettingLevel;
 use App\Tenancy\Application\Company\CompanyLogo;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
+use App\Tests\Support\FakePdfRenderer;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
@@ -1500,6 +1501,165 @@ final class InvoicesTest extends ApiTestCase
         $this->login('nobody@twes.local', 'password-1234');
         $this->postJson($this->path().'/bulk-check', ['action' => 'export', 'ids' => [self::ABSENT]]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a member who may not read invoices is answered as a stranger');
+    }
+
+    // A selection printed as one PDF holds each issued invoice once, in the order chosen. A draft and a cancelled one are
+    // left out unless their own box asks for them, and then print under the watermark their own PDF carries.
+    public function testTheSelectedInvoicesArePrintedAsOnePdfInTheOrderChosen(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->stepUp('password-1234');
+        $first = $this->issuedInvoice();
+        $second = $this->issuedInvoice();
+        [$firstNumber, $secondNumber] = [$this->numberOf($first), $this->numberOf($second)];
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
+        $draft = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '3']]]));
+        $cancelled = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($cancelled).'/cancel', null);
+        self::assertResponseIsSuccessful();
+        $ids = '?id[]='.$second.'&id[]='.$first.'&id[]='.$draft.'&id[]='.$cancelled.'&id[]='.$second;
+
+        $pages = $this->printedFrom($ids);
+        self::assertResponseHeaderSame('content-type', 'application/pdf');
+        self::assertStringContainsString('attachment; filename=invoices.pdf', (string) $this->client->getResponse()->headers->get('content-disposition'));
+        self::assertCount(2, $pages, 'each once, the draft and the cancelled one left out');
+        self::assertStringContainsString($secondNumber, $pages[0]);
+        self::assertStringContainsString($firstNumber, $pages[1]);
+        self::assertStringNotContainsString('BROUILLON', implode('', $pages));
+
+        $pages = $this->printedFrom($ids.'&drafts=1');
+        self::assertCount(3, $pages);
+        self::assertStringContainsString('BROUILLON', $pages[2]);
+        self::assertStringNotContainsString('ANNULÉ', implode('', $pages), 'the drafts box does not bring a cancelled one');
+
+        $pages = $this->printedFrom($ids.'&cancelled=1');
+        self::assertCount(3, $pages);
+        self::assertStringContainsString('ANNULÉ', $pages[2]);
+        self::assertStringNotContainsString('BROUILLON', $pages[2]);
+
+        self::assertCount(4, $this->printedFrom($ids.'&drafts=1&cancelled=1'));
+    }
+
+    public function testTheSelectedInvoicesArePrintedAsAZipOfOnePdfEach(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->stepUp('password-1234');
+        $first = $this->issuedInvoice();
+        $second = $this->issuedInvoice();
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
+        $draft = $this->stringAt($this->json(), 'id');
+
+        $this->client->request('GET', $this->companyPath().'/exports/invoices.zip?id[]='.$second.'&id[]='.$first.'&id[]='.$draft.'&drafts=1');
+
+        self::assertResponseIsSuccessful();
+        self::assertResponseHeaderSame('content-type', 'application/zip');
+        self::assertStringContainsString('attachment; filename=invoices.zip', (string) $this->client->getResponse()->headers->get('content-disposition'));
+        $path = tempnam(sys_get_temp_dir(), 'twes-test-zip-');
+        self::assertIsString($path);
+        try {
+            file_put_contents($path, $this->client->getInternalResponse()->getContent());
+            $zip = new \ZipArchive();
+            self::assertTrue($zip->open($path, \ZipArchive::RDONLY));
+            $entries = [];
+            for ($index = 0; $index < $zip->numFiles; ++$index) {
+                $name = (string) $zip->getNameIndex($index);
+                $entries[$name] = (string) $zip->getFromIndex($index);
+            }
+            $zip->close();
+        } finally {
+            unlink($path);
+        }
+        // Each file is named as its own PDF is, so a draft, which has no number yet, by its id.
+        $names = [str_replace('/', '-', $this->numberOf($second)).'.pdf', str_replace('/', '-', $this->numberOf($first)).'.pdf', 'invoice-'.$draft.'.pdf'];
+        self::assertSame($names, array_keys($entries));
+        foreach ($entries as $contents) {
+            self::assertStringStartsWith('%PDF-', $contents);
+        }
+        self::assertStringContainsString('BROUILLON', $entries['invoice-'.$draft.'.pdf']);
+    }
+
+    public function testAPrintedSelectionAsksForAStepUpIsRecordedAndNeedsSomethingToPrint(): void
+    {
+        $this->createUser('nobody@twes.local', 'password-1234', $this->company, [], 'nobody');
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $issued = $this->issuedInvoice();
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
+        $draft = $this->stringAt($this->json(), 'id');
+        $pdf = $this->companyPath().'/exports/invoices.pdf';
+
+        $this->client->request('GET', $pdf.'?id[]='.$issued);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame('step_up_required', $this->stringAt($this->json(), 'error'));
+
+        $this->stepUp('password-1234');
+        $many = implode('&', array_map(static fn (int $n): string => \sprintf('id[]=0192c3a4-0000-7000-8000-%012d', $n), range(1, 101)));
+        foreach (['?id[]='.$draft => 'only a draft, its box not ticked', '?id[]='.self::ABSENT => 'nothing found', '' => 'nothing chosen', '?id[]=not-an-id' => 'not an identifier', '?'.$many => 'more than a list page'] as $query => $case) {
+            $this->client->request('GET', $pdf.$query);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
+        }
+        self::assertSame(0, $this->printedSelections(), 'nothing handed out, nothing recorded');
+
+        $this->client->request('GET', $pdf.'?id[]='.$issued);
+        self::assertResponseIsSuccessful();
+        self::assertSame(1, $this->printedSelections());
+
+        // Kept across the request, so the renderer is still down when the draft is printed.
+        $this->client->disableReboot();
+        static::getContainer()->get(FakePdfRenderer::class)->failing = true;
+        $this->client->request('GET', $pdf.'?id[]='.$draft.'&drafts=1');
+        static::getContainer()->get(FakePdfRenderer::class)->failing = false;
+        self::assertResponseStatusCodeSame(Response::HTTP_SERVICE_UNAVAILABLE);
+
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('nobody@twes.local', 'password-1234');
+        $this->client->request('GET', $pdf.'?id[]='.$issued);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a member who may not read invoices is answered as a stranger');
+    }
+
+    public function testABulkCheckForAPdfNamesTheDraftsAndTheCancelledOnes(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $issued = $this->issuedInvoice();
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
+        $draft = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '3']]]));
+        $cancelled = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($cancelled).'/cancel', null);
+
+        $this->postJson($this->path().'/bulk-check', ['action' => 'pdf', 'ids' => [$issued, $draft, $cancelled]]);
+
+        self::assertResponseIsSuccessful();
+        $rows = $this->arrayAt($this->json(), 'rows');
+        self::assertSame(['included', 'skipped', 'skipped'], array_column($rows, 'outcome'));
+        self::assertSame([null, 'draft', 'cancelled'], array_column($rows, 'reason'));
+        self::assertSame([1, 2], [$this->json()['included'] ?? null, $this->json()['skipped'] ?? null]);
+    }
+
+    /** @return list<string> each page the fake renderer merged, in order */
+    private function printedFrom(string $query): array
+    {
+        $this->client->request('GET', $this->companyPath().'/exports/invoices.pdf'.$query);
+        self::assertResponseIsSuccessful();
+        $merged = $this->client->getInternalResponse()->getContent();
+        self::assertStringStartsWith('%PDF-', $merged);
+
+        return explode("\n% next\n", $merged);
+    }
+
+    private function printedSelections(): int
+    {
+        $count = $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM audit_log WHERE action = 'export.downloaded' AND changes::text LIKE '%\"pdf\"%'");
+        self::assertIsInt($count);
+
+        return $count;
+    }
+
+    private function numberOf(string $id): string
+    {
+        $this->client->request('GET', $this->path($id));
+
+        return $this->stringAt($this->json(), 'number');
     }
 
     private function issuedInvoice(): string

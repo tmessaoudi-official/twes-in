@@ -1349,14 +1349,25 @@
     "bulk": {
       "exported": "{count, plural, one {{{count}} invoice exported} other {{{count}} invoices exported}}",
       "check_failed": "The selection could not be checked. Try again.",
-      "skipped_title": "{count, plural, one {One selected invoice is left out} other {{{count}} selected invoices are left out}}",
+      "skipped_title": "{count, plural, =0 {No invoice left out} one {One selected invoice is left out} other {{{count}} selected invoices are left out}}",
       "unknown": "Unknown invoice",
       "reasons": {
-        "not_found": "Not found: deleted meanwhile, or no longer reachable"
+        "not_found": "Not found: deleted meanwhile, or no longer reachable",
+        "draft": "Draft: not numbered yet",
+        "cancelled": "Cancelled: never numbered"
       },
       "cancel": "Cancel",
       "close": "Close",
-      "export_rest": "{count, plural, one {Export the other one} other {Export the other {{count}}}}"
+      "export_rest": "{count, plural, one {Export the other one} other {Export the other {{count}}}}",
+      "pdf": "PDF",
+      "pdf_as": {
+        "pdf": "One PDF",
+        "zip": "One PDF per invoice (zip)"
+      },
+      "pdf_rest": "{count, plural, one {Download the invoice} other {Download the {{count}} invoices}}",
+      "printed": "{count, plural, one {{{count}} invoice as PDF} other {{{count}} invoices as PDF}}",
+      "include_drafts": "Include the drafts (with a draft watermark)",
+      "include_cancelled": "Include the cancelled ones (with a cancelled watermark)"
     },
     "title": "Invoices",
     "add": "New invoice",
