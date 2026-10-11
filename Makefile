@@ -159,6 +159,7 @@ in-gate-licences:
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/icons-declared.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/float-casts.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/decision-stamps.test.sh
+	bash scripts/gates/tests/no-leftovers.sh scripts/gates/tests/screen-texts-budget.test.sh
 	bash scripts/gates/tests/no-leftovers.sh scripts/tests/build-version.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/self-hosted/tests/logrotate.test.sh
 	bash scripts/gates/tests/no-leftovers.sh infra/web/tests/forwarded-proto.test.sh
@@ -186,6 +187,7 @@ in-gate-licences:
 	bash scripts/gates/icons-declared.sh
 	bash scripts/gates/float-casts.sh
 	bash scripts/gates/decision-stamps.sh
+	bash scripts/gates/screen-texts-budget.sh
 
 gate-api:      ## the postgres service is started for it (the tests need a real database)
 gate-api: tools-image
