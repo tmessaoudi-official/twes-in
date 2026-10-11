@@ -412,6 +412,20 @@ describe('ExpensesApi', () => {
       .expectOne('/api/companies/c1/expenses/e1/attachments/a1')
       .flush(null, { status: 409, statusText: 'Conflict' });
     await expect(kept).rejects.toEqual(new ExpensesRefused('not_draft'));
+
+    const full = api.restoreAttachment('c1', 'e1', 'a1');
+    const restore = http.expectOne('/api/companies/c1/expenses/e1/attachments/a1/restore');
+    expect(restore.request.method).toBe('POST');
+    restore.flush(
+      { code: 'too_many_files', params: { max: 10 }, message: 'full' },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    await expect(full).rejects.toEqual(new ExpensesRefused('files_full'));
+    const restoreRecorded = api.restoreAttachment('c1', 'e1', 'a1');
+    http
+      .expectOne('/api/companies/c1/expenses/e1/attachments/a1/restore')
+      .flush(null, { status: 409, statusText: 'Conflict' });
+    await expect(restoreRecorded).rejects.toEqual(new ExpensesRefused('not_draft'));
   });
 
   it('uploads a file as one multipart part named file, and opens it at a same-origin address', async () => {

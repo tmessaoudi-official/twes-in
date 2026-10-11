@@ -186,6 +186,18 @@ export class ExpensesFacade {
     );
   }
 
+  /** A file taken off put back where it was: what « Annuler » on its toast does. */
+  async restoreAttachment(
+    companyId: string,
+    expenseId: string,
+    attachmentId: string,
+  ): Promise<boolean> {
+    return this.write(
+      () => this.api.restoreAttachment(companyId, expenseId, attachmentId),
+      () => this.reloadFiles(companyId, expenseId),
+    );
+  }
+
   attachmentUrl(companyId: string, expenseId: string, attachmentId: string): string {
     return this.api.attachmentUrl(companyId, expenseId, attachmentId);
   }

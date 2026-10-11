@@ -273,6 +273,20 @@ export class QuotesApi {
     );
   }
 
+  /** A file taken off put back where it was: 422 once the quote holds as many files as it may. */
+  async restoreAttachment(companyId: string, id: string, attachmentId: string): Promise<void> {
+    await this.guard(
+      async () =>
+        firstValueFrom(
+          this.http.post(
+            `${attachmentsPath(companyId, id)}/${encodeURIComponent(attachmentId)}/restore`,
+            null,
+          ),
+        ),
+      'files_full',
+    );
+  }
+
   /** Where the browser opens a file: a same-origin address the session cookie reaches. */
   attachmentUrl(companyId: string, id: string, attachmentId: string): string {
     return `${attachmentsPath(companyId, id)}/${encodeURIComponent(attachmentId)}/content`;

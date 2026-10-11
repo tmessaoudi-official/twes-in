@@ -613,6 +613,19 @@ describe('InventoryApi', () => {
     expect(del.request.method).toBe('DELETE');
     del.flush(null, { status: 404, statusText: 'Not Found' });
     await expect(removed).rejects.toMatchObject({ code: 'not_found' });
+    const full = api.restoreToLoss('c1', 'm3', 'f1');
+    const restore = http.expectOne('/api/companies/c1/stock-movements/m3/attachments/f1/restore');
+    expect(restore.request.method).toBe('POST');
+    restore.flush(
+      { code: 'too_many_files', params: { max: 10 }, message: 'full' },
+      { status: 422, statusText: 'Unprocessable Entity' },
+    );
+    await expect(full).rejects.toMatchObject({ code: 'files_full' });
+    const gone = api.restoreToLoss('c1', 'm3', 'f1');
+    http
+      .expectOne('/api/companies/c1/stock-movements/m3/attachments/f1/restore')
+      .flush(null, { status: 404, statusText: 'Not Found' });
+    await expect(gone).rejects.toMatchObject({ code: 'not_found' });
     expect(api.lossFileUrl('c1', 'm3', 'f1')).toBe(
       '/api/companies/c1/stock-movements/m3/attachments/f1/content',
     );

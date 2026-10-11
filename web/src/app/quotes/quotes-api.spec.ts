@@ -272,6 +272,15 @@ describe('QuotesApi', () => {
       .flush({ detail: 'file: refused' }, { status: 422, statusText: 'Unprocessable' });
     await expect(file).rejects.toEqual(new QuotesRefused('file_refused'));
 
+    const full = api.restoreAttachment('c1', 'q1', 'a1');
+    const restore = http.expectOne('/api/companies/c1/quotes/q1/attachments/a1/restore');
+    expect(restore.request.method).toBe('POST');
+    restore.flush(
+      { code: 'too_many_files', params: { max: 10 }, message: 'full' },
+      { status: 422, statusText: 'Unprocessable' },
+    );
+    await expect(full).rejects.toEqual(new QuotesRefused('files_full'));
+
     const revised = api.revise('c1', 'q1', input);
     http
       .expectOne('/api/companies/c1/quotes/q1')

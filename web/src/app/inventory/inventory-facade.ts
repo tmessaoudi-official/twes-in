@@ -280,6 +280,14 @@ export class InventoryFacade {
     );
   }
 
+  /** A file taken off put back where it was: what « Annuler » on its toast does. */
+  async restoreToLoss(companyId: string, movementId: string, fileId: string): Promise<boolean> {
+    return this.write(
+      () => this.api.restoreToLoss(companyId, movementId, fileId),
+      () => this.reloadMovements(companyId),
+    );
+  }
+
   lossFileUrl(companyId: string, movementId: string, fileId: string): string {
     return this.api.lossFileUrl(companyId, movementId, fileId);
   }
