@@ -30,7 +30,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices audit tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -233,6 +233,10 @@ videos: playwright-browser   ## the guide videos with their captions, into var/c
 	@if docker ps --format '{{.Names}}' | grep -q 'tools-run'; then echo 'videos: a toolchain run (a gate?) is going on; record after it' >&2; exit 1; fi
 	@awk -v max=$(MAX_LOAD) '{ if ($$1 + 0 > max + 0) { printf "videos: load %s is above %s (MAX_LOAD): recording drops frames under load\n", $$1, max > "/dev/stderr"; exit 1 } }' /proc/loadavg
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx playwright test -c playwright.recorder.config.ts'
+
+audit: tools-image web-tools-image   ## known vulnerabilities in what is shipped: every Composer package, npm's production packages, high and above
+	$(TOOLS) sh -c 'cd api && composer audit --locked'
+	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npm audit --omit=dev --audit-level=high'
 
 notices: tools-image   ## regenerate THIRD-PARTY-NOTICES.md after any dependency change
 	$(TOOLS) make --no-print-directory in-notices
