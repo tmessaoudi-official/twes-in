@@ -21,7 +21,7 @@ async function decoded(page: Page): Promise<{ format: string; text: string }[]> 
   await expect(bars).toBeVisible();
   const zxing = await import('zxing-wasm/reader');
   zxing.prepareZXingModule({ overrides: { wasmBinary: readFileSync(WASM).buffer } });
-  const symbols = await zxing.readBarcodes(new Blob([await bars.screenshot()]), {
+  const symbols = await zxing.readBarcodes(new Blob([new Uint8Array(await bars.screenshot())]), {
     formats: ['EAN13', 'Code128'],
     tryHarder: true,
   });
