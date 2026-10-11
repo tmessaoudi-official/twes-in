@@ -26,6 +26,7 @@ use App\Settings\Domain\SettingLevel;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakePdfRenderer;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 /** Quotes through the API: drafted, sent, answered, printed and invoiced. */
 final class QuotesTest extends ApiTestCase
@@ -302,6 +303,16 @@ final class QuotesTest extends ApiTestCase
 
         $this->sendJson('DELETE', $this->path($id).'/attachments/'.$attachment);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, 'a file attached by mistake comes off');
+        $this->getJson($this->path($id));
+        self::assertSame(0, $this->json()['attachmentCount']);
+
+        $this->postJson($this->path($id).'/attachments/'.$attachment.'/restore', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, '« Annuler » puts it back');
+        $this->getJson($this->path($id));
+        self::assertSame(1, $this->json()['attachmentCount']);
+        $this->postJson($this->path($id).'/attachments/'.Uuid::v7()->toRfc4122().'/restore', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertContains('quote.attachment_restored', $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'quote'"));
     }
 
     /** A quote's line discounted by an amount says so, is refused as an invoice's is, and its invoice keeps it. */

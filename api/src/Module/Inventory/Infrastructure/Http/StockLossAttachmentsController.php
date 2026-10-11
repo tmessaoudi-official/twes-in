@@ -64,6 +64,24 @@ final readonly class StockLossAttachmentsController
         return new JsonResponse(StockLossAttachmentResource::of($attachment)->toArray(), Response::HTTP_CREATED);
     }
 
+    /** Puts back a file taken off, where it was: what « Annuler » after taking it off sends. */
+    #[Route('/api/companies/{companyId}/stock-movements/{movementId}/attachments/{attachmentId}/restore', name: 'api_stock_loss_attachment_restore', methods: ['POST'])]
+    public function restore(string $companyId, string $movementId, string $attachmentId): Response
+    {
+        $ids = ['companyId' => $companyId, 'movementId' => $movementId, 'attachmentId' => $attachmentId];
+        $company = $this->guard->companyForActing(CompanyPath::identifier($ids, 'companyId'), StockPermission::WRITE);
+
+        try {
+            $this->attachments->restore($company, CompanyPath::identifier($ids, 'movementId'), CompanyPath::identifier($ids, 'attachmentId'), $this->guard->account()->getId());
+        } catch (StockMovementNotFound|StockLossAttachmentNotFound $absent) {
+            throw new NotFoundHttpException($absent->getMessage(), $absent);
+        } catch (AttachmentRefused $refused) {
+            return new JsonResponse(['code' => $refused->reason, 'params' => (object) $refused->params, 'message' => $refused->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
     #[Route('/api/companies/{companyId}/stock-movements/{movementId}/attachments/{attachmentId}/content', name: 'api_stock_loss_attachment_content', methods: ['GET'])]
     public function content(string $companyId, string $movementId, string $attachmentId): Response
     {

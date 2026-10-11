@@ -91,6 +91,50 @@ final class StockLossAttachmentsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testAFileTakenOffComesBackFromItsUndoAndOnlyOnItsOwnLoss(): void
+    {
+        $this->signedIn('writer@twes.local', ['stock.read', 'stock.write']);
+        [$receipt, $loss] = $this->receivedThenLost();
+        [, $otherLoss] = $this->receivedThenLost();
+        $this->uploadFile($this->path($loss), 'premier.jpg', self::jpeg(4, 4));
+        $first = $this->stringAt($this->json(), 'id');
+        $this->uploadFile($this->path($loss), 'second.jpg', self::jpeg(4, 4));
+        $second = $this->stringAt($this->json(), 'id');
+        $this->sendJson('DELETE', $this->path($loss).'/'.$first);
+
+        foreach (['another loss' => $otherLoss, 'a receipt' => $receipt, 'no movement' => Uuid::v7()->toRfc4122()] as $what => $movement) {
+            $this->postJson($this->path($movement).'/'.$first.'/restore', null);
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, $what);
+        }
+        $this->signedIn('reader@twes.local', ['stock.read']);
+        $this->postJson($this->path($loss).'/'.$first.'/restore', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'putting a file back is a writer’s');
+
+        $this->signedIn('keeper@twes.local', ['stock.read', 'stock.write']);
+        $this->postJson($this->path($loss).'/'.$first.'/restore', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->getJson($this->path($loss));
+        self::assertSame([$first, $second], array_column($this->jsonList(), 'id'), 'back where it was');
+        self::assertSame(['stock_movement.attachment_added', 'stock_movement.attachment_added', 'stock_movement.attachment_removed', 'stock_movement.attachment_restored'], array_column($this->audited(), 0));
+    }
+
+    public function testAFileIsNotPutBackOnALossAlreadyHoldingTen(): void
+    {
+        $this->signedIn('writer@twes.local', ['stock.read', 'stock.write']);
+        [, $loss] = $this->receivedThenLost();
+        $this->uploadFile($this->path($loss), 'premier.jpg', self::jpeg(4, 4));
+        $first = $this->stringAt($this->json(), 'id');
+        $this->sendJson('DELETE', $this->path($loss).'/'.$first);
+        for ($i = 0; $i < 10; ++$i) {
+            $this->uploadFile($this->path($loss), \sprintf('photo-%d.jpg', $i), self::jpeg(4, 4));
+        }
+
+        $this->postJson($this->path($loss).'/'.$first.'/restore', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame(['too_many_files', ['max' => 10]], [$this->json()['code'] ?? null, $this->json()['params'] ?? null]);
+    }
+
     public function testOnlyALossOfTheCompanyKeepsFiles(): void
     {
         [$other, $otherProduct] = $this->companyKeepingStock('Ailleurs');

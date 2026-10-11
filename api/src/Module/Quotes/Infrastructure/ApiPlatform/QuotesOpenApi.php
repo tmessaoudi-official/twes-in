@@ -17,6 +17,7 @@ use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\RequestBody;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
+use App\Files\Application\AttachmentRefused;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 
 /**
@@ -69,6 +70,31 @@ final readonly class QuotesOpenApi implements OpenApiFactoryInterface
                 new \ArrayObject(['multipart/form-data' => new MediaType(new \ArrayObject(['type' => 'object', 'required' => ['file'], 'properties' => ['file' => ['type' => 'string', 'format' => 'binary']]]))]),
                 true,
             ),
+        )));
+
+        $paths->addPath($collection.'/{attachmentId}/restore', new PathItem(post: new Operation(
+            operationId: 'restoreQuoteAttachment',
+            tags: ['QuoteAttachment'],
+            responses: [
+                '204' => new Response('Back where it was'),
+                '401' => new Response('Not signed in'),
+                '404' => new Response('No such file on this quote, no quote.write, or the module is switched off'),
+                '422' => new Response(
+                    'Not put back, and why: a stable code, translated by the screen, with its parameters',
+                    new \ArrayObject(['application/json' => new MediaType(new \ArrayObject([
+                        'type' => 'object',
+                        'required' => ['code', 'params', 'message'],
+                        'properties' => [
+                            'code' => ['type' => 'string', 'enum' => [AttachmentRefused::TOO_MANY_FILES]],
+                            'params' => ['type' => 'object', 'additionalProperties' => ['type' => 'integer'], 'description' => 'too_many_files: max.'],
+                            'message' => ['type' => 'string'],
+                        ],
+                    ]))]),
+                ),
+            ],
+            summary: 'Puts back a file taken off, where it was',
+            description: 'What « Annuler » sends after a file is taken off. A file still there is left as it is.',
+            parameters: [$uuid('companyId', 'The company'), $uuid('quoteId', 'The quote'), $uuid('attachmentId', 'The attachment')],
         )));
 
         $paths->addPath($collection.'/{attachmentId}/content', new PathItem(get: new Operation(

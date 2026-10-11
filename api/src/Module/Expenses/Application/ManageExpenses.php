@@ -59,6 +59,7 @@ final readonly class ManageExpenses
     public const string DELETED = 'expense.deleted';
     public const string ATTACHMENT_ADDED = 'expense.attachment_added';
     public const string ATTACHMENT_REMOVED = 'expense.attachment_removed';
+    public const string ATTACHMENT_RESTORED = 'expense.attachment_restored';
     /** The module whose records an expense's vendor is: named by key, as the application layer knows no manifest. */
     public const string VENDORS_MODULE = 'vendors';
 
@@ -339,6 +340,25 @@ final readonly class ManageExpenses
             $this->get($company, $id)->assertDraft('stripped of a file');
             $this->attachments->detach($attachment);
             $this->record($company, $id, self::ATTACHMENT_REMOVED, ['attachmentId' => $attachmentId->toRfc4122()], $actorUserId);
+        });
+    }
+
+    /**
+     * « Annuler » after a file came off a draft: it is put back where it was. A recorded expense rests on what it held
+     * when it was recorded, so nothing comes back onto it.
+     *
+     * @throws ExpenseNotFound
+     * @throws AttachmentNotFound
+     * @throws ExpenseTransitionRefused
+     * @throws AttachmentRefused        when the expense already holds as many files as it may
+     */
+    public function restore(Company $company, Uuid $id, Uuid $attachmentId, ?Uuid $actorUserId): void
+    {
+        $this->transactions->run(function () use ($company, $id, $attachmentId, $actorUserId): void {
+            $expense = $this->get($company, $id);
+            $expense->assertDraft('given a file back');
+            $this->attachments->restore($company, self::ENTITY_TYPE, $expense->getId(), $attachmentId) ?? throw new AttachmentNotFound();
+            $this->record($company, $id, self::ATTACHMENT_RESTORED, ['attachmentId' => $attachmentId->toRfc4122()], $actorUserId);
         });
     }
 

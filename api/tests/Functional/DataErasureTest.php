@@ -154,7 +154,13 @@ final class DataErasureTest extends ApiTestCase
         $this->signedIn('owner@twes.local', 'owner');
         $this->stepUp(self::PASSWORD);
         [$rack] = $this->drawAFloor(0);
-        [, $quoteKept] = $this->documents();
+        [$quoteGone, $quoteKept] = $this->documents();
+        // A file taken off is kept for its « Annuler »: it goes with its quote and comes back still taken off.
+        $this->uploadFile($this->path("quotes/$quoteGone/attachments"), 'plan.pdf', AttachmentsTest::PDF);
+        $this->uploadFile($this->path("quotes/$quoteGone/attachments"), 'ancien.pdf', AttachmentsTest::PDF);
+        $this->sendJson('DELETE', $this->path("quotes/$quoteGone/attachments/".$this->stringAt($this->json(), 'id')));
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame(1, $this->rowsOf("SELECT COUNT(*) FROM attachment WHERE entity_id = '$quoteGone' AND removed_at IS NOT NULL"));
         // Another company's plan and drafts are none of this erasure's business.
         $elsewhere = $this->otherCompanysRows();
         $before = $this->snapshot();

@@ -18,6 +18,7 @@ use App\Module\Vendors\Domain\VendorProfile;
 use App\Tenancy\Domain\Company;
 use App\Tests\Unit\Files\Application\AttachmentsTest;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
 
 final class ExpensesTest extends ApiTestCase
 {
@@ -441,12 +442,27 @@ final class ExpensesTest extends ApiTestCase
         $this->sendJson('DELETE', $this->path($id).'/attachments/'.$receiptId);
         self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
         self::assertSame(2, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM file'), 'a detached file keeps its bytes');
+        $this->getJson($this->path($id).'/attachments');
+        self::assertSame([$photo], array_column($this->jsonList(), 'id'));
+
+        $this->postJson($this->path($id).'/attachments/'.$receiptId.'/restore', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, '« Annuler » puts the receipt back');
+        $this->getJson($this->path($id).'/attachments');
+        self::assertSame([$receiptId, $photo], array_column($this->jsonList(), 'id'), 'where it was among the others');
+        $this->postJson($this->path($id).'/attachments/'.$receiptId.'/restore', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT, 'a file still attached is left as it is');
+        $this->postJson($this->path($id).'/attachments/'.Uuid::v7()->toRfc4122().'/restore', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->sendJson('DELETE', $this->path($id).'/attachments/'.$receiptId);
 
         $this->postJson($this->path($id).'/record', null);
         $this->uploadFile($this->path($id).'/attachments', 'avoir.pdf', AttachmentsTest::PDF);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'a receipt arriving late is still attached');
         $this->sendJson('DELETE', $this->path($id).'/attachments/'.$photo);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'what a recorded expense rests on stays');
+        $this->postJson($this->path($id).'/attachments/'.$receiptId.'/restore', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'and nothing taken off a draft comes back onto a recorded one');
+        self::assertContains('expense.attachment_restored', $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense'"));
     }
 
     public function testADraftIsDeletedWithItsAttachments(): void
@@ -455,6 +471,8 @@ final class ExpensesTest extends ApiTestCase
         $this->postJson($this->path(), $this->expense());
         $id = $this->stringAt($this->json(), 'id');
         $this->uploadFile($this->path($id).'/attachments', 'recu.pdf', AttachmentsTest::PDF);
+        $this->uploadFile($this->path($id).'/attachments', 'erreur.pdf', AttachmentsTest::PDF);
+        $this->sendJson('DELETE', $this->path($id).'/attachments/'.$this->stringAt($this->json(), 'id'));
 
         $this->sendJson('DELETE', $this->path($id));
 
@@ -462,7 +480,7 @@ final class ExpensesTest extends ApiTestCase
         $this->getJson($this->path($id));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         self::assertSame(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM attachment'));
-        self::assertSame(['expense.created', 'expense.attachment_added', 'expense.deleted'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense' ORDER BY at, id"));
+        self::assertSame(['expense.created', 'expense.attachment_added', 'expense.attachment_added', 'expense.attachment_removed', 'expense.deleted'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense' ORDER BY at, id"));
     }
 
     public function testAVendorNamesTheCategoryItsExpensesUsuallyGoTo(): void

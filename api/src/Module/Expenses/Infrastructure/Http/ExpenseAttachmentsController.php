@@ -13,6 +13,7 @@ use App\Files\Application\AttachmentRefused;
 use App\Module\Expenses\Application\AttachmentNotFound;
 use App\Module\Expenses\Application\ExpenseNotFound;
 use App\Module\Expenses\Application\ManageExpenses;
+use App\Module\Expenses\Domain\ExpenseTransitionRefused;
 use App\Module\Expenses\Infrastructure\ApiPlatform\ExpenseAttachmentResource;
 use App\Module\Expenses\Infrastructure\ApiPlatform\ExpensePermission;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -23,6 +24,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Attribute\AsController;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Routing\Attribute\Route;
@@ -62,6 +64,26 @@ final readonly class ExpenseAttachmentsController
         }
 
         return new JsonResponse(ExpenseAttachmentResource::of($attachment)->toArray(), Response::HTTP_CREATED);
+    }
+
+    /** Puts back a file taken off, where it was: what « Annuler » after taking it off sends. */
+    #[Route('/api/companies/{companyId}/expenses/{expenseId}/attachments/{attachmentId}/restore', name: 'api_expense_attachment_restore', methods: ['POST'])]
+    public function restore(string $companyId, string $expenseId, string $attachmentId): Response
+    {
+        $ids = ['companyId' => $companyId, 'expenseId' => $expenseId, 'attachmentId' => $attachmentId];
+        $company = $this->guard->companyForActing(CompanyPath::identifier($ids, 'companyId'), ExpensePermission::WRITE);
+
+        try {
+            $this->manage->restore($company, CompanyPath::identifier($ids, 'expenseId'), CompanyPath::identifier($ids, 'attachmentId'), $this->guard->account()->getId());
+        } catch (ExpenseNotFound|AttachmentNotFound $absent) {
+            throw new NotFoundHttpException($absent->getMessage(), $absent);
+        } catch (ExpenseTransitionRefused $conflict) {
+            throw new ConflictHttpException($conflict->getMessage(), $conflict);
+        } catch (AttachmentRefused $refused) {
+            return new JsonResponse(['code' => $refused->reason, 'params' => (object) $refused->params, 'message' => $refused->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
     #[Route('/api/companies/{companyId}/expenses/{expenseId}/attachments/{attachmentId}/content', name: 'api_expense_attachment_content', methods: ['GET'])]
