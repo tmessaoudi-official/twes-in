@@ -422,6 +422,7 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('payment-dialog-title')).toHaveCount(0);
     await page.goto(invoiceUrl);
+    await expect(page.getByTestId('invoice-status')).toBeVisible();
 
     // On a phone the status line wraps, and no line of it starts with a « · » (audit 2026-10-06 V-3): a fact that
     // starts a line has its separator clipped, one past the line's start (`.twes-dot-list`).
