@@ -31,7 +31,8 @@ import type {
   ExpenseVendorOption,
 } from './expenses-types';
 import type { PickAsked } from '../shared/form/pick-api';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
+import { provideQuietFeedback, RecordedFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
@@ -130,6 +131,7 @@ describe('ExpensePage', () => {
     deleteExpense: vi.fn(),
     attach: vi.fn(),
     detach: vi.fn(),
+    restoreAttachment: vi.fn(),
     attachmentUrl: (companyId: string, expenseId: string, attachmentId: string) =>
       `/api/companies/${companyId}/expenses/${expenseId}/attachments/${attachmentId}/content`,
   };
@@ -209,6 +211,7 @@ describe('ExpensePage', () => {
     facade.deleteExpense.mockReset().mockResolvedValue(true);
     facade.attach.mockReset().mockResolvedValue(true);
     facade.detach.mockReset().mockResolvedValue(true);
+    facade.restoreAttachment.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
     auth.hasModule.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
@@ -500,6 +503,39 @@ describe('ExpensePage', () => {
     await settle();
     expect(q('expense-detach-recu.pdf')).toBeNull();
     expect(q('expense-attach')).not.toBeNull();
+  });
+
+  it('says a file is taken off and puts it back where it was on « Annuler »', async () => {
+    expense.set(draft);
+    attachments.set([receipt]);
+    await open('e1');
+    const feedback = TestBed.inject(Feedback) as RecordedFeedback;
+
+    q('expense-detach-recu.pdf')!.click();
+    await settle();
+    const removed = feedback.said.at(-1);
+    expect([removed?.key, removed?.params, removed?.action?.key]).toEqual([
+      'expenses.attachments.removed',
+      { name: 'recu.pdf' },
+      'expenses.attachments.undo',
+    ]);
+    expect(facade.restoreAttachment).not.toHaveBeenCalled();
+
+    removed?.action?.run();
+    await settle();
+    expect(facade.restoreAttachment).toHaveBeenCalledWith('c1', 'e1', 'a1');
+    expect(feedback.said.at(-1)).toEqual({
+      kind: 'success',
+      key: 'expenses.attachments.restored',
+      params: { name: 'recu.pdf' },
+    });
+
+    // Refused, it is said on the page's error line by the facade, and no success is claimed.
+    facade.restoreAttachment.mockResolvedValue(false);
+    const before = feedback.said.length;
+    removed?.action?.run();
+    await settle();
+    expect(feedback.said).toHaveLength(before);
   });
 
   it('takes what another person saved into the open draft', async () => {

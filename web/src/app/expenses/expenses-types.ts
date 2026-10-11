@@ -11,6 +11,7 @@ export type ExpensesError =
   | 'name_taken'
   | 'invalid'
   | 'file_refused'
+  | 'files_full'
   | 'file_too_large'
   | 'period_closed';
 

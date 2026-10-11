@@ -28,8 +28,10 @@ import {
   effectToasts,
   offeredNext,
   provideQuietFeedback,
+  RecordedFeedback,
   successToasts,
 } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
 import { QuotePage } from './quote-page';
 import { QuotesFacade } from './quotes-facade';
 import { PREVIEW_DELAY } from '../shared/documents/document-figures';
@@ -176,6 +178,7 @@ describe('QuotePage', () => {
     deposit: vi.fn(),
     attach: vi.fn(),
     detach: vi.fn(),
+    restoreAttachment: vi.fn(),
     preview: vi.fn(),
     clearError: vi.fn(),
     attachmentUrl: (c: string, id: string, a: string) =>
@@ -255,6 +258,8 @@ describe('QuotePage', () => {
         { invoiceId: 'd2', number: null, status: 'draft', total: '803.250' },
       ],
     });
+    facade.detach.mockReset().mockResolvedValue(true);
+    facade.restoreAttachment.mockReset().mockResolvedValue(true);
     facade.pickCustomers.mockClear();
     TestBed.configureTestingModule({
       imports: [QuotePage],
@@ -283,6 +288,39 @@ describe('QuotePage', () => {
 
   afterEach(() => {
     document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
+  it('says a file is taken off and puts it back where it was on « Annuler »', async () => {
+    quote.set(draft);
+    attachments.set([
+      {
+        id: 'a1',
+        name: 'plan.pdf',
+        mime: 'application/pdf',
+        size: 2048,
+        createdAt: '2026-10-01T09:00:00+00:00',
+      },
+    ]);
+    await open('q1');
+    const feedback = TestBed.inject(Feedback) as RecordedFeedback;
+
+    q('quote-detach-plan.pdf')!.click();
+    await settle();
+    expect(facade.detach).toHaveBeenCalledWith('c1', 'q1', 'a1');
+    const removed = feedback.said.at(-1);
+    expect([removed?.key, removed?.action?.key]).toEqual([
+      'quotes.attachments.removed',
+      'quotes.attachments.undo',
+    ]);
+
+    removed?.action?.run();
+    await settle();
+    expect(facade.restoreAttachment).toHaveBeenCalledWith('c1', 'q1', 'a1');
+    expect(feedback.said.at(-1)).toEqual({
+      kind: 'success',
+      key: 'quotes.attachments.restored',
+      params: { name: 'plan.pdf' },
+    });
   });
 
   it('says under a line what is on hand where the quote is made, for whoever may read stock', async () => {

@@ -650,7 +650,21 @@ export class QuotePage {
     const id = this.id();
     if (!companyId || id === null || this.busy()) return;
     if (await this.facade.detach(companyId, id, attachment.id)) {
-      this.feedback.success('quotes.attachments.removed', { name: attachment.name });
+      this.feedback.success(
+        'quotes.attachments.removed',
+        { name: attachment.name },
+        {
+          key: 'quotes.attachments.undo',
+          run: () => void this.restore(companyId, id, attachment),
+        },
+      );
+    }
+  }
+
+  /** A refusal, such as the quote having been filled up since, is said on the page's error line. */
+  private async restore(companyId: string, id: string, attachment: QuoteAttachment): Promise<void> {
+    if (await this.facade.restoreAttachment(companyId, id, attachment.id)) {
+      this.feedback.success('quotes.attachments.restored', { name: attachment.name });
     }
   }
 

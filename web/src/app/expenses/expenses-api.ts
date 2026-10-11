@@ -57,6 +57,7 @@ interface Refusals {
 const EXPENSE: Refusals = { conflict: 'not_draft', invalid: 'invalid' };
 const CATEGORY: Refusals = { conflict: 'name_taken', invalid: 'invalid' };
 const FILE: Refusals = { conflict: 'not_draft', invalid: 'file_refused' };
+const RESTORE: Refusals = { conflict: 'not_draft', invalid: 'files_full' };
 
 /** The HTTP edge of the expenses feature: the only code here that knows endpoints and generated types. */
 @Injectable({ providedIn: 'root' })
@@ -338,6 +339,22 @@ export class ExpensesApi {
       firstValueFrom(
         this.http.delete(
           `${attachmentsPath(companyId, expenseId)}/${encodeURIComponent(attachmentId)}`,
+        ),
+      ),
+    );
+  }
+
+  /** A file taken off put back where it was: 409 once recorded, 422 once the expense holds as many files as it may. */
+  async restoreAttachment(
+    companyId: string,
+    expenseId: string,
+    attachmentId: string,
+  ): Promise<void> {
+    await this.guard(RESTORE, async () =>
+      firstValueFrom(
+        this.http.post(
+          `${attachmentsPath(companyId, expenseId)}/${encodeURIComponent(attachmentId)}/restore`,
+          null,
         ),
       ),
     );

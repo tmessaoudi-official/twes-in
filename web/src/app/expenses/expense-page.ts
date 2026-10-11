@@ -421,6 +421,26 @@ export class ExpensePage {
     const companyId = this.company()?.id;
     const id = this.id();
     if (!companyId || id === null || this.busy()) return;
-    await this.facade.detach(companyId, id, attachment.id);
+    if (await this.facade.detach(companyId, id, attachment.id)) {
+      this.feedback.success(
+        'expenses.attachments.removed',
+        { name: attachment.name },
+        {
+          key: 'expenses.attachments.undo',
+          run: () => void this.restore(companyId, id, attachment),
+        },
+      );
+    }
+  }
+
+  /** A refusal, such as the expense having been recorded or filled up since, is said on the page's error line. */
+  private async restore(
+    companyId: string,
+    id: string,
+    attachment: ExpenseAttachment,
+  ): Promise<void> {
+    if (await this.facade.restoreAttachment(companyId, id, attachment.id)) {
+      this.feedback.success('expenses.attachments.restored', { name: attachment.name });
+    }
   }
 }

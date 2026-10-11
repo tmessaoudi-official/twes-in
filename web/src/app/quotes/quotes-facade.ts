@@ -185,6 +185,13 @@ export class QuotesFacade implements LineCatalogue {
     return this.fileStep(companyId, id, () => this.api.detach(companyId, id, attachmentId));
   }
 
+  /** A file taken off put back where it was: what « Annuler » on its toast does. */
+  async restoreAttachment(companyId: string, id: string, attachmentId: string): Promise<boolean> {
+    return this.fileStep(companyId, id, () =>
+      this.api.restoreAttachment(companyId, id, attachmentId),
+    );
+  }
+
   attachmentUrl(companyId: string, id: string, attachmentId: string): string {
     return this.api.attachmentUrl(companyId, id, attachmentId);
   }

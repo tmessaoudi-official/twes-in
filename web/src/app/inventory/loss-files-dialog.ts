@@ -22,8 +22,8 @@ export interface LossFilesDialogData {
 
 /**
  * The files a loss keeps — the photo of what broke, the complaint filed for a theft, a destruction certificate —
- * opened by whoever sees the movements, added and taken off by whoever writes stock. A file taken off by mistake is
- * attached again from the same place, so nothing here asks before doing it.
+ * opened by whoever sees the movements, added and taken off by whoever writes stock. A file taken off by mistake comes
+ * back with « Annuler » on the toast that says so, so nothing here asks before doing it.
  */
 @Component({
   selector: 'app-loss-files-dialog',
@@ -136,7 +136,19 @@ export class LossFilesDialog {
   protected async detach(file: StockLossFile): Promise<void> {
     if (this.busy()) return;
     if (await this.facade.detachFromLoss(this.data.companyId, this.data.movementId, file.id)) {
-      this.feedback.success('inventory.loss.files.removed', { name: file.name });
+      this.feedback.success(
+        'inventory.loss.files.removed',
+        { name: file.name },
+        { key: 'inventory.loss.files.undo', run: () => void this.restore(file) },
+      );
+      await this.read();
+    }
+  }
+
+  /** Put back where it was, whether this dialog is still open or not: the toast outlives it. */
+  private async restore(file: StockLossFile): Promise<void> {
+    if (await this.facade.restoreToLoss(this.data.companyId, this.data.movementId, file.id)) {
+      this.feedback.success('inventory.loss.files.restored', { name: file.name });
       await this.read();
     }
   }

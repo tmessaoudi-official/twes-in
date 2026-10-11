@@ -765,6 +765,22 @@ export class InventoryApi {
     );
   }
 
+  /** A file taken off put back where it was: 422 once the loss holds as many files as it may. */
+  async restoreToLoss(companyId: string, movementId: string, fileId: string): Promise<void> {
+    await this.guard(
+      async () =>
+        firstValueFrom(
+          this.http.post(
+            `${lossFilesPath(companyId, movementId)}/${encodeURIComponent(fileId)}/restore`,
+            null,
+          ),
+        ),
+      'invalid',
+      false,
+      'files_full',
+    );
+  }
+
   /** Where the browser opens a loss's file: a same-origin address the session cookie reaches. */
   lossFileUrl(companyId: string, movementId: string, fileId: string): string {
     return `${lossFilesPath(companyId, movementId)}/${encodeURIComponent(fileId)}/content`;
@@ -774,16 +790,21 @@ export class InventoryApi {
     call: () => Promise<T>,
     conflict: InventoryError = 'invalid',
     file = false,
+    invalid: InventoryError = 'invalid',
   ): Promise<T> {
     try {
       return await call();
     } catch (error) {
-      throw new InventoryRefused(file ? fileCodeOf(error) : codeOf(error, conflict));
+      throw new InventoryRefused(file ? fileCodeOf(error) : codeOf(error, conflict, invalid));
     }
   }
 }
 
-function codeOf(error: unknown, conflict: InventoryError): InventoryError {
+function codeOf(
+  error: unknown,
+  conflict: InventoryError,
+  invalid: InventoryError = 'invalid',
+): InventoryError {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return 'network';
   }
@@ -793,7 +814,7 @@ function codeOf(error: unknown, conflict: InventoryError): InventoryError {
     case 409:
       return conflict;
     default:
-      return 'invalid';
+      return invalid;
   }
 }
 

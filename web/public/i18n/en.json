@@ -2230,6 +2230,7 @@
       "level_taken": "Another floor of this establishment is already at that level.",
       "cost_known": "The cost of this receipt is already known.",
       "file_refused": "This file is not kept: a non-empty PDF, PNG, JPEG or WebP, and at most 10 files per loss.",
+      "files_full": "This file cannot come back: the loss already holds as many files as it may. Remove one first.",
       "file_too_large": "This file is over 10 MB."
     },
     "stock": {
@@ -2349,7 +2350,9 @@
         "open_of": "Files of the loss: {{name}}",
         "count": "{{count}} {count, plural, one {file attached} other {files attached}}",
         "attached": "“{{name}}” is attached to the loss.",
-        "removed": "“{{name}}” is removed from the loss."
+        "removed": "“{{name}}” is removed from the loss.",
+        "restored": "“{{name}}” is put back on the loss.",
+        "undo": "Undo"
       }
     },
     "sources": {
@@ -2901,7 +2904,10 @@
       "hint": "PDF, PNG, JPEG or WebP, up to 10 MB and 10 files. The type is read from the file itself.",
       "none": "No receipt attached yet.",
       "remove": "Remove {{name}}",
-      "remove_short": "Remove"
+      "remove_short": "Remove",
+      "removed": "{{name}} is removed from the expense.",
+      "restored": "{{name}} is put back.",
+      "undo": "Undo"
     },
     "categories": {
       "title": "Expense categories",
@@ -2930,6 +2936,7 @@
       "name_taken": "Another category under the same parent already has this name.",
       "invalid": "The change was refused. Check the vendor, the category, the tax and the amount.",
       "file_refused": "The file was refused: it must be a PDF, PNG, JPEG or WebP image of up to 10 MB, not empty, and the expense may hold at most 10 files.",
+      "files_full": "This file cannot come back: the expense already holds as many files as it may. Remove one first.",
       "file_too_large": "The file is larger than 10 MB.",
       "period_closed": "The books are closed on that day: choose a day after the closing."
     },
@@ -4352,7 +4359,9 @@
       "remove": "Remove {{name}}",
       "remove_short": "Remove",
       "added": "{{name}} is attached to the quote.",
-      "removed": "{{name}} is removed from the quote."
+      "removed": "{{name}} is removed from the quote.",
+      "restored": "{{name}} is put back.",
+      "undo": "Undo"
     },
     "suggest": {
       "invoice": "Invoice"
@@ -4364,6 +4373,7 @@
       "invalid": "The quote was refused. Check the customer, the lines and the dates.",
       "customer_unavailable": "This customer has been deactivated since: choose another, or reactivate them on their page.",
       "file_refused": "The file was refused: it must be a PDF or a PNG, JPEG or WebP image of at most 10 MB, not empty, and a quote holds at most 10 files.",
+      "files_full": "This file cannot come back: the quote already holds as many files as it may. Remove one first.",
       "deposit_refused": "This deposit is refused: it stays under the quote's total and under what its other deposits leave, to the currency's smallest unit.",
       "deposit_pending": "A deposit invoice of this quote is still a draft: issue or cancel it before invoicing the quote."
     },

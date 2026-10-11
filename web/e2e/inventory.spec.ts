@@ -406,6 +406,13 @@ test('stock received at a location leaves with a validated delivery note and ret
     await page.locator('[data-testid^="row-action-loss-files-"]').click();
     await page.getByTestId('loss-file-remove-carton.png').click();
     await expect(page.getByTestId('loss-files-none')).toBeVisible();
+    // Row 253: « Annuler » on the toast puts it back where it was; taken off again, it stays off.
+    await expect(toast(page)).toContainText('« carton.png » est retiré de la perte.');
+    await toast(page).getByRole('button', { name: 'Annuler' }).click();
+    await expect(toast(page)).toContainText('« carton.png » est remis à la perte.');
+    await expect(page.getByTestId('loss-file-open-carton.png')).toBeVisible();
+    await page.getByTestId('loss-file-remove-carton.png').click();
+    await expect(page.getByTestId('loss-files-none')).toBeVisible();
     await page.getByTestId('loss-files-close').click();
     await expect(page.getByTestId('movement-files')).toHaveCount(0);
 

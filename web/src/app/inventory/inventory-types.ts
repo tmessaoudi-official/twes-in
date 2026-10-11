@@ -10,6 +10,7 @@ export type InventoryError =
   | 'level_taken'
   | 'cost_known'
   | 'file_refused'
+  | 'files_full'
   | 'file_too_large';
 
 /** Where stock is kept, from the whole site down to one bin (docs/SPEC.md § 7, 2026-09-14). */

@@ -12,6 +12,7 @@ export type QuotesError =
   | 'invalid'
   | 'customer_unavailable'
   | 'file_refused'
+  | 'files_full'
   | 'deposit_refused'
   | 'deposit_pending';
 
