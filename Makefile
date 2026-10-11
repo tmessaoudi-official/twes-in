@@ -30,7 +30,7 @@ TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tool
 WEB_TOOLS := mkdir -p $(TOOLS_TMP) && docker compose --progress quiet --profile tools run --rm -T web-tools
 # `npm ci` only when package-lock.json is newer than the last one that finished here.
 NPM_INSTALL := [ node_modules/.twes-installed -nt package-lock.json ] || { npm ci --no-audit --no-fund && touch node_modules/.twes-installed; }
-.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery notices tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
+.PHONY: playwright-browser tools web-tools php-lint up up-images live-refresh down reset logs migrate seed fixtures operator-code versions scale-data api-openapi api-types gate gate-api gate-web gate-web-checks gate-licences test-api test-web e2e gallery videos notices tools-image web-tools-image in-gate-licences in-gate-api in-test-api in-api-openapi in-versions in-notices
 
 php-lint:      ## php -l FILE=<path> in the tools container: what .claude/hooks/lint-on-write.sh runs after every edit
 	@$(TOOLS) php -l $(FILE)
@@ -224,6 +224,15 @@ e2e: playwright-browser   ## needs the full stack up; E2E_ARGS passes options th
 
 gallery: playwright-browser   ## every screen, desktop and phone, light and dark, into var/claude/gallery (needs the full stack up and make fixtures; GALLERY_COMPANY picks the company)
 	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx playwright test -c playwright.gallery.config.ts'
+
+# Recording drops frames on a busy machine and must never share it with a gate (docs/START.md § 12). It refuses to start
+# while a toolchain container runs or while the one-minute load is above MAX_LOAD; a gate started during a recording is
+# not stopped by it.
+MAX_LOAD ?= 6
+videos: playwright-browser   ## the guide videos with their captions, into var/claude/videos (needs the full stack up and make fixtures; alone on the machine)
+	@if docker ps --format '{{.Names}}' | grep -q 'tools-run'; then echo 'videos: a toolchain run (a gate?) is going on; record after it' >&2; exit 1; fi
+	@awk -v max=$(MAX_LOAD) '{ if ($$1 + 0 > max + 0) { printf "videos: load %s is above %s (MAX_LOAD): recording drops frames under load\n", $$1, max > "/dev/stderr"; exit 1 } }' /proc/loadavg
+	$(WEB_TOOLS) sh -c '$(NPM_INSTALL) && npx playwright test -c playwright.recorder.config.ts'
 
 notices: tools-image   ## regenerate THIRD-PARTY-NOTICES.md after any dependency change
 	$(TOOLS) make --no-print-directory in-notices
