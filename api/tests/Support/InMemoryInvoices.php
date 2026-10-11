@@ -128,6 +128,11 @@ final class InMemoryInvoices implements InvoiceRepository
         return $this->stored($id, $companyId);
     }
 
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array
+    {
+        return array_values(array_filter(array_map(fn (Uuid $id): ?Invoice => $this->stored($id, $companyId), $ids)));
+    }
+
     private function stored(Uuid $id, Uuid $companyId): ?Invoice
     {
         foreach ($this->ofCompany($companyId) as $invoice) {

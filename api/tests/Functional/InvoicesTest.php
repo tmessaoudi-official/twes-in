@@ -1433,6 +1433,75 @@ final class InvoicesTest extends ApiTestCase
     }
 
     /** Drafts and issues a one-line invoice; the response left to read is the issued invoice. */
+    // The rows a person selected are downloaded by their ids, under nothing else.
+    public function testTheSelectedInvoicesAreDownloadedByTheirIds(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->stepUp('password-1234');
+        $issued = $this->issuedInvoice();
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
+        $draft = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '3']]]));
+
+        self::assertCount(2, $this->exportedFrom('?id[]='.$issued), 'the header and the one chosen');
+        self::assertCount(3, $this->exportedFrom('?id[]='.$issued.'&id[]='.$draft));
+        self::assertCount(4, $this->exportedFrom(''), 'chosen nothing, the whole list');
+        $this->client->request('GET', $this->companyPath().'/exports/invoices.csv?id[]=not-an-id');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    // Before a selection is exported, the API says what goes in and what cannot, each by its id, so that a row deleted
+    // meanwhile, or another company's, is named rather than silently missing.
+    public function testABulkCheckNamesEachSelectedInvoiceAndWhatCannotGoIn(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->stepUp('password-1234');
+        $issued = $this->issuedInvoice();
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
+        $draft = $this->stringAt($this->json(), 'id');
+        $globex = $this->createCompany('Globex');
+        static::getContainer()->get(ProvisionCompany::class)->handle($globex);
+        $theirs = Invoice::create($globex, static::getContainer()->get(EstablishmentRepository::class)->ofCompany($globex->getId())[0], $this->customer('CLI-0001', 'standard', company: $globex), new InvoiceHeader(), [], [], new \DateTimeImmutable());
+        $this->em()->persist($theirs);
+        $this->em()->flush();
+        $their = $theirs->getId()->toRfc4122();
+
+        $this->postJson($this->path().'/bulk-check', ['action' => 'export', 'ids' => [$issued, $draft, self::ABSENT, $issued, $their]]);
+
+        self::assertResponseIsSuccessful();
+        $rows = $this->arrayAt($this->json(), 'rows');
+        self::assertSame([$issued, $draft, self::ABSENT, $their], array_column($rows, 'id'), 'in the order chosen, each once');
+        self::assertSame(['included', 'included', 'skipped', 'skipped'], array_column($rows, 'outcome'));
+        // Another company's invoice is as absent as one that never was: the answer says nothing of it.
+        self::assertSame([null, null, 'not_found', 'not_found'], array_column($rows, 'reason'));
+        self::assertSame(['Carthage Conseil', 'Carthage Conseil', null, null], array_column($rows, 'customerName'));
+        $numbers = array_column($rows, 'number');
+        self::assertNotNull($numbers[0]);
+        self::assertSame([null, null, null], \array_slice($numbers, 1), 'a draft has no number yet, and an absent one nothing');
+        self::assertSame([2, 2], [$this->json()['included'], $this->json()['skipped']]);
+    }
+
+    public function testABulkCheckRefusesAnUnknownActionMoreThanAPageAndNoIdsAndIsAReadersOnly(): void
+    {
+        $this->createUser('nobody@twes.local', 'password-1234', $this->company, [], 'nobody');
+        $this->signedIn(['invoice.read']);
+
+        $this->postJson($this->path().'/bulk-check', ['action' => 'shred', 'ids' => [self::ABSENT]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $this->postJson($this->path().'/bulk-check', ['action' => 'export', 'ids' => []]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $many = array_map(static fn (int $n): string => \sprintf('0192c3a4-0000-7000-8000-%012d', $n), range(1, 101));
+        $this->postJson($this->path().'/bulk-check', ['action' => 'export', 'ids' => $many]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a list page holds at most 100 rows');
+        $this->postJson($this->path().'/bulk-check', ['action' => 'export', 'ids' => ['not-an-id']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('nobody@twes.local', 'password-1234');
+        $this->postJson($this->path().'/bulk-check', ['action' => 'export', 'ids' => [self::ABSENT]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a member who may not read invoices is answered as a stranger');
+    }
+
     private function issuedInvoice(): string
     {
         $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));

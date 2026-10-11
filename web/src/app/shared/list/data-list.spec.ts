@@ -14,7 +14,7 @@ import { Session } from '../session/session';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import { listPreferencesSetting, listViewsSetting } from '../settings/settings-registry';
-import { DataList, DataListCell } from './data-list';
+import { DataList, DataListCell, DataListSelection } from './data-list';
 import { WINDOW_CLASS, type WindowClass } from '../ui/window-class';
 import type {
   ListDescriptor,
@@ -214,7 +214,7 @@ class DeclaredHost {
 
 /** A list whose rows can be selected, the selection held by the screen as ids. */
 @Component({
-  imports: [DataList],
+  imports: [DataList, DataListSelection],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-data-list
@@ -227,7 +227,11 @@ class DeclaredHost {
       [rowTestId]="rowTestId"
       emptyKey="c.none"
       emptyTestId="customers-empty"
-    />
+    >
+      <ng-template appDataListSelection>
+        <button type="button" data-testid="host-bulk">Act on {{ selected().length }}</button>
+      </ng-template>
+    </app-data-list>
   `,
 })
 class SelectHost {
@@ -1274,6 +1278,24 @@ describe('DataList', () => {
         expect(el('list-filter')).not.toBeNull();
         // The bar it was in is gone: the focus goes to the page's box, not to the body.
         expect(document.activeElement).toBe(box('list-select-page'));
+      });
+
+      it('draws what the screen offers on the selected rows in the bar, before its close, and only while rows are selected', async () => {
+        expect(el('host-bulk')).toBeNull();
+
+        await tick('list-select-row-3');
+        const bar = el('list-selection')!;
+        expect(bar.contains(el('host-bulk'))).toBe(true);
+        expect(el('host-bulk')!.textContent).toContain('Act on 1');
+        const order = [...bar.querySelectorAll('[data-testid]')].map((each) =>
+          each.getAttribute('data-testid'),
+        );
+        expect(order.indexOf('host-bulk')).toBeGreaterThan(order.indexOf('list-selection-count'));
+        expect(order.indexOf('host-bulk')).toBeLessThan(order.indexOf('list-selection-clear'));
+
+        el('list-selection-clear')!.click();
+        await stable();
+        expect(el('host-bulk')).toBeNull();
       });
 
       it("ticks the page's rows from the header box, half-ticked while only some are, and never another page's", async () => {

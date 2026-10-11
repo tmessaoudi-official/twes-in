@@ -382,6 +382,9 @@ html {
   --mat-button-text-label-text-color: var(--mat-sys-on-secondary-container);
   --mat-button-text-state-layer-color: var(--mat-sys-on-secondary-container);
   --mat-icon-button-icon-color: var(--mat-sys-on-secondary-container);
+  --mat-button-outlined-label-text-color: var(--mat-sys-on-secondary-container);
+  --mat-button-outlined-state-layer-color: var(--mat-sys-on-secondary-container);
+  --mat-button-outlined-outline-color: var(--mat-sys-on-secondary-container);
 }
 
 .twes-list-tools {
@@ -2300,10 +2303,10 @@ tr.mat-mdc-row:hover > td.twes-row-actions {
   background: color-mix(in oklch, var(--mat-sys-primary) 5%, var(--mat-sys-surface));
 }
 
-/* The leading box's cell: Material's 16 px cell padding would leave the box no room in its 56 px. */
+/* The leading box's cell is the box's own 40 px target: Material's 16 px cell padding would leave it no room. */
 td.mat-mdc-cell.twes-row-select,
 th.mat-mdc-header-cell.twes-row-select {
-  padding-inline: 0.5rem 0;
+  padding-inline: 0;
 }
 
 tr.mat-mdc-row.twes-row-selected > td.twes-row-actions {

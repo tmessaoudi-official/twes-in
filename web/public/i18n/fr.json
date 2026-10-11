@@ -1346,6 +1346,18 @@
   "invoices": {
     "selected": "{count, plural, =0 {Aucune facture sélectionnée} one {{{count}} facture sélectionnée} other {{{count}} factures sélectionnées}}",
     "select_draft": "Sélectionner le brouillon pour {{customer}}",
+    "bulk": {
+      "exported": "{count, plural, one {{{count}} facture exportée} other {{{count}} factures exportées}}",
+      "check_failed": "La sélection n’a pas pu être vérifiée. Réessayez.",
+      "skipped_title": "{count, plural, one {Une facture sélectionnée est laissée de côté} other {{{count}} factures sélectionnées sont laissées de côté}}",
+      "unknown": "Facture inconnue",
+      "reasons": {
+        "not_found": "Introuvable : supprimée entre-temps, ou plus accessible"
+      },
+      "cancel": "Annuler",
+      "close": "Fermer",
+      "export_rest": "{count, plural, one {Exporter l’autre} other {Exporter les {{count}} autres}}"
+    },
     "title": "Factures",
     "add": "Nouvelle facture",
     "none": "Aucune facture pour l’instant.",

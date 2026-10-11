@@ -53,6 +53,16 @@ interface InvoiceRepository
     /** Null for an invoice that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Invoice;
 
+    /**
+     * Those of the ids that are the company's invoices, in one read, in no particular order; another company's and an
+     * unknown id are left out alike.
+     *
+     * @param list<Uuid> $ids
+     *
+     * @return list<Invoice>
+     */
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array;
+
     /** The company's invoice created last that is not a cancelled draft, which a design preview shows; credit notes aside. */
     public function latestOfCompany(Uuid $companyId): ?Invoice;
 

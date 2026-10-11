@@ -62,12 +62,18 @@
         [facetCounts]="facetCounts()"
         [pickSources]="pickSources"
         [activeRowId]="sheetId()"
+        [(selected)]="selected"
         (queryChange)="onQuery($event)"
         testId="invoices-table"
         [rowTestId]="rowTestId"
         emptyKey="invoices.none"
         emptyTestId="invoices-empty"
       >
+        <ng-template appDataListSelection>
+          @if (company(); as company) {
+            <app-invoice-bulk [companyId]="company.id" [ids]="selected()" />
+          }
+        </ng-template>
         <ng-template appDataListCell="number" let-row>
           <span class="flex flex-col">
             <span class="tabular-nums">{{ row.number ?? ('invoices.draft' | translate) }}</span>

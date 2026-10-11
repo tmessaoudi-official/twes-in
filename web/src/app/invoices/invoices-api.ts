@@ -9,6 +9,8 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { filenameOf } from '../shared/files/save-file';
 import type {
+  InvoiceBulkCheckInvoiceBulkCheckReadValidationInvoiceBulkCheckWrite as InvoiceBulkCheckRead,
+  InvoiceBulkCheckInvoiceBulkCheckWriteValidationInvoiceBulkCheckWrite as InvoiceBulkCheckWrite,
   InvoiceDocumentPreviewDocumentPreviewValidationInvoiceWrite,
   ApiCompaniesCompanyIdinvoicesGetCollectionResponse,
   CustomerCreditBalanceCustomerCreditBalanceRead,
@@ -31,6 +33,8 @@ import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import { apiRangeKey } from '../shared/list/list-filters';
 import {
   AGING_BUCKETS,
+  type BulkAction,
+  type BulkCheck,
   type AgingAmount,
   INVOICE_STATUSES,
   type IssuePreview,
@@ -327,6 +331,40 @@ export class InvoicesApi {
   /** Where the invoices and credit notes the search finds are downloaded as a file, every page of them. */
   exportUrl(companyId: string, search: InvoiceSearch, format: ExportFormat): string {
     return exportAddress(companyId, 'invoices', toSearchParams(search), format);
+  }
+
+  /** Where the selected invoices alone are downloaded as a file, whatever the list's words and filters. */
+  selectedExportUrl(companyId: string, ids: readonly string[], format: ExportFormat): string {
+    let params = new HttpParams();
+    for (const id of ids) params = params.append('id[]', id);
+    return exportAddress(companyId, 'invoices', params, format);
+  }
+
+  /** What a bulk action would do with each selected invoice, checked by the API before it runs; nothing changes. */
+  async bulkCheck(
+    companyId: string,
+    action: BulkAction,
+    ids: readonly string[],
+  ): Promise<BulkCheck> {
+    return this.guard(async () => {
+      const body: InvoiceBulkCheckWrite = { action, ids: [...ids] };
+      const check = await firstValueFrom(
+        this.http.post<InvoiceBulkCheckRead>(`${invoicePath(companyId)}/bulk-check`, body),
+      );
+      if (check.rows === undefined || check.included === undefined || check.skipped === undefined)
+        throw new Error('A bulk check came without its rows.');
+      return {
+        rows: check.rows.map((row) => ({
+          id: row.id,
+          number: row.number,
+          customerName: row.customerName,
+          included: row.outcome === 'included',
+          reason: row.reason,
+        })),
+        included: check.included,
+        skipped: check.skipped,
+      };
+    });
   }
 
   pdfUrl(companyId: string, id: string): string {
