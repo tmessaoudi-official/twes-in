@@ -4,7 +4,7 @@
 
 ## État de conformité
 
-Aucun audit de conformité n’a encore été réalisé : l’état de conformité sera établi par cet audit. Chaque modification du service est vérifiée par des tests automatiques d’accessibilité au regard des WCAG 2.1, niveau AA, qui ne remplacent pas un audit.
+Ce service est non conforme au RGAA : aucun audit de conformité n’a encore été réalisé, et seul un audit peut lui reconnaître un autre état. Chaque modification du service est vérifiée par des tests automatiques d’accessibilité au regard des WCAG 2.1, niveau AA, qui ne remplacent pas un audit.
 
 ## Contenus non accessibles
 

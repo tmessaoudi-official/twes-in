@@ -80,6 +80,22 @@ final class LegalDraftFilesTest extends TestCase
         self::assertEqualsCanonicalizing(LegalSettings::PLACEHOLDERS, array_keys($used));
     }
 
+    /**
+     * RGAA's statement names one of three statuses, totally, partially or not compliant, and only an audit may claim
+     * the first two: until one is made the shipped statement says « non conforme », in every language.
+     */
+    public function testTheAccessibilityStatementSaysNotCompliantUntilAnAudit(): void
+    {
+        $status = ['fr' => 'non conforme', 'en' => 'not compliant', 'ar' => 'غير مطابق'];
+        foreach (self::drafts() as $draft) {
+            if (LegalPage::Accessibility !== $draft->page) {
+                continue;
+            }
+            self::assertStringContainsString($status[$draft->language->value], $draft->body, 'accessibility.'.$draft->language->value);
+            self::assertDoesNotMatchRegularExpression('/partiellement conforme|totalement conforme|partially compliant|fully compliant/i', $draft->body);
+        }
+    }
+
     /** @return list<LegalDraft> */
     private static function drafts(): array
     {
