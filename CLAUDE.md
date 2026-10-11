@@ -1,5 +1,8 @@
 # CLAUDE.md — twes-in
 
+> **Every decision is weighed against the North star at the top of `docs/SPEC.md` § 1; a choice that
+> contradicts it is raised with the developer before it is made.**
+>
 > `docs/SPEC.md` says WHAT twes-in is, what is ruled, what exists and what is next. READ IT
 > FIRST. This file says HOW work is delivered here. On conflict with the global framework
 > (`~/.claude/CLAUDE.md`) this file wins; on conflict about the product, the spec wins.

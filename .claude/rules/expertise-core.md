@@ -27,6 +27,7 @@ Scope: the DELTA over CLAUDE.md (its Process, Licensing invariants, Git rules an
 Before changing anything ruled: `git log -S"<phrase>" docs/SPEC.md` finds the §7 entry; change the ruling first, then the code.  [Source: CLAUDE.md l.3-5, SPEC §0]
 
 ## 1. The business in one screen
+- NORTH STAR (SPEC § 1, weigh every decision against it): one modular business platform where every capability is a module switched on or off, seen per person, contributing nav/widgets/actions/filters/settings by contract and talking only through ports and events; real businesses first (TN and FR go/no-go by evidence); exemplary by evidence (ISO/IEC 25010 checks in CI, § 7, external reviews), not by size; mistake-proofing that guides but never makes a fiscal or legal choice; everything data where the law allows, one canon per screen, RGAA, fr/en/ar, phone first.  [Ruled: user 2026-10-11 23:52]
 - Invoicing/billing SaaS for small businesses WITH A PLACE (shops, cafes, restaurants, workshops, warehouses). Launch market Tunisia, second France; built, sold and hosted by the developer; one plan per company; multi-company from the start (a person belongs to several companies and switches).  [Source: SPEC §1]
 - First two customers: a hardware shop (quincaillerie) and a machining workshop (tourneur); the product serves them without being built for them alone.  [Source: SPEC §1, §2]
 - "Supporting another country is DATA, never code": fiscal preset + sourced rules + translations; a new tax KIND is code. Enforced by a test.  [Ruled: user 2026-09-20]

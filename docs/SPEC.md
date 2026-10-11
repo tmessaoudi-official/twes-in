@@ -14,8 +14,30 @@
 
 ## 1. What twes-in is
 
+### North star — every decision is weighed against it (§ 7 2026-10-11 23:52)
+
+1. **One modular business platform.** Invoicing is where it started, not its limit: CRM, appointments, stock, the
+   counter and what follows are modules. Every capability is a module a company switches on or off, and a person
+   may choose to see only what they use (a barber may see only the calendar). Modules contribute their own
+   navigation, dashboard widgets, actions, filters, settings and guides through declared contracts, and talk to
+   each other only through ports and domain events, never by calling one another.
+2. **Real businesses first.** What exists is made ready for a pilot before the platform grows: Tunisia and France
+   each pass a go/no-go list covering security, privacy, fiscal correctness, law, accessibility, languages,
+   operations and support, every item closed by evidence or named as needing an outside expert.
+3. **Exemplary by evidence, not by size.** Each ISO/IEC 25010 quality characteristic has a measure and a check
+   that runs in CI; decisions are recorded in § 7; external reviews (pentest, chartered accountant, lawyer,
+   RGAA auditor) come before selling widely. A feature is added when it serves people, never to be complete.
+4. **Close to zero human error.** The app mistake-proofs (undo first, preview what cannot be undone, refuse what
+   is wrong) and points each person to the right screen and decision; it never makes a fiscal or legal choice in
+   their place.
+5. **Built to last.** Everything is data where the law allows (countries, trades, prices, wording), one canon for
+   every screen, accessible (RGAA), in French, English and Arabic, phone first where the work happens.
+
+A design or plan says which of these it serves and what it costs any other; one that contradicts the North star is
+raised with the developer before it is made.
+
 An invoicing and billing SaaS for small companies, **Tunisia first, France second**, built and
-sold by Takieddine MESSAOUDI, hosted by him, with a plan per company. A **Symfony REST API**
+sold by Takieddine MESSAOUDI, hosted by him, with a plan per company (how plans and modules are priced is being researched, § 7 2026-10-11 23:52). A **Symfony REST API**
 and an **Angular admin web app** over **PostgreSQL**. Multi-company from the first goal: a
 person can belong to several companies and switches between them.
 
@@ -4913,6 +4935,15 @@ functional tests run in the `tools` container, on the host's network, against th
 - [2026-10-11 23:03] AGREED: appointments slices 0 to 2 (the rulings and `defaultEnabled`, then the staff agenda: calendars, hours and closures, services, phone and walk-in bookings, a resource day view, double booking refused by the database) come after the erasure work and the five validated features, as a pitch feature (developer).
 - [2026-10-11 23:03] AGREED: the appointments engine serves every domain; each country's preset lists the sensitive activities (medical, paramedical) and keeps them closed until the hosting is certified for them (HDS in France, an INPDP authorization in Tunisia), opened then by data, not code. The developer first answered « it should support everything » and confirmed this once the hosting law was put (developer).
 - [2026-10-11 23:03] AGREED: every customer channel comes, in this order: e-mail with an `.ics` file, « Ajouter à Google / Outlook » links and the staff-tapped WhatsApp link first (slice 3); a calendar feed to subscribe to, secret and read-only (slice 5); then, behind one `Notify` port, web push, SMS and the WhatsApp Business API; last, two-way Google and Microsoft sync (developer, who wants all of them and the phone's own calendar).
+
+- [2026-10-11 23:52] AGREED: the North star at the top of § 1 is the test every decision is weighed against; CLAUDE.md points to it and the expertise core carries its summary, so every session sees it (developer).
+- [2026-10-11 23:52] AGREED: the platform rethink and the pilot readiness are designed together; the build order is the pilot's blockers, then the module contracts (navigation, dashboard widgets, actions, bulk actions, filters, menus, settings) extracted from invoices, inventory and appointments, then every screen brought to one canon (developer).
+- [2026-10-11 23:52] AGREED: the platform design covers four visibility layers (what the plan sells, what the company switched on, what the role permits, what the person chose to see), the dependency graph between modules and what switching one off does to its data, trade templates at signup, and the glue between modules (automations, webhooks, a public API, global search, reports), which is designed now and built after the pilot under its own threat model (developer).
+- [2026-10-11 23:52] AGREED: modules are written in-house only, the door left open to partners or a marketplace: contracts are schemas proven by contract tests, without version numbers or a sandbox (developer).
+- [2026-10-11 23:52] AGREED: Tunisia and France are both audited to go/no-go level: e-invoicing (the French reform, El Fatoora), till anti-fraud certification, operations (a tested restore, monitoring, incidents, staging, upgrades, support, continuity), the commercial and legal papers (terms, the RGPD art. 28 agreement, the register of processing, the INPDP, where data is hosted), the pilot programme (success measures, feedback, telemetry only with consent, a full export), and phone-first use, offline use and Arabic (developer).
+- [2026-10-11 23:52] AGREED: « exemplary » means ISO/IEC 25010 with evidence: a measure and a CI check per quality characteristic, a threat model, restore drills and external reviews before selling widely (developer, who means to run the build in autonomous mode once the spec is done and be told when a first version can be tried and sold).
+- [2026-10-11 23:52] AGREED: pricing is researched (per module, global plans, a hybrid) and proposed before it is ruled; prices are data the developer edits, and the developer leans to offering both per module and global plans (developer).
+- [2026-10-11 23:52] AGREED: a country preset becomes a typed, versioned contract (a schema, effective dates, checked against the pricing vectors) now; the operator's editor in the app (draft, test, difference, publish, export to YAML) comes after the pilot; a new kind of tax stays code (developer).
 
 ## 8. Status
 
