@@ -55,6 +55,12 @@ export interface PlatformSignup {
 
 export type SignupSwitch = 'signup.enabled' | 'signup.approval_required';
 
+/** A way companies reach the platform's operators, which the help panel offers (`SupportSettings` in the API). */
+export type SupportChannel = 'phone' | 'whatsapp' | 'email';
+
+/** Each support channel as the operators set it, empty where they did not. */
+export type PlatformSupport = Readonly<Record<SupportChannel, string>>;
+
 /** An account as the platform's operators look it up. */
 export interface PlatformAccountRow {
   readonly id: string;

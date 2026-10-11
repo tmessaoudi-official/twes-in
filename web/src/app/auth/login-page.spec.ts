@@ -73,6 +73,7 @@ const me: Me = {
   modules: [],
   plannedModules: [],
   customerScreenCompanyId: null,
+  support: { phone: null, whatsapp: null, email: null },
 };
 
 describe('LoginPage', () => {

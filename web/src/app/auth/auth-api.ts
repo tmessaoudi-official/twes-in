@@ -239,6 +239,11 @@ function toState(me: Me): SignedInState {
       planned: module.planned,
     })),
     customerScreenCompanyId: me.customerScreenCompanyId,
+    support: {
+      phone: me.support.phone,
+      whatsapp: me.support.whatsapp,
+      email: me.support.email,
+    },
     mfa: {
       enrolled: me.mfa.enrolled,
       required: me.mfa.required,

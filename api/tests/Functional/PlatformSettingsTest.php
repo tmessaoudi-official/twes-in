@@ -36,6 +36,8 @@ final class PlatformSettingsTest extends ApiTestCase
             'legal.publisher.email', 'legal.publisher.name', 'legal.publisher.phone', 'legal.publisher.registration',
             'legal.security.email', 'legal.source.url',
             'licensing.grace_days', 'licensing.hold_days', 'licensing.unpaid_mode', 'signup.approval_required', 'signup.enabled',
+            // How a company reaches the operators (Settings\Application\SupportSettings), empty until filled in.
+            'support.email', 'support.phone', 'support.whatsapp',
         ], $keys);
         $rows = array_column($rows, null, 'key');
         self::assertSame('', $rows['legal.publisher.name']['value']);

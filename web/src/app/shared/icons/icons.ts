@@ -27,6 +27,7 @@ export const ICONS = [
   'bookmarks',
   'business',
   'calendar_month',
+  'call',
   'cancel',
   'card_membership',
   'chat',

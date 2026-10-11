@@ -106,6 +106,15 @@ export interface SignedInState {
   plannedModules?: readonly PlannedModule[];
   /** the company whose customer screen holds the sign-in, null when none does (docs/SPEC.md § 7, 2026-10-06 19:44) */
   customerScreenCompanyId?: string | null;
+  /** how to reach the platform's operators, each channel null until they fill it in: the help panel offers it */
+  support?: SupportContact;
+}
+
+/** The phone, WhatsApp number and address the platform's operators are reached at, each null when not given. */
+export interface SupportContact {
+  readonly phone: string | null;
+  readonly whatsapp: string | null;
+  readonly email: string | null;
 }
 
 /** A module of the complete product not built yet, and the version it is expected in. */
