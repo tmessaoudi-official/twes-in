@@ -212,6 +212,7 @@ those three is needed. Run them through `make`, which hands compose the uid, the
 | `make e2e`, `make gallery` (`E2E_ARGS=…`) | `web-tools` | `npx playwright test` and a host-installed Chromium |
 | `make videos` | `web-tools` | filming the guides (`web/e2e-recorder/`, `playwright.recorder.config.ts`, docs/START.md § 12); refuses under load or beside a gate |
 | `make notices`, `make versions` | `tools` | `php scripts/notices/…`, `bash scripts/versions.sh` |
+| `make audit` | `tools`, `web-tools` | `composer audit`, `npm audit --omit=dev --audit-level=high`; CI's `licences` job runs it |
 | `make php-lint FILE=…` | `tools` | `php -l`, what `.claude/hooks/lint-on-write.sh` runs after every edit |
 | `make tools CMD='…'`, `make web-tools CMD='…'` | `tools`, `web-tools` | any other `composer`, `bin/console`, `npm`, `npx` command |
 | CI jobs `licences`, `api`, `web`, `e2e` | the same | `setup-php`, `setup-node`, a postgres service container, `apt-get install logrotate` |
