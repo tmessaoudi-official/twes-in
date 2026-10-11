@@ -53,6 +53,7 @@ final readonly class ManageQuotes
     public const string REVISED = 'quote.revised';
     public const string ATTACHMENT_ADDED = 'quote.attachment_added';
     public const string ATTACHMENT_REMOVED = 'quote.attachment_removed';
+    public const string ATTACHMENT_RESTORED = 'quote.attachment_restored';
 
     public function __construct(
         private QuoteRepository $quotes,
@@ -216,6 +217,22 @@ final readonly class ManageQuotes
         $this->transactions->run(function () use ($company, $id, $attachmentId, $actorUserId): void {
             $this->attachments->detach($this->attachment($company, $id, $attachmentId));
             $this->record($company, $id, self::ATTACHMENT_REMOVED, ['attachmentId' => $attachmentId->toRfc4122()], $actorUserId);
+        });
+    }
+
+    /**
+     * « Annuler » after a file came off: it is put back where it was, whatever the quote's status, as it came off.
+     *
+     * @throws QuoteNotFound
+     * @throws QuoteAttachmentNotFound
+     * @throws AttachmentRefused       when the quote already holds as many files as it may
+     */
+    public function restore(Company $company, Uuid $id, Uuid $attachmentId, ?Uuid $actorUserId): void
+    {
+        $this->transactions->run(function () use ($company, $id, $attachmentId, $actorUserId): void {
+            $quote = $this->get($company, $id);
+            $this->attachments->restore($company, self::ENTITY_TYPE, $quote->getId(), $attachmentId) ?? throw new QuoteAttachmentNotFound();
+            $this->record($company, $id, self::ATTACHMENT_RESTORED, ['attachmentId' => $attachmentId->toRfc4122()], $actorUserId);
         });
     }
 

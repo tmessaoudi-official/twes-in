@@ -34,6 +34,7 @@ final readonly class KeepLossAttachments
     public const string ENTITY_TYPE = 'stock_movement';
     public const string ATTACHMENT_ADDED = 'stock_movement.attachment_added';
     public const string ATTACHMENT_REMOVED = 'stock_movement.attachment_removed';
+    public const string ATTACHMENT_RESTORED = 'stock_movement.attachment_restored';
 
     public function __construct(
         private StockMovementRepository $movements,
@@ -119,6 +120,22 @@ final readonly class KeepLossAttachments
             $loss = $this->loss($company, $movementId);
             $this->attachments->detach($this->attachment($company, $loss, $attachmentId));
             $this->recorded($company, $loss, self::ATTACHMENT_REMOVED, $attachmentId, $actorUserId);
+        });
+    }
+
+    /**
+     * « Annuler » after a file came off: it is put back on the same loss, where it was among the others.
+     *
+     * @throws StockMovementNotFound
+     * @throws StockLossAttachmentNotFound
+     * @throws AttachmentRefused           when the loss already holds as many files as it may
+     */
+    public function restore(Company $company, Uuid $movementId, Uuid $attachmentId, ?Uuid $actorUserId): void
+    {
+        $this->transactions->run(function () use ($company, $movementId, $attachmentId, $actorUserId): void {
+            $loss = $this->loss($company, $movementId);
+            $this->attachments->restore($company, self::ENTITY_TYPE, $loss->getId(), $attachmentId) ?? throw new StockLossAttachmentNotFound();
+            $this->recorded($company, $loss, self::ATTACHMENT_RESTORED, $attachmentId, $actorUserId);
         });
     }
 

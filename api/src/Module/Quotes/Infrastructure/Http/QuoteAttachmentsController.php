@@ -64,6 +64,24 @@ final readonly class QuoteAttachmentsController
         return new JsonResponse(QuoteAttachmentResource::of($attachment)->toArray(), Response::HTTP_CREATED);
     }
 
+    /** Puts back a file taken off, where it was: what « Annuler » after taking it off sends. */
+    #[Route('/api/companies/{companyId}/quotes/{quoteId}/attachments/{attachmentId}/restore', name: 'api_quote_attachment_restore', methods: ['POST'])]
+    public function restore(string $companyId, string $quoteId, string $attachmentId): Response
+    {
+        $ids = ['companyId' => $companyId, 'quoteId' => $quoteId, 'attachmentId' => $attachmentId];
+        $company = $this->guard->companyForActing(CompanyPath::identifier($ids, 'companyId'), QuotePermission::WRITE);
+
+        try {
+            $this->manage->restore($company, CompanyPath::identifier($ids, 'quoteId'), CompanyPath::identifier($ids, 'attachmentId'), $this->guard->account()->getId());
+        } catch (QuoteNotFound|QuoteAttachmentNotFound $absent) {
+            throw new NotFoundHttpException($absent->getMessage(), $absent);
+        } catch (AttachmentRefused $refused) {
+            return new JsonResponse(['code' => $refused->reason, 'params' => (object) $refused->params, 'message' => $refused->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
     #[Route('/api/companies/{companyId}/quotes/{quoteId}/attachments/{attachmentId}/content', name: 'api_quote_attachment_content', methods: ['GET'])]
     public function content(string $companyId, string $quoteId, string $attachmentId): Response
     {
