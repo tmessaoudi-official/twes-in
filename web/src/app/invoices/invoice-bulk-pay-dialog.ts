@@ -194,7 +194,8 @@ export class InvoiceBulkPayDialog {
   protected readonly descriptor = bulkPayForm();
   protected readonly group = buildFormGroup(this.descriptor, {
     date: this.data.today,
-    method: 'transfer',
+    // Cash first, as a shop counter is paid; one cheque or transfer settling several is picked from the list.
+    method: 'cash',
     reference: '',
   });
 
