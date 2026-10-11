@@ -154,6 +154,13 @@ test('a quote is drafted, sent, accepted and invoiced into a draft invoice', asy
     // The customer's answer is asked in a dialog: the day, and the signed copy when there is one.
     await page.getByTestId('document-action-accept').click();
     await expect(page.getByTestId('quote-answered-on')).toBeFocused();
+    // The focused field's label floats above its outline: the dialog's content must not cut it at its top edge.
+    const cut = await page.getByTestId('quote-answered-on').evaluate((input) => {
+      const label = input.closest('mat-form-field')!.querySelector('.mdc-floating-label')!;
+      const content = input.closest('mat-dialog-content')!;
+      return content.getBoundingClientRect().top - label.getBoundingClientRect().top;
+    });
+    expect(cut, 'pixels of the floating label above the content edge').toBeLessThanOrEqual(0);
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('quote-answer-confirm').click();
     await expect(page.getByTestId('quote-status')).toContainText(/Accepté|Accepted/);
