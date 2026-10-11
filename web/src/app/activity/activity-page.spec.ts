@@ -26,6 +26,7 @@ import {
 import { ActivityFacade } from './activity-facade';
 import { ActivityPage } from './activity-page';
 import type { ActivityRow } from './activity-types';
+import { exportEntry } from '../shared/testing/list-export';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -162,7 +163,7 @@ describe('ActivityPage', () => {
   });
 
   it('offers what the journal shows as a file', () => {
-    expect(q('activity-export-csv')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'activity-export', 'csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/activity.csv',
     );
   });

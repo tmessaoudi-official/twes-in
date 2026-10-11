@@ -319,7 +319,9 @@
             </p>
             @if (hasRowControls()) {
               <div class="-me-2 -mt-1 shrink-0">
-                <ng-container *ngTemplateOutlet="rowControls; context: { $implicit: row }" />
+                <ng-container
+                  *ngTemplateOutlet="rowControls; context: { $implicit: row, card: true }"
+                />
               </div>
             }
           </div>
@@ -346,6 +348,16 @@
               }
             }
           </dl>
+          @if (cardNext(row); as next) {
+            <div
+              class="twes-list-card-next -me-2 -mb-1 flex justify-end"
+              [attr.data-testid]="'list-card-next-' + descriptor().rowId(row)"
+            >
+              <ng-container
+                *ngTemplateOutlet="rowButton; context: { $implicit: next, row: row, words: true }"
+              />
+            </div>
+          }
         </li>
       } @empty {
         <li class="px-4 py-8 text-center text-on-surface-variant">
@@ -513,71 +525,14 @@
 
 <!-- One declaration of a row's own controls, rendered in the table's trailing cell and again on a phone's
      card, so the two can never offer different things. -->
-<ng-template #rowControls let-row>
-  @for (action of rowButtons(row); track action.id) {
-    @let label = labelOn(action, row) | translate: action.labelParams?.(row);
-    @let testId = 'row-action-' + action.id + '-' + descriptor().rowId(row);
-    @if (rowWords() && isNext(action, row)) {
-      @if (action.href; as href) {
-        <a mat-button [href]="href(row)" target="_blank" rel="noopener" [attr.data-testid]="testId">
-          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-          {{ label }}
-        </a>
-      } @else if (action.link; as link) {
-        <a
-          mat-button
-          [routerLink]="link(row)"
-          [queryParams]="action.linkQuery?.(row) ?? null"
-          [attr.data-testid]="testId"
-        >
-          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-          {{ label }}
-        </a>
-      } @else {
-        <button
-          mat-button
-          type="button"
-          (click)="runAction(action, row)"
-          [disabled]="action.disabled?.(row) ?? false"
-          [attr.data-testid]="testId"
-        >
-          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-          {{ label }}
-        </button>
-      }
-    } @else if (action.href; as href) {
-      <a
-        mat-icon-button
-        [href]="href(row)"
-        target="_blank"
-        rel="noopener"
-        [appLabel]="label"
-        [attr.data-testid]="testId"
-      >
-        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-      </a>
-    } @else if (action.link; as link) {
-      <a
-        mat-icon-button
-        [routerLink]="link(row)"
-        [queryParams]="action.linkQuery?.(row) ?? null"
-        [appLabel]="label"
-        [attr.data-testid]="testId"
-      >
-        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-      </a>
-    } @else {
-      <button
-        mat-icon-button
-        type="button"
-        (click)="runAction(action, row)"
-        [disabled]="action.disabled?.(row) ?? false"
-        [appLabel]="label"
-        [attr.data-testid]="testId"
-      >
-        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-      </button>
-    }
+<ng-template #rowControls let-row let-card="card">
+  @for (action of card ? cardHead(row) : rowButtons(row); track action.id) {
+    <ng-container
+      *ngTemplateOutlet="
+        rowButton;
+        context: { $implicit: action, row: row, words: !card && rowWords() && isNext(action, row) }
+      "
+    />
   }
   @if (rowMenu(row); as rare) {
     @if (rare.length > 0) {
@@ -661,5 +616,72 @@
     <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
   } @else {
     {{ column.value(row) }}
+  }
+</ng-template>
+
+<!-- One of a row's buttons: its word where the room is there for it, else its icon, named on hover. -->
+<ng-template #rowButton let-action let-row="row" let-words="words">
+  @let label = labelOn(action, row) | translate: action.labelParams?.(row);
+  @let testId = 'row-action-' + action.id + '-' + descriptor().rowId(row);
+  @if (words) {
+    @if (action.href; as href) {
+      <a mat-button [href]="href(row)" target="_blank" rel="noopener" [attr.data-testid]="testId">
+        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+        {{ label }}
+      </a>
+    } @else if (action.link; as link) {
+      <a
+        mat-button
+        [routerLink]="link(row)"
+        [queryParams]="action.linkQuery?.(row) ?? null"
+        [attr.data-testid]="testId"
+      >
+        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+        {{ label }}
+      </a>
+    } @else {
+      <button
+        mat-button
+        type="button"
+        (click)="runAction(action, row)"
+        [disabled]="action.disabled?.(row) ?? false"
+        [attr.data-testid]="testId"
+      >
+        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+        {{ label }}
+      </button>
+    }
+  } @else if (action.href; as href) {
+    <a
+      mat-icon-button
+      [href]="href(row)"
+      target="_blank"
+      rel="noopener"
+      [appLabel]="label"
+      [attr.data-testid]="testId"
+    >
+      <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+    </a>
+  } @else if (action.link; as link) {
+    <a
+      mat-icon-button
+      [routerLink]="link(row)"
+      [queryParams]="action.linkQuery?.(row) ?? null"
+      [appLabel]="label"
+      [attr.data-testid]="testId"
+    >
+      <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+    </a>
+  } @else {
+    <button
+      mat-icon-button
+      type="button"
+      (click)="runAction(action, row)"
+      [disabled]="action.disabled?.(row) ?? false"
+      [appLabel]="label"
+      [attr.data-testid]="testId"
+    >
+      <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+    </button>
   }
 </ng-template>

@@ -35,6 +35,7 @@ test('a list leaves as a file only once the password was given again, and the ne
   await expect(page).toHaveURL(/\/$/);
 
   await page.goto('/customers');
+  await page.getByTestId('customers-export').click();
   await page.getByTestId('customers-export-csv').click();
   await expect(page.getByTestId('step-up-title')).toBeVisible();
   // It says why it asks: this list leaving, not customer view, whose question it first was.
@@ -52,6 +53,7 @@ test('a list leaves as a file only once the password was given again, and the ne
 
   // Within the few minutes the proof holds, the other format is handed out without asking.
   const second = page.waitForEvent('download');
+  await page.getByTestId('customers-export').click();
   await page.getByTestId('customers-export-xlsx').click();
   expect((await second).suggestedFilename()).toBe('customers.xlsx');
   await expect(page.getByTestId('step-up-title')).toBeHidden();

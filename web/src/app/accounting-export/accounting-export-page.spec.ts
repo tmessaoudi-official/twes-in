@@ -23,6 +23,7 @@ import { StepUp } from '../shared/step-up/step-up';
 import { provideQuietFeedback } from '../shared/testing/feedback';
 import { AccountingExportPage } from './accounting-export-page';
 import { lastMonth } from './accounting-files';
+import { exportEntry } from '../shared/testing/list-export';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -81,10 +82,10 @@ describe('AccountingExportPage', () => {
     expect((q('accounting-export-to') as HTMLInputElement).value).toBe(shown(to));
     for (const file of ['sales-journal', 'purchases-journal', 'payments-journal', 'vat-summary']) {
       expect(q(`accounting-file-${file}`)).not.toBeNull();
-      expect(q(`accounting-export-${file}-csv`)?.dataset['address']).toBe(
+      expect(exportEntry(fixture, `accounting-export-${file}`, 'csv')?.dataset['address']).toBe(
         `/api/companies/c1/exports/${file}.csv?from=${from}&to=${to}`,
       );
-      expect(q(`accounting-export-${file}-xlsx`)?.dataset['address']).toBe(
+      expect(exportEntry(fixture, `accounting-export-${file}`, 'xlsx')?.dataset['address']).toBe(
         `/api/companies/c1/exports/${file}.xlsx?from=${from}&to=${to}`,
       );
     }
@@ -94,7 +95,7 @@ describe('AccountingExportPage', () => {
     setDay('accounting-export-from', '2026-01-01');
     setDay('accounting-export-to', '2026-03-31');
 
-    expect(q('accounting-export-vat-summary-csv')?.dataset['address']).toBe(
+    expect(exportEntry(fixture, 'accounting-export-vat-summary', 'csv')?.dataset['address']).toBe(
       '/api/companies/c1/exports/vat-summary.csv?from=2026-01-01&to=2026-03-31',
     );
   });
@@ -103,12 +104,12 @@ describe('AccountingExportPage', () => {
     setDay('accounting-export-from', '2026-09-30');
     setDay('accounting-export-to', '2026-09-01');
 
-    expect(q('accounting-export-sales-journal-csv')).toBeNull();
+    expect(exportEntry(fixture, 'accounting-export-sales-journal', 'csv')).toBeNull();
     expect(q('accounting-export-period-error')).not.toBeNull();
 
     setDay('accounting-export-from', '2024-01-01');
     setDay('accounting-export-to', '2026-01-01');
 
-    expect(q('accounting-export-sales-journal-csv')).toBeNull();
+    expect(exportEntry(fixture, 'accounting-export-sales-journal', 'csv')).toBeNull();
   });
 });

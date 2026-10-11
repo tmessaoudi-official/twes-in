@@ -25,6 +25,7 @@ import {
 import { VendorsFacade } from './vendors-facade';
 import { VendorsPage } from './vendors-page';
 import type { VendorRow } from './vendors-types';
+import { exportEntry } from '../shared/testing/list-export';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -110,10 +111,10 @@ describe('VendorsPage', () => {
   });
 
   it('offers what the list shows as a CSV or an Excel file', () => {
-    expect(q('vendors-export-csv')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'vendors-export', 'csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/vendors.csv',
     );
-    expect(q('vendors-export-xlsx')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'vendors-export', 'xlsx')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/vendors.xlsx',
     );
   });
