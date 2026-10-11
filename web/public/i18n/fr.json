@@ -733,6 +733,10 @@
     "more_actions": "Autres actions"
   },
   "list": {
+    "select_row": "Sélectionner {{name}}",
+    "select_page": "Sélectionner les lignes de cette page",
+    "select_mode": "Sélectionner",
+    "selection_clear": "Tout désélectionner",
     "filter": "Filtrer",
     "filter_clear": "Effacer le filtre",
     "columns": "Colonnes",
@@ -1340,6 +1344,8 @@
     }
   },
   "invoices": {
+    "selected": "{count, plural, =0 {Aucune facture sélectionnée} one {{{count}} facture sélectionnée} other {{{count}} factures sélectionnées}}",
+    "select_draft": "Sélectionner le brouillon pour {{customer}}",
     "title": "Factures",
     "add": "Nouvelle facture",
     "none": "Aucune facture pour l’instant.",

@@ -733,6 +733,10 @@
     "more_actions": "More actions"
   },
   "list": {
+    "select_row": "Select {{name}}",
+    "select_page": "Select the rows on this page",
+    "select_mode": "Select",
+    "selection_clear": "Clear the selection",
     "filter": "Filter",
     "filter_clear": "Clear the filter",
     "columns": "Columns",
@@ -1340,6 +1344,8 @@
     }
   },
   "invoices": {
+    "selected": "{count, plural, =0 {No invoice selected} one {{{count}} invoice selected} other {{{count}} invoices selected}}",
+    "select_draft": "Select the draft for {{customer}}",
     "title": "Invoices",
     "add": "New invoice",
     "none": "No invoices yet.",

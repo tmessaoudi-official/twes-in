@@ -368,6 +368,22 @@ html {
 
 // The search and the list's tools share a line while they fit and wrap when they do not: on a phone the search takes a
 // line of its own and the buttons the next, so no list pans sideways.
+/* The selection's bar, in the toolbar's place while rows are selected: the same height, a tinted ground. */
+.twes-list-selection {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3.5rem;
+  padding: 0.25rem 0.5rem 0.25rem 1rem;
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  /* Its buttons speak in the bar's own ink: the primary on this ground falls short of a readable contrast. */
+  --mat-button-text-label-text-color: var(--mat-sys-on-secondary-container);
+  --mat-button-text-state-layer-color: var(--mat-sys-on-secondary-container);
+  --mat-icon-button-icon-color: var(--mat-sys-on-secondary-container);
+}
+
 .twes-list-tools {
   display: flex;
   flex: 1 1 100%;
@@ -2284,6 +2300,16 @@ tr.mat-mdc-row:hover > td.twes-row-actions {
   background: color-mix(in oklch, var(--mat-sys-primary) 5%, var(--mat-sys-surface));
 }
 
+/* The leading box's cell: Material's 16 px cell padding would leave the box no room in its 56 px. */
+td.mat-mdc-cell.twes-row-select,
+th.mat-mdc-header-cell.twes-row-select {
+  padding-inline: 0.5rem 0;
+}
+
+tr.mat-mdc-row.twes-row-selected > td.twes-row-actions {
+  background: var(--mat-sys-secondary-container);
+}
+
 tr.mat-mdc-row.twes-row-active > td.twes-row-actions {
   background: color-mix(in oklch, var(--mat-sys-primary) 12%, var(--mat-sys-surface));
 }
@@ -2365,6 +2391,17 @@ tr.mat-mdc-row.twes-row-active:hover,
 li.twes-row-active.twes-list-card {
   background-color: color-mix(in oklch, var(--mat-sys-primary) 12%, transparent);
 }
+/* A selected row: the selection bar's own ground, so the eye pairs the rows with the bar that counts them. */
+tr.mat-mdc-row.twes-row-selected,
+li.twes-row-selected.twes-list-card {
+  background-color: var(--mat-sys-secondary-container);
+}
+
+/* A long press on a card selects it: the phone's own menu for the card's link would open over it at the same moment. */
+.twes-list-selectable .twes-list-card {
+  -webkit-touch-callout: none;
+}
+
 tr.twes-row-active > td:first-child,
 li.twes-row-active.twes-list-card {
   box-shadow: inset 3px 0 0 var(--mat-sys-primary);

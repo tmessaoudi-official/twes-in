@@ -212,6 +212,35 @@ class DeclaredHost {
   readonly active = signal<string | null>(null);
 }
 
+/** A list whose rows can be selected, the selection held by the screen as ids. */
+@Component({
+  imports: [DataList],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <app-data-list
+      [descriptor]="descriptor"
+      [rows]="rows()"
+      [loading]="loading()"
+      [failed]="false"
+      [(selected)]="selected"
+      testId="customers-table"
+      [rowTestId]="rowTestId"
+      emptyKey="c.none"
+      emptyTestId="customers-empty"
+    />
+  `,
+})
+class SelectHost {
+  readonly descriptor: ListDescriptor<Customer> = {
+    ...declared,
+    selection: { countKey: 'c.selected' },
+  };
+  readonly rows = signal<Customer[]>(all);
+  readonly loading = signal(false);
+  readonly selected = signal<readonly string[]>([]);
+  readonly rowTestId = (row: Customer) => `customer-${row.id}`;
+}
+
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
@@ -232,6 +261,7 @@ class StaticLoader implements TranslateLoader {
         archive_message: 'Archive {{name}}?',
         archive_confirm: 'Archive',
         keep: 'Keep',
+        selected: '{{count}} selected',
       },
       list: {
         filter: 'Filter',
@@ -253,6 +283,10 @@ class StaticLoader implements TranslateLoader {
         more_actions: 'More actions',
         new_row: '{{count}} new row',
         new_rows: '{{count}} new rows',
+        select_row: 'Select {{name}}',
+        select_page: 'Select this page',
+        select_mode: 'Select',
+        selection_clear: 'Clear selection',
         loading: 'Loading…',
         failed: 'The list could not be loaded.',
       },
@@ -1162,6 +1196,260 @@ describe('DataList', () => {
       expect(header('name')).toBe('160px');
       expect(header('balance')).toBe('120px');
       expect(header('city')).toBe('134px');
+    });
+  });
+
+  describe('selecting rows', () => {
+    let host: ComponentFixture<SelectHost>;
+
+    async function mountSelecting(windowClass: WindowClass): Promise<void> {
+      ran.length = 0;
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [SelectHost],
+        providers: [
+          provideTranslateService({
+            lang: 'en',
+            loader: provideTranslateLoader(() => new StaticLoader()),
+          }),
+          provideRouter([]),
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+          },
+          { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+          { provide: SettingsFacade, useClass: BrowserStorageSettings },
+          { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+          { provide: Session, useValue: { me: () => ({ user: { id: 'u1' } }) } },
+          { provide: WINDOW_CLASS, useValue: signal<WindowClass>(windowClass) },
+        ],
+      });
+      host = TestBed.createComponent(SelectHost);
+      await stable();
+    }
+
+    async function stable(): Promise<void> {
+      host.detectChanges();
+      await host.whenStable();
+      host.detectChanges();
+    }
+
+    const el = (testId: string): HTMLElement | null =>
+      host.nativeElement.querySelector(`[data-testid="${testId}"]`);
+    const box = (testId: string): HTMLInputElement =>
+      el(testId)!.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    async function tick(testId: string): Promise<void> {
+      box(testId).click();
+      await stable();
+    }
+    const selected = (): readonly string[] => host.componentInstance.selected();
+
+    describe('on a wide window', () => {
+      beforeEach(async () => mountSelecting('expanded'));
+
+      it('leads each row with a box named after its record, and leaves a list that declares no selection alone', async () => {
+        expect(box('list-select-row-1').getAttribute('aria-label')).toBe('Select Customer 01');
+        expect(
+          host.nativeElement.querySelector('tr [data-testid="list-select-row-1"]')?.closest('td'),
+        ).toBe(host.nativeElement.querySelector('tbody tr:first-child td:first-child'));
+        expect(el('list-selection')).toBeNull();
+      });
+
+      it("selects the rows ticked, says how many in a bar that takes the toolbar's place, and clears them", async () => {
+        await tick('list-select-row-2');
+        await tick('list-select-row-4');
+        expect(selected()).toEqual(['2', '4']);
+        expect(el('list-selection')?.textContent).toContain('2 selected');
+        expect(el('list-filter')).toBeNull();
+        // Ticking never opens: the row's link is still where it was, and nothing navigated.
+        expect(el('list-link-2')).not.toBeNull();
+
+        await tick('list-select-row-2');
+        expect(selected()).toEqual(['4']);
+
+        el('list-selection-clear')!.click();
+        await stable();
+        expect(selected()).toEqual([]);
+        expect(el('list-selection')).toBeNull();
+        expect(el('list-filter')).not.toBeNull();
+        // The bar it was in is gone: the focus goes to the page's box, not to the body.
+        expect(document.activeElement).toBe(box('list-select-page'));
+      });
+
+      it("ticks the page's rows from the header box, half-ticked while only some are, and never another page's", async () => {
+        await tick('list-select-row-1');
+        expect(box('list-select-page').indeterminate).toBe(true);
+        expect(box('list-select-page').getAttribute('aria-label')).toBe('Select this page');
+
+        await tick('list-select-page');
+        expect(selected()).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
+        expect(box('list-select-page').checked).toBe(true);
+
+        await tick('list-select-page');
+        expect(selected()).toEqual([]);
+      });
+
+      it('lets the selection go when another page is shown, and keeps the words and filters behind the bar meanwhile', async () => {
+        await tick('list-select-row-1');
+        // What is selected cannot be narrowed away unseen: the search and the filters wait behind the bar.
+        expect(el('list-filter')).toBeNull();
+        expect(el('list-facet-status')).toBeNull();
+        (
+          host.nativeElement.querySelector('.mat-mdc-paginator-navigation-next') as HTMLElement
+        ).click();
+        await stable();
+        expect(selected()).toEqual([]);
+        expect(el('list-select-row-11')).not.toBeNull();
+      });
+
+      it('keeps the selection through a reload that answers the same rows, and drops a row that left once it has', async () => {
+        await tick('list-select-row-2');
+        await tick('list-select-row-3');
+
+        host.componentInstance.loading.set(true);
+        host.componentInstance.rows.set(all.map((row) => ({ ...row })));
+        await stable();
+        expect(selected()).toEqual(['2', '3']);
+
+        host.componentInstance.rows.set(all.filter((row) => row.id !== '3'));
+        await stable();
+        // Still reading: a row missing from a page being read is not yet a row that left.
+        expect(selected()).toEqual(['2', '3']);
+
+        host.componentInstance.loading.set(false);
+        await stable();
+        expect(selected()).toEqual(['2']);
+      });
+
+      it("greys the rows' own actions while rows are selected, the record's link staying", async () => {
+        await tick('list-select-row-1');
+        expect((el('row-action-call-2') as HTMLButtonElement).disabled).toBe(true);
+        expect((el('row-more-2') as HTMLButtonElement).disabled).toBe(true);
+        expect(el('list-link-2')?.getAttribute('href')).toBe('/customers/2');
+
+        el('list-selection-clear')!.click();
+        await stable();
+        expect((el('row-action-call-2') as HTMLButtonElement).disabled).toBe(false);
+      });
+
+      it('clears the selection on Escape inside the list, and lets Escape through when nothing is selected', async () => {
+        const passed: KeyboardEvent[] = [];
+        const listen = (event: Event) => passed.push(event as KeyboardEvent);
+        document.addEventListener('keydown', listen);
+        try {
+          await tick('list-select-row-1');
+          box('list-select-row-1').dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+          );
+          await stable();
+          expect(selected()).toEqual([]);
+          // Taken: the sheet or the sidebar behind the list must not close on the same key.
+          expect(passed).toHaveLength(0);
+
+          box('list-select-row-1').dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+          );
+          expect(passed).toHaveLength(1);
+        } finally {
+          document.removeEventListener('keydown', listen);
+        }
+      });
+    });
+
+    describe('on a phone', () => {
+      beforeEach(async () => mountSelecting('compact'));
+
+      const card = (id: string): HTMLElement =>
+        host.nativeElement.querySelector(`[data-testid="customer-${id}"]`) as HTMLElement;
+
+      it('shows no box until « Select » is pressed, then one per card and the bar', async () => {
+        expect(el('list-select-row-1')).toBeNull();
+        el('list-select-mode')!.click();
+        await stable();
+        expect(card('1').querySelector('[data-testid="list-select-row-1"]')).not.toBeNull();
+        expect(el('list-selection')?.textContent).toContain('0 selected');
+
+        await tick('list-select-row-1');
+        expect(selected()).toEqual(['1']);
+
+        el('list-selection-clear')!.click();
+        await stable();
+        expect(selected()).toEqual([]);
+        expect(el('list-select-row-1')).toBeNull();
+        expect(document.activeElement).toBe(el('list-select-mode'));
+      });
+
+      it('starts a selection on a long press of a card, and the release does not open the record', async () => {
+        vi.useFakeTimers();
+        try {
+          const link = card('2').querySelector('a[data-testid="list-link-2"]') as HTMLElement;
+          const opened: string[] = [];
+          link.addEventListener('click', () => opened.push('2'));
+          link.dispatchEvent(
+            new PointerEvent('pointerdown', {
+              bubbles: true,
+              pointerType: 'touch',
+              clientX: 10,
+              clientY: 10,
+            }),
+          );
+          vi.advanceTimersByTime(600);
+          host.detectChanges();
+          expect(selected()).toEqual(['2']);
+          const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+          link.dispatchEvent(menu);
+          // The browser's own menu for the link would sit over the cards.
+          expect(menu.defaultPrevented).toBe(true);
+          link.dispatchEvent(
+            new PointerEvent('pointerup', { bubbles: true, pointerType: 'touch' }),
+          );
+          link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+          expect(opened).toEqual([]);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('does not select on a press that moves, as a scroll does, or that is let go early', async () => {
+        vi.useFakeTimers();
+        try {
+          const link = card('2').querySelector('a[data-testid="list-link-2"]') as HTMLElement;
+          link.dispatchEvent(
+            new PointerEvent('pointerdown', {
+              bubbles: true,
+              pointerType: 'touch',
+              clientX: 10,
+              clientY: 10,
+            }),
+          );
+          link.dispatchEvent(
+            new PointerEvent('pointermove', {
+              bubbles: true,
+              pointerType: 'touch',
+              clientX: 10,
+              clientY: 40,
+            }),
+          );
+          vi.advanceTimersByTime(600);
+          link.dispatchEvent(
+            new PointerEvent('pointerdown', {
+              bubbles: true,
+              pointerType: 'touch',
+              clientX: 10,
+              clientY: 10,
+            }),
+          );
+          vi.advanceTimersByTime(200);
+          link.dispatchEvent(
+            new PointerEvent('pointerup', { bubbles: true, pointerType: 'touch' }),
+          );
+          vi.advanceTimersByTime(600);
+          host.detectChanges();
+          expect(selected()).toEqual([]);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
     });
   });
 
