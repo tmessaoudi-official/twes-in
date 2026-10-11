@@ -19,7 +19,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * What a bulk action would do with the invoices a person selected, before it runs, for whoever may read invoices:
- * each id once, in the order sent, `included` or `skipped` with a `reason` the screen translates. Nothing is changed. More than a list page of ids, none, or one that is not an identifier, 422.
+ * each id once, in the order sent, `included` or `skipped` with a `reason` the screen translates, and, to pay, the
+ * `amount` each would receive on the `date` sent. Nothing is changed. More than a list page of ids, none, one that is
+ * not an identifier, or a payment with no day or dated after today, 422.
  */
 #[ApiResource(
     shortName: 'InvoiceBulkCheck',
@@ -44,18 +46,19 @@ final class InvoiceBulkCheckResource
         'type' => 'array',
         'items' => [
             'type' => 'object',
-            'required' => ['id', 'number', 'customerName', 'outcome', 'reason'],
+            'required' => ['id', 'number', 'customerName', 'outcome', 'reason', 'amount'],
             'properties' => [
                 'id' => ['type' => 'string', 'format' => 'uuid'],
                 'number' => ['type' => ['string', 'null']],
                 'customerName' => ['type' => ['string', 'null']],
                 'outcome' => ['type' => 'string', 'enum' => ['included', 'skipped']],
-                'reason' => ['type' => ['string', 'null'], 'enum' => ['not_found', 'draft', 'cancelled', null]],
+                'reason' => ['type' => ['string', 'null'], 'enum' => ['not_found', 'draft', 'cancelled', 'paid', 'credit_note', 'instrument_held', 'issued_after', null]],
+                'amount' => ['type' => ['string', 'null'], 'description' => 'To pay: what the invoice would receive, all it still owes, with three decimals; null otherwise'],
             ],
         ],
     ];
 
-    #[ApiProperty(schema: ['type' => 'string', 'enum' => ['export', 'pdf']])]
+    #[ApiProperty(schema: ['type' => 'string', 'enum' => ['export', 'pdf', 'pay']])]
     #[Assert\NotBlank(groups: [self::WRITE])]
     #[Assert\Choice(callback: [self::class, 'actions'], groups: [self::WRITE])]
     #[Groups([self::WRITE])]
@@ -69,7 +72,13 @@ final class InvoiceBulkCheckResource
     #[Groups([self::WRITE])]
     public array $ids = [];
 
-    /** @var list<array{id: string, number: ?string, customerName: ?string, outcome: string, reason: ?string}> */
+    /** To pay: the day the payments would be dated, today at the latest. */
+    #[ApiProperty(schema: ['type' => ['string', 'null'], 'format' => 'date'])]
+    #[Assert\Date(groups: [self::WRITE])]
+    #[Groups([self::WRITE])]
+    public ?string $date = null;
+
+    /** @var list<array{id: string, number: ?string, customerName: ?string, outcome: string, reason: ?string, amount: ?string}> */
     #[ApiProperty(writable: false, schema: self::ROWS)]
     #[Groups([self::READ])]
     public array $rows = [];

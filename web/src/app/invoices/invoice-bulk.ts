@@ -1,18 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
+import { TranslatePipe } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { Feedback } from '../shared/feedback/feedback';
+import { FormatFacade } from '../shared/i18n/format-facade';
+import { todayIn } from '../shared/i18n/format';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
+import { InvoiceBulkPayDialog, type BulkPayData } from './invoice-bulk-pay-dialog';
 import {
   InvoiceBulkSkippedDialog,
   type BulkSkippedChoice,
   type BulkSkippedData,
 } from './invoice-bulk-skipped-dialog';
 import { InvoicesFacade } from './invoices-facade';
-import type { BulkAction, BulkCheck, BulkPdfFormat } from './invoices-types';
+import type { BulkAction, BulkCheck, BulkPaid, BulkPdfFormat } from './invoices-types';
 
 /**
  * What the invoices list offers on the rows a person selected, in its selection bar. Each action asks the API first what
@@ -21,7 +27,7 @@ import type { BulkAction, BulkCheck, BulkPdfFormat } from './invoices-types';
  */
 @Component({
   selector: 'app-invoice-bulk',
-  imports: [ListExport],
+  imports: [ListExport, MatButtonModule, MatIconModule, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'flex flex-wrap gap-2' },
   template: `
@@ -41,16 +47,31 @@ import type { BulkAction, BulkCheck, BulkPdfFormat } from './invoices-types';
       (saved)="printed()"
       testId="invoices-bulk-pdf"
     />
+    @if (mayPay()) {
+      <button mat-stroked-button type="button" (click)="pay()" data-testid="invoices-bulk-pay">
+        <mat-icon aria-hidden="true">payments</mat-icon>
+        {{ 'invoices.bulk.pay' | translate }}
+      </button>
+    }
   `,
 })
 export class InvoiceBulk {
   readonly companyId = input.required<string>();
   /** The selected invoices' ids, a list page at most. */
   readonly ids = input.required<readonly string[]>();
+  /** Whether the member may record payments (`payment.write`), which « Encaisser » does. */
+  readonly mayPay = input(false);
+  /** The currency's decimals, which amounts are shown with. */
+  readonly scale = input<number | null>(null);
+  /** The company's time zone, whose day a payment is dated by default. */
+  readonly timeZone = input<string | null>(null);
+  /** Something on the selected invoices changed, which the list shows again. */
+  readonly changed = output<void>();
 
   private readonly facade = inject(InvoicesFacade);
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
+  private readonly format = inject(FormatFacade);
   protected readonly PDF_FORMATS: readonly BulkPdfFormat[] = ['pdf', 'zip'];
   /** How many invoices the file being fetched holds, as the API last checked. */
   private count = 0;
@@ -97,6 +118,30 @@ export class InvoiceBulk {
     this.count = check.included + taken;
     return `${address}${choice.drafts ? '&drafts=1' : ''}${choice.cancelled ? '&cancelled=1' : ''}`;
   };
+
+  /** « Encaisser »: the dialog previews, asks for the day and method, and records; the list is read again after. */
+  protected async pay(): Promise<void> {
+    const data: BulkPayData = {
+      companyId: this.companyId(),
+      ids: this.ids(),
+      today: todayIn(this.timeZone()),
+      scale: this.scale(),
+    };
+    const paid = await firstValueFrom(
+      this.dialog
+        .open<InvoiceBulkPayDialog, BulkPayData, BulkPaid | null>(InvoiceBulkPayDialog, {
+          data,
+          autoFocus: 'first-tabbable',
+        })
+        .afterClosed(),
+    );
+    if (!paid) return;
+    this.feedback.success('invoices.bulk.paid', {
+      count: paid.recorded,
+      total: this.format.amount(paid.total, this.scale()),
+    });
+    this.changed.emit();
+  }
 
   protected exported(): void {
     this.feedback.success('invoices.bulk.exported', { count: this.count });

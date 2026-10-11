@@ -14,4 +14,6 @@ enum BulkAction: string
 {
     case Export = 'export';
     case Pdf = 'pdf';
+    /** Each invoice paid for what it still owes, by one method on one day. */
+    case Pay = 'pay';
 }

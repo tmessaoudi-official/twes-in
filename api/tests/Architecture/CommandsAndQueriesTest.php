@@ -24,6 +24,7 @@ use App\Module\DeliveryNotes\Application\PrintDeliveryNote;
 use App\Module\Inventory\Application\DrawStockMap;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Inventory\Application\MoveStockForDeliveryNotes;
+use App\Module\Invoices\Application\CashInvoicesInBulk;
 use App\Module\Invoices\Application\PrintInvoice;
 use App\Module\Invoices\Application\RemindLateInvoices;
 use App\Module\Products\Application\ProductReferences;
@@ -84,6 +85,7 @@ final class CommandsAndQueriesTest extends TestCase
         MailInvitation::class => 'the worker mailing an invitation whose creation was recorded',
         AllocateNumber::class => 'a part of issuing, inside the transaction of the document it numbers, which records it',
         ProductReferences::class => 'a part of creating a product, inside the transaction of the product it names, which records it',
+        CashInvoicesInBulk::class => 'every payment goes through ManagePayments, which records it on its invoice',
     ];
 
     /** @var array<class-string, list<string>>|null */

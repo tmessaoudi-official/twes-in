@@ -233,13 +233,14 @@ export interface InvoiceSearch {
 }
 
 /** What a person does at once to the invoices they selected on a list page. */
-export type BulkAction = 'export' | 'pdf';
+export type BulkAction = 'export' | 'pdf' | 'pay';
 
 /** A selection printed as one PDF, or as a zip of one PDF each. */
 export type BulkPdfFormat = 'pdf' | 'zip';
 
 /** Why a selected invoice stays out of a bulk action; the screen says it in words. */
-export type BulkSkipReason = 'not_found' | 'draft' | 'cancelled';
+export type BulkSkipReason =
+  'not_found' | 'draft' | 'cancelled' | 'paid' | 'credit_note' | 'instrument_held' | 'issued_after';
 
 /** One selected invoice and what a bulk action would do with it, as the API checked it before it runs. */
 export interface BulkCheckRow {
@@ -248,12 +249,28 @@ export interface BulkCheckRow {
   customerName: string | null;
   included: boolean;
   reason: BulkSkipReason | null;
+  /** To pay: what the invoice would receive, all it still owes, as the API's decimal string; null otherwise. */
+  amount: string | null;
 }
 
 export interface BulkCheck {
   rows: readonly BulkCheckRow[];
   included: number;
   skipped: number;
+}
+
+/** « Encaisser » on a selection: the rows a check to pay included, each with its amount, by one method on one day. */
+export interface BulkPayment {
+  method: PaymentMethod;
+  date: string;
+  reference: string | null;
+  rows: readonly { id: string; amount: string }[];
+}
+
+/** What « Encaisser » recorded: how many payments, and their total as the API's decimal string. */
+export interface BulkPaid {
+  recorded: number;
+  total: string;
 }
 
 export interface InvoiceRow {

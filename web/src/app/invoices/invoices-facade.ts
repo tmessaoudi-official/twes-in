@@ -7,6 +7,8 @@ import type { PickAsked } from '../shared/form/pick-api';
 import type {
   BulkAction,
   BulkCheck,
+  BulkPaid,
+  BulkPayment,
   BulkPdfFormat,
   CreditExcessTo,
   CustomerOption,
@@ -236,8 +238,18 @@ export class InvoicesFacade {
   }
 
   /** What a bulk action would do with each selected invoice; throws when the API cannot say. */
-  bulkCheck(companyId: string, action: BulkAction, ids: readonly string[]): Promise<BulkCheck> {
-    return this.api.bulkCheck(companyId, action, ids);
+  bulkCheck(
+    companyId: string,
+    action: BulkAction,
+    ids: readonly string[],
+    date: string | null = null,
+  ): Promise<BulkCheck> {
+    return this.api.bulkCheck(companyId, action, ids, date);
+  }
+
+  /** Every payment of a selection or none; throws `InvoicesRefused` with `conflict` once an invoice changed since its check. */
+  bulkPay(companyId: string, payment: BulkPayment): Promise<BulkPaid> {
+    return this.api.bulkPay(companyId, payment);
   }
 
   pdfUrl(companyId: string, id: string): string {
