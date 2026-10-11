@@ -4,8 +4,11 @@
 # database, mail and addresses. Production refuses to start on the development keys compose.yaml defaults to
 # (api/src/Shared/Infrastructure/DevelopmentKeys.php), so each secret comes from the environment and compose stops
 # before starting anything when one is missing; centrifugo reads the same two realtime keys from it.
+# Every service comes back by itself after a crash or a reboot, unless stopped on purpose
+# (api/tests/Architecture/ProductionRestartTest.php).
 services:
   api:
+    restart: unless-stopped
     build:
       target: prod
     environment: &api-environment
@@ -17,6 +20,17 @@ services:
       REALTIME_API_KEY: "${REALTIME_API_KEY:?set REALTIME_API_KEY}"
   # The worker runs the same production image with the same secrets.
   worker:
+    restart: unless-stopped
     build:
       target: prod
     environment: *api-environment
+  postgres:
+    restart: unless-stopped
+  centrifugo:
+    restart: unless-stopped
+  web:
+    restart: unless-stopped
+  gotenberg:
+    restart: unless-stopped
+  mailpit:
+    restart: unless-stopped
