@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+set -uo pipefail
+TMPDIR=$(mktemp -d); export TMPDIR; trap 'rm -rf "$TMPDIR"' EXIT  # every case's fixture is made here and goes with it
+GATE=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/screen-texts-budget.sh
+pass=0; fail=0
+check() { if [[ "$2" -eq "$3" && "$4" == *"$5"* ]]; then pass=$((pass+1)); echo "  ok   $1"; else fail=$((fail+1)); echo "  FAIL $1 (exit $2, wanted $3 with '$5')"; echo "$4" | sed 's/^/       /'; fi; }
+# A project with an nginx.conf holding $1 and one small text file per language named after it.
+project() {
+  local d; d=$(mktemp -d); mkdir -p "$d/web/public/i18n" "$d/infra/web"
+  printf 'server {\n    gzip on;\n%s\n}\n' "$1" > "$d/infra/web/nginx.conf"
+  shift
+  for language in "$@"; do printf '{"hello": "%s"}\n' "$language" > "$d/web/public/i18n/$language.json"; done
+  echo "$d"
+}
+# Text gzip cannot shrink: random bytes written as hex, $2 kilobytes of it.
+heavy() { head -c $(( $2 * 1024 )) /dev/urandom | od -An -tx1 | tr -d ' \n' | sed 's/.*/{"x": "&"}/' > "$1"; }
+echo "screen-texts-budget gate"
+d=$(project '    gzip_comp_level 6;' fr en)
+out=$(bash "$GATE" --root "$d" 2>&1); check "two small languages at level 6 pass, each named with its size" $? 0 "$out" "OK — 2 languages"
+d=$(project '    gzip_comp_level 6;' fr en ar)
+heavy "$d/web/public/i18n/ar.json" 80
+out=$(bash "$GATE" --root "$d" 2>&1); check "a language over 61440 B at level 6 is named" $? 1 "$out" "ar.json"
+d=$(project '' fr en)
+out=$(bash "$GATE" --root "$d" 2>&1); check "a server that does not set the level is refused: the measure would not be what is served" $? 1 "$out" "gzip_comp_level 6"
+d=$(project '    # gzip_comp_level 6;' fr en)
+out=$(bash "$GATE" --root "$d" 2>&1); check "a level written only in a comment does not count" $? 1 "$out" "gzip_comp_level 6"
+d=$(project '    gzip_comp_level 1;' fr en)
+out=$(bash "$GATE" --root "$d" 2>&1); check "another level is refused" $? 1 "$out" "gzip_comp_level 6"
+d=$(project '    gzip_comp_level 6;' fr)
+out=$(bash "$GATE" --root "$d" 2>&1); check "fewer than two languages means the gate stopped reading them" $? 1 "$out" "languages"
+echo "$pass passed, $fail failed"
+((fail == 0))
