@@ -1072,6 +1072,99 @@ describe('DataList', () => {
       expect(call.closest('a')).toBeNull();
     });
   });
+  describe('on a wide window, where the card is measured', () => {
+    let host: ComponentFixture<DeclaredHost>;
+    let card = 0;
+    const realObserver = globalThis.ResizeObserver;
+    const realWidth = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth')!;
+
+    /** The list on a card `width` wide, its first action the rows' next step. */
+    async function measured(width: number): Promise<void> {
+      card = width;
+      host = TestBed.createComponent(DeclaredHost);
+      host.componentInstance.descriptor.set({
+        ...declared,
+        actions: declared.actions!.map((action) =>
+          action.id === 'call' ? { ...action, next: () => true } : action,
+        ),
+      });
+      host.detectChanges();
+      await host.whenStable();
+      host.detectChanges();
+    }
+
+    const header = (id: string): string =>
+      (host.nativeElement.querySelector(`[data-testid="list-header-${id}"]`) as HTMLElement).style
+        .width;
+    const call = (): HTMLElement =>
+      host.nativeElement.querySelector('[data-testid="row-action-call-1"]') as HTMLElement;
+
+    beforeEach(() => {
+      ran.length = 0;
+      // jsdom measures nothing: the card reports the width each case gives it, as soon as it is observed.
+      globalThis.ResizeObserver = class {
+        constructor(private readonly measure: ResizeObserverCallback) {}
+        observe(): void {
+          this.measure([], this as unknown as ResizeObserver);
+        }
+        unobserve(): void {
+          // Nothing is kept to let go of.
+        }
+        disconnect(): void {
+          // Nothing is kept to let go of.
+        }
+      } as unknown as typeof ResizeObserver;
+      Object.defineProperty(Element.prototype, 'clientWidth', {
+        configurable: true,
+        get: () => card,
+      });
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [DeclaredHost],
+        providers: [
+          provideTranslateService({
+            lang: 'en',
+            loader: provideTranslateLoader(() => new StaticLoader()),
+          }),
+          provideRouter([]),
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+          },
+          { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+          { provide: SettingsFacade, useClass: BrowserStorageSettings },
+          { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+          { provide: Session, useValue: { me: () => ({ user: { id: 'u1' } }) } },
+          { provide: WINDOW_CLASS, useValue: signal<WindowClass>('expanded') },
+        ],
+      });
+    });
+
+    afterEach(() => {
+      globalThis.ResizeObserver = realObserver;
+      Object.defineProperty(Element.prototype, 'clientWidth', realWidth);
+    });
+
+    it('words the next step where every column keeps its own width beside it', async () => {
+      // 600 px of columns, and the actions two buttons, « ⋮ » and a word: 256 px.
+      await measured(900);
+      expect(call().classList).toContain('mat-mdc-button');
+      expect(call().textContent).toContain('Call');
+      expect(header('balance')).toBe('120px');
+    });
+
+    it('draws the next step as an icon where its word would narrow the columns, and never narrows the column the row opens on', async () => {
+      await measured(700);
+      expect(call().classList).toContain('mat-mdc-icon-button');
+      expect(call().getAttribute('aria-label')).toBe('Call');
+      // The name stays whole; what the 152 px of icons leave is taken first from the columns that declare no width,
+      // free text a cut can end, before a column that declared what its content needs.
+      expect(header('name')).toBe('160px');
+      expect(header('balance')).toBe('120px');
+      expect(header('city')).toBe('134px');
+    });
+  });
+
   describe('on a phone, where a table cannot be read', () => {
     let host: ComponentFixture<DeclaredHost>;
 

@@ -61,7 +61,7 @@ import { labelOn, rareOn } from './list-types';
 import {
   applyFilters,
   filterRows,
-  fitScale,
+  fitShares,
   isColumnVisible,
   orderColumns,
   paginate,
@@ -261,8 +261,18 @@ export class DataList<Row> implements OnInit {
       ],
     };
   }
-  /** A row's buttons show their word beside their icon where the window is wide enough for it. */
-  protected readonly rowWords = computed(() => this.windowClass() === 'expanded');
+  /**
+   * A row's next step shows its word beside its icon on a wide window, and only where every column keeps its own width
+   * beside it: the word gives way before the columns do. Unmeasured, as before the first layout, it shows.
+   */
+  protected readonly rowWords = computed(() => {
+    const actions = this.descriptor().actions ?? [];
+    if (this.windowClass() !== 'expanded' || !actions.some((action) => action.next !== undefined)) {
+      return false;
+    }
+    const card = this.boxWidth();
+    return card === null || this.declaredColumns() + this.iconActionsWidth() + ACTION_WORD <= card;
+  });
   protected readonly labelOn = labelOn;
   protected readonly isNext = (action: RowAction<Row>, row: Row): boolean =>
     action.next?.(row) === true;
@@ -441,33 +451,45 @@ export class DataList<Row> implements OnInit {
     return this.empty() ? 'empty' : 'no-match';
   });
   protected readonly actionsColumn = ACTIONS_COLUMN;
-  /**
-   * As wide as the most a row can hold: its buttons, « ⋮ » when anything can fold into it, and the next step's word
-   * where words show.
-   */
-  protected readonly actionsWidth = computed(() => {
+  /** As wide as the most a row can hold as icons: its buttons, and « ⋮ » when anything can fold into it. */
+  private readonly iconActionsWidth = computed(() => {
     const actions = this.descriptor().actions ?? [];
     const standing = actions.filter((action) => action.rare !== true).length;
     const folds =
       standing > ROW_BUTTONS ||
       actions.some((action) => action.rare !== undefined && action.rare !== false);
-    const worded = this.rowWords() && actions.some((action) => action.next !== undefined);
-    return (
-      ACTIONS_PADDING +
-      ACTION_SLOT * (Math.min(standing, ROW_BUTTONS) + (folds ? 1 : 0)) +
-      (worded ? ACTION_WORD : 0)
-    );
+    return ACTIONS_PADDING + ACTION_SLOT * (Math.min(standing, ROW_BUTTONS) + (folds ? 1 : 0));
   });
+  /** The same, and the next step's word where it shows. */
+  protected readonly actionsWidth = computed(
+    () => this.iconActionsWidth() + (this.rowWords() ? ACTION_WORD : 0),
+  );
   protected readonly minWidth = MIN_WIDTH;
   protected readonly maxWidth = MAX_WIDTH;
-  /** What the data columns are narrowed by to fit the card (`fitScale`); a drag reads against it, never moves it. */
-  private readonly fit = computed(() =>
-    fitScale(
-      this.columns().reduce((sum, column) => sum + this.declaredWidth(column), 0),
-      this.hasRowControls() ? this.actionsWidth() : 0,
-      this.boxWidth(),
-    ),
+  private readonly declaredColumns = computed(() =>
+    this.columns().reduce((sum, column) => sum + this.declaredWidth(column), 0),
   );
+  /**
+   * What each data column is narrowed by to fit the card (`fitShares`); a drag reads against it, never moves it. The
+   * column a row opens on names the row and keeps its width; the free-text ones give way before the declared ones.
+   */
+  private readonly shares = computed(() => {
+    const link = this.linkColumnId();
+    let kept = 0;
+    let declared = 0;
+    let free = 0;
+    for (const column of this.columns()) {
+      if (column.id === link) kept += this.declaredWidth(column);
+      else if (column.width === undefined) free += FALLBACK_WIDTH;
+      else declared += column.width;
+    }
+    return fitShares(
+      declared,
+      free,
+      (this.hasRowControls() ? this.actionsWidth() : 0) + kept,
+      this.boxWidth(),
+    );
+  });
   /** At least the sum of the columns, so a narrow screen scrolls the list's own container and never the page. */
   protected readonly tableWidth = computed(
     () =>
@@ -735,9 +757,15 @@ export class DataList<Row> implements OnInit {
   /** The width a column occupies: a live drag, then the chosen or declared width, narrowed to fit the card. */
   protected widthOf(column: ListColumn<Row>): number {
     const live = this.liveWidth();
-    return live?.id === column.id
-      ? live.width
-      : Math.floor(this.declaredWidth(column) * this.fit());
+    if (live?.id === column.id) return live.width;
+    return Math.floor(this.declaredWidth(column) * this.scaleOf(column.id));
+  }
+
+  /** The share a column is drawn at: whole for the one a row opens on. */
+  private scaleOf(id: string): number {
+    if (id === this.linkColumnId()) return 1;
+    const column = this.columns().find((each) => each.id === id);
+    return column?.width === undefined ? this.shares().free : this.shares().declared;
   }
 
   /**
@@ -961,8 +989,12 @@ export class DataList<Row> implements OnInit {
     const up = () => {
       const live = this.liveWidth();
       this.stopResize?.();
-      // What was drawn is saved as declared, so the column stays where it was let go once fitted again.
-      if (live) this.saveWidth(live.id, Math.round(live.width / this.fit()));
+      // What was drawn is saved as declared, so the column stays where it was let go once fitted again: a chosen width
+      // makes a free column a declared one, drawn at the declared share.
+      if (live) {
+        const scale = live.id === this.linkColumnId() ? 1 : this.shares().declared;
+        this.saveWidth(live.id, Math.round(live.width / scale));
+      }
     };
     view.addEventListener('pointermove', move);
     view.addEventListener('pointerup', up);

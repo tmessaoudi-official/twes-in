@@ -4897,6 +4897,7 @@ functional tests run in the `tools` container, on the host's network, against th
 - [2026-10-11 11:00] AGREED: an invoice draft voided by « Abandonner le brouillon » reads « Abandonnée » in its status, its filter and its notice (« Ce brouillon est abandonné… »); « Annuler » is then only the toast's undo (developer).
 - [2026-10-11 11:00] AGREED: bulk « PDF » is one action whose preview offers « Un seul PDF » or « Un fichier par facture (zip) », merged by default and remembered per person (developer, who wanted both, challenged on two entries).
 - [2026-10-11 11:00] AGREED: a draft invoice holding delivery notes of an earlier month says so, on the draft and in « À surveiller », since the tax is owed from the delivery whatever the draft waits for; queued as row 267, its words checked against TN.md and a sourced French month-end rule first (developer, after asking when each document is numbered: an invoice at « Émettre », a delivery note at « Valider », a quote at « Envoyer », an expense never, only the vendor's reference).
+- [2026-10-11 12:28] AGREED: a list row's next step shows its word only where every column keeps its own width beside it; otherwise it is an icon, named on hover, and the column a row opens on (the invoice number) is never narrowed, the others sharing what the actions take. At 1440 px with the menu open the invoice list draws icons and its numbers whole (developer).
 
 ## 8. Status
 
