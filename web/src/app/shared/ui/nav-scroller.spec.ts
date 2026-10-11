@@ -71,7 +71,9 @@ describe('NavScroller', () => {
   });
 
   afterEach(() => {
-    Element.prototype.scrollIntoView = original;
+    // jsdom has none: deleted rather than set to undefined, which would outlive this spec in its worker.
+    if (original) Element.prototype.scrollIntoView = original;
+    else delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
   });
 
   it('marks each edge with more behind it, and only those', () => {

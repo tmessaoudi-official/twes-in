@@ -132,7 +132,9 @@ describe('PageTabs', () => {
       expect(revealed).toContain('customer-groups-link');
       expect(revealed).not.toContain('customers-tab');
     } finally {
-      HTMLElement.prototype.scrollIntoView = original;
+      // jsdom has none: assigning undefined back would hide another spec's patch on Element in this worker.
+      if (original) HTMLElement.prototype.scrollIntoView = original;
+      else delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
     }
   });
 });
