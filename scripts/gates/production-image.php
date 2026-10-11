@@ -14,10 +14,12 @@ declare(strict_types=1);
  * the wrong ini, a composer install without --no-dev all still serve every request, only slower or with more exposed.
  *
  * Usage, against the prod compose stack: docker compose -f compose.yaml -f compose.prod.yaml exec -T api php < scripts/gates/production-image.php
- * or: php production-image.php [APP_DIR] (default: the current directory).
+ * or: php production-image.php [APP_DIR] [STATUS_FILE] (defaults: the current directory, and /proc/1/status, the
+ * server's own, which the check's test replaces with a written one).
  */
 
 $app = rtrim($argv[1] ?? (string) getcwd(), '/');
+$status = $argv[2] ?? '/proc/1/status';
 $problems = [];
 
 $env = $_SERVER['APP_ENV'] ?? getenv('APP_ENV');
@@ -62,6 +64,15 @@ if (!is_array($installed) || false !== ($installed['root']['dev'] ?? null)) {
     $problems[] = 'the dev packages are installed (composer install without --no-dev)';
 }
 
+// The server runs as a user of its own: a flaw in PHP, Caddy or the code then reaches what that user may touch, not
+// the whole container. Read from the server's process, not from this one, which `docker compose exec --user` could change.
+$uids = is_readable($status) && preg_match('/^Uid:\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)/m', (string) file_get_contents($status), $m) ? array_slice($m, 1) : null;
+if (null === $uids) {
+    $problems[] = \sprintf('%s holds no Uid line: whether the server runs as root cannot be told', $status);
+} elseif (in_array('0', $uids, true)) {
+    $problems[] = \sprintf('the server runs as root (uids %s): the image sets no USER of its own', implode(' ', $uids));
+}
+
 if ([] !== $problems) {
     fwrite(\STDOUT, \sprintf("production-image: FAIL — %d problem(s):\n", count($problems)));
     foreach ($problems as $problem) {
@@ -69,4 +80,4 @@ if ([] !== $problems) {
     }
     exit(1);
 }
-fwrite(\STDOUT, "production-image: OK — prod mode, worker mode, production ini, Symfony's OPcache values, preload warmed, no dev packages\n");
+fwrite(\STDOUT, "production-image: OK — prod mode, worker mode, production ini, Symfony's OPcache values, preload warmed, no dev packages, not root\n");

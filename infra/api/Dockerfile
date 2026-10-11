@@ -92,6 +92,15 @@ RUN composer dump-autoload --no-dev --classmap-authoritative \
  && APP_SECRET=build-only APP_MFA_KEY=build-only REALTIME_TOKEN_KEY=build-only REALTIME_API_KEY=build-only \
     sh -c 'composer run-script --no-dev post-install-cmd --no-interaction && bin/console api:openapi:export --output=var/openapi.json'
 
+# The server runs as a user of its own, as FrankenPHP's documentation describes: a flaw in PHP, Caddy or the code then
+# reaches what that user may touch, not the whole container. The base image already lets frankenphp bind port 80 (its
+# file capability). The user owns Caddy's data and config and var/, where the cache, the logs and the stored files are
+# written; var/files exists here so a new volume mounted on it starts owned by the user too.
+RUN useradd --system --uid 10001 --user-group --no-create-home --shell /usr/sbin/nologin twes \
+ && mkdir -p var/files \
+ && chown -R twes:twes /data/caddy /config/caddy var
+USER twes
+
 # The build this image is (scripts/build-version.sh, passed by the Makefile and CI): `/api/health` says it and the web's
 # footer shows it. Last, so a new version reuses every layer above.
 ARG BUILD_VERSION=""
