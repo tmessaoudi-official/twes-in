@@ -143,7 +143,7 @@ describe('InvoiceBulkPayDialog', () => {
     expect(go(fixture).disabled).toBe(true);
   });
 
-  it('records the rows it showed by one method, day and reference, and hands back what was recorded', async () => {
+  it('records the rows it showed by one method, cash unless another is picked, day and reference, and hands back what was recorded', async () => {
     checks = [
       preview(
         due('a', 'FAC-1', '100.500'),
@@ -161,7 +161,7 @@ describe('InvoiceBulkPayDialog', () => {
     await settle(fixture);
 
     expect(payments).toHaveBeenCalledExactlyOnceWith('c1', {
-      method: 'transfer',
+      method: 'cash',
       date: '2026-10-11',
       reference: 'VIR-42',
       rows: [
