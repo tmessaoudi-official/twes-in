@@ -4945,21 +4945,33 @@ functional tests run in the `tools` container, on the host's network, against th
 - [2026-10-11 23:52] AGREED: pricing is researched (per module, global plans, a hybrid) and proposed before it is ruled; prices are data the developer edits, and the developer leans to offering both per module and global plans (developer).
 - [2026-10-11 23:52] AGREED: a country preset becomes a typed, versioned contract (a schema, effective dates, checked against the pricing vectors) now; the operator's editor in the app (draft, test, difference, publish, export to YAML) comes after the pilot; a new kind of tax stays code (developer).
 
+- [2026-10-12 00:15] AGREED: a Tunisian legal entity publishes twes-in and invoices its customers in Tunisia now; a French one does so before twes-in is sold in France; an accountant and a lawyer confirm (developer).
+- [2026-10-12 00:15] AGREED: the first pilot companies use twes-in free for three months under a signed two-page pilot agreement (French, with an Arabic copy; no fiscal warranty while the rules await the accountant; their data returned at the end), then at a founder price (developer).
+- [2026-10-12 00:15] AGREED: issued invoices are chained by a hash, per company and series, before the first real invoice, since a chain cannot cover invoices issued before it; the signature with the company's key comes later, and the accountant is asked either way (developer).
+- [2026-10-12 00:23] AGREED: the deployment's region is a setting; the first region is chosen after the lawyer reads loi 2004-63 art. 22 and 50–52, before real data goes in, and the developer may host in one place and sell everywhere unless a country's authorities say otherwise. This replaces the 00:15 answer « Tunisian data hosted in Tunisia » (developer).
+- [2026-10-12 00:23] AGREED: the pilot may lose at most 15 minutes of data and is back within 4 hours: point-in-time recovery to an off-site bucket, a nightly dump, a restore drill in CI and once by hand (developer).
+- [2026-10-12 00:23] AGREED: a pilot reaches support from « Nous contacter » in the help panel (phone, WhatsApp and e-mail from platform settings, the copyable build line); the owner-granted support access follows in stage 1 (developer).
+- [2026-10-12 00:23] AGREED: the pilot runs in French; Arabic and right-to-left are built after it on the canon, with a paid reviewer (developer).
+- [2026-10-12 00:23] AGREED: pricing is the hybrid: plans by what the business does (Essentiel, Commerce) and add-ons per module (an establishment, café, Rendez-vous, El Fatoora), proposed at 29 and 69 TND, 12 and 29 € a month, a year for ten months, a Tunisian year under 1,000 TND including tax, pilots free then −40 % while continuous. Plans, add-ons and prices are data: a shipped YAML file and the operator's « Tarifs » screen both add dated versions, the latest version already in effect applies, nothing is overwritten, the screen shows each version's origin and exports the catalogue as YAML, and a subscribed company keeps its price until the developer moves it (developer).
+- [2026-10-12 00:23] AGREED: the one build order at the top of § 8: stage 0 quick fixes, stage 1 the pilot blockers, stage 2 the module contract, stage 3 the layers, the dashboard, the templates, the price catalogue and then appointments on the contract, stage 4 every screen to the canon, stage 5 after the pilot; it supersedes the 2026-10-11 09:16 « Next » and moves appointments (2026-10-11 23:03) behind the contract (developer).
+- [2026-10-12 00:23] ASSUMED (review): row 260's remaining slices fold into stage 2, and rows 256, 257, 258, 259 and 263 into stage 4, since the 00:23 order names neither; the developer places them otherwise if they matter sooner.
+
 ## 8. Status
 
-**The one build order** (§ 7, audit 2026-10-06; it supersedes the orders of 2026-09-27 17:12, 2026-10-01 23:30, 2026-10-02
-08:43 and 2026-10-03 20:17). Pitch first: what a person sees in a demo before what they do not.
+**The one build order** (§ 7 2026-10-12 00:23; it supersedes the order of the 2026-10-06 audit and the « Next » of
+2026-10-11 09:16). The North star (§ 1) first: real businesses on what exists, then the platform. The research and its
+verdict: https://claude.ai/artifact/2AUhf7V1Nuro3kqR1RKdN6 (sources in `var/claude/platform-design/`, not kept in git).
 
-1. The demo-visible defects: rows 121 (paid stamp, amount in words), 87 (stock values, opening value, « estimé »), 201
-   (« Encaissé »), 202 (portfolio links), and the worst of the visual audit.
-2. The security slice: row 56 (the worker and the account mails), 199 (export step-up), 198 (clerk role), 200 (no float).
-3. Correctness: rows 77, 129, 203, 204, 205, 206, 185, 188, 207.
-4. The pitch features, in the order the developer rules from the audit's pitch ranking (the stock map and its 3D view, the
-   vision's items, invoice design, quotes, the home dashboard and reports, Arabic).
-5. Then the rest: 196's measurement, 197 and 209 screen by screen, 212, 208, 210, 211, 213, the remaining rows.
-
-Next, as ruled § 7 2026-10-11 09:16, one writer at a time: 255 (a dialog's floating label), 56 and 77 finished (the account mails, the price lists' screens), the recorder's pilot (its code and one video, never during gates), row 260's first slice (`RecordAction` and the invoices: bar, rows, selection, bulk), 259 « Ajouter à… » on that model with 257 beside it, 256 the search, row 260's other slices, 263 the passkey as first factor, 258 « Filigrane », then 196's measurement and 209–212; the videos are filmed again once row 260's screens settle.
-
+0. Stage 0, quick fixes (row 269).
+1. Stage 1, the fourteen pilot blockers (row 270) and the hash chain over issued invoices (row 271); what others do runs
+   beside it (row 272: the entity, the lawyer, the accountant, the INPDP, the region). A free Tunisian pilot starts here.
+2. Stage 2, the module contract (row 273); it absorbs row 260's remaining slices (one action bar, bulk declared on the
+   record type).
+3. Stage 3, the four visibility layers, the dashboard of module widgets, the trade templates and the price catalogue
+   (row 274), then appointments slices 0 to 2 built on the contract (row 268).
+4. Stage 4, every screen to one canon (row 275), with 256, 257, 258, 259 and 263 placed inside it.
+5. Stage 5, after the pilot: the glue between modules, the preset editor, surviving a short drop, Arabic (row 96), the
+   RGAA audit, the pentest before the first paying customer; the France track beside it (row 276).
 
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
@@ -5234,6 +5246,14 @@ Next, as ruled § 7 2026-10-11 09:16, one writer at a time: 255 (a dialog's floa
 | 266 | « Raccourcis à une touche » in Mon compte, on by default: off, every bare-letter key does nothing and Ctrl K still lists the actions (§ 7 2026-10-11 08:26, RGAA 12.10, WCAG 2.1.4) | S | todo | - | web/src/app/** |
 | 267 | A draft invoice holding delivery notes of an earlier month says so, on the draft and in « À surveiller » (§ 7 2026-10-11 11:00) | M | todo | - | api/src/Module/** web/src/app/** docs/fiscal/** |
 | 268 | Rendez-vous, one general appointments module (§ 7 2026-10-11 23:03): slices 0 to 2 after the erasure work and the five validated features; Q5 to Q12 of the design (no-shows, approval, the agenda grid, deposits, visibility, the personal calendar, the public address, the planned entry) ruled before slice 1 | L | todo | - | api/src/Module/Appointments/** web/src/app/** |
+| 269 | Stage 0 quick fixes (§ 7 2026-10-12 00:23): the API image runs as a non-root user, asserted by `production-image.php`; `composer audit`, `npm audit`, Dependabot security updates and secret scanning; an image refused over about 40 megapixels before decoding; restart policies on the production services; the screen texts' gzip level set and their budget gated; « Nous contacter » in the help panel (phone, WhatsApp, e-mail from platform settings, the build line); the accessibility statement says « non conforme » until audited | M | todo | - | infra/** .github/** api/src/** web/src/app/** api/resources/legal/** |
+| 270 | Stage 1 pilot blockers P1–P14 (§ 7 2026-10-12 00:23; the readiness page § 2): a deployment whose region is a setting (TLS, HSTS, real secrets), point-in-time backups off-site with a restore drill in CI and by hand (at most 15 minutes lost, back within 4 hours, keys escrowed), monitoring and self-hosted error tracking, staging and a runbook, the threat model, the nightly cross-module data check (row 182), support access, continuity, the papers filled in and the pilot agreement | L | todo | - | infra/** docs/** api/src/** .github/** |
+| 271 | A minimal hash chain over issued invoices, per company and series, before the first real invoice; the signature with the company's key later (§ 7 2026-10-12 00:15) | M | todo | - | api/src/Module/Invoices/** api/migrations/** |
+| 272 | What others do for the pilot (§ 7 2026-10-12 00:15): the Tunisian entity, the lawyer (pilot agreement, legal pages, loi 2004-63 art. 22 and 50–52 for the region), the Tunisian accountant (preset, ten printed invoices, the journal, El Fatoora for the tourneur), each pilot company's INPDP declaration | M | todo | - | docs/** api/resources/legal/** |
+| 273 | Stage 2 the module contract: every contribution point declared and proven by `ModuleContributionsTest`, the contract exported to the web, one web manifest per module, durable cross-module events, the seven picker imports turned into ports, one action bar, bulk declared on the record type | L | todo | - | api/src/** web/src/app/** api/tests/Architecture/** |
+| 274 | Stage 3 the four visibility layers, the dashboard of module widgets laid out per person, the shop and workshop trade templates, and the price catalogue: plans and add-ons with dated prices from a shipped YAML file and the operator's « Tarifs » screen, the latest version in effect applying, never retroactive (§ 7 2026-10-12 00:23) | L | todo | - | api/src/** api/config/** web/src/app/** |
+| 275 | Stage 4 every screen to one canon (the readiness page § 7: 72 screens, 47 gaps, G1–G8 first), guided tours per module, history on every audited record | L | todo | - | web/src/app/** web/e2e/** |
+| 276 | The France track: the French entity and lawyer, the DPA to art. 28, the French vectors, e-invoicing as a « solution compatible » with one accredited platform by Q2 2027 | L | todo | - | docs/fiscal/** api/src/** |
 <!-- /progress-block -->
 
 ### Delivered
