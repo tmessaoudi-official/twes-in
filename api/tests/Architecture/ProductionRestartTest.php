@@ -1,0 +1,71 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Tests\Architecture;
+
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\Yaml\Yaml;
+
+/**
+ * A service of the production stack that stops, the database after a reboot or the API after a crash, stays stopped
+ * until someone notices: on a shop's counter that is the morning lost. Every service the production stack starts
+ * comes back by itself, unless it was stopped on purpose.
+ *
+ * Read from the two compose files as compose merges them (compose.yaml, then compose.prod.yaml over it), so a service
+ * added later is covered without being listed here. A service behind a profile is started only when asked for, and is
+ * not part of the stack.
+ */
+final class ProductionRestartTest extends TestCase
+{
+    private const array COMES_BACK = ['unless-stopped', 'always'];
+
+    public function testEveryServiceOfTheProductionStackComesBackByItself(): void
+    {
+        $root = \dirname(__DIR__, 3);
+        $base = self::services($root.'/compose.yaml');
+        $production = self::services($root.'/compose.prod.yaml');
+
+        $started = [];
+        foreach ($base as $name => $definition) {
+            if (isset($definition['profiles'])) {
+                continue;
+            }
+            $started[$name] = $production[$name]['restart'] ?? $definition['restart'] ?? null;
+        }
+
+        // Without this the check passes on a compose file this stopped reading.
+        self::assertGreaterThan(5, \count($started), 'the compose files list the stack where this can read them');
+
+        $staysDown = [];
+        foreach ($started as $name => $restart) {
+            if (!\in_array($restart, self::COMES_BACK, true)) {
+                $staysDown[] = $name;
+            }
+        }
+
+        self::assertSame([], $staysDown, 'these services stay down after a crash or a reboot');
+    }
+
+    /** @return array<array-key, array<array-key, mixed>> */
+    private static function services(string $file): array
+    {
+        $compose = Yaml::parseFile($file);
+        self::assertIsArray($compose);
+        $services = $compose['services'] ?? [];
+        self::assertIsArray($services);
+
+        $read = [];
+        foreach ($services as $name => $definition) {
+            self::assertIsArray($definition, $name.' is a map in '.basename($file));
+            $read[$name] = $definition;
+        }
+
+        return $read;
+    }
+}
