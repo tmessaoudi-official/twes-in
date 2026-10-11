@@ -213,4 +213,56 @@ describe('ListExport', () => {
     expect(saved).toEqual(['things.csv']);
     expect(trigger.getAttribute('aria-busy')).toBeNull();
   });
+
+  // A screen offers other files through the same menu, the same proof and the same saving: « PDF ▾ » on a selection.
+  it('offers the formats, words and icon a screen gives it, and saves the file under the name its address ends with', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideTranslateService({ lang: 'fr' }),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideQuietFeedback(),
+        { provide: StepUp, useValue: { request } },
+        { provide: FileSaver, useValue: { save: (_file: Blob, name: string) => saved.push(name) } },
+      ],
+    });
+    const fixture = TestBed.createComponent(ListExport<'pdf' | 'zip'>);
+    fixture.componentRef.setInput(
+      'address',
+      (format: 'pdf' | 'zip') => `/exports/things.${format}?id[]=a`,
+    );
+    fixture.componentRef.setInput('formats', ['pdf', 'zip']);
+    fixture.componentRef.setInput('label', 'things.pdf');
+    fixture.componentRef.setInput('entries', 'things.pdf_as');
+    fixture.componentRef.setInput('icon', 'picture_as_pdf');
+    fixture.componentRef.setInput('testId', 'things-pdf');
+    fixture.detectChanges();
+    const trigger = fixture.nativeElement.querySelector(
+      '[data-testid="things-pdf"]',
+    ) as HTMLButtonElement;
+
+    expect(trigger.textContent).toContain('things.pdf');
+    expect(trigger.textContent).not.toContain('export.open');
+    expect(trigger.textContent).toContain('picture_as_pdf');
+    trigger.click();
+    fixture.detectChanges();
+    const entries = [
+      ...document.body.querySelectorAll('[data-testid^="things-pdf-"]'),
+    ] as HTMLButtonElement[];
+    expect(
+      entries.map((each) => [each.getAttribute('data-testid'), each.textContent?.trim()]),
+    ).toEqual([
+      ['things-pdf-pdf', 'things.pdf_as.pdf'],
+      ['things-pdf-zip', 'things.pdf_as.zip'],
+    ]);
+
+    entries[1].click();
+    await settle();
+    TestBed.inject(HttpTestingController)
+      .expectOne('/exports/things.zip?id[]=a')
+      .flush(new Blob(['PK']));
+    await settle();
+
+    expect(saved).toEqual(['things.zip']);
+  });
 });

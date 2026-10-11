@@ -43,4 +43,14 @@ final class FakePdfRenderer implements PdfRenderer
 
         return "\x89PNG\r\n\x1a\n".$html;
     }
+
+    /** Each PDF after a marker, in order, so a test reads what was merged and in what order. */
+    public function merge(array $pdfs): string
+    {
+        if ($this->failing) {
+            throw new PdfRenderingFailed('The fake renderer is failing.');
+        }
+
+        return "%PDF-1.7\n% merged by the fake renderer\n".implode("\n% next\n", $pdfs);
+    }
 }

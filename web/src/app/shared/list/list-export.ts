@@ -8,11 +8,13 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { Feedback } from '../feedback/feedback';
 import { FileSaver } from '../files/save-file';
 import { StepUp } from '../step-up/step-up';
+import type { IconName } from '../icons/icons';
 import type { ExportFormat } from './export-address';
 import { ExportApi } from './export-api';
 
 /**
- * « Exporter ▾ »: one button whose menu downloads what a list shows as a CSV or an Excel file. Nothing is shown until the
+ * « Exporter ▾ »: one button whose menu downloads what a list shows as a CSV or an Excel file, or the files a screen
+ * names instead, such as « PDF ▾ » on a selection. Nothing is shown until the
  * list has asked for its first page, since until then there is no search to hand over.
  *
  * A whole list leaving the company waits for the person to have proved who they are in the last few minutes (docs/SPEC.md
@@ -31,15 +33,15 @@ import { ExportApi } from './export-api';
         mat-stroked-button
         type="button"
         [attr.aria-busy]="busy() || null"
-        [matMenuTriggerFor]="formats"
+        [matMenuTriggerFor]="menu"
         [attr.data-testid]="testId()"
       >
-        <mat-icon aria-hidden="true">download</mat-icon>
-        {{ 'export.open' | translate }}
+        <mat-icon aria-hidden="true">{{ icon() }}</mat-icon>
+        {{ label() | translate }}
         <mat-icon iconPositionEnd aria-hidden="true">arrow_drop_down</mat-icon>
       </button>
-      <mat-menu #formats="matMenu">
-        @for (format of FORMATS; track format) {
+      <mat-menu #menu="matMenu">
+        @for (format of formats(); track format) {
           <button
             mat-menu-item
             type="button"
@@ -47,7 +49,7 @@ import { ExportApi } from './export-api';
             [attr.data-address]="make(format)"
             [attr.data-testid]="testId() + '-' + format"
           >
-            {{ 'export.' + format | translate }}
+            {{ entries() + '.' + format | translate }}
           </button>
         }
       </mat-menu>
@@ -56,10 +58,15 @@ import { ExportApi } from './export-api';
   // `data-address` says which file an entry fetches, which a page's spec reads once the menu is open.
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ListExport {
-  protected readonly FORMATS: readonly ExportFormat[] = ['csv', 'xlsx'];
+export class ListExport<F extends string = ExportFormat> {
   /** Writes the address of the file in a format, or is null while there is no search to hand over. */
-  readonly address = input.required<((format: ExportFormat) => string) | null>();
+  readonly address = input.required<((format: F) => string) | null>();
+  /** The files offered, one menu entry each, named by `entries` and the format. */
+  readonly formats = input<readonly F[]>(['csv', 'xlsx'] as readonly string[] as readonly F[]);
+  /** The button's words, its menu's entries and its icon: a list's export unless a screen offers other files. */
+  readonly label = input('export.open');
+  readonly entries = input('export');
+  readonly icon = input<IconName>('download');
   readonly testId = input.required<string>();
   /** Runs before the file is fetched: the address to fetch instead, or null to fetch nothing. */
   readonly prepare = input<((address: string) => Promise<string | null>) | null>(null);

@@ -724,6 +724,34 @@ test('invoices are selected on their page, counted in a bar that stands for the 
     await expect(page.getByTestId('invoice-bulk-skipped')).toHaveCount(0);
     expect(await wcagViolations(page)).toEqual([]);
 
+    // Both are drafts, which a PDF leaves out unless asked: the dialog names them, offers their box, unticked, and
+    // nothing to go on with until it is ticked.
+    await page.getByTestId('invoices-bulk-pdf').click();
+    await page.getByTestId('invoices-bulk-pdf-pdf').click();
+    const skipped = page.getByTestId('invoice-bulk-skipped');
+    await expect(skipped.locator('li')).toHaveCount(2);
+    await expect(skipped).toContainText('Brouillon : pas encore numérotée');
+    const drafts = page.getByTestId('invoice-bulk-include-drafts').locator('input');
+    await expect(drafts).not.toBeChecked();
+    await expect(page.getByTestId('invoice-bulk-include-cancelled')).toHaveCount(0);
+    await expect(page.getByTestId('invoice-bulk-go')).toHaveCount(0);
+    await expect(page.getByTestId('invoice-bulk-cancel')).toHaveText('Fermer');
+    expect(await wcagViolations(page)).toEqual([]);
+
+    await drafts.check();
+    await expect(skipped.locator('li')).toHaveCount(0);
+    const printed = page.waitForEvent('download');
+    await page.getByTestId('invoice-bulk-go').click();
+    const pdf = await printed;
+    expect(pdf.suggestedFilename()).toBe('invoices.pdf');
+    // The two drafts rendered by Gotenberg and merged into one document of two pages at least, one invoice each.
+    const bytes = readFileSync(await pdf.path());
+    expect(bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+    expect(bytes.toString('latin1').match(/\/Type\s*\/Page(?!s)/g)?.length).toBeGreaterThanOrEqual(
+      2,
+    );
+    await expect(toast(page)).toContainText('2 factures en PDF');
+
     await page.keyboard.press('Escape');
     await expect(bar).toHaveCount(0);
     await expect(page.getByTestId('list-select-page').locator('input')).toBeFocused();
@@ -740,6 +768,23 @@ test('invoices are selected on their page, counted in a bar that stands for the 
     );
     await boxes.nth(1).locator('input').check();
     await expect(page.getByTestId('list-selection-count')).toHaveText('1 facture sélectionnée');
+    // The bar is narrow there: its actions go under the count rather than squeeze it, so the count reads on one line
+    // with nothing spilling out of its box, and they stay inside the screen.
+    const fits = await page.getByTestId('list-selection-count').evaluate((count) => {
+      const line = parseFloat(getComputedStyle(count).lineHeight);
+      return (
+        count.scrollWidth <= count.clientWidth && count.getBoundingClientRect().height < line * 1.5
+      );
+    });
+    expect(fits).toBe(true);
+    const count = await page.getByTestId('list-selection-count').boundingBox();
+    for (const action of ['invoices-bulk-export', 'invoices-bulk-pdf']) {
+      const box = await page.getByTestId(action).boundingBox();
+      expect(box!.y >= count!.y + count!.height || box!.x >= count!.x + count!.width, action).toBe(
+        true,
+      );
+      expect(box!.x + box!.width, action).toBeLessThanOrEqual(390);
+    }
     await page.getByTestId('list-selection-clear').click();
     await expect(boxes).toHaveCount(0);
     await expect(page.getByTestId('list-select-mode')).toBeFocused();

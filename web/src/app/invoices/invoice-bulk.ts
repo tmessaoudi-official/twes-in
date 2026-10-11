@@ -6,8 +6,13 @@ import { firstValueFrom } from 'rxjs';
 import { Feedback } from '../shared/feedback/feedback';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
-import { InvoiceBulkSkippedDialog, type BulkSkippedData } from './invoice-bulk-skipped-dialog';
+import {
+  InvoiceBulkSkippedDialog,
+  type BulkSkippedChoice,
+  type BulkSkippedData,
+} from './invoice-bulk-skipped-dialog';
 import { InvoicesFacade } from './invoices-facade';
+import type { BulkAction, BulkCheck, BulkPdfFormat } from './invoices-types';
 
 /**
  * What the invoices list offers on the rows a person selected, in its selection bar. Each action asks the API first what
@@ -18,12 +23,23 @@ import { InvoicesFacade } from './invoices-facade';
   selector: 'app-invoice-bulk',
   imports: [ListExport],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'flex flex-wrap gap-2' },
   template: `
     <app-list-export
       [address]="exporter()"
       [prepare]="checkExport"
       (saved)="exported()"
       testId="invoices-bulk-export"
+    />
+    <app-list-export
+      [address]="printer()"
+      [formats]="PDF_FORMATS"
+      label="invoices.bulk.pdf"
+      entries="invoices.bulk.pdf_as"
+      icon="picture_as_pdf"
+      [prepare]="checkPdf"
+      (saved)="printed()"
+      testId="invoices-bulk-pdf"
     />
   `,
 })
@@ -35,6 +51,7 @@ export class InvoiceBulk {
   private readonly facade = inject(InvoicesFacade);
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
+  protected readonly PDF_FORMATS: readonly BulkPdfFormat[] = ['pdf', 'zip'];
   /** How many invoices the file being fetched holds, as the API last checked. */
   private count = 0;
 
@@ -44,28 +61,71 @@ export class InvoiceBulk {
     return (format: ExportFormat) => this.facade.selectedExportUrl(companyId, ids, format);
   });
 
+  protected readonly printer = computed(() => {
+    const companyId = this.companyId();
+    const ids = this.ids();
+    return (format: BulkPdfFormat) => this.facade.selectedPdfUrl(companyId, ids, format);
+  });
+
   /**
    * Whether the file is fetched. An id the API no longer finds is simply not in the file, so once the person has been
    * told, the same address is fetched for the rest.
    */
   protected readonly checkExport = async (address: string): Promise<string | null> => {
-    const check = await this.facade
-      .bulkCheck(this.companyId(), 'export', this.ids())
-      .catch(() => null);
-    if (check === null) {
-      this.feedback.failure('invoices.bulk.check_failed');
-      return null;
-    }
-    this.count = check.included;
+    const check = await this.check('export');
+    if (check === null) return null;
     if (check.skipped === 0) return address;
-    const data: BulkSkippedData = { check, goKey: 'invoices.bulk.export_rest' };
-    const go = await firstValueFrom(
-      this.dialog.open(InvoiceBulkSkippedDialog, { data, autoFocus: 'dialog' }).afterClosed(),
-    );
-    return go === true ? address : null;
+    const choice = await this.ask({ check, goKey: 'invoices.bulk.export_rest' });
+    return choice === null ? null : address;
+  };
+
+  /**
+   * The same for a PDF, which leaves the drafts and cancelled ones out unless the person ticks their box: the address
+   * then asks the API for them too, and the API checks them again.
+   */
+  protected readonly checkPdf = async (address: string): Promise<string | null> => {
+    const check = await this.check('pdf');
+    if (check === null) return null;
+    if (check.skipped === 0) return address;
+    const choice = await this.ask({ check, goKey: 'invoices.bulk.pdf_rest', offersBoxes: true });
+    if (choice === null) return null;
+    const taken = check.rows.filter(
+      (row) =>
+        (row.reason === 'draft' && choice.drafts) ||
+        (row.reason === 'cancelled' && choice.cancelled),
+    ).length;
+    this.count = check.included + taken;
+    return `${address}${choice.drafts ? '&drafts=1' : ''}${choice.cancelled ? '&cancelled=1' : ''}`;
   };
 
   protected exported(): void {
     this.feedback.success('invoices.bulk.exported', { count: this.count });
+  }
+
+  protected printed(): void {
+    this.feedback.success('invoices.bulk.printed', { count: this.count });
+  }
+
+  /** What the API would do with each selected invoice, or null once the person is told it could not say. */
+  private async check(action: BulkAction): Promise<BulkCheck | null> {
+    const check = await this.facade
+      .bulkCheck(this.companyId(), action, this.ids())
+      .catch(() => null);
+    if (check === null) this.feedback.failure('invoices.bulk.check_failed');
+    else this.count = check.included;
+    return check;
+  }
+
+  private async ask(data: BulkSkippedData): Promise<BulkSkippedChoice | null> {
+    const choice = await firstValueFrom(
+      this.dialog
+        .open<InvoiceBulkSkippedDialog, BulkSkippedData, BulkSkippedChoice | null>(
+          InvoiceBulkSkippedDialog,
+          { data, autoFocus: 'dialog' },
+        )
+        .afterClosed(),
+    );
+    // Closed by Escape or a click outside, it hands back nothing, which is a no.
+    return choice ?? null;
   }
 }

@@ -35,6 +35,7 @@ import {
   AGING_BUCKETS,
   type BulkAction,
   type BulkCheck,
+  type BulkPdfFormat,
   type AgingAmount,
   INVOICE_STATUSES,
   type IssuePreview,
@@ -338,6 +339,13 @@ export class InvoicesApi {
     let params = new HttpParams();
     for (const id of ids) params = params.append('id[]', id);
     return exportAddress(companyId, 'invoices', params, format);
+  }
+
+  /** The selected invoices printed, in the order chosen; drafts and cancelled ones only once the address asks for them. */
+  selectedPdfUrl(companyId: string, ids: readonly string[], format: BulkPdfFormat): string {
+    let params = new HttpParams();
+    for (const id of ids) params = params.append('id[]', id);
+    return `/api/companies/${encodeURIComponent(companyId)}/exports/invoices.${format}?${params.toString()}`;
   }
 
   /** What a bulk action would do with each selected invoice, checked by the API before it runs; nothing changes. */

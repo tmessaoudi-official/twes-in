@@ -16,11 +16,12 @@ use ApiPlatform\OpenApi\Model\Parameter;
 use ApiPlatform\OpenApi\Model\PathItem;
 use ApiPlatform\OpenApi\Model\Response;
 use ApiPlatform\OpenApi\OpenApi;
+use App\Module\Invoices\Application\CheckInvoicesInBulk;
 use App\Module\Invoices\Application\FacturX\FacturXRefused;
 use App\Shared\Domain\DocumentDesign;
 use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
 
-/** Documents the PDF and Factur-X downloads, plain controllers API Platform does not describe (InvoicePdfController, FacturXController). */
+/** Documents the PDF and Factur-X downloads, plain controllers API Platform does not describe (InvoicePdfController, InvoiceSelectionPdfController, FacturXController). */
 #[AsDecorator('api_platform.openapi.factory')]
 final readonly class InvoicesOpenApi implements OpenApiFactoryInterface
 {
@@ -110,6 +111,33 @@ final readonly class InvoicesOpenApi implements OpenApiFactoryInterface
                 $uuid('customerId', 'The customer'),
                 new Parameter('from', 'query', 'First day of the period, YYYY-MM-DD; the company year to date when absent', false, schema: ['type' => 'string', 'format' => 'date']),
                 new Parameter('to', 'query', 'Last day of the period, YYYY-MM-DD; today when absent', false, schema: ['type' => 'string', 'format' => 'date']),
+            ],
+        )));
+
+        $openApi->getPaths()->addPath('/api/companies/{companyId}/exports/invoices.{format}', new PathItem(get: new Operation(
+            operationId: 'invoiceSelectionPdf',
+            tags: ['Invoice'],
+            responses: [
+                '200' => new Response(
+                    'The invoices chosen, each as its own PDF gives it and in the order chosen: merged into one PDF, or one PDF each in a zip',
+                    new \ArrayObject([
+                        'application/pdf' => new MediaType(new \ArrayObject(['type' => 'string', 'format' => 'binary'])),
+                        'application/zip' => new MediaType(new \ArrayObject(['type' => 'string', 'format' => 'binary'])),
+                    ]),
+                ),
+                '401' => new Response('Not signed in'),
+                '403' => new Response('`step_up_required`: the person has not proved who they are in the last few minutes'),
+                '404' => new Response('No such company, no invoice.read, or the module is switched off'),
+                '422' => new Response('No id, more than a list page of them, one that is not an identifier, or none of them printed'),
+                '503' => new Response('The renderer could not produce a PDF'),
+            ],
+            summary: 'The invoices selected on a list as one PDF or a zip of PDFs',
+            parameters: [
+                $uuid('companyId', 'The company'),
+                new Parameter('format', 'path', 'pdf: one PDF; zip: one PDF each', true, schema: ['type' => 'string', 'enum' => ['pdf', 'zip']]),
+                new Parameter('id[]', 'query', 'The invoices, in the order printed; one a list page holds at most', true, schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid'], 'maxItems' => CheckInvoicesInBulk::MOST]),
+                new Parameter('drafts', 'query', '1 to print the drafts, under their watermark; left out otherwise', false, schema: ['type' => 'boolean']),
+                new Parameter('cancelled', 'query', '1 to print the cancelled ones, under their watermark; left out otherwise', false, schema: ['type' => 'boolean']),
             ],
         )));
 

@@ -7,6 +7,7 @@ import type { PickAsked } from '../shared/form/pick-api';
 import type {
   BulkAction,
   BulkCheck,
+  BulkPdfFormat,
   CreditExcessTo,
   CustomerOption,
   FacturXAnswer,
@@ -228,6 +229,10 @@ export class InvoicesFacade {
 
   selectedExportUrl(companyId: string, ids: readonly string[], format: ExportFormat): string {
     return this.api.selectedExportUrl(companyId, ids, format);
+  }
+
+  selectedPdfUrl(companyId: string, ids: readonly string[], format: BulkPdfFormat): string {
+    return this.api.selectedPdfUrl(companyId, ids, format);
   }
 
   /** What a bulk action would do with each selected invoice; throws when the API cannot say. */

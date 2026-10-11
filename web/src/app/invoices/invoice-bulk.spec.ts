@@ -11,7 +11,7 @@ import { StepUp } from '../shared/step-up/step-up';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { InvoiceBulk } from './invoice-bulk';
 import { InvoicesFacade } from './invoices-facade';
-import type { BulkCheck } from './invoices-types';
+import type { BulkCheck, BulkSkipReason } from './invoices-types';
 
 describe('InvoiceBulk', () => {
   let check: BulkCheck | Error;
@@ -38,6 +38,8 @@ describe('InvoiceBulk', () => {
             bulkCheck: checked,
             selectedExportUrl: (companyId: string, chosen: readonly string[], format: string) =>
               `/api/companies/${companyId}/exports/invoices.${format}?${chosen.map((id) => `id[]=${id}`).join('&')}`,
+            selectedPdfUrl: (companyId: string, chosen: readonly string[], format: string) =>
+              `/api/companies/${companyId}/exports/invoices.${format}?${chosen.map((id) => `id[]=${id}`).join('&')}`,
           },
         },
       ],
@@ -54,12 +56,17 @@ describe('InvoiceBulk', () => {
     document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
   });
 
-  const row = (id: string, number: string | null, included = true) => ({
+  const row = (
+    id: string,
+    number: string | null,
+    included = true,
+    reason: BulkSkipReason = 'not_found',
+  ) => ({
     id,
     number,
-    customerName: included ? 'Carthage Conseil' : null,
+    customerName: included || reason !== 'not_found' ? 'Carthage Conseil' : null,
     included,
-    reason: included ? null : ('not_found' as const),
+    reason: included ? null : reason,
   });
   const body = (testId: string): HTMLElement | null =>
     document.body.querySelector(`[data-testid="${testId}"]`);
@@ -70,16 +77,18 @@ describe('InvoiceBulk', () => {
 
   async function exportAs(
     fixture: ReturnType<typeof create>,
-    format: 'csv' | 'xlsx',
+    format: 'csv' | 'xlsx' | 'pdf' | 'zip',
   ): Promise<void> {
-    (
-      fixture.nativeElement.querySelector('[data-testid="invoices-bulk-export"]') as HTMLElement
-    ).click();
+    const menu =
+      format === 'pdf' || format === 'zip' ? 'invoices-bulk-pdf' : 'invoices-bulk-export';
+    (fixture.nativeElement.querySelector(`[data-testid="${menu}"]`) as HTMLElement).click();
     fixture.detectChanges();
-    body(`invoices-bulk-export-${format}`)!.click();
+    body(`${menu}-${format}`)!.click();
     await settle();
     fixture.detectChanges();
   }
+
+  const said = () => (TestBed.inject(Feedback) as RecordedFeedback).said;
 
   it('downloads the selected invoices straight away when the API finds every one of them', async () => {
     check = { rows: [row('a', 'FAC-1'), row('b', null)], included: 2, skipped: 0 };
@@ -160,5 +169,110 @@ describe('InvoiceBulk', () => {
     expect((TestBed.inject(Feedback) as RecordedFeedback).said.map((toast) => toast.key)).toEqual([
       'invoices.bulk.check_failed',
     ]);
+  });
+
+  it('prints the selected invoices as one PDF straight away when every one of them goes in', async () => {
+    check = { rows: [row('a', 'FAC-1'), row('b', 'FAC-2')], included: 2, skipped: 0 };
+    const fixture = create(['a', 'b']);
+
+    await exportAs(fixture, 'pdf');
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/companies/c1/exports/invoices.pdf?id[]=a&id[]=b')
+      .flush(new Blob(['%PDF-']));
+    await settle();
+
+    expect(checked).toHaveBeenCalledExactlyOnceWith('c1', 'pdf', ['a', 'b']);
+    expect(body('invoice-bulk-skipped')).toBeNull();
+    expect(saved).toEqual(['invoices.pdf']);
+    expect(said()).toEqual([
+      expect.objectContaining({ key: 'invoices.bulk.printed', params: { count: 2 } }),
+    ]);
+  });
+
+  it('prints them as a zip of one PDF each when that is the entry chosen', async () => {
+    check = { rows: [row('a', 'FAC-1')], included: 1, skipped: 0 };
+    const fixture = create(['a']);
+
+    await exportAs(fixture, 'zip');
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/companies/c1/exports/invoices.zip?id[]=a')
+      .flush(new Blob(['PK']));
+    await settle();
+
+    expect(saved).toEqual(['invoices.zip']);
+  });
+
+  // Drafts and cancelled ones print only when asked for, each kind by its own box, off at every opening.
+  it('offers a box for the drafts and one for the cancelled ones selected, and prints those ticked under their watermark', async () => {
+    check = {
+      rows: [
+        row('a', 'FAC-1'),
+        row('d', null, false, 'draft'),
+        row('x', null, false, 'cancelled'),
+        row('z', null, false),
+      ],
+      included: 1,
+      skipped: 3,
+    };
+    const fixture = create(['a', 'd', 'x', 'z']);
+
+    await exportAs(fixture, 'pdf');
+    const drafts = body('invoice-bulk-include-drafts')?.querySelector('input') as HTMLInputElement;
+    const cancelled = body('invoice-bulk-include-cancelled')?.querySelector(
+      'input',
+    ) as HTMLInputElement;
+    expect([drafts.checked, cancelled.checked]).toEqual([false, false]);
+    expect(body('invoice-bulk-skipped-d')).not.toBeNull();
+
+    drafts.click();
+    await settle();
+    fixture.detectChanges();
+    expect(body('invoice-bulk-skipped-d')).toBeNull();
+    expect(body('invoice-bulk-skipped-x')).not.toBeNull();
+    expect(body('invoice-bulk-skipped-z')).not.toBeNull();
+    body('invoice-bulk-go')!.click();
+    await settle();
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/companies/c1/exports/invoices.pdf?id[]=a&id[]=d&id[]=x&id[]=z&drafts=1')
+      .flush(new Blob(['%PDF-']));
+    await settle();
+
+    expect(said()).toEqual([
+      expect.objectContaining({ key: 'invoices.bulk.printed', params: { count: 2 } }),
+    ]);
+  });
+
+  it('offers no box for a kind the selection does not hold, and none at all for an export', async () => {
+    check = { rows: [row('a', 'FAC-1'), row('d', null, false, 'draft')], included: 1, skipped: 1 };
+    const fixture = create(['a', 'd']);
+
+    await exportAs(fixture, 'pdf');
+    expect(body('invoice-bulk-include-drafts')).not.toBeNull();
+    expect(body('invoice-bulk-include-cancelled')).toBeNull();
+    body('invoice-bulk-cancel')!.click();
+    await settle();
+
+    // A file of rows has no watermark to print a draft under: whatever the selection holds, no box.
+    check = { rows: [row('a', 'FAC-1'), row('d', null, false, 'draft')], included: 1, skipped: 1 };
+    await exportAs(fixture, 'csv');
+    expect(body('invoice-bulk-include-drafts')).toBeNull();
+    expect(body('invoice-bulk-include-cancelled')).toBeNull();
+  });
+
+  it('lets the drafts alone go in once their box is ticked, when nothing else was selected', async () => {
+    check = { rows: [row('d', null, false, 'draft')], included: 0, skipped: 1 };
+    const fixture = create(['d']);
+
+    await exportAs(fixture, 'pdf');
+    expect(body('invoice-bulk-go')).toBeNull();
+    (body('invoice-bulk-include-drafts')?.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    fixture.detectChanges();
+
+    body('invoice-bulk-go')!.click();
+    await settle();
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/companies/c1/exports/invoices.pdf?id[]=d&drafts=1')
+      .flush(new Blob(['%PDF-']));
   });
 });
