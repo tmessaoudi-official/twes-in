@@ -3,10 +3,21 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { MatDialog, type MatDialogRef } from '@angular/material/dialog';
 import { TestBed } from '@angular/core/testing';
 import { provideTranslateService } from '@ngx-translate/core';
+import { of } from 'rxjs';
+import { AuthFacade } from '../auth/auth-facade';
+import { Session } from '../shared/session/session';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { FileSaver } from '../shared/files/save-file';
+import { todayIn } from '../shared/i18n/format';
 import { StepUp } from '../shared/step-up/step-up';
 import { provideQuietFeedback, type RecordedFeedback } from '../shared/testing/feedback';
 import { InvoiceBulk } from './invoice-bulk';
@@ -21,7 +32,7 @@ describe('InvoiceBulk', () => {
     (companyId: string, action: string, ids: readonly string[]) => Promise<BulkCheck>
   >(() => (check instanceof Error ? Promise.reject(check) : Promise.resolve(check)));
 
-  function create(ids: readonly string[]) {
+  function create(ids: readonly string[], mayPay = false) {
     saved = [];
     TestBed.configureTestingModule({
       providers: [
@@ -29,6 +40,10 @@ describe('InvoiceBulk', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideQuietFeedback(),
+        { provide: AuthFacade, useValue: { me: () => null } },
+        { provide: Session, useExisting: AuthFacade },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: StepUp, useValue: { request: vi.fn() } },
         { provide: FileSaver, useValue: { save: (_file: Blob, name: string) => saved.push(name) } },
@@ -47,6 +62,9 @@ describe('InvoiceBulk', () => {
     const fixture = TestBed.createComponent(InvoiceBulk);
     fixture.componentRef.setInput('companyId', 'c1');
     fixture.componentRef.setInput('ids', ids);
+    fixture.componentRef.setInput('mayPay', mayPay);
+    fixture.componentRef.setInput('scale', 3);
+    fixture.componentRef.setInput('timeZone', 'Africa/Tunis');
     fixture.detectChanges();
     return fixture;
   }
@@ -67,6 +85,7 @@ describe('InvoiceBulk', () => {
     customerName: included || reason !== 'not_found' ? 'Carthage Conseil' : null,
     included,
     reason: included ? null : reason,
+    amount: null,
   });
   const body = (testId: string): HTMLElement | null =>
     document.body.querySelector(`[data-testid="${testId}"]`);
@@ -274,5 +293,60 @@ describe('InvoiceBulk', () => {
     TestBed.inject(HttpTestingController)
       .expectOne('/api/companies/c1/exports/invoices.pdf?id[]=d&drafts=1')
       .flush(new Blob(['%PDF-']));
+  });
+
+  it('offers « Encaisser » only to a member who may record payments', () => {
+    expect(
+      create(['a']).nativeElement.querySelector('[data-testid="invoices-bulk-pay"]'),
+    ).toBeNull();
+    TestBed.resetTestingModule();
+    expect(
+      create(['a'], true).nativeElement.querySelector('[data-testid="invoices-bulk-pay"]'),
+    ).not.toBeNull();
+  });
+
+  it('opens the payment of the selection on the company day, then says what was received and has the list read again', async () => {
+    const fixture = create(['a', 'b'], true);
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of({ recorded: 2, total: '1500.250' }),
+    } as MatDialogRef<unknown>);
+    const changed = vi.fn();
+    fixture.componentInstance.changed.subscribe(changed);
+
+    (
+      fixture.nativeElement.querySelector('[data-testid="invoices-bulk-pay"]') as HTMLElement
+    ).click();
+    await settle();
+
+    expect(open.mock.calls[0]![1]!.data).toEqual({
+      companyId: 'c1',
+      ids: ['a', 'b'],
+      today: todayIn('Africa/Tunis'),
+      scale: 3,
+    });
+    expect(said()).toEqual([
+      expect.objectContaining({
+        key: 'invoices.bulk.paid',
+        params: { count: 2, total: expect.stringMatching(/1[\s\u202f.]?500[.,]250/) },
+      }),
+    ]);
+    expect(changed).toHaveBeenCalledOnce();
+  });
+
+  it('says nothing and reads nothing again when the payment dialog is closed without paying', async () => {
+    const fixture = create(['a'], true);
+    vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(null),
+    } as MatDialogRef<unknown>);
+    const changed = vi.fn();
+    fixture.componentInstance.changed.subscribe(changed);
+
+    (
+      fixture.nativeElement.querySelector('[data-testid="invoices-bulk-pay"]') as HTMLElement
+    ).click();
+    await settle();
+
+    expect(said()).toEqual([]);
+    expect(changed).not.toHaveBeenCalled();
   });
 });

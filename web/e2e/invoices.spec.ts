@@ -778,7 +778,7 @@ test('invoices are selected on their page, counted in a bar that stands for the 
     });
     expect(fits).toBe(true);
     const count = await page.getByTestId('list-selection-count').boundingBox();
-    for (const action of ['invoices-bulk-export', 'invoices-bulk-pdf']) {
+    for (const action of ['invoices-bulk-export', 'invoices-bulk-pdf', 'invoices-bulk-pay']) {
       const box = await page.getByTestId(action).boundingBox();
       expect(box!.y >= count!.y + count!.height || box!.x >= count!.x + count!.width, action).toBe(
         true,
@@ -790,5 +790,80 @@ test('invoices are selected on their page, counted in a bar that stands for the 
     await expect(page.getByTestId('list-select-mode')).toBeFocused();
   } finally {
     await tidyDrafts(page, made);
+  }
+});
+
+test('the invoices selected are cashed at once, each for what it owes, and those that cannot be are named', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const number = `CASH-${Date.now()}`;
+  const made = await twoDrafts(page, number);
+  try {
+    // Issued, so each owes its total; an issued invoice stays in the shared company, as every issued one in these runs.
+    const issued = await page.evaluate(
+      async ([csrf, ids]) => {
+        const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+        const answered: number[] = [];
+        for (const id of ids) {
+          const response = await fetch(`/api/companies/${me.company.id}/invoices/${id}/issue`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+            body: 'null',
+          });
+          answered.push(response.status);
+        }
+        return answered;
+      },
+      [CSRF, made.invoices] as const,
+    );
+    expect(issued).toEqual([200, 200]);
+
+    await page.goto(`/invoices?customer=${made.customer}`);
+    await expect(page.locator('[data-testid^="list-select-row-"]')).toHaveCount(2);
+    await page.getByTestId('list-select-page').locator('input').check();
+    await page.getByTestId('invoices-bulk-pay').click();
+
+    // The day, method and reference come first; under them what each invoice receives, and the total.
+    const rows = page.getByTestId('invoice-bulk-pay-rows');
+    await expect(rows.locator('li')).toHaveCount(2);
+    await expect(page.getByTestId('invoice-bulk-pay-total')).toContainText('Total encaissé');
+    await expect(page.getByTestId('invoice-bulk-pay-go')).toHaveText('Encaisser les 2 factures');
+    await page.getByTestId('field-reference').fill('VIR-E2E');
+    expect(await wcagViolations(page)).toEqual([]);
+
+    await page.getByTestId('invoice-bulk-pay-go').click();
+    await expect(toast(page)).toContainText('2 factures encaissées');
+    await expect(page.getByTestId('invoice-bulk-pay-go')).toHaveCount(0);
+    // The list is read again: both are settled.
+    await expect(page.locator('td[data-column="status"]')).toHaveText(['Soldée', 'Soldée']);
+
+    // Asked again, nothing is left to cash: each is named with why, and there is nothing to confirm.
+    await page.getByTestId('invoices-bulk-pay').click();
+    await expect(page.getByTestId('invoice-bulk-pay-skipped').locator('li')).toHaveCount(2);
+    await expect(page.getByTestId('invoice-bulk-pay-skipped')).toContainText(
+      'Soldée : plus rien n’est dû',
+    );
+    await expect(page.getByTestId('invoice-bulk-pay-go')).toBeDisabled();
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('invoice-bulk-pay-cancel').click();
+  } finally {
+    const retired = await page.evaluate(
+      async ([csrf, customer]) => {
+        const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+        const path = `/api/companies/${me.company.id}/customers/${customer}`;
+        // The write shape has no id: a body naming one is refused.
+        const { id: _, ...fields } = (await (await fetch(path)).json()) as Record<string, unknown>;
+        const response = await fetch(path, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify({ ...fields, isActive: false }),
+        });
+        return response.status;
+      },
+      [CSRF, made.customer] as const,
+    );
+    expect(retired).toBe(200);
   }
 });

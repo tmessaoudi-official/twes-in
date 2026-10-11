@@ -11,6 +11,8 @@ import { filenameOf } from '../shared/files/save-file';
 import type {
   InvoiceBulkCheckInvoiceBulkCheckReadValidationInvoiceBulkCheckWrite as InvoiceBulkCheckRead,
   InvoiceBulkCheckInvoiceBulkCheckWriteValidationInvoiceBulkCheckWrite as InvoiceBulkCheckWrite,
+  InvoiceBulkPaymentInvoiceBulkPaymentReadValidationInvoiceBulkPaymentWrite as InvoiceBulkPaymentRead,
+  InvoiceBulkPaymentInvoiceBulkPaymentWriteValidationInvoiceBulkPaymentWrite as InvoiceBulkPaymentWrite,
   InvoiceDocumentPreviewDocumentPreviewValidationInvoiceWrite,
   ApiCompaniesCompanyIdinvoicesGetCollectionResponse,
   CustomerCreditBalanceCustomerCreditBalanceRead,
@@ -35,6 +37,8 @@ import {
   AGING_BUCKETS,
   type BulkAction,
   type BulkCheck,
+  type BulkPaid,
+  type BulkPayment,
   type BulkPdfFormat,
   type AgingAmount,
   INVOICE_STATUSES,
@@ -353,9 +357,10 @@ export class InvoicesApi {
     companyId: string,
     action: BulkAction,
     ids: readonly string[],
+    date: string | null = null,
   ): Promise<BulkCheck> {
     return this.guard(async () => {
-      const body: InvoiceBulkCheckWrite = { action, ids: [...ids] };
+      const body: InvoiceBulkCheckWrite = { action, ids: [...ids], date };
       const check = await firstValueFrom(
         this.http.post<InvoiceBulkCheckRead>(`${invoicePath(companyId)}/bulk-check`, body),
       );
@@ -368,10 +373,24 @@ export class InvoicesApi {
           customerName: row.customerName,
           included: row.outcome === 'included',
           reason: row.reason,
+          amount: row.amount,
         })),
         included: check.included,
         skipped: check.skipped,
       };
+    });
+  }
+
+  /** Records every payment of a selection or none: 409 once an invoice changed since its check, 422 on a closed day. */
+  async bulkPay(companyId: string, payment: BulkPayment): Promise<BulkPaid> {
+    return this.guard(async () => {
+      const body: InvoiceBulkPaymentWrite = { ...payment, rows: [...payment.rows] };
+      const paid = await firstValueFrom(
+        this.http.post<InvoiceBulkPaymentRead>(`${invoicePath(companyId)}/bulk-payments`, body),
+      );
+      if (paid.recorded === undefined || paid.total === undefined)
+        throw new Error('A bulk payment came without what it recorded.');
+      return { recorded: paid.recorded, total: paid.total };
     });
   }
 

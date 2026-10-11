@@ -136,6 +136,7 @@ export class InvoicesPage implements OnInit {
   protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
   protected readonly mayWrite = computed(() => this.auth.hasPermission('invoice.write'));
+  protected readonly mayPay = computed(() => this.auth.hasPermission('payment.write'));
   /** Factures and its recurring invoices as tabs, while the company has them; alone, no tab is drawn. */
   protected readonly tabs = computed(() =>
     this.auth.hasModule(RECURRING_MODULE) ? RECURRING_TABS : RECURRING_TABS.slice(0, 1),

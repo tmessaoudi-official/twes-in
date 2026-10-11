@@ -71,7 +71,14 @@
       >
         <ng-template appDataListSelection>
           @if (company(); as company) {
-            <app-invoice-bulk [companyId]="company.id" [ids]="selected()" />
+            <app-invoice-bulk
+              [companyId]="company.id"
+              [ids]="selected()"
+              [mayPay]="mayPay()"
+              [scale]="scale()"
+              [timeZone]="company.timezone ?? null"
+              (changed)="reloadNow()"
+            />
           }
         </ng-template>
         <ng-template appDataListCell="number" let-row>

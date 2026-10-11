@@ -1636,6 +1636,172 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame([1, 2], [$this->json()['included'] ?? null, $this->json()['skipped'] ?? null]);
     }
 
+    public function testABulkCheckToCashNamesWhatEachInvoiceReceivesAndWhatCannotBePaid(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'invoice.credit', 'payment.write']);
+        $today = $this->today();
+        $open = $this->issuedInvoice();
+        $due = $this->stringAt($this->json(), 'amountDue');
+        self::assertIsNumeric($due);
+        $partial = $this->issuedInvoice();
+        $this->postJson($this->path($partial).'/payments', ['date' => $today, 'amount' => '1', 'method' => 'cash', 'reference' => null, 'notes' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $paid = $this->issuedInvoice();
+        $this->postJson($this->path($paid).'/payments', ['date' => $today, 'amount' => $due, 'method' => 'cash', 'reference' => null, 'notes' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $held = $this->issuedInvoice();
+        $this->postJson($this->path($held).'/instruments', ['kind' => 'check', 'amount' => '1', 'dueOn' => new \DateTimeImmutable($today)->modify('+40 days')->format('Y-m-d')]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->path($this->issuedInvoice()).'/credit-notes', ['creditNoteReason' => 'Retour']);
+        $credit = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($credit).'/issue', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
+        $draft = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '3']]]));
+        $cancelled = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($cancelled).'/cancel', null);
+
+        $rows = $this->cashPreview($today, [$open, $partial, $paid, $held, $credit, $draft, $cancelled]);
+
+        self::assertSame([null, null, 'paid', 'instrument_held', 'credit_note', 'draft', 'cancelled'], array_column($rows, 'reason'));
+        self::assertSame([$due, bcsub($due, '1', 3), null, null, null, null, null], array_column($rows, 'amount'), 'what is still due, nothing for a row skipped');
+        self::assertSame([2, 5], [$this->json()['included'] ?? null, $this->json()['skipped'] ?? null]);
+
+        $yesterday = new \DateTimeImmutable($today)->modify('-1 day')->format('Y-m-d');
+        self::assertSame(['issued_after', 'issued_after'], array_column($this->cashPreview($yesterday, [$open, $partial]), 'reason'), 'a payment is dated from the issue day');
+
+        $this->postJson($this->path().'/bulk-check', ['action' => 'pay', 'ids' => [$open], 'date' => new \DateTimeImmutable($today)->modify('+1 day')->format('Y-m-d')]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a payment is dated today at the latest');
+        $this->postJson($this->path().'/bulk-check', ['action' => 'pay', 'ids' => [$open], 'date' => '2026-13-45']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a day that is none');
+    }
+
+    public function testTheSelectedInvoicesAreCashedInOneRunEachForWhatIsDue(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $today = $this->today();
+        $first = $this->issuedInvoice();
+        $second = $this->issuedInvoice();
+        $this->postJson($this->path($second).'/payments', ['date' => $today, 'amount' => '1', 'method' => 'cash', 'reference' => null, 'notes' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $rows = $this->cashPreview($today, [$first, $second]);
+        [$firstDue, $secondDue] = [$this->stringAt($rows[0], 'amount'), $this->stringAt($rows[1], 'amount')];
+        self::assertIsNumeric($firstDue);
+        self::assertIsNumeric($secondDue);
+        $total = bcadd($firstDue, $secondDue, 3);
+
+        $this->postJson($this->path().'/bulk-payments', ['method' => 'transfer', 'date' => $today, 'reference' => 'VIR-42', 'rows' => array_map(static fn (array $row): array => ['id' => $row['id'], 'amount' => $row['amount']], $rows)]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame([2, $total], [$this->json()['recorded'] ?? null, $this->json()['total'] ?? null]);
+        foreach ([$first, $second] as $id) {
+            $this->getJson($this->path($id));
+            self::assertSame(['paid', '0.000'], [$this->json()['status'], $this->json()['amountDue']]);
+            $last = $this->arrayAt($this->json(), 'payments');
+            $last = end($last);
+            self::assertIsArray($last);
+            self::assertSame(['transfer', 'VIR-42', $today], [$last['method'], $last['reference'], $last['date']]);
+        }
+        self::assertSame(3, $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM audit_log WHERE action = 'payment.recorded'"), 'each payment recorded on its invoice, as one by one');
+    }
+
+    public function testABulkPaymentIsRefusedWholeWhenAnInvoiceChangedSinceItsPreview(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $today = $this->today();
+        $first = $this->issuedInvoice();
+        $second = $this->issuedInvoice();
+        $seen = array_map(static fn (array $row): array => ['id' => $row['id'], 'amount' => $row['amount']], $this->cashPreview($today, [$first, $second]));
+        $this->postJson($this->path($second).'/payments', ['date' => $today, 'amount' => '1', 'method' => 'cash', 'reference' => null, 'notes' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $body = ['method' => 'cash', 'date' => $today, 'reference' => null];
+        $this->postJson($this->path().'/bulk-payments', [...$body, 'rows' => $seen]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertStringStartsWith('bulk_changed:', $this->stringAt($this->json(), 'detail'));
+        $this->getJson($this->path($first));
+        self::assertSame('issued', $this->json()['status'], 'nothing recorded when one row no longer holds');
+
+        $fresh = array_map(static fn (array $row): array => ['id' => $row['id'], 'amount' => $row['amount']], $this->cashPreview($today, [$first, $second]));
+        $this->postJson($this->path().'/bulk-payments', [...$body, 'rows' => [$fresh[0]]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK, 'a selection of one is its own selection');
+        $third = $this->issuedInvoice();
+        $this->postJson($this->path().'/bulk-payments', [...$body, 'rows' => [$fresh[1], ['id' => $third, 'amount' => '0.001']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an amount that is not what is due');
+        $this->postJson($this->path().'/bulk-payments', [...$body, 'rows' => [$fresh[1], ['id' => self::ABSENT, 'amount' => '1']]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an invoice that is not one to cash');
+        $this->postJson($this->path().'/bulk-payments', [...$body, 'rows' => [$fresh[1]]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+    }
+
+    public function testABulkPaymentRefusesAClosedDayABadBodyAndAMemberWhoMayNotRecordPayments(): void
+    {
+        $this->createUser('reader@twes.local', 'password-1234', $this->company, ['invoice.read'], 'reader');
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $today = $this->today();
+        $id = $this->issuedInvoice();
+        $row = ['id' => $id, 'amount' => $this->stringAt($this->json(), 'amountDue')];
+        $body = ['method' => 'cash', 'date' => $today, 'reference' => null, 'rows' => [$row]];
+
+        foreach ([
+            'no rows' => ['rows' => []],
+            'a method that is none' => ['method' => 'barter'],
+            'no day' => ['date' => ''],
+            'a day that is none' => ['date' => '2026-13-45'],
+            'a reference too long' => ['reference' => str_repeat('R', 65)],
+            'a row without its amount' => ['rows' => [['id' => $id]]],
+            'a row that is no identifier' => ['rows' => [['id' => 'nope', 'amount' => '1']]],
+        ] as $what => $change) {
+            $this->postJson($this->path().'/bulk-payments', [...$body, ...$change]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $what);
+        }
+
+        $company = $this->em()->find(Company::class, $this->company->getId()) ?? throw new \LogicException('no company');
+        $yesterday = new \DateTimeImmutable($today)->modify('-1 day');
+        $company->closeThrough($yesterday, new \DateTimeImmutable($today));
+        $this->em()->flush();
+        $this->postJson($this->path().'/bulk-payments', [...$body, 'date' => $yesterday->format('Y-m-d')]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a day of a closed period');
+        $this->getJson($this->path($id));
+        self::assertSame('issued', $this->json()['status']);
+
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('reader@twes.local', 'password-1234');
+        $this->postJson($this->path().'/bulk-payments', $body);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a member who may not record payments meets the same answer as a stranger');
+    }
+
+    /**
+     * @param list<string> $ids
+     *
+     * @return list<array<string, mixed>> the rows of a check to cash on `$day`
+     */
+    private function cashPreview(string $day, array $ids): array
+    {
+        $this->postJson($this->path().'/bulk-check', ['action' => 'pay', 'ids' => $ids, 'date' => $day]);
+        self::assertResponseIsSuccessful();
+
+        $rows = [];
+        foreach ($this->arrayAt($this->json(), 'rows') as $row) {
+            self::assertIsArray($row);
+            $keyed = [];
+            foreach ($row as $key => $value) {
+                self::assertIsString($key);
+                $keyed[$key] = $value;
+            }
+            $rows[] = $keyed;
+        }
+
+        return $rows;
+    }
+
+    private function today(): string
+    {
+        return new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+    }
+
     /** @return list<string> each page the fake renderer merged, in order */
     private function printedFrom(string $query): array
     {

@@ -15,6 +15,7 @@ use App\Module\Invoices\Application\BulkAction;
 use App\Module\Invoices\Application\CheckInvoicesInBulk;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Uid\Uuid;
 
 /** @implements ProcessorInterface<InvoiceBulkCheckResource, InvoiceBulkCheckResource> */
@@ -29,14 +30,22 @@ final readonly class InvoiceBulkCheckProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::READ);
         $ids = array_map(static fn (string $id): Uuid => Uuid::fromString($id), $data->ids);
 
+        $day = null === $data->date || '' === $data->date ? null : new \DateTimeImmutable($data->date, new \DateTimeZone('UTC'));
+
+        try {
+            $rows = $this->check->check($company, BulkAction::from($data->action), $ids, day: $day);
+        } catch (\InvalidArgumentException $refused) {
+            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+        }
         $answer = new InvoiceBulkCheckResource();
-        foreach ($this->check->check($company, BulkAction::from($data->action), $ids) as $row) {
+        foreach ($rows as $row) {
             $answer->rows[] = [
                 'id' => $row->id->toRfc4122(),
                 'number' => $row->invoice?->getNumber(),
                 'customerName' => $row->invoice?->getCustomer()->getProfile()->name,
                 'outcome' => $row->included() ? 'included' : 'skipped',
                 'reason' => $row->skipped,
+                'amount' => $row->amount,
             ];
             if ($row->included()) {
                 ++$answer->included;
