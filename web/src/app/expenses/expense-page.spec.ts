@@ -211,7 +211,7 @@ describe('ExpensePage', () => {
     facade.deleteExpense.mockReset().mockResolvedValue(true);
     facade.attach.mockReset().mockResolvedValue(true);
     facade.detach.mockReset().mockResolvedValue(true);
-    facade.restoreAttachment.mockReset().mockResolvedValue(true);
+    facade.restoreAttachment.mockReset().mockResolvedValue(null);
     auth.hasPermission.mockReset().mockReturnValue(true);
     auth.hasModule.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
@@ -530,12 +530,11 @@ describe('ExpensePage', () => {
       params: { name: 'recu.pdf' },
     });
 
-    // Refused, it is said on the page's error line by the facade, and no success is claimed.
-    facade.restoreAttachment.mockResolvedValue(false);
-    const before = feedback.said.length;
+    // Refused, it is said as a toast too, since the page it came from may be gone.
+    facade.restoreAttachment.mockResolvedValue('files_full');
     removed?.action?.run();
     await settle();
-    expect(feedback.said).toHaveLength(before);
+    expect(feedback.said.at(-1)).toEqual({ kind: 'failure', key: 'expenses.errors.files_full' });
   });
 
   it('takes what another person saved into the open draft', async () => {

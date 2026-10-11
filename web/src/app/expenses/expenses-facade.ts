@@ -186,16 +186,28 @@ export class ExpensesFacade {
     );
   }
 
-  /** A file taken off put back where it was: what « Annuler » on its toast does. */
+  /**
+   * A file taken off put back where it was: what « Annuler » on its toast does. The toast outlives its page, so the
+   * expense is read again only while it is still the one open, and a refusal is returned for the toast to say rather
+   * than written on whatever page is open now. Null once back.
+   */
   async restoreAttachment(
     companyId: string,
     expenseId: string,
     attachmentId: string,
-  ): Promise<boolean> {
-    return this.write(
-      () => this.api.restoreAttachment(companyId, expenseId, attachmentId),
-      () => this.reloadFiles(companyId, expenseId),
-    );
+  ): Promise<ExpensesError | null> {
+    try {
+      await this.api.restoreAttachment(companyId, expenseId, attachmentId);
+    } catch (error) {
+      return codeOf(error);
+    }
+    if (this.expenseSignal()?.id === expenseId) {
+      await this.write(
+        async () => undefined,
+        () => this.reloadFiles(companyId, expenseId),
+      );
+    }
+    return null;
   }
 
   attachmentUrl(companyId: string, expenseId: string, attachmentId: string): string {

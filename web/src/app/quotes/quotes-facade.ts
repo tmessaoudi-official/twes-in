@@ -185,11 +185,23 @@ export class QuotesFacade implements LineCatalogue {
     return this.fileStep(companyId, id, () => this.api.detach(companyId, id, attachmentId));
   }
 
-  /** A file taken off put back where it was: what « Annuler » on its toast does. */
-  async restoreAttachment(companyId: string, id: string, attachmentId: string): Promise<boolean> {
-    return this.fileStep(companyId, id, () =>
-      this.api.restoreAttachment(companyId, id, attachmentId),
-    );
+  /**
+   * A file taken off put back where it was: what « Annuler » on its toast does. The toast outlives its page, so the
+   * quote is read again only while it is still the one open, and a refusal is returned for the toast to say rather
+   * than written on whatever page is open now. Null once back.
+   */
+  async restoreAttachment(
+    companyId: string,
+    id: string,
+    attachmentId: string,
+  ): Promise<QuotesError | null> {
+    try {
+      await this.api.restoreAttachment(companyId, id, attachmentId);
+    } catch (error) {
+      return codeOf(error);
+    }
+    if (this.quoteSignal()?.id === id) await this.fileStep(companyId, id, async () => undefined);
+    return null;
   }
 
   attachmentUrl(companyId: string, id: string, attachmentId: string): string {

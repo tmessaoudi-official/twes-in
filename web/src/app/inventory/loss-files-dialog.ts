@@ -147,9 +147,16 @@ export class LossFilesDialog {
 
   /** Put back where it was, whether this dialog is still open or not: the toast outlives it. */
   private async restore(file: StockLossFile): Promise<void> {
-    if (await this.facade.restoreToLoss(this.data.companyId, this.data.movementId, file.id)) {
+    const refused = await this.facade.restoreToLoss(
+      this.data.companyId,
+      this.data.movementId,
+      file.id,
+    );
+    if (refused === null) {
       this.feedback.success('inventory.loss.files.restored', { name: file.name });
       await this.read();
+    } else {
+      this.feedback.failure(`inventory.errors.${refused}`);
     }
   }
 
