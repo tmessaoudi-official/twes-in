@@ -556,3 +556,167 @@ test('on a phone the fields of a line stand apart, so no label is drawn on the f
   expect(gaps.length).toBeGreaterThan(3);
   expect(Math.min(...gaps)).toBeGreaterThanOrEqual(12);
 });
+
+/** A customer of the run's own and two drafts for it, through the API, so the list holds exactly what is selected. */
+async function twoDrafts(
+  page: Page,
+  number: string,
+): Promise<{ customer: string; invoices: string[] }> {
+  return page.evaluate(
+    async ([csrf, customerNumber]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const base = `/api/companies/${me.company.id}`;
+      const send = async (path: string, body: unknown): Promise<{ id: string }> => {
+        const response = await fetch(`${base}${path}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) throw new Error(`POST ${path} answered ${response.status}`);
+        return (await response.json()) as { id: string };
+      };
+      const customer = await send('/customers', {
+        number: customerNumber,
+        kind: 'individual',
+        customerGroupId: null,
+        taxRegime: 'standard',
+        name: `Client ${customerNumber}`,
+        legalName: null,
+        identifiers: {},
+        email: null,
+        phone: null,
+        website: null,
+        billingAddressLine1: 'Rue de Rome',
+        billingAddressLine2: null,
+        billingPostalCode: '1000',
+        billingCity: 'Tunis',
+        billingCountryCode: 'TN',
+        shippingAddressLine1: null,
+        shippingAddressLine2: null,
+        shippingPostalCode: null,
+        shippingCity: null,
+        shippingCountryCode: null,
+        defaultTaxComponentIds: [],
+        defaultDiscountRate: null,
+        notes: null,
+        isActive: true,
+        customFields: {},
+      });
+      const options = (await (await fetch(`${base}/invoice-options`)).json()) as {
+        units: { id: string; code: string }[];
+      };
+      const unit = options.units.find((each) => each.code === 'C62') ?? options.units[0];
+      const draft = () =>
+        send('/invoices', {
+          customerId: customer.id,
+          establishmentId: null,
+          lines: [
+            {
+              description: 'Réglage du tour',
+              quantity: '1',
+              unitId: unit?.id,
+              unitPriceNet: '100',
+              discountRate: null,
+              taxComponentIds: [],
+            },
+          ],
+        });
+      const first = await draft();
+      const second = await draft();
+      return { customer: customer.id, invoices: [first.id, second.id] };
+    },
+    [CSRF, number] as const,
+  );
+}
+
+/** Abandons the run's drafts and deactivates its customer. */
+async function tidyDrafts(
+  page: Page,
+  made: { customer: string; invoices: string[] },
+): Promise<void> {
+  const statuses = await page.evaluate(
+    async ([csrf, ids]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const base = `/api/companies/${me.company.id}`;
+      const headers = { 'content-type': 'application/json', 'csrf-token': csrf };
+      const answered: number[] = [];
+      for (const invoice of ids.invoices) {
+        const cancelled = await fetch(`${base}/invoices/${invoice}/cancel`, {
+          method: 'POST',
+          headers,
+          body: 'null',
+        });
+        answered.push(cancelled.status);
+      }
+      // The write shape has no id: a body naming one is refused.
+      const { id: _, ...fields } = (await (
+        await fetch(`${base}/customers/${ids.customer}`)
+      ).json()) as Record<string, unknown>;
+      const retired = await fetch(`${base}/customers/${ids.customer}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ ...fields, isActive: false }),
+      });
+      answered.push(retired.status);
+      return answered;
+    },
+    [CSRF, made] as const,
+  );
+  expect(statuses).toEqual([200, 200, 200]);
+}
+
+test('invoices are selected on their page, counted in a bar that stands for the toolbar, and let go', async ({
+  page,
+}) => {
+  await signIn(page);
+  await inACompany(page, CSRF);
+  const number = `SEL-${Date.now()}`;
+  const made = await twoDrafts(page, number);
+  try {
+    // Narrowed to the run's customer by its picker: a draft has no customer snapshot for the words to find yet.
+    await page.goto(`/invoices?customer=${made.customer}`);
+    const boxes = page.locator('[data-testid^="list-select-row-"]');
+    await expect(boxes).toHaveCount(2);
+    // A draft has no number: its box is named by the customer it is drafted for.
+    await expect(boxes.first().locator('input')).toHaveAccessibleName(
+      `Sélectionner le brouillon pour Client ${number}`,
+    );
+
+    // The bar stands where the toolbar stood, as tall: the next box is still under the pointer.
+    const before = await boxes.nth(1).boundingBox();
+    await boxes.nth(0).locator('input').check();
+    const bar = page.getByTestId('list-selection');
+    await expect(bar).toBeVisible();
+    expect((await boxes.nth(1).boundingBox())?.y).toBe(before?.y);
+    await expect(page.getByTestId('list-selection-count')).toHaveText('1 facture sélectionnée');
+    // The words and filters wait behind the bar; the row's own actions wait too.
+    await expect(page.getByTestId('list-filter')).toHaveCount(0);
+    await expect(page.getByTestId(`row-more-${made.invoices[0]}`)).toBeDisabled();
+    expect(await wcagViolations(page)).toEqual([]);
+
+    await page.getByTestId('list-select-page').locator('input').check();
+    await expect(page.getByTestId('list-selection-count')).toHaveText('2 factures sélectionnées');
+
+    await page.keyboard.press('Escape');
+    await expect(bar).toHaveCount(0);
+    await expect(page.getByTestId('list-select-page').locator('input')).toBeFocused();
+    // What narrowed the list is still there.
+    await expect(page.getByTestId('list-chips')).toContainText(`Client ${number}`);
+
+    // On a phone the cards carry no box until « Sélectionner » is pressed.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByTestId('list-cards')).toBeVisible();
+    await expect(boxes).toHaveCount(0);
+    await page.getByTestId('list-select-mode').click();
+    await expect(page.getByTestId('list-selection-count')).toHaveText(
+      'Aucune facture sélectionnée',
+    );
+    await boxes.nth(1).locator('input').check();
+    await expect(page.getByTestId('list-selection-count')).toHaveText('1 facture sélectionnée');
+    await page.getByTestId('list-selection-clear').click();
+    await expect(boxes).toHaveCount(0);
+    await expect(page.getByTestId('list-select-mode')).toBeFocused();
+  } finally {
+    await tidyDrafts(page, made);
+  }
+});

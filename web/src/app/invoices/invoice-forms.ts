@@ -160,6 +160,14 @@ export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
   link: (row) => ['/invoices', row.id],
   pageSizes: [25, 50, 100],
   defaultSort: { column: 'issueDate', direction: 'desc' },
+  // A draft has no number to name its box by: it is named by the customer it is drafted for.
+  selection: {
+    countKey: 'invoices.selected',
+    labelOf: (row) =>
+      row.number === null
+        ? { key: 'invoices.select_draft', params: { customer: row.customer } }
+        : null,
+  },
   columns: [
     {
       id: 'number',

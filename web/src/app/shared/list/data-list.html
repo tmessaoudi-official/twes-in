@@ -1,112 +1,160 @@
 <div class="flex flex-col gap-3">
-  <div class="twes-list-toolbar">
-    @for (facet of facets(); track facet.filter.id) {
-      @if (facet.filter.multiple) {
-        <app-select
-          class="w-full sm:w-60"
-          [label]="facet.filter.label | translate"
-          [labelInside]="true"
-          [multiple]="true"
-          [options]="facetOptions(facet)"
-          [translateLabels]="true"
-          [emptyLabel]="facet.filter.anyLabel ?? 'list.filter_any'"
-          [ngModel]="facet.chosenList"
-          (ngModelChange)="onFacetMany(facet.filter.id, $event ?? [])"
-          [testId]="'list-facet-' + facet.filter.id"
-        />
-      } @else {
-        <app-select
-          class="w-full sm:w-60"
-          [label]="facet.filter.label | translate"
-          [labelInside]="true"
-          [options]="facetOptions(facet)"
-          [translateLabels]="true"
-          [ngModel]="facet.chosen === '' ? ANY_FACET : facet.chosen"
-          (ngModelChange)="onFacet(facet.filter.id, $event === ANY_FACET ? '' : $event)"
-          [testId]="'list-facet-' + facet.filter.id"
-        />
-      }
-    }
-    <div class="twes-list-tools">
-      @if (filterable()) {
-        <mat-form-field class="twes-list-search">
-          <mat-icon matPrefix aria-hidden="true">search</mat-icon>
-          <input
-            matInput
-            type="search"
-            [value]="query()"
-            [placeholder]="'list.filter' | translate"
-            [attr.aria-label]="'list.filter' | translate"
-            (input)="onFilter($event)"
-            data-testid="list-filter"
-            data-tour="list-search"
-          />
-          @if (query()) {
-            <button
-              matSuffix
-              mat-icon-button
-              type="button"
-              (click)="clearFilter()"
-              [appLabel]="'list.filter_clear' | translate"
-            >
-              <mat-icon aria-hidden="true">close</mat-icon>
-            </button>
-          }
-        </mat-form-field>
-      }
-      @if (arrivedElsewhere(); as count) {
-        <button mat-stroked-button type="button" (click)="showArrivals()" data-testid="list-new">
-          <mat-icon aria-hidden="true">fiber_new</mat-icon>
-          {{ (count === 1 ? 'list.new_row' : 'list.new_rows') | translate: { count } }}
-        </button>
-      }
-      @if (hasPanel()) {
+  @if (selectionOn()) {
+    <!-- While rows are selected the bar takes the toolbar's place: the words and
+         filters wait behind it, so what is selected cannot be narrowed away unseen. -->
+    <div
+      class="twes-list-selection"
+      [style.min-height.px]="asCards() ? null : toolbarHeight()"
+      data-testid="list-selection"
+    >
+      <!-- A phone's bar is narrow: it leads with the close as Material's contextual bar does, the count beside it. -->
+      @if (asCards()) {
         <button
-          mat-stroked-button
+          mat-icon-button
           type="button"
-          (click)="panelOpen.set(!panelOpen())"
-          [attr.aria-expanded]="panelOpen()"
-          [attr.aria-controls]="testId() + '-filters'"
-          data-testid="list-filters"
+          (click)="clearSelection()"
+          [appLabel]="'list.selection_clear' | translate"
+          data-testid="list-selection-clear"
         >
-          <mat-icon aria-hidden="true">filter_list</mat-icon>
-          {{ 'list.filters' | translate }}
-          @if (activeCount() > 0) {
-            <span class="sr-only">{{
-              'list.filters_active' | translate: { count: activeCount() }
-            }}</span>
-            <span aria-hidden="true" data-testid="list-filters-count">({{ activeCount() }})</span>
-          }
+          <mat-icon aria-hidden="true">close</mat-icon>
         </button>
       }
-      <button
-        mat-icon-button
-        type="button"
-        class="twes-list-tool"
-        (click)="viewsOpen.set(!viewsOpen())"
-        [appLabel]="'list.views' | translate"
-        [attr.aria-expanded]="viewsOpen()"
-        [attr.aria-controls]="testId() + '-views'"
-        data-testid="list-views"
-        data-tour="list-views"
-      >
-        <mat-icon aria-hidden="true">bookmarks</mat-icon>
-      </button>
-      <button
-        mat-icon-button
-        type="button"
-        class="twes-list-tool"
-        (click)="chooserOpen.set(!chooserOpen())"
-        [appLabel]="'list.columns' | translate"
-        [attr.aria-expanded]="chooserOpen()"
-        [attr.aria-controls]="testId() + '-columns'"
-        data-testid="list-columns"
-        data-tour="list-columns"
-      >
-        <mat-icon aria-hidden="true">view_column</mat-icon>
-      </button>
+      <span role="status" class="min-w-0 flex-1 font-medium" data-testid="list-selection-count">{{
+        descriptor().selection!.countKey | translate: { count: selected().length }
+      }}</span>
+      @if (!asCards()) {
+        <button
+          mat-button
+          type="button"
+          (click)="clearSelection()"
+          data-testid="list-selection-clear"
+        >
+          <mat-icon aria-hidden="true">close</mat-icon>
+          {{ 'list.selection_clear' | translate }}
+        </button>
+      }
     </div>
-  </div>
+  } @else {
+    <div #toolbar class="twes-list-toolbar">
+      @for (facet of facets(); track facet.filter.id) {
+        @if (facet.filter.multiple) {
+          <app-select
+            class="w-full sm:w-60"
+            [label]="facet.filter.label | translate"
+            [labelInside]="true"
+            [multiple]="true"
+            [options]="facetOptions(facet)"
+            [translateLabels]="true"
+            [emptyLabel]="facet.filter.anyLabel ?? 'list.filter_any'"
+            [ngModel]="facet.chosenList"
+            (ngModelChange)="onFacetMany(facet.filter.id, $event ?? [])"
+            [testId]="'list-facet-' + facet.filter.id"
+          />
+        } @else {
+          <app-select
+            class="w-full sm:w-60"
+            [label]="facet.filter.label | translate"
+            [labelInside]="true"
+            [options]="facetOptions(facet)"
+            [translateLabels]="true"
+            [ngModel]="facet.chosen === '' ? ANY_FACET : facet.chosen"
+            (ngModelChange)="onFacet(facet.filter.id, $event === ANY_FACET ? '' : $event)"
+            [testId]="'list-facet-' + facet.filter.id"
+          />
+        }
+      }
+      <div class="twes-list-tools">
+        @if (filterable()) {
+          <mat-form-field class="twes-list-search">
+            <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+            <input
+              matInput
+              type="search"
+              [value]="query()"
+              [placeholder]="'list.filter' | translate"
+              [attr.aria-label]="'list.filter' | translate"
+              (input)="onFilter($event)"
+              data-testid="list-filter"
+              data-tour="list-search"
+            />
+            @if (query()) {
+              <button
+                matSuffix
+                mat-icon-button
+                type="button"
+                (click)="clearFilter()"
+                [appLabel]="'list.filter_clear' | translate"
+              >
+                <mat-icon aria-hidden="true">close</mat-icon>
+              </button>
+            }
+          </mat-form-field>
+        }
+        @if (arrivedElsewhere(); as count) {
+          <button mat-stroked-button type="button" (click)="showArrivals()" data-testid="list-new">
+            <mat-icon aria-hidden="true">fiber_new</mat-icon>
+            {{ (count === 1 ? 'list.new_row' : 'list.new_rows') | translate: { count } }}
+          </button>
+        }
+        @if (hasPanel()) {
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="panelOpen.set(!panelOpen())"
+            [attr.aria-expanded]="panelOpen()"
+            [attr.aria-controls]="testId() + '-filters'"
+            data-testid="list-filters"
+          >
+            <mat-icon aria-hidden="true">filter_list</mat-icon>
+            {{ 'list.filters' | translate }}
+            @if (activeCount() > 0) {
+              <span class="sr-only">{{
+                'list.filters_active' | translate: { count: activeCount() }
+              }}</span>
+              <span aria-hidden="true" data-testid="list-filters-count">({{ activeCount() }})</span>
+            }
+          </button>
+        }
+        <button
+          mat-icon-button
+          type="button"
+          class="twes-list-tool"
+          (click)="viewsOpen.set(!viewsOpen())"
+          [appLabel]="'list.views' | translate"
+          [attr.aria-expanded]="viewsOpen()"
+          [attr.aria-controls]="testId() + '-views'"
+          data-testid="list-views"
+          data-tour="list-views"
+        >
+          <mat-icon aria-hidden="true">bookmarks</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          type="button"
+          class="twes-list-tool"
+          (click)="chooserOpen.set(!chooserOpen())"
+          [appLabel]="'list.columns' | translate"
+          [attr.aria-expanded]="chooserOpen()"
+          [attr.aria-controls]="testId() + '-columns'"
+          data-testid="list-columns"
+          data-tour="list-columns"
+        >
+          <mat-icon aria-hidden="true">view_column</mat-icon>
+        </button>
+        @if (selectable() && asCards()) {
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="startSelecting()"
+            data-testid="list-select-mode"
+          >
+            <mat-icon aria-hidden="true">checklist</mat-icon>
+            {{ 'list.select_mode' | translate }}
+          </button>
+        }
+      </div>
+    </div>
+  }
 
   @if (hasPanel() && panelOpen()) {
     <app-list-filter-panel
@@ -299,16 +347,32 @@
     <!-- A 752 px table in a 390 px window is read by scrolling sideways, which is how the columns that matter end
          up off screen. Below 600 px each row is a card instead: the same rows, the same test ids, the same
          controls, one under the other. -->
-    <ul class="twes-list-cards" data-testid="list-cards">
+    <ul
+      #cardList
+      class="twes-list-cards"
+      [class.twes-list-selectable]="selectable()"
+      data-testid="list-cards"
+    >
       @for (row of page().rows; track trackRow($index, row)) {
         <li
           class="twes-list-card"
+          [class.twes-row-selected]="isSelected(row)"
+          (pointerdown)="pressStart($event, row)"
+          (pointermove)="pressMove($event)"
+          (pointerup)="cancelPress()"
+          (pointercancel)="cancelPress()"
+          (contextmenu)="onCardMenu($event)"
           [class.twes-row-new]="isArrived(row)"
           [class.twes-row-active]="isActive(row)"
           [attr.aria-current]="isActive(row) ? 'true' : null"
           [attr.data-testid]="testIdOf(row)"
         >
           <div class="twes-list-card-head flex items-start gap-1">
+            @if (showBoxes()) {
+              <div class="-ms-2 -mt-2 shrink-0">
+                <ng-container *ngTemplateOutlet="rowBox; context: { $implicit: row }" />
+              </div>
+            }
             <p
               class="min-w-0 flex-1 font-medium"
               [attr.data-testid]="'list-card-title-' + descriptor().rowId(row)"
@@ -397,6 +461,28 @@
         [style.min-width.px]="tableWidth()"
         [attr.data-testid]="testId()"
       >
+        @if (selectable()) {
+          <ng-container [matColumnDef]="selectColumn">
+            <th
+              mat-header-cell
+              *matHeaderCellDef
+              class="twes-row-select"
+              [style.width.px]="selectWidthPx"
+            >
+              <mat-checkbox
+                [checked]="pageTicked().all"
+                [indeterminate]="pageTicked().some"
+                [disabled]="page().rows.length === 0"
+                (change)="togglePage()"
+                [aria-label]="'list.select_page' | translate"
+                data-testid="list-select-page"
+              />
+            </th>
+            <td mat-cell *matCellDef="let row" class="twes-row-select">
+              <ng-container *ngTemplateOutlet="rowBox; context: { $implicit: row }" />
+            </td>
+          </ng-container>
+        }
         @for (column of columns(); track column.id) {
           <ng-container [matColumnDef]="column.id">
             <th
@@ -484,6 +570,7 @@
           [attr.data-testid]="testIdOf(row)"
           [class.twes-row-new]="isArrived(row)"
           [class.twes-row-active]="isActive(row)"
+          [class.twes-row-selected]="isSelected(row)"
           [attr.aria-current]="isActive(row) ? 'true' : null"
         ></tr>
         <tr *matNoDataRow>
@@ -523,6 +610,17 @@
   }
 </div>
 
+<!-- A row's box, in the table's leading cell and at the head of a phone's card. -->
+<ng-template #rowBox let-row>
+  @let named = selectLabel(row);
+  <mat-checkbox
+    [checked]="isSelected(row)"
+    (change)="toggleRow(row)"
+    [aria-label]="named.key | translate: named.params"
+    [attr.data-testid]="'list-select-row-' + descriptor().rowId(row)"
+  />
+</ng-template>
+
 <!-- One declaration of a row's own controls, rendered in the table's trailing cell and again on a phone's
      card, so the two can never offer different things. -->
 <ng-template #rowControls let-row let-card="card">
@@ -540,6 +638,7 @@
         mat-icon-button
         type="button"
         [matMenuTriggerFor]="rowMenu"
+        [disabled]="selectionOn()"
         [appLabel]="'list.more_actions' | translate"
         [attr.data-testid]="'row-more-' + descriptor().rowId(row)"
       >
@@ -625,7 +724,14 @@
   @let testId = 'row-action-' + action.id + '-' + descriptor().rowId(row);
   @if (words) {
     @if (action.href; as href) {
-      <a mat-button [href]="href(row)" target="_blank" rel="noopener" [attr.data-testid]="testId">
+      <a
+        mat-button
+        [href]="href(row)"
+        target="_blank"
+        rel="noopener"
+        [disabled]="selectionOn()"
+        [attr.data-testid]="testId"
+      >
         <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
         {{ label }}
       </a>
@@ -634,6 +740,7 @@
         mat-button
         [routerLink]="link(row)"
         [queryParams]="action.linkQuery?.(row) ?? null"
+        [disabled]="selectionOn()"
         [attr.data-testid]="testId"
       >
         <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
@@ -644,7 +751,7 @@
         mat-button
         type="button"
         (click)="runAction(action, row)"
-        [disabled]="action.disabled?.(row) ?? false"
+        [disabled]="selectionOn() || (action.disabled?.(row) ?? false)"
         [attr.data-testid]="testId"
       >
         <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
@@ -658,6 +765,7 @@
       target="_blank"
       rel="noopener"
       [appLabel]="label"
+      [disabled]="selectionOn()"
       [attr.data-testid]="testId"
     >
       <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
@@ -668,6 +776,7 @@
       [routerLink]="link(row)"
       [queryParams]="action.linkQuery?.(row) ?? null"
       [appLabel]="label"
+      [disabled]="selectionOn()"
       [attr.data-testid]="testId"
     >
       <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
@@ -677,7 +786,7 @@
       mat-icon-button
       type="button"
       (click)="runAction(action, row)"
-      [disabled]="action.disabled?.(row) ?? false"
+      [disabled]="selectionOn() || (action.disabled?.(row) ?? false)"
       [appLabel]="label"
       [attr.data-testid]="testId"
     >

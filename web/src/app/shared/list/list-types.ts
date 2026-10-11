@@ -111,10 +111,26 @@ export interface ListDescriptor<Row> {
   linkColumn?: string;
   /** The row's own actions; the trailing column renders them. */
   actions?: RowAction<Row>[];
+  /** Whether a person may select rows, the page at most; the screen holds what is selected as ids. */
+  selection?: ListSelection<Row>;
   /** Intervals of days or amounts, offered in the « Filtres » panel beside the pickers. */
   ranges?: ListRangeFilter[];
   /** Records picked by searching, offered in the « Filtres » panel. */
   picks?: ListPickFilter[];
+}
+
+/** How a list that selects rows says what is selected. */
+export interface ListSelection<Row> {
+  /**
+   * A translation key taking `count`, the record's own noun inside it: a selection of invoices and one of products
+   * agree differently in French (« 2 factures sélectionnées », « 2 produits sélectionnés »), and none can be « (s) ».
+   */
+  countKey: string;
+  /**
+   * What a row's box is named, where the column that names the row can be empty: a draft has no number yet. Without
+   * it the box reads « Sélectionner » and that column's value.
+   */
+  labelOf?: (row: Row) => { key: string; params: Record<string, string> } | null;
 }
 
 /** What a list asks a screen for, to let a person pick records by searching and to name the ones an address holds. */

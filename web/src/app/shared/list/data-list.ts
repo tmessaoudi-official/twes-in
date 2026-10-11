@@ -9,6 +9,7 @@ import {
 } from '@angular/cdk/drag-drop';
 import { NgTemplateOutlet } from '@angular/common';
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -19,8 +20,10 @@ import {
   effect,
   ElementRef,
   inject,
+  Injector,
   input,
   linkedSignal,
+  model,
   type OnInit,
   output,
   signal,
@@ -29,6 +32,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -97,6 +101,13 @@ export class DataListCell {
 }
 
 const ACTIONS_COLUMN = '__actions';
+const SELECT_COLUMN = '__select';
+/** The box's own cell: Material's 40 px target and a little room either side. */
+const SELECT_WIDTH = 56;
+/** How long a finger rests on a card before it selects, as a phone's own long press does. */
+const LONG_PRESS_MS = 500;
+/** How far a finger may move and still be pressing: further, it is scrolling. */
+const LONG_PRESS_SLOP = 10;
 /** The Select's value for « all » of a facet, which no option value is. */
 const ANY_FACET = '*';
 const RESIZE_STEP = 16;
@@ -153,12 +164,15 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
     MatInputModule,
     MatIconModule,
     MatButtonModule,
+    MatCheckboxModule,
     MatDividerModule,
     MatMenuModule,
     RouterLink,
     TranslatePipe,
   ],
   templateUrl: './data-list.html',
+  // Escape anywhere inside the list lets its selection go.
+  host: { '(keydown)': 'onListKey($event)' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DataList<Row> implements OnInit {
@@ -170,6 +184,8 @@ export class DataList<Row> implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly translate = inject(TranslateService);
   private readonly format = inject(FormatFacade);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   readonly descriptor = input.required<ListDescriptor<Row>>();
   readonly rows = input.required<readonly Row[]>();
@@ -194,6 +210,8 @@ export class DataList<Row> implements OnInit {
   readonly activeRowId = input<string | null>(null);
   /** What a list the API pages wants shown: emitted on opening and on every change a person makes. */
   readonly queryChange = output<ListQuery>();
+  /** The rows a person selected, by id: rows are read again on every live change, ids stay the same. */
+  readonly selected = model<readonly string[]>([]);
 
   private readonly cells = contentChildren(DataListCell);
   private readonly windowClass = inject(WINDOW_CLASS);
@@ -221,6 +239,13 @@ export class DataList<Row> implements OnInit {
   protected readonly chooserOpen = signal(false);
   private readonly liveWidth = signal<{ id: string; width: number } | null>(null);
   private readonly tableBox = viewChild<ElementRef<HTMLElement>>('tableBox');
+  private readonly cardList = viewChild<ElementRef<HTMLElement>>('cardList');
+  private readonly toolbar = viewChild<ElementRef<HTMLElement>>('toolbar');
+  /**
+   * The toolbar's height as last drawn: on a wide window the bar standing in its place keeps it, so the rows stay under
+   * the pointer between one box and the next. Null before it is measured, and where there is no layout.
+   */
+  protected readonly toolbarHeight = signal<number | null>(null);
   /** How wide the table's card is, once measured; null before, and where there is no layout. */
   private readonly boxWidth = signal<number | null>(null);
   /** Whether columns sit past the card's right edge, under the pinned actions: a shadow then says so. */
@@ -279,13 +304,46 @@ export class DataList<Row> implements OnInit {
       return false;
     }
     const card = this.boxWidth();
-    return card === null || this.declaredColumns() + this.iconActionsWidth() + ACTION_WORD <= card;
+    return (
+      card === null ||
+      this.selectWidth() + this.declaredColumns() + this.iconActionsWidth() + ACTION_WORD <= card
+    );
   });
   protected readonly labelOn = labelOn;
   protected readonly isNext = (action: RowAction<Row>, row: Row): boolean =>
     action.next?.(row) === true;
   /** Whether the row has a trailing column at all: a list that declares no action does not pay for one. */
   protected readonly hasRowControls = computed(() => (this.descriptor().actions ?? []).length > 0);
+
+  /** Whether rows can be selected on this list at all. */
+  protected readonly selectable = computed(() => this.descriptor().selection !== undefined);
+  /** A phone selects once « Sélectionner » is pressed or a card held: its cards carry no box before. */
+  protected readonly selecting = signal(false);
+  private readonly selectedIds = computed(() => new Set(this.selected()));
+  /** Selecting: the bar stands where the toolbar was, and the rows' own actions wait. */
+  protected readonly selectionOn = computed(
+    () => this.selectable() && (this.selected().length > 0 || this.selecting()),
+  );
+  /** A table always leads with the boxes; a card only while selecting. */
+  protected readonly showBoxes = computed(
+    () => this.selectable() && (!this.asCards() || this.selectionOn()),
+  );
+  private readonly pageIds = computed(() => this.page().rows.map(this.descriptor().rowId));
+  /** The header box: ticked when every row of the page is, half-ticked when some are. */
+  protected readonly pageTicked = computed(() => {
+    const ids = this.pageIds();
+    const chosen = this.selectedIds();
+    const count = ids.filter((id) => chosen.has(id)).length;
+    return { all: ids.length > 0 && count === ids.length, some: count > 0 && count < ids.length };
+  });
+  /** The table's leading cell, on a list that selects. */
+  private readonly selectWidth = computed(() =>
+    this.selectable() && !this.asCards() ? SELECT_WIDTH : 0,
+  );
+  private pressTimer: ReturnType<typeof setTimeout> | null = null;
+  private pressAt: { x: number; y: number } | null = null;
+  /** A long press selected: the click its release makes must not open the record. */
+  private pressSelected = false;
 
   /**
    * Which column carries the link that opens the record: the one the list named, else the first that cannot be
@@ -338,6 +396,7 @@ export class DataList<Row> implements OnInit {
   }
 
   protected readonly columnIds = computed(() => [
+    ...(this.selectWidth() > 0 ? [SELECT_COLUMN] : []),
     ...this.columns().map((column) => column.id),
     ...(this.hasRowControls() ? [ACTIONS_COLUMN] : []),
   ]);
@@ -459,6 +518,8 @@ export class DataList<Row> implements OnInit {
     return this.empty() ? 'empty' : 'no-match';
   });
   protected readonly actionsColumn = ACTIONS_COLUMN;
+  protected readonly selectColumn = SELECT_COLUMN;
+  protected readonly selectWidthPx = SELECT_WIDTH;
   /** As wide as the most a row can hold as icons: its buttons, and « ⋮ » when anything can fold into it. */
   private readonly iconActionsWidth = computed(() => {
     const actions = this.descriptor().actions ?? [];
@@ -494,13 +555,14 @@ export class DataList<Row> implements OnInit {
     return fitShares(
       declared,
       free,
-      (this.hasRowControls() ? this.actionsWidth() : 0) + kept,
+      (this.hasRowControls() ? this.actionsWidth() : 0) + this.selectWidth() + kept,
       this.boxWidth(),
     );
   });
   /** At least the sum of the columns, so a narrow screen scrolls the list's own container and never the page. */
   protected readonly tableWidth = computed(
     () =>
+      this.selectWidth() +
       this.columns().reduce((sum, column) => sum + this.widthOf(column), 0) +
       (this.hasRowControls() ? this.actionsWidth() : 0),
   );
@@ -523,6 +585,31 @@ export class DataList<Row> implements OnInit {
     this.destroyRef.onDestroy(() => {
       this.stopResize?.();
       if (this.searchTimer !== null) clearTimeout(this.searchTimer);
+      this.cancelPress();
+    });
+    effect((onCleanup) => {
+      const bar = this.toolbar()?.nativeElement;
+      if (bar === undefined || typeof ResizeObserver === 'undefined') return;
+      const observer = new ResizeObserver(() => this.toolbarHeight.set(bar.offsetHeight));
+      observer.observe(bar);
+      onCleanup(() => observer.disconnect());
+    });
+    effect((onCleanup) => {
+      const cards = this.cardList()?.nativeElement;
+      if (cards === undefined) return;
+      cards.addEventListener('click', this.swallowPressClick, true);
+      onCleanup(() => cards.removeEventListener('click', this.swallowPressClick, true));
+    });
+    // A selection is of the page shown: a row that left it, to another page, under other words or filters, leaves the
+    // selection, so nothing selected is out of sight when an action runs on it. Only once the page has been read: while
+    // it is read the rows may be the last answer's, and a selection must survive a live reload of the same rows.
+    effect(() => {
+      const ids = new Set(this.pageIds());
+      if (this.loading()) return;
+      untracked(() => {
+        const kept = this.selected().filter((id) => ids.has(id));
+        if (kept.length !== this.selected().length) this.selected.set(kept);
+      });
     });
     // The card's width moves with the window, the menu folding and the panel beside the list; the table's with the
     // columns shown. jsdom has no ResizeObserver, and no layout to fit either.
@@ -719,6 +806,107 @@ export class DataList<Row> implements OnInit {
   protected isArrived(row: Row): boolean {
     return this.arrived().has(this.descriptor().rowId(row));
   }
+
+  protected isSelected(row: Row): boolean {
+    return this.selectedIds().has(this.descriptor().rowId(row));
+  }
+
+  /** What a row's box is named: the record it selects, so a reader hears which of twenty-five boxes this is. */
+  protected selectLabel(row: Row): { key: string; params: Record<string, string> } {
+    const own = this.descriptor().selection?.labelOf?.(row);
+    if (own) return own;
+    const value = this.titleColumn()?.value(row);
+    return { key: 'list.select_row', params: { name: value === null ? '' : String(value ?? '') } };
+  }
+
+  protected toggleRow(row: Row): void {
+    const id = this.descriptor().rowId(row);
+    this.selected.update((ids) =>
+      ids.includes(id) ? ids.filter((each) => each !== id) : [...ids, id],
+    );
+  }
+
+  /** The header box: the whole page when any of it is left, else none of it. */
+  protected togglePage(): void {
+    const ids = this.pageIds();
+    this.selected.set(this.pageTicked().all ? [] : ids);
+  }
+
+  protected startSelecting(): void {
+    this.selecting.set(true);
+  }
+
+  /** « Tout désélectionner » or Escape: the bar goes, so the focus goes where selecting starts again. */
+  protected clearSelection(): void {
+    this.dropSelection();
+    afterNextRender(
+      () => {
+        const target = this.asCards()
+          ? this.host.nativeElement.querySelector<HTMLElement>('[data-testid="list-select-mode"]')
+          : this.host.nativeElement.querySelector<HTMLElement>(
+              '[data-testid="list-select-page"] input',
+            );
+        target?.focus();
+      },
+      { injector: this.injector },
+    );
+  }
+
+  private dropSelection(): void {
+    this.selecting.set(false);
+    if (this.selected().length > 0) this.selected.set([]);
+  }
+
+  /** Escape lets a selection go; taken, it goes no further, so the sheet or the sidebar behind keeps itself. */
+  protected onListKey(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || !this.selectionOn()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.clearSelection();
+  }
+
+  /** A finger resting on a card selects it, as a phone's own long press does; a mouse never does. */
+  protected pressStart(event: PointerEvent, row: Row): void {
+    if (!this.selectable() || event.pointerType === 'mouse') return;
+    this.cancelPress();
+    this.pressSelected = false;
+    this.pressAt = { x: event.clientX, y: event.clientY };
+    this.pressTimer = setTimeout(() => {
+      this.pressTimer = null;
+      this.pressSelected = true;
+      this.selecting.set(true);
+      if (!this.isSelected(row)) this.toggleRow(row);
+    }, LONG_PRESS_MS);
+  }
+
+  protected pressMove(event: PointerEvent): void {
+    const at = this.pressAt;
+    if (at === null) return;
+    if (Math.hypot(event.clientX - at.x, event.clientY - at.y) > LONG_PRESS_SLOP)
+      this.cancelPress();
+  }
+
+  protected cancelPress(): void {
+    if (this.pressTimer !== null) clearTimeout(this.pressTimer);
+    this.pressTimer = null;
+    this.pressAt = null;
+  }
+
+  /** The browser's own menu for a link would open over the cards at the moment a long press selects. */
+  protected onCardMenu(event: Event): void {
+    if (this.pressTimer !== null || this.pressSelected) event.preventDefault();
+  }
+
+  /**
+   * The release of a long press clicks the card's link: caught before the link sees it, so selecting never opens the
+   * record. Listened in the capture phase, ahead of the link's own handler.
+   */
+  protected readonly swallowPressClick = (event: Event): void => {
+    if (!this.pressSelected) return;
+    this.pressSelected = false;
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   /** Shows the page holding the first row that arrived out of sight, clearing the filters if they hide it. */
   protected showArrivals(): void {

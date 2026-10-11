@@ -44,7 +44,9 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # `erasure-banner` is that an erasure of the company's data can still be undone: true on every page until it is undone or
 # its 24 hours end, whoever made it and whatever the owner does meanwhile; that it was made or undone is a toast.
 # `erasure-waiting` is the same state seen from « Effacer des données », said where the next erasure would be chosen.
-page_states=' list-loading phone-photo-sending stop-mail-done new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed erasure-banner erasure-waiting '
+# `list-selection-count` is how many rows a list holds selected, changing with every box ticked: a state of the page that
+# the next action will act on, never the outcome of one.
+page_states=' list-loading phone-photo-sending stop-mail-done new-version login-expired signup-sent forgot-sent reset-done activity-slow command-empty record-changed record-changes stock-drawing-unsaved stock-repeat-summary stock-map-not-saved subscription-waiting product-scan-loading product-scan-found product-scan-none phone-loading phone-ended phone-pair-opening phone-pair-status placement-status documents-preview-loading documents-preview-message stock-map-found stock-map-note stock-volume-missing stock-volume-failed erasure-banner erasure-waiting list-selection-count '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {
