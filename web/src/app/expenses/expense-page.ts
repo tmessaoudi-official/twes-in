@@ -433,14 +433,17 @@ export class ExpensePage {
     }
   }
 
-  /** A refusal, such as the expense having been recorded or filled up since, is said on the page's error line. */
+  /** A refusal, such as the expense having been recorded or filled up since, is said as a toast: the action was one. */
   private async restore(
     companyId: string,
     id: string,
     attachment: ExpenseAttachment,
   ): Promise<void> {
-    if (await this.facade.restoreAttachment(companyId, id, attachment.id)) {
+    const refused = await this.facade.restoreAttachment(companyId, id, attachment.id);
+    if (refused === null) {
       this.feedback.success('expenses.attachments.restored', { name: attachment.name });
+    } else {
+      this.feedback.failure(`expenses.errors.${refused}`);
     }
   }
 }

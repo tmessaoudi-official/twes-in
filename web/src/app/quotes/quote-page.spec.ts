@@ -259,7 +259,7 @@ describe('QuotePage', () => {
       ],
     });
     facade.detach.mockReset().mockResolvedValue(true);
-    facade.restoreAttachment.mockReset().mockResolvedValue(true);
+    facade.restoreAttachment.mockReset().mockResolvedValue(null);
     facade.pickCustomers.mockClear();
     TestBed.configureTestingModule({
       imports: [QuotePage],

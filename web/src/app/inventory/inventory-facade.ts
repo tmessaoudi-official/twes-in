@@ -280,12 +280,25 @@ export class InventoryFacade {
     );
   }
 
-  /** A file taken off put back where it was: what « Annuler » on its toast does. */
-  async restoreToLoss(companyId: string, movementId: string, fileId: string): Promise<boolean> {
-    return this.write(
-      () => this.api.restoreToLoss(companyId, movementId, fileId),
+  /**
+   * A file taken off put back where it was: what « Annuler » on its toast does. The toast outlives its dialog, so a
+   * refusal is returned for the toast to say rather than written on whatever page is open now. Null once back.
+   */
+  async restoreToLoss(
+    companyId: string,
+    movementId: string,
+    fileId: string,
+  ): Promise<InventoryError | null> {
+    try {
+      await this.api.restoreToLoss(companyId, movementId, fileId);
+    } catch (error) {
+      return codeOf(error);
+    }
+    await this.write(
+      async () => undefined,
       () => this.reloadMovements(companyId),
     );
+    return null;
   }
 
   lossFileUrl(companyId: string, movementId: string, fileId: string): string {

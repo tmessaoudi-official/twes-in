@@ -65,6 +65,7 @@ describe('ExpensesFacade', () => {
     attachments: vi.fn(),
     attach: vi.fn(),
     detach: vi.fn(),
+    restoreAttachment: vi.fn(),
     attachmentUrl: vi.fn(),
     categories: vi.fn(),
     createCategory: vi.fn(),
@@ -188,6 +189,31 @@ describe('ExpensesFacade', () => {
     expect(await facade.detach('c1', 'e1', 'a1')).toBe(false);
     expect(facade.error()).toBe('not_draft');
     expect(facade.busy()).toBe(false);
+  });
+
+  it('puts a file back, reading the expense again only while it is still the one open', async () => {
+    api.expense.mockResolvedValue(draft);
+    api.attachments.mockResolvedValue([receipt]);
+    api.options.mockResolvedValue(options);
+    await facade.loadExpense('c1', 'e1');
+    api.expense.mockClear();
+    api.attachments.mockClear();
+    api.restoreAttachment.mockResolvedValue(undefined);
+
+    expect(await facade.restoreAttachment('c1', 'e1', 'a1')).toBeNull();
+    expect(api.restoreAttachment).toHaveBeenCalledWith('c1', 'e1', 'a1');
+    expect(api.attachments).toHaveBeenCalledWith('c1', 'e1');
+
+    // The toast outlived its page: another expense is open now, and it keeps what it shows.
+    api.attachments.mockClear();
+    expect(await facade.restoreAttachment('c1', 'e7', 'a9')).toBeNull();
+    expect(api.attachments).not.toHaveBeenCalled();
+    expect([facade.expense(), facade.attachments()]).toEqual([draft, [receipt]]);
+
+    // A refusal is the toast's to say, never written on the page open now.
+    api.restoreAttachment.mockRejectedValue(new ExpensesRefused('files_full'));
+    expect(await facade.restoreAttachment('c1', 'e1', 'a1')).toBe('files_full');
+    expect(facade.error()).toBeNull();
   });
 
   it('keeps the expense the API answered after each step, and the reason when it refused', async () => {

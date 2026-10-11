@@ -69,6 +69,7 @@ describe('QuotesFacade', () => {
     invoice: vi.fn(),
     attach: vi.fn(),
     detach: vi.fn(),
+    restoreAttachment: vi.fn(),
     pickCustomers: vi.fn(),
     pickProducts: vi.fn(),
   };
@@ -91,6 +92,27 @@ describe('QuotesFacade', () => {
     await facade.loadQuote('c1', 'q1');
     expect(api.attachments).toHaveBeenCalledWith('c1', 'q1');
     expect(facade.quote()).toEqual(sent);
+  });
+
+  it('puts a file back, reading the quote again only while it is still the one open', async () => {
+    await facade.loadQuote('c1', 'q1');
+    api.attachments.mockClear();
+    api.restoreAttachment.mockResolvedValue(undefined);
+
+    expect(await facade.restoreAttachment('c1', 'q1', 'a1')).toBeNull();
+    expect(api.restoreAttachment).toHaveBeenCalledWith('c1', 'q1', 'a1');
+    expect(api.attachments).toHaveBeenCalledWith('c1', 'q1');
+
+    // The toast outlived its page: another quote is open now, and it keeps what it shows.
+    api.attachments.mockClear();
+    expect(await facade.restoreAttachment('c1', 'q7', 'a9')).toBeNull();
+    expect(api.attachments).not.toHaveBeenCalled();
+    expect(facade.quote()).toEqual(sent);
+
+    // A refusal is the toast's to say, never written on the page open now.
+    api.restoreAttachment.mockRejectedValue(new QuotesRefused('files_full'));
+    expect(await facade.restoreAttachment('c1', 'q1', 'a1')).toBe('files_full');
+    expect(facade.error()).toBeNull();
   });
 
   it('saves what is shown before marking it sent, so a quote is numbered with what was seen', async () => {

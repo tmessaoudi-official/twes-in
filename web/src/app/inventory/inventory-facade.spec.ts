@@ -99,6 +99,7 @@ describe('InventoryFacade', () => {
     pickProducts: vi.fn(),
     lossFiles: vi.fn(),
     attachToLoss: vi.fn(),
+    restoreToLoss: vi.fn(),
   };
   let facade: InventoryFacade;
 
@@ -280,6 +281,19 @@ describe('InventoryFacade', () => {
     api.lossFiles.mockRejectedValue(new InventoryRefused('not_found'));
     expect(await facade.lossFiles('c1', 'm1')).toBeNull();
     expect(facade.error()).toBe('not_found');
+  });
+
+  it('puts a file back on its loss and reads the movements again; a refusal is returned, not written', async () => {
+    await facade.loadMovements('c1', MOVEMENTS_SEARCH);
+    api.restoreToLoss.mockResolvedValue(undefined);
+
+    expect(await facade.restoreToLoss('c1', 'm3', 'f1')).toBeNull();
+    expect(api.restoreToLoss).toHaveBeenCalledWith('c1', 'm3', 'f1');
+    expect(api.movements).toHaveBeenCalledTimes(2);
+
+    api.restoreToLoss.mockRejectedValue(new InventoryRefused('files_full'));
+    expect(await facade.restoreToLoss('c1', 'm3', 'f1')).toBe('files_full');
+    expect(facade.error()).toBeNull();
   });
 
   it('records a receipt, then reads the page it was recorded on again', async () => {
