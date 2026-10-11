@@ -4,7 +4,7 @@
 
 ## Compliance status
 
-No compliance audit has been carried out yet: the compliance status will be established by that audit. Every change to the service is checked by automated accessibility tests against WCAG 2.1, level AA, which do not replace an audit.
+This service is not compliant with the RGAA: no compliance audit has been carried out yet, and only an audit can establish another status. Every change to the service is checked by automated accessibility tests against WCAG 2.1, level AA, which do not replace an audit.
 
 ## Content that is not accessible
 
