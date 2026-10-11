@@ -1302,6 +1302,15 @@ describe('DataList', () => {
         expect(el('list-select-row-11')).not.toBeNull();
       });
 
+      it('lets the selection go when the order changes, though the rows selected are still on the page', async () => {
+        await tick('list-select-row-1');
+        // Row 1 holds the lowest balance: sorted by balance it stays first, still on screen.
+        (el('list-header-balance') as HTMLElement).click();
+        await stable();
+        expect(el('list-select-row-1')).not.toBeNull();
+        expect(selected()).toEqual([]);
+      });
+
       it('keeps the selection through a reload that answers the same rows, and drops a row that left once it has', async () => {
         await tick('list-select-row-2');
         await tick('list-select-row-3');
