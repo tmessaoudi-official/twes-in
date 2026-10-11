@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
@@ -11,6 +12,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../a11y/label';
 import { runAction } from '../actions/run-action';
 import type { PlannedAction } from '../actions/planned-actions';
+import { plannedRoom } from '../actions/planned-room';
 import { menuOrder } from '../actions/record-action';
 import { kindOf, type ScreenAction } from '../actions/screen-action';
 import { Session } from '../session/session';
@@ -30,6 +32,7 @@ import { WINDOW_CLASS } from './window-class';
     MatDividerModule,
     MatIconModule,
     MatMenuModule,
+    NgTemplateOutlet,
     RouterLink,
     TranslatePipe,
     Label,
@@ -46,9 +49,9 @@ export class DocumentActions {
 
   readonly actions = input.required<readonly ScreenAction[]>();
   /**
-   * What the screen will offer once a planned module ships (row 150): listed last in the « ⋮ » menu under its own
-   * heading, each marked « Bientôt ». In the bar, first, they pushed the working actions onto a second row on a
-   * desktop and drew a second « ⋯ » on a phone (audit V-3, V-5, V-29).
+   * What the screen will offer once a planned module ships, each marked « Bientôt »: dashed in the bar, after the
+   * working actions, where the header has room for them; otherwise, and always on a phone, last in « ⋮ » under their
+   * own heading. Drawn first and whatever the room, they once pushed the working actions onto a second row.
    */
   readonly planned = input<readonly PlannedAction[]>([]);
   /** Named for a screen reader, since several bars can exist on one page in principle. */
@@ -82,6 +85,23 @@ export class DocumentActions {
       ...drawn.filter((action) => action.primary === true),
     ];
   });
+  /** The bar's working buttons before « ⋮ »; the next step comes after it, the one filled button, last. */
+  protected readonly beside = computed(() =>
+    this.visible().filter((action) => action.primary !== true),
+  );
+  protected readonly nextSteps = computed(() =>
+    this.visible().filter((action) => action.primary === true),
+  );
+  /** Drawn in the bar on a wide window: shown where they fit, else kept out of the flow and measured. */
+  protected readonly barComing = computed(() => (this.compact() ? [] : this.coming()));
+  protected readonly plannedFit = plannedRoom(
+    () => this.barComing(),
+    () => this.menu().length > 0,
+  );
+  /** Listed in « ⋮ » where the bar does not show them. */
+  protected readonly menuComing = computed(() =>
+    this.barComing().length > 0 && this.plannedFit() ? [] : this.coming(),
+  );
   /** The frequent ones a phone has no room for, first in the menu. */
   private readonly folded = computed(() =>
     this.compact() ? this.frequent().filter((action) => !onPhoneBar(action)) : [],

@@ -922,12 +922,24 @@ body {
   white-space: nowrap;
 }
 
-// A screen's action not built yet (docs/SPEC.md § 7, 2026-09-26 10:08): dashed and muted, never filled or tonal.
+// A screen's action not built yet: dashed and muted, never filled or tonal.
 // Two classes, so it outranks Material's own solid outline whatever order the sheets load in.
 .mat-mdc-outlined-button.twes-planned-action {
   border-style: dashed;
+  // Material colours the label through its own token, which outranks `color` on the button.
+  --mat-button-outlined-label-text-color: var(--mat-sys-on-surface-variant);
   color: var(--mat-sys-on-surface-variant);
   gap: 0.375rem;
+}
+
+// A bar's « Bientôt » button while the header has no room for it: out of the flow and unseen, its width still known.
+// Qualified by Material's own class, whose `position: relative` loads after this sheet and would win at one class.
+.mat-mdc-button-base.twes-planned-measure {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 // Folded, « Bientôt » is a hollow dot by the icon; its word stays for a screen reader.

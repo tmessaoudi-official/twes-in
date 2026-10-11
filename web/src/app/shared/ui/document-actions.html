@@ -5,73 +5,34 @@
   data-testid="document-actions"
   data-tour="document-actions"
 >
-  @for (action of visible(); track action.id) {
-    @if (action.href; as href) {
-      <a
-        mat-stroked-button
-        [href]="href"
-        target="_blank"
-        rel="noopener"
-        [attr.data-testid]="'document-action-' + action.id"
-      >
-        @if (action.icon) {
-          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-        }
-        {{ action.label | translate: action.labelParams }}
-      </a>
-    } @else if (action.link; as link) {
-      <a mat-stroked-button [routerLink]="link" [attr.data-testid]="'document-action-' + action.id">
-        @if (action.icon) {
-          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-        }
-        {{ action.label | translate: action.labelParams }}
-      </a>
-    } @else if (compact() && action.keep && action.icon && nextStepShown()) {
-      <button
-        mat-icon-button
-        type="button"
-        [disabled]="action.disabled ?? false"
-        (click)="run(action)"
-        [appLabel]="action.label | translate: action.labelParams"
-        [attr.data-testid]="'document-action-' + action.id"
-      >
-        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-      </button>
-    } @else if (action.primary) {
-      <button
-        mat-flat-button
-        type="button"
-        [disabled]="action.disabled ?? false"
-        (click)="run(action)"
-        [attr.data-testid]="'document-action-' + action.id"
-      >
-        @if (action.icon) {
-          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-        }
-        {{ action.label | translate: action.labelParams }}
-      </button>
-    } @else {
-      <button
-        mat-stroked-button
-        type="button"
-        [disabled]="action.disabled ?? false"
-        (click)="run(action)"
-        [attr.data-testid]="'document-action-' + action.id"
-      >
-        @if (action.icon) {
-          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-        }
-        {{ action.label | translate: action.labelParams }}
-      </button>
-    }
+  @for (action of beside(); track action.id) {
+    <ng-container *ngTemplateOutlet="barAction; context: { $implicit: action }" />
   }
-  @if (menu().length > 0 || coming().length > 0) {
+  @for (action of barComing(); track action.module) {
+    <!-- Kept out of the flow until the header has room for it, so its width is known before it is shown. -->
+    <a
+      mat-stroked-button
+      class="twes-planned-action"
+      [class.twes-planned-measure]="!plannedFit()"
+      [attr.aria-hidden]="plannedFit() ? null : 'true'"
+      [tabIndex]="plannedFit() ? 0 : -1"
+      [routerLink]="['/coming', action.module]"
+      data-planned
+      [attr.data-testid]="'planned-action-' + action.module"
+    >
+      <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+      {{ action.label | translate }}
+      <span class="twes-soon" data-testid="soon">{{ 'shell.soon' | translate }}</span>
+    </a>
+  }
+  @if (menu().length > 0 || menuComing().length > 0) {
     <button
       mat-icon-button
       type="button"
       [matMenuTriggerFor]="moreMenu"
       [appLabel]="'document.more_actions' | translate"
       data-testid="document-more"
+      data-bar-more
     >
       <mat-icon aria-hidden="true">more_vert</mat-icon>
     </button>
@@ -131,7 +92,7 @@
           </button>
         }
       }
-      @if (coming().length > 0) {
+      @if (menuComing().length > 0) {
         @if (menu().length > 0) {
           <mat-divider />
         }
@@ -141,7 +102,7 @@
         >
           {{ 'actions.coming' | translate }}
         </div>
-        @for (action of coming(); track action.module) {
+        @for (action of menuComing(); track action.module) {
           <button
             mat-menu-item
             type="button"
@@ -158,4 +119,68 @@
       }
     </mat-menu>
   }
+  @for (action of nextSteps(); track action.id) {
+    <ng-container *ngTemplateOutlet="barAction; context: { $implicit: action }" />
+  }
 </div>
+
+<ng-template #barAction let-action>
+  @if (action.href; as href) {
+    <a
+      mat-stroked-button
+      [href]="href"
+      target="_blank"
+      rel="noopener"
+      [attr.data-testid]="'document-action-' + action.id"
+    >
+      @if (action.icon) {
+        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+      }
+      {{ action.label | translate: action.labelParams }}
+    </a>
+  } @else if (action.link; as link) {
+    <a mat-stroked-button [routerLink]="link" [attr.data-testid]="'document-action-' + action.id">
+      @if (action.icon) {
+        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+      }
+      {{ action.label | translate: action.labelParams }}
+    </a>
+  } @else if (compact() && action.keep && action.icon && nextStepShown()) {
+    <button
+      mat-icon-button
+      type="button"
+      [disabled]="action.disabled ?? false"
+      (click)="run(action)"
+      [appLabel]="action.label | translate: action.labelParams"
+      [attr.data-testid]="'document-action-' + action.id"
+    >
+      <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+    </button>
+  } @else if (action.primary) {
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="action.disabled ?? false"
+      (click)="run(action)"
+      [attr.data-testid]="'document-action-' + action.id"
+    >
+      @if (action.icon) {
+        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+      }
+      {{ action.label | translate: action.labelParams }}
+    </button>
+  } @else {
+    <button
+      mat-stroked-button
+      type="button"
+      [disabled]="action.disabled ?? false"
+      (click)="run(action)"
+      [attr.data-testid]="'document-action-' + action.id"
+    >
+      @if (action.icon) {
+        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+      }
+      {{ action.label | translate: action.labelParams }}
+    </button>
+  }
+</ng-template>
