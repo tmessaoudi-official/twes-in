@@ -94,6 +94,18 @@ class Host {
   readonly dangerous = signal(false);
 }
 
+/** The bar where a record page draws it: beside a title, in the document header it measures. */
+@Component({
+  imports: [RecordBar],
+  template: `<div class="twes-document-header">
+    <h1>FRN-001 · A vendor with a long name</h1>
+    <div><app-record-bar [changes]="0" [actions]="[]" [planned]="planned()" /></div>
+  </div>`,
+})
+class HeaderHost {
+  readonly planned = signal<PlannedAction[]>([]);
+}
+
 describe('RecordBar', () => {
   let fixture: ComponentFixture<Host>;
   const width = signal<WindowClass>('expanded');
@@ -266,5 +278,74 @@ describe('RecordBar', () => {
     showComing.set(false);
     await settle();
     expect(q('record-more')).toBeNull();
+  });
+
+  describe('in a header it can measure', () => {
+    const realObserver = globalThis.ResizeObserver;
+    const realWidth = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth')!;
+    const realRect = Element.prototype.getBoundingClientRect;
+    const measures: (() => void)[] = [];
+    let measured: ComponentFixture<HeaderHost>;
+
+    beforeEach(() => {
+      // A vendor with a long name, as a browser drew it: a 960 px header, a 595 px title, 332.3 px of working
+      // buttons, the 345.3 px « Bientôt » button and a 40 px « ⋮ », each after an 8 px gap. The row is as wide as
+      // what is drawn in it now, so showing the planned button and emptying « ⋮ » both move it.
+      measures.length = 0;
+      globalThis.ResizeObserver = class {
+        constructor(callback: () => void) {
+          measures.push(callback);
+        }
+        observe(): void {
+          // Measured again when a case says the layout moved.
+        }
+        disconnect(): void {
+          // Nothing to let go of.
+        }
+        unobserve(): void {
+          // Nothing to let go of.
+        }
+      } as unknown as typeof ResizeObserver;
+      Object.defineProperty(Element.prototype, 'clientWidth', {
+        configurable: true,
+        get(this: Element) {
+          return this.classList.contains('twes-document-header') ? 960 : 0;
+        },
+      });
+      Element.prototype.getBoundingClientRect = function (this: Element) {
+        if (this.tagName === 'H1') return { width: 595 } as DOMRect;
+        if (this.hasAttribute('data-planned')) return { width: 345.3 } as DOMRect;
+        if (this.hasAttribute('data-bar-more')) return { width: 40 } as DOMRect;
+        const planned = this.querySelector('[data-planned]');
+        const shown = planned !== null && !planned.classList.contains('twes-planned-measure');
+        const more = this.querySelector('[data-testid="record-more"]') !== null;
+        return { width: 332.3 + (shown ? 353.3 : 0) + (more ? 48 : 0) } as DOMRect;
+      };
+    });
+
+    afterEach(() => {
+      globalThis.ResizeObserver = realObserver;
+      Object.defineProperty(Element.prototype, 'clientWidth', realWidth);
+      Element.prototype.getBoundingClientRect = realRect;
+    });
+
+    it('keeps the planned button shown once it is, though « ⋮ » leaves the row with it', async () => {
+      measured = TestBed.createComponent(HeaderHost);
+      measured.componentInstance.planned.set([quote]);
+      for (let pass = 0; pass < 4; pass++) {
+        measured.detectChanges();
+        await measured.whenStable();
+        measured.detectChanges();
+        // Each layout the bar draws resizes its row, and the row is watched: it is measured again.
+        measures.forEach((measure) => measure());
+      }
+      const planned = (measured.nativeElement as HTMLElement).querySelector(
+        '[data-testid="planned-action-quotes"]',
+      )!;
+      expect(planned.classList).not.toContain('twes-planned-measure');
+      expect(
+        (measured.nativeElement as HTMLElement).querySelector('[data-testid="record-more"]'),
+      ).toBeNull();
+    });
   });
 });
