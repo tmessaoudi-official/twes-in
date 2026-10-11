@@ -26,7 +26,8 @@ import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
 import { Label } from '../shared/a11y/label';
-import { DataList, DataListCell } from '../shared/list/data-list';
+import { DataList, DataListCell, DataListSelection } from '../shared/list/data-list';
+import { InvoiceBulk } from './invoice-bulk';
 import type {
   ListDescriptor,
   ListFacetCounts,
@@ -73,6 +74,8 @@ import {
     DayPipe,
     DataList,
     DataListCell,
+    DataListSelection,
+    InvoiceBulk,
     StatusBadge,
     InvoiceSheet,
     ListExport,
@@ -164,6 +167,9 @@ export class InvoicesPage implements OnInit {
   protected readonly newKey = computed(() => this.keys().new);
   protected readonly keyName = keyName;
   private readonly keys = inject(SettingsFacade).value(PRESENTATION.shortcuts);
+
+  /** The rows ticked on the page shown, by id: what the selection bar's actions act on. */
+  protected readonly selected = signal<readonly string[]>([]);
 
   /** What the list last asked the API for; the page is not read until the list has said what it wants. */
   private search: InvoiceSearch | null = null;

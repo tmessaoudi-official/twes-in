@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { readFileSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
-import { inACompany, signIn } from './session';
+import { inACompany, OPERATOR_PASSWORD, signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
 import { choose, expectFacetCount } from './select';
@@ -696,6 +697,32 @@ test('invoices are selected on their page, counted in a bar that stands for the 
 
     await page.getByTestId('list-select-page').locator('input').check();
     await expect(page.getByTestId('list-selection-count')).toHaveText('2 factures sélectionnées');
+
+    // The selection leaves as a file of just those rows: the API finds both, so it downloads without a question.
+    const download = page.waitForEvent('download');
+    await page.getByTestId('invoices-bulk-export').click();
+    await page.getByTestId('invoices-bulk-export-csv').click();
+    const stepUp = page.getByTestId('step-up-password');
+    const asked = await Promise.race([
+      download.then(() => false),
+      stepUp.waitFor({ state: 'visible' }).then(
+        () => true,
+        () => false,
+      ),
+    ]);
+    if (asked) {
+      await stepUp.fill(OPERATOR_PASSWORD);
+      await page.getByTestId('step-up-confirm').click();
+    }
+    const file = await download;
+    expect(file.suggestedFilename()).toBe('invoices.csv');
+    const lines = readFileSync(await file.path(), 'utf8')
+      .split('\n')
+      .filter((line) => line.trim() !== '');
+    expect(lines).toHaveLength(3);
+    await expect(toast(page)).toContainText('2 factures exportées');
+    await expect(page.getByTestId('invoice-bulk-skipped')).toHaveCount(0);
+    expect(await wcagViolations(page)).toEqual([]);
 
     await page.keyboard.press('Escape');
     await expect(bar).toHaveCount(0);

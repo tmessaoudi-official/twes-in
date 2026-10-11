@@ -40,6 +40,7 @@ final readonly class InvoiceSearch
      *                                                   document holds, so it is asked for as one and answered by the same
      *                                                   rule the screen shows (docs/SPEC.md § 7, 2026-09-16), OR'd with the
      *                                                   statuses.
+     * @param list<Uuid>                  $ids           the rows a person selected, for a file of just those; empty, any
      */
     public function __construct(
         public ?string $text = null,
@@ -52,18 +53,19 @@ final readonly class InvoiceSearch
         public ?DateRange $dueDate = null,
         public ?DecimalRange $totalGross = null,
         public ?DecimalRange $amountDue = null,
+        public array $ids = [],
     ) {
     }
 
     /** The same search with no status named, which is what a status chip's count is made under. */
     public function withoutStatus(): self
     {
-        return new self($this->text, [], $this->documentTypes, $this->customers, [], null, $this->issueDate, $this->dueDate, $this->totalGross, $this->amountDue);
+        return new self($this->text, [], $this->documentTypes, $this->customers, [], null, $this->issueDate, $this->dueDate, $this->totalGross, $this->amountDue, $this->ids);
     }
 
     /** The same search asking only for what is overdue on that day: what the overdue chip would list. */
     public function onlyOverdue(\DateTimeImmutable $today): self
     {
-        return new self($this->text, [], $this->documentTypes, $this->customers, [], $today, $this->issueDate, $this->dueDate, $this->totalGross, $this->amountDue);
+        return new self($this->text, [], $this->documentTypes, $this->customers, [], $today, $this->issueDate, $this->dueDate, $this->totalGross, $this->amountDue, $this->ids);
     }
 }

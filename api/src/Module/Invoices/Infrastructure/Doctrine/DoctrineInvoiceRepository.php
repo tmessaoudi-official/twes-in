@@ -171,6 +171,10 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             $query->andWhere('i.customer IN (:customerIds)')
                 ->setParameter('customerIds', array_map(static fn (Uuid $each): string => $each->toRfc4122(), $search->customers), ArrayParameterType::STRING);
         }
+        if ([] !== $search->ids) {
+            $query->andWhere('i.id IN (:ids)')
+                ->setParameter('ids', array_map(static fn (Uuid $each): string => $each->toRfc4122(), $search->ids), ArrayParameterType::STRING);
+        }
         Intervals::days($query, 'i.issueDate', 'issued', $search->issueDate);
         Intervals::days($query, 'i.dueDate', 'due', $search->dueDate);
         Intervals::sizes($query, 'i.totalGross', 'total', $search->totalGross);
@@ -207,6 +211,26 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         $invoice = $this->entityManager->find(Invoice::class, $id);
 
         return null !== $invoice && $invoice->getCompany()->getId()->equals($companyId) ? $invoice : null;
+    }
+
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array
+    {
+        if ([] === $ids) {
+            return [];
+        }
+
+        /** @var list<Invoice> $found */
+        $found = $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->where('i.company = :company')
+            ->andWhere('i.id IN (:ids)')
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('ids', array_map(static fn (Uuid $each): string => $each->toRfc4122(), $ids), ArrayParameterType::STRING)
+            ->getQuery()
+            ->getResult();
+
+        return $found;
     }
 
     public function latestOfCompany(Uuid $companyId): ?Invoice

@@ -232,6 +232,27 @@ export interface InvoiceSearch {
   order: { key: InvoiceSortKey; direction: 'asc' | 'desc' } | null;
 }
 
+/** What a person does at once to the invoices they selected on a list page. */
+export type BulkAction = 'export';
+
+/** Why a selected invoice stays out of a bulk action; the screen says it in words. */
+export type BulkSkipReason = 'not_found';
+
+/** One selected invoice and what a bulk action would do with it, as the API checked it before it runs. */
+export interface BulkCheckRow {
+  id: string;
+  number: string | null;
+  customerName: string | null;
+  included: boolean;
+  reason: BulkSkipReason | null;
+}
+
+export interface BulkCheck {
+  rows: readonly BulkCheckRow[];
+  included: number;
+  skipped: number;
+}
+
 export interface InvoiceRow {
   id: string;
   type: InvoiceType;

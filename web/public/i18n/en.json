@@ -1346,6 +1346,18 @@
   "invoices": {
     "selected": "{count, plural, =0 {No invoice selected} one {{{count}} invoice selected} other {{{count}} invoices selected}}",
     "select_draft": "Select the draft for {{customer}}",
+    "bulk": {
+      "exported": "{count, plural, one {{{count}} invoice exported} other {{{count}} invoices exported}}",
+      "check_failed": "The selection could not be checked. Try again.",
+      "skipped_title": "{count, plural, one {One selected invoice is left out} other {{{count}} selected invoices are left out}}",
+      "unknown": "Unknown invoice",
+      "reasons": {
+        "not_found": "Not found: deleted meanwhile, or no longer reachable"
+      },
+      "cancel": "Cancel",
+      "close": "Close",
+      "export_rest": "{count, plural, one {Export the other one} other {Export the other {{count}}}}"
+    },
     "title": "Invoices",
     "add": "New invoice",
     "none": "No invoices yet.",

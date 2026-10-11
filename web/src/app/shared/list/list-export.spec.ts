@@ -19,7 +19,10 @@ describe('ListExport', () => {
     saved = [];
   });
 
-  function create(address: ((format: 'csv' | 'xlsx') => string) | null) {
+  function create(
+    address: ((format: 'csv' | 'xlsx') => string) | null,
+    prepare: ((address: string) => Promise<string | null>) | null = null,
+  ) {
     TestBed.configureTestingModule({
       providers: [
         provideTranslateService({ lang: 'fr' }),
@@ -33,6 +36,7 @@ describe('ListExport', () => {
     const fixture = TestBed.createComponent(ListExport);
     fixture.componentRef.setInput('address', address);
     fixture.componentRef.setInput('testId', 'things-export');
+    if (prepare !== null) fixture.componentRef.setInput('prepare', prepare);
     fixture.detectChanges();
     return fixture;
   }
@@ -152,5 +156,61 @@ describe('ListExport', () => {
     expect((TestBed.inject(Feedback) as RecordedFeedback).said.map((toast) => toast.key)).toEqual([
       'export.failed',
     ]);
+  });
+
+  // A selection is checked before its file is fetched, and only what passed goes in.
+  it('fetches the address its prepare step hands back, and says which file it saved', async () => {
+    const prepare = vi.fn((address: string) => Promise.resolve(`${address}&id[]=b`));
+    const fixture = create((format) => `/exports/things.${format}?id[]=a`, prepare);
+    const savedAddresses: string[] = [];
+    fixture.componentInstance.saved.subscribe((address) => savedAddresses.push(address));
+
+    button(fixture, 'csv').click();
+    await settle();
+    TestBed.inject(HttpTestingController)
+      .expectOne('/exports/things.csv?id[]=a&id[]=b')
+      .flush(new Blob(['a,b']));
+    await settle();
+
+    expect(prepare).toHaveBeenCalledExactlyOnceWith('/exports/things.csv?id[]=a');
+    expect(saved).toEqual(['things.csv']);
+    expect(savedAddresses).toEqual(['/exports/things.csv?id[]=a&id[]=b']);
+  });
+
+  it('fetches nothing when its prepare step calls the file off', async () => {
+    const fixture = create(
+      (format) => `/exports/things.${format}`,
+      () => Promise.resolve(null),
+    );
+
+    button(fixture, 'csv').click();
+    await settle();
+
+    TestBed.inject(HttpTestingController).expectNone('/exports/things.csv');
+    expect(saved).toEqual([]);
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([]);
+  });
+
+  // A disabled button loses the focus in a browser: a keyboard user would be left on the page's body after every file.
+  it('keeps its button in reach while the file is fetched, marked busy, and fetches it once however often it is pressed', async () => {
+    const fixture = create((format) => `/exports/things.${format}`);
+    const trigger = fixture.nativeElement.querySelector(
+      '[data-testid="things-export"]',
+    ) as HTMLButtonElement;
+    const http = TestBed.inject(HttpTestingController);
+
+    button(fixture, 'csv').click();
+    await settle();
+    fixture.detectChanges();
+    expect(trigger.disabled).toBe(false);
+    expect(trigger.getAttribute('aria-busy')).toBe('true');
+    button(fixture, 'csv').click();
+    await settle();
+
+    http.expectOne('/exports/things.csv').flush(new Blob(['a,b']));
+    await settle();
+    fixture.detectChanges();
+    expect(saved).toEqual(['things.csv']);
+    expect(trigger.getAttribute('aria-busy')).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -18,6 +18,9 @@ import { ExportApi } from './export-api';
  * A whole list leaving the company waits for the person to have proved who they are in the last few minutes (docs/SPEC.md
  * § 7, audit H-b2). The API decides: the file is fetched, and only when it answers `step_up_required` is the proof
  * asked for and the file fetched again, so several files in a row ask once.
+ *
+ * A screen may check what goes into the file first (`prepare`): it hands back the address to fetch, which may hold
+ * fewer rows than were asked for, or null when no file is to be fetched.
  */
 @Component({
   selector: 'app-list-export',
@@ -27,7 +30,7 @@ import { ExportApi } from './export-api';
       <button
         mat-stroked-button
         type="button"
-        [disabled]="busy()"
+        [attr.aria-busy]="busy() || null"
         [matMenuTriggerFor]="formats"
         [attr.data-testid]="testId()"
       >
@@ -58,6 +61,10 @@ export class ListExport {
   /** Writes the address of the file in a format, or is null while there is no search to hand over. */
   readonly address = input.required<((format: ExportFormat) => string) | null>();
   readonly testId = input.required<string>();
+  /** Runs before the file is fetched: the address to fetch instead, or null to fetch nothing. */
+  readonly prepare = input<((address: string) => Promise<string | null>) | null>(null);
+  /** The address of a file just saved. */
+  readonly saved = output<string>();
 
   private readonly api = inject(ExportApi);
   private readonly stepUp = inject(StepUp);
@@ -65,15 +72,24 @@ export class ListExport {
   private readonly saver = inject(FileSaver);
   protected readonly busy = signal(false);
 
-  protected async download(address: string): Promise<void> {
+  /**
+   * Never disabled while a file is fetched: a browser takes the focus off a disabled button, which would leave a keyboard
+   * user on the page's body. A press while one is fetched is ignored instead.
+   */
+  protected async download(asked: string): Promise<void> {
+    if (this.busy()) return;
     this.busy.set(true);
     try {
+      const prepare = this.prepare();
+      const address = prepare === null ? asked : await prepare(asked);
+      if (address === null) return;
       let fetched = await this.fetch(address);
       if (fetched === 'step_up') {
         if (!(await this.stepUp.request('step_up.intro_export'))) return;
         fetched = await this.fetch(address);
       }
-      if (fetched !== 'saved') this.feedback.failure('export.failed');
+      if (fetched === 'saved') this.saved.emit(address);
+      else this.feedback.failure('export.failed');
     } finally {
       this.busy.set(false);
     }

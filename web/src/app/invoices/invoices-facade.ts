@@ -5,6 +5,8 @@ import { inject, Injectable, signal } from '@angular/core';
 import { InvoicesApi, InvoicesRefused } from './invoices-api';
 import type { PickAsked } from '../shared/form/pick-api';
 import type {
+  BulkAction,
+  BulkCheck,
   CreditExcessTo,
   CustomerOption,
   FacturXAnswer,
@@ -222,6 +224,15 @@ export class InvoicesFacade {
 
   exportUrl(companyId: string, search: InvoiceSearch, format: ExportFormat): string {
     return this.api.exportUrl(companyId, search, format);
+  }
+
+  selectedExportUrl(companyId: string, ids: readonly string[], format: ExportFormat): string {
+    return this.api.selectedExportUrl(companyId, ids, format);
+  }
+
+  /** What a bulk action would do with each selected invoice; throws when the API cannot say. */
+  bulkCheck(companyId: string, action: BulkAction, ids: readonly string[]): Promise<BulkCheck> {
+    return this.api.bulkCheck(companyId, action, ids);
   }
 
   pdfUrl(companyId: string, id: string): string {

@@ -13,6 +13,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  contentChild,
   contentChildren,
   DestroyRef,
   Directive,
@@ -100,10 +101,19 @@ export class DataListCell {
   readonly template = inject<TemplateRef<{ $implicit: unknown }>>(TemplateRef);
 }
 
+/**
+ * `<ng-template appDataListSelection>`: what a screen offers on the rows a person selected, drawn in the selection bar
+ * beside the count. The screen holds the selection (`[(selected)]`), so it knows which rows its actions act on.
+ */
+@Directive({ selector: 'ng-template[appDataListSelection]' })
+export class DataListSelection {
+  readonly template = inject<TemplateRef<unknown>>(TemplateRef);
+}
+
 const ACTIONS_COLUMN = '__actions';
 const SELECT_COLUMN = '__select';
-/** The box's own cell: Material's 40 px target and a little room either side. */
-const SELECT_WIDTH = 56;
+/** The box's own cell, exactly Material's 40 px target: any wider, it cut the invoices' dates at 1440 px. */
+const SELECT_WIDTH = 40;
 /** How long a finger rests on a card before it selects, as a phone's own long press does. */
 const LONG_PRESS_MS = 500;
 /** How far a finger may move and still be pressing: further, it is scrolling. */
@@ -214,6 +224,7 @@ export class DataList<Row> implements OnInit {
   readonly selected = model<readonly string[]>([]);
 
   private readonly cells = contentChildren(DataListCell);
+  protected readonly selectionActions = contentChild(DataListSelection);
   private readonly windowClass = inject(WINDOW_CLASS);
 
   private readonly setting = computed(() => listPreferencesSetting(this.descriptor().id));

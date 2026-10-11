@@ -22,6 +22,9 @@
       <span role="status" class="min-w-0 flex-1 font-medium" data-testid="list-selection-count">{{
         descriptor().selection!.countKey | translate: { count: selected().length }
       }}</span>
+      @if (selectionActions(); as actions) {
+        <ng-container [ngTemplateOutlet]="actions.template" />
+      }
       @if (!asCards()) {
         <button
           mat-button

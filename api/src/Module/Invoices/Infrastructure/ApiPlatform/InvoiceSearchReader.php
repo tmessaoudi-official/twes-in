@@ -48,6 +48,7 @@ final class InvoiceSearchReader
             self::open($filters->dateRange('dueDate')),
             self::open($filters->decimalRange('totalGross')),
             self::open($filters->decimalRange('amountDue')),
+            $filters->uuids('id'),
         );
     }
 
