@@ -500,6 +500,30 @@ describe('AppShell', () => {
     expect(byTestId('user-menu')?.textContent).toContain('AS');
   });
 
+  it('keeps the desktop sidebar open under Escape, which still closes the phone drawer', async () => {
+    // Escape inside the side sidebar (focus back on « Créer » after its menu closed) hid the whole navigation, with
+    // nothing on screen to bring it back. The CDK reads the key code, which jsdom leaves at 0 unless given.
+    const init: KeyboardEventInit = { key: 'Escape', keyCode: 27, bubbles: true };
+    const escape = () =>
+      document.querySelector('mat-sidenav')?.dispatchEvent(new KeyboardEvent('keydown', init));
+    const opened = () =>
+      document.querySelector('mat-sidenav')?.classList.contains('mat-drawer-opened');
+    const { fixture } = await render();
+    escape();
+    await fixture.whenStable();
+    expect(opened()).toBe(true);
+
+    fixture.destroy();
+    width.next(390);
+    const phone = await render();
+    await phone.click('menu-toggle');
+    expect(opened()).toBe(true);
+    escape();
+    await phone.fixture.whenStable();
+    await settled();
+    expect(opened()).toBe(false);
+  });
+
   it('offers what the person may create from « Créer », and the C key opens it outside a field', async () => {
     permissions.set(['customer.read', 'customer.write']);
     const { byTestId, el } = await render();
