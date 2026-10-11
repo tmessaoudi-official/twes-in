@@ -252,10 +252,13 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     const invoiceUrl = page.url();
     await expect(page.getByTestId('invoice-totals')).toContainText('1 000,000');
     await expect(page.getByTestId('invoice-totals')).toContainText('190,000');
+    // A draft's PDF is a preview, rarely wanted: behind « ⋮ ».
+    await page.getByTestId('document-more').click();
     const draftPdf = await download(
       page,
-      (await page.getByTestId('document-action-pdf').getAttribute('href')) ?? '',
+      (await page.getByTestId('document-menu-pdf').getAttribute('href')) ?? '',
     );
+    await page.keyboard.press('Escape');
     expect([draftPdf.status, draftPdf.magic]).toEqual([200, '%PDF-']);
 
     // E runs the state's next step, and asks first exactly as the button does.
@@ -396,8 +399,8 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     );
     expect(await wcagViolations(page)).toEqual([]);
 
-    // From its list, an issued invoice opens as a sheet over it; « Encaisser » there asks for the payment on the
-    // record (docs/SPEC.md § 7, 2026-09-24 22:51, row 123, and 2026-09-26).
+    // From its list, an issued invoice opens as a sheet over it, which offers the record's own actions: « Encaisser »
+    // there asks for the payment over the list, without leaving it.
     await page.goto('/invoices');
     await page.getByTestId('list-filter').fill(invoiceNumber);
     await page.getByTestId('invoices-table').getByRole('link', { name: invoiceNumber }).click();
@@ -413,11 +416,12 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.getByTestId('invoice-sheet-close').click();
     await expect(sheet).toHaveCount(0);
     await page.getByTestId('invoices-table').getByRole('link', { name: invoiceNumber }).click();
-    await page.getByTestId('invoice-sheet-pay').click();
-    await expect(page).toHaveURL(invoiceUrl);
+    await sheet.getByTestId('document-action-record-payment').click();
     await expect(page.getByTestId('payment-dialog-title')).toBeVisible();
+    await expect(page).toHaveURL(/\/invoices\?.*open=/);
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('payment-dialog-title')).toHaveCount(0);
+    await page.goto(invoiceUrl);
 
     // On a phone the status line wraps, and no line of it starts with a « · » (audit 2026-10-06 V-3): a fact that
     // starts a line has its separator clipped, one past the line's start (`.twes-dot-list`).

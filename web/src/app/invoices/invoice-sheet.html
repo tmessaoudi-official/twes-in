@@ -105,17 +105,7 @@
       </div>
     }
 
-    <div class="flex flex-wrap gap-2">
-      @if (mayPay()) {
-        <a
-          mat-flat-button
-          [routerLink]="['/invoices', invoice.id]"
-          [queryParams]="{ pay: 1 }"
-          data-testid="invoice-sheet-pay"
-        >
-          {{ 'invoices.payments.collect' | translate }}
-        </a>
-      }
+    <div class="flex flex-wrap items-center gap-2">
       <a
         mat-stroked-button
         [routerLink]="['/invoices', invoice.id]"
@@ -123,18 +113,7 @@
       >
         {{ 'invoices.sheet.open' | translate }}
       </a>
-      @if (pdfUrl(); as pdf) {
-        <a
-          mat-icon-button
-          [href]="pdf"
-          target="_blank"
-          rel="noopener"
-          [appLabel]="'invoices.actions.pdf' | translate"
-          data-testid="invoice-sheet-pdf"
-        >
-          <mat-icon aria-hidden="true">picture_as_pdf</mat-icon>
-        </a>
-      }
+      <app-document-actions [actions]="actions()" />
     </div>
 
     <dl

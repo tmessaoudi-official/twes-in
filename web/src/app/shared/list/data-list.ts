@@ -33,6 +33,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, type PageEvent } from '@angular/material/paginator';
 import { MatSortModule, type Sort } from '@angular/material/sort';
@@ -56,6 +57,7 @@ import type {
   ListView,
   RowAction,
 } from './list-types';
+import { labelOn, rareOn } from './list-types';
 import {
   applyFilters,
   filterRows,
@@ -82,6 +84,7 @@ import {
   validRangeValue,
   type FilterChip,
 } from './list-filters';
+import { menuOrder } from '../actions/record-action';
 import { runAction } from '../actions/run-action';
 import { ConfirmDialog } from '../ui/confirm-dialog';
 import { WINDOW_CLASS } from '../ui/window-class';
@@ -100,7 +103,14 @@ const RESIZE_STEP = 16;
 const MIN_WIDTH = 48;
 const MAX_WIDTH = 960;
 export const FALLBACK_WIDTH = 160;
-const ACTIONS_WIDTH = 96;
+/** How many of a row's actions stand as buttons: « one or two », the rest in « ⋮ ». */
+const ROW_BUTTONS = 2;
+/** An icon button, « ⋮ » among them. */
+const ACTION_SLOT = 40;
+/** The actions cell's own padding, either side: past it, Material's cell clips its content behind an ellipsis. */
+const ACTIONS_PADDING = 32;
+/** What the next step's word adds to its icon: a word of about twelve letters. */
+const ACTION_WORD = 104;
 /** How long typing pauses before a list the API pages asks for the words. */
 export const LIST_SEARCH_PAUSE_MS = 300;
 
@@ -143,6 +153,7 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
     MatInputModule,
     MatIconModule,
     MatButtonModule,
+    MatDividerModule,
     MatMenuModule,
     RouterLink,
     TranslatePipe,
@@ -219,20 +230,42 @@ export class DataList<Row> implements OnInit {
     resolveColumns(this.descriptor(), this.preferences()),
   );
   /**
-   * The row's declared actions, split the way the trailing column draws them: the frequent ones as buttons, the
-   * rare and the destructive ones behind "⋮" (design review finding 1). Destructive is never a button, whatever
-   * its frequency — a button under the pointer is the wrong place for it.
+   * The row's own buttons: what this row can take that is not rare, its next step first, at most two (docs/SPEC.md
+   * § 7, 2026-10-11 08:26); the rest waits in « ⋮ ». Destructive is never a button, whatever its frequency — a button
+   * under the pointer is the wrong place for it (design review finding 1).
    */
-  protected readonly buttonActions = computed(() =>
-    (this.descriptor().actions ?? []).filter(
-      (action) => action.rare !== true && action.destructive !== true,
-    ),
-  );
-  protected readonly menuActions = computed(() =>
-    (this.descriptor().actions ?? []).filter(
-      (action) => action.rare === true || action.destructive === true,
-    ),
-  );
+  protected rowButtons(row: Row): readonly RowAction<Row>[] {
+    return this.rowOffered(row).buttons;
+  }
+  /** The row's « ⋮ »: the rare, what the buttons had no room for, by group, what is final last. */
+  protected rowMenu(row: Row): readonly RowAction<Row>[] {
+    return this.rowOffered(row).menu;
+  }
+  private rowOffered(row: Row): { buttons: RowAction<Row>[]; menu: RowAction<Row>[] } {
+    const shown = this.shownActions(this.descriptor().actions ?? [], row);
+    const visible = shown.filter((action) => !rareOn(action, row));
+    const ordered = [
+      ...visible.filter((action) => action.next?.(row) === true),
+      ...visible.filter((action) => action.next?.(row) !== true),
+    ];
+    const buttons = ordered.slice(0, ROW_BUTTONS);
+    const folded = [
+      ...ordered.slice(ROW_BUTTONS),
+      ...shown.filter((action) => rareOn(action, row)),
+    ];
+    return {
+      buttons,
+      menu: [
+        ...menuOrder(folded.filter((action) => action.destructive !== true)),
+        ...folded.filter((action) => action.destructive === true),
+      ],
+    };
+  }
+  /** A row's buttons show their word beside their icon where the window is wide enough for it. */
+  protected readonly rowWords = computed(() => this.windowClass() === 'expanded');
+  protected readonly labelOn = labelOn;
+  protected readonly isNext = (action: RowAction<Row>, row: Row): boolean =>
+    action.next?.(row) === true;
   /** Whether the row has a trailing column at all: a list that declares no action does not pay for one. */
   protected readonly hasRowControls = computed(() => (this.descriptor().actions ?? []).length > 0);
 
@@ -408,14 +441,30 @@ export class DataList<Row> implements OnInit {
     return this.empty() ? 'empty' : 'no-match';
   });
   protected readonly actionsColumn = ACTIONS_COLUMN;
-  protected readonly actionsWidth = ACTIONS_WIDTH;
+  /**
+   * As wide as the most a row can hold: its buttons, « ⋮ » when anything can fold into it, and the next step's word
+   * where words show.
+   */
+  protected readonly actionsWidth = computed(() => {
+    const actions = this.descriptor().actions ?? [];
+    const standing = actions.filter((action) => action.rare !== true).length;
+    const folds =
+      standing > ROW_BUTTONS ||
+      actions.some((action) => action.rare !== undefined && action.rare !== false);
+    const worded = this.rowWords() && actions.some((action) => action.next !== undefined);
+    return (
+      ACTIONS_PADDING +
+      ACTION_SLOT * (Math.min(standing, ROW_BUTTONS) + (folds ? 1 : 0)) +
+      (worded ? ACTION_WORD : 0)
+    );
+  });
   protected readonly minWidth = MIN_WIDTH;
   protected readonly maxWidth = MAX_WIDTH;
   /** What the data columns are narrowed by to fit the card (`fitScale`); a drag reads against it, never moves it. */
   private readonly fit = computed(() =>
     fitScale(
       this.columns().reduce((sum, column) => sum + this.declaredWidth(column), 0),
-      this.hasRowControls() ? ACTIONS_WIDTH : 0,
+      this.hasRowControls() ? this.actionsWidth() : 0,
       this.boxWidth(),
     ),
   );
@@ -423,7 +472,7 @@ export class DataList<Row> implements OnInit {
   protected readonly tableWidth = computed(
     () =>
       this.columns().reduce((sum, column) => sum + this.widthOf(column), 0) +
-      (this.hasRowControls() ? ACTIONS_WIDTH : 0),
+      (this.hasRowControls() ? this.actionsWidth() : 0),
   );
 
   private stopResize: (() => void) | null = null;

@@ -22,7 +22,6 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { Select, type SelectOption } from '../shared/form/select';
 import { buildFormGroup } from '../shared/form/form-builder';
-import type { FormValues } from '../shared/form/form-types';
 import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { StatusBadge } from '../shared/ui/status-badge';
@@ -37,14 +36,9 @@ import {
   type LineGroup,
   lineGroup,
   applyProduct,
-  creditNoteForm,
-  paymentForm,
-  paymentInput,
-  paymentValues,
   pickedCustomer,
   shownStatus,
   stillOwed,
-  paidInFull,
 } from './invoice-forms';
 import { PickField, type PickOption } from '../shared/form/pick-field';
 import { InvoiceLines } from './invoice-lines';
@@ -59,9 +53,7 @@ import { InvoicesFacade } from './invoices-facade';
 import {
   INVOICE_STATUS_TONES,
   INVOICE_STATUS_STAGES,
-  FACTUR_X_COUNTRIES,
   type CustomerOption,
-  type FacturXFormat,
   type InvoiceInput,
   type InvoiceRow,
   type IssuePreview,
@@ -71,30 +63,18 @@ import {
 } from './invoices-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
-import { unsavedChanges } from '../shared/form/dirty-count';
+import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { MatDialog } from '@angular/material/dialog';
-import { FileSaver } from '../shared/files/save-file';
-import { FacturXRefusalDialog } from './factur-x-refusal-dialog';
 import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
 import type { PlannedAction } from '../shared/actions/planned-actions';
-import {
-  MakeRecurringDialog,
-  makeRecurringForm,
-  recurringDraft,
-  type MakeRecurringData,
-} from '../recurring/make-recurring';
-import { RecurringApi, RecurringRefused } from '../recurring/recurring-api';
-import { RECURRING_MODULE } from '../recurring/recurring-nav';
+import { onRecord } from '../shared/actions/record-action';
 import { kindAmong, type ScreenAction } from '../shared/actions/screen-action';
+import { InvoiceActions, invoiceMay, isOpen, isZero } from './invoice-actions';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { CreditExcessDialog } from './credit-excess-dialog';
-import { CreditNoteDialog } from './credit-note-dialog';
 import { InvoiceInstruments } from './invoice-instruments';
 import { InvoiceReminders } from './invoice-reminders';
-import { PaymentDialog } from './payment-dialog';
-import { OverpaymentDialog } from './overpayment-dialog';
-import { overpaymentForm, overpaymentInput, overpaymentValues } from './overpayment-form';
 import { type RecordLead, RecordView } from '../shared/form/record-view';
 import { taxNames } from './tax-names';
 import {
@@ -151,8 +131,7 @@ export class InvoicePage {
   private readonly unsaved = inject(UnsavedChanges);
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
-  private readonly saver = inject(FileSaver);
-  private readonly recurring = inject(RecurringApi);
+  private readonly invoiceActions = inject(InvoiceActions);
   protected readonly auth = inject(AuthFacade);
   private readonly format = inject(FormatFacade);
   private readonly router = inject(Router);
@@ -174,8 +153,8 @@ export class InvoicePage {
    */
   readonly billTo = input<string | undefined>(undefined);
   /**
-   * `?pay=1` on an issued document: the sheet's « Encaisser », which opens the record with its payment asked once the
-   * document is read, where one is still owed, then forgotten by the address (docs/SPEC.md § 7, 2026-09-26).
+   * `?pay=1` on an issued document: a link straight to « Encaisser », which opens the record with its payment asked
+   * once the document is read, where one is still owed, then forgotten by the address.
    */
   readonly pay = input<string | undefined>(undefined);
 
@@ -474,15 +453,6 @@ export class InvoicePage {
     })),
   );
 
-  protected readonly payment = computed(() => {
-    const current = this.current();
-    if (current === undefined || current === null || !this.canRecordPayment()) return null;
-    return untracked(() => ({
-      descriptor: paymentForm(),
-      group: buildFormGroup(paymentForm(), paymentValues(this.today(), current.amountDue)),
-    }));
-  });
-
   /** What the document will offer once its planned modules ship, from the moment it exists. */
   protected readonly planned = computed(() => (!this.current() ? [] : INVOICE_PLANNED));
   /**
@@ -493,6 +463,7 @@ export class InvoicePage {
   protected readonly actions = computed<ScreenAction[]>(() => {
     const busy = this.busy();
     return [
+      ...this.screenRevert(busy),
       {
         id: 'save',
         label: 'invoices.actions.save',
@@ -533,96 +504,6 @@ export class InvoicePage {
             },
       },
       {
-        id: 'record-payment',
-        label: 'invoices.payments.collect',
-        shortcut: 'p',
-        next: true,
-        icon: 'payments',
-        primary: true,
-        disabled: busy,
-        run: () => void this.openPayment(),
-        shown: this.canRecordPayment(),
-      },
-      {
-        id: 'apply-credit',
-        label: 'invoices.actions.apply_credit',
-        icon: 'savings',
-        rare: true,
-        disabled: busy,
-        run: () => void this.applyCredit(),
-        shown: this.canApplyCredit(),
-      },
-      {
-        id: 'record-overpayment',
-        label: 'invoices.actions.record_overpayment',
-        icon: 'savings',
-        rare: true,
-        disabled: busy,
-        run: () => void this.openOverpayment(),
-        shown: this.canRecordOverpayment(),
-      },
-      {
-        id: 'pdf',
-        label:
-          this.current()?.status === 'draft'
-            ? 'invoices.actions.pdf_draft'
-            : 'invoices.actions.pdf',
-        icon: 'picture_as_pdf',
-        href: this.pdfUrl() ?? undefined,
-        shown: this.pdfUrl() !== null,
-      },
-      {
-        id: 'factur-x-pdf',
-        label: 'invoices.actions.factur_x_pdf',
-        icon: 'picture_as_pdf',
-        rare: true,
-        disabled: busy,
-        run: () => void this.facturX('pdf'),
-        shown: this.offersFacturX(),
-      },
-      {
-        id: 'factur-x-xml',
-        label: 'invoices.actions.factur_x_xml',
-        icon: 'description',
-        rare: true,
-        disabled: busy,
-        run: () => void this.facturX('xml'),
-        shown: this.offersFacturX(),
-      },
-      {
-        id: 'print-duplicate',
-        label: 'invoices.actions.print_duplicate',
-        icon: 'file_copy',
-        rare: true,
-        href: this.copyUrl('duplicate') ?? undefined,
-        shown: this.isOpen() && this.copyUrl('duplicate') !== null,
-      },
-      {
-        id: 'print-current',
-        label: 'invoices.actions.print_current',
-        icon: 'receipt_long',
-        rare: true,
-        href: this.copyUrl('current') ?? undefined,
-        shown: this.isOpen() && this.copyUrl('current') !== null,
-      },
-      {
-        id: 'duplicate',
-        label: 'invoices.actions.duplicate',
-        icon: 'content_copy',
-        disabled: busy,
-        run: () => void this.duplicate(),
-        shown: this.canDuplicate(),
-      },
-      {
-        id: 'make-recurring',
-        label: 'recurring.make.action',
-        icon: 'event_repeat',
-        rare: true,
-        disabled: busy,
-        run: () => void this.makeRecurring(),
-        shown: this.canMakeRecurring(),
-      },
-      {
         id: 'customer-display',
         label: 'customer_display.open',
         icon: 'connected_tv',
@@ -630,44 +511,37 @@ export class InvoicePage {
         run: () => this.display.openWindow(),
         shown: this.editable(),
       },
-      {
-        id: 'credit-note',
-        label: 'invoices.actions.credit_note',
-        icon: 'undo',
-        rare: true,
-        disabled: busy,
-        run: () => void this.creditNote(),
-        shown: this.canCredit(),
-      },
-      {
-        id: 'cancel',
-        label: 'invoices.actions.cancel',
-        icon: 'block',
-        destructive: true,
-        disabled: busy,
-        run: () => void this.cancel(),
-        shown: this.canCancel(),
-        confirm: {
-          kind: 'definitif',
-          title: 'invoices.actions.cancel_title',
-          message: 'invoices.actions.cancel_message',
-          confirmLabel: 'invoices.actions.confirm_cancel',
-          keepLabel: 'invoices.actions.keep',
-        },
-      },
+      ...onRecord(this.recordActions(), this.current(), busy),
     ];
   });
 
-  protected readonly pdfUrl = computed(() => {
-    const companyId = this.company()?.id;
-    const current = this.current();
-    return companyId && current ? this.facade.pdfUrl(companyId, current.id) : null;
-  });
-  private copyUrl(kind: 'duplicate' | 'current'): string | null {
-    const companyId = this.company()?.id;
-    const current = this.current();
-    return companyId && current ? this.facade.pdfCopyUrl(companyId, current.id, kind) : null;
+  /**
+   * What can be done to the document, declared once with the sheet and the list's rows: this page adds what only it
+   * knows, the customer's credit, and reads the document again after an action changed it.
+   */
+  private readonly recordActions = computed(() =>
+    this.invoiceActions.declare({
+      creditBalance: () => this.creditBalance(),
+      changed: () => this.reread(),
+    }),
+  );
+  /** « Rétablir »: what was typed goes back to the saved document (docs/SPEC.md § 7, 2026-10-11 08:26). */
+  private screenRevert(busy: boolean): ScreenAction[] {
+    return [
+      {
+        id: 'revert',
+        label: 'form.revert',
+        icon: 'restart_alt',
+        disabled: busy,
+        run: () => this.revert(),
+        shown: this.editable() && this.form() !== null && this.changes() > 0,
+      },
+    ];
   }
+  /** Everything typed and not saved: the header, the lines, who the document is for. */
+  protected readonly changes = computed(
+    () => this.headerChanges() + this.lineChanges() + this.customerChanges(),
+  );
 
   /**
    * The number the draft would carry if issued now, with what it would state its operations are where the law asks,
@@ -707,67 +581,18 @@ export class InvoicePage {
     };
   }
 
-  protected readonly canIssue = computed(
-    () =>
-      this.current()?.status === 'draft' &&
-      this.mayWrite() &&
-      this.mayIssue() &&
-      (!this.isCreditNote() || this.mayCredit()),
-  );
-  protected readonly canCancel = computed(
-    () => this.current()?.status === 'draft' && this.mayTouch(),
-  );
-  /** Factur-X is written for a company whose preset the API serves, of a document issued and not cancelled. */
-  protected readonly offersFacturX = computed(() => {
-    const status = this.current()?.status;
-    const country = this.company()?.countryCode;
-    return (
-      status !== undefined &&
-      status !== 'draft' &&
-      status !== 'cancelled' &&
-      country !== undefined &&
-      FACTUR_X_COUNTRIES.includes(country)
-    );
+  private readonly rights = computed(() => this.invoiceActions.rights());
+  protected readonly canIssue = computed(() => {
+    const current = this.current();
+    return !!current && invoiceMay.issue(current, this.rights());
   });
   protected readonly isOpen = computed(() => {
-    const status = this.current()?.status;
-    return status === 'issued' || status === 'partially_paid' || status === 'paid';
-  });
-  /** A credit note takes off at most what is still due, so an invoice with nothing due offers none. */
-  protected readonly canCredit = computed(
-    () =>
-      !this.isCreditNote() &&
-      this.isOpen() &&
-      this.mayCredit() &&
-      !this.isZero(this.current()?.amountDue ?? '0'),
-  );
-  protected readonly showsPayments = computed(() => !this.isCreditNote() && this.isOpen());
-  /** A saved document can be copied into a new draft; a document that does not exist yet cannot. */
-  /** An invoice of the company is made recurring, never a credit note nor a deposit, while the module is on. */
-  protected readonly canMakeRecurring = computed(() => {
     const current = this.current();
-    return (
-      this.mayWrite() &&
-      this.auth.hasModule(RECURRING_MODULE) &&
-      current !== null &&
-      current !== undefined &&
-      current.type === 'invoice' &&
-      !current.deposit
-    );
+    return !!current && isOpen(current);
   });
-  protected readonly canDuplicate = computed(
-    () => this.mayWrite() && this.current() !== null && this.current() !== undefined,
-  );
-  protected readonly canRecordPayment = computed(() => this.owes(this.current()));
+  protected readonly showsPayments = computed(() => !this.isCreditNote() && this.isOpen());
   /** What the document's customer has to their credit, read each time the document is; "0" until then. */
   protected readonly creditBalance = signal('0');
-  protected readonly canApplyCredit = computed(
-    () => this.canRecordPayment() && this.mayPay() && !this.isZero(this.creditBalance()),
-  );
-  /** Money paid beyond an invoice is kept to the customer's credit once the invoice is paid in full, never before. */
-  protected readonly canRecordOverpayment = computed(
-    () => paidInFull(this.current()) && this.mayPay(),
-  );
 
   /**
    * A scan on a draft puts its product on the lines as a till does (docs/SPEC.md § 7, 2026-09-23 09:30): the same
@@ -1014,9 +839,7 @@ export class InvoicePage {
   /** An amount the API wrote as zero at any scale, "0" or "0.000". */
   protected readonly saves = savesSomething;
 
-  protected isZero(amount: string): boolean {
-    return /^-?[0.]+$/.test(amount);
-  }
+  protected readonly isZero = isZero;
 
   protected async save(): Promise<void> {
     const companyId = this.company()?.id;
@@ -1071,137 +894,34 @@ export class InvoicePage {
     this.feedback.effect(key, {}, kind, next);
   }
 
-  protected async cancel(): Promise<void> {
-    const companyId = this.company()?.id;
-    const id = this.id();
-    this.confirmingCancel.set(false);
-    if (!companyId || id === null || this.busy()) return;
-    const kind = kindAmong(this.actions(), 'cancel');
-    const cancelled = await this.facade.cancel(companyId, id);
-    if (cancelled !== null && kind !== undefined)
-      this.feedback.effect('invoices.cancelled', {}, kind);
-  }
-
-  /** Asks why first: a credit note states its reason when it is drafted (docs/SPEC.md § 7, 2026-09-24 22:51). */
-  protected async creditNote(): Promise<void> {
-    const companyId = this.company()?.id;
-    const id = this.id();
-    if (!companyId || id === null || this.busy()) return;
-    const data = {
-      descriptor: creditNoteForm(),
-      group: buildFormGroup(creditNoteForm(), { reason: '' }),
-    };
-    const reason = await firstValueFrom(
-      this.dialog.open(CreditNoteDialog, { data, autoFocus: 'first-tabbable' }).afterClosed(),
-    );
-    if (!reason) return;
-    const credit = await this.facade.creditNote(companyId, id, reason);
-    if (credit !== null) {
-      await this.router.navigate(['/invoices', credit.id]);
-    }
-  }
-
-  /** Asks how often and from when, makes it, and offers the recurring invoices in the toast that says so. */
-  protected async makeRecurring(): Promise<void> {
-    const companyId = this.company()?.id;
-    const id = this.id();
-    if (!companyId || id === null || this.busy()) return;
-    const descriptor = makeRecurringForm(this.today());
-    const data: MakeRecurringData = { descriptor, group: buildFormGroup(descriptor, {}) };
-    const values = await firstValueFrom(
-      this.dialog.open(MakeRecurringDialog, { data, autoFocus: 'first-tabbable' }).afterClosed(),
-    );
-    if (!values) return;
-    try {
-      await this.recurring.create(companyId, recurringDraft(id, values));
-      this.feedback.success(
-        'recurring.made',
-        {},
-        {
-          key: 'recurring.open',
-          run: () => void this.router.navigate(['/invoices/recurring']),
-        },
-      );
-    } catch (error) {
-      const field = error instanceof RecurringRefused ? error.field : null;
-      this.feedback.failure(
-        field === null ? 'recurring.errors.invalid' : `recurring.errors.${field}`,
-      );
-    }
-  }
-
-  /** Asked in a dialog rather than in a form at the foot of the page (design review finding 3). */
+  /** The document's payment, asked from the same declaration the list's rows and the sheet use. */
   protected async openPayment(): Promise<void> {
-    const payment = this.payment();
-    if (payment === null || this.busy()) return;
-    const values = await firstValueFrom(
-      this.dialog.open(PaymentDialog, { data: payment, autoFocus: 'first-tabbable' }).afterClosed(),
-    );
-    if (values) await this.recordPayment(values);
-  }
-
-  /** Pays as much of the invoice from the customer's credit as it holds and the invoice is due. */
-  protected async applyCredit(): Promise<void> {
-    const companyId = this.company()?.id;
-    const id = this.id();
-    if (!companyId || id === null || this.busy()) return;
-    if (await this.facade.applyCredit(companyId, id)) {
-      this.feedback.success('invoices.payments.credit_applied');
+    const current = this.current();
+    if (current && invoiceMay.pay(current, this.rights())) {
+      await this.invoiceActions.pay(current, () => undefined);
     }
   }
 
-  /** An issued document's Factur-X handed over as a file, or what keeps it from being written said in a dialog. */
-  protected async facturX(format: FacturXFormat): Promise<void> {
-    const companyId = this.company()?.id;
-    const id = this.id();
-    if (!companyId || id === null || this.busy()) return;
-    const answer = await this.facade.facturX(companyId, id, format);
-    if (answer === null) return;
-    if (answer.kind === 'file') {
-      this.saver.save(answer.file, answer.filename);
-      return;
+  /** Back to the saved document: its header, its lines, its customer and the taxes it is charged. */
+  protected revert(): void {
+    const form = this.form();
+    const saved = this.savedHeader();
+    const current = this.current();
+    if (form !== null && saved !== null) revertToSaved(form, saved);
+    this.linesVersion.update((version) => version + 1);
+    if (current) {
+      const known = this.knownCustomers.get(current.customerId);
+      if (known) this.customer.set(known);
+      this.customerMissing.set(false);
     }
-    this.dialog.open(FacturXRefusalDialog, { data: answer, autoFocus: 'first-tabbable' });
+    this.documentTaxes.set(this.savedDocumentTaxes());
   }
 
-  /** What the customer paid beyond this invoice, kept to their credit (a « trop-perçu »). */
-  protected async openOverpayment(): Promise<void> {
+  /** Read again after an action of the declaration changed it, which never comes back to this tab as a live change. */
+  private async reread(): Promise<void> {
     const companyId = this.company()?.id;
     const id = this.id();
-    if (!companyId || id === null || this.busy()) return;
-    const descriptor = overpaymentForm();
-    const values = await firstValueFrom(
-      this.dialog
-        .open(OverpaymentDialog, {
-          data: { descriptor, group: buildFormGroup(descriptor, overpaymentValues(this.today())) },
-          autoFocus: 'first-tabbable',
-        })
-        .afterClosed(),
-    );
-    if (values && (await this.facade.overpay(companyId, id, overpaymentInput(values)))) {
-      this.feedback.success('invoices.overpayment.recorded');
-    }
-  }
-
-  protected async recordPayment(values: FormValues): Promise<void> {
-    const companyId = this.company()?.id;
-    const id = this.id();
-    if (!companyId || id === null || this.busy()) return;
-    if (await this.facade.recordPayment(companyId, id, paymentInput(values))) {
-      this.feedback.success('invoices.payments.recorded');
-    }
-  }
-
-  /** A copy of this document as a new draft, which is where the person then continues. */
-  protected async duplicate(): Promise<void> {
-    const companyId = this.company()?.id;
-    const id = this.id();
-    if (!companyId || id === null || this.busy()) return;
-    const copy = await this.facade.duplicate(companyId, id);
-    if (copy !== null) {
-      this.feedback.success('invoices.duplicated');
-      await this.router.navigate(['/invoices', copy.id]);
-    }
+    if (companyId && id !== null) await this.facade.loadInvoice(companyId, id);
   }
 
   /** A cheque or traite was cashed: the payment it became and what is still due are read again. */

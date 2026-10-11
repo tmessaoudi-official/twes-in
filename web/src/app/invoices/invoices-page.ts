@@ -31,7 +31,9 @@ import type {
   ListQuery,
 } from '../shared/list/list-types';
 import type { PickAsked } from '../shared/form/pick-api';
+import { onRows } from '../shared/actions/record-action';
 import { keyName } from '../shared/actions/shortcuts-sheet';
+import { InvoiceActions } from './invoice-actions';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import { PRESENTATION } from '../shared/settings/settings-registry';
 import type { StatusTone } from '../shared/theme/accent-theme';
@@ -79,6 +81,7 @@ export class InvoicesPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly facade = inject(InvoicesFacade);
   private readonly auth = inject(AuthFacade);
+  private readonly invoiceActions = inject(InvoiceActions);
 
   private readonly router = inject(Router);
   private readonly windowClass = inject(WINDOW_CLASS);
@@ -92,10 +95,15 @@ export class InvoicesPage implements OnInit {
    * there would cover the whole list.
    */
   protected readonly list = computed((): ListDescriptor<InvoiceListRow> => {
-    if (this.windowClass() === 'compact') return INVOICES_LIST;
+    // A row offers what its document's page offers, from the one declaration (docs/SPEC.md § 7, 2026-10-11 08:26).
+    const actions = onRows<InvoiceListRow>(
+      this.invoiceActions.declare({ changed: () => this.reloadNow() }),
+    );
+    if (this.windowClass() === 'compact') return { ...INVOICES_LIST, actions };
     const sheet = (row: InvoiceListRow) => row.status !== 'draft';
     return {
       ...INVOICES_LIST,
+      actions,
       link: (row) => (sheet(row) ? ['/invoices'] : ['/invoices', row.id]),
       linkQuery: (row) => (sheet(row) ? { open: row.id } : null),
     };
@@ -195,6 +203,12 @@ export class InvoicesPage implements OnInit {
     this.searched.set(this.search);
     void this.facade.loadPage(companyId, this.search);
     void this.facade.loadStatusCounts(companyId, this.search);
+  }
+
+  /** Read again after a row's or the sheet's action changed a document: a tab's own change never comes back to it. */
+  protected reloadNow(): void {
+    const companyId = this.company()?.id;
+    if (companyId) void this.reload(companyId);
   }
 
   private async reload(companyId: string): Promise<void> {

@@ -1806,7 +1806,10 @@ describe('InvoicePage', () => {
     expect(q('document-action-issue')).toBeNull();
     expect(q('invoice-cancel')).toBeNull();
     expect(q('line-add')).toBeNull();
-    expect(q('document-action-pdf')).not.toBeNull();
+    // A draft's PDF is a preview, rarely wanted: behind « ⋮ ».
+    q('document-more')!.click();
+    await settle();
+    expect(over('document-menu-pdf')).not.toBeNull();
   });
 
   it('says why the API refused', async () => {

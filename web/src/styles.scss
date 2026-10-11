@@ -2253,6 +2253,11 @@ td.twes-row-actions {
   white-space: nowrap;
 }
 
+/* The next step's worded button centres itself, the icon buttons sit on the text's baseline: one line, one middle. */
+td.twes-row-actions > .mat-mdc-button-base {
+  vertical-align: middle;
+}
+
 /* The actions' header, by name: `:last-child` pinned a list's last DATA header when it had no actions (2026-09-26). */
 th.mat-mdc-header-cell.twes-row-actions {
   position: sticky;

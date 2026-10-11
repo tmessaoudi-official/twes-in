@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -12,6 +14,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 import {
   PageMemoryStorage,
   SETTINGS_STORAGE,
@@ -110,8 +113,11 @@ const options: InvoiceOptions = {
 describe('InvoiceSheet', () => {
   const facade = {
     options: signal<InvoiceOptions | null>(options).asReadonly(),
+    busy: signal(false).asReadonly(),
     peek: vi.fn(),
     pdfUrl: (companyId: string, id: string) => `/api/companies/${companyId}/invoices/${id}/pdf`,
+    pdfCopyUrl: (companyId: string, id: string, kind: string) =>
+      `/api/companies/${companyId}/invoices/${id}/pdf/${kind}`,
   };
   const granted = new Set(['payment.write']);
   const auth = {
@@ -148,6 +154,9 @@ describe('InvoiceSheet', () => {
       imports: [InvoiceSheet],
       providers: [
         provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideQuietFeedback(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',
@@ -209,22 +218,24 @@ describe('InvoiceSheet', () => {
     expect(text('invoice-sheet-due')).toContain('3 j de retard');
   });
 
-  it('opens the record, the payment and the PDF where the record page has them', async () => {
+  it('opens the record, and offers the record page’s own actions: the payment taken in place, the PDF', async () => {
     await open();
     expect(q('invoice-sheet-open')?.getAttribute('href')).toBe('/invoices/i1');
-    expect(q('invoice-sheet-pay')?.getAttribute('href')).toBe('/invoices/i1?pay=1');
-    expect(text('invoice-sheet-pay')).toContain('Encaisser');
-    expect(q('invoice-sheet-pdf')?.getAttribute('href')).toBe('/api/companies/c1/invoices/i1/pdf');
+    expect(q('document-action-record-payment')?.tagName).toBe('BUTTON');
+    expect(text('document-action-record-payment')).toContain('Encaisser');
+    expect(q('document-action-pdf')?.getAttribute('href')).toBe(
+      '/api/companies/c1/invoices/i1/pdf',
+    );
   });
 
   it('offers no payment to somebody who may not record one, nor on a settled document', async () => {
     granted.clear();
     await open();
-    expect(q('invoice-sheet-pay')).toBeNull();
+    expect(q('document-action-record-payment')).toBeNull();
 
     granted.add('payment.write');
     await open({ ...invoice, status: 'paid', amountDue: '0.000', amountPaid: '11900.000' });
-    expect(q('invoice-sheet-pay')).toBeNull();
+    expect(q('document-action-record-payment')).toBeNull();
     expect(q('invoice-sheet-due')).toBeNull();
   });
 
