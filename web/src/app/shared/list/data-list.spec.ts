@@ -1218,6 +1218,38 @@ describe('DataList', () => {
       expect(card('2')!.querySelector('[data-testid="row-more-2"]')).not.toBeNull();
     });
 
+    it("words a row's next step at the card's foot, where the title keeps the head", async () => {
+      // A phone card has the width a table row shares among its columns: the step a person takes next is written
+      // out under the values, once, and the head keeps only its icons and « ⋮ ».
+      host.componentInstance.descriptor.set({
+        ...declared,
+        actions: declared.actions!.map((action) =>
+          action.id === 'call' ? { ...action, next: (row) => row.id === '1' } : action,
+        ),
+      });
+      host.detectChanges();
+      await host.whenStable();
+      host.detectChanges();
+
+      const steps = card('1')!.querySelectorAll('[data-testid="row-action-call-1"]');
+      expect(steps).toHaveLength(1);
+      const step = steps[0] as HTMLElement;
+      expect(step.classList).toContain('mat-mdc-button');
+      expect(step.textContent).toContain('Call');
+      expect(step.closest('[data-testid="list-card-next-1"]')).not.toBeNull();
+      expect(
+        card('1')!.querySelector('[data-testid="row-more-1"]')?.closest('.twes-list-card-head'),
+      ).not.toBeNull();
+      step.click();
+      expect(ran).toContain('call:1');
+
+      // A row whose next step is another keeps the action as an icon in its head, and has no foot.
+      const other = card('2')!.querySelector('[data-testid="row-action-call-2"]') as HTMLElement;
+      expect(other.classList).toContain('mat-mdc-icon-button');
+      expect(other.closest('.twes-list-card-head')).not.toBeNull();
+      expect(card('2')!.querySelector('[data-testid="list-card-next-2"]')).toBeNull();
+    });
+
     it('names every value it shows, since a card has no header row to read it from', () => {
       // A cell under a column header needs no label; the same cell in a card does, or "Sfax" says nothing.
       const pairs = card('1')!.querySelectorAll('[data-testid^="list-card-value-"]');

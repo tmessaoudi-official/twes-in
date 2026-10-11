@@ -30,6 +30,7 @@ import type {
   ExpensesError,
   ExpenseStatusCounts,
 } from './expenses-types';
+import { exportEntry } from '../shared/testing/list-export';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -145,10 +146,10 @@ describe('ExpensesPage', () => {
 
   it('offers what the list shows as a CSV or an Excel file', async () => {
     await create();
-    expect(q('expenses-export-csv')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'expenses-export', 'csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/expenses.csv',
     );
-    expect(q('expenses-export-xlsx')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'expenses-export', 'xlsx')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/expenses.xlsx',
     );
   });

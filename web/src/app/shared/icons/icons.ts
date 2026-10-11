@@ -14,6 +14,7 @@ export const ICONS = [
   'admin_panel_settings',
   'arrow_back',
   'arrow_downward',
+  'arrow_drop_down',
   'arrow_forward',
   'arrow_upward',
   'article',

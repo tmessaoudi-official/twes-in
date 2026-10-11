@@ -16,6 +16,8 @@ import {
 } from '@angular/core';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
@@ -23,6 +25,7 @@ import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import type { ExportFormat } from '../shared/list/export-address';
 import { ListExport } from '../shared/list/list-export';
+import { Label } from '../shared/a11y/label';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import type {
   ListDescriptor,
@@ -61,6 +64,9 @@ import {
   selector: 'app-invoices-page',
   imports: [
     MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    Label,
     RouterLink,
     TranslatePipe,
     AmountPipe,

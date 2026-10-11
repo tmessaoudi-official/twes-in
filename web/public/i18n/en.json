@@ -3366,6 +3366,7 @@
     }
   },
   "export": {
+    "open": "Export",
     "csv": "Export as CSV",
     "xlsx": "Export as Excel",
     "failed": "The file could not be prepared. Try again."

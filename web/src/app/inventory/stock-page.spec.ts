@@ -34,6 +34,7 @@ import { StockPage } from './stock-page';
 import { ProductScans } from '../products/product-scans';
 import { ScanBus } from '../shared/scan/scan-bus';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { exportEntry } from '../shared/testing/list-export';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -256,10 +257,10 @@ describe('StockPage', () => {
   });
 
   it('offers what the list shows as a CSV or an Excel file', () => {
-    expect(q('stock-export-csv')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'stock-export', 'csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/stock-levels.csv',
     );
-    expect(q('stock-export-xlsx')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'stock-export', 'xlsx')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/stock-levels.xlsx',
     );
   });

@@ -2,6 +2,8 @@
 
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Feedback } from '../feedback/feedback';
 import { FileSaver } from '../files/save-file';
@@ -10,8 +12,8 @@ import type { ExportFormat } from './export-address';
 import { ExportApi } from './export-api';
 
 /**
- * The two buttons that download what a list shows as a CSV or an Excel file. Nothing is shown until the list has asked
- * for its first page, since until then there is no search to hand over.
+ * « Exporter ▾ »: one button whose menu downloads what a list shows as a CSV or an Excel file. Nothing is shown until the
+ * list has asked for its first page, since until then there is no search to hand over.
  *
  * A whole list leaving the company waits for the person to have proved who they are in the last few minutes (docs/SPEC.md
  * § 7, audit H-b2). The API decides: the file is fetched, and only when it answers `step_up_required` is the proof
@@ -19,37 +21,40 @@ import { ExportApi } from './export-api';
  */
 @Component({
   selector: 'app-list-export',
-  imports: [MatButtonModule, TranslatePipe],
+  imports: [MatButtonModule, MatIconModule, MatMenuModule, TranslatePipe],
   template: `
     @if (address(); as make) {
       <button
         mat-stroked-button
         type="button"
         [disabled]="busy()"
-        (click)="download(make('csv'))"
-        [attr.data-address]="make('csv')"
-        [attr.data-testid]="testId() + '-csv'"
+        [matMenuTriggerFor]="formats"
+        [attr.data-testid]="testId()"
       >
-        {{ 'export.csv' | translate }}
+        <mat-icon aria-hidden="true">download</mat-icon>
+        {{ 'export.open' | translate }}
+        <mat-icon iconPositionEnd aria-hidden="true">arrow_drop_down</mat-icon>
       </button>
-      <button
-        mat-stroked-button
-        type="button"
-        [disabled]="busy()"
-        (click)="download(make('xlsx'))"
-        [attr.data-address]="make('xlsx')"
-        [attr.data-testid]="testId() + '-xlsx'"
-      >
-        {{ 'export.xlsx' | translate }}
-      </button>
+      <mat-menu #formats="matMenu">
+        @for (format of FORMATS; track format) {
+          <button
+            mat-menu-item
+            type="button"
+            (click)="download(make(format))"
+            [attr.data-address]="make(format)"
+            [attr.data-testid]="testId() + '-' + format"
+          >
+            {{ 'export.' + format | translate }}
+          </button>
+        }
+      </mat-menu>
     }
   `,
-  // `data-address` says which file a button fetches, which a page's spec reads.
-  // Two buttons in a bare inline host touch; the host keeps them a gap apart, and wraps them on a narrow screen.
-  host: { class: 'inline-flex flex-wrap gap-2' },
+  // `data-address` says which file an entry fetches, which a page's spec reads once the menu is open.
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ListExport {
+  protected readonly FORMATS: readonly ExportFormat[] = ['csv', 'xlsx'];
   /** Writes the address of the file in a format, or is null while there is no search to hand over. */
   readonly address = input.required<((format: ExportFormat) => string) | null>();
   readonly testId = input.required<string>();

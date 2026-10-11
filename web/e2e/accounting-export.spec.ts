@@ -22,6 +22,7 @@ test('the accountant files of a period download from « Export comptable »', as
 
   await page.getByTestId('accounting-export-from').fill('2026-01-01');
   await page.getByTestId('accounting-export-to').fill('2026-12-31');
+  await page.getByTestId('accounting-export-sales-journal').click();
   await expect(page.getByTestId('accounting-export-sales-journal-csv')).toHaveAttribute(
     'data-address',
     /\/exports\/sales-journal\.csv\?from=2026-01-01&to=2026-12-31$/,
@@ -45,5 +46,5 @@ test('the accountant files of a period download from « Export comptable »', as
 
   await page.getByTestId('accounting-export-to').fill('2025-12-31');
   await expect(page.getByTestId('accounting-export-period-error')).toBeVisible();
-  await expect(page.getByTestId('accounting-export-sales-journal-csv')).toHaveCount(0);
+  await expect(page.getByTestId('accounting-export-sales-journal')).toHaveCount(0);
 });

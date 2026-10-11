@@ -30,6 +30,7 @@ import type {
   InvoicesError,
   InvoiceStatusCounts,
 } from './invoices-types';
+import { exportEntry } from '../shared/testing/list-export';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -153,6 +154,11 @@ describe('InvoicesPage', () => {
     fixture.detectChanges();
   }
 
+  afterEach(() => {
+    // A menu opened in a case draws over the page, outside the fixture.
+    document.querySelectorAll('.cdk-overlay-container').forEach((element) => element.remove());
+  });
+
   beforeEach(async () => {
     error.set(null);
     facade.loadListContext.mockReset().mockResolvedValue(undefined);
@@ -204,10 +210,10 @@ describe('InvoicesPage', () => {
   // docs/SPEC.md § 7, 2026-09-24 22:51 (row 123) and 2026-09-26: from a tablet up, an issued document opens as a sheet
   // over its list, named in the list's own address; a draft opens its editor, and a phone the record itself.
   it('offers what the list shows as a CSV or an Excel file', () => {
-    expect(q('invoices-export-csv')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'invoices-export', 'csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/invoices.csv',
     );
-    expect(q('invoices-export-xlsx')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'invoices-export', 'xlsx')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/invoices.xlsx',
     );
   });
@@ -270,9 +276,21 @@ describe('InvoicesPage', () => {
     expect(text('invoice-i4')).toContain('Avoir');
   });
 
-  // Audit B-2: the cheque and traite portfolio was reachable only by typing its address.
-  it('leads to the cheque and traite portfolio from its header', () => {
-    expect(q('invoices-portfolio')?.getAttribute('href')).toBe('/instruments');
+  // The cheque and traite portfolio was once reachable only by typing its address; it waits in the header's « ⋮ »,
+  // between « Exporter ▾ » and the new invoice, so the one filled button stays last.
+  it('leads to the cheque and traite portfolio from its header menu', () => {
+    const head = (fixture.nativeElement as HTMLElement).querySelector('.twes-page-head')!;
+    const order = [...head.querySelectorAll('[data-testid]')]
+      .map((element) => element.getAttribute('data-testid'))
+      .filter((id) => ['invoices-export', 'invoices-more', 'invoice-add'].includes(id!));
+    expect(order).toEqual(['invoices-export', 'invoices-more', 'invoice-add']);
+    expect(q('invoices-portfolio')).toBeNull();
+
+    q('invoices-more')!.click();
+    fixture.detectChanges();
+    const entry = document.body.querySelector('[data-testid="invoices-portfolio"]');
+    expect(entry?.getAttribute('href')).toBe('/instruments');
+    expect(entry?.textContent).toContain('invoices.portfolio.open');
   });
 
   it('offers a new invoice to a writer only', async () => {

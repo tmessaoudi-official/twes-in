@@ -25,6 +25,7 @@ import {
 import { CustomersFacade } from './customers-facade';
 import { CustomersPage } from './customers-page';
 import type { CustomerGroupRow, CustomerRow } from './customers-types';
+import { exportEntry } from '../shared/testing/list-export';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -170,10 +171,10 @@ describe('CustomersPage', () => {
   });
 
   it('offers what the list shows as a CSV or an Excel file, to a reader as to a writer', async () => {
-    expect(q('customers-export-csv')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'customers-export', 'csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/customers.csv',
     );
-    expect(q('customers-export-xlsx')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'customers-export', 'xlsx')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/customers.xlsx',
     );
     expect(facade.exportUrl).toHaveBeenCalledWith(
@@ -186,7 +187,7 @@ describe('CustomersPage', () => {
     fixture = TestBed.createComponent(CustomersPage);
     await settle();
 
-    expect(q('customers-export-csv')).not.toBeNull();
+    expect(exportEntry(fixture, 'customers-export', 'csv')).not.toBeNull();
   });
 
   it('offers a new customer to a writer only', async () => {

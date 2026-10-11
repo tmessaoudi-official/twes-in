@@ -230,12 +230,20 @@ export class DataList<Row> implements OnInit {
     resolveColumns(this.descriptor(), this.preferences()),
   );
   /**
-   * The row's own buttons: what this row can take that is not rare, its next step first, at most two (docs/SPEC.md
-   * § 7, 2026-10-11 08:26); the rest waits in « ⋮ ». Destructive is never a button, whatever its frequency — a button
-   * under the pointer is the wrong place for it (design review finding 1).
+   * The row's own buttons: what this row can take that is not rare, its next step first, at most two; the rest waits
+   * in « ⋮ ». Destructive is never a button, whatever its frequency: a button under the pointer is the wrong place
+   * for it.
    */
   protected rowButtons(row: Row): readonly RowAction<Row>[] {
     return this.rowOffered(row).buttons;
+  }
+  /** A phone card's next step, written out at its foot, where the card's whole width is the button's. */
+  protected cardNext(row: Row): RowAction<Row> | null {
+    return this.rowButtons(row).find((action) => action.next?.(row) === true) ?? null;
+  }
+  /** What a phone card's head keeps beside its title: the buttons but the next step, as icons. */
+  protected cardHead(row: Row): readonly RowAction<Row>[] {
+    return this.rowButtons(row).filter((action) => action.next?.(row) !== true);
   }
   /** The row's « ⋮ »: the rare, what the buttons had no room for, by group, what is final last. */
   protected rowMenu(row: Row): readonly RowAction<Row>[] {

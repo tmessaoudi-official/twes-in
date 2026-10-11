@@ -37,9 +37,20 @@ describe('ListExport', () => {
     return fixture;
   }
 
+  /** Opens « Exporter ▾ » and finds one format's entry, which the menu draws over the page. */
   function button(fixture: ReturnType<typeof create>, format: 'csv' | 'xlsx'): HTMLButtonElement {
-    return fixture.nativeElement.querySelector(`[data-testid="things-export-${format}"]`);
+    open(fixture);
+    return document.body.querySelector(`[data-testid="things-export-${format}"]`)!;
   }
+
+  function open(fixture: ReturnType<typeof create>): void {
+    (fixture.nativeElement.querySelector('[data-testid="things-export"]') as HTMLElement).click();
+    fixture.detectChanges();
+  }
+
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
 
   const refused = () =>
     new Blob([JSON.stringify({ error: 'step_up_required' })], { type: 'application/json' });
@@ -55,9 +66,19 @@ describe('ListExport', () => {
     expect(fixture.nativeElement.querySelector('button')).toBeNull();
   });
 
-  it('offers the file in both formats as buttons, since a file may first ask who is at the screen', () => {
+  it('offers the file in both formats from one « Exporter » menu, each a button, since a file may first ask who is at the screen', () => {
     const fixture = create((format) => `/exports/things.${format}`);
-    const buttons = [...fixture.nativeElement.querySelectorAll('button')] as HTMLButtonElement[];
+    const trigger = fixture.nativeElement.querySelector(
+      '[data-testid="things-export"]',
+    ) as HTMLButtonElement;
+
+    expect(trigger.textContent).toContain('export.open');
+    expect(trigger.getAttribute('aria-haspopup')).toBe('menu');
+    expect(fixture.nativeElement.querySelectorAll('button').length).toBe(1);
+    open(fixture);
+    const buttons = [
+      ...document.body.querySelectorAll('[data-testid^="things-export-"]'),
+    ] as HTMLButtonElement[];
 
     expect(buttons.map((each) => each.getAttribute('data-testid'))).toEqual([
       'things-export-csv',
@@ -131,13 +152,5 @@ describe('ListExport', () => {
     expect((TestBed.inject(Feedback) as RecordedFeedback).said.map((toast) => toast.key)).toEqual([
       'export.failed',
     ]);
-  });
-
-  it('keeps its two buttons apart, which a bare inline host does not (the buttons touched)', () => {
-    const fixture = create((format) => `/exports/things.${format}`);
-
-    const host = fixture.nativeElement as HTMLElement;
-    expect(host.classList.contains('inline-flex')).toBe(true);
-    expect(host.classList.contains('gap-2')).toBe(true);
   });
 });

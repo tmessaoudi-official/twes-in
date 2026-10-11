@@ -31,6 +31,7 @@ import type {
   ProductRow,
   ProductsError,
 } from './products-types';
+import { exportEntry } from '../shared/testing/list-export';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -134,10 +135,10 @@ describe('ProductsPage', () => {
   });
 
   it('offers what the list shows as a CSV or an Excel file', () => {
-    expect(q('products-export-csv')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'products-export', 'csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/products.csv',
     );
-    expect(q('products-export-xlsx')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'products-export', 'xlsx')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/products.xlsx',
     );
   });

@@ -29,6 +29,7 @@ import type {
   DeliveryNotesError,
   DeliveryNoteStatusCounts,
 } from './delivery-notes-types';
+import { exportEntry } from '../shared/testing/list-export';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -145,12 +146,12 @@ describe('DeliveryNotesPage', () => {
   });
 
   it('offers what the list shows as a CSV or an Excel file', () => {
-    expect(q('delivery-notes-export-csv')?.getAttribute('data-address')).toBe(
+    expect(exportEntry(fixture, 'delivery-notes-export', 'csv')?.getAttribute('data-address')).toBe(
       '/api/companies/c1/exports/delivery-notes.csv',
     );
-    expect(q('delivery-notes-export-xlsx')?.getAttribute('data-address')).toBe(
-      '/api/companies/c1/exports/delivery-notes.xlsx',
-    );
+    expect(
+      exportEntry(fixture, 'delivery-notes-export', 'xlsx')?.getAttribute('data-address'),
+    ).toBe('/api/companies/c1/exports/delivery-notes.xlsx');
   });
 
   it('lists the notes with their number, status, customer and total at the currency scale', () => {
