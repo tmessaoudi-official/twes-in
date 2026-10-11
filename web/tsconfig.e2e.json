@@ -5,8 +5,10 @@
     "e2e/**/*.ts",
     "e2e-design/**/*.ts",
     "e2e-gallery/**/*.ts",
+    "e2e-recorder/**/*.ts",
     "playwright.config.ts",
     "playwright.design.config.ts",
-    "playwright.gallery.config.ts"
+    "playwright.gallery.config.ts",
+    "playwright.recorder.config.ts"
   ]
 }

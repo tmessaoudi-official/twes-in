@@ -501,3 +501,22 @@ deployment included, which is what to paste when reporting a problem.
   appears, and only the button reloads. A new API changes the line quietly.
 - `/api/health` answers the API's build and the deployment, as they are: `{"build": {"version", "commit", "mode"},
   "deployment"}`.
+
+## 12. The guide videos
+
+`make videos` films the guides on the running stack: each guide is opened from Ctrl K as a person opens it, its
+narration is drawn in the page as a caption and held for as long as it takes to read, and the work under a step is
+typed at a person's pace. The films go to `var/claude/videos/<language>/` (gitignored), beside them a captions track
+(`<name>.<language>.vtt`), a chapters track (`<name>.chapters.vtt`) and the cues (`<name>.cues.json`). The narration is
+written for anyone who opens the app, every feature and its shortcut included; a key is read from the screen when the
+film is made, never written in the script, because a person may have changed it.
+
+- It needs `make up` and `make fixtures`: the first film works in « Carthage Conseil » (`RECORD_COMPANY` names another)
+  and saves nothing. The company's drafts are counted before and after, and the run fails if they differ.
+- It refuses to start while a gate's toolchain container runs or while the load average is above 6 (`MAX_LOAD=…`
+  moves it): a loaded machine films stutters. The guard is checked at the start only; start no gate until it ends.
+- After the films, each one is opened again in the browser and played; a frame is kept in the middle of each chapter as
+  `<name>.check-<n>.png`. The run fails when a film is shorter than its narration, a chapter's frame comes late, or two
+  chapters show one picture. Look at the frames: no test says a caption is readable.
+- It is not part of CI: `web/e2e/tours.spec.ts` proves the guides run, and a film is made for a release.
+  `web/e2e-recorder/captions.test.ts` (the reading time, the WebVTT files) runs first in the same command.
