@@ -135,6 +135,45 @@ test('the navigation follows the window: a rail of icons on a tablet, a bottom b
   await expect.poll(() => sidewaysOverflow(page)).toBeLessThanOrEqual(0);
 });
 
+test('on the phone bar every icon stands centred over its word, in a pill 32 px tall', async ({
+  page,
+}) => {
+  // A tab is a link and « Créer » or « Plus » a button: only the buttons centred their glyph, so three icons stood
+  // left of their words.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page);
+  const bar = page.getByTestId('bottom-bar');
+  await expect(bar).toBeVisible();
+  const tabs = await bar.locator(':scope > a, :scope > button').evaluateAll((items) =>
+    items.map((item) => {
+      const pill = item.querySelector('.mat-icon')!.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(item.querySelector('.mat-icon')!);
+      const glyph = range.getBoundingClientRect();
+      const word = item.querySelector('span')!.getBoundingClientRect();
+      return {
+        name: item.textContent?.trim() ?? '',
+        glyph: glyph.x + glyph.width / 2,
+        pill: pill.x + pill.width / 2,
+        word: word.x + word.width / 2,
+        height: pill.height,
+        glyphMiddle: glyph.y + glyph.height / 2,
+        pillMiddle: pill.y + pill.height / 2,
+      };
+    }),
+  );
+  expect(tabs.length).toBeGreaterThanOrEqual(4);
+  for (const tab of tabs) {
+    expect(Math.abs(tab.glyph - tab.pill), `${tab.name}: glyph in its pill`).toBeLessThanOrEqual(1);
+    expect(Math.abs(tab.pill - tab.word), `${tab.name}: pill over its word`).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(tab.glyphMiddle - tab.pillMiddle),
+      `${tab.name}: glyph mid-height`,
+    ).toBeLessThanOrEqual(1);
+    expect(tab.height, `${tab.name}: pill height`).toBeCloseTo(32, 0);
+  }
+});
+
 test('on a phone the settings list stands alone, a setting opens without it, and the way back returns to it', async ({
   page,
 }) => {
