@@ -48,7 +48,6 @@ function rows(page: Page, barId: string): Promise<Rows> {
 }
 
 interface Bar {
-  list: string;
   page: string;
   bar: string;
   more: string;
@@ -57,9 +56,8 @@ interface Bar {
 }
 
 const BARS: readonly Bar[] = [
-  // Any invoice still due: its bar holds the most, the next step among them.
+  // An invoice still due: its bar holds the most, the next step among them.
   {
-    list: '/invoices?status=issued,overdue',
     page: '/invoices/',
     bar: 'document-actions',
     more: 'document-more',
@@ -67,7 +65,6 @@ const BARS: readonly Bar[] = [
     inMenu: 'document-planned-mailing',
   },
   {
-    list: '/vendors',
     page: '/vendors/',
     bar: 'record-bar',
     more: 'record-more',
@@ -76,14 +73,97 @@ const BARS: readonly Bar[] = [
   },
 ];
 
-/** Opens the first record of a list on its own page: a row's link may open a sheet over the list instead. */
-async function openFirst(page: Page, bar: Bar): Promise<void> {
-  await page.goto(bar.list);
-  const first = page.locator('a[data-testid^="list-link-"]').first();
-  // The list's first page is read with the filter: on a loaded machine it outruns the default wait.
-  await expect(first).toBeVisible({ timeout: 20_000 });
-  const id = (await first.getAttribute('data-testid'))!.replace('list-link-', '');
-  await page.goto(bar.page + id);
+/**
+ * An invoice of this run's own, issued so it is still due: CI seeds a company with no invoice at all, and one of
+ * another spec's would tie this one to the order the shards run in.
+ */
+async function anIssuedInvoice(
+  page: Page,
+  number: string,
+): Promise<{ customer: string; invoice: string }> {
+  return page.evaluate(
+    async ([csrf, customerNumber]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const base = `/api/companies/${me.company.id}`;
+      const send = async (path: string, body: unknown): Promise<{ id: string }> => {
+        const response = await fetch(`${base}${path}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) throw new Error(`POST ${path} answered ${response.status}`);
+        return (await response.json()) as { id: string };
+      };
+      const customer = await send('/customers', {
+        number: customerNumber,
+        kind: 'individual',
+        customerGroupId: null,
+        taxRegime: 'standard',
+        name: `Client ${customerNumber}`,
+        legalName: null,
+        identifiers: {},
+        email: null,
+        phone: null,
+        website: null,
+        billingAddressLine1: 'Rue de Rome',
+        billingAddressLine2: null,
+        billingPostalCode: '1000',
+        billingCity: 'Tunis',
+        billingCountryCode: 'TN',
+        shippingAddressLine1: null,
+        shippingAddressLine2: null,
+        shippingPostalCode: null,
+        shippingCity: null,
+        shippingCountryCode: null,
+        defaultTaxComponentIds: [],
+        defaultDiscountRate: null,
+        notes: null,
+        isActive: true,
+        customFields: {},
+      });
+      const options = (await (await fetch(`${base}/invoice-options`)).json()) as {
+        units: { id: string; code: string }[];
+      };
+      const unit = options.units.find((each) => each.code === 'C62') ?? options.units[0];
+      const invoice = await send('/invoices', {
+        customerId: customer.id,
+        establishmentId: null,
+        lines: [
+          {
+            description: 'Réglage du tour',
+            quantity: '2',
+            unitId: unit?.id,
+            unitPriceNet: '150',
+            discountRate: null,
+            taxComponentIds: [],
+          },
+        ],
+      });
+      await send(`/invoices/${invoice.id}/issue`, null);
+      return { customer: customer.id, invoice: invoice.id };
+    },
+    [CSRF, number] as const,
+  );
+}
+
+/** Retires the run's customer; its issued invoice stays in the shared company, as every issued one in these runs. */
+async function retireCustomer(page: Page, id: string): Promise<void> {
+  const status = await page.evaluate(
+    async ([csrf, customerId]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const url = `/api/companies/${me.company.id}/customers/${customerId}`;
+      // The write shape has no id: a body naming one is refused.
+      const { id: _, ...fields } = (await (await fetch(url)).json()) as Record<string, unknown>;
+      const retired = await fetch(url, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({ ...fields, isActive: false }),
+      });
+      return retired.status;
+    },
+    [CSRF, id] as const,
+  );
+  expect(status).toBe(200);
 }
 
 /** A vendor of this run's own: the shared company's earlier runs retired theirs, and a retired one is not listed. */
@@ -128,10 +208,14 @@ test('a page bar shows what is coming dashed only where the header keeps its row
 
   const vendor = `E2E-SOON-${Date.now().toString(36).toUpperCase()}`;
   const found: Record<string, Rows> = {};
+  let made: { customer: string; invoice: string } | null = null;
   try {
     for (const bar of BARS) {
       if (bar.bar === 'record-bar') await newVendor(page, vendor);
-      else await openFirst(page, bar);
+      else {
+        made = await anIssuedInvoice(page, vendor);
+        await page.goto(bar.page + made.invoice);
+      }
       await expect(page.getByTestId(bar.bar)).toBeVisible();
       for (const width of [1440, 1280, 1024, 900]) {
         await page.setViewportSize({ width, height: 900 });
@@ -163,5 +247,6 @@ test('a page bar shows what is coming dashed only where the header keeps its row
     await expect(page).toHaveURL(/\/coming\/purchases$/);
   } finally {
     await retire(page, vendor);
+    if (made !== null) await retireCustomer(page, made.customer);
   }
 });
