@@ -15,6 +15,8 @@ app() {
   printf '<?php return [%s];\n' "'root' => ['dev' => ${1:-false}]" > "$d/vendor/composer/installed.php"
   [[ "${2:-yes}" == yes ]] && echo '<?php' > "$d/var/cache/prod/App_KernelProdContainer.preload.php"
   echo '<?php' > "$d/config/preload.php"
+  # The served process's status, as the kernel writes it: real, effective, saved and filesystem uid.
+  printf 'Name:\tfrankenphp\nUid:\t%s\nGid:\t10001\t10001\t10001\t10001\n' "${3:-10001	10001	10001	10001}" > "$d/status"
   echo "$d"
 }
 # The production ini, with one value replaced when a case names it.
@@ -27,7 +29,7 @@ run() {
   )
   local kv; for kv in "$@"; do ini[${kv%%=*}]=${kv#*=}; done
   local args=() k; for k in "${!ini[@]}"; do args+=(-d "$k=${ini[$k]}"); done
-  FRANKENPHP_CONFIG=${WORKER_UNDER_TEST-worker ./public/index.php} APP_ENV=${APP_ENV_UNDER_TEST:-prod} php -n "${args[@]}" "$GATE" "$d" 2>&1
+  FRANKENPHP_CONFIG=${WORKER_UNDER_TEST-worker ./public/index.php} APP_ENV=${APP_ENV_UNDER_TEST:-prod} php -n "${args[@]}" "$GATE" "$d" "$d/status" 2>&1
 }
 
 echo "production-image check"
@@ -45,4 +47,7 @@ out=$(run "$d" opcache.preload=); check "no preload is refused" $? 1 "$out" "opc
 out=$(run "$d" opcache.preload=/elsewhere/preload.php); check "a preload of another file is refused" $? 1 "$out" "opcache.preload"
 d=$(app true); out=$(run "$d"); check "dev packages installed are refused" $? 1 "$out" "dev packages"
 d=$(app false no); out=$(run "$d"); check "a cache not warmed at build, with nothing to preload, is refused" $? 1 "$out" "var/cache/prod"
+d=$(app false yes "0	0	0	0"); out=$(run "$d"); check "a server running as root is refused" $? 1 "$out" "root"
+d=$(app false yes "10001	0	10001	10001"); out=$(run "$d"); check "a server whose effective uid is root is refused" $? 1 "$out" "root"
+d=$(app); rm "$d/status"; out=$(run "$d"); check "a status that cannot be read is refused, not taken as fine" $? 1 "$out" "status"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]
