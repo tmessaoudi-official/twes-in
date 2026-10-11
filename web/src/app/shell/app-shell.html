@@ -16,6 +16,7 @@
     #drawer
     [mode]="handset() ? 'over' : 'side'"
     [opened]="!handset()"
+    [disableClose]="!handset()"
     class="twes-shell-nav"
     [attr.inert]="immersive.on() ? '' : null"
     [style.width.px]="rail() ? 80 : 248"

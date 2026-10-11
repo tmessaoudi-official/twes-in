@@ -97,6 +97,22 @@ test('the rail stays as tall as the window, so its foot is on screen however lon
   await page.keyboard.press('Escape');
 });
 
+test('Escape closes « Créer » and leaves the sidebar where it is', async ({ page }) => {
+  // The focus goes back to « Créer » inside the sidebar, where a second Escape used to hide the whole navigation with
+  // nothing on screen to bring it back.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  const create = page.getByTestId('create-open').first();
+  await create.click();
+  await expect(page.locator('.mat-mdc-menu-panel')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.mat-mdc-menu-panel')).toHaveCount(0);
+  await expect(create).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('mat-sidenav')).toHaveClass(/mat-drawer-opened/);
+  await expect(page.getByTestId('nav-home')).toBeInViewport();
+});
+
 test('the navigation follows the window: a rail of icons on a tablet, a bottom bar on a phone', async ({
   page,
 }) => {
