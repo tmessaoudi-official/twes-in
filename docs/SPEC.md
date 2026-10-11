@@ -4879,6 +4879,8 @@ functional tests run in the `tools` container, on the host's network, against th
 - [2026-10-11 08:26] AGREED: a selection on a phone starts from a visible « Sélectionner » toggle in the list header and from a long press on a card, both (developer).
 - [2026-10-11 08:26] AGREED: single-letter shortcuts get a switch, « Raccourcis à une touche » in Mon compte, on by default; off, every bare-letter key does nothing and Ctrl K still lists the actions (RGAA 12.10, WCAG 2.1.4) (developer).
 - [2026-10-11 08:26] AGREED: a second Escape no longer hides the desktop sidebar: the desktop `mat-sidenav` keeps itself open (`disableClose`), proven by an e2e pressing Escape twice after « Créer »; found while capturing row 260, queued as row 261 and fixed before row 260's build (developer).
+- [2026-10-11 09:01] AGREED: the phone bar draws Material 3's indicator: every icon centred in a pill 56 by 32 px over its word, 4 px between them, on a link as on a button (developer validated drawing B of https://claude.ai/artifact/BXAw611dZUEJ8xQkd6AmAV; the tabs' icons stood left of their words because only buttons centre their text). Row 262.
+- [2026-10-11 09:01] AGREED: no sign-in by a link sent by mail without password or two-step (developer, asked to be challenged): it makes the mailbox the only key to a company that signs fiscal invoices, walks round a company's « two-step required », is spent by mail scanners, and signs in whoever sits at a shared shop computer. Who wants neither password nor code gets a passkey: the passkey-as-first-factor slices (the ruled five-step order) are brought forward, their place set at the next planning.
 
 ## 8. Status
 
@@ -5159,7 +5161,8 @@ functional tests run in the `tools` container, on the host's network, against th
 | 258 | « Filigrane » (§ 7 2026-10-11 01:24): the watermarks' layout, intensity with a floor, and colour, as a company setting; presence and words stay code | M | todo | - | api/src/** api/templates/pdf/** web/src/app/settings/** |
 | 259 | « Ajouter à… » (§ 7 2026-10-11 01:24): a new or open draft invoice, quote, delivery note (purchase order once built) from the product page and list, the scan card, the stock map and between documents; « Ajouter à un tarif » | L | todo | - | api/src/Module/** web/src/app/** |
 | 260 | Menus and actions, one way for the whole product (§ 7 2026-10-11 01:24): research and design every menu and action, an artifact of each before and after confirmed first; then every action of a record reachable from its row, selection and bulk with a dry-run | L | todo | - | web/src/app/** docs/research/** |
-| 261 | Escape keeps the desktop sidebar open (§ 7 2026-10-11 08:26): after closing « Créer » a second Escape hid the whole navigation with nothing to bring it back; `disableClose` on the desktop `mat-sidenav`, an e2e pressing Escape twice | S | todo | - | web/src/app/shell/** web/e2e/** |
+| 261 | Escape keeps the desktop sidebar open (§ 7 2026-10-11 08:26): after closing « Créer » a second Escape hid the whole navigation with nothing to bring it back; `disableClose` on the desktop `mat-sidenav`, an e2e pressing Escape twice | S | done | 8cfafcfe | web/src/app/shell/** web/e2e/** |
+| 262 | The phone bar's icons over their words (§ 7 2026-10-11 09:01): each glyph centred in a 56 by 32 px pill, 4 px above its word, links and buttons alike; `shell.spec.ts` measures every tab | S | done | 452c8047 | web/src/styles.scss web/e2e/** |
 <!-- /progress-block -->
 
 ### Delivered
