@@ -515,7 +515,7 @@ film is made, never written in the script, because a person may have changed it.
   and saves nothing. The company's drafts are counted before and after, and the run fails if they differ.
 - It refuses to start while a gate's toolchain container runs or while the load average is above 6 (`MAX_LOAD=…`
   moves it): a loaded machine films stutters. The guard is checked at the start only; start no gate until it ends.
-- After the films, each one is opened again in the browser and played; a frame is kept in the middle of each chapter as
+- After the films, each one is opened again in the browser and played; a frame is kept at the end of each chapter, its line still up, as
   `<name>.check-<n>.png`. The run fails when a film is shorter than its narration, a chapter's frame comes late, or two
   chapters show one picture. Look at the frames: no test says a caption is readable.
 - It is not part of CI: `web/e2e/tours.spec.ts` proves the guides run, and a film is made for a release.

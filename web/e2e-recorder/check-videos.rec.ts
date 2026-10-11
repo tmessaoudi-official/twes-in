@@ -3,7 +3,7 @@ import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import type { Cue } from './captions';
 
-// Every video just written is opened again in the browser and stopped in the middle of each chapter, the frame kept
+// Every video just written is opened again in the browser and stopped at the end of each chapter, the frame kept
 // as `<video>.check-<n>.png` beside it: what a viewer sees under each line of narration, to be looked at.
 const OUT = process.env['VIDEOS_DIR'] ?? '../var/claude/videos';
 
@@ -44,10 +44,9 @@ test('every video plays, has a length, and is pictured at each chapter', async (
 
     // Played from the start, never sought: the recorded WebM is not seekable (`seekable` is empty), a seek lands on the
     // first frame and still says « seeked », and even a seek to 0 stalls it. Each decoded frame past a chapter's moment
-    // is copied into a canvas, which is what is kept.
-    const moments = cues.map(
-      (cue) => (cue.start + Math.min(1_500, (cue.end - cue.start) / 2)) / 1_000,
-    );
+    // is copied into a canvas, which is what is kept. The moment is just before the line goes: its caption still up and
+    // the work under it done, so the frame shows whether the one hides the other.
+    const moments = cues.map((cue) => (cue.end - Math.min(600, (cue.end - cue.start) / 2)) / 1_000);
     const frames = await page.evaluate(async (targets) => {
       const video = document.getElementById('v') as HTMLVideoElement;
       const canvas = document.createElement('canvas');
