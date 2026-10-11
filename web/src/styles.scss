@@ -2439,6 +2439,13 @@ li.twes-row-new.twes-list-card {
   display: none;
 }
 
+// Material takes the content's top padding away under a title, and the content scrolls: an outlined first field's
+// label, which floats above its outline, was cut at the content's edge. Room for it, qualified once more because
+// Material's own dialog styles load after this file.
+.mat-mdc-dialog-container .mat-mdc-dialog-title + .mat-mdc-dialog-content.mat-mdc-dialog-content {
+  padding-top: 0.5rem;
+}
+
 // A dialog is one column wide, so its fields stand one under the other.
 .mat-mdc-dialog-content .twes-form-fields {
   grid-template-columns: minmax(0, 1fr);
