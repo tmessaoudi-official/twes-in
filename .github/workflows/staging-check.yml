@@ -1,0 +1,39 @@
+# The staging check (scripts/staging/staging-check.sh, docs/RUNBOOK.md): the commit published to a local registry,
+# followed into a staging of its own, every container proved to run its digest, then redeployed from the recorded
+# release after its images were removed. Weekly, so drift in the registry, an image or the deploy scripts shows within
+# a week; by hand; and on any push that changes the road from a commit to staging. Not one of ci.yml's required checks.
+name: staging-check
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - compose.yaml
+      - compose.prod.yaml
+      - compose.backup.yaml
+      - compose.deploy.yaml
+      - compose.release.yaml
+      - scripts/release/**
+      - scripts/deploy/**
+      - scripts/staging/**
+      - scripts/backup/stand-in-bucket.sh
+      - scripts/backup/drill.compose.yaml
+      - .github/workflows/staging-check.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v7
+        # publish.sh builds each part as the version git says it is, which counts the day's changes.
+        with:
+          fetch-depth: 0
+      - run: make staging-check

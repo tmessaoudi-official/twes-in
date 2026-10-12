@@ -4,11 +4,13 @@
 # run, so pgBackRest and restic reach it over TLS as they reach a real one. The caller defines `dc` (its compose),
 # `fail`, DRILL_DIR, and BACKUP_S3_KEY, BACKUP_S3_SECRET and BACKUP_S3_BUCKET.
 
-# The authority, the bucket's certificate and its one identity, made with the backup image's own openssl.
+# The authority, the bucket's certificate and its one identity, made with the backup image's own openssl: the one built
+# here, or the one given (make staging-check builds nothing, and passes the published image by its digest).
 stand_in_bucket_keys() {
-  dc build -q postgres
+  local image=${1:-}
+  if [[ -z "$image" ]]; then dc build -q postgres; image=twes-in-postgres-backup; fi
   mkdir -p "$DRILL_DIR/certs"
-  docker run --rm -u "$(id -u):$(id -g)" -v "$DRILL_DIR/certs:/c" -w /c --entrypoint sh twes-in-postgres-backup -c '
+  docker run --rm -u "$(id -u):$(id -g)" -v "$DRILL_DIR/certs:/c" -w /c --entrypoint sh "$image" -c '
     openssl req -x509 -newkey rsa:2048 -nodes -keyout ca.key -out ca.crt -days 1 -subj /CN=twes-drill-ca 2>/dev/null
     openssl req -newkey rsa:2048 -nodes -keyout s3.key -out s3.csr -subj /CN=s3 2>/dev/null
     printf "subjectAltName=DNS:s3\n" > ext

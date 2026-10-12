@@ -12,6 +12,8 @@ Stage 1 step 7, first half: P4 of the readiness page (staging on every green mas
 - [2026-10-12 22:16] AGREED: staging has its own GlitchTip project and Gatus lines kept off the public status page, alerting the developer only (developer).
 - [2026-10-12 22:16] AGREED: APP_MFA_KEY is rotated with api and worker stopped around app:keys:rotate-mfa; the cipher keeps one key (developer).
 - [2026-10-12 22:36] ASSUMED (review): app:keys:rotate-mfa records no audit entry: it reseals the same secrets under a new key on the console, with the service stopped, and no person's account changes, so it is listed in CommandsAndQueriesTest beside the seed and the chain sealing. Alternative: one audit entry per resealed account (field totpSecret).
+- [2026-10-12 23:19] ASSUMED (review): Staging's backups sit under BACKUP_S3_PREFIX=staging/ (pgBackRest and restic paths moved into compose.backup.yaml; production's stay at the bucket root), on top of staging having its own bucket and keys — because a staging handed production's bucket by mistake then still never writes over its backups. Alternatives: own bucket only; derive the path from DEPLOY_ENV (would move production's path).
+- [2026-10-12 23:19] ASSUMED (review): A file releases/hold beside staging's values pauses staging-follow.sh, and a commit that failed to start is not retried until master moves — because otherwise a rollback on staging is undone on the next five-minute tick, and a broken commit is redeployed every tick. Alternatives: no hold (rollback impossible while following); stop the timer by hand.
 
 ## Formal Plan
 
@@ -42,6 +44,14 @@ Stage 1 step 7, first half: P4 of the readiness page (staging on every green mas
 
 Not certified until a real staging VM exists: GHCR itself, public visibility, the timer, a real certificate.
 
+### Step 5 notes (goal-start advisor, 2026-10-12)
+- 5a round trip, then 5b rotations, two commits; each check run in the foreground, never beside a gate (swap near full).
+- The worktree and the bare origin are built from a commit of the work in progress (`git stash create`), or the check runs old files; the header says which.
+- The local registry is a `docker run` named for the check, bound to 127.0.0.1, removed by the trap, outside every file `deploy-overlay.sh` and `compose-log-rotation.sh` read; its image pinned with a row in docs/UPDATE.md.
+- `DEPLOY_EXTRA_FILES` in deploy.sh only with `--staging` and `COMPOSE_PROJECT_NAME=twes-staging-check`, refused otherwise, with a refusal case in deploy.test.sh.
+- Prove: each container's image id is its digest's; no `twes-staging-check-*` image built; sign-in through the edge; after `down` and removing the images, `releases/<rev>.env` redeploys by pulling.
+- Rotations assert what each key really guards: APP_SECRET = `kernel.secret`, a mail-stop link made before is refused after (HmacMailStopTokens), not the session; realtime = the old HTTP API key refused by Centrifugo and a token issued after connects (the 101 upgrade alone proves nothing); MFA = an enrolled user, codes from `OtphpTotpCodes::codeAt` (as `make operator-code`), api and worker stopped; database password = `ALTER ROLE` then the values, redeploy, health ok.
+
 ## Status
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
@@ -49,8 +59,8 @@ Not certified until a real staging VM exists: GHCR itself, public visibility, th
 | 1 | app:keys:rotate-mfa | M | done | f2fbe39f | api/src/Identity/** api/tests/** |
 | 2 | compose.release.yaml digest overlay + gate | M | done | 9eba21b1 | compose.release.yaml scripts/gates/** Makefile |
 | 3 | publish.sh + ci.yml publish job | M | done | 7cbbebe8 | scripts/release/** .github/workflows/ci.yml |
-| 4 | deploy modes, new-instance --staging, staging-follow + timer | M | doing | - | scripts/deploy/** infra/staging/** |
-| 5 | make staging-check + workflow | L | todo | - | scripts/staging/** Makefile .github/workflows/** |
+| 4 | deploy modes, new-instance --staging, staging-follow + timer | M | done | 531c4e84 | scripts/deploy/** infra/staging/** |
+| 5 | make staging-check + workflow | L | doing | - | scripts/staging/** Makefile .github/workflows/** |
 | 6 | RUNBOOK.md + docs | M | todo | - | docs/** CLAUDE.md |
 <!-- /progress-block -->
 ### Blocked

@@ -139,5 +139,20 @@ d=$(repo); e=$(staging_values); r="$TMPDIR/release.env"; head=$(git -C "$d" rev-
 out=$(COMPOSE_EXIT=1 run "$d" --staging "$e" "$r"); check "a start that fails fails the deploy" $? 1 "$out" "did not start"
 check "  and is written down as failed, so a follower does not try it again and again" 0 0 "$(tail -1 "$(dirname "$e")/releases/history" 2>&1)" "failed $head staging"
 
+# DEPLOY_EXTRA_FILES: make staging-check's own layers, taken under its compose project with --staging alone.
+d=$(repo); e=$(staging_values); r="$TMPDIR/release.env"; release_lines "$(git -C "$d" rev-parse HEAD)" > "$r"
+out=$(COMPOSE_PROJECT_NAME=twes-staging-check DEPLOY_EXTRA_FILES=/x/a.yaml:/x/b.yaml run "$d" --staging "$e" "$r"); check "the staging check adds its own layers" $? 0 "$out" "running"
+check "  after the release overlay, in order" 0 0 "$(called)" "-f compose.release.yaml -f /x/a.yaml -f /x/b.yaml up -d --no-build --wait"
+
+d=$(repo); e=$(staging_values); r="$TMPDIR/release.env"; release_lines "$(git -C "$d" rev-parse HEAD)" > "$r"
+out=$(COMPOSE_PROJECT_NAME=twes DEPLOY_EXTRA_FILES=/x/a.yaml run "$d" --staging "$e" "$r"); check "extra layers under any other project are refused" $? 1 "$out" "DEPLOY_EXTRA_FILES"
+[[ -z "$(called)" ]]; check "  and nothing starts" $? 0 "" ""
+
+d=$(repo); e=$(envfile); annotate "$d" "$(release_lines "$(git -C "$d" rev-parse HEAD)")"
+out=$(COMPOSE_PROJECT_NAME=twes-staging-check DEPLOY_EXTRA_FILES=/x/a.yaml run "$d" --release "$e"); check "extra layers never reach a production deployment" $? 1 "$out" "DEPLOY_EXTRA_FILES"
+
+d=$(repo); e=$(envfile)
+out=$(COMPOSE_PROJECT_NAME=twes-staging-check DEPLOY_EXTRA_FILES=/x/a.yaml run "$d" --build "$e"); check "  nor a built one" $? 1 "$out" "DEPLOY_EXTRA_FILES"
+
 echo "deploy: $pass passed, $fail failed"
 ((fail == 0))
