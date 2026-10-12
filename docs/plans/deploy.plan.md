@@ -65,14 +65,14 @@ Not certified by this goal: real ACME issuance and renewal, a real SMTP relay, D
 <!-- progress-block v1 -->
 | # | Step | Size | State | Evidence | Files |
 |---|------|------|-------|----------|-------|
-| 1 | Tests and gates read the deploy overlay | S | done | - | api/tests/Architecture/** scripts/gates/** |
-| 2 | Edge Caddyfile and compose.deploy.yaml | M | done | - | infra/edge/** compose.deploy.yaml |
-| 3 | app:seed --without-company, password from stdin | S | done | - | api/src/Tenancy/** api/tests/** |
-| 4 | new-instance.sh, deploy.sh, release tags | M | done | - | scripts/deploy/** |
-| 5 | Host country and backup provider settings, drafts | S | done | - | api/src/Legal/** api/resources/legal/** web/public/i18n/** |
-| 6 | make deploy-check and its workflow | M | done | - | scripts/deploy/** .github/workflows/** Makefile |
-| 7 | Sabotages | S | done | - | - |
-| 8 | Docs, SPEC, CLAUDE.md | S | done | - | docs/** CLAUDE.md |
+| 1 | Tests and gates read the deploy overlay | S | done | f23d8371 | api/tests/Architecture/** scripts/gates/** |
+| 2 | Edge Caddyfile and compose.deploy.yaml | M | done | f23d8371 | infra/edge/** compose.deploy.yaml |
+| 3 | app:seed --without-company, password from stdin | S | done | f23d8371 | api/src/Tenancy/** api/tests/** |
+| 4 | new-instance.sh, deploy.sh, release tags | M | done | f23d8371 | scripts/deploy/** |
+| 5 | Host country and backup provider settings, drafts | S | done | f23d8371 | api/src/Legal/** api/resources/legal/** web/public/i18n/** |
+| 6 | make deploy-check and its workflow | M | done | f23d8371 | scripts/deploy/** .github/workflows/** Makefile |
+| 7 | Sabotages | S | done | f23d8371 | - |
+| 8 | Docs, SPEC, CLAUDE.md | S | done | f23d8371 | docs/** CLAUDE.md |
 <!-- /progress-block -->
 ### Blocked
 ### Needs input

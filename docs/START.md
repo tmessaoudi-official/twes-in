@@ -605,7 +605,7 @@ certificate from Let's Encrypt on the first request and renews it alone, and it 
 API, the passkeys, the phone pairing and the realtime server use is derived from one name, `TWES_HOST`. Mailpit does
 not run: mail goes to the relay named in the values.
 
-**The machine.** Any Linux host with Docker and the Compose plugin, `git` and `make`, 4 GB of memory at least. A DNS
+**The machine.** Any Linux host with Docker and the Compose plugin, `git` and `make`. A DNS
 `A` (and `AAAA`, if the host has IPv6) record for the name points at it before the first start, or the certificate
 cannot be issued. Close every port but 22, 80 and 443 at the provider's own firewall: a port Docker publishes goes
 around `ufw` and `firewalld`, so a host firewall alone does not protect it. The deployment publishes none but the
@@ -652,13 +652,16 @@ read -rs PW && printf '%s\n' "$PW" | docker compose --env-file /etc/twes-in/depl
 Sign in at `https://<name>/`, enrol the authenticator the operator is asked for, then fill in the host's facts on
 `/platform/legal` (the provider, its country, the backup provider and its country): the legal pages print them.
 
-**The deploy check.** `make deploy-check` boots all of it as `deploy.sh` does, from values `new-instance.sh` wrote,
-with the edge's own certificate authority (`EDGE_TLS=internal`) and the restore drill's stand-in bucket, and asks the
-edge what a browser asks: the HSTS header, the 308 from plain HTTP, `/api/health`, the operator seeded as above signing
+**The deploy check.** `make deploy-check` boots the same four files from values `new-instance.sh` wrote, given through
+`--env-file`, with the edge's own certificate authority (`EDGE_TLS=internal`), the restore drill's layer (its stand-in
+bucket, and its authority mounted into the database and backup services) and a layer of its own (the edge publishing
+nothing, Mailpit started as the relay), and asks the edge what a browser asks: the HSTS header, the 308 from plain HTTP, `/api/health`, the operator seeded as above signing
 in and reading `/api/auth/me` with its cookie, the realtime socket's upgrade, and six password-reset requests each
 claiming another `X-Forwarded-For`, whose sixth must still be refused as one client's (429). It runs as the compose
 project `twes-deploy-check` beside your own stack, publishes nothing, and removes everything at the end. CI runs it
 weekly, by hand, and on every push that changes the path from browser to API (`.github/workflows/deploy-check.yml`).
 
-What it does not prove: a certificate from Let's Encrypt (the check's authority is Caddy's own), the mail relay, the DNS
-record, HTTP/3 from a real browser, and a first deployment on a real machine, which follows.
+What it does not prove: `deploy.sh` itself, whose refusals and compose line its own test checks against a stand-in
+`docker` (`scripts/tests/deploy.test.sh`); a certificate from Let's Encrypt (the check's authority is Caddy's own); the
+mail relay; the DNS record; HTTP/3 from a real browser; how much memory a deployment needs; and a first deployment on a
+real machine, which follows.
