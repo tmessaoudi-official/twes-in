@@ -40,6 +40,15 @@ final readonly class DoctrineUserRepository implements UserRepository
         return $operators;
     }
 
+    public function withTotpSecret(): array
+    {
+        /** @var list<User> $users */
+        $users = $this->entityManager->createQueryBuilder()->select('u')->from(User::class, 'u')
+            ->where('u.totpSecret IS NOT NULL')->orderBy('u.email')->getQuery()->getResult();
+
+        return $users;
+    }
+
     public function ofEmail(Email $email): ?User
     {
         return $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);

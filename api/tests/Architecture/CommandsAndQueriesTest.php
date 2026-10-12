@@ -17,6 +17,7 @@ use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Identity\Application\Login\PasswordAttempts;
 use App\Identity\Application\Mfa\BeginTotpEnrolment;
 use App\Identity\Application\Mfa\PasskeyAssertions;
+use App\Identity\Application\Mfa\ResealSecondFactors;
 use App\ImportExport\Application\RunImport;
 use App\Inbox\Application\NotificationCentre;
 use App\Inbox\Application\NotificationPreferences;
@@ -88,6 +89,7 @@ final class CommandsAndQueriesTest extends TestCase
         SealInvoiceChains::class => 'the chain is itself the record: issuing seals within its own audited transaction, and the start seals what an earlier release issued, which no person changes',
         ProductReferences::class => 'a part of creating a product, inside the transaction of the product it names, which records it',
         CashInvoicesInBulk::class => 'every payment goes through ManagePayments, which records it on its invoice',
+        ResealSecondFactors::class => 'the same secrets under a new key, run on the console with the service stopped, which no person changes; the runbook is its record',
     ];
 
     /** @var array<class-string, list<string>>|null */

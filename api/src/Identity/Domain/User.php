@@ -257,6 +257,19 @@ class User
         $this->updatedAt = $now ?? new \DateTimeImmutable();
     }
 
+    /**
+     * The same secret sealed under another key, pending or in force as it was: rotating the key that seals it is not
+     * a change the person made, so nothing else moves.
+     */
+    public function resealTotpSecret(string $cipherSecret): void
+    {
+        if (null === $this->totpSecret) {
+            throw new \DomainException('There is no authenticator secret to reseal.');
+        }
+
+        $this->totpSecret = $cipherSecret;
+    }
+
     /** Turns the pending secret into a real factor. The timestep is the one the confirming code came from, and is spent. */
     public function confirmTotpEnrolment(int $timestep, ?\DateTimeImmutable $now = null): void
     {
